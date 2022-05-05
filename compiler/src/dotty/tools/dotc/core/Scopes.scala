@@ -213,14 +213,14 @@ object Scopes {
 
     /** the hash table
      */
-    private var hashTable: Array[ScopeEntry | Null] | Null = null
+    private var hashTable: Array[ScopeEntry | Null] | Uninitialized = initiallyNull
 
     /** a cache for all elements, to be used by symbol iterator.
      */
-    private var elemsCache: List[Symbol] | Null = null
+    private var elemsCache: List[Symbol] | Uninitialized = initiallyNull
 
     /** The synthesizer to be used, or `null` if no synthesis is done on this scope */
-    private var synthesize: SymbolSynthesizer | Null = null
+    private var synthesize: SymbolSynthesizer | Uninitialized = initiallyNull
 
     /** Use specified synthesize for this scope */
     def useSynthesizer(s: SymbolSynthesizer): Unit = synthesize = s

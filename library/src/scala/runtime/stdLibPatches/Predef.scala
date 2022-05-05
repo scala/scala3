@@ -58,9 +58,9 @@ object Predef:
    *     cache
    * }}}
    */
-  @experimental
+//  @experimental
   type Uninitialized <: Null
   /** Initializer for `var`s of type `Uninitialized` */
-  @experimental
+//  @experimental
   val initiallyNull = null.asInstanceOf[Uninitialized]
 end Predef

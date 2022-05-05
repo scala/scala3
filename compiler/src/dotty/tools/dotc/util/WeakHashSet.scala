@@ -233,7 +233,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
       /**
        * the entry that was last examined
        */
-      private var entry: Entry[A] | Null = null
+      private var entry: Entry[A] | Uninitialized = initiallyNull
 
       /**
        * the element that will be the result of the next call to next()

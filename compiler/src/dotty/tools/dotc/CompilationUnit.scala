@@ -71,7 +71,7 @@ class CompilationUnit protected (val source: SourceFile) {
         suspendedAtInliningPhase = true
     throw CompilationUnit.SuspendException()
 
-  private var myAssignmentSpans: Map[Int, List[Span]] | Null = null
+  private var myAssignmentSpans: Map[Int, List[Span]] | Uninitialized = initiallyNull
 
   /** A map from (name-) offsets of all local variables in this compilation unit
    *  that can be tracked for being not null to the list of spans of assignments

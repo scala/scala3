@@ -1555,7 +1555,7 @@ object Scanners {
     /** The enclosing region, which is required to exist */
     def enclosing: Region = outer.asInstanceOf[Region]
 
-    var knownWidth: IndentWidth | Null = null
+    var knownWidth: IndentWidth | Uninitialized = initiallyNull
 
     /** The indentation width, Zero if not known */
     final def indentWidth: IndentWidth =

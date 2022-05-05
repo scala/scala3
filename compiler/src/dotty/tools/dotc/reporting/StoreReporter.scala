@@ -19,7 +19,7 @@ import Diagnostic._
   */
 class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState: Boolean = false) extends Reporter {
 
-  protected var infos: mutable.ListBuffer[Diagnostic] | Null = null
+  protected var infos: mutable.ListBuffer[Diagnostic] | Uninitialized = initiallyNull
 
   def doReport(dia: Diagnostic)(using Context): Unit = {
     typr.println(s">>>> StoredError: ${dia.message}") // !!! DEBUG

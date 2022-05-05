@@ -66,7 +66,7 @@ class ImportInfo(symf: Context ?=> Symbol,
     }
     mySym.uncheckedNN
   }
-  private var mySym: Symbol | Null = _
+  private var mySym: Symbol | Uninitialized = _
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(using Context): Type = importSym.info match {
@@ -89,9 +89,9 @@ class ImportInfo(symf: Context ?=> Symbol,
   /** Does the import clause have at least one `given` selector? */
   def isGivenImport: Boolean = { ensureInitialized(); myGivenImport }
 
-  private var myExcluded: Set[TermName] | Null = null
-  private var myForwardMapping: SimpleIdentityMap[TermName, TermName] | Null = null
-  private var myReverseMapping: SimpleIdentityMap[TermName, TermName] | Null = null
+  private var myExcluded: Set[TermName] | Uninitialized = initiallyNull
+  private var myForwardMapping: SimpleIdentityMap[TermName, TermName] | Uninitialized = initiallyNull
+  private var myReverseMapping: SimpleIdentityMap[TermName, TermName] | Uninitialized = initiallyNull
   private var myWildcardImport: Boolean = false
   private var myGivenImport: Boolean = false
   private var myWildcardBound: Type = NoType
@@ -180,7 +180,7 @@ class ImportInfo(symf: Context ?=> Symbol,
 
   private val isLanguageImport: Boolean = untpd.languageImport(qualifier).isDefined
 
-  private var myUnimported: Symbol | Null = _
+  private var myUnimported: Symbol | Uninitialized = _
 
   private var featureCache: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.empty
 

@@ -52,7 +52,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
       Set(refClass(defn.ObjectClass), volatileRefClass(defn.ObjectClass))
   }
 
-  private var myRefInfo: RefInfo | Null = null
+  private var myRefInfo: RefInfo | Uninitialized = initiallyNull
   private def refInfo(using Context): RefInfo = {
     if (myRefInfo == null) myRefInfo = new RefInfo()
     myRefInfo.uncheckedNN

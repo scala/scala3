@@ -100,7 +100,7 @@ object Implicits:
      */
     def companionRefs: TermRefSet = TermRefSet.empty
 
-    private var mySingletonClass: ClassSymbol | Null = null
+    private var mySingletonClass: ClassSymbol | Uninitialized = initiallyNull
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(using Context): Type = {
@@ -842,7 +842,7 @@ trait Implicits:
     }
   }
 
-  private var synthesizer: Synthesizer | Null = null
+  private var synthesizer: Synthesizer | Uninitialized = initiallyNull
 
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
@@ -1674,7 +1674,7 @@ final class SearchRoot extends SearchHistory:
   var nestedSearches: Int = 0
 
   /** The dictionary of recursive implicit types and corresponding terms for this search. */
-  var myImplicitDictionary: mutable.Map[Type, (TermRef, tpd.Tree)] | Null = null
+  var myImplicitDictionary: mutable.Map[Type, (TermRef, tpd.Tree)] | Uninitialized = initiallyNull
   private def implicitDictionary =
     if myImplicitDictionary == null then
       myImplicitDictionary = mutable.Map.empty[Type, (TermRef, tpd.Tree)]

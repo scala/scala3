@@ -190,8 +190,8 @@ class Splicing extends MacroTransform:
   private class SpliceTransformer(spliceOwner: Symbol, isCaptured: Symbol => Boolean) extends Transformer:
     private var refBindingMap = mutable.Map.empty[Symbol, (Tree, Symbol)]
     /** Reference to the `Quotes` instance of the current level 1 splice */
-    private var quotes: Tree | Null = null // TODO: add to the context
-    private var healedTypes: PCPCheckAndHeal.QuoteTypeTags | Null = null // TODO: add to the context
+    private var quotes: Tree | Uninitialized = initiallyNull // TODO: add to the context
+    private var healedTypes: PCPCheckAndHeal.QuoteTypeTags | Uninitialized = initiallyNull // TODO: add to the context
 
     def transformSplice(tree: tpd.Tree, tpe: Type, holeIdx: Int)(using Context): tpd.Tree =
       assert(level == 0)

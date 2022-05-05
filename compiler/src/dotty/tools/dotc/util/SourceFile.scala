@@ -62,7 +62,7 @@ object ScriptSourceFile {
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   import SourceFile._
 
-  private var myContent: Array[Char] | Null = null
+  private var myContent: Array[Char] | Uninitialized = initiallyNull
 
   def content(): Array[Char] = {
     if (myContent == null) myContent = computeContent

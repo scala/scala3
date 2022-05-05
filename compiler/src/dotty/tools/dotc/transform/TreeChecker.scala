@@ -213,7 +213,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     // used to check invariant of lambda encoding
-    var nestingBlock: untpd.Block | Null = null
+    var nestingBlock: untpd.Block | Uninitialized = initiallyNull
     private def withBlock[T](block: untpd.Block)(op: => T): T = {
       val outerBlock = nestingBlock
       nestingBlock = block

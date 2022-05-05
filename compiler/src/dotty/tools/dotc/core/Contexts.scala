@@ -308,7 +308,7 @@ object Contexts {
     def getFile(name: String): AbstractFile = getFile(name.toTermName)
 
 
-    private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Null = null
+    private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Uninitialized = initiallyNull
 
     private def lookup(key: Phase | SourceFile): Context | Null =
       util.Stats.record("Context.related.lookup")
@@ -853,7 +853,7 @@ object Contexts {
     val initialCtx: Context = new InitialContext(this, settings)
 
     /** The platform, initialized by `initPlatform()`. */
-    private var _platform: Platform | Null = _
+    private var _platform: Platform | Uninitialized = _
 
     /** The platform */
     def platform: Platform = {
@@ -911,8 +911,8 @@ object Contexts {
     /** A table for hash consing unique named types */
     private[core] val uniqueNamedTypes: NamedTypeUniques = NamedTypeUniques()
 
-    var emptyTypeBounds: TypeBounds | Null = null
-    var emptyWildcardBounds: WildcardType | Null = null
+    var emptyTypeBounds: TypeBounds | Uninitialized = initiallyNull
+    var emptyWildcardBounds: WildcardType | Uninitialized = initiallyNull
 
     /** Number of findMember calls on stack */
     private[core] var findMemberCount: Int = 0
@@ -1006,7 +1006,7 @@ object Contexts {
     // Test that access is single threaded
 
     /** The thread on which `checkSingleThreaded was invoked last */
-    @sharable private var thread: Thread | Null = null
+    @sharable private var thread: Thread | Uninitialized = initiallyNull
 
     /** Check that we are on the same thread as before */
     def checkSingleThreaded(): Unit =

@@ -495,7 +495,7 @@ object SymDenotations {
     /** `fullName` where `.' is the separator character */
     def fullName(using Context): Name = fullNameSeparated(QualifiedName)
 
-    private var myTargetName: Name | Null = null
+    private var myTargetName: Name | Uninitialized = initiallyNull
 
     private def computeTargetName(targetNameAnnot: Option[Annotation])(using Context): Name =
       targetNameAnnot match
@@ -1701,15 +1701,15 @@ object SymDenotations {
 
     // ----- caches -------------------------------------------------------
 
-    private var myTypeParams: List[TypeSymbol] | Null = null
+    private var myTypeParams: List[TypeSymbol] | Uninitialized = initiallyNull
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
 
-    private var myMemberCache: EqHashMap[Name, PreDenotation] | Null = null
+    private var myMemberCache: EqHashMap[Name, PreDenotation] | Uninitialized = initiallyNull
     private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
     type BaseTypeMap = EqHashMap[CachedType, Type]
-    private var myBaseTypeCache: BaseTypeMap | Null = null
+    private var myBaseTypeCache: BaseTypeMap | Uninitialized = initiallyNull
     private var myBaseTypeCachePeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
@@ -1838,7 +1838,7 @@ object SymDenotations {
 
    // ------ class-specific operations -----------------------------------
 
-    private var myThisType: Type | Null = null
+    private var myThisType: Type | Uninitialized = initiallyNull
 
     /** The this-type depends on the kind of class:
      *  - for a package class `p`:  ThisType(TypeRef(Noprefix, p))
@@ -1856,7 +1856,7 @@ object SymDenotations {
       ThisType.raw(TypeRef(pre, cls))
     }
 
-    private var myTypeRef: TypeRef | Null = null
+    private var myTypeRef: TypeRef | Uninitialized = initiallyNull
 
     override def typeRef(using Context): TypeRef = {
       if (myTypeRef == null) myTypeRef = super.typeRef
@@ -2628,8 +2628,8 @@ object SymDenotations {
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
     private var myDecls: Scope = EmptyScope
-    private var mySourceModule: Symbol | Null = null
-    private var myModuleClass: Symbol | Null = null
+    private var mySourceModule: Symbol | Uninitialized = initiallyNull
+    private var myModuleClass: Symbol | Uninitialized = initiallyNull
     private var mySourceModuleFn: Context ?=> Symbol = LazyType.NoSymbolFn
     private var myModuleClassFn: Context ?=> Symbol = LazyType.NoSymbolFn
 

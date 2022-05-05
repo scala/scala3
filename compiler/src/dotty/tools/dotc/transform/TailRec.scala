@@ -232,7 +232,7 @@ class TailRec extends MiniPhase {
     var failureReported: Boolean = false
 
     /** The `tailLabelN` label symbol, used to encode a `continue` from the infinite `while` loop. */
-    private var myContinueLabel: Symbol | Null = _
+    private var myContinueLabel: Symbol | Uninitialized = _
     def continueLabel(using Context): Symbol = {
       if (myContinueLabel == null)
         myContinueLabel = newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)

@@ -2073,7 +2073,7 @@ object Types {
 
   /** Implementations of this trait cache the results of `narrow`. */
   trait NarrowCached extends Type {
-    private var myNarrow: TermRef | Null = null
+    private var myNarrow: TermRef | Uninitialized = initiallyNull
     override def narrow(using Context): TermRef = {
       if (myNarrow == null) myNarrow = super.narrow
       myNarrow.nn
@@ -2093,9 +2093,9 @@ object Types {
 
     assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
 
-    private var myName: Name | Null = null
-    private var lastDenotation: Denotation | Null = null
-    private var lastSymbol: Symbol | Null = null
+    private var myName: Name | Uninitialized = initiallyNull
+    private var lastDenotation: Denotation | Uninitialized = initiallyNull
+    private var lastSymbol: Symbol | Uninitialized = initiallyNull
     private var checkedPeriod: Period = Nowhere
     private var myStableHash: Byte = 0
     private var mySignature: Signature = _
@@ -2881,7 +2881,7 @@ object Types {
 
   // `refFn` can be null only if `computed` is true.
   case class LazyRef(private var refFn: (Context => (Type | Null)) | Null) extends UncachedProxyType with ValueType {
-    private var myRef: Type | Null = null
+    private var myRef: Type | Uninitialized = initiallyNull
     private var computed = false
 
     override def tryNormalize(using Context): Type = ref.tryNormalize
@@ -3024,7 +3024,7 @@ object Types {
 
     val parent: Type = parentExp(this: @unchecked)
 
-    private var myRecThis: RecThis | Null = null
+    private var myRecThis: RecThis | Uninitialized = initiallyNull
 
     def recThis: RecThis = {
       if (myRecThis == null) myRecThis = new RecThisImpl(this)
@@ -3441,7 +3441,7 @@ object Types {
     final def isTypeLambda: Boolean = isInstanceOf[TypeLambda]
     final def isHigherKinded: Boolean = isInstanceOf[TypeProxy]
 
-    private var myParamRefs: List[ParamRefType] | Null = null
+    private var myParamRefs: List[ParamRefType] | Uninitialized = initiallyNull
 
     def paramRefs: List[ParamRefType] = {
       if myParamRefs == null then
@@ -4636,7 +4636,7 @@ object Types {
     //val id = skid
     //assert(id != 10)
 
-    private var myRepr: Name | Null = null
+    private var myRepr: Name | Uninitialized = initiallyNull
     def repr(using Context): Name = {
       if (myRepr == null) myRepr = SkolemName.fresh()
       myRepr.nn
@@ -4820,7 +4820,7 @@ object Types {
     def alternatives(using Context): List[Type] = cases.map(caseType)
     def underlying(using Context): Type = bound
 
-    private var myReduced: Type | Null = null
+    private var myReduced: Type | Uninitialized = initiallyNull
     private var reductionContext: util.MutableMap[Type, Type] = _
 
     override def tryNormalize(using Context): Type =
@@ -4920,8 +4920,8 @@ object Types {
       decls: Scope,
       selfInfo: TypeOrSymbol) extends CachedGroundType with TypeType {
 
-    private var selfTypeCache: Type | Null = null
-    private var appliedRefCache: Type | Null = null
+    private var selfTypeCache: Type | Uninitialized = initiallyNull
+    private var appliedRefCache: Type | Uninitialized = initiallyNull
 
     /** The self type of a class is the conjunction of
      *   - the explicit self type if given (or the info of a given self symbol), and
@@ -4948,7 +4948,7 @@ object Types {
     }
 
     // cached because baseType needs parents
-    private var parentsCache: List[Type] | Null = null
+    private var parentsCache: List[Type] | Uninitialized = initiallyNull
 
     override def parents(using Context): List[Type] = {
       if (parentsCache == null)

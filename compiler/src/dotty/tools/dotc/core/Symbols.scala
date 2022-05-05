@@ -65,7 +65,7 @@ object Symbols {
       myCoord = c
     }
 
-    private var myDefTree: Tree | Null = null
+    private var myDefTree: Tree | Uninitialized = initiallyNull
 
     /** The tree defining the symbol at pickler time, EmptyTree if none was retained */
     def defTree: Tree =
