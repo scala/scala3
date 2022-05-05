@@ -2097,6 +2097,7 @@ object Types {
     private var lastDenotation: Denotation | Null = null
     private var lastSymbol: Symbol | Null = null
     private var checkedPeriod: Period = Nowhere
+    private var firstValidPhaseId: Int = 0
     private var myStableHash: Byte = 0
     private var mySignature: Signature = _
     private var mySignatureRunId: Int = NoRunId
@@ -2212,6 +2213,8 @@ object Types {
       val now = ctx.period
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
+      if firstValidPhaseId > now.phaseId then
+        revalidateDenot()
       if (checkedPeriod != Nowhere && lastDenotation.nn.validFor.contains(now)) {
         checkedPeriod = now
         lastDenotation.nn
@@ -2339,6 +2342,18 @@ object Types {
      */
     def recomputeDenot()(using Context): Unit =
       setDenot(memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
+
+    /** Try to recompute denotation and reset `firstValidPhaseId`.
+     *  @pre Current phase id < firstValidPhaseId
+     */
+    def revalidateDenot()(using Context): Unit =
+      if (prefix ne NoPrefix) then
+        core.println(i"revalidate $prefix . $name, $firstValidPhaseId > ${ctx.phaseId}")
+        val newDenot = memberDenot(name, allowPrivate =
+          lastSymbol == null || !lastSymbol.nn.exists || lastSymbol.nn.is(Private))
+        if newDenot.exists then
+          setDenot(newDenot)
+          firstValidPhaseId = ctx.phaseId
 
     private def setDenot(denot: Denotation)(using Context): Unit = {
       if (Config.checkNoDoubleBindings)
@@ -2570,6 +2585,15 @@ object Types {
               || adapted.info.eq(denot.info))
             adapted
           else this
+        val lastDenot = result.lastDenotation
+        if denot.isInstanceOf[SymDenotation] && lastDenot != null && !lastDenot.isInstanceOf[SymDenotation] then
+          // In this case the new SymDenotation might be valid for all phases, which means
+          // we would not recompute the denotation when travelling to an earlier phase, maybe
+          // in the next run. We fix that problem by recording in this case in the NamedType
+          // the phase from which the denotation is valid. Taking the denotation at an earlier
+          // phase will then lead to a `revalidateDenot`.
+          core.println(i"overwrite ${result.toString} / ${result.lastDenotation} with $denot")
+          result.firstValidPhaseId = ctx.phaseId
         result.setDenot(denot)
         result.asInstanceOf[ThisType]
       }
