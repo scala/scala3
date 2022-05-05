@@ -249,7 +249,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   /** A path referencing the companion of class type `clsType` */
   private def companionPath(clsType: Type, span: Span)(using Context) =
-    val ref = pathFor(clsType.companionRef)
+    val ref = pathFor(clsType.mirrorCompanionRef)
     assert(ref.symbol.is(Module) && (clsType.classSymbol.is(ModuleClass) || (ref.symbol.companionClass == clsType.classSymbol)))
     ref.withSpan(span)
 
@@ -275,6 +275,36 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     monoMap(mirroredType.resultType)
 
   private def productMirror(mirroredType: Type, formal: Type, span: Span)(using Context): Tree =
+
+    /** do all parts match the class symbol? */
+    def acceptable(tp: Type, cls: Symbol): Boolean = tp match
+      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] => false
+      case tp: TypeProxy    => acceptable(tp.underlying, cls)
+      case OrType(tp1, tp2) => acceptable(tp1, cls) && acceptable(tp2, cls)
+      case _                => tp.classSymbol eq cls
+
+    def makeProductMirror(cls: Symbol): Tree =
+      val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
+      val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
+      val nestedPairs = TypeOps.nestedPairs(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
+      val (monoType, elemsType) = mirroredType match
+        case mirroredType: HKTypeLambda =>
+          (mkMirroredMonoType(mirroredType), mirroredType.derivedLambdaType(resType = nestedPairs))
+        case _ =>
+          (mirroredType, nestedPairs)
+      val elemsLabels = TypeOps.nestedPairs(elemLabels)
+      checkRefinement(formal, tpnme.MirroredElemTypes, elemsType, span)
+      checkRefinement(formal, tpnme.MirroredElemLabels, elemsLabels, span)
+      val mirrorType =
+        mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name, formal)
+          .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
+          .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
+      val mirrorRef =
+        if (cls.is(Scala2x) || cls.linkedClass.is(Case)) anonymousMirror(monoType, ExtendsProductMirror, span)
+        else companionPath(mirroredType, span)
+      mirrorRef.cast(mirrorType)
+    end makeProductMirror
+
     mirroredType match
       case AndType(tp1, tp2) =>
         productMirror(tp1, formal, span).orElse(productMirror(tp2, formal, span))
@@ -289,28 +319,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           else
             val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, module.name, formal)
             modulePath.cast(mirrorType)
-        else if mirroredType.classSymbol.isGenericProduct then
+        else
           val cls = mirroredType.classSymbol
-          val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
-          val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
-          val nestedPairs = TypeOps.nestedPairs(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
-          val (monoType, elemsType) = mirroredType match
-            case mirroredType: HKTypeLambda =>
-              (mkMirroredMonoType(mirroredType), mirroredType.derivedLambdaType(resType = nestedPairs))
-            case _ =>
-              (mirroredType, nestedPairs)
-          val elemsLabels = TypeOps.nestedPairs(elemLabels)
-          checkRefinement(formal, tpnme.MirroredElemTypes, elemsType, span)
-          checkRefinement(formal, tpnme.MirroredElemLabels, elemsLabels, span)
-          val mirrorType =
-            mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name, formal)
-              .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
-          val mirrorRef =
-            if (cls.is(Scala2x)) anonymousMirror(monoType, ExtendsProductMirror, span)
-            else companionPath(mirroredType, span)
-          mirrorRef.cast(mirrorType)
-        else EmptyTree
+          if acceptable(mirroredType, cls) && cls.isGenericProduct then makeProductMirror(cls)
+          else EmptyTree
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): Tree =
@@ -319,6 +331,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     def acceptable(tp: Type): Boolean = tp match
       case tp: TermRef => false
+      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] => false
       case tp: TypeProxy => acceptable(tp.underlying)
       case OrType(tp1, tp2) => acceptable(tp1) && acceptable(tp2)
       case _            => tp.classSymbol eq cls

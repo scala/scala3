@@ -7,7 +7,7 @@ class A
 class B
 
 class Foo {
-  
+
   // ok, because A and B are <: Object.
   def foo(a: A|Null): Unit = ()
   def foo(b: B|Null): Unit = ()
@@ -26,13 +26,15 @@ class Foo {
   def foo2(a: A|Nothing): Unit = ()
   def foo2(b: B|Nothing): Unit = ()
 
+  // ok because erased to primitive types
   def bar2(a: Int|Nothing): Unit = ()
-  def bar2(b: Boolean|Nothing): Unit = () // error: signatures match
+  def bar2(b: Boolean|Nothing): Unit = ()
 
   // ok, T is erased to `String` and `Integer`, respectively
   def gen3[T <: String](s: T|Nothing): Unit = ()
   def gen3[T <: Integer](i: T|Nothing): Unit = ()
 
+  // ok because erased to primitive types
   def gen4[T <: Int](i: T|Nothing): Unit = ()
-  def gen4[T <: Boolean](b: T|Nothing): Unit = () // error: signatures match
+  def gen4[T <: Boolean](b: T|Nothing): Unit = ()
 }

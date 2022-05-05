@@ -1150,27 +1150,62 @@ class CompletionTest {
       .completion(("map", Method, "[B](f: Int => B): Foo[B]"))
   }
 
-  // This test is not passing due to https://github.com/lampepfl/dotty/issues/14687
-  // @Test def higherKindedMatchTypeImplicitConversionCompletion: Unit = {
-  //   val expected = Set(
-  //     ("mapBoo", Method, "[B](op: Int => B): Boo[B]"),
-  //     ("mapFoo", Method, "[B](op: Int => B): Foo[B]"),
-  //   )
-  //   code"""import scala.language.implicitConversions
-  //         |case class Foo[A](x: A) {
-  //         |  def mapFoo[B](op: A => B): Foo[B] = ???
-  //         |}
-  //         |case class Boo[A](x: A) {
-  //         |  def mapBoo[B](op: A => B): Boo[B] = ???
-  //         |}
-  //         |type M[A] = A match {
-  //         |  case Int => Foo[Int]
-  //         |}
-  //         |implicit def fooToBoo[A](x: Foo[A]): Boo[A] = Boo(x.x)
-  //         |case class Bar[F[_]](bar: F[Int])
-  //         |def foo(x: Bar[M]) = x.bar.m${m1}"""
-  //            .completion(m1, expected)
-  // }
+  @Test def higherKindedMatchTypeImplicitConversionCompletion: Unit = {
+    code"""import scala.language.implicitConversions
+          |case class Foo[A](x: A) {
+          |  def mapFoo[B](op: A => B): Foo[B] = ???
+          |}
+          |case class Boo[A](x: A) {
+          |  def mapBoo[B](op: A => B): Boo[B] = ???
+          |}
+          |type M[A] = A match {
+          |  case Int => Foo[Int]
+          |}
+          |implicit def fooToBoo[A](x: Foo[A]): Boo[A] = Boo(x.x)
+          |case class Bar[F[_]](bar: F[Int])
+          |def foo(x: Bar[M]) = x.bar.m${m1}"""
+      .completion(
+        ("mapBoo", Method, "[B](op: Int => B): Boo[B]"),
+        ("mapFoo", Method, "[B](op: Int => B): Foo[B]")
+      )
+  }
+
+  @Test def higherKindedTypeInferenceTest: Unit = {
+    val expected = Set(
+        ("fooTest", Method, "(x: Int): String")
+      )
+    code"""class Test[A, B] {
+          |  def fooTest(x: A): B = ???
+          |}
+          |
+          |object M:
+          |  val test = new Test[Int, String] {}
+          |  test.foo${m1}
+          |  (new Test[Int, String] {}).foo${m2}"""
+      .completion(m1, expected)
+      .completion(m2, expected)
+  }
+
+  @Test def higherKindedImplicitConversionsCompletions: Unit = {
+    val expected = Set(
+      ("mapBoo", Method, "[B](f: Int => B): Boo[B]"),
+      ("mapFoo", Method, "[B](f: Int => B): Foo[B]"),
+    )
+    code"""import scala.language.implicitConversions
+          |case class Foo[A](x: A) {
+          |  def mapFoo[B](f: A => B): Foo[B] = ???
+          |}
+          |case class Boo[C](x: C) {
+          |  def mapBoo[B](f: C => B): Boo[B] = ???
+          |}
+          |implicit def fooToBoo[D](x: Foo[D]): Boo[D] = Boo(x.x)
+          |object Test:
+          |  val x = Foo(1)
+          |  x.ma${m1}
+          |  Foo(1).ma${m2}"""
+      .completion(m1, expected)
+      .completion(m2, expected)
+  }
 
   @Test def higherKindedMatchTypeExtensionMethodCompletion: Unit = {
     code"""trait Foo[A] {

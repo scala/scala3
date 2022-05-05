@@ -1303,6 +1303,16 @@ object Build {
       }
     }
 
+  def generateStaticAssetsTask = Def.task {
+    DocumentationWebsite.generateStaticAssets(
+      (`scaladoc-js-contributors` / Compile / fullOptJS).value.data,
+      (`scaladoc-js-main` / Compile / fullOptJS).value.data,
+      (`scaladoc-js-contributors` / Compile / baseDirectory).value / "css",
+      (`scaladoc-js-common` / Compile / baseDirectory).value / "css",
+      (Compile / resourceManaged).value,
+    )
+  }
+
   val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
 
   lazy val scaladoc = project.in(file("scaladoc")).
@@ -1316,15 +1326,7 @@ object Build {
       SourceLinksIntegrationTest / test:= ((SourceLinksIntegrationTest / test) dependsOn generateScalaDocumentation.toTask("")).value,
     ).
     settings(
-      Compile / resourceGenerators += Def.task {
-        DocumentationWebsite.generateStaticAssets(
-          (`scaladoc-js-contributors` / Compile / fullOptJS).value.data,
-          (`scaladoc-js-main` / Compile / fullOptJS).value.data,
-          (`scaladoc-js-contributors` / Compile / baseDirectory).value / "css",
-          (`scaladoc-js-common` / Compile / baseDirectory).value / "css",
-          (Compile / resourceManaged).value,
-        )
-      }.taskValue,
+      Compile / resourceGenerators += generateStaticAssetsTask.taskValue,
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.8.2",
         "org.jsoup" % "jsoup" % "1.14.3", // Needed to process .html files for static site
@@ -1380,7 +1382,9 @@ object Build {
       }.value,
 
       generateReferenceDocumentation := Def.inputTaskDyn {
-        val shouldRegenerateExpectedLinks = literal("--no-regenerate-expected-links").?.parsed.isEmpty
+        val shouldRegenerateExpectedLinks = (Space ~> literal("--no-regenerate-expected-links")).?.parsed.isEmpty
+
+        generateStaticAssetsTask.value
 
         val temp = IO.createTemporaryDirectory
         IO.copyDirectory(file("docs"), temp / "docs")

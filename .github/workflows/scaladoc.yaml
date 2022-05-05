@@ -57,7 +57,7 @@ jobs:
         run: ./project/scripts/sbt scaladoc/generateTestcasesDocumentation
 
       - name: Generate reference documentation
-        run: ./project/scripts/sbt scaladoc/generateReferenceDocumentation --no-regenerate-expected-links
+        run: ./project/scripts/sbt scaladoc/generateReferenceDocumentation
 
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation

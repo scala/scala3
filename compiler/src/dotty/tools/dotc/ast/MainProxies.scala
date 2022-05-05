@@ -242,8 +242,10 @@ object MainProxies {
         val param = paramName.toString
         val paramType0 = if formal.isRepeatedParam then formal.argTypes.head.dealias else formal.dealias
         val paramType = paramType0.dealias
-
-        val paramTypeStr = formal.dealias.typeSymbol.owner.showFullName + "." + paramType.show
+        val paramTypeOwner = paramType.typeSymbol.owner
+        val paramTypeStr =
+          if paramTypeOwner == defn.EmptyPackageClass then paramType.show
+          else paramTypeOwner.showFullName + "." + paramType.show
         val hasDefault = defaultValueSymbols.contains(idx)
         val isRepeated = formal.isRepeatedParam
         val paramDoc = documentation.argDocs.getOrElse(param, "")

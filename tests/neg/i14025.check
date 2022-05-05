@@ -1,0 +1,8 @@
+-- Error: tests/neg/i14025.scala:1:88 ----------------------------------------------------------------------------------
+1 |val foo = summon[deriving.Mirror.Product { type MirroredType = [X] =>> [Y] =>> (X, Y) }] // error
+  |                                                                                        ^
+  |no given instance of type deriving.Mirror.Product{MirroredType[X] = [Y] =>> (X, Y)} was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i14025.scala:2:90 ----------------------------------------------------------------------------------
+2 |val bar = summon[deriving.Mirror.Sum { type MirroredType = [X] =>> [Y] =>> List[(X, Y)] }] // error
+  |                                                                                          ^
+  |no given instance of type deriving.Mirror.Sum{MirroredType[X] = [Y] =>> List[(X, Y)]} was found for parameter x of method summon in object Predef
