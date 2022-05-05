@@ -127,17 +127,6 @@ $ sbt
 > testCompilation --help
 ```
 
-### Joint and separate sources compilation
-
-When the sources of a test consist of multiple source files places in a single directory they are passed to the compiler in a single run and the compiler decides in which order to compile them. In some cases, however, to reproduce a specific test scenario it might be necessary to compile the source files in several steps in a specified order. To achieve that one can add a `_${step_index}` suffix to a file name (before the `.scala` or `.java` extension) indicating the order of compilation. E.g. if the test directory contains files named `Foo_1.scala`, `Bar_2.scala` and `Baz_2.scala` then `Foo_1.scala` will be compiled first and after that `Bar_2.scala` together with `Baz_2.scala`.
-
-There are also other suffixes indicating how some particular files are compiled:
-* `_c${compilerVersion}` - compile a file with a specific version of the compiler instead of the one developed on the current branch
-  (e.g. `Foo_c3.0.2.scala`)
-* `_r${release}` - compile a file with a given value of `-scala-output-version` flag (e.g. `Foo_r3.0.scala`)
-
-Different suffixes can be mixed together (their order is not important although consistency is advised), e.g. `Foo_1_r3.0`, `Bar_2_c3.0.2`.
-
 ### Bootstrapped-only tests
 
 To run `testCompilation` on a bootstrapped Dotty compiler, use

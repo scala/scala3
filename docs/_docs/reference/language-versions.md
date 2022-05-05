@@ -1,12 +1,10 @@
 ---
 layout: doc-page
-title: "Source Compatibility"
+title: "Language Versions"
 movedTo: https://docs.scala-lang.org/scala3/reference/language-versions.html
 ---
 
-Scala 3 does NOT guarantee source compatibility between different minor language versions (e.g. some syntax valid in 3.x might get deprecated and then phased out in 3.y for y > x). There are also some syntax structures that were valid in Scala 2 but are not anymore in Scala 3. However the compiler provides a possibility to specify the desired version of syntax used in a particular file or globally for a run of the compiler to make migration between versions easier.
-
-The default Scala language syntax version currently supported by the Dotty compiler is [`3.0`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$3/0$.html). There are also other language versions that can be specified instead:
+The default Scala language version currently supported by the Dotty compiler is [`3.0`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$3/0$.html). There are also other language versions that can be specified instead:
 
 - [`3.0-migration`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$3/0-migration$.html): Same as `3.0` but with a Scala 2 compatibility mode that helps moving Scala 2.13 sources over to Scala 3. In particular, it
 

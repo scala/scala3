@@ -177,25 +177,23 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     flags: TestFlags,
     outDir: JFile
   ) extends TestSource {
-    case class Group(ordinal: Int, compiler: String, release: String)
+    case class Group(ordinal: Int, compiler: String)
 
     lazy val compilationGroups: List[(Group, Array[JFile])] =
-      val Release = """r([\d\.]+)""".r
       val Compiler = """c([\d\.]+)""".r
       val Ordinal = """(\d+)""".r
       def groupFor(file: JFile): Group =
         val groupSuffix = file.getName.dropWhile(_ != '_').stripSuffix(".scala").stripSuffix(".java")
         val groupSuffixParts = groupSuffix.split("_")
         val ordinal = groupSuffixParts.collectFirst { case Ordinal(n) => n.toInt }.getOrElse(Int.MinValue)
-        val release = groupSuffixParts.collectFirst { case Release(r) => r }.getOrElse("")
         val compiler = groupSuffixParts.collectFirst { case Compiler(c) => c }.getOrElse("")
-        Group(ordinal, compiler, release)
+        Group(ordinal, compiler)
 
       dir.listFiles
         .filter(isSourceFile)
         .groupBy(groupFor)
         .toList
-        .sortBy { (g, _) => (g.ordinal, g.compiler, g.release) }
+        .sortBy { (g, _) => (g.ordinal, g.compiler) }
         .map { (g, f) => (g, f.sorted) }
 
     def sourceFiles = compilationGroups.map(_._2).flatten.toArray
@@ -218,11 +216,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         case testSource @ SeparateCompilationSource(_, dir, flags, outDir) =>
           testSource.compilationGroups.map { (group, files) =>
-            val flags1 = if group.release.isEmpty then flags else flags.and("-scala-output-version", group.release)
             if group.compiler.isEmpty then
-              compile(files, flags1, suppressErrors, outDir)
+              compile(files, flags, suppressErrors, outDir)
             else
-              compileWithOtherCompiler(group.compiler, files, flags1, outDir)
+              compileWithOtherCompiler(group.compiler, files, flags, outDir)
           }
       })
 

@@ -9,10 +9,6 @@ object MiMaFilters {
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.runtime.QuoteUnpickler.unpickleTypeV2"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.QuoteUnpickler.unpickleTypeV2"),
 
-    // Experimental `MainAnnotation` APIs. Can be added in 3.3.0 or later.
-    // MiMa bug: classes nested in an experimental object should be ignored
-    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$Info"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$Parameter"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$ParameterAnnotation"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.since"),
   )
 }
