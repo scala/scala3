@@ -1,5 +1,7 @@
 package scala.runtime.stdLibPatches
 
+import scala.annotation.experimental
+
 object Predef:
   import compiletime.summonFrom
 
@@ -47,4 +49,18 @@ object Predef:
    */
   extension [T](x: T | Null) inline def nn: x.type & T =
     scala.runtime.Scala3RunTime.nn(x)
+
+  /** Marker for `var`s that are initialized to `null`, but cannot be assigned `null` after initialization.
+   * @example {{{
+   *   var cache: String | Uninitialized = initiallyNull
+   *   def readCache: String =
+   *     if(cache == null) cache = "hello"
+   *     cache
+   * }}}
+   */
+  @experimental
+  type Uninitialized <: Null
+  /** Initializer for `var`s of type `Uninitialized` */
+  @experimental
+  val initiallyNull = null.asInstanceOf[Uninitialized]
 end Predef
