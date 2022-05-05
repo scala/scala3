@@ -50,11 +50,6 @@ object Signatures {
   def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
     path match {
       case UnApply(fun, _, patterns) :: _ => callInfo(span, patterns, fun, Signatures.countParams(fun))
-      case Apply(fun, params) :: Apply(enclosingFun, enclosingParams) :: _ =>
-        if !fun.span.contains(span) then
-          callInfo(span, params, fun, Signatures.countParams(fun))
-        else
-          callInfo(span, enclosingParams, enclosingFun, Signatures.countParams(enclosingFun))
       case Apply(fun, params) :: _ => callInfo(span, params, fun, Signatures.countParams(fun))
       case _ =>
         (0, 0, Nil)
