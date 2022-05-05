@@ -556,12 +556,13 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val trees = driver.openedTrees(uri)
-    val path = Interactive.pathTo(trees, pos).span {
-      case Apply(fun, _) => fun.span.contains(pos.span)
-      case UnApply(fun, _, _) => fun.span.contains(pos.span)
-      case _ => true
+    val path = Interactive.pathTo(trees, pos).find {
+      case Apply(fun, _) => !fun.span.contains(pos.span)
+      case UnApply(fun, _, _) => !fun.span.contains(pos.span)
+      case _ => false
     }
-    val (paramN, callableN, alternatives) = Signatures.callInfo(path._2, pos.span)
+
+    val (paramN, callableN, alternatives) = Signatures.callInfo(path, pos.span)
     val signatureInfos = alternatives.flatMap(Signatures.toSignature)
 
     new SignatureHelp(signatureInfos.map(signatureToSignatureInformation).asJava, callableN, paramN)
