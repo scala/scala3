@@ -83,11 +83,18 @@
   .header-container-right .text-button {
     display: none;
   }
+
+  #theme-toggle {
+    display: none;
+  }
+
+  #search-toggle {
+    display: none;
+  }
 }
 
 @media (max-width: 500px) {
   .projectVersion {
     width: calc(6 * var(--base-spacing));
   }
-
 }

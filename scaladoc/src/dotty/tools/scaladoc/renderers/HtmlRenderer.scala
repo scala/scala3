@@ -221,7 +221,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           div(id := "version-dropdown", cls := "dropdown-menu") ()
         ),
          div(cls:="header-container-right")(
-          button(id := "search-toggle", cls := "icon-button"),
+            button(id := "search-toggle", cls := "icon-button"),
             a(href := "https://www.scala-lang.org/download/", cls := "text-button") (
               "Download",
             ),
@@ -253,6 +253,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           button(id := "mobile-menu-close", cls := "icon-button close"),
         ),
         div(cls := "mobile-menu-container body-medium")(
+          input(id := "mobile-scaladoc-searchbar-input", cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Search documentation"),
           a(href := "https://www.scala-lang.org/download/", cls := "mobile-menu-item") (
             "Download",
           ),

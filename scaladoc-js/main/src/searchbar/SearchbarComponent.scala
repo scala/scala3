@@ -202,7 +202,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     icon
 
   private val inputElem: html.Input =
-    input(id := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything").tap { element =>
+    input(cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything").tap { element =>
       element.addEventListener("input", { e =>
         clearTimeout(timeoutHandle)
         val inputValue = e.target.asInstanceOf[html.Input].value

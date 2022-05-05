@@ -196,3 +196,11 @@
 .theme-dark #mobile-menu-close.selected::after {
   content: url("../../../../images/icon-buttons/close/dark/selected.svg");
 }
+
+/* search */
+
+#mobile-scaladoc-searchbar-input {
+  height: calc(4.5 * var(--base-spacing));
+  background-position: 10px 10px;
+  margin-bottom: calc(1.5 * var(--base-spacing));;
+}
