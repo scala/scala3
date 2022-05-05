@@ -5,7 +5,7 @@ def test(a: Expr[Any])(using Quotes): Unit = a match
   case '{ $x1: String } | '{ ${_}: Int } => // error
   case '{ $x: String } | '{ $x: Int } => // error // error
   case '{ $x1: String } | '{ ${x2: Expr[Int]} } => // error // error
-  case '{ ${Str(x)}: String } | '{ ${y @ Str(z)}: Int } => // error // error // error
+  case '{ ${Str(x)}: String } | '{ ${y @ Str(z)}: Int } => // error // error
   case '{ val x: Int = ???; ${_}(x): String } | '{ '{ val x: String = ???; ${_}(x): String }} =>
   case '{ val x: Int = ???; $f(x): String } | '{ val x: String = ???; ${_}(x): String } => // error
   case '{ val x: Int = ???; $f(x): String } | '{ val x: String = ???; $f(x): String } => // error // error

@@ -243,17 +243,6 @@ trait QuotesAndSplices {
         res
       }
 
-      def checkAlternativeBinds(pat0: Tree): Unit =
-        def rec(pat: Tree): Unit =
-          pat match
-            case Typed(pat, _) => rec(pat)
-            case UnApply(_, _, pats) => pats.foreach(rec)
-            case pat: Bind =>
-              report.error(IllegalVariableInPatternAlternative(pat.symbol.name), pat.withSpan(pat.nameSpan))
-              rec(pat.body)
-            case _ =>
-        if ctx.mode.is(Mode.InPatternAlternative) then rec(pat0)
-
       val patBuf = new mutable.ListBuffer[Tree]
       val freshTypePatBuf = new mutable.ListBuffer[Tree]
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
@@ -265,7 +254,6 @@ trait QuotesAndSplices {
           val newSplice = ref(defn.QuotedRuntime_exprSplice).appliedToType(tpt1.tpe).appliedTo(Typed(pat, exprTpt))
           transform(newSplice)
         case Apply(TypeApply(fn, targs), Apply(sp, pat :: Nil) :: args :: Nil) if fn.symbol == defn.QuotedRuntimePatterns_patternHigherOrderHole =>
-          checkAlternativeBinds(pat)
           args match // TODO support these patterns. Possibly using scala.quoted.util.Var
             case SeqLiteral(args, _) =>
               for arg <- args; if arg.symbol.is(Mutable) do
@@ -278,7 +266,6 @@ trait QuotesAndSplices {
             patBuf += pat1
           }
         case Apply(fn, pat :: Nil) if fn.symbol.isExprSplice =>
-          checkAlternativeBinds(pat)
           try ref(defn.QuotedRuntimePatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen
