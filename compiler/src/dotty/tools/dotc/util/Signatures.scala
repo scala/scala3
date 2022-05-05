@@ -42,12 +42,18 @@ object Signatures {
   /**
    * Extract (current parameter index, function index, functions) out of a method call.
    *
-   * @param enclosingApply Enclosing function application
+   * @param path The path to the function application
    * @param span The position of the cursor
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
-  def callInfo(enclosingApply: Option[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
+  def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
+    val enclosingApply = path.find {
+      case Apply(fun, _) => !fun.span.contains(span)
+      case UnApply(fun, _, _) => !fun.span.contains(span)
+      case _ => false
+    }
+
     enclosingApply.map {
       case UnApply(fun, _, patterns) => callInfo(span, patterns, fun, Signatures.countParams(fun))
       case Apply(fun, params) => callInfo(span, params, fun, Signatures.countParams(fun))
