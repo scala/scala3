@@ -42,25 +42,28 @@ object Signatures {
   /**
    * Extract (current parameter index, function index, functions) out of a method call.
    *
-   * @param path The path to the function application
+   * @param path The path to the function starting with closest one to `span`
    * @param span The position of the cursor
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
   def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
     path match {
-      case UnApply(fun, _, patterns) :: _ =>
-        callInfo(span, patterns, fun, Signatures.countParams(fun))
-      case Apply(fun, params) :: _ =>
-        callInfo(span, params, fun, Signatures.countParams(fun))
+      case UnApply(fun, _, patterns) :: _ => callInfo(span, patterns, fun, Signatures.countParams(fun))
+      case Apply(fun, params) :: Apply(enclosingFun, enclosingParams) :: _ =>
+        if !fun.span.contains(span) then
+          callInfo(span, params, fun, Signatures.countParams(fun))
+        else
+          callInfo(span, enclosingParams, enclosingFun, Signatures.countParams(enclosingFun))
+      case Apply(fun, params) :: _ => callInfo(span, params, fun, Signatures.countParams(fun))
       case _ =>
         (0, 0, Nil)
     }
 
   def callInfo(
     span: Span,
-    params: List[Tree[Type]], 
-    fun: Tree[Type], 
+    params: List[Tree[Type]],
+    fun: Tree[Type],
     alreadyAppliedCount : Int
   )(using Context): (Int, Int, List[SingleDenotation]) =
     val paramIndex = params.indexWhere(_.span.contains(span)) match {

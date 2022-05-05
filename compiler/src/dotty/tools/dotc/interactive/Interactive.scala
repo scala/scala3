@@ -79,7 +79,7 @@ object Interactive {
   def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(using Context): Tree =
     enclosingTree(pathTo(trees, pos))
 
-  /** The closes enclosing tree with a symbol, or the `EmptyTree`.
+  /** The closest enclosing tree with a symbol, or the `EmptyTree`.
    */
   def enclosingTree(path: List[Tree])(using Context): Tree =
     path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
