@@ -307,7 +307,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
               .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
           val mirrorRef =
-            if (cls.is(Scala2x)) anonymousMirror(monoType, ExtendsProductMirror, span)
+            if (cls.is(Scala2x) || cls.linkedClass.is(Case)) anonymousMirror(monoType, ExtendsProductMirror, span)
             else companionPath(mirroredType, span)
           mirrorRef.cast(mirrorType)
         else EmptyTree

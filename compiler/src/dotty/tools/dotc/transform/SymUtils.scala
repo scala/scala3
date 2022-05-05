@@ -120,8 +120,9 @@ object SymUtils:
     def useCompanionAsSumMirror(using Context): Boolean =
       def companionExtendsSum(using Context): Boolean =
         self.linkedClass.isSubClass(defn.Mirror_SumClass)
-      self.linkedClass.exists
-        && !self.is(Scala2x)
+      !self.is(Scala2x)
+        && self.linkedClass.exists
+        && !self.linkedClass.is(Case)
         && (
           // If the sum type is compiled from source, and `self` is a "generic sum"
           // then its companion object will become a sum mirror in `posttyper`. (This method
