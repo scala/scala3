@@ -49,7 +49,7 @@ subsection:
       - page: reference/metaprogramming/reflection.md
       - page: reference/metaprogramming/tasty-inspect.md
   - title: Other New Features
-    index: reference/other-new-features/other-new-types.md
+    index: reference/other-new-features/other-new-features.md
     subsection:
       - page: reference/other-new-features/trait-parameters.md
       - page: reference/other-new-features/transparent-traits.md

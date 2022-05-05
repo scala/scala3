@@ -2,6 +2,7 @@
 layout: index
 title: "Metaprogramming"
 movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming.html
+redirectFrom: /metaprogramming.html
 ---
 
 The following pages introduce the redesign of metaprogramming in Scala. They
