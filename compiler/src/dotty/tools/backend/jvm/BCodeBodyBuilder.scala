@@ -431,7 +431,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           if (value.tag != UnitTag) (value.tag, expectedType) match {
             case (IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
             case (FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
-            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = RT_NULL
+            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = srNullRef
             case _                  => genConstant(value);               generatedType = tpeTK(tree)
           }
 
@@ -490,7 +490,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val thrownType = expectedType
           // `throw null` is valid although scala.Null (as defined in src/libray-aux) isn't a subtype of Throwable.
           // Similarly for scala.Nothing (again, as defined in src/libray-aux).
-          assert(thrownType.isNullType || thrownType.isNothingType || thrownType.asClassBType.isSubtypeOf(ThrowableReference))
+          assert(thrownType.isNullType || thrownType.isNothingType || thrownType.asClassBType.isSubtypeOf(jlThrowableRef))
           emit(asm.Opcodes.ATHROW)
     end genAdaptAndSendToDest
 
@@ -674,8 +674,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         else if (l.isPrimitive) {
           bc drop l
           if (cast) {
-            mnode.visitTypeInsn(asm.Opcodes.NEW, classCastExceptionReference.internalName)
-            bc dup ObjectReference
+            mnode.visitTypeInsn(asm.Opcodes.NEW, jlClassCastExceptionRef.internalName)
+            bc dup ObjectRef
             emit(asm.Opcodes.ATHROW)
           } else {
             bc boolconst false
@@ -777,7 +777,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val MethodNameAndType(mname, methodType) = asmBoxTo(nativeKind)
-          bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
+          bc.invokestatic(srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
           generatedType = boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
@@ -785,7 +785,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val boxType = unboxResultType(fun.symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
           generatedType = boxType
           val MethodNameAndType(mname, methodType) = asmUnboxTo(boxType)
-          bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
+          bc.invokestatic(srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
 
         case app @ Apply(fun, args) =>
           val sym = fun.symbol
@@ -1237,7 +1237,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       liftStringConcat(tree) match {
         // Optimization for expressions of the form "" + x
         case List(Literal(Constant("")), arg) =>
-          genLoad(arg, ObjectReference)
+          genLoad(arg, ObjectRef)
           genCallMethod(defn.String_valueOf_Object, InvokeStyle.Static)
 
         case concatenations =>
@@ -1409,7 +1409,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Generate the scala ## method. */
     def genScalaHash(tree: Tree): BType = {
-      genLoad(tree, ObjectReference)
+      genLoad(tree, ObjectRef)
       genCallMethod(NoSymbol, InvokeStyle.Static) // used to dispatch ## on primitives to ScalaRuntime.hash. Should be implemented by a miniphase
     }
 
@@ -1508,8 +1508,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val nonNullSide = if (ScalaPrimitivesOps.isReferenceEqualityOp(code)) ifOneIsNull(l, r) else null
         if (nonNullSide != null) {
           // special-case reference (in)equality test for null (null eq x, x eq null)
-          genLoad(nonNullSide, ObjectReference)
-          genCZJUMP(success, failure, op, ObjectReference, targetIfNoJump)
+          genLoad(nonNullSide, ObjectRef)
+          genCZJUMP(success, failure, op, ObjectRef, targetIfNoJump)
         } else {
           val tk = tpeTK(l).maxType(tpeTK(r))
           genLoad(l, tk)
@@ -1627,42 +1627,42 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           } else defn.BoxesRunTimeModule_externalEquals
         }
 
-        genLoad(l, ObjectReference)
-        genLoad(r, ObjectReference)
+        genLoad(l, ObjectRef)
+        genLoad(r, ObjectRef)
         genCallMethod(equalsMethod, InvokeStyle.Static)
         genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
       }
       else {
         if (isNull(l)) {
           // null == expr -> expr eq null
-          genLoad(r, ObjectReference)
-          genCZJUMP(success, failure, Primitives.EQ, ObjectReference, targetIfNoJump)
+          genLoad(r, ObjectRef)
+          genCZJUMP(success, failure, Primitives.EQ, ObjectRef, targetIfNoJump)
         } else if (isNull(r)) {
           // expr == null -> expr eq null
-          genLoad(l, ObjectReference)
-          genCZJUMP(success, failure, Primitives.EQ, ObjectReference, targetIfNoJump)
+          genLoad(l, ObjectRef)
+          genCZJUMP(success, failure, Primitives.EQ, ObjectRef, targetIfNoJump)
         } else if (isNonNullExpr(l)) {
           // SI-7852 Avoid null check if L is statically non-null.
-          genLoad(l, ObjectReference)
-          genLoad(r, ObjectReference)
+          genLoad(l, ObjectRef)
+          genLoad(r, ObjectRef)
           genCallMethod(defn.Any_equals, InvokeStyle.Virtual)
           genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
         } else {
           // l == r -> if (l eq null) r eq null else l.equals(r)
-          val eqEqTempLocal = locals.makeLocal(ObjectReference, nme.EQEQ_LOCAL_VAR.mangledString, defn.ObjectType, r.span)
+          val eqEqTempLocal = locals.makeLocal(ObjectRef, nme.EQEQ_LOCAL_VAR.mangledString, defn.ObjectType, r.span)
           val lNull    = new asm.Label
           val lNonNull = new asm.Label
 
-          genLoad(l, ObjectReference)
-          genLoad(r, ObjectReference)
+          genLoad(l, ObjectRef)
+          genLoad(r, ObjectRef)
           locals.store(eqEqTempLocal)
-          bc dup ObjectReference
-          genCZJUMP(lNull, lNonNull, Primitives.EQ, ObjectReference, targetIfNoJump = lNull)
+          bc dup ObjectRef
+          genCZJUMP(lNull, lNonNull, Primitives.EQ, ObjectRef, targetIfNoJump = lNull)
 
           markProgramPoint(lNull)
-          bc drop ObjectReference
+          bc drop ObjectRef
           locals.load(eqEqTempLocal)
-          genCZJUMP(success, failure, Primitives.EQ, ObjectReference, targetIfNoJump = lNonNull)
+          genCZJUMP(success, failure, Primitives.EQ, ObjectRef, targetIfNoJump = lNonNull)
 
           markProgramPoint(lNonNull)
           locals.load(eqEqTempLocal)

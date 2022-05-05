@@ -267,8 +267,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     final def getClassBTypeAndRegisterInnerClass(sym: Symbol): ClassBType = {
       assertClassNotArrayNotPrimitive(sym)
 
-      if (sym == defn.NothingClass) RT_NOTHING
-      else if (sym == defn.NullClass) RT_NULL
+      if (sym == defn.NothingClass) srNothingRef
+      else if (sym == defn.NullClass) srNullRef
       else {
         val r = classBTypeFromSymbol(sym)
         if (r.isNestedClass) innerClassBufferASM += r
@@ -703,7 +703,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         flags,
         mirrorName,
         null /* no java-generic-signature */,
-        ObjectReference.internalName,
+        ObjectRef.internalName,
         EMPTY_STRING_ARRAY
       )
 
@@ -828,7 +828,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       */
     def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
       assert(sym.isType && compilingArray, sym)
-      ObjectReference.asInstanceOf[ct.bTypes.ClassBType]
+      ObjectRef.asInstanceOf[ct.bTypes.ClassBType]
     }
 
     tp.widenDealias match {
@@ -861,7 +861,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
             "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
 
         tp match {
-          case tp: ThisType if tp.cls == defn.ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
+          case tp: ThisType if tp.cls == defn.ArrayClass => ObjectRef.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
           case tp: ThisType                         => storage.getClassBTypeAndRegisterInnerClass(tp.cls)
           // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
           case t: SingletonType                     => typeToTypeKind(t.underlying)(ct)(storage)

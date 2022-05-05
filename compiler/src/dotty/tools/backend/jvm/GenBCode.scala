@@ -422,7 +422,7 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
       // stack map frames and invokes the `getCommonSuperClass` method. This method expects all
       // ClassBTypes mentioned in the source code to exist in the map.
 
-      val serlamObjDesc = MethodBType(jliSerializedLambdaRef :: Nil, ObjectReference).descriptor
+      val serlamObjDesc = MethodBType(jliSerializedLambdaRef :: Nil, ObjectRef).descriptor
 
       val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serlamObjDesc, null, null)
       def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {

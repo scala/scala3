@@ -254,7 +254,7 @@ trait BCodeIdiomatic {
         case ct: ClassBType if ct.isSubtypeOf(jlCharSequenceRef)  => jlCharSequenceRef
         // Don't match for `ArrayBType(CHAR)`, even though StringBuilder has such an overload:
         // `"a" + Array('b')` should NOT be "ab", but "a[C@...".
-        case _: RefBType                                              => ObjectReference
+        case _: RefBType                                              => ObjectRef
         // jlStringBuilder does not have overloads for byte and short, but we can just use the int version
         case BYTE | SHORT                                             => INT
         case pt: PrimitiveBType                                       => pt
