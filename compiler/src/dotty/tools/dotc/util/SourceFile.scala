@@ -64,6 +64,8 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   private var myContent: Array[Char] | Null = null
 
+  /** The contents of the original source file. Note that this can be empty, for example when
+   * the source is read from Tasty. */
   def content(): Array[Char] = {
     if (myContent == null) myContent = computeContent
     myContent
@@ -92,6 +94,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   def apply(idx: Int): Char = content().apply(idx)
 
+  /** length of the original source file
+   * Note that when the source is from Tasty, content() could be empty even though length > 0.
+   * Use content().length to determine the length of content(). */
   def length: Int =
     if lineIndicesCache ne null then lineIndicesCache.last
     else content().length
