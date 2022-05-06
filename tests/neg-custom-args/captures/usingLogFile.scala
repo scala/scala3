@@ -25,7 +25,7 @@ object Test2:
 
   class Cell[+T](val x: T)
 
-  val later2 = usingLogFile { f => Cell(() => f.write(0)) }
+  private val later2 = usingLogFile { f => Cell(() => f.write(0)) }
   later2.x()  // error
 
   var later3: () => Unit = () => ()  // error

@@ -1,7 +1,7 @@
 @annotation.capability class Cap
 
 class LazyRef[T](val elem: () => T):
-  val get = elem
+  val get: {elem} () -> T = elem
   def map[U](f: T => U): {f, this} LazyRef[U] =
     new LazyRef(() => f(elem()))
 

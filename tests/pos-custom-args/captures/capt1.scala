@@ -13,7 +13,7 @@ def f3: Int =
   val x = g.apply(true)
   x
 
-def foo() =
+def foo(): {*} C =
   val x: {*} C = ???
   val y: {x} C = x
   val x2: {x} () -> C = ???
