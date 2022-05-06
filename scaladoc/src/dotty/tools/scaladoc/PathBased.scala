@@ -4,10 +4,12 @@ import java.nio.file.{Path, Paths}
 
 case class PathBased[T](entries: List[PathBased.Entry[T]], projectRoot: Path):
   def get(path: Path): Option[PathBased.Result[T]] =
-    if path.isAbsolute && path.startsWith(projectRoot) then get(projectRoot.relativize(path))
-    else entries.filter(_.path.forall(p => path.startsWith(p))).maxByOption(_.path.map(_.toString.length)).map(entry =>
-      PathBased.Result(entry.path.fold(path)(_.relativize(path)), entry.elem)
-    )
+    val paths = Option.when(path.isAbsolute && path.startsWith(projectRoot))(projectRoot.relativize(path)).toSeq :+ path
+    paths.iterator.to(LazyList).flatMap { path =>
+      entries.filter(_.path.forall(p => path.startsWith(p))).maxByOption(_.path.map(_.toString.length)).map(entry =>
+        PathBased.Result(entry.path.fold(path)(_.relativize(path)), entry.elem)
+      )
+    }.headOption
 
 trait ArgParser[T]:
   def parse(s: String): Either[String, T]

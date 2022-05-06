@@ -21,7 +21,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           path: 'dotty'
-          ref: 'language-reference-stable'
           fetch-depth: 0
           ssh-key: ${{ secrets.DOCS_KEY }}
 
