@@ -1079,17 +1079,13 @@ object Types {
      *  @param checkClassInfo if true we check that ClassInfos are within bounds of abstract types
      */
     final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(using Context): Boolean = {
-      def widenNullary(tp: Type) = tp match {
-        case tp @ MethodType(Nil) => tp.resultType
-        case _ => tp
-      }
       val overrideCtx = if relaxedCheck then ctx.relaxedOverrideContext else ctx
       inContext(overrideCtx) {
         !checkClassInfo && this.isInstanceOf[ClassInfo]
         || (this.widenExpr frozen_<:< that.widenExpr)
         || matchLoosely && {
-            val this1 = widenNullary(this)
-            val that1 = widenNullary(that)
+            val this1 = this.widenNullaryMethod
+            val that1 = that.widenNullaryMethod
             ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, relaxedCheck, false, checkClassInfo)
           }
       }
@@ -1325,6 +1321,11 @@ object Types {
       case _ =>
         this
     }
+
+    /** If this is a nullary method type, its result type */
+    def widenNullaryMethod(using Context): Type = this match
+      case tp @ MethodType(Nil) => tp.resType
+      case _ => this
 
     /** The singleton types that must or may be in this type. @see Atoms.
      *  Overridden and cached in OrType.

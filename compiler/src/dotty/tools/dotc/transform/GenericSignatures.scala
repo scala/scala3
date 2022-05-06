@@ -189,7 +189,9 @@ object GenericSignatures {
             fullNameInSig(tp.typeSymbol)
             builder.append(';')
           case _ =>
-            boxedSig(tp)
+            boxedSig(tp.widenDealias.widenNullaryMethod)
+              // `tp` might be a singleton type referring to a getter.
+              // Hence the widenNullaryMethod.
         }
 
       if (pre.exists) {
