@@ -54,4 +54,16 @@ package object tools {
 
   def unreachable(x: Any = "<< this case was declared unreachable >>"): Nothing =
     throw new MatchError(x)
+
+  /** Marker for `var`s that are initialized to `null`, but cannot be assigned `null` after initialization.
+   * @example {{{
+   *   var cache: String | Uninitialized = initiallyNull
+   *   def readCache: String =
+   *     if(cache == null) cache = "hello"
+   *     cache
+   * }}}
+   */
+  type Uninitialized <: Null
+  /** Initializer for `var`s of type `Uninitialized` */
+  val initiallyNull = null.asInstanceOf[Uninitialized]
 }
