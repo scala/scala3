@@ -9,7 +9,7 @@ EXPECTED_LINKS_FILE=$2 # The location of expected-links.txt is passed as a secon
 
 pushd $DOCS_DIR > /dev/null # Go to docs dir but remember previous location
 # We need to go to docs dir to make find return correct relative paths
-find . -type f -name "*.html" | sort | (popd > /dev/null; diff $EXPECTED_LINKS_FILE -;)
+find . -type f -name "*.html" | LC_ALL=C sort | (popd > /dev/null; diff $EXPECTED_LINKS_FILE -;)
 # We list every html file in documentation, then sort it and finally compare to the expected links list.
 # Before running diff we need to popd to return to the previous location because we don't have relative path to the expected links file.
 

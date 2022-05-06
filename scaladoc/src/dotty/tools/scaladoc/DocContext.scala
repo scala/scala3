@@ -103,5 +103,5 @@ case class DocContext(args: Scaladoc.Args, compilerContext: CompilerContext):
       report.warning(
         s"""Following generated file paths might not be compatible with Jekyll:
           |${jekyllIncompatLinks.mkString("\n")}
-          |If using GitHub Pages consider adding a \".nojekyll\" file.
-        """.stripMargin)(using compilerContext)
+          |If using GitHub Pages consider adding a \".nojekyll\" file.""".stripMargin
+      )(using compilerContext)

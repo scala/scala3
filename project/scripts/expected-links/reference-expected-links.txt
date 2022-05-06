@@ -1,3 +1,4 @@
+./changed-features.html
 ./changed-features/compiler-plugins.html
 ./changed-features/eta-expansion-spec.html
 ./changed-features/eta-expansion.html
@@ -20,6 +21,7 @@
 ./changed-features/type-inference.html
 ./changed-features/vararg-splices.html
 ./changed-features/wildcards.html
+./contextual.html
 ./contextual/by-name-context-parameters.html
 ./contextual/context-bounds.html
 ./contextual/context-functions-spec.html
@@ -38,6 +40,7 @@
 ./contextual/using-clauses.html
 ./docs/reference/other-new-features/named-typeargs.html
 ./docsScalaLangResources/scaladoc-assets.html
+./dropped-features.html
 ./dropped-features/auto-apply.html
 ./dropped-features/class-shadowing-spec.html
 ./dropped-features/class-shadowing.html
@@ -78,6 +81,7 @@
 ./language-versions/binary-compatibility.html
 ./language-versions/index.html
 ./language-versions/source-compatibility.html
+./metaprogramming.html
 ./metaprogramming/compiletime-ops.html
 ./metaprogramming/index.html
 ./metaprogramming/inline.html
@@ -97,6 +101,7 @@
 ./new-types/type-lambdas.html
 ./new-types/union-types-spec.html
 ./new-types/union-types.html
+./other-new-features.html
 ./other-new-features/control-syntax.html
 ./other-new-features/creator-applications.html
 ./other-new-features/experimental-defs.html
