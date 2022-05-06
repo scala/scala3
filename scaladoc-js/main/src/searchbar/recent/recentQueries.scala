@@ -9,6 +9,6 @@ object RecentQueryStorage extends SafeLocalStorage[js.Array[RecentQuery]]("__REC
 
   def addEntry(rq: RecentQuery): Unit = {
     val newData = getData :+ rq
-    setData(newData.sortBy(_.timestamp).distinctBy(_.query).takeRight(maxEntries))
+    setData(newData.sortBy(_.timestamp).reverse.distinctBy(_.query).take(maxEntries))
   }
 }

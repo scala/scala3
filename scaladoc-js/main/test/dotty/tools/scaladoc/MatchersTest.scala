@@ -44,7 +44,7 @@ class MatchersTest:
     pages.map { p =>
       p -> matchers.map(_(p))
     }.filterNot { (page, results) =>
-      results.exists(_ == -1)
+      results.exists(r => r.priority == -1)
     }.map((page, results) => page)
   }
 
