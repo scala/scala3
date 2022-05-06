@@ -2097,7 +2097,6 @@ object Types {
     private var lastDenotation: Denotation | Null = null
     private var lastSymbol: Symbol | Null = null
     private var checkedPeriod: Period = Nowhere
-    private var firstValidPhaseId: Int = 0
     private var myStableHash: Byte = 0
     private var mySignature: Signature = _
     private var mySignatureRunId: Int = NoRunId
@@ -2213,8 +2212,6 @@ object Types {
       val now = ctx.period
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
-      if firstValidPhaseId > now.phaseId then
-        revalidateDenot()
       if (checkedPeriod != Nowhere && lastDenotation.nn.validFor.contains(now)) {
         checkedPeriod = now
         lastDenotation.nn
@@ -2342,18 +2339,6 @@ object Types {
      */
     def recomputeDenot()(using Context): Unit =
       setDenot(memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
-
-    /** Try to recompute denotation and reset `firstValidPhaseId`.
-     *  @pre Current phase id < firstValidPhaseId
-     */
-    def revalidateDenot()(using Context): Unit =
-      if (prefix ne NoPrefix) then
-        core.println(i"revalidate $prefix . $name, $firstValidPhaseId > ${ctx.phaseId}")
-        val newDenot = memberDenot(name, allowPrivate =
-          lastSymbol == null || !lastSymbol.nn.exists || lastSymbol.nn.is(Private))
-        if newDenot.exists then
-          setDenot(newDenot)
-          firstValidPhaseId = ctx.phaseId
 
     private def setDenot(denot: Denotation)(using Context): Unit = {
       if (Config.checkNoDoubleBindings)
@@ -2576,7 +2561,7 @@ object Types {
      *  A test case is neg/opaque-self-encoding.scala.
      */
     final def withDenot(denot: Denotation)(using Context): ThisType =
-      if (denot.exists) {
+      if denot.exists then
         val adapted = withSym(denot.symbol)
         val result =
           if (adapted.eq(this)
@@ -2586,17 +2571,24 @@ object Types {
             adapted
           else this
         val lastDenot = result.lastDenotation
-        if denot.isInstanceOf[SymDenotation] && lastDenot != null && !lastDenot.isInstanceOf[SymDenotation] then
-          // In this case the new SymDenotation might be valid for all phases, which means
-          // we would not recompute the denotation when travelling to an earlier phase, maybe
-          // in the next run. We fix that problem by recording in this case in the NamedType
-          // the phase from which the denotation is valid. Taking the denotation at an earlier
-          // phase will then lead to a `revalidateDenot`.
-          core.println(i"overwrite ${result.toString} / ${result.lastDenotation} with $denot")
-          result.firstValidPhaseId = ctx.phaseId
-        result.setDenot(denot)
+        denot match
+          case denot: SymDenotation
+          if denot.validFor.firstPhaseId < ctx.phase.id
+            && lastDenot != null
+            && lastDenot.validFor.lastPhaseId > denot.validFor.firstPhaseId
+            && !lastDenot.isInstanceOf[SymDenotation] =>
+            // In this case the new SymDenotation might be valid for all phases, which means
+            // we would not recompute the denotation when travelling to an earlier phase, maybe
+            // in the next run. We fix that problem by creating a UniqueRefDenotation instead.
+            core.println(i"overwrite ${result.toString} / ${result.lastDenotation}, ${result.lastDenotation.getClass} with $denot at ${ctx.phaseId}")
+            result.setDenot(
+              UniqueRefDenotation(
+                denot.symbol, denot.info,
+                Period(ctx.runId, ctx.phaseId, denot.validFor.lastPhaseId),
+                this.prefix))
+          case _ =>
+            result.setDenot(denot)
         result.asInstanceOf[ThisType]
-      }
       else // don't assign NoDenotation, we might need to recover later. Test case is pos/avoid.scala.
         this
 
