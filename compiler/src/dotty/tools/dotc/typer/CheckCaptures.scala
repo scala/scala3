@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package cc
 
-import core._
+import core.*
 import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*
@@ -536,10 +536,11 @@ class CheckCaptures extends Recheck, SymTransformer:
               checkWellformedPost(annot.tree)
             case _ =>
           }
-        case t: ValOrDefDef if t.tpt.isInstanceOf[InferredTypeTree] =>
+        case t: ValOrDefDef if t.tpt.isInstanceOf[InferredTypeTree]
+            && !t.symbol.is(Synthetic) =>  // !!! needs to be refined
           val sym = t.symbol
           val isLocal =
-            sym.ownersIterator.exists(_.isTerm)
+            sym.owner.ownersIterator.exists(_.isTerm)
             || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
 
           // The following classes of definitions need explicit capture types ...

@@ -15,6 +15,6 @@ def test2() =
   z2: (() -> Unit) @retains(y)
   val p: {*} () -> String = () => "abc"
   val q: {p} C = ???
-  p: ({p} () -> String)
+  val _ = p: ({p} () -> String)
 
 
