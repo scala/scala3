@@ -43,9 +43,7 @@ case class LoadedTemplate(
     def getMap(key: String) = templateFile.settings.getOrElse(key, Map.empty).asInstanceOf[Map[String, Object]]
 
     val sourceLinks = if !templateFile.file.exists() then Nil else
-      // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
-      // toRealPath is used to turn symlinks into proper paths
-      val actualPath = Paths.get("").toAbsolutePath.relativize(templateFile.file.toPath.toRealPath())
+      val actualPath = templateFile.file.toPath
       ctx.sourceLinks.pathTo(actualPath).map("viewSource" -> _ ) ++
         ctx.sourceLinks.pathTo(actualPath, operation = "edit").map("editSource" -> _)
 
