@@ -283,6 +283,22 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case OrType(tp1, tp2) => acceptable(tp1, cls) && acceptable(tp2, cls)
       case _                => tp.classSymbol eq cls
 
+    /** for a case class, if it will have an anonymous mirror,
+     *  check that its constructor can be accessed
+     *  from the calling scope.
+     */
+    def canAccessCtor(cls: Symbol): Boolean =
+      !genAnonyousMirror(cls) || {
+        def isAccessible(sym: Symbol): Boolean = ctx.owner.isContainedIn(sym)
+        def isSub(sym: Symbol): Boolean = ctx.owner.ownersIterator.exists(_.derivesFrom(sym))
+        val ctor = cls.primaryConstructor
+        (!ctor.isOneOf(Private | Protected) || isSub(cls)) // we cant access the ctor because we do not extend cls
+        && (!ctor.privateWithin.exists || isAccessible(ctor.privateWithin)) // check scope is compatible
+      }
+
+    def genAnonyousMirror(cls: Symbol): Boolean =
+      cls.is(Scala2x) || cls.linkedClass.is(Case)
+
     def makeProductMirror(cls: Symbol): Tree =
       val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
@@ -300,7 +316,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
       val mirrorRef =
-        if (cls.is(Scala2x) || cls.linkedClass.is(Case)) anonymousMirror(monoType, ExtendsProductMirror, span)
+        if (genAnonyousMirror(cls)) anonymousMirror(monoType, ExtendsProductMirror, span)
         else companionPath(mirroredType, span)
       mirrorRef.cast(mirrorType)
     end makeProductMirror
@@ -321,8 +337,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             modulePath.cast(mirrorType)
         else
           val cls = mirroredType.classSymbol
-          if acceptable(mirroredType, cls) && cls.isGenericProduct then makeProductMirror(cls)
-          else EmptyTree
+          if acceptable(mirroredType, cls)
+            && cls.isGenericProduct
+            && canAccessCtor(cls)
+          then
+            makeProductMirror(cls)
+          else
+            EmptyTree
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): Tree =

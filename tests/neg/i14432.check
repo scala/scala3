@@ -1,0 +1,4 @@
+-- Error: tests/neg/i14432.scala:13:33 ---------------------------------------------------------------------------------
+13 |val mFoo = summon[Mirror.Of[Foo]] // error: no mirror found
+   |                                 ^
+   |no given instance of type deriving.Mirror.Of[example.Foo] was found for parameter x of method summon in object Predef
