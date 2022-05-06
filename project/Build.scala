@@ -1381,20 +1381,32 @@ object Build {
         generateDocumentation(Testcases)
       }.value,
 
+      // Generate the Scala 3 reference documentation (published at https://docs.scala-lang.org/scala3/reference)
       generateReferenceDocumentation := Def.inputTaskDyn {
         val shouldRegenerateExpectedLinks = (Space ~> literal("--no-regenerate-expected-links")).?.parsed.isEmpty
 
         generateStaticAssetsTask.value
 
+        // Move all the source files to a temporary directory and apply some changes specific to the reference documentation
         val temp = IO.createTemporaryDirectory
         IO.copyDirectory(file("docs"), temp / "docs")
         IO.delete(temp / "docs" / "_blog")
 
+        // Overwrite the main layout and the sidebar
         IO.copyDirectory(
           file("project") / "resources" / "referenceReplacements",
           temp / "docs",
           overwrite = true
         )
+
+        // Add redirections from previously supported URLs, for some pages
+        for (name <- Seq("changed-features", "contextual", "dropped-features", "metaprogramming", "other-new-features")) {
+          val path = temp / "docs" / "_docs" / "reference" / name / s"${name}.md"
+          val contentLines = IO.read(path).linesIterator.to[collection.mutable.ArrayBuffer]
+          contentLines.insert(1, s"redirectFrom: /${name}.html") // Add redirection
+          val newContent = contentLines.mkString("\n")
+          IO.write(path, newContent)
+        }
 
         val languageReferenceConfig = Def.task {
           Scala3.value
@@ -1404,7 +1416,7 @@ object Build {
             .add(ProjectVersion("3.1.2")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
-              dottySrcLink(referenceVersion, temp.getAbsolutePath + "=")
+              dottySrcLink("language-reference-stable", temp.getAbsolutePath + "=")
             )))
             .withTargets(List("___fake___.scala"))
         }
