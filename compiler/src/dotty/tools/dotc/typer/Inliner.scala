@@ -995,6 +995,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
             case _ => tree
           }
+        case tree @ Select(qual: This, name) if tree.symbol.is(Private) && tree.symbol.isInlineMethod =>
+          // This inline method refers to another (private) inline method (see tests/pos/i14042.scala).
+          // We insert upcast to access the private inline method once inlined. This makes the selection
+          // keep the symbol when re-typechecking in the InlineTyper. The method is inlined and hence no
+          // reference to a private method is kept at runtime.
+          cpy.Select(tree)(qual.asInstance(qual.tpe.widen), name)
+
         case tree => tree
       },
       oldOwners = inlinedMethod :: Nil,
