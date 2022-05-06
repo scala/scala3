@@ -2,7 +2,7 @@ class CC
 type Cap = {*} CC
 
 class LazyRef[T](val elem: () => T):
-  val get = elem
+  val get: () => T = elem
   def map[U](f: T => U): {f, this} LazyRef[U] =
     new LazyRef(() => f(elem()))
 

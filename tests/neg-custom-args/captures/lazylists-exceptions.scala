@@ -24,7 +24,7 @@ extension [A](x: A)
   def #:(xs1: => {*} LazyList[A]): {xs1} LazyList[A] =
     LazyCons(x, () => xs1)
 
-def tabulate[A](n: Int)(gen: Int => A) =
+def tabulate[A](n: Int)(gen: Int => A): {gen} LazyList[A] =
   def recur(i: Int): {gen} LazyList[A] =
     if i == n then LazyNil
     else gen(i) #: recur(i + 1)

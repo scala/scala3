@@ -15,7 +15,6 @@ def test(using fs: FileSystem) =
         l.log(s"computing elem # $i")
         i * i
       }
-  xs
 
 trait LazyList[+A]:
   def isEmpty: Boolean

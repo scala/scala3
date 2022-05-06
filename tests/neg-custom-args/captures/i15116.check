@@ -1,0 +1,14 @@
+-- Error: tests/neg-custom-args/captures/i15116.scala:3:6 --------------------------------------------------------------
+3 |  val x = Foo(m)   // error
+  |  ^^^^^^^^^^^^^^
+  |  Non-local value x cannot have an inferred type
+  |  {Bar.this.m} Foo{m: {Bar.this.m} String}
+  |  with non-empty capture set {Bar.this.m}.
+  |  The type needs to be declared explicitly.
+-- Error: tests/neg-custom-args/captures/i15116.scala:5:6 --------------------------------------------------------------
+5 |  val x = Foo(m)   // error
+  |  ^^^^^^^^^^^^^^
+  |  Non-local value x cannot have an inferred type
+  |  {Baz.this.m} Foo{m: {Baz.this.m} String}
+  |  with non-empty capture set {Baz.this.m}.
+  |  The type needs to be declared explicitly.
