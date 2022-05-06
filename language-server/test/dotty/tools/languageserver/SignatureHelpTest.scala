@@ -433,4 +433,63 @@ class SignatureHelpTest {
           Some("Option[A]"), None)
         ), None, 2)
   }
+
+  @Test def nestedApplySignatures: Unit = {
+    val signatures = (1 to 5).map { i =>
+      S(s"foo$i", Nil, List(List(P("x", "Int"))), Some("Int"))
+    }
+    val booSignature = S(s"boo", Nil, List(List(P("x", "Int"), P("y", "Int"))), Some("Int"))
+    code"""|object O:
+           |  def foo1(x: Int): Int = ???
+           |  def foo2(x: Int): Int = ???
+           |  def foo3(x: Int): Int = ???
+           |  def foo4(x: Int): Int = ???
+           |  def foo5(x: Int): Int = ???
+           |  def boo(x: Int, y: Int): Int = ???
+           |  boo(${m1}, fo${m2}o1(fo${m3}o2(fo${m4}o3(fo${m5}o4(fo${m6}o5(${m7}))))))"""
+      .signatureHelp(m1, List(booSignature), None, 0)
+      .signatureHelp(m2, List(booSignature), None, 1)
+      .signatureHelp(m3, List(signatures(0)), None, 0)
+      .signatureHelp(m4, List(signatures(1)), None, 0)
+      .signatureHelp(m5, List(signatures(2)), None, 0)
+      .signatureHelp(m6, List(signatures(3)), None, 0)
+      .signatureHelp(m7, List(signatures(4)), None, 0)
+  }
+
+  @Test def multipleNestedApplySignatures: Unit = {
+    val simpleSignature = S(s"simpleFoo", Nil, List(List(P("x", "Int"))), Some("Int"))
+    val complicatedSignature = S(s"complicatedFoo", Nil, List(List(P("x", "Int"), P("y", "Int"), P("z", "Int"))), Some("Int"))
+    code"""|object O:
+           |  def simpleFoo(x: Int): Int = ???
+           |  def complicatedFoo(x: Int, y: Int, z: Int): Int = ???
+           |  simpleFoo(
+           |    complicated${m1}Foo(
+           |      simp${m2}leFoo(${m3}),
+           |      complic${m4}atedFoo(
+           |        2,
+           |        ${m5},
+           |        simpleF${m6}oo(${m7})),
+           |      complicated${m8}Foo(5,${m9},7)
+           |    )
+           |  )"""
+      .signatureHelp(m1, List(simpleSignature), None, 0)
+      .signatureHelp(m2, List(complicatedSignature), None, 0)
+      .signatureHelp(m3, List(simpleSignature), None, 0)
+      .signatureHelp(m4, List(complicatedSignature), None, 1)
+      .signatureHelp(m5, List(complicatedSignature), None, 1)
+      .signatureHelp(m6, List(complicatedSignature), None, 2)
+      .signatureHelp(m7, List(simpleSignature), None, 0)
+      .signatureHelp(m8, List(complicatedSignature), None, 2)
+      .signatureHelp(m9, List(complicatedSignature), None, 1)
+  }
+
+  @Test def noHelpSignatureWithPositionedOnName: Unit = {
+    val signature = S(s"foo", Nil, List(List(P("x", "Int"))), Some("Int"))
+    code"""|object O:
+           |  def foo(x: Int): Int = ???
+           |  f${m1}oo(${m2})"""
+     .signatureHelp(m1, Nil, None, 0)
+     .signatureHelp(m2, List(signature), None, 0)
+  }
+
 }

@@ -48,19 +48,21 @@ object Signatures {
    *         being called, the list of overloads of this function).
    */
   def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
-    path match {
-      case UnApply(fun, _, patterns) :: _ =>
-        callInfo(span, patterns, fun, Signatures.countParams(fun))
-      case Apply(fun, params) :: _ =>
-        callInfo(span, params, fun, Signatures.countParams(fun))
-      case _ =>
-        (0, 0, Nil)
+    val enclosingApply = path.find {
+      case Apply(fun, _) => !fun.span.contains(span)
+      case UnApply(fun, _, _) => !fun.span.contains(span)
+      case _ => false
     }
+
+    enclosingApply.map {
+      case UnApply(fun, _, patterns) => callInfo(span, patterns, fun, Signatures.countParams(fun))
+      case Apply(fun, params) => callInfo(span, params, fun, Signatures.countParams(fun))
+    }.getOrElse((0, 0, Nil))
 
   def callInfo(
     span: Span,
-    params: List[Tree[Type]], 
-    fun: Tree[Type], 
+    params: List[Tree[Type]],
+    fun: Tree[Type],
     alreadyAppliedCount : Int
   )(using Context): (Int, Int, List[SingleDenotation]) =
     val paramIndex = params.indexWhere(_.span.contains(span)) match {
