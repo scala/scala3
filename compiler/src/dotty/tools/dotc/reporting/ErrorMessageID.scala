@@ -176,7 +176,8 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID]:
     MatchableWarningID,
     CannotExtendFunctionID,
     LossyWideningConstantConversionID,
-    ImplicitSearchTooLargeID
+    ImplicitSearchTooLargeID,
+    TargetNameOnTopLevelClassID
 
   def errorNumber = ordinal - 2
 
