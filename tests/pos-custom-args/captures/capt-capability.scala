@@ -25,4 +25,5 @@ def foo() =
 
   val z2 =
     if x == null then () => x else () => Cap()
-  x
+  val _ = x
+
