@@ -27,12 +27,6 @@
   }
 }
 
-@media(max-width: 768px) {
-  #searchbar-container {
-    display: none;
-  }
-}
-
 .scaladoc-searchbar-input {
   width: 100%;
   background-color: var(--action-primary-background-default-solid);
@@ -63,6 +57,28 @@
   pointer-events: none;
 }
 
+.scaladoc-searchbar-input-container {
+  display: flex;
+  align-items: center;
+}
+
+.scaladoc-searchbar-cancel-button {
+  display: none;
+  color: var(--text-primary);
+  margin-left: calc(2 * var(--base-spacing));
+  cursor: pointer;
+}
+
+.scaladoc-searchbar-cancel-button:hover {
+  color: var(--text-secondary);
+}
+
+@media(max-width: 768px) {
+  .scaladoc-searchbar-cancel-button {
+    display: inline;
+  }
+}
+
 .theme-dark .scaladoc-searchbar-input::-webkit-search-cancel-button {
   background: url("../../../images/icon-buttons/close/dark/default.svg")
     no-repeat 50% 50%;
@@ -84,6 +100,11 @@
   border: 1px solid var(--border-default);
   max-height: calc(100% - calc(24 * var(--base-spacing)));
   overflow: scroll;
+}
+
+.scaladoc-searchbar-row .micon {
+  position: relative;
+  top: -2px;
 }
 
 .searchbar-hints {
@@ -190,6 +211,10 @@
   border-top: solid 1px var(--border-default);
 }
 
+.scaladoc-searchbar-row[divider]:first-of-type {
+  border: none;
+}
+
 .scaladoc-searchbar-row a {
   color: var(--text-secondary);
   text-decoration: none;
@@ -243,5 +268,38 @@
 
   .searchbar-footer-right-container span:not(:first-child) {
     margin-top: calc(1 * var(--base-spacing));
+  }
+}
+
+/* mobile view */
+
+@media(max-width: 768px) {
+  #searchbar-container {
+    background-color: var(--background-default);
+  }
+
+  #scaladoc-searchbar-results {
+    border: none;
+  }
+
+  .scaladoc-searchbar-input-container {
+    margin-left: calc(3 * var(--base-spacing));
+    margin-right: calc(3 * var(--base-spacing));
+  }
+
+  .scaladoc-searchbar-row[divider]:first-child {
+    border: none;
+  }
+
+  #searchbar-footer {
+    display: none;
+  }
+
+  #scaladoc-searchbar-results {
+    max-height: 100%;
+  }
+
+  #scaladoc-searchbar-results {
+    margin-top: calc(3 * var(--base-spacing));
   }
 }

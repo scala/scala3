@@ -69,7 +69,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
     head(
       meta(charset := "utf-8"),
-      meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1"),
+      meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1, maximum-scale=1"),
       title(page.link.name),
       canonicalUrl(absolutePath(page.link.dri)),
       link(
@@ -253,7 +253,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           button(id := "mobile-menu-close", cls := "icon-button close"),
         ),
         div(cls := "mobile-menu-container body-medium")(
-          input(id := "mobile-scaladoc-searchbar-input", cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Search documentation"),
+          input(id := "mobile-scaladoc-searchbar-input", cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything"),
           a(href := "https://www.scala-lang.org/download/", cls := "mobile-menu-item") (
             "Download",
           ),

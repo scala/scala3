@@ -140,7 +140,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       }.isEmpty
     }
     if matching.nonEmpty then {
-      resultsDiv.appendChild(createKindSeparator("Recently searched", "fas fa-clock"))
+      resultsDiv.appendChild(createKindSeparator("Recently searched", "fas fa-clock re-icon"))
       matching.map(_.toHTML).foreach(resultsDiv.appendChild)
     }
   }
@@ -201,6 +201,19 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
 
     icon
 
+  private val mobileSearch =
+    val mobileSearch = document.getElementById("mobile-scaladoc-searchbar-input").asInstanceOf[html.Input]
+    mobileSearch.onfocus = (event: Event) =>
+      if (document.body.contains(rootDiv)) {
+        // document.body.removeChild(rootDiv)
+      }
+      else {
+        document.body.appendChild(rootDiv)
+        inputElem.focus()
+      }
+    // open the search if the user hits the `s` key when not focused on a text input
+    document.body.addEventListener("keydown", (e: KeyboardEvent) => handleGlobalKeyDown(e))
+
   private val inputElem: html.Input =
     input(cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything").tap { element =>
       element.addEventListener("input", { e =>
@@ -223,9 +236,18 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   private val rootHiddenClasses = "hidden"
   private val rootShowClasses   = ""
 
-  private val rootDiv: html.Div =
-    val element = div(id := "scaladoc-searchbar")(
+  private def generateRootDiv(): html.Div =
+    val cancelButton = span(cls := "scaladoc-searchbar-cancel-button body-small")("Cancel")
+    cancelButton.onclick = (event: Event) =>
+      document.body.removeChild(rootDiv)
+
+    val inputContainer = div(cls := "scaladoc-searchbar-input-container")(
       inputElem,
+      cancelButton,
+    )
+
+    val element = div(id := "scaladoc-searchbar")(
+      inputContainer,
       resultsDiv
     ).tap { elem =>
       elem.addEventListener("mousedown", (e: Event) => e.stopPropagation())
@@ -266,6 +288,8 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     )
 
     rootParent
+
+  private val rootDiv: html.Div = generateRootDiv()
 
   private def handleArrowUp() = {
     val selectedElement = resultsDiv.querySelector("[selected]")
