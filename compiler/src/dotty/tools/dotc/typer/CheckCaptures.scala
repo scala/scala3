@@ -30,9 +30,12 @@ object CheckCaptures:
      *  in Setup if they have non-empty capture sets
      */
     def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-      if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot)
-      then sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
-      else sym
+      if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot) then
+        sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
+      else if Synthetics.needsTransform(sym) then
+        Synthetics.transformToCC(sym)
+      else
+        sym
   end Pre
 
   case class Env(owner: Symbol, captured: CaptureSet, isBoxed: Boolean, outer0: Env | Null):
@@ -105,6 +108,10 @@ class CheckCaptures extends Recheck, SymTransformer:
   override def run(using Context): Unit =
     checkOverrides.traverse(ctx.compilationUnit.tpdTree)
     super.run
+
+  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
+    if Synthetics.needsTransform(sym) then Synthetics.transformFromCC(sym)
+    else super.transformSym(sym)
 
   def checkOverrides = new TreeTraverser:
     def traverse(t: Tree)(using Context) =
@@ -261,14 +268,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           interpolateVarsIn(tree.tpt)
 
     override def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Unit =
-      val isExcluded =
-        sym.is(Synthetic)
-        && sym.owner.isClass
-        && ( defn.caseClassSynthesized.exists(
-                ccsym => sym.overriddenSymbol(ccsym.owner.asClass) == ccsym)
-            || sym.name == nme.fromProduct
-        )
-      if !isExcluded then
+      if !Synthetics.isExcluded(sym) then
         val saved = curEnv
         val localSet = capturedVars(sym)
         if !localSet.isAlwaysEmpty then curEnv = Env(sym, localSet, false, curEnv)
