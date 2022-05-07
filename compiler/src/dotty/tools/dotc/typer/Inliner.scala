@@ -210,6 +210,7 @@ object Inliner {
 
     val targs = fun match
       case TypeApply(_, targs) => targs
+      case Apply(TypeApply(_, targs), _) => targs
       case _ => Nil
     val unapplyInfo = sym.info match
       case info: PolyType => info.instantiate(targs.map(_.tpe)) match

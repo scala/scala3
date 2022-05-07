@@ -23,7 +23,7 @@ def main: Unit = {
       ${ implUnapplyC('ctx, 'input) }
 
     // compiler error
-//    val macroC"$xC" = 3
+    val macroC"$xC" = 3
   }
 
   {
