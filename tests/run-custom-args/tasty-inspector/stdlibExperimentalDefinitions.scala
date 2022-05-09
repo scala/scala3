@@ -76,6 +76,11 @@ val experimentalDefinitionInLibrary = Set(
   // Need experimental annotation macros to check that design works.
   "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
+
+  //// New extension methods: Explicit Nulls
+  // Should be stabilized in 3.2.0.
+  "scala.Predef$.eq",
+  "scala.Predef$.ne",
 )
 
 
