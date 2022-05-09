@@ -67,13 +67,6 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   display: none;
 }
 
-.scaladoc-searchbar-row .micon {
-  height: 16px;
-  width: 16px;
-  margin: 4px 8px 0px 0px;
-  color: var(--text-secondary)
-}
-
 .scaladoc-searchbar-row[result] {
   flex-direction: column;
 }

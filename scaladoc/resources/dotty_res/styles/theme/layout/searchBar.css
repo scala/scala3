@@ -21,12 +21,6 @@
   }
 }
 
-@media(max-width: 825px) {
-  #scaladoc-searchbar {
-    width: calc(80 * var(--base-spacing));
-  }
-}
-
 .scaladoc-searchbar-input {
   width: 100%;
   background-color: var(--action-primary-background-default-solid);
@@ -100,11 +94,6 @@
   border: 1px solid var(--border-default);
   max-height: calc(100% - calc(24 * var(--base-spacing)));
   overflow: scroll;
-}
-
-.scaladoc-searchbar-row .micon {
-  position: relative;
-  top: -2px;
 }
 
 .searchbar-hints {
@@ -220,6 +209,18 @@
   text-decoration: none;
 }
 
+.scaladoc-searchbar-row b {
+  color: var(--text-primary);
+}
+
+.scaladoc-searchbar-row .micon {
+  margin: calc(0.5 * var(--base-spacing)) calc(1 * var(--base-spacing)) 0px 0px;
+  color: var(--text-secondary);
+  position: relative;
+  top: -2px;
+}
+
+
 /* searchbar footer */
 #searchbar-footer {
   position: absolute;
@@ -280,6 +281,8 @@
 
   #scaladoc-searchbar-results {
     border: none;
+    margin-left: calc(3 * var(--base-spacing));
+    margin-right: calc(3 * var(--base-spacing));
   }
 
   .scaladoc-searchbar-input-container {

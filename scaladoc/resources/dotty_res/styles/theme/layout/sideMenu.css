@@ -5,6 +5,7 @@
   height: 100%;
   padding-left: calc(1.5 * var(--base-spacing));
   padding-right: calc(1.5 * var(--base-spacing));
+  padding-bottom: calc(3 * var(--base-spacing));
   box-sizing: border-box;
 }
 
