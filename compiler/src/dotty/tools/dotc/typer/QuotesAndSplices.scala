@@ -20,7 +20,7 @@ import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
-
+import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
 import scala.collection.mutable
 
 
@@ -321,7 +321,9 @@ trait QuotesAndSplices {
       }
 
       private def transformTypeBindingTypeDef(nameOfSyntheticGiven: TermName, tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]])(using Context): Tree = {
-        if (variance == -1)
+        if ctx.mode.is(Mode.InPatternAlternative) then
+          report.error(IllegalVariableInPatternAlternative(tdef.symbol.name), tdef.srcPos)
+        if variance == -1 then
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
