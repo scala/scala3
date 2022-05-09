@@ -272,15 +272,7 @@ object Tuple {
 type EmptyTuple = EmptyTuple.type
 
 /** A tuple of 0 elements. */
-object EmptyTuple extends Tuple {
-  override def productArity: Int = 0
-
-  @throws(classOf[IndexOutOfBoundsException])
-  override def productElement(n: Int): Any =
-    throw new IndexOutOfBoundsException(n.toString())
-
-  def canEqual(that: Any): Boolean = this == that
-
+case object EmptyTuple extends Tuple {
   override def toString(): String = "()"
 }
 
