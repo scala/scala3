@@ -183,6 +183,10 @@ button.ar:active ~ a:not(.nh:active) {
   content: url("../../../images/method.svg");
 }
 
+.micon.in {
+  content: url("../../../images/inkuire.svg");
+}
+
 /* icons dark */
 .theme-dark .micon.cl {
   content: url("../../../images/class-dark.svg");
@@ -238,4 +242,8 @@ button.ar:active ~ a:not(.nh:active) {
 
 .theme-dark .micon.de {
   content: url("../../../images/method-dark.svg");
+}
+
+.theme-dark .micon.in {
+  content: url("../../../images/inkuire.svg");
 }
