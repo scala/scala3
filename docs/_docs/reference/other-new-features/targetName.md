@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "The @targetName annotation"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/targetName.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/targetName.html
 ---
 
 A [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation on a definition defines an alternate name for the implementation of that definition. Example:

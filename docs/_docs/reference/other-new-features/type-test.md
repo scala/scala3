@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "TypeTest"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/type-test.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/type-test.html
 ---
 
 ## TypeTest

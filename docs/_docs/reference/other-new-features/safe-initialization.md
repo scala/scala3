@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Safe Initialization"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/safe-initialization.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/safe-initialization.html
 ---
 
 Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ysafe-init`.

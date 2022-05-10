@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Source Compatibility"
-movedTo: https://docs.scala-lang.org/scala3/reference/language-versions.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/language-versions.html
 ---
 
 Scala 3 does NOT guarantee source compatibility between different minor language versions (e.g. some syntax valid in 3.x might get deprecated and then phased out in 3.y for y > x). There are also some syntax structures that were valid in Scala 2 but are not anymore in Scala 3. However the compiler provides a possibility to specify the desired version of syntax used in a particular file or globally for a run of the compiler to make migration between versions easier.

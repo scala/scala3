@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "The Meta-theory of Symmetric Metaprogramming"
-movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/simple-smp.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/simple-smp.html
 ---
 
 This note presents a simplified variant of

@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: DelayedInit"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/delayed-init.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/delayed-init.html
 ---
 
 The special handling of the [`DelayedInit`](https://scala-lang.org/api/3.x/scala/DelayedInit.html)

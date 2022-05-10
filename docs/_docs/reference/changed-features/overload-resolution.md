@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Changes in Overload Resolution"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/overload-resolution.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/overload-resolution.html
 ---
 
 Overload resolution in Scala 3 improves on Scala 2 in three ways.
