@@ -158,11 +158,13 @@ object TypeTestsCasts {
         val methodSymbol = sym.owner
         val tpSyms = typer.ErrorReporting.substitutableTypeSymbolsInScope(sym).toSet
         def isAccessible(sym: Symbol): Boolean = sym == methodSymbol || sym.isType && isAccessible(sym.owner)
+        val seen = scala.collection.mutable.Set.empty[Type]
         def hasPoison(tp: Type): Boolean =
+          seen += tp
           tp.baseClasses.filter(isAccessible).exists { sym =>
             sym.info.decls.exists { sym =>
               sym.info.existsPart(tp => tpSyms.contains(tp.typeSymbol))
-                || isAccessible(sym.info.typeSymbol.maybeOwner) && hasPoison(sym.info)
+                || !seen.contains(sym.info) && isAccessible(sym.info.typeSymbol.maybeOwner) && hasPoison(sym.info)
             }
           }
         !hasPoison(tp2)

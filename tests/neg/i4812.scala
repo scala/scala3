@@ -53,6 +53,20 @@ object Test:
           prev = new A(x)
           x
 
+  def test6[T](x: T): T =
+    class Foo { var bar: Bar = null }
+    class Bar { var foo: Foo = null; var elem: T = _ }
+    prev match
+      case prev: Foo => // error: the type test for A cannot be checked at runtime
+        prev.bar.elem
+      case _ =>
+        val foo = new Foo
+        val bar = new Bar
+        bar.elem = x
+        foo.bar = bar
+        prev = foo
+        x
+
   def main(args: Array[String]): Unit =
     test(1)
     val x: String = test("") // was: ClassCastException: java.lang.Integer cannot be cast to java.lang.String
