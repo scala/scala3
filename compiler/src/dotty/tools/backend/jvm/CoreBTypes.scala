@@ -5,6 +5,8 @@ package jvm
 
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.Erasure
+import scala.tools.asm.{Handle, Opcodes}
+import dotty.tools.dotc.core.StdNames
 
 /**
  * Core BTypes and some other definitions. The initialization of these definitions requies access
@@ -125,11 +127,59 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
   lazy val jlCloneableRef              : ClassBType = classBTypeFromSymbol(defn.JavaCloneableClass)        // java/lang/Cloneable
   lazy val jioSerializableRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.io.Serializable])     // java/io/Serializable
   lazy val jlClassCastExceptionRef     : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.ClassCastException])   // java/lang/ClassCastException
-  lazy val jlIllegalArgExceptionRef: ClassBType = classBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException])
-  lazy val jliSerializedLambdaRef: ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
-
+  lazy val jlIllegalArgExceptionRef    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException])
+  lazy val jliSerializedLambdaRef      : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
+  
   lazy val srBoxesRunTimeRef: ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
 
+  private lazy val jliCallSiteRef              : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
+  private lazy val jliLambdaMetafactoryRef     : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
+  private lazy val jliMethodHandleRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodHandle])
+  private lazy val jliMethodHandlesLookupRef   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodHandles.Lookup])
+  private lazy val jliMethodTypeRef            : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
+  private lazy val jliStringConcatFactoryRef   : ClassBType = classBTypeFromSymbol(requiredClass("java.lang.invoke.StringConcatFactory")) // since JDK 9
+  private lazy val srLambdaDeserialize         : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize]) 
+
+  lazy val jliLambdaMetaFactoryMetafactoryHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliLambdaMetafactoryRef.internalName,
+    "metafactory",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false)
+
+  lazy val jliLambdaMetaFactoryAltMetafactoryHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliLambdaMetafactoryRef.internalName,
+    "altMetafactory",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false)
+    
+  lazy val jliLambdaDeserializeBootstrapHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    srLambdaDeserialize.internalName,
+    "bootstrap",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false)
+
+  lazy val jliStringConcatFactoryMakeConcatWithConstantsHandle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliStringConcatFactoryRef.internalName,
+    "makeConcatWithConstants",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false)
+  
   /**
    * Methods in scala.runtime.BoxesRuntime
    */
@@ -232,6 +282,11 @@ final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface
 
   def srBoxesRuntimeRef: ClassBType = _coreBTypes.srBoxesRunTimeRef
 
+  def jliLambdaMetaFactoryMetafactoryHandle    : Handle = _coreBTypes.jliLambdaMetaFactoryMetafactoryHandle
+  def jliLambdaMetaFactoryAltMetafactoryHandle : Handle = _coreBTypes.jliLambdaMetaFactoryAltMetafactoryHandle
+  def jliLambdaDeserializeBootstrapHandle      : Handle = _coreBTypes.jliLambdaDeserializeBootstrapHandle
+  def jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle = _coreBTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle
+  
   def asmBoxTo  : Map[BType, MethodNameAndType] = _coreBTypes.asmBoxTo
   def asmUnboxTo: Map[BType, MethodNameAndType] = _coreBTypes.asmUnboxTo
 

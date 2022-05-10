@@ -356,6 +356,8 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
     *          - converting the plain ClassNode to byte array and placing it on queue-3
     */
   class Worker2 {
+    import bTypes.ClassBType
+    import bTypes.coreBTypes.jliLambdaMetaFactoryAltMetafactoryHandle
     // lazy val localOpt = new LocalOpt(new Settings())
 
     private def localOptimizations(classNode: ClassNode): Unit = {
@@ -372,7 +374,7 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
           val insn = iter.next()
           insn match {
             case indy: InvokeDynamicInsnNode
-              if indy.bsm == BCodeBodyBuilder.lambdaMetaFactoryAltMetafactoryHandle =>
+              if indy.bsm == jliLambdaMetaFactoryAltMetafactoryHandle =>
                 import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
                 val metafactoryFlags = indy.bsmArgs(3).asInstanceOf[Integer].toInt
                 val isSerializable = (metafactoryFlags & FLAG_SERIALIZABLE) != 0
@@ -410,7 +412,6 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
       */
     private def addLambdaDeserialize(classNode: ClassNode, implMethodsArray: Array[Handle]): Unit = {
       import asm.Opcodes._
-      import BCodeBodyBuilder._
       import bTypes._
       import coreBTypes._
 
@@ -427,7 +428,7 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
       val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serlamObjDesc, null, null)
       def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
         mv.visitVarInsn(ALOAD, 0)
-        mv.visitInvokeDynamicInsn("lambdaDeserialize", serlamObjDesc, lambdaDeserializeBootstrapHandle, targetMethods: _*)
+        mv.visitInvokeDynamicInsn("lambdaDeserialize", serlamObjDesc, jliLambdaDeserializeBootstrapHandle, targetMethods: _*)
       }
 
       val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See See MAX_MH_ARITY in CallSite.java
@@ -452,6 +453,34 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
       mv.visitInsn(ARETURN)
     }
 
+    private def setInnerClasses(classNode: ClassNode): Unit = if (classNode != null) {
+      classNode.innerClasses.clear()
+      val (declared, referred) = collectNestedClasses(classNode)
+      addInnerClasses(classNode, declared, referred)
+    }
+
+    /**
+     * Visit the class node and collect all referenced nested classes.
+     */
+    private def collectNestedClasses(classNode: ClassNode): (List[ClassBType], List[ClassBType]) = {
+      // type InternalName = String
+      val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
+        def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
+          bTypes.classBTypeFromInternalName(internalName).info.memberClasses
+
+        def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
+          val c = bTypes.classBTypeFromInternalName(internalName)
+          Option.when(c.isNestedClass)(c)
+        }
+
+        def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
+          // don't crash on invalid generic signatures
+        }
+      }
+      c.visit(classNode)
+      (c.declaredInnerClasses.toList, c.referredInnerClasses.toList)
+    }
+
     def run(): Unit = {
       while (true) {
         val item = q2.poll
@@ -466,6 +495,8 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
             val serializableLambdas = collectSerializableLambdas(plainNode)
             if (serializableLambdas.nonEmpty)
               addLambdaDeserialize(plainNode, serializableLambdas)
+            setInnerClasses(plainNode)
+            setInnerClasses(item.mirror.classNode)
             addToQ3(item)
           } catch {
             case ex: InterruptedException =>

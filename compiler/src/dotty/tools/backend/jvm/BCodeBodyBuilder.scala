@@ -39,7 +39,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   import DottyBackendInterface.symExtensions
   import bTypes._
   import coreBTypes._
-  import BCodeBodyBuilder._
 
   protected val primitives: DottyPrimitives
 
@@ -1753,9 +1752,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       val metafactory =
         if (flags != 0)
-          lambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
+          jliLambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
         else
-          lambdaMetaFactoryMetafactoryHandle
+          jliLambdaMetaFactoryMetafactoryHandle
 
       bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs: _*)
 
@@ -1772,27 +1771,5 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   private def isEmittedInterface(sym: Symbol): Boolean = sym.isInterface ||
     sym.is(JavaDefined) && (toDenot(sym).isAnnotation || sym.is(ModuleClass) && (sym.companionClass.is(PureInterface)) || sym.companionClass.is(Trait))
 
-}
 
-object BCodeBodyBuilder {
-  val lambdaMetaFactoryMetafactoryHandle = new Handle(
-    Opcodes.H_INVOKESTATIC,
-    "java/lang/invoke/LambdaMetafactory",
-    "metafactory",
-    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
-    /* itf = */ false)
-
-  val lambdaMetaFactoryAltMetafactoryHandle = new Handle(
-    Opcodes.H_INVOKESTATIC,
-    "java/lang/invoke/LambdaMetafactory",
-    "altMetafactory",
-    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;",
-    /* itf = */ false)
-
-  val lambdaDeserializeBootstrapHandle = new Handle(
-    Opcodes.H_INVOKESTATIC,
-    "scala/runtime/LambdaDeserialize",
-    "bootstrap",
-    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/invoke/CallSite;",
-    /* itf = */ false)
 }

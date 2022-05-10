@@ -268,8 +268,10 @@ trait BCodeIdiomatic {
      * can-multi-thread
      */
     final def genStringBuilderEnd: Unit = {
-      invokevirtual(JavaStringBuilderClassName, "toString", "()Ljava/lang/String;")
+      invokevirtual(JavaStringBuilderClassName, "toString", genStringBuilderEndDesc)
     }
+    // Use ClassBType refs instead of plain string literal to make sure that needed ClassBTypes are initialized and reachable
+    private lazy val genStringBuilderEndDesc = MethodBType(Nil, StringRef).descriptor
 
     /* Concatenate top N arguments on the stack with `StringConcatFactory#makeConcatWithConstants`
      * (only works for JDK 9+)
@@ -284,13 +286,7 @@ trait BCodeIdiomatic {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
         asm.Type.getMethodDescriptor(StringRef.toASMType, argTypes:_*),
-        new asm.Handle(
-          asm.Opcodes.H_INVOKESTATIC,
-          "java/lang/invoke/StringConcatFactory",
-          "makeConcatWithConstants",
-          "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;",
-          false
-        ),
+        coreBTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle,
         (recipe +: constants):_*
       )
     }
