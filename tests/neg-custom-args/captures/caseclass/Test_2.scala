@@ -20,5 +20,11 @@ def test(c: C) =
   val y3 = x3.copy()
   val yc3: {c} Ref = y3
 
+  val y4 = y3 match
+    case Ref(xx) => xx
+  val y4c: {x3} () -> Unit = y4  // error (?) found: (y4 : {*} () -> Unit) required: {x3} () -> Unit. (But in fact it should work)
+
+
+
 
 

@@ -20,6 +20,9 @@ object Synthetics:
   def isSyntheticApplyMethod(sym: SymDenotation)(using Context) =
     sym.name == nme.apply && sym.is(Synthetic) && sym.owner.is(Module) && sym.owner.companionClass.is(Case)
 
+  def isSyntheticUnapplyMethod(sym: SymDenotation)(using Context) =
+    sym.name == nme.unapply && sym.is(Synthetic) && sym.owner.is(Module) && sym.owner.companionClass.is(Case)
+
   def isSyntheticCopyDefaultGetterMethod(sym: SymDenotation)(using Context) = sym.name match
     case DefaultGetterName(nme.copy, _) => sym.is(Synthetic)
     case _ => false
@@ -28,6 +31,7 @@ object Synthetics:
   def needsTransform(sym: SymDenotation)(using Context): Boolean =
     isSyntheticCopyMethod(sym)
     || isSyntheticApplyMethod(sym)
+    || isSyntheticUnapplyMethod(sym)
     || isSyntheticCopyDefaultGetterMethod(sym)
 
   /** Method is excluded from regular capture checking */
@@ -103,6 +107,33 @@ object Synthetics:
     case _ =>
       info
 
+  private def addUnapplyCaptures(info: Type)(using Context): Type = info match
+    case info: MethodType =>
+      val paramInfo :: Nil = info.paramInfos: @unchecked
+      val newParamInfo =
+        CapturingType(paramInfo, CaptureSet.universal, CapturingKind.Regular)
+      val trackedParam = info.paramRefs.head
+      def newResult(tp: Type): Type = tp match
+        case tp: MethodOrPoly =>
+          tp.derivedLambdaType(resType = newResult(tp.resType))
+        case _ =>
+          CapturingType(tp, CaptureSet(trackedParam), CapturingKind.Regular)
+      info.derivedLambdaType(paramInfos = newParamInfo :: Nil, resType = newResult(info.resType))
+    case info: PolyType =>
+      info.derivedLambdaType(resType = addUnapplyCaptures(info.resType))
+
+  private def dropUnapplyCaptures(info: Type)(using Context): Type = info match
+    case info: MethodType =>
+      val CapturingType(oldParamInfo, _, _) :: Nil = info.paramInfos: @unchecked
+      def oldResult(tp: Type): Type = tp match
+        case tp: MethodOrPoly =>
+          tp.derivedLambdaType(resType = oldResult(tp.resType))
+        case CapturingType(tp, _, _) =>
+          tp
+      info.derivedLambdaType(paramInfos = oldParamInfo :: Nil, resType = oldResult(info.resType))
+    case info: PolyType =>
+      info.derivedLambdaType(resType = dropUnapplyCaptures(info.resType))
+
   /** If `sym` refers to a synthetic apply, copy, or copy default getter method
    *  of a case class, transform it to account for capture information.
    *  @pre needsTransform(sym)
@@ -110,6 +141,8 @@ object Synthetics:
   def transformToCC(sym: SymDenotation)(using Context): SymDenotation = sym.name match
     case DefaultGetterName(nme.copy, n) if sym.is(Synthetic) && sym.owner.is(Case) =>
       sym.copySymDenotation(info = addDefaultGetterCapture(sym.info, sym.owner, n))
+    case nme.unapply =>
+      sym.copySymDenotation(info = addUnapplyCaptures(sym.info))
     case _ =>
       sym.copySymDenotation(info = addCaptureDeps(sym.info))
 
@@ -120,6 +153,8 @@ object Synthetics:
   def transformFromCC(sym: SymDenotation)(using Context): SymDenotation =
     if isSyntheticCopyDefaultGetterMethod(sym) then
       sym.copySymDenotation(info = dropDefaultGetterCapture(sym.info))
+    else if sym.name == nme.unapply then
+      sym.copySymDenotation(info = dropUnapplyCaptures(sym.info))
     else
       sym.copySymDenotation(info = dropCaptureDeps(sym.info))
 

@@ -536,8 +536,8 @@ class CheckCaptures extends Recheck, SymTransformer:
               checkWellformedPost(annot.tree)
             case _ =>
           }
-        case t: ValOrDefDef if t.tpt.isInstanceOf[InferredTypeTree]
-            && !t.symbol.is(Synthetic) =>  // !!! needs to be refined
+        case t: ValOrDefDef
+        if t.tpt.isInstanceOf[InferredTypeTree] && !Synthetics.isExcluded(t.symbol) =>
           val sym = t.symbol
           val isLocal =
             sym.owner.ownersIterator.exists(_.isTerm)
