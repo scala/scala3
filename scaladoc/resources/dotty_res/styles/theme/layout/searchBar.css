@@ -220,6 +220,14 @@
   top: -2px;
 }
 
+.scaladoc-searchbar-location {
+  display: none;
+}
+
+.scaladoc-searchbar-row:hover .scaladoc-searchbar-location {
+  display: block;
+}
+
 
 /* searchbar footer */
 #searchbar-footer {
@@ -277,6 +285,10 @@
 @media(max-width: 768px) {
   #searchbar-container {
     background-color: var(--background-default);
+  }
+
+  .scaladoc-searchbar-row:hover .scaladoc-searchbar-location {
+    display: none;
   }
 
   #scaladoc-searchbar-results {

@@ -209,7 +209,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       }
 
     div(id := "container")(
-      div(id := "header")(
+      div(id := "header", cls := "body-small")(
         div(cls := "header-container-left")(
           projectLogoElem.toSeq,
           darkProjectLogoElem.toSeq,
@@ -245,7 +245,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         ),
       ),
       div(id := "mobile-menu")(
-        div(cls := "mobile-menu-header")(
+        div(cls := "mobile-menu-header body-small")(
           span(cls := "mobile-menu-logo")(
             projectLogoElem.toSeq,
             darkProjectLogoElem.toSeq,
