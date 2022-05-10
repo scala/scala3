@@ -194,5 +194,6 @@ subsection:
       - page: internals/dotty-internals-1-notes.md
       - page: internals/debug-macros.md
       - page: internals/gadts.md
+      - page: internals/coverage.md
   - page: release-notes-0.1.2.md
     hidden: true
