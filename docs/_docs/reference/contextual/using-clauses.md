@@ -93,8 +93,7 @@ With this setup, the following calls are all well-formed, and they all normalize
 ```scala
 minimum(xs)
 maximum(xs)(using descending)
-maximum(xs)(using descending(using listOrd))
-maximum(xs)(using descending(using listOrd(using intOrd)))
+maximum(xs)(using descending(using intOrd))
 ```
 
 ## Multiple `using` Clauses
