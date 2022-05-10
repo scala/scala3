@@ -1,5 +1,7 @@
 package scala.runtime.stdLibPatches
 
+import scala.annotation.experimental
+
 object Predef:
   import compiletime.summonFrom
 
@@ -47,4 +49,19 @@ object Predef:
    */
   extension [T](x: T | Null) inline def nn: x.type & T =
     scala.runtime.Scala3RunTime.nn(x)
+
+  extension (inline x: AnyRef | Null)
+    /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
+     *  using `eq` rather than only `==`. This is needed because `Null` no longer has
+     *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. */
+    @experimental
+    inline def eq(inline y: AnyRef | Null): Boolean =
+      x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
+    /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
+     *  using `ne` rather than only `!=`. This is needed because `Null` no longer has
+     *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. */
+    @experimental
+    inline def ne(inline y: AnyRef | Null): Boolean =
+      !(x eq y)
+
 end Predef
