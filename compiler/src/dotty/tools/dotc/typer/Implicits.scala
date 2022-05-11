@@ -559,7 +559,7 @@ object Implicits:
       else 
         reasons.mkString
       
-    def explanation(using Context) = em"Failed to synthesize implicit of type ${clarify(expectedType)}: ${formatReasons}"
+    def explanation(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}: ${formatReasons}"
 
 end Implicits
 

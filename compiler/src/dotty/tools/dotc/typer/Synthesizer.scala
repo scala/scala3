@@ -17,20 +17,12 @@ import transform.SyntheticMembers._
 import util.Property
 import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
+import ast.tpd._
+import Synthesizer._
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
-  import ast.tpd._
 
-  /** Tuple used to store the synthesis result with a list of errors */ 
-  private type TreeWithErrors = (Tree, List[String])
-  private def withNoErrors(tree: Tree): TreeWithErrors = (tree, List.empty)
-
-  private val EmptyTreeNoError: TreeWithErrors = withNoErrors(EmptyTree)
-  private def orElse(treeWithErrors1: TreeWithErrors, treeWithErrors2: => TreeWithErrors): TreeWithErrors = treeWithErrors1 match
-    case (tree, errors) if tree eq genericEmptyTree => (treeWithErrors2._1, treeWithErrors2._2 ::: errors)
-    case _                                          => treeWithErrors1
-      
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context ?=> TreeWithErrors
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
@@ -619,4 +611,16 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         EmptyTreeNoError
     recur(specialHandlers)
 
+end Synthesizer
+
+object Synthesizer:
+
+  /** Tuple used to store the synthesis result with a list of errors */ 
+  type TreeWithErrors = (Tree, List[String])
+  private def withNoErrors(tree: Tree): TreeWithErrors = (tree, List.empty)
+
+  private val EmptyTreeNoError: TreeWithErrors = withNoErrors(EmptyTree)
+  private def orElse(treeWithErrors1: TreeWithErrors, treeWithErrors2: => TreeWithErrors): TreeWithErrors = treeWithErrors1 match
+    case (tree, errors) if tree eq genericEmptyTree => (treeWithErrors2._1, treeWithErrors2._2 ::: errors)
+    case _                                          => treeWithErrors1
 end Synthesizer
