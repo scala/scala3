@@ -69,7 +69,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
     head(
       meta(charset := "utf-8"),
-      meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1"),
+      meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1, maximum-scale=1"),
       title(page.link.name),
       canonicalUrl(absolutePath(page.link.dri)),
       link(
@@ -178,6 +178,20 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
 
   private def mkFrame(link: Link, parents: Vector[Link], content: => PageContent): AppliedTag =
+    val projectLogoElem =
+      projectLogo.flatMap {
+        case Resource.File(path, _) =>
+          Some(span(id := "project-logo", cls := "project-logo")(img(src := resolveRoot(link.dri, path))))
+        case _ => None
+      }
+
+    val darkProjectLogoElem =
+      darkProjectLogo.flatMap {
+        case Resource.File(path, _) =>
+          Some(span(id := "dark-project-logo", cls := "project-logo")(img(src := resolveRoot(link.dri, path))))
+        case _ => None
+      }.orElse(projectLogoElem)
+
     val parentsHtml =
       val innerTags = parents.flatMap[TagArg](b => Seq(
           a(href := pathToPage(link.dri, b.dri))(b.name),
@@ -195,8 +209,10 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       }
 
     div(id := "container")(
-      div(id := "header")(
+      div(id := "header", cls := "body-small")(
         div(cls := "header-container-left")(
+          projectLogoElem.toSeq,
+          darkProjectLogoElem.toSeq,
           span(onclick := "dropdownHandler(event)", cls := "text-button with-arrow", id := "dropdown-trigger")(
             a()(
               args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
@@ -205,7 +221,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           div(id := "version-dropdown", cls := "dropdown-menu") ()
         ),
          div(cls:="header-container-right")(
-          button(id := "search-toggle", cls := "icon-button"),
+            button(id := "search-toggle", cls := "icon-button"),
             a(href := "https://www.scala-lang.org/download/", cls := "text-button") (
               "Download",
             ),
@@ -225,8 +241,41 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
               "Community",
             ),
           button(id := "theme-toggle", cls := "icon-button"),
+          button(id := "mobile-menu-toggle", cls := "icon-button hamburger"),
         ),
       ),
+      div(id := "mobile-menu")(
+        div(cls := "mobile-menu-header body-small")(
+          span(cls := "mobile-menu-logo")(
+            projectLogoElem.toSeq,
+            darkProjectLogoElem.toSeq,
+          ),
+          button(id := "mobile-menu-close", cls := "icon-button close"),
+        ),
+        div(cls := "mobile-menu-container body-medium")(
+          input(id := "mobile-scaladoc-searchbar-input", cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything"),
+          a(href := "https://www.scala-lang.org/download/", cls := "mobile-menu-item") (
+            "Download",
+          ),
+          a(href := "https://docs.scala-lang.org/", cls := "mobile-menu-item") (
+            "Documentation",
+          ),
+          a(href := "https://index.scala-lang.org", cls := "mobile-menu-item") (
+            "Libraries",
+          ),
+          a(href := "https://www.scala-lang.org/contribute/", cls := "mobile-menu-item contribute") (
+            "Contribute",
+          ),
+          a(href := "https://www.scala-lang.org/contribute/", cls := "mobile-menu-item") (
+            "Blog",
+          ),
+          a(href := "https://www.scala-lang.org/blog/", cls := "mobile-menu-item") (
+            "Community",
+          ),
+          span(id := "mobile-theme-toggle", cls := "mobile-menu-item mode"),
+        )
+      ),
+      button(id := "mobile-sidebar-toggle", cls := "floating-button"),
       div(id := "leftColumn", cls := "body-small")(
         Seq(
           div(cls:= "switcher-container")(

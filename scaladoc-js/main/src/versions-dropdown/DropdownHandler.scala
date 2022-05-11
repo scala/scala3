@@ -23,17 +23,14 @@ class DropdownHandler:
 
   private def addVersionsList(json: String) =
     val ver = JSON.parse(json).asInstanceOf[Versions]
-    val ddc = document.getElementById("dropdown-content")
+    val ddc = document.getElementById("version-dropdown")
     for (k, v) <- ver.versions do
-      var child = a(href := v)(k)
+      var child = a(cls := "text-button", href := v)(k)
       ddc.appendChild(child)
-    val arrow = span(cls := "ar")()
-    document.getElementById("dropdown-button").appendChild(arrow)
 
   private def disableButton() =
-    val btn = document.getElementById("dropdown-button").asInstanceOf[html.Button]
-    btn.disabled = true
-    btn.classList.remove("dropdownbtnactive")
+    val btn = document.getElementById("dropdown-trigger").asInstanceOf[html.Span]
+    btn.classList.add("disabled")
 
   private def getURLContent(url: String): Future[String] = Ajax.get(url).map(_.responseText)
 
@@ -59,26 +56,27 @@ class DropdownHandler:
         addVersionsList(json)
 
   document.addEventListener("click", (e: Event) => {
-    document.getElementById("dropdown-content").classList.remove("show")
-    document.getElementById("dropdown-button").classList.remove("expanded")
+    document.getElementById("version-dropdown").classList.remove("expanded")
+    document.getElementById("dropdown-trigger").classList.remove("selected")
   })
 
-  document.getElementById("version").asInstanceOf[html.Span].addEventListener("click", (e: Event) => e.stopPropagation())
+  document.getElementById("version-dropdown").asInstanceOf[html.Span].addEventListener("click", (e: Event) => e.stopPropagation())
 end DropdownHandler
 
 @JSExportTopLevel("dropdownHandler")
-def dropdownHandler() =
-  if document.getElementById("dropdown-content").getElementsByTagName("a").size > 0 &&
+def dropdownHandler(e: Event) =
+  e.stopPropagation()
+  console.log("clikc")
+  if document.getElementById("version-dropdown").getElementsByTagName("a").size > 0 &&
      window.getSelection.toString.length == 0 then
-    document.getElementById("dropdown-content").classList.toggle("show")
-    document.getElementById("dropdown-button").classList.toggle("expanded")
-    document.getElementById("dropdown-input").asInstanceOf[html.Input].focus()
+    document.getElementById("version-dropdown").classList.toggle("expanded")
+    document.getElementById("dropdown-trigger").classList.toggle("selected")
 
 @JSExportTopLevel("filterFunction")
 def filterFunction() =
   val input = document.getElementById("dropdown-input").asInstanceOf[html.Input]
   val filter = input.value.toUpperCase
-  val div = document.getElementById("dropdown-content")
+  val div = document.getElementById("version-dropdown")
   val as = div.getElementsByTagName("a")
 
   as.foreach { a =>

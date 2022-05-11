@@ -4,17 +4,17 @@ import math.Ordering.Implicits.seqOrdering
 import org.scalajs.dom.Node
 
 class SearchbarEngine(pages: List[PageEntry]):
-  def query(query: List[Matchers]): List[PageEntry] =
+  def query(query: List[Matchers]): List[(PageEntry, Set[Int])] =
     pages
       .map( page =>
         page -> query.map(matcher => matcher(page))
       )
       .filterNot {
-        case (page, matchResults) => matchResults.exists(_ < 0)
+        case (page, matchResults) => matchResults.map(_.priority).exists(_ < 0)
       }
       .sortBy {
-        case (page, matchResults) => matchResults
+        case (page, matchResults) => matchResults.map(_.priority)
       }
       .map {
-        case (page, matchResults) => page
+        case (page, matchResults) => page -> matchResults.map(_.matchedIndexes).reduceLeft(_ ++ _)
       }

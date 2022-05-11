@@ -84,6 +84,9 @@
 
   /* effects */
   --focus-default: var(--indigo11);
+  --shadow-first: var(--shadow1);
+  --shadow-second: var(--shadow2);
+  --shadow-inset: var(--grey7);
 }
 
 :root.theme-dark {
@@ -171,4 +174,7 @@
 
   /* effects */
   --focus-default: var(--indigo9);
+  --shadow-first: var(--shadow1);
+  --shadow-second: var(--shadow2);
+  --shadow-inset: var(--grey7);
 }

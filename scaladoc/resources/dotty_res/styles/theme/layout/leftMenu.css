@@ -5,11 +5,41 @@
   padding: calc(3 * var(--base-spacing)) 0px;
   position: absolute;
   width: calc(39 * var(--base-spacing));
-  height: calc(100% - var(--header-height) - (12 * var(--base-spacing)));
+  height: calc(100% - var(--header-height) - (6 * var(--base-spacing)));
   left: 0px;
   top: calc(8 * var(--base-spacing));
   background: var(--background-default);
   border: 1px solid var(--border-default);
   border-top: none;
   border-left: none;
+  transition:left 0.2s linear;
+}
+
+@media (max-width: 480px) {
+  #leftColumn {
+    height: calc(100% - var(--header-height) - (9 * var(--base-spacing)));
+  }
+}
+
+@media (max-width: 1024px) {
+  #leftColumn {
+    left: calc(-39 * var(--base-spacing));
+  }
+
+  #leftColumn.show {
+    left: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  #leftColumn {
+    height: calc(100% - var(--header-height));
+    width: 100%;
+    left: -100%;
+    z-index: 1;
+  }
+
+  #leftColumn.show {
+    left: 0;
+  }
 }

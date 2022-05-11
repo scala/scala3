@@ -17,6 +17,10 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  $(".side-menu span").on('click', function () {
+    $(this).parent().toggleClass("expanded")
+  });
+
   $(".ar").on('click', function (e) {
     $(this).parent().parent().toggleClass("expanded")
     $(this).toggleClass("expanded")
@@ -28,6 +32,12 @@ window.addEventListener("DOMContentLoaded", () => {
     el.first.addClass("expanded")
     el.parent.addClass("expanded")
   }))
+
+  document.querySelectorAll('#content section[id]').forEach((section) => {
+    observer.observe(section);
+  });
+
+  document.querySelectorAll(".side-menu a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
   $('.names .tab').on('click', function () {
     parent = $(this).parents(".tabs").first()
@@ -95,6 +105,23 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
   })
+
+  // show/hide side menu on mobile view
+  const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
+  sideMenuToggler.addEventListener('click', _e => {
+    document.getElementById("leftColumn").classList.toggle("show")
+    sideMenuToggler.classList.toggle("menu-shown")
+  })
+
+    // show/hide mobile menu on mobile view
+    const mobileMenuOpenIcon = document.getElementById("mobile-menu-toggle");
+    const mobileMenuCloseIcon = document.getElementById("mobile-menu-close");
+    mobileMenuOpenIcon.addEventListener('click', _e => {
+      document.getElementById("mobile-menu").classList.add("show")
+    })
+    mobileMenuCloseIcon.addEventListener('click', _e => {
+      document.getElementById("mobile-menu").classList.remove("show")
+    })
 });
 
 var zoom;

@@ -1,0 +1,320 @@
+#searchbar-container {
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  background-color: rgba(0, 0, 0, 0.569);
+  display: flex;
+  justify-content: center;
+  position: absolute;
+}
+
+#scaladoc-searchbar {
+  z-index: 5;
+  width: calc(125 * var(--base-spacing));
+  position: relative;
+  top: calc(3 * var(--base-spacing));
+}
+
+@media(max-width: 1024px) {
+  #scaladoc-searchbar {
+    width: calc(100 * var(--base-spacing));
+  }
+}
+
+.scaladoc-searchbar-input {
+  width: 100%;
+  background-color: var(--action-primary-background-default-solid);
+  color: var(--action-primary-content-active);
+  background-image: url("../../../images/icon-buttons/search/dark/default.svg");
+  background-repeat: no-repeat;
+  padding: calc(2 * var(--base-spacing)) calc(2 * var(--base-spacing))
+    calc(2 * var(--base-spacing)) calc(5 * var(--base-spacing));
+  border-radius: 4px;
+  background-size: 16px;
+  background-position: 10px 15px;
+  border: none;
+}
+
+.scaladoc-searchbar-input:focus-visible {
+  border: none;
+  outline: none;
+}
+
+.scaladoc-searchbar-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  height: 1em;
+  width: 1em;
+  background: url("../../../images/icon-buttons/close/light/default.svg")
+    no-repeat 50% 50%;
+  background-size: contain;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scaladoc-searchbar-input-container {
+  display: flex;
+  align-items: center;
+}
+
+.scaladoc-searchbar-cancel-button {
+  display: none;
+  color: var(--text-primary);
+  margin-left: calc(2 * var(--base-spacing));
+  cursor: pointer;
+}
+
+.scaladoc-searchbar-cancel-button:hover {
+  color: var(--text-secondary);
+}
+
+@media(max-width: 768px) {
+  .scaladoc-searchbar-cancel-button {
+    display: inline;
+  }
+}
+
+.theme-dark .scaladoc-searchbar-input::-webkit-search-cancel-button {
+  background: url("../../../images/icon-buttons/close/dark/default.svg")
+    no-repeat 50% 50%;
+}
+
+.scaladoc-searchbar-input:focus::-webkit-search-cancel-button {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.scaladoc-searchbar-input.dark::-webkit-search-cancel-button {
+  filter: invert(1);
+}
+
+#scaladoc-searchbar-results {
+  background-color: var(--background-default);
+  border-radius: 4px;
+  margin-top: calc(1.5 * var(--base-spacing));
+  border: 1px solid var(--border-default);
+  max-height: calc(100% - calc(24 * var(--base-spacing)));
+  overflow: scroll;
+}
+
+.searchbar-hints {
+  color: var(--text-primary);
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(108.5 * var(--base-spacing));
+}
+
+.searchbar-hints h1 {
+  margin: 0;
+}
+
+.searchbar-hints .link {
+  color: var(--text-secondary);
+  margin-top: calc(4.5 * var(--base-spacing));
+  position: relative;
+}
+
+.searchbar-hints .link a {
+  color: var(--text-secondary);
+}
+
+.searchbar-hints .link::marker {
+  color: transparent;
+}
+
+.searchbar-hints .link::before {
+  content: url("../../../images/info/light/default.svg");
+  position: absolute;
+  left: calc(-4 * var(--base-spacing));
+}
+
+.text-dark .searchbar-hints .link::before {
+  content: url("../../../images/info/dark/default.svg");
+}
+
+.searchbar-hints .lightbulb {
+  margin-bottom: calc(2 * var(--base-spacing));
+}
+
+.searchbar-hints .lightbulb:after {
+  content: url("../../../images/bulb/light/default.svg");
+}
+
+.theme-dark .searchbar-hints .lightbulb:after {
+  content: url("../../../images/bulb/dark/default.svg");
+}
+
+.theme-dark .searchbar-hints .lightbulb:after {
+  content: url("../../../images/bulb/dark/default.svg");
+}
+
+.searchbar-hints-list {
+  margin-top: calc(5.5 * var(--base-spacing));
+  width: calc(61 * var(--base-spacing));
+}
+
+.searchbar-hints-list li b {
+  color: var(--text-secondary);
+}
+
+.searchbar-hints-list li {
+  margin-left: calc(4.6 * var(--base-spacing));
+}
+
+.searchbar-hints-list li::marker {
+  color: var(--text-secondary);
+}
+
+.searchbar-hints-list .h100 {
+  margin-bottom: calc(3 * var(--base-spacing));
+  margin-left: calc(2 * var(--base-spacing));
+}
+
+.searchbar-hints-list .divider {
+  margin-bottom: calc(1.5 * var(--base-spacing));
+  margin-top: calc(1.5 * var(--base-spacing));
+}
+
+.searchbar-hints-list .h100:last-of-type {
+  margin-top: calc(6 * var(--base-spacing));
+}
+
+.scaladoc-searchbar-row {
+  display: flex;
+  color: var(--text-secondary);
+  padding: calc(1.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
+}
+
+.scaladoc-searchbar-row[result] {
+  padding: calc(1.25 * var(--base-spacing)) calc(2 * var(--base-spacing));
+}
+
+.scaladoc-searchbar-row[result]:hover,
+.scaladoc-searchbar-row[selected] {
+  background-color: var(--action-primary-background-selected);
+}
+
+.scaladoc-searchbar-row[divider] {
+  margin-top: calc(0.25 * var(--base-spacing));
+  border-top: solid 1px var(--border-default);
+}
+
+.scaladoc-searchbar-row[divider]:first-of-type {
+  border: none;
+}
+
+.scaladoc-searchbar-row a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.scaladoc-searchbar-row b {
+  color: var(--text-primary);
+}
+
+.scaladoc-searchbar-row .micon {
+  margin: calc(0.5 * var(--base-spacing)) calc(1 * var(--base-spacing)) 0px 0px;
+  color: var(--text-secondary);
+  position: relative;
+  top: -2px;
+}
+
+.scaladoc-searchbar-location {
+  display: none;
+}
+
+.scaladoc-searchbar-row:hover .scaladoc-searchbar-location {
+  display: block;
+}
+
+
+/* searchbar footer */
+#searchbar-footer {
+  position: absolute;
+  bottom: 0px;
+  background-color: var(--background-default);
+  color: var(--text-secondary);
+  height: calc(6 * var(--base-spacing));
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+#searchbar-footer b {
+  color: var(--text-primary);
+}
+
+.searchbar-footer-right-container span {
+  margin-right: calc(2 * var(--base-spacing));
+}
+
+.searchbar-footer-left-container span {
+  margin-right: calc(2 * var(--base-spacing));
+}
+
+.searchbar-footer-left-container span:first-of-type {
+  margin-left: calc(2 * var(--base-spacing));
+}
+
+.searchbar-footer-right-container {
+  margin-left: auto;
+}
+
+@media(max-width: 892px) {
+  #searchbar-footer {
+    height: calc(10 * var(--base-spacing));
+  }
+
+  #searchbar-footer span {
+    display: block;
+  }
+
+  .searchbar-footer-left-container span:not(:first-child) {
+    margin-left: calc(2 * var(--base-spacing));
+    margin-top: calc(1 * var(--base-spacing));
+  }
+
+  .searchbar-footer-right-container span:not(:first-child) {
+    margin-top: calc(1 * var(--base-spacing));
+  }
+}
+
+/* mobile view */
+
+@media(max-width: 768px) {
+  #searchbar-container {
+    background-color: var(--background-default);
+  }
+
+  .scaladoc-searchbar-row:hover .scaladoc-searchbar-location {
+    display: none;
+  }
+
+  #scaladoc-searchbar-results {
+    border: none;
+    margin-left: calc(3 * var(--base-spacing));
+    margin-right: calc(3 * var(--base-spacing));
+  }
+
+  .scaladoc-searchbar-input-container {
+    margin-left: calc(3 * var(--base-spacing));
+    margin-right: calc(3 * var(--base-spacing));
+  }
+
+  .scaladoc-searchbar-row[divider]:first-child {
+    border: none;
+  }
+
+  #searchbar-footer {
+    display: none;
+  }
+
+  #scaladoc-searchbar-results {
+    max-height: 100%;
+  }
+
+  #scaladoc-searchbar-results {
+    margin-top: calc(3 * var(--base-spacing));
+  }
+}

@@ -32,10 +32,25 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   private def scaladocVersionFile = Resource.Text("scaladoc.version", BuildInfo.version)
 
-  private def projectLogo = ctx.args.projectLogo.toSeq.map { p =>
+  lazy val projectLogo = ctx.args.projectLogo.map { p =>
       val path = Paths.get(p)
       Resource.File(s"project-logo/${path.getFileName()}", path)
   }
+
+  lazy val darkProjectLogo = ctx.args.projectLogo.map(p => Paths.get(p))
+    .map { p =>
+      val darkFileName = p.getFileName.toString.split('.').toList match
+        case Nil => "logo_dark"
+        case oneElem :: Nil => oneElem + "_dark"
+        case list =>
+          val (init, last) = (list.init, list.last)
+          init.mkString(".") + "_dark." + last
+      p.resolveSibling(darkFileName)
+    }
+    .filter(p => Files.exists(p))
+    .map { path =>
+      Resource.File(s"project-logo/${path.getFileName()}", path)
+    }
 
   private def dottyRes(path: String) = Resource.Classpath(path, s"dotty_res/$path")
 
@@ -92,12 +107,18 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/layout/header.css",
       "styles/theme/layout/leftMenu.css",
       "styles/theme/layout/sideMenu.css",
+      "styles/theme/layout/searchBar.css",
+      "styles/theme/layout/floatingButton.css",
+      "styles/theme/layout/mobileMenu.css",
       "styles/theme/layout/footer.css",
 
       // components
       "styles/theme/components/switcher.css",
       "styles/theme/components/navigation-item.css",
       "styles/theme/components/button/icon-button.css",
+      "styles/theme/components/button/text-button.css",
+      "styles/theme/components/dropdown-menu.css",
+      "styles/theme/components/divider.css",
 
       "styles/nord-light.css",
       "styles/dotty-icons.css",
@@ -131,7 +152,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "https://scastie.scala-lang.org/embedded.js"
     ).map(Resource.URL.apply)
 
-    fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
+    fromResources ++ urls ++ projectLogo ++ darkProjectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
   }
 
   val apiOnlyResources = List(
@@ -244,6 +265,54 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/twitter-icon-white.png"),
       dottyRes("images/gitter-icon-black.png"),
       dottyRes("images/gitter-icon-white.png"),
+      dottyRes("images/icon-buttons/sun/dark/active.svg"),
+      dottyRes("images/icon-buttons/sun/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/sun/dark/focus.svg"),
+      dottyRes("images/icon-buttons/sun/dark/hover.svg"),
+      dottyRes("images/icon-buttons/sun/dark/selected.svg"),
+      dottyRes("images/icon-buttons/sun/dark/default.svg"),
+      dottyRes("images/icon-buttons/sun/light/active.svg"),
+      dottyRes("images/icon-buttons/sun/light/disabled.svg"),
+      dottyRes("images/icon-buttons/sun/light/focus.svg"),
+      dottyRes("images/icon-buttons/sun/light/hover.svg"),
+      dottyRes("images/icon-buttons/sun/light/selected.svg"),
+      dottyRes("images/icon-buttons/sun/light/default.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/active.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/focus.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/hover.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/selected.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/default.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/active.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/disabled.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/focus.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/hover.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/selected.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/default.svg"),
+      dottyRes("images/icon-buttons/moon/dark/active.svg"),
+      dottyRes("images/icon-buttons/moon/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/moon/dark/focus.svg"),
+      dottyRes("images/icon-buttons/moon/dark/hover.svg"),
+      dottyRes("images/icon-buttons/moon/dark/selected.svg"),
+      dottyRes("images/icon-buttons/moon/dark/default.svg"),
+      dottyRes("images/icon-buttons/moon/light/active.svg"),
+      dottyRes("images/icon-buttons/moon/light/disabled.svg"),
+      dottyRes("images/icon-buttons/moon/light/focus.svg"),
+      dottyRes("images/icon-buttons/moon/light/hover.svg"),
+      dottyRes("images/icon-buttons/moon/light/selected.svg"),
+      dottyRes("images/icon-buttons/moon/light/default.svg"),
+      dottyRes("images/icon-buttons/search/dark/active.svg"),
+      dottyRes("images/icon-buttons/search/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/search/dark/focus.svg"),
+      dottyRes("images/icon-buttons/search/dark/hover.svg"),
+      dottyRes("images/icon-buttons/search/dark/selected.svg"),
+      dottyRes("images/icon-buttons/search/dark/default.svg"),
+      dottyRes("images/icon-buttons/search/light/active.svg"),
+      dottyRes("images/icon-buttons/search/light/disabled.svg"),
+      dottyRes("images/icon-buttons/search/light/focus.svg"),
+      dottyRes("images/icon-buttons/search/light/hover.svg"),
+      dottyRes("images/icon-buttons/search/light/selected.svg"),
+      dottyRes("images/icon-buttons/search/light/default.svg"),
       dottyRes("images/icon-buttons/arrow-down/dark/active.svg"),
       dottyRes("images/icon-buttons/arrow-down/dark/disabled.svg"),
       dottyRes("images/icon-buttons/arrow-down/dark/focus.svg"),
@@ -268,6 +337,46 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/icon-buttons/arrow-right/light/hover.svg"),
       dottyRes("images/icon-buttons/arrow-right/light/selected.svg"),
       dottyRes("images/icon-buttons/arrow-right/light/default.svg"),
+      dottyRes("images/icon-buttons/close/light/active.svg"),
+      dottyRes("images/icon-buttons/close/light/default.svg"),
+      dottyRes("images/icon-buttons/close/light/disabled.svg"),
+      dottyRes("images/icon-buttons/close/light/focus.svg"),
+      dottyRes("images/icon-buttons/close/light/hover.svg"),
+      dottyRes("images/icon-buttons/close/light/selected.svg"),
+      dottyRes("images/icon-buttons/close/dark/active.svg"),
+      dottyRes("images/icon-buttons/close/dark/default.svg"),
+      dottyRes("images/icon-buttons/close/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/close/dark/focus.svg"),
+      dottyRes("images/icon-buttons/close/dark/hover.svg"),
+      dottyRes("images/icon-buttons/close/dark/selected.svg"),
+      dottyRes("images/bulb/dark/default.svg"),
+      dottyRes("images/bulb/light/default.svg"),
+      dottyRes("images/info/light/default.svg"),
+      dottyRes("images/info/dark/default.svg"),
+      dottyRes("images/icon-buttons/menu-animated/dark/active.svg"),
+      dottyRes("images/icon-buttons/menu-animated/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/menu-animated/dark/focus.svg"),
+      dottyRes("images/icon-buttons/menu-animated/dark/hover.svg"),
+      dottyRes("images/icon-buttons/menu-animated/dark/selected.svg"),
+      dottyRes("images/icon-buttons/menu-animated/dark/default.svg"),
+      dottyRes("images/icon-buttons/menu-animated/light/active.svg"),
+      dottyRes("images/icon-buttons/menu-animated/light/disabled.svg"),
+      dottyRes("images/icon-buttons/menu-animated/light/focus.svg"),
+      dottyRes("images/icon-buttons/menu-animated/light/hover.svg"),
+      dottyRes("images/icon-buttons/menu-animated/light/selected.svg"),
+      dottyRes("images/icon-buttons/menu-animated/light/default.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/active.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/focus.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/hover.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/selected.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/default.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/active.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/disabled.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/focus.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/hover.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/selected.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/default.svg"),
       dottyRes("images/footer-icon/dark/default.svg"),
       dottyRes("images/footer-icon/light/default.svg"),
       dottyRes("images/icon-buttons/gh/dark/active.svg"),
@@ -318,6 +427,18 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/icon-buttons/gitter/light/hover.svg"),
       dottyRes("images/icon-buttons/gitter/light/selected.svg"),
       dottyRes("images/icon-buttons/gitter/light/default.svg"),
+      dottyRes("images/icon-buttons/link/dark/active.svg"),
+      dottyRes("images/icon-buttons/link/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/link/dark/focus.svg"),
+      dottyRes("images/icon-buttons/link/dark/hover.svg"),
+      dottyRes("images/icon-buttons/link/dark/selected.svg"),
+      dottyRes("images/icon-buttons/link/dark/default.svg"),
+      dottyRes("images/icon-buttons/link/light/active.svg"),
+      dottyRes("images/icon-buttons/link/light/disabled.svg"),
+      dottyRes("images/icon-buttons/link/light/focus.svg"),
+      dottyRes("images/icon-buttons/link/light/hover.svg"),
+      dottyRes("images/icon-buttons/link/light/selected.svg"),
+      dottyRes("images/icon-buttons/link/light/default.svg"),
       searchData(pages),
       scastieConfiguration(),
     )
