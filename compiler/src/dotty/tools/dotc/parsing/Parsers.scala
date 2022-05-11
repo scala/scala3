@@ -359,13 +359,11 @@ object Parsers {
       recur(false, false)
     end statSepOrEnd
 
-    def rewriteNotice(version: String = "3.0", additionalOption: String = "") = {
-      val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
-      i"\nThis construct can be rewritten automatically under$optionStr -rewrite -source $version-migration."
-    }
+    def rewriteNotice(version: SourceVersion = `3.0-migration`, additionalOption: String = "") =
+      Message.rewriteNotice("This construct", version, additionalOption)
 
     def syntaxVersionError(option: String, span: Span) =
-      syntaxError(em"""This construct is not allowed under $option.${rewriteNotice("3.0", option)}""", span)
+      syntaxError(em"""This construct is not allowed under $option.${rewriteNotice(`3.0-migration`, option)}""", span)
 
     def rewriteToNewSyntax(span: Span = Span(in.offset)): Boolean = {
       if (in.newSyntax) {
@@ -2084,7 +2082,7 @@ object Parsers {
           in.nextToken()
           if isVarargSplice then
             report.errorOrMigrationWarning(
-              em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice("future")}",
+              em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice(`future-migration`)}",
               in.sourcePos(uscoreStart),
               future)
             if sourceVersion == `future-migration` then
@@ -2160,7 +2158,7 @@ object Parsers {
         val t =
           if (in.token == COLON && location == Location.InBlock) {
             report.errorOrMigrationWarning(
-              s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice("future")}",
+              s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice(`future-migration`)}",
               source.atSpan(Span(start, in.lastOffset)),
               from = future)
             in.nextToken()
@@ -3186,7 +3184,7 @@ object Parsers {
       def wildcardSelector() =
         if in.token == USCORE && sourceVersion.isAtLeast(future) then
           report.errorOrMigrationWarning(
-            em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice("future")}",
+            em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice(`future-migration`)}",
             in.sourcePos(),
             from = future)
           patch(source, Span(in.offset, in.offset + 1), "*")
@@ -3205,7 +3203,7 @@ object Parsers {
         if in.token == ARROW || isIdent(nme.as) then
           if in.token == ARROW && sourceVersion.isAtLeast(future) then
             report.errorOrMigrationWarning(
-              em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice("future")}",
+              em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
               in.sourcePos(),
               from = future)
             patch(source, Span(in.offset, in.offset + 2),

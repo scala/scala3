@@ -368,4 +368,9 @@ object Formatting {
   /** Explicit syntax highlighting */
   def hl(s: String)(using Context): String =
     SyntaxHighlighting.highlight(s)
+
+  /** Explicitly highlight a string with the same formatting as used for keywords */
+  def hlAsKeyword(str: String)(using Context): String =
+    if str.isEmpty || ctx.settings.color.value == "never" then str
+    else s"${SyntaxHighlighting.KeywordColor}$str${SyntaxHighlighting.NoColor}"
 }

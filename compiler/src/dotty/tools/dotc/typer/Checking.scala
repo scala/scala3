@@ -37,6 +37,7 @@ import transform.patmat.SpaceEngine.isIrrefutable
 import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion._
+import printing.Formatting.hlAsKeyword
 import transform.TypeUtils.*
 
 import collection.mutable
@@ -834,11 +835,12 @@ trait Checking {
           case NonConforming => sel.srcPos
           case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
         else pat.srcPos
+      def rewriteMsg = Message.rewriteNotice("This patch", `future-migration`)
       report.warning(
         em"""$message
             |
             |If $usage is intentional, this can be communicated by $fix,
-            |which $addendum.${err.rewriteNotice}""",
+            |which $addendum.$rewriteMsg""",
           pos)
       false
     }
@@ -992,10 +994,10 @@ trait Checking {
                 ("extractor", (n: Name) => s"prefix syntax $n(...)")
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
+            def rewriteMsg = Message.rewriteNotice("The latter", options = "-deprecation")
             report.deprecationWarning(
-              i"""Alphanumeric $kind $name is not declared `infix`; it should not be used as infix operator.
-                 |The operation can be rewritten automatically to `$name` under -deprecation -rewrite.
-                 |Or rewrite to ${alternative(name)} manually.""",
+              i"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
+                 |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
               tree.op.srcPos)
             if (ctx.settings.deprecation.value) {
               patch(Span(tree.op.span.start, tree.op.span.start), "`")

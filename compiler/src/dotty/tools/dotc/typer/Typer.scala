@@ -3452,10 +3452,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if sourceVersion == `future-migration` && isContextBoundParams && pt.args.nonEmpty
           then // Under future-migration, don't infer implicit arguments yet for parameters
                // coming from context bounds. Issue a warning instead and offer a patch.
+            def rewriteMsg = Message.rewriteNotice("This code", `future-migration`)
             report.migrationWarning(
               em"""Context bounds will map to context parameters.
-                  |A `using` clause is needed to pass explicit arguments to them.
-                  |This code can be rewritten automatically using -rewrite""", tree.srcPos)
+                  |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""", tree.srcPos)
             patch(Span(pt.args.head.span.start), "using ")
             tree
           else
