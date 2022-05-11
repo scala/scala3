@@ -54,18 +54,31 @@ object Test:
           x
 
   def test6[T](x: T): T =
-    class Foo { var bar: Bar = null }
-    class Bar { var foo: Foo = null; var elem: T = _ }
+    class A { var b: B = null }
+    class B { var a: A = null; var elem: T = _ }
     prev match
-      case prev: Foo => // error: the type test for A cannot be checked at runtime
-        prev.bar.elem
+      case prev: A => // error: the type test for A cannot be checked at runtime
+        prev.b.elem
       case _ =>
-        val foo = new Foo
-        val bar = new Bar
-        bar.elem = x
-        foo.bar = bar
-        prev = foo
+        val a = new A
+        val b = new B
+        b.elem = x
+        a.b = b
+        prev = a
         x
+
+  def test7[T](x: T): T =
+    class A(val elem: T)
+    prev match
+      case prev: A @unchecked => prev.elem
+      case _                  => prev = new A(x); x
+
+  def test8[T](x: T): T =
+    class A(val elem: T)
+    val p = prev
+    (p: @unchecked) match
+      case prev: A => prev.elem
+      case _       => prev = new A(x); x
 
   def main(args: Array[String]): Unit =
     test(1)

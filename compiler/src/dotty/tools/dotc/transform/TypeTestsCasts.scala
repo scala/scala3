@@ -123,6 +123,11 @@ object TypeTestsCasts {
 
     }
 
+    lazy val scrutineeIsUnchecked = X.widenTermRefExpr.existsPart {
+      case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedAnnot => true
+      case _ => false
+    }
+
     def recur(X: Type, P: Type): Boolean = (X <:< P) || (P.dealias match {
       case _: SingletonType     => true
       case _: TypeProxy
@@ -153,7 +158,7 @@ object TypeTestsCasts {
       case tp2: RefinedType     => recur(X, tp2.parent) && TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2)
       case tp2: RecType         => recur(X, tp2.parent)
       case tp2
-      if tp2.typeSymbol.isLocal =>
+      if tp2.typeSymbol.isLocal && !scrutineeIsUnchecked =>
         val sym = tp2.typeSymbol
         val methodSymbol = sym.owner
         val tpSyms = typer.ErrorReporting.substitutableTypeSymbolsInScope(sym).toSet
