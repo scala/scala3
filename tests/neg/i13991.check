@@ -1,7 +1,7 @@
 -- Error: tests/neg/i13991.scala:5:7 -----------------------------------------------------------------------------------
  5 |  first[String] // error // before line 10 to test alignment of the error message `|`
    |  ^^^^^^^^^^^^^
-   |  no given instance of type Foo[String] was found
+   |  No given instance of type Foo[String] was found
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

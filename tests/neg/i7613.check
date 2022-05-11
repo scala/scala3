@@ -1,8 +1,8 @@
 -- Error: tests/neg/i7613.scala:10:16 ----------------------------------------------------------------------------------
 10 |  new BazLaws[A] {}  // error // error
    |                ^
-   |            no given instance of type Baz[A] was found for parameter x$1 of constructor BazLaws in trait BazLaws
+   |            No given instance of type Baz[A] was found for parameter x$1 of constructor BazLaws in trait BazLaws
 -- Error: tests/neg/i7613.scala:10:2 -----------------------------------------------------------------------------------
 10 |  new BazLaws[A] {}  // error // error
    |  ^
-   |  no given instance of type Bar[A] was found for parameter x$1 of constructor BarLaws in trait BarLaws
+   |  No given instance of type Bar[A] was found for parameter x$1 of constructor BarLaws in trait BarLaws

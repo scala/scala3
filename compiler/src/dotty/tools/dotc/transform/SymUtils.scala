@@ -79,10 +79,10 @@ object SymUtils:
     *  parameter section.
     */
     def whyNotGenericProduct(using Context): String =
-      if (!self.is(CaseClass)) "it is not a case class"
-      else if (self.is(Abstract)) "it is an abstract class"
-      else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
-      else if (isDerivedValueClass(self)) "it is a value class"
+      if (!self.is(CaseClass)) i"$self is not a case class"
+      else if (self.is(Abstract)) i"$self is an abstract class"
+      else if (self.primaryConstructor.info.paramInfoss.length != 1) i"$self takes more than one parameter list"
+      else if (isDerivedValueClass(self)) i"$self is a value class"
       else ""
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
@@ -144,9 +144,9 @@ object SymUtils:
     */
     def whyNotGenericSum(declScope: Symbol)(using Context): String =
       if (!self.is(Sealed))
-        s"it is not a sealed ${self.kindString}"
+        s"$self is not a sealed ${self.kindString}"
       else if (!self.isOneOf(AbstractOrTrait))
-        s"it is not an abstract class"
+        s"$self is not an abstract class"
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror
@@ -157,8 +157,8 @@ object SymUtils:
             (self.isContainedIn(sym) && (companionMirror || declScope.isContainedIn(sym)))
             || sym.is(Module) && isAccessible(sym.owner)
 
-          if (child == self) "it has anonymous or inaccessible subclasses"
-          else if (!isAccessible(child.owner)) i"its child $child is not accessible"
+          if (child == self) i"$self has anonymous or inaccessible subclasses"
+          else if (!isAccessible(child.owner)) i"$self's child $child is not accessible"
           else if (!child.isClass) ""
           else {
             val s = child.whyNotGenericProduct
@@ -166,11 +166,11 @@ object SymUtils:
             else if (child.is(Sealed)) {
               val s = child.whyNotGenericSum(if child.useCompanionAsSumMirror then child.linkedClass else ctx.owner)
               if (s.isEmpty) s
-              else i"its child $child is not a generic sum because $s"
-            } else i"its child $child is not a generic product because $s"
+              else i"$self's child $child is not a generic sum because $s"
+            } else i"$self's child $child is not a generic product because $s"
           }
         }
-        if (children.isEmpty) "it does not have subclasses"
+        if (children.isEmpty) i"$self does not have subclasses"
         else children.map(problem).find(!_.isEmpty).getOrElse("")
       }
 

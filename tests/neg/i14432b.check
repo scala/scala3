@@ -1,4 +1,4 @@
 -- Error: tests/neg/i14432b.scala:15:43 --------------------------------------------------------------------------------
 15 |  val mFoo = summon[Mirror.Of[example.Foo]] // error: no mirror found
    |                                           ^
-   |no given instance of type deriving.Mirror.Of[example.Foo] was found for parameter x of method summon in object Predef
+   |No given instance of type deriving.Mirror.Of[example.Foo] was found for parameter x of method summon in object Predef. Failed to synthesize implicit of type deriving.Mirror.Of[example.Foo]: Constructor of class Foo is unnaccessible from the calling scope.

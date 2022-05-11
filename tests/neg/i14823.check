@@ -1,4 +1,4 @@
 -- Error: tests/neg/i14823.scala:8:50 ----------------------------------------------------------------------------------
 8 |val baz = summon[Mirror.Of[SubA[Int] | SubB[Int]]] // error
   |                                                  ^
-  |no given instance of type deriving.Mirror.Of[SubA[Int] | SubB[Int]] was found for parameter x of method summon in object Predef
+  |No given instance of type deriving.Mirror.Of[SubA[Int] | SubB[Int]] was found for parameter x of method summon in object Predef

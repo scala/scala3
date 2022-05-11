@@ -266,24 +266,26 @@ class ImplicitSearchError(
       ++ ErrorReporting.matchReductionAddendum(pt)
   }
 
-  private def formatMsg(shortForm: String)(headline: String = shortForm) = arg match {
+  private def formatMsg(shortForm: String)(headline: String = shortForm) = arg match 
     case arg: Trees.SearchFailureIdent[?] =>
-      shortForm
+      arg.tpe match
+        case _: NoMatchingImplicits => headline
+        case tpe: SearchFailureType =>
+          i"$headline. ${tpe.explanation}"
+        case _ => headline
     case _ =>
-      arg.tpe match {
+      arg.tpe match
         case tpe: SearchFailureType =>
           val original = arg match
             case Inlined(call, _, _) => call
             case _ => arg
-
           i"""$headline.
             |I found:
             |
             |    ${original.show.replace("\n", "\n    ")}
             |
             |But ${tpe.explanation}."""
-      }
-  }
+        case _ => headline
 
   private def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type]): String = {
     def translate(name: String): Option[String] = {
@@ -307,12 +309,10 @@ class ImplicitSearchError(
   private def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
   private def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) =
-    formatMsg(s"ambiguous given instances: ${ambi.explanation}${location("of")}")(
-      s"ambiguous given instances of type ${pt.show} found${location("for")}"
-    )
+    s"Ambiguous given instances: ${ambi.explanation}${location("of")}"
 
   private def defaultImplicitNotFoundMessage =
-    ex"no given instance of type $pt was found${location("for")}"
+    ex"No given instance of type $pt was found${location("for")}"
 
   /** Construct a custom error message given an ambiguous implicit
    *  candidate `alt` and a user defined message `raw`.
