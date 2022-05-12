@@ -66,7 +66,6 @@ end DropdownHandler
 @JSExportTopLevel("dropdownHandler")
 def dropdownHandler(e: Event) =
   e.stopPropagation()
-  console.log("clikc")
   if document.getElementById("version-dropdown").getElementsByTagName("a").size > 0 &&
      window.getSelection.toString.length == 0 then
     document.getElementById("version-dropdown").classList.toggle("expanded")

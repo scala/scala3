@@ -2,10 +2,9 @@
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
-  height: 100%;
+  height: calc(100% - calc(11 * var(--base-spacing)));
   padding-left: calc(1.5 * var(--base-spacing));
   padding-right: calc(1.5 * var(--base-spacing));
-  padding-bottom: calc(3 * var(--base-spacing));
   box-sizing: border-box;
 }
 

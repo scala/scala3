@@ -48,6 +48,10 @@
   content: url("../../../../images/icon-buttons/moon/light/selected.svg");
 }
 
+#theme-toggle.icon-button:focus::after {
+  content: url("../../../../images/icon-buttons/moon/light/focus.svg");
+}
+
 .theme-dark #theme-toggle.icon-button::after {
   content: url("../../../../images/icon-buttons/sun/dark/default.svg");
 }
@@ -70,6 +74,10 @@
 
 .theme-dark #theme-toggle.icon-button.selected::after {
   content: url("../../../../images/icon-buttons/sun/dark/selected.svg");
+}
+
+.theme-dark #theme-toggle.icon-button:focus::after {
+  content: url("../../../../images/icon-buttons/sun/dark/focus.svg");
 }
 
 /* search-toggle button */
