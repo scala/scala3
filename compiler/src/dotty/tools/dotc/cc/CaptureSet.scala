@@ -160,9 +160,8 @@ sealed abstract class CaptureSet extends Showable:
   def **(that: CaptureSet)(using Context): CaptureSet =
     if this.subCaptures(that, frozen = true).isOK then this
     else if that.subCaptures(this, frozen = true).isOK then that
-    else if this.isConst && that.isConst then Const(elems.intersect(that.elems))
-    else if that.isConst then Intersected(this.asVar, that)
-    else Intersected(that.asVar, this)
+    else if this.isConst && that.isConst then Const(elemIntersection(this, that))
+    else Intersected(this, that)
 
   def -- (that: CaptureSet.Const)(using Context): CaptureSet =
     val elems1 = elems.filter(!that.accountsFor(_))
@@ -516,11 +515,42 @@ object CaptureSet:
   class Diff(source: Var, other: Const)(using Context)
   extends Filtered(source, !other.accountsFor(_))
 
-  /** A variable with elements given at any time as { x <- source.elems | other.accountsFor(x) } */
-  class Intersected(source: Var, other: CaptureSet)(using Context)
-  extends Filtered(source, other.accountsFor(_)):
-    addSub(other)
+  def elemIntersection(cs1: CaptureSet, cs2: CaptureSet)(using Context): Refs =
+    cs1.elems.filter(cs2.accountsFor) ++ cs2.elems.filter(cs1.accountsFor)
 
+  class Intersected(cs1: CaptureSet, cs2: CaptureSet)(using Context)
+  extends Var(elemIntersection(cs1, cs2)):
+    addSub(cs1)
+    addSub(cs2)
+    deps += cs1
+    deps += cs2
+
+    override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+      super.addNewElems(
+        if origin eq cs1 then newElems.filter(cs2.accountsFor)
+        else if origin eq cs2 then newElems.filter(cs1.accountsFor)
+        else newElems, origin)
+
+    override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
+      if (origin eq cs1) || (origin eq cs2) then universal
+      else CaptureSet(elemIntersection(cs1.upperApprox(this), cs2.upperApprox(this)))
+
+    override def propagateSolved()(using Context) =
+      if cs1.isConst && cs2.isConst && !isConst then markSolved()
+  end Intersected
+
+/*
+   comes from cs1: ?  if also in cs2 include
+   comes from elsewhere? propagate to cs1, cs2
+
+   A & B <: A, B
+
+
+  cs2 ==> ...
+    addSub(cs1)   I <: A, <: B
+                  A && B ==> I
+    addSub(cs2)
+*/
   def extrapolateCaptureRef(r: CaptureRef, tm: TypeMap, variance: Int)(using Context): CaptureSet =
     val r1 = tm(r)
     val upper = r1.captureSet
