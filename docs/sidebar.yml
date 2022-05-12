@@ -74,6 +74,7 @@ subsection:
           - page: reference/metaprogramming/staging.md
           - page: reference/metaprogramming/reflection.md
           - page: reference/metaprogramming/tasty-inspect.md
+          - page: reference/metaprogramming/simple-smp.md
       - title: Other New Features
         index: reference/other-new-features/other-new-features.md
         subsection:
@@ -93,6 +94,7 @@ subsection:
           - page: reference/other-new-features/targetName.md
           - page: reference/other-new-features/control-syntax.md
           - page: reference/other-new-features/indentation.md
+          - page: reference/other-new-features/indentation-experimental.md
           - page: reference/other-new-features/safe-initialization.md
           - page: reference/other-new-features/type-test.md
           - page: reference/other-new-features/experimental-defs.md
@@ -124,6 +126,7 @@ subsection:
           - page: reference/changed-features/compiler-plugins.md
           - page: reference/changed-features/lazy-vals-init.md
           - page: reference/changed-features/main-functions.md
+          - page: reference/changed-features/interpolation-escapes.md
       - title: Dropped Features
         index: reference/dropped-features/dropped-features.md
         subsection:
@@ -202,8 +205,10 @@ subsection:
       - page: internals/dotc-scalac.md
       - page: internals/higher-kinded-v2.md
       - page: internals/overall-structure.md
+      - page: internals/explicit-nulls.md
       - page: internals/periods.md
       - page: internals/syntax.md
+      - page: internals/syntax-3.1.md
       - page: internals/type-system.md
       - page: internals/dotty-internals-1-notes.md
       - page: internals/debug-macros.md
