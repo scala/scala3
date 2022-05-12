@@ -44,7 +44,12 @@ object NullOpsDecorator:
       if ctx.explicitNulls then strip(self) else self
     }
 
+    /** Strips `|Null` from the return type of a Java method,
+     *  replacing it with a `@CanEqualNull` annotation
+     */
     def replaceOrNull(using Context): Type =
+      // Since this method should only be called on types from Java,
+      // handling these cases is enough.
       def recur(tp: Type): Type = tp match
         case tp @ OrType(lhs, rhs) if rhs.isNullType =>
           AnnotatedType(recur(lhs), Annotation(defn.CanEqualNullAnnot))
@@ -52,9 +57,10 @@ object NullOpsDecorator:
           tp.derivedAndOrType(recur(tp.tp1), recur(tp.tp2))
         case tp @ AppliedType(tycon, targs) =>
           tp.derivedAppliedType(tycon, targs.map(recur))
+        case mptp: MethodOrPoly =>
+          mptp.derivedLambdaType(resType = recur(mptp.resType))
         case _ => tp
       if ctx.explicitNulls then recur(self) else self
-
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
     def isNullableUnion(using Context): Boolean = {
