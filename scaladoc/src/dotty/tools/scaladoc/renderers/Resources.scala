@@ -111,6 +111,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/layout/floatingButton.css",
       "styles/theme/layout/mobileMenu.css",
       "styles/theme/layout/footer.css",
+      "styles/theme/layout/content.css",
 
       // components
       "styles/theme/components/switcher.css",

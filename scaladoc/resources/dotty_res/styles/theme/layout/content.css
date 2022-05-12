@@ -1,0 +1,20 @@
+#content {
+  height: 100%;
+  width: calc(100% - calc(39 * var(--base-spacing)));
+  float: right;
+  overflow: scroll;
+  margin-top: var(--header-height);
+  display: flex;
+}
+
+#content-wrapper {
+
+}
+
+#content h1 {
+  color: var(--text-primary);
+}
+
+.breadcrumbs {
+  position: absolute;
+}

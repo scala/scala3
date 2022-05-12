@@ -208,7 +208,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         )
       }
 
-    div(id := "container")(
+    div(id := "")(
       div(id := "header", cls := "body-small")(
         div(cls := "header-container-left")(
           projectLogoElem.toSeq,
@@ -322,16 +322,17 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           "© 2002-2021 · LAMP/EPFL"
         )
       ),
+      div(id := "scaladoc-searchBar"),
       div(id := "main")(
-        div (id := "leftToggler")(
-          span(cls := "icon-toggler")
+        parentsHtml,
+        div(id := "content")(
+          content.content,
+          renderTableOfContents(content.toc).fold(Nil) { toc =>
+            div(id := "toc")(
+            span(cls := "toc-title")("In this article"),
+            toc
+          )
+          }
         ),
-        div(id := "scaladoc-searchBar"),
       ),
-      renderTableOfContents(content.toc).fold(Nil) { toc =>
-        div(id := "toc")(
-          span(cls := "toc-title")("In this article"),
-          toc
-        )
-      }
     )
