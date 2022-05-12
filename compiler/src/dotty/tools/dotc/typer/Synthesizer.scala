@@ -323,14 +323,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       withNoErrors(mirrorRef.cast(mirrorType))
     end makeProductMirror
 
-    def getErrors(cls: Symbol): List[String] = 
-      if !cls.isGenericProduct then
-        List(cls.whyNotGenericProduct)
+    def getError(cls: Symbol): String = 
+      val reason = if !cls.isGenericProduct then
+        i"because ${cls.whyNotGenericProduct}"
       else if !canAccessCtor(cls) then
-        List(i"Constructor of $cls is unnaccessible from the calling scope.")
+        i"because constructor of $cls is unnaccessible from the calling scope."
       else 
-        List.empty
-    end getErrors
+        ""
+      i"$cls is not a generic product $reason"
+    end getError
 
     mirroredType match
       case AndType(tp1, tp2) =>
@@ -354,7 +355,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           then
             makeProductMirror(cls)
           else
-            (EmptyTree, getErrors(cls))
+            (EmptyTree, List(getError(cls)))
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
@@ -426,7 +427,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         else anonymousMirror(monoType, ExtendsSumMirror, span)
       withNoErrors(mirrorRef.cast(mirrorType))
     else if !clsIsGenericSum then
-      (EmptyTree, List(cls.whyNotGenericSum(declScope)))
+      (EmptyTree, List(i"$cls is not a generic sum because ${cls.whyNotGenericSum(declScope)}"))
     else 
       EmptyTreeNoError
   end sumMirror
@@ -456,15 +457,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
    *  where `T` is a generic sum or product or singleton type.
    */
   val synthesizedMirror: SpecialHandler = (formal, span) =>
-    formal.member(tpnme.MirroredType).info match
-      case TypeBounds(mirroredType, _) =>
-        if mirroredType.termSymbol.is(CaseVal)
-           || mirroredType.classSymbol.isGenericProduct
-        then
-          synthesizedProductMirror(formal, span)
-        else
-          synthesizedSumMirror(formal, span)
-      case _ => EmptyTreeNoError
+    orElse(synthesizedProductMirror(formal, span), synthesizedSumMirror(formal, span))
 
   private def escapeJavaArray(tp: Type)(using Context): Type = tp match
     case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
@@ -609,18 +602,27 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         orElse(result, recur(rest))
       case Nil =>
         EmptyTreeNoError
-    recur(specialHandlers)
+    val result = recur(specialHandlers)
+    clearErrorsIfNotEmpty(result)
 
 end Synthesizer
 
 object Synthesizer:
 
-  /** Tuple used to store the synthesis result with a list of errors */ 
+  /** Tuple used to store the synthesis result with a list of errors.  */ 
   type TreeWithErrors = (Tree, List[String])
   private def withNoErrors(tree: Tree): TreeWithErrors = (tree, List.empty)
 
   private val EmptyTreeNoError: TreeWithErrors = withNoErrors(EmptyTree)
+
   private def orElse(treeWithErrors1: TreeWithErrors, treeWithErrors2: => TreeWithErrors): TreeWithErrors = treeWithErrors1 match
-    case (tree, errors) if tree eq genericEmptyTree => (treeWithErrors2._1, treeWithErrors2._2 ::: errors)
-    case _                                          => treeWithErrors1
+    case (tree, errors) if tree eq genericEmptyTree => 
+      val (tree2, errors2) = treeWithErrors2
+      (tree2, errors2 ::: errors)
+    case _ => treeWithErrors1
+
+  private def clearErrorsIfNotEmpty(treeWithErrors: TreeWithErrors) = treeWithErrors match 
+    case (tree, _) if tree eq genericEmptyTree => treeWithErrors
+    case (tree, _)                             => withNoErrors(tree)
+
 end Synthesizer
