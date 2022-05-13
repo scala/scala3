@@ -1,5 +1,5 @@
 .side-menu {
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
   width: 100%;
   height: calc(100% - calc(11 * var(--base-spacing)));

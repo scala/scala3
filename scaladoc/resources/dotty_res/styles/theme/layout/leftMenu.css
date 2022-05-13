@@ -5,7 +5,7 @@
   padding: calc(3 * var(--base-spacing)) 0px;
   position: absolute;
   width: calc(39 * var(--base-spacing));
-  height: calc(100% - var(--header-height) - (6 * var(--base-spacing)));
+  height: calc(100% - (8 * var(--base-spacing)) - (6 * var(--base-spacing)));
   left: 0px;
   top: calc(8 * var(--base-spacing));
   background: var(--background-default);
@@ -17,7 +17,7 @@
 
 @media (max-width: 480px) {
   #leftColumn {
-    height: calc(100% - var(--header-height) - (9 * var(--base-spacing)));
+    height: calc(100% - (8 * var(--base-spacing)) - (9 * var(--base-spacing)));
   }
 }
 
@@ -33,7 +33,7 @@
 
 @media (max-width: 390px) {
   #leftColumn {
-    height: calc(100% - var(--header-height));
+    height: calc(100% - (8 * var(--base-spacing)));
     width: 100%;
     left: -100%;
     z-index: 1;

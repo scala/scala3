@@ -2,13 +2,36 @@
   height: 100%;
   width: calc(100% - calc(39 * var(--base-spacing)));
   float: right;
-  overflow: scroll;
   margin-top: var(--header-height);
   display: flex;
+  margin-left: calc(36.75 * var(--base-spacing));
 }
 
 #content-wrapper {
+  margin-left: calc(36,75 * var(--base-spacing));
+  margin-right: calc(9.5 * var(--base-spacing));
+  overflow: scroll;
+}
 
+@media(max-width: 1365px) {
+  #content-wrapper {
+    margin-left: calc(6 * var(--base-spacing));
+    margin-right: calc(7 * var(--base-spacing));
+  }
+}
+
+@media(max-width: 768px) {
+  #content-wrapper {
+    margin-right: calc(6 * var(--base-spacing));
+  }
+}
+
+
+@media(max-width: 390px) {
+  #content-wrapper {
+    margin-left: calc(4 * var(--base-spacing));
+    margin-right: calc(4 * var(--base-spacing));
+  }
 }
 
 #content h1 {

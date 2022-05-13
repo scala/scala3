@@ -929,7 +929,7 @@ footer .socials {
   height: 8px;
 }
 
-#toc {
+/* #toc {
   display: inline;
   position: fixed;
   right: 0px;
@@ -968,7 +968,7 @@ footer .socials {
 
 #toc li.active > a {
   color: var(--link-hover-fg);
-}
+} */
 
 /* Signature coloring */
 

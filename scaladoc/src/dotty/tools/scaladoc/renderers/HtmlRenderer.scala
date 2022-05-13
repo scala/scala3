@@ -328,8 +328,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         div(id := "content")(
           content.content,
           renderTableOfContents(content.toc).fold(Nil) { toc =>
-            div(id := "toc")(
-            span(cls := "toc-title")("In this article"),
+            div(id := "toc", cls:="body-small")(
+            span(cls := "toc-title h200")("In this article"),
             toc
           )
           }
