@@ -238,6 +238,18 @@ class CheckCaptures extends Recheck, SymTransformer:
           else i"references $cs1 are not all"
         report.error(i"$header included in allowed capture set ${res.blocking}", pos)
 
+    override def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) = {
+      val selType = super.recheckSelection(tree, qualType, name)
+      val selCs = selType.widen.captureSet
+      if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
+        selType
+      else
+        val qualCs = qualType.captureSet
+        //println(i"intersect $qualType, ${selType.widen}, $qualCs, $selCs")
+        if selCs.subCaptures(qualCs, frozen = true).isOK then selType
+        else selType.widen.stripCapturing.capturing(selCs ** qualCs)
+    }//.showing(i"recheck sel $tree, $qualType = $result")
+
     override def recheckClosure(tree: Closure, pt: Type)(using Context): Type =
       val cs = capturedVars(tree.meth.symbol)
       capt.println(i"typing closure $tree with cvs $cs")
