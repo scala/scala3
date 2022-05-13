@@ -327,7 +327,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       val reason = if !cls.isGenericProduct then
         i"because ${cls.whyNotGenericProduct}"
       else if !canAccessCtor(cls) then
-        i"because constructor of $cls is unnaccessible from the calling scope."
+        i"because the constructor of $cls is innaccessible from the calling scope."
       else 
         ""
       i"$cls is not a generic product $reason"
@@ -618,7 +618,7 @@ object Synthesizer:
   private def orElse(treeWithErrors1: TreeWithErrors, treeWithErrors2: => TreeWithErrors): TreeWithErrors = treeWithErrors1 match
     case (tree, errors) if tree eq genericEmptyTree => 
       val (tree2, errors2) = treeWithErrors2
-      (tree2, errors2 ::: errors)
+      (tree2, errors ::: errors2)
     case _ => treeWithErrors1
 
   private def clearErrorsIfNotEmpty(treeWithErrors: TreeWithErrors) = treeWithErrors match 
