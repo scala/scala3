@@ -40,7 +40,6 @@ class SignatureHelpTest {
           |    case s @ Even(${m1}) => println(s"s has an even number of characters")
           |    case s          => println(s"s has an odd number of characters")
           """
-
       .signatureHelp(m1, List(), Some(0), 0)
 
   }
@@ -59,7 +58,6 @@ class SignatureHelpTest {
           |    case Nat(${m1}) => println(s"n is a natural number")
           |    case _      => ()
           """
-
       .signatureHelp(m1, List(signature), Some(0), 0)
 
   }

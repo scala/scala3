@@ -7,10 +7,10 @@ import core.Constants.Constant
 import core.Contexts._
 import core.Denotations.SingleDenotation
 import core.Flags
+import core.Names._
 import core.Types._
 import util.Spans.Span
 import reporting._
-import core.Names._
 
 
 object Signatures {
@@ -59,7 +59,8 @@ object Signatures {
       case Apply(fun, params) => callInfo(span, params, fun, Signatures.countParams(fun))
     }.getOrElse((0, 0, Nil))
 
-  def callInfo( span: Span,
+  def callInfo(
+    span: Span,
     params: List[tpd.Tree],
     fun: tpd.Tree,
     alreadyAppliedCount : Int
