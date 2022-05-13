@@ -9,9 +9,11 @@
   box-shadow: 0px 10px 38px -10px var(--shadow-first),
     0px 10px 20px -15px var(--shadow-second),
     inset 0px 0px 0px 1px var(--shadow-inset);
-    border: none;
+  border: none;
   border-radius: 4px;
   z-index: 2;
+  justify-content: center;
+  align-items: center;
 }
 
 .floating-button:disabled {
@@ -120,6 +122,6 @@
 
 @media (max-width: 1024px) {
   .floating-button {
-    display: block;
+    display: flex;
   }
 }
