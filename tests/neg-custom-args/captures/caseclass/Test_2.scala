@@ -22,9 +22,4 @@ def test(c: C) =
 
   val y4 = y3 match
     case Ref(xx) => xx
-  val y4c: {x3} () -> Unit = y4  // error (?) found: (y4 : {*} () -> Unit) required: {x3} () -> Unit. (But in fact it should work)
-
-
-
-
-
+  val y4c: {x3} () -> Unit = y4

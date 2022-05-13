@@ -6,6 +6,7 @@ import core.*
 import Symbols.*, Contexts.*, Types.*, ContextOps.*, Decorators.*, SymDenotations.*
 import Flags.*, SymUtils.*, NameKinds.*
 import ast.*
+import Names.Name
 import Phases.Phase
 import DenotTransformers.{DenotTransformer, IdentityDenotTransformer, SymTransformer}
 import NamerOps.{methodType, linkConstructorParams}
@@ -125,17 +126,19 @@ abstract class Recheck extends Phase, SymTransformer:
       tree.tpe
 
     /** Keep the symbol of the `select` but re-infer its type */
-    def recheckSelect(tree: Select)(using Context): Type = tree match
-      case Select(qual, name) =>
-        val qualType = recheck(qual).widenIfUnstable
-        if name.is(OuterSelectName) then tree.tpe
-        else
-          //val pre = ta.maybeSkolemizePrefix(qualType, name)
-          val mbr = qualType.findMember(name, qualType,
-              excluded = if tree.symbol.is(Private) then EmptyFlags else Private
-            ).suchThat(tree.symbol == _)
-          constFold(tree, qualType.select(name, mbr))
-            //.showing(i"recheck select $qualType . $name : ${mbr.symbol.info} = $result")
+    def recheckSelect(tree: Select)(using Context): Type =
+      val Select(qual, name) = tree
+      recheckSelection(tree, recheck(qual).widenIfUnstable, name)
+
+    def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) =
+      if name.is(OuterSelectName) then tree.tpe
+      else
+        //val pre = ta.maybeSkolemizePrefix(qualType, name)
+        val mbr = qualType.findMember(name, qualType,
+            excluded = if tree.symbol.is(Private) then EmptyFlags else Private
+          ).suchThat(tree.symbol == _)
+        constFold(tree, qualType.select(name, mbr))
+          //.showing(i"recheck select $qualType . $name : ${mbr.symbol.info} = $result")
 
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
