@@ -6,11 +6,12 @@ import ast.tpd
 import core.Constants.Constant
 import core.Contexts._
 import core.Denotations.SingleDenotation
+import core.Flags
+import core.Types._
 import util.Spans.Span
-import core.Types.{ErrorType, MethodType, PolyType}
 import reporting._
+import core.Names._
 
-import dotty.tools.dotc.core.Types.Type
 
 object Signatures {
 
@@ -35,8 +36,7 @@ object Signatures {
    * @param isImplicit Is this parameter implicit?
    */
   case class Param(name: String, tpe: String, doc: Option[String] = None, isImplicit: Boolean = false) {
-    def show: String =
-      s"$name: $tpe"
+    def show: String = if name.nonEmpty then s"$name: $tpe" else tpe
   }
 
   /**
@@ -55,14 +55,13 @@ object Signatures {
     }
 
     enclosingApply.map {
-      case UnApply(fun, _, patterns) => callInfo(span, patterns, fun, Signatures.countParams(fun))
+      case UnApply(fun, _, patterns) => unapplyCallInfo(span, fun, patterns)
       case Apply(fun, params) => callInfo(span, params, fun, Signatures.countParams(fun))
     }.getOrElse((0, 0, Nil))
 
-  def callInfo(
-    span: Span,
-    params: List[Tree[Type]],
-    fun: Tree[Type],
+  def callInfo( span: Span,
+    params: List[tpd.Tree],
+    fun: tpd.Tree,
     alreadyAppliedCount : Int
   )(using Context): (Int, Int, List[SingleDenotation]) =
     val paramIndex = params.indexWhere(_.span.contains(span)) match {
@@ -84,10 +83,16 @@ object Signatures {
 
     (paramIndex, alternativeIndex, alternatives)
 
+  private def unapplyCallInfo(span: Span,
+    fun: tpd.Tree,
+    patterns: List[tpd.Tree]
+  )(using Context): (Int, Int, List[SingleDenotation]) =
+    val paramIndex = patterns.indexWhere(_.span.contains(span)) max 0
+    (paramIndex, 0, fun.symbol.asSingleDenotation.mapInfo(_ => fun.tpe) :: Nil)
+
   def toSignature(denot: SingleDenotation)(using Context): Option[Signature] = {
     val symbol = denot.symbol
     val docComment = ParsedComment.docOf(symbol)
-    val classTree = symbol.topLevelClass.asClass.rootTree
 
     def toParamss(tp: MethodType)(using Context): List[List[Param]] = {
       val rest = tp.resType match {
@@ -113,7 +118,55 @@ object Signatures {
       params :: rest
     }
 
+    /**
+     * This function is a hack which allows Signatures API to remain unchanged
+     *
+     * @return true if denot is "unapply", false otherwise
+     */
+    def isUnapplyDenotation: Boolean = denot.name equals core.Names.termName("unapply")
+
+    def extractParamNamess(resultType: Type): List[List[Name]] =
+      if resultType.resultType.widen.typeSymbol.flags.is(Flags.CaseClass) &&
+          symbol.flags.is(Flags.Synthetic) then
+        resultType.resultType.widen.typeSymbol.primaryConstructor.paramInfo.paramNamess
+      else
+        Nil
+
+    def extractParamTypess(resultType: Type): List[List[Type]] =
+      resultType match {
+        case ref: TypeRef if !ref.symbol.isPrimitiveValueClass =>
+          ref.symbol.primaryConstructor.paramInfo.paramInfoss
+        case AppliedType(TypeRef(_, cls), AppliedType(_, args) :: Nil)
+            if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
+          List(args)
+        case AppliedType(_, args) =>
+          List(args)
+        case MethodTpe(_, _, resultType) =>
+          extractParamTypess(resultType)
+        case _ =>
+          Nil
+      }
+
+    def toUnapplyParamss(method: Type)(using Context): List[Param] = {
+      val resultTpe = method.finalResultType.widenDealias
+      val paramNames = extractParamNamess(resultTpe).flatten
+      val paramTypes = extractParamTypess(resultTpe).flatten
+
+      if paramNames.length == paramTypes.length then
+        (paramNames zip paramTypes).map((name, info) => Param(name.show, info.show))
+      else
+        paramTypes.map(info => Param("", info.show))
+
+    }
+
     denot.info.stripPoly match {
+      case tpe if isUnapplyDenotation =>
+        val params = toUnapplyParamss(tpe)
+        if params.nonEmpty then
+          Some(Signature("", Nil, List(params), None))
+        else
+          None
+
       case tpe: MethodType =>
         val paramss = toParamss(tpe)
         val typeParams = denot.info match {

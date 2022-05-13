@@ -31,6 +31,172 @@ class SignatureHelpTest {
       .signatureHelp(m2, List(mapSig), Some(0), 0)
   }
 
+  @Test def unapplyBooleanReturn: Unit = {
+    code"""object Even:
+          |  def unapply(s: String): Boolean = s.size % 2 == 0
+          |
+          |object O:
+          |  "even" match
+          |    case s @ Even(${m1}) => println(s"s has an even number of characters")
+          |    case s          => println(s"s has an odd number of characters")
+          """
+
+      .signatureHelp(m1, List(), Some(0), 0)
+
+  }
+
+  @Test def unapplyCustomType: Unit = {
+    val signature = S("", Nil, List(List(P("", "Int"))), None)
+
+    code"""class Nat(val x: Int):
+          |  def get: Int = x
+          |
+          |object Nat:
+          |  def unapply(x: Int): Nat = new Nat(x)
+          |
+          |object O:
+          |  5 match
+          |    case Nat(${m1}) => println(s"n is a natural number")
+          |    case _      => ()
+          """
+
+      .signatureHelp(m1, List(signature), Some(0), 0)
+
+  }
+
+  @Test def unapplyTypeClass: Unit = {
+    val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+
+    code"""class Two[A, B](a: A, b: B)
+          |object Two {
+          |  def unapply[A, B](t: Two[A, B]): Option[(A, B)] = None
+          |}
+          |
+          |object Main {
+          |  val tp = new Two(1, "")
+          |  tp match {
+          |    case Two(x$m1, $m2) =>
+          |  }
+          |}"""
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+
+  }
+
+  @Test def unapplyClass: Unit = {
+    val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+
+    code"""class Two(a: Int, b: String)
+          |object Two {
+          |  def unapply(t: Two): Option[(Int, String)] = None
+          |}
+          |
+          |object Main {
+          |  val tp = new Two(1, "")
+          |  tp match {
+          |    case Two(x$m1, $m2) =>
+          |  }
+          |}"""
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+
+  }
+
+  @Test def unapplyManyType: Unit = {
+    val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+
+    code"""
+          |object Opt {
+          |  def unapply[A, B](t: Option[(A, B)]): Option[(A, B)] = None
+          |}
+          |
+          |object Main {
+          |  Option((1, "foo")) match {
+          |    case Opt(x$m1, $m2) =>
+          |  }
+          |}"""
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+
+  }
+
+  @Test def unapplyTypeCaseClass: Unit = {
+    val signature = S("", Nil, List(List(P("a", "Int"), P("b", "String"))), None)
+
+    code"""case class Two[A, B](a: A, b: B)
+          |
+          |object Main {
+          |  val tp = new Two(1, "")
+          |  tp match {
+          |    case Two(x$m1, $m2) =>
+          |  }
+          |}"""
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+
+  }
+
+  @Test def unapplyCaseClass: Unit = {
+    val signature = S("", Nil, List(List(P("a", "Int"), P("b", "String"))), None)
+
+    code"""case class Two(a: Int, b: String)
+          |
+          |object Main {
+          |  val tp = new Two(1, "")
+          |  tp match {
+          |    case Two(x$m1, $m2) =>
+          |  }
+          |}"""
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+
+  }
+
+  @Test def unapplyOption: Unit = {
+    val signature = S("", Nil, List(List(P("", "Int"))), None)
+
+    code"""|object Main {
+           |  Option(1) match {
+           |    case Some(${m1}) =>
+           |  }
+           |}"""
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+  @Test def unapplyWithImplicits: Unit = {
+    val signature = S("", Nil, List(List(P("", "Int"))), None)
+    code"""|
+           |object Opt:
+           |  def unapply[A](using String)(a: Option[A])(using Int) = a
+           |
+           |object Main {
+           |  given String = ""
+           |  given Int = 0
+           |  Option(1) match {
+           |    case Opt(${m1}) =>
+           |  }
+           |}"""
+
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+  @Test def unapplyWithMultipleImplicits: Unit = {
+    val signature = S("", Nil, List(List(P("", "Int"))), None)
+    code"""|
+           |object Opt:
+           |  def unapply[A](using String)(using Int)(a: Option[A]) = a
+           |
+           |object Main {
+           |  given String = ""
+           |  given Int = 0
+           |  Option(1) match {
+           |    case Opt(${m1}) =>
+           |  }
+           |}"""
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+
   /** Implicit parameter lists consisting solely of DummyImplicits are hidden. */
   @Test def hiddenDummyParams: Unit = {
     val foo1Sig =
@@ -360,78 +526,6 @@ class SignatureHelpTest {
           P("bar", "Int", Some("Buzzing limit"))
           )), Some("Int"), Some("Buzzes a fizz up to bar"))
         ), None, 0)
-  }
-
-  @Test def unapplyMethod: Unit = {
-    code"""|object Main {
-           |  Option(1) match {
-           |    case Some(${m1}) =>
-           |  }
-           |}"""
-
-      .signatureHelp(m1, List(
-        S("unapply[A]", Nil, List(List(
-          P("x$0", "Some[A]", None),
-          )), Some("Option[A]"), None)
-        ), None, 0)
-  }
-
-  @Test def unapplyMethodImplicits: Unit = {
-    code"""|
-           |object Opt:
-           |  def unapply[A](using String)(a: Option[A])(using Int) = a
-           |
-           |object Main {
-           |  given String = ""
-           |  given Int = 0
-           |  Option(1) match {
-           |    case Opt(${m1}) =>
-           |  }
-           |}"""
-
-      .signatureHelp(m1, List(
-        S("unapply[A]", Nil, List(
-            List(
-              P("x$1", "String", None, isImplicit = true)
-            ),
-            List(
-              P("a", "Option[A]", None),
-            ),
-            List(
-              P("x$3", "Int", None, isImplicit = true)
-            )
-          ),
-          Some("Option[A]"), None)
-        ), None, 1)
-  }
-
-  @Test def unapplyMethodImplicitsMultiple: Unit = {
-    code"""|
-           |object Opt:
-           |  def unapply[A](using String)(using Int)(a: Option[A]) = a
-           |
-           |object Main {
-           |  given String = ""
-           |  given Int = 0
-           |  Option(1) match {
-           |    case Opt(${m1}) =>
-           |  }
-           |}"""
-
-      .signatureHelp(m1, List(
-        S("unapply[A]", Nil, List(
-            List(
-              P("x$1", "String", None, isImplicit = true)
-            ),
-            List(
-              P("x$2", "Int", None, isImplicit = true)
-            ),
-            List(
-              P("a", "Option[A]", None),
-            )
-          ),
-          Some("Option[A]"), None)
-        ), None, 2)
   }
 
   @Test def nestedApplySignatures: Unit = {
