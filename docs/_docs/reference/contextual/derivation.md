@@ -119,6 +119,16 @@ new Mirror.Product:
     new Leaf(...)
 ```
 
+If a Mirror cannot be generated automatically for a given type, an error will appear explaining why it is neither a supported 
+sum type nor a product type. For example, if `A` is a trait that is not sealed,
+
+```
+No given instance of type deriving.Mirror.Of[A] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[A]: 
+     * trait A is not a generic product because it is not a case class
+     * trait A is not a generic sum because it is not a sealed trait
+```
+
+
 Note the following properties of `Mirror` types,
 
 + Properties are encoded using types rather than terms. This means that they have no runtime footprint unless used and
