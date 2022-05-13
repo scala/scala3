@@ -364,7 +364,7 @@ trait TypeAssigner {
             // reference to a polytype would have to be a fresh copy of that type,
             // but we want to avoid that because it would increase compilation cost.
             // See pos/i6682a.scala for a test case where the defensive copying matters.
-            val ensureFresh = new TypeMap:
+            val ensureFresh = new TypeMap with CaptureSet.IdempotentCaptRefMap:
               def apply(tp: Type) = mapOver(
                 if tp eq pt then pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
                 else tp)

@@ -15,14 +15,11 @@ object CapturingType:
 
   def apply(parent: Type, refs: CaptureSet, kind: CapturingKind)(using Context): Type =
     if refs.isAlwaysEmpty then parent
-    else AnnotatedType(parent, CaptureAnnotation(refs, kind))
+    else AnnotatedType(parent, CaptureAnnotation(refs, kind)(defn.RetainsAnnot))
 
   def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet, CapturingKind)] =
-    if ctx.phase == Phases.checkCapturesPhase then
-      val r = EventuallyCapturingType.unapply(tp)
-      r match
-        case Some((_, _, CapturingKind.ByName)) => None
-        case _ => r
+    if ctx.phase == Phases.checkCapturesPhase && tp.annot.symbol == defn.RetainsAnnot then
+      EventuallyCapturingType.unapply(tp)
     else None
 
 end CapturingType
@@ -42,7 +39,6 @@ object EventuallyCapturingType:
         case ann =>
           val kind =
             if ann.tree.isBoxedCapturing then CapturingKind.Boxed
-            else if sym == defn.RetainsByNameAnnot then CapturingKind.ByName
             else CapturingKind.Regular
           try Some((tp.parent, ann.tree.toCaptureSet, kind))
           catch case ex: IllegalCaptureRef => None

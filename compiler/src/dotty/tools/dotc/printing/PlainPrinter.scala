@@ -233,7 +233,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ (if tp.resultType.isInstanceOf[MethodType] then ")" else "): ")
           ~ toText(tp.resultType)
         }
-      case ExprType(ct @ EventuallyCapturingType(parent, refs, CapturingKind.ByName)) =>
+      case ExprType(ct @ EventuallyCapturingType(parent, refs, _))
+      if ct.annot.symbol == defn.RetainsByNameAnnot =>
         if refs.isUniversal then changePrec(GlobalPrec) { "=> " ~ toText(parent) }
         else toText(CapturingType(ExprType(parent), refs, CapturingKind.Regular))
       case ExprType(restp) =>

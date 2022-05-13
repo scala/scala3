@@ -3808,10 +3808,9 @@ object Types {
             case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
               val parent1 = mapOver(parent)
               if ann.symbol == defn.RetainsAnnot || ann.symbol == defn.RetainsByNameAnnot then
-                val byName = ann.symbol == defn.RetainsByNameAnnot
                 range(
-                  AnnotatedType(parent1, CaptureSet.empty.toRegularAnnotation(byName)),
-                  AnnotatedType(parent1, CaptureSet.universal.toRegularAnnotation(byName)))
+                  AnnotatedType(parent1, CaptureSet.empty.toRegularAnnotation(ann.symbol)),
+                  AnnotatedType(parent1, CaptureSet.universal.toRegularAnnotation(ann.symbol)))
               else
                 parent1
             case _ => mapOver(tp)
@@ -5050,7 +5049,7 @@ object Types {
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
           else givenSelf match
-            case givenSelf @ EventuallyCapturingType(tp, refs, kind) =>
+            case givenSelf @ EventuallyCapturingType(tp, _, _) =>
               givenSelf.derivedAnnotatedType(tp & appliedRef, givenSelf.annot)
             case _ =>
               AndType(givenSelf, appliedRef)

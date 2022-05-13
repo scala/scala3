@@ -1157,7 +1157,7 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case EventuallyCapturingType(tp1, refs, CapturingKind.ByName) =>
+      case tp @ EventuallyCapturingType(tp1, refs, _) if tp.annot.symbol == RetainsByNameAnnot =>
         CapturingType(apply(tp1), refs, CapturingKind.Regular)
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)

@@ -12,7 +12,7 @@ import printing.Printer
 import printing.Texts.Text
 
 
-case class CaptureAnnotation(refs: CaptureSet, kind: CapturingKind) extends Annotation:
+case class CaptureAnnotation(refs: CaptureSet, kind: CapturingKind)(cls: Symbol) extends Annotation:
   import CaptureAnnotation.*
   import tpd.*
 
@@ -25,8 +25,7 @@ case class CaptureAnnotation(refs: CaptureSet, kind: CapturingKind) extends Anno
     val arg = repeated(elems, TypeTree(defn.AnyType))
     New(symbol.typeRef, arg :: Nil)
 
-  override def symbol(using Context) =
-    if kind == CapturingKind.ByName then defn.RetainsByNameAnnot else defn.RetainsAnnot
+  override def symbol(using Context) = cls
 
   override def derivedAnnotation(tree: Tree)(using Context): Annotation =
     if refs == CaptureSet.universal then this
@@ -34,10 +33,11 @@ case class CaptureAnnotation(refs: CaptureSet, kind: CapturingKind) extends Anno
 
   def derivedAnnotation(refs: CaptureSet, kind: CapturingKind)(using Context): Annotation =
     if (this.refs eq refs) && (this.kind == kind) then this
-    else CaptureAnnotation(refs, kind)
+    else CaptureAnnotation(refs, kind)(cls)
 
   override def sameAnnotation(that: Annotation)(using Context): Boolean = that match
-    case CaptureAnnotation(refs2, kind2) => refs == refs2 && kind == kind2
+    case CaptureAnnotation(refs2, kind2) =>
+      refs == refs2 && kind == kind2 && this.symbol == that.symbol
     case _ => false
 
   override def mapWith(tp: TypeMap)(using Context) =
