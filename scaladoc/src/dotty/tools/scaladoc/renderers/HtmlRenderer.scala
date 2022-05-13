@@ -240,8 +240,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             a(href := "https://www.scala-lang.org/blog/", cls := "text-button") (
               "Community",
             ),
-          button(id := "theme-toggle", cls := "icon-button"),
-          button(id := "mobile-menu-toggle", cls := "icon-button hamburger"),
+          span(id := "theme-toggle", cls := "icon-button"),
+          span(id := "mobile-menu-toggle", cls := "icon-button hamburger"),
         ),
       ),
       div(id := "mobile-menu")(
@@ -275,7 +275,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           span(id := "mobile-theme-toggle", cls := "mobile-menu-item mode"),
         )
       ),
-      button(id := "mobile-sidebar-toggle", cls := "floating-button"),
+      span(id := "mobile-sidebar-toggle", cls := "floating-button"),
       div(id := "leftColumn", cls := "body-small")(
         Seq(
           div(cls:= "switcher-container")(

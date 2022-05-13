@@ -48,7 +48,7 @@
   text-decoration: none;
   color: var(--action-primary-content-default);
   border-bottom: 1px solid var(--border-default);
-  padding: calc(1.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
+  padding: calc(2.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
   display: flex;
   align-items: center;
 }
