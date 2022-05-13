@@ -146,7 +146,7 @@ object SymUtils:
       if (!self.is(Sealed))
         s"it is not a sealed ${self.kindString}"
       else if (!self.isOneOf(AbstractOrTrait))
-        s"it is not an abstract class"
+        "it is not an abstract class"
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror

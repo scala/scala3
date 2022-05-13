@@ -1,4 +1,6 @@
 -- Error: tests/neg/i14432.scala:13:33 ---------------------------------------------------------------------------------
 13 |val mFoo = summon[Mirror.Of[Foo]] // error: no mirror found
    |                                 ^
-   |no given instance of type deriving.Mirror.Of[example.Foo] was found for parameter x of method summon in object Predef
+   |No given instance of type deriving.Mirror.Of[example.Foo] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[example.Foo]: 
+   |	* class Foo is not a generic product because the constructor of class Foo is innaccessible from the calling scope.
+   |	* class Foo is not a generic sum because it is not a sealed class

@@ -5,7 +5,7 @@ package typer
 import core._
 import util.Spans.Span
 import Contexts._
-import Types._, Flags._, Symbols._, Types._, Names._, StdNames._, Constants._
+import Types._, Flags._, Symbols._, Names._, StdNames._, Constants._
 import TypeErasure.{erasure, hasStableErasure}
 import Decorators._
 import ProtoTypes._
@@ -15,23 +15,25 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import transform.SyntheticMembers._
 import util.Property
+import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
+import ast.tpd._
+import Synthesizer._
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
-  import ast.tpd._
 
   /** Handlers to synthesize implicits for special types */
-  type SpecialHandler = (Type, Span) => Context ?=> Tree
+  type SpecialHandler = (Type, Span) => Context ?=> TreeWithErrors
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
-
+  
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
     formal.argInfos match
       case arg :: Nil =>
         fullyDefinedType(arg, "ClassTag argument", span) match
           case defn.ArrayOf(elemTp) =>
             val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
-            if etag.tpe.isError then EmptyTree else etag.select(nme.wrap)
+            if etag.tpe.isError then EmptyTreeNoError else withNoErrors(etag.select(nme.wrap))
           case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
             val sym = tp.typeSymbol
             val classTag = ref(defn.ClassTagModule)
@@ -41,9 +43,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               else
                 val clsOfType = escapeJavaArray(erasure(tp))
                 classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(clsOfType))
-            tag.withSpan(span)
-          case tp => EmptyTree
-      case _ => EmptyTree
+            withNoErrors(tag.withSpan(span))
+          case tp => EmptyTreeNoError
+      case _ => EmptyTreeNoError
   end synthesizedClassTag
 
   val synthesizedTypeTest: SpecialHandler =
@@ -54,9 +56,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         val sym2 = tp2.typeSymbol
         if tp1 <:< tp2 then
           // optimization when we know the typetest will always succeed
-          ref(defn.TypeTestModule_identity).appliedToType(tp2).withSpan(span)
+          withNoErrors(ref(defn.TypeTestModule_identity).appliedToType(tp2).withSpan(span))
         else if sym2 == defn.AnyValClass || sym2 == defn.AnyRefAlias || sym2 == defn.ObjectClass then
-          EmptyTree
+          EmptyTreeNoError
         else
           // Generate SAM: (s: <tp1>) => if s.isInstanceOf[<tp2>] then Some(s.asInstanceOf[s.type & <tp2>]) else None
           def body(args: List[Tree]): Tree = {
@@ -72,9 +74,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           val tpe = MethodType(List(nme.s))(_ => List(tp1), mth => defn.OptionClass.typeRef.appliedTo(mth.newParamRef(0) & tp2))
           val meth = newAnonFun(ctx.owner, tpe, coord = span)
           val typeTestType = defn.TypeTestClass.typeRef.appliedTo(List(tp1, tp2))
-          Closure(meth, tss => body(tss.head).changeOwner(ctx.owner, meth), targetType = typeTestType).withSpan(span)
+          withNoErrors(Closure(meth, tss => body(tss.head).changeOwner(ctx.owner, meth), targetType = typeTestType).withSpan(span))
       case _ =>
-        EmptyTree
+        EmptyTreeNoError
     }
   end synthesizedTypeTest
 
@@ -109,17 +111,17 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             // TupledFunction[?, ?]
             -1
         if arity == -1 then
-          EmptyTree
+          EmptyTreeNoError
         else if arity <= Definitions.MaxImplementedFunctionArity then
-          ref(defn.RuntimeTupleFunctionsModule)
+          withNoErrors(ref(defn.RuntimeTupleFunctionsModule)
             .select(s"tupledFunction$arity".toTermName)
-            .appliedToTypes(funArgs)
+            .appliedToTypes(funArgs))
         else
-          ref(defn.RuntimeTupleFunctionsModule)
+          withNoErrors(ref(defn.RuntimeTupleFunctionsModule)
             .select("tupledFunctionXXL".toTermName)
-            .appliedToTypes(funArgs)
+            .appliedToTypes(funArgs))
       case _ =>
-        EmptyTree
+        EmptyTreeNoError
   end synthesizedTupleFunction
 
   /** If `formal` is of the form CanEqual[T, U], try to synthesize an
@@ -191,13 +193,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", span))
         if canComparePredefined(arg1, arg2)
             || !Implicits.strictEquality && explore(validEqAnyArgs(arg1, arg2))
-        then ref(defn.CanEqual_canEqualAny).appliedToTypes(args).withSpan(span)
-        else EmptyTree
-      case _ => EmptyTree
+        then withNoErrors(ref(defn.CanEqual_canEqualAny).appliedToTypes(args).withSpan(span))
+        else EmptyTreeNoError
+      case _ => EmptyTreeNoError
   end synthesizedCanEqual
 
   /** Creates a tree that will produce a ValueOf instance for the requested type.
-   * An EmptyTree is returned if materialization fails.
+   * An EmptyTreeNoError is returned if materialization fails.
    */
   val synthesizedValueOf: SpecialHandler = (formal, span) =>
 
@@ -207,15 +209,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case arg :: Nil =>
         fullyDefinedType(arg, "ValueOf argument", span).normalized.dealias match
           case ConstantType(c: Constant) =>
-            success(Literal(c))
+            withNoErrors(success(Literal(c)))
           case tp: TypeRef if tp.isRef(defn.UnitClass) =>
-            success(Literal(Constant(())))
+            withNoErrors(success(Literal(Constant(()))))
           case n: TermRef =>
-            success(ref(n))
+            withNoErrors(success(ref(n)))
           case tp =>
-            EmptyTree
+            EmptyTreeNoError
       case _ =>
-        EmptyTree
+        EmptyTreeNoError
   end synthesizedValueOf
 
   /** Create an anonymous class `new Object { type MirroredMonoType = ... }`
@@ -274,7 +276,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         case t => mapOver(t)
     monoMap(mirroredType.resultType)
 
-  private def productMirror(mirroredType: Type, formal: Type, span: Span)(using Context): Tree =
+  private def productMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
 
     /** do all parts match the class symbol? */
     def acceptable(tp: Type, cls: Symbol): Boolean = tp match
@@ -299,7 +301,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     def genAnonyousMirror(cls: Symbol): Boolean =
       cls.is(Scala2x) || cls.linkedClass.is(Case)
 
-    def makeProductMirror(cls: Symbol): Tree =
+    def makeProductMirror(cls: Symbol): TreeWithErrors =
       val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
       val nestedPairs = TypeOps.nestedPairs(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
@@ -318,12 +320,22 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       val mirrorRef =
         if (genAnonyousMirror(cls)) anonymousMirror(monoType, ExtendsProductMirror, span)
         else companionPath(mirroredType, span)
-      mirrorRef.cast(mirrorType)
+      withNoErrors(mirrorRef.cast(mirrorType))
     end makeProductMirror
+
+    def getError(cls: Symbol): String = 
+      val reason = if !cls.isGenericProduct then
+        i"because ${cls.whyNotGenericProduct}"
+      else if !canAccessCtor(cls) then
+        i"because the constructor of $cls is innaccessible from the calling scope."
+      else 
+        ""
+      i"$cls is not a generic product $reason"
+    end getError
 
     mirroredType match
       case AndType(tp1, tp2) =>
-        productMirror(tp1, formal, span).orElse(productMirror(tp2, formal, span))
+        orElse(productMirror(tp1, formal, span), productMirror(tp2, formal, span))
       case _ =>
         if mirroredType.termSymbol.is(CaseVal) then
           val module = mirroredType.termSymbol
@@ -331,10 +343,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           if module.info.classSymbol.is(Scala2x) then
             val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, module.name, formal)
             val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, modulePath :: Nil)
-            mirrorRef.cast(mirrorType)
+            withNoErrors(mirrorRef.cast(mirrorType))
           else
             val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, module.name, formal)
-            modulePath.cast(mirrorType)
+            withNoErrors(modulePath.cast(mirrorType))
         else
           val cls = mirroredType.classSymbol
           if acceptable(mirroredType, cls)
@@ -343,12 +355,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           then
             makeProductMirror(cls)
           else
-            EmptyTree
+            (EmptyTree, List(getError(cls)))
   end productMirror
 
-  private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): Tree =
+  private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
+
     val cls = mirroredType.classSymbol
     val useCompanion = cls.useCompanionAsSumMirror
+    val declScope = if useCompanion then cls.linkedClass else ctx.owner
+    val clsIsGenericSum = cls.isGenericSum(declScope)
 
     def acceptable(tp: Type): Boolean = tp match
       case tp: TermRef => false
@@ -357,7 +372,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case OrType(tp1, tp2) => acceptable(tp1) && acceptable(tp2)
       case _            => tp.classSymbol eq cls
 
-    if acceptable(mirroredType) && cls.isGenericSum(if useCompanion then cls.linkedClass else ctx.owner) then
+    if acceptable(mirroredType) && clsIsGenericSum then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
@@ -410,18 +425,21 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       val mirrorRef =
         if useCompanion then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsSumMirror, span)
-      mirrorRef.cast(mirrorType)
-    else EmptyTree
+      withNoErrors(mirrorRef.cast(mirrorType))
+    else if !clsIsGenericSum then
+      (EmptyTree, List(i"$cls is not a generic sum because ${cls.whyNotGenericSum(declScope)}"))
+    else 
+      EmptyTreeNoError
   end sumMirror
 
   def makeMirror
-      (synth: (Type, Type, Span) => Context ?=> Tree, formal: Type, span: Span)
-      (using Context): Tree =
+      (synth: (Type, Type, Span) => Context ?=> TreeWithErrors, formal: Type, span: Span)
+      (using Context): TreeWithErrors =
     if checkFormal(formal) then
       formal.member(tpnme.MirroredType).info match
         case TypeBounds(mirroredType, _) => synth(TypeOps.stripTypeVars(mirroredType), formal, span)
-        case other => EmptyTree
-    else EmptyTree
+        case other => EmptyTreeNoError
+    else EmptyTreeNoError
 
   /** An implied instance for a type of the form `Mirror.Product { type MirroredType = T }`
    *  where `T` is a generic product type or a case object or an enum case.
@@ -439,15 +457,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
    *  where `T` is a generic sum or product or singleton type.
    */
   val synthesizedMirror: SpecialHandler = (formal, span) =>
-    formal.member(tpnme.MirroredType).info match
-      case TypeBounds(mirroredType, _) =>
-        if mirroredType.termSymbol.is(CaseVal)
-           || mirroredType.classSymbol.isGenericProduct
-        then
-          synthesizedProductMirror(formal, span)
-        else
-          synthesizedSumMirror(formal, span)
-      case _ => EmptyTree
+    orElse(synthesizedProductMirror(formal, span), synthesizedSumMirror(formal, span))
 
   private def escapeJavaArray(tp: Type)(using Context): Type = tp match
     case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
@@ -553,9 +563,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                |replace with the type `scala.reflect.ClassTag[$arg]`.
                |Alternatively, consider using the new metaprogramming features of Scala 3,
                |see https://docs.scala-lang.org/scala3/reference/metaprogramming.html""", ctx.source.atSpan(span))
-        manifest
+        withNoErrors(manifest)
       case _ =>
-        EmptyTree
+        EmptyTreeNoError
 
   end manifestFactoryOf
 
@@ -575,8 +585,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     defn.OptManifestClass     -> synthesizedOptManifest,
   )
 
-  def tryAll(formal: Type, span: Span)(using Context): Tree =
-    def recur(handlers: SpecialHandlers): Tree = handlers match
+  def tryAll(formal: Type, span: Span)(using Context): TreeWithErrors =
+    def recur(handlers: SpecialHandlers): TreeWithErrors = handlers match
       case (cls, handler) :: rest =>
         def baseWithRefinements(tp: Type): Type = tp.dealias match
           case tp @ RefinedType(parent, rname, rinfo) =>
@@ -585,13 +595,34 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             tp.baseType(cls)
         val base = baseWithRefinements(formal)
         val result =
-          if (base <:< formal.widenExpr)
+          if (base <:< formal.widenExpr)  
             // With the subtype test we enforce that the searched type `formal` is of the right form
             handler(base, span)
-          else EmptyTree
-        result.orElse(recur(rest))
+          else EmptyTreeNoError
+        orElse(result, recur(rest))
       case Nil =>
-        EmptyTree
-    recur(specialHandlers)
+        EmptyTreeNoError
+    val result = recur(specialHandlers)
+    clearErrorsIfNotEmpty(result)
+
+end Synthesizer
+
+object Synthesizer:
+
+  /** Tuple used to store the synthesis result with a list of errors.  */ 
+  type TreeWithErrors = (Tree, List[String])
+  private def withNoErrors(tree: Tree): TreeWithErrors = (tree, List.empty)
+
+  private val EmptyTreeNoError: TreeWithErrors = withNoErrors(EmptyTree)
+
+  private def orElse(treeWithErrors1: TreeWithErrors, treeWithErrors2: => TreeWithErrors): TreeWithErrors = treeWithErrors1 match
+    case (tree, errors) if tree eq genericEmptyTree => 
+      val (tree2, errors2) = treeWithErrors2
+      (tree2, errors ::: errors2)
+    case _ => treeWithErrors1
+
+  private def clearErrorsIfNotEmpty(treeWithErrors: TreeWithErrors) = treeWithErrors match 
+    case (tree, _) if tree eq genericEmptyTree => treeWithErrors
+    case (tree, _)                             => withNoErrors(tree)
 
 end Synthesizer
