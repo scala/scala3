@@ -643,19 +643,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     def typeSelectOnTerm(using Context): Tree =
       val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
-      val qual1 = if Nullables.unsafeNullsEnabled then
-        qual.tpe match {
-          case OrNull(tpe1) if tpe1 <:< defn.ObjectType =>
-            qual.cast(AndType(qual.tpe, tpe1))
-          case tp =>
-            if tp.isNullType
-              && (tree.name == nme.eq || tree.name == nme.ne) then
-              // Allow selecting `eq` and `ne` on `Null` specially
-              qual.cast(defn.ObjectType)
-            else qual
-        }
-      else qual
-      typedSelect(tree, pt, qual1).withSpan(tree.span).computeNullable()
+      typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
 
     def javaSelectOnType(qual: Tree)(using Context) =
       // semantic name conversion for `O$` in java code
