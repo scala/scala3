@@ -38,9 +38,9 @@ class SignatureHelpTest {
           |object O:
           |  "even" match
           |    case s @ Even(${m1}) => println(s"s has an even number of characters")
-          |    case s          => println(s"s has an odd number of characters")
+          |    case s               => println(s"s has an odd number of characters")
           """
-      .signatureHelp(m1, List(), Some(0), 0)
+      .signatureHelp(m1, Nil, Some(0), 0)
 
   }
 

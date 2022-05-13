@@ -149,9 +149,9 @@ object Signatures {
       }
 
     def toUnapplyParamss(method: Type)(using Context): List[Param] = {
-      val resultTpe = method.finalResultType.widenDealias
-      val paramNames = extractParamNamess(resultTpe).flatten
-      val paramTypes = extractParamTypess(resultTpe).flatten
+      val resultType = method.finalResultType.widenDealias
+      val paramNames = extractParamNamess(resultType).flatten
+      val paramTypes = extractParamTypess(resultType).flatten
 
       if paramNames.length == paramTypes.length then
         (paramNames zip paramTypes).map((name, info) => Param(name.show, info.show))
@@ -228,7 +228,7 @@ object Signatures {
       err.msg match
         case msg: AmbiguousOverload  => msg.alternatives
         case msg: NoMatchingOverload => msg.alternatives
-        case _                                => Nil
+        case _                       => Nil
 
     // If the user writes `foo(bar, <cursor>)`, the typer will insert a synthetic
     // `null` parameter: `foo(bar, null)`. This may influence what's the "best"
@@ -245,8 +245,7 @@ object Signatures {
       alt.info.stripPoly match {
         case tpe: MethodType =>
           userParamsTypes.zip(tpe.paramInfos).takeWhile{ case (t0, t1) => t0 <:< t1 }.size
-        case _ =>
-          0
+        case _ => 0
       }
     }
     val bestAlternative =
