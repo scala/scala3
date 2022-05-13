@@ -911,6 +911,8 @@ trait Applications extends Compatibility {
           case funRef: TermRef =>
             var app = ApplyTo(tree, fun1, funRef, proto, pt)
             if ctx.mode.is(Mode.UnsafeJavaReturn) then
+              // When UnsafeJavaReturn is enabled and the applied function is Java defined,
+              // we replece `| Null` with `@CanEqualNull` in the return type.
               val funSym = fun1.symbol
               if funSym.is(JavaDefined)
                 && funSym.isTerm

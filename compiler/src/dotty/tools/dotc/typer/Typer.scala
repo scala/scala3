@@ -648,6 +648,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
       var sel = typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
       if ctx.mode.is(Mode.UnsafeJavaReturn) && pt != AssignProto then
+        // When UnsafeJavaReturn is enabled and the selected member is Java defined,
+        // we replece `| Null` with `@CanEqualNull` in its type
+        // if it is not at left hand side of assignments.
         val sym = sel.symbol
         if sym.is(JavaDefined) && sym.isTerm && !sym.is(Method) then
           val stp1 = sel.tpe.widen
