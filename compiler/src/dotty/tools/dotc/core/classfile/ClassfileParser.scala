@@ -50,6 +50,12 @@ object ClassfileParser {
         mapOver(tp)
     }
   }
+
+  private inline def sigOfClassName(n: String) = s"L$n;"
+  val ScalaSignatureAnnot: String = sigOfClassName("scala.reflect.ScalaSignature")
+  val ScalaLongSignatureAnnot: String = sigOfClassName("scala.reflect.ScalaLongSignature")
+  val TASTYSignatureAnnot: String = sigOfClassName("scala.annotation.internal.TASTYSignature")
+  val TASTYLongSignatureAnnot: String = sigOfClassName("scala.annotation.internal.TASTYLongSignature")
 }
 
 class ClassfileParser(
@@ -1004,19 +1010,19 @@ class ClassfileParser(
         val nAnnots = in.nextChar
         var i = 0
         while (i < nAnnots) {
-          val attrClass = pool.getType(in.nextChar).typeSymbol
+          val attrSig = pool.getExternalName(in.nextChar).value
           val nArgs = in.nextChar
           var j = 0
           while (j < nArgs) {
             val argName = pool.getName(in.nextChar)
             if (argName.name == nme.bytes) {
-              if (attrClass == defn.ScalaSignatureAnnot)
+              if attrSig == ScalaSignatureAnnot then
                 return unpickleScala(parseScalaSigBytes)
-              else if (attrClass == defn.ScalaLongSignatureAnnot)
+              else if attrSig == ScalaLongSignatureAnnot then
                 return unpickleScala(parseScalaLongSigBytes)
-              else if (attrClass == defn.TASTYSignatureAnnot)
+              else if attrSig == TASTYSignatureAnnot then
                 return unpickleTASTY(parseScalaSigBytes)
-              else if (attrClass == defn.TASTYLongSignatureAnnot)
+              else if attrSig == TASTYLongSignatureAnnot then
                 return unpickleTASTY(parseScalaLongSigBytes)
             }
             parseAnnotArg(skip = true)
