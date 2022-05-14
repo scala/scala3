@@ -22,7 +22,6 @@ def main: Unit = {
     extension [T] (inline ctx: MacroC.StringContext) inline def unapplySeq(inline input: T): Option[Seq[T]] =
       ${ implUnapplyC('ctx, 'input) }
 
-    // compiler error
     val macroC"$xC" = 3
   }
 
