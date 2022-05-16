@@ -41,10 +41,9 @@ class SignatureHelpTest {
           |    case s               => println(s"s has an odd number of characters")
           """
       .signatureHelp(m1, Nil, Some(0), 0)
-
   }
 
-  @Test def unapplyCustomType: Unit = {
+  @Test def unapplyCustomClass: Unit = {
     val signature = S("", Nil, List(List(P("", "Int"))), None)
 
     code"""class Nat(val x: Int):
@@ -59,7 +58,6 @@ class SignatureHelpTest {
           |    case _      => ()
           """
       .signatureHelp(m1, List(signature), Some(0), 0)
-
   }
 
   @Test def unapplyTypeClass: Unit = {
@@ -78,7 +76,6 @@ class SignatureHelpTest {
           |}"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
-
   }
 
   @Test def unapplyClass: Unit = {
@@ -97,8 +94,83 @@ class SignatureHelpTest {
           |}"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
-
   }
+
+  @Test def productMatch: Unit = {
+    val signature = S("", Nil, List(List(P("", "Char"), P("", "Char"))), None)
+
+    code"""class FirstChars(s: String) extends Product:
+          |  def _1 = s.charAt(0)
+          |  def _2 = s.charAt(1)
+          |
+          |object FirstChars:
+          |  def unapply(s: String): FirstChars = new FirstChars(s)
+          |
+          |object Test:
+          |  "Hi!" match
+          |    case FirstChars(ch${m1}, ch${m2}) => ???
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+  }
+
+  @Test def nameBasedMatch: Unit = {
+    val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+
+    code"""object ProdEmpty:
+          |  def _1: Int = ???
+          |  def _2: String = ???
+          |  def isEmpty = true
+          |  def unapply(s: String): this.type = this
+          |  def get = this
+          |
+          |object Test:
+          |  "" match
+          |    case ProdEmpty(${m1}, ${m2}) => ???
+          |    case _ => ()
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+  }
+
+  @Test def sequenceMatch: Unit = {
+    val signature = S("", Nil, List(List(P("", "Seq[Char]"))), None)
+
+    code"""object CharList:
+          |  def unapplySeq(s: String): Option[Seq[Char]] = Some(s.toList)
+          |
+          |object Test:
+          |  "example" match
+          |    case CharList(c${m1}1, c${m2}2, c${m3}3, c4, _, _, ${m4}) => ???
+          |    case _ =>
+          |      println("Expected *exactly* 7 characters!")
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+      .signatureHelp(m3, List(signature), Some(0), 2)
+      .signatureHelp(m4, List(signature), Some(0), 6)
+  }
+
+  @Test def productSequenceMatch: Unit = {
+    val signature = S("", Nil, List(List(P("", "String"), P("", "Seq[Int]"))), None)
+
+    code"""class Foo(val name: String, val children: Int *)
+          |object Foo:
+          |  def unapplySeq(f: Foo): Option[(String, Seq[Int])] =
+          |    Some((f.name, f.children))
+          |
+          |def foo(f: Foo) = f match
+          |  case Foo(na${m1}e, n${m2} : _*) =>
+          |  case Foo(nam${m3}e, ${m4}x, ${m5}y, n${m6}s : _*) =>
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+      .signatureHelp(m3, List(signature), Some(0), 0)
+      .signatureHelp(m4, List(signature), Some(0), 1)
+      .signatureHelp(m5, List(signature), Some(0), 2)
+      .signatureHelp(m6, List(signature), Some(0), 3)
+  }
+
 
   @Test def unapplyManyType: Unit = {
     val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
@@ -115,7 +187,6 @@ class SignatureHelpTest {
           |}"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
-
   }
 
   @Test def unapplyTypeCaseClass: Unit = {
@@ -131,7 +202,6 @@ class SignatureHelpTest {
           |}"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
-
   }
 
   @Test def unapplyCaseClass: Unit = {
@@ -147,7 +217,6 @@ class SignatureHelpTest {
           |}"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
-
   }
 
   @Test def unapplyOption: Unit = {
@@ -193,7 +262,6 @@ class SignatureHelpTest {
            |}"""
       .signatureHelp(m1, List(signature), Some(0), 0)
   }
-
 
   /** Implicit parameter lists consisting solely of DummyImplicits are hidden. */
   @Test def hiddenDummyParams: Unit = {

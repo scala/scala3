@@ -11,6 +11,7 @@ import core.Names._
 import core.Types._
 import util.Spans.Span
 import reporting._
+import dotty.tools.dotc.core.NameKinds
 
 
 object Signatures {
@@ -124,11 +125,10 @@ object Signatures {
      *
      * @return true if denot is "unapply", false otherwise
      */
-    def isUnapplyDenotation: Boolean = denot.name equals core.Names.termName("unapply")
+    def isUnapplyDenotation: Boolean = List(core.Names.termName("unapply"), core.Names.termName("unapplySeq")) contains denot.name
 
     def extractParamNamess(resultType: Type): List[List[Name]] =
-      if resultType.resultType.widen.typeSymbol.flags.is(Flags.CaseClass) &&
-          symbol.flags.is(Flags.Synthetic) then
+      if resultType.resultType.widen.typeSymbol.flags.is(Flags.CaseClass) && symbol.flags.is(Flags.Synthetic) then
         resultType.resultType.widen.typeSymbol.primaryConstructor.paramInfo.paramNamess
       else
         Nil
@@ -136,14 +136,26 @@ object Signatures {
     def extractParamTypess(resultType: Type): List[List[Type]] =
       resultType match {
         case ref: TypeRef if !ref.symbol.isPrimitiveValueClass =>
-          ref.symbol.primaryConstructor.paramInfo.paramInfoss
-        case AppliedType(TypeRef(_, cls), AppliedType(_, args) :: Nil)
+          if (
+            ref.symbol.asClass.baseClasses.contains(ctx.definitions.ProductClass) &&
+            !ref.symbol.is(Flags.CaseClass)
+          ) || ref.symbol.isStaticOwner then
+            val productAccessors = ref.memberDenots(
+              underscoreMembersFilter,
+              (name, buf) => buf += ref.member(name).asSingleDenotation
+            )
+            List(productAccessors.map(_.info.finalResultType).toList)
+          else
+            ref.symbol.primaryConstructor.paramInfo.paramInfoss
+        case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
             if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
-          List(args)
+          tycon match
+            case TypeRef(_, cls) if cls == ctx.definitions.SeqClass => List(List(appliedType))
+            case _ => List(args)
         case AppliedType(_, args) =>
           List(args)
         case MethodTpe(_, _, resultType) =>
-          extractParamTypess(resultType)
+          extractParamTypess(resultType.widenDealias)
         case _ =>
           Nil
       }
@@ -193,6 +205,11 @@ object Signatures {
       case other =>
         None
     }
+  }
+
+  object underscoreMembersFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(using Context): Boolean = name.startsWith("_")
+    def isStable = true
   }
 
   /**
