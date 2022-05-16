@@ -208,7 +208,6 @@ subsection:
       - page: internals/explicit-nulls.md
       - page: internals/periods.md
       - page: internals/syntax.md
-      - page: internals/syntax-3.1.md
       - page: internals/type-system.md
       - page: internals/dotty-internals-1-notes.md
       - page: internals/debug-macros.md
