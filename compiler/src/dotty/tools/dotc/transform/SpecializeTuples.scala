@@ -24,23 +24,23 @@ class SpecializeTuples extends MiniPhase:
   override def transformApply(tree: Apply)(using Context): Tree = tree match
     case Apply(TypeApply(fun: NameTree, targs), args)
         if fun.name == nme.apply && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner.companionClass, targs.map(_.tpe)) =>
-      Apply(Select(New(defn.SpecialisedTuple(fun.symbol.owner.companionClass, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
+      cpy.Apply(tree)(Select(New(defn.SpecialisedTuple(fun.symbol.owner.companionClass, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
     case Apply(TypeApply(fun: NameTree, targs), args)
         if fun.name == nme.CONSTRUCTOR && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner, targs.map(_.tpe)) =>
-      Apply(Select(New(defn.SpecialisedTuple(fun.symbol.owner, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
+      cpy.Apply(tree)(Select(New(defn.SpecialisedTuple(fun.symbol.owner, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
     case _ => tree
   end transformApply
 
   override def transformSelect(tree: Select)(using Context): Tree = tree match
-    case Select(qual, nme._1) if qual.tpe.widen.match
-      case AppliedType(tycon, args) => defn.isSpecializableTuple(tycon.classSymbol, args)
-      case _                        => false
+    case Select(qual, nme._1) if isAppliedSpecializableTuple(qual.tpe.widen)
     => Select(qual, nme._1.specializedName(qual.tpe.widen.argInfos.slice(0, 1)))
-    case Select(qual, nme._2) if qual.tpe.widen.match
-      case AppliedType(tycon, args) => defn.isSpecializableTuple(tycon.classSymbol, args)
-      case _                        => false
+    case Select(qual, nme._2) if isAppliedSpecializableTuple(qual.tpe.widen)
     => Select(qual, nme._2.specializedName(qual.tpe.widen.argInfos.slice(1, 2)))
     case _ => tree
+
+  private def isAppliedSpecializableTuple(tp: Type)(using Context) = tp match
+    case AppliedType(tycon, args) => defn.isSpecializableTuple(tycon.classSymbol, args)
+    case _                        => false
 end SpecializeTuples
 
 object SpecializeTuples:
