@@ -94,7 +94,6 @@ subsection:
           - page: reference/other-new-features/targetName.md
           - page: reference/other-new-features/control-syntax.md
           - page: reference/other-new-features/indentation.md
-          - page: reference/other-new-features/indentation-experimental.md
           - page: reference/other-new-features/safe-initialization.md
           - page: reference/other-new-features/type-test.md
           - page: reference/other-new-features/experimental-defs.md
@@ -155,6 +154,7 @@ subsection:
         directory: experimental
         index: reference/experimental/overview.md
         subsection:
+          - page: reference/experimental/fewer-braces.md
           - page: reference/experimental/canthrow.md
           - page: reference/experimental/erased-defs.md
           - page: reference/experimental/erased-defs-spec.md
