@@ -1,5 +1,7 @@
 package scala.runtime
 
+import scala.annotation.since
+
 /**
  * Helper methods used in thread-safe lazy vals.
  */
@@ -105,6 +107,14 @@ object LazyVals {
       println(s"getOffset($clz, $name) = $r")
     r
   }
+
+  @since("3.2")
+  def getOffsetStatic(field: java.lang.reflect.Field) =
+    val r = unsafe.objectFieldOffset(field)
+    if (debug)
+      println(s"getOffset(${field.getDeclaringClass}, ${field.getName}) = $r")
+    r
+
 
   object Names {
     final val state = "STATE"

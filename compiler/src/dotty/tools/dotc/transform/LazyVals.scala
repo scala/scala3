@@ -382,6 +382,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val thizClass = Literal(Constant(claz.info))
     val helperModule = requiredModule("scala.runtime.LazyVals")
     val getOffset = Select(ref(helperModule), lazyNme.RLazyVals.getOffset)
+    val getOffsetStatic = Select(ref(helperModule), lazyNme.RLazyVals.getOffsetStatic)
     var offsetSymbol: TermSymbol | Null = null
     var flag: Tree = EmptyTree
     var ord = 0
@@ -406,7 +407,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
           val flagName = LazyBitMapName.fresh(id.toString.toTermName)
           val flagSymbol = newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
           flag = ValDef(flagSymbol, Literal(Constant(0L)))
-          val offsetTree = ValDef(offsetSymbol.nn, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
+          val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(flagName.toString)))
+          val offsetTree = ValDef(offsetSymbol.nn, getOffsetStatic.appliedTo(fieldTree))
           info.defs = offsetTree :: info.defs
         }
 
@@ -416,7 +418,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         val flagName = LazyBitMapName.fresh("0".toTermName)
         val flagSymbol = newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
         flag = ValDef(flagSymbol, Literal(Constant(0L)))
-        val offsetTree = ValDef(offsetSymbol.nn, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
+        val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(flagName.toString)))
+        val offsetTree = ValDef(offsetSymbol.nn, getOffsetStatic.appliedTo(fieldTree))
         appendOffsetDefs += (claz -> new OffsetInfo(List(offsetTree), ord))
     }
 
@@ -453,6 +456,8 @@ object LazyVals {
       val state: TermName             = N.state.toTermName
       val cas: TermName               = N.cas.toTermName
       val getOffset: TermName         = N.getOffset.toTermName
+      val getOffsetStatic: TermName   = "getOffsetStatic".toTermName
+      val getDeclaredField: TermName  = "getDeclaredField".toTermName
     }
     val flag: TermName        = "flag".toTermName
     val state: TermName       = "state".toTermName
