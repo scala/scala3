@@ -17,6 +17,10 @@ enum SourceVersion:
 
   def isAtLeast(v: SourceVersion) = stable.ordinal >= v.ordinal
 
+  def isBetween(low: SourceVersion, high: SourceVersion): Boolean =
+    require(low.ordinal < high.ordinal)
+    isAtLeast(low) && stable.ordinal <= high.ordinal
+
 object SourceVersion extends Property.Key[SourceVersion]:
   def defaultSourceVersion = `3.2`
 

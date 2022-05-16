@@ -1619,7 +1619,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
               case Some(checkMode) if !sel.tpe.hasAnnotation(defn.UncheckedAnnot) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
-                if !checkIrrefutable(sel, pat, isPatDef) && sourceVersion.isAtLeast(`3.2`) && sourceVersion.isMigrating then
+                if !checkIrrefutable(sel, pat, isPatDef)
+                  && sourceVersion.isMigrating
+                  && sourceVersion.isBetween(`3.2`, `future`)
+                then
                   if isPatDef then uncheckedBrackets(tree.selector) match
                     case None =>
                       patch(Span(tree.selector.span.end), ": @unchecked")
