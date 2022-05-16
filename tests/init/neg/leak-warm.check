@@ -1,4 +1,9 @@
--- Error: tests/init/neg/leak-warm.scala:18:26 -------------------------------------------------------------------------
-18 |    val l: List[A] = List(c, d) // error
-   |                          ^^^^
-   |             Cannot prove that the value is fully initialized. Only initialized values may be used as arguments.
+-- Error: tests/init/neg/leak-warm.scala:19:18 -------------------------------------------------------------------------
+19 |    val l2 = l.map(_.m()) // error
+   |             ^^^^^^^^^^^^
+   |             Call method leakWarm.l.map[leakWarm.A#B](
+   |               {
+   |                 def $anonfun(_$1: leakWarm.A): leakWarm.A#B = _$1.m()
+   |                 closure($anonfun)
+   |               }
+   |             ) on a value with an unknown initialization.
