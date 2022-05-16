@@ -1,6 +1,5 @@
 package scala
 
-import scala.annotation.experimental
 
 /** A marker trait for objects that support structural selection via
  *  `selectDynamic` and `applyDynamic`
