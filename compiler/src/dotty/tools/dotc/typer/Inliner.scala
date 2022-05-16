@@ -25,7 +25,7 @@ import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition, SrcPos}
 import dotty.tools.dotc.parsing.Parsers.Parser
 import Nullables._
-import transform.{PostTyper, Inlining}
+import transform.{PostTyper, Inlining, CrossVersionChecks}
 
 import collection.mutable
 import reporting.trace
@@ -102,8 +102,7 @@ object Inliner {
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
-    if tree.symbol.isExperimental then
-      Feature.checkExperimentalDef(tree.symbol, tree)
+    CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
 
     if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
 

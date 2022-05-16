@@ -12,6 +12,7 @@ import ast.tpd
 
 class CrossVersionChecks extends MiniPhase:
   import tpd.*
+  import CrossVersionChecks.*
 
   override def phaseName: String = CrossVersionChecks.name
 
@@ -27,7 +28,7 @@ class CrossVersionChecks extends MiniPhase:
   // arbitrarily choose one as more important than the other.
   private def checkUndesiredProperties(sym: Symbol, pos: SrcPos)(using Context): Unit =
     checkDeprecated(sym, pos)
-    checkExperimental(sym, pos)
+    checkExperimentalRef(sym, pos)
     checkSinceAnnot(sym, pos)
 
     val xMigrationValue = ctx.settings.Xmigration.value
@@ -68,10 +69,6 @@ class CrossVersionChecks extends MiniPhase:
         val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
         val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
         report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
-
-  private def checkExperimental(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    if sym.isExperimental && !ctx.owner.isInExperimentalScope then
-      Feature.checkExperimentalDef(sym, pos)
 
   private def checkExperimentalSignature(sym: Symbol, pos: SrcPos)(using Context): Unit =
     class Checker extends TypeTraverser:
@@ -192,11 +189,11 @@ class CrossVersionChecks extends MiniPhase:
     tpe.foreachPart {
       case TypeRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
-        checkExperimental(sym, tree.srcPos)
+        checkExperimentalRef(sym, tree.srcPos)
         checkSinceAnnot(sym, tree.srcPos)
       case TermRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
-        checkExperimental(sym, tree.srcPos)
+        checkExperimentalRef(sym, tree.srcPos)
         checkSinceAnnot(sym, tree.srcPos)
       case _ =>
     }
@@ -214,3 +211,10 @@ end CrossVersionChecks
 object CrossVersionChecks:
   val name: String = "crossVersionChecks"
   val description: String = "check issues related to deprecated and experimental"
+
+  /** Check that a reference to an experimental definition with symbol `sym` is only
+   *  used in an experimental scope
+   */
+  def checkExperimentalRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    if sym.isExperimental && !ctx.owner.isInExperimentalScope then
+      Feature.checkExperimentalDef(sym, pos)
