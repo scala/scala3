@@ -1,21 +1,5 @@
 index: index.md
 subsection:
-  - title: Usage
-    directory: docs/usage
-    index: usage/index.md
-    subsection:
-      - page: usage/sbt-projects.md
-      - page: usage/ide-support.md
-      - page: usage/cbt-projects.md
-      - title: Scaladoc
-        index: usage/scaladoc/index.md
-        subsection:
-          - page: usage/scaladoc/docstrings.md
-          - page: usage/scaladoc/linking.md
-          - page: usage/scaladoc/search-engine.md
-          - page: usage/scaladoc/settings.md
-          - page: usage/scaladoc/site-versioning.md
-          - page: usage/scaladoc/static-site.md
   - title: Reference
     directory: docs/reference
     index: reference/overview.md
