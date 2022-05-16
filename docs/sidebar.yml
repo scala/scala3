@@ -152,6 +152,7 @@ subsection:
           - page: reference/experimental/cc.md
           - page: reference/experimental/tupled-function.md
       - page: reference/syntax.md
+      - page: reference/language-versions.md
       - page: reference/soft-modifier.md
       - page: reference/features-classification.md
   - title: Contributing

@@ -148,10 +148,6 @@ subsection:
       - page: reference/experimental/cc.md
       - page: reference/experimental/tupled-function.md
   - page: reference/syntax.md
-  - title: Language Versions
-    index: reference/language-versions/language-versions.md
-    subsection:
-      - page: reference/language-versions/source-compatibility.md
-      - page: reference/language-versions/binary-compatibility.md
+  - page: reference/language-versions.md
   - page: reference/soft-modifier.md
   - page: reference/features-classification.md

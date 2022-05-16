@@ -162,19 +162,10 @@ class CrossVersionChecks extends MiniPhase:
     tpe.foreachPart {
       case TypeRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
-<<<<<<< HEAD
         checkExperimentalRef(sym, tree.srcPos)
-        checkSinceAnnot(sym, tree.srcPos)
       case TermRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
-        checkSinceAnnot(sym, tree.srcPos)
-=======
-        checkExperimental(sym, tree.srcPos)
-      case TermRef(_, sym: Symbol)  =>
-        checkDeprecated(sym, tree.srcPos)
-        checkExperimental(sym, tree.srcPos)
->>>>>>> d5b33c5f14 (Remove support for `-scala-output-version` flag)
       case _ =>
     }
     tree
