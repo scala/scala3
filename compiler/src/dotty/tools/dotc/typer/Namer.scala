@@ -531,7 +531,7 @@ class Namer { typer: Typer =>
      *  body and derived clause of the synthetic module class `fromCls`.
      */
     def mergeModuleClass(mdef: Tree, modCls: TypeDef, fromCls: TypeDef): TypeDef = {
-      var res: TypeDef | Null = null
+      var res: TypeDef | Uninitialized = initiallyNull
       val Thicket(trees) = expanded(mdef)
       val merged = trees.map { tree =>
         if (tree == modCls) {
@@ -815,7 +815,7 @@ class Namer { typer: Typer =>
             completer.complete(denot)
     }
 
-    private var completedTypeParamSyms: List[TypeSymbol] | Null = null
+    private var completedTypeParamSyms: List[TypeSymbol] | Uninitialized = initiallyNull
 
     def setCompletedTypeParams(tparams: List[TypeSymbol]) =
       completedTypeParamSyms = tparams
@@ -927,8 +927,8 @@ class Namer { typer: Typer =>
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context)
   extends Completer(original)(ictx) with TypeParamsCompleter {
-    private var myTypeParams: List[TypeSymbol] | Null = null
-    private var nestedCtx: Context | Null = null
+    private var myTypeParams: List[TypeSymbol] | Uninitialized = initiallyNull
+    private var nestedCtx: Context | Uninitialized = initiallyNull
     assert(!original.isClassDef)
 
     /** If completion of the owner of the to be completed symbol has not yet started,

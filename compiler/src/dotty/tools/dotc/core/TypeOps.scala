@@ -796,7 +796,7 @@ object TypeOps:
     //
     // See tests/patmat/i3938.scala
     class InferPrefixMap extends TypeMap {
-      var prefixTVar: Type | Null = null
+      var prefixTVar: Type | Uninitialized = initiallyNull
       def apply(tp: Type): Type = tp match {
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
           if (tref.symbol.is(Module))

@@ -743,7 +743,7 @@ trait Applications extends Compatibility {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
-    private var liftedDefs: mutable.ListBuffer[Tree] | Null = null
+    private var liftedDefs: mutable.ListBuffer[Tree] | Uninitialized = initiallyNull
     private var myNormalizedFun: Tree = fun
     init()
 

@@ -49,7 +49,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     needsGc = false
     if Config.checkTypeComparerReset then checkReset()
 
-  private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
+  private var pendingSubTypes: util.MutableSet[(Type, Type)] | Uninitialized = initiallyNull
   private var recCount = 0
   private var monitored = false
 

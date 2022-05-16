@@ -163,7 +163,7 @@ object Names {
     override def asTermName: TermName = this
 
     @sharable // because it is only modified in the synchronized block of toTypeName.
-    private var myTypeName: TypeName | Null = null
+    private var myTypeName: TypeName | Uninitialized = initiallyNull
       // Note: no @volatile needed since type names are immutable and therefore safely published
 
     override def toTypeName: TypeName =
@@ -225,10 +225,10 @@ object Names {
     }
 
     @sharable // because it's just a cache for performance
-    private var myMangledString: String | Null = null
+    private var myMangledString: String | Uninitialized = initiallyNull
 
     @sharable // because it's just a cache for performance
-    private var myMangled: Name | Null = null
+    private var myMangled: Name | Uninitialized = initiallyNull
 
     protected[Names] def mangle: ThisName
 
@@ -259,7 +259,7 @@ object Names {
 
     protected def computeToString: String
 
-    @sharable private var myToString: String | Null = null
+    @sharable private var myToString: String | Uninitialized = initiallyNull
 
     override def toString: String =
       if myToString == null then myToString = computeToString

@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import ast.Trees._, ast.tpd, core._
@@ -35,7 +36,7 @@ class SpecializeFunctions extends MiniPhase {
     val sym = ddef.symbol
     val cls = ctx.owner.asClass
 
-    var specName: Name | Null = null
+    var specName: Name | Uninitialized = initiallyNull
 
     def isSpecializable = {
       val paramTypes = ddef.termParamss.head.map(_.symbol.info)
