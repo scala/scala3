@@ -66,6 +66,9 @@ object SymUtils:
 
     def isNoValue(using Context): Boolean = self.is(Package) || self.isAllOf(JavaModule)
 
+    def isUniversalTrait(using Context): Boolean =
+      self.is(Trait) && self.asClass.parentSyms.head == defn.AnyClass
+
     /** Is this a type or term parameter or a term parameter accessor? */
     def isParamOrAccessor(using Context): Boolean =
       self.is(Param) || self.is(ParamAccessor)
