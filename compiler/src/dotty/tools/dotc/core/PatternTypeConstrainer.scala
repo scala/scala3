@@ -255,7 +255,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
             tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
               val variance = param.paramVarianceSign
               if variance == 0 || assumeInvariantRefinement ||
-                // heal the type if it's a (pattern-bound) type variable, provided we didn't upcast the pattern type:
+                // As a special case, when pattern and scrutinee types have the same type constructor,
+                // we infer better bounds for pattern-bound abstract types.
                 argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
               then
                 val TypeBounds(loS, hiS) = argS.bounds
