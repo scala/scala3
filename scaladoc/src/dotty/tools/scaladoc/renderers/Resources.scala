@@ -111,6 +111,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/layout/floatingButton.css",
       "styles/theme/layout/mobileMenu.css",
       "styles/theme/layout/footer.css",
+      "styles/theme/layout/content.css",
 
       // components
       "styles/theme/components/switcher.css",
@@ -119,6 +120,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/components/button/text-button.css",
       "styles/theme/components/dropdown-menu.css",
       "styles/theme/components/divider.css",
+      "styles/theme/components/table-of-content.css",
 
       "styles/nord-light.css",
       "styles/dotty-icons.css",

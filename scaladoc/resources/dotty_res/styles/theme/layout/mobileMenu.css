@@ -51,6 +51,7 @@
   padding: calc(2.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
   display: flex;
   align-items: center;
+  cursor: pointer;
 }
 
 .mobile-menu-item:hover {

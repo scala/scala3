@@ -33,6 +33,17 @@ window.addEventListener("DOMContentLoaded", () => {
     el.parent.addClass("expanded")
   }))
 
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const id = entry.target.getAttribute('id');
+      if (entry.intersectionRatio > 0) {
+        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.add('active');
+      } else {
+        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.remove('active');
+      }
+    });
+  });
+
   document.querySelectorAll('#content section[id]').forEach((section) => {
     observer.observe(section);
   });
@@ -110,6 +121,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
   sideMenuToggler.addEventListener('click', _e => {
     document.getElementById("leftColumn").classList.toggle("show")
+    document.getElementById("content-wrapper").classList.toggle("sidebar-shown")
+    document.getElementById("toc").classList.toggle("sidebar-shown")
     sideMenuToggler.classList.toggle("menu-shown")
   })
 

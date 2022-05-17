@@ -58,3 +58,23 @@
     margin-top: calc(1 * var(--base-spacing));
   }
 }
+
+#footer.mobile-footer {
+  display: none;
+  justify-content: center;
+}
+
+@media(max-width: 390px) {
+  #footer {
+    display: none;
+  }
+
+  #footer.mobile-footer {
+    display: flex;
+    position: unset;
+  }
+
+  #footer .text-mobile {
+    display: none;
+  }
+}

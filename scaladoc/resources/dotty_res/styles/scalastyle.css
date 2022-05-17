@@ -54,10 +54,10 @@ input {
   flex-direction: column;
   align-items: center;
 }
-#content {
+/* #content {
   max-width: 1100px;
   width: 100%;
-}
+} */
 
 /* Text */
 h1,
@@ -801,11 +801,11 @@ footer .mode {
   position: relative;
 }
 
-.cover-header {
+/* .cover-header {
   display: flex;
   flex-direction: row;
   padding-top: 1em;
-}
+} */
 
 .micon {
   box-sizing: content-box;
@@ -929,7 +929,8 @@ footer .socials {
   height: 8px;
 }
 
-#toc {
+/* #toc {
+  display: inline;
   position: fixed;
   right: 0px;
   top: 0px;
@@ -967,7 +968,7 @@ footer .socials {
 
 #toc li.active > a {
   color: var(--link-hover-fg);
-}
+} */
 
 /* Signature coloring */
 
@@ -1095,7 +1096,7 @@ footer .socials {
 
 /* Breadcrumbs */
 
-.breadcrumbs a {
+/* .breadcrumbs a {
   margin: 0 8px;
 }
 
@@ -1105,7 +1106,7 @@ footer .socials {
 
 .breadcrumbs {
   align-self: flex-start;
-}
+} */
 
 /* Header from docs.scala-lang */
 
