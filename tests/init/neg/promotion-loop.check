@@ -1,7 +1,11 @@
 -- Error: tests/init/neg/promotion-loop.scala:16:10 --------------------------------------------------------------------
 16 |  println(b)      // error
    |          ^
+<<<<<<< HEAD
+   |          Cannot prove that the value is fully-initialized. Only initialized values may be used as arguments.
+=======
    |          Cannot prove that the value is fully initialized. Only initialized values may be used as arguments.
+>>>>>>> 91c03b1f7835d574290eba1ecf236e0f59fc2bf0
    |
    |          The unsafe promotion may cause the following problem:
    |          Cannot prove that the value is fully initialized. Only initialized values may be used as arguments.
