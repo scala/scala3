@@ -78,7 +78,11 @@ class CommunityBuildTestC:
   @Test def playJson = projects.playJson.run()
   @Test def pprint = projects.pprint.run()
   @Test def protoquill = projects.protoquill.run()
-  @Test def requests = projects.requests.run()
+
+  // failing because certificate from client.badssl.com has expired.
+  // FIXME: re-enable when this is resolved: https://github.com/chromium/badssl.com/issues/504
+  // @Test def requests = projects.requests.run()
+
   @Test def scalacheck = projects.scalacheck.run()
   @Test def scalaCollectionCompat = projects.scalaCollectionCompat.run()
   @Test def scalaJava8Compat = projects.scalaJava8Compat.run()
