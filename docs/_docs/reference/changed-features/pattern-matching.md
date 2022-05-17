@@ -12,7 +12,7 @@ Scala 3 supports a superset of Scala 2 [extractors](https://www.scala-lang.org/f
 
 Extractors are objects that expose a method `unapply` or `unapplySeq`:
 
-```Scala
+```scala
 def unapply[A](x: T)(implicit x: B): U
 def unapplySeq[A](x: T)(implicit x: B): U
 ```
@@ -25,7 +25,7 @@ called variadic extractors, which enables variadic patterns.
 
 Fixed-arity extractors expose the following signature:
 
-```Scala
+```scala
 def unapply[A](x: T)(implicit x: B): U
 ```
 
@@ -36,7 +36,7 @@ The type `U` conforms to one of the following matches:
 
 Or `U` conforms to the type `R`:
 
-```Scala
+```scala
 type R = {
   def isEmpty: Boolean
   def get: S
@@ -62,7 +62,7 @@ A usage of a fixed-arity extractor is irrefutable if one of the following condit
 
 Variadic extractors expose the following signature:
 
-```Scala
+```scala
 def unapplySeq[A](x: T)(implicit x: B): U
 ```
 
@@ -73,7 +73,7 @@ The type `U` conforms to one of the following matches:
 
 Or `U` conforms to the type `R`:
 
-```Scala
+```scala
 type R = {
   def isEmpty: Boolean
   def get: S
@@ -167,7 +167,7 @@ object Nat:
 - `N > 1` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1 ... _N: PN` members in `U`
 - Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
 
-```Scala
+```scala
 object ProdEmpty:
   def _1: Int = ???
   def _2: String = ???
@@ -185,7 +185,7 @@ object ProdEmpty:
 
 - `U <: X`, `T2` and `T3` conform to `T1`
 
-```Scala
+```scala
 type X = {
   def lengthCompare(len: Int): Int // or, `def length: Int`
   def apply(i: Int): T1
@@ -220,7 +220,7 @@ object CharList:
 - Pattern-matching on exactly `>= N` patterns, the first `N - 1` patterns have types `P1, P2, ... P(N-1)`,
   the type of the remaining patterns are determined as in Seq Pattern.
 
-```Scala
+```scala
 class Foo(val name: String, val children: Int *)
 object Foo:
   def unapplySeq(f: Foo): Option[(String, Seq[Int])] =
