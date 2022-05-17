@@ -146,15 +146,15 @@ class SignatureHelpTest {
           |      println("Expected *exactly* 7 characters!")
           """
       .signatureHelp(m1, List(signature), Some(0), 0)
-      .signatureHelp(m2, List(signature), Some(0), 1)
-      .signatureHelp(m3, List(signature), Some(0), 2)
-      .signatureHelp(m4, List(signature), Some(0), 6)
+      .signatureHelp(m2, List(signature), Some(0), 0)
+      .signatureHelp(m3, List(signature), Some(0), 0)
+      .signatureHelp(m4, List(signature), Some(0), 0)
   }
 
   @Test def productSequenceMatch: Unit = {
     val signature = S("", Nil, List(List(P("", "String"), P("", "Seq[Int]"))), None)
 
-    code"""class Foo(val name: String, val children: Int *)
+    code"""class Foo(val name: String, val children: Int*)
           |object Foo:
           |  def unapplySeq(f: Foo): Option[(String, Seq[Int])] =
           |    Some((f.name, f.children))
@@ -167,10 +167,26 @@ class SignatureHelpTest {
       .signatureHelp(m2, List(signature), Some(0), 1)
       .signatureHelp(m3, List(signature), Some(0), 0)
       .signatureHelp(m4, List(signature), Some(0), 1)
-      .signatureHelp(m5, List(signature), Some(0), 2)
-      .signatureHelp(m6, List(signature), Some(0), 3)
+      .signatureHelp(m5, List(signature), Some(0), 1)
+      .signatureHelp(m6, List(signature), Some(0), 1)
   }
 
+  @Test def productSequenceMatchForCaseClass: Unit = {
+    val signature = S("", Nil, List(List(P("name", "String"), P("children", "Int*"))), None)
+
+    code"""case class Foo(val name: String, val children: Int*)
+          |
+          |def foo(f: Foo) = f match
+          |  case Foo(na${m1}e, n${m2} : _*) =>
+          |  case Foo(nam${m3}e, ${m4}x, ${m5}y, n${m6}s : _*) =>
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+      .signatureHelp(m3, List(signature), Some(0), 0)
+      .signatureHelp(m4, List(signature), Some(0), 1)
+      .signatureHelp(m5, List(signature), Some(0), 1)
+      .signatureHelp(m6, List(signature), Some(0), 1)
+  }
 
   @Test def unapplyManyType: Unit = {
     val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
@@ -202,6 +218,15 @@ class SignatureHelpTest {
           |}"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
+  }
+
+  @Test def noUnapplyForTuple: Unit = {
+    code"""object Main {
+          |  (1, 2) match
+          |    case (x${m1}, ${m2}) =>
+          |}"""
+      .signatureHelp(m1, Nil, Some(0), 0)
+      .signatureHelp(m2, Nil, Some(0), 0)
   }
 
   @Test def unapplyCaseClass: Unit = {

@@ -11,7 +11,6 @@ import core.Names._
 import core.Types._
 import util.Spans.Span
 import reporting._
-import dotty.tools.dotc.core.NameKinds
 
 
 object Signatures {
@@ -49,11 +48,12 @@ object Signatures {
    *         being called, the list of overloads of this function).
    */
   def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
-    val enclosingApply = path.find {
-      case Apply(fun, _) => !fun.span.contains(span)
-      case UnApply(fun, _, _) => !fun.span.contains(span)
-      case _ => false
-    }
+    val enclosingApply = path.dropWhile {
+      case Apply(fun, _) => fun.span.contains(span)
+      case unapply @ UnApply(fun, _, _) =>
+        fun.span.contains(span) || ctx.definitions.isTupleClass(unapply.fun.symbol.owner.companionClass)
+      case _ => true
+    }.headOption
 
     enclosingApply.map {
       case UnApply(fun, _, patterns) => unapplyCallInfo(span, fun, patterns)
@@ -85,12 +85,50 @@ object Signatures {
 
     (paramIndex, alternativeIndex, alternatives)
 
-  private def unapplyCallInfo(span: Span,
+  private def unapplyCallInfo(
+    span: Span,
     fun: tpd.Tree,
     patterns: List[tpd.Tree]
   )(using Context): (Int, Int, List[SingleDenotation]) =
-    val paramIndex = patterns.indexWhere(_.span.contains(span)) max 0
-    (paramIndex, 0, fun.symbol.asSingleDenotation.mapInfo(_ => fun.tpe) :: Nil)
+    val patternPosition = patterns.indexWhere(_.span.contains(span))
+    val activeParameter = extractParamTypess(fun.tpe.finalResultType.widen).headOption.map { params =>
+      if patternPosition == -1 then
+        if patterns.length > 0 then
+          (params.size - 1)
+        else
+          0
+      else
+        (params.size - 1) min patternPosition
+    }.getOrElse(patternPosition)
+
+    (activeParameter, 0, fun.symbol.asSingleDenotation.mapInfo(_ => fun.tpe) :: Nil)
+
+  private def extractParamTypess(resultType: Type)(using Context): List[List[Type]] =
+    resultType match {
+      case ref: TypeRef if !ref.symbol.isPrimitiveValueClass =>
+        if (
+          ref.symbol.asClass.baseClasses.contains(ctx.definitions.ProductClass) &&
+          !ref.symbol.is(Flags.CaseClass)
+        ) || ref.symbol.isStaticOwner then
+          val productAccessors = ref.memberDenots(
+            underscoreMembersFilter,
+            (name, buf) => buf += ref.member(name).asSingleDenotation
+          )
+          List(productAccessors.map(_.info.finalResultType).toList)
+        else
+          ref.symbol.primaryConstructor.paramInfo.paramInfoss
+      case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
+          if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
+        tycon match
+          case TypeRef(_, cls) if cls == ctx.definitions.SeqClass => List(List(appliedType))
+          case _ => List(args)
+      case AppliedType(_, args) =>
+        List(args)
+      case MethodTpe(_, _, resultType) =>
+        extractParamTypess(resultType.widenDealias)
+      case _ =>
+        Nil
+    }
 
   def toSignature(denot: SingleDenotation)(using Context): Option[Signature] = {
     val symbol = denot.symbol
@@ -111,7 +149,8 @@ object Signatures {
           Nil
       }
       val params = tp.paramNames.zip(tp.paramInfos).map { case (name, info) =>
-        Signatures.Param(name.show,
+        Signatures.Param(
+          name.show,
           info.widenTermRefExpr.show,
           docComment.flatMap(_.paramDoc(name)),
           isImplicit = tp.isImplicitMethod)
@@ -123,45 +162,22 @@ object Signatures {
     /**
      * This function is a hack which allows Signatures API to remain unchanged
      *
-     * @return true if denot is "unapply", false otherwise
+     * @return true if denot is "unapply" or "unapplySeq", false otherwise
      */
-    def isUnapplyDenotation: Boolean = List(core.Names.termName("unapply"), core.Names.termName("unapplySeq")) contains denot.name
+    def isUnapplyDenotation: Boolean =
+      List(core.Names.termName("unapply"), core.Names.termName("unapplySeq")) contains denot.name
 
     def extractParamNamess(resultType: Type): List[List[Name]] =
-      if resultType.resultType.widen.typeSymbol.flags.is(Flags.CaseClass) && symbol.flags.is(Flags.Synthetic) then
-        resultType.resultType.widen.typeSymbol.primaryConstructor.paramInfo.paramNamess
+      if resultType.typeSymbol.flags.is(Flags.CaseClass) && symbol.flags.is(Flags.Synthetic) then
+        resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess
       else
         Nil
 
-    def extractParamTypess(resultType: Type): List[List[Type]] =
-      resultType match {
-        case ref: TypeRef if !ref.symbol.isPrimitiveValueClass =>
-          if (
-            ref.symbol.asClass.baseClasses.contains(ctx.definitions.ProductClass) &&
-            !ref.symbol.is(Flags.CaseClass)
-          ) || ref.symbol.isStaticOwner then
-            val productAccessors = ref.memberDenots(
-              underscoreMembersFilter,
-              (name, buf) => buf += ref.member(name).asSingleDenotation
-            )
-            List(productAccessors.map(_.info.finalResultType).toList)
-          else
-            ref.symbol.primaryConstructor.paramInfo.paramInfoss
-        case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
-            if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
-          tycon match
-            case TypeRef(_, cls) if cls == ctx.definitions.SeqClass => List(List(appliedType))
-            case _ => List(args)
-        case AppliedType(_, args) =>
-          List(args)
-        case MethodTpe(_, _, resultType) =>
-          extractParamTypess(resultType.widenDealias)
-        case _ =>
-          Nil
-      }
-
     def toUnapplyParamss(method: Type)(using Context): List[Param] = {
-      val resultType = method.finalResultType.widenDealias
+      val resultType = method.finalResultType.widenDealias match
+        case methodType: MethodType => methodType.resultType.widen
+        case other => other
+
       val paramNames = extractParamNamess(resultType).flatten
       val paramTypes = extractParamTypess(resultType).flatten
 
