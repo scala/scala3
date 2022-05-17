@@ -49,9 +49,8 @@ object Signatures {
    */
   def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
     val enclosingApply = path.dropWhile {
-      case Apply(fun, _) => fun.span.contains(span)
-      case unapply @ UnApply(fun, _, _) =>
-        fun.span.contains(span) || ctx.definitions.isTupleClass(unapply.fun.symbol.owner.companionClass)
+      case apply @ Apply(fun, _) => fun.span.contains(span) || apply.span.end == span.end
+      case unapply @ UnApply(fun, _, _) => fun.span.contains(span) || unapply.span.end == span.end || isTuple(unapply)
       case _ => true
     }.headOption
 
@@ -92,16 +91,17 @@ object Signatures {
   )(using Context): (Int, Int, List[SingleDenotation]) =
     val patternPosition = patterns.indexWhere(_.span.contains(span))
     val activeParameter = extractParamTypess(fun.tpe.finalResultType.widen).headOption.map { params =>
-      if patternPosition == -1 then
-        if patterns.length > 0 then
-          (params.size - 1)
-        else
-          0
-      else
-        (params.size - 1) min patternPosition
-    }.getOrElse(patternPosition)
+      (patternPosition, patterns.length) match
+        case (-1, 0) => 0 // there are no patterns yet so it must be first one
+        case (-1, pos) => -1 // there are patterns, we must be outside range so we set no active parameter
+        case _ => (params.size - 1) min patternPosition max 0 // handle unapplySeq to always highlight Seq[A] on elements
+    }.getOrElse(-1)
 
-    (activeParameter, 0, fun.symbol.asSingleDenotation.mapInfo(_ => fun.tpe) :: Nil)
+    val appliedDenot = fun.symbol.asSingleDenotation.mapInfo(_ => fun.tpe) :: Nil
+    (activeParameter, 0, appliedDenot)
+
+  private def isTuple(tree: tpd.Tree)(using Context): Boolean =
+    ctx.definitions.isTupleClass(tree.symbol.owner.companionClass)
 
   private def extractParamTypess(resultType: Type)(using Context): List[List[Type]] =
     resultType match {

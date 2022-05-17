@@ -40,7 +40,7 @@ class SignatureHelpTest {
           |    case s @ Even(${m1}) => println(s"s has an even number of characters")
           |    case s               => println(s"s has an odd number of characters")
           """
-      .signatureHelp(m1, Nil, Some(0), 0)
+      .signatureHelp(m1, Nil, Some(0), -1)
   }
 
   @Test def unapplyCustomClass: Unit = {
@@ -76,6 +76,46 @@ class SignatureHelpTest {
           |}"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
+  }
+
+  @Test def nestedUnapplySignature: Unit = {
+    val signatureOneTwo = S("", Nil, List(List(P("a", "One"), P("b", "Two"))), None)
+    val signatureOne = S("", Nil, List(List(P("c", "Int"))), None)
+    val signatureTwo = S("", Nil, List(List(P("d", "Int"))), None)
+
+    code"""case class One(c: Int)
+          |case class Two(d: Int)
+          |case class OneTwo[A, B](a: A, b: B)
+          |
+          |object Main {
+          |  val tp = new OneTwo(One(1), Two(5))
+          |  tp match {
+          |    case OneTwo(x${m1}, ${m2}) =>
+          |    case OneTwo(One(x${m4})${m3}, T${m5}wo(${m6})${m8})${m7} =>
+          |  }
+          |}"""
+      .signatureHelp(m1, List(signatureOneTwo), Some(0), 0)
+      .signatureHelp(m2, List(signatureOneTwo), Some(0), 1)
+      .signatureHelp(m3, List(signatureOneTwo), Some(0), 0)
+      .signatureHelp(m4, List(signatureOne), Some(0), 0)
+      .signatureHelp(m5, List(signatureOneTwo), Some(0), 1)
+      .signatureHelp(m6, List(signatureTwo), Some(0), 0)
+  }
+
+  @Test def properParameterIndexTest: Unit = {
+    val signature = S("", Nil, List(List(P("a", "Int"), P("b", "String"))), None)
+    code"""case class Two(a: Int, b: String)
+          |
+          |object Main {
+          |  val tp = new Two(1, "")
+          |  tp match {
+          |    case Two(x${m1}, y  ${m2}, d${m3})${m4} =>
+          |  }
+          |}"""
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), -1)
+      .signatureHelp(m3, List(signature), Some(0), -1)
+      .signatureHelp(m4, Nil, Some(0), 0)
   }
 
   @Test def unapplyClass: Unit = {
