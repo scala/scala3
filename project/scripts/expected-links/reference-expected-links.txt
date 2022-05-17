@@ -7,6 +7,7 @@
 ./changed-features/implicit-resolution.html
 ./changed-features/imports.html
 ./changed-features/index.html
+./changed-features/interpolation-escapes.html
 ./changed-features/lazy-vals-init.html
 ./changed-features/main-functions.html
 ./changed-features/match-syntax.html
@@ -70,12 +71,14 @@
 ./experimental/erased-defs-spec.html
 ./experimental/erased-defs.html
 ./experimental/explicit-nulls.html
+./experimental/fewer-braces.html
 ./experimental/index.html
 ./experimental/main-annotation.html
 ./experimental/named-typeargs-spec.html
 ./experimental/named-typeargs.html
 ./experimental/numeric-literals.html
 ./experimental/overview.html
+./experimental/tupled-function.html
 ./features-classification.html
 ./index.html
 ./language-versions/binary-compatibility.html
@@ -88,6 +91,7 @@
 ./metaprogramming/macros-spec.html
 ./metaprogramming/macros.html
 ./metaprogramming/reflection.html
+./metaprogramming/simple-smp.html
 ./metaprogramming/staging.html
 ./metaprogramming/tasty-inspect.html
 ./new-types/dependent-function-types-spec.html
