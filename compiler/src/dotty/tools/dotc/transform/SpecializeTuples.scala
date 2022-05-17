@@ -6,6 +6,7 @@ import ast.Trees.*, ast.tpd, core.*
 import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
 import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
+import typer.Inliner.isElideableExpr
 
 /** Specializes Tuples by replacing tuple construction and selection trees.
  *
@@ -23,10 +24,14 @@ class SpecializeTuples extends MiniPhase:
 
   override def transformApply(tree: Apply)(using Context): Tree = tree match
     case Apply(TypeApply(fun: NameTree, targs), args)
-        if fun.symbol.name == nme.apply && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner.companionClass, targs.map(_.tpe)) =>
+        if fun.symbol.name == nme.apply && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner.companionClass, targs.map(_.tpe))
+        && isElideableExpr(tree)
+    =>
       cpy.Apply(tree)(Select(New(defn.SpecialisedTuple(fun.symbol.owner.companionClass, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
     case Apply(TypeApply(fun: NameTree, targs), args)
-        if fun.symbol.name == nme.CONSTRUCTOR && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner, targs.map(_.tpe)) =>
+        if fun.symbol.name == nme.CONSTRUCTOR && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner, targs.map(_.tpe))
+        && isElideableExpr(tree)
+    =>
       cpy.Apply(tree)(Select(New(defn.SpecialisedTuple(fun.symbol.owner, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
     case _ => tree
   end transformApply

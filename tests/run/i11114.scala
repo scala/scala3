@@ -8,3 +8,5 @@
 
   import Tuple2.{ apply => t2 }
   println(t2(1, 5).getClass)
+
+  println({ println("initialise"); Tuple2 }.apply(1, 6).getClass)

@@ -617,7 +617,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 // we need the checkNonCyclic call to insert LazyRefs for F-bounded cycles
               else if (!denot.is(Param)) tp1.translateFromRepeated(toArray = false)
               else tp1
-            if (denot.isConstructor) addConstructorTypeParams(denot)
+            if (denot.isConstructor)
+              denot.owner.setStableConstructor()
+              addConstructorTypeParams(denot)
             if (atEnd)
               assert(!denot.symbol.isSuperAccessor, denot)
             else {
