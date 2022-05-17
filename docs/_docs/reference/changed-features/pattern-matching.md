@@ -4,7 +4,7 @@ title: "Option-less pattern matching"
 movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html
 ---
 
-The implementation of pattern matching in Scala 3 was greatly simplified compared to Scala 2. From a user perspective, this means that Scala 3 generated patterns are a *lot* easier to debug, as variables all show up in debug modes and positions are correctly preserved.
+The implementation of pattern matching in Scala 3 was greatly simplified compared to Scala 2. From a user perspective, this means that Scala 3 generated patterns are a _lot_ easier to debug, as variables all show up in debug modes and positions are correctly preserved.
 
 Scala 3 supports a superset of Scala 2 [extractors](https://www.scala-lang.org/files/archive/spec/2.13/08-pattern-matching.html#extractor-patterns).
 
@@ -180,7 +180,6 @@ object ProdEmpty:
   case _ => ()
 ```
 
-
 ## Sequence Match
 
 - `U <: X`, `T2` and `T3` conform to `T1`
@@ -231,8 +230,8 @@ def foo(f: Foo) = f match
   case Foo(name, ns*) =>    => "< two children."
 ```
 
-There are plans for further simplification, in particular to factor out *product
-match* and *name-based match* into a single type of extractor.
+There are plans for further simplification, in particular to factor out _product match_
+and _name-based match_ into a single type of extractor.
 
 ## Type testing
 
