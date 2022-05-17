@@ -221,14 +221,14 @@ object CharList:
   the type of the remaining patterns are determined as in Seq Pattern.
 
 ```Scala
-class Foo(val name: String, val children: Int *)
+class Foo(val name: String, val children: Int*)
 object Foo:
   def unapplySeq(f: Foo): Option[(String, Seq[Int])] =
     Some((f.name, f.children))
 
 def foo(f: Foo) = f match
-  case Foo(name, ns : _*) =>
-  case Foo(name, x, y, ns : _*) =>
+  case Foo(name, x, y, ns*) => ">= two children."
+  case Foo(name, ns*) =>    => "< two children."
 ```
 
 There are plans for further simplification, in particular to factor out *product
