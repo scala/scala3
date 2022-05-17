@@ -194,6 +194,34 @@ class CheckCaptures extends Recheck, SymTransformer:
         }
         checkSubset(targetSet, curEnv.captured, pos)
 
+    /** If result type of a function type has toplevel boxed captures, propagate
+     *  them to the function type as a whole. Such boxed captures
+     *  can be created by substitution or as-seen-from. Propagating captures to the
+     *  left simulates an unbox operation on the result. I.e. if f has type `A -> box C B`
+     *  then in theory we need to unbox with
+     *
+     *      x => C o- f(x)
+     *
+     *   and that also propagates C into the type of the unboxing expression.
+     *   TODO: Generalize this to boxed captues in other parts of a function type.
+     */
+    def addResultBoxes(tp: Type)(using Context): Type =
+      def includeBoxed(res: Type) = tp.capturing(res.boxedCaptured)
+      val tpw = tp.widen
+      val boxedTpw = tpw.dealias match
+        case tp1 @ AppliedType(_, args) if defn.isNonRefinedFunction(tp1) =>
+          includeBoxed(args.last)
+        case tp1 @ RefinedType(_, _, rinfo) if defn.isFunctionType(tp1) =>
+          includeBoxed(rinfo.finalResultType)
+        case tp1 @ CapturingType(parent, refs, _) =>
+          val boxedParent = addResultBoxes(parent)
+          if boxedParent eq parent then tpw
+          else boxedParent.capturing(refs)
+        case _ =>
+          tpw
+      if boxedTpw eq tpw then tp else boxedTpw
+    end addResultBoxes
+
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
       assert(cs1.subCaptures(cs2, frozen = false).isOK, i"$cs1 is not a subset of $cs2")
 
@@ -420,7 +448,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           checkNotUniversal(parent)
         case _ =>
       checkNotUniversal(typeToCheck)
-      super.recheckFinish(tpe, tree, pt)
+      val tpe1 = if tree.isTerm then addResultBoxes(tpe) else tpe
+      super.recheckFinish(tpe1, tree, pt)
 
     /** This method implements the rule outlined in #14390:
      *  When checking an expression `e: T` against an expected type `Cx Tx`

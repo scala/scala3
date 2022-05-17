@@ -11,7 +11,6 @@ import util.Property.Key
 import tpd.*
 
 private val Captures: Key[CaptureSet] = Key()
-private val IsBoxed: Key[Unit] = Key()
 
 def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
   case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
@@ -34,12 +33,6 @@ extension (tree: Tree)
         tree.putAttachment(Captures, refs)
         refs
 
-  def isBoxedCapturing(using Context): Boolean =
-    tree.hasAttachment(IsBoxed)
-
-  def setBoxedCapturing()(using Context): Unit =
-    tree.putAttachment(IsBoxed, ())
-
 extension (tp: Type)
 
   def derivedCapturingType(parent: Type, refs: CaptureSet)(using Context): Type = tp match
@@ -55,7 +48,7 @@ extension (tp: Type)
   def boxedCaptured(using Context): CaptureSet =
     def getBoxed(tp: Type): CaptureSet = tp match
       case CapturingType(_, refs, CapturingKind.Boxed) => refs
-      case CapturingType(_, _, _) => CaptureSet.empty
+      case CapturingType(parent, _, _) => getBoxed(parent)
       case tp: TypeProxy => getBoxed(tp.superType)
       case tp: AndType => getBoxed(tp.tp1) ++ getBoxed(tp.tp2)
       case tp: OrType => getBoxed(tp.tp1) ** getBoxed(tp.tp2)

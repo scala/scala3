@@ -1882,8 +1882,7 @@ object Types {
       if cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
       else this match
         case CapturingType(parent, cs1, boxed) => parent.capturing(cs1 ++ cs)
-        case _ => CapturingType(this, cs,
-          if this.isBoxedCapturing then CapturingKind.Boxed else CapturingKind.Regular)
+        case _ => CapturingType(this, cs, CapturingKind.Regular)
 
     /** The set of distinct symbols referred to by this type, after all aliases are expanded */
     def coveringSet(using Context): Set[Symbol] =

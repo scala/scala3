@@ -7,9 +7,6 @@ import Types.*, Symbols.*, Contexts.*
 
 /** A capturing type. This is internally represented as an annotated type with a `retains`
  *  annotation, but the extractor will succeed only at phase CheckCaptures.
- *  Annotated types with `@retainsByName` annotation can also be created that way, by
- *  giving a `CapturingKind.ByName` as `kind` argument, but they are never extracted,
- *  since they have already been converted to regular capturing types before CheckCaptures.
  */
 object CapturingType:
 
@@ -37,10 +34,7 @@ object EventuallyCapturingType:
         case ann: CaptureAnnotation =>
           Some((tp.parent, ann.refs, ann.kind))
         case ann =>
-          val kind =
-            if ann.tree.isBoxedCapturing then CapturingKind.Boxed
-            else CapturingKind.Regular
-          try Some((tp.parent, ann.tree.toCaptureSet, kind))
+          try Some((tp.parent, ann.tree.toCaptureSet, CapturingKind.Regular))
           catch case ex: IllegalCaptureRef => None
     else None
 

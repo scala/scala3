@@ -26,25 +26,36 @@ extends tpd.TreeTraverser:
       )(argTypes, resType)
       .toFunctionType(isJava = false, alwaysDependent = true)
 
-  private def box(tp: Type)(using Context): Type = tp match
+  private def box(tp: Type)(using Context): Type = tp.dealias match
     case CapturingType(parent, refs, CapturingKind.Regular) =>
       CapturingType(parent, refs, CapturingKind.Boxed)
+    case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
+      val res = args.last
+      val boxedRes = box(res)
+      if boxedRes eq res then tp
+      else tp1.derivedAppliedType(tycon, args.init :+ boxedRes)
+    case tp1 @ RefinedType(_, _, rinfo) if defn.isFunctionType(tp1) =>
+      val boxedRinfo = box(rinfo)
+      if boxedRinfo eq rinfo then tp
+      else boxedRinfo.toFunctionType(isJava = false, alwaysDependent = true)
+    case tp1: MethodOrPoly =>
+      val res = tp1.resType
+      val boxedRes = box(res)
+      if boxedRes eq res then tp
+      else tp1.derivedLambdaType(resType = boxedRes)
     case _ => tp
 
-  private def setBoxed(tp: Type)(using Context) = tp match
-    case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
-      annot.tree.setBoxedCapturing()
-    case _ =>
-
-  private def addBoxes(using Context) = new TypeTraverser:
-    def traverse(t: Type) =
-      t match
-        case AppliedType(tycon, args) if !defn.isNonRefinedFunction(t) =>
-          args.foreach(setBoxed)
-        case TypeBounds(lo, hi) =>
-          setBoxed(lo); setBoxed(hi)
-        case _ =>
-      traverseChildren(t)
+  private def addBoxes(using Context) = new TypeMap:
+    def apply(t: Type) = mapOver(t) match
+      case t1 @ AppliedType(tycon, args) if !defn.isNonRefinedFunction(t1) =>
+        t1.derivedAppliedType(tycon, args.mapConserve(box))
+      case t1 @ TypeBounds(lo, hi) =>
+        t1.derivedTypeBounds(box(lo), box(hi))
+      case t1 =>
+        t1
+    override def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
+      tp.derivedCapturingType(this(parent), refs)
+  end addBoxes
 
   /** Expand some aliases of function types to the underlying functions.
    *  Right now, these are only $throws aliases, but this could be generalized.
@@ -283,9 +294,9 @@ extends tpd.TreeTraverser:
     if boxed then box(tp1) else tp1
 
   private def transformExplicitType(tp: Type, boxed: Boolean)(using Context): Type =
-    addBoxes.traverse(tp)
-    if boxed then setBoxed(tp)
-    val tp1 = expandInlineAliases(tp)
+    var tp1 = addBoxes(tp)
+    if boxed then tp1 = box(tp1)
+    tp1 = expandInlineAliases(tp1)
     if tp1 ne tp then capt.println(i"expanded: $tp --> $tp1")
     if ctx.settings.YccNoAbbrev.value then tp1
     else expandAbbreviations(tp1)
