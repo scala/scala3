@@ -1,9 +1,6 @@
 package scala.compiletime
 package ops
 
-import scala.annotation.experimental
-
-@experimental
 object double:
   /** Addition of two `Double` singleton types.
    *  ```scala

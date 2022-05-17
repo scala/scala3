@@ -1,8 +1,6 @@
 package scala.compiletime
 package ops
 
-import annotation.experimental
-
 object int:
   /** Successor of a natural number where zero is the type 0 and successors are reduced as if the definition was:
    *
@@ -192,7 +190,6 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  @experimental
   type ToLong[+X <: Int] <: Long
 
   /** Float conversion of an `Int` singleton type.
@@ -201,7 +198,6 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  @experimental
   type ToFloat[+X <: Int] <: Float
 
   /** Double conversion of an `Int` singleton type.
@@ -210,7 +206,6 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  @experimental
   type ToDouble[+X <: Int] <: Double
 
   /** Number of zero bits preceding the highest-order ("leftmost")
@@ -225,5 +220,4 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  @experimental
   type NumberOfLeadingZeros[+X <: Int] <: Int
