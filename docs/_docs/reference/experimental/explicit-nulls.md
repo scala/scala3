@@ -86,7 +86,7 @@ val c = new C()
 ```
 
 The unsoundness above can be caught by the compiler with the option `-Ysafe-init`.
-More details can be found in [safe initialization](./safe-initialization.md).
+More details can be found in [safe initialization](../other-new-features/safe-initialization.md).
 
 ## Equality
 
