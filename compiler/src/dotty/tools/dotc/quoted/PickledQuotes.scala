@@ -251,7 +251,7 @@ object PickledQuotes {
         quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never")}")
 
         val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-        val unpickler = new DottyUnpickler(bytes, ctx.tastyVersion, mode)
+        val unpickler = new DottyUnpickler(bytes, mode)
         unpickler.enter(Set.empty)
 
         val tree = unpickler.tree

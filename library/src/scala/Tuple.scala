@@ -1,6 +1,6 @@
 package scala
 
-import annotation.{experimental, showAsInfix, since}
+import annotation.{experimental, showAsInfix}
 import compiletime._
 import compiletime.ops.int._
 
@@ -260,9 +260,7 @@ object Tuple {
   def fromProductTyped[P <: Product](p: P)(using m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
     runtime.Tuples.fromProduct(p).asInstanceOf[m.MirroredElemTypes]
 
-  @since("3.1")
   given canEqualEmptyTuple: CanEqual[EmptyTuple, EmptyTuple] = CanEqual.derived
-  @since("3.1")
   given canEqualTuple[H1, T1 <: Tuple, H2, T2 <: Tuple](
     using eqHead: CanEqual[H1, H2], eqTail: CanEqual[T1, T2]
   ): CanEqual[H1 *: T1, H2 *: T2] = CanEqual.derived
