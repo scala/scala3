@@ -167,7 +167,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
           removeUnwantedAnnotations(sym, defn.GetterMetaAnnot)
           Thicket(fieldDef, getterDef)
       else if sym.isSetter then
-        if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // This is intended as an assertion
+        if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs: @unchecked } // This is intended as an assertion
         val field = sym.field
         if !field.exists then
           // When transforming the getter, we determined that no field was needed.

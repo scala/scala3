@@ -183,7 +183,7 @@ object MainProxies {
         case TypeDef(_, template: Template) =>
           template.body.flatMap((_: Tree) match {
             case dd: DefDef if dd.name.is(DefaultGetterName) && dd.name.firstPart == funSymbol.name =>
-              val DefaultGetterName.NumberedInfo(index) = dd.name.info
+              val DefaultGetterName.NumberedInfo(index) = dd.name.info: @unchecked
               List(index -> dd.symbol)
             case _ => Nil
           }).toMap

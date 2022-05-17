@@ -1152,7 +1152,7 @@ object Semantic {
 
         ref match
         case Select(supert: Super, _) =>
-          val SuperType(thisTp, superTp) = supert.tpe
+          val SuperType(thisTp, superTp) = supert.tpe: @unchecked
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
           Result(thisValue2, errors).call(ref.symbol, args, thisTp, superTp, expr)
 
@@ -1183,7 +1183,7 @@ object Semantic {
 
         name match
           case OuterSelectName(_, hops) =>
-            val SkolemType(tp) = expr.tpe
+            val SkolemType(tp) = expr.tpe: @unchecked
             val outer = resolveOuterSelect(tp.classSymbol.asClass, qualRes.value, hops, source = expr)
             Result(outer, qualRes.errors)
           case _ =>

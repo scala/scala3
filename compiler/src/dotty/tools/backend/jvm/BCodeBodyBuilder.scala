@@ -359,7 +359,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             // but I was able to derrive it by reading
             // AbstractValidatingLambdaMetafactory.validateMetafactoryArgs
 
-            val DesugaredSelect(prefix, _) = fun
+            val DesugaredSelect(prefix, _) = fun: @unchecked
             genLoad(prefix)
           }
 
@@ -725,7 +725,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(app)
       app match {
         case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
-          val List(elemClaz, Literal(c: Constant), ArrayValue(_, dims)) = args
+          val List(elemClaz, Literal(c: Constant), ArrayValue(_, dims)) = args: @unchecked
 
           generatedType = toTypeKind(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
@@ -802,7 +802,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
             genLoadArguments(args, paramTKs(app))
 
-            val DesugaredSelect(qual, name) = fun // fun is a Select, also checked in genLoadQualifier
+            val DesugaredSelect(qual, name) = fun: @unchecked // fun is a Select, also checked in genLoadQualifier
             val isArrayClone = name == nme.clone_ && qual.tpe.widen.isInstanceOf[JavaArrayType]
             if (isArrayClone) {
               // Special-case Array.clone, introduced in 36ef60e. The goal is to generate this call
@@ -845,7 +845,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     } // end of genApply()
 
     private def genArrayValue(av: tpd.JavaSeqLiteral): BType = {
-      val ArrayValue(tpt, elems) = av
+      val ArrayValue(tpt, elems) = av: @unchecked
 
       lineNumber(av)
       genArray(elems, tpt)
@@ -1530,7 +1530,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           import ScalaPrimitivesOps.{ ZNOT, ZAND, ZOR, EQ }
 
           // lhs and rhs of test
-          lazy val DesugaredSelect(lhs, _) = fun
+          lazy val DesugaredSelect(lhs, _) = fun: @unchecked
           val rhs = if (args.isEmpty) tpd.EmptyTree else args.head // args.isEmpty only for ZNOT
 
           def genZandOrZor(and: Boolean): Unit = {

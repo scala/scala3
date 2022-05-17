@@ -151,7 +151,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     // sorting ensures nested classes are listed after their enclosing class thus satisfying the Eclipse Java compiler
     for (nestedClass <- allNestedClasses.sortBy(_.internalName.toString)) {
       // Extract the innerClassEntry - we know it exists, enclosingNestedClassesChain only returns nested classes.
-      val Some(e) = nestedClass.innerClassAttributeEntry
+      val Some(e) = nestedClass.innerClassAttributeEntry: @unchecked
       jclass.visitInnerClass(e.name, e.outerName, e.innerName, e.flags)
     }
   }

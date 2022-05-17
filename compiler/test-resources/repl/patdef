@@ -1,7 +1,7 @@
 scala> val Const, x = 0
 val Const: Int = 0
 val x: Int = 0
-scala> val (Const, List(`x`, _, a), b) = (0, List(0, 1337, 1), 2)
+scala> val (Const, List(`x`, _, a), b) = (0, List(0, 1337, 1), 2): @unchecked
 val a: Int = 1
 val b: Int = 2
 scala> val a@b = 0

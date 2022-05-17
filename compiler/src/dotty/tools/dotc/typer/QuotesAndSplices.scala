@@ -121,7 +121,7 @@ trait QuotesAndSplices {
    */
   def typedAppliedSplice(tree: untpd.Apply, pt: Type)(using Context): Tree = {
     assert(ctx.mode.is(Mode.QuotedPattern))
-    val untpd.Apply(splice: untpd.Splice, args) = tree
+    val untpd.Apply(splice: untpd.Splice, args) = tree: @unchecked
     if !isFullyDefined(pt, ForceDegree.flipBottom) then
       report.error(i"Type must be fully defined.", splice.srcPos)
       tree.withType(UnspecifiedErrorType)

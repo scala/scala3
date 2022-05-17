@@ -456,7 +456,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
-      val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef
+      val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef: @unchecked
       assert(cdef.symbol == cls)
       assert(impl.symbol.owner == cls)
       assert(constr.symbol.owner == cls)
@@ -575,7 +575,7 @@ class TreeChecker extends Phase with SymTransformer {
         super.typedPackageDef(tree)
 
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
-      val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt)
+      val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt): @unchecked
 
       // Check result type of the hole
       if isTermHole then assert(tpt.typeOpt <:< pt)

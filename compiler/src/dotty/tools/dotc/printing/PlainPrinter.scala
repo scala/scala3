@@ -170,7 +170,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (toTextLocal(tycon) ~ "[" ~ argsText(args) ~ "]").close
       case tp: RefinedType =>
         val parent :: (refined: List[RefinedType @unchecked]) =
-          refinementChain(tp).reverse
+          refinementChain(tp).reverse: @unchecked
         toTextLocal(parent) ~ "{" ~ Text(refined map toTextRefinement, "; ").close ~ "}"
       case tp: RecType =>
         try {

@@ -689,7 +689,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val origSym = dd.symbol.asTerm
       val newSym = makeStatifiedDefSymbol(origSym, origSym.name)
       tpd.DefDef(newSym, { paramRefss =>
-        val selfParamRef :: regularParamRefs = paramRefss.head
+        val selfParamRef :: regularParamRefs = paramRefss.head: @unchecked
         val enclosingClass = origSym.owner.asClass
         new TreeTypeMap(
           typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)

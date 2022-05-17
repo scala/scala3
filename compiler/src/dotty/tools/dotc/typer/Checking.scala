@@ -835,23 +835,24 @@ trait Checking {
           case NonConforming => sel.srcPos
           case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
         else pat.srcPos
-      def rewriteMsg = Message.rewriteNotice("This patch", `future-migration`)
-      report.warning(
+      def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
+      report.gradualErrorOrMigrationWarning(
         em"""$message
             |
             |If $usage is intentional, this can be communicated by $fix,
             |which $addendum.$rewriteMsg""",
-          pos)
+        pos, warnFrom = `3.2`, errorFrom = `future`)
       false
     }
 
     def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
-      !sourceVersion.isAtLeast(future) || // only for 3.x for now since mitigations work only after this PR
-      pt.hasAnnotation(defn.UncheckedAnnot) || {
+      !sourceVersion.isAtLeast(`3.2`)
+      || pt.hasAnnotation(defn.UncheckedAnnot)
+      || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
-        pat match {
+        pat match
           case Bind(_, pat1) =>
             recur(pat1, pt)
           case UnApply(fn, _, pats) =>
@@ -869,7 +870,6 @@ trait Checking {
           case _ =>
             check(pat, pt)
         }
-      }
 
     recur(pat, pt)
   }
@@ -1356,7 +1356,7 @@ trait Checking {
       else if (stat.symbol.is(Module) && stat.symbol.linkedClass.isAllOf(EnumCase))
         stat match {
           case TypeDef(_, impl: Template) =>
-            for ((defaultGetter @
+            for (case (defaultGetter @
                   DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _)) <- impl.body)
               check(defaultGetter.rhs)
           case _ =>

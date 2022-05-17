@@ -125,7 +125,7 @@ class Splicing extends MacroTransform:
             val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
             newSplicedCode2
         case tree: TypeDef if tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
-          val tp @ TypeRef(qual: TermRef, _) = tree.rhs.tpe.hiBound
+          val tp @ TypeRef(qual: TermRef, _) = tree.rhs.tpe.hiBound: @unchecked
           quotedDefs += tree.symbol
           val hole = typeHoles.get(qual.symbol) match
             case Some (hole) => cpy.Hole(hole)(content = EmptyTree)

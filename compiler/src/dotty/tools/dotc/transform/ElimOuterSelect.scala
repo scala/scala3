@@ -27,7 +27,7 @@ class ElimOuterSelect extends MiniPhase {
   override def transformSelect(tree: Select)(using Context): Tree =
     tree.name match {
       case OuterSelectName(_, nhops) =>
-        val SkolemType(tp) = tree.tpe
+        val SkolemType(tp) = tree.tpe: @unchecked
         ExplicitOuter.outer.path(start = tree.qualifier, count = nhops).ensureConforms(tp)
       case _ => tree
     }

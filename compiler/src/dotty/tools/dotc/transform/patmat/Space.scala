@@ -312,9 +312,9 @@ object SpaceEngine {
    *  @param  unapp   The unapply function tree
    */
   def isIrrefutable(unapp: tpd.Tree, argLen: Int)(using Context): Boolean = {
-    val fun1 = tpd.funPart(unapp)
-    val funRef = fun1.tpe.asInstanceOf[TermRef]
-    isIrrefutable(funRef, argLen)
+    tpd.funPart(unapp).tpe match
+      case funRef: TermRef => isIrrefutable(funRef, argLen)
+      case _: ErrorType => false
   }
 }
 
@@ -592,7 +592,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
   /** Whether the extractor covers the given type */
   def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int): Boolean =
     SpaceEngine.isIrrefutable(unapp, argLen) || unapp.symbol == defn.TypeTest_unapply && {
-      val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias
+      val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
 

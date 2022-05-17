@@ -225,7 +225,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case (NamedArg(_, arg) :: _, namedArgs1) =>
                 arg :: reorderArgs(pnames1, namedArgs1, otherArgs)
               case _ =>
-                val otherArg :: otherArgs1 = otherArgs
+                val otherArg :: otherArgs1 = otherArgs: @unchecked
                 otherArg :: reorderArgs(pnames1, namedArgs, otherArgs1)
             }
           case nil =>
