@@ -117,6 +117,17 @@ sealed abstract class CaptureSet extends Showable:
       || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
     }
 
+  /** A more optimistic version of accountsFor, which does not take variable supersets
+   *  of the `x` reference into account. A set might account for `x` if it accounts
+   *  for `x` in a state where we assume all supersets of `x` have just the elements
+   *  known at this point.
+   */
+  def mightAccountFor(x: CaptureRef)(using ctx: Context): Boolean =
+    reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
+      elems.exists(_.subsumes(x))
+      || !x.isRootCapability && x.captureSetOfInfo.elems.forall(mightAccountFor)
+    }
+
   /** The subcapturing test */
   final def subCaptures(that: CaptureSet, frozen: Boolean)(using Context): CompareResult =
     subCaptures(that)(using ctx, if frozen then FrozenState else VarState())
@@ -515,7 +526,7 @@ object CaptureSet:
   extends Filtered(source, !other.accountsFor(_))
 
   def elemIntersection(cs1: CaptureSet, cs2: CaptureSet)(using Context): Refs =
-    cs1.elems.filter(cs2.accountsFor) ++ cs2.elems.filter(cs1.accountsFor)
+    cs1.elems.filter(cs2.mightAccountFor) ++ cs2.elems.filter(cs1.mightAccountFor)
 
   class Intersected(cs1: CaptureSet, cs2: CaptureSet)(using Context)
   extends Var(elemIntersection(cs1, cs2)):
@@ -538,18 +549,6 @@ object CaptureSet:
       if cs1.isConst && cs2.isConst && !isConst then markSolved()
   end Intersected
 
-/*
-   comes from cs1: ?  if also in cs2 include
-   comes from elsewhere? propagate to cs1, cs2
-
-   A & B <: A, B
-
-
-  cs2 ==> ...
-    addSub(cs1)   I <: A, <: B
-                  A && B ==> I
-    addSub(cs2)
-*/
   def extrapolateCaptureRef(r: CaptureRef, tm: TypeMap, variance: Int)(using Context): CaptureSet =
     val r1 = tm(r)
     val upper = r1.captureSet

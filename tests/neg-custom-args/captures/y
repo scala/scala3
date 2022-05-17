@@ -1,0 +1,55 @@
+boxing difference for B.this.x in bounded.scala
+was: {c}
+now: {}
+env: {}
+boxed set of B.this.x / X / true = {}
+boxing difference for B.this.x in bounded.scala
+was: {c}
+now: {}
+env: {}
+boxed set of B.this.x / X / true = {}
+boxing difference for b.elem in bounded.scala
+was: {}
+now: {c}
+env: {}
+boxed set of b.elem / ? X / true = {c}
+[[syntax trees at end of                        cc]] // bounded.scala
+package <empty> {
+  @CaptureChecked @SourceFile("bounded.scala") class CC() extends Object() {}
+  final lazy module val bounded$package: bounded$package = new bounded$package()
+  @CaptureChecked @SourceFile("bounded.scala") final module class 
+    bounded$package
+  () extends Object() {
+    private[this] type $this = bounded$package.type
+    private def writeReplace(): AnyRef = 
+      new scala.runtime.ModuleSerializationProxy(classOf[bounded$package.type])
+    type Cap = {*} CC
+    def test(c: Cap): Unit = 
+      {
+        class B[X <: {c} Object](x: X) extends Object() {
+          X <: {c} Object
+          val x: X
+          def elem: ? X = B.this.x
+          def lateElem: ? () -> ? X = 
+            {
+              def $anonfun(): ? X = B.this.x
+              closure($anonfun)
+            }
+        }
+        def f(x: Int): Int = if c.==(c) then x else 0
+        val b: ? B[{c} (x$0: Int) -> Int] = 
+          new B[{c} (x$0: Int) -> Int](
+            {
+              def $anonfun(x: Int): Int = f(x)
+              closure($anonfun)
+            }
+          )
+        val r1: {c} (x$0: Int) -> Int = b.elem
+        val r1c: {c} Int -> Int = r1
+        val r2: ? () -> {c} (x$0: Int) -> Int = b.lateElem
+        val r2c: () -> {c} Int -> Int = r2
+        ()
+      }
+  }
+}
+
