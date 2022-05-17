@@ -4,33 +4,59 @@
   float: right;
   margin-top: var(--header-height);
   display: flex;
-  margin-left: calc(36.75 * var(--base-spacing));
-}
-
-#content-wrapper {
-  margin-left: calc(36,75 * var(--base-spacing));
-  margin-right: calc(9.5 * var(--base-spacing));
+  flex-flow: column;
   overflow: scroll;
 }
 
-@media(max-width: 1365px) {
+#content-wrapper {
+  overflow: scroll;
+  display: flex;
+  flex-flow: column;
+}
+
+@media(min-width: 1920px) {
   #content-wrapper {
-    margin-left: calc(6 * var(--base-spacing));
-    margin-right: calc(7 * var(--base-spacing));
+    padding-right: calc(74.25 * var(--base-spacing));
+    padding-left: calc(36.75 * var(--base-spacing));
+  }
+}
+
+@media(max-width: 1920px) {
+  #content-wrapper {
+    padding-right: calc(41 * var(--base-spacing));
+    padding-left: calc(6 * var(--base-spacing));
+  }
+}
+
+@media(max-width: 1024px) {
+  #content {
+    width: 100%;
+  }
+  #content-wrapper.sidebar-shown {
+    padding-left: calc(45 * var(--base-spacing));
+    padding-right: calc(6 * var(--base-spacing));
   }
 }
 
 @media(max-width: 768px) {
   #content-wrapper {
     margin-right: calc(6 * var(--base-spacing));
+    padding-right: 0;
   }
 }
 
 
 @media(max-width: 390px) {
   #content-wrapper {
+    padding-left: 0;
+    margin: 0;
+    height: 100%;
+  }
+
+  #content-wrapper .site-container {
     margin-left: calc(4 * var(--base-spacing));
     margin-right: calc(4 * var(--base-spacing));
+    height: 100%;
   }
 }
 

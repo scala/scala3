@@ -332,7 +332,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             span(cls := "toc-title h200")("In this article"),
             toc
           )
-          }
+          },
         ),
       ),
     )
