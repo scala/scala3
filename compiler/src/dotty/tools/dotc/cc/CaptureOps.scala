@@ -36,9 +36,9 @@ extension (tree: Tree)
 extension (tp: Type)
 
   def derivedCapturingType(parent: Type, refs: CaptureSet)(using Context): Type = tp match
-    case CapturingType(p, r, k) =>
+    case tp @ CapturingType(p, r) =>
       if (parent eq p) && (refs eq r) then tp
-      else CapturingType(parent, refs, k)
+      else CapturingType(parent, refs, tp.isBoxed)
 
   /** If this is  type variable instantiated or upper bounded with a capturing type,
    *  the capture set associated with that type. Extended to and-or types and
@@ -47,8 +47,8 @@ extension (tp: Type)
    */
   def boxedCaptured(using Context): CaptureSet =
     def getBoxed(tp: Type): CaptureSet = tp match
-      case CapturingType(_, refs, CapturingKind.Boxed) => refs
-      case CapturingType(parent, _, _) => getBoxed(parent)
+      case tp @ CapturingType(parent, refs) =>
+        if tp.isBoxed then refs else getBoxed(parent)
       case tp: TypeProxy => getBoxed(tp.superType)
       case tp: AndType => getBoxed(tp.tp1) ++ getBoxed(tp.tp2)
       case tp: OrType => getBoxed(tp.tp1) ** getBoxed(tp.tp2)
@@ -58,7 +58,7 @@ extension (tp: Type)
   def isBoxedCapturing(using Context) = !tp.boxedCaptured.isAlwaysEmpty
 
   def stripCapturing(using Context): Type = tp.dealiasKeepAnnots match
-    case CapturingType(parent, _, _) =>
+    case CapturingType(parent, _) =>
       parent.stripCapturing
     case atd @ AnnotatedType(parent, annot) =>
       atd.derivedAnnotatedType(parent.stripCapturing, annot)
@@ -102,3 +102,8 @@ extension (sym: Symbol)
       case _ => false
     containsEnclTypeParam(sym.info.finalResultType)
     && !sym.allowsRootCapture
+
+extension (tp: AnnotatedType)
+  def isBoxed(using Context): Boolean = tp.annot match
+    case ann: CaptureAnnotation => ann.boxed
+    case _ => false

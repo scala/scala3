@@ -72,7 +72,7 @@ object CheckCaptures:
    *  This check is performed after capture sets are computed in phase cc.
    */
   def checkWellformedPost(tp: Type, pos: SrcPos)(using Context): Unit = tp match
-    case CapturingType(parent, refs, _) =>
+    case CapturingType(parent, refs) =>
       for ref <- refs.elems do
         if ref.captureSetOfInfo.elems.isEmpty then
           report.error(em"$ref cannot be tracked since its capture set is empty", pos)
@@ -131,7 +131,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       variance = startingVariance
       override def traverse(t: Type) =
         t match
-          case CapturingType(parent, refs: CaptureSet.Var, _) =>
+          case CapturingType(parent, refs: CaptureSet.Var) =>
             if variance < 0 then
               capt.println(i"solving $t")
               refs.solve()
@@ -213,7 +213,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           includeBoxed(args.last)
         case tp1 @ RefinedType(_, _, rinfo) if defn.isFunctionType(tp1) =>
           includeBoxed(rinfo.finalResultType)
-        case tp1 @ CapturingType(parent, refs, _) =>
+        case tp1 @ CapturingType(parent, refs) =>
           val boxedParent = addResultBoxes(parent)
           if boxedParent eq parent then tpw
           else boxedParent.capturing(refs)
@@ -355,7 +355,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         def augmentConstructorType(core: Type, initCs: CaptureSet): Type = core match
           case core: MethodType =>
             core.derivedLambdaType(resType = augmentConstructorType(core.resType, initCs))
-          case CapturingType(parent, refs, _) =>
+          case CapturingType(parent, refs) =>
             augmentConstructorType(parent, initCs ++ refs)
           case _ =>
             val (refined, cs) = addParamArgRefinements(core, initCs)
@@ -397,7 +397,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       includeCallCaptures(tree.symbol, tree.srcPos)
       super.recheckApply(tree, pt) match
-        case tp @ CapturingType(tp1, refs, kind) =>
+        case tp @ CapturingType(tp1, refs) =>
           tree.fun match
             case Select(qual, nme.apply)
             if defn.isFunctionType(qual.tpe.widen) =>
@@ -437,7 +437,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
           NoType
       def checkNotUniversal(tp: Type): Unit = tp.widenDealias match
-        case wtp @ CapturingType(parent, refs, _) =>
+        case wtp @ CapturingType(parent, refs) =>
           refs.disallowRootCapability { () =>
             val kind = if tree.isInstanceOf[ValDef] then "mutable variable" else "expression"
             report.error(
@@ -482,7 +482,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               erefs
         }
       val expected1 = expected match
-        case CapturingType(ecore, erefs, _) =>
+        case CapturingType(ecore, erefs) =>
           val erefs1 = augment(erefs, actual.captureSet)
           if erefs1 ne erefs then
             capt.println(i"augmented $expected from ${actual.captureSet} --> $erefs1")
@@ -537,7 +537,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           interpolator(startingVariance = -1).traverse(selfType)
           if !root.isEffectivelySealed  then
             selfType match
-              case CapturingType(_, refs: CaptureSet.Var, _) if !refs.isUniversal =>
+              case CapturingType(_, refs: CaptureSet.Var) if !refs.isUniversal =>
                 report.error(
                   i"""$root needs an explicitly declared self type since its
                      |inferred self type $selfType
@@ -579,7 +579,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           then
             val inferred = t.tpt.knownType
             def checkPure(tp: Type) = tp match
-              case CapturingType(_, refs, _) if !refs.elems.isEmpty =>
+              case CapturingType(_, refs) if !refs.elems.isEmpty =>
                 val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
                 report.error(
                   em"""Non-local $sym cannot have an inferred$resultStr type

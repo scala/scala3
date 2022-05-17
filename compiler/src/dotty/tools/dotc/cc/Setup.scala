@@ -27,8 +27,8 @@ extends tpd.TreeTraverser:
       .toFunctionType(isJava = false, alwaysDependent = true)
 
   private def box(tp: Type)(using Context): Type = tp.dealias match
-    case CapturingType(parent, refs, CapturingKind.Regular) =>
-      CapturingType(parent, refs, CapturingKind.Boxed)
+    case tp @ CapturingType(parent, refs) if !tp.isBoxed =>
+      CapturingType(parent, refs, boxed = true)
     case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
       val res = args.last
       val boxedRes = box(res)
@@ -114,7 +114,7 @@ extends tpd.TreeTraverser:
             cls.paramGetters.foldLeft(tp) { (core, getter) =>
               if getter.termRef.isTracked then
                 val getterType = tp.memberInfo(getter).strippedDealias
-                RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var(), CapturingKind.Regular))
+                RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var()))
                   .showing(i"add capture refinement $tp --> $result", capt)
               else
                 core
@@ -124,7 +124,7 @@ extends tpd.TreeTraverser:
 
     private def superTypeIsImpure(tp: Type): Boolean = {
       tp.dealias match
-        case CapturingType(_, refs, _) =>
+        case CapturingType(_, refs) =>
           !refs.isAlwaysEmpty
         case tp: (TypeRef | AppliedType) =>
           val sym = tp.typeSymbol
@@ -156,7 +156,7 @@ extends tpd.TreeTraverser:
           canHaveInferredCapture(tp.tp1) && canHaveInferredCapture(tp.tp2)
         case tp: OrType =>
           canHaveInferredCapture(tp.tp1) || canHaveInferredCapture(tp.tp2)
-        case CapturingType(_, refs, _) =>
+        case CapturingType(_, refs) =>
           refs.isConst && !refs.isAlwaysEmpty && !refs.isUniversal
         case _ =>
           false
@@ -166,35 +166,35 @@ extends tpd.TreeTraverser:
      *  an embedded capture set variables from a part of `tp`.
      */
     def addVar(tp: Type) = tp match
-      case tp @ RefinedType(parent @ CapturingType(parent1, refs, boxed), rname, rinfo) =>
-        CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, boxed)
+      case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
+        CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
       case tp: RecType =>
         tp.parent match
-          case CapturingType(parent1, refs, boxed) =>
-            CapturingType(tp.derivedRecType(parent1), refs, boxed)
+          case parent @ CapturingType(parent1, refs) =>
+            CapturingType(tp.derivedRecType(parent1), refs, parent.isBoxed)
           case _ =>
             tp // can return `tp` here since unlike RefinedTypes, RecTypes are never created
                 // by `mapInferred`. Hence if the underlying type admits capture variables
                 // a variable was already added, and the first case above would apply.
-      case AndType(CapturingType(parent1, refs1, boxed1), CapturingType(parent2, refs2, boxed2)) =>
+      case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
         assert(refs1.asVar.elems.isEmpty)
         assert(refs2.asVar.elems.isEmpty)
-        assert(boxed1 == boxed2)
-        CapturingType(AndType(parent1, parent2), refs1, boxed1)
-      case tp @ OrType(CapturingType(parent1, refs1, boxed1), CapturingType(parent2, refs2, boxed2)) =>
+        assert(tp1.isBoxed == tp2.isBoxed)
+        CapturingType(AndType(parent1, parent2), refs1, tp1.isBoxed)
+      case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
         assert(refs1.asVar.elems.isEmpty)
         assert(refs2.asVar.elems.isEmpty)
-        assert(boxed1 == boxed2)
-        CapturingType(OrType(parent1, parent2, tp.isSoft), refs1, boxed1)
-      case tp @ OrType(CapturingType(parent1, refs1, boxed1), tp2) =>
-        CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, boxed1)
-      case tp @ OrType(tp1, CapturingType(parent2, refs2, boxed2)) =>
-        CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, boxed2)
+        assert(tp1.isBoxed == tp2.isBoxed)
+        CapturingType(OrType(parent1, parent2, tp.isSoft), refs1, tp1.isBoxed)
+      case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2) =>
+        CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
+      case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
+        CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
       case _ if canHaveInferredCapture(tp) =>
         val cs = tp.dealias match
-          case CapturingType(_, refs,_) => CaptureSet.Var(refs.elems)
+          case CapturingType(_, refs) => CaptureSet.Var(refs.elems)
           case _ => CaptureSet.Var()
-        CapturingType(tp, cs, CapturingKind.Regular)
+        CapturingType(tp, cs)
       case _ =>
         tp
 
@@ -283,7 +283,7 @@ extends tpd.TreeTraverser:
         mapOver(tp)
 
     def apply(tp: Type): Type = tp match
-      case CapturingType(parent, cs, boxed) =>
+      case CapturingType(parent, cs) =>
         tp.derivedCapturingType(propagateEnclosing(parent, cs, CaptureSet.empty), cs)
       case _ =>
         propagateEnclosing(tp, CaptureSet.empty, CaptureSet.empty)
@@ -399,14 +399,14 @@ extends tpd.TreeTraverser:
         if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
           val localRefs = CaptureSet.Var()
           val newInfo = ClassInfo(prefix, cls, ps, decls,
-            CapturingType(cinfo.selfType, localRefs, CapturingKind.Regular)
+            CapturingType(cinfo.selfType, localRefs)
               .showing(i"inferred self type for $cls: $result", capt))
           cls.updateInfoBetween(preRecheckPhase, thisPhase, newInfo)
           cls.thisType.asInstanceOf[ThisType].invalidateCaches()
           if cls.is(ModuleClass) then
             val modul = cls.sourceModule
             modul.updateInfoBetween(preRecheckPhase, thisPhase,
-              CapturingType(modul.info, localRefs, CapturingKind.Regular))
+              CapturingType(modul.info, localRefs))
             modul.termRef.invalidateCaches()
       case _ =>
 end Setup

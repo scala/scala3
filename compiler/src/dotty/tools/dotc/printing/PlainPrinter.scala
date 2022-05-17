@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.Config
-import cc.{CapturingType, EventuallyCapturingType, CaptureSet, CapturingKind}
+import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -200,9 +200,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
-      case EventuallyCapturingType(parent, refs, kind) =>
+      case tp @ EventuallyCapturingType(parent, refs) =>
         def box =
-          Str("box ") provided kind == CapturingKind.Boxed && ctx.settings.YccDebug.value
+          Str("box ") provided tp.isBoxed && ctx.settings.YccDebug.value
         if printDebug && !refs.isConst then
           changePrec(GlobalPrec)(box ~ s"$refs " ~ toText(parent))
         else if ctx.settings.YccDebug.value then
@@ -233,10 +233,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ (if tp.resultType.isInstanceOf[MethodType] then ")" else "): ")
           ~ toText(tp.resultType)
         }
-      case ExprType(ct @ EventuallyCapturingType(parent, refs, _))
+      case ExprType(ct @ EventuallyCapturingType(parent, refs))
       if ct.annot.symbol == defn.RetainsByNameAnnot =>
         if refs.isUniversal then changePrec(GlobalPrec) { "=> " ~ toText(parent) }
-        else toText(CapturingType(ExprType(parent), refs, CapturingKind.Regular))
+        else toText(CapturingType(ExprType(parent), refs))
       case ExprType(restp) =>
         changePrec(GlobalPrec) {
           (if ctx.settings.Ycc.value then "-> " else "=> ") ~ toText(restp)

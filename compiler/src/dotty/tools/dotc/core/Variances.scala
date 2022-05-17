@@ -100,7 +100,7 @@ object Variances {
             v
         }
       varianceInArgs(varianceInType(tycon)(tparam), args, tycon.typeParams)
-    case CapturingType(tp, _, _) =>
+    case CapturingType(tp, _) =>
       varianceInType(tp)(tparam)
     case AnnotatedType(tp, annot) =>
       varianceInType(tp)(tparam) & varianceInAnnot(annot)(tparam)
