@@ -13,6 +13,10 @@ trait M1[F] {
 trait M2[F] { self: M1[F] =>
   override def category: Category[X] = null
   override def category1: Category[Tuple2] = null
+
+  type T[A, B]
+  def category2: Category[T]
+  def category3: Category[[A, B] =>> T[B, A]]
 }
 
 abstract class C extends M1[Float] with M2[Float]
