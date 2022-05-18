@@ -60,8 +60,26 @@
   }
 }
 
-#content h1 {
+/* content headers */
+
+#content h1, #content h2 {
   color: var(--text-primary);
+}
+
+/* content paragraph */
+#content p {
+  color: var(--text-secondary);
+}
+
+/* content list */
+#content li {
+  color: var(--text-primary);
+}
+
+/* content link */
+#content a {
+  color: var(--text-primary);
+  text-decoration: underline;
 }
 
 .breadcrumbs {
