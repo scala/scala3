@@ -50,12 +50,6 @@ object ClassfileParser {
         mapOver(tp)
     }
   }
-
-  private inline def sigOfClassName(n: String) = s"L$n;"
-  val ScalaSignatureAnnot: String = sigOfClassName("scala.reflect.ScalaSignature")
-  val ScalaLongSignatureAnnot: String = sigOfClassName("scala.reflect.ScalaLongSignature")
-  val TASTYSignatureAnnot: String = sigOfClassName("scala.annotation.internal.TASTYSignature")
-  val TASTYLongSignatureAnnot: String = sigOfClassName("scala.annotation.internal.TASTYLongSignature")
 }
 
 class ClassfileParser(
@@ -876,7 +870,7 @@ class ClassfileParser(
 
   /** Parse inner classes. Expects `in.bp` to point to the superclass entry.
    *  Restores the old `bp`.
-   *  @return true iff classfile is from Scala, so no Java info needs to be read.
+   *  @return Some(unpickler) iff classfile is from Scala, so no Java info needs to be read.
    */
   def unpickleOrParseInnerClasses()(using ctx: Context, in: DataReader): Option[Embedded] = {
     val oldbp = in.bp
@@ -1005,25 +999,21 @@ class ClassfileParser(
         // attribute isn't, this classfile is a compilation artifact.
         return Some(NoEmbedded)
 
-      if (scan(tpnme.RuntimeVisibleAnnotationATTR) || scan(tpnme.RuntimeInvisibleAnnotationATTR)) {
+      if (scan(tpnme.ScalaSignatureATTR) && scan(tpnme.RuntimeVisibleAnnotationATTR)) {
         val attrLen = in.nextInt
         val nAnnots = in.nextChar
         var i = 0
         while (i < nAnnots) {
-          val attrSig = pool.getExternalName(in.nextChar).value
+          val attrClass = pool.getType(in.nextChar).typeSymbol
           val nArgs = in.nextChar
           var j = 0
           while (j < nArgs) {
             val argName = pool.getName(in.nextChar)
             if (argName.name == nme.bytes) {
-              if attrSig == ScalaSignatureAnnot then
+              if attrClass == defn.ScalaSignatureAnnot then
                 return unpickleScala(parseScalaSigBytes)
-              else if attrSig == ScalaLongSignatureAnnot then
+              else if attrClass == defn.ScalaLongSignatureAnnot then
                 return unpickleScala(parseScalaLongSigBytes)
-              else if attrSig == TASTYSignatureAnnot then
-                return unpickleTASTY(parseScalaSigBytes)
-              else if attrSig == TASTYLongSignatureAnnot then
-                return unpickleTASTY(parseScalaLongSigBytes)
             }
             parseAnnotArg(skip = true)
             j += 1
