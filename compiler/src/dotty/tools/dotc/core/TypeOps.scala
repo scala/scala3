@@ -165,7 +165,7 @@ object TypeOps:
         // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
-      case CapturingType(parent, refs, _) =>
+      case CapturingType(parent, refs) =>
         if !ctx.mode.is(Mode.Type)
             && refs.subCaptures(parent.captureSet, frozen = true).isOK then
           simplify(parent, theMap)
@@ -284,7 +284,7 @@ object TypeOps:
       tp1 match {
         case tp1: RecType =>
           return tp1.rebind(approximateOr(tp1.parent, tp2))
-        case CapturingType(parent1, refs1, _) =>
+        case CapturingType(parent1, refs1) =>
           return tp1.derivedCapturingType(approximateOr(parent1, tp2), refs1)
         case err: ErrorType =>
           return err
@@ -293,7 +293,7 @@ object TypeOps:
       tp2 match {
         case tp2: RecType =>
           return tp2.rebind(approximateOr(tp1, tp2.parent))
-        case CapturingType(parent2, refs2, _) =>
+        case CapturingType(parent2, refs2) =>
           return tp2.derivedCapturingType(approximateOr(tp1, parent2), refs2)
         case err: ErrorType =>
           return err

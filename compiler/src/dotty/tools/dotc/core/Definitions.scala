@@ -15,7 +15,7 @@ import Comments.CommentsContext
 import Comments.Comment
 import util.Spans.NoSpan
 import Symbols.requiredModuleRef
-import cc.{CapturingType, CaptureSet, CapturingKind, EventuallyCapturingType}
+import cc.{CapturingType, CaptureSet, EventuallyCapturingType}
 
 import scala.annotation.tailrec
 
@@ -136,7 +136,7 @@ class Definitions {
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
               tl => CapturingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                CaptureSet.universal, CapturingKind.Regular)
+                CaptureSet.universal)
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -1155,8 +1155,8 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case EventuallyCapturingType(tp1, refs, CapturingKind.ByName) =>
-        CapturingType(apply(tp1), refs, CapturingKind.Regular)
+      case tp @ EventuallyCapturingType(tp1, refs) if tp.annot.symbol == RetainsByNameAnnot =>
+        CapturingType(apply(tp1), refs)
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match

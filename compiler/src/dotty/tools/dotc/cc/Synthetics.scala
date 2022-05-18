@@ -56,9 +56,9 @@ object Synthetics:
             RefinedType(parent, pref.paramName,
               CapturingType(
                 atPhase(ctx.phase.next)(pref.underlying.stripCapturing),
-                CaptureSet(pref), CapturingKind.Regular))
+                CaptureSet(pref)))
           }
-          CapturingType(refined, CaptureSet(trackedParams*), CapturingKind.Regular)
+          CapturingType(refined, CaptureSet(trackedParams*))
       if trackedParams.isEmpty then info else augmentResult(info)
     case info: PolyType =>
       info.derivedLambdaType(resType = addCaptureDeps(info.resType))
@@ -69,7 +69,7 @@ object Synthetics:
   private def dropCaptureDeps(tp: Type)(using Context): Type = tp match
     case tp: MethodOrPoly =>
       tp.derivedLambdaType(resType = dropCaptureDeps(tp.resType))
-    case CapturingType(parent, _, _) =>
+    case CapturingType(parent, _) =>
       dropCaptureDeps(parent)
     case RefinedType(parent, _, _) =>
       dropCaptureDeps(parent)
@@ -82,7 +82,7 @@ object Synthetics:
       info.derivedLambdaType(resType = addDefaultGetterCapture(info.resType, owner, idx))
     case info: ExprType =>
       info.derivedExprType(addDefaultGetterCapture(info.resType, owner, idx))
-    case EventuallyCapturingType(parent, _, _) =>
+    case EventuallyCapturingType(parent, _) =>
       addDefaultGetterCapture(parent, owner, idx)
     case info @ AnnotatedType(parent, annot) =>
       info.derivedAnnotatedType(addDefaultGetterCapture(parent, owner, idx), annot)
@@ -91,7 +91,7 @@ object Synthetics:
       val pinfo = param.info
       atPhase(ctx.phase.next) {
         if pinfo.captureSet.isAlwaysEmpty then info
-        else CapturingType(pinfo.stripCapturing, CaptureSet(param.termRef), CapturingKind.Regular)
+        else CapturingType(pinfo.stripCapturing, CaptureSet(param.termRef))
       }
     case _ =>
       info
@@ -100,7 +100,7 @@ object Synthetics:
   private def dropDefaultGetterCapture(info: Type)(using Context): Type = info match
     case info: MethodOrPoly =>
       info.derivedLambdaType(resType = dropDefaultGetterCapture(info.resType))
-    case CapturingType(parent, _, _) =>
+    case CapturingType(parent, _) =>
       parent
     case info @ AnnotatedType(parent, annot) =>
       info.derivedAnnotatedType(dropDefaultGetterCapture(parent), annot)
@@ -111,24 +111,24 @@ object Synthetics:
     case info: MethodType =>
       val paramInfo :: Nil = info.paramInfos: @unchecked
       val newParamInfo =
-        CapturingType(paramInfo, CaptureSet.universal, CapturingKind.Regular)
+        CapturingType(paramInfo, CaptureSet.universal)
       val trackedParam = info.paramRefs.head
       def newResult(tp: Type): Type = tp match
         case tp: MethodOrPoly =>
           tp.derivedLambdaType(resType = newResult(tp.resType))
         case _ =>
-          CapturingType(tp, CaptureSet(trackedParam), CapturingKind.Regular)
+          CapturingType(tp, CaptureSet(trackedParam))
       info.derivedLambdaType(paramInfos = newParamInfo :: Nil, resType = newResult(info.resType))
     case info: PolyType =>
       info.derivedLambdaType(resType = addUnapplyCaptures(info.resType))
 
   private def dropUnapplyCaptures(info: Type)(using Context): Type = info match
     case info: MethodType =>
-      val CapturingType(oldParamInfo, _, _) :: Nil = info.paramInfos: @unchecked
+      val CapturingType(oldParamInfo, _) :: Nil = info.paramInfos: @unchecked
       def oldResult(tp: Type): Type = tp match
         case tp: MethodOrPoly =>
           tp.derivedLambdaType(resType = oldResult(tp.resType))
-        case CapturingType(tp, _, _) =>
+        case CapturingType(tp, _) =>
           tp
       info.derivedLambdaType(paramInfos = oldParamInfo :: Nil, resType = oldResult(info.resType))
     case info: PolyType =>
