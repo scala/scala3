@@ -16,8 +16,6 @@
       val pathEntries = System.getenv("PATH").split(psep).toList
       System.err.printf("sun.java.command: %s\n", sys.props("sun.java.command"))
       System.err.printf("first 5 PATH entries:\n%s\n",pathEntries.take(5).mkString("\n"))
-      printf("script.path: %s\n",path.norm)
-      assert(path.endsWith("scriptPath.sc"),s"actual path [$path]")
     }
 
   extension(s: String)

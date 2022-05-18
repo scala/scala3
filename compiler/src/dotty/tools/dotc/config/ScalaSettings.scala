@@ -241,6 +241,7 @@ private sealed trait XSettings:
   val XcheckMacros: Setting[Boolean] = BooleanSetting("-Xcheck-macros", "Check some invariants of macro generated code while expanding macros", aliases = List("--Xcheck-macros"))
   val XmainClass: Setting[String] = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XimplicitSearchLimit: Setting[Int] = IntSetting("-Ximplicit-search-limit", "Maximal number of expressions to be generated in an implicit search", 50000)
+  val XlegacyLazyVals: Setting[Boolean] = BooleanSetting("-Xlegacy-lazy-values", "Use legacy lazy vals implementations")
 
   val XmixinForceForwarders = ChoiceSetting(
     name    = "-Xmixin-force-forwarders",

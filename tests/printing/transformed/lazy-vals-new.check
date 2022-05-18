@@ -1,0 +1,83 @@
+[[syntax trees at end of MegaPhase{dropOuterAccessors, checkNoSuperThis, flatten, transformWildcards, moveStatic, expandPrivate, restoreScopes, selectStatic, Collect entry points, collectSuperCalls, repeatableAnnotations}]] // tests/printing/transformed/lazy-vals-new.scala
+package <empty> {
+  @SourceFile("tests/printing/transformed/lazy-vals-new.scala") final module 
+    class
+   A extends Object {
+    def <init>(): Unit = 
+      {
+        super()
+        ()
+      }
+    @static private def <clinit>(): Unit = 
+      {
+        A.OFFSET$_m_0 = 
+          scala.runtime.LazyVals.getStaticFieldOffset(
+            classOf[Object {...}].getDeclaredField("x$lzy1")
+          )
+        ()
+      }
+    @static @static val OFFSET$_m_0: Long = 
+      scala.runtime.LazyVals.getStaticFieldOffset(
+        classOf[Object {...}].getDeclaredField("x$lzy1")
+      )
+    private def writeReplace(): Object = 
+      new scala.runtime.ModuleSerializationProxy(classOf[A])
+    @volatile lazy <static> var x$lzy1: Object = null
+    lazy def x(): Int = 
+      while <empty> do 
+        {
+          val current: Object = A#x$lzy1
+          if current.==(null) then 
+            if 
+              scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, null, 
+                scala.runtime.LazyVals.Evaluating
+              )
+             then 
+              {
+                var result: Object = null
+                try 
+                  {
+                    result = scala.Int.box(2)
+                    if result.==(null) then 
+                      result = scala.runtime.LazyVals.NullValue
+                  }
+                 finally 
+                  if 
+                    scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
+                      scala.runtime.LazyVals.Evaluating
+                    , result).unary_!()
+                   then 
+                    {
+                      val lock: scala.runtime.LazyVals.LazyVals$Waiting = 
+                        A#x$lzy1.asInstanceOf[
+                          scala.runtime.LazyVals.LazyVals$Waiting
+                        ]
+                      scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
+                        lock
+                      , result)
+                      lock.countDown()
+                    }
+              }
+           else 
+            if current.isInstanceOf[scala.runtime.LazyVals.Evaluating] then 
+              {
+                scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
+                  scala.runtime.LazyVals.Evaluating
+                , new scala.runtime.LazyVals.LazyVals$Waiting())
+                ()
+              }
+             else 
+              if current.isInstanceOf[scala.runtime.LazyVals.NullValue] then 
+                return 0
+               else 
+                if current.isInstanceOf[scala.runtime.LazyVals.LazyVals$Waiting]
+                   then
+                 
+                  current.asInstanceOf[scala.runtime.LazyVals.LazyVals$Waiting].
+                    await
+                  ()
+                 else return scala.Int.unbox(current)
+        }
+  }
+  final lazy module val A: A = new A()
+} 

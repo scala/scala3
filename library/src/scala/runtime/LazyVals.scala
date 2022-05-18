@@ -1,5 +1,7 @@
 package scala.runtime
 
+import java.util.concurrent.CountDownLatch
+
 import scala.annotation.*
 
 /**
@@ -41,40 +43,25 @@ object LazyVals {
 
   /* ------------- Start of public API ------------- */
 
+  trait LazyValControlState
+
   /**
    * Used to indicate the state of a lazy val that is being
    * evaluated and of which other threads await the result.
    */
-  final class Waiting:
-    private var done = false
-    
-    /**
-     * Wakes up waiting threads. Called on completion of the evaluation
-     * of lazy val's right-hand side.
-     */
-    def release(): Unit = synchronized {
-      done = true
-      notifyAll()
-    }
-
-    /**
-     * Awaits the completion of the evaluation of lazy val's right-hand side.
-     */
-    def awaitRelease(): Unit = synchronized {
-      while !done do wait()
-    }
+  final class Waiting extends CountDownLatch(1) with LazyValControlState
 
   /**
    * Used to indicate the state of a lazy val that is currently being
    * evaluated with no other thread awaiting its result.
    */
-  object Evaluating
+  object Evaluating extends LazyValControlState
 
   /**
    * Used to indicate the state of a lazy val that has been evaluated to
    * `null`.
    */
-  object NULL
+  object NullValue extends LazyValControlState
 
   final val BITS_PER_LAZY_VAL = 2L
 
@@ -144,6 +131,7 @@ object LazyVals {
     unsafe.getLongVolatile(t, off)
   }
 
+  // kept for backward compatibility
   def getOffset(clz: Class[_], name: String): Long = {
     @nowarn
     val r = unsafe.objectFieldOffset(clz.getDeclaredField(name))
@@ -152,10 +140,10 @@ object LazyVals {
     r
   }
 
-  def getStaticOffset(clz: Class[_], name: String): Long = {
-    val r = unsafe.staticFieldOffset(clz.getDeclaredField(name))
+  def getStaticFieldOffset(field: java.lang.reflect.Field): Long = {
+    val r = unsafe.staticFieldOffset(field)
     if (debug)
-      println(s"getStaticOffset($clz, $name) = $r")
+      println(s"getStaticFieldOffset(${field.getDeclaringClass}, ${field.getName}) = $r")
     r
   }
 
@@ -168,11 +156,12 @@ object LazyVals {
 
 
   object Names {
+    final val controlState = "LazyValControlState"
     final val waiting = "Waiting"
     final val evaluating = "Evaluating"
-    final val nullValue = "NULL"
-    final val waitingAwaitRelease = "awaitRelease"
-    final val waitingRelease = "release"
+    final val nullValue = "NullValue"
+    final val waitingAwaitRelease = "await"
+    final val waitingRelease = "countDown"
     final val state = "STATE"
     final val cas = "CAS"
     final val objCas = "objCAS"
@@ -180,6 +169,7 @@ object LazyVals {
     final val wait4Notification = "wait4Notification"
     final val get = "get"
     final val getOffset = "getOffset"
-    final val getStaticOffset = "getStaticOffset"
+    final val getOffsetStatic = "getOffsetStatic"
+    final val getStaticFieldOffset = "getStaticFieldOffset"
   }
 }
