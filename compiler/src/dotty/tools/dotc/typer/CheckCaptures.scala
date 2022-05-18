@@ -341,7 +341,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     end instantiate
 
     def recheckByNameArg(tree: Tree, pt: Type)(using Context): Type =
-      val closureDef(mdef) = tree
+      val closureDef(mdef) = tree: @unchecked
       val arg = mdef.rhs
       val localSet = CaptureSet.Var()
       curEnv = Env(mdef.symbol, localSet, isBoxed = false, curEnv)
