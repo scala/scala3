@@ -12,7 +12,7 @@ import printing.Printer
 import printing.Texts.Text
 
 
-case class CaptureAnnotation(refs: CaptureSet, kind: CapturingKind) extends Annotation:
+case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) extends Annotation:
   import CaptureAnnotation.*
   import tpd.*
 
@@ -25,19 +25,19 @@ case class CaptureAnnotation(refs: CaptureSet, kind: CapturingKind) extends Anno
     val arg = repeated(elems, TypeTree(defn.AnyType))
     New(symbol.typeRef, arg :: Nil)
 
-  override def symbol(using Context) =
-    if kind == CapturingKind.ByName then defn.RetainsByNameAnnot else defn.RetainsAnnot
+  override def symbol(using Context) = cls
 
   override def derivedAnnotation(tree: Tree)(using Context): Annotation =
     if refs == CaptureSet.universal then this
     else unsupported("derivedAnnotation(Tree)")
 
-  def derivedAnnotation(refs: CaptureSet, kind: CapturingKind)(using Context): Annotation =
-    if (this.refs eq refs) && (this.kind == kind) then this
-    else CaptureAnnotation(refs, kind)
+  def derivedAnnotation(refs: CaptureSet, boxed: Boolean)(using Context): Annotation =
+    if (this.refs eq refs) && (this.boxed == boxed) then this
+    else CaptureAnnotation(refs, boxed)(cls)
 
   override def sameAnnotation(that: Annotation)(using Context): Boolean = that match
-    case CaptureAnnotation(refs2, kind2) => refs == refs2 && kind == kind2
+    case CaptureAnnotation(refs, boxed) =>
+      this.refs == refs && this.boxed == boxed && this.symbol == that.symbol
     case _ => false
 
   override def mapWith(tp: TypeMap)(using Context) =
@@ -45,7 +45,7 @@ case class CaptureAnnotation(refs: CaptureSet, kind: CapturingKind) extends Anno
     val elems1 = elems.mapConserve(tp)
     if elems1 eq elems then this
     else if elems1.forall(_.isInstanceOf[CaptureRef])
-    then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[CaptureRef]]*), kind)
+    then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[CaptureRef]]*), boxed)
     else EmptyAnnotation
 
   override def refersToParamOf(tl: TermLambda)(using Context): Boolean =
@@ -57,10 +57,10 @@ case class CaptureAnnotation(refs: CaptureSet, kind: CapturingKind) extends Anno
   override def toText(printer: Printer): Text = refs.toText(printer)
 
   override def hash: Int =
-    (refs.hashCode << 1) | (if kind == CapturingKind.Regular then 0 else 1)
+    (refs.hashCode << 1) | (if boxed then 1 else 0)
 
   override def eql(that: Annotation) = that match
-    case that: CaptureAnnotation => (this.refs eq that.refs) && (this.kind == kind)
+    case that: CaptureAnnotation => (this.refs eq that.refs) && (this.boxed == that.boxed)
     case _ => false
 
 end CaptureAnnotation
