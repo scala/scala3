@@ -462,6 +462,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val containerName = LazyLocalName.fresh(x.name.asTermName)
     val containerSymbol = newSymbol(claz, containerName, containerFlags, defn.ObjectType).enteredAfter(this)
     containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot)) // private @volatile var _x: AnyRef
+    containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
     val stat = x.symbol.isStatic
     if stat then
       containerSymbol.setFlag(JavaStatic)
