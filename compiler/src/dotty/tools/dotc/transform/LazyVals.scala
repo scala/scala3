@@ -289,11 +289,6 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     }
   }
 
-  def transformMemberDefThreadSafe(x: ValOrDefDef)(using Context): Thicket = {
-    assert(!(x.symbol is Mutable))
-    transformMemberDefThreadSafeNew(x)
-  }
-
   /**
    * Create a threadsafe lazy accessor equivalent to the following code:
    * ```
@@ -370,7 +365,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
    * @param evaluating    a reference to the `Evaluating` runtime object
    * @param nullValued    a reference to the `NULL` runtime object
    */
-  def mkThreadSafeDefNew(methodSymbol: TermSymbol,
+  def mkThreadSafeDef(methodSymbol: TermSymbol,
                       claz: ClassSymbol,
                       target: Symbol,
                       rhs: Tree,
@@ -446,9 +441,11 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     ret
   }
 
-  def transformMemberDefThreadSafeNew(x: ValOrDefDef)(using Context): Thicket = {
+  def transformMemberDefThreadSafe(x: ValOrDefDef)(using Context): Thicket = {
     import dotty.tools.dotc.core.Types._
     import dotty.tools.dotc.core.Flags._
+    
+    assert(!(x.symbol is Mutable))
     
     val runtimeModule = "scala.runtime.LazyVals"
     val tpe = x.tpe.widen.resultType.widen
@@ -502,7 +499,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         This(claz)
 
     val methodSymbol = x.symbol.asTerm
-    val accessor = mkThreadSafeDefNew(methodSymbol, claz, containerSymbol, x.rhs, tpe, offset, objCas, 
+    val accessor = mkThreadSafeDef(methodSymbol, claz, containerSymbol, x.rhs, tpe, offset, objCas, 
       ref(waiting), evaluating, nullValued, swapOver)
     Thicket(containerTree, accessor)
   }
