@@ -1229,6 +1229,7 @@ class Namer { typer: Typer =>
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
               val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
               ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
+                .etaExpandCFT(using ctx.withOwner(forwarder))
             })
             if forwarder.isInlineMethod then
               PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
