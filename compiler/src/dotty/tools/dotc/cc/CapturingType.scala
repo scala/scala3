@@ -7,22 +7,16 @@ import Types.*, Symbols.*, Contexts.*
 
 /** A capturing type. This is internally represented as an annotated type with a `retains`
  *  annotation, but the extractor will succeed only at phase CheckCaptures.
- *  Annotated types with `@retainsByName` annotation can also be created that way, by
- *  giving a `CapturingKind.ByName` as `kind` argument, but they are never extracted,
- *  since they have already been converted to regular capturing types before CheckCaptures.
  */
 object CapturingType:
 
-  def apply(parent: Type, refs: CaptureSet, kind: CapturingKind)(using Context): Type =
+  def apply(parent: Type, refs: CaptureSet, boxed: Boolean = false)(using Context): Type =
     if refs.isAlwaysEmpty then parent
-    else AnnotatedType(parent, CaptureAnnotation(refs, kind))
+    else AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
 
-  def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet, CapturingKind)] =
-    if ctx.phase == Phases.checkCapturesPhase then
-      val r = EventuallyCapturingType.unapply(tp)
-      r match
-        case Some((_, _, CapturingKind.ByName)) => None
-        case _ => r
+  def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet)] =
+    if ctx.phase == Phases.checkCapturesPhase && tp.annot.symbol == defn.RetainsAnnot then
+      EventuallyCapturingType.unapply(tp)
     else None
 
 end CapturingType
@@ -33,18 +27,14 @@ end CapturingType
  */
 object EventuallyCapturingType:
 
-  def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet, CapturingKind)] =
+  def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet)] =
     val sym = tp.annot.symbol
     if sym == defn.RetainsAnnot || sym == defn.RetainsByNameAnnot then
       tp.annot match
         case ann: CaptureAnnotation =>
-          Some((tp.parent, ann.refs, ann.kind))
+          Some((tp.parent, ann.refs))
         case ann =>
-          val kind =
-            if ann.tree.isBoxedCapturing then CapturingKind.Boxed
-            else if sym == defn.RetainsByNameAnnot then CapturingKind.ByName
-            else CapturingKind.Regular
-          try Some((tp.parent, ann.tree.toCaptureSet, kind))
+          try Some((tp.parent, ann.tree.toCaptureSet))
           catch case ex: IllegalCaptureRef => None
     else None
 
