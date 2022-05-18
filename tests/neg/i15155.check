@@ -1,0 +1,11 @@
+-- [E079] Type Error: tests/neg/i15155.scala:10:33 ---------------------------------------------------------------------
+10 |  val EnumerationClass = classOf[EnumValue[E]] // error
+   |                                 ^^^^^^^^^^^^
+   |                                 EnumValue[E] is not a class type
+   |
+   |                                 Note: a match type could not be fully reduced:
+   |
+   |                                   trying to reduce  EnumValue[E]
+   |                                   failed since selector  E
+   |                                   does not match  case Aux[a] => a
+   |                                   and cannot be shown to be disjoint from it either.

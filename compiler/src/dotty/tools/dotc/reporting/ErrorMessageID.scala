@@ -183,7 +183,8 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case LossyWideningConstantConversionID // errorNumber: 167
   case ImplicitSearchTooLargeID // errorNumber: 168
   case TargetNameOnTopLevelClassID // errorNumber: 169
-
+  case NotClassTypeID // errorNumber 170
+  
   def errorNumber = ordinal - 1
 
 object ErrorMessageID:

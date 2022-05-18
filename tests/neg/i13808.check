@@ -1,8 +1,8 @@
--- Error: tests/neg/i13808.scala:13:37 ---------------------------------------------------------------------------------
+-- [E079] Type Error: tests/neg/i13808.scala:13:37 ---------------------------------------------------------------------
 13 |case class Boom[A](value: A) derives OpaqueType, Foo // error // error
    |                                     ^^^^^^^^^^
    |                                     OpaqueTypes.OpaqueType is not a class type
--- Error: tests/neg/i13808.scala:13:49 ---------------------------------------------------------------------------------
+-- [E079] Type Error: tests/neg/i13808.scala:13:49 ---------------------------------------------------------------------
 13 |case class Boom[A](value: A) derives OpaqueType, Foo // error // error
    |                                                 ^^^
    |                                                 FooModule.Foo is not a class type

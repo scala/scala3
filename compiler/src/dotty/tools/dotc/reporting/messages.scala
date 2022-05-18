@@ -2521,3 +2521,8 @@ import transform.SymUtils._
           |  $annot $symbol { ... }
           |
           |${hl("export")} Wrapper.${symbol.name}  ${hl("// optional")}"""
+
+  class NotClassType(tp: Type)(using Context)
+  extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
+    def msg = ex"$tp is not a class type"
+    def explain = ""
