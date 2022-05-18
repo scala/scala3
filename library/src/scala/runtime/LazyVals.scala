@@ -141,6 +141,7 @@ object LazyVals {
     unsafe.getLongVolatile(t, off)
   }
 
+  // kept for backward compatibility
   def getOffset(clz: Class[_], name: String): Long = {
     val r = unsafe.objectFieldOffset(clz.getDeclaredField(name))
     if (debug)
@@ -148,10 +149,10 @@ object LazyVals {
     r
   }
 
-  def getStaticOffset(clz: Class[_], name: String): Long = {
-    val r = unsafe.staticFieldOffset(clz.getDeclaredField(name))
+  def getStaticFieldOffset(field: java.lang.reflect.Field): Long = {
+    val r = unsafe.staticFieldOffset(field)
     if (debug)
-      println(s"getStaticOffset($clz, $name) = $r")
+      println(s"getStaticFieldOffset(${field.getDeclaringClass}, ${field.getName}) = $r")
     r
   }
 
@@ -175,6 +176,7 @@ object LazyVals {
     final val wait4Notification = "wait4Notification"
     final val get = "get"
     final val getOffset = "getOffset"
-    final val getStaticOffset = "getStaticOffset"
+    final val getOffsetStatic = "getOffsetStatic"
+    final val getStaticFieldOffset = "getStaticFieldOffset"
   }
 }
