@@ -10,6 +10,7 @@ import config.Printers.capt
 import ast.tpd
 import transform.Recheck.*
 import CaptureSet.IdentityCaptRefMap
+import Synthetics.isExcluded
 
 class Setup(
   preRecheckPhase: DenotTransformer,
@@ -325,8 +326,10 @@ extends tpd.TreeTraverser:
       then transformInferredType(tree.tpe, boxed)
       else transformExplicitType(tree.tpe, boxed))
 
-  def traverse(tree: Tree)(using Context) =
+  def traverse(tree: Tree)(using Context): Unit =
     tree match
+      case tree: DefDef if isExcluded(tree.symbol) =>
+        return
       case tree @ ValDef(_, tpt: TypeTree, _) if tree.symbol.is(Mutable) =>
         transformTT(tpt, boxed = true)
         traverse(tree.rhs)
