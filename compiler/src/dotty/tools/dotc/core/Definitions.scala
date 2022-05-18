@@ -1631,8 +1631,8 @@ class Definitions {
 
   def isSpecializableTuple(base: Symbol, args: List[Type])(using Context): Boolean =
     args.length <= 2 && base.isClass && TupleSpecializedClasses.exists(base.asClass.derivesFrom) && args.match
-      case List(x)    => Tuple1SpecializedParamClasses().contains(x.typeSymbol)
-      case List(x, y) => Tuple2SpecializedParamClasses().contains(x.typeSymbol) && Tuple2SpecializedParamClasses().contains(y.typeSymbol)
+      case List(x)    => Tuple1SpecializedParamClasses().contains(x.classSymbol)
+      case List(x, y) => Tuple2SpecializedParamClasses().contains(x.classSymbol) && Tuple2SpecializedParamClasses().contains(y.classSymbol)
       case _          => false
     && base.owner.denot.info.member(base.name.specializedName(args)).disambiguate(_.isClass).exists
 
