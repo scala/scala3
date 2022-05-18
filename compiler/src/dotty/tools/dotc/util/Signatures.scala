@@ -7,6 +7,7 @@ import core.Constants.Constant
 import core.Contexts._
 import core.Denotations.SingleDenotation
 import core.Flags
+import core.NameOps.isUnapplyName
 import core.Names._
 import core.Types._
 import util.Spans.Span
@@ -159,14 +160,6 @@ object Signatures {
       params :: rest
     }
 
-    /**
-     * This function is a hack which allows Signatures API to remain unchanged
-     *
-     * @return true if denot is "unapply" or "unapplySeq", false otherwise
-     */
-    def isUnapplyDenotation: Boolean =
-      List(core.Names.termName("unapply"), core.Names.termName("unapplySeq")) contains denot.name
-
     def extractParamNamess(resultType: Type): List[List[Name]] =
       if resultType.typeSymbol.flags.is(Flags.CaseClass) && symbol.flags.is(Flags.Synthetic) then
         resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess
@@ -189,7 +182,7 @@ object Signatures {
     }
 
     denot.info.stripPoly match {
-      case tpe if isUnapplyDenotation =>
+      case tpe if denot.name.isUnapplyName =>
         val params = toUnapplyParamss(tpe)
         if params.nonEmpty then
           Some(Signature("", Nil, List(params), None))
