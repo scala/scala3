@@ -24,13 +24,8 @@ class Compiler {
    *  all refs to it would become outdated - they could not be dereferenced in the
    *  new phase.
    *
-   *  After erasure, signature changing denot-transformers are OK because erasure
-   *  will make sure that only term refs with fixed SymDenotations survive beyond it. This
-   *  is possible because:
-   *
-   *   - splitter has run, so every ident or select refers to a unique symbol
-   *   - after erasure, asSeenFrom is the identity, so every reference has a
-   *     plain SymDenotation, as opposed to a UniqueRefDenotation.
+   *  After erasure, signature changing denot-transformers are OK because signatures
+   *  are never recomputed later than erasure.
    */
   def phases: List[List[Phase]] =
     frontendPhases ::: picklerPhases ::: transformPhases ::: backendPhases

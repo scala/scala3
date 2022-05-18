@@ -1079,17 +1079,13 @@ object Types {
      *  @param checkClassInfo if true we check that ClassInfos are within bounds of abstract types
      */
     final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(using Context): Boolean = {
-      def widenNullary(tp: Type) = tp match {
-        case tp @ MethodType(Nil) => tp.resultType
-        case _ => tp
-      }
       val overrideCtx = if relaxedCheck then ctx.relaxedOverrideContext else ctx
       inContext(overrideCtx) {
         !checkClassInfo && this.isInstanceOf[ClassInfo]
         || (this.widenExpr frozen_<:< that.widenExpr)
         || matchLoosely && {
-            val this1 = widenNullary(this)
-            val that1 = widenNullary(that)
+            val this1 = this.widenNullaryMethod
+            val that1 = that.widenNullaryMethod
             ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, relaxedCheck, false, checkClassInfo)
           }
       }
@@ -1325,6 +1321,11 @@ object Types {
       case _ =>
         this
     }
+
+    /** If this is a nullary method type, its result type */
+    def widenNullaryMethod(using Context): Type = this match
+      case tp @ MethodType(Nil) => tp.resType
+      case _ => this
 
     /** The singleton types that must or may be in this type. @see Atoms.
      *  Overridden and cached in OrType.
@@ -2561,7 +2562,7 @@ object Types {
      *  A test case is neg/opaque-self-encoding.scala.
      */
     final def withDenot(denot: Denotation)(using Context): ThisType =
-      if (denot.exists) {
+      if denot.exists then
         val adapted = withSym(denot.symbol)
         val result =
           if (adapted.eq(this)
@@ -2570,9 +2571,25 @@ object Types {
               || adapted.info.eq(denot.info))
             adapted
           else this
-        result.setDenot(denot)
+        val lastDenot = result.lastDenotation
+        denot match
+          case denot: SymDenotation
+          if denot.validFor.firstPhaseId < ctx.phase.id
+            && lastDenot != null
+            && lastDenot.validFor.lastPhaseId > denot.validFor.firstPhaseId
+            && !lastDenot.isInstanceOf[SymDenotation] =>
+            // In this case the new SymDenotation might be valid for all phases, which means
+            // we would not recompute the denotation when travelling to an earlier phase, maybe
+            // in the next run. We fix that problem by creating a UniqueRefDenotation instead.
+            core.println(i"overwrite ${result.toString} / ${result.lastDenotation}, ${result.lastDenotation.getClass} with $denot at ${ctx.phaseId}")
+            result.setDenot(
+              UniqueRefDenotation(
+                denot.symbol, denot.info,
+                Period(ctx.runId, ctx.phaseId, denot.validFor.lastPhaseId),
+                this.prefix))
+          case _ =>
+            result.setDenot(denot)
         result.asInstanceOf[ThisType]
-      }
       else // don't assign NoDenotation, we might need to recover later. Test case is pos/avoid.scala.
         this
 
