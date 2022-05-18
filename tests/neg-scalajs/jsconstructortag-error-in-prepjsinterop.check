@@ -2,15 +2,15 @@
 13 |  val a = js.constructorTag[NativeJSTrait] // error
    |                                          ^
    |                                          non-trait class type required but NativeJSTrait found
--- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:14:48 ----------------------------------------
+-- [E079] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:14:48 ----------------------------
 14 |  val b = js.constructorTag[NativeJSObject.type] // error
    |                                                ^
    |                                                NativeJSObject.type is not a class type
--- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:16:61 ----------------------------------------
+-- [E079] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:16:61 ----------------------------
 16 |  val c = js.constructorTag[NativeJSClass with NativeJSTrait] // error
    |                                                             ^
    |                                                             (NativeJSClass & NativeJSTrait) is not a class type
--- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:17:59 ----------------------------------------
+-- [E079] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:17:59 ----------------------------
 17 |  val d = js.constructorTag[NativeJSClass { def bar: Int }] // error
    |                                                           ^
    |                                                           NativeJSClass{bar: Int} is not a class type
@@ -18,23 +18,23 @@
 19 |  val e = js.constructorTag[JSTrait] // error
    |                                    ^
    |                                    non-trait class type required but JSTrait found
--- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:20:42 ----------------------------------------
+-- [E079] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:20:42 ----------------------------
 20 |  val f = js.constructorTag[JSObject.type] // error
    |                                          ^
    |                                          JSObject.type is not a class type
--- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:22:49 ----------------------------------------
+-- [E079] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:22:49 ----------------------------
 22 |  val g = js.constructorTag[JSClass with JSTrait] // error
    |                                                 ^
    |                                                 (JSClass & JSTrait) is not a class type
--- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:23:53 ----------------------------------------
+-- [E079] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:23:53 ----------------------------
 23 |  val h = js.constructorTag[JSClass { def bar: Int }] // error
    |                                                     ^
    |                                                     JSClass{bar: Int} is not a class type
--- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:25:45 ----------------------------------------
+-- [E079] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:25:45 ----------------------------
 25 |  def foo[A <: js.Any] = js.constructorTag[A] // error
    |                                             ^
    |                                             A is not a class type
--- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:26:69 ----------------------------------------
+-- [E079] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:26:69 ----------------------------
 26 |  def bar[A <: js.Any: scala.reflect.ClassTag] = js.constructorTag[A] // error
    |                                                                     ^
    |                                                                     A is not a class type
