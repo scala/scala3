@@ -112,7 +112,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def genPlainClass(cd0: TypeDef) = cd0 match {
       case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
-      innerClassBufferASM.clear()
 
       claszSymbol       = cd0.symbol
       isCZParcelable    = isAndroidParcelableClass(claszSymbol)
@@ -231,15 +230,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       if (optSerial.isDefined) { addSerialVUID(optSerial.get, cnode)}
 
       addClassFields()
-
-      innerClassBufferASM ++= classBTypeFromSymbol(claszSymbol).info.memberClasses
-
-      val companion = claszSymbol.companionClass
-      if companion.isTopLevelModuleClass then
-        innerClassBufferASM ++= classBTypeFromSymbol(companion).info.memberClasses
-
       gen(cd.rhs)
-      addInnerClassesASM(cnode, innerClassBufferASM.toList)
 
       if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
         AsmUtils.traceClass(cnode)
@@ -255,12 +246,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if (ps.isEmpty) ObjectReference.internalName else internalName(ps.head.typeSymbol)
-      val interfaceNames0 = classBTypeFromSymbol(claszSymbol).info.interfaces map {
-        case classBType =>
-          if (classBType.isNestedClass) { innerClassBufferASM += classBType }
-          classBType.internalName
-      }
+      val superClass: String = if (ps.isEmpty) ObjectRef.internalName else internalName(ps.head.typeSymbol)
+      val interfaceNames0 = classBTypeFromSymbol(claszSymbol).info.interfaces.map(_.internalName)
       /* To avoid deadlocks when combining objects, lambdas and multi-threading,
        * lambdas in objects are compiled to instance methods of the module class
        * instead of static methods (see tests/run/deadlock.scala and
@@ -881,7 +868,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // android creator code
       if (isCZParcelable) {
         // add a static field ("CREATOR") to this class to cache android.os.Parcelable$Creator
-        val andrFieldDescr = getClassBTypeAndRegisterInnerClass(AndroidCreatorClass).descriptor
+        val andrFieldDescr = classBTypeFromSymbol(AndroidCreatorClass).descriptor
         cnode.visitField(
           asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
           "CREATOR",

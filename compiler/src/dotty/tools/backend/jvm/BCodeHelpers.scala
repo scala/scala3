@@ -132,24 +132,24 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   }
 
   /*
-   * Populates the InnerClasses JVM attribute with `refedInnerClasses`.
-   * In addition to inner classes mentioned somewhere in `jclass` (where `jclass` is a class file being emitted)
-   * `refedInnerClasses` should contain those inner classes defined as direct member classes of `jclass`
-   * but otherwise not mentioned in `jclass`.
+   * Populates the InnerClasses JVM attribute with `refedInnerClasses`. See also the doc on inner
+   * classes in BTypes.scala.
    *
-   * `refedInnerClasses` may contain duplicates,
-   * need not contain the enclosing inner classes of each inner class it lists (those are looked up for consistency).
+   * `refedInnerClasses` may contain duplicates, need not contain the enclosing inner classes of
+   * each inner class it lists (those are looked up and included).
    *
-   * This method serializes in the InnerClasses JVM attribute in an appropriate order,
+   * This method serializes in the InnerClasses JVM attribute in an appropriate order, 
    * not necessarily that given by `refedInnerClasses`.
    *
    * can-multi-thread
    */
-  final def addInnerClassesASM(jclass: asm.ClassVisitor, refedInnerClasses: List[ClassBType]): Unit = {
-    val allNestedClasses = refedInnerClasses.flatMap(_.enclosingNestedClassesChain).distinct
-
+  final def addInnerClasses(jclass: asm.ClassVisitor, declaredInnerClasses: List[ClassBType], refedInnerClasses: List[ClassBType]): Unit = {
     // sorting ensures nested classes are listed after their enclosing class thus satisfying the Eclipse Java compiler
-    for (nestedClass <- allNestedClasses.sortBy(_.internalName.toString)) {
+    val allNestedClasses = new mutable.TreeSet[ClassBType]()(Ordering.by(_.internalName))
+    allNestedClasses ++= declaredInnerClasses
+    refedInnerClasses.foreach(allNestedClasses ++= _.enclosingNestedClassesChain)
+    for nestedClass <- allNestedClasses
+    do {
       // Extract the innerClassEntry - we know it exists, enclosingNestedClassesChain only returns nested classes.
       val Some(e) = nestedClass.innerClassAttributeEntry: @unchecked
       jclass.visitInnerClass(e.name, e.outerName, e.innerName, e.flags)
@@ -218,26 +218,16 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     final val emitLines  = debugLevel >= 2
     final val emitVars   = debugLevel >= 3
 
-    /*
-     *  Contains class-symbols that:
-     *    (a) are known to denote inner classes
-     *    (b) are mentioned somewhere in the class being generated.
-     *
-     *  In other words, the lifetime of `innerClassBufferASM` is associated to "the class being generated".
-     */
-    final val innerClassBufferASM = mutable.Set.empty[ClassBType]
-
     /**
-     * The class internal name for a given class symbol. If the symbol describes a nested class, the
-     * ClassBType is added to the innerClassBufferASM.
+     * The class internal name for a given class symbol.
      */
     final def internalName(sym: Symbol): String = {
       // For each java class, the scala compiler creates a class and a module (thus a module class).
-      // If the `sym` is a java module class, we use the java class instead. This ensures that we
-      // register the class (instead of the module class) in innerClassBufferASM.
+      // If the `sym` is a java module class, we use the java class instead. This ensures that the
+      // ClassBType is created from the main class (instead of the module class).
       // The two symbols have the same name, so the resulting internalName is the same.
       val classSym = if (sym.is(JavaDefined) && sym.is(ModuleClass)) sym.linkedClass else sym
-      getClassBTypeAndRegisterInnerClass(classSym).internalName
+      getClassBType(classSym).internalName
     }
 
     private def assertClassNotArray(sym: Symbol): Unit = {
@@ -251,8 +241,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
 
     /**
-     * The ClassBType for a class symbol. If the class is nested, the ClassBType is added to the
-     * innerClassBufferASM.
+     * The ClassBType for a class symbol.
      *
      * The class symbol scala.Nothing is mapped to the class scala.runtime.Nothing$. Similarly,
      * scala.Null is mapped to scala.runtime.Null$. This is because there exist no class files
@@ -264,16 +253,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * the class descriptor of the receiver (the implementation class) is obtained by creating the
      * ClassBType.
      */
-    final def getClassBTypeAndRegisterInnerClass(sym: Symbol): ClassBType = {
+    final def getClassBType(sym: Symbol): ClassBType = {
       assertClassNotArrayNotPrimitive(sym)
 
-      if (sym == defn.NothingClass) RT_NOTHING
-      else if (sym == defn.NullClass) RT_NULL
-      else {
-        val r = classBTypeFromSymbol(sym)
-        if (r.isNestedClass) innerClassBufferASM += r
-        r
-      }
+      if (sym == defn.NothingClass) srNothingRef
+      else if (sym == defn.NullClass) srNullRef
+      else classBTypeFromSymbol(sym)
     }
 
     /*
@@ -288,16 +273,14 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
 
     /**
-     * The jvm descriptor of a type. If `t` references a nested class, its ClassBType is added to
-     * the innerClassBufferASM.
+     * The jvm descriptor of a type.
      */
     final def typeDescriptor(t: Type): String = { toTypeKind(t).descriptor   }
 
     /**
-     * The jvm descriptor for a symbol. If `sym` represents a nested class, its ClassBType is added
-     * to the innerClassBufferASM.
+     * The jvm descriptor for a symbol.
      */
-    final def symDescriptor(sym: Symbol): String = { getClassBTypeAndRegisterInnerClass(sym).descriptor }
+    final def symDescriptor(sym: Symbol): String = getClassBType(sym).descriptor
 
     final def toTypeKind(tp: Type): BType = typeToTypeKind(tp)(BCodeHelpers.this)(this)
 
@@ -691,19 +674,18 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     def genMirrorClass(moduleClass: Symbol, cunit: CompilationUnit): asm.tree.ClassNode = {
       assert(moduleClass.is(ModuleClass))
       assert(moduleClass.companionClass == NoSymbol, moduleClass)
-      innerClassBufferASM.clear()
       this.cunit = cunit
+      val bType      = mirrorClassBTypeFromSymbol(moduleClass)
       val moduleName = internalName(moduleClass) // + "$"
-      val mirrorName = moduleName.substring(0, moduleName.length() - 1)
+      val mirrorName = bType.internalName
 
-      val flags = (asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL)
       val mirrorClass = new asm.tree.ClassNode
       mirrorClass.visit(
         classfileVersion,
-        flags,
+        bType.info.flags,
         mirrorName,
         null /* no java-generic-signature */,
-        ObjectReference.internalName,
+        ObjectRef.internalName,
         EMPTY_STRING_ARRAY
       )
 
@@ -717,10 +699,6 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
 
       addForwarders(mirrorClass, mirrorName, moduleClass)
-
-      innerClassBufferASM ++= classBTypeFromSymbol(moduleClass).info.memberClasses
-      addInnerClassesASM(mirrorClass, innerClassBufferASM.toList)
-
       mirrorClass.visitEnd()
 
       moduleClass.name // this side-effect is necessary, really.
@@ -754,8 +732,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def legacyAddCreatorCode(clinit: asm.MethodVisitor, cnode: asm.tree.ClassNode, thisName: String): Unit = {
-      // this tracks the inner class in innerClassBufferASM, if needed.
-      val androidCreatorType = getClassBTypeAndRegisterInnerClass(AndroidCreatorClass)
+      val androidCreatorType = getClassBType(AndroidCreatorClass)
       val tdesc_creator = androidCreatorType.descriptor
 
       cnode.visitField(
@@ -818,8 +795,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     def primitiveOrClassToBType(sym: Symbol): BType = {
       assert(sym.isClass, sym)
       assert(sym != defn.ArrayClass || compilingArray, sym)
-      primitiveTypeMap.getOrElse(sym,
-        storage.getClassBTypeAndRegisterInnerClass(sym)).asInstanceOf[BType]
+      primitiveTypeMap.getOrElse(sym, storage.getClassBType(sym)).asInstanceOf[BType]
     }
 
     /**
@@ -828,7 +804,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       */
     def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
       assert(sym.isType && compilingArray, sym)
-      ObjectReference.asInstanceOf[ct.bTypes.ClassBType]
+      ObjectRef.asInstanceOf[ct.bTypes.ClassBType]
     }
 
     tp.widenDealias match {
@@ -861,8 +837,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
             "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
 
         tp match {
-          case tp: ThisType if tp.cls == defn.ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
-          case tp: ThisType                         => storage.getClassBTypeAndRegisterInnerClass(tp.cls)
+          case tp: ThisType if tp.cls == defn.ArrayClass => ObjectRef.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
+          case tp: ThisType                         => storage.getClassBType(tp.cls)
           // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
           case t: SingletonType                     => typeToTypeKind(t.underlying)(ct)(storage)
           case t: RefinedType                       => typeToTypeKind(t.parent)(ct)(storage) //parents.map(_.toTypeKind(ct)(storage).asClassBType).reduceLeft((a, b) => a.jvmWiseLUB(b))
