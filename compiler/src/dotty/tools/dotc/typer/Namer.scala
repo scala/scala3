@@ -1176,7 +1176,8 @@ class Namer { typer: Typer =>
             import tpd._
             val ref = path.select(sym.asTerm)
             val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
-                ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss)))
+                ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss))
+                  .etaExpandCFT(using ctx.withOwner(forwarder)))
             if forwarder.isInlineMethod then
               PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
             buf += ddef.withSpan(span)
