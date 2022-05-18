@@ -254,7 +254,12 @@ abstract class Recheck extends Phase, SymTransformer:
       recheck(tree.body, pt)
 
     def recheckReturn(tree: Return)(using Context): Type =
-      recheck(tree.expr, tree.from.symbol.returnProto)
+      val rawType = recheck(tree.expr)
+      def avoidMap = new TypeOps.AvoidMap:
+        def toAvoid(tp: NamedType) =
+          tp.symbol.is(Case) && tp.symbol.owner.isContainedIn(ctx.owner)
+      val ownType = avoidMap(rawType)
+      checkConforms(ownType, tree.from.symbol.returnProto, tree)
       defn.NothingType
 
     def recheckWhileDo(tree: WhileDo)(using Context): Type =
