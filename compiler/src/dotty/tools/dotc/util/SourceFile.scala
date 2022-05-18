@@ -11,8 +11,7 @@ import core.Contexts._
 import scala.io.Codec
 import Chars._
 import scala.annotation.internal.sharable
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.ArrayBuilder
 import scala.util.chaining.given
 
 import java.io.File.separator
@@ -91,9 +90,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   def apply(idx: Int): Char = content().apply(idx)
 
-  /** length of the original source file
-   * Note that when the source is from Tasty, content() could be empty even though length > 0.
-   * Use content().length to determine the length of content(). */
+  /** length of the original source file.
+   *  Note that when the source is from Tasty, content() could be empty even though length > 0.
+   *  Use content().length to determine the length of content(). */
   def length: Int =
     if lineIndicesCache ne null then lineIndicesCache.last
     else content().length
@@ -119,10 +118,11 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     SourcePosition(underlying, position.span shift start)
 
-  private def calculateLineIndicesFromContents() = {
+  private def calculateLineIndicesFromContents(): Array[Int] =
     val cs = content()
-    val buf = new ArrayBuffer[Int]
-    buf += 0
+    val buf = new ArrayBuilder.ofInt
+    buf.sizeHint(cs.length / 30)       // guesstimate line count
+    buf.addOne(0)
     var i = 0
     while i < cs.length do
       val isLineBreak =
@@ -130,12 +130,13 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
         // don't identify the CR in CR LF as a line break, since LF will do.
         if ch == CR then i + 1 == cs.length || cs(i + 1) != LF
         else isLineBreakChar(ch)
-      if isLineBreak then buf += i + 1
+      if isLineBreak then buf.addOne(i + 1)
       i += 1
-    buf += cs.length // sentinel, so that findLine below works smoother
-    buf.toArray
-  }
+    buf.addOne(cs.length)              // sentinel, so that findLine below works smoother
+    buf.result()
 
+  // offsets of lines, plus a sentinel which is the content length.
+  // if the last line is empty (end of content is NL) then the penultimate index == sentinel.
   private var lineIndicesCache: Array[Int] = _
   private def lineIndices: Array[Int] =
     if lineIndicesCache eq null then
@@ -156,7 +157,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     lineIndicesCache = indices
 
   /** Map line to offset of first character in line */
-  def lineToOffset(index: Int): Int = lineIndices(index)
+  def lineToOffset(index: Int): Int =
+    if index < 0 || index >= lineIndices.length - 1 then throw new IndexOutOfBoundsException(index.toString)
+    lineIndices(index)
 
   /** Like `lineToOffset`, but doesn't crash if the index is out of bounds. */
   def lineToOffsetOpt(index: Int): Option[Int] =
@@ -168,14 +171,16 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   /** A cache to speed up offsetToLine searches to similar lines */
   private var lastLine = 0
 
-  /** Convert offset to line in this source file
-   *  Lines are numbered from 0
+  /** Convert offset to line in this source file.
+   *  Lines are numbered from 0. Conventionally, a final empty line begins at EOF.
+   *  For simplicity, the line at EOF is the last line (possibly non-empty).
    */
-  def offsetToLine(offset: Int): Int = {
+  def offsetToLine(offset: Int): Int =
+    //if lineIndices.isEmpty || offset < lineIndices.head || offset > lineIndices.last then
+    //  throw new IndexOutOfBoundsException(offset.toString)
     lastLine = Util.bestFit(lineIndices, lineIndices.length, offset, lastLine)
     if (offset >= length) lastLine -= 1 // compensate for the sentinel
     lastLine
-  }
 
   /** The index of the first character of the line containing position `offset` */
   def startOfLine(offset: Int): Int = {
@@ -183,9 +188,11 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     lineToOffset(offsetToLine(offset))
   }
 
-  /** The start index of the line following the one containing position `offset` */
+  /** The start index of the line following the one containing position `offset` or `length` at last line */
   def nextLine(offset: Int): Int =
-    lineToOffset(offsetToLine(offset) + 1 min lineIndices.length - 1)
+    val next = offsetToLine(offset) + 1
+    if next >= lineIndices.length - 1 then lineIndices.last
+    else lineToOffset(next)
 
   /** The content of the line containing position `offset` */
   def lineContent(offset: Int): String =

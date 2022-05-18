@@ -39,6 +39,8 @@ def readFile(f: File): String                       = withFile(f)(_.mkString)
 
 private object Unthrown extends ControlThrowable
 
+def assertThrows[T <: Throwable: ClassTag](body: => Any): Unit = assertThrows[T](_ => true)(body)
+
 def assertThrows[T <: Throwable: ClassTag](p: T => Boolean)(body: => Any): Unit =
   try
     body
