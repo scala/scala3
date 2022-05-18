@@ -2174,7 +2174,7 @@ object SymDenotations {
           case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
             recur(TypeComparer.bounds(tp).hi)
 
-          case CapturingType(parent, refs, _) =>
+          case CapturingType(parent, refs) =>
             tp.derivedCapturingType(recur(parent), refs)
 
           case tp: TypeProxy =>

@@ -23,7 +23,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, CapturingKind, stripCapturing}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing}
 
 /** Provides methods to compare types.
  */
@@ -340,7 +340,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         compareWild
       case tp2: LazyRef =>
         isBottom(tp1) || !tp2.evaluating && recur(tp1, tp2.ref)
-      case CapturingType(_, _, _) =>
+      case CapturingType(_, _) =>
         secondTry
       case tp2: AnnotatedType if !tp2.isRefining =>
         recur(tp1, tp2.parent)
@@ -513,7 +513,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // recursively, so we do it only once. See i14870.scala as a test case, which would
             // loop for a very long time without the recursion brake.
 
-      case CapturingType(parent1, refs1, _) =>
+      case CapturingType(parent1, refs1) =>
         if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK then
           recur(parent1, tp2)
         else
@@ -797,7 +797,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
         compareTypeBounds
-      case CapturingType(parent2, refs2, _) =>
+      case CapturingType(parent2, refs2) =>
         def compareCaptured =
           val refs1 = tp1.captureSet
           try
@@ -870,7 +870,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
-              case CapturingType(tp1, _, _) => isNullable(tp1)
+              case CapturingType(tp1, _) => isNullable(tp1)
               case _ => false
             val sym1 = tp1.symbol
             (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
@@ -893,7 +893,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           tp1 match
             case tp1: CaptureRef if tp1.isTracked =>
               val stripped = tp1w.stripCapturing
-              tp1w = CapturingType(stripped, tp1.singletonCaptureSet, CapturingKind.Regular)
+              tp1w = CapturingType(stripped, tp1.singletonCaptureSet)
             case _ =>
           isSubType(tp1w, tp2, approx.addLow)
         }
@@ -2484,7 +2484,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
-    case CapturingType(parent1, refs1, _) =>
+    case CapturingType(parent1, refs1) =>
       if subCaptures(tp2.captureSet, refs1, frozen = true).isOK then
         parent1 & tp2
       else

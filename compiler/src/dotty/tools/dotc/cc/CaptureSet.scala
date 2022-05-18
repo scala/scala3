@@ -257,9 +257,8 @@ sealed abstract class CaptureSet extends Showable:
     ((NoType: Type) /: elems) ((tp, ref) =>
       if tp.exists then OrType(tp, ref, soft = false) else ref)
 
-  def toRegularAnnotation(byName: Boolean)(using Context): Annotation =
-    val kind = if byName then CapturingKind.ByName else CapturingKind.Regular
-    Annotation(CaptureAnnotation(this, kind).tree)
+  def toRegularAnnotation(cls: Symbol)(using Context): Annotation =
+    Annotation(CaptureAnnotation(this, boxed = false)(cls).tree)
 
   override def toText(printer: Printer): Text =
     Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}") ~~ description
@@ -566,7 +565,7 @@ object CaptureSet:
     mapRefs(xs, extrapolateCaptureRef(_, tm, variance))
 
   def subCapturesRange(arg1: TypeBounds, arg2: Type)(using Context): Boolean = arg1 match
-    case TypeBounds(CapturingType(lo, loRefs, _), CapturingType(hi, hiRefs, _)) if lo =:= hi =>
+    case TypeBounds(CapturingType(lo, loRefs), CapturingType(hi, hiRefs)) if lo =:= hi =>
       given VarState = VarState()
       val cs2 = arg2.captureSet
       hiRefs.subCaptures(cs2).isOK && cs2.subCaptures(loRefs).isOK
@@ -662,7 +661,7 @@ object CaptureSet:
         if tp.classSymbol.hasAnnotation(defn.CapabilityAnnot) then universal else empty
       case _: TypeParamRef =>
         empty
-      case CapturingType(parent, refs, _) =>
+      case CapturingType(parent, refs) =>
         recur(parent) ++ refs
       case AppliedType(tycon, args) =>
         val cs = recur(tycon)
