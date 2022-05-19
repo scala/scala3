@@ -154,6 +154,24 @@ class SignatureHelpTest {
       .signatureHelp(m2, List(signature), Some(0), 1)
   }
 
+  @Test def productTypeClassMatch: Unit = {
+    val signature = S("", Nil, List(List(P("", "String"), P("", "String"))), None)
+
+    code"""class FirstChars[A](s: A) extends Product:
+          |  def _1 = s
+          |  def _2 = s
+          |
+          |object FirstChars:
+          |  def unapply(s: String): FirstChars[String] = new FirstChars(s)
+          |
+          |object Test:
+          |  "Hi!" match
+          |    case FirstChars(ch${m1}, ch${m2}) => ???
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+  }
+
   @Test def nameBasedMatch: Unit = {
     val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
 
@@ -171,6 +189,22 @@ class SignatureHelpTest {
           """
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
+  }
+
+  @Test def getObjectMatch: Unit = {
+    val signature = S("", Nil, List(List(P("", "String"))), None)
+
+    code"""object ProdEmpty:
+          |  def isEmpty = true
+          |  def unapply(s: String): this.type = this
+          |  def get: String = ""
+          |
+          |object Test:
+          |  "" match
+          |    case ProdEmpty(${m1}) => ???
+          |    case _ => ()
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
   @Test def sequenceMatch: Unit = {
@@ -212,7 +246,7 @@ class SignatureHelpTest {
   }
 
   @Test def productSequenceMatchForCaseClass: Unit = {
-    val signature = S("", Nil, List(List(P("name", "String"), P("children", "Int*"))), None)
+    val signature = S("", Nil, List(List(P("name", "String"), P("children", "Seq[Int]"))), None)
 
     code"""case class Foo(val name: String, val children: Int*)
           |

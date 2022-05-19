@@ -106,30 +106,42 @@ object Signatures {
 
   private def extractParamTypess(resultType: Type)(using Context): List[List[Type]] =
     resultType match {
+      // Reference to a type which is not a type class
       case ref: TypeRef if !ref.symbol.isPrimitiveValueClass =>
-        if (
-          ref.symbol.asClass.baseClasses.contains(ctx.definitions.ProductClass) &&
-          !ref.symbol.is(Flags.CaseClass)
-        ) || ref.symbol.isStaticOwner then
-          val productAccessors = ref.memberDenots(
-            underscoreMembersFilter,
-            (name, buf) => buf += ref.member(name).asSingleDenotation
-          )
-          List(productAccessors.map(_.info.finalResultType).toList)
-        else
-          ref.symbol.primaryConstructor.paramInfo.paramInfoss
+        getExtractorMembers(ref)
+      // Option or Some applied type. There is special syntax for multiple returned arguments:
+      //   Option[TupleN] and Option[Seq],
+      // We are not intrested in them, instead we extract proper type parameters from the Option type parameter.
       case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
           if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
         tycon match
           case TypeRef(_, cls) if cls == ctx.definitions.SeqClass => List(List(appliedType))
           case _ => List(args)
-      case AppliedType(_, args) =>
-        List(args)
+      // Applied type extractor. We must extract from applied type to retain type parameters
+      case appliedType: AppliedType => getExtractorMembers(appliedType)
+      // This is necessary to extract proper result type as unapply can return other methods eg. apply
       case MethodTpe(_, _, resultType) =>
         extractParamTypess(resultType.widenDealias)
       case _ =>
         Nil
     }
+
+  // Returns extractors from given type. In case if there are no extractor methods it fallbacks to get method
+  private def getExtractorMembers(resultType: Type)(using Context): List[List[Type]] =
+    val productAccessors = resultType.memberDenots(
+      underscoreMembersFilter,
+      (name, buf) => buf += resultType.member(name).asSingleDenotation
+    )
+    val availableExtractors = if productAccessors.isEmpty then
+      List(resultType.member(core.Names.termName("get")))
+    else
+      productAccessors
+    List(availableExtractors.map(_.info.finalResultType.stripAnnots).toList)
+
+  object underscoreMembersFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(using Context): Boolean = name.startsWith("_")
+    def isStable = true
+  }
 
   def toSignature(denot: SingleDenotation)(using Context): Option[Signature] = {
     val symbol = denot.symbol
@@ -214,11 +226,6 @@ object Signatures {
       case other =>
         None
     }
-  }
-
-  object underscoreMembersFilter extends NameFilter {
-    def apply(pre: Type, name: Name)(using Context): Boolean = name.startsWith("_")
-    def isStable = true
   }
 
   /**
