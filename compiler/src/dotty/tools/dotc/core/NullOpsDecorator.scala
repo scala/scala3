@@ -3,6 +3,7 @@ package core
 
 import Annotations._
 import Contexts._
+import Flags._
 import Symbols._
 import Types._
 
@@ -71,10 +72,36 @@ object NullOpsDecorator:
 
   import ast.tpd._
 
-  extension (self: Tree)
+  extension (tree: Tree)
+
     // cast the type of the tree to a non-nullable type
-    def castToNonNullable(using Context): Tree = self.typeOpt match {
-      case OrNull(tp) => self.cast(tp)
-      case _ => self
-    }
+    def castToNonNullable(using Context): Tree = tree.typeOpt match
+      case OrNull(tp) => tree.cast(tp)
+      case _          => tree
+
+    def tryToCastToCanEqualNull(using Context): Tree =
+      val sym = tree.symbol
+      val tp = tree.tpe
+
+      if !ctx.mode.is(Mode.UnsafeJavaReturn)
+        || !sym.is(JavaDefined)
+        || sym.is(Package)
+        || !sym.isTerm
+        || tp.isError then
+        return tree
+
+      tree match
+        case _: Apply if sym.is(Method) && !sym.isConstructor =>
+          val tp2 = tp.replaceOrNull
+          if tp ne tp2 then
+            tree.cast(tp2)
+          else tree
+        case _: Select if !sym.is(Method) =>
+          val tpw = tp.widen
+          val tp2 = tpw.replaceOrNull
+          if tpw ne tp2 then
+            tree.cast(tp2)
+          else tree
+        case _ => tree
+
 end NullOpsDecorator

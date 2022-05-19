@@ -646,18 +646,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     def typeSelectOnTerm(using Context): Tree =
       val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
-      var sel = typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
-      if ctx.mode.is(Mode.UnsafeJavaReturn) && pt != AssignProto then
-        // When UnsafeJavaReturn is enabled and the selected member is Java defined,
-        // we replece `| Null` with `@CanEqualNull` in its type
-        // if it is not at left hand side of assignments.
-        val sym = sel.symbol
-        if sym.is(JavaDefined) && sym.isTerm && !sym.is(Method) then
-          val stp1 = sel.tpe.widen
-          val stp2 = stp1.replaceOrNull
-          if stp1 ne stp2 then
-            sel = sel.cast(stp2)
-      sel
+      val sel = typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
+      if pt != AssignProto then sel.tryToCastToCanEqualNull else sel
 
     def javaSelectOnType(qual: Tree)(using Context) =
       // semantic name conversion for `O$` in java code
@@ -3690,7 +3680,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           }
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
       else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
-        readaptSimplified(tpd.Apply(tree, Nil))
+        val app = tpd.Apply(tree, Nil).tryToCastToCanEqualNull
+        readaptSimplified(app)
       else if (wtp.isImplicitMethod)
         err.typeMismatch(tree, pt)
       else
