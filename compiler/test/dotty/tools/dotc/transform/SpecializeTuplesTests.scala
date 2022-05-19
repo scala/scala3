@@ -17,8 +17,9 @@ class SpecializeTuplesTests extends DottyBytecodeTest {
          |}""".stripMargin
 
     checkBCode(source) { dir =>
-      assertNoBoxing("foo", findClass("Test", dir).methods)
-      assertNoBoxing("bar", findClass("Test", dir).methods)
+      val methods = findClass("Test", dir).methods.nn
+      assertNoBoxing("foo", methods)
+      assertNoBoxing("bar", methods)
     }
   }
 
@@ -39,7 +40,7 @@ class SpecializeTuplesTests extends DottyBytecodeTest {
          |}""".stripMargin
 
     checkBCode(source) { dir =>
-      val methods = findClass("Test", dir).methods
+      val methods = findClass("Test", dir).methods.nn
       assertBoxing("t", methods)
       assertBoxing("_1", methods)
       assertBoxing("_2", methods)
