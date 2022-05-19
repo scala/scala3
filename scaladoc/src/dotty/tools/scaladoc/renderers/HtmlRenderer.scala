@@ -142,10 +142,10 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
     val isRootApiPageSelected = rootApiPage.fold(false)(_.link.dri == pageLink.dri)
     val isDocsApiPageSelected = rootDocsPage.fold(false)(_.link.dri == pageLink.dri)
-    val apiNav = rootApiPage.map { p => p.children.map(renderNested(_, 0)) match
+    val apiNav = rootApiPage.map { p => p.children.filterNot(_.hidden).map(renderNested(_, 0)) match
       case entries => (entries.exists(_._1) || isRootApiPageSelected, entries.map(_._2))
     }
-    val docsNav = rootDocsPage.map { p => p.children.map(renderNested(_, 0)) match
+    val docsNav = rootDocsPage.map { p => p.children.filterNot(_.hidden).map(renderNested(_, 0)) match
       case entries => (entries.exists(_._1) || isDocsApiPageSelected, entries.map(_._2))
     }
 
@@ -153,11 +153,11 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
   private def hasSocialLinks = !args.socialLinks.isEmpty
 
-  private def socialLinks(whiteIcon: Boolean = true) =
-    val icon = (link: SocialLinks) => if whiteIcon then link.whiteIconName else link.blackIconName
+  private def socialLinks =
+    def icon(link: SocialLinks) = link.className
     args.socialLinks.map { link =>
-      a(href := link.url)(
-        span(cls := s"social-icon", Attr("data-icon-path") := icon(link))
+      a(href := link.url) (
+        button(cls := s"icon-button ${icon(link)}")
       )
     }
 
@@ -213,10 +213,9 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         div(cls := "header-container-left")(
           projectLogoElem.toSeq,
           darkProjectLogoElem.toSeq,
+          span(cls := "project-name")(args.name),
           span(onclick := "dropdownHandler(event)", cls := "text-button with-arrow", id := "dropdown-trigger")(
-            a()(
-              args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
-            ),
+            a(args.projectVersion.map(v => div(cls:="projectVersion")(v)).toSeq),
           ),
           div(id := "version-dropdown", cls := "dropdown-menu") ()
         ),
@@ -302,18 +301,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
          "Generated with"
         ),
         div(cls := "right-container")(
-          a(href := "https://github.com/lampepfl/dotty") (
-            button(cls := "icon-button gh")
-          ),
-          a(href := "https://twitter.com/scala_lang") (
-            button(cls := "icon-button twitter")
-          ),
-          a(href := "https://discord.com/invite/scala") (
-            button(cls := "icon-button discord"),
-          ),
-          a(href := "https://gitter.im/scala/scala") (
-            button(cls := "icon-button gitter"),
-          ),
+          socialLinks,
           div(cls := "text")(
             "© 2002-2021 · LAMP/EPFL"
           )
