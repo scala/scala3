@@ -1,12 +1,13 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.ast.{Trees, tpd, untpd}
+import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
 import scala.collection.mutable
 import core._
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.typer.VarianceChecker
+import typer.ErrorReporting.errorTree
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
@@ -224,7 +225,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case (NamedArg(_, arg) :: _, namedArgs1) =>
                 arg :: reorderArgs(pnames1, namedArgs1, otherArgs)
               case _ =>
-                val otherArg :: otherArgs1 = otherArgs
+                val otherArg :: otherArgs1 = otherArgs: @unchecked
                 otherArg :: reorderArgs(pnames1, namedArgs, otherArgs1)
             }
           case nil =>
@@ -255,6 +256,18 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       if tree.symbol.is(ConstructorProxy) then
         report.error(em"constructor proxy ${tree.symbol} cannot be used as a value", tree.srcPos)
 
+    def checkStableSelection(tree: Tree)(using Context): Unit =
+      def check(qual: Tree) =
+        if !qual.tpe.isStable then
+          report.error(em"Parameter untupling cannot be used for call-by-name parameters", tree.srcPos)
+      tree match
+        case Select(qual, _) => check(qual)    // simple select _n
+        case Apply(TypeApply(Select(qual, _), _), _) => check(qual) // generic select .apply[T](n)
+
+    def checkNotPackage(tree: Tree)(using Context): Tree =
+      if !tree.symbol.is(Package) then tree
+      else errorTree(tree, i"${tree.symbol} cannot be used as a type")
+
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         // TODO move CaseDef case lower: keep most probable trees first for performance
@@ -265,21 +278,23 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
              case None =>
                ctx
           super.transform(tree)(using gadtCtx)
-        case tree: Ident if !tree.isType =>
-          if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
-            ctx.compilationUnit.needsInlining = true
-          checkNoConstructorProxy(tree)
-          tree.tpe match {
-            case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
-            case _ => tree
-          }
+        case tree: Ident =>
+          if tree.isType then
+            checkNotPackage(tree)
+          else
+            if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
+              ctx.compilationUnit.needsInlining = true
+            checkNoConstructorProxy(tree)
+            tree.tpe match {
+              case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
+              case _ => tree
+            }
         case tree @ Select(qual, name) =>
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
-          if (name.isTypeName) {
+          if name.isTypeName then
             Checking.checkRealizable(qual.tpe, qual.srcPos)
-            withMode(Mode.Type)(super.transform(tree))
-          }
+            withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
           else
             checkNoConstructorProxy(tree)
             transformSelect(tree, Nil)
@@ -324,7 +339,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: TypeApply =>
           if tree.symbol.isQuote then
             ctx.compilationUnit.needsStaging = true
-            ctx.compilationUnit.needsQuotePickling = true
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
@@ -356,6 +370,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: ValDef =>
           checkErasedDef(tree)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          if tree1.removeAttachment(desugar.UntupledParam).isDefined then
+            checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
           checkErasedDef(tree)

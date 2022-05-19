@@ -215,13 +215,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _                            => false
   }
 
-  /** Is this pattern node a synthetic catch-all case, added during PartialFuction synthesis before we know
-    * whether the user provided cases are exhaustive. */
-  def isSyntheticDefaultCase(cdef: CaseDef): Boolean = unsplice(cdef) match {
-    case CaseDef(Bind(nme.DEFAULT_CASE, _), EmptyTree, _) => true
-    case _                                                  => false
-  }
-
   /** Does this CaseDef catch Throwable? */
   def catchesThrowable(cdef: CaseDef)(using Context): Boolean =
     catchesAllOf(cdef, defn.ThrowableType)
@@ -585,12 +578,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
             pre
           case _ =>
             tree1
-            
+
         val countsAsPure =
           if dropOp(tree1).symbol.isInlineVal
           then isIdempotentExpr(tree1)
           else isPureExpr(tree1)
-          
+
         if countsAsPure then Literal(value).withSpan(tree.span)
         else
           val pre = dropOp(tree1)
@@ -871,8 +864,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  that is not a member of an underlying class or trait?
    */
   def isStructuralTermSelectOrApply(tree: Tree)(using Context): Boolean = {
-    def isStructuralTermSelect(tree: Select) = {
-      def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match {
+    def isStructuralTermSelect(tree: Select) =
+      def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
@@ -883,17 +876,21 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
         case _ =>
           false
+      !tree.symbol.exists
+      && tree.isTerm
+      && {
+        val qualType = tree.qualifier.tpe
+        hasRefinement(qualType) && !qualType.derivesFrom(defn.PolyFunctionClass)
       }
-      !tree.symbol.exists && tree.isTerm && hasRefinement(tree.qualifier.tpe)
-    }
-    def loop(tree: Tree): Boolean = tree match {
+    def loop(tree: Tree): Boolean = tree match
+      case TypeApply(fun, _) =>
+        loop(fun)
       case Apply(fun, _) =>
         loop(fun)
       case tree: Select =>
         isStructuralTermSelect(tree)
       case _ =>
         false
-    }
     loop(tree)
   }
 
@@ -959,7 +956,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         Some(tree.args.head)
       else if tree.symbol == defn.QuotedTypeModule_of then
         // quoted.Type.of[<body>](quotes)
-        val TypeApply(_, body :: _) = tree.fun
+        val TypeApply(_, body :: _) = tree.fun: @unchecked
         Some(body)
       else None
   }

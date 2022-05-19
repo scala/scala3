@@ -40,7 +40,7 @@ class SelfTypePrinter(using _ctx: Context) extends RefinedPrinter(_ctx):
   override def toText(tp: Type): Text = tp match
     case tp: RefinedType =>
       val parent :: (refined: List[RefinedType @unchecked]) =
-        refinementChain(tp).reverse
+        refinementChain(tp).reverse: @unchecked
       toTextLocal(parent)
     case tp => super.toText(tp)
 

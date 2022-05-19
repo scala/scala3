@@ -1,4 +1,0 @@
----
-layout: index
-title: Usage
----

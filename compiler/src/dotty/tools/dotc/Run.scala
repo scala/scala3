@@ -11,7 +11,7 @@ import Denotations.Denotation
 import typer.Typer
 import typer.ImportInfo.withRootImports
 import Decorators._
-import io.{AbstractFile, VirtualFile}
+import io.AbstractFile
 import Phases.unfusedPhases
 
 import util._
@@ -307,12 +307,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def compileFromStrings(scalaSources: List[String], javaSources: List[String] = Nil): Unit = {
     def sourceFile(source: String, isJava: Boolean): SourceFile = {
       val uuid = java.util.UUID.randomUUID().toString
-      val ext = if (isJava) ".java" else ".scala"
-      val virtualFile = new VirtualFile(s"compileFromString-$uuid.$ext")
-      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.nn.name)) // buffering is still advised by javadoc
-      writer.write(source)
-      writer.close()
-      new SourceFile(virtualFile, Codec.UTF8)
+      val ext = if (isJava) "java" else "scala"
+      val name = s"compileFromString-$uuid.$ext"
+      SourceFile.virtual(name, source)
     }
     val sources =
       scalaSources.map(sourceFile(_, isJava = false)) ++

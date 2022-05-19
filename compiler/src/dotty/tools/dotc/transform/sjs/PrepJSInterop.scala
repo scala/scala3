@@ -14,7 +14,8 @@ import Contexts._
 import Decorators._
 import DenotTransformers._
 import Flags._
-import NameKinds.DefaultGetterName
+import NameKinds.{DefaultGetterName, ModuleClassName}
+import NameOps._
 import StdNames._
 import Symbols._
 import SymUtils._
@@ -559,9 +560,14 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           case Some(annot) if annot.symbol == jsdefn.JSGlobalAnnot =>
             checkJSGlobalLiteral(annot)
             val pathName = annot.argumentConstantString(0).getOrElse {
-              if ((enclosingOwner is OwnerKind.ScalaMod) && !sym.owner.isPackageObject) {
+              val symTermName = sym.name.exclude(NameKinds.ModuleClassName).toTermName
+              if (symTermName == nme.apply) {
                 report.error(
-                    "Native JS members inside non-native objects must have an explicit name in @JSGlobal",
+                    "Native JS definitions named 'apply' must have an explicit name in @JSGlobal",
+                    annot.tree)
+              } else if (symTermName.isSetterName) {
+                report.error(
+                    "Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal",
                     annot.tree)
               }
               sym.defaultJSName
@@ -570,6 +576,18 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
           case Some(annot) if annot.symbol == jsdefn.JSImportAnnot =>
             checkJSImportLiteral(annot)
+            if (annot.arguments.sizeIs < 2) {
+              val symTermName = sym.name.exclude(NameKinds.ModuleClassName).toTermName
+              if (symTermName == nme.apply) {
+                report.error(
+                    "Native JS definitions named 'apply' must have an explicit name in @JSImport",
+                    annot.tree)
+              } else if (symTermName.isSetterName) {
+                report.error(
+                    "Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport",
+                    annot.tree)
+              }
+            }
             annot.argumentConstantString(2).foreach { globalPathName =>
               checkGlobalRefPath(globalPathName)
             }
@@ -1107,18 +1125,19 @@ object PrepJSInterop {
    */
   private def checkJSImportLiteral(annot: Annotation)(using Context): Unit = {
     val args = annot.arguments
-    assert(args.size == 2 || args.size == 3,
-        i"@JSImport annotation $annot does not have exactly 2 or 3 arguments")
+    val argCount = args.size
+    assert(argCount >= 1 && argCount <= 3,
+        i"@JSImport annotation $annot does not have between 1 and 3 arguments")
 
     val firstArgIsValid = annot.argumentConstantString(0).isDefined
     if (!firstArgIsValid)
       report.error("The first argument to @JSImport must be a literal string.", args.head)
 
-    val secondArgIsValid = annot.argumentConstantString(1).isDefined || args(1).symbol == jsdefn.JSImportNamespaceModule
+    val secondArgIsValid = argCount < 2 || annot.argumentConstantString(1).isDefined || args(1).symbol == jsdefn.JSImportNamespaceModule
     if (!secondArgIsValid)
       report.error("The second argument to @JSImport must be literal string or the JSImport.Namespace object.", args(1))
 
-    val thirdArgIsValid = args.size < 3 || annot.argumentConstantString(2).isDefined
+    val thirdArgIsValid = argCount < 3 || annot.argumentConstantString(2).isDefined
     if (!thirdArgIsValid)
       report.error("The third argument to @JSImport, when present, must be a literal string.", args(2))
   }
@@ -1147,7 +1166,7 @@ object PrepJSInterop {
         Some(result)
       case _ =>
         // Annotations are stored in reverse order, which we re-reverse now
-        val result :: duplicates = annots.reverse
+        val result :: duplicates = annots.reverse: @unchecked
         for (annot <- duplicates)
           report.error(badAnnotCountMsg, annot.tree)
         Some(result)

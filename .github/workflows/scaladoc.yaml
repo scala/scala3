@@ -2,7 +2,11 @@ name: scaladoc
 
 on:
   push:
+    branches-ignore:
+      - 'language-reference-stable'
   pull_request:
+    branches-ignore:
+      - 'language-reference-stable'
 jobs:
   build:
     env:
@@ -53,15 +57,11 @@ jobs:
       - name: Generate testcases documentation
         run: ./project/scripts/sbt scaladoc/generateTestcasesDocumentation
 
-      - name: Generate reference documentation and check links stability
-        run: |
-          ./project/scripts/sbt scaladoc/generateReferenceDocumentation
-          ./project/scripts/docsLinksStability ./scaladoc/output/reference ./project/scripts/expected-links/reference-expected-links.txt
+      - name: Generate reference documentation
+        run: ./project/scripts/sbt scaladoc/generateReferenceDocumentation
 
-      - name: Generate Scala 3 documentation and check links stability
-        run: |
-          ./project/scripts/sbt scaladoc/generateScalaDocumentation
-          ./project/scripts/docsLinksStability ./scaladoc/output/scala3 ./project/scripts/expected-links/scala3-expected-links.txt
+      - name: Generate Scala 3 documentation
+        run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
       - name: Generate documentation for example project using dotty-sbt
         run: ./project/scripts/sbt "sbt-test/scripted sbt-dotty/scaladoc"

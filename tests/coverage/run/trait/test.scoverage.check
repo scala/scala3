@@ -1,0 +1,208 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+trait/test.scala
+<empty>
+T1
+Trait
+<empty>.T1
+x
+12
+17
+1
+x
+DefDef
+false
+0
+false
+def x
+
+1
+trait/test.scala
+<empty>
+Impl2
+Class
+<empty>.Impl2
+<init>
+91
+101
+6
+<init>
+Apply
+false
+0
+false
+T2("test")
+
+2
+trait/test.scala
+<empty>
+Impl3
+Class
+<empty>.Impl3
+<init>
+133
+140
+7
+<init>
+Apply
+false
+0
+false
+Impl2()
+
+3
+trait/test.scala
+<empty>
+Impl3
+Class
+<empty>.Impl3
+<init>
+130
+143
+7
+<init>
+Apply
+false
+0
+false
+T2(Impl2().p)
+
+4
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+178
+185
+11
+<init>
+Apply
+false
+0
+false
+Impl1()
+
+5
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+170
+188
+11
+println
+Apply
+false
+0
+false
+println(Impl1().x)
+
+6
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+204
+211
+12
+<init>
+Apply
+false
+0
+false
+Impl2()
+
+7
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+196
+214
+12
+println
+Apply
+false
+0
+false
+println(Impl2().p)
+
+8
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+233
+240
+13
+<init>
+Apply
+false
+0
+false
+Impl3()
+
+9
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+225
+243
+13
+println
+Apply
+false
+0
+false
+println(Impl3().p)
+
+10
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+145
+159
+10
+Test
+DefDef
+false
+0
+false
+@main
+def Test
+

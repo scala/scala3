@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Extension Methods"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/extension-methods.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/extension-methods.html
 ---
 
 Extension methods allow one to add methods to a type after the type is defined. Example:
@@ -285,20 +285,20 @@ def position(s: String)(ch: Char, n: Int): Int =
 Here are the syntax changes for extension methods and collective extensions relative
 to the [current syntax](../syntax.md).
 
-```ebnf
-BlockStat         ::=  ... | Extension ;
-TemplateStat      ::=  ... | Extension ;
-TopStat           ::=  ... | Extension ;
+```
+BlockStat         ::=  ... | Extension
+TemplateStat      ::=  ... | Extension
+TopStat           ::=  ... | Extension
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
-                       ‘(’ DefParam ‘)’ {UsingParamClause} ExtMethods ;
-ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>> ;
-ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef ;
+                       ‘(’ DefParam ‘)’ {UsingParamClause} ExtMethods
+ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
+ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
 ```
 
 In the above the notation `<<< ts >>>` in the production rule `ExtMethods` is defined as follows :
 
-```ebnf
-<<< ts >>>        ::=  ‘{’ ts ‘}’ | indent ts outdent ;
+```
+<<< ts >>>        ::=  ‘{’ ts ‘}’ | indent ts outdent
 ```
 
 `extension` is a soft keyword. It is recognized as a keyword only if it appears

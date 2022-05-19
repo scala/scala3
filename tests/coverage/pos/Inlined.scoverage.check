@@ -1,0 +1,275 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+133
+139
+5
+==
+Apply
+false
+0
+false
+l == 1
+
+1
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+378
+405
+11
+Scala3RunTime
+Select
+false
+0
+false
+scala.runtime.Scala3RunTime
+
+2
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+378
+420
+11
+assertFailed
+Apply
+false
+0
+false
+scala.runtime.Scala3RunTime.assertFailed()
+
+3
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+378
+420
+11
+<none>
+Block
+true
+0
+false
+scala.runtime.Scala3RunTime.assertFailed()
+
+4
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+197
+204
+6
+apply
+Apply
+false
+0
+false
+List(l)
+
+5
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+192
+211
+6
+==
+Apply
+false
+0
+false
+l == List(l).length
+
+6
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+378
+405
+11
+Scala3RunTime
+Select
+false
+0
+false
+scala.runtime.Scala3RunTime
+
+7
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+378
+420
+11
+assertFailed
+Apply
+false
+0
+false
+scala.runtime.Scala3RunTime.assertFailed()
+
+8
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+378
+420
+11
+<none>
+Block
+true
+0
+false
+scala.runtime.Scala3RunTime.assertFailed()
+
+9
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+222
+229
+7
+apply
+Apply
+false
+0
+false
+List(l)
+
+10
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+222
+241
+7
+==
+Apply
+false
+0
+false
+List(l).length == 1
+
+11
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+378
+405
+11
+Scala3RunTime
+Select
+false
+0
+false
+scala.runtime.Scala3RunTime
+
+12
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+378
+420
+11
+assertFailed
+Apply
+false
+0
+false
+scala.runtime.Scala3RunTime.assertFailed()
+
+13
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+378
+420
+11
+<none>
+Block
+true
+0
+false
+scala.runtime.Scala3RunTime.assertFailed()
+
+14
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+86
+101
+3
+testInlined
+DefDef
+false
+0
+false
+def testInlined
+

@@ -56,4 +56,13 @@ package endmarkers:
 
   end TestObj
 
+  trait Stuff[A]:
+    def `do`: A
+  end Stuff
+
+  // end given shouldn't have Symbol Occurrence
+  given Stuff[String] with
+    def `do`: String = "done"
+  end given
+
 end endmarkers

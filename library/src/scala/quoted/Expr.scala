@@ -4,7 +4,7 @@ package scala.quoted
  *
  *  `Expr` has extension methods that are defined in `scala.quoted.Quotes`.
  */
-abstract class Expr[+T] private[scala]
+abstract class Expr[+T] private[scala] ()
 
 /** Constructors for expressions */
 object Expr {

@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Match Expressions"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/match-syntax.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/match-syntax.html
 ---
 
 The syntactical precedence of match expressions has been changed.
@@ -47,10 +47,10 @@ The syntactical precedence of match expressions has been changed.
 
 The new syntax of match expressions is as follows.
 
-```ebnf
+```
 InfixExpr    ::=  ...
-               |  InfixExpr MatchClause ;
+               |  InfixExpr MatchClause
 SimpleExpr   ::=  ...
-               |  SimpleExpr ‘.’ MatchClause ;
-MatchClause  ::=  ‘match’ ‘{’ CaseClauses ‘}’ ;
+               |  SimpleExpr ‘.’ MatchClause
+MatchClause  ::=  ‘match’ ‘{’ CaseClauses ‘}’
 ```

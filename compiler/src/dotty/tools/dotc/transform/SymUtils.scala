@@ -64,6 +64,11 @@ object SymUtils:
 
     def isSuperAccessor(using Context): Boolean = self.name.is(SuperAccessorName)
 
+    def isNoValue(using Context): Boolean = self.is(Package) || self.isAllOf(JavaModule)
+
+    def isUniversalTrait(using Context): Boolean =
+      self.is(Trait) && self.asClass.parentSyms.head == defn.AnyClass
+
     /** Is this a type or term parameter or a term parameter accessor? */
     def isParamOrAccessor(using Context): Boolean =
       self.is(Param) || self.is(ParamAccessor)
@@ -118,8 +123,9 @@ object SymUtils:
     def useCompanionAsSumMirror(using Context): Boolean =
       def companionExtendsSum(using Context): Boolean =
         self.linkedClass.isSubClass(defn.Mirror_SumClass)
-      self.linkedClass.exists
-        && !self.is(Scala2x)
+      !self.is(Scala2x)
+        && self.linkedClass.exists
+        && !self.linkedClass.is(Case)
         && (
           // If the sum type is compiled from source, and `self` is a "generic sum"
           // then its companion object will become a sum mirror in `posttyper`. (This method
@@ -143,7 +149,7 @@ object SymUtils:
       if (!self.is(Sealed))
         s"it is not a sealed ${self.kindString}"
       else if (!self.isOneOf(AbstractOrTrait))
-        s"it is not an abstract class"
+        "it is not an abstract class"
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror

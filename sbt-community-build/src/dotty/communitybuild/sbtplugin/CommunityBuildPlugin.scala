@@ -15,16 +15,6 @@ object CommunityBuildPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
   override def trigger = allRequirements
 
-  object autoImport {
-    val isForwardCompatProject = settingKey[Boolean]("Is it a project used for testing forward binary compatibility?")
-  }
-
-  import autoImport._
-
-  override val globalSettings: Seq[Setting[_]] = Seq(
-    isForwardCompatProject := false
-  )
-
   override val projectSettings: Seq[Setting[_]] = Seq(
     publishLocal := Def.taskDyn {
       val pubLocalResult = publishLocal.value
@@ -33,30 +23,14 @@ object CommunityBuildPlugin extends AutoPlugin {
           CommunityBuildDependencies.publish(projectID.value)
         pubLocalResult
       }
-    }.value,
-    projectID := {
-      val id = projectID.value
-      if (isForwardCompatProject.value) {
-        val revision = if (id.revision.endsWith("-SNAPSHOT"))
-          id.revision.replace("-SNAPSHOT", "-forward-compat-SNAPSHOT")
-        else
-          id.revision + "-forward-compat"
-        id.withRevision(revision)
-      } else
-        id
-    }
+    }.value
   )
 
   override val buildSettings: Seq[Setting[_]] = Seq(
     dependencyOverrides ++= {
-      if (scalaVersion.value.startsWith("3.")) {
-        val forwardCompatFilter: ModuleID => Boolean = if (isForwardCompatProject.value) (_.revision.contains("-forward-compat")) else (!_.revision.contains("-forward-compat"))
-        val stdlibOverrides = Seq(
-          scalaOrganization.value %% "scala3-library" % scalaVersion.value,
-          scalaOrganization.value %% "scala3-library_sjs1" % scalaVersion.value
-        )
-        CommunityBuildDependencies.allOverrides(sLog.value).filter(forwardCompatFilter) ++ stdlibOverrides
-      } else Nil
+      if (scalaVersion.value.startsWith("3."))
+        CommunityBuildDependencies.allOverrides(sLog.value)
+      else Nil
     }
   )
 }

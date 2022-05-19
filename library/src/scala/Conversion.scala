@@ -1,6 +1,6 @@
 package scala
 
-/** A class for implicit values that can serve as implicit conversions
+/** A class for implicit values that can serve as implicit conversions.
 *  The implicit resolution algorithm will act as if there existed
 *  the additional implicit definition:
 *

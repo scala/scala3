@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Imports"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/imports.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/imports.html
 ---
 
 The syntax of wildcard and renaming imports (and exports) has changed.
@@ -46,14 +46,14 @@ are offered under settings `-source 3.1-migration -rewrite`.
 
 ### Syntax
 
-```ebnf
-Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr} ;
-ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec ;
+```
+Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
 ImportSpec        ::=  NamedSelector
                     |  WildcardSelector
-                    | ‘{’ ImportSelectors) ‘}’ ;
-NamedSelector     ::=  id [‘as’ (id | ‘_’)] ;
-WildCardSelector  ::=  ‘*' | ‘given’ [InfixType] ;
+                    | ‘{’ ImportSelectors) ‘}’
+NamedSelector     ::=  id [‘as’ (id | ‘_’)]
+WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
 ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector} ;
+                    |  WildCardSelector {‘,’ WildCardSelector}
 ```

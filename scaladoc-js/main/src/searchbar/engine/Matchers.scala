@@ -26,4 +26,4 @@ case class ByName(query: String) extends Matchers:
   }
 
 case class ByKind(kind: String) extends Matchers:
-  def apply(p: PageEntry): Match = Match(p.fullName.split(" ").headOption.filter(_.equalsIgnoreCase(kind)).fold(-1)(_ => 1), Set.empty)
+  def apply(p: PageEntry): Match = Match(if p.kind.equalsIgnoreCase(kind) then 1 else -1, Set.empty)

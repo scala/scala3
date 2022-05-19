@@ -182,36 +182,44 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case Keyword(s) => s
       }.mkString
 
-    def mkEntry(dri: DRI, name: String, text: String, descr: String, kind: String) = jsonObject(
+    def mkEntry(dri: DRI, name: String, text: String, extensionTarget: String, descr: String, kind: String) = jsonObject(
         "l" -> jsonString(relativeInternalOrAbsoluteExternalPath(dri)),
         "e" -> (if dri.externalLink.isDefined then rawJSON("true") else rawJSON("false")),
+        "i" -> jsonString(extensionTarget),
         "n" -> jsonString(name),
         "t" -> jsonString(text),
         "d" -> jsonString(descr),
         "k" -> jsonString(kind)
       )
 
-    def processPage(page: Page): Seq[JSON] =
-      val res =  page.content match
+    def extensionTarget(member: Member): String =
+      member.kind match
+        case Kind.Extension(on, _) => flattenToText(on.signature)
+        case _ => ""
+
+    def processPage(page: Page, pageFQName: List[String]): Seq[(JSON, Seq[String])] =
+      val (res, pageName) =  page.content match
         case m: Member if m.kind != Kind.RootPackage =>
-          val descr = m.dri.asFileLocation
-          def processMember(member: Member): Seq[JSON] =
+          def processMember(member: Member, fqName: List[String]): Seq[(JSON, Seq[String])] =
             val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())().asInstanceOf[InlineSignatureBuilder]
             val sig = Signature(Plain(member.name)) ++ signatureBuilder.names.reverse
-            val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr, member.kind.name)
+            val descr = fqName.mkString(".")
+            val entry = mkEntry(member.dri, member.name, flattenToText(sig), extensionTarget(member), descr, member.kind.name)
             val children = member
                 .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])
                 .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.fold(true)(_.isSourceSuperclassHidden))
-            Seq(entry) ++ children.flatMap(processMember)
+            val updatedFqName = fqName :+ member.name
+            Seq((entry, updatedFqName)) ++ children.flatMap(processMember(_, updatedFqName))
 
-          processMember(m)
+          (processMember(m, pageFQName), m.name)
         case _ =>
-          Seq(mkEntry(page.link.dri, page.link.name, page.link.name, "", "static"))
+          (Seq((mkEntry(page.link.dri, page.link.name, page.link.name, "", "", "static"), pageFQName)), "")
 
-      res ++ page.children.flatMap(processPage)
+      val updatedFqName = if !pageName.isEmpty then pageFQName :+ pageName else pageFQName
+      res ++ page.children.flatMap(processPage(_, updatedFqName))
 
-    val entries = pages.flatMap(processPage)
-    Resource.Text(searchDataPath, s"pages = ${jsonList(entries)};")
+    val entries = pages.flatMap(processPage(_, Nil))
+    Resource.Text(searchDataPath, s"pages = ${jsonList(entries.map(_._1))};")
 
   def scastieConfiguration() =
     Resource.Text(scastieConfigurationPath, s"""scastieConfiguration = "${

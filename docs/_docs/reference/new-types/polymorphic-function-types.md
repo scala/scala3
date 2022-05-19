@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Polymorphic Function Types"
-movedTo: https://docs.scala-lang.org/scala3/reference/new-types/polymorphic-function-types.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/new-types/polymorphic-function-types.html
 ---
 
 A polymorphic function type is a function type which accepts type parameters.

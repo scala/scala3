@@ -220,7 +220,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else if defn.isFunctionClass(cls) then toTextFunction(args, cls.name.isContextFunction, cls.name.isErasedFunction)
         else if tp.tupleArity >= 2 && !printDebug then toTextTuple(tp.tupleElementTypes)
         else if isInfixType(tp) then
-          val l :: r :: Nil = args
+          val l :: r :: Nil = args: @unchecked
           val opName = tyconName(tycon)
           toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
         else Str("")
@@ -697,10 +697,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case MacroTree(call) =>
         keywordStr("macro ") ~ toTextGlobal(call)
-      case Hole(isTermHole, idx, args) =>
-        val (prefix, postfix) = if isTermHole then ("{{{ ", " }}}") else ("[[[ ", " ]]]")
+      case Hole(isTermHole, idx, args, content, tpt) =>
+        val (prefix, postfix) = if isTermHole then ("{{{", "}}}") else ("[[[", "]]]")
         val argsText = toTextGlobal(args, ", ")
-        prefix ~~ idx.toString ~~ "|" ~~ argsText ~~ postfix
+        val contentText = toTextGlobal(content)
+        val tptText = toTextGlobal(tpt)
+        prefix ~~ idx.toString ~~ "|" ~~ tptText ~~ "|" ~~ argsText ~~ "|" ~~ contentText ~~ postfix
       case _ =>
         tree.fallbackToText(this)
     }

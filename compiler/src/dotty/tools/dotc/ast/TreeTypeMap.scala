@@ -134,8 +134,11 @@ class TreeTypeMap(
           val bind1 = tmap.transformSub(bind)
           val expr1 = tmap.transform(expr)
           cpy.Labeled(labeled)(bind1, expr1)
-        case Hole(isTermHole, n, args) =>
-          Hole(isTermHole, n, args.mapConserve(transform)).withSpan(tree.span).withType(mapType(tree.tpe))
+        case tree @ Hole(_, _, args, content, tpt) =>
+          val args1 = args.mapConserve(transform)
+          val content1 = transform(content)
+          val tpt1 = transform(tpt)
+          cpy.Hole(tree)(args = args1, content = content1, tpt = tpt1)
         case lit @ Literal(Constant(tpe: Type)) =>
           cpy.Literal(lit)(Constant(mapType(tpe)))
         case tree1 =>
@@ -153,9 +156,10 @@ class TreeTypeMap(
 
   private def transformAllParamss(paramss: List[ParamClause]): (TreeTypeMap, List[ParamClause]) = paramss match
     case params :: paramss1 =>
-      val (tmap1, params1: ParamClause) = (params: @unchecked) match
+      val (tmap1, params1: ParamClause) = ((params: @unchecked) match
         case ValDefs(vparams) => transformDefs(vparams)
         case TypeDefs(tparams) => transformDefs(tparams)
+      ): @unchecked
       val (tmap2, paramss2) = tmap1.transformAllParamss(paramss1)
       (tmap2, params1 :: paramss2)
     case nil =>

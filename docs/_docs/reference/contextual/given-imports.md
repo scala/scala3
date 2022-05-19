@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Importing Givens"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/given-imports.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/given-imports.html
 ---
 
 A special form of import wildcard selector is used to import given instances. Example:
@@ -103,15 +103,15 @@ given instances once their user base has migrated.
 
 ### Syntax
 
-```ebnf
-Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr} ;
-Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr} ;
-ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec ;
+```
+Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
+Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
 ImportSpec        ::=  NamedSelector
                     |  WildcardSelector
-                    | ‘{’ ImportSelectors) ‘}’ ;
-NamedSelector     ::=  id [‘as’ (id | ‘_’)] ;
-WildCardSelector  ::=  ‘*' | ‘given’ [InfixType] ;
+                    | ‘{’ ImportSelectors) ‘}’
+NamedSelector     ::=  id [‘as’ (id | ‘_’)]
+WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
 ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector} ;
+                    |  WildCardSelector {‘,’ WildCardSelector}
 ```

@@ -1,2 +1,2 @@
-scala> val List(x: _*) = List(1, 2)
+scala> val List(x: _*) = List(1, 2): @unchecked
 val x: Seq[Int] = List(1, 2)

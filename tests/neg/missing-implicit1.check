@@ -1,7 +1,7 @@
 -- Error: tests/neg/missing-implicit1.scala:17:4 -----------------------------------------------------------------------
 17 |  ff // error
    |    ^
-   |no given instance of type testObjectInstance.Zip[Option] was found for parameter xs of method ff in object testObjectInstance
+   |No given instance of type testObjectInstance.Zip[Option] was found for parameter xs of method ff in object testObjectInstance
    |
    |The following import might fix the problem:
    |
@@ -19,7 +19,7 @@
 -- Error: tests/neg/missing-implicit1.scala:23:42 ----------------------------------------------------------------------
 23 |    List(1, 2, 3).traverse(x => Option(x)) // error
    |                                          ^
-   |no given instance of type testObjectInstance.Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
+   |No given instance of type testObjectInstance.Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
    |
    |The following import might fix the problem:
    |

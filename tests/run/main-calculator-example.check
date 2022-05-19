@@ -1,0 +1,8 @@
+Expression: Plus(Number(1),Number(2))
+Calculated: 3
+executing sum2 with inputs: 2 3
+Expression: Plus(Number(2),Number(3))
+Calculated: 5
+executing sumAll with inputs: 1 2 3
+Expression: Plus(Plus(Number(1),Number(2)),Number(3))
+Calculated: 6

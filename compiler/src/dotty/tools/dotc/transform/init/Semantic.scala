@@ -410,8 +410,8 @@ object Semantic {
     def select(f: Symbol, source: Tree): Contextual[Result] =
       value.select(f, source) ++ errors
 
-    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree): Contextual[Result] =
-      value.call(meth, args, superType, source) ++ errors
+    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, source: Tree): Contextual[Result] =
+      value.call(meth, args, receiver, superType, source) ++ errors
 
     def callConstructor(ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] =
       value.callConstructor(ctor, args, source) ++ errors
@@ -587,7 +587,7 @@ object Semantic {
       }
     }
 
-    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, (_: Result).show) {
+    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, (_: Result).show) {
       def checkArgs = args.flatMap(_.promote)
 
       def isSyntheticApply(meth: Symbol) =
@@ -600,6 +600,27 @@ object Semantic {
         || (meth eq defn.Object_ne)
         || (meth eq defn.Any_isInstanceOf)
 
+      def checkArgsWithParametricity() =
+        val methodType = atPhaseBeforeTransforms { meth.info.stripPoly }
+        var allArgsPromote = true
+        val allParamTypes = methodType.paramInfoss.flatten.map(_.repeatedToSingle)
+        val errors = allParamTypes.zip(args).flatMap { (info, arg) =>
+          val errors = arg.promote
+          allArgsPromote = allArgsPromote && errors.isEmpty
+          info match
+            case typeParamRef: TypeParamRef =>
+              val bounds = typeParamRef.underlying.bounds
+              val isWithinBounds = bounds.lo <:< defn.NothingType && defn.AnyType <:< bounds.hi
+              def otherParamContains = allParamTypes.exists { param => param != info && param.typeSymbol != defn.ClassTagClass && info.occursIn(param) }
+              // A non-hot method argument is allowed if the corresponding parameter type is a
+              // type parameter T with Any as its upper bound and Nothing as its lower bound.
+              // the other arguments should either correspond to a parameter type that is T
+              // or that does not contain T as a component.
+              if isWithinBounds && !otherParamContains then Nil else errors
+            case _ => errors
+        }
+        (errors, allArgsPromote)
+
       // fast track if the current object is already initialized
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else if isAlwaysSafe(meth) then Result(Hot, Nil)
@@ -610,7 +631,14 @@ object Semantic {
             val klass = meth.owner.companionClass.asClass
             instantiate(klass, klass.primaryConstructor, args, source)
           else
-            Result(Hot, checkArgs)
+            if receiver.typeSymbol.isStaticOwner then
+              val (errors, allArgsPromote) = checkArgsWithParametricity()
+              if allArgsPromote || errors.nonEmpty then
+                Result(Hot, errors)
+              else
+                Result(Cold, errors)
+            else
+              Result(Hot, checkArgs)
 
         case Cold =>
           val error = CallCold(meth, source, trace.toVector)
@@ -666,7 +694,7 @@ object Semantic {
             }
 
         case RefSet(refs) =>
-          val resList = refs.map(_.call(meth, args, superType, source))
+          val resList = refs.map(_.call(meth, args, receiver, superType, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
@@ -946,7 +974,7 @@ object Semantic {
               locally {
                 given Trace = trace2
                 val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, EmptyTree))
-                val res = warm.call(member, args, superType = NoType, source = member.defTree)
+                val res = warm.call(member, args, receiver = NoType, superType = NoType, source = member.defTree)
                 buffer ++= res.ensureHot(msg, source).errors
               }
             else
@@ -1124,16 +1152,16 @@ object Semantic {
 
         ref match
         case Select(supert: Super, _) =>
-          val SuperType(thisTp, superTp) = supert.tpe
+          val SuperType(thisTp, superTp) = supert.tpe: @unchecked
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
-          Result(thisValue2, errors).call(ref.symbol, args, superTp, expr)
+          Result(thisValue2, errors).call(ref.symbol, args, thisTp, superTp, expr)
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ errors
           if ref.symbol.isConstructor then
             res.callConstructor(ref.symbol, args, source = expr)
           else
-            res.call(ref.symbol, args, superType = NoType, source = expr)
+            res.call(ref.symbol, args, receiver = qual.tpe, superType = NoType, source = expr)
 
         case id: Ident =>
           id.tpe match
@@ -1142,20 +1170,20 @@ object Semantic {
             val enclosingClass = id.symbol.owner.enclosingClass.asClass
             val thisValue2 = resolveThis(enclosingClass, thisV, klass, id)
             // local methods are not a member, but we can reuse the method `call`
-            thisValue2.call(id.symbol, args, superType = NoType, expr, needResolve = false)
+            thisValue2.call(id.symbol, args, receiver = NoType, superType = NoType, expr, needResolve = false)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ errors
             if id.symbol.isConstructor then
               res.callConstructor(id.symbol, args, source = expr)
             else
-              res.call(id.symbol, args, superType = NoType, source = expr)
+              res.call(id.symbol, args, receiver = prefix, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
         val qualRes = eval(qualifier, thisV, klass)
 
         name match
           case OuterSelectName(_, hops) =>
-            val SkolemType(tp) = expr.tpe
+            val SkolemType(tp) = expr.tpe: @unchecked
             val outer = resolveOuterSelect(tp.classSymbol.asClass, qualRes.value, hops, source = expr)
             Result(outer, qualRes.errors)
           case _ =>

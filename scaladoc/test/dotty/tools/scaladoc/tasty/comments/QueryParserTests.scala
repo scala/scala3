@@ -64,12 +64,12 @@ class QueryParserTests {
   private def parse(input: String) = QueryParser(input).tryReadQuery()
 
   private def testSuccess(input: String, expected: Query) = {
-    val Right(got) = parse(input)
+    val Right(got) = parse(input): @unchecked
     assertEquals(expected, got)
   }
 
   private def testFailAt(input: String, char: Int) = {
-    val Left(err) = parse(input)
+    val Left(err) = parse(input): @unchecked
     assertEquals(s"expected to fail at $char : $input", char, err.at)
   }
 }

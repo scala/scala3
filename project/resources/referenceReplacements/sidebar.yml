@@ -5,13 +5,17 @@ subsection:
     subsection:
       - page: reference/new-types/intersection-types.md
       - page: reference/new-types/intersection-types-spec.md
+        hidden: true
       - page: reference/new-types/union-types.md
       - page: reference/new-types/union-types-spec.md
+        hidden: true
       - page: reference/new-types/type-lambdas.md
       - page: reference/new-types/type-lambdas-spec.md
+        hidden: true
       - page: reference/new-types/match-types.md
       - page: reference/new-types/dependent-function-types.md
       - page: reference/new-types/dependent-function-types-spec.md
+        hidden: true
       - page: reference/new-types/polymorphic-function-types.md
   - title: Enums
     index: reference/enums/enums-index.md
@@ -35,6 +39,7 @@ subsection:
       - page: reference/contextual/multiversal-equality.md
       - page: reference/contextual/context-functions.md
       - page: reference/contextual/context-functions-spec.md
+        hidden: true
       - page: reference/contextual/conversions.md
       - page: reference/contextual/by-name-context-parameters.md
       - page: reference/contextual/relationship-implicits.md
@@ -45,11 +50,13 @@ subsection:
       - page: reference/metaprogramming/compiletime-ops.md
       - page: reference/metaprogramming/macros.md
       - page: reference/metaprogramming/macros-spec.md
+        hidden: true
       - page: reference/metaprogramming/staging.md
       - page: reference/metaprogramming/reflection.md
       - page: reference/metaprogramming/tasty-inspect.md
+      - page: reference/metaprogramming/simple-smp.md
   - title: Other New Features
-    index: reference/other-new-features/other-new-types.md
+    index: reference/other-new-features/other-new-features.md
     subsection:
       - page: reference/other-new-features/trait-parameters.md
       - page: reference/other-new-features/transparent-traits.md
@@ -60,6 +67,7 @@ subsection:
       - page: reference/other-new-features/open-classes.md
       - page: reference/other-new-features/parameter-untupling.md
       - page: reference/other-new-features/parameter-untupling-spec.md
+        hidden: true
       - page: reference/other-new-features/kind-polymorphism.md
       - page: reference/other-new-features/matchable.md
       - page: reference/other-new-features/threadUnsafe-annotation.md
@@ -76,6 +84,7 @@ subsection:
       - page: reference/changed-features/numeric-literals.md
       - page: reference/changed-features/structural-types.md
       - page: reference/changed-features/structural-types-spec.md
+        hidden: true
       - page: reference/changed-features/operators.md
       - page: reference/changed-features/wildcards.md
       - page: reference/changed-features/imports.md
@@ -84,6 +93,7 @@ subsection:
       - page: reference/changed-features/implicit-resolution.md
       - page: reference/changed-features/implicit-conversions.md
       - page: reference/changed-features/implicit-conversions-spec.md
+        hidden: true
       - page: reference/changed-features/overload-resolution.md
       - page: reference/changed-features/match-syntax.md
       - page: reference/changed-features/vararg-splices.md
@@ -91,9 +101,11 @@ subsection:
       - page: reference/changed-features/pattern-matching.md
       - page: reference/changed-features/eta-expansion.md
       - page: reference/changed-features/eta-expansion-spec.md
+        hidden: true
       - page: reference/changed-features/compiler-plugins.md
       - page: reference/changed-features/lazy-vals-init.md
       - page: reference/changed-features/main-functions.md
+      - page: reference/changed-features/interpolation-escapes.md
   - title: Dropped Features
     index: reference/dropped-features/dropped-features.md
     subsection:
@@ -107,12 +119,14 @@ subsection:
       - page: reference/dropped-features/early-initializers.md
       - page: reference/dropped-features/class-shadowing.md
       - page: reference/dropped-features/class-shadowing-spec.md
+        hidden: true
       - page: reference/dropped-features/limit22.md
       - page: reference/dropped-features/xml.md
       - page: reference/dropped-features/symlits.md
       - page: reference/dropped-features/auto-apply.md
       - page: reference/dropped-features/weak-conformance.md
       - page: reference/dropped-features/weak-conformance-spec.md
+        hidden: true
       - page: reference/dropped-features/nonlocal-returns.md
       - page: reference/dropped-features/this-qualifier.md
       - page: reference/dropped-features/wildcard-init.md
@@ -120,14 +134,19 @@ subsection:
     directory: experimental
     index: reference/experimental/overview.md
     subsection:
+      - page: reference/experimental/fewer-braces.md
       - page: reference/experimental/canthrow.md
       - page: reference/experimental/erased-defs.md
       - page: reference/experimental/erased-defs-spec.md
+        hidden: true
       - page: reference/experimental/named-typeargs.md
       - page: reference/experimental/named-typeargs-spec.md
+        hidden: true
       - page: reference/experimental/numeric-literals.md
       - page: reference/experimental/explicit-nulls.md
+      - page: reference/experimental/main-annotation.md
       - page: reference/experimental/cc.md
+      - page: reference/experimental/tupled-function.md
   - page: reference/syntax.md
   - title: Language Versions
     index: reference/language-versions/language-versions.md

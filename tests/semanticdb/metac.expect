@@ -734,8 +734,8 @@ Schema => SemanticDB v4
 Uri => EndMarkers.scala
 Text => empty
 Language => Scala
-Symbols => 24 entries
-Occurrences => 37 entries
+Symbols => 30 entries
+Occurrences => 46 entries
 
 Symbols:
 endmarkers/Container# => class Container extends Object { self: Container => +5 decls }
@@ -745,9 +745,11 @@ endmarkers/Container#`baz_=`().(x$1) => param x$1: Int
 endmarkers/Container#bar. => val method bar Tuple3[Int, Int, Int]
 endmarkers/Container#baz(). => var method baz Int
 endmarkers/Container#foo(). => method foo => Tuple3[Int, Int, Int]
-endmarkers/EndMarkers$package. => final package object endmarkers extends Object { self: endmarkers.type => +6 decls }
+endmarkers/EndMarkers$package. => final package object endmarkers extends Object { self: endmarkers.type => +8 decls }
 endmarkers/EndMarkers$package.`topLevelVar_=`(). => var method topLevelVar_= (param x$1: String): Unit
 endmarkers/EndMarkers$package.`topLevelVar_=`().(x$1) => param x$1: String
+endmarkers/EndMarkers$package.given_Stuff_String. => final implicit given object given_Stuff_String extends Object with Stuff[String] { self: given_Stuff_String.type => +2 decls }
+endmarkers/EndMarkers$package.given_Stuff_String.do(). => method do => String <: endmarkers/Stuff#do().
 endmarkers/EndMarkers$package.topLevelMethod(). => method topLevelMethod => String
 endmarkers/EndMarkers$package.topLevelVal. => val method topLevelVal Int
 endmarkers/EndMarkers$package.topLevelVar(). => var method topLevelVar String
@@ -757,6 +759,10 @@ endmarkers/MultiCtor#`<init>`(). => primary ctor <init> (val param i: Int): Mult
 endmarkers/MultiCtor#`<init>`().(i) => val param i: Int
 endmarkers/MultiCtor#`<init>`(+1). => ctor <init> (): MultiCtor
 endmarkers/MultiCtor#i. => val method i Int
+endmarkers/Stuff# => trait Stuff [typeparam A ] extends Object { self: Stuff[A] => +3 decls }
+endmarkers/Stuff#[A] => typeparam A 
+endmarkers/Stuff#`<init>`(). => primary ctor <init> [typeparam A ](): Stuff[A]
+endmarkers/Stuff#do(). => abstract method do => A
 endmarkers/TestObj. => final object TestObj extends Object { self: TestObj.type => +2 decls }
 endmarkers/TestObj.foo(). => method foo => Int
 local0 => val local localVal: Int
@@ -800,7 +806,16 @@ Occurrences:
 [52:9..52:16): TestObj <- endmarkers/TestObj.
 [54:8..54:11): foo <- endmarkers/TestObj.foo().
 [56:6..56:13): TestObj -> endmarkers/TestObj.
-[58:4..58:14): endmarkers -> endmarkers/
+[58:8..58:13): Stuff <- endmarkers/Stuff#
+[58:14..58:15): A <- endmarkers/Stuff#[A]
+[59:9..59:11): do <- endmarkers/Stuff#do().
+[59:14..59:15): A -> endmarkers/Stuff#[A]
+[60:6..60:11): Stuff -> endmarkers/Stuff#
+[63:8..63:13): Stuff -> endmarkers/Stuff#
+[63:14..63:20): String -> scala/Predef.String#
+[64:9..64:11): do <- endmarkers/EndMarkers$package.given_Stuff_String.do().
+[64:14..64:20): String -> scala/Predef.String#
+[67:4..67:14): endmarkers -> endmarkers/
 
 expect/EndMarkers2.scala
 ------------------------
@@ -1848,7 +1863,7 @@ givens/InventedNames$package.given_String. => final implicit lazy val given meth
 givens/InventedNames$package.given_X. => final implicit given object given_X extends Object with X { self: given_X.type => +2 decls }
 givens/InventedNames$package.given_X.doX(). => method doX => Int <: givens/X#doX().
 givens/InventedNames$package.given_Y# => implicit given class given_Y extends Object with Y { self: given_Y => +3 decls }
-givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init> ()(implicit val given param x$1: X): given_Y
+givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init> (implicit val given param x$1: X)(): given_Y
 givens/InventedNames$package.given_Y#`<init>`().(x$1) => implicit val given param x$1: X
 givens/InventedNames$package.given_Y#doY(). => method doY => String <: givens/Y#doY().
 givens/InventedNames$package.given_Y#x$1. => protected implicit val given method x$1 X

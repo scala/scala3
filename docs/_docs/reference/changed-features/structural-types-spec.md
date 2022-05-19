@@ -1,16 +1,16 @@
 ---
 layout: doc-page
 title: "Programmatic Structural Types - More Details"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/structural-types-spec.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/structural-types-spec.html
 ---
 
 ## Syntax
 
-```ebnf
-SimpleType    ::= ... | Refinement ;
-Refinement    ::= ‘{’ RefineStatSeq ‘}’ ;
-RefineStatSeq ::=  RefineStat {semi RefineStat} ;
-RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl ;
+```
+SimpleType    ::= ... | Refinement
+Refinement    ::= ‘{’ RefineStatSeq ‘}’
+RefineStatSeq ::=  RefineStat {semi RefineStat}
+RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl
 ```
 
 ## Implementation of Structural Types

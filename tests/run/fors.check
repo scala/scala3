@@ -26,3 +26,21 @@ testNew
 0 2 4 6 8 
 0 2 4 6 8 
 a b c 
+
+testFiltering
+hello  world 
+hello  world 
+hello  world 
+1~2 3~4 
+(empty)
+hello  world 
+hello/1~2 hello/3~4 /1~2 /3~4 world/1~2 world/3~4 
+(2,1) (4,3) 
+hello  world 
+hello  world 
+hello  world 
+1~2 3~4 
+(empty)
+hello  world 
+hello/1~2 hello/3~4 /1~2 /3~4 world/1~2 world/3~4 
+(2,1) (4,3) 

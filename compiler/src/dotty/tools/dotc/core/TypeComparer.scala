@@ -158,6 +158,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private inline def inFrozenGadt[T](inline op: T): T =
     inFrozenGadtIf(true)(op)
 
+  /** A flag to prevent recursive joins when comparing AndTypes on the left */
+  private var joined = false
+
   private inline def inFrozenGadtIf[T](cond: Boolean)(inline op: T): T = {
     val savedFrozenGadt = frozenGadt
     frozenGadt ||= cond
@@ -477,11 +480,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         widenOK
         || joinOK
         || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
-        || containsAnd(tp1) && inFrozenGadt(recur(tp1.join, tp2))
+        || containsAnd(tp1)
+            && !joined
+            && {
+              joined = true
+              try inFrozenGadt(recur(tp1.join, tp2))
+              finally joined = false
+            }
             // An & on the left side loses information. We compensate by also trying the join.
             // This is less ad-hoc than it looks since we produce joins in type inference,
             // and then need to check that they are indeed supertypes of the original types
             // under -Ycheck. Test case is i7965.scala.
+            // On the other hand, we could get a combinatorial explosion by applying such joins
+            // recursively, so we do it only once. See i14870.scala as a test case, which would
+            // loop for a very long time without the recursion brake.
 
      case tp1: MatchType =>
         val reduced = tp1.reduced
@@ -996,7 +1008,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   otherArgs.take(d) ++ tl.paramRefs))
             else
               otherTycon
-          (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon.ensureLambdaSub)) &&
+          (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon)) &&
           directionalRecur(adaptedTycon.appliedTo(args), other)
         }
       }
@@ -2048,8 +2060,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** The greatest lower bound of two types */
   def glb(tp1: Type, tp2: Type): Type = /*>|>*/ trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists) tp2
-    else if (!tp2.exists) tp1
+    else if !tp1.exists || (tp1 eq WildcardType) then tp2
+    else if !tp2.exists || (tp2 eq WildcardType) then tp1
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp2
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp1
     else tp2 match
@@ -2098,8 +2110,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false, isSoft: Boolean = true): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain, isSoft=$isSoft)", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists) tp1
-    else if (!tp2.exists) tp2
+    else if !tp1.exists || (tp2 eq WildcardType) then tp1
+    else if !tp2.exists || (tp1 eq WildcardType) then tp2
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp1
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp2
     else
@@ -2138,8 +2150,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def lubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean = false): List[Type] =
     tparams match {
       case tparam :: tparamsRest =>
-        val arg1 :: args1Rest = args1
-        val arg2 :: args2Rest = args2
+        val arg1 :: args1Rest = args1: @unchecked
+        val arg2 :: args2Rest = args2: @unchecked
         val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVarianceSign
         val lubArg =
@@ -2170,8 +2182,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def glbArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): List[Type] =
     tparams match {
       case tparam :: tparamsRest =>
-        val arg1 :: args1Rest = args1
-        val arg2 :: args2Rest = args2
+        val arg1 :: args1Rest = args1: @unchecked
+        val arg2 :: args2Rest = args2: @unchecked
         val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVarianceSign
         val glbArg =
@@ -2718,15 +2730,16 @@ object TypeComparer {
      */
     val Fresh: Repr = 4
 
-    extension (approx: Repr)
-      def low: Boolean = (approx & LoApprox) != 0
-      def high: Boolean = (approx & HiApprox) != 0
-      def addLow: Repr = approx | LoApprox
-      def addHigh: Repr = approx | HiApprox
-      def show: String =
-        val lo = if low then " (left is approximated)" else ""
-        val hi = if high then " (right is approximated)" else ""
-        lo ++ hi
+    object Repr:
+      extension (approx: Repr)
+        def low: Boolean = (approx & LoApprox) != 0
+        def high: Boolean = (approx & HiApprox) != 0
+        def addLow: Repr = approx | LoApprox
+        def addHigh: Repr = approx | HiApprox
+        def show: String =
+          val lo = if low then " (left is approximated)" else ""
+          val hi = if high then " (right is approximated)" else ""
+          lo ++ hi
   end ApproxState
   type ApproxState = ApproxState.Repr
 
@@ -2908,7 +2921,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           cas
       }
 
-      val defn.MatchCase(pat, body) = cas1
+      val defn.MatchCase(pat, body) = cas1: @unchecked
 
       if (isSubType(scrut, pat))
         // `scrut` is a subtype of `pat`: *It's a Match!*

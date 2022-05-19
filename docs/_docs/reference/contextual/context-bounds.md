@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Context Bounds"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/context-bounds.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/context-bounds.html
 ---
 
 A context bound is a shorthand for expressing the common pattern of a context parameter that depends on a type parameter. Using a context bound, the `maximum` function of the last section can be written like this:
@@ -40,7 +40,7 @@ done automatically under `-rewrite`.
 
 ## Syntax
 
-```ebnf
-TypeParamBounds   ::=  [SubtypeBounds] {ContextBound} ;
-ContextBound      ::=  ‘:’ Type ;
+```
+TypeParamBounds   ::=  [SubtypeBounds] {ContextBound}
+ContextBound      ::=  ‘:’ Type
 ```

@@ -13,6 +13,7 @@ import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.core.StdNames
 
 /**
  * This class mainly contains the method classBTypeFromSymbol, which extracts the necessary
@@ -91,6 +92,20 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     })
   }
 
+  final def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType = {
+    assert(moduleClassSym.isTopLevelModuleClass, s"not a top-level module class: $moduleClassSym")
+    val internalName = moduleClassSym.javaBinaryName.stripSuffix(StdNames.str.MODULE_SUFFIX)
+    val bType = ClassBType(internalName)
+    bType.info = ClassInfo(
+      superClass = Some(ObjectRef),
+      interfaces = Nil,
+      flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
+      memberClasses = getMemberClasses(moduleClassSym).map(classBTypeFromSymbol),
+      nestedInfo = None
+    )
+    bType
+  }
+
   private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
     val superClassSym: Symbol =  {
       val t = classSym.asClass.superClass
@@ -138,13 +153,6 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     /* The InnerClass table of a class C must contain all nested classes of C, even if they are only
      * declared but not otherwise referenced in C (from the bytecode or a method / field signature).
      * We collect them here.
-     *
-     * Nested classes that are also referenced in C will be added to the innerClassBufferASM during
-     * code generation, but those duplicates will be eliminated when emitting the InnerClass
-     * attribute.
-     *
-     * Why doe we need to collect classes into innerClassBufferASM at all? To collect references to
-     * nested classes, but NOT nested in C, that are used within C.
      */
     val nestedClassSymbols = {
       // The lambdalift phase lifts all nested classes to the enclosing class, so if we collect

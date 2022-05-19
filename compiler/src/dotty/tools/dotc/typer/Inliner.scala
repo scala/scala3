@@ -25,7 +25,7 @@ import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition, SrcPos}
 import dotty.tools.dotc.parsing.Parsers.Parser
 import Nullables._
-import transform.{PostTyper, Inlining}
+import transform.{PostTyper, Inlining, CrossVersionChecks}
 
 import collection.mutable
 import reporting.trace
@@ -102,8 +102,7 @@ object Inliner {
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
-    if tree.symbol.isExperimental then
-      Feature.checkExperimentalDef(tree.symbol, tree)
+    CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
 
     if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
 
@@ -141,7 +140,7 @@ object Inliner {
         fn.tpe.widenTermRefExpr match
           case tp: PolyType =>
             val targBounds = tp.instantiateParamInfos(args.map(_.tpe))
-            for (arg, bounds: TypeBounds) <- args.zip(targBounds) if !bounds.contains(arg.tpe) do
+            for case (arg, bounds: TypeBounds) <- args.zip(targBounds) if !bounds.contains(arg.tpe) do
               val boundsStr =
                 if bounds == TypeBounds.empty then " <: Any. Note that this type is higher-kinded."
                 else bounds.show
@@ -334,7 +333,7 @@ object Inliner {
         case _ => t
       }
 
-      val Apply(_, codeArg :: Nil) = tree
+      val Apply(_, codeArg :: Nil) = tree: @unchecked
       val codeArg1 = stripTyped(codeArg.underlying)
       val underlyingCodeArg =
         if Inliner.isInlineable(codeArg1.symbol) then stripTyped(Inliner.inlineCall(codeArg1))
@@ -677,7 +676,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    *  map them to their opaque proxies.
    */
   def mapOpaquesInValueArg(arg: Tree)(using Context): Tree =
-    val argType = arg.tpe.widen
+    val argType = arg.tpe.widenDealias
     addOpaqueProxies(argType, arg.span, forThisProxy = false)
     if opaqueProxies.nonEmpty then
       val mappedType = mapOpaques.typeMap(argType)
@@ -995,6 +994,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
             case _ => tree
           }
+        case tree @ Select(qual: This, name) if tree.symbol.is(Private) && tree.symbol.isInlineMethod =>
+          // This inline method refers to another (private) inline method (see tests/pos/i14042.scala).
+          // We insert upcast to access the private inline method once inlined. This makes the selection
+          // keep the symbol when re-typechecking in the InlineTyper. The method is inlined and hence no
+          // reference to a private method is kept at runtime.
+          cpy.Select(tree)(qual.asInstance(qual.tpe.widen), name)
+
         case tree => tree
       },
       oldOwners = inlinedMethod :: Nil,
@@ -1629,12 +1635,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         case res =>
           specializeEq(inlineIfNeeded(res))
       }
-      if res.symbol == defn.QuotedRuntime_exprQuote then
-        ctx.compilationUnit.needsQuotePickling = true
       res
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
-      inlineIfNeeded(constToLiteral(betaReduce(super.typedTypeApply(tree, pt))))
+      val tree1 = inlineIfNeeded(constToLiteral(betaReduce(super.typedTypeApply(tree, pt))))
+      if tree1.symbol.isQuote then
+        ctx.compilationUnit.needsStaging = true
+      tree1
 
     override def typedMatch(tree: untpd.Match, pt: Type)(using Context): Tree =
       val tree1 =
@@ -1739,14 +1746,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         typeMap = new TypeMap() {
           override def apply(tp: Type): Type = tp match {
             case tr: TypeRef if tr.prefix.eq(NoPrefix) && typeBindingsSet.contains(tr.symbol) =>
-              val TypeAlias(res) = tr.info
+              val TypeAlias(res) = tr.info: @unchecked
               res
             case tp => mapOver(tp)
           }
         },
         treeMap = {
           case ident: Ident if ident.isType && typeBindingsSet.contains(ident.symbol) =>
-            val TypeAlias(r) = ident.symbol.info
+            val TypeAlias(r) = ident.symbol.info: @unchecked
             TypeTree(r).withSpan(ident.span)
           case tree => tree
         }

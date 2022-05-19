@@ -517,7 +517,7 @@ trait Applications extends Compatibility {
       def handlePositional(pnames: List[Name], args: List[Trees.Tree[T]]): List[Trees.Tree[T]] =
         args match {
           case (arg: NamedArg @unchecked) :: _ =>
-            val nameAssocs = for (arg @ NamedArg(name, _) <- args) yield (name, arg)
+            val nameAssocs = for (case arg @ NamedArg(name, _) <- args) yield (name, arg)
             handleNamed(pnames, args, nameAssocs.toMap, Set())
           case arg :: args1 =>
             arg :: handlePositional(if (pnames.isEmpty) Nil else pnames.tail, args1)
@@ -705,7 +705,7 @@ trait Applications extends Compatibility {
     def fail(msg: Message): Unit =
       ok = false
     def appPos: SrcPos = NoSourcePosition
-    @threadUnsafe lazy val normalizedFun:   Tree = ref(methRef)
+    @threadUnsafe lazy val normalizedFun: Tree = ref(methRef, needLoad = false)
     init()
   }
 
@@ -1072,7 +1072,7 @@ trait Applications extends Compatibility {
       throw Error(i"unexpected type.\n  fun = $fun,\n  methPart(fun) = ${methPart(fun)},\n  methPart(fun).tpe = ${methPart(fun).tpe},\n  tpe = ${fun.tpe}")
 
   def typedNamedArgs(args: List[untpd.Tree])(using Context): List[NamedArg] =
-    for (arg @ NamedArg(id, argtpt) <- args) yield {
+    for (case arg @ NamedArg(id, argtpt) <- args) yield {
       if !Feature.namedTypeArgsEnabled then
         report.error(
           i"""Named type arguments are experimental,
@@ -1378,7 +1378,7 @@ trait Applications extends Compatibility {
         val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
-        if ((ownType eq selType) || ownType.isError) result
+        if (ownType.stripped eq selType.stripped) || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
@@ -1715,7 +1715,7 @@ trait Applications extends Compatibility {
             }
           case Nil => previous
         }
-        val best :: rest = survivors(alt :: Nil, alts1)
+        val best :: rest = survivors(alt :: Nil, alts1): @unchecked
         def asGood(alts: List[TermRef]): List[TermRef] = alts match {
           case alt :: alts1 =>
             if (compare(alt, best) < 0) asGood(alts1) else alt :: asGood(alts1)
@@ -2268,7 +2268,7 @@ trait Applications extends Compatibility {
       case TypeApply(fun, args) => TypeApply(replaceCallee(fun, replacement), args)
       case _ => replacement
 
-    val methodRefTree = ref(methodRef)
+    val methodRefTree = ref(methodRef, needLoad = false)
     val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
     val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
     val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
@@ -2288,6 +2288,27 @@ trait Applications extends Compatibility {
         None
     catch
       case NonFatal(_) => None
+
+  /** Tries applying conversion method reference to a provided receiver
+   *
+   *  returns converted tree in case of success.
+   *  None is returned if conversion method application fails.
+   */
+  def tryApplyingImplicitConversion(conversionMethodRef: TermRef, receiver: Tree)(using Context): Option[Tree] =
+    val conversionMethodTree = ref(conversionMethodRef, needLoad = false)
+    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
+
+    try
+      val appliedTree = inContext(newCtx) {
+        typed(untpd.Apply(conversionMethodTree, untpd.TypedSplice(receiver) :: Nil))
+      }
+
+      if appliedTree.tpe.exists && !appliedTree.tpe.isError then
+        Some(appliedTree)
+      else
+        None
+    catch
+      case NonFatal(x) => None
 
   def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
     methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&

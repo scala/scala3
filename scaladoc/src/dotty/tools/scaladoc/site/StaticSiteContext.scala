@@ -23,7 +23,12 @@ class StaticSiteContext(
   val docsPath = root.toPath.resolve("_docs")
   val blogPath = root.toPath.resolve("_blog")
 
-  val relativizeFrom = if args.apiSubdirectory then docsPath else root.toPath
+  def relativize(path: Path): Path = 
+    if args.apiSubdirectory then 
+      docsPath.relativize(path)
+    else
+      val relativised = docsPath.relativize(path)
+      Paths.get("docs").resolve(relativised)
 
   val siteExtensions = Set(".html", ".md")
 
@@ -47,7 +52,7 @@ class StaticSiteContext(
       val redirectFrom = loadedTemplate.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]].get("redirectFrom")
       def redirectToTemplate(redirectFrom: String) =
         val path = if redirectFrom.startsWith("/")
-          then relativizeFrom.resolve(redirectFrom.drop(1))
+          then docsPath.resolve(redirectFrom.drop(1))
           else loadedTemplate.file.toPath.resolveSibling(redirectFrom)
         val driFrom = driFor(path)
         val driTo = driFor(loadedTemplate.file.toPath)
@@ -93,7 +98,7 @@ class StaticSiteContext(
     }
 
   def driFor(dest: Path): DRI =
-    val rawFilePath = relativizeFrom.relativize(dest)
+    val rawFilePath = relativize(dest)
     val pageName = dest.getFileName.toString
     val dotIndex = pageName.lastIndexOf('.')
 

@@ -1,0 +1,191 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+inheritance/test.scala
+<empty>
+B
+Class
+<empty>.B
+<init>
+56
+63
+1
+<init>
+Apply
+false
+0
+false
+A(x, 0)
+
+1
+inheritance/test.scala
+<empty>
+C1
+Class
+<empty>.C1
+<init>
+84
+100
+2
+println
+Apply
+false
+0
+false
+println("block")
+
+2
+inheritance/test.scala
+<empty>
+C1
+Class
+<empty>.C1
+<init>
+81
+105
+2
+<init>
+Apply
+false
+0
+false
+B({println("block"); 1})
+
+3
+inheritance/test.scala
+<empty>
+C2
+Class
+<empty>.C2
+<init>
+125
+131
+3
+<init>
+Apply
+false
+0
+false
+A(2,2)
+
+4
+inheritance/test.scala
+<empty>
+C2
+Class
+<empty>.C2
+<init>
+123
+134
+3
+<init>
+Apply
+false
+0
+false
+B(A(2,2).x)
+
+5
+inheritance/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+169
+173
+7
+<init>
+Apply
+false
+0
+false
+C1()
+
+6
+inheritance/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+161
+176
+7
+println
+Apply
+false
+0
+false
+println(C1().x)
+
+7
+inheritance/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+219
+223
+9
+<init>
+Apply
+false
+0
+false
+C2()
+
+8
+inheritance/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+211
+226
+9
+println
+Apply
+false
+0
+false
+println(C2().x)
+
+9
+inheritance/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+136
+150
+6
+Test
+DefDef
+false
+0
+false
+@main
+def Test
+

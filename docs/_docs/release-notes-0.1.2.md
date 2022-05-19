@@ -77,11 +77,11 @@ This release ships with the following features:
 
 [1]: https://docs.google.com/document/d/1h3KUMxsSSjyze05VecJGQ5H2yh7fNADtIf3chD3_wr0/edit
 [2]: https://infoscience.epfl.ch/record/222780?ln=en
-[3]: ../reference/new-types/intersection-types.html
-[4]: ../reference/new-types/union-types.html
-[5]: ../reference/enums/adts.html
-[6]: ../reference/enums/desugarEnums.html
-[7]: ../reference/contextual/by-name-context-parameters.html
+[3]: reference/new-types/intersection-types.html
+[4]: reference/new-types/union-types.html
+[5]: reference/enums/adts.html
+[6]: reference/enums/desugarEnums.html
+[7]: reference/contextual/by-name-context-parameters.html
 [8]: https://infoscience.epfl.ch/record/228518
 [9]: http://docs.scala-lang.org/sips/pending/static-members.html
 [10]: http://docs.scala-lang.org/sips/pending/improved-lazy-val-initialization.html
@@ -89,7 +89,7 @@ This release ships with the following features:
 [12]: https://github.com/lampepfl/dotty/commit/b2215ed23311b2c99ea638f9d7fcad9737dba588
 [13]: https://github.com/lampepfl/dotty/pull/187
 [14]: https://github.com/lampepfl/dotty/pull/217
-[15]: ../reference/other-new-features/trait-parameters.html
+[15]: reference/other-new-features/trait-parameters.html
 [16]: https://github.com/lampepfl/dotty/commit/89540268e6c49fb92b9ca61249e46bb59981bf5a
 [17]: https://github.com/lampepfl/dotty/pull/174
 [18]: https://github.com/lampepfl/dotty/pull/488
@@ -104,10 +104,10 @@ This release ships with the following features:
 [27]: https://github.com/lampepfl/dotty/pull/2513
 [28]: https://github.com/lampepfl/dotty/pull/2361
 [29]: https://github.com/lampepfl/dotty/pull/1453
-[30]: ../reference/contextual/context-functions.html
+[30]: reference/contextual/context-functions.html
 [31]: https://github.com/lampepfl/dotty/pull/2136
 [32]: https://github.com/lampepfl/dotty/pull/1758
-[33]: ../reference/metaprogramming/inline.html
+[33]: reference/metaprogramming/inline.html
 
 # Contributors
 The Dotty team and contributors have closed 750 issues and have merged a total of 1258 pull requests.

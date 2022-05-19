@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Universal Apply Methods"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/creator-applications.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/creator-applications.html
 ---
 
 Scala case classes generate apply methods, so that values of case classes can be created using simple

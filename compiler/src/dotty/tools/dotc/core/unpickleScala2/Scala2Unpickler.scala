@@ -81,7 +81,7 @@ object Scala2Unpickler {
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
       case cinfo => (Nil, cinfo)
-    }
+    }: @unchecked
     val ost =
       if (selfInfo eq NoType) && denot.is(ModuleClass) then
         val sourceModule = denot.sourceModule.orElse {
@@ -1101,7 +1101,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val tparams = until(end, () => readTypeDefRef())
         val cls = symbol.asClass
         val ((constr: DefDef) :: Nil, stats) =
-          impl.body.partition(_.symbol == cls.primaryConstructor)
+          impl.body.partition(_.symbol == cls.primaryConstructor): @unchecked
         ClassDef(cls, constr, tparams ++ stats)
 
       case MODULEtree =>

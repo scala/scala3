@@ -354,13 +354,18 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  `<:<` relationships between parameters ("edges") but not bounds.
    */
   def order(current: This, param1: TypeParamRef, param2: TypeParamRef, direction: UnificationDirection = NoUnification)(using Context): This =
-    if (param1 == param2 || current.isLess(param1, param2)) this
-    else {
-      assert(contains(param1), i"$param1")
-      assert(contains(param2), i"$param2")
+    // /!\ Careful here: we're adding constraints on `current`, not `this`, so
+    // think twice when using an instance method! We only need to pass `this` as
+    // the `prev` argument in methods on `ConstraintLens`.
+    // TODO: Refactor this code to take `prev` as a parameter and add
+    // constraints on `this` instead?
+    if param1 == param2 || current.isLess(param1, param2) then current
+    else
+      assert(current.contains(param1), i"$param1")
+      assert(current.contains(param2), i"$param2")
       val unifying = direction != NoUnification
       val newUpper = {
-        val up = exclusiveUpper(param2, param1)
+        val up = current.exclusiveUpper(param2, param1)
         if unifying then
           // Since param2 <:< param1 already holds now, filter out param1 to avoid adding
           //   duplicated orderings.
@@ -374,7 +379,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           param2 :: up
       }
       val newLower = {
-        val lower = exclusiveLower(param1, param2)
+        val lower = current.exclusiveLower(param1, param2)
         if unifying then
           // Similarly, filter out param2 from lowerly-ordered parameters
           //   to avoid duplicated orderings.
@@ -390,7 +395,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       val current1 = newLower.foldLeft(current)(upperLens.map(this, _, _, newUpper ::: _))
       val current2 = newUpper.foldLeft(current1)(lowerLens.map(this, _, _, newLower ::: _))
       current2
-    }
+    end if
+  end order
 
   /** The list of parameters P such that, for a fresh type parameter Q:
    *
@@ -512,7 +518,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       if (tl.isInstanceOf[HKLambda]) {
         // HKLambdas are hash-consed, need to create an artificial difference by adding
         // a LazyRef to a bound.
-        val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
+        val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos: @unchecked
         paramInfos = TypeBounds(lo, LazyRef.of(hi)) :: pinfos1
       }
       ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))

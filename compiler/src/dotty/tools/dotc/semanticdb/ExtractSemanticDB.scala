@@ -278,7 +278,9 @@ class ExtractSemanticDB extends Phase:
       tree match
         case tree: WithEndMarker[t] =>
           val endSpan = tree.endSpan
-          if endSpan.exists then
+          if endSpan.exists &&
+            namePresentInSource(tree.symbol, endSpan, tree.source) then
+            // non-symbol end marker shouldn't have Symbol Occurrence
             registerUseGuarded(None, tree.symbol, endSpan, tree.source)
         case _ =>
 

@@ -13,3 +13,6 @@ def letTest: Unit =
   let(new Foo) { _.hashCode }
 
 class Foo
+
+// Does not compile on 3.0
+// def polyTest: Unit = poly

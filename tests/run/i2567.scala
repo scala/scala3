@@ -10,7 +10,7 @@ object Test extends App {
   new Foo
   new Foo(using tc)
   new Foo()
-  new Foo()(using tc)
+  new Foo(using tc)
   Foo()
-  Foo()(using tc)
+  Foo(using tc)
 }

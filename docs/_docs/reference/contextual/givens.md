@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Given Instances"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/givens.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/givens.html
 ---
 
 Given instances (or, simply, "givens") define "canonical" values of certain types
@@ -173,14 +173,14 @@ is created for each reference.
 
 Here is the syntax for given instances:
 
-```ebnf
+```
 TmplDef             ::=  ...
-                     |   ‘given’ GivenDef ;
+                     |   ‘given’ GivenDef
 GivenDef            ::=  [GivenSig] StructuralInstance
                      |   [GivenSig] AnnotType ‘=’ Expr
-                     |   [GivenSig] AnnotType ;
-GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’ ;
-StructuralInstance  ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody ;
+                     |   [GivenSig] AnnotType
+GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’
+StructuralInstance  ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
 ```
 
 A given instance starts with the reserved word `given` and an optional _signature_. The signature

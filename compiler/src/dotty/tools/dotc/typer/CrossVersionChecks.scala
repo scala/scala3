@@ -12,6 +12,7 @@ import ast.tpd
 
 class CrossVersionChecks extends MiniPhase:
   import tpd.*
+  import CrossVersionChecks.*
 
   override def phaseName: String = CrossVersionChecks.name
 
@@ -27,8 +28,7 @@ class CrossVersionChecks extends MiniPhase:
   // arbitrarily choose one as more important than the other.
   private def checkUndesiredProperties(sym: Symbol, pos: SrcPos)(using Context): Unit =
     checkDeprecated(sym, pos)
-    checkExperimental(sym, pos)
-    checkSinceAnnot(sym, pos)
+    checkExperimentalRef(sym, pos)
 
     val xMigrationValue = ctx.settings.Xmigration.value
     if xMigrationValue != NoScalaVersion then
@@ -69,10 +69,6 @@ class CrossVersionChecks extends MiniPhase:
         val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
         report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
 
-  private def checkExperimental(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    if sym.isExperimental && !ctx.owner.isInExperimentalScope then
-      Feature.checkExperimentalDef(sym, pos)
-
   private def checkExperimentalSignature(sym: Symbol, pos: SrcPos)(using Context): Unit =
     class Checker extends TypeTraverser:
       def traverse(tp: Type): Unit =
@@ -87,29 +83,6 @@ class CrossVersionChecks extends MiniPhase:
     if !sym.isInExperimentalScope then
       for annot <- sym.annotations if annot.symbol.isExperimental do
         Feature.checkExperimentalDef(annot.symbol, annot.tree)
-
-  private def checkSinceAnnot(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    for
-      annot <- sym.getAnnotation(defn.SinceAnnot)
-      releaseName <- annot.argumentConstantString(0)
-    do
-      ScalaRelease.parse(releaseName) match
-        case Some(release) if release > ctx.scalaRelease =>
-          report.error(
-            i"$sym was added in Scala release ${releaseName.show}, therefore it cannot be used in the code targeting Scala ${ctx.scalaRelease.show}",
-            pos)
-        case None =>
-          report.error(i"$sym has an unparsable release name: '${releaseName}'", annot.tree.srcPos)
-        case _ =>
-
-  private def checkSinceAnnotInSignature(sym: Symbol, pos: SrcPos)(using Context) =
-    new TypeTraverser:
-      def traverse(tp: Type) =
-        if tp.typeSymbol.hasAnnotation(defn.SinceAnnot) then
-          checkSinceAnnot(tp.typeSymbol, pos)
-        else
-          traverseChildren(tp)
-    .traverse(sym.info)
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
@@ -155,15 +128,12 @@ class CrossVersionChecks extends MiniPhase:
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
-    checkSinceAnnot(tree.symbol, tree.srcPos)
-    checkSinceAnnotInSignature(tree.symbol, tree)
     tree
 
   override def transformDefDef(tree: DefDef)(using Context): DefDef =
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
-    checkSinceAnnotInSignature(tree.symbol, tree)
     tree
 
   override def transformTemplate(tree: Template)(using Context): Tree =
@@ -192,12 +162,10 @@ class CrossVersionChecks extends MiniPhase:
     tpe.foreachPart {
       case TypeRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
-        checkExperimental(sym, tree.srcPos)
-        checkSinceAnnot(sym, tree.srcPos)
+        checkExperimentalRef(sym, tree.srcPos)
       case TermRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
-        checkExperimental(sym, tree.srcPos)
-        checkSinceAnnot(sym, tree.srcPos)
+        checkExperimentalRef(sym, tree.srcPos)
       case _ =>
     }
     tree
@@ -205,7 +173,6 @@ class CrossVersionChecks extends MiniPhase:
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
     checkExperimentalAnnots(tree.symbol)
-    checkSinceAnnot(tree.symbol, tree.srcPos)
     tree
   }
 
@@ -214,3 +181,10 @@ end CrossVersionChecks
 object CrossVersionChecks:
   val name: String = "crossVersionChecks"
   val description: String = "check issues related to deprecated and experimental"
+
+  /** Check that a reference to an experimental definition with symbol `sym` is only
+   *  used in an experimental scope
+   */
+  def checkExperimentalRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    if sym.isExperimental && !ctx.owner.isInExperimentalScope then
+      Feature.checkExperimentalDef(sym, pos)

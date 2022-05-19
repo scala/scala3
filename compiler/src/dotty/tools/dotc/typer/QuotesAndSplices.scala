@@ -20,7 +20,7 @@ import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
-
+import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
 import scala.collection.mutable
 
 
@@ -121,7 +121,7 @@ trait QuotesAndSplices {
    */
   def typedAppliedSplice(tree: untpd.Apply, pt: Type)(using Context): Tree = {
     assert(ctx.mode.is(Mode.QuotedPattern))
-    val untpd.Apply(splice: untpd.Splice, args) = tree
+    val untpd.Apply(splice: untpd.Splice, args) = tree: @unchecked
     if !isFullyDefined(pt, ForceDegree.flipBottom) then
       report.error(i"Type must be fully defined.", splice.srcPos)
       tree.withType(UnspecifiedErrorType)
@@ -186,6 +186,10 @@ trait QuotesAndSplices {
     val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
         using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
     pat.select(tpnme.Underlying)
+
+  def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
+    val tpt = typedType(tree.tpt)
+    assignType(tree, tpt)
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
     if (level == 0 && !ctx.owner.ownersIterator.exists(_.is(Inline)))
@@ -317,7 +321,9 @@ trait QuotesAndSplices {
       }
 
       private def transformTypeBindingTypeDef(nameOfSyntheticGiven: TermName, tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]])(using Context): Tree = {
-        if (variance == -1)
+        if ctx.mode.is(Mode.InPatternAlternative) then
+          report.error(IllegalVariableInPatternAlternative(tdef.symbol.name), tdef.srcPos)
+        if variance == -1 then
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)

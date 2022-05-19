@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Using Clauses"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/using-clauses.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/using-clauses.html
 ---
 
 Functional programming tends to express most dependencies as simple function parameterization.
@@ -144,10 +144,10 @@ def summon[T](using x: T): x.type = x
 
 Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](../syntax.md). `using` is a soft keyword, recognized only at the start of a parameter or argument list. It can be used as a normal identifier everywhere else.
 
-```ebnf
-ClsParamClause      ::=  ... | UsingClsParamClause ;
-DefParamClauses     ::=  ... | UsingParamClause ;
-UsingClsParamClause ::=  ‘(’ ‘using’ (ClsParams | Types) ‘)’ ;
-UsingParamClause    ::=  ‘(’ ‘using’ (DefParams | Types) ‘)’ ;
-ParArgumentExprs    ::=  ... | ‘(’ ‘using’ ExprsInParens ‘)’ ;
+```
+ClsParamClause      ::=  ... | UsingClsParamClause
+DefParamClauses     ::=  ... | UsingParamClause
+UsingClsParamClause ::=  ‘(’ ‘using’ (ClsParams | Types) ‘)’
+UsingParamClause    ::=  ‘(’ ‘using’ (DefParams | Types) ‘)’
+ParArgumentExprs    ::=  ... | ‘(’ ‘using’ ExprsInParens ‘)’
 ```

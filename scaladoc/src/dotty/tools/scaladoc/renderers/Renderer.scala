@@ -114,7 +114,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
     val all = rootApiPage ++ rootDocsPage ++ redirectPages
     // We need to check for conflicts only if we have top-level member called docs
     val hasPotentialConflict =
-      rootPackage.members.exists(m => m.name.startsWith("_docs"))
+      rootPackage.members.exists(m => m.name.startsWith("docs"))
 
     if hasPotentialConflict then
       def walk(page: Page): Unit =

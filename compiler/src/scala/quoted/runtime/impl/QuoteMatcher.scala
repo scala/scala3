@@ -203,24 +203,33 @@ object QuoteMatcher {
         // Matches an open term and wraps it into a lambda that provides the free variables
         case Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil)
             if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
-          val names: List[TermName] = args.map {
-            case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
-            case arg => arg.symbol.name.asTermName
+          def hoasClosure = {
+            val names: List[TermName] = args.map {
+              case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
+              case arg => arg.symbol.name.asTermName
+            }
+            val argTypes = args.map(x => x.tpe.widenTermRefExpr)
+            val methTpe = MethodType(names)(_ => argTypes, _ => pattern.tpe)
+            val meth = newAnonFun(ctx.owner, methTpe)
+            def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
+              val argsMap = args.map(_.symbol).zip(lambdaArgss.head).toMap
+              val body = new TreeMap {
+                override def transform(tree: Tree)(using Context): Tree =
+                  tree match
+                    case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
+                    case tree => super.transform(tree)
+              }.transform(scrutinee)
+              TreeOps(body).changeNonLocalOwners(meth)
+            }
+            Closure(meth, bodyFn)
           }
-          val argTypes = args.map(x => x.tpe.widenTermRefExpr)
-          val methTpe = MethodType(names)(_ => argTypes, _ => pattern.tpe)
-          val meth = newAnonFun(ctx.owner, methTpe)
-          def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
-            val argsMap = args.map(_.symbol).zip(lambdaArgss.head).toMap
-            val body = new TreeMap {
-              override def transform(tree: Tree)(using Context): Tree =
-                tree match
-                  case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
-                  case tree => super.transform(tree)
-            }.transform(scrutinee)
-            TreeOps(body).changeNonLocalOwners(meth)
+          val capturedArgs = args.map(_.symbol)
+          val captureEnv = summon[Env].filter((k, v) => !capturedArgs.contains(v))
+          withEnv(captureEnv) {
+            scrutinee match
+              case ClosedPatternTerm(scrutinee) => matched(hoasClosure)
+              case _ => notMatched
           }
-          matched(Closure(meth, bodyFn))
 
         /* Match type ascription (b) */
         case Typed(expr2, _) =>
@@ -245,11 +254,12 @@ object QuoteMatcher {
                   ref match
                     case Select(qual1, _) => qual1 =?= qual2
                     case ref: Ident =>
-                      ref.tpe match
-                        case TermRef(qual: TermRef, _) => tpd.ref(qual) =?= qual2
-                        case TermRef(qual: ThisType, _) if qual.classSymbol.is(Module, butNot = Package) =>
-                          tpd.ref(qual.classSymbol.companionModule) =?= qual2
-                        case _ => matched
+                      if qual2.existsSubTree(_.symbol == defn.QuotedRuntimePatterns_patternHole) then
+                        // Prefix has a hole, so we need to match the prefix to extract the value of the hole
+                        tpd.desugarIdentPrefix(ref) =?= qual2
+                      else
+                        matched
+
                 /* Match reference */
                 case _: Ident if symbolMatch(scrutinee, pattern) => matched
                 /* Match type */

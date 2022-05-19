@@ -2,6 +2,9 @@ package dotty.tools
 package dotc
 package reporting
 
+import core.Contexts.*, core.Decorators.*, core.Mode
+import config.SourceVersion
+
 import scala.language.unsafeNulls
 
 import scala.annotation.threadUnsafe
@@ -15,6 +18,16 @@ object Message {
     * see where old errors still exist
     */
   implicit def toNoExplanation(str: => String): Message = NoExplanation(str)
+
+  def rewriteNotice(what: String, version: SourceVersion | Null = null, options: String = "")(using Context): String =
+    if !ctx.mode.is(Mode.Interactive) then
+      val sourceStr = if version != null then i"-source $version" else ""
+      val optionStr =
+        if options.isEmpty then sourceStr
+        else if sourceStr.isEmpty then options
+        else i"$sourceStr $options"
+      i"\n$what can be rewritten automatically under -rewrite $optionStr."
+    else ""
 }
 
 /** A `Message` contains all semantic information necessary to easily

@@ -9,8 +9,6 @@ import dotty.tools.tasty.{TastyBuffer, TastyFormat, TastyHash}
 import TastyFormat._
 import TastyBuffer._
 
-import Contexts._
-
 import collection.mutable
 import core.Symbols.ClassSymbol
 import Decorators._
@@ -33,7 +31,7 @@ class TastyPickler(val rootCls: ClassSymbol) {
   def newSection(name: String, buf: TastyBuffer): Unit =
     sections += ((nameBuffer.nameIndex(name.toTermName), buf))
 
-  def assembleParts()(using Context): Array[Byte] = {
+  def assembleParts(): Array[Byte] = {
     def lengthWithLength(buf: TastyBuffer) =
       buf.length + natSize(buf.length)
 
@@ -41,9 +39,7 @@ class TastyPickler(val rootCls: ClassSymbol) {
     sections.foreach(_._2.assemble())
 
     val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes)
-    val treeSectionHash +: otherSectionHashes = sections.map(x => TastyHash.pjwHash64(x._2.bytes))
-
-    val tastyVersion = ctx.tastyVersion
+    val treeSectionHash +: otherSectionHashes = sections.map(x => TastyHash.pjwHash64(x._2.bytes)): @unchecked
 
     // Hash of name table and tree
     val uuidLow: Long = nameBufferHash ^ treeSectionHash
@@ -53,9 +49,9 @@ class TastyPickler(val rootCls: ClassSymbol) {
     val headerBuffer = {
       val buf = new TastyBuffer(header.length + TastyPickler.versionStringBytes.length + 32)
       for (ch <- header) buf.writeByte(ch.toByte)
-      buf.writeNat(tastyVersion.major)
-      buf.writeNat(tastyVersion.minor)
-      buf.writeNat(tastyVersion.experimental)
+      buf.writeNat(MajorVersion)
+      buf.writeNat(MinorVersion)
+      buf.writeNat(ExperimentalVersion)
       buf.writeNat(TastyPickler.versionStringBytes.length)
       buf.writeBytes(TastyPickler.versionStringBytes, TastyPickler.versionStringBytes.length)
       buf.writeUncompressedLong(uuidLow)

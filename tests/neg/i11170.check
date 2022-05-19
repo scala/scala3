@@ -1,0 +1,4 @@
+-- Error: tests/neg/i11170.scala:7:15 ----------------------------------------------------------------------------------
+7 |abstract class A extends U[String] // error
+  |               ^
+  |               Member method foo of mixin trait U is missing a concrete super implementation in class A.
