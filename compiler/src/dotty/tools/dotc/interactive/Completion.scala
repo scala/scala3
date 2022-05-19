@@ -23,7 +23,6 @@ import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
-import dotty.tools.dotc.core.Types.TypeRef
 
 /**
  * One of the results of a completion query.
@@ -482,10 +481,10 @@ object Completion {
       def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
         try
           val member = site.member(name)
-          if member.symbol.isAccessibleFrom(site) then
-            buf ++= member.alternatives
-          else
+          if member.symbol.is(ParamAccessor) && !member.symbol.isAccessibleFrom(site) then
             buf ++= site.nonPrivateMember(name).alternatives
+          else
+            buf ++= member.alternatives
         catch
           case ex: TypeError =>
 
