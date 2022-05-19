@@ -1722,7 +1722,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param sym  The type symbol for which we are creating a type tree reference.
        */
-      @experimental
       def ref(typeSymbol: Symbol): TypeTree
     }
 
@@ -2644,11 +2643,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Substitute all types that refer in their symbol attribute to
          *  one of the symbols in `from` by the corresponding types in `to`.
          */
-        @experimental
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr
 
         /** The applied type arguments (empty if there is no such arguments) */
-        @experimental
         def typeArgs: List[TypeRepr]
       end extension
     }
@@ -2800,7 +2797,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val AppliedType` */
     trait AppliedTypeModule { this: AppliedType.type =>
       /** Applied the type constructor `T` to a list of type arguments `T_1,..,T_n` to create `T[T_1,..,T_n]` */
-      @experimental
       def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr])
     }
@@ -3947,7 +3943,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *          '{ val x = ???; x }.asTerm
          *  ```
          */
-        @experimental
         def asQuotes: Nested
 
         /** Type reference to the symbol usable in the scope of its owner.
@@ -3957,11 +3952,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  @pre symbol.isType returns true
          */
-        @experimental
         def typeRef: TypeRef
 
-        /** Term reference to the symbol usable in the scope of its owner. */
-        @experimental
+        /** Term reference to the symbol usable in the scope of its owner.
+         *
+         *  @pre symbol.isType returns false
+         */
         def termRef: TermRef
       end extension
     }
