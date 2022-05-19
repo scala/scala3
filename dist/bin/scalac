@@ -32,12 +32,24 @@ source "$PROG_HOME/bin/common"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --)
+      # pass all remaining arguments to scala, e.g. to avoid interpreting them here as -D or -J
+      while [[ $# -gt 0 ]]; do addScala "$1" && shift ; done
+      ;;
+    -script)
+      # pass all remaining arguments to scala, e.g. to avoid interpreting them here as -D or -J
+      while [[ $# -gt 0 ]]; do addScala "$1" && shift ; done
+      ;;
+    # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+    -Oshort)
+      addScala "-Oshort" && \
+      addJava "-XX:+TieredCompilation" && addJava "-XX:TieredStopAtLevel=1" && shift ;;
     -D*)
       # pass to scala as well: otherwise we lose it sometimes when we
       # need it, e.g. communicating with a server compiler.
+      # respect user-supplied -Dscala.usejavacp
       addJava "$1"
       addScala "$1"
-      # respect user-supplied -Dscala.usejavacp
       shift
       ;;
     -J*)
@@ -49,7 +61,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -classpath*)
       if [ "$1" != "${1##* }" ]; then
-        # hashbang-combined args "-classpath 'lib/*'"
+        # -classpath and its value have been supplied in a single string e.g. "-classpath 'lib/*'"
         A=$1 ; shift # consume $1 before adding its substrings back
         set -- $A "$@" # split $1 on whitespace and put it back
       else

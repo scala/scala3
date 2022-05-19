@@ -101,8 +101,6 @@ object MainGenericCompiler {
       process(tail, settings.withScalaArgs("-verbose"))
     case ("-q" | "-quiet") :: tail =>
       process(tail, settings.withQuiet)
-    case "-Oshort" :: tail =>
-      process(tail, settings.withJavaArgs("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1"))
     case "-repl" :: tail =>
       process(tail, settings.withCompileMode(CompileMode.Repl))
     case "-script" :: targetScript :: tail =>
@@ -110,7 +108,7 @@ object MainGenericCompiler {
         .withCompileMode(CompileMode.Script)
         .withJavaProps("script.path" -> targetScript)
         .withTargetScript(targetScript)
-        .withScriptArgs(tail.toList*))
+        .withScriptArgs(tail*))
     case "-compile" :: tail =>
       process(tail, settings.withCompileMode(CompileMode.Compile))
     case "-decompile" :: tail =>
@@ -126,23 +124,18 @@ object MainGenericCompiler {
     case "-with-compiler" :: tail =>
       process(tail, settings.withCompiler)
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val cpEntries = cp.split(classpathSeparator).toList
-      val singleEntryClasspath: Boolean = cpEntries.sizeIs == 1
-      val globdir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
-      def validGlobbedJar(s: String): Boolean = s.startsWith(globdir) && ((s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip")))
-      val (tailargs, newEntries) = if singleEntryClasspath && validGlobbedJar(cpEntries.head) then
-        // reassemble globbed wildcard classpath
-        // globdir is wildcard directory for globbed jar files, reconstruct the intended classpath
-        val cpJars = tail.takeWhile( f => validGlobbedJar(f) )
-        val remainingArgs = tail.drop(cpJars.size)
-        (remainingArgs, cpEntries ++ cpJars)
-      else
-        (tail, cpEntries)
-
+      val (tailargs, newEntries) = MainGenericRunner.processClasspath(cp, tail)
       process(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
-    case (o @ javaOption(stripped)) :: tail =>
+    case "-Oshort" :: tail =>
+      // Nothing is to be done here. Request that the user adds the relevant flags manually.
+      // i.e this has no effect when MainGenericRunner is invoked programatically.
+      val addTC="-XX:+TieredCompilation"
+      val tStopAtLvl="-XX:TieredStopAtLevel=1"
+      println(s"ignoring deprecated -Oshort flag, please add `-J$addTC` and `-J$tStopAtLvl` flags manually")
+      process(tail, settings)
+    case javaOption(stripped) :: tail =>
       process(tail, settings.withJavaArgs(stripped))
-    case (javaPropOption(opt, value)) :: tail =>
+    case javaPropOption(opt, value) :: tail =>
       process(tail, settings.withJavaProps(opt -> value))
     case arg :: tail =>
       process(tail, settings.withResidualArgs(arg))
