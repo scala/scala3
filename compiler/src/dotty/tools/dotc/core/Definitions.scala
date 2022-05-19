@@ -1329,10 +1329,11 @@ class Definitions {
 
   @tu lazy val TupleType: Array[TypeRef | Null] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
-  def isSpecializedTuple(cls: Symbol): Boolean =
+  def isSpecializedTuple(cls: Symbol)(using Context): Boolean =
     TupleSpecializedClasses.exists(tupleCls => cls.name.isSpecializedNameOf(tupleCls.name))
 
-  def SpecialisedTuple(base: Symbol, args: List[Type]): Symbol = base.owner.requiredClass(base.name.specializedName(args))
+  def SpecialisedTuple(base: Symbol, args: List[Type])(using Context): Symbol =
+    base.owner.requiredClass(base.name.specializedName(args))
 
   private class FunType(prefix: String):
     private var classRefs: Array[TypeRef | Null] = new Array(22)
@@ -1634,7 +1635,6 @@ class Definitions {
       case List(x)    => Tuple1SpecializedParamClasses().contains(x.classSymbol)
       case List(x, y) => Tuple2SpecializedParamClasses().contains(x.classSymbol) && Tuple2SpecializedParamClasses().contains(y.classSymbol)
       case _          => false
-    && base.owner.denot.info.member(base.name.specializedName(args)).disambiguate(_.isClass).exists
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
     paramTypes.length <= 2
