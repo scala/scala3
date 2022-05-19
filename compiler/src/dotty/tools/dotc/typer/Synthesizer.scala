@@ -310,22 +310,31 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       withNoErrors(mirrorRef.cast(mirrorType))
     end makeProductMirror
 
+    /** widen TermRef to see if they are an alias to an enum singleton */
+    def isEnumSingletonRef(tp: Type)(using Context): Boolean = tp match
+      case tp: TermRef =>
+        val sym = tp.termSymbol
+        sym.isEnumCase || (!tp.isOverloaded && isEnumSingletonRef(tp.underlying.widenExpr))
+      case _ => false
+
     mirroredType match
       case AndType(tp1, tp2) =>
         orElse(productMirror(tp1, formal, span), productMirror(tp2, formal, span))
       case _ =>
-        if mirroredType.termSymbol.is(CaseVal) then
-          val module = mirroredType.termSymbol
-          val modulePath = pathFor(mirroredType).withSpan(span)
-          if module.info.classSymbol.is(Scala2x) then
-            val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, module.name, formal)
-            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, modulePath :: Nil)
+        val cls = mirroredType.classSymbol
+        if isEnumSingletonRef(mirroredType) || cls.isAllOf(Case | Module) then
+          val (singleton, singletonRef) =
+            if mirroredType.termSymbol.exists then (mirroredType.termSymbol, mirroredType)
+            else (cls.sourceModule, cls.sourceModule.reachableTermRef)
+          val singletonPath = pathFor(singletonRef).withSpan(span)
+          if singleton.info.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
+            val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name, formal)
+            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
             withNoErrors(mirrorRef.cast(mirrorType))
           else
-            val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, module.name, formal)
-            withNoErrors(modulePath.cast(mirrorType))
+            val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name, formal)
+            withNoErrors(singletonPath.cast(mirrorType))
         else
-          val cls = mirroredType.classSymbol
           val acceptableMsg = whyNotAcceptableType(mirroredType, cls)
           if acceptableMsg.isEmpty then
             if cls.isGenericProduct then makeProductMirror(cls)

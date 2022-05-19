@@ -94,7 +94,7 @@ object SymUtils:
         && (!ctor.privateWithin.exists || isAccessible(ctor.privateWithin)) // check scope is compatible
 
 
-      val companionMirror = self.useCompanionAsProductMirror
+      def companionMirror = self.useCompanionAsProductMirror
       if (!self.is(CaseClass)) "it is not a case class"
       else if (self.is(Abstract)) "it is an abstract class"
       else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
