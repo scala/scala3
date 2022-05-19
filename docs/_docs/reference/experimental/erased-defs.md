@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Erased Definitions"
-movedTo: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs.html
 ---
 
 `erased` is a modifier that expresses that some definition or expression is erased by the compiler instead of being represented in the compiled output. It is not yet part of the Scala language standard. To enable `erased`, turn on the language feature

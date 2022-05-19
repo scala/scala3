@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Context Functions"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/context-functions.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/context-functions.html
 ---
 
 _Context functions_ are functions with (only) context parameters.

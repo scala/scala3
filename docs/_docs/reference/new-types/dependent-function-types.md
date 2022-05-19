@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Dependent Function Types"
-movedTo: https://docs.scala-lang.org/scala3/reference/new-types/dependent-function-types.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/new-types/dependent-function-types.html
 ---
 
 A dependent function type is a function type whose result depends

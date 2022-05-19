@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Option-less pattern matching"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html
 ---
 
 The implementation of pattern matching in Scala 3 was greatly simplified compared to Scala 2. From a user perspective, this means that Scala 3 generated patterns are a _lot_ easier to debug, as variables all show up in debug modes and positions are correctly preserved.

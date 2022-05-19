@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "A Classification of Proposed Language Features"
-movedTo: https://docs.scala-lang.org/scala3/reference/features-classification.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/features-classification.html
 ---
 
 This document provides an overview of the constructs proposed for Scala 3 with the aim to facilitate the discussion what to include and when to include it. It classifies features into eight groups: (1) essential foundations, (2) simplifications, (3) restrictions, (4) dropped features, (5) changed features, (6) new features, (7) features oriented towards metaprogramming with the aim to replace existing macros, and (8) changes to type checking and inference.

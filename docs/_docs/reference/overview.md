@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Reference"
-movedTo: https://docs.scala-lang.org/scala3/reference/overview.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/overview.html
 redirectFrom: overview.html
 ---
 

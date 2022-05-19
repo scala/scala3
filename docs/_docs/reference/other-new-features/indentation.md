@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Optional Braces"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/indentation.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/indentation.html
 ---
 
 Scala 3 enforces some rules on indentation and allows some occurrences of braces `{...}` to be optional:

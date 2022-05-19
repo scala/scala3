@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Importing Givens"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/given-imports.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/given-imports.html
 ---
 
 A special form of import wildcard selector is used to import given instances. Example:

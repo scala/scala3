@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Macros"
-movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros.html
 ---
 
 > When developing macros enable `-Xcheck-macros` scalac option flag to have extra runtime checks.

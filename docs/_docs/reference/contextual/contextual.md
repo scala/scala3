@@ -1,7 +1,7 @@
 ---
 layout: index
 title: "Contextual Abstractions"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual.html
 ---
 
 ### Critique of the Status Quo

@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Given Instances"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/givens.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/givens.html
 ---
 
 Given instances (or, simply, "givens") define "canonical" values of certain types
