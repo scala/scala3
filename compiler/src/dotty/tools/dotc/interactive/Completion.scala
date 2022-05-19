@@ -481,7 +481,11 @@ object Completion {
     private def accessibleMembers(site: Type)(using Context): Seq[SingleDenotation] = {
       def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
         try
-          buf ++= site.member(name).alternatives
+          val member = site.member(name)
+          if member.symbol.isAccessibleFrom(site) then
+            buf ++= member.alternatives
+          else
+            buf ++= site.nonPrivateMember(name).alternatives
         catch
           case ex: TypeError =>
 
