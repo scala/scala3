@@ -476,12 +476,18 @@ class WithTransient extends Serializable {
     println("Calculating a2")
     2
   }
+  private lazy val a3 = {
+    println("Calculating a3")
+    3
+  }
+
   @transient object B extends Serializable
   @transient private object C extends Serializable
 
   def test = {
     println(a1)
     println(a2)
+    println(a3)
     if (B == null || C == null)
      println("Transient nested object failed to serialize properly")
   }
