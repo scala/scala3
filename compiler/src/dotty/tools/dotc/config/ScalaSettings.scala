@@ -5,6 +5,7 @@ import scala.language.unsafeNulls
 
 import dotty.tools.dotc.config.PathResolver.Defaults
 import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
+import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
@@ -31,6 +32,9 @@ object ScalaSettings:
   def supportedScalaReleaseVersions: List[String] =
     ScalaRelease.values.toList.map(_.show)
 
+  def supportedSourceVersions: List[String] =
+    SourceVersion.values.toList.map(_.toString)
+
   def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
   def defaultPageWidth: Int = {
@@ -51,7 +55,7 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   /* Path related settings */
   val semanticdbTarget: Setting[String] = PathSetting("-semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
 
-  val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "3.1", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
+  val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", ScalaSettings.supportedSourceVersions, SourceVersion.defaultSourceVersion.toString, aliases = List("--source"))
   val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
   val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.", aliases = List("--rewrite"))
   val fromTasty: Setting[Boolean] = BooleanSetting("-from-tasty", "Compile classes from tasty files. The arguments are .tasty or .jar files.", aliases = List("--from-tasty"))
@@ -106,7 +110,6 @@ trait CommonScalaSettings:
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.", aliases = List("--no-warnings"))
 
   val javaOutputVersion: Setting[String] = ChoiceSetting("-java-output-version", "version", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version. Corresponds to -release flag in javac.", ScalaSettings.supportedReleaseVersions, "", aliases = List("-release", "--release"))
-  val scalaOutputVersion: Setting[String] = ChoiceSetting("-scala-output-version", "version", "Emit TASTy files that can be consumed by specified version of the compiler. The compilation will fail if for any reason valid TASTy cannot be produced (e.g. the code contains references to some parts of the standard library API that are missing in the older stdlib or uses language features unexpressible in the older version of TASTy format)", ScalaSettings.supportedScalaReleaseVersions, "")
 
   val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.", aliases = List("--deprecation"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))

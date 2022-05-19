@@ -140,7 +140,7 @@ object Inliner {
         fn.tpe.widenTermRefExpr match
           case tp: PolyType =>
             val targBounds = tp.instantiateParamInfos(args.map(_.tpe))
-            for (arg, bounds: TypeBounds) <- args.zip(targBounds) if !bounds.contains(arg.tpe) do
+            for case (arg, bounds: TypeBounds) <- args.zip(targBounds) if !bounds.contains(arg.tpe) do
               val boundsStr =
                 if bounds == TypeBounds.empty then " <: Any. Note that this type is higher-kinded."
                 else bounds.show
@@ -333,7 +333,7 @@ object Inliner {
         case _ => t
       }
 
-      val Apply(_, codeArg :: Nil) = tree
+      val Apply(_, codeArg :: Nil) = tree: @unchecked
       val codeArg1 = stripTyped(codeArg.underlying)
       val underlyingCodeArg =
         if Inliner.isInlineable(codeArg1.symbol) then stripTyped(Inliner.inlineCall(codeArg1))
@@ -1746,14 +1746,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         typeMap = new TypeMap() {
           override def apply(tp: Type): Type = tp match {
             case tr: TypeRef if tr.prefix.eq(NoPrefix) && typeBindingsSet.contains(tr.symbol) =>
-              val TypeAlias(res) = tr.info
+              val TypeAlias(res) = tr.info: @unchecked
               res
             case tp => mapOver(tp)
           }
         },
         treeMap = {
           case ident: Ident if ident.isType && typeBindingsSet.contains(ident.symbol) =>
-            val TypeAlias(r) = ident.symbol.info
+            val TypeAlias(r) = ident.symbol.info: @unchecked
             TypeTree(r).withSpan(ident.span)
           case tree => tree
         }

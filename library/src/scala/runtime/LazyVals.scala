@@ -1,7 +1,5 @@
 package scala.runtime
 
-import scala.annotation.since
-
 /**
  * Helper methods used in thread-safe lazy vals.
  */
@@ -108,7 +106,6 @@ object LazyVals {
     r
   }
 
-  @since("3.2")
   def getOffsetStatic(field: java.lang.reflect.Field) =
     val r = unsafe.objectFieldOffset(field)
     if (debug)

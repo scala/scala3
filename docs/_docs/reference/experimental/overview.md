@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Experimental"
-movedTo: https://docs.scala-lang.org/scala3/reference/experimental/overview.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/overview.html
 redirectFrom: overview.html
 ---
 

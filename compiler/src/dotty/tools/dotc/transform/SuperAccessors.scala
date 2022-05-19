@@ -101,7 +101,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     *  replace by a super accessor call.
     */
   private def transformSuperSelect(sel: Select)(using Context): Tree = {
-    val Select(sup @ Super(_, mix), name) = sel
+    val Select(sup @ Super(_, mix), name) = sel: @unchecked
     val sym   = sel.symbol
     assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
     val clazz = sup.symbol
@@ -171,7 +171,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
   /** Transform select node, adding super and protected accessors as needed */
   def transformSelect(tree: Tree, targs: List[Tree])(using Context): Tree = {
-    val sel @ Select(qual, name) = tree
+    val sel @ Select(qual, name) = tree: @unchecked
     val sym = sel.symbol
 
     /** If an accesses to protected member of a class comes from a trait,

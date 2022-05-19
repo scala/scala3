@@ -358,7 +358,7 @@ final class Parser(
         reportError("Fixing missing delimiter row")
         Row(Cell(Paragraph(Text("-")) :: Nil) :: Nil) :: Nil
       }
-    }
+    }: @unchecked
 
     if (delimiterRow.cells.isEmpty) sys.error("TODO: Handle table with empty delimiter row")
 

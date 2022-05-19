@@ -1008,7 +1008,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   otherArgs.take(d) ++ tl.paramRefs))
             else
               otherTycon
-          (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon.ensureLambdaSub)) &&
+          (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon)) &&
           directionalRecur(adaptedTycon.appliedTo(args), other)
         }
       }
@@ -2150,8 +2150,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def lubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean = false): List[Type] =
     tparams match {
       case tparam :: tparamsRest =>
-        val arg1 :: args1Rest = args1
-        val arg2 :: args2Rest = args2
+        val arg1 :: args1Rest = args1: @unchecked
+        val arg2 :: args2Rest = args2: @unchecked
         val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVarianceSign
         val lubArg =
@@ -2182,8 +2182,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def glbArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): List[Type] =
     tparams match {
       case tparam :: tparamsRest =>
-        val arg1 :: args1Rest = args1
-        val arg2 :: args2Rest = args2
+        val arg1 :: args1Rest = args1: @unchecked
+        val arg2 :: args2Rest = args2: @unchecked
         val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVarianceSign
         val glbArg =
@@ -2921,7 +2921,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           cas
       }
 
-      val defn.MatchCase(pat, body) = cas1
+      val defn.MatchCase(pat, body) = cas1: @unchecked
 
       if (isSubType(scrut, pat))
         // `scrut` is a subtype of `pat`: *It's a Match!*

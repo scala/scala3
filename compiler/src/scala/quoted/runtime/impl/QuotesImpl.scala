@@ -236,7 +236,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.ClassDefWithParents(cls.asClass, ctr, parents, body)
 
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
-        val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original
+        val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original: @unchecked
         tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived = Nil, selfOpt.getOrElse(tpd.EmptyValDef), body))
       }
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement]) =
@@ -1014,7 +1014,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def qualifier: Term = self.qualifier
         def name: String = self.name.toString
         def level: Int =
-          val NameKinds.OuterSelectName(_, levels) = self.name
+          val NameKinds.OuterSelectName(_, levels) = self.name: @unchecked
           levels
       end extension
     end SelectOuterMethods

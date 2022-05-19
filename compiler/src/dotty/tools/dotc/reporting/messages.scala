@@ -424,7 +424,7 @@ import transform.SymUtils._
     def msg = em"""An ${hl("implicit class")} may not be top-level"""
 
     def explain = {
-      val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
+      val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef: @unchecked
       val exampleArgs =
         if(constr0.termParamss.isEmpty) "..."
         else constr0.termParamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")

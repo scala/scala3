@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Package Objects"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/package-objects.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/package-objects.html
 ---
 
 Package objects

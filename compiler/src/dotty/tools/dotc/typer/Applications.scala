@@ -517,7 +517,7 @@ trait Applications extends Compatibility {
       def handlePositional(pnames: List[Name], args: List[Trees.Tree[T]]): List[Trees.Tree[T]] =
         args match {
           case (arg: NamedArg @unchecked) :: _ =>
-            val nameAssocs = for (arg @ NamedArg(name, _) <- args) yield (name, arg)
+            val nameAssocs = for (case arg @ NamedArg(name, _) <- args) yield (name, arg)
             handleNamed(pnames, args, nameAssocs.toMap, Set())
           case arg :: args1 =>
             arg :: handlePositional(if (pnames.isEmpty) Nil else pnames.tail, args1)
@@ -1072,7 +1072,7 @@ trait Applications extends Compatibility {
       throw Error(i"unexpected type.\n  fun = $fun,\n  methPart(fun) = ${methPart(fun)},\n  methPart(fun).tpe = ${methPart(fun).tpe},\n  tpe = ${fun.tpe}")
 
   def typedNamedArgs(args: List[untpd.Tree])(using Context): List[NamedArg] =
-    for (arg @ NamedArg(id, argtpt) <- args) yield {
+    for (case arg @ NamedArg(id, argtpt) <- args) yield {
       if !Feature.namedTypeArgsEnabled then
         report.error(
           i"""Named type arguments are experimental,
@@ -1715,7 +1715,7 @@ trait Applications extends Compatibility {
             }
           case Nil => previous
         }
-        val best :: rest = survivors(alt :: Nil, alts1)
+        val best :: rest = survivors(alt :: Nil, alts1): @unchecked
         def asGood(alts: List[TermRef]): List[TermRef] = alts match {
           case alt :: alts1 =>
             if (compare(alt, best) < 0) asGood(alts1) else alt :: asGood(alts1)

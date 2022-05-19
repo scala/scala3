@@ -1386,7 +1386,7 @@ object Parsers {
               syntaxError("context function types require at least one parameter", paramSpan)
             new FunctionWithMods(params, t, imods)
           else if !ctx.settings.YkindProjector.isDefault then
-            val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t)
+            val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t): @unchecked
 
             lambdaAbstract(tparams, Function(newParams, newT))
           else
@@ -2100,7 +2100,7 @@ object Parsers {
         case _ =>
           val tpt = typeDependingOn(location)
           if (isWildcard(t) && !location.inPattern) {
-            val vd :: rest = placeholderParams
+            val vd :: rest = placeholderParams: @unchecked
             placeholderParams =
               cpy.ValDef(vd)(tpt = tpt).withSpan(vd.span.union(tpt.span)) :: rest
           }
@@ -2512,9 +2512,10 @@ object Parsers {
     def generatorRest(pat: Tree, casePat: Boolean): GenFrom =
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
-          if (casePat) GenCheckMode.FilterAlways
-          else if sourceVersion.isAtLeast(future) then GenCheckMode.Check
-          else GenCheckMode.FilterNow  // filter for now, to keep backwards compat
+          if casePat then GenCheckMode.FilterAlways
+          else if sourceVersion.isAtLeast(`3.2`) then GenCheckMode.CheckAndFilter
+          else if sourceVersion.isAtLeast(`future`) then GenCheckMode.Check
+          else GenCheckMode.FilterNow  // filter on source version < 3.2, for backward compat
         GenFrom(pat, subExpr(), checkMode)
       }
 

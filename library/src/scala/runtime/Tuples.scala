@@ -1,7 +1,5 @@
 package scala.runtime
 
-import scala.annotation.experimental
-
 object Tuples {
 
   inline val MaxSpecialized = 22
@@ -427,7 +425,6 @@ object Tuples {
     }
   }
 
-  @experimental
   def append(x: Any, self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlAppend(x, xxl).asInstanceOf[Tuple]
     case _ => specialCaseAppend(x, self)
@@ -500,13 +497,11 @@ object Tuples {
     }
   }
 
-  @experimental
   def init(self: NonEmptyTuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlInit(xxl)
     case _ => specialCaseInit(self)
   }
 
-  @experimental
   def last(self: NonEmptyTuple): Any = (self: Any) match {
     case self: Product => self.productElement(self.productArity - 1)
   }

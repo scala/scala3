@@ -405,7 +405,7 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(using Context): Tree = {
-    val impl @ Template(constr0, _, self, _) = cdef.rhs
+    val impl @ Template(constr0, _, self, _) = cdef.rhs: @unchecked
     val className = normalizeName(cdef, impl).asTypeName
     val parents = impl.parents
     val mods = cdef.mods
@@ -695,7 +695,7 @@ object desugar {
             .withMods(companionMods | Synthetic))
         .withSpan(cdef.span).toList
       if (companionDerived.nonEmpty)
-        for (modClsDef @ TypeDef(_, _) <- mdefs)
+        for (case modClsDef @ TypeDef(_, _) <- mdefs)
           modClsDef.putAttachment(DerivingCompanion, impl.srcPos.startPos)
       mdefs
     }
@@ -753,7 +753,7 @@ object desugar {
 
     enumCompanionRef match {
       case ref: TermRefTree => // have the enum import watch the companion object
-        val (modVal: ValDef) :: _ = companions
+        val (modVal: ValDef) :: _ = companions: @unchecked
         ref.watching(modVal)
       case _ =>
     }
@@ -1215,7 +1215,7 @@ object desugar {
 
   /** Expand variable identifier x to x @ _ */
   def patternVar(tree: Tree)(using Context): Bind = {
-    val Ident(name) = unsplice(tree)
+    val Ident(name) = unsplice(tree): @unchecked
     Bind(name, Ident(nme.WILDCARD)).withSpan(tree.span)
   }
 
@@ -1553,7 +1553,7 @@ object desugar {
           Function(derivedValDef(gen.pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
           val matchCheckMode =
-            if (gen.checkMode == GenCheckMode.Check) MatchCheck.IrrefutableGenFrom
+            if (gen.checkMode == GenCheckMode.Check || gen.checkMode == GenCheckMode.CheckAndFilter) MatchCheck.IrrefutableGenFrom
             else MatchCheck.None
           makeCaseLambda(CaseDef(gen.pat, EmptyTree, body) :: Nil, matchCheckMode)
       }
@@ -1640,13 +1640,11 @@ object desugar {
         case IdPattern(_) => true
         case _ => false
 
-      def needsNoFilter(gen: GenFrom): Boolean =
-        if (gen.checkMode == GenCheckMode.FilterAlways) // pattern was prefixed by `case`
-          false
-        else
-          gen.checkMode != GenCheckMode.FilterNow
-          || isVarBinding(gen.pat)
-          || isIrrefutable(gen.pat, gen.expr)
+      def needsNoFilter(gen: GenFrom): Boolean = gen.checkMode match
+        case GenCheckMode.FilterAlways => false  // pattern was prefixed by `case`
+        case GenCheckMode.FilterNow | GenCheckMode.CheckAndFilter => isVarBinding(gen.pat) || isIrrefutable(gen.pat, gen.expr)
+        case GenCheckMode.Check => true
+        case GenCheckMode.Ignore => true
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
@@ -1655,10 +1653,6 @@ object desugar {
         val rhs = if (needsNoFilter(gen)) gen.expr else makePatFilter(gen.expr, gen.pat)
         Select(rhs, name)
       }
-
-      def checkMode(gen: GenFrom) =
-        if (gen.checkMode == GenCheckMode.Check) MatchCheck.IrrefutableGenFrom
-        else MatchCheck.None // refutable paterns were already eliminated in filter step
 
       enums match {
         case (gen: GenFrom) :: Nil =>

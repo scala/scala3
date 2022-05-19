@@ -28,9 +28,10 @@ layout: main
       </nav>
     </div>
   </div>
-  {% if page.movedTo %}
+  {% if page.nightlyOf %}
   <aside class="warning">
-    The content of this page is outdated. Click <a href="{{ page.movedTo }}">here</a> to find the up to date version of this page.
+    This is a nightly documentation. The content of this page may not be consistent with the current stable version of language.
+    Click <a href="{{ page.nightlyOf }}">here</a> to find the stable version of this page.
   </aside>
   {% endif %}
   {{ content }}

@@ -50,37 +50,17 @@ val experimentalDefinitionInLibrary = Set(
   "scala.compiletime.ops.string$.Substring",
 
   //// New APIs: Mirror
-  // Can be stabilized in 3.2.0 or later.
-  "scala.deriving.Mirror$.fromTuple", // Probably for 3.2.0
+  // Can be stabilized in 3.3.0 or later.
   "scala.deriving.Mirror$.fromProductTyped", // This API is a bit convoluted. We may need some more feedback before we can stabilize it.
 
-  //// New APIs: Tuples
-  // Should be stabilized in 3.2.0.
-  "scala.Tuple.:*", "scala.Tuple$.Append", "scala.runtime.Tuples$.append",
-  "scala.NonEmptyTuple.init", "scala.Tuple$.Init", "scala.runtime.Tuples$.init",
-  "scala.Tuple$.Last", "scala.NonEmptyTuple.last", "scala.runtime.Tuples$.last",
-
-  //// New APIs: Quotes
-  // Should be stabilized in 3.2.0.
-  "scala.quoted.Quotes.reflectModule.AppliedTypeModule.apply",
-  "scala.quoted.Quotes.reflectModule.SymbolMethods.asQuotes",
-  "scala.quoted.Quotes.reflectModule.SymbolMethods.termRef",
-  "scala.quoted.Quotes.reflectModule.SymbolMethods.typeRef",
-  "scala.quoted.Quotes.reflectModule.TypeReprMethods.substituteTypes",
-  "scala.quoted.Quotes.reflectModule.TypeReprMethods.typeArgs",
-  "scala.quoted.Quotes.reflectModule.TypeTreeModule.ref",
-  // Can be stabilized in 3.2.0 (unsure) or later
+   //// New APIs: Quotes
+  // Can be stabilized in 3.3.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
   // Cant be stabilized yet.
   // Need newClass variant that can add constructor parameters.
   // Need experimental annotation macros to check that design works.
   "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
-
-  //// New extension methods: Explicit Nulls
-  // Should be stabilized in 3.2.0.
-  "scala.Predef$.eq",
-  "scala.Predef$.ne",
 )
 
 

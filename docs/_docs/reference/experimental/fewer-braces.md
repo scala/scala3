@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Fewer Braces"
-movedTo: https://docs.scala-lang.org/scala3/reference/experimental/fewer-braces.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/fewer-braces.html
 ---
 
 By and large, the possible indentation regions coincide with those regions where braces `{...}` are also legal, no matter whether the braces enclose an expression or a set of definitions. There is one exception, though: Arguments to function can be enclosed in braces but they cannot be simply indented instead. Making indentation always significant for function arguments would be too restrictive and fragile.

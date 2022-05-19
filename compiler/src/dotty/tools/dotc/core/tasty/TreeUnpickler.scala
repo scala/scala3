@@ -1067,7 +1067,7 @@ class TreeUnpickler(reader: TastyReader,
         val stat = readIndexedStat(exprOwner)(using curCtx)
         buf += stat
         stat match
-          case stat: Import => curCtx = ctx.importContext(stat, stat.symbol)
+          case stat: Import => curCtx = curCtx.importContext(stat, stat.symbol)
           case _ =>
       assert(currentAddr.index == end.index)
       k(buf.toList, curCtx)

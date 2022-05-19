@@ -26,7 +26,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages
+      val (m: NoExplanation) :: Nil = messages: @unchecked
 
       assertEquals(m.msg, "Could not prove Int =!= Int")
     }
@@ -50,7 +50,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages
+      val (m: NoExplanation) :: Nil = messages: @unchecked
 
       assertEquals(m.msg, "Could not prove Int =!= Int")
     }
@@ -75,7 +75,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages
+      val (m: NoExplanation) :: Nil = messages: @unchecked
 
       assertEquals(m.msg, "Could not prove Int =!= Int")
     }
@@ -97,7 +97,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages
+      val (m: NoExplanation) :: Nil = messages: @unchecked
 
       assertEquals(m.msg, "msg A=Any")
     }
@@ -119,7 +119,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages
+      val (m: NoExplanation) :: Nil = messages: @unchecked
 
       assertEquals(m.msg, "msg A=Any")
     }

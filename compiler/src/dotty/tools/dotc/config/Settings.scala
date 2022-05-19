@@ -84,7 +84,7 @@ object Settings:
       }
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
-      val ArgsSummary(sstate, arg :: args, errors, warnings) = state
+      val ArgsSummary(sstate, arg :: args, errors, warnings) = state: @unchecked
       def update(value: Any, args: List[String]): ArgsSummary =
         var dangers = warnings
         val value1 =

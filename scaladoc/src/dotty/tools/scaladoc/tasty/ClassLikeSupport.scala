@@ -514,7 +514,7 @@ trait ClassLikeSupport:
         case _ => Nil
 
       def nameForRef(ref: ParamRef): String =
-        val PolyType(names, _, _) = ref.binder
+        val PolyType(names, _, _) = ref.binder: @unchecked
         names(ref.paramNum)
 
       val (paramsThatLookLikeContextBounds, contextBounds) =

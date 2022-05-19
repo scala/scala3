@@ -305,7 +305,7 @@ trait Deriving {
     }
 
     def finalize(stat: tpd.TypeDef): tpd.Tree = {
-      val templ @ Template(_, _, _, _) = stat.rhs
+      val templ @ Template(_, _, _, _) = stat.rhs: @unchecked
       tpd.cpy.TypeDef(stat)(rhs = tpd.cpy.Template(templ)(body = templ.body ++ syntheticDefs))
     }
   }

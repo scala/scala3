@@ -44,7 +44,7 @@ class CoverageTests:
     def runOnFile(p: Path): Boolean =
       scalaFile.matches(p) &&
       (Properties.testsFilter.isEmpty || Properties.testsFilter.exists(p.toString.contains))
-    
+
     Files.walk(dir).filter(runOnFile).forEach(path => {
       val fileName = path.getFileName.toString.stripSuffix(".scala")
       val targetDir = computeCoverageInTmp(path, dir, run)

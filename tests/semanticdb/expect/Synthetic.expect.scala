@@ -9,11 +9,11 @@ class Synthetic/*<-example::Synthetic#*/ {
 
   // See https://github.com/scalameta/scalameta/issues/977
   val Name/*<-example::Synthetic#Name.*/ = "name:(.*)".r/*->scala::collection::StringOps#r().*/
-  val x/*<-example::Synthetic#x.*/ #::/*->scala::package.`#::`.*/ xs/*<-example::Synthetic#xs.*/ = LazyList/*->scala::package.LazyList.*/(1, 2)
-  val Name/*->example::Synthetic#Name.*/(name/*<-example::Synthetic#name.*/) = "name:foo"
+  val x/*<-example::Synthetic#x.*/ #::/*->scala::package.`#::`.*/ xs/*<-example::Synthetic#xs.*/ = LazyList/*->scala::package.LazyList.*/(1, 2): @unchecked
+  val Name/*->example::Synthetic#Name.*/(name/*<-example::Synthetic#name.*/) = "name:foo": @unchecked
   1 #:: 2 #:: LazyList/*->scala::package.LazyList.*/.empty/*->scala::collection::immutable::LazyList.empty().*/
 
-  val a1/*<-example::Synthetic#a1.*/ #::/*->scala::package.`#::`.*/ a2/*<-example::Synthetic#a2.*/ #::/*->scala::package.`#::`.*/ as/*<-example::Synthetic#as.*/ = LazyList/*->scala::package.LazyList.*/(1, 2)
+  val a1/*<-example::Synthetic#a1.*/ #::/*->scala::package.`#::`.*/ a2/*<-example::Synthetic#a2.*/ #::/*->scala::package.`#::`.*/ as/*<-example::Synthetic#as.*/ = LazyList/*->scala::package.LazyList.*/(1, 2): @unchecked
 
   val lst/*<-example::Synthetic#lst.*/ = 1 #:: 2 #:: LazyList/*->scala::package.LazyList.*/.empty/*->scala::collection::immutable::LazyList.empty().*/
 

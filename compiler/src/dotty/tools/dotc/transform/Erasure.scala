@@ -73,7 +73,7 @@ class Erasure extends Phase with DenotTransformer {
       assert(ctx.phase == this, s"transforming $ref at ${ctx.phase}")
       if (ref.symbol eq defn.ObjectClass) {
         // After erasure, all former Any members are now Object members
-        val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info
+        val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info: @unchecked
         val extendedScope = decls.cloneScope
         for decl <- defn.AnyClass.classInfo.decls do
           if !decl.isConstructor then extendedScope.enter(decl)
@@ -452,7 +452,7 @@ object Erasure {
       val implReturnsUnit = implResultType.classSymbol eq defn.UnitClass
       // The SAM that this closure should implement.
       // At this point it should be already guaranteed that there's only one method to implement
-      val Seq(sam: MethodType) = lambdaType.possibleSamMethods.map(_.info)
+      val Seq(sam: MethodType) = lambdaType.possibleSamMethods.map(_.info): @unchecked
       val samParamTypes = sam.paramInfos
       val samResultType = sam.resultType
 
@@ -713,7 +713,7 @@ object Erasure {
 
       def adaptIfSuper(qual: Tree): Tree = qual match {
         case Super(thisQual, untpd.EmptyTypeIdent) =>
-          val SuperType(thisType, supType) = qual.tpe
+          val SuperType(thisType, supType) = qual.tpe: @unchecked
           if (sym.owner.is(Flags.Trait))
             cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
               .withType(SuperType(thisType, sym.owner.typeRef))

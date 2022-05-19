@@ -218,7 +218,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           }
           (scall, stats ::: inits, args)
       case _ =>
-        val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
+        val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree: @unchecked
         val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
         (superRef(tree.symbol, tree.span).appliedToTermArgs(callArgs), Nil, initArgs)
     }

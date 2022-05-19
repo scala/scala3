@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Soft Keywords"
-movedTo: https://docs.scala-lang.org/scala3/reference/soft-modifier.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/soft-modifier.html
 ---
 
 A soft modifier is one of the identifiers `infix`, `inline`, `opaque`, `open` and `transparent`.
