@@ -1276,12 +1276,13 @@ class CompletionTest {
   }
 
   @Test def singleDenotNoCompletions: Unit = {
-    val expected = Set(("symbol", Field, "Int"))
-    code"""class Test(val symbol: Int)
-          |class BetterTest(symbol: Int) extends Test(symbol)
+    code"""class Test(val symbol: String)
+          |class BetterTest(symbol: Int) extends Test(symbol.toString):
+          |  symb$m1
           |object O:
-          |  def t(test: BetterTest) = test.symb$m1"""
-      .completion(m1, expected)
+          |  def t(test: BetterTest) = test.symb$m2"""
+      .completion(m1, ("symbol", Field, "Int"))
+      .completion(m2, ("symbol", Field, "String"))
   }
 
 }
