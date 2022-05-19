@@ -278,12 +278,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   private def productMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
 
-    /** do all parts match the class symbol? */
-    def acceptable(tp: Type, cls: Symbol): Boolean = tp match
-      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] => false
-      case tp: TypeProxy    => acceptable(tp.underlying, cls)
-      case OrType(tp1, tp2) => acceptable(tp1, cls) && acceptable(tp2, cls)
-      case _                => tp.classSymbol eq cls
+    def whyNotAcceptableType(tp: Type, cls: Symbol): String = tp match
+      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
+        i"its subpart $tp is not a supported kind (either `*` or `* -> *`)"
+      case tp: TypeProxy    => whyNotAcceptableType(tp.underlying, cls)
+      case OrType(tp1, tp2) =>
+        Seq(tp1, tp2).map(whyNotAcceptableType(_, cls)).find(_.nonEmpty).getOrElse("")
+      case _ =>
+        if tp.classSymbol eq cls then ""
+        else i"a subpart reduces to the more precise ${tp.classSymbol}, expected $cls"
 
     def makeProductMirror(cls: Symbol): TreeWithErrors =
       val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
@@ -323,13 +326,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             withNoErrors(modulePath.cast(mirrorType))
         else
           val cls = mirroredType.classSymbol
-          val clsIsGenericProduct = cls.isGenericProduct
-          if acceptable(mirroredType, cls) && clsIsGenericProduct then
-            makeProductMirror(cls)
-          else if !clsIsGenericProduct then
-            (EmptyTree, List(i"$cls is not a generic product because ${cls.whyNotGenericProduct}"))
-          else
-            EmptyTreeNoError
+          val acceptableMsg = whyNotAcceptableType(mirroredType, cls)
+          if acceptableMsg.isEmpty then
+            if cls.isGenericProduct then makeProductMirror(cls)
+            else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
+          else withErrors(i"type $mirroredType is not a generic product because $acceptableMsg")
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
@@ -337,14 +338,21 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val cls = mirroredType.classSymbol
     val clsIsGenericSum = cls.isGenericSum
 
-    def acceptable(tp: Type): Boolean = tp match
-      case tp: TermRef => false
-      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] => false
-      case tp: TypeProxy => acceptable(tp.underlying)
-      case OrType(tp1, tp2) => acceptable(tp1) && acceptable(tp2)
-      case _            => tp.classSymbol eq cls
+    def whyNotAcceptableType(tp: Type): String = tp match
+      case tp: TermRef => i"its subpart $tp is a term reference"
+      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
+        i"its subpart $tp is not a supported kind (either `*` or `* -> *`)"
+      case tp: TypeProxy => whyNotAcceptableType(tp.underlying)
+      case OrType(tp1, tp2) =>
+        Seq(tp1, tp2).map(whyNotAcceptableType).find(_.nonEmpty).getOrElse("")
+      case _ =>
+        if tp.classSymbol eq cls then ""
+        else i"a subpart reduces to the more precise ${tp.classSymbol}, expected $cls"
 
-    if acceptable(mirroredType) && clsIsGenericSum then
+
+    val acceptableMsg = whyNotAcceptableType(mirroredType)
+
+    if acceptableMsg.isEmpty && clsIsGenericSum then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
@@ -398,8 +406,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         if cls.useCompanionAsSumMirror then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsSumMirror, span)
       withNoErrors(mirrorRef.cast(mirrorType))
+    else if acceptableMsg.nonEmpty then
+      withErrors(i"type $mirroredType is not a generic sum because $acceptableMsg")
     else if !clsIsGenericSum then
-      (EmptyTree, List(i"$cls is not a generic sum because ${cls.whyNotGenericSum}"))
+      withErrors(i"$cls is not a generic sum because ${cls.whyNotGenericSum}")
     else
       EmptyTreeNoError
   end sumMirror
@@ -584,6 +594,7 @@ object Synthesizer:
   /** Tuple used to store the synthesis result with a list of errors.  */
   type TreeWithErrors = (Tree, List[String])
   private def withNoErrors(tree: Tree): TreeWithErrors = (tree, List.empty)
+  private def withErrors(errors: String*): TreeWithErrors = (EmptyTree, errors.toList)
 
   private val EmptyTreeNoError: TreeWithErrors = withNoErrors(EmptyTree)
 
