@@ -3954,7 +3954,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          */
         def typeRef: TypeRef
 
-        /** Term reference to the symbol usable in the scope of its owner. */
+        /** Term reference to the symbol usable in the scope of its owner.
+         *
+         *  @pre symbol.isType returns false
+         */
         def termRef: TermRef
       end extension
     }
