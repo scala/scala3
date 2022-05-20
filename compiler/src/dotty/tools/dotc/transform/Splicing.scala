@@ -294,7 +294,7 @@ class Splicing extends MacroTransform:
         reflect.asExpr(tree.tpe)(
           reflect.Assign(
             reflect.asTerm(capturedTerm(tree.lhs)),
-            reflect.asTerm(quoted(tree.rhs))
+            reflect.asTerm(quoted(transform(tree.rhs)))
           )
         )
       }
