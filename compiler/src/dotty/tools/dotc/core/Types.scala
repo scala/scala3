@@ -4456,6 +4456,8 @@ object Types {
               case tpnme.Matches    => constantFold2(stringValue, _ matches _)
               case tpnme.Substring  =>
                 constantFold3(stringValue, intValue, intValue, (s, b, e) => s.substring(b, e))
+              case tpnme.CharAt     =>
+                constantFold2AB(stringValue, intValue, _ charAt _)
               case _ => None
             } else if (owner == defn.CompiletimeOpsBooleanModuleClass) name match {
               case tpnme.Not        => constantFold1(boolValue, x => !x)

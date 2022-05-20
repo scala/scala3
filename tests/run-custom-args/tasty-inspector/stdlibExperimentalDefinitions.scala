@@ -32,23 +32,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.MainAnnotation",
   "scala.annotation.MainAnnotation$",
 
-  //// New APIs: compiletime.ops
-  // Can be stabilized in 3.3.0 or later.
-  // Needs user feedback
-  "scala.compiletime.ops.any$.IsConst",
-  "scala.compiletime.ops.any$.ToString",
-  "scala.compiletime.ops.double", "scala.compiletime.ops.double$",
-  "scala.compiletime.ops.float",
-  "scala.compiletime.ops.float$",
-  "scala.compiletime.ops.int$.NumberOfLeadingZeros",
-  "scala.compiletime.ops.int$.ToDouble",
-  "scala.compiletime.ops.int$.ToFloat",
-  "scala.compiletime.ops.int$.ToLong",
-  "scala.compiletime.ops.long", "scala.compiletime.ops.long$",
-  "scala.compiletime.ops.string$.Length",
-  "scala.compiletime.ops.string$.Matches",
-  "scala.compiletime.ops.string$.Substring",
-
   //// New APIs: Mirror
   // Can be stabilized in 3.3.0 or later.
   "scala.deriving.Mirror$.fromProductTyped", // This API is a bit convoluted. We may need some more feedback before we can stabilize it.
