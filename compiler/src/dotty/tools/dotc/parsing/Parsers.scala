@@ -444,9 +444,12 @@ object Parsers {
 
     /** Convert tree to formal parameter
     */
-    def convertToParam(tree: Tree, mods: Modifiers, expected: String = "formal parameter"): ValDef = tree match {
+    def convertToParam(tree: Tree, mods: Modifiers, expected: String = "formal parameter"): ValDef = tree match
+      case param: ValDef =>
+        param.withMods(param.mods | mods.flags)
       case id @ Ident(name) =>
         makeParameter(name.asTermName, TypeTree(), mods, isBackquoted = isBackquoted(id)).withSpan(tree.span)
+      // the following three cases are needed only for 2.x parameters without enclosing parentheses
       case Typed(_, tpt: TypeBoundsTree) =>
         syntaxError(s"not a legal $expected", tree.span)
         makeParameter(nme.ERROR, tree, mods)
@@ -457,7 +460,6 @@ object Parsers {
       case _ =>
         syntaxError(s"not a legal $expected", tree.span)
         makeParameter(nme.ERROR, tree, mods)
-    }
 
     /** Convert (qual)ident to type identifier
      */
@@ -913,6 +915,21 @@ object Parsers {
              lookahead.nextToken()
              lookahead.token == RPAREN || lookahead.token == EOF
            }
+      }
+
+    /** When encountering a `:`, is that in the first binding of a lambda?
+     *  @pre location of the enclosing expression is `InParens`, so there is am open `(`.
+     */
+    def followingisLambdaParams() =
+      val lookahead = in.LookaheadScanner()
+      lookahead.nextToken()
+      while lookahead.token != RPAREN && lookahead.token != EOF do
+        if lookahead.token == LPAREN then lookahead.skipParens()
+        else lookahead.nextToken()
+      lookahead.token == RPAREN
+      && {
+        lookahead.nextToken()
+        lookahead.isArrow
       }
 
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
@@ -2283,7 +2300,7 @@ object Parsers {
           placeholderParams = param :: placeholderParams
           atSpan(start) { Ident(pname) }
         case LPAREN =>
-          atSpan(in.offset) { makeTupleOrParens(inParens(exprsInParensOpt())) }
+          atSpan(in.offset) { makeTupleOrParens(inParens(exprsInParensOrBindings())) }
         case LBRACE | INDENT =>
           canApply = false
           blockExpr()
@@ -2353,7 +2370,17 @@ object Parsers {
           val app = applyToClosure(t, in.offset, convertToParams(termIdent()))
           simpleExprRest(app, location, canApply = true)
         case _ =>
-          t
+          t match
+            case id @ Ident(name)
+            if in.isColon() && location == Location.InParens && followingisLambdaParams() =>
+              if name.is(WildcardParamName) then
+                assert(name == placeholderParams.head.name)
+                placeholderParams = placeholderParams.tail
+              atSpan(startOffset(id)) {
+                makeParameter(name.asTermName, typedOpt(), Modifiers(), isBackquoted = isBackquoted(id))
+              }
+            case _ =>
+              t
       }
     }
 
@@ -2387,9 +2414,20 @@ object Parsers {
       }
 
     /**   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
+     *    Bindings          ::=  Binding {`,' Binding}
      */
-    def exprsInParensOpt(): List[Tree] =
-      if (in.token == RPAREN) Nil else commaSeparated(exprInParens)
+    def exprsInParensOrBindings(): List[Tree] =
+      if in.token == RPAREN then Nil
+      else in.currentRegion.withCommasExpected {
+        var isFormalParams = false
+        def exprOrBinding() =
+          if isFormalParams then binding(Modifiers())
+          else
+            val t = exprInParens()
+            if t.isInstanceOf[ValDef] then isFormalParams = true
+            t
+        commaSeparatedRest(exprOrBinding(), exprOrBinding)
+      }
 
     /** ParArgumentExprs ::= `(' [‘using’] [ExprsInParens] `)'
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `*' ')'
