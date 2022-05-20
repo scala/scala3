@@ -889,6 +889,16 @@ object Parsers {
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
 
+
+    def followingIsSelfType() =
+      val lookahead = in.LookaheadScanner()
+      lookahead.nextToken()
+      lookahead.token == COLON
+      && {
+        lookahead.nextToken()
+        canStartTypeTokens(lookahead.token)
+      }
+
     /** Is current ident a `*`, and is it followed by a `)`, `, )`, `,EOF`? The latter two are not
         syntactically valid, but we need to include them here for error recovery. */
     def followingIsVararg(): Boolean =
@@ -3901,7 +3911,37 @@ object Parsers {
       stats.toList
     }
 
-    /** TemplateStatSeq  ::= [id [`:' Type] `=>'] TemplateStat {semi TemplateStat}
+    /** SelfType ::=  id [‘:’ InfixType] ‘=>’
+     *            |  ‘this’ ‘:’ InfixType ‘=>’
+     */
+    def selfType(): ValDef =
+      if (in.isIdent || in.token == THIS)
+            && (in.lookahead.token == COLON && followingIsSelfType()
+                || in.lookahead.token == ARROW)
+      then
+        atSpan(in.offset) {
+          val selfName =
+            if in.token == THIS then
+              in.nextToken()
+              nme.WILDCARD
+            else ident()
+          val selfTpt =
+            if in.token == COLON then
+              in.nextToken()
+              infixType()
+            else
+              if selfName == nme.WILDCARD then accept(COLON)
+              TypeTree()
+          if in.token == ARROW then
+            in.token = SELFARROW // suppresses INDENT insertion after `=>`
+            in.nextToken()
+          else
+            syntaxError("`=>` expected after self type")
+          makeSelfDef(selfName, selfTpt)
+        }
+      else EmptyValDef
+
+    /** TemplateStatSeq  ::= [SelfType] TemplateStat {semi TemplateStat}
      *  TemplateStat     ::= Import
      *                     | Export
      *                     | Annotations Modifiers Def
@@ -3913,25 +3953,8 @@ object Parsers {
      *                     | Annotations Modifiers EnumCase
      */
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
-      var self: ValDef = EmptyValDef
       val stats = new ListBuffer[Tree]
-      if isExprIntro && !isDefIntro(modifierTokens) then
-        val first = expr1()
-        if in.token == ARROW then
-          first match {
-            case Typed(tree @ This(EmptyTypeIdent), tpt) =>
-              self = makeSelfDef(nme.WILDCARD, tpt).withSpan(first.span)
-            case _ =>
-              val ValDef(name, tpt, _) = convertToParam(first, EmptyModifiers, "self type clause")
-              if (name != nme.ERROR)
-                self = makeSelfDef(name, tpt).withSpan(first.span)
-          }
-          in.token = SELFARROW // suppresses INDENT insertion after `=>`
-          in.nextToken()
-        else
-          stats += first
-          statSepOrEnd(stats)
-      end if
+      val self = selfType()
       while
         var empty = false
         if (in.token == IMPORT)
