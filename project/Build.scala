@@ -1416,7 +1416,7 @@ object Build {
             .add(ProjectVersion("3.1.2")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
-              dottySrcLink("language-reference-stable", temp.getAbsolutePath + "=")
+              s"${temp.getAbsolutePath}=github://lampepfl/dotty/language-reference-stable"
             )))
             .withTargets(List("___fake___.scala"))
         }
