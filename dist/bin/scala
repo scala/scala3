@@ -33,9 +33,9 @@ while [[ $# -gt 0 ]]; do
     -D*)
       # pass to scala as well: otherwise we lose it sometimes when we
       # need it, e.g. communicating with a server compiler.
+      # respect user-supplied -Dscala.usejavacp
       addJava "$1"
       addScala "$1"
-      # respect user-supplied -Dscala.usejavacp
       shift
       ;;
     -J*)
@@ -47,7 +47,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -classpath*)
       if [ "$1" != "${1##* }" ]; then
-        # hashbang-combined args "-classpath 'lib/*'"
+        # -classpath and its value have been supplied in a single string e.g. "-classpath 'lib/*'"
         A=$1 ; shift # consume $1 before adding its substrings back
         set -- $A "$@" # split $1 on whitespace and put it back
       else
