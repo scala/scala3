@@ -253,13 +253,13 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
-                    |  SimpleExpr ‘:’ IndentedExpr                              -- under language.experimental.fewerBraces
-                    |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedExpr         -- under language.experimental.fewerBraces
+                    |  SimpleExpr ‘:’ ColonArgument                             -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
-                    |  XmlExpr													                        -- to be dropped
-IndentedExpr      ::=  indent CaseClauses | Block outdent
-Quoted            ::=  ‘'’ ‘{’ Block ‘}’
-                    |  ‘'’ ‘[’ Type ‘]’
+                    |  XmlExpr													-- to be dropped
+ColonArgument     ::=  indent CaseClauses | Block outdent
+                    |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
+                    |  HkTypeParamClause ‘=>’ ColonArgBody
+ColonArgBody      ::=  indent (CaseClauses | Block) outdent
 ExprSplice        ::= spliceId                                                  -- if inside quoted block
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern

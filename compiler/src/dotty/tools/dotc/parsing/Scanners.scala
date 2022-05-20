@@ -189,7 +189,10 @@ object Scanners {
     val indentSyntax =
       ((if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
        || rewriteNoIndent)
-      && !isInstanceOf[LookaheadScanner]
+      && { this match
+        case self: LookaheadScanner => self.allowIndent
+        case _ => true
+      }
 
     if (rewrite) {
       val s = ctx.settings
@@ -206,12 +209,17 @@ object Scanners {
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
 
+    private inline val fewerBracesByDefault = false
+      // turn on to study impact on codebase if `fewerBraces` was the default
+
     private var fewerBracesEnabledCache = false
     private var fewerBracesEnabledCtx: Context = NoContext
 
     def fewerBracesEnabled =
       if fewerBracesEnabledCtx ne myLanguageImportContext then
-        fewerBracesEnabledCache = featureEnabled(Feature.fewerBraces)
+        fewerBracesEnabledCache =
+          featureEnabled(Feature.fewerBraces)
+          || fewerBracesByDefault && indentSyntax
         fewerBracesEnabledCtx = myLanguageImportContext
       fewerBracesEnabledCache
 
@@ -1067,7 +1075,7 @@ object Scanners {
         reset()
       next
 
-    class LookaheadScanner() extends Scanner(source, offset) {
+    class LookaheadScanner(val allowIndent: Boolean = false) extends Scanner(source, offset) {
       override def languageImportContext = Scanner.this.languageImportContext
     }
 
