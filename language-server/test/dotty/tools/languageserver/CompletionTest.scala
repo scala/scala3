@@ -1275,4 +1275,14 @@ class CompletionTest {
       .noCompletions()
   }
 
+  @Test def singleDenotNoCompletions: Unit = {
+    code"""class Test(val symbol: String)
+          |class BetterTest(symbol: Int) extends Test(symbol.toString):
+          |  symb$m1
+          |object O:
+          |  def t(test: BetterTest) = test.symb$m2"""
+      .completion(m1, ("symbol", Field, "Int"))
+      .completion(m2, ("symbol", Field, "String"))
+  }
+
 }
