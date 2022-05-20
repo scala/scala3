@@ -34,7 +34,7 @@ class ReleaseBisect(file: String):
       else bisect(releases.take(releases.length / 2 + 1))
 
   private def isGoodRelease(release: Release): Boolean =
-   println(s"Testing ${release.version}")
+    println(s"Testing ${release.version}")
     val res = s"""scala-cli compile $file -S "${release.version}"""".!
     val isGood = res == 0
     println(s"Test result: ${release.version} is a ${if isGood then "good" else "bad"} release\n")
