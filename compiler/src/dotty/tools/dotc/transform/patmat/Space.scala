@@ -556,7 +556,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
 
-    val resTp = mt.instantiate(scrutineeTp :: Nil).finalResultType
+    val resTp = ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
