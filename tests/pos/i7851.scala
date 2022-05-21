@@ -30,7 +30,7 @@ object WrapperTest {
   val test2: (Wrapped[Float], Wrapped[Float], Wrapped[Float]) => Wrapped[Float] = { (x, y, z) => x }
 
   def main(args: Array[String]): Unit = {
-    wrappedFunction(test1: (Wrapped[Float], Wrapped[Float], Wrapped[Float]) => Wrapped[Float])(5f, 11f, 3f)
+    wrappedFunction(test1: ((Wrapped[Float], Wrapped[Float], Wrapped[Float]) => Wrapped[Float]))(5f, 11f, 3f)
     wrappedFunction(test1)(5f, 11f, 3f)
     wrappedFunction(test2)(5f, 11f, 3f)
   }

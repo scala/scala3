@@ -22,7 +22,7 @@ object Macro {
     case '{ ($ls: List[T]).filter($f).filter($g) } =>
       optimize('{ $ls.filter(x => $f(x) && $g(x)) })
 
-    case '{ type u; type v; ($ls: List[`u`]).map($f: `u` => `v`).map($g: `v` => T) } =>
+    case '{ type u; type v; ($ls: List[`u`]).map($f: (`u` => `v`)).map($g: (`v` => T)) } =>
       optimize('{ $ls.map(x => $g($f(x))) })
 
     case _ => x
