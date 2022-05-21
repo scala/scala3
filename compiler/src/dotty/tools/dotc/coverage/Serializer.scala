@@ -31,7 +31,9 @@ object Serializer:
   def serialize(coverage: Coverage, writer: Writer, sourceRoot: Path): Unit =
 
     def getRelativePath(filePath: Path): String =
-      val relPath = sourceRoot.relativize(filePath)
+      // We need to normalize the path here because the relativizing paths containing '.' or '..' differs between Java versions
+      // https://bugs.openjdk.java.net/browse/JDK-8066943
+      val relPath = sourceRoot.normalize.relativize(filePath)
       relPath.toString
 
     def writeHeader(writer: Writer): Unit =
