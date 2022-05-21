@@ -1388,48 +1388,14 @@ object Parsers {
     def typ(): Tree = {
       val start = in.offset
       var imods = Modifiers()
-      def functionRest(params: List[Tree]): Tree =
-        val paramSpan = Span(start, in.lastOffset)
-        atSpan(start, in.offset) {
-          if in.token == TLARROW then
-            if !imods.flags.isEmpty || params.isEmpty then
-              syntaxError(em"illegal parameter list for type lambda", start)
-              in.token = ARROW
-            else
-              for case ValDef(_, tpt: ByNameTypeTree, _) <- params do
-                syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
-              in.nextToken()
-              return TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], typ())
-
-          if in.token == CTXARROW then
-            in.nextToken()
-            imods |= Given
-          else
-            accept(ARROW)
-          val t = typ()
-
-          if imods.isOneOf(Given | Erased) then
-            if imods.is(Given) && params.isEmpty then
-              syntaxError("context function types require at least one parameter", paramSpan)
-            new FunctionWithMods(params, t, imods)
-          else if !ctx.settings.YkindProjector.isDefault then
-            val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t): @unchecked
-
-            lambdaAbstract(tparams, Function(newParams, newT))
-          else
-            Function(params, t)
-        }
-
       var isValParamList = false
-
       val t =
-        if (in.token == LPAREN) {
+        if in.token == LPAREN then
           in.nextToken()
-          if (in.token == RPAREN) {
+          if in.token == RPAREN then
             in.nextToken()
-            functionRest(Nil)
-          }
-          else {
+            functionTypeRest(Nil, start, Modifiers())
+          else
             if isErased then imods = addModifier(imods)
             val paramStart = in.offset
             val ts = in.currentRegion.withCommasExpected {
@@ -1444,8 +1410,8 @@ object Parsers {
             }
             accept(RPAREN)
             if isValParamList || in.isArrow then
-              functionRest(ts)
-            else {
+              functionTypeRest(ts, start, imods)
+            else
               val ts1 =
                 for (t <- ts) yield
                   t match {
@@ -1461,33 +1427,29 @@ object Parsers {
                   withTypeRest(
                     annotTypeRest(
                       simpleTypeRest(tuple)))))
-            }
-          }
-        }
-        else if (in.token == LBRACKET) {
+        else if in.token == LBRACKET then
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
-          if (in.token == TLARROW)
+          if in.token == TLARROW then
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
-          else if (in.token == ARROW) {
+          else if in.token == ARROW then
             val arrowOffset = in.skipToken()
             val body = toplevelTyp()
             atSpan(start, arrowOffset) {
               if (isFunction(body))
                 PolyFunction(tparams, body)
-              else {
+              else
                 syntaxError("Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
                 Ident(nme.ERROR.toTypeName)
-              }
             }
-          }
-          else { accept(TLARROW); typ() }
-        }
-        else if (in.token == INDENT) enclosed(INDENT, typ())
+          else
+            accept(TLARROW)
+            typ()
+        else if in.token == INDENT then enclosed(INDENT, typ())
         else infixType()
 
       in.token match {
-        case ARROW | CTXARROW => functionRest(t :: Nil)
+        case ARROW | CTXARROW => functionTypeRest(t :: Nil, start, imods)
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
@@ -1496,6 +1458,39 @@ object Parsers {
           t
       }
     }
+
+    def functionTypeRest(params: List[Tree], start: Offset, mods: Modifiers): Tree =
+      var imods = mods
+      val paramSpan = Span(start, in.lastOffset)
+      atSpan(start, in.offset) {
+        if in.token == TLARROW then
+          if !imods.flags.isEmpty || params.isEmpty then
+            syntaxError(em"illegal parameter list for type lambda", start)
+            in.token = ARROW
+          else
+            for case ValDef(_, tpt: ByNameTypeTree, _) <- params do
+              syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
+            in.nextToken()
+            return TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], typ())
+
+        if in.token == CTXARROW then
+          in.nextToken()
+          imods |= Given
+        else
+          accept(ARROW)
+        val t = typ()
+
+        if imods.isOneOf(Given | Erased) then
+          if imods.is(Given) && params.isEmpty then
+            syntaxError("context function types require at least one parameter", paramSpan)
+          new FunctionWithMods(params, t, imods)
+        else if !ctx.settings.YkindProjector.isDefault then
+          val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t): @unchecked
+          lambdaAbstract(tparams, Function(newParams, newT))
+        else
+          Function(params, t)
+      }
+    end functionTypeRest
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
       val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
@@ -1860,7 +1855,15 @@ object Parsers {
       else TypeTree().withSpan(Span(in.lastOffset))
 
     def typeDependingOn(location: Location): Tree =
-      if location.inParens then typ()
+      if location.inParens then
+        if sourceVersion.isAtLeast(`3.2`) then
+          val start = in.offset
+          var t = infixType()
+          if in.isArrow then
+            t = functionTypeRest(t :: Nil, start, Modifiers())
+            report.error(em"function type in type ascription must be enclosed in parentheses", t.srcPos)
+          t
+        else typ()
       else if location.inPattern then rejectWildcardType(refinedType())
       else infixType()
 

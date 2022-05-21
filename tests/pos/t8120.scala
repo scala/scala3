@@ -5,5 +5,5 @@ object A {
   implicit class RichAny(a: Any) {
     def m(a: Any): Int = 0
   }
-  (new C).m({ case (x, y) => x } : Any => Any)
+  (new C).m({ case (x, y) => x } : (Any => Any))
 }

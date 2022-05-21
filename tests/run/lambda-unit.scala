@@ -13,7 +13,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     fun("")
-    (fun: Object => Any)("")
+    (fun: (Object => Any))("")
     sam.foo("")
     genericSam.foo("")
   }
