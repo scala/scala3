@@ -43,6 +43,7 @@ object Parsers {
   enum Location(val inParens: Boolean, val inPattern: Boolean, val inArgs: Boolean):
     case InParens      extends Location(true, false, false)
     case InArgs        extends Location(true, false, true)
+    case InColonArg    extends Location(false, false, true)
     case InPattern     extends Location(false, true, false)
     case InGuard       extends Location(false, false, false)
     case InPatternArgs extends Location(false, true, true) // InParens not true, since it might be an alternative
@@ -893,9 +894,8 @@ object Parsers {
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
 
-
     def followingIsSelfType() =
-      val lookahead = in.LookaheadScanner()
+      val lookahead = in.LookaheadScanner(allowIndent = true)
       lookahead.nextToken()
       lookahead.token == COLON
       && {
@@ -917,10 +917,10 @@ object Parsers {
            }
       }
 
-    /** When encountering a `:`, is that in the first binding of a lambda?
-     *  @pre location of the enclosing expression is `InParens`, so there is am open `(`.
+    /** When encountering a `:`, is that in the binding of a lambda?
+     *  @pre location of the enclosing expression is `InParens`, so there is an open `(`.
      */
-    def followingisLambdaParams() =
+    def followingIsLambdaParams() =
       val lookahead = in.LookaheadScanner()
       lookahead.nextToken()
       while lookahead.token != RPAREN && lookahead.token != EOF do
@@ -931,6 +931,21 @@ object Parsers {
         lookahead.nextToken()
         lookahead.isArrow
       }
+
+    /** Is the token sequence following the current `:` token classified as a lambda?
+     *  This is the case if the input starts with an identifier, a wildcard, or
+     *  something enclosed in (...) or [...], and this is followed by a `=>` or `?=>`.
+     */
+    def followingIsLambdaAfterColon(): Boolean =
+      val lookahead = in.LookaheadScanner()
+      lookahead.nextToken()
+      if lookahead.isIdent || lookahead.token == USCORE then
+        lookahead.nextToken()
+        lookahead.isArrow
+      else if lookahead.token == LPAREN || lookahead.token == LBRACKET then
+        lookahead.skipParens()
+        lookahead.isArrow
+      else false
 
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -2229,7 +2244,17 @@ object Parsers {
           in.nextToken()
         else
           accept(ARROW)
-        Function(params, if (location == Location.InBlock) block() else expr())
+        val body =
+          if location == Location.InBlock then block()
+          else if location == Location.InColonArg then
+            if in.token == INDENT then
+              blockExpr()
+            else
+              in.insertMaxIndent()
+              try casesOrBlock(simplify = true)
+              finally accept(OUTDENT)
+          else expr()
+        Function(params, body)
       }
 
     /** PostfixExpr   ::= InfixExpr [id [nl]]
@@ -2279,9 +2304,12 @@ object Parsers {
      *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
-     *                 |  SimpleExpr1 `:` IndentedExpr                       -- under language.experimental.fewerBraces
-     *                 |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) IndentedExpr  -- under language.experimental.fewerBraces
-     *  IndentedExpr  ::=  indent (CaseClauses | Block) outdent
+     *                 |  SimpleExpr1 `:` ColonArgument                   -- under language.experimental.fewerBraces
+     *  ColonArgument ::= indent (CaseClauses | Block) outdent
+     *                 |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
+     *                 |  HkTypeParamClause ‘=>’ ColonArgBody
+     *  ColonArgBody  ::= indent (CaseClauses | Block) outdent
+     *                 |  <silent-indent> (CaseClauses | Block) outdent   -- silent-indent is inserted by Scanner if no real indent is found
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’
      */
@@ -2337,65 +2365,38 @@ object Parsers {
       simpleExprRest(t, location, canApply)
     }
 
-    def simpleExprRest(t: Tree, location: Location, canApply: Boolean = true): Tree = {
+    def simpleExprRest(t: Tree, location: Location, canApply: Boolean = true): Tree =
       if (canApply) argumentStart()
-      in.token match {
+      in.token match
         case DOT =>
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), location, canApply = true)
         case LBRACKET =>
           val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
           simpleExprRest(tapp, location, canApply = true)
-        case LPAREN if canApply =>
-          val app = atSpan(startOffset(t), in.offset) {
-            val argExprs @ (args, isUsing) = argumentExprs()
-            if !isUsing && in.isArrow && location != Location.InGuard && in.fewerBracesEnabled then
-              val params = convertToParams(Tuple(args))
-              if params.forall(_.name != nme.ERROR) then
-                applyToClosure(t, in.offset, params)
-              else
-                mkApply(t, argExprs)
-            else
-              mkApply(t, argExprs)
-          }
-          simpleExprRest(app, location, canApply = true)
-        case LBRACE | INDENT if canApply =>
+        case LPAREN | LBRACE | INDENT if canApply =>
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
           simpleExprRest(app, location, canApply = true)
         case USCORE =>
-          if in.lookahead.isArrow && location != Location.InGuard && in.fewerBracesEnabled then
-            val app = applyToClosure(t, in.offset, convertToParams(wildcardIdent()))
-            simpleExprRest(app, location, canApply = true)
-          else
-            atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
-        case IDENTIFIER
-        if !in.isOperator && in.lookahead.isArrow && location != Location.InGuard && in.fewerBracesEnabled =>
-          val app = applyToClosure(t, in.offset, convertToParams(termIdent()))
-          simpleExprRest(app, location, canApply = true)
+          atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
         case _ =>
-          t match
-            case id @ Ident(name)
-            if in.isColon() && location == Location.InParens && followingisLambdaParams() =>
-              if name.is(WildcardParamName) then
-                assert(name == placeholderParams.head.name)
-                placeholderParams = placeholderParams.tail
-              atSpan(startOffset(id)) {
-                makeParameter(name.asTermName, typedOpt(), Modifiers(), isBackquoted = isBackquoted(id))
-              }
-            case _ =>
-              t
-      }
-    }
-
-    def applyToClosure(t: Tree, start: Offset, params: List[ValDef]): Tree =
-      atSpan(startOffset(t), in.offset) {
-        val arg = atSpan(start, in.skipToken()) {
-          if in.token != INDENT then
-            syntaxErrorOrIncomplete(i"indented expression expected, ${in} found")
-          Function(params, blockExpr())
-        }
-        Apply(t, arg)
-      }
+          if in.isColon() && location == Location.InParens && followingIsLambdaParams() then
+            t match
+              case id @ Ident(name) =>
+                if name.is(WildcardParamName) then
+                  assert(name == placeholderParams.head.name)
+                  placeholderParams = placeholderParams.tail
+                atSpan(startOffset(id)) {
+                  makeParameter(name.asTermName, typedOpt(), Modifiers(), isBackquoted = isBackquoted(id))
+                }
+              case _ => t
+          else if in.fewerBracesEnabled && in.token == COLON && followingIsLambdaAfterColon() then
+            val app = atSpan(startOffset(t), in.skipToken()) {
+              Apply(t, expr(Location.InColonArg) :: Nil)
+            }
+            simpleExprRest(app, location, canApply = true)
+          else t
+    end simpleExprRest
 
     /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                  |  ‘new’ TemplateBody
@@ -2499,11 +2500,12 @@ object Parsers {
      */
     def blockExpr(): Tree = atSpan(in.offset) {
       val simplify = in.token == INDENT
-      inDefScopeBraces {
-        if (in.token == CASE) Match(EmptyTree, caseClauses(() => caseClause()))
-        else block(simplify)
-      }
+      inDefScopeBraces { casesOrBlock(simplify) }
     }
+
+    def casesOrBlock(simplify: Boolean): Tree =
+      if (in.token == CASE) Match(EmptyTree, caseClauses(() => caseClause()))
+      else block(simplify)
 
     /** Block ::= BlockStatSeq
      *  @note  Return tree does not have a defined span.

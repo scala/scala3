@@ -254,13 +254,14 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
-                    |  SimpleExpr ‘:’ IndentedExpr                              -- under language.experimental.fewerBraces
-                    |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedExpr         -- under language.experimental.fewerBraces
+                    |  SimpleExpr ‘:’ ColonArgument                             -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
-                    |  XmlExpr													                        -- to be dropped
-IndentedExpr      ::=  indent CaseClauses | Block outdent
-Quoted            ::=  ‘'’ ‘{’ Block ‘}’  
-                    |  ‘'’ ‘[’ Type ‘]’
+                    |  XmlExpr													-- to be dropped
+ColonArgument     ::=  indent CaseClauses | Block outdent
+                    |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
+                    |  HkTypeParamClause ‘=>’ ColonArgBody
+ColonArgBody      ::=  indent (CaseClauses | Block) outdent
+                    |  <silent-indent> (CaseClauses | Block) outdent            -- silent-indent is inserted by Lexer if no real indent is found
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
