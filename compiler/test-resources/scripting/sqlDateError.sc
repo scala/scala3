@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bin/scala
+#!bin/scala
 
 def main(args: Array[String]): Unit = {
   println(new java.sql.Date(100L))

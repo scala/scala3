@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bin/scala -classpath 'dist/target/pack/lib/*'
+#!bin/scala -classpath 'dist/target/pack/lib/*'
 
 import java.nio.file.Paths
 
@@ -9,3 +9,4 @@ def main(args: Array[String]): Unit =
 
 extension(s: String)
   def norm: String = s.replace('\\', '/')
+
