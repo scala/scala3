@@ -1,4 +1,4 @@
-#!/usr/bin/env dist/target/pack/bin/scala
+#!dist/target/pack/bin/scala
 
   def main(args: Array[String]): Unit =
     args.zipWithIndex.foreach { case (arg,i) => printf("arg %d: [%s]\n",i,arg) }
