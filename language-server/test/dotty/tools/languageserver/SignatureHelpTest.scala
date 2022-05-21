@@ -17,6 +17,53 @@ class SignatureHelpTest {
       .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
+  @Test def properFunctionReturnWithoutParenthesis: Unit = {
+    val listSignature =
+      S("apply[A]", Nil, List(List(P("elems", "A*"))), Some("CC[A]"))
+    val optionSignature =
+      S("apply[A]", Nil, List(List(P("x", "A"))), Some("Option[A]"))
+    code"""object O {
+          |  List(1, 2$m1
+          |}
+          |object T {
+          |  List(Option(1$m2
+          |}
+          |object Z {
+          |  List(Option(1)$m3
+          |}"""
+      .signatureHelp(m1, List(listSignature), Some(0), 0)
+      .signatureHelp(m2, List(optionSignature), Some(0), 0)
+      .signatureHelp(m3, List(listSignature), Some(0), 0)
+  }
+
+  @Test def partialyFailedCurriedFunctions: Unit = {
+    val listSignature =
+      S("curry", Nil, List(List(P("a", "Int"), P("b", "Int")), List(P("c", "Int"))), Some("Int"))
+    code"""object O {
+          |def curry(a: Int, b: Int)(c: Int) = a
+          |  curry(1$m1)(3$m2)
+          |}"""
+      .signatureHelp(m1, List(listSignature), Some(0), 0)
+      .signatureHelp(m2, List(listSignature), Some(0), 2)
+  }
+
+  @Test def optionProperSignature: Unit = {
+    val listSignature =
+      S("apply[A]", Nil, List(List(P("x", "A"))), Some("Option[A]"))
+    code"""object O {
+          |  Option(1, 2, 3, $m1)
+          |}"""
+      .signatureHelp(m1, List(listSignature), Some(0), 0)
+  }
+
+  @Test def noSignaturesForTuple: Unit = {
+    code"""object O {
+          |  (1, $m1, $m2)
+          |}"""
+      .signatureHelp(m1, Nil, Some(0), 0)
+      .signatureHelp(m2, Nil, Some(0), 0)
+  }
+
   @Test def fromScala2: Unit = {
     val applySig =
       // TODO: Ideally this should say `List[A]`, not `CC[A]`
@@ -115,7 +162,7 @@ class SignatureHelpTest {
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), -1)
       .signatureHelp(m3, List(signature), Some(0), -1)
-      .signatureHelp(m4, Nil, Some(0), 0)
+      .signatureHelp(m4, List(signature), Some(0), -1)
   }
 
   @Test def unapplyClass: Unit = {

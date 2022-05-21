@@ -11,6 +11,7 @@ import core.NameOps.isUnapplyName
 import core.Names._
 import core.Types._
 import util.Spans.Span
+import core.Symbols.NoSymbol
 import reporting._
 
 
@@ -49,31 +50,43 @@ object Signatures {
    *         being called, the list of overloads of this function).
    */
   def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
-    val enclosingApply = path.dropWhile {
-      case apply @ Apply(fun, _) => fun.span.contains(span) || apply.span.end == span.end
-      case unapply @ UnApply(fun, _, _) => fun.span.contains(span) || unapply.span.end == span.end || isTuple(unapply)
-      case _ => true
-    }.headOption
-
-    enclosingApply.map {
+    findEnclosingApply(path, span) match
+      case tpd.EmptyTree => (0, 0, Nil)
       case UnApply(fun, _, patterns) => unapplyCallInfo(span, fun, patterns)
-      case Apply(fun, params) => callInfo(span, params, fun, Signatures.countParams(fun))
-    }.getOrElse((0, 0, Nil))
+      case Apply(fun, params) => callInfo(span, params, fun)
+
+  /**
+   * Finds enclosing application from given `path` to `span`.
+   *
+   * @param path The path to the function application
+   * @param span The position of the cursor
+   * @return Tree which encloses closest application containing span.
+   *         In case if cursor is pointing on closing parenthesis and
+   *         next subsequent application exists, it returns the latter
+   */
+  private def findEnclosingApply(path: List[tpd.Tree], span: Span)(using Context): tpd.Tree =
+    path.filterNot {
+      case apply @ Apply(fun, _) => fun.span.contains(span) || isTuple(apply)
+      case unapply @ UnApply(fun, _, _) => fun.span.contains(span) || isTuple(unapply)
+      case _ => true
+    } match {
+      case Nil => tpd.EmptyTree
+      case direct :: enclosing :: _ if direct.source(span.end -1) == ')' => enclosing
+      case direct :: _ => direct
+    }
 
   def callInfo(
     span: Span,
     params: List[tpd.Tree],
-    fun: tpd.Tree,
-    alreadyAppliedCount : Int
+    fun: tpd.Tree
   )(using Context): (Int, Int, List[SingleDenotation]) =
-    val paramIndex = params.indexWhere(_.span.contains(span)) match {
-      case -1 => (params.length - 1 max 0) + alreadyAppliedCount
-      case n => n + alreadyAppliedCount
-    }
-
     val (alternativeIndex, alternatives) = fun.tpe match {
       case err: ErrorType =>
-        val (alternativeIndex, alternatives) = alternativesFromError(err, params)
+        val (alternativeIndex, alternatives) = alternativesFromError(err, params) match {
+          case (_, Nil) => (0, fun.denot.alternatives)
+          case other => other
+        }
+
         (alternativeIndex, alternatives)
 
       case _ =>
@@ -81,6 +94,12 @@ object Signatures {
         val alternatives = funSymbol.owner.info.member(funSymbol.name).alternatives
         val alternativeIndex = alternatives.map(_.symbol).indexOf(funSymbol) max 0
         (alternativeIndex, alternatives)
+    }
+
+    val curriedArguments = countParams(fun, alternatives(alternativeIndex))
+    val paramIndex = params.indexWhere(_.span.contains(span)) match {
+      case -1 => (params.length - 1 max 0) + curriedArguments
+      case n => n + curriedArguments
     }
 
     (paramIndex, alternativeIndex, alternatives)
@@ -102,7 +121,7 @@ object Signatures {
     (activeParameter, 0, appliedDenot)
 
   private def isTuple(tree: tpd.Tree)(using Context): Boolean =
-    ctx.definitions.isTupleClass(tree.symbol.owner.companionClass)
+    tree.symbol != NoSymbol && ctx.definitions.isTupleClass(tree.symbol.owner.companionClass)
 
   private def extractParamTypess(resultType: Type)(using Context): List[List[Type]] =
     resultType match {
@@ -229,17 +248,22 @@ object Signatures {
   }
 
   /**
-   * The number of parameters that are applied in `tree`.
+   * The number of parameters before `tree` application. It is necessary to properly show
+   * parameter number for erroneous applications before current one.
    *
    * This handles currying, so for an application such as `foo(1, 2)(3)`, the result of
-   * `countParams` should be 3.
+   * `countParams` should be 3. It also takes into considerations unapplied arguments so for `foo(1)(3)`
+   * we will still get 3, as first application `foo(1)` takes 2 parameters with currently only 1 applied.
    *
    * @param tree The tree to inspect.
+   * @param denot Denotation of function we are trying to apply
+   * @param alreadyCurried Number of subsequent Apply trees before current tree
    * @return The number of parameters that are passed.
    */
-  private def countParams(tree: tpd.Tree): Int =
+  private def countParams(tree: tpd.Tree, denot: SingleDenotation, alreadyCurried: Int = 0)(using Context): Int =
     tree match {
-      case Apply(fun, params) => countParams(fun) + params.length
+      case Apply(fun, params) =>
+         countParams(fun, denot, alreadyCurried + 1) + denot.symbol.paramSymss(alreadyCurried).length
       case _ => 0
     }
 
