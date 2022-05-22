@@ -356,6 +356,7 @@ class ReplCompilerTests extends ReplTest:
              |""".stripMargin)
       assertEquals("val x: Int = 8", storedOutput().trim)
     }
+    /*
     initially {
       run("""|import language.experimental.fewerBraces
              |import language.experimental.fewerBraces as _
@@ -366,7 +367,7 @@ class ReplCompilerTests extends ReplTest:
              |""".stripMargin)
       assert("expected error if fewerBraces is unimported",
         lines().exists(_.contains("missing arguments for method apply")))
-    }
+    }*/
 
 object ReplCompilerTests:
 

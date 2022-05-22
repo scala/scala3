@@ -1,9 +1,12 @@
--- Error: tests/neg/fun-ascription.scala:2:17 --------------------------------------------------------------------------
+-- [E081] Type Error: tests/neg/fun-ascription.scala:2:13 --------------------------------------------------------------
 2 |val x1 = (f: Int => Int)  // error
-  |             ^^^^^^^^^^
-  |             function type in type ascription must be enclosed in parentheses
--- Error: tests/neg/fun-ascription.scala:3:16 --------------------------------------------------------------------------
+  |             ^^^
+  |             Missing parameter type
+  |
+  |             I could not infer the type of the parameter Int.
+-- [E081] Type Error: tests/neg/fun-ascription.scala:3:12 --------------------------------------------------------------
 3 |val x2 = f: Int => Int    // error
-  |                ^
-  |                parentheses are required around the parameter of a lambda
-  |                This construct can be rewritten automatically under -rewrite -source 3.0-migration.
+  |            ^^^
+  |            Missing parameter type
+  |
+  |            I could not infer the type of the parameter Int.

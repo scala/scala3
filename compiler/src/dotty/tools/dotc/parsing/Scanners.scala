@@ -209,7 +209,7 @@ object Scanners {
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
 
-    private inline val fewerBracesByDefault = false
+    private inline val fewerBracesByDefault = true
       // turn on to study impact on codebase if `fewerBraces` was the default
 
     private var fewerBracesEnabledCache = false
