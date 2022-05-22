@@ -451,6 +451,8 @@ class Definitions {
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
 
+  @tu lazy val continueMethod: TermSymbol = enterMethod(OpsPackageClass, jnme.CONTINUEkw, MethodType(Nil, NothingType))
+
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
   def NothingType: TypeRef = NothingClass.typeRef

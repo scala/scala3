@@ -22,7 +22,7 @@ import ast.Trees._
 import StdNames._
 import util.Spans._
 import Constants._
-import Symbols.NoSymbol
+import Symbols.*
 import ScriptParsers._
 import Decorators._
 import util.Chars
@@ -2606,15 +2606,27 @@ object Parsers {
       buf.toList
     }
 
-    /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
-     *  ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
+    /** CaseClause         ::= `case` Pattern [Guard] `=>` Block
+     *                     |   `case` Pattern `if` InfixExpr MatchClause
+     *                     |   `case` Pattern `if` [InfixExpr `&&`] SimpleExpr `.` MatchClause
+     *  ExprCaseClause     ::= `case` Pattern [Guard] `=>` Expr
      */
     def caseClause(exprOnly: Boolean = false): CaseDef = atSpan(in.offset) {
       val (pat, grd) = inSepRegion(InCase) {
         accept(CASE)
         (pattern(), guard())
       }
-      CaseDef(pat, grd, atSpan(accept(ARROW)) {
+      val (guard1, match1) = grd match
+        case m @ Match(_, _)                              => (EmptyTree, m)
+        case InfixOp(g, Ident(nme.ZAND), m @ Match(_, _)) => (g, m)
+        case g                                            => (g, EmptyTree)
+      val body = match1 match
+        case Match(_, _ :+ last) if isDefaultCase(last) => match1
+        case Match(sel, cases) =>
+          val defaultCase = CaseDef(Ident(nme.WILDCARD), EmptyTree, Apply(ref(defn.continueMethod), Nil))
+          cpy.Match(match1)(sel, cases :+ defaultCase)
+        case _ => EmptyTree
+      CaseDef(pat, guard1, body.orElse(atSpan(accept(ARROW)) {
         if exprOnly then
           if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
             warning(i"""Misleading indentation: this expression forms part of the preceding catch case.
@@ -2623,7 +2635,7 @@ object Parsers {
                        |an indented case.""")
           expr()
         else block()
-      })
+      }))
     }
 
     /** TypeCaseClause     ::= ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]

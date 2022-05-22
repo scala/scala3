@@ -951,6 +951,8 @@ object PatternMatcher {
             case _ =>
               default
           }
+        case ResultPlan(Labeled(_, Block(stats, Return(expr, from)))) if expr.symbol == defn.continueMethod =>
+          Block(stats, unitLiteral).subst(List(from.symbol), List(resultLabel))
         case ResultPlan(tree) =>
           if (tree.symbol == defn.throwMethod) tree // For example MatchError
           else Return(tree, ref(resultLabel))
