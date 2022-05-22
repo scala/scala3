@@ -59,9 +59,13 @@ val xs = elems.map: x =>
 xs.foldLeft (x, y) =>
   x + y
 ```
-Braces can be omitted if the lambda starts with a parameter list and an arrow symbol `=>` or `?=>`.
-The arrow is followed on the next line(s) by the body of the functional literal which must be indented
-relative to the previous line. 
+Braces can be omitted if the lambda starts with a parameter list and an arrow symbol `=>` or `?=>`. The arrow is followed by the body of the functional literal, which can be
+either on the same line or as an indented block on the following lines. Example:
+```scala
+val xs = elems
+  .map: x => x * x
+  .foldLeft (x, y) => x = y
+```
 
 ## Syntax Changes
 
@@ -78,4 +82,8 @@ ColonArgument    ::=  indent CaseClauses | Block outdent
                     |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
                     |  HkTypeParamClause ‘=>’ ColonArgBody
 ColonArgBody     ::=  indent (CaseClauses | Block) outdent
+                    |  <silent-indent> (CaseClauses | Block) outdent            --
 ```
+The last line is understood as follows: If the token following a `=>` or `?=>` in a
+`ColonArgument` is not an `indent`, then the parser inserts a silent indent token
+and assumes the associated indentation region has maximal indentation width.
