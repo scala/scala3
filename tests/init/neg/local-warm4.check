@@ -9,10 +9,12 @@
    |                    -> val b = new B(y)	[ local-warm4.scala:10 ]
    |                               ^^^^^^^^
    |                    -> class B(x: Int) extends A(x) {	[ local-warm4.scala:13 ]
-   |                       ^
+   |                                               ^^^^
    |                    -> class A(x: Int) extends Foo(x) {	[ local-warm4.scala:6 ]
    |                       ^
    |                    -> increment()	[ local-warm4.scala:9 ]
    |                       ^^^^^^^^^^^
    |                    -> updateA()	[ local-warm4.scala:21 ]
    |                       ^^^^^^^^^
+   |                    -> a = newA // error	[ local-warm4.scala:18 ]
+   |                           ^^^^

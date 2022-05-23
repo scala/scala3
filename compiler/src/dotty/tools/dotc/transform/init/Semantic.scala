@@ -928,38 +928,41 @@ object Semantic {
   extension (value: Value)
     /** Promotion of values to hot */
     def promote(msg: String, source: Tree): Contextual[Unit] = log("promoting " + value + ", promoted = " + promoted, printer) {
+      val trace2 = trace.add(source)
       if promoted.isCurrentObjectPromoted then Nil else
+        given Trace = trace2
 
-      value.match
-      case Hot   =>
+        value.match
+        case Hot   =>
 
-      case Cold  =>
-        reporter.report(PromoteError(msg, source, trace.toVector))
-
-      case thisRef: ThisRef =>
-        if !thisRef.tryPromoteCurrentObject() then
+        case Cold  =>
           reporter.report(PromoteError(msg, source, trace.toVector))
 
-      case warm: Warm =>
-        if !promoted.contains(warm) then
-          promoted.add(warm)
-          val errors = warm.tryPromote(msg, source)
-          if errors.nonEmpty then promoted.remove(warm)
-          for error <- errors do reporter.report(error)
+        case thisRef: ThisRef =>
+          if !thisRef.tryPromoteCurrentObject() then
+            reporter.report(PromoteError(msg, source, trace.toVector))
 
-      case fun @ Fun(body, thisV, klass, env) =>
-        if !promoted.contains(fun) then
-          val errors = Reporter.stopEarly {
-            val res = withEnv(env) { eval(body, thisV, klass) }
-            res.promote("The function return value is not fully initialized.", source)
-          }
-          if (errors.nonEmpty)
-            reporter.report(UnsafePromotion(msg, source, trace.toVector, errors))
-          else
-            promoted.add(fun)
+        case warm: Warm =>
+          if !promoted.contains(warm) then
+            promoted.add(warm)
+            val errors = warm.tryPromote(msg, source)
+            if errors.nonEmpty then promoted.remove(warm)
+            for error <- errors do reporter.report(error)
 
-      case RefSet(refs) =>
-        refs.foreach(_.promote(msg, source))
+        case fun @ Fun(body, thisV, klass, env) =>
+          if !promoted.contains(fun) then
+            val errors = Reporter.stopEarly {
+              given Trace = Trace.empty.add(body)
+              val res = withEnv(env) { eval(body, thisV, klass) }
+              res.promote("The function return value is not fully initialized.", body)
+            }
+            if (errors.nonEmpty)
+              reporter.report(UnsafePromotion(msg, source, trace.toVector, errors.head))
+            else
+              promoted.add(fun)
+
+        case RefSet(refs) =>
+          refs.foreach(_.promote(msg, source))
     }
   end extension
 
@@ -1005,7 +1008,7 @@ object Semantic {
       }
 
       if errors.isEmpty then Nil
-      else UnsafePromotion(msg, source, trace.toVector, errors) :: Nil
+      else UnsafePromotion(msg, source, trace.toVector, errors.head) :: Nil
     }
 
   end extension
@@ -1281,7 +1284,6 @@ object Semantic {
 
       case vdef : ValDef =>
         // local val definition
-        // TODO: support explicit @cold annotation for local definitions
         eval(vdef.rhs, thisV, klass)
 
       case ddef : DefDef =>

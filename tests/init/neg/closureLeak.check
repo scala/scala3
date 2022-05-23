@@ -2,6 +2,7 @@
 11 |    l.foreach(a => a.addX(this)) // error
    |              ^^^^^^^^^^^^^^^^^
    |              Cannot prove the argument is fully initialized.
-   |
    |              Promoting the value to fully initialized failed due to the following problem:
-   |              Cannot prove the argument is fully initialized.
+   |              Cannot prove the argument is fully initialized. Calling trace:
+   |              -> l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
+   |                                       ^^^^

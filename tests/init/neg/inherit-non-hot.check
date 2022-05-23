@@ -1,14 +1,15 @@
 -- Error: tests/init/neg/inherit-non-hot.scala:6:34 --------------------------------------------------------------------
 6 |            if b == null then b = new B(this) // error
   |                                  ^^^^^^^^^^^
-  |                                  May only assign fully initialized value.
-  |                                   Calling trace:
+  |                                  May only assign fully initialized value. Calling trace:
   |                                  -> val c = new C	[ inherit-non-hot.scala:19 ]
   |                                             ^^^^^
   |                                  -> class C extends A {	[ inherit-non-hot.scala:15 ]
   |                                     ^
   |                                  -> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
   |                                                  ^^^
+  |                                  -> if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
+  |                                                           ^^^^^^^^^^^
   |
   |                                  Promoting the value to fully initialized failed due to the following problem:
   |                                  Cannot prove that the field val a is fully initialized. Calling trace:

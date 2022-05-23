@@ -9,13 +9,9 @@ import util.SourcePosition
 import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
 
-object Errors {
-  type Errors = Seq[Error]
-  val empty: Errors = Nil
+import scala.collection.mutable
 
-  def show(errs: Errors)(using Context): String =
-    errs.map(_.show).mkString(", ")
-
+object Errors:
   sealed trait Error {
     def source: Tree
     def trace: Seq[Tree]
@@ -24,11 +20,12 @@ object Errors {
     def issue(using Context): Unit =
       report.warning(show + stacktrace, source.srcPos)
 
-    def toErrors: Errors = this :: Nil
+    private def isTraceInformative: Boolean =
+      trace.size > 1 || trace.size == 1 && trace.head.ne(source)
 
-    def stacktrace(using Context): String = if (trace.isEmpty) "" else " Calling trace:\n" + {
-      var last: String = ""
-      val sb = new StringBuilder
+    def stacktrace(using Context): String = if !isTraceInformative then "" else " Calling trace:\n" + {
+      var lastLineNum = -1
+      var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
       trace.foreach { tree =>
         val pos = tree.sourcePos
         val prefix = "-> "
@@ -44,10 +41,16 @@ object Errors {
             positionMarker(pos)
           else ""
 
-        if (last != line)  sb.append(prefix + line + "\n" + positionMarkerLine )
+        // always use the more precise trace location
+        if lastLineNum == pos.line then
+          lines.dropRightInPlace(1)
 
-        last = line
+        lines += (prefix + line + "\n" + positionMarkerLine)
+
+        lastLineNum = pos.line
       }
+      val sb = new StringBuilder
+      for line <- lines do sb.append(line)
       sb.toString
     }
 
@@ -63,13 +66,6 @@ object Errors {
         else "^"
 
       s"$padding$carets\n"
-    }
-
-    /** Flatten UnsafePromotion errors
-     */
-    def flatten: Errors = this match {
-      case unsafe: UnsafePromotion => unsafe.errors.flatMap(_.flatten)
-      case _ => this :: Nil
     }
 
     override def toString() = this.getClass.getName.nn
@@ -107,16 +103,14 @@ object Errors {
   }
 
   /** Promote a value under initialization to fully-initialized */
-  case class UnsafePromotion(msg: String, source: Tree, trace: Seq[Tree], errors: Errors) extends Error {
-    assert(errors.nonEmpty)
+  case class UnsafePromotion(msg: String, source: Tree, trace: Seq[Tree], error: Error) extends Error {
     override def issue(using Context): Unit =
       report.warning(show, source.srcPos)
 
     def show(using Context): String = {
       var index = 0
-      msg + "\n" + stacktrace + "\n" +
+      msg + stacktrace + "\n" +
         "Promoting the value to fully initialized failed due to the following problem:\n" +
-        errors.head.show + errors.head.stacktrace
+        error.show + error.stacktrace
     }
   }
-}
