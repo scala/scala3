@@ -19,9 +19,9 @@ class SignatureHelpTest {
 
   @Test def properFunctionReturnWithoutParenthesis: Unit = {
     val listSignature =
-      S("apply[A]", Nil, List(List(P("elems", "A*"))), Some("CC[A]"))
+      S("apply", List("A"), List(List(P("elems", "A*"))), Some("CC[A]"))
     val optionSignature =
-      S("apply[A]", Nil, List(List(P("x", "A"))), Some("Option[A]"))
+      S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
     code"""object O {
           |  List(1, 2$m1
           |}
@@ -49,7 +49,7 @@ class SignatureHelpTest {
 
   @Test def optionProperSignature: Unit = {
     val listSignature =
-      S("apply[A]", Nil, List(List(P("x", "A"))), Some("Option[A]"))
+      S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
     code"""object O {
           |  Option(1, 2, 3, $m1)
           |}"""
@@ -67,7 +67,7 @@ class SignatureHelpTest {
   @Test def fromScala2: Unit = {
     val applySig =
       // TODO: Ideally this should say `List[A]`, not `CC[A]`
-      S("apply[A]", Nil, List(List(P("elems", "A*"))), Some("CC[A]"))
+      S("apply", List("A"), List(List(P("elems", "A*"))), Some("CC[A]"))
     val mapSig =
       S("map[B]", Nil, List(List(P("f", "A => B"))), Some("List[B]"))
     code"""object O {
@@ -201,6 +201,77 @@ class SignatureHelpTest {
       .signatureHelp(m2, List(signature), Some(0), 1)
   }
 
+  @Test def noUnapplySignatureWhenApplyingUnapply: Unit = {
+    val signature = S("unapply", List("A"), List(List(P("a", "A"))), Some("Some[(A, A)]"))
+
+    code"""
+          |object And {
+          |  def unapply[A](a: A): Some[(A, A)] = Some((a, a))
+          |}
+          |object a {
+          |  And.unapply($m1)
+          |}
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+  @Test def nestedOptionReturnedInUnapply: Unit = {
+    val signature = S("", Nil, List(List(P("", "Option[Int]"))), None)
+
+    code"""object OpenBrowserCommand {
+          |  def unapply(command: String): Option[Option[Int]] = {
+          |    Some(Some(1))
+          |  }
+          |
+          |  "" match {
+          |    case OpenBrowserCommand($m1) =>
+          |  }
+          |}
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+  @Test def unknownTypeUnapply: Unit = {
+    val signature = S("", Nil, List(List(P("a", "A"), P("b", "B"))), None)
+    val signature2 = S("", Nil, List(List(P("a", "Int"), P("b", "Any"))), None)
+
+    code"""case class Two[A, B](a: A, b: B)
+          |object Main {
+          |  (null: Any) match {
+          |    case Two(1, $m1) =>
+          |    case Option(5) =>
+          |  }
+          |  Two(1, null: Any) match {
+          |    case Two(x, $m2)
+          |  }
+          |
+          |}
+          """
+      .signatureHelp(m1, List(signature), Some(0), 1)
+      .signatureHelp(m2, List(signature2), Some(0), 1)
+  }
+
+  @Test def sequenceMatchUnapply: Unit = {
+    val signatureSeq = S("", Nil, List(List(P("", "Seq[Int]"))), None)
+    // FIXME `Any` should be `Int`
+    val signatureList = S("", Nil, List(List(P("", "Seq[Any]"))), None)
+    val signatureVariadicExtractor = S("", Nil, List(List(P("", "Int"), P("","List[Int @uncheckedVariance]"))), None)
+
+    code"""case class Two[A, B](a: A, b: B)
+          |object Main {
+          |  Seq(1,2,3) match {
+          |    case Seq($m2) =>
+          |    case List($m3) =>
+          |    case h$m4 :: t$m5 =>
+          |  }
+          |}
+          """
+      .signatureHelp(m2, List(signatureSeq), Some(0), 0)
+      .signatureHelp(m3, List(signatureList), Some(0), 0)
+      .signatureHelp(m4, List(signatureVariadicExtractor), Some(0), 0)
+      .signatureHelp(m5, List(signatureVariadicExtractor), Some(0), 1)
+  }
+
   @Test def productTypeClassMatch: Unit = {
     val signature = S("", Nil, List(List(P("", "String"), P("", "String"))), None)
 
@@ -254,7 +325,7 @@ class SignatureHelpTest {
       .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
-  @Test def sequenceMatch: Unit = {
+  @Test def customSequenceMatch: Unit = {
     val signature = S("", Nil, List(List(P("", "Seq[Char]"))), None)
 
     code"""object CharList:

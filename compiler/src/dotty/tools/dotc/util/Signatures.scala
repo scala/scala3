@@ -10,8 +10,9 @@ import core.Flags
 import core.NameOps.isUnapplyName
 import core.Names._
 import core.Types._
-import util.Spans.Span
 import core.Symbols.NoSymbol
+import interactive.Interactive
+import util.Spans.Span
 import reporting._
 
 
@@ -41,6 +42,11 @@ object Signatures {
     def show: String = if name.nonEmpty then s"$name: $tpe" else tpe
   }
 
+  def signatureHelp(pos: SourcePosition)(using Context): (Int, Int, List[Signature]) = {
+    val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
+    computeSignatureHelp(path, pos.span)(using Interactive.contextOfPath(path))
+  }
+
   /**
    * Extract (current parameter index, function index, functions) out of a method call.
    *
@@ -49,11 +55,11 @@ object Signatures {
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
-  def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
+  def computeSignatureHelp(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[Signature]) =
     findEnclosingApply(path, span) match
       case tpd.EmptyTree => (0, 0, Nil)
+      case Apply(fun, params) => applyCallInfo(span, params, fun)
       case UnApply(fun, _, patterns) => unapplyCallInfo(span, fun, patterns)
-      case Apply(fun, params) => callInfo(span, params, fun)
 
   /**
    * Finds enclosing application from given `path` to `span`.
@@ -75,11 +81,11 @@ object Signatures {
       case direct :: _ => direct
     }
 
-  def callInfo(
+  private def applyCallInfo(
     span: Span,
     params: List[tpd.Tree],
     fun: tpd.Tree
-  )(using Context): (Int, Int, List[SingleDenotation]) =
+  )(using Context): (Int, Int, List[Signature]) =
     val (alternativeIndex, alternatives) = fun.tpe match {
       case err: ErrorType =>
         val (alternativeIndex, alternatives) = alternativesFromError(err, params) match {
@@ -101,14 +107,14 @@ object Signatures {
       case -1 => (params.length - 1 max 0) + curriedArguments
       case n => n + curriedArguments
     }
-
-    (paramIndex, alternativeIndex, alternatives)
+    val alternativeSignatures = alternatives.flatMap(toSignature(_, false))
+    (paramIndex, alternativeIndex, alternativeSignatures)
 
   private def unapplyCallInfo(
     span: Span,
     fun: tpd.Tree,
     patterns: List[tpd.Tree]
-  )(using Context): (Int, Int, List[SingleDenotation]) =
+  )(using Context): (Int, Int, List[Signature]) =
     val patternPosition = patterns.indexWhere(_.span.contains(span))
     val activeParameter = extractParamTypess(fun.tpe.finalResultType.widen).headOption.map { params =>
       (patternPosition, patterns.length) match
@@ -117,44 +123,45 @@ object Signatures {
         case _ => (params.size - 1) min patternPosition max 0 // handle unapplySeq to always highlight Seq[A] on elements
     }.getOrElse(-1)
 
-    val appliedDenot = fun.symbol.asSingleDenotation.mapInfo(_ => fun.tpe) :: Nil
-    (activeParameter, 0, appliedDenot)
+    // Handle undefined type parameters
+    val appliedDenot = fun match
+      case TypeApply(_, Bind(_, _) :: _) => fun.symbol.asSingleDenotation
+      case _ => fun.symbol.asSingleDenotation.mapInfo(_ => fun.tpe)
+
+    val signature = toSignature(appliedDenot, true).toList
+    (activeParameter, 0, signature)
 
   private def isTuple(tree: tpd.Tree)(using Context): Boolean =
     tree.symbol != NoSymbol && ctx.definitions.isTupleClass(tree.symbol.owner.companionClass)
 
-  private def extractParamTypess(resultType: Type)(using Context): List[List[Type]] =
+  private def extractParamTypess(resultType: Type, isUnapplySeq: Boolean = false)(using Context): List[List[Type]] =
     resultType match {
       // Reference to a type which is not a type class
-      case ref: TypeRef if !ref.symbol.isPrimitiveValueClass =>
-        getExtractorMembers(ref)
-      // Option or Some applied type. There is special syntax for multiple returned arguments:
-      //   Option[TupleN] and Option[Seq],
-      // We are not intrested in them, instead we extract proper type parameters from the Option type parameter.
+      case ref: TypeRef if !ref.symbol.isPrimitiveValueClass => getExtractorMembers(ref)
+      // Option or Some applied type. There is special syntax for multiple returned arguments: Option[TupleN]
+      // We are not intrested in it, instead we extract proper type parameters from the Option type parameter.
       case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
           if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
         tycon match
-          case TypeRef(_, cls) if cls == ctx.definitions.SeqClass => List(List(appliedType))
-          case _ => List(args)
+          case typeRef: TypeRef if ctx.definitions.isTupleClass(typeRef.symbol) => List(args.map(_.stripAnnots))
+          case _ => List(List(appliedType.stripAnnots))
       // Applied type extractor. We must extract from applied type to retain type parameters
-      case appliedType: AppliedType => getExtractorMembers(appliedType)
+      case appliedType: AppliedType => getExtractorMembers(appliedType, isUnapplySeq)
       // This is necessary to extract proper result type as unapply can return other methods eg. apply
-      case MethodTpe(_, _, resultType) =>
-        extractParamTypess(resultType.widenDealias)
-      case _ =>
-        Nil
+      case MethodTpe(_, _, resultType) => extractParamTypess(resultType.widenDealias.stripAnnots, isUnapplySeq)
+      case _ => Nil
     }
 
   // Returns extractors from given type. In case if there are no extractor methods it fallbacks to get method
-  private def getExtractorMembers(resultType: Type)(using Context): List[List[Type]] =
+  private def getExtractorMembers(resultType: Type, isUnapplySeq: Boolean = false)(using Context): List[List[Type]] =
     val productAccessors = resultType.memberDenots(
       underscoreMembersFilter,
       (name, buf) => buf += resultType.member(name).asSingleDenotation
     )
-    val availableExtractors = if productAccessors.isEmpty then
-      List(resultType.member(core.Names.termName("get")))
-    else
-      productAccessors
+    val availableExtractors = (productAccessors.isEmpty, isUnapplySeq) match
+      case (_, true) => List(resultType.member(core.Names.termName("drop")))
+      case (true, false) => List(resultType.member(core.Names.termName("get")))
+      case _  => productAccessors
     List(availableExtractors.map(_.info.finalResultType.stripAnnots).toList)
 
   object underscoreMembersFilter extends NameFilter {
@@ -162,7 +169,7 @@ object Signatures {
     def isStable = true
   }
 
-  def toSignature(denot: SingleDenotation)(using Context): Option[Signature] = {
+  def toSignature(denot: SingleDenotation, isUnapply: Boolean = false)(using Context): Option[Signature] = {
     val symbol = denot.symbol
     val docComment = ParsedComment.docOf(symbol)
 
@@ -203,7 +210,7 @@ object Signatures {
         case other => other
 
       val paramNames = extractParamNamess(resultType).flatten
-      val paramTypes = extractParamTypess(resultType).flatten
+      val paramTypes = extractParamTypess(resultType, denot.name == core.Names.termName("unapplySeq")).flatten
 
       if paramNames.length == paramTypes.length then
         (paramNames zip paramTypes).map((name, info) => Param(name.show, info.show))
@@ -213,7 +220,7 @@ object Signatures {
     }
 
     denot.info.stripPoly match {
-      case tpe if denot.name.isUnapplyName =>
+      case tpe if isUnapply =>
         val params = toUnapplyParamss(tpe)
         if params.nonEmpty then
           Some(Signature("", Nil, List(params), None))
