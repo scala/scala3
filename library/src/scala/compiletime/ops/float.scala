@@ -8,7 +8,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type +[+X <: Float, +Y <: Float] <: Float
+  type +[X <: Float, Y <: Float] <: Float
 
   /** Subtraction of two `Float` singleton types.
    *  ```scala
@@ -16,7 +16,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type -[+X <: Float, +Y <: Float] <: Float
+  type -[X <: Float, Y <: Float] <: Float
 
   /** Multiplication of two `Float` singleton types.
    *  ```scala
@@ -24,7 +24,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type *[+X <: Float, +Y <: Float] <: Float
+  type *[X <: Float, Y <: Float] <: Float
 
   /** Integer division of two `Float` singleton types.
    *  ```scala
@@ -32,7 +32,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type /[+X <: Float, +Y <: Float] <: Float
+  type /[X <: Float, Y <: Float] <: Float
 
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
@@ -40,7 +40,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type %[+X <: Float, +Y <: Float] <: Float
+  type %[X <: Float, Y <: Float] <: Float
 
   /** Less-than comparison of two `Float` singleton types.
    *  ```scala
@@ -49,7 +49,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type <[+X <: Float, +Y <: Float] <: Boolean
+  type <[X <: Float, Y <: Float] <: Boolean
 
   /** Greater-than comparison of two `Float` singleton types.
    *  ```scala
@@ -58,7 +58,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type >[+X <: Float, +Y <: Float] <: Boolean
+  type >[X <: Float, Y <: Float] <: Boolean
 
   /** Greater-or-equal comparison of two `Float` singleton types.
    *  ```scala
@@ -67,7 +67,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type >=[+X <: Float, +Y <: Float] <: Boolean
+  type >=[X <: Float, Y <: Float] <: Boolean
 
   /** Less-or-equal comparison of two `Float` singleton types.
    *  ```scala
@@ -76,7 +76,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type <=[+X <: Float, +Y <: Float] <: Boolean
+  type <=[X <: Float, Y <: Float] <: Boolean
 
   /** Absolute value of an `Float` singleton type.
    *  ```scala
@@ -84,7 +84,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type Abs[+X <: Float] <: Float
+  type Abs[X <: Float] <: Float
 
   /** Negation of an `Float` singleton type.
    *  ```scala
@@ -93,7 +93,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type Negate[+X <: Float] <: Float
+  type Negate[X <: Float] <: Float
 
   /** Minimum of two `Float` singleton types.
    *  ```scala
@@ -101,7 +101,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type Min[+X <: Float, +Y <: Float] <: Float
+  type Min[X <: Float, Y <: Float] <: Float
 
   /** Maximum of two `Float` singleton types.
    *  ```scala
@@ -109,7 +109,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type Max[+X <: Float, +Y <: Float] <: Float
+  type Max[X <: Float, Y <: Float] <: Float
 
   /** Int conversion of a `Float` singleton type.
    *  ```scala
@@ -117,7 +117,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type ToInt[+X <: Float] <: Int
+  type ToInt[X <: Float] <: Int
 
   /** Long conversion of a `Float` singleton type.
    *  ```scala
@@ -125,7 +125,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type ToLong[+X <: Float] <: Long
+  type ToLong[X <: Float] <: Long
 
   /** Double conversion of a `Float` singleton type.
    *  ```scala
@@ -133,4 +133,4 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type ToDouble[+X <: Float] <: Double
+  type ToDouble[X <: Float] <: Double

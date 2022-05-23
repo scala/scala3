@@ -15,7 +15,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type S[+N <: Long] <: Long
+  type S[N <: Long] <: Long
 
   /** Addition of two `Long` singleton types.
    *  ```scala
@@ -23,7 +23,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type +[+X <: Long, +Y <: Long] <: Long
+  type +[X <: Long, Y <: Long] <: Long
 
   /** Subtraction of two `Long` singleton types.
    *  ```scala
@@ -31,7 +31,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type -[+X <: Long, +Y <: Long] <: Long
+  type -[X <: Long, Y <: Long] <: Long
 
   /** Multiplication of two `Long` singleton types.
    *  ```scala
@@ -39,7 +39,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type *[+X <: Long, +Y <: Long] <: Long
+  type *[X <: Long, Y <: Long] <: Long
 
   /** Integer division of two `Long` singleton types.
    *  ```scala
@@ -47,7 +47,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type /[+X <: Long, +Y <: Long] <: Long
+  type /[X <: Long, Y <: Long] <: Long
 
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
@@ -55,7 +55,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type %[+X <: Long, +Y <: Long] <: Long
+  type %[X <: Long, Y <: Long] <: Long
 
   /** Binary left shift of `X` by `Y`.
    *  ```scala
@@ -63,7 +63,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type <<[+X <: Long, +Y <: Long] <: Long
+  type <<[X <: Long, Y <: Long] <: Long
 
   /** Binary right shift of `X` by `Y`.
    *  ```scala
@@ -71,7 +71,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type >>[+X <: Long, +Y <: Long] <: Long
+  type >>[X <: Long, Y <: Long] <: Long
 
   /** Binary right shift of `X` by `Y`, filling the left with zeros.
    *  ```scala
@@ -79,7 +79,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type >>>[+X <: Long, +Y <: Long] <: Long
+  type >>>[X <: Long, Y <: Long] <: Long
 
   /** Bitwise xor of `X` and `Y`.
    *  ```scala
@@ -87,7 +87,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type ^[+X <: Long, +Y <: Long] <: Long
+  type ^[X <: Long, Y <: Long] <: Long
 
   /** Less-than comparison of two `Long` singleton types.
    *  ```scala
@@ -96,7 +96,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type <[+X <: Long, +Y <: Long] <: Boolean
+  type <[X <: Long, Y <: Long] <: Boolean
 
   /** Greater-than comparison of two `Long` singleton types.
    *  ```scala
@@ -105,7 +105,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type >[+X <: Long, +Y <: Long] <: Boolean
+  type >[X <: Long, Y <: Long] <: Boolean
 
   /** Greater-or-equal comparison of two `Long` singleton types.
    *  ```scala
@@ -114,7 +114,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type >=[+X <: Long, +Y <: Long] <: Boolean
+  type >=[X <: Long, Y <: Long] <: Boolean
 
   /** Less-or-equal comparison of two `Long` singleton types.
    *  ```scala
@@ -123,7 +123,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type <=[+X <: Long, +Y <: Long] <: Boolean
+  type <=[X <: Long, Y <: Long] <: Boolean
 
   /** Bitwise and of `X` and `Y`.
    *  ```scala
@@ -132,7 +132,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type BitwiseAnd[+X <: Long, +Y <: Long] <: Long
+  type BitwiseAnd[X <: Long, Y <: Long] <: Long
 
   /** Bitwise or of `X` and `Y`.
    *  ```scala
@@ -140,7 +140,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type BitwiseOr[+X <: Long, +Y <: Long] <: Long
+  type BitwiseOr[X <: Long, Y <: Long] <: Long
 
   /** Absolute value of an `Long` singleton type.
    *  ```scala
@@ -148,7 +148,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type Abs[+X <: Long] <: Long
+  type Abs[X <: Long] <: Long
 
   /** Negation of an `Long` singleton type.
    *  ```scala
@@ -157,7 +157,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type Negate[+X <: Long] <: Long
+  type Negate[X <: Long] <: Long
 
   /** Minimum of two `Long` singleton types.
    *  ```scala
@@ -165,7 +165,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type Min[+X <: Long, +Y <: Long] <: Long
+  type Min[X <: Long, Y <: Long] <: Long
 
   /** Maximum of two `Long` singleton types.
    *  ```scala
@@ -173,7 +173,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type Max[+X <: Long, +Y <: Long] <: Long
+  type Max[X <: Long, Y <: Long] <: Long
 
   /** Number of zero bits preceding the highest-order ("leftmost")
    * one-bit in the two's complement binary representation of the specified `Long` singleton type.
@@ -187,7 +187,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type NumberOfLeadingZeros[+X <: Long] <: Int
+  type NumberOfLeadingZeros[X <: Long] <: Int
 
   /** Int conversion of a `Long` singleton type.
    *  ```scala
@@ -195,7 +195,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type ToInt[+X <: Long] <: Int
+  type ToInt[X <: Long] <: Int
 
   /** Float conversion of a `Long` singleton type.
    *  ```scala
@@ -203,7 +203,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type ToFloat[+X <: Long] <: Float
+  type ToFloat[X <: Long] <: Float
 
   /** Double conversion of a `Long` singleton type.
    *  ```scala
@@ -211,4 +211,4 @@ object long:
    *  ```
    *  @syntax markdown
    */
-  type ToDouble[+X <: Long] <: Double
+  type ToDouble[X <: Long] <: Double

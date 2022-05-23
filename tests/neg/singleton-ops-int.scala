@@ -116,12 +116,4 @@ object Test {
 
   val t83: ToDouble[1] = 1.0
   val t84: ToDouble[2] = 2 // error
-
-  // Singleton operations are covariant.
-  type Plus2[X <: Int] = X + 2
-  val x: Int = 5
-  val xPlus2: Plus2[x.type] = (x + 2).asInstanceOf
-  summon[xPlus2.type + 1 <:< Plus2[x.type] + 1]
-  def mult(x: Int, y: Int): x.type * y.type = (x * y).asInstanceOf
-  val y: x.type * x.type * x.type = mult(mult(x, x), x)
 }

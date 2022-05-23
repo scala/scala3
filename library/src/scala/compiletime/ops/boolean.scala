@@ -10,7 +10,7 @@ object boolean:
    *  ```
    *  @syntax markdown
    */
-  type ![+X <: Boolean] <: Boolean
+  type ![X <: Boolean] <: Boolean
 
   /** Exclusive disjunction of two `Boolean` singleton types.
    *  ```scala
@@ -19,7 +19,7 @@ object boolean:
    *  ```
    *  @syntax markdown
    */
-  type ^[+X <: Boolean, +Y <: Boolean] <: Boolean
+  type ^[X <: Boolean, Y <: Boolean] <: Boolean
 
   /** Conjunction of two `Boolean` singleton types.
    *  ```scala
@@ -28,7 +28,7 @@ object boolean:
    *  ```
    *  @syntax markdown
    */
-  type &&[+X <: Boolean, +Y <: Boolean] <: Boolean
+  type &&[X <: Boolean, Y <: Boolean] <: Boolean
 
   /** Disjunction of two `Boolean` singleton types.
    *  ```scala
@@ -37,4 +37,4 @@ object boolean:
    *  ```
    *  @syntax markdown
    */
-  type ||[+X <: Boolean, +Y <: Boolean] <: Boolean
+  type ||[X <: Boolean, Y <: Boolean] <: Boolean
