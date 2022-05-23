@@ -49,7 +49,11 @@ trait ExprMap:
           tree
         case tree @ Apply(fun, args) =>
           val MethodType(_, tpes, _) = fun.tpe.widen: @unchecked
-          Apply.copy(tree)(transformTerm(fun, TypeRepr.of[Any])(owner), transformTerms(args, tpes)(owner))
+          val tpes1 = tpes.map {
+            case ByNameType(tpe) => tpe
+            case tpe => tpe
+          }
+          Apply.copy(tree)(transformTerm(fun, TypeRepr.of[Any])(owner), transformTerms(args, tpes1)(owner))
         case TypeApply(fun, args) =>
           TypeApply.copy(tree)(transformTerm(fun, TypeRepr.of[Any])(owner), args)
         case _: Literal =>
