@@ -6,7 +6,7 @@ package dotty.tools.dotc.reporting
 enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMessageID]:
 
   // IMPORTANT: Add new IDs only at the end and never remove IDs
-  case LazyErrorId // // errorNumber: -2
+
   case NoExplanationID // errorNumber: -1
 
   case EmptyCatchOrFinallyBlockID extends ErrorMessageID(isActive = false) // errorNumber: 0
@@ -19,8 +19,8 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case TypeMismatchID // errorNumber: 7
   case NotAMemberID // errorNumber: 8
   case EarlyDefinitionsNotSupportedID // errorNumber: 9
-  case TopLevelImplicitClassID extends ErrorMessageID(isActive = false) // errorNumber: 10 
-  case ImplicitCaseClassID // errorNumber: 11 
+  case TopLevelImplicitClassID extends ErrorMessageID(isActive = false) // errorNumber: 10
+  case ImplicitCaseClassID // errorNumber: 11
   case ImplicitClassPrimaryConstructorArityID // errorNumber: 12
   case ObjectMayNotHaveSelfTypeID // errorNumber: 13
   case TupleTooLongID extends ErrorMessageID(isActive = false) // errorNumber: 14
@@ -97,7 +97,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case FunctionTypeNeedsNonEmptyParameterListID // errorNumber: 85
   case WrongNumberOfParametersID // errorNumber: 86
   case DuplicatePrivateProtectedQualifierID // errorNumber: 87
-  case ExpectedStartOfTopLevelDefinitionID // errorNumber: 88 
+  case ExpectedStartOfTopLevelDefinitionID // errorNumber: 88
   case MissingReturnTypeWithReturnStatementID // errorNumber: 89
   case NoReturnFromInlineableID // errorNumber: 90
   case ReturnOutsideMethodDefinitionID // errorNumber: 91
@@ -180,12 +180,12 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case ImplicitSearchTooLargeID // errorNumber: 168
   case TargetNameOnTopLevelClassID // errorNumber: 169
 
-  def errorNumber = ordinal - 2
+  def errorNumber = ordinal - 1
 
 object ErrorMessageID:
   def fromErrorNumber(n: Int): Option[ErrorMessageID] =
-    val enumId = n + 2
-    if enumId >= 2 && enumId < ErrorMessageID.values.length then
+    val enumId = n + 1
+    if enumId >= 1 && enumId < ErrorMessageID.values.length then
       Some(fromOrdinal(enumId))
     else
       None
