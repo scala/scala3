@@ -4,4 +4,6 @@
    |          Cannot prove the argument is fully initialized.
    |
    |          Promoting the value to fully initialized failed due to the following problem:
-   |          Cannot prove that the field val outer is fully initialized.
+   |          Cannot prove that the field val outer is fully initialized. Calling trace:
+   |          -> println(b)      // error	[ promotion-loop.scala:16 ]
+   |                     ^

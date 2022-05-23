@@ -4,3 +4,5 @@
   |        Cannot prove the argument is fully initialized. Calling trace:
   |        -> val result = updateThenCompare(5)	[ default-this.scala:11 ]
   |                        ^^^^^^^^^^^^^^^^^^^^
+  |        -> compare() // error	[ default-this.scala:9 ]
+  |           ^^^^^^^^^
