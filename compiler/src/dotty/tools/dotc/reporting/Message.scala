@@ -43,7 +43,7 @@ object Message {
   * Instead use the `persist` method to create an instance that does not keep a
   * reference to these contexts.
   *
-  * @param errorId a unique id identifying the message, this will later be
+  * @param errorId a unique id identifying the message, this will be
   *                used to reference documentation online
   */
 abstract class Message(val errorId: ErrorMessageID) { self =>

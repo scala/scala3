@@ -1,6 +1,7 @@
 package dotty.tools.dotc.reporting
 
-/** Unique IDs identifying the messages
+/** Unique IDs identifying the messages, this will be used to reference documentation online.
+ *
  *  @param isActive Whether or not the compile still emits this ErrorMessageID
  **/
 enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMessageID]:
