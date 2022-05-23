@@ -1,12 +1,15 @@
 package dotty.tools.dotc.reporting
 
+//////////////////////////////////////////////////////////////////////////
+// IMPORTANT                                                            //
+// Only add new IDs at end of the enumeration list and never remove IDs //
+//////////////////////////////////////////////////////////////////////////
+
 /** Unique IDs identifying the messages, this will be used to reference documentation online.
  *
  *  @param isActive Whether or not the compile still emits this ErrorMessageID
  **/
 enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMessageID]:
-
-  // IMPORTANT: Add new IDs only at the end and never remove IDs
 
   case NoExplanationID // errorNumber: -1
 
