@@ -870,7 +870,7 @@ class ClassfileParser(
 
   /** Parse inner classes. Expects `in.bp` to point to the superclass entry.
    *  Restores the old `bp`.
-   *  @return true iff classfile is from Scala, so no Java info needs to be read.
+   *  @return Some(unpickler) iff classfile is from Scala, so no Java info needs to be read.
    */
   def unpickleOrParseInnerClasses()(using ctx: Context, in: DataReader): Option[Embedded] = {
     val oldbp = in.bp
@@ -999,7 +999,7 @@ class ClassfileParser(
         // attribute isn't, this classfile is a compilation artifact.
         return Some(NoEmbedded)
 
-      if (scan(tpnme.RuntimeVisibleAnnotationATTR) || scan(tpnme.RuntimeInvisibleAnnotationATTR)) {
+      if (scan(tpnme.ScalaSignatureATTR) && scan(tpnme.RuntimeVisibleAnnotationATTR)) {
         val attrLen = in.nextInt
         val nAnnots = in.nextChar
         var i = 0
@@ -1010,14 +1010,10 @@ class ClassfileParser(
           while (j < nArgs) {
             val argName = pool.getName(in.nextChar)
             if (argName.name == nme.bytes) {
-              if (attrClass == defn.ScalaSignatureAnnot)
+              if attrClass == defn.ScalaSignatureAnnot then
                 return unpickleScala(parseScalaSigBytes)
-              else if (attrClass == defn.ScalaLongSignatureAnnot)
+              else if attrClass == defn.ScalaLongSignatureAnnot then
                 return unpickleScala(parseScalaLongSigBytes)
-              else if (attrClass == defn.TASTYSignatureAnnot)
-                return unpickleTASTY(parseScalaSigBytes)
-              else if (attrClass == defn.TASTYLongSignatureAnnot)
-                return unpickleTASTY(parseScalaLongSigBytes)
             }
             parseAnnotArg(skip = true)
             j += 1
