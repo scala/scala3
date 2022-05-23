@@ -1066,37 +1066,6 @@ import transform.SymUtils._
            |"""
   }
 
-  class DanglingThisInPath()(using Context) extends SyntaxMsg(DanglingThisInPathID) {
-    def msg = em"""Expected an additional member selection after the keyword ${hl("this")}"""
-    def explain =
-      val contextCode: String =
-        """  trait Outer {
-          |    val member: Int
-          |    type Member
-          |    trait Inner {
-          |      ...
-          |    }
-          |  }"""
-      val importCode: String =
-        """  import Outer.this.member
-          |  //               ^^^^^^^"""
-      val typeCode: String =
-        """  type T = Outer.this.Member
-          |  //                 ^^^^^^^"""
-      em"""|Paths of imports and type selections must not end with the keyword ${hl("this")}.
-           |
-           |Maybe you forgot to select a member of ${hl("this")}? As an example, in the
-           |following context:
-           |${contextCode}
-           |
-           |- This is a valid import expression using a path
-           |${importCode}
-           |
-           |- This is a valid type using a path
-           |${typeCode}
-           |"""
-  }
-
   class OverridesNothing(member: Symbol)(using Context)
   extends DeclarationMsg(OverridesNothingID) {
     def msg = em"""${member} overrides nothing"""
