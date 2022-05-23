@@ -4,13 +4,13 @@
   |    Incompatible combinations of tabs and spaces in indentation prefixes.
   |    Previous indent : 2 tabs
   |    Latest indent   : 4 spaces
--- Error: tests/neg/spaces-vs-tabs.scala:6:8 ---------------------------------------------------------------------------
+-- Error: tests/neg/spaces-vs-tabs.scala:6:3 ---------------------------------------------------------------------------
 6 |  	println(3)   // error
   |  	^
   |  	Incompatible combinations of tabs and spaces in indentation prefixes.
   |  	Previous indent : 2 tabs
   |  	Latest indent   : 2 spaces, 1 tab
--- Error: tests/neg/spaces-vs-tabs.scala:7:2 ---------------------------------------------------------------------------
+-- Error: tests/neg/spaces-vs-tabs.scala:7:3 ---------------------------------------------------------------------------
 7 |	  println(4)   // error
   |	  ^
   |	  Incompatible combinations of tabs and spaces in indentation prefixes.
@@ -22,13 +22,13 @@
   | Incompatible combinations of tabs and spaces in indentation prefixes.
   | Previous indent : 2 tabs
   | Latest indent   : 1 space
--- Error: tests/neg/spaces-vs-tabs.scala:14:2 --------------------------------------------------------------------------
+-- Error: tests/neg/spaces-vs-tabs.scala:14:3 --------------------------------------------------------------------------
 14 |	  else 2 // error
    |	  ^
    |	  The start of this line does not match any of the previous indentation widths.
    |	  Indentation width of current line : 1 tab, 2 spaces
    |	  This falls between previous widths: 1 tab and 1 tab, 4 spaces
--- [E129] Potential Issue Warning: tests/neg/spaces-vs-tabs.scala:13:6 -------------------------------------------------
+-- [E129] Potential Issue Warning: tests/neg/spaces-vs-tabs.scala:13:7 -------------------------------------------------
 13 |	      1
    |	      ^
    |	      A pure expression does nothing in statement position; you may be omitting necessary parentheses
