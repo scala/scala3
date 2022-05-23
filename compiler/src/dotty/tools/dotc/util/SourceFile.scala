@@ -198,11 +198,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   def lineContent(offset: Int): String =
     content.slice(startOfLine(offset), nextLine(offset)).mkString
 
-  /** The column corresponding to `offset`, starting at 0 */
-  def column(offset: Int): Int = {
-    var idx = startOfLine(offset)
-    offset - idx
-  }
+  /** The column (index into the line) corresponding to `offset`, starting at 0 */
+  def column(offset: Int): Int =
+    offset - startOfLine(offset)
 
   /** The padding of the column corresponding to `offset`, includes tabs */
   def startColumnPadding(offset: Int): String = {
