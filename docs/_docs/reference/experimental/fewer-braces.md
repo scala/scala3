@@ -12,7 +12,8 @@ import language.experimental.fewerBraces
 ```
 Alternatively, it can be enabled with command line option `-language:experimental.fewerBraces`.
 
-This variant is more contentious and less stable than the rest of the significant indentation scheme. It allows to replace a function argument in braces by a `:` at the end of a line and indented code, similar to the convention for class bodies. It also allows to leave out braces around arguments that are multi-line function values.
+This variant is more contentious and less stable than the rest of the significant indentation scheme. It allows to replace a function argument in braces by a `:` at the end of a line and indented code, similar to the convention for class bodies. The `:` can
+optionally be followed by the parameter part of a function literal.
 
 ## Using `:` At End Of Line
 
@@ -50,34 +51,31 @@ val firstLine = files.get(fileName).fold:
 
 ## Lambda Arguments Without Braces
 
-Braces can also be omitted around multiple line function value arguments:
+The `:` can optionally be followed by the parameter part of a function literal:
 ```scala
-val xs = elems.map x =>
+val xs = elems.map: x =>
   val y = x - 1
   y * y
 xs.foldLeft (x, y) =>
   x + y
 ```
-Braces can be omitted if the lambda starts with a parameter list and `=>` or `=>?` at the end of one line and it has an indented body on the following lines.
+Braces can be omitted if the lambda starts with a parameter list and an arrow symbol `=>` or `?=>`.
+The arrow is followed on the next line(s) by the body of the functional literal which must be indented
+relative to the previous line. 
 
 ## Syntax Changes
 
+As a lexical change, a `:` at the end of a line is now always treated as a
+"colon at end of line" token.
+
+The context free grammar changes as follows:
 ```
 SimpleExpr       ::=  ...
-                   |  SimpleExpr `:` IndentedArgument
+                   |  SimpleExpr ‘:’ ColonArgument
+
                    |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedArgument
-InfixExpr        ::=  ...
-                   |  InfixExpr id `:` IndentedArgument
-IndentedArgument ::=  indent (CaseClauses | Block) outdent
-```
-
-Note that a lambda argument must have the `=>` at the end of a line for braces
-to be optional. For instance, the following would also be incorrect:
-
-```scala
-  xs.map x => x + 1   // error: braces or parentheses are required
-```
-The lambda has to be enclosed in braces or parentheses:
-```scala
-  xs.map(x => x + 1)  // ok
+ColonArgument    ::=  indent CaseClauses | Block outdent
+                    |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
+                    |  HkTypeParamClause ‘=>’ ColonArgBody
+ColonArgBody     ::=  indent (CaseClauses | Block) outdent
 ```
