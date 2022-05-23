@@ -936,24 +936,17 @@ object Parsers {
 
     /** Is the token sequence following the current `:` token classified as a lambda?
      *  This is the case if the input starts with an identifier, a wildcard, or
-     *  something enclosed in (...) or [...], and this is followed by a `=>` or `?=>`
-     *  and an INDENT.
+     *  something enclosed in (...) or [...], and this is followed by a `=>` or `?=>`.
      */
     def followingIsLambdaAfterColon(): Boolean =
-      val lookahead = in.LookaheadScanner(allowIndent = true)
-      def isArrowIndent() =
-        lookahead.isArrow
-        && {
-          lookahead.nextToken()
-          lookahead.token == INDENT
-        }
+      val lookahead = in.LookaheadScanner()
       lookahead.nextToken()
       if lookahead.isIdent || lookahead.token == USCORE then
         lookahead.nextToken()
-        isArrowIndent()
+        lookahead.isArrow
       else if lookahead.token == LPAREN || lookahead.token == LBRACKET then
         lookahead.skipParens()
-        isArrowIndent()
+        lookahead.isArrow
       else false
 
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
@@ -2255,7 +2248,13 @@ object Parsers {
           accept(ARROW)
         val body =
           if location == Location.InBlock then block()
-          else if location == Location.InColonArg && in.token == INDENT then blockExpr()
+          else if location == Location.InColonArg then
+            if in.token == INDENT then
+              blockExpr()
+            else
+              in.insertMaxIndent()
+              try casesOrBlock(simplify = true)
+              finally accept(OUTDENT)
           else expr()
         Function(params, body)
       }
@@ -2312,6 +2311,7 @@ object Parsers {
      *                 |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
      *                 |  HkTypeParamClause ‘=>’ ColonArgBody
      *  ColonArgBody  ::= indent (CaseClauses | Block) outdent
+     *                 |  <silent-indent> (CaseClauses | Block) outdent   -- silent-indent is inserted by Scanner if no real indent is found
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’
      */
@@ -2502,11 +2502,12 @@ object Parsers {
      */
     def blockExpr(): Tree = atSpan(in.offset) {
       val simplify = in.token == INDENT
-      inDefScopeBraces {
-        if (in.token == CASE) Match(EmptyTree, caseClauses(() => caseClause()))
-        else block(simplify)
-      }
+      inDefScopeBraces { casesOrBlock(simplify) }
     }
+
+    def casesOrBlock(simplify: Boolean): Tree =
+      if (in.token == CASE) Match(EmptyTree, caseClauses(() => caseClause()))
+      else block(simplify)
 
     /** Block ::= BlockStatSeq
      *  @note  Return tree does not have a defined span.

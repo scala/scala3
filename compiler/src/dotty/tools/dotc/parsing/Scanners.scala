@@ -618,9 +618,13 @@ object Scanners {
                 if next.token != COLON then
                   handleNewIndentWidth(r.enclosing, ir =>
                     errorButContinue(
-                      i"""The start of this line does not match any of the previous indentation widths.
-                          |Indentation width of current line : $nextWidth
-                          |This falls between previous widths: ${ir.width} and $lastWidth"""))
+                      if r.indentWidth == IndentWidth.Max then
+                        i"""Enclosing expression is nested in a one line lambda expression following `:`.
+                           |It may not spill over to a new line."""
+                      else
+                        i"""The start of this line does not match any of the previous indentation widths.
+                            |Indentation width of current line : $nextWidth
+                            |This falls between previous widths: ${ir.width} and $lastWidth"""))
               case r =>
                 if skipping then
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
@@ -661,7 +665,9 @@ object Scanners {
           currentRegion = Indented(nextWidth, COLONEOL, currentRegion)
           offset = next.offset
           token = INDENT
-    end observeIndented
+
+    def insertMaxIndent() =
+      currentRegion = Indented(IndentWidth.Max, ARROW, currentRegion)
 
     /** Insert an <outdent> token if next token closes an indentation region.
      *  Exception: continue if indentation region belongs to a `match` and next token is `case`.
@@ -1651,25 +1657,29 @@ object Scanners {
   enum IndentWidth {
     case Run(ch: Char, n: Int)
     case Conc(l: IndentWidth, r: Run)
+    case Max // delimits one-line lambdas following a `:`
 
-    def <= (that: IndentWidth): Boolean = this match {
+    def <= (that: IndentWidth): Boolean = this match
       case Run(ch1, n1) =>
-        that match {
+        that match
           case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
           case Conc(l, r) => this <= l
-        }
+          case Max => true
       case Conc(l1, r1) =>
         that match {
           case Conc(l2, r2) => l1 == l2 && r1 <= r2
+          case Max => true
           case _ => false
         }
-    }
+      case Max =>
+        that == Max
 
     def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
 
     def toPrefix: String = this match {
       case Run(ch, n) => ch.toString * n
       case Conc(l, r) => l.toPrefix ++ r.toPrefix
+      case Max => "(max >>)"
     }
 
     override def toString: String = {
@@ -1681,6 +1691,7 @@ object Scanners {
       this match {
         case Run(ch, n) => s"$n ${kind(ch)}${if (n == 1) "" else "s"}"
         case Conc(l, r) => s"$l, $r"
+        case Max => "(max >>)"
       }
     }
   }

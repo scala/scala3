@@ -261,6 +261,7 @@ ColonArgument     ::=  indent CaseClauses | Block outdent
                     |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
                     |  HkTypeParamClause ‘=>’ ColonArgBody
 ColonArgBody      ::=  indent (CaseClauses | Block) outdent
+                    |  <silent-indent> (CaseClauses | Block) outdent            -- silent-indent is inserted by Lexer if no real indent is found
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
