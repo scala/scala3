@@ -422,11 +422,10 @@ object Semantic {
 
     /** Stop on first found error */
     def stopEarly(fn: Reporter ?=> Unit): List[Error] =
-      // use promotion reporter to stop the analysis on the first error
-      val promotionReporter: Reporter = new StopEarlyReporter
+      val reporter: Reporter = new StopEarlyReporter
 
       try
-        fn(using promotionReporter)
+        fn(using reporter)
         Nil
       catch case ex: ErrorFound =>
         ex.error :: Nil
@@ -629,7 +628,7 @@ object Semantic {
             case typeParamRef: TypeParamRef =>
               val bounds = typeParamRef.underlying.bounds
               val isWithinBounds = bounds.lo <:< defn.NothingType && defn.AnyType <:< bounds.hi
-              def otherParamContains = allParamTypes.exists { param => param != info && param.typeSymbol != defn.ClassTagClass && info.occursIn(param) }
+              def otherParamContains = allParamTypes.exists { param => param != typeParamRef && param.typeSymbol != defn.ClassTagClass && typeParamRef.occursIn(param) }
               // A non-hot method argument is allowed if the corresponding parameter type is a
               // type parameter T with Any as its upper bound and Nothing as its lower bound.
               // the other arguments should either correspond to a parameter type that is T
@@ -652,12 +651,12 @@ object Semantic {
             if receiver.typeSymbol.isStaticOwner then
               val (errors, allArgsPromote) = checkArgsWithParametricity()
               if allArgsPromote then
-                Hot
+                Hot: Value
               else if errors.nonEmpty then
                 for error <- errors do reporter.report(error)
-                Hot
+                Hot: Value
               else
-                Cold
+                Cold: Value
             else
               checkArgs
               Hot
