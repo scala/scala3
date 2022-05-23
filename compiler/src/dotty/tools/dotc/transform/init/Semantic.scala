@@ -398,29 +398,25 @@ object Semantic {
 
   /** Error reporting */
   trait Reporter:
-    def errors: List[Error]
     def report(err: Error): Unit
 
   object Reporter:
-    class BufferReporter extends Reporter:
-      val buf = new mutable.ArrayBuffer[Error]
+    class BufferedReporter extends Reporter:
+      private val buf = new mutable.ArrayBuffer[Error]
       def errors = buf.toList
       def report(err: Error) = buf += err
 
     class ErrorFound(val error: Error) extends Exception
     class StopEarlyReporter extends Reporter:
       def report(err: Error) = throw new ErrorFound(err)
-      def errors = ???
-
-    def fresh(): Reporter = new BufferReporter
 
     /** Capture all errors and return as a list */
     def errorsIn(fn: Reporter ?=> Unit): List[Error] =
-      val reporter = Reporter.fresh()
+      val reporter = new BufferedReporter
       fn(using reporter)
       reporter.errors.toList
 
-    /** Stop on first found error */
+    /** Stop on first error */
     def stopEarly(fn: Reporter ?=> Unit): List[Error] =
       val reporter: Reporter = new StopEarlyReporter
 
@@ -793,10 +789,9 @@ object Semantic {
         case Hot  =>
           val buffer = new mutable.ArrayBuffer[Error]
           val args2 = args.map { arg =>
-            given reporter: Reporter = Reporter.fresh()
-            arg.promote
-            buffer ++= reporter.errors
-            if reporter.errors.isEmpty then Hot
+            val errors = Reporter.errorsIn { arg.promote }
+            buffer ++= errors
+            if errors.isEmpty then Hot
             else arg.value.widenArg
           }
 
@@ -1053,7 +1048,7 @@ object Semantic {
         given Promoted = Promoted.empty
         given Trace = Trace.empty
         given Env = Env(paramValues)
-        given Reporter = Reporter.fresh()
+        given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
 
         thisRef.ensureFresh()
         log("checking " + task) { eval(tpl, thisRef, thisRef.klass) }
