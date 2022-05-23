@@ -85,9 +85,9 @@ object Errors {
       report.warning(show + stacktrace, field.srcPos)
   }
 
-  /** Promote `this` under initialization to fully-initialized */
+  /** Promote a value under initialization to fully-initialized */
   case class PromoteError(msg: String, source: Tree, trace: Seq[Tree]) extends Error {
-    def show(using Context): String = "Cannot prove that the value is fully initialized. " + msg + "."
+    def show(using Context): String = msg
   }
 
   case class AccessCold(field: Symbol, source: Tree, trace: Seq[Tree]) extends Error {
@@ -114,8 +114,8 @@ object Errors {
 
     def show(using Context): String = {
       var index = 0
-      "Cannot prove that the value is fully initialized. " + msg + ".\n" + stacktrace +
-        "\nThe unsafe promotion may cause the following problem:\n" +
+      msg + "\n" + stacktrace + "\n" +
+        "Promoting the value to fully initialized failed due to the following problem:\n" +
         errors.head.show + errors.head.stacktrace
     }
   }

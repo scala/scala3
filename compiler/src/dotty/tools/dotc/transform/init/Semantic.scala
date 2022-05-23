@@ -918,20 +918,21 @@ object Semantic {
 
       case warm: Warm =>
         if promoted.contains(warm) then Nil
-        else {
+        else
           promoted.add(warm)
           val errors = warm.tryPromote(msg, source)
           if errors.nonEmpty then promoted.remove(warm)
           errors
-        }
 
       case fun @ Fun(body, thisV, klass, env) =>
         if promoted.contains(fun) then Nil
         else
           val res = withEnv(env) { eval(body, thisV, klass) }
-          val errors2 = res.value.promote(msg, source)
-          if (res.errors.nonEmpty || errors2.nonEmpty)
-            UnsafePromotion(msg, source, trace.toVector, res.errors ++ errors2) :: Nil
+          val errors =
+            if res.value == Hot then res.errors
+            else res.errors :+ PromoteError("The function return value is not fully initialized.", source, trace.toVector)
+          if (res.errors.nonEmpty || res.value != Hot)
+            UnsafePromotion(msg, source, trace.toVector, errors) :: Nil
           else
             promoted.add(fun)
             Nil
@@ -966,20 +967,24 @@ object Semantic {
 
       val buffer  = new mutable.ArrayBuffer[Error]
 
+      def checkHot(res: Result, msg: String, source: Tree): Errors =
+        if res.value == Hot || promoted.contains(res.value) then res.errors
+        else res.errors :+ PromoteError(msg, source, trace.toVector)
+
       warm.klass.baseClasses.exists { klass =>
         klass.hasSource && klass.info.decls.exists { member =>
           if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
-            if member.is(Flags.Method) then
+            if member.is(Flags.Method, butNot = Flags.Accessor) then
               val trace2 = trace.add(source)
               locally {
                 given Trace = trace2
                 val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, EmptyTree))
                 val res = warm.call(member, args, receiver = NoType, superType = NoType, source = member.defTree)
-                buffer ++= res.ensureHot(msg, source).errors
+                buffer ++= checkHot(res, "Cannot prove that the return value of " + member + " is fully initialized.", source)
               }
             else
               val res = warm.select(member, source)
-              buffer ++= res.ensureHot(msg, source).errors
+              buffer ++= checkHot(res, "Cannot prove that the field " + member + " is fully initialized.", source)
           buffer.nonEmpty
         }
       }
@@ -1076,7 +1081,7 @@ object Semantic {
 
   /** Utility definition used for better error-reporting of argument errors */
   case class ArgInfo(value: Value, source: Tree) {
-    def promote: Contextual[List[Error]] = value.promote("Only initialized values may be used as arguments", source)
+    def promote: Contextual[List[Error]] = value.promote("Cannot prove the argument is fully initialized.", source)
   }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
@@ -1206,9 +1211,9 @@ object Semantic {
         lhs match
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass)
-          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value", rhs) ++ res.errors
+          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value.", rhs) ++ res.errors
         case id: Ident =>
-          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value", rhs)
+          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value.", rhs)
 
       case closureDef(ddef) =>
         val value = Fun(ddef.rhs, thisV, klass, env)
@@ -1233,14 +1238,14 @@ object Semantic {
         else eval(arg, thisV, klass)
 
       case Match(selector, cases) =>
-        val res1 = eval(selector, thisV, klass).ensureHot("The value to be matched needs to be fully initialized", selector)
+        val res1 = eval(selector, thisV, klass).ensureHot("The value to be matched needs to be fully initialized.", selector)
         val ress = eval(cases.map(_.body), thisV, klass)
         val value = ress.map(_.value).join
         val errors = res1.errors ++ ress.flatMap(_.errors)
         Result(value, errors)
 
       case Return(expr, from) =>
-        eval(expr, thisV, klass).ensureHot("return expression may only be initialized value", expr)
+        eval(expr, thisV, klass).ensureHot("return expression may only be initialized value.", expr)
 
       case WhileDo(cond, body) =>
         val ress = eval(cond :: body :: Nil, thisV, klass)

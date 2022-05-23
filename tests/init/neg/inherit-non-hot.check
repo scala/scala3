@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/inherit-non-hot.scala:6:34 --------------------------------------------------------------------
 6 |            if b == null then b = new B(this) // error
   |                                  ^^^^^^^^^^^
-  |                        Cannot prove that the value is fully initialized. May only assign fully initialized value.
+  |                        May only assign fully initialized value.
   |                         Calling trace:
   |                        -> val c = new C	[ inherit-non-hot.scala:19 ]
   |                                   ^^^^^
@@ -10,7 +10,7 @@
   |                        -> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
   |                                        ^^^
   |
-  |                        The unsafe promotion may cause the following problem:
+  |                        Promoting the value to fully initialized failed due to the following problem:
   |                        Call method Foo.B.this.aCopy.toB on a value with an unknown initialization. Calling trace:
   |                        -> val c = new C	[ inherit-non-hot.scala:19 ]
   |                                   ^^^^^

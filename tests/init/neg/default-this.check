@@ -1,6 +1,6 @@
 -- Error: tests/init/neg/default-this.scala:9:8 ------------------------------------------------------------------------
 9 |        compare() // error
   |        ^^^^^^^
-  |Cannot prove that the value is fully initialized. Only initialized values may be used as arguments. Calling trace:
-  |-> val result = updateThenCompare(5)	[ default-this.scala:11 ]
-  |                ^^^^^^^^^^^^^^^^^^^^
+  |        Cannot prove the argument is fully initialized. Calling trace:
+  |        -> val result = updateThenCompare(5)	[ default-this.scala:11 ]
+  |                        ^^^^^^^^^^^^^^^^^^^^
