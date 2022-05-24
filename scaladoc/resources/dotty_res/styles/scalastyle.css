@@ -917,7 +917,7 @@ footer .socials {
   right: 0px;
   top: 0px;
   width: var(--toc-width);
-  height: 100%;
+  height: calc(100% - var(--footer-height));
 
   padding-top: 15vh;
   padding-right: 10px;
