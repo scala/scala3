@@ -1236,11 +1236,15 @@ object desugar {
   }
 
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
-    if !tree.mods.is(Opaque) then tree
-    else tree match
-      case TypeDef(_, bounds: TypeBoundsTree) if bounds.alias.isEmpty =>
+    def check(rhs: Tree): MemberDef = rhs match
+      case bounds: TypeBoundsTree if bounds.alias.isEmpty =>
         report.error(i"opaque type must have a right-hand side", tree.srcPos)
         tree.withMods(tree.mods.withoutFlags(Opaque))
+      case LambdaTypeTree(_, body) => check(body)
+      case _ => tree
+    if !tree.mods.is(Opaque) then tree
+    else tree match
+      case TypeDef(_, rhs) => check(rhs)
       case _ => tree
 
   /** Check that modifiers are legal for the definition `tree`.
