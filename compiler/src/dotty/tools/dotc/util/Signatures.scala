@@ -146,13 +146,16 @@ object Signatures {
         val alternativeIndex = alternatives.map(_.symbol).indexOf(funSymbol) max 0
         (alternativeIndex, alternatives)
 
-    val curriedArguments = countParams(fun, alternatives(alternativeIndex))
-    val paramIndex = params.indexWhere(_.span.contains(span)) match {
-      case -1 => (params.length - 1 max 0) + curriedArguments
-      case n => n + curriedArguments
-    }
-    val alternativeSignatures = alternatives.flatMap(toApplySignature)
-    (paramIndex, alternativeIndex, alternativeSignatures)
+    if alternativeIndex < alternatives.length then
+      val curriedArguments = countParams(fun, alternatives(alternativeIndex))
+      val paramIndex = params.indexWhere(_.span.contains(span)) match {
+        case -1 => (params.length - 1 max 0) + curriedArguments
+        case n => n + curriedArguments
+      }
+      val alternativeSignatures = alternatives.flatMap(toApplySignature)
+      (paramIndex, alternativeIndex, alternativeSignatures)
+    else
+      (0, 0, Nil)
 
   /**
    * Extracts call informatioin for function in unapply context.
