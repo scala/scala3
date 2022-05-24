@@ -280,10 +280,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     def whyNotAcceptableType(tp: Type, cls: Symbol): String = tp match
       case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
-        i"its subpart $tp is not a supported kind (either `*` or `* -> *`)"
+        i"its subpart `$tp` is not a supported kind (either `*` or `* -> *`)"
       case tp: TypeProxy    => whyNotAcceptableType(tp.underlying, cls)
-      case OrType(tp1, tp2) =>
-        Seq(tp1, tp2).map(whyNotAcceptableType(_, cls)).find(_.nonEmpty).getOrElse("")
+      case OrType(tp1, tp2) => i"its subpart `$tp` is a top-level union type."
       case _ =>
         if tp.classSymbol eq cls then ""
         else i"a subpart reduces to the more precise ${tp.classSymbol}, expected $cls"
@@ -339,7 +338,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           if acceptableMsg.isEmpty then
             if cls.isGenericProduct then makeProductMirror(cls)
             else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
-          else withErrors(i"type $mirroredType is not a generic product because $acceptableMsg")
+          else withErrors(i"type `$mirroredType` is not a generic product because $acceptableMsg")
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
@@ -348,12 +347,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val clsIsGenericSum = cls.isGenericSum
 
     def whyNotAcceptableType(tp: Type): String = tp match
-      case tp: TermRef => i"its subpart $tp is a term reference"
+      case tp: TermRef => i"its subpart `$tp` is a term reference"
       case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
-        i"its subpart $tp is not a supported kind (either `*` or `* -> *`)"
+        i"its subpart `$tp` is not a supported kind (either `*` or `* -> *`)"
       case tp: TypeProxy => whyNotAcceptableType(tp.underlying)
-      case OrType(tp1, tp2) =>
-        Seq(tp1, tp2).map(whyNotAcceptableType).find(_.nonEmpty).getOrElse("")
+      case OrType(tp1, tp2) => i"its subpart `$tp` is a top-level union type."
       case _ =>
         if tp.classSymbol eq cls then ""
         else i"a subpart reduces to the more precise ${tp.classSymbol}, expected $cls"
@@ -416,7 +414,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         else anonymousMirror(monoType, ExtendsSumMirror, span)
       withNoErrors(mirrorRef.cast(mirrorType))
     else if acceptableMsg.nonEmpty then
-      withErrors(i"type $mirroredType is not a generic sum because $acceptableMsg")
+      withErrors(i"type `$mirroredType` is not a generic sum because $acceptableMsg")
     else if !clsIsGenericSum then
       withErrors(i"$cls is not a generic sum because ${cls.whyNotGenericSum}")
     else
