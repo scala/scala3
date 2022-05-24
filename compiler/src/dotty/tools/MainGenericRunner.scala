@@ -100,6 +100,20 @@ object MainGenericRunner {
 
   val classpathSeparator = File.pathSeparator
 
+  def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
+    val cpEntries = cp.split(classpathSeparator).toList
+    val singleEntryClasspath: Boolean = cpEntries.take(2).size == 1
+    val globdir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
+    def validGlobbedJar(s: String): Boolean = s.startsWith(globdir) && ((s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip")))
+    if singleEntryClasspath && validGlobbedJar(cpEntries.head) then
+      // reassemble globbed wildcard classpath
+      // globdir is wildcard directory for globbed jar files, reconstruct the intended classpath
+      val cpJars = tail.takeWhile( f => validGlobbedJar(f) )
+      val remainingArgs = tail.drop(cpJars.size)
+      (remainingArgs, cpEntries ++ cpJars)
+    else
+      (tail, cpEntries)
+
   @sharable val javaOption = raw"""-J(.*)""".r
   @sharable val scalaOption = raw"""@.*""".r
   @sharable val colorOption = raw"""-color:.*""".r
@@ -110,21 +124,8 @@ object MainGenericRunner {
     case "-run" :: fqName :: tail =>
       process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val cpEntries = cp.split(classpathSeparator).toList
-      val singleEntryClasspath: Boolean = cpEntries.take(2).size == 1
-      val globdir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
-      def validGlobbedJar(s: String): Boolean = s.startsWith(globdir) && ((s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip")))
-      val (tailargs, newEntries) = if singleEntryClasspath && validGlobbedJar(cpEntries.head) then
-        // reassemble globbed wildcard classpath
-        // globdir is wildcard directory for globbed jar files, reconstruct the intended classpath
-        val cpJars = tail.takeWhile( f => validGlobbedJar(f) )
-        val remainingArgs = tail.drop(cpJars.size)
-        (remainingArgs, cpEntries ++ cpJars)
-      else
-        (tail, cpEntries)
-
+      val (tailargs, newEntries) = processClasspath(cp, tail)
       process(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
-
     case ("-version" | "--version") :: _ =>
       settings.copy(
         executeMode = ExecuteMode.Repl,
@@ -170,7 +171,7 @@ object MainGenericRunner {
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
   end process
-      
+
   def main(args: Array[String]): Unit =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" ")).filter(_.nonEmpty)
     val allArgs = scalaOpts ++ args
