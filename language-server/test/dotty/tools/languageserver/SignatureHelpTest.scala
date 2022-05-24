@@ -253,23 +253,19 @@ class SignatureHelpTest {
 
   @Test def sequenceMatchUnapply: Unit = {
     val signatureSeq = S("", Nil, List(List(P("", "Seq[Int]"))), None)
-    // FIXME `Any` should be `Int`
-    val signatureList = S("", Nil, List(List(P("", "Seq[Any]"))), None)
     val signatureVariadicExtractor = S("", Nil, List(List(P("", "Int"), P("","List[Int]"))), None)
 
     code"""case class Two[A, B](a: A, b: B)
           |object Main {
           |  Seq(1,2,3) match {
-          |    case Seq($m2) =>
-          |    case List($m3) =>
-          |    case h$m4 :: t$m5 =>
+          |    case Seq($m1) =>
+          |    case h$m2 :: t$m3 =>
           |  }
           |}
           """
-      .signatureHelp(m2, List(signatureSeq), Some(0), 0)
-      .signatureHelp(m3, List(signatureList), Some(0), 0)
-      .signatureHelp(m4, List(signatureVariadicExtractor), Some(0), 0)
-      .signatureHelp(m5, List(signatureVariadicExtractor), Some(0), 1)
+      .signatureHelp(m1, List(signatureSeq), Some(0), 0)
+      .signatureHelp(m2, List(signatureVariadicExtractor), Some(0), 0)
+      .signatureHelp(m3, List(signatureVariadicExtractor), Some(0), 1)
   }
 
   @Test def productTypeClassMatch: Unit = {
