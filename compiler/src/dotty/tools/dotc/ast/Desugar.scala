@@ -1911,8 +1911,6 @@ object desugar {
         new UntypedTreeTraverser {
           def traverse(tree: untpd.Tree)(using Context): Unit = tree match {
             case Splice(expr) => collect(expr)
-            case TypSplice(expr) =>
-              report.error(TypeSpliceInValPattern(expr), tree.srcPos)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)

@@ -19,8 +19,8 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case TypeMismatchID // errorNumber: 7
   case NotAMemberID // errorNumber: 8
   case EarlyDefinitionsNotSupportedID // errorNumber: 9
-  case TopLevelImplicitClassID extends ErrorMessageID(isActive = false) // errorNumber: 10 
-  case ImplicitCaseClassID // errorNumber: 11 
+  case TopLevelImplicitClassID extends ErrorMessageID(isActive = false) // errorNumber: 10
+  case ImplicitCaseClassID // errorNumber: 11
   case ImplicitClassPrimaryConstructorArityID // errorNumber: 12
   case ObjectMayNotHaveSelfTypeID // errorNumber: 13
   case TupleTooLongID extends ErrorMessageID(isActive = false) // errorNumber: 14
@@ -97,7 +97,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case FunctionTypeNeedsNonEmptyParameterListID // errorNumber: 85
   case WrongNumberOfParametersID // errorNumber: 86
   case DuplicatePrivateProtectedQualifierID // errorNumber: 87
-  case ExpectedStartOfTopLevelDefinitionID // errorNumber: 88 
+  case ExpectedStartOfTopLevelDefinitionID // errorNumber: 88
   case MissingReturnTypeWithReturnStatementID // errorNumber: 89
   case NoReturnFromInlineableID // errorNumber: 90
   case ReturnOutsideMethodDefinitionID // errorNumber: 91
@@ -164,7 +164,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case ExtensionCanOnlyHaveDefsID // errorNumber: 152
   case UnexpectedPatternForSummonFromID // errorNumber: 153
   case AnonymousInstanceCannotBeEmptyID // errorNumber: 154
-  case TypeSpliceInValPatternID // errorNumber: 155
+  case TypeSpliceInValPatternID extends ErrorMessageID(isActive = false) // errorNumber: 155
   case ModifierNotAllowedForDefinitionID // errorNumber: 156
   case CannotExtendJavaEnumID // errorNumber: 157
   case InvalidReferenceInImplicitNotFoundAnnotationID // errorNumber: 158

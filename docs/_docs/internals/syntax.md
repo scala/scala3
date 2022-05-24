@@ -27,7 +27,7 @@ upper            ::=  ‘A’ | … | ‘Z’ | ‘\$’ | ‘_’  “… and U
 lower            ::=  ‘a’ | … | ‘z’ “… and Unicode category Ll”
 letter           ::=  upper | lower “… and Unicode categories Lo, Lt, Lm, Nl”
 digit            ::=  ‘0’ | … | ‘9’
-paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’ | ‘'(’ | ‘'[’ | ‘'{’
+paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’
 delim            ::=  ‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’
 opchar           ::=  ‘!’ | ‘#’ | ‘%’ | ‘&’ | ‘*’ | ‘+’ | ‘-’ | ‘/’ | ‘:’ |
                       ‘<’ | ‘=’ | ‘>’ | ‘?’ | ‘@’ | ‘\’ | ‘^’ | ‘|’ | ‘~’
@@ -45,6 +45,7 @@ id               ::=  plainid
                    |  ‘`’ { charNoBackQuoteOrNewline | UnicodeEscape | charEscapeSeq } ‘`’
 idrest           ::=  {letter | digit} [‘_’ op]
 quoteId          ::=  ‘'’ alphaid
+spliceId         ::=  ‘$’ alphaid ;
 
 integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | nonZeroDigit [{digit | ‘_’} digit]
@@ -183,8 +184,7 @@ SimpleType1       ::=  id                                                       
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
                     |  ‘(’ Types ‘)’                                            Tuple(ts)
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
-                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
-                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- only inside quoted pattern
+                    |  TypeSplice                                               -- deprecated syntax
                     |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
                     |  SimpleType1 ‘#’ id                                       Select(t, name)
 Singleton         ::=  SimpleRef
@@ -243,8 +243,7 @@ SimpleExpr        ::=  SimpleRef
                     |  Literal
                     |  ‘_’
                     |  BlockExpr
-                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
-                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- only inside quoted pattern
+                    |  ExprSplice
                     |  Quoted
                     |  quoteId                                                  -- only inside splices
                     |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]        New(constr | templ)
@@ -259,8 +258,14 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr													                        -- to be dropped
 IndentedExpr      ::=  indent CaseClauses | Block outdent
-Quoted            ::=  ‘'’ ‘{’ Block ‘}’  
+Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
+ExprSplice        ::= spliceId                                                  -- if inside quoted block
+                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
+                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
+TypeSplice        ::= spliceId                                                  -- if inside quoted type -- deprecated syntax
+                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted type pattern -- deprecated syntax
+                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted type pattern -- deprecated syntax
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr

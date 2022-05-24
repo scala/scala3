@@ -110,7 +110,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class Splice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree {
     def isInBraces: Boolean = span.end != expr.span.end
   }
-  case class TypSplice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
   case class ForYield(enums: List[Tree], expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class ForDo(enums: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class GenFrom(pat: Tree, expr: Tree, checkMode: GenCheckMode)(implicit @constructorOnly src: SourceFile) extends Tree
@@ -613,10 +612,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Splice if expr eq tree.expr => tree
       case _ => finalize(tree, untpd.Splice(expr)(tree.source))
     }
-    def TypSplice(tree: Tree)(expr: Tree)(using Context): Tree = tree match {
-      case tree: TypSplice if expr eq tree.expr => tree
-      case _ => finalize(tree, untpd.TypSplice(expr)(tree.source))
-    }
     def ForYield(tree: Tree)(enums: List[Tree], expr: Tree)(using Context): TermTree = tree match {
       case tree: ForYield if (enums eq tree.enums) && (expr eq tree.expr) => tree
       case _ => finalize(tree, untpd.ForYield(enums, expr)(tree.source))
@@ -695,8 +690,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.Quote(tree)(transform(t))
       case Splice(expr) =>
         cpy.Splice(tree)(transform(expr))
-      case TypSplice(expr) =>
-        cpy.TypSplice(tree)(transform(expr))
       case ForYield(enums, expr) =>
         cpy.ForYield(tree)(transform(enums), transform(expr))
       case ForDo(enums, body) =>
@@ -753,8 +746,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case Quote(t) =>
         this(x, t)
       case Splice(expr) =>
-        this(x, expr)
-      case TypSplice(expr) =>
         this(x, expr)
       case ForYield(enums, expr) =>
         this(this(x, enums), expr)

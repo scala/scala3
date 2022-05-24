@@ -452,8 +452,6 @@ object Parsers {
         makeParameter(nme.ERROR, tree, mods)
       case Typed(id @ Ident(name), tpt) =>
         makeParameter(name.asTermName, tpt, mods, isBackquoted = isBackquoted(id)).withSpan(tree.span)
-      case Typed(Splice(Ident(name)), tpt) =>
-        makeParameter(("$" + name).toTermName, tpt, mods).withSpan(tree.span)
       case _ =>
         syntaxError(s"not a legal $expected", tree.span)
         makeParameter(nme.ERROR, tree, mods)
@@ -1572,13 +1570,15 @@ object Parsers {
     /** The block in a quote or splice */
     def stagedBlock() = inBraces(block(simplify = true))
 
-    /** SimpleExpr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
-     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
-     *
-     *  SimpleExpr  ::=  spliceId | ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
-     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
+    /** ExprSplice  ::=  ‘$’ spliceId          --     if inside quoted block
+     *                |  ‘$’ ‘{’ Block ‘}’     -- unless inside quoted pattern
+     *                |  ‘$’ ‘{’ Pattern ‘}’   --   when inside quoted pattern
+     *  TypeSplice  ::=  ‘$’ spliceId          --    if inside quoted type
+     *                |  ‘$’ ‘{’ Block ‘}’     -- unless inside quoted type pattern
+     *                |  ‘$’ ‘{’ Pattern ‘}’   --   when inside quoted type pattern
      */
     def splice(isType: Boolean): Tree =
+      val start = in.offset
       atSpan(in.offset) {
         val expr =
           if (in.name.length == 1) {
@@ -1591,13 +1591,22 @@ object Parsers {
             in.nextToken()
             id
           }
-        if (isType) TypSplice(expr) else Splice(expr)
+        if isType then
+          val msg = "Type splicing with `$` in quotes not supported anymore"
+          val inPattern = (staged & StageKind.QuotedPattern) != 0
+          val hint =
+            if inPattern then "Use lower cased variable name without the `$` instead"
+            else "To use a given Type[T] in a quote just write T directly"
+          syntaxError(s"$msg\n\nHint: $hint", Span(start, in.lastOffset))
+          Ident(nme.ERROR.toTypeName)
+        else
+          Splice(expr)
       }
 
     /**  SimpleType      ::=  SimpleLiteral
      *                     |  ‘?’ SubtypeBounds
      *                     |  SimpleType1
-     *                     |  SimpeType ‘(’ Singletons ‘)’  -- under language.experimental.dependent, checked in Typer
+     *                     |  SimpleType ‘(’ Singletons ‘)’  -- under language.experimental.dependent, checked in Typer
      *   Singletons      ::=  Singleton {‘,’ Singleton}
      */
     def simpleType(): Tree =
@@ -1635,7 +1644,7 @@ object Parsers {
      *                     |  Singleton `.' type
      *                     |  ‘(’ ArgTypes ‘)’
      *                     |  Refinement
-     *                     |  ‘$’ ‘{’ Block ‘}’
+     *                     |  TypeSplice                -- deprecated syntax (since 3.0.0)
      *                     |  SimpleType1 TypeArgs
      *                     |  SimpleType1 `#' id
      */
@@ -2237,7 +2246,7 @@ object Parsers {
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                 |  ‘new’ TemplateBody
      *                 |  BlockExpr
-     *                 |  ‘$’ ‘{’ Block ‘}’
+     *                 |  ExprSplice
      *                 |  Quoted
      *                 |  quoteId
      *                 |  SimpleExpr1 [`_`]

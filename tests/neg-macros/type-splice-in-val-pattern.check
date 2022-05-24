@@ -1,6 +1,0 @@
--- [E155] Syntax Error: tests/neg-macros/type-splice-in-val-pattern.scala:5:14 -----------------------------------------
-5 |    val '[ *:[$t] ] = ??? // error
-  |              ^^
-  |              Type splices cannot be used in val patterns. Consider using `match` instead.
-  |
-  | longer explanation available when compiling with `-explain`

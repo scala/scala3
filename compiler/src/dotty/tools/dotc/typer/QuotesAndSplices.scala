@@ -38,8 +38,6 @@ trait QuotesAndSplices {
     tree.quoted match {
       case untpd.Splice(innerExpr) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
-      case untpd.TypSplice(innerType) if tree.isType =>
-        report.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.srcPos)
       case _ =>
     }
     val qctx = inferImplicitArg(defn.QuotesClass.typeRef, tree.span)
@@ -52,11 +50,12 @@ trait QuotesAndSplices {
     if ctx.mode.is(Mode.Pattern) then
       typedQuotePattern(tree, pt, qctx).withSpan(tree.span)
     else if tree.quoted.isType then
-      val msg = em"Consider using canonical type constructor scala.quoted.Type.of[${tree.quoted}] instead"
-      if sourceVersion.isAtLeast(`future-migration`) then report.error(msg, tree.srcPos)
-      else report.warning(msg, tree.srcPos)
-      val typeOfTree = untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_of.termRef), tree.quoted :: Nil).withSpan(tree.span)
-      makeInlineable(typedTypeApply(typeOfTree, pt)(using quoteContext).select(nme.apply).appliedTo(qctx).withSpan(tree.span))
+      val msg = em"""Quoted types `'[..]` can only be used in patterns.
+                    |
+                    |Hint: To get a scala.quoted.Type[T] use scala.quoted.Type.of[T] instead.
+                    |""".stripMargin
+      report.error(msg, tree.srcPos)
+      EmptyTree
     else
       val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.quoted)
       makeInlineable(typedApply(exprQuoteTree, pt)(using pushQuotes(qctx)).select(nme.apply).appliedTo(qctx).withSpan(tree.span))
@@ -135,7 +134,7 @@ trait QuotesAndSplices {
         case arg: untpd.Ident =>
           typedExpr(arg)
         case arg =>
-          report.error("Open patttern exprected an identifier", arg.srcPos)
+          report.error("Open pattern expected an identifier", arg.srcPos)
           EmptyTree
       }
       if args.isEmpty then
@@ -143,30 +142,6 @@ trait QuotesAndSplices {
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
       val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
       ref(defn.QuotedRuntimePatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
-  }
-
-  /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
-  def typedTypSplice(tree: untpd.TypSplice, pt: Type)(using Context): Tree = {
-    record("typedTypSplice")
-    checkSpliceOutsideQuote(tree)
-    tree.expr match {
-      case untpd.Quote(innerType) if innerType.isType =>
-        report.warning("Canceled quote directly inside a splice. ${ '[ XYZ ] } is equivalent to XYZ.", tree.srcPos)
-      case _ =>
-    }
-
-    if ctx.mode.is(Mode.QuotedPattern) && level == 1 then
-      report.error(
-            """`$` for quote pattern variable is not supported anymore.
-               |Use lower cased variable name without the `$` instead.""".stripMargin,
-            tree.srcPos)
-      ref(defn.NothingType)
-    else
-      val tree1 = typedSelect(untpd.Select(tree.expr, tpnme.Underlying), pt)(using spliceContext).withSpan(tree.span)
-      val msg = em"Consider using canonical type reference ${tree1.tpe} instead"
-      if sourceVersion.isAtLeast(`future-migration`) then report.error(msg, tree.srcPos)
-      else report.warning(msg, tree.srcPos)
-      tree1
   }
 
   /** Type a pattern variable name `t` in quote pattern as `${given t$giveni: Type[t @ _]}`.
