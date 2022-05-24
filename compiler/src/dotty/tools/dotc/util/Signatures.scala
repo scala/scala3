@@ -5,7 +5,7 @@ import ast.Trees._
 import ast.tpd
 import core.Constants.Constant
 import core.Contexts._
-import core.Denotations.SingleDenotation
+import core.Denotations.{SingleDenotation, Denotation}
 import core.Flags
 import core.NameOps.isUnapplyName
 import core.Names._
@@ -26,9 +26,16 @@ object Signatures {
    * @param paramss    The parameter lists of this method
    * @param returnType The return type of this method, if this is not a constructor.
    * @param doc        The documentation for this method.
+   * @param denot      The function denotation
    */
-  case class Signature(name: String, tparams: List[String], paramss: List[List[Param]], returnType: Option[String], doc: Option[String] = None) {
-  }
+  case class Signature(
+    name: String,
+    tparams: List[String],
+    paramss: List[List[Param]],
+    returnType: Option[String],
+    doc: Option[String] = None,
+    denot: Option[SingleDenotation] = None
+  )
 
   /**
    * Represent a method's parameter.
@@ -53,6 +60,23 @@ object Signatures {
     val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
     computeSignatureHelp(path, pos.span)(using Interactive.contextOfPath(path))
   }
+
+  /**
+   * Extract (current parameter index, function index, functions) out of a method call.
+   *
+   * @param path The path to the function application
+   * @param span The position of the cursor
+   * @return A triple containing the index of the parameter being edited, the index of the function
+   *         being called, the list of overloads of this function).
+   */
+  @deprecated(
+    """This method is deprecated in favor of `signatureHelp`.
+       Returned denotation cannot be distinguished if its unapply or apply context""",
+    "3.1.3"
+  )
+  def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
+    val (paramN, funN, signatures) = computeSignatureHelp(path, span)
+    (paramN, funN, signatures.flatMap(_.denot))
 
   /**
    * Computes call info (current parameter index, function index, functions) for a method call.
@@ -147,38 +171,59 @@ object Signatures {
   )(using Context): (Int, Int, List[Signature]) =
     val resultType = unapplyMethodResult(fun)
     val isUnapplySeq = fun.denot.name == core.Names.termName("unapplySeq")
-    val denot = fun.denot
+    val denot = fun.denot.mapInfo(_ => resultType)
 
-    def extractParamTypess(resultType: Type): List[List[Type]] =
-      resultType match
-        // Reference to a type which is not a type class
-        case ref: TypeRef if !ref.symbol.isPrimitiveValueClass => mapOptionLessUnapply(ref, patterns.size, isUnapplySeq)
-        // Option or Some applied type. There is special syntax for multiple returned arguments: Option[TupleN]
-        // We are not intrested in it, instead we extract proper type parameters from the Option type parameter.
-        case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
-            if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
-          tycon match
-            case typeRef: TypeRef if ctx.definitions.isTupleClass(typeRef.symbol) => List(args)
-            case _ => List(List(appliedType))
-        // Applied type extractor. We must extract from applied type to retain type parameters
-        case appliedType: AppliedType => mapOptionLessUnapply(appliedType, patterns.size, isUnapplySeq)
-        // This is necessary to extract proper result type as unapply can return other methods eg. apply
-        case MethodTpe(_, _, resultType) => extractParamTypess(resultType.widenDealias)
-        case _ => Nil
-
-    def extractParamNamess(resultType: Type): List[List[Name]] =
-      if resultType.typeSymbol.flags.is(Flags.CaseClass) && denot.symbol.flags.is(Flags.Synthetic) then
-        resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess
-      else
-        Nil
-
-    val paramTypes = extractParamTypess(resultType).flatten.map(stripAllAnnots)
-    val paramNames = extractParamNamess(resultType).flatten
+    val paramTypes = extractParamTypess(resultType, denot, patterns.size).flatten.map(stripAllAnnots)
+    val paramNames = extractParamNamess(resultType, denot).flatten
 
     val activeParameter = unapplyParameterIndex(patterns, span, paramTypes.length)
-    val unapplySignature = toUnapplySignature(paramNames, paramTypes).toList
+    val unapplySignature = toUnapplySignature(denot.asSingleDenotation, paramNames, paramTypes).toList
 
     (activeParameter, 0, unapplySignature)
+
+
+  private def isUnapplySeq(denot: Denotation)(using Context): Boolean =
+    denot.name == core.Names.termName("unapplySeq")
+
+  /**
+   * Extract parameter names from `resultType` only if `resultType` is case class and `denot` is synthetic.
+   *
+   * @param resultType Function result type
+   * @param denot Function denotation
+   * @return List of lists of names of parameters if `resultType` is case class without overriden unapply
+   */
+  private def extractParamNamess(resultType: Type, denot: Denotation)(using Context): List[List[Name]] =
+    if resultType.typeSymbol.flags.is(Flags.CaseClass) && denot.symbol.flags.is(Flags.Synthetic) then
+      resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess
+    else
+      Nil
+
+  /**
+   * Extract parameter types from `resultType` in unapply context.
+   *
+   * @param resultType Function result type
+   * @param denot Function denotation
+   * @param patternsSize Number of pattern trees present in function tree
+   * @return List of lists of types present in unapply clause
+   */
+  private def extractParamTypess(
+    resultType: Type,
+    denot: Denotation,
+    patternsSize: Int
+  )(using Context): List[List[Type]] =
+    resultType match
+      // unapply(_$1: Any): CustomClass
+      case ref: TypeRef if !ref.symbol.isPrimitiveValueClass => mapOptionLessUnapply(ref, patternsSize, isUnapplySeq(denot))
+      // unapply(_$1: Any): Option[T[_]]
+      case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
+          if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
+        tycon match
+          // unapply[T](_$1: Any): Option[(T1, T2 ... Tn)]
+          case typeRef: TypeRef if ctx.definitions.isTupleClass(typeRef.symbol) => List(args)
+          case _ => List(List(appliedType))
+      // unapply[T](_$1: Any): CustomClass[T]
+      case appliedType: AppliedType => mapOptionLessUnapply(appliedType, patternsSize, isUnapplySeq(denot))
+      case _ => Nil
 
   /**
    * Recursively strips annotations from given type
@@ -252,10 +297,13 @@ object Signatures {
     val getMethod = resultType.member(core.Names.termName("get"))
     val dropMethod = resultType.member(core.Names.termName("drop"))
 
-    val availableExtractors = (getMethod.exists && patternCount <= 1, isUnapplySeq && dropMethod.exists) match
-      case (_, true) => List(dropMethod)
-      case (true, _) => List(getMethod)
-      case _  => productAccessors
+    val availableExtractors =
+      if isUnapplySeq && dropMethod.exists then
+        List(dropMethod)
+      else if getMethod.exists && patternCount <= 1 then
+        List(getMethod)
+      else
+        productAccessors
 
     List(availableExtractors.map(_.info.finalResultType).toList)
 
@@ -271,7 +319,7 @@ object Signatures {
   /**
    * Creates signature for apply method.
    *
-   * @param denot Functino denotation for which apply signature is returned.
+   * @param denot Function denotation for which apply signature is returned.
    * @return Signature if denot is a function, None otherwise
    */
   private def toApplySignature(denot: SingleDenotation)(using Context): Option[Signature] = {
@@ -312,8 +360,25 @@ object Signatures {
             (symbol.owner.name.show, None)
           else
             (denot.name.show, Some(tpe.finalResultType.widenTermRefExpr.show))
-        Some(Signatures.Signature(name, typeParams, paramss, returnType, docComment.map(_.mainDoc)))
+        Some(Signatures.Signature(name, typeParams, paramss, returnType, docComment.map(_.mainDoc), Some(denot)))
       case other => None
+  }
+
+  @deprecated("Deprecated in favour of `signatureHelp` which now returns Signature along SingleDenotation", "3.1.3")
+  def toSignature(denot: SingleDenotation)(using Context): Option[Signature] = {
+    if denot.name.isUnapplyName then
+      val resultType = denot.info.stripPoly.finalResultType match
+        case methodType: MethodType => methodType.resultType.widen
+        case other => other
+
+      // We can't get already applied patterns so we won't be able to get proper signature in case when
+      // it can be both name-based or single match extractor. See test `nameBasedTest`
+      val paramTypes = extractParamTypess(resultType, denot, 0).flatten.map(stripAllAnnots)
+      val paramNames = extractParamNamess(resultType, denot).flatten
+
+      toUnapplySignature(denot.asSingleDenotation, paramNames, paramTypes)
+    else
+      toApplySignature(denot)
   }
 
   /**
@@ -322,19 +387,20 @@ object Signatures {
    * where _$n is only present for synthetic product extractors such as case classes.
    * In rest of cases signature skips them resulting in pattern (T1, T2, T3, Tn)
    *
+   * @param denot Unapply denotation
    * @param paramNames Parameter names for unapply final result type.
    *                   It non empty only when unapply returns synthetic product as for case classes.
    * @param paramTypes Parameter types for unapply final result type.
    * @return Signature if paramTypes is non empty, None otherwise
    */
-  private def toUnapplySignature(paramNames: List[Name], paramTypes: List[Type])(using Context): Option[Signature] =
+  private def toUnapplySignature(denot: SingleDenotation, paramNames: List[Name], paramTypes: List[Type])(using Context): Option[Signature] =
     val params = if paramNames.length == paramTypes.length then
       (paramNames zip paramTypes).map((name, info) => Param(name.show, info.show))
     else
       paramTypes.map(info => Param("", info.show))
 
     if params.nonEmpty then
-      Some(Signature("", Nil, List(params), None))
+      Some(Signature("", Nil, List(params), None, None, Some(denot)))
     else
       None
 
