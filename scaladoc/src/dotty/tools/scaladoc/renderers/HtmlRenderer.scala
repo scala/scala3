@@ -322,5 +322,30 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           )
           },
         ),
+        div(id := "footer", cls := "body-small mobile-footer")(
+          div(cls := "left-container")(
+            "Generated with"
+          ),
+          div(cls := "right-container")(
+            a(href := "https://github.com/lampepfl/dotty") (
+              button(cls := "icon-button gh")
+            ),
+            a(href := "https://twitter.com/scala_lang") (
+              button(cls := "icon-button twitter")
+            ),
+            a(href := "https://discord.com/invite/scala") (
+              button(cls := "icon-button discord"),
+            ),
+            a(href := "https://gitter.im/scala/scala") (
+              button(cls := "icon-button gitter"),
+            ),
+            div(cls := "text")(
+              "© 2002-2021 · LAMP/EPFL"
+            )
+          ),
+          div(cls := "text-mobile")(
+            "© 2002-2021 · LAMP/EPFL"
+          )
+        ),
       ),
     )

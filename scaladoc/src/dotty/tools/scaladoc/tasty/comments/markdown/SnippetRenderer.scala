@@ -141,11 +141,11 @@ object SnippetRenderer:
       Option.when(isRunnable)(Attr("runnable") := "")
     ).flatten
     div(cls := "snippet", Attr("scala-snippet") := "", attrs)(
-      div(cls := "buttons")(),
       pre(
         raw(codeHTML)
       ),
-      raw(snippetName.fold("")(snippetLabel(_)))
+      raw(snippetName.fold("")(snippetLabel(_))),
+      div(cls := "buttons")()
     ).toString
 
   def renderSnippetWithMessages(node: ExtendedFencedCodeBlock): String =

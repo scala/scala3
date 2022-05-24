@@ -1,14 +1,14 @@
 /* Snippets */
 
-.snippet {
+/* .snippet {
   position: relative;
   background: var(--code-bg);
   margin: 1em 0px;
   border-radius: 2px;
   box-shadow: 0 0 2px #888;
   cursor: default;
-}
-.snippet-error {
+} */
+/* .snippet-error {
   border-bottom: 2px dotted red;
 }
 .snippet-warn {
@@ -19,17 +19,17 @@
 }
 .snippet-debug {
   border-bottom: 2px dotted pink;
-}
+} */
 
-.snippet .snippet-meta {
+/* .snippet .snippet-meta {
   border-top: 2px solid var(--inactive-bg);
   color: var(--inactive-fg);
   margin-top: 10px;
   padding-top: 10px;
   font-size: 0.75em;
-}
+} */
 
-.snippet-meta .snippet-label {
+/* .snippet-meta .snippet-label {
   font-weight: bold;
 }
 
@@ -319,4 +319,4 @@ input:checked + .slider:before {
       --slider-width: 24px;
       --slider-height: 10px;
   }
-}
+} */

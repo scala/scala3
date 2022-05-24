@@ -1,0 +1,118 @@
+.snippet {
+  position: relative;
+  flex-direction: row;
+  gap: calc(2 * var(--base-spacing));
+  padding: calc(3 * var(--base-spacing)) calc(3 * var(--base-spacing))
+    calc(3 * var(--base-spacing)) calc(1 * var(--base-spacing));
+  background-color: var(--action-primary-background-default-solid);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+}
+
+.snippet pre {
+  margin: 0;
+}
+
+.snippet:hover {
+  background-color: var(--action-primary-background-hover);
+  border: 1px solid var(--border-default);
+}
+
+.snippet .copy-button {
+  display: none;
+  position: absolute;
+  top: calc(3 * var(--base-spacing));
+  right: calc(3 * var(--base-spacing));
+}
+
+#snippet-showhide {
+  display: none;
+}
+
+.snippet-showhide {
+  margin-top: calc(2 * var(--base-spacing));
+}
+
+#snippet-showhide-label::before {
+  content: "Show all";
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+#snippet-showhide-label:hover::before {
+  color: var(--action-primary-content-hover);
+}
+
+#snippet-showhide-label:active::before {
+  color: var(--action-primary-content-active);
+}
+
+#snippet-showhide:checked + #snippet-showhide-label::before {
+  content: "Hide";
+}
+
+.snippet:hover {
+  background-color: var(--action-primary-background-hover);
+  border: 1px solid var(--border-default);
+}
+
+.snippet:hover .copy-button {
+  display: block;
+}
+
+.hljs-keyword {
+  color: var(--code-method-highlighting-keyword);
+}
+
+.hljs-comment {
+  color: var(--code-syntax-highlighting-comment);
+}
+
+.hljs-quote {
+  color: var(--code-syntax-highlighting-quote);
+}
+
+.hljs-line-number {
+  color: var(--code-syntax-highlighting-line-number);
+}
+
+.hljs-title {
+  color: var(--code-syntax-highlighting-title);
+}
+
+.hljs-keyword {
+  color: var(--code-syntax-highlighting-keyword);
+}
+
+.hljs-code-fg {
+  color: var(--code-syntax-highlighting-code-fg);
+}
+
+.hljs-literal {
+  color: var(--code-syntax-highlighting-literal);
+}
+
+.hljs-type {
+  color: var(--code-syntax-highlighting-type);
+}
+
+.hljs-subst {
+  color: var(--code-syntax-highlighting-subst);
+}
+
+.hljs-meta {
+  color: var(--code-syntax-highlighting-meta);
+}
+
+.hljs-string {
+  color: var(--code-syntax-highlighting-string);
+}
+
+.hljs-deletion {
+  color: var(--code-syntax-highlighting-deletion);
+}
+
+.hljs-variable {
+  color: var(--code-syntax-highlighting-variable);
+}

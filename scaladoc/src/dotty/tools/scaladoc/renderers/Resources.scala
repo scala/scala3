@@ -122,6 +122,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/components/divider.css",
       "styles/theme/components/table-of-content.css",
       "styles/theme/components/contributors.css",
+      "styles/theme/components/code-snippet.css",
 
       "styles/nord-light.css",
       "styles/dotty-icons.css",

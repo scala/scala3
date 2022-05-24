@@ -40,10 +40,9 @@ class CodeSnippets:
     def createShowHideButton(toggleRoot: html.Element) = {
       div(cls := "snippet-showhide")(
         label(cls := "snippet-showhide-button")(
-          input("type" := "checkbox").tap(_.addEventListener("change", _ => toggleHide(toggleRoot))),
-          span(cls := "slider")
+          input("type" := "checkbox", id := "snippet-showhide").tap(_.addEventListener("change", _ => toggleHide(toggleRoot))),
+          label(id := "snippet-showhide-label", "for" := "snippet-showhide")
         ),
-        p("Show collapsed lines")
       )
     }
 

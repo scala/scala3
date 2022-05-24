@@ -64,7 +64,7 @@
   justify-content: center;
 }
 
-@media(max-width: 390px) {
+@media (max-width: 390px) {
   #footer {
     display: none;
   }
@@ -76,5 +76,9 @@
 
   #footer .text-mobile {
     display: none;
+  }
+
+  #footer.mobile-footer > .text-mobile {
+    display: flex;
   }
 }

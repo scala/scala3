@@ -121,7 +121,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
   sideMenuToggler.addEventListener('click', _e => {
     document.getElementById("leftColumn").classList.toggle("show")
-    document.getElementById("content-wrapper").classList.toggle("sidebar-shown")
+    document.getElementById("content").classList.toggle("sidebar-shown")
     document.getElementById("toc").classList.toggle("sidebar-shown")
     sideMenuToggler.classList.toggle("menu-shown")
   })

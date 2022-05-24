@@ -1,5 +1,5 @@
 /* Theme inspired by nordtheme. The colors have been darkened to work on light backgrounds. */
-:root {
+/* :root {
   --hljs-bg: var(--code-bg);
   --hljs-fg: var(--code-fg);
   --hljs-comment: #90A1C1;
@@ -75,4 +75,4 @@ pre, .hljs {
 }
 .hljs-attribute {
   color: var(--hljs-type);
-}
+} */
