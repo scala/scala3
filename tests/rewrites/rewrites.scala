@@ -56,7 +56,7 @@ object test3 {
       }
     }
   }
-  def g = { (x: Int) =>
+  def g = { x: Int =>
     x + 1
   }
 }

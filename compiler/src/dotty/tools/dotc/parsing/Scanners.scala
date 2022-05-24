@@ -214,7 +214,12 @@ object Scanners {
       if fewerBracesEnabledCtx ne myLanguageImportContext then
         fewerBracesEnabledCache =
           featureEnabled(Feature.fewerBraces)
-          || fewerBracesByDefault && indentSyntax
+          || fewerBracesByDefault && indentSyntax && !migrateTo3
+          		// ensure that fewer braces is not the default for 3.0-migration since
+          		//     { x: T =>
+          		//       expr
+          		//     }
+                // would be ambiguous
         fewerBracesEnabledCtx = myLanguageImportContext
       fewerBracesEnabledCache
 
