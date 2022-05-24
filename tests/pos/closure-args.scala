@@ -29,5 +29,6 @@ object Test1:
 
   val q = (x: String => String) => x
 
-  val r = x < 0 && :
+  val r = x < 0 && locally:
     y > 0
+

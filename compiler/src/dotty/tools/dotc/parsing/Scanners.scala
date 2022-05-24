@@ -397,7 +397,7 @@ object Scanners {
       adjustSepRegions(lastToken)
       getNextToken(lastToken)
       if isAfterLineEnd then handleNewLine(lastToken)
-      postProcessToken()
+      postProcessToken(lastToken)
       printState()
 
     final def printState() =
@@ -694,7 +694,7 @@ object Scanners {
      *         SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
      */
-    def postProcessToken(): Unit = {
+    def postProcessToken(lastToken: Token): Unit = {
       def fuse(tok: Int) = {
         token = tok
         offset = prev.offset
@@ -730,7 +730,8 @@ object Scanners {
         case END =>
           if !isEndMarker then token = IDENTIFIER
         case COLON =>
-          if fewerBracesEnabled then observeColonEOL()
+          if fewerBracesEnabled && colonEOLPredecessors.contains(lastToken) && lastOffset == offset then
+            observeColonEOL()
         case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
         case EOF =>
@@ -1526,7 +1527,8 @@ object Scanners {
       case NEWLINE => ";"
       case NEWLINES => ";;"
       case COMMA => ","
-      case _ => showToken(token)
+      case _ =>
+        if debugTokenStream then showTokenDetailed(token) else showToken(token)
     }
 
     /* Resume normal scanning after XML */
