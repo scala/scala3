@@ -396,6 +396,29 @@ object Semantic {
 
   inline def cache(using c: Cache): Cache = c
 
+// ----- Checker State -----------------------------------
+
+  /** The state that threads through the interpreter */
+  type Contextual[T] = (Env, Context, Trace, Promoted, Cache, Reporter) ?=> T
+
+// ----- Error Handling -----------------------------------
+
+  object Trace {
+    opaque type Trace = Vector[Tree]
+
+    val empty: Trace = Vector.empty
+
+    extension (trace: Trace)
+      def add(node: Tree): Trace = trace :+ node
+      def toVector: Vector[Tree] = trace
+  }
+
+  type Trace = Trace.Trace
+
+  import Trace._
+  def trace(using t: Trace): Trace = t
+  inline def withTrace[T](t: Trace)(op: Trace ?=> T): T = op(using t)
+
   /** Error reporting */
   trait Reporter:
     def report(err: Error): Unit
@@ -428,29 +451,6 @@ object Semantic {
 
 
   inline def reporter(using r: Reporter): Reporter = r
-
-// ----- Checker State -----------------------------------
-
-  /** The state that threads through the interpreter */
-  type Contextual[T] = (Env, Context, Trace, Promoted, Cache, Reporter) ?=> T
-
-// ----- Error Handling -----------------------------------
-
-  object Trace {
-    opaque type Trace = Vector[Tree]
-
-    val empty: Trace = Vector.empty
-
-    extension (trace: Trace)
-      def add(node: Tree): Trace = trace :+ node
-      def toVector: Vector[Tree] = trace
-  }
-
-  type Trace = Trace.Trace
-
-  import Trace._
-  def trace(using t: Trace): Trace = t
-  inline def withTrace[T](t: Trace)(op: Trace ?=> T): T = op(using t)
 
 // ----- Operations on domains -----------------------------
   extension (a: Value)
