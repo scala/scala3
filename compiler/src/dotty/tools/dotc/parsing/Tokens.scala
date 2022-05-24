@@ -16,13 +16,6 @@ abstract class TokensCommon {
 
   def tokenRange(lo: Int, hi: Int): TokenSet = BitSet(lo to hi: _*)
 
-  def showTokenDetailed(token: Int): String = debugString(token)
-
-  def showToken(token: Int): String = {
-    val str = tokenString(token)
-    if (isKeyword(token)) s"'$str'" else str
-  }
-
   val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)
 
   def enter(token: Int, str: String, debugStr: String = ""): Unit = {
@@ -107,7 +100,7 @@ abstract class TokensCommon {
 
   /** special keywords */
   //inline val USCORE = 73;           enter(USCORE, "_")
-  inline val COLON = 74;            enter(COLON, ":")
+  inline val COLONop = 74;          enter(COLONop, ":")  // a stand-alone `:`, see also COLONfollow
   inline val EQUALS = 75;           enter(EQUALS, "=")
   //inline val LARROW = 76;           enter(LARROW, "<-")
   //inline val ARROW = 77;            enter(ARROW, "=>")
@@ -204,8 +197,11 @@ object Tokens extends TokensCommon {
 
   inline val QUOTE = 87;            enter(QUOTE, "'")
 
-  inline val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
-  inline val SELFARROW = 89;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
+  inline val COLONfollow = 88;      enter(COLONfollow, ":")
+    // A `:` following an alphanumeric identifier or one of the tokens in colonEOLPredecessors
+  inline val COLONeol = 89;         enter(COLONeol, ":", ": at eol")
+    // A `:` recognized as starting an indentation block
+  inline val SELFARROW = 90;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
 
   /** XML mode */
   inline val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
@@ -276,7 +272,7 @@ object Tokens extends TokensCommon {
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
-    statCtdTokens | BitSet(COLONEOL, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW, RETURN)
+    statCtdTokens | BitSet(COLONeol, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW, RETURN)
 
   /** Faced with the choice between a type and a formal parameter, the following
    *  tokens determine it's a formal parameter.
@@ -287,9 +283,16 @@ object Tokens extends TokensCommon {
 
   final val endMarkerTokens = identifierTokens | BitSet(IF, WHILE, FOR, MATCH, TRY, NEW, THROW, GIVEN, VAL, THIS)
 
-  final val colonEOLPredecessors = identifierTokens | BitSet(RPAREN, RBRACKET)
+  final val colonEOLPredecessors = BitSet(RPAREN, RBRACKET, BACKQUOTED_IDENT, THIS, SUPER, QUOTEID, STRINGLIT, NEW)
 
   final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
 
   final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
+
+  def showTokenDetailed(token: Int): String = debugString(token)
+
+  def showToken(token: Int): String = {
+    val str = tokenString(token)
+    if isKeyword(token) || token == COLONfollow || token == COLONeol then s"'$str'" else str
+  }
 }

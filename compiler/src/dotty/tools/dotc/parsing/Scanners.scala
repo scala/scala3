@@ -75,13 +75,13 @@ object Scanners {
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
 
-    /** Is token a COLON, after having converted COLONEOL to COLON?
+    /** Is token a COLON, after having converted COLONeol to COLON?
      *  The conversion means that indentation is not significant after `:`
      *  anymore. So, warning: this is a side-effecting operation.
      */
     def isColon() =
-      if token == COLONEOL then token = COLON
-      token == COLON
+      if token == COLONeol then token = COLONop
+      token == COLONop || token == COLONfollow
 
     /** Is current token first one after a newline? */
     def isAfterLineEnd: Boolean = lineOffset >= 0
@@ -394,10 +394,11 @@ object Scanners {
      */
     def nextToken(): Unit =
       val lastToken = token
+      val lastName = name
       adjustSepRegions(lastToken)
       getNextToken(lastToken)
       if isAfterLineEnd then handleNewLine(lastToken)
-      postProcessToken(lastToken)
+      postProcessToken(lastToken, lastName)
       printState()
 
     final def printState() =
@@ -428,7 +429,7 @@ object Scanners {
       && {
         // Is current lexeme  assumed to start an expression?
         // This is the case if the lexime is one of the tokens that
-        // starts an expression or it is a COLONEOL. Furthermore, if
+        // starts an expression or it is a COLONeol. Furthermore, if
         // the previous token is in backticks, the lexeme may not be a binary operator.
         // I.e. in
         //
@@ -439,7 +440,7 @@ object Scanners {
         // in backticks and is a binary operator. Hence, `x` is not classified as a
         // leading infix operator.
         def assumeStartsExpr(lexeme: TokenData) =
-          (canStartExprTokens.contains(lexeme.token) || lexeme.token == COLONEOL)
+          (canStartExprTokens.contains(lexeme.token) || lexeme.token == COLONeol)
           && (!lexeme.isOperator || nme.raw.isUnary(lexeme.name))
         val lookahead = LookaheadScanner()
         lookahead.allowLeadingInfixOperators = false
@@ -615,12 +616,11 @@ object Scanners {
             currentRegion match
               case r: Indented =>
                 insert(OUTDENT, offset)
-                if next.token != COLON then
-                  handleNewIndentWidth(r.enclosing, ir =>
-                    errorButContinue(
-                      i"""The start of this line does not match any of the previous indentation widths.
-                          |Indentation width of current line : $nextWidth
-                          |This falls between previous widths: ${ir.width} and $lastWidth"""))
+                handleNewIndentWidth(r.enclosing, ir =>
+                  errorButContinue(
+                    i"""The start of this line does not match any of the previous indentation widths.
+                       |Indentation width of current line : $nextWidth
+                       |This falls between previous widths: ${ir.width} and $lastWidth"""))
               case r =>
                 if skipping then
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
@@ -637,7 +637,7 @@ object Scanners {
             currentRegion.knownWidth = nextWidth
         else if (lastWidth != nextWidth)
           errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
-      if token != OUTDENT || next.token == COLON then
+      if token != OUTDENT then
         handleNewIndentWidth(currentRegion, _.otherIndentWidths += nextWidth)
     end handleNewLine
 
@@ -646,19 +646,22 @@ object Scanners {
          |Previous indent : $lastWidth
          |Latest indent   : $nextWidth"""
 
-    def observeColonEOL(): Unit =
-      if token == COLON then
+    def observeColonEOL(inTemplate: Boolean): Unit =
+      val enabled =
+        if inTemplate then token == COLONop || token == COLONfollow
+        else token == COLONfollow && fewerBracesEnabled
+      if enabled then
         lookAhead()
         val atEOL = isAfterLineEnd || token == EOF
         reset()
-        if atEOL then token = COLONEOL
+        if atEOL then token = COLONeol
 
     def observeIndented(): Unit =
       if indentSyntax && isNewLine then
         val nextWidth = indentWidth(next.offset)
         val lastWidth = currentRegion.indentWidth
         if lastWidth < nextWidth then
-          currentRegion = Indented(nextWidth, COLONEOL, currentRegion)
+          currentRegion = Indented(nextWidth, COLONeol, currentRegion)
           offset = next.offset
           token = INDENT
     end observeIndented
@@ -691,10 +694,10 @@ object Scanners {
       case _ =>
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT
-     *         SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
+     *         SEMI + ELSE => ELSE, COLON following id/)/] => COLONfollow
      *  - Insert missing OUTDENTs at EOF
      */
-    def postProcessToken(lastToken: Token): Unit = {
+    def postProcessToken(lastToken: Token, lastName: SimpleName): Unit = {
       def fuse(tok: Int) = {
         token = tok
         offset = prev.offset
@@ -729,9 +732,10 @@ object Scanners {
                 reset()
         case END =>
           if !isEndMarker then token = IDENTIFIER
-        case COLON =>
-          if fewerBracesEnabled && colonEOLPredecessors.contains(lastToken) && lastOffset == offset then
-            observeColonEOL()
+        case COLONop =>
+          if lastToken == IDENTIFIER && lastName != null && isIdentifierStart(lastName.head)
+              || colonEOLPredecessors.contains(lastToken)
+          then token = COLONfollow
         case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
         case EOF =>
@@ -1188,7 +1192,7 @@ object Scanners {
       isSoftModifier && inModifierPosition()
 
     def isSoftModifierInParamModifierPosition: Boolean =
-      isSoftModifier && lookahead.token != COLON
+      isSoftModifier && lookahead.token != COLONop && lookahead.token != COLONfollow
 
     def isErased: Boolean = isIdent(nme.erased) && erasedEnabled
 
@@ -1527,6 +1531,7 @@ object Scanners {
       case NEWLINE => ";"
       case NEWLINES => ";;"
       case COMMA => ","
+      case COLONfollow | COLONeol => "':'"
       case _ =>
         if debugTokenStream then showTokenDetailed(token) else showToken(token)
     }

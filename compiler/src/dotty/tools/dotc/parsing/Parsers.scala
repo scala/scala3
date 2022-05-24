@@ -312,7 +312,7 @@ object Parsers {
     def acceptColon(): Int =
       val offset = in.offset
       if in.isColon() then { in.nextToken(); offset }
-      else accept(COLON)
+      else accept(COLONop)
 
     /** semi = nl {nl} | `;'
      *  nl  = `\n' // where allowed
@@ -897,10 +897,11 @@ object Parsers {
     def followingIsSelfType() =
       val lookahead = in.LookaheadScanner(allowIndent = true)
       lookahead.nextToken()
-      lookahead.token == COLON
+      lookahead.token == COLONfollow
       && {
+        lookahead.observeColonEOL(inTemplate = false)
         lookahead.nextToken()
-        canStartTypeTokens(lookahead.token)
+        canStartTypeTokens.contains(lookahead.token)
       }
 
     /** Is current ident a `*`, and is it followed by a `)`, `, )`, `,EOF`? The latter two are not
@@ -1310,7 +1311,8 @@ object Parsers {
 
     def colonAtEOLOpt(): Unit = {
       possibleColonOffset = in.lastOffset
-      if in.token == COLONEOL then in.nextToken()
+      in.observeColonEOL(inTemplate = false)
+      if in.token == COLONeol then in.nextToken()
     }
 
     def argumentStart(): Unit =
@@ -1326,8 +1328,8 @@ object Parsers {
           patch(source, Span(in.offset), "  ")
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
-      in.observeColonEOL()
-      if in.token == COLONEOL then
+      in.observeColonEOL(inTemplate = true)
+      if in.token == COLONeol then
         if in.lookahead.token == END then in.token = NEWLINE
         else
           in.nextToken()
@@ -2127,7 +2129,7 @@ object Parsers {
             }
           case _ =>
             t
-      case COLON =>
+      case COLONop | COLONfollow =>
         in.nextToken()
         ascription(t, location)
       case _ =>
@@ -2216,7 +2218,7 @@ object Parsers {
         val start = in.offset
         val name = bindingName()
         val t =
-          if (in.token == COLON && location == Location.InBlock) {
+          if ((in.token == COLONop || in.token == COLONfollow) && location == Location.InBlock) {
             report.errorOrMigrationWarning(
               s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice(`future-migration`)}",
               source.atSpan(Span(start, in.lastOffset)),
@@ -2398,7 +2400,7 @@ object Parsers {
                   makeParameter(name.asTermName, typedOpt(), Modifiers(), isBackquoted = isBackquoted(id))
                 }
               case _ => t
-          else if in.fewerBracesEnabled && in.token == COLON && followingIsLambdaAfterColon() then
+          else if in.fewerBracesEnabled && in.token == COLONfollow && followingIsLambdaAfterColon() then
             val app = atSpan(startOffset(t), in.skipToken()) {
               Apply(t, expr(Location.InColonArg) :: Nil)
             }
@@ -2416,7 +2418,6 @@ object Parsers {
       val parents =
         if in.isNestedStart then Nil
         else constrApps(exclude = COMMA)
-      colonAtEOLOpt()
       possibleTemplateStart(isNew = true)
       parents match {
         case parent :: Nil if !in.isNestedStart =>
@@ -2726,7 +2727,7 @@ object Parsers {
      */
     def pattern1(location: Location = Location.InPattern): Tree =
       val p = pattern2()
-      if in.token == COLON then
+      if in.token == COLONop || in.token == COLONfollow then
         in.nextToken()
         ascription(p, location)
       else p
@@ -3836,7 +3837,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          if (in.token == LBRACE || in.token == COLONEOL) {
+          if (in.token == LBRACE || in.token == COLONeol) {
             report.errorOrMigrationWarning(
               "`extends` must be followed by at least one parent",
               in.sourcePos(), from = `3.0`)
@@ -3957,8 +3958,8 @@ object Parsers {
      */
     def selfType(): ValDef =
       if (in.isIdent || in.token == THIS)
-            && (in.lookahead.token == COLON && followingIsSelfType()
-                || in.lookahead.token == ARROW)
+            && in.lookahead.token == COLONop && followingIsSelfType()
+            || in.lookahead.token == ARROW
       then
         atSpan(in.offset) {
           val selfName =
@@ -3967,11 +3968,11 @@ object Parsers {
               nme.WILDCARD
             else ident()
           val selfTpt =
-            if in.token == COLON then
+            if in.token == COLONfollow then
               in.nextToken()
               infixType()
             else
-              if selfName == nme.WILDCARD then accept(COLON)
+              if selfName == nme.WILDCARD then accept(COLONfollow)
               TypeTree()
           if in.token == ARROW then
             in.token = SELFARROW // suppresses INDENT insertion after `=>`
