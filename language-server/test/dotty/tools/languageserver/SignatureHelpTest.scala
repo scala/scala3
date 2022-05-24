@@ -87,7 +87,7 @@ class SignatureHelpTest {
           |    case s @ Even(${m1}) => println(s"s has an even number of characters")
           |    case s               => println(s"s has an odd number of characters")
           """
-      .signatureHelp(m1, Nil, Some(0), -1)
+      .signatureHelp(m1, Nil, Some(0), 0)
   }
 
   @Test def unapplyCustomClass: Unit = {
@@ -255,7 +255,7 @@ class SignatureHelpTest {
     val signatureSeq = S("", Nil, List(List(P("", "Seq[Int]"))), None)
     // FIXME `Any` should be `Int`
     val signatureList = S("", Nil, List(List(P("", "Seq[Any]"))), None)
-    val signatureVariadicExtractor = S("", Nil, List(List(P("", "Int"), P("","List[Int @uncheckedVariance]"))), None)
+    val signatureVariadicExtractor = S("", Nil, List(List(P("", "Int"), P("","List[Int]"))), None)
 
     code"""case class Two[A, B](a: A, b: B)
           |object Main {
@@ -291,7 +291,8 @@ class SignatureHelpTest {
   }
 
   @Test def nameBasedMatch: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+    val nameBasedMatch = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+    val singleMatch = S("", Nil, List(List(P("", "ProdEmpty.type"))), None)
 
     code"""object ProdEmpty:
           |  def _1: Int = ???
@@ -303,10 +304,51 @@ class SignatureHelpTest {
           |object Test:
           |  "" match
           |    case ProdEmpty(${m1}, ${m2}) => ???
+          |    case ProdEmpty(${m3}) => ???
+          |    case _ => ()
+          """
+      .signatureHelp(m1, List(nameBasedMatch), Some(0), 0)
+      .signatureHelp(m2, List(nameBasedMatch), Some(0), 1)
+      .signatureHelp(m3, List(singleMatch), Some(0), 0)
+  }
+
+  @Test def nameBasedMatchWithWrongGet: Unit = {
+    val nameBasedMatch = S("", Nil, List(List(P("", "Int"))), None)
+    val singleMatch = S("", Nil, List(List(P("", "Int"))), None)
+
+    code"""object ProdEmpty:
+          |  def _1: Int = ???
+          |  def _2: String = ???
+          |  def isEmpty = true
+          |  def unapply(s: String): this.type = this
+          |  def get = 5
+          |
+          |object Test:
+          |  "" match
+          |    case ProdEmpty(${m1}, ${m2}) => ???
+          |    case ProdEmpty(${m3}) => ???
+          |    case _ => ()
+          """
+      .signatureHelp(m1, List(nameBasedMatch), Some(0), 0)
+      .signatureHelp(m2, List(nameBasedMatch), Some(0), -1)
+      .signatureHelp(m3, List(singleMatch), Some(0), 0)
+  }
+
+  @Test def nameBasedSingleMatchOrder: Unit = {
+    val signature = S("", Nil, List(List(P("", "String"))), None)
+
+    code"""object ProdEmpty:
+          |  def _1: Int = 1
+          |  def isEmpty = true
+          |  def unapply(s: String): this.type = this
+          |  def get: String = ""
+          |
+          |object Test:
+          |  "" match
+          |    case ProdEmpty(${m1}) => ???
           |    case _ => ()
           """
       .signatureHelp(m1, List(signature), Some(0), 0)
-      .signatureHelp(m2, List(signature), Some(0), 1)
   }
 
   @Test def getObjectMatch: Unit = {

@@ -42,13 +42,20 @@ object Signatures {
     def show: String = if name.nonEmpty then s"$name: $tpe" else tpe
   }
 
+  /**
+   * Extract (current parameter index, function index, functions) method call for given position.
+   *
+   * @param pos Position for which call should be returned
+   * @return A triple containing the index of the parameter being edited, the index of functeon
+   *         being called, the list of overloads of this function).
+   */
   def signatureHelp(pos: SourcePosition)(using Context): (Int, Int, List[Signature]) = {
     val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
     computeSignatureHelp(path, pos.span)(using Interactive.contextOfPath(path))
   }
 
   /**
-   * Extract (current parameter index, function index, functions) out of a method call.
+   * Computes call info (current parameter index, function index, functions) for a method call.
    *
    * @param path The path to the function application
    * @param span The position of the cursor
@@ -62,7 +69,7 @@ object Signatures {
       case UnApply(fun, _, patterns) => unapplyCallInfo(span, fun, patterns)
 
   /**
-   * Finds enclosing application from given `path` to `span`.
+   * Finds enclosing application from given `path` for `span`.
    *
    * @param path The path to the function application
    * @param span The position of the cursor
@@ -81,95 +88,186 @@ object Signatures {
       case direct :: _ => direct
     }
 
+  /**
+   * Extracts call information for a function application.
+   *
+   * @param span The position of the cursor
+   * @param params Current function parameters
+   * @param fun Function tree which is being applied
+   *
+   * @return A triple containing the index of the parameter being edited, the index of the function
+   *         being called, the list of overloads of this function).
+   */
   private def applyCallInfo(
     span: Span,
     params: List[tpd.Tree],
     fun: tpd.Tree
   )(using Context): (Int, Int, List[Signature]) =
-    val (alternativeIndex, alternatives) = fun.tpe match {
+    val (alternativeIndex, alternatives) = fun.tpe match
       case err: ErrorType =>
-        val (alternativeIndex, alternatives) = alternativesFromError(err, params) match {
+        val (alternativeIndex, alternatives) = alternativesFromError(err, params) match
           case (_, Nil) => (0, fun.denot.alternatives)
           case other => other
-        }
-
         (alternativeIndex, alternatives)
-
       case _ =>
         val funSymbol = fun.symbol
         val alternatives = funSymbol.owner.info.member(funSymbol.name).alternatives
         val alternativeIndex = alternatives.map(_.symbol).indexOf(funSymbol) max 0
         (alternativeIndex, alternatives)
-    }
 
     val curriedArguments = countParams(fun, alternatives(alternativeIndex))
     val paramIndex = params.indexWhere(_.span.contains(span)) match {
       case -1 => (params.length - 1 max 0) + curriedArguments
       case n => n + curriedArguments
     }
-    val alternativeSignatures = alternatives.flatMap(toSignature(_, false))
+    val alternativeSignatures = alternatives.flatMap(toApplySignature)
     (paramIndex, alternativeIndex, alternativeSignatures)
 
+  /**
+   * Extracts call informatioin for function in unapply context.
+   *
+   * @param span The position of the cursor
+   * @param params Current function parameters
+   * @param fun Unapply function tree
+   *
+   * @return A triple containing the index of the parameter being edited, the index of the function
+   *         being called, the list of overloads of this function).
+   */
   private def unapplyCallInfo(
     span: Span,
     fun: tpd.Tree,
     patterns: List[tpd.Tree]
   )(using Context): (Int, Int, List[Signature]) =
+    val resultType = unapplyMethodResult(fun)
+    val isUnapplySeq = fun.denot.name == core.Names.termName("unapplySeq")
+    val denot = fun.denot
+
+    def extractParamTypess(resultType: Type): List[List[Type]] =
+      resultType match
+        // Reference to a type which is not a type class
+        case ref: TypeRef if !ref.symbol.isPrimitiveValueClass => mapOptionLessUnapply(ref, patterns.size, isUnapplySeq)
+        // Option or Some applied type. There is special syntax for multiple returned arguments: Option[TupleN]
+        // We are not intrested in it, instead we extract proper type parameters from the Option type parameter.
+        case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
+            if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
+          tycon match
+            case typeRef: TypeRef if ctx.definitions.isTupleClass(typeRef.symbol) => List(args)
+            case _ => List(List(appliedType))
+        // Applied type extractor. We must extract from applied type to retain type parameters
+        case appliedType: AppliedType => mapOptionLessUnapply(appliedType, patterns.size, isUnapplySeq)
+        // This is necessary to extract proper result type as unapply can return other methods eg. apply
+        case MethodTpe(_, _, resultType) => extractParamTypess(resultType.widenDealias)
+        case _ => Nil
+
+    def extractParamNamess(resultType: Type): List[List[Name]] =
+      if resultType.typeSymbol.flags.is(Flags.CaseClass) && denot.symbol.flags.is(Flags.Synthetic) then
+        resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess
+      else
+        Nil
+
+    val paramTypes = extractParamTypess(resultType).flatten.map(stripAllAnnots)
+    val paramNames = extractParamNamess(resultType).flatten
+
+    val activeParameter = unapplyParameterIndex(patterns, span, paramTypes.length)
+    val unapplySignature = toUnapplySignature(paramNames, paramTypes).toList
+
+    (activeParameter, 0, unapplySignature)
+
+  /**
+   * Recursively strips annotations from given type
+   *
+   * @param tpe Type to strip annotations from
+   * @return Type with stripped annotations
+   */
+  private def stripAllAnnots(tpe: Type)(using Context): Type = tpe match
+    case AppliedType(t, args) => AppliedType(stripAllAnnots(t), args.map(stripAllAnnots))
+    case other => other.stripAnnots
+
+  /**
+   * Get index of currently edited parameter in unapply context.
+   *
+   * @param patterns Currently applied patterns for unapply method
+   * @param span The position of the cursor
+   * @param maximumParams Number of parameters taken by unapply method
+   * @return Index of currently edited parameter
+   */
+  private def unapplyParameterIndex(patterns: List[tpd.Tree], span: Span, maximumParams: Int)(using Context): Int =
     val patternPosition = patterns.indexWhere(_.span.contains(span))
-    val activeParameter = extractParamTypess(fun.tpe.finalResultType.widen).headOption.map { params =>
-      (patternPosition, patterns.length) match
-        case (-1, 0) => 0 // there are no patterns yet so it must be first one
-        case (-1, pos) => -1 // there are patterns, we must be outside range so we set no active parameter
-        case _ => (params.size - 1) min patternPosition max 0 // handle unapplySeq to always highlight Seq[A] on elements
-    }.getOrElse(-1)
-
-    // Handle undefined type parameters
-    val appliedDenot = fun match
-      case TypeApply(_, Bind(_, _) :: _) => fun.symbol.asSingleDenotation
-      case _ => fun.symbol.asSingleDenotation.mapInfo(_ => fun.tpe)
-
-    val signature = toSignature(appliedDenot, true).toList
-    (activeParameter, 0, signature)
+    (patternPosition, patterns.length) match
+      case (-1, 0) => 0 // there are no patterns yet so it must be first one
+      case (-1, pos) => -1 // there are patterns, we must be outside range so we set no active parameter
+      case _ => (maximumParams - 1) min patternPosition max 0 // handle unapplySeq to always highlight Seq[A] on elements
 
   private def isTuple(tree: tpd.Tree)(using Context): Boolean =
     tree.symbol != NoSymbol && ctx.definitions.isTupleClass(tree.symbol.owner.companionClass)
 
-  private def extractParamTypess(resultType: Type, isUnapplySeq: Boolean = false)(using Context): List[List[Type]] =
-    resultType match {
-      // Reference to a type which is not a type class
-      case ref: TypeRef if !ref.symbol.isPrimitiveValueClass => getExtractorMembers(ref)
-      // Option or Some applied type. There is special syntax for multiple returned arguments: Option[TupleN]
-      // We are not intrested in it, instead we extract proper type parameters from the Option type parameter.
-      case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
-          if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
-        tycon match
-          case typeRef: TypeRef if ctx.definitions.isTupleClass(typeRef.symbol) => List(args.map(_.stripAnnots))
-          case _ => List(List(appliedType.stripAnnots))
-      // Applied type extractor. We must extract from applied type to retain type parameters
-      case appliedType: AppliedType => getExtractorMembers(appliedType, isUnapplySeq)
-      // This is necessary to extract proper result type as unapply can return other methods eg. apply
-      case MethodTpe(_, _, resultType) => extractParamTypess(resultType.widenDealias.stripAnnots, isUnapplySeq)
-      case _ => Nil
-    }
+  /**
+   * Get unapply method result type omiting unknown types and another method calls.
+   *
+   * @param fun Unapply tree
+   * @return Proper unapply method type after extracting result from method types and omiting unknown types.
+   */
+  private def unapplyMethodResult(fun: tpd.Tree)(using Context): Type =
+    val typeWithoutBinds = fun match
+      case TypeApply(_, Bind(_, _) :: _) => fun.symbol.asSingleDenotation.info
+      case other => other.tpe
 
-  // Returns extractors from given type. In case if there are no extractor methods it fallbacks to get method
-  private def getExtractorMembers(resultType: Type, isUnapplySeq: Boolean = false)(using Context): List[List[Type]] =
+    typeWithoutBinds.finalResultType.widenDealias match
+      case methodType: MethodType => methodType.resultType.widen
+      case other => other
+
+  /**
+   *  Maps type by checking if given match is single match, name-based match, sequence match or product sequence match.
+   *  The precedence in higher priority - higher index order for fixed-arity extractors is:
+   *    1. Single match
+   *    2. Name based match
+   *  For variadic extractors:
+   *    1. Sequence match
+   *    2. Product sequence match
+   *
+   *  @see [[https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html]]
+   *
+   *  @param resultType Final result type for unapply
+   *  @param patternCount Currently applied patterns to unapply function
+   *  @param isUnapplySeq true if unapply name equals "unapplySeq", false otherwise
+   *  @return List of List of types dependent on option less extractor type.
+   */
+  private def mapOptionLessUnapply(
+    resultType: Type,
+    patternCount: Int,
+    isUnapplySeq: Boolean
+  )(using Context): List[List[Type]] =
     val productAccessors = resultType.memberDenots(
       underscoreMembersFilter,
       (name, buf) => buf += resultType.member(name).asSingleDenotation
     )
-    val availableExtractors = (productAccessors.isEmpty, isUnapplySeq) match
-      case (_, true) => List(resultType.member(core.Names.termName("drop")))
-      case (true, false) => List(resultType.member(core.Names.termName("get")))
-      case _  => productAccessors
-    List(availableExtractors.map(_.info.finalResultType.stripAnnots).toList)
 
-  object underscoreMembersFilter extends NameFilter {
-    def apply(pre: Type, name: Name)(using Context): Boolean = name.startsWith("_")
+    val getMethod = resultType.member(core.Names.termName("get"))
+    val dropMethod = resultType.member(core.Names.termName("drop"))
+
+    val availableExtractors = (getMethod.exists && patternCount <= 1, isUnapplySeq && dropMethod.exists) match
+      case (_, true) => List(dropMethod)
+      case (true, _) => List(getMethod)
+      case _  => productAccessors
+
+    List(availableExtractors.map(_.info.finalResultType).toList)
+
+  /**
+   * Filter returning only members starting with underscore followed with number
+   */
+  private object underscoreMembersFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(using Context): Boolean =
+      name.startsWith("_") && name.toString.drop(1).toIntOption.isDefined
     def isStable = true
   }
 
-  def toSignature(denot: SingleDenotation, isUnapply: Boolean = false)(using Context): Option[Signature] = {
+  /**
+   * Creates signature for apply method.
+   *
+   * @param denot Functino denotation for which apply signature is returned.
+   * @return Signature if denot is a function, None otherwise
+   */
+  private def toApplySignature(denot: SingleDenotation)(using Context): Option[Signature] = {
     val symbol = denot.symbol
     val docComment = ParsedComment.docOf(symbol)
 
@@ -184,8 +282,7 @@ object Signatures {
             Nil
           else
             toParamss(res)
-        case _ =>
-          Nil
+        case _ => Nil
       }
       val params = tp.paramNames.zip(tp.paramInfos).map { case (name, info) =>
         Signatures.Param(
@@ -194,65 +291,45 @@ object Signatures {
           docComment.flatMap(_.paramDoc(name)),
           isImplicit = tp.isImplicitMethod)
       }
-
       params :: rest
     }
 
-    def extractParamNamess(resultType: Type): List[List[Name]] =
-      if resultType.typeSymbol.flags.is(Flags.CaseClass) && symbol.flags.is(Flags.Synthetic) then
-        resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess
-      else
-        Nil
-
-    def toUnapplyParamss(method: Type)(using Context): List[Param] = {
-      val resultType = method.finalResultType.widenDealias match
-        case methodType: MethodType => methodType.resultType.widen
-        case other => other
-
-      val paramNames = extractParamNamess(resultType).flatten
-      val paramTypes = extractParamTypess(resultType, denot.name == core.Names.termName("unapplySeq")).flatten
-
-      if paramNames.length == paramTypes.length then
-        (paramNames zip paramTypes).map((name, info) => Param(name.show, info.show))
-      else
-        paramTypes.map(info => Param("", info.show))
-
-    }
-
-    denot.info.stripPoly match {
-      case tpe if isUnapply =>
-        val params = toUnapplyParamss(tpe)
-        if params.nonEmpty then
-          Some(Signature("", Nil, List(params), None))
-        else
-          None
-
+    denot.info.stripPoly match
       case tpe: MethodType =>
         val paramss = toParamss(tpe)
-        val typeParams = denot.info match {
-          case poly: PolyType =>
-            poly.paramNames.zip(poly.paramInfos).map { case (x, y) => x.show + y.show }
-          case _ =>
-            Nil
-        }
-
+        val typeParams = denot.info match
+          case poly: PolyType => poly.paramNames.zip(poly.paramInfos).map { case (x, y) => x.show + y.show }
+          case _ => Nil
         val (name, returnType) =
-          if (symbol.isConstructor) (symbol.owner.name.show, None)
-          else (denot.name.show, Some(tpe.finalResultType.widenTermRefExpr.show))
-
-        val signature =
-          Signatures.Signature(name,
-                               typeParams,
-                               paramss,
-                               returnType,
-                               docComment.map(_.mainDoc))
-
-        Some(signature)
-
-      case other =>
-        None
-    }
+          if (symbol.isConstructor) then
+            (symbol.owner.name.show, None)
+          else
+            (denot.name.show, Some(tpe.finalResultType.widenTermRefExpr.show))
+        Some(Signatures.Signature(name, typeParams, paramss, returnType, docComment.map(_.mainDoc)))
+      case other => None
   }
+
+  /**
+   * Creates signature for unapply method. It is different from apply one as it should not show function name,
+   * return type and type parameters. Instead we show function in the following pattern (_$1: T1, _$2: T2, _$n: Tn),
+   * where _$n is only present for synthetic product extractors such as case classes.
+   * In rest of cases signature skips them resulting in pattern (T1, T2, T3, Tn)
+   *
+   * @param paramNames Parameter names for unapply final result type.
+   *                   It non empty only when unapply returns synthetic product as for case classes.
+   * @param paramTypes Parameter types for unapply final result type.
+   * @return Signature if paramTypes is non empty, None otherwise
+   */
+  private def toUnapplySignature(paramNames: List[Name], paramTypes: List[Type])(using Context): Option[Signature] =
+    val params = if paramNames.length == paramTypes.length then
+      (paramNames zip paramTypes).map((name, info) => Param(name.show, info.show))
+    else
+      paramTypes.map(info => Param("", info.show))
+
+    if params.nonEmpty then
+      Some(Signature("", Nil, List(params), None))
+    else
+      None
 
   /**
    * The number of parameters before `tree` application. It is necessary to properly show
