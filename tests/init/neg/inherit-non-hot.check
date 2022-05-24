@@ -2,16 +2,18 @@
 6 |            if b == null then b = new B(this) // error
   |                                  ^^^^^^^^^^^
   |                                  The RHS of an assignment to a field must be fully initialized. Calling trace:
+  |                                  -> object Foo {	[ inherit-non-hot.scala:2 ]
+  |                                     ^
   |                                  -> val c = new C	[ inherit-non-hot.scala:19 ]
   |                                             ^^^^^
   |                                  -> class C extends A {	[ inherit-non-hot.scala:15 ]
   |                                     ^
   |                                  -> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
   |                                                  ^^^
+  |                                  -> def toB: B =	[ inherit-non-hot.scala:5 ]
+  |                                     ^
   |                                  -> if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
   |                                                           ^^^^^^^^^^^
   |
   |                                  Promoting the value to fully initialized failed due to the following problem:
-  |                                  Cannot prove that the field val a is fully initialized. Calling trace:
-  |                                  -> if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
-  |                                                           ^^^^^^^^^^^
+  |                                  Cannot prove that the field val a is fully initialized.
