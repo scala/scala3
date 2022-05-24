@@ -1125,9 +1125,9 @@ trait Implicits:
         ctx.reporter.removeBufferedMessages
         adapted.tpe match {
           case _: SearchFailureType => SearchFailure(adapted)
-          case error: PreviousErrorType if !adapted.symbol.isAccessibleFrom(cand.ref.prefix) => 
+          case error: PreviousErrorType if !adapted.symbol.isAccessibleFrom(cand.ref.prefix) =>
             SearchFailure(adapted.withType(new NestedFailure(error.msg, pt)))
-          case _ => 
+          case _ =>
             // Special case for `$conforms` and `<:<.refl`. Showing them to the users brings
             // no value, so we instead report a `NoMatchingImplicitsFailure`
             if (adapted.symbol == defn.Predef_conforms || adapted.symbol == defn.SubType_refl)
@@ -1523,11 +1523,11 @@ trait Implicits:
     def implicitScope(tp: Type): OfTypeImplicits = ctx.run.nn.implicitScope(tp)
 
     /** All available implicits, without ranking */
-    def allImplicits: Set[TermRef] = {
+    def allImplicits: Set[SearchSuccess] = {
       val contextuals = ctx.implicits.eligible(wildProto).map(tryImplicit(_, contextual = true))
       val inscope = implicitScope(wildProto).eligible.map(tryImplicit(_, contextual = false))
       (contextuals.toSet ++ inscope).collect {
-        case success: SearchSuccess => success.ref
+        case success: SearchSuccess => success
       }
     }
 
