@@ -454,9 +454,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     var offsetSymbol: TermSymbol | Null = null
 
     def offsetName(id: Int) = s"${StdNames.nme.LAZY_FIELD_OFFSET}${if (x.symbol.owner.is(Module)) "_m_" else ""}$id".toTermName
-
     val containerName = LazyLocalName.fresh(x.name.asTermName)
-    val containerNameEscaped = containerName.toString.replace(" ", "$u0020") // escape spaces in names
     val containerSymbol = newSymbol(claz, containerName, containerFlags, defn.ObjectType).enteredAfter(this)
     containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot)) // private @volatile var _x: AnyRef
     containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
@@ -475,13 +473,13 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       case Some(info) =>
         offsetSymbol = newSymbol(claz, offsetName(info.defs.size), Synthetic, defn.LongType).enteredAfter(this)
         offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-        val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(containerNameEscaped)))
+        val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(containerName.mangledString)))
         val offsetTree = ValDef(offsetSymbol.nn, getOffset.appliedTo(fieldTree))
         info.defs = offsetTree :: info.defs
       case None =>
         offsetSymbol = newSymbol(claz, offsetName(0), Synthetic, defn.LongType).enteredAfter(this)
         offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-        val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(containerNameEscaped)))
+        val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(containerName.mangledString)))
         val offsetTree = ValDef(offsetSymbol.nn, getOffset.appliedTo(fieldTree))
         appendOffsetDefs += (claz -> new OffsetInfo(List(offsetTree)))
 
