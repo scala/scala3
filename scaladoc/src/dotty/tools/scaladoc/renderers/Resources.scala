@@ -134,7 +134,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/ux.css",
       "styles/versions-dropdown.css",
       "styles/fontawesome.css",
-      "hljs/highlight.min.js",
+      "hljs/highlight.pack.js",
       "hljs/LICENSE",
       "scripts/hljs-scala3.js",
       "scripts/ux.js",
