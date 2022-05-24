@@ -106,7 +106,14 @@ object Signatures {
     val (alternativeIndex, alternatives) = fun.tpe match
       case err: ErrorType =>
         val (alternativeIndex, alternatives) = alternativesFromError(err, params) match
-          case (_, Nil) => (0, fun.denot.alternatives)
+          // if we have no alternatives from error, we have to fallback to function denotation
+          // Check `partialyFailedCurriedFunctions` test for example
+          case (_, Nil) =>
+            val denot = fun.denot
+            if denot.exists then
+              (0, List(denot.asSingleDenotation))
+            else
+              (0, Nil)
           case other => other
         (alternativeIndex, alternatives)
       case _ =>
