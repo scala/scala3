@@ -311,7 +311,7 @@ object Parsers {
 
     def acceptColon(): Int =
       val offset = in.offset
-      if in.isColon() then { in.nextToken(); offset }
+      if in.isColon then { in.nextToken(); offset }
       else accept(COLONop)
 
     /** semi = nl {nl} | `;'
@@ -888,7 +888,7 @@ object Parsers {
           lookahead.nextToken()
           skipParams()
       skipParams()
-      lookahead.isColon()
+      lookahead.isColon
 
     def followingIsExtension() =
       val next = in.lookahead.token
@@ -1458,7 +1458,7 @@ object Parsers {
             val paramStart = in.offset
             val ts = in.currentRegion.withCommasExpected {
               funArgType() match
-                case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
+                case Ident(name) if name != tpnme.WILDCARD && in.isColon =>
                   isValParamList = true
                   commaSeparatedRest(
                     typedFunParam(paramStart, name.toTermName, imods),
@@ -1876,7 +1876,7 @@ object Parsers {
     }
 
     def contextBounds(pname: TypeName): List[Tree] =
-      if in.isColon() then
+      if in.isColon then
         atSpan(in.skipToken()) {
           AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
@@ -1891,7 +1891,7 @@ object Parsers {
         Nil
 
     def typedOpt(): Tree =
-      if in.isColon() then { in.nextToken(); toplevelTyp() }
+      if in.isColon then { in.nextToken(); toplevelTyp() }
       else TypeTree().withSpan(Span(in.lastOffset))
 
     def typeDependingOn(location: Location): Tree =
@@ -2119,8 +2119,8 @@ object Parsers {
         else expr1Rest(postfixExpr(location), location)
     end expr1
 
-    def expr1Rest(t: Tree, location: Location): Tree = in.token match
-      case EQUALS =>
+    def expr1Rest(t: Tree, location: Location): Tree =
+      if in.token == EQUALS then
         t match
           case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) =>
             atSpan(startOffset(t), in.skipToken()) {
@@ -2129,12 +2129,11 @@ object Parsers {
             }
           case _ =>
             t
-      case COLONop | COLONfollow =>
+      else if in.isColon then
         in.nextToken()
         ascription(t, location)
-      case _ =>
+      else
         t
-    end expr1Rest
 
     def ascription(t: Tree, location: Location): Tree = atSpan(startOffset(t)) {
       in.token match {
@@ -2363,7 +2362,7 @@ object Parsers {
         case _ =>
           if isLiteral then
             literal()
-          else if in.isColon() then
+          else if in.isColon then
             syntaxError(IllegalStartSimpleExpr(tokenString(in.token)))
             in.nextToken()
             simpleExpr(location)
@@ -2390,7 +2389,7 @@ object Parsers {
         case USCORE =>
           atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
         case _ =>
-          if in.isColon() && location == Location.InParens && followingIsLambdaParams() then
+          if in.isColon && location == Location.InParens && followingIsLambdaParams() then
             t match
               case id @ Ident(name) =>
                 if name.is(WildcardParamName) then
@@ -2494,7 +2493,7 @@ object Parsers {
             !fn.isInstanceOf[Trees.Apply[?]] // allow one () as annotation argument
           else if lookahead.token == IDENTIFIER then
             lookahead.nextToken()
-            !lookahead.isColon()
+            !lookahead.isColon
           else in.canStartExprTokens.contains(lookahead.token)
         }
       }
@@ -2727,7 +2726,7 @@ object Parsers {
      */
     def pattern1(location: Location = Location.InPattern): Tree =
       val p = pattern2()
-      if in.token == COLONop || in.token == COLONfollow then
+      if in.isColon then
         in.nextToken()
         ascription(p, location)
       else p
@@ -2928,7 +2927,7 @@ object Parsers {
         if allowed.contains(in.token)
            || in.isSoftModifier
               && localModifierTokens.subsetOf(allowed) // soft modifiers are admissible everywhere local modifiers are
-              && !in.lookahead.isColon()
+              && !in.lookahead.isColon
         then
           val isAccessMod = accessModifierTokens contains in.token
           val mods1 = addModifier(mods)
@@ -3135,7 +3134,7 @@ object Parsers {
               val isParams =
                 !impliedMods.is(Given)
                 || startParamTokens.contains(in.token)
-                || isIdent && (in.name == nme.inline || in.lookahead.isColon())
+                || isIdent && (in.name == nme.inline || in.lookahead.isColon)
               if isParams then commaSeparated(() => param())
               else contextTypes(ofClass, nparams, impliedMods)
           checkVarArgsRules(clause)
@@ -3748,7 +3747,7 @@ object Parsers {
         isUsingClause(extParams)
       do ()
       leadParamss ++= paramClauses(givenOnly = true, numLeadParams = nparams)
-      if in.isColon() then
+      if in.isColon then
         syntaxError("no `:` expected here")
         in.nextToken()
       val methods: List[Tree] =
@@ -3958,7 +3957,7 @@ object Parsers {
      */
     def selfType(): ValDef =
       if (in.isIdent || in.token == THIS)
-            && in.lookahead.token == COLONop && followingIsSelfType()
+            && in.lookahead.isColon && followingIsSelfType()
             || in.lookahead.token == ARROW
       then
         atSpan(in.offset) {
@@ -3968,7 +3967,7 @@ object Parsers {
               nme.WILDCARD
             else ident()
           val selfTpt =
-            if in.token == COLONfollow then
+            if in.isColon then
               in.nextToken()
               infixType()
             else

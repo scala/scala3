@@ -75,13 +75,8 @@ object Scanners {
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
 
-    /** Is token a COLON, after having converted COLONeol to COLON?
-     *  The conversion means that indentation is not significant after `:`
-     *  anymore. So, warning: this is a side-effecting operation.
-     */
-    def isColon() =
-      if token == COLONeol then token = COLONop
-      token == COLONop || token == COLONfollow
+    def isColon =
+      token == COLONop || token == COLONfollow || token == COLONeol
 
     /** Is current token first one after a newline? */
     def isAfterLineEnd: Boolean = lineOffset >= 0
@@ -1192,7 +1187,7 @@ object Scanners {
       isSoftModifier && inModifierPosition()
 
     def isSoftModifierInParamModifierPosition: Boolean =
-      isSoftModifier && lookahead.token != COLONop && lookahead.token != COLONfollow
+      isSoftModifier && !lookahead.isColon
 
     def isErased: Boolean = isIdent(nme.erased) && erasedEnabled
 
