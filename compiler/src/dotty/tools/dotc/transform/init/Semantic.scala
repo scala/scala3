@@ -1094,7 +1094,7 @@ object Semantic {
 
   /** Utility definition used for better error-reporting of argument errors */
   case class ArgInfo(value: Value, source: Tree) {
-    def promote: Contextual[Unit] = value.promote("Cannot prove the argument is fully initialized.", source)
+    def promote: Contextual[Unit] = value.promote("Cannot prove the argument is fully initialized. Only fully initialized values are safe to leak.", source)
   }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
@@ -1223,9 +1223,9 @@ object Semantic {
         lhs match
         case Select(qual, _) =>
           eval(qual, thisV, klass)
-          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value.", rhs)
+          eval(rhs, thisV, klass).ensureHot("The RHS of an assignment to a field must be fully initialized.", rhs)
         case id: Ident =>
-          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value.", rhs)
+          eval(rhs, thisV, klass).ensureHot("The RHS of an assignment to a field must be fully initialized.", rhs)
 
       case closureDef(ddef) =>
         Fun(ddef.rhs, thisV, klass, env)
@@ -1249,7 +1249,7 @@ object Semantic {
         eval(cases.map(_.body), thisV, klass).join
 
       case Return(expr, from) =>
-        eval(expr, thisV, klass).ensureHot("return expression may only be initialized value.", expr)
+        eval(expr, thisV, klass).ensureHot("return expression must be fully initialized.", expr)
 
       case WhileDo(cond, body) =>
         eval(cond :: body :: Nil, thisV, klass)

@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/inherit-non-hot.scala:6:34 --------------------------------------------------------------------
 6 |            if b == null then b = new B(this) // error
   |                                  ^^^^^^^^^^^
-  |                                  May only assign fully initialized value. Calling trace:
+  |                                  The RHS of an assignment to a field must be fully initialized. Calling trace:
   |                                  -> val c = new C	[ inherit-non-hot.scala:19 ]
   |                                             ^^^^^
   |                                  -> class C extends A {	[ inherit-non-hot.scala:15 ]

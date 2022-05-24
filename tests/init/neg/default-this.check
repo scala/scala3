@@ -1,8 +1,8 @@
 -- Error: tests/init/neg/default-this.scala:9:8 ------------------------------------------------------------------------
 9 |        compare() // error
   |        ^^^^^^^
-  |        Cannot prove the argument is fully initialized. Calling trace:
-  |        -> val result = updateThenCompare(5)	[ default-this.scala:11 ]
-  |                        ^^^^^^^^^^^^^^^^^^^^
-  |        -> compare() // error	[ default-this.scala:9 ]
-  |           ^^^^^^^
+  |    Cannot prove the argument is fully initialized. Only fully initialized values are safe to leak. Calling trace:
+  |    -> val result = updateThenCompare(5)	[ default-this.scala:11 ]
+  |                    ^^^^^^^^^^^^^^^^^^^^
+  |    -> compare() // error	[ default-this.scala:9 ]
+  |       ^^^^^^^
