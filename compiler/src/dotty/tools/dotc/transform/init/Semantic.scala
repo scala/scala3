@@ -615,11 +615,11 @@ object Semantic {
 
       def checkArgsWithParametricity() =
         val methodType = atPhaseBeforeTransforms { meth.info.stripPoly }
-        var allArgsPromote = true
+        var allArgsHot = true
         val allParamTypes = methodType.paramInfoss.flatten.map(_.repeatedToSingle)
         val errors = allParamTypes.zip(args).flatMap { (info, arg) =>
           val errors = Reporter.errorsIn { arg.promote }
-          allArgsPromote = allArgsPromote && errors.isEmpty
+          allArgsHot = allArgsHot && errors.isEmpty
           info match
             case typeParamRef: TypeParamRef =>
               val bounds = typeParamRef.underlying.bounds
@@ -632,7 +632,7 @@ object Semantic {
               if isWithinBounds && !otherParamContains then Nil else errors
             case _ => errors
         }
-        (errors, allArgsPromote)
+        (errors, allArgsHot)
 
       // fast track if the current object is already initialized
       if promoted.isCurrentObjectPromoted then Hot
@@ -640,13 +640,13 @@ object Semantic {
       else if meth eq defn.Any_asInstanceOf then value
       else value match {
         case Hot  =>
-          if isSyntheticApply(meth) then
+          if isSyntheticApply(meth) && meth.hasSource then
             val klass = meth.owner.companionClass.asClass
             instantiate(klass, klass.primaryConstructor, args)
           else
             if receiver.typeSymbol.isStaticOwner then
-              val (errors, allArgsPromote) = checkArgsWithParametricity()
-              if allArgsPromote then
+              val (errors, allArgsHot) = checkArgsWithParametricity()
+              if allArgsHot then
                 Hot: Value
               else if errors.nonEmpty then
                 reporter.reportAll(errors)
