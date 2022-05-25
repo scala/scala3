@@ -1221,12 +1221,12 @@ object Semantic {
           eval(qual, thisV, klass)
           val res = eval(rhs, thisV, klass)
           extendTrace(rhs) {
-            res.ensureHot("The RHS of an assignment to a field must be fully initialized.")
+            res.ensureHot("The RHS of reassignment must be fully initialized.")
           }
         case id: Ident =>
           val res = eval(rhs, thisV, klass)
           extendTrace(rhs) {
-            res.ensureHot("The RHS of an assignment to a field must be fully initialized.")
+            res.ensureHot("The RHS of reassignment must be fully initialized.")
           }
 
       case closureDef(ddef) =>

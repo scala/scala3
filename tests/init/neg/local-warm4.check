@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/local-warm4.scala:18:20 -----------------------------------------------------------------------
 18 |                a = newA // error
    |                    ^^^^
-   |                    The RHS of an assignment to a field must be fully initialized. Calling trace:
+   |                    The RHS of reassignment must be fully initialized. Calling trace:
    |                    -> object localWarm {	[ local-warm4.scala:1 ]
    |                       ^
    |                    -> val a = new A(5)	[ local-warm4.scala:26 ]
