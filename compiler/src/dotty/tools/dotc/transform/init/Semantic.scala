@@ -423,6 +423,7 @@ object Semantic {
   /** Error reporting */
   trait Reporter:
     def report(err: Error): Unit
+    def reportAll(errs: Seq[Error]): Unit = for err <- errs do report(err)
 
   object Reporter:
     class BufferedReporter extends Reporter:
@@ -600,7 +601,7 @@ object Semantic {
     }
 
     def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args, printer, (_: Value).show) {
-      def checkArgs = args.foreach(_.promote)
+      def promoteArgs(): Contextual[Unit] = args.foreach(_.promote)
 
       def isSyntheticApply(meth: Symbol) =
         meth.is(Flags.Synthetic)
@@ -648,16 +649,16 @@ object Semantic {
               if allArgsPromote then
                 Hot: Value
               else if errors.nonEmpty then
-                for error <- errors do reporter.report(error)
+                reporter.reportAll(errors)
                 Hot: Value
               else
                 Cold: Value
             else
-              checkArgs
+              promoteArgs()
               Hot
 
         case Cold =>
-          checkArgs
+          promoteArgs()
           val error = CallCold(meth, trace.toVector)
           reporter.report(error)
           Hot
@@ -676,7 +677,7 @@ object Semantic {
             if target.hasSource then
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
-              val argErrors = Reporter.errorsIn { args.foreach(_.promote) }
+              val argErrors = Reporter.errorsIn { promoteArgs() }
               // normal method call
               if argErrors.nonEmpty && isSyntheticApply(meth) then
                 val klass = meth.owner.companionClass.asClass
@@ -684,7 +685,7 @@ object Semantic {
                 val outer = resolveOuterSelect(outerCls, ref, 1)
                 outer.instantiate(klass, klass.primaryConstructor, args)
               else
-                for error <- argErrors do reporter.report(error)
+                reporter.reportAll(argErrors)
                 withEnv(if isLocal then env else Env.empty) {
                   extendTrace(ddef) {
                     eval(ddef.rhs, ref, cls, cacheResult = true)
@@ -694,7 +695,7 @@ object Semantic {
               Hot
             else
               // no source code available
-              checkArgs
+              promoteArgs()
               val error = CallUnknown(target, trace.toVector)
               reporter.report(error)
               Hot
@@ -710,7 +711,7 @@ object Semantic {
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then value // a call like `fun.tupled`
           else
-            checkArgs
+            promoteArgs()
             withEnv(env) {
               eval(body, thisV, klass, cacheResult = true)
             }
@@ -932,7 +933,7 @@ object Semantic {
             promoted.add(warm)
             val errors = warm.tryPromote(msg)
             if errors.nonEmpty then promoted.remove(warm)
-            for error <- errors do reporter.report(error)
+            reporter.reportAll(errors)
 
         case fun @ Fun(body, thisV, klass, env) =>
           if !promoted.contains(fun) then
