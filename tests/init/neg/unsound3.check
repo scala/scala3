@@ -1,6 +1,12 @@
 -- Error: tests/init/neg/unsound3.scala:10:38 --------------------------------------------------------------------------
 10 |        if (x < 12) then foo().getC().b else newB // error
    |                         ^^^^^^^^^^^^^^
-   |             Access field C.this.foo().getC().b on a value with an unknown initialization status. Calling trace:
-   |             -> val b = foo()	[ unsound3.scala:12 ]
-   |                        ^^^^^
+   |                         Access field on a value with an unknown initialization status. Calling trace:
+   |                         -> class C {	[ unsound3.scala:5 ]
+   |                            ^
+   |                         -> val b = foo()	[ unsound3.scala:12 ]
+   |                                    ^^^^^
+   |                         -> def foo(): B = {	[ unsound3.scala:7 ]
+   |                            ^
+   |                         -> if (x < 12) then foo().getC().b else newB // error	[ unsound3.scala:10 ]
+   |                                             ^^^^^^^^^^^^^^

@@ -1,6 +1,10 @@
 -- Error: tests/init/neg/inlined-method.scala:8:45 ---------------------------------------------------------------------
 8 |    scala.runtime.Scala3RunTime.assertFailed(message) // error
   |                                             ^^^^^^^
-  |Cannot prove that the value is fully initialized. Only initialized values may be used as arguments. Calling trace:
-  |-> Assertion.failAssert(this)	[ inlined-method.scala:2 ]
-  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    Cannot prove the argument is fully initialized. Only fully initialized values are safe to leak. Calling trace:
+  |    -> class InlineError {	[ inlined-method.scala:1 ]
+  |       ^
+  |    -> Assertion.failAssert(this)	[ inlined-method.scala:2 ]
+  |       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    -> scala.runtime.Scala3RunTime.assertFailed(message) // error	[ inlined-method.scala:8 ]
+  |                                                ^^^^^^^

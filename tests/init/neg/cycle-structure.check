@@ -1,15 +1,21 @@
 -- Error: tests/init/neg/cycle-structure.scala:2:15 --------------------------------------------------------------------
 2 |    val x1 = b.x      // error
   |             ^^^
-  |             Access field A.this.b.x on a value with an unknown initialization status. Calling trace:
+  |             Access field on a value with an unknown initialization status. Calling trace:
+  |             -> case class B(a: A) {	[ cycle-structure.scala:7 ]
+  |                ^
   |             -> val x = A(this)	[ cycle-structure.scala:9 ]
   |                        ^^^^^^^
   |             -> case class A(b: B) {	[ cycle-structure.scala:1 ]
   |                ^
+  |             -> val x1 = b.x      // error	[ cycle-structure.scala:2 ]
+  |                         ^^^
 -- Error: tests/init/neg/cycle-structure.scala:8:15 --------------------------------------------------------------------
 8 |    val x1 = a.x      // error
   |             ^^^
-  |             Access field B.this.a.x on a value with an unknown initialization status. Calling trace:
+  |             Access field on a value with an unknown initialization status. Calling trace:
+  |             -> case class B(a: A) {	[ cycle-structure.scala:7 ]
+  |                ^
   |             -> val x = A(this)	[ cycle-structure.scala:9 ]
   |                        ^^^^^^^
   |             -> case class A(b: B) {	[ cycle-structure.scala:1 ]
@@ -18,3 +24,5 @@
   |                        ^^^^^^^
   |             -> case class B(a: A) {	[ cycle-structure.scala:7 ]
   |                ^
+  |             -> val x1 = a.x      // error	[ cycle-structure.scala:8 ]
+  |                         ^^^
