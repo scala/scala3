@@ -56,7 +56,7 @@ The `:` can optionally be followed by the parameter part of a function literal:
 val xs = elems.map: x =>
   val y = x - 1
   y * y
-xs.foldLeft (x, y) =>
+xs.foldLeft(0): (x, y) =>
   x + y
 ```
 Braces can be omitted if the lambda starts with a parameter list and an arrow symbol `=>` or `?=>`.
