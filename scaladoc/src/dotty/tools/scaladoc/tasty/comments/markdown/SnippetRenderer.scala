@@ -9,10 +9,9 @@ import dotty.tools.scaladoc.snippets._
 case class SnippetLine(content: String, lineNo: Int, classes: Set[String] = Set.empty, messages: Seq[String] = Seq.empty, attributes: Map[String, String] = Map.empty):
   def withClass(cls: String) = this.copy(classes = classes + cls)
   def withAttribute(name: String, value: String) = this.copy(attributes = attributes.updated(name, value))
-  private def attributesToString: String = attributes.updated("id", lineNo).map((key, value) => s"""$key="$value"""").mkString(" ")
   def toHTML =
     val label = if messages.nonEmpty then s"""label="${messages.map(_.escapeReservedTokens).mkString("\n")}"""" else ""
-    s"""<span $attributesToString class="${classes.mkString(" ")}"><span class="tooltip-container" $label></span>$content</span>"""
+    s"""<span line-number="${lineNo}" class="${classes.mkString(" ")}"><span class="tooltip-container" $label></span>$content</span>"""
 
 object SnippetRenderer:
   val hiddenStartSymbol = "//{"
@@ -140,7 +139,7 @@ object SnippetRenderer:
     val attrs = Seq(
       Option.when(isRunnable)(Attr("runnable") := "")
     ).flatten
-    div(cls := "snippet", Attr("scala-snippet") := "", attrs)(
+    div(cls := "snippet mono-small-block", Attr("scala-snippet") := "", attrs)(
       pre(
         raw(codeHTML)
       ),

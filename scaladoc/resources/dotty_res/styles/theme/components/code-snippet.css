@@ -3,14 +3,91 @@
   flex-direction: row;
   gap: calc(2 * var(--base-spacing));
   padding: calc(3 * var(--base-spacing)) calc(3 * var(--base-spacing))
-    calc(3 * var(--base-spacing)) calc(1 * var(--base-spacing));
+    calc(1.5 * var(--base-spacing)) calc(1 * var(--base-spacing));
   background-color: var(--action-primary-background-default-solid);
   border: 1px solid transparent;
   color: var(--text-primary);
+  overflow-x: scroll;
 }
 
 .snippet pre {
   margin: 0;
+}
+
+.snippet:hover {
+  background-color: var(--action-primary-background-hover);
+  border: 1px solid var(--border-default);
+}
+
+.snippet .hidden {
+  display: none;
+}
+
+.snippet .hidden:first-child {
+  display: block;
+  visibility: hidden;
+}
+
+.snippet .hidden:first-child::before {
+  visibility: visible;
+  color: var(--code-syntax-highlighting-line-number);
+  font-size: 13px;
+  content: "...";
+  margin-right: calc(2 * var(--base-spacing));
+}
+
+.snippet .hidden:last-child {
+  display: block;
+  visibility: hidden;
+}
+
+.snippet .hidden:last-child::before {
+  visibility: visible;
+  color: var(--code-syntax-highlighting-line-number);
+  font-size: 13px;
+  content: "...";
+  margin-right: calc(2 * var(--base-spacing));
+}
+
+.snippet > pre > code > span::before {
+  content: attr(line-number);
+  color: var(--code-syntax-highlighting-line-number);
+  margin-right: calc(2 * var(--base-spacing));
+  margin-left: calc(2 * var(--base-spacing));
+}
+
+.snippet-showhide-container {
+  margin-top: calc(2 * var(--base-spacing));
+}
+
+.snippet-showhide {
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.snippet-showhide::after {
+  margin-left: calc(5 * var(--base-spacing));
+  visibility: visible;
+  content: "Show all lines";
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.snippet-showhide:checked::after {
+  visibility: visible;
+  content: "Hide";
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.snippet-showhide-label:hover::before {
+  color: var(--action-primary-content-hover);
+}
+
+.snippet-showhide-label:active::before {
+  color: var(--action-primary-content-active);
 }
 
 .snippet:hover {
@@ -23,38 +100,6 @@
   position: absolute;
   top: calc(3 * var(--base-spacing));
   right: calc(3 * var(--base-spacing));
-}
-
-#snippet-showhide {
-  display: none;
-}
-
-.snippet-showhide {
-  margin-top: calc(2 * var(--base-spacing));
-}
-
-#snippet-showhide-label::before {
-  content: "Show all";
-  color: var(--action-primary-content-default);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-#snippet-showhide-label:hover::before {
-  color: var(--action-primary-content-hover);
-}
-
-#snippet-showhide-label:active::before {
-  color: var(--action-primary-content-active);
-}
-
-#snippet-showhide:checked + #snippet-showhide-label::before {
-  content: "Hide";
-}
-
-.snippet:hover {
-  background-color: var(--action-primary-background-hover);
-  border: 1px solid var(--border-default);
 }
 
 .snippet:hover .copy-button {

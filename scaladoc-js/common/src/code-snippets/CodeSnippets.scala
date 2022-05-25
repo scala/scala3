@@ -38,10 +38,9 @@ class CodeSnippets:
       case _ =>
     }
     def createShowHideButton(toggleRoot: html.Element) = {
-      div(cls := "snippet-showhide")(
+      div(cls := "snippet-showhide-container")(
         label(cls := "snippet-showhide-button")(
-          input("type" := "checkbox", id := "snippet-showhide").tap(_.addEventListener("change", _ => toggleHide(toggleRoot))),
-          label(id := "snippet-showhide-label", "for" := "snippet-showhide")
+          input("type" := "checkbox", cls := "snippet-showhide").tap(_.addEventListener("change", _ => toggleHide(toggleRoot))),
         ),
       )
     }
