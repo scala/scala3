@@ -1,10 +1,8 @@
 import language.experimental.fewerBraces
 
-val x = List().map: (x: => Int) => // error
+val x = List(1).map: (x: => Int) => // error
   ???
-val y = List() map: x =>  // error
-  x + 1   // error
-val z = List().map: + => // ok
+val z = List(1).map: + => // ok
   ???
 
 val xs = List(1)

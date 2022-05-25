@@ -984,6 +984,13 @@ object Parsers {
       recur(top)
     }
 
+    /** True if we are seeing a lambda argument after a colon of the form:
+     *    : (params) =>
+     *      body
+     */
+    def isColonLambda =
+      in.fewerBracesEnabled && in.token == COLONfollow && followingIsLambdaAfterColon()
+
     /**   operand { infixop operand | MatchClause } [postfixop],
      *
      *  respecting rules of associativity and precedence.
@@ -998,24 +1005,25 @@ object Parsers {
       val base = opStack
 
       def recur(top: Tree): Tree =
-        val isType = kind == ParseKind.Type
-        if (isIdent && isOperator) {
+        def isType = kind == ParseKind.Type
+        def maybePostfix = kind == ParseKind.Expr && in.postfixOpsEnabled
+        if isIdent && isOperator then
           val op = if isType then typeIdent() else termIdent()
           val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
           colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
-          val maybePostfix = kind == ParseKind.Expr && in.postfixOpsEnabled
-          if (maybePostfix && !canStartOperand(in.token)) {
+          if isColonLambda then
+            in.nextToken()
+            recur(expr(Location.InColonArg))
+          else if maybePostfix && !canStartOperand(in.token) then
             val topInfo = opStack.head
             opStack = opStack.tail
             val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
             atSpan(startOffset(od), topInfo.offset) {
               PostfixOp(od, topInfo.operator)
             }
-          }
           else recur(operand(location))
-        }
         else
           val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
           if !isType && in.token == MATCH then recurAtMinPrec(matchClause(t))
@@ -2399,7 +2407,7 @@ object Parsers {
                   makeParameter(name.asTermName, typedOpt(), Modifiers(), isBackquoted = isBackquoted(id))
                 }
               case _ => t
-          else if in.fewerBracesEnabled && in.token == COLONfollow && followingIsLambdaAfterColon() then
+          else if isColonLambda then
             val app = atSpan(startOffset(t), in.skipToken()) {
               Apply(t, expr(Location.InColonArg) :: Nil)
             }

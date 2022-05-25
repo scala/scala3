@@ -4,6 +4,8 @@ object Test1:
   val xs = List(1, 2, 3)
   val ys = xs.map: x =>
     x + 1
+  val ys1 = List(1) map: x =>
+    x + 1
   val x = ys.foldLeft(0): (x, y) =>
     x + y
   val y = ys.foldLeft(0): (x: Int, y: Int) =>
