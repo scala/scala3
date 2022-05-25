@@ -8,7 +8,9 @@
   |                                       ^^^^^^^^^^^^^^^
   |
   |    Promoting the value to fully initialized failed due to the following problem:
-  |    Access non-initialized value num1.
+  |    Access non-initialized value num1. Calling trace:
+  |    -> val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
+  |                                       ^^^^
 -- Error: tests/init/neg/t3273.scala:5:61 ------------------------------------------------------------------------------
 5 |  val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error
   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,4 +21,6 @@
   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   |    Promoting the value to fully initialized failed due to the following problem:
-  |    Access non-initialized value num2.
+  |    Access non-initialized value num2. Calling trace:
+  |    -> val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
+  |                                       ^^^^

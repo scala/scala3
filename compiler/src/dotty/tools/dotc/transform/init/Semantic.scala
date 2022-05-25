@@ -1145,7 +1145,7 @@ object Semantic {
 
       case id @ Ident(name) if !id.symbol.is(Flags.Method)  =>
         assert(name.isTermName, "type trees should not reach here")
-        cases(expr.tpe, thisV, klass)
+        withTrace(trace2) { cases(expr.tpe, thisV, klass) }
 
       case NewExpr(tref, New(tpt), ctor, argss) =>
         // check args

@@ -21,10 +21,7 @@ object Errors:
     def issue(using Context): Unit =
       report.warning(show + stacktrace, this.pos)
 
-    private def isTraceInformative(using Context): Boolean =
-      trace.size > 1 || trace.size == 1 && trace.head.sourcePos.ne(pos)
-
-    def stacktrace(using Context): String = if !isTraceInformative then "" else " Calling trace:\n" + {
+    def stacktrace(using Context): String = if trace.isEmpty then "" else " Calling trace:\n" + {
       var lastLineNum = -1
       var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
       trace.foreach { tree =>
@@ -107,10 +104,8 @@ object Errors:
     override def issue(using Context): Unit =
       report.warning(show, this.pos)
 
-    def show(using Context): String = {
-      var index = 0
+    def show(using Context): String =
       msg + stacktrace + "\n" +
         "Promoting the value to fully initialized failed due to the following problem:\n" +
         error.show + error.stacktrace
-    }
   }
