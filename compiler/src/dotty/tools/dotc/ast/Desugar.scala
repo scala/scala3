@@ -1235,18 +1235,31 @@ object desugar {
       rhsOK(rhs)
   }
 
+  def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
+    def check(rhs: Tree): MemberDef = rhs match
+      case bounds: TypeBoundsTree if bounds.alias.isEmpty =>
+        report.error(i"opaque type must have a right-hand side", tree.srcPos)
+        tree.withMods(tree.mods.withoutFlags(Opaque))
+      case LambdaTypeTree(_, body) => check(body)
+      case _ => tree
+    if !tree.mods.is(Opaque) then tree
+    else tree match
+      case TypeDef(_, rhs) => check(rhs)
+      case _ => tree
+
   /** Check that modifiers are legal for the definition `tree`.
    *  Right now, we only check for `opaque`. TODO: Move other modifier checks here.
    */
   def checkModifiers(tree: Tree)(using Context): Tree = tree match {
     case tree: MemberDef =>
       var tested: MemberDef = tree
-      def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
+      def checkApplicable(flag: Flag, test: MemberDefTest): MemberDef =
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
           report.error(ModifierNotAllowedForDefinition(flag), tree.srcPos)
-          tested = tested.withMods(tested.mods.withoutFlags(flag))
-        }
-      checkApplicable(Opaque, legalOpaque)
+           tested.withMods(tested.mods.withoutFlags(flag))
+        } else tested
+      tested = checkOpaqueAlias(tested)
+      tested = checkApplicable(Opaque, legalOpaque)
       tested
     case _ =>
       tree
