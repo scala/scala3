@@ -96,14 +96,17 @@ The lexical analyzer also inserts `indent` and `outdent` tokens that represent r
 In the context-free productions below we use the notation `<<< ts >>>`
 to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
 notation `:<<< ts >>>` indicates a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent` that follows
-a `:` at the end of a line.
+a `colon` token.
 
+A `colon` token reads as the standard colon "`:`" but is generated instead of it where `colon` is legal according to the context free syntax, but only if the previous token
+is an alphanumeric identifier, a backticked identifier, or one of the tokens `this`, `super`, "`)`", and "`]`".
 
 ```
+colon         ::=  ':'    -- with side conditions explained above
  <<< ts >>>   ::=  ‘{’ ts ‘}’
                 |  indent ts outdent
 :<<< ts >>>   ::=  [nl] ‘{’ ts ‘}’
-                |  `:` indent ts outdent
+                |  colon indent ts outdent
 ```
 
 ## Keywords
@@ -197,7 +200,7 @@ FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
 ParamValueType    ::=  Type [‘*’]                                               PostfixOp(t, "*")
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
-Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
+Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
 Types             ::=  Type {‘,’ Type}
@@ -234,7 +237,7 @@ Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
-                    |  InfixExpr id ‘:’ IndentedExpr
+                    |  InfixExpr id ColonArgument
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ <<< CaseClauses >>>                              Match(expr, cases)
 PrefixExpr        ::=  [PrefixOperator] SimpleExpr                             PrefixOp(expr, op)
@@ -253,13 +256,13 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
-                    |  SimpleExpr ‘:’ ColonArgument                             -- under language.experimental.fewerBraces
+                    |  SimpleExpr ColonArgument                                 -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr													-- to be dropped
-ColonArgument     ::=  indent CaseClauses | Block outdent
-                    |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
-                    |  HkTypeParamClause ‘=>’ ColonArgBody
-ColonArgBody      ::=  indent (CaseClauses | Block) outdent
+ColonArgument    ::=  colon [LambdaStart]
+                      indent (CaseClauses | Block) outdent
+LambdaStart      ::=  FunParams (‘=>’ | ‘?=>’)
+                   |  HkTypeParamClause ‘=>’
 ExprSplice        ::= spliceId                                                  -- if inside quoted block
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern

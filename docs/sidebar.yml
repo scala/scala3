@@ -138,7 +138,6 @@ subsection:
         directory: experimental
         index: reference/experimental/overview.md
         subsection:
-          - page: reference/experimental/fewer-braces.md
           - page: reference/experimental/canthrow.md
           - page: reference/experimental/erased-defs.md
           - page: reference/experimental/erased-defs-spec.md
