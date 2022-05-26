@@ -3,6 +3,20 @@ layout: doc-page
 title: "Scala 3 Syntax Summary"
 ---
 
+<!--
+
+This page has a companion page at _docs/reference/syntax.md.
+
+!! Make sure to edit both pages in sync. !!
+
+reference/syntax.md shows the official Scala 3 syntax, without deprecated or experimental features.
+
+internals/syntax.md shows the Scala 3 syntax as supported by the parser, including
+deprecated and experimental features. It also gives some indications how
+productions map to AST nodes.
+
+-->
+
 The following description of Scala tokens uses literal characters `‘c’` when
 referring to the ASCII fragment `\u0000` – `\u007F`.
 
@@ -88,7 +102,6 @@ nl               ::=  “new line character”
 semi             ::=  ‘;’ |  nl {nl}
 ```
 
-
 ## Optional Braces
 
 The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../reference/other-new-features/indentation.md)
@@ -127,7 +140,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
+as  derives  end  extension  infix  inline  opaque  open  throws transparent  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -234,13 +247,13 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
 Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
-PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
+PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op) -- only if language.postfixOperators is enabled
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
                     |  InfixExpr id ColonArgument
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ <<< CaseClauses >>>                              Match(expr, cases)
-PrefixExpr        ::=  [PrefixOperator] SimpleExpr                             PrefixOp(expr, op)
+PrefixExpr        ::=  [PrefixOperator] SimpleExpr                              PrefixOp(expr, op)
 PrefixOperator    ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
 SimpleExpr        ::=  SimpleRef
                     |  Literal
@@ -258,11 +271,13 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
                     |  SimpleExpr ColonArgument                                 -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
-                    |  XmlExpr													-- to be dropped
-ColonArgument    ::=  colon [LambdaStart]
-                      indent (CaseClauses | Block) outdent
-LambdaStart      ::=  FunParams (‘=>’ | ‘?=>’)
-                   |  HkTypeParamClause ‘=>’
+                    |  XmlExpr							-- to be dropped
+ColonArgument     ::=  colon [LambdaStart]
+                       indent (CaseClauses | Block) outdent
+LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
+                    |  HkTypeParamClause ‘=>’
+Quoted            ::=  ‘'’ ‘{’ Block ‘}’
+                    |  ‘'’ ‘[’ Type ‘]’
 ExprSplice        ::= spliceId                                                  -- if inside quoted block
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
@@ -303,7 +318,7 @@ TypeCaseClause    ::=  ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  Pattern2 [‘:’ RefinedType]                               Bind(name, Typed(Ident(wildcard), tpe))
-Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
+Pattern2          ::=  [id ‘@’] InfixPattern [‘*’]                              Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
