@@ -648,8 +648,10 @@ object Scanners {
 
     def observeColonEOL(inTemplate: Boolean): Unit =
       val enabled =
-        if inTemplate then token == COLONop || token == COLONfollow
-        else token == COLONfollow && fewerBracesEnabled
+        if token == COLONop && inTemplate then
+          report.deprecationWarning(em"`:` after symbolic operator is deprecated; use backticks around operator instead", sourcePos(offset))
+          true
+        else token == COLONfollow && (inTemplate || fewerBracesEnabled)
       if enabled then
         lookAhead()
         val atEOL = isAfterLineEnd || token == EOF

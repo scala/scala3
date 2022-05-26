@@ -99,7 +99,7 @@ notation `:<<< ts >>>` indicates a token sequence `ts` that is either enclosed i
 a `colon` token.
 
 A `colon` token reads as the standard colon "`:`" but is generated instead of it where `colon` is legal according to the context free syntax, but only if the previous token
-is an alphanumeric identifier, a backticked identifier, or one of the tokens `this`, `super`, "`)`", and "`]`".
+is an alphanumeric identifier, a backticked identifier, or one of the tokens `this`, `super`, `new`, "`)`", and "`]`".
 
 ```
 colon         ::=  ':'    -- with side conditions explained above
