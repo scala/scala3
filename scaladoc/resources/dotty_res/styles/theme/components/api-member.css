@@ -2,7 +2,6 @@
   background-color: var(--action-primary-background-default-solid);
   padding: calc(3 * var(--base-spacing));
   border-radius: 4px;
-  border: 1px solid var(--border-default);
   margin-bottom: calc(3 * var(--base-spacing));
   color: var(--code-method-highlighting-code-fg);
   position: relative;
@@ -51,12 +50,24 @@
   display: block;
 }
 
+#content .documentableElement a {
+  text-decoration: none;
+}
+
+#content .documentableElement a:hover {
+  text-decoration: underline;
+}
+
 [t="k"] {
-  color: var(--code-syntax-highlighting-keyword);
+  color: var(--code-method-highlighting-keyword);
 }
 
 [t="t"] {
   color: var(--code-method-highlighting-type);
+}
+
+#content a[t="n"] {
+  color: var(--code-method-highlighting-link-sig-fig);
 }
 
 #content a[t="t"] {
