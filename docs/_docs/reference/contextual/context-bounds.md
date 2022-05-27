@@ -10,7 +10,14 @@ A context bound is a shorthand for expressing the common pattern of a context pa
 def maximum[T: Ord](xs: List[T]): T = xs.reduceLeft(max)
 ```
 
-A bound like `: Ord` on a type parameter `T` of a method or class indicates a context parameter `using Ord[T]`. The context parameter(s) generated from context bounds come last in the definition of the containing method or class. For instance,
+A bound like `: Ord` on a type parameter `T` of a method or class indicates a context parameter `using Ord[T]`. The context parameter(s) generated from context bounds
+are added as follows:
+
+ - If the method parameters end in an implicit parameter list or using clause,
+   context parameters are added in front of that list.
+ - Otherwise they are added as a separate parameter clause at the end.
+
+Example:
 
 ```scala
 def f[T: C1 : C2, U: C3](x: T)(using y: U, z: V): R
@@ -19,7 +26,7 @@ def f[T: C1 : C2, U: C3](x: T)(using y: U, z: V): R
 would expand to
 
 ```scala
-def f[T, U](x: T)(using y: U, z: V)(using C1[T], C2[T], C3[U]): R
+def f[T, U](x: T)(using _: C1[T], _: C2[T], _: C3[U], y: U, z: V): R
 ```
 
 Context bounds can be combined with subtype bounds. If both are present, subtype bounds come first, e.g.
