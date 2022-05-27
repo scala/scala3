@@ -1,0 +1,163 @@
+.snippet {
+  position: relative;
+  flex-direction: row;
+  gap: calc(2 * var(--base-spacing));
+  padding: calc(3 * var(--base-spacing)) calc(3 * var(--base-spacing))
+    calc(1.5 * var(--base-spacing)) calc(1 * var(--base-spacing));
+  background-color: var(--action-primary-background-default-solid);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  overflow-x: scroll;
+}
+
+.snippet pre {
+  margin: 0;
+}
+
+.snippet:hover {
+  background-color: var(--action-primary-background-hover);
+  border: 1px solid var(--border-default);
+}
+
+.snippet .hidden {
+  display: none;
+}
+
+.snippet .hidden:first-child {
+  display: block;
+  visibility: hidden;
+}
+
+.snippet .hidden[line-number]:first-child::before {
+  visibility: visible;
+  color: var(--code-syntax-highlighting-line-number);
+  font-size: calc(1.5 * var(--base-spacing));
+  content: "...";
+  margin-left: calc(0.5 * var(--base-spacing));
+}
+
+.snippet .hidden[line-number]:last-child {
+  display: block;
+  visibility: hidden;
+}
+
+.snippet .hidden[line-number]:last-child::before {
+  visibility: visible;
+  color: var(--code-syntax-highlighting-line-number);
+  font-size: calc(1.5 * var(--base-spacing));
+  content: "...";
+  margin-left: calc(0.5 * var(--base-spacing));
+}
+
+.snippet > pre > code > span::before {
+  content: attr(line-number);
+  color: var(--code-syntax-highlighting-line-number);
+  margin-right: calc(2 * var(--base-spacing));
+  margin-left: calc(2 * var(--base-spacing));
+}
+
+.snippet-showhide-container {
+  margin-top: calc(2 * var(--base-spacing));
+}
+
+.snippet-showhide {
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.snippet-showhide::after {
+  margin-left: calc(5 * var(--base-spacing));
+  visibility: visible;
+  content: "Show all lines";
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.snippet-showhide:checked::after {
+  visibility: visible;
+  content: "Hide";
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.snippet-showhide-label:hover::before {
+  color: var(--action-primary-content-hover);
+}
+
+.snippet-showhide-label:active::before {
+  color: var(--action-primary-content-active);
+}
+
+.snippet:hover {
+  background-color: var(--action-primary-background-hover);
+  border: 1px solid var(--border-default);
+}
+
+.snippet .copy-button {
+  display: none;
+  position: absolute;
+  top: calc(3 * var(--base-spacing));
+  right: calc(3 * var(--base-spacing));
+}
+
+.snippet:hover .copy-button {
+  display: block;
+}
+
+.hljs-keyword {
+  color: var(--code-method-highlighting-keyword);
+}
+
+.hljs-comment {
+  color: var(--code-syntax-highlighting-comment);
+}
+
+.hljs-quote {
+  color: var(--code-syntax-highlighting-quote);
+}
+
+.hljs-line-number {
+  color: var(--code-syntax-highlighting-line-number);
+}
+
+.hljs-title {
+  color: var(--code-syntax-highlighting-title);
+}
+
+.hljs-keyword {
+  color: var(--code-syntax-highlighting-keyword);
+}
+
+.hljs-code-fg {
+  color: var(--code-syntax-highlighting-code-fg);
+}
+
+.hljs-literal {
+  color: var(--code-syntax-highlighting-literal);
+}
+
+.hljs-type {
+  color: var(--code-syntax-highlighting-type);
+}
+
+.hljs-subst {
+  color: var(--code-syntax-highlighting-subst);
+}
+
+.hljs-meta {
+  color: var(--code-syntax-highlighting-meta);
+}
+
+.hljs-string {
+  color: var(--code-syntax-highlighting-string);
+}
+
+.hljs-deletion {
+  color: var(--code-syntax-highlighting-deletion);
+}
+
+.hljs-variable {
+  color: var(--code-syntax-highlighting-variable);
+}

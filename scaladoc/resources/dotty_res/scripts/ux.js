@@ -13,6 +13,7 @@ window.addEventListener("DOMContentLoaded", () => {
       elements[i].onclick = function (e) {
         if (!$(e.target).is("a") && e.fromSnippet !== true)
           this.classList.toggle("expand")
+          this.querySelector(".show-content").classList.toggle("expand")
       }
     }
   }
@@ -121,7 +122,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
   sideMenuToggler.addEventListener('click', _e => {
     document.getElementById("leftColumn").classList.toggle("show")
-    document.getElementById("content-wrapper").classList.toggle("sidebar-shown")
+    document.getElementById("content").classList.toggle("sidebar-shown")
     document.getElementById("toc").classList.toggle("sidebar-shown")
     sideMenuToggler.classList.toggle("menu-shown")
   })

@@ -1,68 +1,63 @@
-#content {
+#main {
+  overflow: scroll;
   height: 100%;
-  width: calc(100% - calc(39 * var(--base-spacing)));
-  float: right;
-  margin-top: var(--header-height);
-  display: flex;
-  flex-flow: column;
-  overflow: scroll;
 }
 
-#content-wrapper {
-  overflow: scroll;
+#content {
+  margin-left: calc(39 * var(--base-spacing));
   display: flex;
   flex-flow: column;
 }
 
-@media(min-width: 1920px) {
-  #content-wrapper {
-    padding-right: calc(74.25 * var(--base-spacing));
-    padding-left: calc(36.75 * var(--base-spacing));
-  }
+#content::after {
+  margin-bottom: calc(10 * var(--base-spacing));
 }
 
-@media(max-width: 1920px) {
-  #content-wrapper {
-    padding-right: calc(41 * var(--base-spacing));
-    padding-left: calc(6 * var(--base-spacing));
-  }
-}
-
-@media(max-width: 1024px) {
+@media (min-width: 1920px) {
   #content {
-    width: 100%;
+    padding-left: calc(36.75 * var(--base-spacing));
+    padding-top: calc(18 * var(--base-spacing));
+    padding-right: calc(74.25 * var(--base-spacing));
   }
-  #content-wrapper.sidebar-shown {
-    padding-left: calc(45 * var(--base-spacing));
+}
+
+@media (max-width: 1920px) {
+  #content {
+    padding-left: calc(6 * var(--base-spacing));
+    padding-top: calc(18 * var(--base-spacing));
+    padding-bottom: calc(10 * var(--base-spacing));
+    padding-right: calc(41 * var(--base-spacing));
+  }
+}
+
+@media (max-width: 1024px) {
+  #content {
+    margin-left: 0;
+  }
+
+  #content.sidebar-shown {
+    margin-left: calc(39 * var(--base-spacing));
     padding-right: calc(6 * var(--base-spacing));
   }
 }
 
-@media(max-width: 768px) {
-  #content-wrapper {
-    margin-right: calc(6 * var(--base-spacing));
-    padding-right: 0;
+@media (max-width: 768px) {
+  #content {
+    padding-right: calc(6 * var(--base-spacing));
   }
 }
 
-
-@media(max-width: 390px) {
-  #content-wrapper {
-    padding-left: 0;
-    margin: 0;
-    height: 100%;
-  }
-
-  #content-wrapper .site-container {
-    margin-left: calc(4 * var(--base-spacing));
-    margin-right: calc(4 * var(--base-spacing));
-    height: 100%;
+@media (max-width: 390px) {
+  #content {
+    padding-right: calc(4 * var(--base-spacing));
+    padding-left: calc(4 * var(--base-spacing));
   }
 }
 
 /* content headers */
 
-#content h1, #content h2 {
+#content h1,
+#content h2 {
   color: var(--text-primary);
 }
 
@@ -83,5 +78,5 @@
 }
 
 .breadcrumbs {
-  position: absolute;
+  display: none;
 }

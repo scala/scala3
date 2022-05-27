@@ -10,6 +10,7 @@
   color: var(--text-primary);
   box-sizing: border-box;
   flex-wrap: wrap;
+  z-index: 2;
 }
 
 #footer .left-container {
@@ -64,7 +65,7 @@
   justify-content: center;
 }
 
-@media(max-width: 390px) {
+@media (max-width: 390px) {
   #footer {
     display: none;
   }
@@ -76,5 +77,9 @@
 
   #footer .text-mobile {
     display: none;
+  }
+
+  #footer.mobile-footer > .text-mobile {
+    display: flex;
   }
 }
