@@ -131,7 +131,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def memberSignature(member: Member) =
     val depStyle = if member.deprecated.isEmpty then "" else "deprecated"
-    val nameClasses = cls := s"documentableName $depStyle"
+    val nameClasses = Seq(
+      cls := s"documentableName $depStyle",
+      Attr("t") := "n"
+    )
 
     val rawBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())()
     val inlineBuilder = rawBuilder.asInstanceOf[InlineSignatureBuilder]
@@ -141,7 +144,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       div(cls := "signature")(
         span(cls := "modifiers")(modifiersRevered.reverse.map(renderElement)),
         span(cls := "kind")(renderElement(kind)),
-        renderLink(member.name, member.dri, nameClasses),
+        renderLink(member.name, member.dri, nameClasses*),
         span(signature.map(renderElement))
       ),
     )
