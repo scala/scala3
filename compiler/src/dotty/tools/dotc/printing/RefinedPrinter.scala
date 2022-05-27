@@ -262,9 +262,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: ClassInfo =>
         if tp.cls.derivesFrom(defn.PolyFunctionClass) then
           tp.member(nme.apply).info match
-            case info: PolyType => return toTextMethodAsFunction(info)
-            case _ =>
-        toTextParents(tp.parents) ~~ "{...}"
+            case info: PolyType => toTextMethodAsFunction(info)
+            case _ => toTextParents(tp.parents) ~~ "{...}"
+        else toTextParents(tp.parents) ~~ "{...}"
       case JavaArrayType(elemtp) =>
         toText(elemtp) ~ "[]"
       case tp: LazyRef if !printDebug =>
