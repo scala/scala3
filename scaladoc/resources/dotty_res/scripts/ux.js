@@ -13,6 +13,7 @@ window.addEventListener("DOMContentLoaded", () => {
       elements[i].onclick = function (e) {
         if (!$(e.target).is("a") && e.fromSnippet !== true)
           this.classList.toggle("expand")
+          this.querySelector(".show-content").classList.toggle("expand")
       }
     }
   }

@@ -28,25 +28,25 @@
   visibility: hidden;
 }
 
-.snippet .hidden:first-child::before {
+.snippet .hidden[line-number]:first-child::before {
   visibility: visible;
   color: var(--code-syntax-highlighting-line-number);
-  font-size: 13px;
+  font-size: calc(1.5 * var(--base-spacing));
   content: "...";
-  margin-right: calc(2 * var(--base-spacing));
+  margin-left: calc(0.5 * var(--base-spacing));
 }
 
-.snippet .hidden:last-child {
+.snippet .hidden[line-number]:last-child {
   display: block;
   visibility: hidden;
 }
 
-.snippet .hidden:last-child::before {
+.snippet .hidden[line-number]:last-child::before {
   visibility: visible;
   color: var(--code-syntax-highlighting-line-number);
-  font-size: 13px;
+  font-size: calc(1.5 * var(--base-spacing));
   content: "...";
-  margin-right: calc(2 * var(--base-spacing));
+  margin-left: calc(0.5 * var(--base-spacing));
 }
 
 .snippet > pre > code > span::before {

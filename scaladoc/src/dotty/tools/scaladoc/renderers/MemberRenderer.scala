@@ -161,11 +161,12 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   def member(member: Member) =
     val filterAttributes = FilterAttributes.attributesFor(member)
     val anchor = if member.dri.anchor.isEmpty then Nil else Seq(id := member.dri.anchor)
-    def topLevelAttr = Seq(cls := "documentableElement")
+    def topLevelAttr = Seq(cls := "documentableElement mono-small-inline")
       ++ anchor
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 
     div(topLevelAttr:_*)(
+      button(cls := "icon-button show-content"),
       if !member.needsOwnPage then a(Attr("link") := link(member.dri).getOrElse("#"), cls := "documentableAnchor") else Nil,
       div(annotations(member)),
       div(cls := "header monospace")(memberSignature(member)),

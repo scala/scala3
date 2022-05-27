@@ -10,6 +10,7 @@
   color: var(--text-primary);
   box-sizing: border-box;
   flex-wrap: wrap;
+  z-index: 2;
 }
 
 #footer .left-container {

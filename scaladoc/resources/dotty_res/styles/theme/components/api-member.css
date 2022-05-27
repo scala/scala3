@@ -1,0 +1,64 @@
+.documentableElement {
+  background-color: var(--action-primary-background-default-solid);
+  padding: calc(3 * var(--base-spacing));
+  border-radius: 4px;
+  border: 1px solid var(--border-default);
+  margin-bottom: calc(3 * var(--base-spacing));
+  color: var(--code-method-highlighting-code-fg);
+  position: relative;
+}
+
+.documentableElement:last-child {
+  margin-bottom: 0;
+}
+
+.documentableElement .signature {
+  margin-right: calc(3 * var(--base-spacing));
+}
+
+.documentableElement:hover {
+  cursor: pointer;
+}
+
+.documentableElement .annotations {
+  display: none;
+}
+
+.documentableElement > div .cover {
+  display: none;
+}
+
+.documentableElement.expand > div .cover {
+  display: block;
+}
+
+.documentableElement.expand .annotations {
+  display: inline-block;
+}
+
+.documentableElement.expand .documentableBrief {
+  display: none;
+}
+
+.documentableElement .icon-button {
+  position: absolute;
+  top: calc(3 * var(--base-spacing));
+  right: calc(3 * var(--base-spacing));
+  display: none;
+}
+
+.documentableElement:hover .icon-button {
+  display: block;
+}
+
+[t="k"] {
+  color: var(--code-syntax-highlighting-keyword);
+}
+
+[t="t"] {
+  color: var(--code-method-highlighting-type);
+}
+
+#content a[t="t"] {
+  color: var(--code-method-highlighting-type-link);
+}

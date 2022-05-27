@@ -9,6 +9,7 @@ import scala.util.chaining._
 
 import CodeSnippetsGlobals._
 
+
 class CodeSnippets:
   lazy val scastieConfig = getScastieConfiguration
 
@@ -86,11 +87,14 @@ class CodeSnippets:
   }
 
   private def copyRunButtons(snippet: html.Element) = {
+    val copyButtonIcon = s"""<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M2.5 2.5V9.5H4V11H2C1.44772 11 1 10.5523 1 10V2C1 1.44772 1.44772 1 2 1H10C10.5523 1 11 1.44772 11 2V4H9.5V2.5H2.5Z" fill="#A09FA6"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M5 6C5 5.44772 5.44772 5 6 5H14C14.5523 5 15 5.44772 15 6V14C15 14.5523 14.5523 15 14 15H6C5.44772 15 5 14.5523 5 14V6ZM6.5 13.5V6.5H13.5V13.5H6.5Z" fill="#A09FA6"/>
+</svg>
+ """
     def copyButton = {
       div(
-        button(cls := "copy-button")(
-          i(cls := "far fa-clone")
-        ).tap(_.addEventListener("click", _ => {
+        button(cls := "copy-button icon-button").tap(_.addEventListener("click", _ => {
           val code = snippet.querySelectorAll("code>span:not(.hidden)")
             .map(_.textContent)
             .mkString
@@ -102,7 +106,6 @@ class CodeSnippets:
       val runButton = button(cls := "run-button")(
         i(cls := "fas fa-play")
       )
-
       runButton.addEventListener("click", _ =>
         if !runButton.hasAttribute("opened") then {
           scastie.Embedded(snippet.querySelector("pre"), scastieConfig)

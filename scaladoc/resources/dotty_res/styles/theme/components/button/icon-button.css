@@ -526,3 +526,151 @@
 .theme-dark .icon-button.gitter.selected::after {
   content: url("../../../../images/icon-buttons/gitter/dark/selected.svg");
 }
+
+/* copy button */
+
+.icon-button.copy-button::after {
+  content: url("../../../../images/icon-buttons/copy/light/default.svg");
+}
+
+.icon-button.copy-button:hover::after {
+  content: url("../../../../images/icon-buttons/copy/light/hover.svg");
+}
+
+.icon-button.copy-button:active::after {
+  content: url("../../../../images/icon-buttons/copy/light/active.svg");
+}
+
+.icon-button.copy-button:disabled::after {
+  content: url("../../../../images/icon-buttons/copy/light/disabled.svg");
+}
+
+.icon-button.copy-button:focus::after {
+  content: url("../../../../images/icon-buttons/copy/light/focus.svg");
+}
+
+.icon-button.copy-button.selected::after {
+  content: url("../../../../images/icon-buttons/copy/light/selected.svg");
+}
+
+.theme-dark .icon-button.copy-button::after {
+  content: url("../../../../images/icon-buttons/copy/dark/default.svg");
+}
+
+.theme-dark .icon-button.copy-button:hover::after {
+  content: url("../../../../images/icon-buttons/copy/dark/hover.svg");
+}
+
+.theme-dark .icon-button.copy-button:active::after {
+  content: url("../../../../images/icon-buttons/copy/dark/active.svg");
+}
+
+.theme-dark .icon-button.copy-button:disabled::after {
+  content: url("../../../../images/icon-buttons/copy/dark/disabled.svg");
+}
+
+.theme-dark .icon-button.copy-button:focus::after {
+  content: url("../../../../images/icon-buttons/copy/dark/focus.svg");
+}
+
+.theme-dark .icon-button.copy-button.selected::after {
+  content: url("../../../../images/icon-buttons/copy/dark/selected.svg");
+}
+
+/* show-content button */
+
+.icon-button.show-content::after {
+  content: url("../../../../images/icon-buttons/plus/light/default.svg");
+}
+
+.icon-button.show-content:hover::after {
+  content: url("../../../../images/icon-buttons/plus/light/hover.svg");
+}
+
+.icon-button.show-content:active::after {
+  content: url("../../../../images/icon-buttons/plus/light/active.svg");
+}
+
+.icon-button.show-content:disabled::after {
+  content: url("../../../../images/icon-buttons/plus/light/disabled.svg");
+}
+
+.icon-button.show-content:focus::after {
+  content: url("../../../../images/icon-buttons/plus/light/focus.svg");
+}
+
+.icon-button.show-content.selected::after {
+  content: url("../../../../images/icon-buttons/plus/light/selected.svg");
+}
+
+.theme-dark .icon-button.show-content::after {
+  content: url("../../../../images/icon-buttons/plus/dark/default.svg");
+}
+
+.theme-dark .icon-button.show-content:hover::after {
+  content: url("../../../../images/icon-buttons/plus/dark/hover.svg");
+}
+
+.theme-dark .icon-button.show-content:active::after {
+  content: url("../../../../images/icon-buttons/plus/dark/active.svg");
+}
+
+.theme-dark .icon-button.show-content:disabled::after {
+  content: url("../../../../images/icon-buttons/plus/dark/disabled.svg");
+}
+
+.theme-dark .icon-button.show-content:focus::after {
+  content: url("../../../../images/icon-buttons/plus/dark/focus.svg");
+}
+
+.theme-dark .icon-button.show-content.selected::after {
+  content: url("../../../../images/icon-buttons/plus/dark/selected.svg");
+}
+
+.icon-button.show-content.expand::after {
+  content: url("../../../../images/icon-buttons/minus/light/default.svg");
+}
+
+.icon-button.show-content.expand:hover::after {
+  content: url("../../../../images/icon-buttons/minus/light/hover.svg");
+}
+
+.icon-button.show-content.expand:active::after {
+  content: url("../../../../images/icon-buttons/minus/light/active.svg");
+}
+
+.icon-button.show-content.expand:disabled::after {
+  content: url("../../../../images/icon-buttons/minus/light/disabled.svg");
+}
+
+.icon-button.show-content.expand:focus::after {
+  content: url("../../../../images/icon-buttons/minus/light/focus.svg");
+}
+
+.icon-button.show-content.expand.selected::after {
+  content: url("../../../../images/icon-buttons/minus/light/selected.svg");
+}
+
+.theme-dark .icon-button.show-content.expand::after {
+  content: url("../../../../images/icon-buttons/minus/dark/default.svg");
+}
+
+.theme-dark .icon-button.show-content.expand:hover::after {
+  content: url("../../../../images/icon-buttons/minus/dark/hover.svg");
+}
+
+.theme-dark .icon-button.show-content.expand:active::after {
+  content: url("../../../../images/icon-buttons/minus/dark/active.svg");
+}
+
+.theme-dark .icon-button.show-content.expand:disabled::after {
+  content: url("../../../../images/icon-buttons/minus/dark/disabled.svg");
+}
+
+.theme-dark .icon-button.show-content.expand:focus::after {
+  content: url("../../../../images/icon-buttons/minus/dark/focus.svg");
+}
+
+.theme-dark .icon-button.show-content.expand.selected::after {
+  content: url("../../../../images/icon-buttons/minus/dark/selected.svg");
+}

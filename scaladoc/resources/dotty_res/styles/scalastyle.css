@@ -577,7 +577,7 @@ footer .mode {
   transform: translateX(28px);
 }
 
-.documentableElement .modifiers {
+/* .documentableElement .modifiers {
   display: table-cell;
   min-width: 10vw;
   max-width: 10vw;
@@ -628,7 +628,7 @@ footer .mode {
 .signature,
 .documentableElement {
   font-weight: 500;
-}
+} */
 
 .signature.monospace {
   padding: 8px;
@@ -659,7 +659,7 @@ footer .mode {
   border-radius: 3px;
 }
 
-.documentableElement {
+/* .documentableElement {
   color: var(--symbol-fg);
   white-space: normal;
   position: relative;
@@ -669,9 +669,9 @@ footer .mode {
   border-left: 0.25em solid transparent;
   margin: 0.5em 0;
   border-radius: 3px;
-}
+} */
 
-.documentableElement > div {
+/* .documentableElement > div {
   display: table;
 }
 
@@ -685,13 +685,13 @@ footer .mode {
 
 .documentableElement.expand > div .cover {
   display: block;
-}
+} */
 
 .doc code {
   padding: 0;
 }
 
-.documentableElement:hover {
+/* .documentableElement:hover {
   cursor: pointer;
   border-left-color: var(--active-bg);
 }
@@ -729,7 +729,7 @@ footer .mode {
 
 .documentableElement::before:hover .documentableAnchor:before {
   display: flex;
-}
+} */
 
 .documentableAnchor:before {
   content: "\e901"; /* arrow down */
