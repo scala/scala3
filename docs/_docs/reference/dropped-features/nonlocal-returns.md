@@ -25,3 +25,5 @@ extension [T](xs: List[T])
   val xs = List(1, 2, 3, 4, 5)
   assert(xs.has(2) == xs.contains(2))
 ```
+
+Note: compiler produces deprecation error on nonlocal returns only with `-source:future` option.
