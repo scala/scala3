@@ -82,11 +82,26 @@ object SymUtils:
     *  parameter section.
     */
     def whyNotGenericProduct(using Context): String =
+      /** for a case class, if it will have an anonymous mirror,
+       *  check that its constructor can be accessed
+       *  from the calling scope.
+       */
+      def canAccessCtor: Boolean =
+        def isAccessible(sym: Symbol): Boolean = ctx.owner.isContainedIn(sym)
+        def isSub(sym: Symbol): Boolean = ctx.owner.ownersIterator.exists(_.derivesFrom(sym))
+        val ctor = self.primaryConstructor
+        (!ctor.isOneOf(Private | Protected) || isSub(self)) // we cant access the ctor because we do not extend cls
+        && (!ctor.privateWithin.exists || isAccessible(ctor.privateWithin)) // check scope is compatible
+
+
+      def companionMirror = self.useCompanionAsProductMirror
       if (!self.is(CaseClass)) "it is not a case class"
       else if (self.is(Abstract)) "it is an abstract class"
       else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
       else if (isDerivedValueClass(self)) "it is a value class"
+      else if (!(companionMirror || canAccessCtor)) s"the constructor of $self is innaccessible from the calling scope."
       else ""
+    end whyNotGenericProduct
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
 
@@ -120,6 +135,9 @@ object SymUtils:
       self.isOneOf(FinalOrInline, butNot = Mutable)
       && (!self.is(Method) || self.is(Accessor))
 
+    def useCompanionAsProductMirror(using Context): Boolean =
+      self.linkedClass.exists && !self.is(Scala2x) && !self.linkedClass.is(Case)
+
     def useCompanionAsSumMirror(using Context): Boolean =
       def companionExtendsSum(using Context): Boolean =
         self.linkedClass.isSubClass(defn.Mirror_SumClass)
@@ -145,7 +163,7 @@ object SymUtils:
     *     and also the location of the generated mirror.
     *   - all of its children are generic products, singletons, or generic sums themselves.
     */
-    def whyNotGenericSum(declScope: Symbol)(using Context): String =
+    def whyNotGenericSum(using Context): String =
       if (!self.is(Sealed))
         s"it is not a sealed ${self.kindString}"
       else if (!self.isOneOf(AbstractOrTrait))
@@ -153,31 +171,31 @@ object SymUtils:
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror
-        assert(!(companionMirror && (declScope ne self.linkedClass)))
         def problem(child: Symbol) = {
 
           def isAccessible(sym: Symbol): Boolean =
-            (self.isContainedIn(sym) && (companionMirror || declScope.isContainedIn(sym)))
+            (self.isContainedIn(sym) && (companionMirror || ctx.owner.isContainedIn(sym)))
             || sym.is(Module) && isAccessible(sym.owner)
 
           if (child == self) "it has anonymous or inaccessible subclasses"
           else if (!isAccessible(child.owner)) i"its child $child is not accessible"
-          else if (!child.isClass) ""
+          else if (!child.isClass) "" // its a singleton enum value
           else {
             val s = child.whyNotGenericProduct
-            if (s.isEmpty) s
-            else if (child.is(Sealed)) {
-              val s = child.whyNotGenericSum(if child.useCompanionAsSumMirror then child.linkedClass else ctx.owner)
-              if (s.isEmpty) s
+            if s.isEmpty then s
+            else if child.is(Sealed) then
+              val s = child.whyNotGenericSum
+              if s.isEmpty then s
               else i"its child $child is not a generic sum because $s"
-            } else i"its child $child is not a generic product because $s"
+            else
+              i"its child $child is not a generic product because $s"
           }
         }
         if (children.isEmpty) "it does not have subclasses"
         else children.map(problem).find(!_.isEmpty).getOrElse("")
       }
 
-    def isGenericSum(declScope: Symbol)(using Context): Boolean = whyNotGenericSum(declScope).isEmpty
+    def isGenericSum(using Context): Boolean = whyNotGenericSum.isEmpty
 
     /** If this is a constructor, its owner: otherwise this. */
     final def skipConstructor(using Context): Symbol =

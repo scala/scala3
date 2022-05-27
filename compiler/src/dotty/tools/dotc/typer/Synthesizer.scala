@@ -26,7 +26,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context ?=> TreeWithErrors
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
-  
+
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
     formal.argInfos match
       case arg :: Nil =>
@@ -278,28 +278,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   private def productMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
 
-    /** do all parts match the class symbol? */
-    def acceptable(tp: Type, cls: Symbol): Boolean = tp match
-      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] => false
-      case tp: TypeProxy    => acceptable(tp.underlying, cls)
-      case OrType(tp1, tp2) => acceptable(tp1, cls) && acceptable(tp2, cls)
-      case _                => tp.classSymbol eq cls
-
-    /** for a case class, if it will have an anonymous mirror,
-     *  check that its constructor can be accessed
-     *  from the calling scope.
-     */
-    def canAccessCtor(cls: Symbol): Boolean =
-      !genAnonyousMirror(cls) || {
-        def isAccessible(sym: Symbol): Boolean = ctx.owner.isContainedIn(sym)
-        def isSub(sym: Symbol): Boolean = ctx.owner.ownersIterator.exists(_.derivesFrom(sym))
-        val ctor = cls.primaryConstructor
-        (!ctor.isOneOf(Private | Protected) || isSub(cls)) // we cant access the ctor because we do not extend cls
-        && (!ctor.privateWithin.exists || isAccessible(ctor.privateWithin)) // check scope is compatible
-      }
-
-    def genAnonyousMirror(cls: Symbol): Boolean =
-      cls.is(Scala2x) || cls.linkedClass.is(Case)
+    def whyNotAcceptableType(tp: Type, cls: Symbol): String = tp match
+      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
+        i"its subpart $tp is not a supported kind (either `*` or `* -> *`)"
+      case tp: TypeProxy    => whyNotAcceptableType(tp.underlying, cls)
+      case OrType(tp1, tp2) =>
+        Seq(tp1, tp2).map(whyNotAcceptableType(_, cls)).find(_.nonEmpty).getOrElse("")
+      case _ =>
+        if tp.classSymbol eq cls then ""
+        else i"a subpart reduces to the more precise ${tp.classSymbol}, expected $cls"
 
     def makeProductMirror(cls: Symbol): TreeWithErrors =
       val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
@@ -318,61 +305,63 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
       val mirrorRef =
-        if (genAnonyousMirror(cls)) anonymousMirror(monoType, ExtendsProductMirror, span)
-        else companionPath(mirroredType, span)
+        if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
+        else anonymousMirror(monoType, ExtendsProductMirror, span)
       withNoErrors(mirrorRef.cast(mirrorType))
     end makeProductMirror
 
-    def getError(cls: Symbol): String = 
-      val reason = if !cls.isGenericProduct then
-        i"because ${cls.whyNotGenericProduct}"
-      else if !canAccessCtor(cls) then
-        i"because the constructor of $cls is innaccessible from the calling scope."
-      else 
-        ""
-      i"$cls is not a generic product $reason"
-    end getError
+    /** widen TermRef to see if they are an alias to an enum singleton */
+    def isEnumSingletonRef(tp: Type)(using Context): Boolean = tp match
+      case tp: TermRef =>
+        val sym = tp.termSymbol
+        sym.isEnumCase || (!tp.isOverloaded && isEnumSingletonRef(tp.underlying.widenExpr))
+      case _ => false
 
     mirroredType match
       case AndType(tp1, tp2) =>
         orElse(productMirror(tp1, formal, span), productMirror(tp2, formal, span))
       case _ =>
-        if mirroredType.termSymbol.is(CaseVal) then
-          val module = mirroredType.termSymbol
-          val modulePath = pathFor(mirroredType).withSpan(span)
-          if module.info.classSymbol.is(Scala2x) then
-            val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, module.name, formal)
-            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, modulePath :: Nil)
+        val cls = mirroredType.classSymbol
+        if isEnumSingletonRef(mirroredType) || cls.isAllOf(Case | Module) then
+          val (singleton, singletonRef) =
+            if mirroredType.termSymbol.exists then (mirroredType.termSymbol, mirroredType)
+            else (cls.sourceModule, cls.sourceModule.reachableTermRef)
+          val singletonPath = pathFor(singletonRef).withSpan(span)
+          if singleton.info.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
+            val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name, formal)
+            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
             withNoErrors(mirrorRef.cast(mirrorType))
           else
-            val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, module.name, formal)
-            withNoErrors(modulePath.cast(mirrorType))
+            val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name, formal)
+            withNoErrors(singletonPath.cast(mirrorType))
         else
-          val cls = mirroredType.classSymbol
-          if acceptable(mirroredType, cls)
-            && cls.isGenericProduct
-            && canAccessCtor(cls)
-          then
-            makeProductMirror(cls)
-          else
-            (EmptyTree, List(getError(cls)))
+          val acceptableMsg = whyNotAcceptableType(mirroredType, cls)
+          if acceptableMsg.isEmpty then
+            if cls.isGenericProduct then makeProductMirror(cls)
+            else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
+          else withErrors(i"type $mirroredType is not a generic product because $acceptableMsg")
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
 
     val cls = mirroredType.classSymbol
-    val useCompanion = cls.useCompanionAsSumMirror
-    val declScope = if useCompanion then cls.linkedClass else ctx.owner
-    val clsIsGenericSum = cls.isGenericSum(declScope)
+    val clsIsGenericSum = cls.isGenericSum
 
-    def acceptable(tp: Type): Boolean = tp match
-      case tp: TermRef => false
-      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] => false
-      case tp: TypeProxy => acceptable(tp.underlying)
-      case OrType(tp1, tp2) => acceptable(tp1) && acceptable(tp2)
-      case _            => tp.classSymbol eq cls
+    def whyNotAcceptableType(tp: Type): String = tp match
+      case tp: TermRef => i"its subpart $tp is a term reference"
+      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
+        i"its subpart $tp is not a supported kind (either `*` or `* -> *`)"
+      case tp: TypeProxy => whyNotAcceptableType(tp.underlying)
+      case OrType(tp1, tp2) =>
+        Seq(tp1, tp2).map(whyNotAcceptableType).find(_.nonEmpty).getOrElse("")
+      case _ =>
+        if tp.classSymbol eq cls then ""
+        else i"a subpart reduces to the more precise ${tp.classSymbol}, expected $cls"
 
-    if acceptable(mirroredType) && clsIsGenericSum then
+
+    val acceptableMsg = whyNotAcceptableType(mirroredType)
+
+    if acceptableMsg.isEmpty && clsIsGenericSum then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
@@ -423,12 +412,14 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
             .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
       val mirrorRef =
-        if useCompanion then companionPath(mirroredType, span)
+        if cls.useCompanionAsSumMirror then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsSumMirror, span)
       withNoErrors(mirrorRef.cast(mirrorType))
+    else if acceptableMsg.nonEmpty then
+      withErrors(i"type $mirroredType is not a generic sum because $acceptableMsg")
     else if !clsIsGenericSum then
-      (EmptyTree, List(i"$cls is not a generic sum because ${cls.whyNotGenericSum(declScope)}"))
-    else 
+      withErrors(i"$cls is not a generic sum because ${cls.whyNotGenericSum}")
+    else
       EmptyTreeNoError
   end sumMirror
 
@@ -595,7 +586,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             tp.baseType(cls)
         val base = baseWithRefinements(formal)
         val result =
-          if (base <:< formal.widenExpr)  
+          if (base <:< formal.widenExpr)
             // With the subtype test we enforce that the searched type `formal` is of the right form
             handler(base, span)
           else EmptyTreeNoError
@@ -609,19 +600,20 @@ end Synthesizer
 
 object Synthesizer:
 
-  /** Tuple used to store the synthesis result with a list of errors.  */ 
+  /** Tuple used to store the synthesis result with a list of errors.  */
   type TreeWithErrors = (Tree, List[String])
   private def withNoErrors(tree: Tree): TreeWithErrors = (tree, List.empty)
+  private def withErrors(errors: String*): TreeWithErrors = (EmptyTree, errors.toList)
 
   private val EmptyTreeNoError: TreeWithErrors = withNoErrors(EmptyTree)
 
   private def orElse(treeWithErrors1: TreeWithErrors, treeWithErrors2: => TreeWithErrors): TreeWithErrors = treeWithErrors1 match
-    case (tree, errors) if tree eq genericEmptyTree => 
+    case (tree, errors) if tree eq genericEmptyTree =>
       val (tree2, errors2) = treeWithErrors2
       (tree2, errors ::: errors2)
     case _ => treeWithErrors1
 
-  private def clearErrorsIfNotEmpty(treeWithErrors: TreeWithErrors) = treeWithErrors match 
+  private def clearErrorsIfNotEmpty(treeWithErrors: TreeWithErrors) = treeWithErrors match
     case (tree, _) if tree eq genericEmptyTree => treeWithErrors
     case (tree, _)                             => withNoErrors(tree)
 
