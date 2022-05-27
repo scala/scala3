@@ -204,3 +204,11 @@
 .theme-dark .cover-header .micon.in {
   content: url("../../../images/inkuire-big.svg");
 }
+
+.cover-header {
+  display: flex;
+}
+
+.cover-header .micon {
+  margin-right: calc(2 * var(--base-spacing));
+}
