@@ -24,7 +24,7 @@ class Copier:
   private val scanUnit = new Scanner
 
   export scanUnit.scan
-  export printUnit.{status => _, *}
+  export printUnit.{status as _, *}
 
   def status: List[String] = printUnit.status ++ scanUnit.status
 ```
@@ -55,8 +55,8 @@ one or more selectors `sel_i` that identify what gets an alias. Selectors can be
 of one of the following forms:
 
  - A _simple selector_ `x` creates aliases for all eligible members of `path` that are named `x`.
- - A _renaming selector_ `x => y` creates aliases for all eligible members of `path` that are named `x`, but the alias is named `y` instead of `x`.
- - An _omitting selector_ `x => _` prevents `x` from being aliased by a subsequent
+ - A _renaming selector_ `x as y` creates aliases for all eligible members of `path` that are named `x`, but the alias is named `y` instead of `x`.
+ - An _omitting selector_ `x as _` prevents `x` from being aliased by a subsequent
    wildcard selector.
  - A _given selector_ `given x` has an optional type bound `x`. It creates aliases for all eligible given instances that conform to either `x`, or `Any` if `x` is omitted, except for members that are named by a previous simple, renaming, or omitting selector.
  - A _wildcard selector_ `*` creates aliases for all eligible members of `path` except for given instances,
