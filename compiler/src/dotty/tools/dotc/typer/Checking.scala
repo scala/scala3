@@ -937,7 +937,7 @@ trait Checking {
         if (stablePrefixReq && ctx.phase <= refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
         tp
       case _ =>
-        report.error(ex"$tp is not a class type", pos)
+        report.error(NotClassType(tp), pos)
         defn.ObjectType
     }
 
