@@ -1598,7 +1598,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
              | _: untpd.Match
              | _: untpd.ForYield
              | _: untpd.ParsedTry
-             | _: untpd.Try => Some("(", ")")
+             | _: untpd.Try
+             | _: untpd.Typed => Some("(", ")")
           case _: untpd.Block => Some("{", "}")
           case _ => None
 
