@@ -2,15 +2,15 @@
 13 |  val a = js.constructorOf[NativeJSTrait] // error
    |                           ^^^^^^^^^^^^^
    |                           non-trait class type required but NativeJSTrait found
--- [E079] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:14:27 -----------------------------
+-- [E170] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:14:27 -----------------------------
 14 |  val b = js.constructorOf[NativeJSObject.type] // error
    |                           ^^^^^^^^^^^^^^^^^^^
    |                           NativeJSObject.type is not a class type
--- [E079] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:16:27 -----------------------------
+-- [E170] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:16:27 -----------------------------
 16 |  val c = js.constructorOf[NativeJSClass with NativeJSTrait] // error
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                           NativeJSClass & NativeJSTrait is not a class type
--- [E079] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:17:27 -----------------------------
+-- [E170] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:17:27 -----------------------------
 17 |  val d = js.constructorOf[NativeJSClass { def bar: Int }] // error
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                           NativeJSClass{bar: Int} is not a class type
@@ -18,23 +18,23 @@
 19 |  val e = js.constructorOf[JSTrait] // error
    |                           ^^^^^^^
    |                           non-trait class type required but JSTrait found
--- [E079] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:20:27 -----------------------------
+-- [E170] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:20:27 -----------------------------
 20 |  val f = js.constructorOf[JSObject.type] // error
    |                           ^^^^^^^^^^^^^
    |                           JSObject.type is not a class type
--- [E079] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:22:27 -----------------------------
+-- [E170] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:22:27 -----------------------------
 22 |  val g = js.constructorOf[JSClass with JSTrait] // error
    |                           ^^^^^^^^^^^^^^^^^^^^
    |                           JSClass & JSTrait is not a class type
--- [E079] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:23:27 -----------------------------
+-- [E170] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:23:27 -----------------------------
 23 |  val h = js.constructorOf[JSClass { def bar: Int }] // error
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^
    |                           JSClass{bar: Int} is not a class type
--- [E079] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:25:42 -----------------------------
+-- [E170] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:25:42 -----------------------------
 25 |  def foo[A <: js.Any] = js.constructorOf[A] // error
    |                                          ^
    |                                          A is not a class type
--- [E079] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:26:66 -----------------------------
+-- [E170] Type Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:26:66 -----------------------------
 26 |  def bar[A <: js.Any: scala.reflect.ClassTag] = js.constructorOf[A] // error
    |                                                                  ^
    |                                                                  A is not a class type

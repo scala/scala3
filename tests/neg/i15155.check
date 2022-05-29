@@ -1,4 +1,4 @@
--- [E079] Type Error: tests/neg/i15155.scala:10:33 ---------------------------------------------------------------------
+-- [E170] Type Error: tests/neg/i15155.scala:10:33 ---------------------------------------------------------------------
 10 |  val EnumerationClass = classOf[EnumValue[E]] // error
    |                                 ^^^^^^^^^^^^
    |                                 EnumValue[E] is not a class type
