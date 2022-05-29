@@ -3355,7 +3355,6 @@ Text => empty
 Language => Scala
 Symbols => 2 entries
 Occurrences => 5 entries
-Synthetics => 2 entries
 
 Symbols:
 example/Tabs$package. => final package object example extends Object { self: example.type => +2 decls }
@@ -3367,11 +3366,6 @@ Occurrences:
 [3:1..3:5): List -> scala/package.List.
 [4:3..4:6): map -> scala/collection/immutable/List#map().
 [4:9..4:10): + -> scala/Int#`+`(+4).
-
-Synthetics:
-[3:1..4:6):List(1,2,3)
-		.map => *[Int]
-[3:1..3:5):List => *.apply[Int]
 
 expect/Traits.scala
 -------------------
