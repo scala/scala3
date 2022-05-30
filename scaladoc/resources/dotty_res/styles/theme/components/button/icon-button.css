@@ -674,3 +674,55 @@
 .theme-dark .icon-button.show-content.expand.selected::after {
   content: url("../../../../images/icon-buttons/minus/dark/selected.svg");
 }
+
+.icon-button.close:disabled {
+  opacity: 0.5;
+}
+
+.icon-button.close::after {
+  content: url("../../../../images/icon-buttons/close/light/default.svg");
+}
+
+.icon-button.close:hover::after {
+  content: url("../../../../images/icon-buttons/close/light/hover.svg");
+}
+
+.icon-button.close:active::after {
+  content: url("../../../../images/icon-buttons/close/light/active.svg");
+}
+
+.icon-button.close:disabled::after {
+  content: url("../../../../images/icon-buttons/close/light/disabled.svg");
+}
+
+.icon-button.close:focus::after {
+  content: url("../../../../images/icon-buttons/close/light/focus.svg");
+}
+
+.icon-button.close.selected::after {
+  content: url("../../../../images/icon-buttons/close/light/selected.svg");
+}
+
+.theme-dark .icon-button.close::after {
+  content: url("../../../../images/icon-buttons/close/dark/default.svg");
+}
+
+.theme-dark .icon-button.close:hover::after {
+  content: url("../../../../images/icon-buttons/close/dark/hover.svg");
+}
+
+.theme-dark .icon-button.close:active::after {
+  content: url("../../../../images/icon-buttons/close/dark/active.svg");
+}
+
+.theme-dark .icon-button.close:disabled::after {
+  content: url("../../../../images/icon-buttons/close/dark/disabled.svg");
+}
+
+.theme-dark .icon-button.close:focus::after {
+  content: url("../../../../images/icon-buttons/close/dark/focus.svg");
+}
+
+.theme-dark .icon-button.close.selected::after {
+  content: url("../../../../images/icon-buttons/close/dark/selected.svg");
+}

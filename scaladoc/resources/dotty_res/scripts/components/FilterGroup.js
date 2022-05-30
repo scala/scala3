@@ -3,7 +3,7 @@ class FilterGroup extends Component {
     super(props);
 
     this.filterToggleRef = findRef(".filterToggleButton");
-    this.filterLowerContainerRef = findRef(".filterLowerContainer");
+    this.filtersContainerRef = findRef(".filtersContainer");
 
     withEvent(
       this.filterToggleRef,
@@ -40,8 +40,8 @@ class FilterGroup extends Component {
 
   attachFiltersClicks() {
     const refs = findRefs(
-      "button.filterButtonItem",
-      this.filterLowerContainerRef
+      "li.filterButtonItem",
+      this.filtersContainerRef
     );
     attachListeners(refs, "click", this.onFilterClick);
   }
@@ -49,11 +49,11 @@ class FilterGroup extends Component {
   attachSelectingButtonsClicks() {
     const selectAllRefs = findRefs(
       "button.selectAll",
-      this.filterLowerContainerRef
+      this.filtersContainerRef
     );
     const deselectAllRefs = findRefs(
       "button.deselectAll",
-      this.filterLowerContainerRef
+      this.filtersContainerRef
     );
 
     attachListeners(selectAllRefs, "click", this.onSelectAllClick);
@@ -75,7 +75,7 @@ class FilterGroup extends Component {
     return Object.entries(values).sort(([a], [b]) =>  {
       if (a === defaultGroupFilter) {
         return -1
-      } 
+      }
 
       if (b === defaultGroupFilter) {
         return 1
@@ -85,35 +85,59 @@ class FilterGroup extends Component {
     })
   }
 
+  getFirstSelected(filterKey, values) {
+    const sortedValues = this.getSortedValues(filterKey, values);
+    return sortedValues.find(([_name, filterObject]) => filterObject.selected)[0] || "";
+  }
+
+  getNumberOfSelectedFilters = (filterKey, values) => {
+    const sortedValues = this.getSortedValues(filterKey, values);
+    return sortedValues.reduce((prev, curr) => {
+      if(curr[1].selected) {
+        return prev +1;
+      }
+      return prev
+    }, 0)
+  }
+
   getFilterGroup(filterKey, values) {
+    const firstSelected = this.getFirstSelected(filterKey, values);
+    const numberOfSelectedFilters = this.getNumberOfSelectedFilters(filterKey, values);
+    const numberToDisplay = numberOfSelectedFilters > 1
+      ? `+${numberOfSelectedFilters -1}`
+      : ""
+
     return `
-      <div class="filterGroup" data-test-id="filterGroup">
-        <div class="groupTitle">
-          <span data-test-id="filterGroupTitle">${filterKey.substring(1)}</span>
-          <div class="groupButtonsContainer" data-test-id="filterGroupBatchToggle">
-            <button class="selectAll" data-key="${filterKey}">Select All</button>
-            <button class="deselectAll" data-key="${filterKey}">Deselect All</button>
-          </div>
+      <div class="pill-container body-small" tabindex="1">
+        <div class="pill ${numberToDisplay !== "" ? "has-value" : ""}">
+          <span class="filter-name">${filterKey.substring(1)}</span>
+          ${firstSelected} ${numberToDisplay}
+          <span class="icon-button close"/>
         </div>
-        <div class="filterList" data-test-id="filterGroupList">
+        <ul>
           ${this.getSortedValues(filterKey, values)
             .map(
               ([key, data]) =>
-                `<button class="filterButtonItem ${this.isActive(
-                  data.selected
-                )} ${this.isVisible(
-                  data.visible
-                )}" data-key="${filterKey}" data-selected="${data.selected}" data-value="${key}" data-test-id="filterGroupButton">${key}</button>`
+              `<li
+                class="filterButtonItem"
+                data-selected="${data.selected}"
+                data-test-id="filterGroupButton"
+                data-key="${filterKey}"
+                data-selected="${data.selected}"
+                data-value="${key}"
+              >
+              ${key}
+              </li>`
             )
-            .join(" ")}
-        </div>
+          .join(" ")}
+        </ul>
       </div>
     `;
   }
 
   render({ filter }) {
     attachDOM(
-      this.filterLowerContainerRef,
+      this.filtersContainerRef,
       Object.entries(filter.filters)
         .filter(([_key, values]) => Object.values(values).some((v) => v.visible))
         .map(([key, values]) => this.getFilterGroup(key, values))

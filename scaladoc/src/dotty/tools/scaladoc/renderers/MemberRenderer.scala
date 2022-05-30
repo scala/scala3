@@ -379,18 +379,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       )
 
   private def buildDocumentableFilter = div(cls := "documentableFilter")(
-    div(cls := "filterUpperContainer")(
-      button(cls := "filterToggleButton", testId := "filterToggleButton")(
-        raw("""
-          <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
-            <path d="M0 0h24v24H0z" fill="none"/>
-            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-          </svg>
-        """)
-      ),
-      input(cls := "filterableInput", placeholder := "Filter all members", testId := "filterBarInput")
-    ),
-    div(cls := "filterLowerContainer")()
+    div(cls := "filtersContainer")(),
+    input(cls := "filterableInput", placeholder := "Filter by any phrase", testId := "filterBarInput"),
   )
 
   def fullMember(m: Member): PageContent =
@@ -409,10 +399,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         )
     PageContent(
       div(
+        buildDocumentableFilter,
         intro,
         memberInfo(m, withBrief = false),
         classLikeParts(m),
-        buildDocumentableFilter, // TODO Need to make it work in JS :(
         buildMembers(m)
       ),
       Seq.empty // For now, we don't support table of contents in members

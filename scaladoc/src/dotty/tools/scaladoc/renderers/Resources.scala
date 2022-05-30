@@ -124,6 +124,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/components/contributors.css",
       "styles/theme/components/code-snippet.css",
       "styles/theme/components/api-member.css",
+      "styles/theme/components/pill.css",
+      "styles/theme/components/api-filters.css",
 
       "styles/nord-light.css",
       "styles/dotty-icons.css",
@@ -510,6 +512,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/class-big.svg"),
       dottyRes("images/package-dark-big.svg"),
       dottyRes("images/package-big.svg"),
+      dottyRes("images/thick.svg"),
+      dottyRes("images/thick-dark.svg"),
       searchData(pages),
       scastieConfiguration(),
     )

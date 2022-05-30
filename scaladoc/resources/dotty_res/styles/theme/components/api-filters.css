@@ -1,0 +1,9 @@
+.documentableFilter {
+  display: flex;
+  position: fixed;
+  top: calc(10 * var(--base-spacing));
+}
+
+.filtersContainer {
+  display: flex;
+}
