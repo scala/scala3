@@ -122,35 +122,41 @@ def tryEither[T](x: T)(y: Int => T): T = ???
 
 def test1 =
   tryEither:
-      "hello"
-    :
-      y => y.toString
+    "hello"
+  .apply:
+    y => y.toString
 
 def test2 =
   tryEither:
     "hello"
-  :
+  .apply:
     _.toString
 
 
 val o =
   Some(3).fold:
     "nothing"
-  :
+  .apply:
     x => x.toString
 
 object Test23:
-  val x = 1.+ :  // ok
+
+  transparent inline def nested[T](inline x: T): T = x
+
+  val x = (1.+):
     2
 
-  val y = 1 + : // ok
-    2
+  val y = 1 + nested: // ok
+    x
+
+  val _ = 1 `+`:  // ok
+    x
 
   val r = 1 to:
     100
 
   val credentials = List("OK")
-  val all = credentials ++ :
+  val all = credentials ++ nested:
     val file = "file"
     if file.isEmpty
     then Seq("none")
@@ -162,7 +168,7 @@ extension (x: Boolean)
 def test24(x: Int, y: Int) =
   x < y or:
     x > y
-  or:
+  `or`:
     x == y
 
 

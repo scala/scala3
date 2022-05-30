@@ -1,4 +1,4 @@
-object Parsers {
+object ParserLocation {
   enum Location(val inParens: Boolean, val inPattern: Boolean, val inArgs: Boolean):
     case InParens      extends Location(true, false, false)
     case InArgs        extends Location(true, false, true)
