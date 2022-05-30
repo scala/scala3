@@ -62,10 +62,13 @@ object TypeUtils {
         if self.termSymbol == defn.EmptyTupleModule then 0 else -1
       case self: TypeRef if relaxEmptyTuple && self.classSymbol == defn.EmptyTupleModule.moduleClass =>
         0
-      case self if defn.isTupleClass(self.classSymbol) =>
-        self.dealias.argInfos.length
+      case self: AndOrType =>
+        val arity1 = self.tp1.tupleArity(relaxEmptyTuple)
+        val arity2 = self.tp2.tupleArity(relaxEmptyTuple)
+        if arity1 == arity2 then arity1 else -1
       case _ =>
-        -1
+        if defn.isTupleClass(self.classSymbol) then self.dealias.argInfos.length
+        else -1
     }
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs */
