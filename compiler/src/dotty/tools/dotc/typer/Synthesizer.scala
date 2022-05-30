@@ -290,14 +290,14 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         case (Singleton(src1, _), Singleton(src2, _)) => src1 eq src2
         case (_: ClassSymbol, _: Singleton) => false
 
-    def debug(using Context): String = this match
+    def show(using Context): String = this match
       case ClassSymbol(cls) => i"$cls"
       case Singleton(src, _) => i"$src"
 
-  object MirrorSource:
+  private[Synthesizer] object MirrorSource:
 
     /** Reduces a mirroredType to either its most specific ClassSymbol,
-     *  or a TermRef to a singleton value, these are
+     *  or a TermRef to a singleton value. These are
      *  the base elements required to generate a mirror.
      */
     def reduce(mirroredType: Type)(using Context): Either[String, MirrorSource] = mirroredType match
@@ -341,7 +341,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           res <- locally {
             if lsrc.isSub(rsrc) then Right(lsrc)
             else if rsrc.isSub(lsrc) then Right(rsrc)
-            else Left(i"its subpart `$tp` is an intersection of unrelated symbols ${lsrc.debug} and ${rsrc.debug}.")
+            else Left(i"its subpart `$tp` is an intersection of unrelated definitions ${lsrc.show} and ${rsrc.show}.")
           }
         yield
           res
