@@ -145,7 +145,7 @@ object TypeOps:
         if normed.exists then normed else tp.map(simplify(_, theMap))
       case tp: TypeParamRef =>
         val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
-        if (tvar.exists) tvar else tp
+        if tvar.exists then tvar else tp
       case  _: ThisType | _: BoundType =>
         tp
       case tp: AliasingBounds =>

@@ -148,7 +148,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private def paramCount(entries: Array[Type]) = entries.length >> 1
 
   /** The type variable corresponding to parameter numbered `n`, null if none was created */
-  private def typeVar(entries: Array[Type], n: Int): Type =
+  private def typeVar(entries: Array[Type], n: Int): Type | Null =
     entries(paramCount(entries) + n)
 
   /** The `boundsMap` entry corresponding to `param` */
@@ -203,11 +203,13 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
     entry(param).bounds
 
-  def typeVarOfParam(param: TypeParamRef): Type = {
+  def typeVarOfParam(param: TypeParamRef): Type =
     val entries = boundsMap(param.binder)
     if entries == null then NoType
-    else typeVar(entries, param.paramNum)
-  }
+    else
+      val tvar = typeVar(entries, param.paramNum)
+      if tvar == null then NoType
+      else tvar
 
 // ---------- Adding TypeLambdas --------------------------------------------------
 
