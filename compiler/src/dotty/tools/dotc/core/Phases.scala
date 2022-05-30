@@ -402,6 +402,9 @@ object Phases {
     final def prev: Phase =
       if (id > FirstPhaseId) myBase.phases(start - 1) else NoPhase
 
+    final def prevMega(using Context): Phase =
+      ctx.base.fusedContaining(ctx.phase.prev)
+
     final def next: Phase =
       if (hasNext) myBase.phases(end + 1) else NoPhase
 

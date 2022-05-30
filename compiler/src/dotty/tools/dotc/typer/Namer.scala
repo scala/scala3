@@ -1579,10 +1579,7 @@ class Namer { typer: Typer =>
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.invalidateMemberCaches() // we might have checked for a member when parents were not known yet.
       cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
-      val ctorStable =
-        if cls.is(Trait) then cls.is(NoInits)
-        else cls.isNoInitsRealClass
-      if ctorStable then cls.primaryConstructor.setFlag(StableRealizable)
+      cls.setStableConstructor()
       processExports(using localCtx)
       defn.patchStdLibClass(cls)
       addConstructorProxies(cls)

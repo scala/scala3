@@ -1326,6 +1326,12 @@ class Definitions {
 
   @tu lazy val TupleType: Array[TypeRef | Null] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
+  def isSpecializedTuple(cls: Symbol)(using Context): Boolean =
+    cls.isClass && TupleSpecializedClasses.exists(tupleCls => cls.name.isSpecializedNameOf(tupleCls.name))
+
+  def SpecializedTuple(base: Symbol, args: List[Type])(using Context): Symbol =
+    base.owner.requiredClass(base.name.specializedName(args))
+
   private class FunType(prefix: String):
     private var classRefs: Array[TypeRef | Null] = new Array(22)
     def apply(n: Int): TypeRef =
@@ -1584,6 +1590,20 @@ class Definitions {
   def isFunctionType(tp: Type)(using Context): Boolean =
     isNonRefinedFunction(tp.dropDependentRefinement)
 
+  private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
+    for base <- bases; tp <- paramTypes do
+      cls.enter(newSymbol(cls, base.specializedName(List(tp)), Method, ExprType(tp)))
+    cls
+
+  @tu lazy val Tuple1: ClassSymbol = withSpecMethods(requiredClass("scala.Tuple1"), List(nme._1), Tuple1SpecializedParamTypes)
+  @tu lazy val Tuple2: ClassSymbol = withSpecMethods(requiredClass("scala.Tuple2"), List(nme._1, nme._2), Tuple2SpecializedParamTypes)
+
+  @tu lazy val TupleSpecializedClasses: Set[Symbol]               = Set(Tuple1, Tuple2)
+  @tu lazy val Tuple1SpecializedParamTypes: Set[TypeRef]          = Set(IntType, LongType, DoubleType)
+  @tu lazy val Tuple2SpecializedParamTypes: Set[TypeRef]          = Set(IntType, LongType, DoubleType, CharType, BooleanType)
+  @tu lazy val Tuple1SpecializedParamClasses: PerRun[Set[Symbol]] = new PerRun(Tuple1SpecializedParamTypes.map(_.symbol))
+  @tu lazy val Tuple2SpecializedParamClasses: PerRun[Set[Symbol]] = new PerRun(Tuple2SpecializedParamTypes.map(_.symbol))
+
   // Specialized type parameters defined for scala.Function{0,1,2}.
   @tu lazy val Function1SpecializedParamTypes: collection.Set[TypeRef] =
     Set(IntType, LongType, FloatType, DoubleType)
@@ -1606,6 +1626,13 @@ class Definitions {
     new PerRun(Function1SpecializedReturnTypes.map(_.symbol))
   @tu lazy val Function2SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
     new PerRun(Function2SpecializedReturnTypes.map(_.symbol))
+
+  def isSpecializableTuple(base: Symbol, args: List[Type])(using Context): Boolean =
+    args.length <= 2 && base.isClass && TupleSpecializedClasses.exists(base.asClass.derivesFrom) && args.match
+      case List(x)    => Tuple1SpecializedParamClasses().contains(x.classSymbol)
+      case List(x, y) => Tuple2SpecializedParamClasses().contains(x.classSymbol) && Tuple2SpecializedParamClasses().contains(y.classSymbol)
+      case _          => false
+    && base.owner.denot.info.member(base.name.specializedName(args)).exists // when dotc compiles the stdlib there are no specialised classes
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
     paramTypes.length <= 2
