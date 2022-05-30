@@ -573,9 +573,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           else if lastSelf.exists then
             ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
           else
-            inlineCallPrefix match
-              case Super(_, _) => This(rhsClsSym.asClass)
-              case _ => inlineCallPrefix
+            val pre = inlineCallPrefix match
+              case Super(qual, _) => qual
+              case pre => pre
+            val preLevel = inlinedMethod.owner.ownersIterator.length
+            if preLevel > level then pre.outerSelect(preLevel - level, selfSym.info)
+            else pre
+
       val binding = accountForOpaques(
         ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span))
       bindingsBuf += binding
