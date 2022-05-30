@@ -13,7 +13,6 @@ package app {
   val Bar: lib.Bar.type = lib.Bar
 }
 
-
 @main def Test =
   assert(summon[Mirror.Of[scala.Nil.type]].fromProduct(EmptyTuple) == Nil) // alias scala 2 defined
   assert(summon[Mirror.Of[lib.Foo.A.type]].fromProduct(EmptyTuple) == lib.Foo.A) // real mirror
