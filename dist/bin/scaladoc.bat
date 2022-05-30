@@ -6,9 +6,12 @@ setlocal enabledelayedexpansion
 
 set _EXITCODE=0
 
-set "_PROG_HOME=%~dp0"
-
-call "%_PROG_HOME%\common.bat"
+for %%f in ("%~dp0.") do (
+    set "_PROG_HOME=%%~dpf"
+    @rem get rid of the trailing slash
+    set "_PROG_HOME=!_PROG_HOME:~0,-1!"
+)
+call "%_PROG_HOME%\bin\common.bat"
 if not %_EXITCODE%==0 goto end
 
 set _DEFAULT_JAVA_OPTS=-Xmx768m -Xms768m
@@ -98,7 +101,7 @@ goto :eof
 
 @rem output parameter: _CLASS_PATH
 :classpathArgs
-for /f "delims=" %%f in ("%_PROG_HOME%\.") do set "_LIB_DIR=%%~dpflib"
+set "_LIB_DIR=%_PROG_HOME%\lib"
 set _CLASS_PATH=
 @rem keep list in sync with bash script `bin\scaladoc` !
 call :updateClasspath "scaladoc"
