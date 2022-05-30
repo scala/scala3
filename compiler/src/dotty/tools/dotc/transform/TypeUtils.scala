@@ -87,11 +87,11 @@ object TypeUtils {
      *  of this type, while keeping the same prefix.
      */
     def mirrorCompanionRef(using Context): TermRef = self match {
-      case OrType(tp1, tp2) =>
-        val r1 = tp1.mirrorCompanionRef
-        val r2 = tp2.mirrorCompanionRef
-        assert(r1.symbol == r2.symbol, em"mirrorCompanionRef mismatch for $self: $r1, $r2 did not have the same symbol")
-        r1
+      case AndType(tp1, tp2) =>
+        val c1 = tp1.classSymbol
+        val c2 = tp2.classSymbol
+        if c1.isSubClass(c2) then tp1.mirrorCompanionRef
+        else tp2.mirrorCompanionRef // precondition: the parts of the AndType have already been checked to be non-overlapping
       case self @ TypeRef(prefix, _) if self.symbol.isClass =>
         prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
       case self: TypeProxy =>
