@@ -71,6 +71,7 @@
 
 .pill-container ul li[data-selected="true"]::before {
   margin-right: calc(1.5 * var(--base-spacing));
+  left: calc(1 * var(--base-spacing));
   content: url(../../../images/thick.svg);
   position: absolute;
 }

@@ -30,12 +30,10 @@ class FilterGroup extends Component {
     this.props.onGroupSelectChange(key, true);
   };
 
-  onDeselectAllClick = ({
-    currentTarget: {
-      dataset: { key },
-    },
-  }) => {
-    this.props.onGroupSelectChange(key, false);
+  onDeselectAllClick = (e) => {
+    this.props.onGroupSelectChange(e.currentTarget.dataset.key, false);
+    e.stopPropagation();
+    e.preventDefault();
   };
 
   attachFiltersClicks() {
@@ -52,7 +50,7 @@ class FilterGroup extends Component {
       this.filtersContainerRef
     );
     const deselectAllRefs = findRefs(
-      "button.deselectAll",
+      "span.deselectAll",
       this.filtersContainerRef
     );
 
@@ -87,7 +85,8 @@ class FilterGroup extends Component {
 
   getFirstSelected(filterKey, values) {
     const sortedValues = this.getSortedValues(filterKey, values);
-    return sortedValues.find(([_name, filterObject]) => filterObject.selected)[0] || "";
+    const firstSelected = sortedValues.find(([_name, filterObject]) => filterObject.selected);
+    return firstSelected ? firstSelected[0] : "";
   }
 
   getNumberOfSelectedFilters = (filterKey, values) => {
@@ -109,10 +108,13 @@ class FilterGroup extends Component {
 
     return `
       <div class="pill-container body-small" tabindex="1">
-        <div class="pill ${numberToDisplay !== "" ? "has-value" : ""}">
+        <div class="pill ${numberOfSelectedFilters > 0 ? "has-value" : ""}">
           <span class="filter-name">${filterKey.substring(1)}</span>
           ${firstSelected} ${numberToDisplay}
-          <span class="icon-button close"/>
+          <span
+            class="icon-button close deselectAll"
+            data-key="${filterKey}"
+            />
         </div>
         <ul>
           ${this.getSortedValues(filterKey, values)
@@ -125,6 +127,11 @@ class FilterGroup extends Component {
                 data-key="${filterKey}"
                 data-selected="${data.selected}"
                 data-value="${key}"
+                ${this.isActive(
+                  data.selected
+                )} ${this.isVisible(
+                  data.visible
+                )}"
               >
               ${key}
               </li>`
