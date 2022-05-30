@@ -1247,6 +1247,10 @@ object Build {
   lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
   lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
 
+  lazy val `scala3-bench-micro` = project.in(file("bench-micro"))
+    .asDottyBench(Bootstrapped)
+    .settings(Jmh / run / mainClass := Some("org.openjdk.jmh.Main"))
+
   val testcasesOutputDir = taskKey[Seq[String]]("Root directory where tests classses are generated")
   val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
   val testDocumentationRoot = taskKey[String]("Root directory where tests documentation are stored")

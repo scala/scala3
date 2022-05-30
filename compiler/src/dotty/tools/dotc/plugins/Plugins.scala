@@ -51,7 +51,7 @@ trait Plugins {
     }
     else _roughPluginsList
 
-  /** Load all available plugins.  Skips plugins that
+  /** Load all available plugins. Skips plugins that
    *  either have the same name as another one, or which
    *  define a phase name that another one does.
    */
