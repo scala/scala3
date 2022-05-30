@@ -4,7 +4,7 @@ package scala.util.control
  *
  *  Usage:
  *
- *     import scala.util.control.NonLocalReturns._
+ *     import scala.util.control.NonLocalReturns.*
  *
  *     returning { ... throwReturn(x) ... }
  */
