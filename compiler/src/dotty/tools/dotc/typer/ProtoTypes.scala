@@ -362,7 +362,7 @@ object ProtoTypes {
      *    - t2 is a ascription (t22: T) and t1 is at the outside of t22
      *    - t2 is a closure (...) => t22 and t1 is at the outside of t22
      */
-    def hasInnerErrors(t: Tree): Boolean = t match
+    def hasInnerErrors(t: Tree)(using Context): Boolean = t match
       case Typed(expr, tpe) => hasInnerErrors(expr)
       case closureDef(mdef) => hasInnerErrors(mdef.rhs)
       case _ =>
