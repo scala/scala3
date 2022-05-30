@@ -27,12 +27,12 @@ class SpecializeTuples extends MiniPhase:
         if fun.symbol.name == nme.apply && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner.companionClass, targs.map(_.tpe))
         && isElideableExpr(tree)
     =>
-      cpy.Apply(tree)(Select(New(defn.SpecialisedTuple(fun.symbol.owner.companionClass, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
+      cpy.Apply(tree)(Select(New(defn.SpecializedTuple(fun.symbol.owner.companionClass, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
     case Apply(TypeApply(fun: NameTree, targs), args)
         if fun.symbol.name == nme.CONSTRUCTOR && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner, targs.map(_.tpe))
         && isElideableExpr(tree)
     =>
-      cpy.Apply(tree)(Select(New(defn.SpecialisedTuple(fun.symbol.owner, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
+      cpy.Apply(tree)(Select(New(defn.SpecializedTuple(fun.symbol.owner, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
     case _ => tree
   end transformApply
 

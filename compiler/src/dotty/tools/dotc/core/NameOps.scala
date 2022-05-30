@@ -8,6 +8,7 @@ import scala.io.Codec
 import Int.MaxValue
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import util.Chars.{isOperatorPart, digit2int}
+import Decorators.*
 import Definitions._
 import nme._
 
@@ -278,16 +279,20 @@ object NameOps {
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
 
+    /** Determines if the current name is the specialized name of the given base name.
+     *  For example `typeName("Tuple2$mcII$sp").isSpecializedNameOf(tpnme.Tuple2) == true`
+     */
     def isSpecializedNameOf(base: N)(using Context): Boolean =
-      import Decorators.*
-      val sb = new StringBuilder
-      sb.append(base.toString)
-      sb.append(nme.specializedTypeNames.prefix.toString)
-      sb.append(nme.specializedTypeNames.separator)
-      val prefix = sb.toString()
-      val suffix = nme.specializedTypeNames.suffix.toString
-      name.startsWith(prefix) && name.endsWith(suffix)
+      var i = 0
+      inline def nextString(str: String) = name.startsWith(str, i) && { i += str.length; true }
+      nextString(base.toString)
+        && nextString(nme.specializedTypeNames.prefix.toString)
+        && nextString(nme.specializedTypeNames.separator.toString)
+        && name.endsWith(nme.specializedTypeNames.suffix.toString)
 
+    /** Returns the name of the class specialised to the provided types,
+     *  in the given order.  Used for the specialized tuple classes.
+     */
     def specializedName(args: List[Type])(using Context): N =
       val sb = new StringBuilder
       sb.append(name.toString)

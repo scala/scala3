@@ -1330,9 +1330,9 @@ class Definitions {
   @tu lazy val TupleType: Array[TypeRef | Null] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
   def isSpecializedTuple(cls: Symbol)(using Context): Boolean =
-    TupleSpecializedClasses.exists(tupleCls => cls.name.isSpecializedNameOf(tupleCls.name))
+    cls.isClass && TupleSpecializedClasses.exists(tupleCls => cls.name.isSpecializedNameOf(tupleCls.name))
 
-  def SpecialisedTuple(base: Symbol, args: List[Type])(using Context): Symbol =
+  def SpecializedTuple(base: Symbol, args: List[Type])(using Context): Symbol =
     base.owner.requiredClass(base.name.specializedName(args))
 
   private class FunType(prefix: String):
