@@ -5,7 +5,7 @@ title: "Deprecated: Nonlocal Returns"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/nonlocal-returns.html
 ---
 
-Returning from nested anonymous functions has been deprecated.
+Returning from nested anonymous functions has been deprecated, and will produce a warning from version `3.2`.
 
 Nonlocal returns are implemented by throwing and catching `scala.runtime.NonLocalReturnException`-s. This is rarely what is intended by the programmer. It can be problematic because of the hidden performance cost of throwing and catching exceptions. Furthermore, it is a leaky implementation: a catch-all exception handler can intercept a `NonLocalReturnException`.
 
