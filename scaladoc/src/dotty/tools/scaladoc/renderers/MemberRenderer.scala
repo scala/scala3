@@ -15,7 +15,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def doc(m: Member): Seq[AppliedTag] =  m.docs.fold(Nil)(d => Seq(renderDocPart(d.body)))
 
-  def tableRow(name: String, content: AppliedTag) = Seq(dt(name), dd(content))
+  def tableRow(name: String, content: TagArg) = Seq(dt(name), dd(content))
 
   def defintionClasses(m: Member) = m.origin match
     case Origin.Overrides(defs) =>
@@ -100,6 +100,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val comment = m.docs
     val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
+    val classLikeInfo: TagArg = classLikeParts(m)
+
     Seq(
       Option.when(withBrief)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
       Some(
@@ -112,6 +114,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             defintionClasses(m),
             inheritedFrom(m),
             source(m),
+            classLikeInfo
           )
         )
       )
@@ -341,7 +344,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             ))
         ))
 
-  def classLikeParts(m: Member): Seq[AppliedTag] =
+  def classLikeParts(m: Member): TagArg =
     if !m.kind.isInstanceOf[Classlike] then Nil else
       val graphHtml = m.graph match
         case graph if graph.edges.nonEmpty =>
@@ -356,13 +359,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
       def signatureList(list: Seq[LinkToType]): Seq[AppliedTag] =
         if list.isEmpty then Nil
-        else Seq(div(cls := "symbol monospace")(list.map(link =>
+         else Seq(div(cls := "mono-small-inline")(list.map(link =>
           div(link.kind.name," ", link.signature.map(renderElement))
         )))
 
       def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
         if list.isEmpty then Nil
-        else Seq(div(cls := "symbol monospace") { list.map { link =>
+        else Seq(div(cls := "mono-small-inline") { list.map { link =>
           div(link.signature.map(renderElement))
         }})
 
@@ -370,13 +373,17 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       val subtypes = signatureList(m.knownChildren)
       val selfType = selfTypeList(m.selfType.toList)
 
-      renderTabs(
-        singleSelection = true,
-        Tab("Graph", "graph", graphHtml, "showGraph"),
-        Tab("Supertypes", "supertypes", supertypes),
-        Tab("Known subtypes", "subtypes", subtypes),
-        Tab("Self type", "selftype", selfType)
-      )
+      Seq(
+        "Graph" -> graphHtml,
+        "Supertypes" -> supertypes,
+        "Known subtypes" -> subtypes,
+        "Self type" -> selfType,
+      ).filterNot(_._2.isEmpty).flatMap(tableRow(_, _))
+
+  private def renderTable(keyValues: (TagArg, TagArg)*): TagArg =
+    table(
+      keyValues.map((key, value) => tr(td(key), td(value)))
+    )
 
   private def buildDocumentableFilter = div(cls := "documentableFilter")(
     div(cls := "filtersContainer")(),
@@ -402,7 +409,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         buildDocumentableFilter,
         intro,
         memberInfo(m, withBrief = false),
-        classLikeParts(m),
         buildMembers(m)
       ),
       Seq.empty // For now, we don't support table of contents in members
