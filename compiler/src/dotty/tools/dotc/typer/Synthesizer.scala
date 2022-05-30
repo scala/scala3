@@ -276,16 +276,72 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         case t => mapOver(t)
     monoMap(mirroredType.resultType)
 
-  private def productMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
+  private[Synthesizer] enum MirrorSource:
+    case ClassSymbol(cls: Symbol)
+    case Singleton(tref: TermRef)
 
-    def whyNotAcceptableType(tp: Type, cls: Symbol): String = tp match
+    def isSub(that: MirrorSource)(using Context): Boolean =
+      (this, that) match
+        case (Singleton(tref), ClassSymbol(cls)) => tref.classSymbol.isSubClass(cls)
+        case (ClassSymbol(cls1), ClassSymbol(cls2)) => cls1.isSubClass(cls2)
+        case _ => false // includes that a class is never sub of a singleton
+
+    def debug(using Context): String = this match
+      case ClassSymbol(cls) => i"$cls"
+      case Singleton(tref) => i"${tref.termSymbol}"
+
+  object MirrorSource:
+    def cls(cls: Symbol): MirrorSource = ClassSymbol(cls)
+    def singleton(tref: TermRef): MirrorSource = Singleton(tref)
+
+    /** widen TermRef to see if they are an alias to an enum singleton or case object */
+    private def isEnumOrCaseObjectRef(tp: Type)(using Context): Boolean = tp match
+      case tp: TermRef =>
+        val sym = tp.termSymbol
+
+        sym.isEnumCase
+        || (sym.isClass && sym.isAllOf(Case | Module))
+        || (!tp.isOverloaded && isEnumOrCaseObjectRef(tp.underlying.widenExpr))
+      case _ => false
+
+    /** A customised version of `Types.classSymbol`, specialised for mirror generation. */
+    def reduce(mirroredType: Type)(using Context): Either[String, MirrorSource] = mirroredType match
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if sym.isClass then // direct ref to a class, not an alias
+          if sym.isAllOf(Case | Module) then
+            Right(MirrorSource.singleton(sym.sourceModule.reachableTermRef)) // correct widened module ref
+          else
+            Right(MirrorSource.cls(sym))
+        else
+          reduce(tp.superType)
+      case tp: TermRef if isEnumOrCaseObjectRef(tp) =>
+        Right(MirrorSource.singleton(tp))
       case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
-        i"its subpart `$tp` is not a supported kind (either `*` or `* -> *`)"
-      case tp: TypeProxy    => whyNotAcceptableType(tp.underlying, cls)
-      case OrType(tp1, tp2) => i"its subpart `$tp` is a top-level union type."
-      case _ =>
-        if tp.classSymbol eq cls then ""
-        else i"a subpart reduces to the more precise ${tp.classSymbol}, expected $cls"
+        Left(i"its subpart `$tp` is not a supported kind (either `*` or `* -> *`)")
+      case tp: TypeProxy =>
+        reduce(tp.underlying)
+      case tp: ClassInfo =>
+        Right(MirrorSource.cls(tp.cls))
+      case tp @ AndType(l, r) =>
+        for
+          lsrc <- reduce(l)
+          rsrc <- reduce(r)
+          res <- locally {
+            if lsrc.isSub(rsrc) then Right(lsrc)
+            else if rsrc.isSub(lsrc) then Right(rsrc)
+            else Left(i"its subpart `$tp` is an intersection of unrelated symbols ${lsrc.debug} and ${rsrc.debug}.")
+          }
+        yield
+          res
+      case tp: OrType =>
+        Left(i"its subpart `$tp` is a top-level union type.")
+      case tp =>
+        Left(i"its subpart `$tp` is an unsupported type.")
+
+  end MirrorSource
+
+  private def productMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
 
     def makeProductMirror(cls: Symbol): TreeWithErrors =
       val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
@@ -309,55 +365,34 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       withNoErrors(mirrorRef.cast(mirrorType))
     end makeProductMirror
 
-    /** widen TermRef to see if they are an alias to an enum singleton */
-    def isEnumSingletonRef(tp: Type)(using Context): Boolean = tp match
-      case tp: TermRef =>
-        val sym = tp.termSymbol
-        sym.isEnumCase || (!tp.isOverloaded && isEnumSingletonRef(tp.underlying.widenExpr))
-      case _ => false
-
-    mirroredType match
-      case AndType(tp1, tp2) =>
-        orElse(productMirror(tp1, formal, span), productMirror(tp2, formal, span))
-      case _ =>
-        val cls = mirroredType.classSymbol
-        if isEnumSingletonRef(mirroredType) || cls.isAllOf(Case | Module) then
-          val (singleton, singletonRef) =
-            if mirroredType.termSymbol.exists then (mirroredType.termSymbol, mirroredType)
-            else (cls.sourceModule, cls.sourceModule.reachableTermRef)
-          val singletonPath = pathFor(singletonRef).withSpan(span)
-          if singleton.info.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
-            val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name, formal)
+    MirrorSource.reduce(mirroredType) match
+      case Right(msrc) => msrc match
+        case MirrorSource.Singleton(tref) =>
+          val singleton = tref.termSymbol
+          val singletonPath = pathFor(tref).withSpan(span)
+          if tref.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
+            val mirrorType =
+              mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name, formal)
             val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
             withNoErrors(mirrorRef.cast(mirrorType))
           else
             val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name, formal)
             withNoErrors(singletonPath.cast(mirrorType))
-        else
-          val acceptableMsg = whyNotAcceptableType(mirroredType, cls)
-          if acceptableMsg.isEmpty then
-            if cls.isGenericProduct then makeProductMirror(cls)
-            else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
-          else withErrors(i"type `$mirroredType` is not a generic product because $acceptableMsg")
+        case MirrorSource.ClassSymbol(cls) =>
+          if cls.isGenericProduct then makeProductMirror(cls)
+          else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
+      case Left(msg) =>
+        withErrors(i"type `$mirroredType` is not a generic product because $msg")
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
 
-    val cls = mirroredType.classSymbol
+    val (acceptableMsg, cls) = MirrorSource.reduce(mirroredType) match
+      case Right(MirrorSource.Singleton(tp)) => (i"its subpart `$tp` is a term reference", NoSymbol)
+      case Right(MirrorSource.ClassSymbol(cls)) => ("", cls)
+      case Left(msg) => (msg, NoSymbol)
+
     val clsIsGenericSum = cls.isGenericSum
-
-    def whyNotAcceptableType(tp: Type): String = tp match
-      case tp: TermRef => i"its subpart `$tp` is a term reference"
-      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
-        i"its subpart `$tp` is not a supported kind (either `*` or `* -> *`)"
-      case tp: TypeProxy => whyNotAcceptableType(tp.underlying)
-      case OrType(tp1, tp2) => i"its subpart `$tp` is a top-level union type."
-      case _ =>
-        if tp.classSymbol eq cls then ""
-        else i"a subpart reduces to the more precise ${tp.classSymbol}, expected $cls"
-
-
-    val acceptableMsg = whyNotAcceptableType(mirroredType)
 
     if acceptableMsg.isEmpty && clsIsGenericSum then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))

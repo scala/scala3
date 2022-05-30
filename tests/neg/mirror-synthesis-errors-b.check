@@ -1,0 +1,28 @@
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:11:56 --------------------------------------------------------------
+11 |val testA = summon[Mirror.ProductOf[Cns[Int] & Sm[Int]]] // error: unreleated
+   |                                                        ^
+   |No given instance of type deriving.Mirror.ProductOf[Cns[Int] & Sm[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.ProductOf[Cns[Int] & Sm[Int]]: type `Cns[Int] & Sm[Int]` is not a generic product because its subpart `Cns[Int] & Sm[Int]` is an intersection of unrelated symbols class Cns and class Sm.
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:12:56 --------------------------------------------------------------
+12 |val testB = summon[Mirror.ProductOf[Sm[Int] & Cns[Int]]] // error: unreleated
+   |                                                        ^
+   |No given instance of type deriving.Mirror.ProductOf[Sm[Int] & Cns[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.ProductOf[Sm[Int] & Cns[Int]]: type `Sm[Int] & Cns[Int]` is not a generic product because its subpart `Sm[Int] & Cns[Int]` is an intersection of unrelated symbols class Sm and class Cns.
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:13:49 --------------------------------------------------------------
+13 |val testC = summon[Mirror.Of[Cns[Int] & Sm[Int]]] // error: unreleated
+   |                                                 ^
+   |No given instance of type deriving.Mirror.Of[Cns[Int] & Sm[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[Cns[Int] & Sm[Int]]: 
+   |	* type `Cns[Int] & Sm[Int]` is not a generic product because its subpart `Cns[Int] & Sm[Int]` is an intersection of unrelated symbols class Cns and class Sm.
+   |	* type `Cns[Int] & Sm[Int]` is not a generic sum because its subpart `Cns[Int] & Sm[Int]` is an intersection of unrelated symbols class Cns and class Sm.
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:14:49 --------------------------------------------------------------
+14 |val testD = summon[Mirror.Of[Sm[Int] & Cns[Int]]] // error: unreleated
+   |                                                 ^
+   |No given instance of type deriving.Mirror.Of[Sm[Int] & Cns[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[Sm[Int] & Cns[Int]]: 
+   |	* type `Sm[Int] & Cns[Int]` is not a generic product because its subpart `Sm[Int] & Cns[Int]` is an intersection of unrelated symbols class Sm and class Cns.
+   |	* type `Sm[Int] & Cns[Int]` is not a generic sum because its subpart `Sm[Int] & Cns[Int]` is an intersection of unrelated symbols class Sm and class Cns.
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:15:55 --------------------------------------------------------------
+15 |val testE = summon[Mirror.ProductOf[Sm[Int] & Nn.type]] // error: unreleated
+   |                                                       ^
+   |No given instance of type deriving.Mirror.ProductOf[Sm[Int] & Nn.type] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.ProductOf[Sm[Int] & Nn.type]: type `Sm[Int] & Nn.type` is not a generic product because its subpart `Sm[Int] & Nn.type` is an intersection of unrelated symbols class Sm and object Nn.
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:16:55 --------------------------------------------------------------
+16 |val testF = summon[Mirror.ProductOf[Nn.type & Sm[Int]]] // error: unreleated
+   |                                                       ^
+   |No given instance of type deriving.Mirror.ProductOf[Nn.type & Sm[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.ProductOf[Nn.type & Sm[Int]]: type `Nn.type & Sm[Int]` is not a generic product because its subpart `Nn.type & Sm[Int]` is an intersection of unrelated symbols object Nn and class Sm.
