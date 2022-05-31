@@ -121,7 +121,9 @@ class FilterGroup extends Component {
             .map(
               ([key, data]) =>
               `<li
-                class="filterButtonItem"
+                class="filterButtonItem  ${this.isVisible(
+                  data.visible
+                )}"
                 data-selected="${data.selected}"
                 data-test-id="filterGroupButton"
                 data-key="${filterKey}"
@@ -129,8 +131,6 @@ class FilterGroup extends Component {
                 data-value="${key}"
                 ${this.isActive(
                   data.selected
-                )} ${this.isVisible(
-                  data.visible
                 )}"
               >
               ${key}
@@ -147,7 +147,7 @@ class FilterGroup extends Component {
       this.filtersContainerRef,
       Object.entries(filter.filters)
         .filter(([_key, values]) => Object.values(values).some((v) => v.visible))
-        .map(([key, values]) => this.getFilterGroup(key, values))
+        .map(([key, values]) => this.getFilterGroup(key, values)),
     );
 
     this.attachFiltersClicks();

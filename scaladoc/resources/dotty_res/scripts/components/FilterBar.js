@@ -42,6 +42,12 @@ class FilterBar extends Component {
     }));
   };
 
+  onClearFilters = () => {
+    this.setState(() => ({
+      filter: ""
+    }))
+  }
+
   onFilterVisibilityChange = () => {
     this.setState((prevState) => ({ isVisible: !prevState.isVisible }));
   };

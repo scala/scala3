@@ -2,8 +2,54 @@
   display: flex;
   position: fixed;
   top: calc(10 * var(--base-spacing));
+  flex-wrap: wrap;
+  z-index: 2;
 }
 
 .filtersContainer {
   display: flex;
+  flex-wrap: wrap;
+}
+
+.filterableInput {
+  background-color: var(--background-default);
+  color: var(--action-primary-content-active);
+  background-image: url("../../../images/icon-buttons/search/dark/default.svg");
+  background-repeat: no-repeat;
+  padding: calc(2 * var(--base-spacing)) calc(2 * var(--base-spacing))
+    calc(2 * var(--base-spacing)) calc(5 * var(--base-spacing));
+  border-radius: 4px;
+  background-size: 16px;
+  background-position: 10px 15px;
+  border: none;
+}
+
+.filterableInput:focus-visible {
+  border: none;
+  outline: none;
+}
+
+.filterableInput::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  height: 1em;
+  width: 1em;
+  background: url("../../../images/icon-buttons/close/light/default.svg")
+    no-repeat 50% 50%;
+  background-size: contain;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-dark .filterableInput::-webkit-search-cancel-button {
+  background: url("../../../images/icon-buttons/close/dark/default.svg")
+    no-repeat 50% 50%;
+}
+
+.filterableInput:focus::-webkit-search-cancel-button {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.filterableInput.dark::-webkit-search-cancel-button {
+  filter: invert(1);
 }

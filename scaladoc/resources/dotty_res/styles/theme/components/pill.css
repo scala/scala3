@@ -40,7 +40,12 @@
 }
 
 .pill > .close {
+  display: none;
   margin-left: calc(1.5 * var(--base-spacing));
+}
+
+.pill.has-value > .close {
+  display: block;
 }
 
 .pill-container ul {
@@ -58,11 +63,19 @@
 .pill-container ul li {
   padding: calc(1 * var(--base-spacing)) calc(4 * var(--base-spacing));
   cursor: pointer;
+  display: none;
+}
+
+.pill-container ul li.visible {
   display: flex;
 }
 
 .pill-container ul li:hover {
-  background-color: var(--action-primary-background-selected);
+  background-color: var(--action-primary-background-hover);
+}
+
+.pill-container ul li[data-selected="true"]:hover {
+  background-color: var(--action-primary-background-hover);
 }
 
 .pill-container ul li[data-selected="true"] {
