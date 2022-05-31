@@ -755,21 +755,22 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         fourthTry
     }
 
-    def tryBaseType(cls2: Symbol) = {
-      val allowBaseType = !caseLambda.exists || (tp1 match {
-        case tp: TypeRef if tp.symbol.isClass => true
-        case AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => true
-        case _ => false
-      })
+    def allowBaseTypeForMatchSelector(tp: Type): Boolean = tp.dealias match
+      case tp: TypeRef => tp.symbol.isClass
+      case AppliedType(tycon, _) => allowBaseTypeForMatchSelector(tycon)
+      case tp: TypeProxy => allowBaseTypeForMatchSelector(tp.superType)
+      case tp: AndOrType => allowBaseTypeForMatchSelector(tp.tp1) || allowBaseTypeForMatchSelector(tp.tp2)
+      case _ => false
+
+    def tryBaseType(cls2: Symbol) =
       val base = nonExprBaseType(tp1, cls2)
-      if (base.exists && base.ne(tp1) && allowBaseType)
-        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
-        base.isInstanceOf[OrType] && fourthTry
-          // if base is a disjunction, this might have come from a tp1 type that
-          // expands to a match type. In this case, we should try to reduce the type
-          // and compare the redux. This is done in fourthTry
+      if base.exists && base.ne(tp1) && (!caseLambda.exists || allowBaseTypeForMatchSelector(tp1)) then
+        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
+        || base.isInstanceOf[OrType] && fourthTry
+            // if base is a disjunction, this might have come from a tp1 type that
+            // expands to a match type. In this case, we should try to reduce the type
+            // and compare the redux. This is done in fourthTry
       else fourthTry
-    }
 
     def fourthTry: Boolean = tp1 match {
       case tp1: TypeRef =>
