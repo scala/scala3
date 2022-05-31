@@ -51,13 +51,17 @@ object TypeUtils {
 
     /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs,
      *  or -1 if this is not a tuple type.
+     *
+     *  @param relaxEmptyTuple if true then TypeRef(EmptyTuple$) =:= EmptyTuple.type
      */
-    def tupleArity(using Context): Int = self match {
+    def tupleArity(relaxEmptyTuple: Boolean = false)(using Context): Int = self match {
       case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
-        val arity = tl.tupleArity
+        val arity = tl.tupleArity(relaxEmptyTuple)
         if (arity < 0) arity else arity + 1
       case self: SingletonType =>
         if self.termSymbol == defn.EmptyTupleModule then 0 else -1
+      case self: TypeRef if relaxEmptyTuple && self.classSymbol == defn.EmptyTupleModule.moduleClass =>
+        0
       case self if defn.isTupleClass(self.classSymbol) =>
         self.dealias.argInfos.length
       case _ =>
@@ -71,6 +75,8 @@ object TypeUtils {
       case self: SingletonType =>
         assert(self.termSymbol == defn.EmptyTupleModule, "not a tuple")
         Nil
+      case self: TypeRef if self.classSymbol == defn.EmptyTupleModule.moduleClass =>
+         Nil
       case self if defn.isTupleClass(self.classSymbol) =>
         self.dealias.argInfos
       case _ =>

@@ -29,3 +29,10 @@ object Test:
       type MirroredElemTypes[X, Y] = (Y, X)
     }
   }
+
+  locally {
+    val x = summon[Kind2[Mirror.Product, [X, Y] =>> (Y, X) & (Y *: X *: EmptyTuple)]]
+    x: Mirror.Product {
+      type MirroredElemTypes[X, Y] = (Y, X)
+    }
+  }

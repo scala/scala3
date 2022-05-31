@@ -2767,7 +2767,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       typed(desugar.smallTuple(tree).withSpan(tree.span), pt)
     else {
       val pts =
-        if (arity == pt.tupleArity) pt.tupleElementTypes
+        if (arity == pt.tupleArity()) pt.tupleElementTypes
         else List.fill(arity)(defn.AnyType)
       val elems = tree.trees.lazyZip(pts).map(
         if ctx.mode.is(Mode.Type) then typedType(_, _, mapPatternBounds = true)

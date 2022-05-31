@@ -689,7 +689,9 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
   }
 
   private def erasePair(tp: Type)(using Context): Type = {
-    val arity = tp.tupleArity
+    // NOTE: `tupleArity` does not consider TypeRef(EmptyTuple$) equivalent to EmptyTuple.type,
+    // we fix this for printers, but type erasure should be preserved.
+    val arity = tp.tupleArity()
     if (arity < 0) defn.ProductClass.typeRef
     else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity).nn
     else defn.TupleXXLClass.typeRef

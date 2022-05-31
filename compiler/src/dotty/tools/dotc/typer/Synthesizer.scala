@@ -223,16 +223,19 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   /** Create an anonymous class `new Object { type MirroredMonoType = ... }`
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
    */
-  private def anonymousMirror(monoType: Type, attachment: Property.StickyKey[Unit], span: Span)(using Context) =
+  private def anonymousMirror(monoType: Type, attachment: Property.StickyKey[Unit], tupleArity: Option[Int], span: Span)(using Context) =
     if ctx.isAfterTyper then ctx.compilationUnit.needsMirrorSupport = true
     val monoTypeDef = untpd.TypeDef(tpnme.MirroredMonoType, untpd.TypeTree(monoType))
-    val newImpl = untpd.Template(
+    var newImpl = untpd.Template(
       constr = untpd.emptyConstructor,
       parents = untpd.TypeTree(defn.ObjectType) :: Nil,
       derived = Nil,
       self = EmptyValDef,
       body = monoTypeDef :: Nil
     ).withAttachment(attachment, ())
+    tupleArity.foreach { n =>
+      newImpl = newImpl.withAttachment(GenericTupleArity, n)
+    }
     typer.typed(untpd.New(newImpl).withSpan(span))
 
   /** The mirror type
@@ -279,6 +282,17 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   private[Synthesizer] enum MirrorSource:
     case ClassSymbol(cls: Symbol)
     case Singleton(src: Symbol, tref: TermRef)
+    case GenericTuple(tps: List[Type])
+
+    /** Tests that both sides are tuples of the same arity */
+    infix def sameTuple(that: MirrorSource)(using Context): Boolean =
+      def arity(msrc: MirrorSource): Int = msrc match
+        case GenericTuple(tps) => tps.size
+        case ClassSymbol(cls) if defn.isTupleClass(cls) => cls.typeParams.size // tested in tests/pos/i13859.scala
+        case _ => -1
+      def equivalent(n: Int, m: Int) =
+        n == m && n > 0
+      equivalent(arity(this), arity(that))
 
     /** A comparison that chooses the most specific MirrorSource, this is guided by what is necessary for
      * `Mirror.Product.fromProduct`. i.e. its result type should be compatible with the erasure of `mirroredType`.
@@ -289,10 +303,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         case (ClassSymbol(cls1), ClassSymbol(cls2)) => cls1.isSubClass(cls2)
         case (Singleton(src1, _), Singleton(src2, _)) => src1 eq src2
         case (_: ClassSymbol, _: Singleton) => false
+        case _ => this sameTuple that
 
     def show(using Context): String = this match
       case ClassSymbol(cls) => i"$cls"
       case Singleton(src, _) => i"$src"
+      case GenericTuple(tps) =>
+        val arity = tps.size
+        if arity <= Definitions.MaxTupleArity then s"class Tuple$arity"
+        else s"trait Tuple { def size: $arity }"
 
   private[Synthesizer] object MirrorSource:
 
@@ -332,6 +351,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           reduce(tp.underlying)
       case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
         Left(i"its subpart `$tp` is not a supported kind (either `*` or `* -> *`)")
+      case tp @ AppliedType(tref: TypeRef, _)
+        if tref.symbol == defn.PairClass
+        && tp.tupleArity(relaxEmptyTuple = true) > 0 =>
+        // avoid type aliases for tuples
+        Right(MirrorSource.GenericTuple(tp.tupleElementTypes))
       case tp: TypeProxy =>
         reduce(tp.underlying)
       case tp @ AndType(l, r) =>
@@ -354,10 +378,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   private def productMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
 
-    def makeProductMirror(cls: Symbol): TreeWithErrors =
+    def makeProductMirror(cls: Symbol, tps: Option[List[Type]]): TreeWithErrors =
       val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
-      val nestedPairs = TypeOps.nestedPairs(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
+      val nestedPairs =
+        val elems = tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
+        TypeOps.nestedPairs(elems)
       val (monoType, elemsType) = mirroredType match
         case mirroredType: HKTypeLambda =>
           (mkMirroredMonoType(mirroredType), mirroredType.derivedLambdaType(resType = nestedPairs))
@@ -372,7 +398,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
       val mirrorRef =
         if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
-        else anonymousMirror(monoType, ExtendsProductMirror, span)
+        else anonymousMirror(monoType, ExtendsProductMirror, tps.map(_.size), span)
       withNoErrors(mirrorRef.cast(mirrorType))
     end makeProductMirror
 
@@ -389,8 +415,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           else
             val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name, formal)
             withNoErrors(singletonPath.cast(mirrorType))
+        case MirrorSource.GenericTuple(tps) =>
+          val maxArity = Definitions.MaxTupleArity
+          val arity = tps.size
+          if tps.size <= maxArity then makeProductMirror(defn.TupleType(arity).nn.classSymbol, Some(tps))
+          else
+            val reason = s"it reduces to a tuple with arity $arity, expected arity <= $maxArity"
+            withErrors(i"${defn.PairClass} is not a generic product because $reason")
         case MirrorSource.ClassSymbol(cls) =>
-          if cls.isGenericProduct then makeProductMirror(cls)
+          if cls.isGenericProduct then makeProductMirror(cls, None)
           else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
       case Left(msg) =>
         withErrors(i"type `$mirroredType` is not a generic product because $msg")
@@ -401,6 +434,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val (acceptableMsg, cls) = MirrorSource.reduce(mirroredType) match
       case Right(MirrorSource.Singleton(_, tp)) => (i"its subpart `$tp` is a term reference", NoSymbol)
       case Right(MirrorSource.ClassSymbol(cls)) => ("", cls)
+      case Right(MirrorSource.GenericTuple(tps)) =>
+        val arity = tps.size
+        val cls = if arity <= Definitions.MaxTupleArity then defn.TupleType(arity).nn.classSymbol else defn.PairClass
+        ("", cls)
       case Left(msg) => (msg, NoSymbol)
 
     val clsIsGenericSum = cls.isGenericSum
@@ -457,7 +494,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
       val mirrorRef =
         if cls.useCompanionAsSumMirror then companionPath(mirroredType, span)
-        else anonymousMirror(monoType, ExtendsSumMirror, span)
+        else anonymousMirror(monoType, ExtendsSumMirror, None, span)
       withNoErrors(mirrorRef.cast(mirrorType))
     else if acceptableMsg.nonEmpty then
       withErrors(i"type `$mirroredType` is not a generic sum because $acceptableMsg")

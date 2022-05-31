@@ -248,7 +248,7 @@ object GenericSignatures {
               case _ => jsig(elemtp)
 
         case RefOrAppliedType(sym, pre, args) =>
-          if (sym == defn.PairClass && tp.tupleArity > Definitions.MaxTupleArity)
+          if (sym == defn.PairClass && tp.tupleArity() > Definitions.MaxTupleArity)
             jsig(defn.TupleXXLClass.typeRef)
           else if (isTypeParameterInSig(sym, sym0)) {
             assert(!sym.isAliasType, "Unexpected alias type: " + sym)
