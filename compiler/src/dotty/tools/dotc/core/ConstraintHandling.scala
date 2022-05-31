@@ -92,9 +92,10 @@ trait ConstraintHandling {
 
   /** Is `level` <= `maxLevel` or legal in the current context? */
   def levelOK(level: Int, maxLevel: Int)(using Context): Boolean =
-    level <= maxLevel ||
-    ctx.isAfterTyper || !ctx.typerState.isCommittable || // Leaks in these cases shouldn't break soundness
-    level == Int.MaxValue // See `nestingLevel` above.
+    level <= maxLevel
+    || ctx.isAfterTyper || !ctx.typerState.isCommittable // Leaks in these cases shouldn't break soundness
+    || level == Int.MaxValue // See `nestingLevel` above.
+    || !Config.checkLevels
 
   /** If `param` is nested deeper than `maxLevel`, try to instantiate it to a
    *  fresh type variable of level `maxLevel` and return the new variable.
