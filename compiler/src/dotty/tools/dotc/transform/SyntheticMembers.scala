@@ -27,7 +27,10 @@ object SyntheticMembers {
   /** Attachment recording that an anonymous class should extend Mirror.Sum */
   val ExtendsSumMirror: Property.StickyKey[Unit] = new Property.StickyKey
 
-  /** Attachment recording that an anonymous class should extend Mirror.Sum */
+  /** Attachment recording that an anonymous class (with the ExtendsProductMirror attachment)
+   *  should implement its `fromProduct` method in terms of the runtime class corresponding
+   *  to a tuple with that arity.
+   */
   val GenericTupleArity: Property.StickyKey[Int] = new Property.StickyKey
 }
 
