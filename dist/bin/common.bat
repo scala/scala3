@@ -33,9 +33,12 @@ if not exist "%_JAVACMD%" (
    set _EXITCODE=1
    goto :eof
 )
-
-if not defined _PROG_HOME set "_PROG_HOME=%~dp0"
-for /f "delims=" %%f in ("%_PROG_HOME%\.") do set "_LIB_DIR=%%~dpflib"
+if not defined _PROG_HOME (
+   echo Error: Variable _PROG_HOME undefined 1>&2
+   set _EXITCODE=1
+   goto :eof
+)
+set "_LIB_DIR=%_PROG_HOME%\lib"
 
 set _PSEP=;
 
