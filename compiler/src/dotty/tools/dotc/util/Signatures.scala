@@ -127,6 +127,13 @@ object Signatures {
     params: List[tpd.Tree],
     fun: tpd.Tree
   )(using Context): (Int, Int, List[Signature]) =
+    def treeQualifier(tree: tpd.Tree): tpd.Tree = tree match
+        case Apply(qual, _) => treeQualifier(qual)
+        case TypeApply(qual, _) => treeQualifier(qual)
+        case AppliedTypeTree(qual, _) => treeQualifier(qual)
+        case Select(qual, _) => qual
+        case _ => tree
+
     val (alternativeIndex, alternatives) = fun.tpe match
       case err: ErrorType =>
         val (alternativeIndex, alternatives) = alternativesFromError(err, params) match
@@ -152,7 +159,11 @@ object Signatures {
         case -1 => (params.length - 1 max 0) + curriedArguments
         case n => n + curriedArguments
       }
-      val alternativeSignatures = alternatives.flatMap(toApplySignature)
+
+      val pre = treeQualifier(fun)
+      val alternativesWithTypes = alternatives.map(_.asSeenFrom(pre.tpe.widenTermRefExpr))
+      val alternativeSignatures = alternativesWithTypes.flatMap(toApplySignature)
+
       (paramIndex, alternativeIndex, alternativeSignatures)
     else
       (0, 0, Nil)

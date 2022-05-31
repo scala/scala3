@@ -18,10 +18,8 @@ class SignatureHelpTest {
   }
 
   @Test def properFunctionReturnWithoutParenthesis: Unit = {
-    val listSignature =
-      S("apply", List("A"), List(List(P("elems", "A*"))), Some("CC[A]"))
-    val optionSignature =
-      S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
+    val listSignature = S("apply", List("A"), List(List(P("elems", "A*"))), Some("List[A]"))
+    val optionSignature = S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
     code"""object O {
           |  List(1, 2$m1
           |}
@@ -37,8 +35,7 @@ class SignatureHelpTest {
   }
 
   @Test def partialyFailedCurriedFunctions: Unit = {
-    val listSignature =
-      S("curry", Nil, List(List(P("a", "Int"), P("b", "Int")), List(P("c", "Int"))), Some("Int"))
+    val listSignature = S("curry", Nil, List(List(P("a", "Int"), P("b", "Int")), List(P("c", "Int"))), Some("Int"))
     code"""object O {
           |def curry(a: Int, b: Int)(c: Int) = a
           |  curry(1$m1)(3$m2)
@@ -48,8 +45,7 @@ class SignatureHelpTest {
   }
 
   @Test def optionProperSignature: Unit = {
-    val listSignature =
-      S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
+    val listSignature = S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
     code"""object O {
           |  Option(1, 2, 3, $m1)
           |}"""
@@ -65,17 +61,25 @@ class SignatureHelpTest {
   }
 
   @Test def fromScala2: Unit = {
-    val applySig =
-      // TODO: Ideally this should say `List[A]`, not `CC[A]`
-      S("apply", List("A"), List(List(P("elems", "A*"))), Some("CC[A]"))
-    val mapSig =
-      S("map[B]", Nil, List(List(P("f", "A => B"))), Some("List[B]"))
+    val applySig = S("apply", List("A"), List(List(P("elems", "A*"))), Some("List[A]"))
+    val mapSig = S("map[B]", Nil, List(List(P("f", "Int => B"))), Some("List[B]"))
     code"""object O {
              List($m1)
              List(1, 2, 3).map($m2)
            }"""
       .signatureHelp(m1, List(applySig), Some(0), 0)
       .signatureHelp(m2, List(mapSig), Some(0), 0)
+  }
+
+  @Test def typeParameterMethodApply: Unit = {
+    val testSig = S("method", Nil, List(List()), Some("Int"))
+    code"""case class Foo[A](test: A) {
+          |  def method(): A = ???
+          |}
+          |object O {
+          |  Foo(5).method($m1)
+          |}"""
+      .signatureHelp(m1, List(testSig), Some(0), 0)
   }
 
   @Test def unapplyBooleanReturn: Unit = {
