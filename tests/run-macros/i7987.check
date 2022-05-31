@@ -1,12 +1,7 @@
-scala.deriving.Mirror {
-  type MirroredType >: scala.Some[scala.Int] <: scala.Some[scala.Int]
-  type MirroredMonoType >: scala.Some[scala.Int] <: scala.Some[scala.Int]
-  type MirroredElemTypes >: scala.Nothing <: scala.Tuple
-} & scala.deriving.Mirror.Product {
+scala.deriving.Mirror.Product {
   type MirroredMonoType >: scala.Some[scala.Int] <: scala.Some[scala.Int]
   type MirroredType >: scala.Some[scala.Int] <: scala.Some[scala.Int]
   type MirroredLabel >: "Some" <: "Some"
-} {
   type MirroredElemTypes >: scala.*:[scala.Int, scala.Tuple$package.EmptyTuple] <: scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]
   type MirroredElemLabels >: scala.*:["value", scala.Tuple$package.EmptyTuple] <: scala.*:["value", scala.Tuple$package.EmptyTuple]
 }
