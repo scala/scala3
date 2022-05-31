@@ -4,8 +4,8 @@ type Head[X] = X match {
 }
 
 object Unpair {
-  def unpair[X <: Tuple2[Any, Any]]: Head[X] = 1 // error
-  unpair[Tuple2["msg", 42]]: "msg"
+  def unpair[X <: Tuple2[Any, Any]]: Head[X] = 1
+  unpair[Tuple2["msg", 42]]: "msg"  // error
 }
 
 
@@ -14,8 +14,8 @@ type Head2[X] = X match {
 }
 
 object Unpair2 {
-  def unpair[X <: Tuple2[Tuple2[Any, Any], Tuple2[Any, Any]]]: Head2[X] = 1 // error
-  unpair[Tuple2[Tuple2["msg", 42], Tuple2[41, 40]]]: "msg"
+  def unpair[X <: Tuple2[Tuple2[Any, Any], Tuple2[Any, Any]]]: Head2[X] = 1
+  unpair[Tuple2[Tuple2["msg", 42], Tuple2[41, 40]]]: "msg" // error
 }
 
 
@@ -35,6 +35,6 @@ type Head4[X] = X match {
 }
 
 object Unpair4 {
-  def unpair[X <: Foo[Any, Any]]: Head4[Foo[X, X]] = 1 // error
-  unpair[Foo["msg", 42]]: "msg"
+  def unpair[X <: Foo[Any, Any]]: Head4[Foo[X, X]] = 1
+  unpair[Foo["msg", 42]]: "msg" // error
 }
