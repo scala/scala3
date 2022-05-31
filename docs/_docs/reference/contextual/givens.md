@@ -18,7 +18,6 @@ given intOrd: Ord[Int] with
     if x < y then -1 else if x > y then +1 else 0
 
 given listOrd[T](using ord: Ord[T]): Ord[List[T]] with
-
   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match
     case (Nil, Nil) => 0
     case (Nil, _) => -1
@@ -63,6 +62,16 @@ given instances of types that are "too similar". To avoid conflicts one can
 use named instances.
 
 **Note** To ensure robust binary compatibility, publicly available libraries should prefer named instances.
+
+**Note** Conflicts between synthetic names can also be resolved by the judicious use of type aliases:
+
+```scala
+given Ord[List[Int]] = ???     // given_Ord_List (overloaded with previous parameterized definition)
+given Ord[List[String]] = ???  // double definition
+
+type StringList = List[String]
+given Ord[StringList] = ???    // given_Ord_StringList
+```
 
 ## Alias Givens
 
