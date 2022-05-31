@@ -89,9 +89,9 @@ import scala.util.CommandLineParser.FromString[T]
   def run(program: () => Int): Unit =
     println("executing program")
 
-    try {
-      val result = program()
-      println("result: " + result)
-      println("executed program")
+    val result = program()
+    println("result: " + result)
+    println("executed program")
+    
 end myMain
 ```
