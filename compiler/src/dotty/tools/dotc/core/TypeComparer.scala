@@ -756,13 +756,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     def tryBaseType(cls2: Symbol) = {
-      val allowBaseType = !caseLambda.exists || (tp1 match {
-        case tp: TypeRef if tp.symbol.isClass => true
-        case AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => true
-        case _ => false
-      })
       val base = nonExprBaseType(tp1, cls2)
-      if (base.exists && base.ne(tp1) && allowBaseType)
+      if (base.exists && (base `ne` tp1))
         isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
         base.isInstanceOf[OrType] && fourthTry
           // if base is a disjunction, this might have come from a tp1 type that
@@ -781,7 +776,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            !caseLambda.exists && isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
+            isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
             // `Mode.RelaxedOverriding` is only enabled when checking Java overriding
             // in explicit nulls, and `Null` becomes a bottom type, which allows
