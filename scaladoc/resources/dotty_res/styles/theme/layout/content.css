@@ -7,6 +7,7 @@
   margin-left: calc(39 * var(--base-spacing));
   display: flex;
   flex-flow: column;
+  color: var(--text-primary);
 }
 
 #content::after {

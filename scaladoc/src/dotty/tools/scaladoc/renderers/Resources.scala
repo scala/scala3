@@ -127,6 +127,9 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/components/api-member.css",
       "styles/theme/components/pill.css",
       "styles/theme/components/api-filters.css",
+      "styles/theme/components/attributes.css",
+      "styles/theme/components/supertypes.css",
+      "styles/theme/components/subtypes.css",
 
       "styles/nord-light.css",
       "styles/dotty-icons.css",

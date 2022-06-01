@@ -15,7 +15,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def doc(m: Member): Seq[AppliedTag] =  m.docs.fold(Nil)(d => Seq(renderDocPart(d.body)))
 
-  def tableRow(name: String, content: TagArg) = Seq(dt(name), dd(content))
+  def tableRow(name: String, content: TagArg) = Seq(dt(cls := "body-small")(name), dd(cls := "body-medium")(content))
 
   def defintionClasses(m: Member) = m.origin match
     case Origin.Overrides(defs) =>
@@ -357,9 +357,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           ))
         case _ => Nil
 
-      def signatureList(list: Seq[LinkToType]): Seq[AppliedTag] =
+      def signatureList(list: Seq[LinkToType], className: String = ""): Seq[AppliedTag] =
         if list.isEmpty then Nil
-         else Seq(div(cls := "mono-small-inline")(list.map(link =>
+         else Seq(div(cls := s"mono-small-inline $className")(list.map(link =>
           div(link.kind.name," ", link.signature.map(renderElement))
         )))
 
@@ -369,8 +369,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           div(link.signature.map(renderElement))
         }})
 
-      val supertypes = signatureList(m.parents)
-      val subtypes = signatureList(m.knownChildren)
+      val supertypes = signatureList(m.parents, "supertypes")
+      val subtypes = signatureList(m.knownChildren, "subtypes")
       val selfType = selfTypeList(m.selfType.toList)
 
       Seq(
