@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Binary Compatibility"
+nightlyOf: https://docs.scala-lang.org/scala3/reference/language-versions/binary-compatibility.html
 ---
 
 In Scala 2 different minor versions of the compiler were free to change the way how they encode different language features in JVM bytecode so each bump of the compiler's minor version resulted in breaking binary compatibility and if a project had any Scala dependencies they all needed to be (cross-)compiled to the same minor Scala version that was used in that project itself. On the contrary, Scala 3 has a stable encoding into JVM bytecode.
