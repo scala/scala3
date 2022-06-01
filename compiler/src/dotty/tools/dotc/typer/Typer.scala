@@ -1059,7 +1059,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val (stats1, exprCtx) = withoutMode(Mode.Pattern) {
       typedBlockStats(tree.stats)
     }
-    val expr1 = typedExpr(tree.expr, pt.dropIfProto)(using exprCtx)
+    var expr1 = typedExpr(tree.expr, pt.dropIfProto)(using exprCtx)
+
+    // If unsafe nulls is enabled inside a block but not enabled outside
+    // and the type does not conform the expected type without unsafe nulls,
+    // we will cast the last expression to the expected type.
+    // See: tests/explicit-nulls/pos/unsafe-block.scala
+    if ctx.mode.is(Mode.SafeNulls)
+      && !exprCtx.mode.is(Mode.SafeNulls)
+      && pt.isValueType
+      && !inContext(exprCtx.addMode(Mode.SafeNulls))(expr1.tpe <:< pt) then
+      expr1 = expr1.cast(pt)
+
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1)
         .withType(expr1.tpe)

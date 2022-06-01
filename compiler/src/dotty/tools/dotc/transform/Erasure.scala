@@ -153,6 +153,7 @@ class Erasure extends Phase with DenotTransformer {
   override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     assertErased(tree)
     tree match {
+      case _: tpd.Import => assert(false, i"illegal tree: $tree")
       case res: tpd.This =>
         assert(!ExplicitOuter.referencesOuter(ctx.owner.lexicallyEnclosingClass, res),
           i"Reference to $res from ${ctx.owner.showLocated}")

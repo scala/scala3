@@ -20,6 +20,10 @@ import ast.Trees.mods
 object Nullables:
   import ast.tpd._
 
+  def importUnsafeNulls(using Context): Import = Import(
+    ref(defn.LanguageModule),
+    List(untpd.ImportSelector(untpd.Ident(nme.unsafeNulls), EmptyTree, EmptyTree)))
+
   inline def unsafeNullsEnabled(using Context): Boolean =
     ctx.explicitNulls && !ctx.mode.is(Mode.SafeNulls)
 
