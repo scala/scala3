@@ -3,11 +3,11 @@ package translators
 
 object FilterAttributes:
   def attributesFor(m: Member): Map[String, String] =
-    val base = visibity(m) ++ visibity(m) ++ origin(m) ++ keywords(m) ++ inheritedFrom(m)
+    val base = visibity(m) ++ origin(m) ++ keywords(m) ++ inheritedFrom(m)
     base.filter(_._2.nonEmpty)
 
   private def keywords(m: Member): Map[String, String] =
-    Map("keywords" -> m.modifiers.map(_.name).mkString(","))
+    Map("keywords" -> m.modifiers.map(_.name).filter(_.nonEmpty).mkString(","))
 
 
   private def visibity(m: Member): Map[String, String] =

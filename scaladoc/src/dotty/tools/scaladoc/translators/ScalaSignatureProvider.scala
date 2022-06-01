@@ -1,190 +1,160 @@
 package dotty.tools.scaladoc
 package translators
 
-object ScalaSignatureProvider:
-  def rawSignature(documentable: Member, builder: SignatureBuilder)(kind: Kind = documentable.kind): SignatureBuilder =
+import scala.util.chaining._
+
+class ScalaSignatureProvider:
+  val builder = SignatureBuilder()
+  given Conversion[SignatureBuilder, Signature] = bdr => bdr.content
+  def rawSignature(documentable: Member)(kind: Kind = documentable.kind): MemberSignature =
     kind match
       case Kind.Extension(_, m) =>
-        extensionSignature(documentable, m, builder)
+        extensionSignature(documentable, m)
       case Kind.Exported(d) =>
-         rawSignature(documentable, builder)(d)
+        rawSignature(documentable)(d)
       case d: Kind.Def =>
-        methodSignature(documentable, d, builder)
+        methodSignature(documentable, d)
       case Kind.Constructor(d) =>
-        methodSignature(documentable, d, builder)
+        methodSignature(documentable, d)
       case Kind.Implicit(d: Kind.Def, _) =>
-        methodSignature(documentable, d, builder)
+        methodSignature(documentable, d)
       case Kind.EnumCase(cls: Kind.Class) =>
-        enumEntrySignature(documentable, cls, builder)
+        enumEntrySignature(documentable, cls)
       case Kind.EnumCase(_) =>
-       enumPropertySignature(documentable, builder)
+        enumPropertySignature(documentable)
       case Kind.Given(cls: Kind.Class, _, _) =>
-        givenClassSignature(documentable, cls, builder)
+        givenClassSignature(documentable, cls)
       case Kind.Given(d: Kind.Def, _, _) =>
-        givenMethodSignature(documentable, d, builder)
+        givenMethodSignature(documentable, d)
       case Kind.Given(Kind.Val, _, _) =>
-        givenValSignature(documentable, builder)
+        givenValSignature(documentable)
       case cls: Kind.Class =>
-        classSignature(documentable, cls, builder)
+        classSignature(documentable, cls)
       case enm: Kind.Enum =>
-        enumSignature(documentable, enm, builder)
+        enumSignature(documentable, enm)
       case Kind.Object =>
-        objectSignature(documentable, builder)
+        objectSignature(documentable)
       case trt: Kind.Trait =>
-        traitSignature(documentable, trt, builder)
+        traitSignature(documentable, trt)
       case Kind.Val | Kind.Var | Kind.Implicit(Kind.Val, _) =>
-        fieldSignature(documentable, kind.name, builder)
+        fieldSignature(documentable, kind.name)
       case tpe: Kind.Type =>
-        typeSignature(tpe, documentable, builder)
+        typeSignature(tpe, documentable)
       case Kind.Package =>
-        builder.keyword("package ").name(documentable.name, documentable.dri)
+        MemberSignature(
+          Nil,
+          builder.keyword("package"),
+          builder.name(documentable.name, documentable.dri),
+          Nil
+        )
       case Kind.RootPackage =>
-        builder
+        ???
       case Kind.Unknown =>
         ???
 
-  private def enumEntrySignature(member: Member, cls: Kind.Class, bdr: SignatureBuilder): SignatureBuilder =
-    val withPrefixes: SignatureBuilder = bdr
-      .keyword("case ")
-      .name(member.name, member.dri)
-      .generics(cls.typeParams)
+  private def classLikeSignature(member: Member, kind: Classlike): MemberSignature =
+    MemberSignature(
+      builder.modifiersAndVisibility(member),
+      builder.kind(member),
+      builder.name(member.name, member.dri),
+      builder
+        .generics(kind.typeParams)
+        .functionParameters(kind.argsLists)
+        .parentsSignature(member)
+    )
 
-    val withParameters = withPrefixes.functionParameters(cls.argsLists)
-    parentsSignature(member, withParameters)
 
-  private def enumPropertySignature(entry: Member, builder: SignatureBuilder): SignatureBuilder =
+  private def enumEntrySignature(member: Member, cls: Kind.Class): MemberSignature =
+    classLikeSignature(member, cls)
+
+  private def enumPropertySignature(entry: Member): MemberSignature =
     val modifiedType = entry.signature.map {
       case Keyword(" & ") => Keyword(" with ")
       case o => o
     }
 
-    builder
-      .keyword("case ")
-      .name(entry.name, entry.dri)
-      .keyword(" extends ")
-      .signature(modifiedType)
+    MemberSignature(
+      builder.modifiersAndVisibility(entry),
+      builder.kind(entry),
+      builder.name(entry.name, entry.dri),
+      builder.keyword(" extends ").signature(modifiedType)
+    )
 
-  private def parentsSignature(member: Member, builder: SignatureBuilder): SignatureBuilder =
-    member.directParents match
-      case Nil => builder
-      case extendType :: withTypes =>
-        val extendPart = builder.keyword(" extends ").signature(extendType.signature)
-        withTypes.foldLeft(extendPart)((bdr, tpe) => bdr.keyword(" with ").signature(tpe.signature))
-
-  private def givenClassSignature(member: Member, cls: Kind.Class, builder: SignatureBuilder): SignatureBuilder =
-    val prefixes = builder
-      .modifiersAndVisibility(member, "given")
-      .name(member.name, member.dri)
-      .generics(cls.typeParams)
-      .functionParameters(cls.argsLists)
+  private def givenClassSignature(member: Member, cls: Kind.Class): MemberSignature =
+    val initialSignature = classLikeSignature(member, cls)
 
     member.kind match
-      case Kind.Given(_, Some(instance), _) => prefixes
-        .plain(": ")
-        .signature(instance)
-      case _ => prefixes
+      case Kind.Given(_, Some(instance), _) => initialSignature
+        .copy(suffix = initialSignature.suffix ++ builder.plain(": ").signature(instance))
+      case _ => initialSignature
 
-  private def classSignature(clazz: Member, cls: Kind.Class, builder: SignatureBuilder): SignatureBuilder =
-    val selfSignature = builder
-      .modifiersAndVisibility(clazz, clazz.kind.name)
-      .name(clazz.name, clazz.dri)
-      .generics(cls.typeParams)
-      .functionParameters(cls.argsLists)
+  private def classSignature(clazz: Member, cls: Kind.Class): MemberSignature =
+    classLikeSignature(clazz, cls)
 
-    parentsSignature(clazz, selfSignature)
+  private def objectSignature(clazz: Member): MemberSignature =
+    classLikeSignature(clazz, Kind.Object)
 
-  private def objectSignature(clazz: Member, builder: SignatureBuilder): SignatureBuilder =
-    val selfSignature = builder
-      .modifiersAndVisibility(clazz, clazz.kind.name)
-      .name(clazz.name, clazz.dri)
+  private def traitSignature(clazz: Member, cls: Kind.Trait): MemberSignature =
+    classLikeSignature(clazz, cls)
 
-    parentsSignature(clazz, selfSignature)
+  private def enumSignature(clazz: Member, cls: Kind.Enum): MemberSignature =
+    classLikeSignature(clazz, cls)
 
-  private def traitSignature(clazz: Member, cls: Kind.Trait, builder: SignatureBuilder): SignatureBuilder =
-    val selfSignature = builder
-      .modifiersAndVisibility(clazz, clazz.kind.name)
-      .name(clazz.name, clazz.dri)
-      .generics(cls.typeParams)
-      .functionParameters(cls.argsLists)
+  private def methodLikeSignature(method: Member, kind: Kind.Def, instance: Option[Signature] = None): MemberSignature =
+    MemberSignature(
+      builder.modifiersAndVisibility(method),
+      builder.kind(method),
+      builder.name(method.name, method.dri),
+      builder
+        .generics(kind.typeParams)
+        .functionParameters(kind.argsLists)
+        .pipe { builder =>
+          instance.fold(builder)(i => builder.plain(": ").signature(i))
+        }
+    )
 
-    parentsSignature(clazz, selfSignature)
+  private def methodSignature(method: Member, cls: Kind.Def): MemberSignature =
+    method.kind match {
+      case _: Kind.Constructor => methodLikeSignature(method, cls, None)
+      case _ => methodLikeSignature(method, cls, Some(method.signature))
+    }
 
-  private def enumSignature(clazz: Member, cls: Kind.Enum, builder: SignatureBuilder): SignatureBuilder =
-    val selfSignature = builder
-      .modifiersAndVisibility(clazz, clazz.kind.name)
-      .name(clazz.name, clazz.dri)
-      .generics(cls.typeParams)
-      .functionParameters(cls.argsLists)
+  private def extensionSignature(extension: Member, fun: Kind.Def): MemberSignature =
+    methodLikeSignature(extension, fun, Some(extension.signature))
 
-    parentsSignature(clazz, selfSignature)
-
-  private def extensionSignature(extension: Member, fun: Kind.Def, builder: SignatureBuilder): SignatureBuilder =
-    val withSignature = builder
-      .modifiersAndVisibility(extension, "def")
-      .name(extension.name, extension.dri)
-      .generics(fun.typeParams)
-      .functionParameters(fun.argsLists)
-
-      withSignature.plain(":").plain(" ").signature(extension.signature)
-
-  private def givenMethodSignature(method: Member, body: Kind.Def, builder: SignatureBuilder): SignatureBuilder = method.kind match
-    case Kind.Given(_, Some(instance), _) =>
-      builder.keyword("given ")
-        .name(method.name, method.dri)
-        .generics(body.typeParams)
-        .functionParameters(body.argsLists)
-        .plain(": ")
-        .signature(instance)
+  private def givenMethodSignature(method: Member, body: Kind.Def): MemberSignature = method.kind match
+    case Kind.Given(_, iOpt @ Some(instance), _) =>
+      methodLikeSignature(method, body, iOpt)
     case _ =>
-      builder.keyword("given ")
-        .name(method.name, method.dri)
-        .generics(body.typeParams)
-        .functionParameters(body.argsLists)
+      methodLikeSignature(method, body)
 
-  private def givenValSignature(field: Member, builder: SignatureBuilder): SignatureBuilder = field.kind match
-    case Kind.Given(_, Some(instance), _) =>
-      builder.keyword("given ")
-        .name(field.name, field.dri)
-        .plain(": ")
-        .signature(instance)
+  private def fieldLikeSignature(member: Member, instance: Option[Signature] = None): MemberSignature =
+    MemberSignature(
+      builder.modifiersAndVisibility(member),
+      builder.kind(member),
+      builder.name(member.name, member.dri),
+      instance.fold(builder)(i => builder.plain(": ").signature(i))
+    )
+
+
+  private def fieldSignature(member: Member, kind: String): MemberSignature =
+    fieldLikeSignature(member, Some(member.signature))
+
+  private def givenValSignature(field: Member): MemberSignature = field.kind match
+    case Kind.Given(_, iOpt @ Some(instance), _) =>
+      fieldLikeSignature(field, iOpt)
     case _ =>
-      builder.keyword("given ").name(field.name, field.dri)
+      fieldLikeSignature(field, None)
 
-  private def methodSignature(method: Member, cls: Kind.Def, builder: SignatureBuilder): SignatureBuilder =
-    val bdr = builder
-    .modifiersAndVisibility(method, "def")
-    .name(method.name, method.dri)
-    .generics(cls.typeParams)
-    .functionParameters(cls.argsLists)
-    if !method.kind.isInstanceOf[Kind.Constructor] then
-      bdr.plain(": ").signature(method.signature)
-    else bdr
-
-  private def typeSignature(tpe: Kind.Type, typeDef: Member, builder: SignatureBuilder): SignatureBuilder =
-    val bdr = builder
-      .modifiersAndVisibility(typeDef, if tpe.opaque then "opaque type" else "type")
-      .name(typeDef.name, typeDef.dri)
-      .generics(tpe.typeParams)
-    if(!tpe.opaque){
-      (if tpe.concreate then bdr.plain(" = ") else bdr)
-        .signature(typeDef.signature)
-    } else bdr
-
-
-  private def givenPropertySignature(property: Member, builder: SignatureBuilder): SignatureBuilder =
-    val bdr = builder
-      .keyword("given ")
-      .name(property.name, property.dri)
-
-    property.kind match
-      case Kind.Given(_, Some(instance), _) =>
-         bdr.keyword(" as ").signature(instance)
-      case _ => bdr
-
-  private def fieldSignature(member: Member, kind: String, builder: SignatureBuilder): SignatureBuilder =
-    builder
-      .modifiersAndVisibility(member, kind)
-      .name(member.name, member.dri)
-      .plain(":")
-      .plain(" ")
-      .signature(member.signature)
+  private def typeSignature(tpe: Kind.Type, typeDef: Member): MemberSignature =
+    MemberSignature(
+      builder.modifiersAndVisibility(typeDef),
+      builder.kind(typeDef),
+      builder.name(typeDef.name, typeDef.dri),
+      builder.generics(tpe.typeParams).pipe { bdr =>
+        if (!tpe.opaque) {
+          (if tpe.concreate then bdr.plain(" = ") else bdr)
+            .signature(typeDef.signature)
+        } else bdr
+      }
+    )

@@ -13,6 +13,8 @@ import translators._
 class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) extends DocRender(signatureRenderer):
   import signatureRenderer._
 
+  val signatureProvider: ScalaSignatureProvider = ScalaSignatureProvider()
+
   def doc(m: Member): Seq[AppliedTag] =  m.docs.fold(Nil)(d => Seq(renderDocPart(d.body)))
 
   def tableRow(name: String, content: TagArg) = Seq(dt(cls := "body-small")(name), dd(cls := "body-medium")(content))
@@ -136,19 +138,15 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val depStyle = if member.deprecated.isEmpty then "" else "deprecated"
     val nameClasses = Seq(
       cls := s"documentableName $depStyle",
-      Attr("t") := "n"
     )
 
-    val rawBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())()
-    val inlineBuilder = rawBuilder.asInstanceOf[InlineSignatureBuilder]
-    val kind :: modifiersRevered = inlineBuilder.preName: @unchecked
-    val signature = inlineBuilder.names.reverse
+    val signature: MemberSignature = signatureProvider.rawSignature(member)()
     Seq(
       div(cls := "signature")(
-        span(cls := "modifiers")(modifiersRevered.reverse.map(renderElement)),
-        span(cls := "kind")(renderElement(kind)),
-        renderLink(member.name, member.dri, nameClasses*),
-        span(signature.map(renderElement))
+        span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
+        span(cls := "kind")(signature.kind.map(renderElement(_))),
+        signature.name.map(renderElement(_, nameClasses*)),
+        span(signature.suffix.map(renderElement(_)))
       ),
     )
 
@@ -160,9 +158,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   }
 
   def annotations(member: Member) =
-   val rawBuilder = InlineSignatureBuilder().annotationsBlock(member)
-   val signatures = rawBuilder.asInstanceOf[InlineSignatureBuilder].names.reverse
-   span(cls := "annotations monospace")(signatures.map(renderElement))
+   val rawBuilder = SignatureBuilder().annotationsBlock(member)
+   val signatures = rawBuilder.content
+   span(cls := "annotations monospace")(signatures.map(renderElement(_)))
 
   def member(member: Member) =
     val filterAttributes = FilterAttributes.attributesFor(member)
@@ -287,15 +285,15 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         case _ => None
       }.collect {
         case (Some(on), members) =>
-          val typeSig = InlineSignatureBuilder()
+          val typeSig = SignatureBuilder()
             .keyword("extension ")
             .generics(on.typeParams)
-            .asInstanceOf[InlineSignatureBuilder].names.reverse
-          val argsSig = InlineSignatureBuilder()
+            .content
+          val argsSig = SignatureBuilder()
             .functionParameters(on.argsLists)
-            .asInstanceOf[InlineSignatureBuilder].names.reverse
+            .content
           val sig = typeSig ++ Signature(Plain(s"(${on.name}: ")) ++ on.signature ++ Signature(Plain(")")) ++ argsSig
-          MGroup(span(cls := "groupHeader")(sig.map(renderElement)), members.sortBy(_.name).toSeq, on.name)
+          MGroup(span(cls := "groupHeader")(sig.map(renderElement(_))), members.sortBy(_.name).toSeq, on.name)
       }.toSeq
 
     div(cls := "membersList")(renderTabs(
@@ -360,13 +358,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       def signatureList(list: Seq[LinkToType], className: String = ""): Seq[AppliedTag] =
         if list.isEmpty then Nil
          else Seq(div(cls := s"mono-small-inline $className")(list.map(link =>
-          div(link.kind.name," ", link.signature.map(renderElement))
+          div(link.kind.name," ", link.signature.map(renderElement(_)))
         )))
 
       def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
         if list.isEmpty then Nil
         else Seq(div(cls := "mono-small-inline") { list.map { link =>
-          div(link.signature.map(renderElement))
+          div(link.signature.map(renderElement(_)))
         }})
 
       val supertypes = signatureList(m.parents, "supertypes")

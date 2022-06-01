@@ -98,6 +98,7 @@ object SymOps:
         Flags.Open -> Modifier.Open,
         Flags.Override -> Modifier.Override,
         Flags.Case -> Modifier.Case,
+        Flags.Opaque -> Modifier.Opaque
       ).collect {
         case (flag, mod) if sym.flags.is(flag) => mod
       }

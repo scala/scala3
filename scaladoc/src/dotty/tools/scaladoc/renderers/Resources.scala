@@ -183,12 +183,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
   val staticSiteOnlyResourcesPaths: Seq[String] = staticSiteOnlyResources.map(_.path)
 
   def searchData(pages: Seq[Page]) =
-    def flattenToText(signature: Signature): String =
-      signature.map {
-        case Type(name, dri) => name
-        case Plain(s) => s
-        case Keyword(s) => s
-      }.mkString
+    val signatureProvider = ScalaSignatureProvider()
+    def flattenToText(signature: Signature): String = signature.getName
 
     def mkEntry(dri: DRI, name: String, text: String, extensionTarget: String, descr: String, kind: String) = jsonObject(
         "l" -> jsonString(relativeInternalOrAbsoluteExternalPath(dri)),
@@ -209,8 +205,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       val (res, pageName) =  page.content match
         case m: Member if m.kind != Kind.RootPackage =>
           def processMember(member: Member, fqName: List[String]): Seq[(JSON, Seq[String])] =
-            val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())().asInstanceOf[InlineSignatureBuilder]
-            val sig = Signature(Plain(member.name)) ++ signatureBuilder.names.reverse
+            val signature: MemberSignature = signatureProvider.rawSignature(member)()
+            val sig = Signature(Plain(member.name)) ++ signature.suffix
             val descr = fqName.mkString(".")
             val entry = mkEntry(member.dri, member.name, flattenToText(sig), extensionTarget(member), descr, member.kind.name)
             val children = member

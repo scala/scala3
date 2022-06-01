@@ -70,10 +70,16 @@ trait ClassLikeSupport:
           case tree: ClassDef => tree
       case tt: TypeTree => unpackTreeToClassDef(tt.tpe.typeSymbol.tree)
 
+    def signatureWithName(s: dotty.tools.scaladoc.Signature): dotty.tools.scaladoc.Signature =
+      s match
+          case dotty.tools.scaladoc.Type(n, Some(dri)) :: tail => dotty.tools.scaladoc.Name(n, dri) :: tail
+          case other => other
+
     def getSupertypesGraph(link: LinkToType, to: Seq[Tree]): Seq[(LinkToType, LinkToType)] =
       to.flatMap { case tree =>
         val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
-        val superLink = LinkToType(tree.asSignature, symbol.dri, bareClasslikeKind(symbol))
+        val signature = signatureWithName(tree.asSignature)
+        val superLink = LinkToType(signature, symbol.dri, bareClasslikeKind(symbol))
         val nextTo = unpackTreeToClassDef(tree).parents
         if symbol.isHiddenByVisibility then getSupertypesGraph(link, nextTo)
         else Seq(link -> superLink) ++ getSupertypesGraph(superLink, nextTo)
@@ -83,14 +89,16 @@ trait ClassLikeSupport:
       .filterNot((s, t) => s.isHiddenByVisibility)
       .map {
         case (symbol, tpe) =>
-          LinkToType(tpe.asSignature, symbol.dri, bareClasslikeKind(symbol))
+          val signature = signatureWithName(tpe.asSignature)
+          LinkToType(signature, symbol.dri, bareClasslikeKind(symbol))
       }
     val selfType = classDef.self.map { (valdef: ValDef) =>
       val symbol = valdef.symbol
       val tpe = valdef.tpt.tpe
-      LinkToType(tpe.asSignature, symbol.dri, Kind.Type(false, false, Seq.empty))
+      val signature = signatureWithName(tpe.asSignature)
+      LinkToType(signature, symbol.dri, Kind.Type(false, false, Seq.empty))
     }
-    val selfSignature: DSignature = typeForClass(classDef).asSignature
+    val selfSignature: DSignature = signatureWithName(typeForClass(classDef).asSignature)
 
     val graph = HierarchyGraph.withEdges(
       getSupertypesGraph(LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)), unpackTreeToClassDef(classDef).parents)
