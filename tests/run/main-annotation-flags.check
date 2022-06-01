@@ -1,0 +1,16 @@
+shortFlags: a = false, b = false
+shortFlags: a = true, b = false
+shortFlags: a = true, b = true
+Error: unused argument: true
+Error: unused argument: false
+Usage: shortFlags [-a] [-b]
+Error: unused argument: true
+Usage: shortFlags [-a] [-b]
+Error: unused argument: true
+Usage: shortFlags [-a] [-b]
+longFlags: flag1 = false, flag2 = false
+longFlags: flag1 = true, flag2 = false
+longFlags: flag1 = true, flag2 = true
+mixedFlags: a = false, flag = false
+mixedFlags: a = true, flag = false
+mixedFlags: a = true, flag = true
