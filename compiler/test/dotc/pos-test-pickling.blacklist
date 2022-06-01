@@ -83,3 +83,6 @@ i4176-gadt.scala
 i13974a.scala
 
 java-inherited-type1
+
+# avoidance bug
+i15174.scala

@@ -12,6 +12,6 @@ case class Empty[F[_]]() extends CpsStream[F,Nothing]
 
 def unfold[S,F[_]:CpsMonad,T](s0:S)(f:S => F[Option[(S,T)]]):F[CpsStream[F,T]] =
       summon[CpsMonad[F]].flatMap(f(s0)){
-         case Some(s1,a) => Cons(a, () => unfold(s1,f))  // error (used to crash)
+         case Some(s1,a) => Cons(a, () => unfold(s1,f))  // error (used to crash) // error
          case None => summon[CpsMonad[F]].pure(Empty[F]())
       }
