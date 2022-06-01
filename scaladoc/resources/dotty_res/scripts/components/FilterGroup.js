@@ -4,6 +4,7 @@ class FilterGroup extends Component {
 
     this.filterToggleRef = findRef(".filterToggleButton");
     this.filtersContainerRef = findRef(".filtersContainer");
+    this.documentableFilterRef = findRef(".documentableFilter");
 
     withEvent(
       this.filterToggleRef,
@@ -36,6 +37,11 @@ class FilterGroup extends Component {
     e.preventDefault();
   };
 
+  onClearFilters = () => {
+    Object.entries(this.props.filter.filters)
+    .forEach(([key, _values]) => this.props.onGroupSelectChange(key, false))
+  };
+
   attachFiltersClicks() {
     const refs = findRefs(
       "li.filterButtonItem",
@@ -49,13 +55,20 @@ class FilterGroup extends Component {
       "button.selectAll",
       this.filtersContainerRef
     );
+
     const deselectAllRefs = findRefs(
       "span.deselectAll",
       this.filtersContainerRef
     );
 
+    const deselectAllRefsWithClearButton = findRefs(
+      "button.clearButton",
+      this.documentableFilterRef
+    );
+
     attachListeners(selectAllRefs, "click", this.onSelectAllClick);
     attachListeners(deselectAllRefs, "click", this.onDeselectAllClick);
+    attachListeners(deselectAllRefsWithClearButton, "click", this.onClearFilters);
   }
 
   isActive(isActive) {

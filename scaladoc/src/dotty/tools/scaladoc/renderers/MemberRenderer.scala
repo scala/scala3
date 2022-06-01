@@ -388,7 +388,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   private def buildDocumentableFilter = div(cls := "documentableFilter")(
     div(cls := "filtersContainer")(),
     input(cls := "filterableInput", placeholder := "Filter by any phrase", testId := "filterBarInput", `type` := "search"),
-    button(cls := "clearButton",  testId := "filterBarClearButton")("Clear all"),
+    button(cls := "clearButton label-only-button",  testId := "filterBarClearButton")("Clear all"),
   )
 
   def fullMember(m: Member): PageContent =
