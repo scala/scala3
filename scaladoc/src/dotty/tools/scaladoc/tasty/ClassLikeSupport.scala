@@ -286,10 +286,10 @@ trait ClassLikeSupport:
     def getTypeParams: List[TypeDef] =
       c.body.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam)
 
-    def getCompanion: Option[DRI] = c.symbol.getCompanionSymbol
+    def getCompanion: Option[(Kind, DRI)] = c.symbol.getCompanionSymbol
       .filter(!_.flags.is(Flags.Synthetic))
       .filterNot(_.isHiddenByVisibility)
-      .map(_.dri)
+      .map(s => (bareClasslikeKind(s), s.dri))
 
 
   def parseClasslike(classDef: ClassDef, signatureOnly: Boolean = false): Member = classDef match
@@ -466,6 +466,7 @@ trait ClassLikeSupport:
     deprecated: Option[Annotation] = None,
   ) = Member(
     name = symbol.normalizedName,
+    fullName = symbol.fullName,
     dri = symbol.dri,
     kind = kind,
     visibility = symbol.getVisibility(),

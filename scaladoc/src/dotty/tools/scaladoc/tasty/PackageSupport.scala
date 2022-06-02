@@ -13,7 +13,7 @@ trait PackageSupport:
 
     def parsePackage(pck: PackageClause): (String, Member) =
       val name = pck.symbol.fullName
-      (name, Member(name, pck.symbol.dri, Kind.Package))
+      (name, Member(name, "", pck.symbol.dri, Kind.Package))
 
     def parsePackageObject(pckObj: ClassDef): (String, Member) =
       pckObj.symbol.packageName -> parseClasslike(pckObj).withKind(Kind.Package)

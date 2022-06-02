@@ -107,7 +107,7 @@
   color: var(--action-primary-content-selected);
 }
 
-.micon {
+nav .micon {
   box-sizing: content-box;
   margin-right: calc(1 * var(--base-spacing));
   color: transparent;

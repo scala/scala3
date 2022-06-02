@@ -72,7 +72,7 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
     if filtered.nonEmpty then keyword(filtered.toSignatureString()) else this
 
   def kind(t: Member) =
-    keyword(t.kind.name)
+    keyword(t.kind.name + " ")
 
   def generics(on: Seq[TypeParameter]) = list(on.toList, List(Plain("[")), List(Plain("]"))){ (bdr, e) =>
     bdr.annotationsInline(e).keyword(e.variance).tpe(e.name, Some(e.dri)).signature(e.signature)

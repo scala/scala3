@@ -60,6 +60,8 @@
 #content h1,
 #content h2 {
   color: var(--text-primary);
+  margin-block-end: 0;
+  margin-block-start: 0;
 }
 
 /* content paragraph */
@@ -208,8 +210,45 @@
 
 .cover-header {
   display: flex;
+  align-items: center;
 }
 
 .cover-header .micon {
-  margin-right: calc(2 * var(--base-spacing));
+  position: relative;
+  z-index: 10;
+}
+
+.cover-header .micon.companion {
+  position: relative;
+  left: -16px;
+  z-index: 0;
+}
+
+.cover-header .icon {
+  width: 72px;
+}
+
+.fqname {
+  color: var(--text-secondary);
+}
+
+.companion-badge {
+  color: var(--text-primary);
+  padding: 16px;
+  background-color: var(--indigo3);
+}
+
+.companion-badge .micon {
+  margin-left: 0.5em;
+  margin-right: 0.5em;
+}
+
+.main-signature {
+  background-color: var(--action-primary-background-default-solid);
+  padding: 24px;
+  border-radius: 4px;
+}
+
+#content>div>* {
+  margin-bottom: 24px;
 }

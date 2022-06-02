@@ -153,6 +153,7 @@ object HierarchyGraph:
 
 case class Member(
   name: String,
+  fullName: String,
   dri: DRI,
   kind: Kind,
   visibility: Visibility = Visibility.Unrestricted,
@@ -169,7 +170,7 @@ case class Member(
   parents: Seq[LinkToType] = Nil,
   selfType: Option[LinkToType] = None,
   knownChildren: Seq[LinkToType] = Nil,
-  companion: Option[DRI] = None,
+  companion: Option[(Kind, DRI)] = None,
   deprecated: Option[Annotation] = None,
 ):
   def needsOwnPage: Boolean =

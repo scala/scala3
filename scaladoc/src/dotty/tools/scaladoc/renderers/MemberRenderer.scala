@@ -67,7 +67,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       list("Example:", d.example)
     )
 
-  def companion(m: Member): Seq[AppliedTag] = m.companion.fold(Nil){dri =>
+  def companion(m: Member): Seq[AppliedTag] = m.companion.fold(Nil){ (_, dri) =>
     val kindName = if m.kind == Kind.Object then "class" else "object"
     tableRow("Companion:", signatureRenderer.renderLink(kindName, dri))
   }
@@ -152,9 +152,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def memberIcon(member: Member) = member.kind match {
     case _ =>
-      val withCompanion = member.companion.fold("")(_ => "-wc")
-      val iconSpan = span(cls := s"micon ${member.kind.name.take(2)}$withCompanion")()
-      Seq(member.companion.flatMap(link(_)).fold(iconSpan)(link => a(href := link)(iconSpan)))
+
+      // val iconSpan = span(cls := s"micon ${member.kind.name.take(2)}$withCompanion")()
+      val iconSpan = span(cls := "icon")(
+        span(cls := s"micon ${member.kind.name.take(2)}"),
+        member.companion.map((kind, _) => span(cls := s"micon companion ${kind.name.take(2)}")).toList
+      )
+      Seq(member.companion.flatMap( (_, dri) => link(dri)).fold(iconSpan)(link => a(href := link)(iconSpan)))
   }
 
   def annotations(member: Member) =
@@ -389,6 +393,18 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     button(cls := "clearButton label-only-button",  testId := "filterBarClearButton")("Clear all"),
   )
 
+  private def companionBadge(m: Member): Seq[AppliedTag] = m.companion.fold(Nil) { companion =>
+    Seq(div(cls := "companion-badge body-small")(
+      span(
+        "See the",
+        span(cls := s"micon ${companion._1.name.take(2)}"),
+        a(href := link(companion._2).getOrElse(""))(m.name),
+        " companion ",
+        companion._1.name
+      )
+    ))
+  }
+
   def fullMember(m: Member): PageContent =
     val intro = m.kind match
       case Kind.RootPackage =>Seq(h1(summon[DocContext].args.name))
@@ -398,7 +414,12 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             memberIcon(m),
             h1(cls := "h600")(m.name)
           ),
-          div(cls := "signature monospace")(
+          div(cls := "fqname body-large")(
+            span(m.fullName)
+          )
+        ) ++ companionBadge(m) ++
+        Seq(
+          div(cls := "main-signature mono-medium")(
             annotations(m),
             memberSignature(m)
           )

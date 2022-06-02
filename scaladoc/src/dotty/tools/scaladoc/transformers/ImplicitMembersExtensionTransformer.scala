@@ -5,7 +5,7 @@ class ImplicitMembersExtensionTransformer(using DocContext) extends(Module => Mo
   override def apply(original: Module): Module =
     val classlikeMap = original.members
 
-    def retrieveCompanion(m: Member) = m.companion.flatMap { dri =>
+    def retrieveCompanion(m: Member) = m.companion.flatMap { (_, dri) =>
      val res = classlikeMap.get(dri)
       if res.isEmpty then
         report.warning(s"Companion for class ${m.name} exists but is missing in classlike map")

@@ -135,7 +135,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
       topLevels ++= intrinsicTypeDefs
       val scalaPckg = defn.ScalaPackage
       given parser.qctx.type = parser.qctx
-      topLevels += "scala" -> Member(scalaPckg.fullName, scalaPckg.dri, Kind.Package)
+      topLevels += "scala" -> Member(scalaPckg.fullName, "", scalaPckg.dri, Kind.Package)
       topLevels += mergeAnyRefAliasAndObject(parser)
 
   def result(): (List[Member], Option[Comment]) =
