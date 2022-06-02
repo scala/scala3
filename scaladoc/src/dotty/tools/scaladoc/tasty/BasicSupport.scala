@@ -40,7 +40,25 @@ trait BasicSupport:
     def documentation = parseComment(sym.docstring.getOrElse(""), sym.tree)
 
     def getAnnotations(): List[Annotation] =
-      sym.annotations.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
+      // Custom annotations should be documented only if annotated by @java.lang.annotation.Documented
+      // We allow also some special cases
+      val fqNameWhitelist = Set(
+        "scala.specialized",
+        "scala.throws",
+        "scala.transient",
+        "scala.volatile",
+        "scala.annotation.experimental",
+        "scala.annotation.contructorOnly",
+        "scala.annotation.static",
+        "scala.annotation.targetName",
+        "scala.annotation.threadUnsafe",
+        "scala.annotation.varargs"
+      )
+      val documentedSymbol = summon[Quotes].reflect.Symbol.requiredClass("java.lang.annotation.Documented")
+      val annotations = sym.annotations.filter { a =>
+        a.tpe.typeSymbol.hasAnnotation(documentedSymbol) || fqNameWhitelist.contains(a.symbol.fullName)
+      }
+      annotations.map(parseAnnotation).reverse
 
     def isDeprecated(): Option[Annotation] =
       sym.annotations.find { a =>
