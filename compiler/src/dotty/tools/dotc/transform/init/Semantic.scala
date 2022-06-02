@@ -605,6 +605,7 @@ object Semantic {
 
       def isSyntheticApply(meth: Symbol) =
         meth.is(Flags.Synthetic)
+        && meth.name == nme.apply
         && meth.owner.is(Flags.Module)
         && meth.owner.companionClass.is(Flags.Case)
 
