@@ -67,8 +67,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       list("Example:", d.example)
     )
 
-  def companion(m: Member): Seq[AppliedTag] = m.companion.fold(Nil){ (_, dri) =>
-    val kindName = if m.kind == Kind.Object then "class" else "object"
+  def companion(m: Member): Seq[AppliedTag] = m.companion.fold(Nil){ (kind, dri) =>
+    val kindName = kind.name
     tableRow("Companion:", signatureRenderer.renderLink(kindName, dri))
   }
 

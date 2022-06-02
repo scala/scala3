@@ -250,6 +250,10 @@
   border-radius: 4px;
 }
 
+#content .main-signature a {
+  text-decoration: none;
+}
+
 #content>div>* {
   margin-bottom: 24px;
 }
