@@ -63,10 +63,6 @@
 .pill-container ul li {
   padding: calc(1 * var(--base-spacing)) calc(4 * var(--base-spacing));
   cursor: pointer;
-  display: none;
-}
-
-.pill-container ul li.visible {
   display: flex;
 }
 

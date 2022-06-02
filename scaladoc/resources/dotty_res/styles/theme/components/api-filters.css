@@ -1,14 +1,15 @@
 .documentableFilter {
   display: flex;
-  position: fixed;
-  top: calc(10 * var(--base-spacing));
   flex-wrap: wrap;
   z-index: 2;
+  row-gap: calc(2 * var(--base-spacing));
+  position: relative;
 }
 
 .filtersContainer {
   display: flex;
   flex-wrap: wrap;
+  row-gap: calc(2 * var(--base-spacing));
 }
 
 .filterableInput {

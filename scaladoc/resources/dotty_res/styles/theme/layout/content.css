@@ -90,7 +90,7 @@
 }
 
 .cover-header .micon.cl-wc {
-  content: url("../../../images/class_comp-big.svg");
+  content: url("../../../images/class-big.svg");
 }
 
 .cover-header .micon.ob {
@@ -98,7 +98,7 @@
 }
 
 .cover-header .micon.ob-wc {
-  content: url("../../../images/object_comp-big.svg");
+  content: url("../../../images/object-big.svg");
 }
 
 .cover-header .micon.tr {
@@ -106,7 +106,7 @@
 }
 
 .cover-header .micon.tr-wc {
-  content: url("../../../images/trait_comp-big.svg");
+  content: url("../../../images/trait-big.svg");
 }
 
 .cover-header .micon.en {
@@ -114,7 +114,7 @@
 }
 
 .cover-header .micon.en-wc {
-  content: url("../../../images/enum_comp-big.svg");
+  content: url("../../../images/enum-big.svg");
 }
 
 .cover-header .micon.gi {
@@ -151,7 +151,7 @@
 }
 
 .theme-dark .cover-header .micon.cl-wc {
-  content: url("../../../images/class_comp-big.svg");
+  content: url("../../../images/class-big.svg");
 }
 
 .theme-dark .cover-header .micon.ob {
@@ -159,7 +159,7 @@
 }
 
 .theme-dark .cover-header .micon.ob-wc {
-  content: url("../../../images/object_comp-big.svg");
+  content: url("../../../images/object-big.svg");
 }
 
 .theme-dark .cover-header .micon.tr {
@@ -167,7 +167,7 @@
 }
 
 .theme-dark .cover-header .micon.tr-wc {
-  content: url("../../../images/trait_comp-big.svg");
+  content: url("../../../images/trait-big.svg");
 }
 
 .theme-dark .cover-header .micon.en {
@@ -175,7 +175,7 @@
 }
 
 .theme-dark .cover-header .micon.en-wc {
-  content: url("../../../images/enum_comp-big.svg");
+  content: url("../../../images/enum-big.svg");
 }
 
 .theme-dark .cover-header .micon.gi {

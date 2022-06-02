@@ -407,9 +407,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         )
     PageContent(
       div(
-        buildDocumentableFilter,
         intro,
         memberInfo(m, withBrief = false),
+        buildDocumentableFilter,
         buildMembers(m)
       ),
       Seq.empty // For now, we don't support table of contents in members

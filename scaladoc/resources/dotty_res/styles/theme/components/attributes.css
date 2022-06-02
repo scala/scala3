@@ -5,6 +5,10 @@
   margin: 0;
 }
 
+.attributes p {
+  margin: 0;
+}
+
 .attributes > dt {
   float: left;
   width: 30%;
@@ -25,4 +29,18 @@
   border-top: 1px solid var(--border-default);
   padding-top: calc(2.5 * var(--base-spacing));
   padding-bottom: calc(2.5 * var(--base-spacing));
+}
+
+.attributes > dd > .attributes > dt {
+  border-top: none;
+  padding: 0;
+  text-align: initial;
+  width: 20%;
+}
+
+.attributes > dd > .attributes > dd {
+  border-top: none;
+  padding: 0;
+  text-align: initial;
+  width: 80%;
 }

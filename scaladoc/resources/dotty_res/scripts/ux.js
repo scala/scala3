@@ -51,24 +51,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
   document.querySelectorAll(".side-menu a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
-  $('.names .tab').on('click', function () {
-    parent = $(this).parents(".tabs").first()
-    shown = $(this).hasClass('selected')
-    single = parent.hasClass("single")
-
-    if (single) parent.find(".tab.selected").removeClass('selected')
-
-    id = $(this).attr('data-togglable')
-    myTab = parent.find("[data-togglable='" + id + "'].tab")
-    if (!shown) { myTab.addClass('selected') }
-    if (shown && !single) myTab.removeClass('selected')
-
-    if (!shown && $(this).filter(".showGraph").length > 0) {
-      showGraph()
-      $(this).find(".showGraph").removeClass("showGraph")
-    }
-  })
-
   if (location.hash) {
     var target = location.hash.substring(1);
     // setting the 'expand' class on the top-level container causes undesireable styles
@@ -136,6 +118,10 @@ window.addEventListener("DOMContentLoaded", () => {
     mobileMenuCloseIcon.addEventListener('click', _e => {
       document.getElementById("mobile-menu").classList.remove("show")
     })
+
+
+  // when document is loaded graph needs to be shown
+  showGraph();
 });
 
 var zoom;
