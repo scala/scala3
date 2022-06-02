@@ -44,7 +44,7 @@ This technology preview further improves stability and reliability. Some highlig
 ## How can you try it out?
 We ship with tools that help you try out the Dotty platform:
 
- - [IDE features for Visual Studio Code](https://dotty.epfl.ch/docs/usage/ide-support.html)
+ - [IDE features for Visual Studio Code](https://docs.scala-lang.org/scala3/getting-started.html#using-vscode-with-metals)
  - [sbt support, including retro-compatibility with Scala 2](https://github.com/lampepfl/dotty-example-project)
 
 
