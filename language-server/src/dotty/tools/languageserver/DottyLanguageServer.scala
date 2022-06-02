@@ -554,13 +554,10 @@ class DottyLanguageServer extends LanguageServer
     implicit def ctx: Context = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    driver.compilationUnits.get(uri) match {
-      case Some(unit) =>
-        val freshCtx = ctx.fresh.setCompilationUnit(unit)
-        val (paramN, callableN, signatures) = Signatures.signatureHelp(pos)(using freshCtx)
-        new SignatureHelp(signatures.map(signatureToSignatureInformation).asJava, callableN, paramN)
-      case None => new SignatureHelp(Nil.asJava, 0, 0)
-    }
+    val trees = driver.openedTrees(uri)
+    val path = Interactive.pathTo(trees, pos)
+    val (paramN, callableN, signatures) = Signatures.signatureHelp(path, pos.span)
+    new SignatureHelp(signatures.map(signatureToSignatureInformation).asJava, callableN, paramN)
 
   }
 

@@ -52,14 +52,13 @@ object Signatures {
   /**
    * Extract (current parameter index, function index, functions) method call for given position.
    *
-   * @param pos Position for which call should be returned
+   * @param path The path to the function application
+   * @param span The position of the cursor
    * @return A triple containing the index of the parameter being edited, the index of functeon
    *         being called, the list of overloads of this function).
    */
-  def signatureHelp(pos: SourcePosition)(using Context): (Int, Int, List[Signature]) = {
-    val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
-    computeSignatureHelp(path, pos.span)(using Interactive.contextOfPath(path))
-  }
+  def signatureHelp(path: List[tpd.Tree], pos: Span)(using Context): (Int, Int, List[Signature]) =
+    computeSignatureHelp(path, pos)
 
   /**
    * Extract (current parameter index, function index, functions) out of a method call.

@@ -38,18 +38,19 @@ class SignatureHelpTest {
     val listSignature = S("curry", Nil, List(List(P("a", "Int"), P("b", "Int")), List(P("c", "Int"))), Some("Int"))
     code"""object O {
           |def curry(a: Int, b: Int)(c: Int) = a
-          |  curry(1$m1)(3$m2)
+          |  curry(1$m1)$m2(3$m3)
           |}"""
       .signatureHelp(m1, List(listSignature), Some(0), 0)
-      .signatureHelp(m2, List(listSignature), Some(0), 2)
+      .signatureHelp(m2, List(listSignature), Some(0), 0)
+      .signatureHelp(m3, List(listSignature), Some(0), 2)
   }
 
   @Test def optionProperSignature: Unit = {
-    val listSignature = S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
+    val signature = S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
     code"""object O {
           |  Option(1, 2, 3, $m1)
           |}"""
-      .signatureHelp(m1, List(listSignature), Some(0), 0)
+      .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
   @Test def noSignaturesForTuple: Unit = {
