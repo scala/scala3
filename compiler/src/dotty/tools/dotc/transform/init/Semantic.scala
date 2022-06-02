@@ -118,7 +118,7 @@ object Semantic:
   end Warm
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Ref, klass: ClassSymbol, env: Env) extends Value
+  case class Fun(expr: Tree, thisV: Ref, klass: ClassSymbol) extends Value
 
   /** A value which represents a set of addresses
    *
@@ -144,7 +144,7 @@ object Semantic:
 
     def hasField(f: Symbol) = fields.contains(f)
 
-  /** The environment for method parameters
+  /** The environment stores values for constructor parameters
    *
    *  For performance and usability, we restrict parameters to be either `Cold`
    *  or `Hot`.
@@ -162,6 +162,9 @@ object Semantic:
    *  key. The reason is that given the same receiver, a method or function may
    *  be called with different arguments -- they are not decided by the receiver
    *  anymore.
+   *
+   *  TODO: remove Env as it is only used to pass value from `callConstructor` -> `eval` -> `init`.
+   *  It goes through `eval` for caching (termination) purposes.
    */
   object Env:
     opaque type Env = Map[Symbol, Value]
@@ -704,14 +707,12 @@ object Semantic:
             else
               value.select(target, needResolve = false)
 
-        case Fun(body, thisV, klass, env) =>
+        case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then value // a call like `fun.tupled`
           else
             promoteArgs()
-            withEnv(env) {
-              eval(body, thisV, klass, cacheResult = true)
-            }
+            eval(body, thisV, klass, cacheResult = true)
 
         case RefSet(refs) =>
           refs.map(_.call(meth, args, receiver, superType)).join
@@ -823,7 +824,7 @@ object Semantic:
           warm.callConstructor(ctor, argInfos2)
           warm
 
-        case Fun(body, thisV, klass, env) =>
+        case Fun(body, thisV, klass) =>
           report.error("unexpected tree in instantiating a function, fun = " + body.show, trace.toVector.last)
           Hot
 
@@ -933,10 +934,10 @@ object Semantic:
             if errors.nonEmpty then promoted.remove(warm)
             reporter.reportAll(errors)
 
-        case fun @ Fun(body, thisV, klass, env) =>
+        case fun @ Fun(body, thisV, klass) =>
           if !promoted.contains(fun) then
             val errors = Reporter.stopEarly {
-              val res = withEnv(env) {
+              val res = {
                 given Trace = Trace.empty
                 eval(body, thisV, klass)
               }
@@ -1121,7 +1122,7 @@ object Semantic:
     args.foreach { arg =>
       val res =
         if arg.isByName then
-          Fun(arg.tree, thisV, klass, env)
+          Fun(arg.tree, thisV, klass)
         else
           eval(arg.tree, thisV, klass)
 
@@ -1227,10 +1228,10 @@ object Semantic:
           }
 
       case closureDef(ddef) =>
-        Fun(ddef.rhs, thisV, klass, env)
+        Fun(ddef.rhs, thisV, klass)
 
       case PolyFun(body) =>
-        Fun(body, thisV, klass, env)
+        Fun(body, thisV, klass)
 
       case Block(stats, expr) =>
         eval(stats, thisV, klass)
