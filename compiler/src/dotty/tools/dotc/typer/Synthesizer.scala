@@ -358,13 +358,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           reduce(tp.underlying)
       case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] =>
         Left(i"its subpart `$tp` is not a supported kind (either `*` or `* -> *`)")
-      case tp @ AppliedType(tref: TypeRef, _)
-        if tref.symbol == defn.PairClass
-        && tp.tupleArity(relaxEmptyTuple = true) > 0 =>
-        // avoid type aliases for tuples
-        Right(MirrorSource.GenericTuple(tp.tupleElementTypes))
       case tp: TypeProxy =>
-        reduce(tp.underlying)
+        tp match
+          case tp @ AppliedType(tref: TypeRef, _) if tref.symbol == defn.PairClass =>
+            tp.tupleElementTypes match
+              case Some(types) =>
+                // avoid type aliases for tuples
+                Right(MirrorSource.GenericTuple(types))
+              case _ => reduce(tp.underlying)
+          case _ => reduce(tp.underlying)
       case tp @ AndType(l, r) =>
         for
           lsrc <- reduce(l)
