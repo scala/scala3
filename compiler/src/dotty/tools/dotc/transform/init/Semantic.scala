@@ -793,8 +793,16 @@ object Semantic:
             val outer = Hot
             val warm = Warm(klass, outer, ctor, args2).ensureObjectExists()
             val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
-            warm.callConstructor(ctor, argInfos2)
-            warm
+            val errors = Reporter.stopEarly {
+              given Trace = Trace.empty
+              warm.callConstructor(ctor, argInfos2)
+            }
+            if errors.nonEmpty then
+              val error = UnsafeLeaking(trace.toVector, errors.head)
+              reporter.report(error)
+              Hot
+            else
+              warm
 
         case Cold =>
           val error = CallCold(ctor, trace.toVector)
