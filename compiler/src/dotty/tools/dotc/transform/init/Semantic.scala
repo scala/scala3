@@ -596,7 +596,7 @@ object Semantic:
       }
     }
 
-    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args, printer, (_: Value).show) {
+    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
       def promoteArgs(): Contextual[Unit] = args.foreach(_.promote)
 
       def isSyntheticApply(meth: Symbol) =
@@ -718,7 +718,7 @@ object Semantic:
       }
     }
 
-    def callConstructor(ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args, printer, (_: Value).show) {
+    def callConstructor(ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
       // init "fake" param fields for the secondary constructor
       def addParamsAsFields(env: Env, ref: Ref, ctorDef: DefDef) = {
         val paramSyms = ctorDef.termParamss.flatten.map(_.symbol)
@@ -775,7 +775,7 @@ object Semantic:
     }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, (_: Value).show) {
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
       if promoted.isCurrentObjectPromoted then Hot
       else value match {
         case Hot  =>
@@ -838,21 +838,14 @@ object Semantic:
       val sym = tmref.symbol
 
       if sym.is(Flags.Param) && sym.owner.isConstructor then
-        // if we can get the field from the Ref (which can only possibly be
-        // a secondary constructor parameter), then use it.
-        if (ref.objekt.hasField(sym))
-          ref.objekt.field(sym)
-        // instances of local classes inside secondary constructors cannot
-        // reach here, as those values are abstracted by Cold instead of Warm.
-        // This enables us to simplify the domain without sacrificing
-        // expressiveness nor soundess, as local classes inside secondary
-        // constructors are uncommon.
-        else if sym.isContainedIn(klass) then
-          env.lookup(sym)
-        else
-          // We don't know much about secondary constructor parameters in outer scope.
-          // It's always safe to approximate them with `Cold`.
-          Cold
+        val enclosingClass = sym.owner.enclosingClass.asClass
+        val thisValue2 = resolveThis(enclosingClass, ref, klass)
+        thisValue2 match
+        case Hot => Hot
+        case ref: Ref => ref.objekt.field(sym)
+        case _ =>
+            report.error("unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
+            Hot
       else if sym.is(Flags.Param) then
         Hot
       else
@@ -869,7 +862,7 @@ object Semantic:
               case ref: Ref => eval(vdef.rhs, ref, enclosingClass)
 
               case _ =>
-                 report.error("unexpected defTree when accessing local variable, sym = " + sym.show + ", defTree = " + sym.defTree.show, trace.toVector.last)
+                 report.error("unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
                  Hot
             end match
 
