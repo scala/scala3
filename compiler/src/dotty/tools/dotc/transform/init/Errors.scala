@@ -12,7 +12,7 @@ import Types._, Symbols._, Contexts._
 import scala.collection.mutable
 
 object Errors:
-  sealed trait Error {
+  sealed trait Error:
     def trace: Seq[Tree]
     def show(using Context): String
 
@@ -55,7 +55,7 @@ object Errors:
     /** Used to underline source positions in the stack trace
      *  pos.source must exist
      */
-    private def positionMarker(pos: SourcePosition): String = {
+    private def positionMarker(pos: SourcePosition): String =
       val trimmed = pos.lineContent.takeWhile(c => c.isWhitespace).length
       val padding = pos.startColumnPadding.substring(trimmed).nn + "   "
       val carets =
@@ -64,43 +64,37 @@ object Errors:
         else "^"
 
       s"$padding$carets\n"
-    }
 
     override def toString() = this.getClass.getName.nn
-  }
+  end Error
 
   /** Access non-initialized field */
-  case class AccessNonInit(field: Symbol, trace: Seq[Tree]) extends Error {
+  case class AccessNonInit(field: Symbol, trace: Seq[Tree]) extends Error:
     def source: Tree = trace.last
     def show(using Context): String =
       "Access non-initialized " + field.show + "."
 
     override def pos(using Context): SourcePosition = field.sourcePos
-  }
 
   /** Promote a value under initialization to fully-initialized */
-  case class PromoteError(msg: String, trace: Seq[Tree]) extends Error {
+  case class PromoteError(msg: String, trace: Seq[Tree]) extends Error:
     def show(using Context): String = msg
-  }
 
-  case class AccessCold(field: Symbol, trace: Seq[Tree]) extends Error {
+  case class AccessCold(field: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       "Access field on a value with an unknown initialization status."
-  }
 
-  case class CallCold(meth: Symbol, trace: Seq[Tree]) extends Error {
+  case class CallCold(meth: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       "Call method on a value with an unknown initialization" + "."
-  }
 
-  case class CallUnknown(meth: Symbol, trace: Seq[Tree]) extends Error {
+  case class CallUnknown(meth: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       val prefix = if meth.is(Flags.Method) then "Calling the external method " else "Accessing the external field"
       prefix + meth.show + " may cause initialization errors" + "."
-  }
 
   /** Promote a value under initialization to fully-initialized */
-  case class UnsafePromotion(msg: String, trace: Seq[Tree], error: Error) extends Error {
+  case class UnsafePromotion(msg: String, trace: Seq[Tree], error: Error) extends Error:
     override def issue(using Context): Unit =
       report.warning(show, this.pos)
 
@@ -108,4 +102,3 @@ object Errors:
       msg + stacktrace + "\n" +
         "Promoting the value to fully initialized failed due to the following problem:\n" +
         error.show + error.stacktrace
-  }

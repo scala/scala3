@@ -2,24 +2,24 @@ package dotty.tools.dotc
 package transform
 package init
 
-import core._
-import Contexts._
-import Symbols._
-import Types._
-import StdNames._
+import core.*
+import Contexts.*
+import Symbols.*
+import Types.*
+import StdNames.*
 import NameKinds.OuterSelectName
 
-import ast.tpd._
+import ast.tpd.*
 import util.EqHashMap
 import config.Printers.init as printer
 import reporting.trace as log
 
-import Errors._
+import Errors.*
 
 import scala.collection.mutable
 import scala.annotation.tailrec
 
-object Semantic {
+object Semantic:
 
 // ----- Domain definitions --------------------------------
 
@@ -52,14 +52,13 @@ object Semantic {
    *         V ⊑ R if V ∈ R
    *
    */
-  sealed abstract class Value {
+  sealed abstract class Value:
     def show: String = this.toString()
 
     def isHot = this == Hot
     def isCold = this == Cold
     def isWarm = this.isInstanceOf[Warm]
     def isThisRef = this.isInstanceOf[ThisRef]
-  }
 
   /** A transitively initialized object */
   case object Hot extends Value
@@ -67,21 +66,19 @@ object Semantic {
   /** An object with unknown initialization status */
   case object Cold extends Value
 
-  sealed abstract class Ref extends Value {
+  sealed abstract class Ref extends Value:
     def klass: ClassSymbol
     def outer: Value
-  }
 
   /** A reference to the object under initialization pointed by `this` */
-  case class ThisRef(klass: ClassSymbol) extends Ref {
+  case class ThisRef(klass: ClassSymbol) extends Ref:
     val outer = Hot
-  }
 
   /** An object with all fields initialized but reaches objects under initialization
    *
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
-  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref {
+  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref:
 
     /** If a warm value is in the process of populating parameters, class bodies are not executed. */
     private var populatingParams: Boolean = false
@@ -117,7 +114,8 @@ object Semantic {
     def ensureObjectExistsAndPopulated(): Contextual[this.type] =
       if cache.containsObject(this) then this
       else this.ensureFresh().populateParams()
-  }
+
+  end Warm
 
   /** A function value */
   case class Fun(expr: Tree, thisV: Ref, klass: ClassSymbol, env: Env) extends Value
@@ -137,7 +135,7 @@ object Semantic {
    *
    *  Note: Object is NOT a value.
    */
-  case class Objekt(val klass: ClassSymbol, val fields: Map[Symbol, Value], val outers: Map[ClassSymbol, Value]) {
+  case class Objekt(val klass: ClassSymbol, val fields: Map[Symbol, Value], val outers: Map[ClassSymbol, Value]):
     def field(f: Symbol): Value = fields(f)
 
     def outer(klass: ClassSymbol) = outers(klass)
@@ -145,7 +143,6 @@ object Semantic {
     def hasOuter(klass: ClassSymbol) = outers.contains(klass)
 
     def hasField(f: Symbol) = fields.contains(f)
-  }
 
   /** The environment for method parameters
    *
@@ -166,7 +163,7 @@ object Semantic {
    *  be called with different arguments -- they are not decided by the receiver
    *  anymore.
    */
-  object Env {
+  object Env:
     opaque type Env = Map[Symbol, Value]
 
     val empty: Env = Map.empty
@@ -186,20 +183,20 @@ object Semantic {
       def union(other: Env): Env = env ++ other
 
       def isHot: Boolean = env.values.forall(_ == Hot)
-  }
+  end Env
 
   type Env = Env.Env
   inline def env(using env: Env) = env
   inline def withEnv[T](env: Env)(op: Env ?=> T): T = op(using env)
 
-  import Env._
+  import Env.*
 
-  object Promoted {
-    class PromotionInfo {
+  object Promoted:
+    class PromotionInfo:
       var isCurrentObjectPromoted: Boolean = false
       val values = mutable.Set.empty[Value]
       override def toString(): String = values.toString()
-    }
+
     /** Values that have been safely promoted */
     opaque type Promoted = PromotionInfo
 
@@ -213,10 +210,10 @@ object Semantic {
       def add(value: Value): Unit = promoted.values += value
       def remove(value: Value): Unit = promoted.values -= value
     end extension
-  }
+  end Promoted
   type Promoted = Promoted.Promoted
 
-  import Promoted._
+  import Promoted.*
   inline def promoted(using p: Promoted): Promoted = p
 
   /** Interpreter configuration
@@ -251,11 +248,11 @@ object Semantic {
    *
    */
 
-  object Cache {
+  object Cache:
     opaque type CacheStore = mutable.Map[Value, EqHashMap[Tree, Value]]
     private type Heap = Map[Ref, Objekt]
 
-    class Cache {
+    class Cache:
       private var last: CacheStore =  mutable.Map.empty
       private var current: CacheStore = mutable.Map.empty
       private val stable: CacheStore = mutable.Map.empty
@@ -379,7 +376,7 @@ object Semantic {
       def containsObject(ref: Ref) = heap.contains(ref)
 
       def getObject(ref: Ref) = heap(ref)
-    }
+    end Cache
 
     extension (cache: CacheStore)
       def contains(value: Value, expr: Tree) = cache.contains(value) && cache(value).contains(expr)
@@ -390,9 +387,9 @@ object Semantic {
         innerMap(expr) = result
       }
     end extension
-  }
+  end Cache
 
-  import Cache._
+  import Cache.*
 
   inline def cache(using c: Cache): Cache = c
 
@@ -403,7 +400,7 @@ object Semantic {
 
 // ----- Error Handling -----------------------------------
 
-  object Trace {
+  object Trace:
     opaque type Trace = Vector[Tree]
 
     val empty: Trace = Vector.empty
@@ -411,11 +408,10 @@ object Semantic {
     extension (trace: Trace)
       def add(node: Tree): Trace = trace :+ node
       def toVector: Vector[Tree] = trace
-  }
 
   type Trace = Trace.Trace
 
-  import Trace._
+  import Trace.*
   def trace(using t: Trace): Trace = t
   inline def withTrace[T](t: Trace)(op: Trace ?=> T): T = op(using t)
   inline def extendTrace[T](node: Tree)(using t: Trace)(op: Trace ?=> T): T = op(using t.add(node))
@@ -1019,7 +1015,7 @@ object Semantic {
 // ----- Work list ---------------------------------------------------
   case class Task(value: ThisRef)
 
-  class WorkList private[Semantic]() {
+  class WorkList private[Semantic]():
     private var pendingTasks: List[Task] = Nil
 
     def addTask(task: Task): Unit =
@@ -1034,7 +1030,7 @@ object Semantic {
      *
      *  This method should only be called from the work list scheduler.
      */
-    private def doTask(task: Task)(using Cache, Context): Unit = {
+    private def doTask(task: Task)(using Cache, Context): Unit =
       val thisRef = task.value
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
@@ -1060,8 +1056,8 @@ object Semantic {
       }
 
       iterate()
-    }
-  }
+    end doTask
+  end WorkList
   inline def workList(using wl: WorkList): WorkList = wl
 
 // ----- API --------------------------------
@@ -1083,18 +1079,16 @@ object Semantic {
    *         Semantic.check()
    *      }
    */
-  def withInitialState[T](work: (Cache, WorkList) ?=> T): T = {
+  def withInitialState[T](work: (Cache, WorkList) ?=> T): T =
     work(using new Cache, new WorkList)
-  }
 
 // ----- Semantic definition --------------------------------
 
   /** Utility definition used for better error-reporting of argument errors */
-  case class ArgInfo(value: Value, trace: Trace) {
+  case class ArgInfo(value: Value, trace: Trace):
     def promote: Contextual[Unit] = withTrace(trace) {
       value.promote("Cannot prove the argument is fully initialized. Only fully initialized values are safe to leak.")
     }
-  }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
    *
@@ -1140,7 +1134,7 @@ object Semantic {
    */
   def cases(expr: Tree, thisV: Ref, klass: ClassSymbol): Contextual[Value] =
     val trace2 = trace.add(expr)
-    expr match {
+    expr match
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
         Hot
@@ -1309,11 +1303,11 @@ object Semantic {
 
       case _ =>
         throw new Exception("unexpected tree: " + expr.show)
-    }
+
 
   /** Handle semantics of leaf nodes */
   def cases(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
-    tp match {
+    tp match
       case _: ConstantType =>
         Hot
 
@@ -1338,7 +1332,6 @@ object Semantic {
 
       case _ =>
         throw new Exception("unexpected type: " + tp)
-    }
   }
 
   /** Resolve C.this that appear in `klass` */
@@ -1443,20 +1436,20 @@ object Semantic {
         }
 
     // parents
-    def initParent(parent: Tree, tasks: Tasks)(using Env) = parent match {
+    def initParent(parent: Tree, tasks: Tasks)(using Env) =
+      parent match
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass)
         val args = evalArgs(argss.flatten, thisV, klass)
         superCall(tref, ctor, args, tasks)
 
       case tree @ NewExpr(tref, New(tpt), ctor, argss) =>       // extends A(args)
-      val args = evalArgs(argss.flatten, thisV, klass)
-      superCall(tref, ctor, args, tasks)
+        val args = evalArgs(argss.flatten, thisV, klass)
+        superCall(tref, ctor, args, tasks)
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
         superCall(tref, tref.classSymbol.primaryConstructor, Nil, tasks)
-    }
 
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
@@ -1532,22 +1525,22 @@ object Semantic {
    *  This is intended to avoid type soundness issues in Dotty.
    */
   def checkTermUsage(tpt: Tree, thisV: Ref, klass: ClassSymbol): Contextual[Unit] =
-    val traverser = new TypeTraverser {
-      def traverse(tp: Type): Unit = tp match {
+    val traverser = new TypeTraverser:
+      def traverse(tp: Type): Unit =
+        tp match
         case TermRef(_: SingletonType, _) =>
           extendTrace(tpt) { cases(tp, thisV, klass) }
         case _ =>
           traverseChildren(tp)
-      }
-    }
+
     traverser.traverse(tpt.tpe)
 
 // ----- Utility methods and extractors --------------------------------
 
-  def typeRefOf(tp: Type)(using Context): TypeRef = tp.dealias.typeConstructor match {
+  def typeRefOf(tp: Type)(using Context): TypeRef = tp.dealias.typeConstructor match
     case tref: TypeRef => tref
     case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
-  }
+
 
   opaque type Arg  = Tree | ByNameArg
   case class ByNameArg(tree: Tree)
@@ -1558,7 +1551,7 @@ object Semantic {
       case t: Tree      => t
       case ByNameArg(t) => t
 
-  object Call {
+  object Call:
 
     def unapply(tree: Tree)(using Context): Option[(Tree, List[List[Arg]])] =
       tree match
@@ -1580,18 +1573,16 @@ object Semantic {
         Some((ref, Nil))
 
       case _ => None
-  }
 
-  object NewExpr {
+  object NewExpr:
     def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, List[List[Arg]])] =
       tree match
       case Call(fn @ Select(newTree: New, init), argss) if init == nme.CONSTRUCTOR =>
         val tref = typeRefOf(newTree.tpe)
         Some((tref, newTree, fn.symbol, argss))
       case _ => None
-  }
 
-  object PolyFun {
+  object PolyFun:
     def unapply(tree: Tree)(using Context): Option[Tree] =
       tree match
       case Block((cdef: TypeDef) :: Nil, Typed(NewExpr(tref, _, _, _), _))
@@ -1602,7 +1593,6 @@ object Semantic {
         Some(apply.rhs)
       case _ =>
         None
-  }
 
   extension (symbol: Symbol) def hasSource(using Context): Boolean =
     !symbol.defTree.isEmpty
@@ -1612,7 +1602,7 @@ object Semantic {
     else sym.matchingMember(cls.appliedRef)
   }
 
-  def resolveSuper(cls: ClassSymbol, superType: Type, sym: Symbol)(using Context): Symbol = {
+  def resolveSuper(cls: ClassSymbol, superType: Type, sym: Symbol)(using Context): Symbol =
     import annotation.tailrec
     @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
       case bc :: bcs1 =>
@@ -1623,6 +1613,4 @@ object Semantic {
         NoSymbol
     }
     loop(cls.info.baseClasses.dropWhile(sym.owner != _))
-  }
 
-}
