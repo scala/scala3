@@ -19,9 +19,9 @@ object Errors:
     def pos(using Context): SourcePosition = trace.last.sourcePos
 
     def issue(using Context): Unit =
-      report.warning(show + stacktrace, this.pos)
+      report.warning(show + stacktrace(), this.pos)
 
-    def stacktrace(using Context): String = if trace.isEmpty then "" else " Calling trace:\n" + {
+    def stacktrace(preamble: String = " Calling trace:\n")(using Context): String = if trace.isEmpty then "" else preamble + {
       var lastLineNum = -1
       var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
       trace.foreach { tree =>
@@ -99,6 +99,16 @@ object Errors:
       report.warning(show, this.pos)
 
     def show(using Context): String =
-      msg + stacktrace + "\n" +
+      msg + stacktrace() + "\n" +
         "Promoting the value to fully initialized failed due to the following problem:\n" +
-        error.show + error.stacktrace
+        error.show + error.stacktrace()
+
+  /** Unsafe leaking a non-hot value as constructor arguments */
+  case class UnsafeLeaking(trace: Seq[Tree], error: Error) extends Error:
+    override def issue(using Context): Unit =
+      report.warning(show, this.pos)
+
+    def show(using Context): String =
+      "Unsafe leaking of uninitialized value: the leaked value is used. " + stacktrace() + "\n" +
+        "The leaked uninitialized value is used as follows:\n" +
+        error.stacktrace(preamble = "")

@@ -86,7 +86,7 @@ object Implicits:
    */
   abstract class ImplicitRefs(initctx: Context) {
     val irefCtx =
-      if (initctx == NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled)
+      if (initctx eq NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled)
     protected given Context = irefCtx
 
     /** The nesting level of this context. Non-zero only in ContextialImplicits */
@@ -549,16 +549,16 @@ object Implicits:
     override def msg(using Context) = _msg
     def explanation(using Context) = msg.toString
 
-  /** A search failure type for failed synthesis of terms for special types */ 
+  /** A search failure type for failed synthesis of terms for special types */
   class SynthesisFailure(reasons: List[String], val expectedType: Type) extends SearchFailureType:
     def argument = EmptyTree
 
-    private def formatReasons = 
-      if reasons.length > 1 then 
-        reasons.mkString("\n\t* ", "\n\t* ", "") 
-      else 
+    private def formatReasons =
+      if reasons.length > 1 then
+        reasons.mkString("\n\t* ", "\n\t* ", "")
+      else
         reasons.mkString
-      
+
     def explanation(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}: ${formatReasons}"
 
 end Implicits
@@ -871,7 +871,7 @@ trait Implicits:
             SearchFailure(new SynthesisFailure(errors, formal), span).tree
           else
             tree.orElse(failed)
-          
+
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {

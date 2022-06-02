@@ -1,0 +1,15 @@
+-- Warning: tests/init/neg/i15363.scala:3:10 -----------------------------------
+3 |  val b = new B(this) // error
+  |          ^^^^^^^^^^^
+  |Unsafe leaking of uninitialized values: the leaked value is used.  Calling trace:
+  |-> class A:	[ i15363.scala:1 ]
+  |   ^
+  |-> val b = new B(this) // error	[ i15363.scala:3 ]
+  |           ^^^^^^^^^^^
+  |
+  |The leaked uninitialized value is used as follows:
+  |-> class B(a: A):	[ i15363.scala:7 ]
+  |   ^
+  |-> val x = a.m	[ i15363.scala:8 ]
+  |           ^^^
+1 warning found
