@@ -7,7 +7,7 @@ def foo() =
     def this(b: B) = {
       this(b, 5)
       class Inner() {
-        def foo() = println(b.n) // error
+        def foo() = println(b.n)
       }
       Inner().foo()
 
@@ -35,5 +35,5 @@ def foo() =
 
   class D {
     val b = new B(this)
-    val c = new C(b, 5)
+    val c = new C(b, 5)  // error
   }

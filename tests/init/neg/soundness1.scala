@@ -19,11 +19,11 @@ object Test2:
 
 object Test3:
   class A(b: B) {
-    println(b.a2)           // error
-    val b2 = new B(this)
+    println(b.a2)
+    val b2 = new B(this)    // error
   }
 
   class B(a: A) {
-    println(a.b2)           // error
-    val a2 = new A(this)
+    println(a.b2)
+    val a2 = new A(this)    // error
   }
