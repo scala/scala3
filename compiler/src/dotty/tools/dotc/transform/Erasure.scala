@@ -43,7 +43,7 @@ class Erasure extends Phase with DenotTransformer {
   override def description: String = Erasure.description
 
   /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[String] = Set(InterceptedMethods.name, ElimRepeated.name)
+  override def runsAfter: Set[String] = Set(InterceptedMethods.name, ElimRepeated.name, DropImports.name)
 
   override def changesMembers: Boolean = true // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
