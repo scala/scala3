@@ -176,8 +176,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
      *  In addition:
      *    - if we are in a constructor of a pattern, we ignore all definitions
-     *      which are methods and not accessors (note: if we don't do that
-     *      case x :: xs in class List would return the :: method).
+     *      which are parameterized (including nullary) methods and not accessors
+     *      (note: if we don't do that case x :: xs in class List would return the :: method).
      *    - Members of the empty package can be accessed only from within the empty package.
      *      Note: it would be cleaner to never nest package definitions in empty package definitions,
      *      but then we'd have to give up the fiction that a compilation unit consists of
@@ -187,9 +187,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *      tools, we did not want to take that step.
      */
     def qualifies(denot: Denotation): Boolean =
+      def isRealMethod(sd: SingleDenotation): Boolean =
+        sd.symbol.is(Method, butNot = Accessor) && !sd.info.isParameterless
       reallyExists(denot)
-      && (!pt.isInstanceOf[UnapplySelectionProto]
-          || denot.hasAltWith(sd => !sd.symbol.is(Method, butNot = Accessor)))
+      && (!pt.isInstanceOf[UnapplySelectionProto] || denot.hasAltWith(!isRealMethod(_)))
       && !denot.symbol.is(PackageClass)
       && {
         var owner = denot.symbol.maybeOwner
