@@ -3,8 +3,8 @@ object O:
     println(n)
 
   class B:
-    val a = A(this)
+    val a = A(this)  // error
 
   val b = new B
-  val n = 10         // error
+  val n = 10
 end O

@@ -777,6 +777,19 @@ object Semantic:
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+      def tryLeak(warm: Warm, argValues: List[Value]): Contextual[Value] =
+        val argInfos2 = args.zip(argValues).map { (argInfo, v) => argInfo.copy(value = v) }
+        val errors = Reporter.stopEarly {
+          given Trace = Trace.empty
+          warm.callConstructor(ctor, argInfos2)
+        }
+        if errors.nonEmpty then
+          val error = UnsafeLeaking(trace.toVector, errors.head)
+          reporter.report(error)
+          Hot
+        else
+          warm
+
       if promoted.isCurrentObjectPromoted then Hot
       else value match {
         case Hot  =>
@@ -793,17 +806,7 @@ object Semantic:
           else
             val outer = Hot
             val warm = Warm(klass, outer, ctor, args2).ensureObjectExists()
-            val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
-            val errors = Reporter.stopEarly {
-              given Trace = Trace.empty
-              warm.callConstructor(ctor, argInfos2)
-            }
-            if errors.nonEmpty then
-              val error = UnsafeLeaking(trace.toVector, errors.head)
-              reporter.report(error)
-              Hot
-            else
-              warm
+            tryLeak(warm, args2)
 
         case Cold =>
           val error = CallCold(ctor, trace.toVector)
@@ -819,10 +822,13 @@ object Semantic:
             case _ => ref
 
           val argsWidened = args.map(_.value).widenArgs
-          val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
           val warm = Warm(klass, outer, ctor, argsWidened).ensureObjectExists()
-          warm.callConstructor(ctor, argInfos2)
-          warm
+          if argsWidened.exists(_.isCold) then
+            tryLeak(warm, argsWidened)
+          else
+            val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
+            warm.callConstructor(ctor, argInfos2)
+            warm
 
         case Fun(body, thisV, klass) =>
           report.error("unexpected tree in instantiating a function, fun = " + body.show, trace.toVector.last)
@@ -1517,6 +1523,10 @@ object Semantic:
         given Env = Env.empty
         eval(tree, thisV, klass)
     }
+
+    // ensure we try promotion once even if class body is empty
+    if fieldsChanged && thisV.isThisRef then
+      thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject()
 
     // The result value is ignored, use Hot to avoid futile fixed point computation
     Hot
