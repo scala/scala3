@@ -338,9 +338,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val tabs = allTabs.filter(_.content.nonEmpty)
       if tabs.isEmpty then Nil else
         Seq(div(cls := (if singleSelection then "tabs single" else "tabs"))(
-            div(cls := "names")(tabs.map(t =>
-              button(tabAttr(t.id), cls := s"tab ${t.cls}")(t.name)
-            )),
             div(cls := "contents")(tabs.map(t =>
               div(tabAttr(t.id), cls := s"tab ${t.cls}")(t.content)
             ))
@@ -351,7 +348,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       val graphHtml = m.graph match
         case graph if graph.edges.nonEmpty =>
           Seq(div( id := "inheritance-diagram", cls := "diagram-class showGraph")(
-            input(value := "Reset zoom", `type` := "button", cls := "btn", onclick := "zoomOut()"),
+            button(`type` := "button", cls := "label-only-button", onclick := "zoomOut()")("Reset zoom"),
             svg(id := "graph"),
             script(`type` := "text/dot", id := "dot")(
               raw(DotDiagramBuilder.build(graph, signatureRenderer))

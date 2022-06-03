@@ -2,7 +2,7 @@
  * @typedef { import("./Filter").Filter } Filter
  */
 
-class FilterBar extends Component {
+ class FilterBar extends Component {
   constructor(props) {
     super(props);
 
@@ -14,6 +14,7 @@ class FilterBar extends Component {
     this.state = {
       filter: new Filter("", {}, this.refs.elements, true),
       isVisible: false,
+      selectedPill: '',
     };
 
     this.inputComp = new Input({ onInputChange: this.onInputChange });
@@ -25,6 +26,8 @@ class FilterBar extends Component {
       onFilterToggle: this.onFilterToggle,
       onGroupSelectChange: this.onGroupSelectChange,
       onFilterVisibilityChange: this.onFilterVisibilityChange,
+      onPillClick: this.onPillClick,
+      onPillCollapse: this.onPillCollapse,
     });
 
     this.render();
@@ -58,6 +61,20 @@ class FilterBar extends Component {
     }));
   };
 
+  onPillClick = (key) => {
+    this.setState((prevState) => ({
+      filter: prevState.filter,
+      selectedPill: key
+    }))
+  }
+
+  onPillCollapse = () => {
+    this.setState((prevState) => ({
+      filter: prevState.filter,
+      selectedPill: ""
+    }))
+  }
+
   render() {
     if (this.refs.filterBar) {
       if (this.state.isVisible) {
@@ -68,7 +85,7 @@ class FilterBar extends Component {
     }
 
     this.listComp.render({ filter: this.state.filter });
-    this.filterGroupComp.render({ filter: this.state.filter });
+    this.filterGroupComp.render({ filter: this.state.filter, selectedPill: this.state.selectedPill });
   }
 }
 

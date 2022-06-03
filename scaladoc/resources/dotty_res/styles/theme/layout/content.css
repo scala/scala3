@@ -234,19 +234,23 @@
 
 .companion-badge {
   color: var(--text-primary);
-  padding: 16px;
+  padding: calc(2 * var(--base-spacing));
   background-color: var(--indigo3);
   border-radius: 4px;
 }
 
+.companion-badge span {
+  display: flex;
+}
+
 .companion-badge .micon {
-  margin-left: 0.5em;
-  margin-right: 0.5em;
+  margin-left: calc(1 * var(--base-spacing));
+  margin-right: calc(1 * var(--base-spacing));
 }
 
 .main-signature {
   background-color: var(--action-primary-background-default-solid);
-  padding: 24px;
+  padding: calc(3 * var(--base-spacing));
   border-radius: 4px;
 }
 
@@ -254,6 +258,6 @@
   text-decoration: none;
 }
 
-#content>div>* {
-  margin-bottom: 24px;
+#content > div > * {
+  margin-bottom: calc(3 * var(--base-spacing));
 }

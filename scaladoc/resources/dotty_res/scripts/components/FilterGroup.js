@@ -15,12 +15,11 @@ class FilterGroup extends Component {
     this.render(this.props);
   }
 
-  onFilterClick = ({
-    currentTarget: {
-      dataset: { key, value },
-    },
-  }) => {
+  onFilterClick = (e) => {
+    const {currentTarget: {dataset: {key, value}}} = e;
     this.props.onFilterToggle(key, value);
+    e.stopPropagation();
+    e.preventDefault();
   };
 
   onSelectAllClick = ({
@@ -41,6 +40,16 @@ class FilterGroup extends Component {
     Object.entries(this.props.filter.filters)
     .forEach(([key, _values]) => this.props.onGroupSelectChange(key, false))
   };
+
+  showPillDropdown = (e) => {
+    this.props.onPillClick(e.currentTarget.dataset.key);
+    e.stopPropagation();
+    e.preventDefault();
+  }
+
+  hidePillDropdown = () => {
+    this.props.onPillCollapse();
+  }
 
   attachFiltersClicks() {
     const refs = findRefs(
@@ -66,9 +75,21 @@ class FilterGroup extends Component {
       this.documentableFilterRef
     );
 
+    const onPillClick = findRefs(
+      "div.pill",
+      this.filtersContainerRef
+    )
+
+    const onOutsidePillClick = findRefs(
+      "#main",
+    )
+
     attachListeners(selectAllRefs, "click", this.onSelectAllClick);
     attachListeners(deselectAllRefs, "click", this.onDeselectAllClick);
     attachListeners(deselectAllRefsWithClearButton, "click", this.onClearFilters);
+    attachListeners(onPillClick, "click", this.showPillDropdown);
+    attachListeners(onOutsidePillClick, "click", this.hidePillDropdown);
+
   }
 
   isActive(isActive) {
@@ -112,16 +133,21 @@ class FilterGroup extends Component {
     }, 0)
   }
 
-  getFilterGroup(filterKey, values) {
+  getFilterGroup(filterKey, values, selectedPill) {
     const firstSelected = this.getFirstSelected(filterKey, values);
     const numberOfSelectedFilters = this.getNumberOfSelectedFilters(filterKey, values);
     const numberToDisplay = numberOfSelectedFilters > 1
       ? `+${numberOfSelectedFilters -1}`
       : ""
 
+    const isMenuVisible = selectedPill === filterKey;
+
     return `
-      <div class="pill-container body-small" tabindex="1">
-        <div class="pill ${numberOfSelectedFilters > 0 ? "has-value" : ""}">
+      <div
+        class="pill-container body-small ${isMenuVisible ? "menu-visible" : ""}"
+        tabindex="1"
+      >
+        <div class="pill ${numberOfSelectedFilters > 0 ? "has-value" : ""}" data-key="${filterKey}">
           <span class="filter-name">${filterKey.substring(1)}</span>
           ${firstSelected} ${numberToDisplay}
           <span
@@ -155,12 +181,12 @@ class FilterGroup extends Component {
     `;
   }
 
-  render({ filter }) {
+  render({ filter, selectedPill }) {
     attachDOM(
       this.filtersContainerRef,
       Object.entries(filter.filters)
         .filter(([_key, values]) => Object.values(values).some((v) => v.visible))
-        .map(([key, values]) => this.getFilterGroup(key, values)),
+        .map(([key, values]) => this.getFilterGroup(key, values, selectedPill)),
     );
 
     this.attachFiltersClicks();

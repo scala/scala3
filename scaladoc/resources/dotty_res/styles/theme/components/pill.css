@@ -89,11 +89,11 @@
   content: url(../../../images/thick-dark.svg);
 }
 
-.pill-container:focus ul {
+.pill-container.menu-visible ul {
   display: block;
 }
 
-.pill-container:focus .pill {
+.pill-container.menu-visible .pill {
   background-color: var(--action-primary-background-selected);
   border: 1px solid var(--action-primary-border-default);
 }

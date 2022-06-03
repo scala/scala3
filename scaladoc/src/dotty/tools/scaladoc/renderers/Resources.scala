@@ -130,10 +130,10 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/components/attributes.css",
       "styles/theme/components/supertypes.css",
       "styles/theme/components/subtypes.css",
+      "styles/theme/components/diagram.css",
 
       "styles/nord-light.css",
       "styles/dotty-icons.css",
-      "styles/diagram.css",
       "styles/filter-bar.css",
       "styles/code-snippets.css",
       "styles/searchbar.css",
