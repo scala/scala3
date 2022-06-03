@@ -121,15 +121,16 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
   // when document is loaded graph needs to be shown
-  showGraph();
 });
 
 var zoom;
 var transform;
 
 function showGraph() {
+  document.getElementById("inheritance-diagram").classList.add("shown")
   if ($("svg#graph").children().length == 0) {
     var dotNode = document.querySelector("#dot")
+
     if (dotNode) {
       var svg = d3.select("#graph");
       var radialGradient = svg.append("defs").append("radialGradient").attr("id", "Gradient");
@@ -200,6 +201,10 @@ function showGraph() {
       node0ClusterRect.setAttribute("y", node0Rect.getAttribute("y") - 40);
     }
   }
+}
+
+function hideGraph() {
+  document.getElementById("inheritance-diagram").classList.remove("shown")
 }
 
 function zoomOut() {

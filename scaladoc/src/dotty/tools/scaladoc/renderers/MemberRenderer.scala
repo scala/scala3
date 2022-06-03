@@ -349,6 +349,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         case graph if graph.edges.nonEmpty =>
           Seq(div( id := "inheritance-diagram", cls := "diagram-class showGraph")(
             button(`type` := "button", cls := "label-only-button", onclick := "zoomOut()")("Reset zoom"),
+            button(`type` := "button", cls := "label-only-button", onclick := "hideGraph()")("Hide graph"),
+            button(`type` := "button", cls := "label-only-button", onclick := "showGraph()")("Show graph"),
             svg(id := "graph"),
             script(`type` := "text/dot", id := "dot")(
               raw(DotDiagramBuilder.build(graph, signatureRenderer))
