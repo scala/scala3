@@ -629,6 +629,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           assignType(tree2, TryDynamicCallType)
         else
           typedDynamicSelect(tree2, Nil, pt)
+      else if tree0.name == nme.foreach then
+        typedSelect(cpy.Select(tree0)(tree0.qualifier, nme.forEach), pt, qual)
       else
         assignType(tree,
           rawType match

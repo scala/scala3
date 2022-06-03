@@ -474,6 +474,7 @@ object StdNames {
     val flatMap: N              = "flatMap"
     val floatHash: N            = "floatHash"
     val foreach: N              = "foreach"
+    val forEach: N              = "forEach"
     val format: N               = "format"
     val fromDigits: N           = "fromDigits"
     val fromProduct: N          = "fromProduct"
