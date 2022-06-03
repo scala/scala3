@@ -784,7 +784,15 @@ object Semantic:
           warm.callConstructor(ctor, argInfos2)
         }
         if errors.nonEmpty then
-          val error = UnsafeLeaking(trace.toVector, errors.head)
+          val indices =
+            for
+              (arg, i) <- argValues.zipWithIndex
+              if arg.isCold
+            yield
+              i + 1
+
+          val indices2 = if warm.outer.isHot then indices else 0 :: indices
+          val error = UnsafeLeaking(trace.toVector, errors.head, indices2)
           reporter.report(error)
           Hot
         else

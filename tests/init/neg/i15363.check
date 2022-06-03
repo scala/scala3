@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/i15363.scala:3:10 -----------------------------------------------------------------------------
 3 |  val b = new B(this) // error
   |          ^^^^^^^^^^^
-  |          Problematic object instantiation with uninitialized arguments. Calling trace:
+  |          Problematic object instantiation: arg 1 is not fully initialized. Calling trace:
   |          -> class A:	[ i15363.scala:1 ]
   |             ^
   |          -> val b = new B(this) // error	[ i15363.scala:3 ]

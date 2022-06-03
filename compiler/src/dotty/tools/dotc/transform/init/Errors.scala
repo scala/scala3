@@ -101,8 +101,22 @@ object Errors:
         error.show
 
   /** Unsafe leaking a non-hot value as constructor arguments */
-  case class UnsafeLeaking(trace: Seq[Tree], error: Error) extends Error:
+  case class UnsafeLeaking(trace: Seq[Tree], error: Error, argsIndices: List[Int]) extends Error:
     def show(using Context): String =
-      "Problematic object instantiation with uninitialized arguments." + stacktrace() + "\n" +
+      "Problematic object instantiation: " + argumentInfo() + stacktrace() + "\n" +
         "It leads to the following error during object initialization:\n" +
         error.show
+
+    private def argumentInfo(): String =
+      val multiple = argsIndices.size > 1
+      val part1 =
+        argsIndices.zipWithIndex.foldLeft("") { case (acc, (pos, i)) =>
+          val text1 = if pos == 0 then "the outer" else "arg " + pos.toString
+          val text2 =
+            if i == argsIndices.size - 2 then text1 + " and "
+            else if i == argsIndices.size - 1 then text1
+            else text1 + ", "
+          acc + text2
+        }
+      val part2 = if multiple then " are not fully initialized." else " is not fully initialized."
+      part1 + part2

@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/cycle-structure.scala:9:13 --------------------------------------------------------------------
 9 |    val x = A(this)   // error
   |            ^^^^^^^
-  |            Problematic object instantiation with uninitialized arguments. Calling trace:
+  |            Problematic object instantiation: arg 1 is not fully initialized. Calling trace:
   |            -> case class B(a: A) {	[ cycle-structure.scala:7 ]
   |               ^
   |            -> val x = A(this)   // error	[ cycle-structure.scala:9 ]
@@ -16,7 +16,7 @@
 -- Error: tests/init/neg/cycle-structure.scala:3:13 --------------------------------------------------------------------
 3 |    val x = B(this)   // error
   |            ^^^^^^^
-  |            Problematic object instantiation with uninitialized arguments. Calling trace:
+  |            Problematic object instantiation: arg 1 is not fully initialized. Calling trace:
   |            -> case class A(b: B) {	[ cycle-structure.scala:1 ]
   |               ^
   |            -> val x = B(this)   // error	[ cycle-structure.scala:3 ]
