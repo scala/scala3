@@ -591,7 +591,7 @@ object Semantic:
               Hot
 
         case fun: Fun =>
-          report.error("unexpected tree in selecting a function, fun = " + fun.expr.show, fun.expr)
+          report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show, fun.expr)
           Hot
 
         case RefSet(refs) =>
@@ -839,7 +839,7 @@ object Semantic:
             warm
 
         case Fun(body, thisV, klass) =>
-          report.error("unexpected tree in instantiating a function, fun = " + body.show, trace.toVector.last)
+          report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show, trace.toVector.last)
           Hot
 
         case RefSet(refs) =>
@@ -859,7 +859,7 @@ object Semantic:
         case Hot => Hot
         case ref: Ref => ref.objekt.field(sym)
         case _ =>
-            report.error("unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
+            report.error("[Internal error] unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
             Hot
       else if sym.is(Flags.Param) then
         Hot
@@ -877,7 +877,7 @@ object Semantic:
               case ref: Ref => eval(vdef.rhs, ref, enclosingClass)
 
               case _ =>
-                 report.error("unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
+                 report.error("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
                  Hot
             end match
 
@@ -1318,8 +1318,8 @@ object Semantic:
         Hot
 
       case _ =>
-        throw new Exception("unexpected tree: " + expr.show)
-
+        report.error("[Internal error] unexpected tree", expr)
+        Hot
 
   /** Handle semantics of leaf nodes */
   def cases(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
@@ -1347,7 +1347,8 @@ object Semantic:
         Hot
 
       case _ =>
-        throw new Exception("unexpected type: " + tp)
+        report.error("[Internal error] unexpected type " + tp, trace.toVector.last)
+        Hot
   }
 
   /** Resolve C.this that appear in `klass` */
@@ -1361,15 +1362,15 @@ object Semantic:
           val obj = ref.objekt
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !obj.hasOuter(klass) then
-            val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj, trace.toVector)
-            report.error(error.show + error.stacktrace, trace.toVector.last)
+            val error = PromoteError("[Internal error] outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj, trace.toVector)
+            report.error(error.show, trace.toVector.last)
             Hot
           else
             resolveThis(target, obj.outer(klass), outerCls)
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass)).join
         case fun: Fun =>
-          report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, trace.toVector.last)
+          report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, trace.toVector.last)
           Cold
         case Cold => Cold
 
@@ -1397,14 +1398,14 @@ object Semantic:
             resolveThis(target, thisV, cur)
 
           case None =>
-            report.warning("unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
+            report.error("[Internal error] unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
             Cold
 
       case RefSet(refs) =>
         refs.map(ref => resolveOuterSelect(target, ref, hops)).join
 
       case fun: Fun =>
-        report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
+        report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
         Cold
 
       case Cold => Cold
