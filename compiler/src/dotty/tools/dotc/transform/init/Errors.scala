@@ -19,7 +19,7 @@ object Errors:
     def pos(using Context): SourcePosition = trace.last.sourcePos
 
     def issue(using Context): Unit =
-      report.warning(show + stacktrace(), this.pos)
+      report.warning(show, this.pos)
 
     def stacktrace(preamble: String = " Calling trace:\n")(using Context): String = if trace.isEmpty then "" else preamble + {
       var lastLineNum = -1
@@ -72,43 +72,37 @@ object Errors:
   case class AccessNonInit(field: Symbol, trace: Seq[Tree]) extends Error:
     def source: Tree = trace.last
     def show(using Context): String =
-      "Access non-initialized " + field.show + "."
+      "Access non-initialized " + field.show + "." + stacktrace()
 
     override def pos(using Context): SourcePosition = field.sourcePos
 
   /** Promote a value under initialization to fully-initialized */
   case class PromoteError(msg: String, trace: Seq[Tree]) extends Error:
-    def show(using Context): String = msg
+    def show(using Context): String = msg + stacktrace()
 
   case class AccessCold(field: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
-      "Access field on a value with an unknown initialization status."
+      "Access field on a value with an unknown initialization status." + stacktrace()
 
   case class CallCold(meth: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
-      "Call method on a value with an unknown initialization" + "."
+      "Call method on a value with an unknown initialization." + stacktrace()
 
   case class CallUnknown(meth: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       val prefix = if meth.is(Flags.Method) then "Calling the external method " else "Accessing the external field"
-      prefix + meth.show + " may cause initialization errors" + "."
+      prefix + meth.show + " may cause initialization errors." + stacktrace()
 
   /** Promote a value under initialization to fully-initialized */
   case class UnsafePromotion(msg: String, trace: Seq[Tree], error: Error) extends Error:
-    override def issue(using Context): Unit =
-      report.warning(show, this.pos)
-
     def show(using Context): String =
       msg + stacktrace() + "\n" +
         "Promoting the value to fully initialized failed due to the following problem:\n" +
-        error.show + error.stacktrace()
+        error.show
 
   /** Unsafe leaking a non-hot value as constructor arguments */
   case class UnsafeLeaking(trace: Seq[Tree], error: Error) extends Error:
-    override def issue(using Context): Unit =
-      report.warning(show, this.pos)
-
     def show(using Context): String =
-      "Unsafe leaking of uninitialized value: the leaked value is used. " + stacktrace() + "\n" +
-        "The leaked uninitialized value is used as follows:\n" +
-        error.stacktrace(preamble = "")
+      "Problematic object instantiation with uninitialized arguments." + stacktrace() + "\n" +
+        "It leads to the following error during object initialization:\n" +
+        error.show
