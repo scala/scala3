@@ -36,8 +36,7 @@ The [new REPL](https://github.com/lampepfl/dotty/pull/2991) instead works by
 manipulating ASTs (Abstract Syntax Trees), this is more robust and will make it
 easier to develop new features: we have already implemented auto-completion
 support (by reusing the APIs we had created for
-the [Dotty IDE](https://dotty.epfl.ch/docs/usage/ide-support.html)) and we have
-plans for displaying API documentation in the REPL.
+the Dotty IDE and we have plans for displaying API documentation in the REPL.
 
 Note that the user interface of the REPL has not changed: like in the old REPL
 we use code adapted from the [Ammonite REPL](http://ammonite.io/#Ammonite-REPL)
@@ -77,7 +76,7 @@ using Dotty with sbt, see the
 
 ### IDE support
 It is very easy to start using the Dotty IDE in any Dotty project by following
-the [IDE guide](https://dotty.epfl.ch/docs/usage/ide-support.html).
+the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala3/getting-started.html).
 
 
 ### Standalone installation
