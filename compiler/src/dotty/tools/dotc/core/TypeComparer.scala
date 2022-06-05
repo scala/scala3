@@ -2659,6 +2659,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         fullyInstantiated(tp2) && !tp1.classSymbols.exists(_.derivesFrom(tp2.symbol))
       case (tp1: TypeRef, tp2: TermRef) if isEnumValue(tp2) =>
         fullyInstantiated(tp1) && !tp2.classSymbols.exists(_.derivesFrom(tp1.symbol))
+      case (tp1: RefinedType, tp2: RefinedType) if tp1.refinedName == tp2.refinedName =>
+        provablyDisjoint(tp1.parent, tp2.parent) || provablyDisjoint(tp1.refinedInfo, tp2.refinedInfo)
+      case (tp1: TypeAlias, tp2: TypeAlias) =>
+        provablyDisjoint(tp1.alias, tp2.alias)
       case (tp1: Type, tp2: Type) if defn.isTupleNType(tp1) =>
         provablyDisjoint(tp1.toNestedPairs, tp2)
       case (tp1: Type, tp2: Type) if defn.isTupleNType(tp2) =>
