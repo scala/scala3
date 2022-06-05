@@ -9,7 +9,7 @@ import Types._, Flags._, Symbols._, Names._, StdNames._, Constants._
 import TypeErasure.{erasure, hasStableErasure}
 import Decorators._
 import ProtoTypes._
-import Inferencing.fullyDefinedType
+import Inferencing.{fullyDefinedType, isFullyDefined}
 import ast.untpd
 import transform.SymUtils._
 import transform.TypeUtils._
@@ -30,21 +30,23 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
     formal.argInfos match
       case arg :: Nil =>
-        fullyDefinedType(arg, "ClassTag argument", span) match
-          case defn.ArrayOf(elemTp) =>
-            val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
-            if etag.tpe.isError then EmptyTreeNoError else withNoErrors(etag.select(nme.wrap))
-          case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
-            val sym = tp.typeSymbol
-            val classTag = ref(defn.ClassTagModule)
-            val tag =
-              if defn.SpecialClassTagClasses.contains(sym) then
-                classTag.select(sym.name.toTermName)
-              else
-                val clsOfType = escapeJavaArray(erasure(tp))
-                classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(clsOfType))
-            withNoErrors(tag.withSpan(span))
-          case tp => EmptyTreeNoError
+        if isFullyDefined(arg, ForceDegree.all) then
+          arg match
+            case defn.ArrayOf(elemTp) =>
+              val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
+              if etag.tpe.isError then EmptyTreeNoError else withNoErrors(etag.select(nme.wrap))
+            case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
+              val sym = tp.typeSymbol
+              val classTag = ref(defn.ClassTagModule)
+              val tag =
+                if defn.SpecialClassTagClasses.contains(sym) then
+                  classTag.select(sym.name.toTermName)
+                else
+                  val clsOfType = escapeJavaArray(erasure(tp))
+                  classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(clsOfType))
+              withNoErrors(tag.withSpan(span))
+            case tp => EmptyTreeNoError
+        else EmptyTreeNoError
       case _ => EmptyTreeNoError
   end synthesizedClassTag
 
