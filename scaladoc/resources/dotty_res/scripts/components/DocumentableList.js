@@ -1,193 +1,236 @@
-/**
- * @typedef { import("./Filter").Filter } Filter
- * @typedef { { ref: Element; name: string; description: string } } ListElement
- *  @typedef { [key: string, value: string][] } Dataset
- */
+window.addEventListener("DOMContentLoaded", () => {
 
-class DocumentableList extends Component {
-  constructor(props) {
-    super(props);
-
-    this.refs = {
-      tabs: findRefs(".names .tab[data-togglable]", findRef(".membersList")).concat(
-        findRefs(".contents h2[data-togglable]", findRef(".membersList"))
-      ),
-      sections: findRefs(".contents .tab[data-togglable]", findRef(".membersList")),
+  var toggler = document.getElementById("leftToggler");
+  if (toggler) {
+    toggler.onclick = function () {
+      document.getElementById("leftColumn").classList.toggle("open");
     };
-
-    this.state = {
-      list: new List(this.refs.tabs, this.refs.sections),
-    };
-
-    this.render(this.props);
   }
 
-  toggleElementDatasetVisibility(isVisible, ref) {
-    ref.dataset.visibility = isVisible
+  var elements = document.getElementsByClassName("documentableElement")
+  if (elements) {
+    for (i = 0; i < elements.length; i++) {
+      elements[i].onclick = function (e) {
+        if (!$(e.target).is("a") && e.fromSnippet !== true)
+          this.classList.toggle("expand")
+          this.querySelector(".show-content").classList.toggle("expand")
+      }
+    }
   }
 
-  toggleDisplayStyles(condition, ref) {
-    ref.style.display = condition ? null : 'none'
+  var memberLists = document.getElementsByClassName("membersList")
+  if (memberLists) {
+    for (i = 0; i < memberLists.length; i++) {
+      memberLists[i].children[0].onclick = function(e) {
+        this.classList.toggle("expand");
+        this.parentElement.classList.toggle("expand");
+      }
+    }
   }
 
-  render({ filter }) {
-    this.state.list.sectionsRefs.map(sectionRef => {
-      const isTabVisible = this.state.list
-        .getSectionListRefs(sectionRef)
-        .filter((listRef) => {
-          const isListVisible = this.state.list
-            .getSectionListElementsRefs(listRef)
-            .map(elementRef => this.state.list.toListElement(elementRef))
-            .filter(elementData => {
-              const isElementVisible = this.state.list.isElementVisible(elementData, filter);
+  var documentableLists = document.getElementsByClassName("documentableList")
+  if (documentableLists) {
+    for (i = 0; i < documentableLists.length; i++) {
+      documentableLists[i].children[0].onclick = function(e) {
+        this.classList.toggle("expand");
+        this.parentElement.classList.toggle("expand");
+      }
+    }
+  }
 
-              this.toggleDisplayStyles(isElementVisible, elementData.ref);
-              this.toggleElementDatasetVisibility(isElementVisible, elementData.ref);
+  $(".side-menu span").on('click', function () {
+    $(this).parent().toggleClass("expanded")
+  });
 
-              return isElementVisible;
-            }).length;
+  $(".ar").on('click', function (e) {
+    $(this).parent().parent().toggleClass("expanded")
+    $(this).toggleClass("expanded")
+    e.stopPropagation()
+  });
 
-          findRefs("span.groupHeader", listRef).forEach(h => {
-            const headerSiblings = this.state.list.getSectionListElementsRefs(h.parentNode).map(ref => this.state.list.toListElement(ref))
-            const isHeaderVisible = headerSiblings.filter(s => this.state.list.isElementVisible(s, filter)) != 0
+  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
+    el.lastChild.click()
+    el.first.addClass("expanded")
+    el.parent.addClass("expanded")
+  }))
 
-            this.toggleDisplayStyles(isHeaderVisible, h)
-          })
-
-          this.toggleDisplayStyles(isListVisible, listRef);
-
-          return isListVisible;
-        }).length;
-
-        const outerThis = this
-        this.state.list.getTabRefFromSectionRef(sectionRef).forEach(function(tabRef){
-          outerThis.toggleDisplayStyles(isTabVisible, tabRef);
-        })
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const id = entry.target.getAttribute('id');
+      if (entry.intersectionRatio > 0) {
+        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.add('active');
+      } else {
+        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.remove('active');
+      }
     });
-  }
-}
+  });
 
-class List {
-  /**
-   * @param tabsRef { Element[] }
-   * @param sectionRefs { Element[] }
-   */
-  constructor(tabsRef, sectionRefs) {
-    this._tabsRef = tabsRef;
-    this._sectionRefs = sectionRefs;
-  }
+  document.querySelectorAll('#content section[id]').forEach((section) => {
+    observer.observe(section);
+  });
 
-  get tabsRefs() {
-    return this._tabsRef.filter(tabRef => this.filterTab(this._getTogglable(tabRef)));
-  }
+  document.querySelectorAll(".side-menu a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
-  get sectionsRefs() {
-    return this._sectionRefs.filter(sectionRef => this.filterTab(this._getTogglable(sectionRef)));
-  }
-
-  /**
-  * @param name { string }
-  */
-  filterTab(name) {
-    return name !== "Linear supertypes" && name !== "Known subtypes" && name !== "Type hierarchy"
+  if (location.hash) {
+    var target = location.hash.substring(1);
+    // setting the 'expand' class on the top-level container causes undesireable styles
+    // to apply to the top-level docs, so we avoid this logic for that element.
+    if (target != 'container') {
+      var selected = document.getElementById(location.hash.substring(1));
+      if (selected) {
+        selected.classList.toggle("expand");
+      }
+    }
   }
 
-  /**
-   * @param sectionRef { Element }
-   */
-  getTabRefFromSectionRef(sectionRef) {
-    return this.tabsRefs.filter(
-      (tabRef) => this._getTogglable(tabRef) === this._getTogglable(sectionRef)
-    );
-  }
-
-  /**
-   * @param sectionRef { Element }
-   * @returns { Element[] }
-   */
-  getSectionListRefs(sectionRef) {
-    return findRefs(".documentableList", sectionRef);
-  }
-
-  /**
-   * @param listRef { Element }
-   * @returns { Element[] }
-   */
-  getSectionListElementsRefs(listRef) {
-    return findRefs(".documentableElement", listRef);
-  }
-
-  /**
-   * @param elementRef { Element }
-   * @returns { ListElement }
-   */
-  toListElement(elementRef) {
-    return {
-      ref: elementRef,
-      name: getElementTextContent(getElementNameRef(elementRef)),
-      description: getElementTextContent(getElementDescription(elementRef)),
+  var logo = document.getElementById("logo");
+  if (logo) {
+    logo.onclick = function () {
+      window.location = pathToRoot; // global variable pathToRoot is created by the html renderer
     };
   }
 
-  /**
-  * @param elementData { ListElement }
-  * @param filter { Filter }
-  */
-  isElementVisible(elementData, filter) {
-    return !areFiltersFromElementSelected()
-      ? false
-      : includesInputValue()
+  document.querySelectorAll('.documentableAnchor').forEach(elem => {
+    elem.addEventListener('click', event => {
+      var $temp = $("<input>")
+      $("body").append($temp)
+      var a = document.createElement('a')
+      a.href = $(elem).attr("link")
+      $temp.val(a.href).select();
+      document.execCommand("copy")
+      $temp.remove();
+    })
+  })
 
-    function includesInputValue() {
-      const lcValue = filter.value.toLowerCase()
-      return elementData.name.toLowerCase().includes(lcValue) 
-          || elementData.description.toLowerCase().includes(lcValue);
+  hljs.registerLanguage("scala", highlightDotty);
+  hljs.registerAliases(["dotty", "scala3"], "scala");
+  hljs.initHighlighting();
+
+  /* listen for the `F` key to be pressed, to focus on the member filter input (if it's present) */
+  document.body.addEventListener('keydown', e => {
+    if (e.key == "f") {
+      const tag = e.target.tagName;
+      if (tag != "INPUT" && tag != "TEXTAREA") {
+        const filterInput = findRef('.documentableFilter input.filterableInput');
+        if (filterInput != null) {
+          // if we focus during this event handler, the `f` key gets typed into the input
+          setTimeout(() => filterInput.focus(), 1);
+        }
+      }
     }
+  })
 
-    function areFiltersFromElementSelected() {
-      /** @type { Dataset } */
-      const dataset = Object.entries(elementData.ref.dataset)
+  // show/hide side menu on mobile view
+  const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
+  sideMenuToggler.addEventListener('click', _e => {
+    document.getElementById("leftColumn").classList.toggle("show")
+    document.getElementById("content").classList.toggle("sidebar-shown")
+    document.getElementById("toc").classList.toggle("sidebar-shown")
+    sideMenuToggler.classList.toggle("menu-shown")
+  })
 
-      /** @type { Dataset } */
-      const defaultFilters = Object.entries(Filter.defaultFilters)
-        .filter(([key]) => !!filter.filters[getFilterKey(key)])
+    // show/hide mobile menu on mobile view
+    const mobileMenuOpenIcon = document.getElementById("mobile-menu-toggle");
+    const mobileMenuCloseIcon = document.getElementById("mobile-menu-close");
+    mobileMenuOpenIcon.addEventListener('click', _e => {
+      document.getElementById("mobile-menu").classList.add("show")
+    })
+    mobileMenuCloseIcon.addEventListener('click', _e => {
+      document.getElementById("mobile-menu").classList.remove("show")
+    })
 
-       /** @type { Dataset } */
-      const defaultFiltersForMembersWithoutDataAttribute =
-        defaultFilters.reduce((acc, [key, value]) => {
-          const filterKey = getFilterKey(key)
-          const shouldAddDefaultFilter = !dataset.some(([k]) => k === filterKey)
-          return shouldAddDefaultFilter ? [...acc, [filterKey, value]] : acc
-        }, [])
 
-      /** @type { Dataset } */
-      const datasetWithAppendedDefaultFilters = dataset
-        .filter(([k]) => isFilterData(k))
-        .map(([k, v]) => {
-          const defaultFilter = defaultFilters.find(([defaultKey]) => defaultKey === k)
-          return defaultFilter ? [k, `${v},${defaultFilter[1]}`] : [k, v]
-        })
+  // when document is loaded graph needs to be shown
+});
 
-      const datasetWithDefaultFilters = [
-        ...defaultFiltersForMembersWithoutDataAttribute,
-        ...datasetWithAppendedDefaultFilters
-      ]
+var zoom;
+var transform;
 
-      const isVisible = datasetWithDefaultFilters
-        .every(([filterKey, value]) => {
-          const filterGroup = filter.filters[filterKey]
+function showGraph() {
+  document.getElementById("inheritance-diagram").classList.add("shown")
+  if ($("svg#graph").children().length == 0) {
+    var dotNode = document.querySelector("#dot")
 
-          return value.split(",").some(v => filterGroup && filterGroup[v].selected)
-        })
+    if (dotNode) {
+      var svg = d3.select("#graph");
+      var radialGradient = svg.append("defs").append("radialGradient").attr("id", "Gradient");
+      radialGradient.append("stop").attr("stop-color", "var(--aureole)").attr("offset", "20%");
+      radialGradient.append("stop").attr("stop-color", "var(--code-bg)").attr("offset", "100%");
 
-      return isVisible
+      var inner = svg.append("g");
+
+      // Set up zoom support
+      zoom = d3.zoom()
+        .on("zoom", function ({ transform }) {
+          inner.attr("transform", transform);
+        });
+      svg.call(zoom);
+
+      var render = new dagreD3.render();
+      var g = graphlibDot.read(dotNode.text);
+      g.graph().rankDir = 'BT';
+      g.nodes().forEach(function (v) {
+        g.setNode(v, {
+          labelType: "html",
+          label: g.node(v).label,
+          style: g.node(v).style,
+          id: g.node(v).id
+        });
+      });
+      g.setNode("node0Cluster", {
+        style: "fill: url(#Gradient);",
+        id: "node0Cluster"
+      });
+      g.setParent("node0", "node0Cluster");
+
+      g.edges().forEach(function (v) {
+        g.setEdge(v, {
+          arrowhead: "vee"
+        });
+      });
+      render(inner, g);
+
+      // Set the 'fit to content graph' upon landing on the page
+      var bounds = svg.node().getBBox();
+      var parent = svg.node().parentElement;
+      var fullWidth = parent.clientWidth || parent.parentNode.clientWidth,
+        fullHeight = parent.clientHeight || parent.parentNode.clientHeight;
+      var width = bounds.width,
+        height = bounds.height;
+      var midX = bounds.x + width / 2,
+        midY = bounds.y + height / 2;
+      if (width == 0 || height == 0) return; // nothing to fit
+      var scale = Math.min(fullWidth / width, fullHeight / height) * 0.99; // 0.99 to make a little padding
+      var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+
+      transform = d3.zoomIdentity
+        .translate(translate[0], translate[1])
+        .scale(scale);
+
+      svg.call(zoom.transform, transform);
+
+      // This is nasty hack to prevent DagreD3 from stretching cluster. There is similar issue on github since October 2019, but haven't been answered yet. https://github.com/dagrejs/dagre-d3/issues/377
+      var node0 = d3.select("g#node0")._groups[0][0];
+      var node0Rect = node0.children[0];
+      var node0Cluster = d3.select("g#node0Cluster")._groups[0][0];
+      var node0ClusterRect = node0Cluster.children[0];
+      node0Cluster.setAttribute("transform", node0.getAttribute("transform"));
+      node0ClusterRect.setAttribute("width", +node0Rect.getAttribute("width") + 80);
+      node0ClusterRect.setAttribute("height", +node0Rect.getAttribute("height") + 80);
+      node0ClusterRect.setAttribute("x", node0Rect.getAttribute("x") - 40);
+      node0ClusterRect.setAttribute("y", node0Rect.getAttribute("y") - 40);
     }
   }
-
-  /**
-  * @private
-  * @param elementData { ListElement }
-  */
-  _getTogglable = elementData => elementData.dataset.togglable;
 }
 
+function hideGraph() {
+  document.getElementById("inheritance-diagram").classList.remove("shown")
+}
+
+function zoomOut() {
+  var svg = d3.select("#graph");
+  svg
+    .transition()
+    .duration(2000)
+    .call(zoom.transform, transform);
+}

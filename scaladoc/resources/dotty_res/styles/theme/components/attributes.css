@@ -3,6 +3,12 @@
   overflow: hidden;
   padding: 0;
   margin: 0;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: calc(6 * var(--base-spacing));
+}
+
+.attributes .attributes {
+  border-bottom: none;
 }
 
 .attributes p {
@@ -32,15 +38,19 @@
 }
 
 .attributes > dd > .attributes > dt {
-  border-top: none;
+  border: none;
   padding: 0;
   text-align: initial;
   width: 20%;
 }
 
 .attributes > dd > .attributes > dd {
-  border-top: none;
+  border: none;
   padding: 0;
   text-align: initial;
   width: 80%;
+}
+
+.documentableElement .attributes {
+  margin-bottom: 0;
 }

@@ -18,6 +18,16 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  var memberLists = document.getElementsByClassName("membersList")
+  if (memberLists) {
+    for (i = 0; i < memberLists.length; i++) {
+      memberLists[i].children[0].onclick = function(e) {
+        this.classList.toggle("expand");
+        this.parentElement.classList.toggle("expand");
+      }
+    }
+  }
+
   $(".side-menu span").on('click', function () {
     $(this).parent().toggleClass("expanded")
   });

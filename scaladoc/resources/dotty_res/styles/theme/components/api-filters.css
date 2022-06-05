@@ -1,9 +1,10 @@
-.documentableFilter {
+#content .documentableFilter {
   display: flex;
   flex-wrap: wrap;
   z-index: 2;
   row-gap: calc(2 * var(--base-spacing));
   position: relative;
+  margin-bottom: calc(6 * var(--base-spacing));
 }
 
 .filtersContainer {

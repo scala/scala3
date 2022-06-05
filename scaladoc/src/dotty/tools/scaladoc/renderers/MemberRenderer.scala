@@ -192,6 +192,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
     if members.isEmpty then Nil else
     div(cls := "documentableList")(
+      button(cls := "icon-button show-content"),
       h3(cls:="groupHeader")(name),
       members.sortBy {
         case m: Member => m.name
@@ -267,6 +268,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       val content = rawGroups.toSeq.sortBy(_._1.prio).flatMap {
         case (group, members) =>
           Seq(div(cls := "documentableList")(
+            button(cls := "icon-button show-content"),
             h3(group.name),
             group.description,
             members.map(member)
@@ -300,7 +302,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           MGroup(span(cls := "groupHeader")(sig.map(renderElement(_))), members.sortBy(_.name).toSeq, on.name)
       }.toSeq
 
-    div(cls := "membersList")(renderTabs(
+    div(cls := "membersList")(
+    button(cls := "icon-button show-content"),
+    renderTabs(
       singleSelection = false,
       buildGroup("Packages", Seq(
         ("", rest.filter(m => m.kind == Kind.Package)),

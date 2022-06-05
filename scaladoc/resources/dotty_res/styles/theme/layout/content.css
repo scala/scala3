@@ -261,3 +261,49 @@
 #content > div > * {
   margin-bottom: calc(3 * var(--base-spacing));
 }
+
+.membersList {
+  position: relative;
+}
+
+.membersList h2 {
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: calc(3 * var(--base-spacing));
+}
+
+.membersList > button {
+  position: absolute;
+  right: 0;
+  top: calc(0.5 * var(--base-spacing));
+}
+
+.membersList .documentableList {
+  display: none;
+}
+
+.membersList.expand .documentableList {
+  display: block;
+}
+
+.documentableList {
+  position: relative;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.documentableList.expand {
+  padding-bottom: calc(3 * var(--base-spacing));
+}
+
+.documentableList > button {
+  position: absolute;
+  right: 0;
+  top: calc(0.5 * var(--base-spacing));
+}
+
+.documentableList .documentableElement {
+  display: none;
+}
+
+.documentableList.expand .documentableElement {
+  display: block;
+}
