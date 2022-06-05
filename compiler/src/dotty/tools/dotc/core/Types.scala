@@ -5989,7 +5989,7 @@ object Types {
   /** A range of possible types between lower bound `lo` and upper bound `hi`.
    *  Only used internally in `ApproximatingTypeMap`.
    */
-  private case class Range(lo: Type, hi: Type) extends UncachedGroundType {
+  private[core] case class Range(lo: Type, hi: Type) extends UncachedGroundType {
     assert(!lo.isInstanceOf[Range])
     assert(!hi.isInstanceOf[Range])
 

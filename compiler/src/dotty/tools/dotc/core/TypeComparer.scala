@@ -2912,6 +2912,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         case cas: HKTypeLambda =>
           caseLambda = constrained(cas)
           caseLambda.resultType
+        case _: Range =>
+          return Some(NoType)
         case _ =>
           cas
       }
