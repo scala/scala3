@@ -60,4 +60,12 @@ object Predef:
     inline def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)
 
+  extension [T](it: java.lang.Iterable[T])
+    def foreach(f: java.util.function.Consumer[T]): Unit =
+      it.forEach(f)
+
+  extension [T](s: java.util.stream.Stream[T])
+    def foreach(f: java.util.function.Consumer[T]): Unit =
+      s.forEach(f)
+
 end Predef
