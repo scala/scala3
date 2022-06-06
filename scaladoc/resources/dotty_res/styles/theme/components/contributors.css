@@ -11,7 +11,7 @@
 
 .content-contributors h1 {
   color: var(--text-primary);
-  margin-bottom: calc(3 * var(--base-spacing));
+  padding-bottom: calc(3 * var(--base-spacing));
 }
 
 .content-contributors .contributors-container div img {

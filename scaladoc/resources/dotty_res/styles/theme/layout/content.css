@@ -307,3 +307,7 @@
 .documentableList.expand .documentableElement {
   display: block;
 }
+
+#content section {
+  margin-top: calc(6 * var(--base-spacing));
+}
