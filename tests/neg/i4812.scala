@@ -108,6 +108,12 @@ object Test:
     x match
       case x: B => x
 
+  def test12 =
+    class Foo
+    class Bar
+    val x: Foo | Bar = new Foo
+    x.isInstanceOf[Foo]
+
   def main(args: Array[String]): Unit =
     test(1)
     val x: String = test("") // was: ClassCastException: java.lang.Integer cannot be cast to java.lang.String

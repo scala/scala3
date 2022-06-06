@@ -154,7 +154,7 @@ object TypeTestsCasts {
       case tp2: RefinedType     => recur(X, tp2.parent) && TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2)
       case tp2: RecType         => recur(X, tp2.parent)
       case _
-      if P.classSymbol.isLocal && P.classSymbol.isInaccessibleChildOf(X.classSymbol) => // 8
+      if P.classSymbol.isLocal && foundClasses(X, Nil).exists(P.classSymbol.isInaccessibleChildOf) => // 8
         false
       case _                    => true
     })
@@ -177,15 +177,6 @@ object TypeTestsCasts {
 
         def derivedTree(expr1: Tree, sym: Symbol, tp: Type) =
           cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), List(TypeTree(tp)))
-
-        def effectiveClass(tp: Type): Symbol =
-          if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))
-          else if tp.isRef(defn.AnyValClass) then defn.AnyClass
-          else tp.classSymbol
-
-        def foundClasses(tp: Type, acc: List[Symbol]): List[Symbol] = tp.dealias match
-          case OrType(tp1, tp2) => foundClasses(tp2, foundClasses(tp1, acc))
-          case _ => effectiveClass(tp) :: acc
 
         def inMatch =
           tree.fun.symbol == defn.Any_typeTest ||  // new scheme
@@ -376,4 +367,13 @@ object TypeTestsCasts {
     }
     interceptWith(expr)
   }
+
+  private def effectiveClass(tp: Type)(using Context): Symbol =
+    if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))
+    else if tp.isRef(defn.AnyValClass) then defn.AnyClass
+    else tp.classSymbol
+
+  private def foundClasses(tp: Type, acc: List[Symbol])(using Context): List[Symbol] = tp.dealias match
+    case OrType(tp1, tp2) => foundClasses(tp2, foundClasses(tp1, acc))
+    case _ => effectiveClass(tp) :: acc
 }
