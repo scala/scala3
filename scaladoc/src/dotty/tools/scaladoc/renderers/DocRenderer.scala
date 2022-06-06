@@ -64,7 +64,7 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
           case 5 => h5(cls := "h50")(content)
           case 6 => h6(cls := "h50")(content)
     case Paragraph(text) => p(renderElement(text))
-    case Code(data: String) => raw(SnippetRenderer.renderWikiSnippet(data))
+    case Code(data: String) => raw(SnippetRenderer.renderSnippet(data))
     case HorizontalRule => hr
     case Table(header, columns, rows) =>
       table(

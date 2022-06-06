@@ -158,6 +158,10 @@
   color: var(--code-syntax-highlighting-deletion);
 }
 
+.hljs-addition {
+  color: var(--code-syntax-highlighting-addition);
+}
+
 .hljs-variable {
   color: var(--code-syntax-highlighting-variable);
 }
