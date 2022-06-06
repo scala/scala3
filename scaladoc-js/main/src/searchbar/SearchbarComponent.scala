@@ -30,7 +30,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         " extension on " + p.extensionTarget
       }
 
-      div(cls := "scaladoc-searchbar-row monospace", "result" := "")(
+      div(cls := "scaladoc-searchbar-row mono-small-inline", "result" := "")(
         a(href := location)(
           p.fullName.zipWithIndex.map((c, i) => if boldChars.contains(i) then b(c.toString) else c.toString),
           span(i(extensionTargetMessage)),
@@ -53,7 +53,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
           Globals.pathToRoot + m.pageLocation.substring(1)
         }
 
-      div(cls := "scaladoc-searchbar-row monospace", "result" := "", "inkuire-result" := "", "mq" := m.mq.toString)(
+      div(cls := "scaladoc-searchbar-row mono-small-inline", "result" := "", "inkuire-result" := "", "mq" := m.mq.toString)(
         a(href := location)(
           m.functionName,
           span(cls := "pull-right scaladoc-searchbar-inkuire-signature")(m.prettifiedSignature)
@@ -73,7 +73,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
 
   extension (rq: RecentQuery)
     def toHTML =
-      div(cls := "scaladoc-searchbar-row monospace", "result" := "")(
+      div(cls := "scaladoc-searchbar-row mono-small-inline", "result" := "")(
         a(
           span(rq.query)
         )
@@ -87,7 +87,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       }
 
   def createKindSeparator(kind: String, customClass: String = "") =
-    div(cls := "scaladoc-searchbar-row monospace", "divider" := "")(
+    div(cls := "scaladoc-searchbar-row mono-small-inline", "divider" := "")(
       span(cls := s"micon ${kind.take(2)} $customClass"),
       span(kind)
     )
@@ -96,7 +96,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     val result: List[(PageEntry, Set[Int])] = engine.query(matchers)
     val fragment = document.createDocumentFragment()
     def createLoadMoreElement =
-      div(cls := "scaladoc-searchbar-row monospace", "loadmore" := "")(
+      div(cls := "scaladoc-searchbar-row mono-small-inline", "loadmore" := "")(
         a(
           span("Load more")
         )
@@ -158,7 +158,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     )
   extension (s: String)
     def toHTMLError =
-      div(cls := "scaladoc-searchbar-row monospace", "error" := "")(
+      div(cls := "scaladoc-searchbar-row mono-small-inline", "error" := "")(
         span(cls := "search-error")(s)
       )
 
