@@ -22,3 +22,7 @@
 60 |      case prev: A => // error: the type test for A cannot be checked at runtime
    |           ^
    |           the type test for A cannot be checked at runtime
+-- Error: tests/neg/i4812.scala:96:11 ----------------------------------------------------------------------------------
+96 |      case x: B => // error: the type test for B cannot be checked at runtime
+   |           ^
+   |           the type test for B cannot be checked at runtime

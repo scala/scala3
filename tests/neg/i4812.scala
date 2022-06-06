@@ -80,6 +80,34 @@ object Test:
       case prev: A => prev.elem
       case _       => prev = new A(x); x
 
+  def test9 =
+    trait A
+    class B extends A
+    val x: A = new B
+    x match
+      case x: B => x
+
+  sealed class A
+  var prevA: A = _
+  def test10: A =
+    val methodCallId = System.nanoTime()
+    class B(val id: Long) extends A
+    prevA match
+      case x: B => // error: the type test for B cannot be checked at runtime
+        x.ensuring(x.id == methodCallId, s"Method call id $methodCallId != ${x.id}")
+      case _    =>
+        val x = new B(methodCallId)
+        prevA = x
+        x
+
+  def test11 =
+    trait A
+    trait B
+    class C extends A with B
+    val x: A = new C
+    x match
+      case x: B => x
+
   def main(args: Array[String]): Unit =
     test(1)
     val x: String = test("") // was: ClassCastException: java.lang.Integer cannot be cast to java.lang.String

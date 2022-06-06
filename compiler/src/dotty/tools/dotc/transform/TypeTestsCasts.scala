@@ -31,7 +31,7 @@ object TypeTestsCasts {
   import typer.Inferencing.maximizeType
   import typer.ProtoTypes.constrained
 
-  /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
+  /** Whether `(x: X).isInstanceOf[P]` can be checked at runtime?
    *
    *  First do the following substitution:
    *  (a) replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType
@@ -48,7 +48,8 @@ object TypeTestsCasts {
    *     (c) maximize `pre.F[Xs]` and check `pre.F[Xs] <:< P`
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
-   *  8. otherwise, TRUE
+   *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, FALSE
+   *  9. otherwise, TRUE
    */
   def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = atPhase(Phases.refchecksPhase.next) {
     // Run just before ElimOpaque transform (which follows RefChecks)
@@ -58,7 +59,7 @@ object TypeTestsCasts {
       def apply(tp: Type) = tp match {
         case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           WildcardType
-        case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedAnnot =>
+        case tp if tp.hasAnnotation(defn.UncheckedAnnot) =>
           WildcardType
         case _ => mapOver(tp)
       }
@@ -123,11 +124,6 @@ object TypeTestsCasts {
 
     }
 
-    lazy val scrutineeIsUnchecked = X.widenTermRefExpr.existsPart {
-      case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedAnnot => true
-      case _ => false
-    }
-
     def recur(X: Type, P: Type): Boolean = (X <:< P) || (P.dealias match {
       case _: SingletonType     => true
       case _: TypeProxy
@@ -157,26 +153,13 @@ object TypeTestsCasts {
       case AnnotatedType(t, _)  => recur(X, t)
       case tp2: RefinedType     => recur(X, tp2.parent) && TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2)
       case tp2: RecType         => recur(X, tp2.parent)
-      case tp2
-      if tp2.typeSymbol.isLocal && !scrutineeIsUnchecked =>
-        val sym = tp2.typeSymbol
-        val methodSymbol = sym.owner
-        val tpSyms = typer.ErrorReporting.substitutableTypeSymbolsInScope(sym).toSet
-        def isAccessible(sym: Symbol): Boolean = sym == methodSymbol || sym.isType && isAccessible(sym.owner)
-        val seen = scala.collection.mutable.Set.empty[Type]
-        def hasPoison(tp: Type): Boolean =
-          seen += tp
-          tp.baseClasses.filter(isAccessible).exists { sym =>
-            sym.info.decls.exists { sym =>
-              sym.info.existsPart(tp => tpSyms.contains(tp.typeSymbol))
-                || !seen.contains(sym.info) && isAccessible(sym.info.typeSymbol.maybeOwner) && hasPoison(sym.info)
-            }
-          }
-        !hasPoison(tp2)
+      case _
+      if P.classSymbol.isLocal && P.classSymbol.isInaccessibleChildOf(X.classSymbol) => // 8
+        false
       case _                    => true
     })
 
-    val res = recur(X.widen, replaceP(P))
+    val res = X.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot) || recur(X.widen, replaceP(P))
 
     debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
 
