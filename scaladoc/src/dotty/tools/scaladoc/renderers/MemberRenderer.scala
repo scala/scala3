@@ -2,6 +2,7 @@ package dotty.tools.scaladoc
 package renderers
 
 import scala.collection.immutable.SortedMap
+import scala.util.chaining._
 import util.HTML._
 import collection.JavaConverters._
 import dotty.tools.scaladoc.translators.FilterAttributes
@@ -17,7 +18,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def doc(m: Member): Seq[AppliedTag] =  m.docs.fold(Nil)(d => Seq(renderDocPart(d.body)))
 
-  def tableRow(name: String, content: TagArg) = Seq(dt(cls := "body-small")(name), dd(cls := "body-medium")(content))
+  def tableRow(name: String, content: TagArg*) = Seq(dt(cls := "body-small")(name), dd(cls := "body-medium")(content*))
 
   def defintionClasses(m: Member) = m.origin match
     case Origin.Overrides(defs) =>
@@ -92,10 +93,12 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val content = (
       Seq(
         since.map(s => code("[Since version ", parameter(s), "] ")),
-        message.map(m => parameter(m)))
-      ++ m.docs.map(_.deprecated.toSeq.map(renderDocPart))
-    ).flatten
-    Seq(dt("Deprecated"), dd(content:_*))
+        message.map(m => parameter(m)),
+      ) ++ m.docs.map(_.deprecated.toSeq.map(renderDocPart))
+      ).flatten.pipe { c =>
+        if c.isEmpty then Seq("true") else c
+      }
+    tableRow("Deprecated", content*)
   }
 
   def memberInfo(m: Member, withBrief: Boolean = false): Seq[AppliedTag] =
@@ -108,7 +111,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Option.when(withBrief)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
       Some(
         div(cls := "cover")(
-          div(cls := "doc")(bodyContents),
+          div(cls := "doc body-medium")(bodyContents),
           dl(cls := "attributes")(
             docAttributes(m),
             companion(m),
@@ -191,9 +194,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
     if members.isEmpty then Nil else
-    div(cls := "documentableList")(
-      button(cls := "icon-button show-content"),
-      h3(cls:="groupHeader")(name),
+    div(cls := "documentableList expand")(
+      button(cls := "icon-button show-content expand"),
+      h3(cls := "groupHeader h200")(name),
       members.sortBy {
         case m: Member => m.name
         case MGroup(_, _, name) => name
@@ -245,7 +248,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val children = all.flatten.flatten
     if children.isEmpty then emptyTab
-    else Tab(name, name, h2(tabAttr(name))(name) +: children, "selected")
+    else Tab(name, name, h2(tabAttr(name), cls := "h300")(name) +: children, "selected")
 
   case class ExpandedGroup(name: AppliedTag, description: AppliedTag, prio: Int)
 
@@ -268,8 +271,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       val content = rawGroups.toSeq.sortBy(_._1.prio).flatMap {
         case (group, members) =>
           Seq(div(cls := "documentableList")(
-            button(cls := "icon-button show-content"),
-            h3(group.name),
+            button(cls := "icon-button show-content expand"),
+            h3(cls := "h200")(group.name),
             group.description,
             members.map(member)
           ))
@@ -302,8 +305,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           MGroup(span(cls := "groupHeader")(sig.map(renderElement(_))), members.sortBy(_.name).toSeq, on.name)
       }.toSeq
 
-    div(cls := "membersList")(
-    button(cls := "icon-button show-content"),
+    div(cls := "membersList expand")(
+    button(cls := "icon-button show-content expand"),
     renderTabs(
       singleSelection = false,
       buildGroup("Packages", Seq(

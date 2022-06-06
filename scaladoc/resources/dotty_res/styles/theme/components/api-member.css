@@ -3,7 +3,7 @@
   padding: calc(3 * var(--base-spacing));
   border-radius: 4px;
   margin-bottom: calc(3 * var(--base-spacing));
-  color: var(--code-method-highlighting-code-fg);
+  color: var(--text-primary);
   position: relative;
 }
 
@@ -56,6 +56,10 @@
 
 #content .documentableElement a:hover {
   text-decoration: underline;
+}
+
+#content .documentableElement p {
+  color: var(--text-primary);
 }
 
 [t="k"] {

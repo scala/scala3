@@ -18,6 +18,16 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  var documentableLists = document.getElementsByClassName("documentableList")
+  if (documentableLists) {
+    for (i = 0; i < documentableLists.length; i++) {
+      documentableLists[i].children[0].onclick = function(e) {
+        this.classList.toggle("expand");
+        this.parentElement.classList.toggle("expand");
+      }
+    }
+  }
+
   var memberLists = document.getElementsByClassName("membersList")
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {

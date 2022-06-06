@@ -43,7 +43,7 @@ class ScalaSignatureProvider:
       case Kind.Package =>
         MemberSignature(
           Nil,
-          builder.keyword("package"),
+          builder.keyword("package "),
           builder.name(documentable.name, documentable.dri),
           Nil
         )

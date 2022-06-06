@@ -155,3 +155,12 @@ object SnippetRenderer:
       node.hasContext,
       node.compilationResult.fold(false)(_.isSuccessful)
     )
+
+  def renderWikiSnippet(content: String): String =
+    renderSnippetWithMessages(
+      None,
+      content.split("\n").map(_ + "\n").toSeq,
+      Seq.empty,
+      false,
+      false
+    )
