@@ -2344,12 +2344,12 @@ import transform.SymUtils._
   class CaseClassMissingNonImplicitParamList(cdef: untpd.TypeDef)(using Context)
     extends SyntaxMsg(CaseClassMissingNonImplicitParamListID) {
     def msg =
-      em"""|A ${hl("case class")} must have at least one non-implicit parameter list"""
+      em"""|A ${hl("case class")} must have at least one leading non-implicit parameter list"""
 
     def explain =
-      em"""|${cdef.name} must have at least one non-implicit parameter list,
+      em"""|${cdef.name} must have at least one leading non-implicit parameter list,
            | if you're aiming to have a case class parametrized only by implicit ones, you should
-           | add an explicit ${hl("()")} as a parameter list to ${cdef.name}.""".stripMargin
+           | add an explicit ${hl("()")} as the first parameter list to ${cdef.name}.""".stripMargin
   }
 
   class EnumerationsShouldNotBeEmpty(cdef: untpd.TypeDef)(using Context)
