@@ -157,10 +157,12 @@ object SnippetRenderer:
     )
 
   def renderWikiSnippet(content: String): String =
-    renderSnippetWithMessages(
-      None,
-      content.split("\n").map(_ + "\n").toSeq,
-      Seq.empty,
-      false,
-      false
-    )
+    val codeLines = content.split("\n").map(_ + "\n").toSeq
+    div(cls := "snippet mono-small-block")(
+      pre(
+        code(
+          raw(wrapCodeLines(codeLines).map(_.toHTML).mkString)
+        )
+      ),
+      div(cls := "buttons")()
+    ).toString

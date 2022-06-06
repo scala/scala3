@@ -111,7 +111,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Option.when(withBrief)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
       Some(
         div(cls := "cover")(
-          div(cls := "doc body-medium")(bodyContents),
+          div(cls := "doc")(bodyContents),
           dl(cls := "attributes")(
             docAttributes(m),
             companion(m),

@@ -313,7 +313,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       div(id := "scaladoc-searchBar"),
       div(id := "main")(
         parentsHtml,
-        div(id := "content")(
+        div(id := "content", cls := "body-medium")(
           content.content,
           renderTableOfContents(content.toc).fold(Nil) { toc =>
             div(id := "toc", cls:="body-small")(
