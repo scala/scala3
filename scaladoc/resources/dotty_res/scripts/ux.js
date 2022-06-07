@@ -54,6 +54,23 @@ window.addEventListener("DOMContentLoaded", () => {
     el.parent.addClass("expanded")
   }))
 
+  document.querySelectorAll(".supertypes").forEach(el => el.firstChild.addEventListener('click', () => {
+    el.classList.toggle("collapsed");
+    el.firstChild.classList.toggle("expand");
+  }))
+
+
+  document.querySelectorAll(".subtypes").forEach(el => el.firstChild.addEventListener('click', () => {
+    el.classList.toggle("collapsed");
+    el.firstChild.classList.toggle("expand");
+  }))
+
+  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
+    el.lastChild.click()
+    el.first.addClass("expanded")
+    el.parent.addClass("expanded")
+  }))
+
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       const id = entry.target.getAttribute('id');

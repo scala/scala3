@@ -3,4 +3,27 @@
   padding: calc(3 * var(--base-spacing));
   padding-bottom: calc(1.5 * var(--base-spacing));
   overflow-x: scroll;
+  position: relative;
+}
+
+.supertypes > span {
+  position: absolute;
+  top: calc(1 * var(--base-spacing));
+  right: calc(1 * var(--base-spacing));
+}
+
+.supertypes > div {
+  display: none;
+}
+
+.supertypes > div:nth-child(2),
+.supertypes > div:nth-child(3),
+.supertypes > div:nth-child(4),
+.supertypes > div:nth-child(5),
+.supertypes > div:nth-child(6) {
+  display: block;
+}
+
+.supertypes.collapsed > div {
+  display: block;
 }

@@ -365,9 +365,11 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           ))
         case _ => Nil
 
-      def signatureList(list: Seq[LinkToType], className: String = ""): Seq[AppliedTag] =
+      def signatureList(list: Seq[LinkToType], className: String = "", expandable: Boolean): Seq[AppliedTag] =
         if list.isEmpty then Nil
-         else Seq(div(cls := s"mono-small-inline $className")(list.map(link =>
+         else Seq(div(cls := s"mono-small-inline $className")(
+          if(expandable) then span(cls := "icon-button show-content") else span(),
+         list.map(link =>
           div(link.kind.name," ", link.signature.map(renderElement(_)))
         )))
 
@@ -377,8 +379,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           div(link.signature.map(renderElement(_)))
         }})
 
-      val supertypes = signatureList(m.parents, "supertypes")
-      val subtypes = signatureList(m.knownChildren, "subtypes")
+      val supertypes = signatureList(m.parents, "supertypes", m.parents.length > 5)
+      val subtypes = signatureList(m.knownChildren, "subtypes", m.knownChildren.length > 5)
       val selfType = selfTypeList(m.selfType.toList)
 
       Seq(
