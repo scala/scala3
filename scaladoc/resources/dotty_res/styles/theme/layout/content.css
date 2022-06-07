@@ -80,12 +80,6 @@
   text-decoration: underline;
 }
 
-#content :not(pre)>code {
-  color: var(--code-props-content);
-  background-color: var(--code-props-background);
-  font-family: "FiraCode-Regular";
-}
-
 .breadcrumbs {
   display: none;
 }
@@ -243,6 +237,10 @@
   padding: calc(2 * var(--base-spacing));
   background-color: var(--indigo3);
   border-radius: 4px;
+}
+
+.companion-badge a {
+  margin-right: calc(0.5 * var(--base-spacing));
 }
 
 .companion-badge span {
