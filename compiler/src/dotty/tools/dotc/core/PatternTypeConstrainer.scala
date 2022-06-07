@@ -138,13 +138,28 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val andType = buildAndType(baseClasses)
           !andType.exists || constrainPatternType(pat, andType)
         case _ =>
-          val upcasted: Type = scrut match {
-            case scrut: TypeProxy => scrut.superType
-            case _ => NoType
+          def tryGadtBounds = scrut match {
+            case scrut: TypeRef =>
+              ctx.gadt.bounds(scrut.symbol) match {
+                case tb: TypeBounds =>
+                  val hi = tb.hi
+                  constrainPatternType(pat, hi)
+                case null => true
+              }
+            case _ => true
           }
-          if (upcasted.exists)
-            tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
-          else true
+
+          def trySuperType =
+            val upcasted: Type = scrut match {
+              case scrut: TypeProxy =>
+                scrut.superType
+              case _ => NoType
+            }
+            if (upcasted.exists)
+              tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
+            else true
+
+          tryGadtBounds && trySuperType
       }
     }
 
