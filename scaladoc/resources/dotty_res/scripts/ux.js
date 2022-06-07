@@ -171,8 +171,8 @@ function showGraph() {
     if (dotNode) {
       var svg = d3.select("#graph");
       var radialGradient = svg.append("defs").append("radialGradient").attr("id", "Gradient");
-      radialGradient.append("stop").attr("stop-color", "var(--aureole)").attr("offset", "20%");
-      radialGradient.append("stop").attr("stop-color", "var(--code-bg)").attr("offset", "100%");
+      radialGradient.append("stop").attr("stop-color", "var(--yellow9)").attr("offset", "30%");
+      radialGradient.append("stop").attr("stop-color", "var(--background-default)").attr("offset", "100%");
 
       var inner = svg.append("g");
 
@@ -190,8 +190,10 @@ function showGraph() {
         g.setNode(v, {
           labelType: "html",
           label: g.node(v).label,
-          style: g.node(v).style,
-          id: g.node(v).id
+          class: g.node(v).class,
+          id: g.node(v).id,
+          rx: "4px",
+          ry: "4px"
         });
       });
       g.setNode("node0Cluster", {
@@ -202,9 +204,30 @@ function showGraph() {
 
       g.edges().forEach(function (v) {
         g.setEdge(v, {
-          arrowhead: "vee"
+          arrowhead: "hollowPoint",
         });
       });
+
+      render.arrows().hollowPoint = function normal(parent, id, edge, type) {
+        var marker = parent.append("marker")
+          .attr("id", id)
+          .attr("viewBox", "0 0 10 10")
+          .attr("refX", 9)
+          .attr("refY", 5)
+          .attr("markerUnits", "strokeWidth")
+          .attr("markerWidth", 12)
+          .attr("markerHeight", 12)
+          .attr("orient", "auto");
+
+        var path = marker.append("path")
+          .attr("d", "M 0 0 L 10 5 L 0 10 z")
+          .style("stroke-width", 1)
+          .style("stroke-dasharray", "1,0")
+          .style("fill", "var(--grey12)")
+          .style("stroke", "var(--grey12)");
+        dagreD3.util.applyStyle(path, edge[type + "Style"]);
+      };
+
       render(inner, g);
 
       // Set the 'fit to content graph' upon landing on the page

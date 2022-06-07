@@ -5,18 +5,20 @@ import util.HTML._
 
 object DotDiagramBuilder:
   def build(diagram: HierarchyGraph, renderer: SignatureRenderer)(using DocContext): String =
-    def getStyle(kind: Kind) = kind match
-      case _ : Kind.Class => "fill: #45AD7D;"
-      case Kind.Object => "fill: #285577;"
-      case _ : Kind.Trait => "fill: #1CAACF;"
-      case e if e.isInstanceOf[Kind.Enum] => "fill: #B66722;"
-      case e if e.isInstanceOf[Kind.EnumCase] => "fill: #B66722;"
-      case other => report.error(s"unexpected value: $other")
+    def getClasses(kind: Kind): String =
+      val kindClass = kind match
+        case _ : Kind.Class => "class"
+        case Kind.Object => "object"
+        case _ : Kind.Trait => "trait"
+        case e if e.isInstanceOf[Kind.Enum] => "enum"
+        case e if e.isInstanceOf[Kind.EnumCase] => "enumcase"
+        case other => report.error(s"unexpected value: $other")
+      s"$kindClass vertex"
 
     val vWithId = diagram.verteciesWithId
     val sealedNodes = diagram.sealedNodes
     val vertecies = vWithId.toList.sortBy((_, id) => id).map { (vertex, id) =>
-      s"""node${id} [id=node${id}, label="${getHtmlLabel(vertex, renderer, sealedNodes)}", style="${getStyle(vertex.kind)}"];\n"""
+      s"""node${id} [id=node${id}, label="${getHtmlLabel(vertex, renderer, sealedNodes)}", class="${getClasses(vertex.kind)}"];\n"""
     }.mkString
 
     val edges = diagram.edges.map { (from, to) =>
