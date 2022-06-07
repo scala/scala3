@@ -3640,7 +3640,8 @@ object Types {
         (if status == TrueDeps then status else status | provisional).toByte
       def compute(status: DependencyStatus, tp: Type, theAcc: TypeAccumulator[DependencyStatus] | Null): DependencyStatus =
         def applyPrefix(tp: NamedType) =
-          if tp.currentSymbol.isStatic then status
+          if tp.isInstanceOf[SingletonType] && tp.currentSymbol.isStatic
+          then status // Note: a type ref with static symbol can still be dependent since the symbol might be refined in the enclosing type. See pos/15331.scala.
           else compute(status, tp.prefix, theAcc)
         if status == TrueDeps then status
         else tp match
