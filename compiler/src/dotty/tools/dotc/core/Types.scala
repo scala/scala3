@@ -175,6 +175,7 @@ object Types {
         // see: tests/explicit-nulls/pos/flow-stable.scala.disabled
         tp.tp1.isStable && (realizability(tp.tp2) eq Realizable) ||
         tp.tp2.isStable && (realizability(tp.tp1) eq Realizable)
+      case AppliedType(tycon: TypeRef, args) if defn.isCompiletimeAppliedType(tycon.symbol) && args.forall(_.isStable) => true
       case _ => false
     }
 
