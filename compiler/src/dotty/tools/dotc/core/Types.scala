@@ -4242,7 +4242,7 @@ object Types {
             // final val one = 1
             // type Two = one.type + one.type
             // ```
-            case tp: TermRef => tp.underlying
+            case tp: TypeProxy if tp.underlying.isStable => tp.underlying.fixForEvaluation
             case tp => tp
           }
 
