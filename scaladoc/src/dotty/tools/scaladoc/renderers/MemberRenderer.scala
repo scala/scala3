@@ -270,7 +270,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         }
       val content = rawGroups.toSeq.sortBy(_._1.prio).flatMap {
         case (group, members) =>
-          Seq(div(cls := "documentableList")(
+          Seq(div(cls := "documentableList expand")(
             button(cls := "icon-button show-content expand"),
             h3(cls := "h200")(group.name),
             group.description,
