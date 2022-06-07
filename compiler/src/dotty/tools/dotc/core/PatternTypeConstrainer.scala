@@ -144,9 +144,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
                 case tb: TypeBounds =>
                   val hi = tb.hi
                   constrainPatternType(pat, hi)
-                case null => false
+                case null => true
               }
-            case _ => false
+            case _ => true
           }
 
           def trySuperType =
@@ -159,7 +159,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
               tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
             else true
 
-          tryGadtBounds || trySuperType
+          tryGadtBounds && trySuperType
       }
     }
 
