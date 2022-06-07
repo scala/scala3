@@ -1943,7 +1943,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: PolyType =>
       tp2.widen match {
         case tp2: PolyType =>
-          sameLength(tp1.paramNames, tp2.paramNames) &&
+          tp1.paramNames.hasSameLengthAs(tp2.paramNames) &&
           matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case _ =>
           false
