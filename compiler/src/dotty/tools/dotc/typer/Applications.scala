@@ -1404,7 +1404,7 @@ trait Applications extends Compatibility {
             .memberDenots(typeNameFilter, (name, buf) => if (name.toString == "Names") buf += typeInfoOfGetMethod.member(name).asSingleDenotation)
             .headOption
 
-          val positionOfName: Map[String, Int] =
+          val positionOfName: PartialFunction[Name, Int] =
               if names.isDefined then
                 // TODO: Don't use regular expression to deconstruct tuple
                 val reg = "\"([^\"]+)\"".r
@@ -1419,22 +1419,22 @@ trait Applications extends Compatibility {
                 // TODO: Report member
                 report.error("Doesn't support named patterns")
                 Map.empty
+            .compose{ case name: Name => name.show }
 
           val namedArgs = bunchedArgs
             .flatMap {
-              case n @ NamedArg(_, _) => Seq(n)
+              case pattern @ NamedArg(positionOfName(_), _) => Seq(pattern)
+              case pattern @ NamedArg(unkownName, _) =>
+                // TODO: Report position of the name
+                report.error(s"'${unkownName.show}' is unknown", pattern)
+                Seq.empty
               case unnamedArgument =>
                 report.error("Only named arguments allowed here", unnamedArgument)
                 Seq.empty
             }
             .groupBy { case NamedArg(name, _) => name.show }
             .map {
-              case (positionOfName(index), NamedArg(_, term) :: Nil)  => index -> term
-              case (unkownName, (pattern @ NamedArg(_, term)) :: Nil) =>
-                // TODO: Report position of the name
-                report.error(s"'${unkownName.show}' is unknown", pattern)
-                // TODO: Hack, this terms should be filtered out
-                -1 -> term
+              case (_, NamedArg(positionOfName(index), term) :: Nil)  => index -> term
               case error @ (_, _) => println(error); ???
             }
 

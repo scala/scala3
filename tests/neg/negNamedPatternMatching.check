@@ -1,0 +1,8 @@
+-- Error: tests/neg/negNamedPatternMatching.scala:21:20 ----------------------------------------------------------------
+21 |  case User(names = "Tom", city = city) => ??? // error: constructor is private
+   |                    ^^^^^
+   |                    'names' is unknown
+-- Error: tests/neg/negNamedPatternMatching.scala:22:22 ----------------------------------------------------------------
+22 |  case User(city = _, 10) => null // error
+   |                      ^^
+   |                      Only named arguments allowed here
