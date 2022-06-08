@@ -190,12 +190,4 @@ object Test extends App {
     val v2 = v0.ordinal(SumV2.Right("foo"))
     assert(v2 == 1)
   }
-
-  sealed trait NoCompanion
-  case class Value(value: String) extends NoCompanion
-
-  {
-    val mirror = summon[Mirror.Of[NoCompanion]]
-    assert(mirror.isInstanceOf[Serializable])
-  }
 }

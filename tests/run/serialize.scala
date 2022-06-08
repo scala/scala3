@@ -27,6 +27,10 @@ object Test {
     }
   }
 
+  // No Companion defined - therefore anonmymous mirror is generated
+  sealed trait NoCompanion
+  case class Value(value: String) extends NoCompanion
+
   def main(args: Array[String]): Unit = {
     val x: PartialFunction[Int, Int] = { case x => x + 1 }
     val adder = serializeDeserialize(x)
@@ -41,5 +45,10 @@ object Test {
     val bar = new a.Bar
     val bar1 = serializeDeserialize(bar)
     assert(bar.x eq bar1.x)
+
+    val mirror = summon[scala.deriving.Mirror.Of[NoCompanion]]
+    val mirror1 = serializeDeserialize(mirror)
+    assert(mirror ne mirror1) // update if we start caching anonymous mirrors
+    assert(mirror1.ordinal(Value("")) == 0) // check API
   }
 }
