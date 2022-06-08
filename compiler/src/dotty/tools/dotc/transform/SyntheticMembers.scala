@@ -26,12 +26,6 @@ object SyntheticMembers {
 
   /** Attachment recording that an anonymous class should extend Mirror.Sum */
   val ExtendsSumMirror: Property.StickyKey[Unit] = new Property.StickyKey
-
-  /** Attachment recording that an anonymous class (with the ExtendsProductMirror attachment)
-   *  should implement its `fromProduct` method in terms of the runtime class corresponding
-   *  to a tuple with that arity.
-   */
-  val GenericTupleArity: Property.StickyKey[Int] = new Property.StickyKey
 }
 
 /** Synthetic method implementations for case classes, case objects,
@@ -607,11 +601,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     else if (impl.removeAttachment(ExtendsSingletonMirror).isDefined)
       makeSingletonMirror()
     else if (impl.removeAttachment(ExtendsProductMirror).isDefined)
-      val tupleArity = impl.removeAttachment(GenericTupleArity)
-      val cls = tupleArity match
-        case Some(n) => defn.TupleType(n).nn.classSymbol
-        case _ => monoType.typeRef.dealias.classSymbol
-      makeProductMirror(cls)
+      makeProductMirror(monoType.typeRef.dealias.classSymbol)
     else if (impl.removeAttachment(ExtendsSumMirror).isDefined)
       makeSumMirror(monoType.typeRef.dealias.classSymbol)
 
