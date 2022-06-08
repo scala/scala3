@@ -228,7 +228,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val monoTypeDef = untpd.TypeDef(tpnme.MirroredMonoType, untpd.TypeTree(monoType))
     var newImpl = untpd.Template(
       constr = untpd.emptyConstructor,
-      parents = untpd.TypeTree(defn.ObjectType) :: Nil,
+      parents = untpd.TypeTree(defn.ObjectType) :: untpd.TypeTree(defn.JavaSerializableClass.typeRef) :: Nil,
       derived = Nil,
       self = EmptyValDef,
       body = monoTypeDef :: Nil
