@@ -1,16 +1,20 @@
--- Error: tests/neg/negNamedPatternMatching.scala:21:20 ----------------------------------------------------------------
-21 |  case User(names = "Tom", city = city) => ??? // error
+-- Error: tests/neg/negNamedPatternMatching.scala:18:20 ----------------------------------------------------------------
+18 |  case User(names = "Tom", city = city) => ??? // error
    |                    ^^^^^
    |                    'names' is unknown
--- Error: tests/neg/negNamedPatternMatching.scala:22:22 ----------------------------------------------------------------
-22 |  case User(city = _, 10) => null // error
+-- Error: tests/neg/negNamedPatternMatching.scala:19:22 ----------------------------------------------------------------
+19 |  case User(city = _, 10) => null // error
    |                      ^^
    |                      Only named arguments allowed here
--- Error: tests/neg/negNamedPatternMatching.scala:25:11 ----------------------------------------------------------------
-25 |    name = "Tom 2",  // error
+-- Error: tests/neg/negNamedPatternMatching.scala:20:18 ----------------------------------------------------------------
+20 |  case User(age = Age(years = 10)) => null // error
+   |                  ^^^
+   |                  'patterns.Age' doesn't support named patterns
+-- Error: tests/neg/negNamedPatternMatching.scala:23:11 ----------------------------------------------------------------
+23 |    name = "Tom 2",  // error
    |           ^^^^^^^
    |           'name' was already used before
--- Error: tests/neg/negNamedPatternMatching.scala:26:11 ----------------------------------------------------------------
-26 |    name = "Tom 3" // error
+-- Error: tests/neg/negNamedPatternMatching.scala:24:11 ----------------------------------------------------------------
+24 |    name = "Tom 3" // error
    |           ^^^^^^^
    |           'name' was already used before
