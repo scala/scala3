@@ -1395,6 +1395,8 @@ trait Applications extends Compatibility {
         }
 
         // named pattern
+        // TODO: Errors report the wrong position
+        // TODO: Use propper error reporting
         // TODO: Maybe the 'reorder' method above can be reused, or be template
         if (bunchedArgs != Nil && argTypes != Nil) {
 
@@ -1406,7 +1408,7 @@ trait Applications extends Compatibility {
 
           val positionOfName: PartialFunction[Name, Int] =
               if names.isDefined then
-                // TODO: Don't use regular expression to deconstruct tuple
+                // TODO: Don't use regular expression to deconstruct tuples
                 val reg = "\"([^\"]+)\"".r
                 reg.findAllMatchIn(names.get.showDcl)
                   .map(_.group(1))
@@ -1425,18 +1427,19 @@ trait Applications extends Compatibility {
             .flatMap {
               case pattern @ NamedArg(positionOfName(_), _) => Seq(pattern)
               case pattern @ NamedArg(unkownName, _) =>
-                // TODO: Report position of the name
                 report.error(s"'${unkownName.show}' is unknown", pattern)
                 Seq.empty
               case unnamedArgument =>
                 report.error("Only named arguments allowed here", unnamedArgument)
                 Seq.empty
             }
-            .groupBy { case NamedArg(name, _) => name.show }
-            .map {
-              case (_, NamedArg(positionOfName(index), term) :: Nil)  => index -> term
-              case error @ (_, _) => println(error); ???
-            }
+            .groupMapReduce(arg => positionOfName(arg.name))(identity)(
+              (first, second) => {
+                // TODO: Document design decission here
+                report.error(s"'${second.name}' was already used before", second);
+                first
+              })
+
 
           while (argTypes != Nil)
             // TODO: calling knownSize is maybe to slow
@@ -1451,7 +1454,6 @@ trait Applications extends Compatibility {
         }
 
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns.result), ownType)
-        unapp.println(s"unapply patterns = $unapplyPatterns")
         if (ownType.stripped eq selType.stripped) || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
       case tp =>

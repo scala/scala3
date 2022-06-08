@@ -20,15 +20,8 @@ val user = User(name = "Anna", age = Age(10), city = "Berlin")
 val annasCity = user match
   case User(names = "Tom", city = city) => ??? // error
   case User(city = _, 10) => null // error
-
-// nested patterns
-val User(name = name, age = Age(years = years)) = user
-
-// partial function
-val maybeTom = Some(user).collect {
-  case u @ User(name = StringExample(last = 'm')) => u
-}
-
-val berlinerNames = for
-  case User(city = "Berlin", name = name) <- List(user)
-yield name
+  case User(
+    name = "Tom",
+    name = "Tom 2",  // error
+    name = "Tom 3" // error
+    ) => null
