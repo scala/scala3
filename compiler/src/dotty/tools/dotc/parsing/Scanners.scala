@@ -19,6 +19,7 @@ import rewrites.Rewrites.patch
 import config.Feature
 import config.Feature.migrateTo3
 import config.SourceVersion.`3.0`
+import reporting.{NoProfile, Profile}
 
 object Scanners {
 
@@ -188,6 +189,8 @@ object Scanners {
         case self: LookaheadScanner => self.allowIndent
         case _ => true
       }
+
+    private val profile = if this.isInstanceOf[LookaheadScanner] then NoProfile else Profile.current
 
     if (rewrite) {
       val s = ctx.settings
@@ -399,6 +402,7 @@ object Scanners {
       getNextToken(lastToken)
       if isAfterLineEnd then handleNewLine(lastToken)
       postProcessToken(lastToken, lastName)
+      profile.recordNewToken()
       printState()
 
     final def printState() =
@@ -639,6 +643,8 @@ object Scanners {
           errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
       if token != OUTDENT then
         handleNewIndentWidth(currentRegion, _.otherIndentWidths += nextWidth)
+      if next.token == EMPTY then
+        profile.recordNewLine()
     end handleNewLine
 
     def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth) =

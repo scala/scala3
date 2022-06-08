@@ -15,7 +15,7 @@ import io.AbstractFile
 import Phases.unfusedPhases
 
 import util._
-import reporting.{Suppression, Action}
+import reporting.{Suppression, Action, Profile, ActiveProfile, NoProfile}
 import reporting.Diagnostic
 import reporting.Diagnostic.Warning
 import rewrites.Rewrites
@@ -197,11 +197,18 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compileUnits()(using ctx)
   }
 
+  var profile: Profile = NoProfile
+
   private def compileUnits()(using Context) = Stats.maybeMonitored {
     if (!ctx.mode.is(Mode.Interactive)) // IDEs might have multi-threaded access, accesses are synchronized
       ctx.base.checkSingleThreaded()
 
     compiling = true
+
+    profile =
+      if ctx.settings.Yprofile.value || !ctx.settings.YprofileSortedBy.value.isEmpty
+      then ActiveProfile()
+      else NoProfile
 
     // If testing pickler, make sure to stop after pickling phase:
     val stopAfter =
@@ -321,8 +328,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def printSummary(): Unit = {
     printMaxConstraint()
     val r = runContext.reporter
-    r.summarizeUnreportedWarnings
-    r.printSummary
+    if !r.errorsReported then
+      profile.printSummary()
+    r.summarizeUnreportedWarnings()
+    r.printSummary()
   }
 
   override def reset(): Unit = {
