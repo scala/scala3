@@ -16,9 +16,10 @@ abstract class Profile:
 
 object Profile:
   def current(using Context): Profile =
-    if ctx.run == null then NoProfile else ctx.run.profile
+    val run = ctx.run
+    if run == null then NoProfile else run.profile
 
-  private val TastyFactor = 40
+  private val TastyFactor = 50
 
   class Info:
     var lineCount: Int = 0
@@ -34,7 +35,7 @@ class ActiveProfile extends Profile:
   private val junkInfo = new Profile.Info
 
   private def curInfo(using Context): Profile.Info =
-    val unit = ctx.compilationUnit
+    val unit: CompilationUnit | Null = ctx.compilationUnit
     if unit == null then junkInfo else unitProfile(unit)
 
   def unitProfile(unit: CompilationUnit): Profile.Info =
