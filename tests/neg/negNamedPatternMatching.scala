@@ -18,9 +18,8 @@ case class User(name: String, age: Age, city: String)
 val user = User(name = "Anna", age = Age(10), city = "Berlin")
 
 val annasCity = user match
-  case User(name = "Tom", city = city) => ???
-  case User(city = c, name = s"Ann$_") => c
-  case User(name = guy @ ("Guy" | "guy")) => ???
+  case User(names = "Tom", city = city) => ??? // error
+  case User(city = _, 10) => null // error
 
 // nested patterns
 val User(name = name, age = Age(years = years)) = user

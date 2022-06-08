@@ -1407,7 +1407,7 @@ trait Applications extends Compatibility {
           val positionOfName: Map[String, Int] =
               if names.isDefined then
                 // TODO: Don't use regular expression to deconstruct tuple
-                val reg = "\\(\"([^\"]*)\" : String\\)".r
+                val reg = "\"([^\"]+)\"".r
                 reg.findAllMatchIn(names.get.showDcl)
                   .map(_.group(1))
                   .zipWithIndex
@@ -1416,18 +1416,23 @@ trait Applications extends Compatibility {
               else if unapplyFn.tpe.widen.paramInfoss.head.head.typeSymbol.is(CaseClass) then
                 unapplyFn.tpe.widen.paramInfoss.head.head.fields.map(_.name.toString).zipWithIndex.toMap
               else
+                // TODO: Report member
                 report.error("Doesn't support named patterns")
                 Map.empty
 
           val namedArgs = bunchedArgs
-            // TODO: Report error if anything else than a NamedArg is in bunchedArgs
-            .collect { case n @ NamedArg(_, _) => n }
+            .flatMap {
+              case n @ NamedArg(_, _) => Seq(n)
+              case unnamedArgument =>
+                report.error("Only named arguments allowed here", unnamedArgument)
+                Seq.empty
+            }
             .groupBy { case NamedArg(name, _) => name.show }
             .map {
               case (positionOfName(index), NamedArg(_, term) :: Nil)  => index -> term
               case (unkownName, (pattern @ NamedArg(_, term)) :: Nil) =>
                 // TODO: Report position of the name
-                report.error(s"${unkownName.show} is unknown", pattern)
+                report.error(s"'${unkownName.show}' is unknown", pattern)
                 // TODO: Hack, this terms should be filtered out
                 -1 -> term
               case error @ (_, _) => println(error); ???
