@@ -423,38 +423,42 @@ object TypeOps:
         sym.is(Package) || sym.isStatic && isStaticPrefix(pre.prefix)
       case _ => true
 
-    override def apply(tp: Type): Type = tp match
-      case tp: TermRef
-      if toAvoid(tp) =>
-        tp.info.widenExpr.dealias match {
-          case info: SingletonType => apply(info)
-          case info => range(defn.NothingType, apply(info))
-        }
-      case tp: TypeRef if toAvoid(tp) =>
-        tp.info match {
-          case info: AliasingBounds =>
-            apply(info.alias)
-          case TypeBounds(lo, hi) =>
-            range(atVariance(-variance)(apply(lo)), apply(hi))
-          case info: ClassInfo =>
-            range(defn.NothingType, apply(classBound(info)))
+    override def apply(tp: Type): Type =
+      try
+        tp match
+          case tp: TermRef
+          if toAvoid(tp) =>
+            tp.info.widenExpr.dealias match {
+              case info: SingletonType => apply(info)
+              case info => range(defn.NothingType, apply(info))
+            }
+          case tp: TypeRef if toAvoid(tp) =>
+            tp.info match {
+              case info: AliasingBounds =>
+                apply(info.alias)
+              case TypeBounds(lo, hi) =>
+                range(atVariance(-variance)(apply(lo)), apply(hi))
+              case info: ClassInfo =>
+                range(defn.NothingType, apply(classBound(info)))
+              case _ =>
+                emptyRange // should happen only in error cases
+            }
+          case tp: ThisType =>
+            // ThisType is only used inside a class.
+            // Therefore, either they don't appear in the type to be avoided, or
+            // it must be a class that encloses the block whose type is to be avoided.
+            tp
+          case tp: LazyRef =>
+            if localParamRefs.contains(tp.ref) then tp
+            else if isExpandingBounds then emptyRange
+            else mapOver(tp)
+          case tl: HKTypeLambda =>
+            localParamRefs ++= tl.paramRefs
+            mapOver(tl)
           case _ =>
-            emptyRange // should happen only in error cases
-        }
-      case tp: ThisType =>
-        // ThisType is only used inside a class.
-        // Therefore, either they don't appear in the type to be avoided, or
-        // it must be a class that encloses the block whose type is to be avoided.
-        tp
-      case tp: LazyRef =>
-        if localParamRefs.contains(tp.ref) then tp
-        else if isExpandingBounds then emptyRange
-        else mapOver(tp)
-      case tl: HKTypeLambda =>
-        localParamRefs ++= tl.paramRefs
-        mapOver(tl)
-      case _ =>
-        super.apply(tp)
+            super.apply(tp)
+      catch case ex: Throwable =>
+        handleRecursive("traversing for avoiding local references", s"${tp.show}" , ex)
     end apply
 
     /** Three deviations from standard derivedSelect:
