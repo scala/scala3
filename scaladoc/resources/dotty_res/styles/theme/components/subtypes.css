@@ -22,6 +22,7 @@
 .subtypes > div:nth-child(5),
 .subtypes > div:nth-child(6) {
   display: block;
+  margin-bottom: 6px;
 }
 
 .subtypes.collapsed > div {

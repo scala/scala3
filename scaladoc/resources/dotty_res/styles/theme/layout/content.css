@@ -8,51 +8,44 @@
   display: flex;
   flex-flow: column;
   color: var(--text-primary);
-}
-
-#content::after {
-  margin-bottom: calc(10 * var(--base-spacing));
-}
-
-@media (min-width: 1920px) {
-  #content {
-    padding-left: calc(36.75 * var(--base-spacing));
-    padding-top: calc(18 * var(--base-spacing));
-    padding-right: calc(74.25 * var(--base-spacing));
-  }
+  max-width: 55em;
+  padding-top: calc(18 * var(--base-spacing));
+  margin-right: auto;
+  margin-left: auto;
 }
 
 @media (max-width: 1920px) {
   #content {
-    padding-left: calc(6 * var(--base-spacing));
-    padding-top: calc(18 * var(--base-spacing));
-    padding-bottom: calc(10 * var(--base-spacing));
-    padding-right: calc(41 * var(--base-spacing));
+    width: 720px;
+  }
+}
+
+@media (max-width: 1366px) {
+  #content {
+    width: 710px;
   }
 }
 
 @media (max-width: 1024px) {
   #content {
-    margin-left: 0;
-  }
-
-  #content.sidebar-shown {
-    margin-left: calc(39 * var(--base-spacing));
-    padding-right: calc(6 * var(--base-spacing));
+    width: 648px;
   }
 }
 
 @media (max-width: 768px) {
   #content {
-    padding-right: calc(6 * var(--base-spacing));
+    width: 672px;
   }
 }
 
 @media (max-width: 390px) {
   #content {
-    padding-right: calc(4 * var(--base-spacing));
-    padding-left: calc(4 * var(--base-spacing));
+    width: 390px;
   }
+}
+
+#content::after {
+  margin-bottom: calc(10 * var(--base-spacing));
 }
 
 /* content headers */
@@ -66,7 +59,7 @@
 
 /* content paragraph */
 #content p {
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 /* content list */
@@ -77,7 +70,16 @@
 /* content link */
 #content a {
   color: var(--text-primary);
-  text-decoration: underline;
+  border-bottom: 1px solid var(--grey8);
+}
+
+#content a:hover {
+  border-bottom: 1px solid var(--text-secondary);
+}
+
+#content :not(pre)>code {
+  color: var(--code-props-content);
+  font-family: "FiraCode-Regular";
 }
 
 .breadcrumbs {
@@ -256,10 +258,6 @@
   background-color: var(--action-primary-background-default-solid);
   padding: calc(3 * var(--base-spacing));
   border-radius: 4px;
-}
-
-#content .main-signature a {
-  text-decoration: none;
 }
 
 #content > div > * {

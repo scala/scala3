@@ -50,14 +50,6 @@
   display: block;
 }
 
-#content .documentableElement a {
-  text-decoration: none;
-}
-
-#content .documentableElement a:hover {
-  text-decoration: underline;
-}
-
 #content .documentableElement p {
   color: var(--text-primary);
 }
