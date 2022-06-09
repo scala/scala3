@@ -20,5 +20,21 @@ object Test:
 
     def unapply(user: User) = UserExtractor(user)
 
+  object Helper:
+    val empty: EmptyTuple & { type Names = EmptyTuple } = EmptyTuple.asInstanceOf
+
+    extension [N <: Singleton & String, V] (head: (N, V))
+      def +::[Vs <: Tuple, Ns <: Tuple](tail: Vs & { type Names = Ns }) : V *: Vs & { type Names = N *: Ns }=
+        (head._2 *: tail).asInstanceOf
+
+  object UserEx2:
+    import Helper._
+    // TODO: The inferred type doesn't work and leads to a runtime exception
+    def unapply(user: User): (String, Int, String) & { type Names = ("name", "age", "city") } =
+      ("name", user.name) +:: ("age", user.age) +:: ("city", user.city) +:: empty
+
   def main(args: Array[String]): Unit =
     val UserEx(city = _, name = _) = User("Guy", 25, "Paris")
+    val UserEx2(city = _, name = n) = User("Guy", 25, "Paris")
+
+    println(n)
