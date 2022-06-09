@@ -1402,19 +1402,18 @@ trait Applications extends Compatibility {
 
           val resTypeOfUnapplyFn = unapplyFn.tpe.widen.asInstanceOf[MethodType].resType
 
-          val typeInfoOfGetMethod: Type =
+          val names: SingleDenotation =
             resTypeOfUnapplyFn.member(nme.get).info
                 .orElse(resTypeOfUnapplyFn)
-
-          val names = typeInfoOfGetMethod
-            .memberDenots(typeNameFilter, (name, buf) => if (name.toString == "Names") buf += typeInfoOfGetMethod.member(name).asSingleDenotation)
-            .headOption
+                .member(tpnme.Names)
+                // TODO: Is it possible to get something else than a SingleDenotation?
+                .asSingleDenotation
 
           val positionOfStringNames: Map[String, Int] =
-            if names.isDefined then
+            if names.exists then
               // TODO: Don't use regular expression to deconstruct tuples
               val reg = "\"([^\"]+)\"".r
-              reg.findAllMatchIn(names.get.showDcl)
+              reg.findAllMatchIn(names.showDcl)
                 .map(_.group(1))
                 .zipWithIndex
                 .toMap
