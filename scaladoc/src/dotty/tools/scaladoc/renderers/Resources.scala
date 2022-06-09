@@ -144,7 +144,14 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
     def extensionTarget(member: Member): String =
       member.kind match
-        case Kind.Extension(on, _) => flattenToText(on.signature)
+        case Kind.Extension(on, _) =>
+          val typeSig = InlineSignatureBuilder()
+            .generics(on.typeParams)
+            .asInstanceOf[InlineSignatureBuilder].names.reverse
+          val argsSig = InlineSignatureBuilder()
+            .functionParameters(on.argsLists)
+            .asInstanceOf[InlineSignatureBuilder].names.reverse
+          flattenToText(typeSig ++ argsSig)
         case _ => ""
 
     def processPage(page: Page, pageFQName: List[String]): Seq[(JSON, Seq[String])] =

@@ -30,7 +30,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def inheritedFrom(m: Member) = m.inheritedFrom match
     case Some(InheritedFrom(name, dri, isSourceSuperclassHidden)) =>
-      val hiddenNameSuffix = if isSourceSuperclassHidden then " (hidden)" else "" 
+      val hiddenNameSuffix = if isSourceSuperclassHidden then " (hidden)" else ""
       tableRow("Inherited from:", signatureRenderer.renderLink(name + hiddenNameSuffix, dri))
     case _ => Nil
 
