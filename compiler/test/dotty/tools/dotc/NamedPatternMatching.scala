@@ -2,7 +2,7 @@ package dotty
 package tools
 package dotc
 
-import org.junit.{ Test, BeforeClass, AfterClass }
+import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.experimental.categories.Category
@@ -12,7 +12,6 @@ import java.nio.file._
 import java.util.stream.{ Stream => JStream }
 import scala.util.matching.Regex
 import scala.concurrent.duration._
-import TestSources.sources
 import vulpix._
 
 class NamedPatternMatching {
@@ -35,6 +34,7 @@ class NamedPatternMatching {
     aggregateTests(
       compileFile("tests/neg/negNamedPatternMatching.scala", defaultOptions),
       compileFile("tests/neg/bad-unapplies.scala", defaultOptions),
+      compileFile("tests/neg/i10757.scala", defaultOptions),
     ).checkExpectedErrors()
   }
 

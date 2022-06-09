@@ -1375,9 +1375,10 @@ trait Applications extends Compatibility {
           res.result()
         }
 
-        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
-        for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
-        var bunchedArgs = argTypes match {
+        val allArgTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
+        var remainingArgTypes = allArgTypes
+        for (argType <- remainingArgTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
+        var bunchedArgs = remainingArgTypes match {
           case argType :: Nil =>
             if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled && defn.isTupleNType(argType)) untpd.Tuple(args) :: Nil
             else args
@@ -1388,17 +1389,17 @@ trait Applications extends Compatibility {
 
         // here add positional patterns to unapplyPatterns
         // TODO: isInstanceOf seems not to be the right tool
-        while (bunchedArgs != Nil && argTypes != Nil && !bunchedArgs.head.isInstanceOf[dotty.tools.dotc.ast.Trees.NamedArg[_]]) {
-          unapplyPatterns += typed(bunchedArgs.head, argTypes.head)
+        while (bunchedArgs != Nil && remainingArgTypes != Nil && !bunchedArgs.head.isInstanceOf[dotty.tools.dotc.ast.Trees.NamedArg[_]]) {
+          unapplyPatterns += typed(bunchedArgs.head, remainingArgTypes.head)
           bunchedArgs = bunchedArgs.tail
-          argTypes = argTypes.tail
+          remainingArgTypes = remainingArgTypes.tail
         }
 
         // named pattern
         // TODO: Errors report the wrong position if the name is the error
         // TODO: Use proper error reporting
         // TODO: Maybe the 'reorder' method above can be reused, or be template
-        if (bunchedArgs != Nil && argTypes != Nil) {
+        if (bunchedArgs != Nil && remainingArgTypes != Nil) {
 
           val resTypeOfUnapplyFn = unapplyFn.tpe.widen.asInstanceOf[MethodType].resType
 
@@ -1449,18 +1450,18 @@ trait Applications extends Compatibility {
               })
 
 
-          while (argTypes != Nil)
+          while (remainingArgTypes != Nil)
             val term = namedArgs.getOrElse(unapplyPatterns.knownSize, {
               var ignore = underscore
               ignore.span = unapplyFn.span
               ignore
             })
-            unapplyPatterns += typed(term, argTypes.head)
-            argTypes = argTypes.tail
+            unapplyPatterns += typed(term, remainingArgTypes.head)
+            remainingArgTypes = remainingArgTypes.tail
         } else {
           // Check for positional arguments
-          if (argTypes != Nil || bunchedArgs != Nil)
-            report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.srcPos)
+          if (remainingArgTypes != Nil || bunchedArgs != Nil)
+            report.error(UnapplyInvalidNumberOfArguments(qual, allArgTypes), tree.srcPos)
         }
 
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns.result), ownType)
