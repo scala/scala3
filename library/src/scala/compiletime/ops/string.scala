@@ -55,6 +55,9 @@ object string:
    *  An index ranges from 0 to Length[S] - 1. The first Char of
    *  the sequence is at index 0, the next at index 1, and so on.
    *  ```scala
+   *  //{
+   *  import string._
+   *  //}
    *  val c: CharAt["hello", 0] = 'h'
    *  ```
    *  @syntax markdown
