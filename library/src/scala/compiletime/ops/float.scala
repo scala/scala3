@@ -4,6 +4,9 @@ package ops
 object float:
   /** Addition of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val sum: 2.0f + 2.0f = 4.0f
    *  ```
    *  @syntax markdown
@@ -12,6 +15,9 @@ object float:
 
   /** Subtraction of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val sub: 4.0f - 2.0f = 2.0f
    *  ```
    *  @syntax markdown
@@ -20,6 +26,9 @@ object float:
 
   /** Multiplication of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val mul: 4.0f * 2.0f = 8.0f
    *  ```
    *  @syntax markdown
@@ -28,6 +37,9 @@ object float:
 
   /** Integer division of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val div: 5.0f / 2.0f = 2.5f
    *  ```
    *  @syntax markdown
@@ -36,6 +48,9 @@ object float:
 
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val mod: 5.0f % 2.0f = 1.0f
    *  ```
    *  @syntax markdown
@@ -44,6 +59,9 @@ object float:
 
   /** Less-than comparison of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val lt1: 4.0f < 2.0f = false
    *  val lt2: 2.0f < 4.0f = true
    *  ```
@@ -53,6 +71,9 @@ object float:
 
   /** Greater-than comparison of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val gt1: 4.0f > 2.0f = true
    *  val gt2: 2.0f > 2.0f = false
    *  ```
@@ -62,6 +83,9 @@ object float:
 
   /** Greater-or-equal comparison of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val ge1: 4.0f >= 2.0f = true
    *  val ge2: 2.0f >= 3.0f = false
    *  ```
@@ -71,6 +95,9 @@ object float:
 
   /** Less-or-equal comparison of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val lt1: 4.0f <= 2.0f = false
    *  val lt2: 2.0f <= 2.0f = true
    *  ```
@@ -80,6 +107,9 @@ object float:
 
   /** Absolute value of an `Float` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val abs: Abs[-1.0f] = 1.0f
    *  ```
    *  @syntax markdown
@@ -88,6 +118,9 @@ object float:
 
   /** Negation of an `Float` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val neg1: Negate[-1.0f] = 1.0f
    *  val neg2: Negate[1.0f] = -1.0f
    *  ```
@@ -97,6 +130,9 @@ object float:
 
   /** Minimum of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val min: Min[-1.0f, 1.0f] = -1.0f
    *  ```
    *  @syntax markdown
@@ -105,6 +141,9 @@ object float:
 
   /** Maximum of two `Float` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val max: Max[-1.0f, 1.0f] = 1.0f
    *  ```
    *  @syntax markdown
@@ -113,6 +152,9 @@ object float:
 
   /** Int conversion of a `Float` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val x: ToInt[1.0f] = 1
    *  ```
    *  @syntax markdown
@@ -121,6 +163,9 @@ object float:
 
   /** Long conversion of a `Float` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val x: ToLong[1.0f] = 1L
    *  ```
    *  @syntax markdown
@@ -129,6 +174,9 @@ object float:
 
   /** Double conversion of a `Float` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.float._
+   *  //}
    *  val x: ToDouble[1.0f] = 1.0
    *  ```
    *  @syntax markdown

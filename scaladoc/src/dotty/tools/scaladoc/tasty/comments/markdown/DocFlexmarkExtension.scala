@@ -25,8 +25,7 @@ class DocLinkNode(
 case class ExtendedFencedCodeBlock(
   name: Option[String],
   codeBlock: ast.FencedCodeBlock,
-  compilationResult: Option[SnippetCompilationResult],
-  hasContext: Boolean
+  compilationResult: Option[SnippetCompilationResult]
 ) extends BlankLine(codeBlock.getContentChars())
 
 case class Section(

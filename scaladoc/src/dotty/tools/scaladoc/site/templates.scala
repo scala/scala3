@@ -86,8 +86,6 @@ case class TemplateFile(
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
           val compilerData = SnippetCompilerData(
             "staticsitesnippet",
-            Seq(SnippetCompilerData.ClassInfo(None, Nil, None)),
-            Nil,
             SnippetCompilerData.Position(configOffset - 1, 0)
           )
           ssctx.snippetChecker.checkSnippet(str, Some(compilerData), arg, lineOffset, sourceFile).collect {
@@ -124,7 +122,7 @@ case class TemplateFile(
       // Snippet compiler currently supports markdown only
       val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
       val parsedMd = parser.parse(rendered).pipe { md =>
-        FlexmarkSnippetProcessor.processSnippets(md, None, snippetCheckingFunc, withContext = false)(using ssctx.outerCtx)
+        FlexmarkSnippetProcessor.processSnippets(md, None, snippetCheckingFunc)(using ssctx.outerCtx)
       }.pipe { md =>
         FlexmarkSectionWrapper(md)
       }

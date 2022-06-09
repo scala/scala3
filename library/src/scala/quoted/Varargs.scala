@@ -19,9 +19,9 @@ object Varargs {
    *  ```scala
    *  //{
    *  def f(using Quotes) = {
-   *  import quotes.reflect.*
+   *    import quotes.reflect.*
    *  //}
-   *  '{ List(${Varargs(List('{1}, '{2}, '{3}))}: _*) } // equivalent to '{ List(1, 2, 3) }
+   *    '{ List(${Varargs(List('{1}, '{2}, '{3}))}: _*) } // equivalent to '{ List(1, 2, 3) }
    *  //{
    *  }
    *  //}
@@ -35,19 +35,12 @@ object Varargs {
   /** Matches a literal sequence of expressions and return a sequence of expressions.
    *
    *  Usage:
-   *  ```scala sc:nocompile
-   *  //{
-   *  object O {
-   *  //}
+   *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
-   *    case Varargs(argVarargs) =>
+   *    case Varargs(argVarargs) => ???
    *      // argVarargs: Seq[Expr[Int]]
-   *      ???
-   *  //{
-   *  }
-   *  //}
-   *  ```
+   *
    */
   def unapply[T](expr: Expr[Seq[T]])(using Quotes): Option[Seq[Expr[T]]] = {
     import quotes.reflect._

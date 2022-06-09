@@ -54,6 +54,18 @@ class A {
  */
 class B { }
 
+/**
+ * ```scala
+ * import scala.quoted._
+ * inline def sum(args: Int*): Int = ${ sumExpr('args) }
+ * def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
+ *   case Varargs(Exprs(args)) => ???
+ *   // args: Seq[Int]
+ * ```
+ */
+
+class C { }
+
 trait Quotes {
   val reflect: reflectModule = ???
   trait reflectModule { self: reflect.type =>

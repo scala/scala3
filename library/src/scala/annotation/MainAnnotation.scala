@@ -11,7 +11,7 @@ package scala.annotation
  *    - a call to `command.run` with the closure of user-main applied to all arguments.
  *
  *  Example:
- *  ```scala
+ *  ```scala sc:nocompile
  *  /** Sum all the numbers
  *   *
  *   *  @param first Fist number to sum
@@ -20,7 +20,7 @@ package scala.annotation
  *  @myMain def sum(first: Int, second: Int = 0, rest: Int*): Int = first + second + rest.sum
  *  ```
  *  generates
- *  ```scala
+ *  ```scala sc:nocompile
  *  object foo {
  *    def main(args: Array[String]): Unit = {
  *      val mainAnnot = new myMain()

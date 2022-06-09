@@ -19,6 +19,9 @@ object long:
 
   /** Addition of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val sum: 2L + 2L = 4L
    *  ```
    *  @syntax markdown
@@ -27,6 +30,9 @@ object long:
 
   /** Subtraction of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val sub: 4L - 2L = 2L
    *  ```
    *  @syntax markdown
@@ -35,6 +41,9 @@ object long:
 
   /** Multiplication of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val mul: 4L * 2L = 8L
    *  ```
    *  @syntax markdown
@@ -43,6 +52,9 @@ object long:
 
   /** Integer division of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val div: 5L / 2L = 2L
    *  ```
    *  @syntax markdown
@@ -51,6 +63,9 @@ object long:
 
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val mod: 5L % 2L = 1L
    *  ```
    *  @syntax markdown
@@ -59,6 +74,9 @@ object long:
 
   /** Binary left shift of `X` by `Y`.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val lshift: 1L << 2L = 4L
    *  ```
    *  @syntax markdown
@@ -67,6 +85,9 @@ object long:
 
   /** Binary right shift of `X` by `Y`.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val rshift: 10L >> 1L = 5L
    *  ```
    *  @syntax markdown
@@ -75,6 +96,9 @@ object long:
 
   /** Binary right shift of `X` by `Y`, filling the left with zeros.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val rshiftzero: 10L >>> 1L = 5L
    *  ```
    *  @syntax markdown
@@ -83,6 +107,9 @@ object long:
 
   /** Bitwise xor of `X` and `Y`.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val xor: 10L ^ 30L = 20L
    *  ```
    *  @syntax markdown
@@ -91,6 +118,9 @@ object long:
 
   /** Less-than comparison of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val lt1: 4L < 2L = false
    *  val lt2: 2L < 4L = true
    *  ```
@@ -100,6 +130,9 @@ object long:
 
   /** Greater-than comparison of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val gt1: 4L > 2L = true
    *  val gt2: 2L > 2L = false
    *  ```
@@ -109,6 +142,9 @@ object long:
 
   /** Greater-or-equal comparison of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val ge1: 4L >= 2L = true
    *  val ge2: 2L >= 3L = false
    *  ```
@@ -118,6 +154,9 @@ object long:
 
   /** Less-or-equal comparison of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val lt1: 4L <= 2L = false
    *  val lt2: 2L <= 2L = true
    *  ```
@@ -127,6 +166,9 @@ object long:
 
   /** Bitwise and of `X` and `Y`.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val and1: BitwiseAnd[4L, 4L] = 4L
    *  val and2: BitwiseAnd[10L, 5L] = 0L
    *  ```
@@ -136,6 +178,9 @@ object long:
 
   /** Bitwise or of `X` and `Y`.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val or: BitwiseOr[10L, 11L] = 11L
    *  ```
    *  @syntax markdown
@@ -144,6 +189,9 @@ object long:
 
   /** Absolute value of an `Long` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val abs: Abs[-1L] = 1L
    *  ```
    *  @syntax markdown
@@ -152,6 +200,9 @@ object long:
 
   /** Negation of an `Long` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val neg1: Negate[-1L] = 1L
    *  val neg2: Negate[1L] = -1L
    *  ```
@@ -161,6 +212,9 @@ object long:
 
   /** Minimum of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val min: Min[-1L, 1L] = -1L
    *  ```
    *  @syntax markdown
@@ -169,6 +223,9 @@ object long:
 
   /** Maximum of two `Long` singleton types.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val max: Max[-1L, 1L] = 1L
    *  ```
    *  @syntax markdown
@@ -180,6 +237,9 @@ object long:
    * Returns 64 if the specified singleton type has no one-bits in its two's complement representation,
    * in other words if it is equal to zero.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val zero_lzc: NumberOfLeadingZeros[0L] = 64
    *  val eight_lzc: NumberOfLeadingZeros[8L] = 60
    *  type Log2[N <: Long] = int.-[63, NumberOfLeadingZeros[N]]
@@ -191,6 +251,9 @@ object long:
 
   /** Int conversion of a `Long` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val x: ToInt[1L] = 1
    *  ```
    *  @syntax markdown
@@ -199,6 +262,9 @@ object long:
 
   /** Float conversion of a `Long` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val x: ToFloat[1L] = 1.0f
    *  ```
    *  @syntax markdown
@@ -207,6 +273,9 @@ object long:
 
   /** Double conversion of a `Long` singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.long._
+   *  //}
    *  val x: ToDouble[1L] = 1.0
    *  ```
    *  @syntax markdown
