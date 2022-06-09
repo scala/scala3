@@ -162,7 +162,7 @@ object Scanners {
         errorButContinue("trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(using Context) extends ScannerCommon(source) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile)(using Context) extends ScannerCommon(source) {
     val keepComments = !ctx.settings.YdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
@@ -189,8 +189,6 @@ object Scanners {
         case self: LookaheadScanner => self.allowIndent
         case _ => true
       }
-
-    private val profile = if this.isInstanceOf[LookaheadScanner] then NoProfile else Profile.current
 
     if (rewrite) {
       val s = ctx.settings

@@ -206,8 +206,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compiling = true
 
     profile =
-      if ctx.settings.Yprofile.value || !ctx.settings.YprofileSortedBy.value.isEmpty
-      then ActiveProfile()
+      if ctx.settings.Vprofile.value
+        || !ctx.settings.VprofileSortedBy.value.isEmpty
+        || ctx.settings.VprofileDetails.value != 0
+      then ActiveProfile(ctx.settings.VprofileDetails.value.max(0).min(1000))
       else NoProfile
 
     // If testing pickler, make sure to stop after pickling phase:

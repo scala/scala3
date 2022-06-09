@@ -146,6 +146,10 @@ private sealed trait VerboseSettings:
   val Xprint: Setting[List[String]] = PhasesSetting("-Vprint", "Print out program after", aliases = List("-Xprint"))
   val XshowPhases: Setting[Boolean] = BooleanSetting("-Vphases", "List compiler phases.", aliases = List("-Xshow-phases"))
 
+  val Vprofile: Setting[Boolean] = BooleanSetting("-Vprofile", "Show information about sizes and compiletime complexity.")
+  val VprofileSortedBy = ChoiceSetting("-Vprofile-sorted-by", "key", "Show information about sizes and compiletime complexity sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
+  val VprofileDetails = IntSetting("-Vprofile-details", "List tasty sizes of a given number of most complex methods", 0)
+
 /** -W "Warnings" settings
  */
 private sealed trait WarningSettings:
@@ -333,8 +337,5 @@ private sealed trait YSettings:
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting("-Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
 
   val YforceInlineWhileTyping: Setting[Boolean] = BooleanSetting("-Yforce-inline-while-typing", "Make non-transparent inline methods inline when typing. Emulates the old inlining behavior of 3.0.0-M3.")
-
-  val Yprofile: Setting[Boolean] = BooleanSetting("-Yprofile", "Show information about sizes and compiletime complexity.")
-  val YprofileSortedBy = ChoiceSetting("-Yprofile-sorted-by", "key", "Show information about sizes and compiletime complexity sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
 end YSettings
 
