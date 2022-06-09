@@ -11,6 +11,7 @@ import util.Spans.{Span, NoSpan}
 import Decorators.i
 import parsing.Scanners.Scanner
 import io.AbstractFile
+import annotation.internal.sharable
 
 abstract class Profile:
   def unitProfile(unit: CompilationUnit): Profile.Info
@@ -28,7 +29,7 @@ object Profile:
   inline val TastyChunkSize = 50
 
   case class MethodInfo(meth: Symbol, size: Int, span: Span)
-  object NoInfo extends MethodInfo(NoSymbol, 0, NoSpan)
+  @sharable object NoInfo extends MethodInfo(NoSymbol, 0, NoSpan)
 
   class Info(details: Int):
     var lineCount: Int = 0
