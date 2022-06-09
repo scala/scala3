@@ -1395,7 +1395,7 @@ trait Applications extends Compatibility {
         }
 
         // named pattern
-        // TODO: Errors report the wrong position
+        // TODO: Errors report the wrong position if the name is the error
         // TODO: Use proper error reporting
         // TODO: Maybe the 'reorder' method above can be reused, or be template
         if (bunchedArgs != Nil && argTypes != Nil) {
@@ -1427,6 +1427,9 @@ trait Applications extends Compatibility {
 
           val namedArgs = bunchedArgs
             .flatMap {
+              case pattern @ NamedArg(positionOfName(i), _) if i < unapplyPatterns.knownSize =>
+                report.error(i"${pattern.name} was already used as a positional pattern", pattern)
+                Seq.empty
               case pattern @ NamedArg(positionOfName(_), _) => Seq(pattern)
               case pattern @ NamedArg(unknownName, _) =>
                 if (positionOfStringNames.nonEmpty)
@@ -1445,8 +1448,6 @@ trait Applications extends Compatibility {
 
 
           while (argTypes != Nil)
-            // TODO: calling knownSize is maybe to slow
-            // TODO: Same is maybe true for the call by name argument
             val term = namedArgs.getOrElse(unapplyPatterns.knownSize, {
               var ignore = underscore
               ignore.span = unapplyFn.span

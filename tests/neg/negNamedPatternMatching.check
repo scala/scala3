@@ -18,3 +18,7 @@
 24 |    name = "Tom 3" // error
    |           ^^^^^^^
    |           'name' was already used before
+-- Error: tests/neg/negNamedPatternMatching.scala:26:22 ----------------------------------------------------------------
+26 |  case User(_, name = "Anna") => null // error
+   |                      ^^^^^^
+   |                      name was already used as a positional pattern

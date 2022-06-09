@@ -23,3 +23,4 @@ val annasCity = user match
     name = "Tom 2",  // error
     name = "Tom 3" // error
     ) => null
+  case User(_, name = "Anna") => null // error
