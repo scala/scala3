@@ -1444,7 +1444,6 @@ trait Applications extends Compatibility {
             }
             .groupMapReduce(arg => positionOfName(arg.name))(identity)(
               (first, second) => {
-                // TODO: Document design decision here
                 report.error(s"'${second.name}' was already used before", second);
                 first
               })
