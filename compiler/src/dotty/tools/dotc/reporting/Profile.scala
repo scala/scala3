@@ -28,6 +28,8 @@ object Profile:
 
   inline val TastyChunkSize = 50
 
+  def chunks(size: Int) = (size + TastyChunkSize - 1) / TastyChunkSize
+
   case class MethodInfo(meth: Symbol, size: Int, span: Span)
   @sharable object NoInfo extends MethodInfo(NoSymbol, 0, NoSpan)
 
@@ -35,7 +37,7 @@ object Profile:
     var lineCount: Int = 0
     var tokenCount: Int = 0
     var tastySize: Int = 0
-    def complexity: Float = (tastySize/TastyChunkSize).toFloat/lineCount
+    def complexity: Float = chunks(tastySize).toFloat/lineCount
     val leading: Array[MethodInfo] = Array.fill[MethodInfo](details)(NoInfo)
 
     def recordMethodSize(meth: Symbol, size: Int, span: Span): Unit =
@@ -56,7 +58,7 @@ class ActiveProfile(details: Int) extends Profile:
 
   private def curInfo(using Context): Profile.Info =
     val unit: CompilationUnit | Null = ctx.compilationUnit
-    if unit == null then junkInfo else unitProfile(unit)
+    if unit == null || unit.source.file.isVirtual then junkInfo else unitProfile(unit)
 
   def unitProfile(unit: CompilationUnit): Profile.Info =
     pinfo.getOrElseUpdate(unit, new Profile.Info(details))
@@ -98,7 +100,7 @@ class ActiveProfile(details: Int) extends Profile:
         else if complexity < 25 then "high    "
         else                         "extreme "
       report.echo(layout.format(
-        name, info.lineCount, info.tokenCount, info.tastySize/Profile.TastyChunkSize,
+        name, info.lineCount, info.tokenCount, Profile.chunks(info.tastySize),
         s"${"%6.2f".format(complexity)}  $explanation", path))
 
     def safeMax(xs: Array[Int]) = xs.max.max(10).min(50)
@@ -135,6 +137,7 @@ class ActiveProfile(details: Int) extends Profile:
         val s = Scanner(meth.source, span.start, methProfile)(using methCtx)
         while s.offset < span.end do s.nextToken()
         val info = methProfile.unitProfile(unit)
+        info.lineCount += 1
         info.tastySize = size
         val file = meth.source.file
         val header = s"%-${sourceNameWidth}s %-${methNameWidth}s".format(file.name, meth.name)
