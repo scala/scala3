@@ -424,7 +424,7 @@ import transform.SymUtils._
     def msg = em"""An ${hl("implicit class")} may not be top-level"""
 
     def explain = {
-      val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
+      val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef: @unchecked
       val exampleArgs =
         if(constr0.termParamss.isEmpty) "..."
         else constr0.termParamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
@@ -1066,37 +1066,6 @@ import transform.SymUtils._
            |"""
   }
 
-  class DanglingThisInPath()(using Context) extends SyntaxMsg(DanglingThisInPathID) {
-    def msg = em"""Expected an additional member selection after the keyword ${hl("this")}"""
-    def explain =
-      val contextCode: String =
-        """  trait Outer {
-          |    val member: Int
-          |    type Member
-          |    trait Inner {
-          |      ...
-          |    }
-          |  }"""
-      val importCode: String =
-        """  import Outer.this.member
-          |  //               ^^^^^^^"""
-      val typeCode: String =
-        """  type T = Outer.this.Member
-          |  //                 ^^^^^^^"""
-      em"""|Paths of imports and type selections must not end with the keyword ${hl("this")}.
-           |
-           |Maybe you forgot to select a member of ${hl("this")}? As an example, in the
-           |following context:
-           |${contextCode}
-           |
-           |- This is a valid import expression using a path
-           |${importCode}
-           |
-           |- This is a valid type using a path
-           |${typeCode}
-           |"""
-  }
-
   class OverridesNothing(member: Symbol)(using Context)
   extends DeclarationMsg(OverridesNothingID) {
     def msg = em"""${member} overrides nothing"""
@@ -1510,13 +1479,6 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class TopLevelCantBeImplicit(sym: Symbol)(
-    implicit ctx: Context)
-    extends SyntaxMsg(TopLevelCantBeImplicitID) {
-    def msg = em"""${hl("implicit")} modifier cannot be used for top-level definitions"""
-    def explain = ""
-  }
-
   class TypesAndTraitsCantBeImplicit()(using Context)
     extends SyntaxMsg(TypesAndTraitsCantBeImplicitID) {
     def msg = em"""${hl("implicit")} modifier cannot be used for types or traits"""
@@ -1759,7 +1721,9 @@ import transform.SymUtils._
 
   class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(using Context)
     extends NamingMsg(ClassAndCompanionNameClashID) {
-    def msg = em"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
+    def msg =
+      val name = cls.name.stripModuleClassSuffix
+      em"Name clash: both ${cls.owner} and its companion object defines $name"
     def explain =
       em"""|A ${cls.kindString} and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
            |  - ${cls.owner} defines ${cls}
@@ -2126,6 +2090,7 @@ import transform.SymUtils._
   class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using Context) extends NamingMsg(DoubleDefinitionID) {
     def msg = {
       def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
+      def erasedType = if ctx.erasedTypes then i" ${decl.info}" else ""
       def details(using Context): String =
         if (decl.isRealMethod && previousDecl.isRealMethod) {
           import Signature.MatchDegree._
@@ -2153,7 +2118,7 @@ import transform.SymUtils._
                      |Consider adding a @targetName annotation to one of the conflicting definitions
                      |for disambiguation."""
                 else ""
-              i"have the same$nameAnd type after erasure.$hint"
+              i"have the same$nameAnd type$erasedType after erasure.$hint"
           }
         }
         else ""
@@ -2172,10 +2137,12 @@ import transform.SymUtils._
         else
           "Name clash between inherited members"
 
-      em"""$clashDescription:
-          |${previousDecl.showDcl} ${symLocation(previousDecl)} and
-          |${decl.showDcl} ${symLocation(decl)}
-          |""" + details
+      atPhase(typerPhase) {
+        em"""$clashDescription:
+            |${previousDecl.showDcl} ${symLocation(previousDecl)} and
+            |${decl.showDcl} ${symLocation(decl)}
+            |"""
+      } + details
     }
     def explain = ""
   }
@@ -2377,12 +2344,12 @@ import transform.SymUtils._
   class CaseClassMissingNonImplicitParamList(cdef: untpd.TypeDef)(using Context)
     extends SyntaxMsg(CaseClassMissingNonImplicitParamListID) {
     def msg =
-      em"""|A ${hl("case class")} must have at least one non-implicit parameter list"""
+      em"""|A ${hl("case class")} must have at least one leading non-implicit parameter list"""
 
     def explain =
-      em"""|${cdef.name} must have at least one non-implicit parameter list,
+      em"""|${cdef.name} must have at least one leading non-implicit parameter list,
            | if you're aiming to have a case class parametrized only by implicit ones, you should
-           | add an explicit ${hl("()")} as a parameter list to ${cdef.name}.""".stripMargin
+           | add an explicit ${hl("()")} as the first parameter list to ${cdef.name}.""".stripMargin
   }
 
   class EnumerationsShouldNotBeEmpty(cdef: untpd.TypeDef)(using Context)
@@ -2480,15 +2447,6 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class TypeSpliceInValPattern(expr:  untpd.Tree)(using Context)
-    extends SyntaxMsg(TypeSpliceInValPatternID) {
-    def msg = "Type splices cannot be used in val patterns. Consider using `match` instead."
-    def explain =
-      em"""|Type splice: `$$${expr.show}` cannot be used in a `val` pattern. Consider rewriting the `val` pattern
-           |as a `match` with a corresponding `case` to replace the `val`.
-           |""".stripMargin
-  }
-
   class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
     extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
     def msg = em"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
@@ -2542,3 +2500,29 @@ import transform.SymUtils._
           |
           |${openSearchPairs.reverse.map(showQuery)}%\n%
         """
+
+  class TargetNameOnTopLevelClass(symbol: Symbol)(using Context)
+  extends SyntaxMsg(TargetNameOnTopLevelClassID):
+    def msg = em"${hl("@targetName")} annotation not allowed on top-level $symbol"
+    def explain =
+      val annot = symbol.getAnnotation(defn.TargetNameAnnot).get
+      em"""The @targetName annotation may be applied to a top-level ${hl("val")} or ${hl("def")}, but not
+          |a top-level ${hl("class")}, ${hl("trait")}, or ${hl("object")}.
+          |
+          |This restriction is due to the naming convention of Java classfiles, whose filenames
+          |are based on the name of the class defined within. If @targetName were permitted
+          |here, the name of the classfile would be based on the target name, and the compiler
+          |could not associate that classfile with the Scala-visible defined name of the class.
+          |
+          |If your use case requires @targetName, consider wrapping $symbol in an ${hl("object")}
+          |(and possibly exporting it), as in the following example:
+          |
+          |${hl("object Wrapper:")}
+          |  $annot $symbol { ... }
+          |
+          |${hl("export")} Wrapper.${symbol.name}  ${hl("// optional")}"""
+
+  class NotClassType(tp: Type)(using Context)
+  extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
+    def msg = ex"$tp is not a class type"
+    def explain = ""

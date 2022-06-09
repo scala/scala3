@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Experimental"
-movedTo: https://docs.scala-lang.org/scala3/reference/experimental/overview.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/overview.html
 redirectFrom: overview.html
 ---
 
@@ -18,8 +18,8 @@ They are enabled by importing the feature or using the `-language` compiler flag
 
 ### Experimental language imports
 
-In general, experimental language features can be imported in an experimental scope (see [experimental definitions](../other-new-features/experimental-defs.md).
-They can be imported at the top-level if all top-level definitions are @experimental.
+In general, experimental language features can be imported in an experimental scope (see [experimental definitions](../other-new-features/experimental-defs.md)).
+They can be imported at the top-level if all top-level definitions are `@experimental`.
 
 ### Experimental language features supported by special compiler options
 

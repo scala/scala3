@@ -1,6 +1,6 @@
 package scala
 
-import annotation.{experimental, showAsInfix, since}
+import annotation.showAsInfix
 import compiletime._
 import compiletime.ops.int._
 
@@ -22,7 +22,6 @@ sealed trait Tuple extends Product {
     runtime.Tuples.toIArray(this)
 
   /** Return a copy of `this` tuple with an element appended */
-  @experimental
   inline def :* [This >: this.type <: Tuple, L] (x: L): Append[This, L] =
     runtime.Tuples.append(x, this).asInstanceOf[Append[This, L]]
 
@@ -84,7 +83,6 @@ sealed trait Tuple extends Product {
 object Tuple {
 
   /** Type of a tuple with an element appended */
-  @experimental
   type Append[X <: Tuple, Y] <: Tuple = X match {
     case EmptyTuple => Y *: EmptyTuple
     case x *: xs => x *: Append[xs, Y]
@@ -96,7 +94,6 @@ object Tuple {
   }
 
   /** Type of the initial part of the tuple without its last element */
-  @experimental
   type Init[X <: Tuple] <: Tuple = X match {
     case _ *: EmptyTuple => EmptyTuple
     case x *: xs =>
@@ -109,7 +106,6 @@ object Tuple {
   }
 
   /** Type of the last element of a tuple */
-  @experimental
   type Last[X <: Tuple] = X match {
     case x *: EmptyTuple => x
     case _ *: xs => Last[xs]
@@ -260,9 +256,7 @@ object Tuple {
   def fromProductTyped[P <: Product](p: P)(using m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
     runtime.Tuples.fromProduct(p).asInstanceOf[m.MirroredElemTypes]
 
-  @since("3.1")
   given canEqualEmptyTuple: CanEqual[EmptyTuple, EmptyTuple] = CanEqual.derived
-  @since("3.1")
   given canEqualTuple[H1, T1 <: Tuple, H2, T2 <: Tuple](
     using eqHead: CanEqual[H1, H2], eqTail: CanEqual[T1, T2]
   ): CanEqual[H1 *: T1, H2 *: T2] = CanEqual.derived
@@ -272,15 +266,7 @@ object Tuple {
 type EmptyTuple = EmptyTuple.type
 
 /** A tuple of 0 elements. */
-object EmptyTuple extends Tuple {
-  override def productArity: Int = 0
-
-  @throws(classOf[IndexOutOfBoundsException])
-  override def productElement(n: Int): Any =
-    throw new IndexOutOfBoundsException(n.toString())
-
-  def canEqual(that: Any): Boolean = this == that
-
+case object EmptyTuple extends Tuple {
   override def toString(): String = "()"
 }
 
@@ -299,12 +285,10 @@ sealed trait NonEmptyTuple extends Tuple {
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
 
   /** Get the initial part of the tuple without its last element */
-  @experimental
   inline def init[This >: this.type <: NonEmptyTuple]: Init[This] =
     runtime.Tuples.init(this).asInstanceOf[Init[This]]
 
   /** Get the last of this tuple */
-  @experimental
   inline def last[This >: this.type <: NonEmptyTuple]: Last[This] =
     runtime.Tuples.last(this).asInstanceOf[Last[This]]
 

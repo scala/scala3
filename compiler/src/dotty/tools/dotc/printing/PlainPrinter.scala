@@ -170,7 +170,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (toTextLocal(tycon) ~ "[" ~ argsText(args) ~ "]").close
       case tp: RefinedType =>
         val parent :: (refined: List[RefinedType @unchecked]) =
-          refinementChain(tp).reverse
+          refinementChain(tp).reverse: @unchecked
         toTextLocal(parent) ~ "{" ~ Text(refined map toTextRefinement, "; ").close ~ "}"
       case tp: RecType =>
         try {
@@ -325,7 +325,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp @ ConstantType(value) =>
         toText(value)
       case pref: TermParamRef =>
-        nameString(pref.binder.paramNames(pref.paramNum))
+        nameString(pref.binder.paramNames(pref.paramNum)) ~ lambdaHash(pref.binder)
       case tp: RecThis =>
         val idx = openRecs.reverse.indexOf(tp.binder)
         if (idx >= 0) selfRecName(idx + 1)

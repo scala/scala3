@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Early Initializers"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/early-initializers.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/early-initializers.html
 ---
 
 Early initializers of the form

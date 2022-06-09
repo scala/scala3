@@ -184,8 +184,8 @@ object Scala3:
     val EmptyPackage: String = "_empty_/"
     val LocalPrefix: String = "local"
     val PackageObjectDescriptor: String = "package."
-    val s"${RootPackageName @ _}/" = RootPackage
-    val s"${EmptyPackageName @ _}/" = EmptyPackage
+    val s"${RootPackageName @ _}/" = RootPackage: @unchecked
+    val s"${EmptyPackageName @ _}/" = EmptyPackage: @unchecked
 
     def displaySymbol(symbol: Symbol)(using Context): String =
       if symbol.isPackageObject then

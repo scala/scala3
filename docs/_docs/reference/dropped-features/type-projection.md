@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: General Type Projection"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/type-projection.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/type-projection.html
 ---
 
 Scala so far allowed general type projection `T#A` where `T` is an arbitrary type

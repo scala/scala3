@@ -11,6 +11,7 @@ import Symbols._
 import Names._
 import NameKinds.UniqueName
 import util.Spans._
+import util.Property
 import collection.mutable
 import Trees._
 
@@ -48,7 +49,10 @@ abstract class Lifter {
       // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
       var liftedType = expr.tpe.widen.deskolemized
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span))
+      val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span),
+        // Lifted definitions will be added to a local block, so they need to be
+        // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
+        nestingLevel = ctx.nestingLevel + 1)
       defs += liftedDef(lifted, expr)
         .withSpan(expr.span)
         .changeNonLocalOwners(lifted)
@@ -154,6 +158,27 @@ class LiftComplex extends Lifter {
   override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
+
+/** Lift complex + lift the prefixes */
+object LiftCoverage extends LiftComplex {
+
+  private val LiftEverything = new Property.Key[Boolean]
+
+  private inline def liftEverything(using Context): Boolean =
+    ctx.property(LiftEverything).contains(true)
+
+  private def liftEverythingContext(using Context): Context =
+    ctx.fresh.setProperty(LiftEverything, true)
+
+  override def noLift(expr: tpd.Tree)(using Context) =
+    !liftEverything && super.noLift(expr)
+
+  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
+    val liftedFun = liftApp(defs, tree.fun)
+    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftEverythingContext)
+    tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
+  }
+}
 
 object LiftErased extends LiftComplex:
   override def isErased = true

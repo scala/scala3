@@ -29,13 +29,13 @@ class SymbolTest {
   }
 
   @Test def symbolShowModule: Unit = {
-    code"""object ${m1}Foo${m2}""".withSource
+    code"""object ${m1}Foo${m2}"""
       .symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Module))
   }
 
   @Test def symbolShowClassAndCompanion: Unit = {
     code"""object ${m1}Foo${m2}
-          |class ${m3}Foo${m4}""".withSource
+          |class ${m3}Foo${m4}"""
       .symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Module),
                      (m3 to m4).symInfo("Foo", SymbolKind.Class))
   }
@@ -55,10 +55,10 @@ class SymbolTest {
 
   @Test def noLocalSymbols: Unit = {
     code"""object O {
-             def foo = {
-               val hello = 0
-             }
-           }""".withSource
+          |   def foo = {
+          |     val hello = 0
+          |   }
+          |}"""
       .symbol("hello")
   }
 }

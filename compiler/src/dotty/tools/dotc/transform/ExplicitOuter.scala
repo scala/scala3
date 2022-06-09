@@ -278,7 +278,8 @@ object ExplicitOuter {
           )
       case _ => false
     }
-    def hasOuterPrefix(tp: Type) = tp match {
+    def hasOuterPrefix(tp: Type): Boolean = tp.stripped match {
+      case AppliedType(tycon, _) => hasOuterPrefix(tycon)
       case TypeRef(prefix, _) => isOuterRef(prefix)
       case _ => false
     }
@@ -369,7 +370,7 @@ object ExplicitOuter {
     /** If `cls` has an outer parameter add one to the method type `tp`. */
     def addParam(cls: ClassSymbol, tp: Type): Type =
       if (needsOuterParam(cls)) {
-        val mt @ MethodTpe(pnames, ptypes, restpe) = tp
+        val mt @ MethodTpe(pnames, ptypes, restpe) = tp: @unchecked
         mt.derivedLambdaType(
           nme.OUTER :: pnames, outerClass(cls).typeRef :: ptypes, restpe)
       }

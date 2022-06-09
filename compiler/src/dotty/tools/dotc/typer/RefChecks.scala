@@ -70,7 +70,7 @@ object RefChecks {
 
     // Check for doomed attempt to overload applyDynamic
     if (clazz derivesFrom defn.DynamicClass)
-      for ((_, m1 :: m2 :: _) <- (clazz.info member nme.applyDynamic).alternatives groupBy (_.symbol.typeParams.length))
+      for (case (_, m1 :: m2 :: _) <- (clazz.info member nme.applyDynamic).alternatives groupBy (_.symbol.typeParams.length))
         report.error("implementation restriction: applyDynamic cannot be overloaded except by methods with different numbers of type parameters, e.g. applyDynamic[T1](method: String)(arg: T1) and applyDynamic[T1, T2](method: String)(arg1: T1, arg2: T2)",
           m1.symbol.srcPos)
   }
@@ -1015,7 +1015,7 @@ object RefChecks {
         ErrorReporting.substitutableTypeSymbolsInScope(sd.symbol).map(_.denot.name.show)
       for
         annotation <- sd.getAnnotation(defn.ImplicitNotFoundAnnot)
-        PositionedStringLiteralArgument(msg, span) <- annotation.argument(0)
+        case PositionedStringLiteralArgument(msg, span) <- annotation.argument(0)
       do forEachTypeVariableReferenceIn(msg) { case (ref, start) =>
         if !substitutableTypesNames.contains(ref) then
           reportInvalidReference(span, ref, start, sd)

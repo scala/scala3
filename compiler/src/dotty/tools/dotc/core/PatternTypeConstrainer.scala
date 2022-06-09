@@ -138,13 +138,28 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val andType = buildAndType(baseClasses)
           !andType.exists || constrainPatternType(pat, andType)
         case _ =>
-          val upcasted: Type = scrut match {
-            case scrut: TypeProxy => scrut.superType
-            case _ => NoType
+          def tryGadtBounds = scrut match {
+            case scrut: TypeRef =>
+              ctx.gadt.bounds(scrut.symbol) match {
+                case tb: TypeBounds =>
+                  val hi = tb.hi
+                  constrainPatternType(pat, hi)
+                case null => true
+              }
+            case _ => true
           }
-          if (upcasted.exists)
-            tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
-          else true
+
+          def trySuperType =
+            val upcasted: Type = scrut match {
+              case scrut: TypeProxy =>
+                scrut.superType
+              case _ => NoType
+            }
+            if (upcasted.exists)
+              tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
+            else true
+
+          tryGadtBounds && trySuperType
       }
     }
 
@@ -254,21 +269,17 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val result =
             tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
               val variance = param.paramVarianceSign
-              if variance != 0 && !assumeInvariantRefinement then true
-              else if argS.isInstanceOf[TypeBounds] || argP.isInstanceOf[TypeBounds] then
-                // This line was added here as a quick fix for issue #13998,
-                // to extract GADT constraints from wildcard type arguments.
-                // The proper fix would involve inspecting the bounds right here and performing the
-                // correct subtyping checks, the ones that are already performed by `isSubType` below,
-                // for the same reasons for which we stopped using `SkolemType` here to begin with
-                // (commit 10fe5374dc2d).
-                isSubType(SkolemType(patternTp), scrutineeTp)
-              else {
+              if variance == 0 || assumeInvariantRefinement ||
+                // As a special case, when pattern and scrutinee types have the same type constructor,
+                // we infer better bounds for pattern-bound abstract types.
+                argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
+              then
+                val TypeBounds(loS, hiS) = argS.bounds
                 var res = true
-                if variance <  1 then res &&= isSubType(argS, argP)
-                if variance > -1 then res &&= isSubType(argP, argS)
+                if variance <  1 then res &&= isSubType(loS, argP)
+                if variance > -1 then res &&= isSubType(argP, hiS)
                 res
-              }
+              else true
             }
           if !result then
             constraint = saved

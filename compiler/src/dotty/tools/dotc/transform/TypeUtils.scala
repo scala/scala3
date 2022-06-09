@@ -9,6 +9,8 @@ import Contexts._
 import Symbols._
 import Names.Name
 
+import dotty.tools.dotc.core.Decorators.*
+
 object TypeUtils {
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
@@ -49,13 +51,17 @@ object TypeUtils {
 
     /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs,
      *  or -1 if this is not a tuple type.
+     *
+     *  @param relaxEmptyTuple if true then TypeRef(EmptyTuple$) =:= EmptyTuple.type
      */
-    def tupleArity(using Context): Int = self match {
+    def tupleArity(relaxEmptyTuple: Boolean = false)(using Context): Int = self match {
       case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
-        val arity = tl.tupleArity
+        val arity = tl.tupleArity(relaxEmptyTuple)
         if (arity < 0) arity else arity + 1
       case self: SingletonType =>
         if self.termSymbol == defn.EmptyTupleModule then 0 else -1
+      case self: TypeRef if relaxEmptyTuple && self.classSymbol == defn.EmptyTupleModule.moduleClass =>
+        0
       case self if defn.isTupleClass(self.classSymbol) =>
         self.dealias.argInfos.length
       case _ =>
@@ -69,6 +75,8 @@ object TypeUtils {
       case self: SingletonType =>
         assert(self.termSymbol == defn.EmptyTupleModule, "not a tuple")
         Nil
+      case self: TypeRef if self.classSymbol == defn.EmptyTupleModule.moduleClass =>
+         Nil
       case self if defn.isTupleClass(self.classSymbol) =>
         self.dealias.argInfos
       case _ =>
@@ -84,11 +92,16 @@ object TypeUtils {
     /** The TermRef referring to the companion of the underlying class reference
      *  of this type, while keeping the same prefix.
      */
-    def companionRef(using Context): TermRef = self match {
+    def mirrorCompanionRef(using Context): TermRef = self match {
+      case AndType(tp1, tp2) =>
+        val c1 = tp1.classSymbol
+        val c2 = tp2.classSymbol
+        if c1.isSubClass(c2) then tp1.mirrorCompanionRef
+        else tp2.mirrorCompanionRef // precondition: the parts of the AndType have already been checked to be non-overlapping
       case self @ TypeRef(prefix, _) if self.symbol.isClass =>
         prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
       case self: TypeProxy =>
-        self.underlying.companionRef
+        self.underlying.mirrorCompanionRef
     }
 
     /** Is this type a methodic type that takes implicit parameters (both old and new) at some point? */

@@ -154,7 +154,7 @@ using Dotty with Mill, see the
 ### IDE support
 
 Start using the Dotty IDE in any Dotty project by following
-the [IDE guide](https://dotty.epfl.ch/docs/usage/ide-support.html).
+the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala3/getting-started.html).
 
 ### Standalone installation
 

@@ -4,8 +4,8 @@ title: Using an IDE
 ---
 
 You can use either Metals (VS Code, vim) or IntelliJ IDEA as described on the
-[IDE Support](../../usage/ide-support.md) page to work on the Scala 3 codebase. There are however
-a few additional considerations to take into account.
+IDE sections of the [getting-started page](https://docs.scala-lang.org/scala3/getting-started.html) to work
+on the Scala 3 codebase. There are however a few additional considerations to take into account.
 
 
 ## Bootstrapping Projects
@@ -25,8 +25,8 @@ These duplicated projects can be confusing and cause issues in IDEs.
 
 When using Metals, the `-bootstrapped` projects are not exported.
 
-In IntelliJ IDEA, we recommend importing the dotty codebase through BSP as described on the
-[IDE Support page](../../usage/ide-support.md), then the `-bootstrapped` projects are not exported.
+In IntelliJ IDEA, we recommend importing the dotty codebase through BSP, then the `-bootstrapped`
+projects are not exported.
 
 
 ## Scala Version warning in Metals

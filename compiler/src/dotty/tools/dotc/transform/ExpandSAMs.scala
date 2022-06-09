@@ -106,7 +106,7 @@ class ExpandSAMs extends MiniPhase:
    *  ```
    */
   private def toPartialFunction(tree: Block, tpe: Type)(using Context): Tree = {
-    val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree
+    val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree: @unchecked
 
     // The right hand side from which to construct the partial function. This is always a Match.
     // If the original rhs is already a Match (possibly in braces), return that.

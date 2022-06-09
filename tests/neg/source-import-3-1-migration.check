@@ -1,0 +1,4 @@
+-- Error: tests/neg/source-import-3-1-migration.scala:1:16 -------------------------------------------------------------
+1 |import language.`3.1-migration` // error
+  |                ^^^^^^^^^^^^^^^
+  |                `3.1-migration` is not a valid source version, did you mean language.`3.1`?

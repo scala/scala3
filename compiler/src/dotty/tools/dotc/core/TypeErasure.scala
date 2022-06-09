@@ -363,13 +363,13 @@ object TypeErasure {
    *  which leads to more predictable bytecode and (?) faster dynamic dispatch.
    */
   def erasedLub(tp1: Type, tp2: Type)(using Context): Type = {
-    // After erasure, C | {Null, Nothing} is just C, if C is a reference type.
-    // We need to short-circuit this case here because the regular lub logic below
-    // relies on the class hierarchy, which doesn't properly capture `Null`s subtyping
-    // behaviour.
-    if (tp1.isBottomTypeAfterErasure && tp2.derivesFrom(defn.ObjectClass)) return tp2
-    if (tp2.isBottomTypeAfterErasure && tp1.derivesFrom(defn.ObjectClass)) return tp1
-    tp1 match {
+    // We need to short-circuit the following 2 case because the regular lub logic in the else relies on
+    // the class hierarchy, which doesn't properly capture `Nothing`/`Null` subtyping behaviour.
+    if tp1.isRef(defn.NothingClass) || (tp1.isRef(defn.NullClass) && tp2.derivesFrom(defn.ObjectClass)) then
+      tp2 // After erasure, Nothing | T is just T and Null | C is just C, if C is a reference type.
+    else if tp2.isRef(defn.NothingClass) || (tp2.isRef(defn.NullClass) && tp1.derivesFrom(defn.ObjectClass)) then
+      tp1 // After erasure, T | Nothing is just T and C | Null is just C, if C is a reference type.
+    else tp1 match {
       case JavaArrayType(elem1) =>
         import dotty.tools.dotc.transform.TypeUtils._
         tp2 match {
@@ -680,13 +680,18 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
   }
 
   private def eraseArray(tp: Type)(using Context) = {
-    val defn.ArrayOf(elemtp) = tp
+    val defn.ArrayOf(elemtp) = tp: @unchecked
     if (isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2)) defn.ObjectType
-    else JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, wildcardOK)(elemtp))
+    else
+      try JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, wildcardOK)(elemtp))
+      catch case ex: Throwable =>
+        handleRecursive("erase array type", tp.show, ex)
   }
 
   private def erasePair(tp: Type)(using Context): Type = {
-    val arity = tp.tupleArity
+    // NOTE: `tupleArity` does not consider TypeRef(EmptyTuple$) equivalent to EmptyTuple.type,
+    // we fix this for printers, but type erasure should be preserved.
+    val arity = tp.tupleArity()
     if (arity < 0) defn.ProductClass.typeRef
     else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity).nn
     else defn.TupleXXLClass.typeRef

@@ -1,8 +1,8 @@
--- Error: tests/init/neg/leak-warm.scala:18:26 -------------------------------------------------------------------------
-18 |    val l: List[A] = List(c, d) // error // error
-   |                          ^
-   |           Cannot prove that the value is fully initialized. May only use initialized value as method arguments.
--- Error: tests/init/neg/leak-warm.scala:18:29 -------------------------------------------------------------------------
-18 |    val l: List[A] = List(c, d) // error // error
-   |                             ^
-   |           Cannot prove that the value is fully initialized. May only use initialized value as method arguments.
+-- Error: tests/init/neg/leak-warm.scala:19:18 -------------------------------------------------------------------------
+19 |    val l2 = l.map(_.m()) // error
+   |             ^^^^^^^^^^^^
+   |             Call method on a value with an unknown initialization. Calling trace:
+   |             -> object leakWarm {	[ leak-warm.scala:1 ]
+   |                ^
+   |             -> val l2 = l.map(_.m()) // error	[ leak-warm.scala:19 ]
+   |                         ^^^^^^^^^^^^

@@ -130,7 +130,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformTemplate(tree: Template)(using Context): Tree = {
     val cls = ctx.owner.asClass
 
-    val constr @ DefDef(nme.CONSTRUCTOR, (vparams: List[ValDef] @unchecked) :: Nil, _, EmptyTree) = tree.constr
+    val constr @ DefDef(nme.CONSTRUCTOR, (vparams: List[ValDef] @unchecked) :: Nil, _, EmptyTree) = tree.constr: @unchecked
 
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original

@@ -74,6 +74,7 @@ class CommunityBuildTestC:
   @Test def onnxScala = projects.onnxScala.run()
   @Test def oslib = projects.oslib.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
+  @Test def parboiled2 = projects.parboiled2.run()
   @Test def playJson = projects.playJson.run()
   @Test def pprint = projects.pprint.run()
   @Test def protoquill = projects.protoquill.run()
@@ -100,17 +101,3 @@ class CommunityBuildTestC:
   @Test def verify = projects.verify.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
 end CommunityBuildTestC
-
-@Category(Array(classOf[TestCategory]))
-class CommunityBuildTestForwardCompat:
-  @Test def catsEffect3ForwardCompat = projects.catsEffect3ForwardCompat.run()
-  @Test def catsForwardCompat = projects.catsForwardCompat.run()
-  @Test def catsMtlForwardCompat = projects.catsMtlForwardCompat.run()
-  @Test def coopForwardCompat = projects.coopForwardCompat.run()
-  @Test def disciplineForwardCompat = projects.disciplineForwardCompat.run()
-  @Test def disciplineMunitForwardCompat = projects.disciplineMunitForwardCompat.run()
-  @Test def disciplineSpecs2ForwardCompat = projects.disciplineSpecs2ForwardCompat.run()
-  @Test def munitForwardCompat = projects.munitForwardCompat.run()
-  @Test def scalacheckForwardCompat = projects.scalacheckForwardCompat.run()
-  @Test def simulacrumScalafixAnnotationsForwardCompat = projects.simulacrumScalafixAnnotationsForwardCompat.run()
-end CommunityBuildTestForwardCompat

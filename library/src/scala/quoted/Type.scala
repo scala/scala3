@@ -1,6 +1,6 @@
 package scala.quoted
 
-import scala.annotation.{compileTimeOnly, experimental, since}
+import scala.annotation.{compileTimeOnly, experimental}
 
 /** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}` */
 abstract class Type[T <: AnyKind] private[scala]:
@@ -66,7 +66,6 @@ object Type:
    *  //}
    *  ```
    */
-  @since("3.1")
   def valueOfTuple[T <: Tuple](using Type[T])(using Quotes): Option[T] =
     valueOfTuple(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]
 

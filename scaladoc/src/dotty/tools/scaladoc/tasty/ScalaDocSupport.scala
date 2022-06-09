@@ -29,7 +29,7 @@ object ScaladocSupport:
 
             defaultSyntax
           }
-        case None => 
+        case None =>
           pathBasedCommentSyntax()
       }
 
@@ -41,17 +41,20 @@ object ScaladocSupport:
     }
     parser.parse(preparsed)
 
-  def parseComment(using Quotes, DocContext)(docstring: String,  tree: reflect.Tree): Comment =
+  def parseComment(using Quotes, DocContext)(docstring: String, tree: reflect.Tree): Option[Comment] =
     val commentString: String =
       if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
         import dotty.tools.dotc
+        import dotty.tools.dotc.core.Comments.CommentsContext
         given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+
+        val docCtx = ctx.docCtx.get
 
         val sym = tree.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
 
-        comments.CommentExpander.cookComment(sym)(using ctx)
-          .get.expanded.get
+        docCtx.templateExpander.expand(sym, sym.owner)
       else
         docstring
-
-    parseCommentString(commentString, tree.symbol, Some(tree.pos))
+    if commentString == ""
+    then None
+    else Some(parseCommentString(commentString, tree.symbol, Some(tree.pos)))

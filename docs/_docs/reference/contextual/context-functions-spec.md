@@ -1,16 +1,16 @@
 ---
 layout: doc-page
 title: "Context Functions - More Details"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/context-functions-spec.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/context-functions-spec.html
 ---
 
 ## Syntax
 
-```ebnf
+```
 Type              ::=  ...
-                    |  FunArgTypes ‘?=>’ Type ;
+                    |  FunArgTypes ‘?=>’ Type
 Expr              ::=  ...
-                    |  FunParams ‘?=>’ Expr ;
+                    |  FunParams ‘?=>’ Expr
 ```
 
 Context function types associate to the right, e.g.

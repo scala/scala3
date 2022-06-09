@@ -24,13 +24,8 @@ class Compiler {
    *  all refs to it would become outdated - they could not be dereferenced in the
    *  new phase.
    *
-   *  After erasure, signature changing denot-transformers are OK because erasure
-   *  will make sure that only term refs with fixed SymDenotations survive beyond it. This
-   *  is possible because:
-   *
-   *   - splitter has run, so every ident or select refers to a unique symbol
-   *   - after erasure, asSeenFrom is the identity, so every reference has a
-   *     plain SymDenotation, as opposed to a UniqueRefDenotation.
+   *  After erasure, signature changing denot-transformers are OK because signatures
+   *  are never recomputed later than erasure.
    */
   def phases: List[List[Phase]] =
     frontendPhases ::: picklerPhases ::: transformPhases ::: backendPhases
@@ -54,11 +49,13 @@ class Compiler {
     List(new Inlining) ::           // Inline and execute macros
     List(new PostInlining) ::       // Add mirror support for inlined code
     List(new Staging) ::            // Check staging levels and heal staged types
+    List(new Splicing) ::           // Replace level 1 splices with holes
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
   protected def transformPhases: List[List[Phase]] =
+    List(new InstrumentCoverage) ::  // Perform instrumentation for code coverage (if -coverage-out is set)
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
@@ -94,6 +91,7 @@ class Compiler {
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
          new SpecializeFunctions,    // Specialized Function{0,1,2} by replacing super with specialized super
+         new SpecializeTuples,       // Specializes Tuples by replacing tuple construction and selection trees
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections

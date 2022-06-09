@@ -2,12 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import annotation.tailrec
-import Symbols._
-import Contexts._, Names._, Phases._, printing.Texts._
-import collection.mutable.ListBuffer
-import dotty.tools.dotc.transform.MegaPhase
-import printing.Formatting._
+import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
+import scala.util.control.NonFatal
+
+import Contexts._, Names._, Phases._, Symbols._
+import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
+import transform.MegaPhase
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -183,6 +184,9 @@ object Decorators {
       loop(xs, xs, 0)
     end mapWithIndexConserve
 
+    /** True if two lists have the same length.  Since calling length on linear sequences
+     *  is Θ(n), it is an inadvisable way to test length equality.  This method is Θ(n min m).
+     */
     final def hasSameLengthAs[U](ys: List[U]): Boolean = {
       @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
         if (xs.isEmpty) ys.isEmpty
@@ -246,12 +250,28 @@ object Decorators {
       }
 
   extension [T](x: T)
-    def showing(
-        op: WrappedResult[T] ?=> String,
-        printer: config.Printers.Printer = config.Printers.default): T = {
-      printer.println(op(using WrappedResult(x)))
+    def showing[U](
+        op: WrappedResult[U] ?=> String,
+        printer: config.Printers.Printer = config.Printers.default)(using c: Conversion[T, U] | Null = null): T = {
+      // either the use of `$result` was driven by the expected type of `Shown`
+      // which led to the summoning of `Conversion[T, Shown]` (which we'll invoke)
+      // or no such conversion was found so we'll consume the result as it is instead
+      val obj = if c == null then x.asInstanceOf[U] else c(x)
+      printer.println(op(using WrappedResult(obj)))
       x
     }
+
+    /** Instead of `toString` call `show` on `Showable` values, falling back to `toString` if an exception is raised. */
+    def tryToShow(using Context): String = x match
+      case x: Showable =>
+        try x.show
+        catch
+          case ex: CyclicReference => "... (caught cyclic reference) ..."
+          case NonFatal(ex)
+              if !ctx.mode.is(Mode.PrintShowExceptions) && !ctx.settings.YshowPrintErrors.value =>
+            val msg = ex match { case te: TypeError => te.toMessage case _ => ex.getMessage }
+            s"[cannot display due to $msg, raw string = $x]"
+      case _ => String.valueOf(x).nn
 
   extension [T](x: T)
     def assertingErrorsReported(using Context): T = {
@@ -269,19 +289,19 @@ object Decorators {
 
   extension (sc: StringContext)
     /** General purpose string formatting */
-    def i(args: Any*)(using Context): String =
+    def i(args: Shown*)(using Context): String =
       new StringFormatter(sc).assemble(args)
 
     /** Formatting for error messages: Like `i` but suppress follow-on
      *  error messages after the first one if some of their arguments are "non-sensical".
      */
-    def em(args: Any*)(using Context): String =
+    def em(args: Shown*)(using Context): String =
       new ErrorMessageFormatter(sc).assemble(args)
 
     /** Formatting with added explanations: Like `em`, but add explanations to
      *  give more info about type variables and to disambiguate where needed.
      */
-    def ex(args: Any*)(using Context): String =
+    def ex(args: Shown*)(using Context): String =
       explained(em(args: _*))
 
   extension [T <: AnyRef](arr: Array[T])

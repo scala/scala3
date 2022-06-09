@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Type Class Derivation"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/derivation.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/derivation.html
 ---
 
 Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple
@@ -118,6 +118,16 @@ new Mirror.Product:
   def fromProduct(p: Product): MirroredMonoType =
     new Leaf(...)
 ```
+
+If a Mirror cannot be generated automatically for a given type, an error will appear explaining why it is neither a supported 
+sum type nor a product type. For example, if `A` is a trait that is not sealed,
+
+```
+No given instance of type deriving.Mirror.Of[A] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[A]: 
+     * trait A is not a generic product because it is not a case class
+     * trait A is not a generic sum because it is not a sealed trait
+```
+
 
 Note the following properties of `Mirror` types,
 
@@ -354,12 +364,12 @@ hand side of this definition in the same way as an instance defined in ADT compa
 
 ### Syntax
 
-```ebnf
-Template          ::=  InheritClauses [TemplateBody] ;
-EnumDef           ::=  id ClassConstr InheritClauses EnumBody ;
-InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}] ;
+```
+Template          ::=  InheritClauses [TemplateBody]
+EnumDef           ::=  id ClassConstr InheritClauses EnumBody
+InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
-                    |  ConstrApp {‘,’ ConstrApp} ;
+                    |  ConstrApp {‘,’ ConstrApp}
 ```
 
 **Note:** To align `extends` clauses and `derives` clauses, Scala 3 also allows multiple

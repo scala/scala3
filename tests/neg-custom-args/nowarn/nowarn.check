@@ -63,7 +63,7 @@ Matching filters for @nowarn or -Wconf:
    |                              ^
    |                              method f is deprecated
 -- Deprecation Warning: tests/neg-custom-args/nowarn/nowarn.scala:47:10 ------------------------------------------------
-47 |def t7c = f:          // warning (deprecation)
+47 |def t7c = f             // warning (deprecation)
    |          ^
    |          method f is deprecated
 -- Unchecked Warning: tests/neg-custom-args/nowarn/nowarn.scala:53:7 ---------------------------------------------------
@@ -78,10 +78,10 @@ Matching filters for @nowarn or -Wconf:
 40 |@nowarn("msg=fish") def t6d = f // error (unused nowarn), warning (deprecation)
    |^^^^^^^^^^^^^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:48:3 ---------------------------------------------------------------
-48 |  @nowarn("msg=fish") // error (unused nowarn)
-   |  ^^^^^^^^^^^^^^^^^^^
-   |  @nowarn annotation does not suppress any warnings
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:48:5 ---------------------------------------------------------------
+48 |  : @nowarn("msg=fish") // error (unused nowarn)
+   |    ^^^^^^^^^^^^^^^^^^^
+   |    @nowarn annotation does not suppress any warnings
 -- Error: tests/neg-custom-args/nowarn/nowarn.scala:60:0 ---------------------------------------------------------------
 60 |@nowarn def t9a = { 1: @nowarn; 2 } // error (outer @nowarn is unused)
    |^^^^^^^

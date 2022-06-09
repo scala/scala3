@@ -1,11 +1,11 @@
 {
-  val y: [A >: scala.Nothing <: scala.Any] => scala.collection.immutable.List[A][scala.Int] = scala.List.apply[scala.Int](1, 2, 3)
+  val y: scala.collection.immutable.List[scala.Int] = scala.List.apply[scala.Int](1, 2, 3)
 
   (y: scala.collection.immutable.List[scala.Int])
 }
 List(1, 2, 3)
 {
-  val y: [A >: scala.Nothing <: scala.Any] => scala.Option[A][scala.Int] = scala.Option.apply[scala.Int](4)
+  val y: scala.Option[scala.Int] = scala.Option.apply[scala.Int](4)
 
   (y: scala.Option[scala.Int])
 }

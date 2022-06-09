@@ -1,0 +1,6 @@
+-- [E006] Not Found Error: tests/neg/i12482.scala:3:2 ------------------------------------------------------------------
+3 |  FileZipArchive // error
+  |  ^^^^^^^^^^^^^^
+  |  Not found: FileZipArchive
+  |
+  | longer explanation available when compiling with `-explain`

@@ -1025,7 +1025,7 @@ class JSCodeGen()(using genCtx: Context) {
      */
 
     val (primaryTree :: Nil, secondaryTrees) =
-      constructorTrees.partition(_.symbol.isPrimaryConstructor)
+      constructorTrees.partition(_.symbol.isPrimaryConstructor): @unchecked
 
     val primaryCtor = genPrimaryJSClassCtor(primaryTree)
     val secondaryCtors = secondaryTrees.map(genSecondaryJSClassCtor(_))
@@ -1106,7 +1106,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   private def genPrimaryJSClassCtor(dd: DefDef): PrimaryJSCtor = {
     val sym = dd.symbol
-    val Block(stats, _) = dd.rhs
+    val Block(stats, _) = dd.rhs: @unchecked
     assert(sym.isPrimaryConstructor, s"called with non-primary ctor: $sym")
 
     var jsSuperCall: Option[js.JSSuperConstructorCall] = None
@@ -1179,7 +1179,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     assert(thisCall.isDefined,
         i"could not find the this() call in secondary JS constructor at ${dd.sourcePos}:\n${stats.map(_.show).mkString("\n")}")
-    val Some((targetCtor, ctorArgs)) = thisCall
+    val Some((targetCtor, ctorArgs)) = thisCall: @unchecked
 
     new SplitSecondaryJSCtor(sym, genParamsAndInfo(sym, dd.paramss),
         beforeThisCall.result(), targetCtor, ctorArgs, afterThisCall.result())
@@ -1702,11 +1702,6 @@ class JSCodeGen()(using genCtx: Context) {
     tree match {
       /** Local val or var declaration */
       case tree @ ValDef(name, _, _) =>
-        /* Must have been eliminated by the tail call transform performed
-         * by genMethodBody(). */
-        assert(name != nme.THIS,
-            s"ValDef(_, nme.THIS, _, _) found at ${tree.span}")
-
         val sym = tree.symbol
         val rhs = tree.rhs
         val rhsTree = genExpr(rhs)
@@ -2144,7 +2139,7 @@ class JSCodeGen()(using genCtx: Context) {
    */
   private def genSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
+    val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree: @unchecked
     val sym = fun.symbol
 
     if (sym == defn.Any_getClass) {
@@ -2185,7 +2180,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genApplyNew(tree: Apply): js.Tree = {
     implicit val pos: SourcePosition = tree.sourcePos
 
-    val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree
+    val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree: @unchecked
     val ctor = fun.symbol
     val tpe = tpt.tpe
 
@@ -2234,7 +2229,7 @@ class JSCodeGen()(using genCtx: Context) {
     acquireContextualJSClassValue { jsClassValue =>
       implicit val pos: Position = tree.span
 
-      val Apply(fun @ Select(New(tpt), _), args) = tree
+      val Apply(fun @ Select(New(tpt), _), args) = tree: @unchecked
       val cls = tpt.tpe.typeSymbol
       val ctor = fun.symbol
 
@@ -2903,7 +2898,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     implicit val pos = tree.span
 
-    val Apply(fun, args) = tree
+    val Apply(fun, args) = tree: @unchecked
     val arrayObj = qualifierOf(fun)
 
     val genArray = genExpr(arrayObj)
@@ -3172,7 +3167,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genJSSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
     acquireContextualJSClassValue { explicitJSSuperClassValue =>
       implicit val pos = tree.span
-      val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
+      val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree: @unchecked
       val sym = fun.symbol
 
       val genReceiver = genExpr(qual)
@@ -3247,7 +3242,7 @@ class JSCodeGen()(using genCtx: Context) {
   /** Gen JS code for a switch-`Match`, which is translated into an IR `js.Match`. */
   def genMatch(tree: Tree, isStat: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Match(selector, cases) = tree
+    val Match(selector, cases) = tree: @unchecked
 
     def abortMatch(msg: String): Nothing =
       throw new FatalError(s"$msg in switch-like pattern match at ${tree.span}: $tree")
@@ -3446,7 +3441,7 @@ class JSCodeGen()(using genCtx: Context) {
       val call = if (isStaticCall) {
         genApplyStatic(sym, formalCaptures.map(_.ref) ::: actualParams)
       } else {
-        val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref)
+        val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref): @unchecked
         if (!sym.owner.isNonNativeJSClass || sym.isJSExposed)
           genApplyMethodMaybeStatically(thisCaptureRef, sym, argCaptureRefs ::: actualParams)
         else
@@ -3463,7 +3458,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     if (isThisFunction) {
-      val thisParam :: otherParams = formalParams
+      val thisParam :: otherParams = formalParams: @unchecked
       js.Closure(
           arrow = false,
           formalCaptures,
@@ -3975,7 +3970,7 @@ class JSCodeGen()(using genCtx: Context) {
    */
   private def genReflectiveCall(tree: Apply, isSelectDynamic: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Apply(fun @ Select(receiver, _), args) = tree
+    val Apply(fun @ Select(receiver, _), args) = tree: @unchecked
 
     val selectedValueTree = js.Apply(js.ApplyFlags.empty, genExpr(receiver),
         js.MethodIdent(selectedValueMethodName), Nil)(jstpe.AnyType)
@@ -4218,7 +4213,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genCaptureValuesFromFakeNewInstance(tree: Tree): List[js.Tree] = {
     implicit val pos: Position = tree.span
 
-    val Apply(fun @ Select(New(_), _), args) = tree
+    val Apply(fun @ Select(New(_), _), args) = tree: @unchecked
     val sym = fun.symbol
 
     /* We use the same strategy as genActualJSArgs to detect which parameters were
@@ -4544,7 +4539,7 @@ class JSCodeGen()(using genCtx: Context) {
         pathName.split('.').toList
 
       def parseGlobalPath(pathName: String): Global = {
-        val globalRef :: path = parsePath(pathName)
+        val globalRef :: path = parsePath(pathName): @unchecked
         Global(globalRef, path)
       }
 
@@ -4563,7 +4558,14 @@ class JSCodeGen()(using genCtx: Context) {
         val module = annot.argumentConstantString(0).getOrElse {
           unexpected("could not read the module argument as a string literal")
         }
-        val path = annot.argumentConstantString(1).fold[List[String]](Nil)(parsePath)
+        val path = annot.argumentConstantString(1).fold {
+          if (annot.arguments.sizeIs < 2)
+            parsePath(sym.defaultJSName)
+          else
+            Nil
+        } { pathName =>
+          parsePath(pathName)
+        }
         val importSpec = Import(module, path)
         annot.argumentConstantString(2).fold[js.JSNativeLoadSpec] {
           importSpec

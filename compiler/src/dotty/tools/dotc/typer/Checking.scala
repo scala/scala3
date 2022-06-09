@@ -37,6 +37,7 @@ import transform.patmat.SpaceEngine.isIrrefutable
 import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion._
+import printing.Formatting.hlAsKeyword
 import transform.TypeUtils.*
 
 import collection.mutable
@@ -473,8 +474,7 @@ object Checking {
     if sym.isInlineMethod && !sym.is(Deferred) && sym.allOverriddenSymbols.nonEmpty then
       checkInlineOverrideParameters(sym)
     if (sym.is(Implicit)) {
-      if (sym.owner.is(Package))
-        fail(TopLevelCantBeImplicit(sym))
+      assert(!sym.owner.is(Package), s"top-level implicit $sym should be wrapped by a package after typer")
       if sym.isType && (!sym.isClass || sym.is(Trait)) then
         fail(TypesAndTraitsCantBeImplicit())
     }
@@ -506,6 +506,8 @@ object Checking {
         fail(TailrecNotApplicable(sym))
       else if sym.is(Inline) then
         fail("Inline methods cannot be @tailrec")
+    if sym.hasAnnotation(defn.TargetNameAnnot) && sym.isClass && sym.isTopLevelClass then
+      fail(TargetNameOnTopLevelClass(sym))
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
@@ -713,7 +715,7 @@ object Checking {
 
   def checkValue(tree: Tree)(using Context): Unit =
     val sym = tree.tpe.termSymbol
-    if sym.is(Flags.Package) || sym.isAllOf(Flags.JavaModule) && !ctx.isJava then
+    if sym.isNoValue && !ctx.isJava then
       report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 
   def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
@@ -794,37 +796,68 @@ trait Checking {
 
   /** Check that pattern `pat` is irrefutable for scrutinee type `sel.tpe`.
    *  This means `sel` is either marked @unchecked or `sel.tpe` conforms to the
-   *  pattern's type. If pattern is an UnApply, do the check recursively.
+   *  pattern's type. If pattern is an UnApply, also check that the extractor is
+   *  irrefutable, and do the check recursively.
    */
   def checkIrrefutable(sel: Tree, pat: Tree, isPatDef: Boolean)(using Context): Boolean = {
     val pt = sel.tpe
 
-    def fail(pat: Tree, pt: Type): Boolean = {
-      var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
-      if (!pat.tpe.isSingleton) reportedPt = reportedPt.widen
-      val problem = if (pat.tpe <:< reportedPt) "is more specialized than" else "does not match"
-      val fix = if (isPatDef) "adding `: @unchecked` after the expression" else "writing `case ` before the full pattern"
-      val pos = if (isPatDef) sel.srcPos else pat.srcPos
-      report.warning(
-        ex"""pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt
+    enum Reason:
+      case NonConforming, RefutableExtractor
+
+    def fail(pat: Tree, pt: Type, reason: Reason): Boolean = {
+      import Reason._
+      val message = reason match
+        case NonConforming =>
+          var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
+          if !pat.tpe.isSingleton then reportedPt = reportedPt.widen
+          val problem = if pat.tpe <:< reportedPt then "is more specialized than" else "does not match"
+          ex"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
+        case RefutableExtractor =>
+          val extractor =
+            val UnApply(fn, _, _) = pat: @unchecked
+            fn match
+              case Select(id, _) => id
+              case TypeApply(Select(id, _), _) => id
+          em"pattern binding uses refutable extractor `$extractor`"
+
+      val fix =
+        if isPatDef then "adding `: @unchecked` after the expression"
+        else "adding the `case` keyword before the full pattern"
+      val addendum =
+        if isPatDef then "may result in a MatchError at runtime"
+        else "will result in a filtering for expression (using `withFilter`)"
+      val usage = reason match
+        case NonConforming => "the narrowing"
+        case RefutableExtractor => "this usage"
+      val pos =
+        if isPatDef then reason match
+          case NonConforming => sel.srcPos
+          case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
+        else pat.srcPos
+      def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
+      report.gradualErrorOrMigrationWarning(
+        em"""$message
             |
-            |If the narrowing is intentional, this can be communicated by $fix.${err.rewriteNotice}""",
-          pos)
+            |If $usage is intentional, this can be communicated by $fix,
+            |which $addendum.$rewriteMsg""",
+        pos, warnFrom = `3.2`, errorFrom = `future`)
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt)
+    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
-      !sourceVersion.isAtLeast(future) || // only for 3.x for now since mitigations work only after this PR
-      pt.hasAnnotation(defn.UncheckedAnnot) || {
+      !sourceVersion.isAtLeast(`3.2`)
+      || pt.hasAnnotation(defn.UncheckedAnnot)
+      || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
-        pat match {
+        pat match
           case Bind(_, pat1) =>
             recur(pat1, pt)
           case UnApply(fn, _, pats) =>
             check(pat, pt) &&
-            (isIrrefutable(fn, pats.length) || fail(pat, pt)) && {
+            (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
@@ -837,7 +870,6 @@ trait Checking {
           case _ =>
             check(pat, pt)
         }
-      }
 
     recur(pat, pt)
   }
@@ -905,7 +937,7 @@ trait Checking {
         if (stablePrefixReq && ctx.phase <= refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
         tp
       case _ =>
-        report.error(ex"$tp is not a class type", pos)
+        report.error(NotClassType(tp), pos)
         defn.ObjectType
     }
 
@@ -962,10 +994,10 @@ trait Checking {
                 ("extractor", (n: Name) => s"prefix syntax $n(...)")
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
+            def rewriteMsg = Message.rewriteNotice("The latter", options = "-deprecation")
             report.deprecationWarning(
-              i"""Alphanumeric $kind $name is not declared `infix`; it should not be used as infix operator.
-                 |The operation can be rewritten automatically to `$name` under -deprecation -rewrite.
-                 |Or rewrite to ${alternative(name)} manually.""",
+              i"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
+                 |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
               tree.op.srcPos)
             if (ctx.settings.deprecation.value) {
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
@@ -1197,7 +1229,7 @@ trait Checking {
     case _: TypeTree =>
     case _ =>
       if tree.tpe.typeParams.nonEmpty then
-        val what = if tree.symbol.exists then tree.symbol else i"type $tree"
+        val what = if tree.symbol.exists then tree.symbol.show else i"type $tree"
         report.error(em"$what takes type parameters", tree.srcPos)
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
@@ -1324,7 +1356,7 @@ trait Checking {
       else if (stat.symbol.is(Module) && stat.symbol.linkedClass.isAllOf(EnumCase))
         stat match {
           case TypeDef(_, impl: Template) =>
-            for ((defaultGetter @
+            for (case (defaultGetter @
                   DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _)) <- impl.body)
               check(defaultGetter.rhs)
           case _ =>
@@ -1351,12 +1383,13 @@ trait Checking {
   def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean =
     !ctx.reporter.reportsErrorsFor {
       val annotCls = Annotations.annotClass(annot)
+      val concreteAnnot = Annotations.ConcreteAnnotation(annot)
       val pos = annot.srcPos
-      if (annotCls == defn.MainAnnot) {
+      if (annotCls == defn.MainAnnot || concreteAnnot.matches(defn.MainAnnotationClass)) {
         if (!sym.isRealMethod)
-          report.error(em"@main annotation cannot be applied to $sym", pos)
+          report.error(em"main annotation cannot be applied to $sym", pos)
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
-          report.error(em"$sym cannot be a @main method since it cannot be accessed statically", pos)
+          report.error(em"$sym cannot be a main method since it cannot be accessed statically", pos)
       }
       // TODO: Add more checks here
     }

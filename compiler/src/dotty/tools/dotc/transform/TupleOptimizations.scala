@@ -32,7 +32,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     else tree
 
   private def transformTupleCons(tree: tpd.Apply)(using Context): Tree = {
-    val head :: tail :: Nil = tree.args
+    val head :: tail :: Nil = tree.args: @unchecked
     defn.tupleTypes(tree.tpe.widenTermRefExpr.dealias) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN+1.apply
@@ -60,7 +60,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   }
 
   private def transformTupleTail(tree: tpd.Apply)(using Context): Tree = {
-    val Apply(_, tup :: Nil) = tree
+    val Apply(_, tup :: Nil) = tree: @unchecked
     defn.tupleTypes(tup.tpe.widenTermRefExpr.dealias, MaxTupleArity + 1) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN-1.apply
@@ -103,7 +103,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     }
 
   private def transformTupleConcat(tree: tpd.Apply)(using Context): Tree = {
-    val Apply(_, self :: that :: Nil) = tree
+    val Apply(_, self :: that :: Nil) = tree: @unchecked
     (defn.tupleTypes(self.tpe.widenTermRefExpr.dealias), defn.tupleTypes(that.tpe.widenTermRefExpr.dealias)) match {
       case (Some(tpes1), Some(tpes2)) =>
         // Generate a the tuple directly with TupleN+M.apply
@@ -138,7 +138,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   }
 
   private def transformTupleApply(tree: tpd.Apply)(using Context): Tree = {
-    val Apply(_, tup :: nTree :: Nil) = tree
+    val Apply(_, tup :: nTree :: Nil) = tree: @unchecked
     (defn.tupleTypes(tup.tpe.widenTermRefExpr.dealias), nTree.tpe) match {
       case (Some(tpes), nTpe: ConstantType) =>
         // Get the element directly with TupleM._n+1 or TupleXXL.productElement(n)
@@ -165,7 +165,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   }
 
   private def transformTupleToArray(tree: tpd.Apply)(using Context): Tree = {
-    val Apply(_, tup :: Nil) = tree
+    val Apply(_, tup :: Nil) = tree: @unchecked
     defn.tupleTypes(tup.tpe.widen, MaxTupleArity) match {
       case Some(tpes) =>
         val size = tpes.size

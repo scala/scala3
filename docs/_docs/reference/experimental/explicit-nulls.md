@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Explicit Nulls"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/explicit-nulls.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/explicit-nulls.html
 ---
 
 Explicit nulls is an opt-in feature that modifies the Scala type system, which makes reference types
@@ -31,12 +31,17 @@ Read on for details.
 
 ## New Type Hierarchy
 
-When explicit nulls are enabled, the type hierarchy changes so that `Null` is only a subtype of
-`Any`, as opposed to every reference type, which means `null` is no longer a value of `AnyRef` and its subtypes.
+Originally, `Null` is a subtype of all reference types.
+
+!["Original Type Hierarchy"](images/explicit-nulls/scalaHierarchyWithMatchable.png)
+
+When explicit nulls is enabled, the type hierarchy changes so that `Null` is only
+a subtype of `Any` and `Matchable`, as opposed to every reference type,
+which means `null` is no longer a value of `AnyRef` and its subtypes.
 
 This is the new type hierarchy:
 
-!["Type Hierarchy for Explicit Nulls"](images/explicit-nulls/explicit-nulls-type-hierarchy.png)
+!["Type Hierarchy for Explicit Nulls"](images/explicit-nulls/scalaHierarchyWithMatchableAndSafeNull.png)
 
 After erasure, `Null` remains a subtype of all reference types (as forced by the JVM).
 
@@ -81,7 +86,7 @@ val c = new C()
 ```
 
 The unsoundness above can be caught by the compiler with the option `-Ysafe-init`.
-More details can be found in [safe initialization](./safe-initialization.md).
+More details can be found in [safe initialization](../other-new-features/safe-initialization.md).
 
 ## Equality
 
@@ -475,7 +480,7 @@ The program in [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/runtime/stdL
 For example, the following code cannot be compiled even using unsafe nulls. Because of the
 Java interoperation, the type of the get method becomes `T | Null`.
 
-```Scala
+```scala
 def head[T](xs: java.util.List[T]): T = xs.get(0) // error
 ```
 

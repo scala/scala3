@@ -30,42 +30,53 @@ source "$PROG_HOME/bin/common"
 
 [ -z "$PROG_NAME" ] && PROG_NAME=$CompilerMain
 
-withCompiler=true
-
 while [[ $# -gt 0 ]]; do
-case "$1" in
-           --) shift; for arg; do addResidual "$arg"; done; set -- ;;
-  -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
-    -q|-quiet) quiet=true && shift ;;
-
+  case "$1" in
+    --)
+      # pass all remaining arguments to scala, e.g. to avoid interpreting them here as -D or -J
+      while [[ $# -gt 0 ]]; do addScala "$1" && shift ; done
+      ;;
+    -script)
+      # pass all remaining arguments to scala, e.g. to avoid interpreting them here as -D or -J
+      while [[ $# -gt 0 ]]; do addScala "$1" && shift ; done
+      ;;
     # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
-    -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
-        -repl) PROG_NAME="$ReplMain" && shift ;;
-      -script) PROG_NAME="$ScriptingMain" && target_script="$2" && shift && shift
-               while [[ $# -gt 0 ]]; do addScript "$1" && shift ; done ;;
-     -compile) PROG_NAME="$CompilerMain" && shift ;;
-   -decompile) PROG_NAME="$DecompilerMain" && shift ;;
- -print-tasty) PROG_NAME="$TastyPrinterMain" && shift ;;
-         -run) PROG_NAME="$ReplMain" && shift ;;
-      -colors) colors=true && shift ;;
-   -no-colors) unset colors && shift ;;
-  -with-compiler) jvm_cp_args="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE" && shift ;;
-
-          # break out -D and -J options and add them to java_args so
-          # they reach the JVM in time to do some good. The -D options
-          # will be available as system properties.
-          -D*) addJava "$1" && shift ;;
-          -J*) addJava "${1:2}" && shift ;;
-            *) addResidual "$1" && shift ;;
+    -Oshort)
+      addScala "-Oshort" && \
+      addJava "-XX:+TieredCompilation" && addJava "-XX:TieredStopAtLevel=1" && shift ;;
+    -D*)
+      # pass to scala as well: otherwise we lose it sometimes when we
+      # need it, e.g. communicating with a server compiler.
+      # respect user-supplied -Dscala.usejavacp
+      addJava "$1"
+      addScala "$1"
+      shift
+      ;;
+    -J*)
+      # as with -D, pass to scala even though it will almost
+      # never be used.
+      addJava "${1:2}"
+      addScala "$1"
+      shift
+      ;;
+    -classpath*)
+      if [ "$1" != "${1##* }" ]; then
+        # -classpath and its value have been supplied in a single string e.g. "-classpath 'lib/*'"
+        A=$1 ; shift # consume $1 before adding its substrings back
+        set -- $A "$@" # split $1 on whitespace and put it back
+      else
+        addScala "$1"
+        shift
+      fi
+      ;;
+    *)
+      addScala "$1"
+      shift
+      ;;
   esac
 done
 
 compilerJavaClasspathArgs
-
-if [ "$PROG_NAME" == "$ScriptingMain" ]; then
-  setScriptName="-Dscript.path=$target_script"
-  scripting_string="-script $target_script ${script_args[@]}"
-fi
 
 [ -n "$script_trace" ] && set -x
 [ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405
@@ -75,11 +86,10 @@ eval "\"$JAVACMD\"" \
    ${JAVA_OPTS:-$default_java_opts} \
    "${java_args[@]}" \
    "-classpath \"$jvm_cp_args\"" \
-   -Dscala.usejavacp=true \
-   "$setScriptName" \
-   "$PROG_NAME"  \
-   "${scala_args[@]}" \
-   "${residual_args[@]}" \
-   "${scripting_string-}"
-scala_exit_status=$?
+   "-Dscala.usejavacp=true" \
+   "-Dscala.home=$PROG_HOME" \
+   "dotty.tools.MainGenericCompiler" \
+   "${scala_args[@]}"
 
+scala_exit_status=$?
+onExit

@@ -67,7 +67,7 @@ object ScalaClassLoader {
   @sharable private[this] val bootClassLoader: ClassLoader =
     if scala.util.Properties.isJavaAtLeast("9") then
       try
-        MethodHandles.lookup().findStatic(classOf[ClassLoader], "getPlatformClassLoader", MethodType.methodType(classOf[ClassLoader])).invoke().asInstanceOf[ClassLoader]
+        ClassLoader.getSystemClassLoader.getParent 
       catch case _: Throwable => null
     else null
 

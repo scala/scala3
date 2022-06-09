@@ -14,7 +14,7 @@ import java.util.zip._
 import scala.collection._
 import scala.io.Codec
 
-import dotty.tools.io.{ AbstractFile, VirtualFile }
+import dotty.tools.io.AbstractFile
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
@@ -297,14 +297,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     cleanupTree(tree)
   }
 
-  private def toSource(uri: URI, sourceCode: String): SourceFile = {
-    val path = Paths.get(uri)
-    val virtualFile = new VirtualFile(path.getFileName.toString, path.toString)
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name))
-    writer.write(sourceCode)
-    writer.close()
-    new SourceFile(virtualFile, Codec.UTF8)
-  }
+  private def toSource(uri: URI, sourceCode: String): SourceFile =
+    SourceFile.virtual(Paths.get(uri).toString, sourceCode)
 
   /**
    * Initialize this driver and compiler.

@@ -91,7 +91,7 @@ class TreeChecker extends Phase with SymTransformer {
     if (ctx.phaseId <= erasurePhase.id) {
       val initial = symd.initial
       assert(symd == initial || symd.signature == initial.signature,
-        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
+        i"""Signature of ${sym.showLocated} changed at phase ${ctx.phase.prevMega}
            |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
            |Current info: ${symd.info}
@@ -122,14 +122,14 @@ class TreeChecker extends Phase with SymTransformer {
   }
 
   def check(phasesToRun: Seq[Phase], ctx: Context): Tree = {
-    val prevPhase = ctx.phase.prev // can be a mini-phase
-    val fusedPhase = ctx.base.fusedContaining(prevPhase)
+    val fusedPhase = ctx.phase.prevMega(using ctx)
     report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
 
     inContext(ctx) {
       assert(ctx.typerState.constraint.domainLambdas.isEmpty,
         i"non-empty constraint at end of $fusedPhase: ${ctx.typerState.constraint}, ownedVars = ${ctx.typerState.ownedVars.toList}%, %")
       assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
+      TreeNodeChecker.traverse(ctx.compilationUnit.tpdTree)
     }
 
     val checkingCtx = ctx
@@ -144,7 +144,7 @@ class TreeChecker extends Phase with SymTransformer {
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
         inContext(checkingCtx) {
-          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prev} ***")
+          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prevMega(using ctx)} ***")
         }
         throw ex
     }
@@ -421,6 +421,13 @@ class TreeChecker extends Phase with SymTransformer {
       assert(tree.qual.typeOpt.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
 
+    override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = tree match
+      case Apply(Select(qual, nme.CONSTRUCTOR), _)
+          if !ctx.phase.erasedTypes
+            && defn.isSpecializedTuple(qual.typeOpt.typeSymbol) =>
+        promote(tree) // e.g. `new Tuple2$mcII$sp(7, 8)` should keep its `(7, 8)` type instead of `Tuple2$mcII$sp`
+      case _ => super.typedApply(tree, pt)
+
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
       val tpt1 = checkSimpleKinded(typedType(tree.tpt))
       val expr1 = tree.expr match
@@ -455,7 +462,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
-      val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef
+      val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef: @unchecked
       assert(cdef.symbol == cls)
       assert(impl.symbol.owner == cls)
       assert(constr.symbol.owner == cls)
@@ -573,6 +580,37 @@ class TreeChecker extends Phase with SymTransformer {
       else
         super.typedPackageDef(tree)
 
+    override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
+      val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt): @unchecked
+
+      // Check result type of the hole
+      if isTermHole then assert(tpt.typeOpt <:< pt)
+      else assert(tpt.typeOpt =:= pt)
+
+      // Check that the types of the args conform to the types of the contents of the hole
+      val argQuotedTypes = args.map { arg =>
+        if arg.isTerm then
+          val tpe = arg.typeOpt.widenTermRefExpr match
+            case _: MethodicType =>
+              // Special erasure for captured function references
+              // See `SpliceTransformer.transformCapturedApplication`
+              defn.AnyType
+            case tpe => tpe
+          defn.QuotedExprClass.typeRef.appliedTo(tpe)
+        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt)
+      }
+      val expectedResultType =
+        if isTermHole then defn.QuotedExprClass.typeRef.appliedTo(tpt.typeOpt)
+        else defn.QuotedTypeClass.typeRef.appliedTo(tpt.typeOpt)
+      val contextualResult =
+        defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
+      val expectedContentType =
+        defn.FunctionOf(argQuotedTypes, contextualResult)
+      assert(content.typeOpt =:= expectedContentType)
+
+      tree1
+    }
+
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
       tree
 
@@ -646,4 +684,25 @@ object TreeChecker {
       tp
     }
   }.apply(tp0)
+
+  /** Run some additional checks on the nodes of the trees.  Specifically:
+   *
+   *    - TypeTree can only appear in TypeApply args, New, Typed tpt, Closure
+   *      tpt, SeqLiteral elemtpt, ValDef tpt, DefDef tpt, and TypeDef rhs.
+   */
+  object TreeNodeChecker extends untpd.TreeTraverser:
+    import untpd._
+    def traverse(tree: Tree)(using Context) = tree match
+      case t: TypeTree                             => assert(assertion = false, i"TypeTree not expected: $t")
+      case t @ TypeApply(fun, _targs)              => traverse(fun)
+      case t @ New(_tpt)                           =>
+      case t @ Typed(expr, _tpt)                   => traverse(expr)
+      case t @ Closure(env, meth, _tpt)            => traverse(env); traverse(meth)
+      case t @ SeqLiteral(elems, _elemtpt)         => traverse(elems)
+      case t @ ValDef(_, _tpt, _)                  => traverse(t.rhs)
+      case t @ DefDef(_, paramss, _tpt, _)         => for params <- paramss do traverse(params); traverse(t.rhs)
+      case t @ TypeDef(_, _rhs)                    =>
+      case t @ Template(constr, parents, self, _)  => traverse(constr); traverse(parents); traverse(self); traverse(t.body)
+      case t                                       => traverseChildren(t)
+    end traverse
 }

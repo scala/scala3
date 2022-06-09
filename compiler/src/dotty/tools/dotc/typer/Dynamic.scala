@@ -175,7 +175,7 @@ trait Dynamic {
    *  type
    */
   def handleStructural(tree: Tree)(using Context): Tree = {
-    val fun @ Select(qual, name) = funPart(tree)
+    val fun @ Select(qual, name) = funPart(tree): @unchecked
     val vargss = termArgss(tree)
 
     def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {

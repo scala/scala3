@@ -1,10 +1,10 @@
 ---
 layout: doc-page
 title: "Option-less pattern matching"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html
 ---
 
-The implementation of pattern matching in Scala 3 was greatly simplified compared to Scala 2. From a user perspective, this means that Scala 3 generated patterns are a *lot* easier to debug, as variables all show up in debug modes and positions are correctly preserved.
+The implementation of pattern matching in Scala 3 was greatly simplified compared to Scala 2. From a user perspective, this means that Scala 3 generated patterns are a _lot_ easier to debug, as variables all show up in debug modes and positions are correctly preserved.
 
 Scala 3 supports a superset of Scala 2 [extractors](https://www.scala-lang.org/files/archive/spec/2.13/08-pattern-matching.html#extractor-patterns).
 
@@ -12,7 +12,7 @@ Scala 3 supports a superset of Scala 2 [extractors](https://www.scala-lang.org/f
 
 Extractors are objects that expose a method `unapply` or `unapplySeq`:
 
-```Scala
+```scala
 def unapply[A](x: T)(implicit x: B): U
 def unapplySeq[A](x: T)(implicit x: B): U
 ```
@@ -25,7 +25,7 @@ called variadic extractors, which enables variadic patterns.
 
 Fixed-arity extractors expose the following signature:
 
-```Scala
+```scala
 def unapply[A](x: T)(implicit x: B): U
 ```
 
@@ -36,7 +36,7 @@ The type `U` conforms to one of the following matches:
 
 Or `U` conforms to the type `R`:
 
-```Scala
+```scala
 type R = {
   def isEmpty: Boolean
   def get: S
@@ -62,7 +62,7 @@ A usage of a fixed-arity extractor is irrefutable if one of the following condit
 
 Variadic extractors expose the following signature:
 
-```Scala
+```scala
 def unapplySeq[A](x: T)(implicit x: B): U
 ```
 
@@ -73,7 +73,7 @@ The type `U` conforms to one of the following matches:
 
 Or `U` conforms to the type `R`:
 
-```Scala
+```scala
 type R = {
   def isEmpty: Boolean
   def get: S
@@ -167,7 +167,7 @@ object Nat:
 - `N > 1` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1 ... _N: PN` members in `U`
 - Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
 
-```Scala
+```scala
 object ProdEmpty:
   def _1: Int = ???
   def _2: String = ???
@@ -180,12 +180,11 @@ object ProdEmpty:
   case _ => ()
 ```
 
-
 ## Sequence Match
 
 - `U <: X`, `T2` and `T3` conform to `T1`
 
-```Scala
+```scala
 type X = {
   def lengthCompare(len: Int): Int // or, `def length: Int`
   def apply(i: Int): T1
@@ -220,19 +219,19 @@ object CharList:
 - Pattern-matching on exactly `>= N` patterns, the first `N - 1` patterns have types `P1, P2, ... P(N-1)`,
   the type of the remaining patterns are determined as in Seq Pattern.
 
-```Scala
-class Foo(val name: String, val children: Int *)
+```scala
+class Foo(val name: String, val children: Int*)
 object Foo:
   def unapplySeq(f: Foo): Option[(String, Seq[Int])] =
     Some((f.name, f.children))
 
 def foo(f: Foo) = f match
-  case Foo(name, ns : _*) =>
-  case Foo(name, x, y, ns : _*) =>
+  case Foo(name, x, y, ns*) => ">= two children."
+  case Foo(name, ns*) =>    => "< two children."
 ```
 
-There are plans for further simplification, in particular to factor out *product
-match* and *name-based match* into a single type of extractor.
+There are plans for further simplification, in particular to factor out _product match_
+and _name-based match_ into a single type of extractor.
 
 ## Type testing
 

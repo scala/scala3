@@ -1,0 +1,156 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+simple
+68
+76
+3
+length
+Apply
+false
+0
+false
+b.length
+
+1
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+simple
+60
+78
+3
+s
+Apply
+false
+0
+false
+s"$a, ${b.length}"
+
+2
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+simple
+16
+26
+2
+simple
+DefDef
+false
+0
+false
+def simple
+
+3
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+147
+176
+6
+apply
+Apply
+false
+0
+false
+List("d", "o", "t", "t", "y")
+
+4
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+$anonfun
+220
+229
+8
+s
+Apply
+false
+0
+false
+s"$i: $s"
+
+5
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+$anonfun
+212
+230
+8
+println
+Apply
+false
+0
+false
+println(s"$i: $s")
+
+6
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+182
+231
+8
+map
+Apply
+false
+0
+false
+xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
+
+7
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+82
+90
+5
+main
+DefDef
+false
+0
+false
+def main
+

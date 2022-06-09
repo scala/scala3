@@ -47,14 +47,9 @@ class CompilationUnit protected (val source: SourceFile) {
   var needsMirrorSupport: Boolean = false
 
   /** Will be set to `true` if contains `Quote`.
-   *  The information is used in phase `Staging` in order to avoid traversing trees that need no transformations.
+   *  The information is used in phase `Staging`/`Splicing`/`PickleQuotes` in order to avoid traversing trees that need no transformations.
    */
   var needsStaging: Boolean = false
-
-  /** Will be set to `true` if contains `Quote` that needs to be pickled
-   *  The information is used in phase `PickleQuotes` in order to avoid traversing trees that need no transformations.
-   */
-  var needsQuotePickling: Boolean = false
 
   var suspended: Boolean = false
   var suspendedAtInliningPhase: Boolean = false
@@ -104,7 +99,7 @@ object CompilationUnit {
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
     val file = clsd.symbol.associatedFile.nn
-    apply(new SourceFile(file, Array.empty[Char]), unpickled, forceTrees)
+    apply(SourceFile(file, Array.empty[Char]), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit = {
@@ -115,7 +110,6 @@ object CompilationUnit {
       val force = new Force
       force.traverse(unit1.tpdTree)
       unit1.needsStaging = force.containsQuote
-      unit1.needsQuotePickling = force.containsQuote
       unit1.needsInlining = force.containsInline
     }
     unit1

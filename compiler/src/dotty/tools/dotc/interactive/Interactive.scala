@@ -79,7 +79,7 @@ object Interactive {
   def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(using Context): Tree =
     enclosingTree(pathTo(trees, pos))
 
-  /** The closes enclosing tree with a symbol, or the `EmptyTree`.
+  /** The closest enclosing tree with a symbol, or the `EmptyTree`.
    */
   def enclosingTree(path: List[Tree])(using Context): Tree =
     path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
@@ -108,7 +108,7 @@ object Interactive {
           val classTree = funSym.topLevelClass.asClass.rootTree
           val paramSymbol =
             for {
-              DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
+              case DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
               param <- paramss.flatten.find(_.name == name)
             }
             yield param.symbol

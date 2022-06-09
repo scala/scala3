@@ -1,7 +1,7 @@
 -- Error: tests/neg/i9958.scala:1:30 -----------------------------------------------------------------------------------
 1 |val x = summon[[X] =>> (X, X)] // error
   |                              ^
-  |              no given instance of type [X] =>> (X, X) was found for parameter x of method summon in object Predef
+  |              No given instance of type [X] =>> (X, X) was found for parameter x of method summon in object Predef
 -- [E007] Type Mismatch Error: tests/neg/i9958.scala:8:10 --------------------------------------------------------------
 8 |def b = f(a) // error
   |          ^

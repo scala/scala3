@@ -47,11 +47,25 @@ echo "testing sbt scalac -decompile from file"
 ./bin/scalac -decompile -color:never "$OUT/$TASTY" > "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
+# check that `sbt scalac -print-tasty` runs
+echo "testing sbt scalac -print-tasty from file"
+./bin/scalac -print-tasty -color:never "$OUT/$TASTY" > "$tmp"
+grep -qe "118:           STRINGconst 32 \[hello world\]" "$tmp"
+
 echo "testing loading tasty from .tasty file in jar"
 clear_out "$OUT"
 ./bin/scalac -d "$OUT/out.jar" "$SOURCE"
 ./bin/scalac -decompile -color:never "$OUT/out.jar" > "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
+
+echo "testing printing tasty from .tasty file in jar"
+./bin/scalac -print-tasty -color:never "$OUT/out.jar" > "$tmp"
+grep -qe "118:           STRINGconst 32 \[hello world\]" "$tmp"
+
+echo "testing -script from scalac"
+clear_out "$OUT"
+./bin/scalac -script "$SOURCE" > "$tmp"
+test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
 echo "testing sbt scalac with suspension"
 clear_out "$OUT"

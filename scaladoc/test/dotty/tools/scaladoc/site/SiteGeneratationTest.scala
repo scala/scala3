@@ -32,13 +32,13 @@ class SiteGeneratationTest extends BaseHtmlTest:
       }
 
   def testDocPages()(using ProjectContext) =
-    checkFile("_docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
-    checkFile("_docs/dir/index.html")(title = "A directory", header = "A directory", parents = Seq(projectName))
-    checkFile("_docs/dir/nested.html")(
+    checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
+    checkFile("docs/dir/index.html")(title = "A directory", header = "A directory", parents = Seq(projectName))
+    checkFile("docs/dir/nested.html")(
       title = "Nested in a directory", header = "Nested in a directory", parents = Seq(projectName, "A directory"))
 
   def testDocIndexPage()(using ProjectContext) =
-    checkFile("_docs/index.html")(title = projectName, header = s"$projectName in header")
+    checkFile("docs/index.html")(title = projectName, header = s"$projectName in header")
 
   def testApiPages(
     mainTitle: String = "API",
@@ -66,13 +66,13 @@ class SiteGeneratationTest extends BaseHtmlTest:
     testDocIndexPage()
     testApiPages()
 
-    withHtmlFile("_docs/Adoc.html"){ content  =>
+    withHtmlFile("docs/Adoc.html"){ content  =>
         content.assertAttr("p a","href", "../tests/site/SomeClass.html")
     }
 
     withHtmlFile("tests/site/SomeClass.html"){ content  =>
       content.assertAttr(".breadcrumbs a","href",
-        "../../_docs/index.html", "../../index.html", "../site.html", "SomeClass.html"
+        "../../docs/index.html", "../../index.html", "../site.html", "SomeClass.html"
       )
     }
   }
@@ -98,7 +98,7 @@ class SiteGeneratationTest extends BaseHtmlTest:
   @Test
   def staticLinking() = withGeneratedSite(testDocPath.resolve("static-links")){
 
-    withHtmlFile("_docs/Adoc.html"){ content  =>
+    withHtmlFile("docs/Adoc.html"){ content  =>
         content.assertAttr("p a","href",
         "dir/html.html",
         "dir/name...with..dots..html",

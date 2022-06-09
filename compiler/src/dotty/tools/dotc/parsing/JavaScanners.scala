@@ -179,7 +179,7 @@ object JavaScanners {
               nextChar()
 
             case ':' =>
-              token = COLON
+              token = COLONop
               nextChar()
 
             case '@' =>

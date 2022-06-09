@@ -55,9 +55,14 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
   )
 )
 
+def getScalaLibraryPath: String = {
+  val classpath: List[String] = System.getProperty("java.class.path").split(java.io.File.pathSeparatorChar).toList
+  classpath.find(_.contains("scala-library-2")).getOrElse("foobarbazz") // If we don't find the scala 2 library, the test will fail
+}
+
 class Scaladoc2LegacyExternalLocationProviderIntegrationTest extends LegacyExternalLocationProviderIntegrationTest(
   "externalScaladoc2",
-  List(".*scala.*#https://www.scala-lang.org/api/current/"),
+  List(s"${getScalaLibraryPath}#https://www.scala-lang.org/api/current/"),
   List(
     "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
     "https://www.scala-lang.org/api/current/scala/Predef$.html#String",

@@ -92,6 +92,10 @@ object SymDenotations {
         if (myFlags.is(Trait)) NoInitsInterface & bodyFlags // no parents are initialized from a trait
         else NoInits & bodyFlags & parentFlags)
 
+    final def setStableConstructor()(using Context): Unit =
+      val ctorStable = if myFlags.is(Trait) then myFlags.is(NoInits) else isNoInitsRealClass
+      if ctorStable then primaryConstructor.setFlag(StableRealizable)
+
     def isCurrent(fs: FlagSet)(using Context): Boolean =
       def knownFlags(info: Type): FlagSet = info match
         case _: SymbolLoader | _: ModuleCompleter => FromStartFlags
@@ -1613,7 +1617,7 @@ object SymDenotations {
             c.ensureCompleted()
       end completeChildrenIn
 
-      if is(Sealed) then
+      if is(Sealed) || isAllOf(JavaEnumTrait) then
         if !is(ChildrenQueried) then
           // Make sure all visible children are completed, so that
           // they show up in Child annotations. A possible child is visible if it

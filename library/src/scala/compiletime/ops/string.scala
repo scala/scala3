@@ -1,8 +1,6 @@
 package scala.compiletime
 package ops
 
-import scala.annotation.experimental
-
 object string:
   /** Concatenation of two `String` singleton types.
    *  ```scala
@@ -24,7 +22,6 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  @experimental
   type Length[+X <: String] <: Int
 
   /** Substring of a `String` singleton type, with a singleton type
@@ -40,7 +37,6 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  @experimental
   type Substring[+S <: String, +IBeg <: Int, +IEnd <: Int] <: String
 
   /** Tests if this `String` singleton type matches the given
@@ -53,5 +49,14 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  @experimental
   type Matches[+S <: String, +Regex <: String] <: Boolean
+
+  /** Returns the Char type at the specified index.
+   *  An index ranges from 0 to Length[S] - 1. The first Char of
+   *  the sequence is at index 0, the next at index 1, and so on.
+   *  ```scala
+   *  val c: CharAt["hello", 0] = 'h'
+   *  ```
+   *  @syntax markdown
+   */
+  type CharAt[+S <: String, +Idx <: Int] <: Char

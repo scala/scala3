@@ -67,11 +67,14 @@ object report:
     error(ex.toMessage, pos, sticky = true)
     if ctx.settings.YdebugTypeError.value then ex.printStackTrace()
 
-  def errorOrMigrationWarning(msg: Message, pos: SrcPos = NoSourcePosition,
-      from: SourceVersion)(using Context): Unit =
+  def errorOrMigrationWarning(msg: Message, pos: SrcPos = NoSourcePosition, from: SourceVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(from) then
       if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then migrationWarning(msg, pos)
       else error(msg, pos)
+
+  def gradualErrorOrMigrationWarning(msg: Message, pos: SrcPos = NoSourcePosition, warnFrom: SourceVersion, errorFrom: SourceVersion)(using Context): Unit =
+    if sourceVersion.isAtLeast(errorFrom) then errorOrMigrationWarning(msg, pos, errorFrom)
+    else if sourceVersion.isAtLeast(warnFrom) then warning(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)

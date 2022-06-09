@@ -8,6 +8,7 @@ import scala.io.Codec
 import Int.MaxValue
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import util.Chars.{isOperatorPart, digit2int}
+import Decorators.*
 import Definitions._
 import nme._
 
@@ -278,6 +279,29 @@ object NameOps {
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
 
+    /** Determines if the current name is the specialized name of the given base name.
+     *  For example `typeName("Tuple2$mcII$sp").isSpecializedNameOf(tpnme.Tuple2) == true`
+     */
+    def isSpecializedNameOf(base: N)(using Context): Boolean =
+      var i = 0
+      inline def nextString(str: String) = name.startsWith(str, i) && { i += str.length; true }
+      nextString(base.toString)
+        && nextString(nme.specializedTypeNames.prefix.toString)
+        && nextString(nme.specializedTypeNames.separator.toString)
+        && name.endsWith(nme.specializedTypeNames.suffix.toString)
+
+    /** Returns the name of the class specialised to the provided types,
+     *  in the given order.  Used for the specialized tuple classes.
+     */
+    def specializedName(args: List[Type])(using Context): N =
+      val sb = new StringBuilder
+      sb.append(name.toString)
+      sb.append(nme.specializedTypeNames.prefix.toString)
+      sb.append(nme.specializedTypeNames.separator)
+      args.foreach { arg => sb.append(defn.typeTag(arg)) }
+      sb.append(nme.specializedTypeNames.suffix)
+      likeSpacedN(termName(sb.toString))
+
     /** Use for specializing function names ONLY and use it if you are **not**
      *  creating specialized name from type parameters. The order of names will
      *  be:
@@ -361,5 +385,14 @@ object NameOps {
       case raw.BANG  => UNARY_!
       case _ => name
     }
+
+    /** If this is a super accessor name, its underlying name, which is the name
+     *  of the method that the super accessor forwards to.
+     */
+    def originalOfSuperAccessorName: TermName = name match
+      case SuperAccessorName(name1)   => name1.originalOfSuperAccessorName
+      case ExpandedName(_, name1)     => name1.originalOfSuperAccessorName
+      case ExpandPrefixName(_, name1) => name1.originalOfSuperAccessorName
+      case _ => name
   }
 }

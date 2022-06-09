@@ -26,6 +26,12 @@ object SyntheticMembers {
 
   /** Attachment recording that an anonymous class should extend Mirror.Sum */
   val ExtendsSumMirror: Property.StickyKey[Unit] = new Property.StickyKey
+
+  /** Attachment recording that an anonymous class (with the ExtendsProductMirror attachment)
+   *  should implement its `fromProduct` method in terms of the runtime class corresponding
+   *  to a tuple with that arity.
+   */
+  val GenericTupleArity: Property.StickyKey[Int] = new Property.StickyKey
 }
 
 /** Synthetic method implementations for case classes, case objects,
@@ -262,7 +268,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       // compare primitive fields first, slow equality checks of non-primitive fields can be skipped when primitives differ
       val sortedAccessors = accessors.sortBy(accessor => if (accessor.info.typeSymbol.isPrimitiveValueClass) 0 else 1)
       val comparisons = sortedAccessors.map { accessor =>
-        This(clazz).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
+        This(clazz).withSpan(ctx.owner.span.focus).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
       var rhs = // this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
         if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
       val canEqualMeth = existingDef(defn.Product_canEqual, clazz)
@@ -594,14 +600,18 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     if (clazz.is(Module)) {
       if (clazz.is(Case)) makeSingletonMirror()
       else if (linked.isGenericProduct) makeProductMirror(linked)
-      else if (linked.isGenericSum(clazz)) makeSumMirror(linked)
+      else if (linked.isGenericSum) makeSumMirror(linked)
       else if (linked.is(Sealed))
-        derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum(clazz)}")
+        derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum}")
     }
     else if (impl.removeAttachment(ExtendsSingletonMirror).isDefined)
       makeSingletonMirror()
     else if (impl.removeAttachment(ExtendsProductMirror).isDefined)
-      makeProductMirror(monoType.typeRef.dealias.classSymbol)
+      val tupleArity = impl.removeAttachment(GenericTupleArity)
+      val cls = tupleArity match
+        case Some(n) => defn.TupleType(n).nn.classSymbol
+        case _ => monoType.typeRef.dealias.classSymbol
+      makeProductMirror(cls)
     else if (impl.removeAttachment(ExtendsSumMirror).isDefined)
       makeSumMirror(monoType.typeRef.dealias.classSymbol)
 

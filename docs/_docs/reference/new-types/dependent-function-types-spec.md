@@ -1,18 +1,18 @@
 ---
 layout: doc-page
 title: "Dependent Function Types - More Details"
-movedTo: https://docs.scala-lang.org/scala3/reference/new-types/dependent-function-types-spec.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/new-types/dependent-function-types-spec.html
 ---
 
 Initial implementation in [PR #3464](https://github.com/lampepfl/dotty/pull/3464).
 
 ## Syntax
 
-```ebnf
+```
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {',' FunArgType } ] ‘)’
-                    |  ‘(’ TypedFunParam {',' TypedFunParam } ‘)’ ;
-TypedFunParam     ::=  id ‘:’ Type ;
+                    |  ‘(’ TypedFunParam {',' TypedFunParam } ‘)’
+TypedFunParam     ::=  id ‘:’ Type
 ```
 
 Dependent function types associate to the right, e.g.

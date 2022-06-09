@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Rules for Operators"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/operators.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/operators.html
 ---
 
 The rules for infix operators have changed in some parts:

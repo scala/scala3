@@ -5,53 +5,58 @@ import org.junit.Test
 import org.eclipse.lsp4j.CompletionItemKind._
 
 import dotty.tools.languageserver.util.Code._
+import dotty.tools.languageserver.util.CodeTester
 import dotty.tools.languageserver.util.actions.CodeCompletion
 
 class CompletionTest {
 
   @Test def completion0: Unit = {
-    code"class Foo { val xyz: Int = 0; def y: Int = xy${m1} }".withSource
-      .completion(m1, Set(("xyz", Field, "Int")))
+    code"class Foo { val xyz: Int = 0; def y: Int = xy${m1} }"
+      .completion(("xyz", Field, "Int"))
   }
 
   @Test def completionFromScalaPredef: Unit = {
-    code"class Foo { def foo: Unit = prin${m1} }".withSource
-      .completion(m1, Set(
+    code"class Foo { def foo: Unit = prin${m1} }"
+      .completion(
         ("print", Method, "(x: Any): Unit"),
         ("printf", Method, "(text: String, xs: Any*): Unit"),
         ("println", Method, "(x: Any): Unit"),
-        ("println", Method, "(): Unit")
-      ))
+        ("println", Method, "(): Unit"),
+      )
   }
 
   @Test def completionFromNewScalaPredef: Unit = {
-    code"class Foo { val foo = summ${m1} }".withSource
-      .completion(m1, Set(("summon", Method, "[T](using x: T): x.type")))
+    code"class Foo { val foo = summ${m1} }"
+      .completion(("summon", Method, "[T](using x: T): x.type"))
   }
 
   @Test def completionFromScalaPackage: Unit = {
-    code"class Foo { val foo: Conv${m1} }".withSource
-      .completion(m1, Set(("Conversion", Class, "scala.Conversion")))
+    code"class Foo { val foo: Conv${m1} }"
+      .completion(("Conversion", Class, "scala.Conversion"))
   }
 
   @Test def completionFromScalaPackageObject: Unit = {
-    code"class Foo { val foo: BigD${m1} }".withSource
-      .completion(m1, Set(("BigDecimal", Field, "scala.BigDecimal"),
-                          ("BigDecimal", Method, "=> math.BigDecimal.type")))
+    code"class Foo { val foo: BigD${m1} }"
+      .completion(
+        ("BigDecimal", Field, "scala.BigDecimal"),
+        ("BigDecimal", Method, "=> math.BigDecimal.type"),
+      )
   }
 
   @Test def completionFromSyntheticPackageObject: Unit = {
-    code"class Foo { val foo: IArr${m1} }".withSource
-      .completion(m1, Set(("IArray", Module, "IArray"),
-                          ("IArray", Field, "scala.IArray")))
+    code"class Foo { val foo: IArr${m1} }"
+      .completion(
+        ("IArray", Module, "IArray"),
+        ("IArray", Field, "scala.IArray"),
+      )
   }
 
   @Test def completionFromJavaDefaults: Unit = {
-    code"class Foo { val foo: Runn${m1} }".withSource
-      .completion(m1, Set(
+    code"class Foo { val foo: Runn${m1} }"
+      .completion(
         ("Runnable", Class, "java.lang.Runnable"),
-        ("Runnable", Module, "Runnable")
-      ))
+        ("Runnable", Module, "Runnable"),
+      )
   }
 
   @Test def completionWithImplicitConversion: Unit = {
@@ -59,7 +64,7 @@ class CompletionTest {
       code"object Foo { implicit class WithBaz(bar: Bar) { def baz = 0 } }",
       code"class Bar",
       code"object Main { import Foo._; val bar: Bar = new Bar; bar.b${m1} }"
-    ) .completion(m1, Set(("baz", Method, "=> Int")))
+    ).completion(("baz", Method, "=> Int"))
   }
 
   // TODO: Also add tests with concrete classes, where the completion will
@@ -69,14 +74,14 @@ class CompletionTest {
     withSources(
       code"""object Foo { abstract class MyClass }""",
       code"""import Foo.My${m1}"""
-    ).completion(m1, Set(("MyClass", Class, "Foo.MyClass")))
+    ).completion(("MyClass", Class, "Foo.MyClass"))
   }
 
   @Test def importCompleteClassNoPrefix: Unit = {
     withSources(
       code"""object Foo { abstract class MyClass }""",
       code"""import Foo.${m1}"""
-    ).completion(m1, completionItems => {
+    ).completion(completionItems => {
       val results = CodeCompletion.simplifyResults(completionItems)
       val myClass = ("MyClass", Class, "Foo.MyClass")
       assertTrue(results.contains(("MyClass", Class, "Foo.MyClass")))
@@ -95,14 +100,14 @@ class CompletionTest {
              abstract class MyClass""",
       code"""package b
              import a.My${m1}"""
-    ).completion(m1, Set(("MyClass", Class, "a.MyClass")))
+    ).completion(("MyClass", Class, "a.MyClass"))
   }
 
   @Test def importCompleteFromClass: Unit = {
     withSources(
       code"""abstract class Foo { val x: Int = 0 }""",
       code"""import Foo.${m1}"""
-    ).completion(m1, Set())
+    ).noCompletions()
   }
 
   @Test def importCompleteIncludesSynthetic: Unit = {
@@ -110,18 +115,18 @@ class CompletionTest {
            object O {
              val x = MyCaseClass(0)
              import x.c${m1}
-           }""".withSource
+           }"""
       .completion(
-        m1,
-        Set(("copy", Method, "(foobar: Int): MyCaseClass"),
-            ("canEqual", Method, "(that: Any): Boolean")))
+        ("copy", Method, "(foobar: Int): MyCaseClass"),
+        ("canEqual", Method, "(that: Any): Boolean"),
+      )
   }
 
   @Test def importCompleteIncludeModule: Unit = {
     withSources(
       code"""object O { object MyObject }""",
       code"""import O.My${m1}"""
-    ).completion(m1, Set(("MyObject", Module, "O.MyObject")))
+    ).completion(("MyObject", Module, "O.MyObject"))
   }
 
   @Test def importCompleteWithClassAndCompanion: Unit = {
@@ -131,8 +136,10 @@ class CompletionTest {
              object Foo""",
       code"""package pgk1
              import pkg0.F${m1}"""
-    ).completion(m1, Set(("Foo", Class, "pkg0.Foo"),
-                         ("Foo", Module, "pkg0.Foo")))
+    ).completion(
+        ("Foo", Class, "pkg0.Foo"),
+        ("Foo", Module, "pkg0.Foo"),
+      )
   }
 
   @Test def importCompleteIncludePackage: Unit = {
@@ -140,7 +147,7 @@ class CompletionTest {
       code"""package foo.bar
              abstract classFizz""",
       code"""import foo.b${m1}"""
-    ).completion(m1, Set(("bar", Module, "foo.bar")))
+    ).completion(("bar", Module, "foo.bar"))
   }
 
   @Test def importCompleteIncludeMembers: Unit = {
@@ -154,28 +161,32 @@ class CompletionTest {
                trait myTrait
              }""",
       code"""import MyObject.my${m1}"""
-    ).completion(m1, Set(("myVal", Field, "Int"),
-                         ("myDef", Method, "=> Int"),
-                         ("myVar", Variable, "Int"),
-                         ("myObject", Module, "MyObject.myObject"),
-                         ("myClass", Class, "MyObject.myClass"),
-                         ("myTrait", Class, "MyObject.myTrait")))
+    ).completion(
+        ("myVal", Field, "Int"),
+        ("myDef", Method, "=> Int"),
+        ("myVar", Variable, "Int"),
+        ("myObject", Module, "MyObject.myObject"),
+        ("myClass", Class, "MyObject.myClass"),
+        ("myTrait", Class, "MyObject.myTrait"),
+      )
   }
 
   @Test def importJavaClass: Unit = {
-    code"""import java.io.FileDesc${m1}""".withSource
-      .completion(m1, Set(("FileDescriptor", Class, "java.io.FileDescriptor"),
-                          ("FileDescriptor", Module, "java.io.FileDescriptor")))
+    code"""import java.io.FileDesc${m1}"""
+      .completion(
+        ("FileDescriptor", Class, "java.io.FileDescriptor"),
+        ("FileDescriptor", Module, "java.io.FileDescriptor"),
+      )
   }
 
   @Test def importJavaStaticMethod: Unit = {
-    code"""import java.lang.System.lineSep${m1}""".withSource
-      .completion(m1, Set(("lineSeparator", Method, "(): String")))
+    code"""import java.lang.System.lineSep${m1}"""
+      .completion(("lineSeparator", Method, "(): String"))
   }
 
   @Test def importJavaStaticField: Unit = {
-    code"""import java.lang.System.ou${m1}""".withSource
-      .completion(m1, Set(("out", Field, "java.io.PrintStream")))
+    code"""import java.lang.System.ou${m1}"""
+      .completion(("out", Field, "java.io.PrintStream"))
   }
 
   @Test def importFromExplicitAndSyntheticPackageObject: Unit = {
@@ -183,27 +194,33 @@ class CompletionTest {
       code"package foo.bar; trait XXXX1",
       code"package foo; package object bar { trait XXXX2 }",
       code"object Main { import foo.bar.XX${m1} }"
-    ) .completion(m1, Set(("XXXX1", Class, "foo.bar.XXXX1"), ("XXXX2", Class, "foo.bar.XXXX2")))
+    ).completion(
+        ("XXXX1", Class, "foo.bar.XXXX1"),
+        ("XXXX2", Class, "foo.bar.XXXX2"),
+      )
   }
 
   @Test def completeJavaModuleClass: Unit = {
     code"""object O {
              val out = java.io.FileDesc${m1}
-           }""".withSource
-      .completion(m1, Set(("FileDescriptor", Module, "java.io.FileDescriptor")))
+           }"""
+      .completion(("FileDescriptor", Module, "java.io.FileDescriptor"))
   }
 
   @Test def importRename: Unit = {
-    code"""import java.io.{FileDesc${m1} => Foo}""".withSource
-      .completion(m1, Set(("FileDescriptor", Class, "java.io.FileDescriptor"),
-                          ("FileDescriptor", Module, "java.io.FileDescriptor")))
+    code"""import java.io.{FileDesc${m1} => Foo}"""
+      .completion(
+        ("FileDescriptor", Class, "java.io.FileDescriptor"),
+        ("FileDescriptor", Module, "java.io.FileDescriptor"),
+      )
+
   }
 
   @Test def importGivenByType: Unit = {
     code"""trait Foo
            object Bar
-           import Bar.{given Fo$m1}""".withSource
-      .completion(m1, Set(("Foo", Class, "Foo")))
+           import Bar.{given Fo$m1}"""
+      .completion(("Foo", Class, "Foo"))
   }
 
   @Test def markDeprecatedSymbols: Unit = {
@@ -211,8 +228,8 @@ class CompletionTest {
              @deprecated
              val bar = 0
            }
-           import Foo.ba${m1}""".withSource
-      .completion(m1, results => {
+           import Foo.ba${m1}"""
+      .completion(results => {
         assertEquals(1, results.size)
         val result = results.head
         assertEquals("bar", result.getLabel)
@@ -223,8 +240,8 @@ class CompletionTest {
   @Test def i4397: Unit = {
     code"""class Foo {
           |  .${m1}
-          |}""".withSource
-      .completion(m1, Set())
+          |}"""
+      .noCompletions()
   }
 
   @Test def completeNoPrefix: Unit = {
@@ -232,8 +249,8 @@ class CompletionTest {
           |object Bar {
           |  val foo = new Foo
           |  foo.${m1}
-          |}""".withSource
-      .completion(m1, results => assertTrue(results.nonEmpty))
+          |}"""
+      .completion(results => assertTrue(results.nonEmpty))
   }
 
   @Test def completeErrorKnowsKind: Unit = {
@@ -241,8 +258,8 @@ class CompletionTest {
           |  abstract class Zig
           |  val Zag: Int = 0
           |  val b = 3 + Bar.${m1}
-          |}""".withSource
-      .completion(m1, completionItems => {
+          |}"""
+      .completion(completionItems => {
         val results = CodeCompletion.simplifyResults(completionItems)
         assertTrue(results.contains(("Zag", Field, "Int")))
         assertFalse(results.exists((label, _, _) => label == "Zig"))
@@ -256,37 +273,46 @@ class CompletionTest {
           |  def baz = new Bar
           |  object bat
           |  val bizz: ba${m1}
-          |}""".withSource
-      .completion(m1, Set(("bar", Field, "Bar"), ("bat", Module, "Foo.bat")))
+          |}"""
+      .completion(
+        ("bar", Field, "Bar"),
+        ("bat", Module, "Foo.bat"),
+      )
   }
 
   @Test def completionOnRenamedImport: Unit = {
     code"""import java.io.{FileDescriptor => AwesomeStuff}
-           trait Foo { val x: Awesom$m1 }""".withSource
-      .completion(m1, Set(("AwesomeStuff", Class, "java.io.FileDescriptor"),
-                          ("AwesomeStuff", Module, "java.io.FileDescriptor")))
+           trait Foo { val x: Awesom${m1}}"""
+      .completion(
+        ("AwesomeStuff", Class, "java.io.FileDescriptor"),
+        ("AwesomeStuff", Module, "java.io.FileDescriptor"),
+      )
   }
 
   @Test def completionOnRenamedImport2: Unit = {
     code"""import java.util.{HashMap => MyImportedSymbol}
            trait Foo {
              import java.io.{FileDescriptor => MyImportedSymbol}
-             val x: MyImp$m1
-           }""".withSource
-      .completion(m1, Set(("MyImportedSymbol", Class, "java.io.FileDescriptor"),
-                          ("MyImportedSymbol", Module, "java.io.FileDescriptor")))
+             val x: MyImp${m1}
+           }"""
+      .completion(
+        ("MyImportedSymbol", Class, "java.io.FileDescriptor"),
+        ("MyImportedSymbol", Module, "java.io.FileDescriptor"),
+      )
   }
 
   @Test def completionRenamedAndOriginalNames: Unit = {
     code"""import java.util.HashMap
           |trait Foo {
           |  import java.util.{HashMap => HashMap2}
-          |  val x: Hash$m1
-          |}""".withSource
-      .completion(m1, Set(("HashMap", Class, "java.util.HashMap"),
-                          ("HashMap", Module, "java.util.HashMap"),
-                          ("HashMap2", Class, "java.util.HashMap"),
-                          ("HashMap2", Module, "java.util.HashMap")))
+          |  val x: Hash${m1}
+          |}"""
+      .completion(
+        ("HashMap", Class, "java.util.HashMap"),
+        ("HashMap", Module, "java.util.HashMap"),
+        ("HashMap2", Class, "java.util.HashMap"),
+        ("HashMap2", Module, "java.util.HashMap"),
+      )
   }
 
   @Test def completionRenamedThrice: Unit = {
@@ -294,14 +320,16 @@ class CompletionTest {
           |import java.util.{HashMap => MyHashMap2}
           |trait Foo {
           |  import java.util.{HashMap => MyHashMap3}
-          |  val x: MyHash$m1
-          |}""".withSource
-      .completion(m1, Set(("MyHashMap", Class, "java.util.HashMap"),
-                          ("MyHashMap", Module, "java.util.HashMap"),
-                          ("MyHashMap2", Class, "java.util.HashMap"),
-                          ("MyHashMap2", Module, "java.util.HashMap"),
-                          ("MyHashMap3", Class, "java.util.HashMap"),
-                          ("MyHashMap3", Module, "java.util.HashMap")))
+          |  val x: MyHash${m1}
+          |}"""
+      .completion(
+        ("MyHashMap", Class, "java.util.HashMap"),
+        ("MyHashMap", Module, "java.util.HashMap"),
+        ("MyHashMap2", Class, "java.util.HashMap"),
+        ("MyHashMap2", Module, "java.util.HashMap"),
+        ("MyHashMap3", Class, "java.util.HashMap"),
+        ("MyHashMap3", Module, "java.util.HashMap"),
+      )
   }
 
   @Test def completeFromWildcardImports: Unit = {
@@ -311,26 +339,21 @@ class CompletionTest {
           |  given fooInt: Int = 0
           |  given fooString: String = ""
           |}
-          |object Test1 { import Foo.{fooFloat => _, _}; foo$m1 }
-          |object Test2 { import Foo.given; foo$m2 }
-          |object Test3 { import Foo.{given String}; foo$m3 }
-          |object Test4 { import Foo.{_, given String}; foo$m4 }
-          |object Test5 { import Foo.{fooFloat, given}; foo$m5 }
-          |object Test6 { import Foo.{fooInt => _, fooString => fooStr, given}; foo$m6 }
-          |object Test7 { import Foo.{fooLong => fooInt, given Int}; foo$m7 }
-          """.withSource
-      .completion(m1, Set(("fooLong", Field, "Long")))
-      .completion(m2, Set(("fooInt", Field, "Int"),
-                          ("fooString", Field, "String")))
-      .completion(m3, Set(("fooString", Field, "String")))
-      .completion(m4, Set(("fooLong", Field, "Long"),
-                          ("fooFloat", Field, "Float"),
-                          ("fooString", Field, "String")))
-      .completion(m5, Set(("fooFloat", Field, "Float"),
-                          ("fooInt", Field, "Int"),
-                          ("fooString", Field, "String")))
-      .completion(m6, Set(("fooStr", Field, "String")))
-      .completion(m7, Set(("fooInt", Field, "Long")))
+          |object Test1 { import Foo.{fooFloat => _, _}; foo${m1} }
+          |object Test2 { import Foo.given; foo${m2} }
+          |object Test3 { import Foo.{given String}; foo${m3} }
+          |object Test4 { import Foo.{_, given String}; foo${m4} }
+          |object Test5 { import Foo.{fooFloat, given}; foo${m5} }
+          |object Test6 { import Foo.{fooInt => _, fooString => fooStr, given}; foo${m6} }
+          |object Test7 { import Foo.{fooLong => fooInt, given Int}; foo${m7} }
+          """
+      .completion(m1, ("fooLong", Field, "Long"))
+      .completion(m2, ("fooInt", Field, "Int"), ("fooString", Field, "String"))
+      .completion(m3, ("fooString", Field, "String"))
+      .completion(m4, ("fooLong", Field, "Long"), ("fooFloat", Field, "Float"), ("fooString", Field, "String"))
+      .completion(m5, ("fooFloat", Field, "Float"), ("fooInt", Field, "Int"), ("fooString", Field, "String"))
+      .completion(m6, ("fooStr", Field, "String"))
+      .completion(m7, ("fooInt", Field, "Long"))
   }
 
   @Test def dontCompleteFromAmbiguousImportsFromSameSite: Unit = {
@@ -340,9 +363,9 @@ class CompletionTest {
           |}
           |object Test {
           |  import Foo.{i => xxxx, j => xxxx}
-          |  val x = xx$m1
-          |}""".withSource
-      .completion(m1, Set())
+          |  val x = xx${m1}
+          |}"""
+      .noCompletions()
   }
 
   @Test def collectNamesImportedInNestedScopes: Unit = {
@@ -361,18 +384,22 @@ class CompletionTest {
           |    import Bar.xxxx2
           |    locally {
           |      import Baz.xxxx3
-          |      val x = xx$m1
+          |      val x = xx${m1}
           |    }
           |  }
-          |}""".withSource
-      .completion(m1, Set(("xxxx1", Field, "Int"), ("xxxx2", Field, "Int"), ("xxxx3", Field, "Int")))
+          |}"""
+      .completion(
+        ("xxxx1", Field, "Int"),
+        ("xxxx2", Field, "Int"),
+        ("xxxx3", Field, "Int"),
+      )
   }
 
   @Test def completeEnclosingObject: Unit = {
     code"""object Test {
-          |  def x = Tes$m1
-          |}""".withSource
-      .completion(m1, Set(("Test", Module, "Test")))
+          |  def x = Tes${m1}
+          |}"""
+      .completion(("Test", Module, "Test"))
   }
 
   @Test def completeBothDefinitionsForEqualNestingLevels: Unit = {
@@ -383,10 +410,12 @@ class CompletionTest {
           |  def xxxx(s: String): String = s
           |}
           |object Test extends Foo, Bar {
-          |  val x = xx$m1
-          |}""".withSource
-      .completion(m1, Set(("xxxx", Method, "(s: String): String"),
-                          ("xxxx", Method, "(i: Int): Int")))
+          |  val x = xx${m1}
+          |}"""
+      .completion(
+        ("xxxx", Method, "(s: String): String"),
+        ("xxxx", Method, "(i: Int): Int"),
+      )
   }
 
   @Test def dontCompleteFromAmbiguousImportsForEqualNestingLevels: Unit = {
@@ -399,9 +428,9 @@ class CompletionTest {
           |object Test {
           |  import Foo.xxxx
           |  import Bar.xxxx
-          |  val x = xx$m1
-          |}""".withSource
-      .completion(m1, Set())
+          |  val x = xx${m1}
+          |}"""
+      .noCompletions()
   }
 
   @Test def completeFromSameImportsForEqualNestingLevels: Unit = {
@@ -412,9 +441,9 @@ class CompletionTest {
           |  import Foo.xxxx
           |  import Foo.xxxx
           |  import Foo.xxxx
-          |  val x = xx$m1
-          |}""".withSource
-      .completion(m1, Set(("xxxx", Method, "(i: Int): Int")))
+          |  val x = xx${m1}
+          |}"""
+      .completion(("xxxx", Method, "(i: Int): Int"))
   }
 
   @Test def preferLocalDefinitionToImportForEqualNestingLevels: Unit = {
@@ -424,9 +453,9 @@ class CompletionTest {
           |object Test {
           |  def xxxx(s: String): String = s
           |  import Foo.xxxx
-          |  val x = xx$m1
-          |}""".withSource
-      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+          |  val x = xx${m1}
+          |}"""
+      .completion(("xxxx", Method, "(s: String): String"))
   }
 
   @Test def preferMoreDeeplyNestedDefinition: Unit = {
@@ -434,10 +463,10 @@ class CompletionTest {
           |  def xxxx(i: Int): Int = i
           |  object Inner {
           |    def xxxx(s: String): String = s
-          |    val x = xx$m1
+          |    val x = xx${m1}
           |  }
-          |}""".withSource
-      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+          |}"""
+      .completion(("xxxx", Method, "(s: String): String"))
   }
 
   @Test def preferMoreDeeplyNestedImport: Unit = {
@@ -451,10 +480,10 @@ class CompletionTest {
           |  import Foo.xxxx
           |  locally {
           |    import Bar.xxxx
-          |    val x: String = xx$m1
+          |    val x: String = xx${m1}
           |  }
-          |}""".withSource
-      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+          |}"""
+      .completion(("xxxx", Method, "(s: String): String"))
   }
 
   @Test def preferMoreDeeplyNestedLocalDefinitionToImport: Unit = {
@@ -465,10 +494,10 @@ class CompletionTest {
           |  import Foo.xxxx
           |  object Inner {
           |    def xxxx(s: String): String = s
-          |    val x: String = xx$m1
+          |    val x: String = xx${m1}
           |  }
-          |}""".withSource
-      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+          |}"""
+      .completion(("xxxx", Method, "(s: String): String"))
   }
 
   @Test def dontCompleteLocalDefinitionShadowedByImport: Unit = {
@@ -480,11 +509,11 @@ class CompletionTest {
           |    val xxxx = ""
           |    locally {
           |      import XXXX.xxxx // import conflicts with val from outer scope
-          |      val y = xx$m1
+          |      val y = xx${m1}
           |    }
           |  }
-          |}""".withSource
-      .completion(m1, Set())
+          |}"""
+      .noCompletions()
   }
 
   @Test def completeFromLocalDefinitionIgnoringLessDeeplyNestedAmbiguities: Unit = {
@@ -498,12 +527,12 @@ class CompletionTest {
           |      import XXXX.xxxx // import conflicts with val from outer scope
           |      locally {
           |        val xxxx = 'a' // shadows both the import and the val from outer scope
-          |        val y = xx$m1
+          |        val y = xx${m1}
           |      }
           |    }
           |  }
-          |}""".withSource
-      .completion(m1, Set(("xxxx", Field, "Char")))
+          |}"""
+      .completion(("xxxx", Field, "Char"))
   }
 
   @Test def completionClassAndMethod: Unit = {
@@ -511,9 +540,11 @@ class CompletionTest {
           |  class bar
           |  def bar(i: Int) = 0
           |}
-          |import Foo.b$m1""".withSource
-      .completion(m1, Set(("bar", Class, "Foo.bar"),
-                          ("bar", Method, "(i: Int): Int")))
+          |import Foo.b${m1}"""
+      .completion(
+        ("bar", Class, "Foo.bar"),
+        ("bar", Method, "(i: Int): Int"),
+      )
   }
 
   @Test def completionTypeAndLazyValue: Unit = {
@@ -521,9 +552,11 @@ class CompletionTest {
           |  type bar = Int
           |  lazy val bar = 3
           |}
-          |import Foo.b$m1""".withSource
-      .completion(m1, Set(("bar", Field, "Foo.bar"),
-                          ("bar", Field, "Int")))
+          |import Foo.b${m1}"""
+      .completion(
+        ("bar", Field, "Foo.bar"),
+        ("bar", Field, "Int"),
+      )
   }
 
   @Test def keepTrackOfTermsAndTypesSeparately: Unit = {
@@ -534,12 +567,11 @@ class CompletionTest {
           |object Test {
           |  import XXXX._
           |  val YYYY = Int
-          |  val ZZZZ = YY$m1
-          |  type ZZZZ = YY$m2
-          |}""".withSource
-      .completion(m1, Set(("YYYY", Field, "Int")))
-      .completion(m2, Set(("YYYY", Field, "XXXX.YYYY"),
-                          ("YYYY", Field, "Int")))
+          |  val ZZZZ = YY${m1}
+          |  type ZZZZ = YY${m2}
+          |}"""
+      .completion(m1, ("YYYY", Field, "Int"))
+      .completion(m2, ("YYYY", Field, "XXXX.YYYY"), ("YYYY", Field, "Int"))
   }
 
   @Test def completeRespectingAccessModifiers: Unit = {
@@ -549,14 +581,14 @@ class CompletionTest {
           |  private def xxxx3 = ""
           |}
           |object Test1 extends Foo {
-          |  xx$m1
+          |  xx${m1}
           |}
           |object Test2 {
           |  val foo = new Foo {}
-          |  foo.xx$m2
-          |}""".withSource
-      .completion(m1, Set(("xxxx1", Method, "=> String"), ("xxxx2", Method, "=> String")))
-      .completion(m2, Set(("xxxx1", Method, "=> String")))
+          |  foo.xx${m2}
+          |}"""
+      .completion(m1, ("xxxx1", Method, "=> String"), ("xxxx2", Method, "=> String"))
+      .completion(m2, ("xxxx1", Method, "=> String"))
   }
 
   @Test def completeFromPackageObjectWithInheritance: Unit = {
@@ -564,74 +596,75 @@ class CompletionTest {
           |trait Foo[A] { def xxxx(a: A) = a }
           |package object foo extends Foo[Int] {}
           |object Test {
-          |  foo.xx$m1
-          |}""".withSource
-      .completion(m1, Set(("xxxx", Method, "(a: Int): Int")))
+          |  foo.xx${m1}
+          |}"""
+      .completion(("xxxx", Method, "(a: Int): Int"))
   }
 
   @Test def completePrimaryConstructorParameter: Unit = {
+    val expected = Set(("abc", Field, "Int"))
+
     code"""class Foo(abc: Int) {
-          |  ab$m1
+          |  ab${m1}
           |  def method1: Int = {
-          |    ab$m2
+          |    ab${m2}
           |    42
           |  }
           |  def method2: Int = {
-          |    val smth = ab$m3
+          |    val smth = ab${m3}
           |    42
           |  }
-          |}""".withSource
-      .completion(m1, Set(("abc", Field, "Int")))
-      .completion(m2, Set(("abc", Field, "Int")))
-      .completion(m2, Set(("abc", Field, "Int")))
+          |}"""
+      .completion(m1, expected)
+      .completion(m2, expected)
+      .completion(m3, expected)
   }
 
   @Test def completeExtensionReceiver: Unit = {
-    code"""extension (string: String) def xxxx = str$m1"""
-      .withSource
-      .completion(m1, Set(("string", Field, "String")))
+    code"""extension (string: String) def xxxx = str${m1}"""
+      .completion(("string", Field, "String"))
   }
 
   @Test def completeExtensionMethodWithoutParameter: Unit = {
     code"""object Foo
           |extension (foo: Foo.type) def xxxx = 1
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def completeExtensionMethodWithParameter: Unit = {
     code"""object Foo
           |extension (foo: Foo.type) def xxxx(i: Int) = i
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "(i: Int): Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "(i: Int): Int"))
   }
 
   @Test def completeExtensionMethodWithTypeParameter: Unit = {
     code"""object Foo
           |extension (foo: Foo.type) def xxxx[A]: Int = 1
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "[A] => Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "[A] => Int"))
   }
 
   @Test def completeExtensionMethodWithParameterAndTypeParameter: Unit = {
     code"""object Foo
           |extension (foo: Foo.type) def xxxx[A](a: A) = a
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "[A](a: A): A")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "[A](a: A): A"))
   }
 
   @Test def completeExtensionMethodFromExtensionWithTypeParameter: Unit = {
     code"""extension [A](a: A) def xxxx: A = a
-          |object Main { "abc".xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> String")))
+          |object Main { "abc".xx${m1} }"""
+      .completion(("xxxx", Method, "=> String"))
   }
 
   @Test def completeExtensionMethodWithResultTypeDependantOnReceiver: Unit = {
     code"""trait Foo { type Out; def get: Out}
           |object Bar extends Foo { type Out = String; def get: Out = "abc"}
           |extension (foo: Foo) def xxxx: foo.Out = foo.get
-          |object Main { Bar.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> String")))
+          |object Main { Bar.xx${m1} }"""
+      .completion(("xxxx", Method, "=> String"))
   }
 
   @Test def completeExtensionMethodFromExtenionWithPrefixUsingSection: Unit = {
@@ -641,8 +674,8 @@ class CompletionTest {
           |given Bar with {}
           |given Baz with {}
           |extension (using Bar, Baz)(foo: Foo.type) def xxxx = 1
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def completeExtensionMethodFromExtenionWithMultiplePrefixUsingSections: Unit = {
@@ -652,8 +685,8 @@ class CompletionTest {
           |given Bar with {}
           |given Baz with {}
           |extension (using Bar)(using Baz)(foo: Foo.type) def xxxx = 1
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def dontCompleteExtensionMethodFromExtenionWithMissingImplicitFromPrefixUsingSection: Unit = {
@@ -662,8 +695,8 @@ class CompletionTest {
           |trait Baz
           |given Baz with {}
           |extension (using Bar, Baz)(foo: Foo.type) def xxxx = 1
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set())
+          |object Main { Foo.xx${m1} }"""
+      .noCompletions()
   }
 
   @Test def completeExtensionMethodForReceiverOfTypeDependentOnLeadingImplicits: Unit = {
@@ -687,8 +720,8 @@ class CompletionTest {
           |object Quux:
           |  extension (using foo: Foo)(using fooOut: foo.Out)(fooOutOut: fooOut.Out) def xxxx = "abc"
           |
-          |object Main { (new Quux).xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> String")))
+          |object Main { (new Quux).xx${m1} }"""
+      .completion(("xxxx", Method, "=> String"))
   }
 
   @Test def completeExtensionMethodWithResultTypeDependentOnLeadingImplicit: Unit = {
@@ -696,8 +729,8 @@ class CompletionTest {
           |trait Bar { type Out; def get: Out }
           |given Bar with { type Out = 123; def get: Out = 123 }
           |extension (using bar: Bar)(foo: Foo.type) def xxxx: bar.Out = bar.get
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> (123 : Int)")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "=> (123 : Int)"))
   }
 
   @Test def completeExtensionMethodFromExtenionWithPostfixUsingSection: Unit = {
@@ -707,8 +740,8 @@ class CompletionTest {
           |given Bar with {}
           |given Baz with {}
           |extension (foo: Foo.type)(using Bar, Baz) def xxxx = 1
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "(using x$2: Bar, x$3: Baz): Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "(using x$2: Bar, x$3: Baz): Int"))
   }
 
   @Test def completeExtensionMethodFromExtenionWithMultiplePostfixUsingSections: Unit = {
@@ -718,8 +751,8 @@ class CompletionTest {
           |given Bar with {}
           |given Baz with {}
           |extension (foo: Foo.type)(using Bar)(using Baz) def xxxx = 1
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "(using x$2: Bar)(using x$3: Baz): Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "(using x$2: Bar)(using x$3: Baz): Int"))
   }
 
   @Test def completeExtensionMethodWithTypeParameterFromExtenionWithTypeParametersAndPrefixAndPostfixUsingSections: Unit = {
@@ -728,8 +761,8 @@ class CompletionTest {
           |given Bar with {}
           |given Baz with {}
           |extension [A](using bar: Bar)(a: A)(using baz: Baz) def xxxx[B]: Either[A, B] = Left(a)
-          |object Main { 123.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "(using baz: Baz): [B] => Either[Int, B]")))
+          |object Main { 123.xx${m1} }"""
+      .completion(("xxxx", Method, "(using baz: Baz): [B] => Either[Int, B]"))
   }
 
   @Test def completeExtensionMethodWithTypeBounds: Unit = {
@@ -738,8 +771,8 @@ class CompletionTest {
           |given Bar with {}
           |extension [A >: Bar](a: A) def xxxx[B <: a.type]: Either[A, B] = Left(a)
           |val foo = new Foo {}
-          |object Main { foo.xx${m1} }""".withSource
-          .completion(m1, Set(("xxxx", Method, "[B <: (foo : Foo)] => Either[Foo, B]")))
+          |object Main { foo.xx${m1} }"""
+      .completion(("xxxx", Method, "[B <: (foo : Foo)] => Either[Foo, B]"))
   }
 
   @Test def completeInheritedExtensionMethod: Unit = {
@@ -747,8 +780,8 @@ class CompletionTest {
           |trait FooOps {
           |  extension (foo: Foo.type) def xxxx = 1
           |}
-          |object Main extends FooOps { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main extends FooOps { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def completeExtensionMethodWithoutLosingTypeParametersFromGivenInstance: Unit = {
@@ -756,8 +789,8 @@ class CompletionTest {
           |  extension (xs: List[A]) def xxxx = xs
           |}
           |given ListOps[Int] with {}
-          |object Main { List(1, 2, 3).xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> List[Int]")))
+          |object Main { List(1, 2, 3).xx${m1} }"""
+      .completion(("xxxx", Method, "=> List[Int]"))
   }
 
   @Test def completeRenamedExtensionMethod: Unit = {
@@ -766,8 +799,8 @@ class CompletionTest {
           |  extension (foo: Foo.type) def xxxx = 1
           |}
           |import FooOps.{xxxx => yyyy}
-          |object Main { Foo.yy${m1} }""".withSource
-      .completion(m1, Set(("yyyy", Method, "=> Int")))
+          |object Main { Foo.yy${m1} }"""
+      .completion(("yyyy", Method, "=> Int"))
   }
 
   @Test def completeExtensionMethodFromGivenInstanceDefinedInScope: Unit = {
@@ -776,8 +809,8 @@ class CompletionTest {
           |given FooOps with {
           |  extension (foo: Foo.type) def xxxx = 1
           |}
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def completeExtensionMethodFromImportedGivenInstance: Unit = {
@@ -789,8 +822,8 @@ class CompletionTest {
           |  }
           |}
           |import Bar.given
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def completeExtensionMethodFromImplicitScope: Unit = {
@@ -798,8 +831,8 @@ class CompletionTest {
           |object Foo {
           |  extension (foo: Foo) def xxxx = foo.i
           |}
-          |object Main { Foo(123).xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main { Foo(123).xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def completeExtensionMethodFromGivenInImplicitScope: Unit = {
@@ -810,8 +843,8 @@ class CompletionTest {
           |    extension (foo: Foo) def xxxx = foo.i
           |  }
           |}
-          |object Main { Foo(123).xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main { Foo(123).xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def completeExtensionMethodOnResultOfImplicitConversion: Unit = {
@@ -819,15 +852,15 @@ class CompletionTest {
           |case class Foo(i: Int)
           |extension (foo: Foo) def xxxx = foo.i
           |given Conversion[Int, Foo] = Foo(_)
-          |object Main { 123.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main { 123.xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def dontCompleteExtensionMethodWithMismatchedName: Unit = {
     code"""object Foo
           |extension (foo: Foo.type) def xxxx = 1
-          |object Main { Foo.yy${m1} }""".withSource
-      .completion(m1, Set())
+          |object Main { Foo.yy${m1} }"""
+      .noCompletions()
   }
 
   @Test def preferNormalMethodToExtensionMethod: Unit = {
@@ -837,8 +870,8 @@ class CompletionTest {
           |object FooOps {
           |  extension (foo: Foo.type) def xxxx = 1
           |}
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> String")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "=> String"))
   }
 
   @Test def preferExtensionMethodFromExplicitScope: Unit = {
@@ -847,402 +880,565 @@ class CompletionTest {
           |object FooOps {
           |  extension (foo: Foo.type) def xxxx = "abcd"
           |}
-          |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "=> Int")))
+          |object Main { Foo.xx${m1} }"""
+      .completion(("xxxx", Method, "=> Int"))
   }
 
   @Test def dontCompleteExtensionMethodWithMismatchedReceiverType: Unit = {
     code"""extension (i: Int) def xxxx = i
-          |object Main { "abc".xx${m1} }""".withSource
-      .completion(m1, Set())
+          |object Main { "abc".xx${m1} }"""
+      .noCompletions()
   }
 
   @Test def i13365: Unit = {
-    code"""|import scala.quoted._
-        |
-        |object Test {
-        |  def test(using Quotes)(str: String) = {
-        |    import quotes.reflect._
-        |    val msg = Expr(str)
-        |    val printHello = '{ print("sdsd") }
-        |    val tree = printHello.asTerm
-        |    tree.sh${m1}
-        |  }
-        |}""".withSource
-      .completion(m1, Set(("show",Method, "(using x$2: x$1.reflect.Printer[x$1.reflect.Tree]): String")))
+    code"""import scala.quoted._
+          |
+          |object Test {
+          |  def test(using Quotes)(str: String) = {
+          |    import quotes.reflect._
+          |    val msg = Expr(str)
+          |    val printHello = '{ print("sdsd") }
+          |    val tree = printHello.asTerm
+          |    tree.sh${m1}
+          |  }
+          |}"""
+      .completion(("show",Method, "(using x$2: x$1.reflect.Printer[x$1.reflect.Tree]): String"))
   }
 
   @Test def syntheticThis: Unit = {
-    code"""|class Y() {
-           |  def bar: Unit =
-           |    val argument: Int = ???
-           |    arg${m1}
-           |
-           |  def arg: String = ???
-           |}
-           |""".withSource
-      .completion(m1, Set(("arg", Method, "=> String"),
-                          ("argument", Field, "Int")))
+    code"""class Y() {
+          |  def bar: Unit =
+          |    val argument: Int = ???
+          |    arg${m1}
+          |
+          |  def arg: String = ???
+          |}
+          |"""
+      .completion(
+        ("arg", Method, "=> String"),
+        ("argument", Field, "Int")
+      )
   }
 
   @Test def concatMethodWithImplicits: Unit = {
-    code"""|object A {
-           |  Array.concat${m1}
-           |}""".withSource
-      .completion(
-          m1,
-          Set(
-            (
-              "concat",
-              Method,
-              "[T](xss: Array[T]*)(implicit evidence$11: scala.reflect.ClassTag[T]): Array[T]"
-            )
-          )
-        )
+    code"""object A {
+          |  Array.concat${m1}
+          |}"""
+      .completion(("concat", Method, "[T](xss: Array[T]*)(implicit evidence$11: scala.reflect.ClassTag[T]): Array[T]"))
   }
 
   @Test def i12465_hkt: Unit =
-    code"""???.asInstanceOf[scala.collection.Seq].${m1}""".withSource
-      .completion(m1, Set())
+    code"""???.asInstanceOf[scala.collection.Seq].${m1}"""
+      .noCompletions()
 
   @Test def i12465_hkt_alias: Unit =
-    code"""???.asInstanceOf[Seq].${m1}""".withSource
-      .completion(m1, Set())
+    code"""???.asInstanceOf[Seq].${m1}"""
+      .noCompletions()
 
   @Test def i13624_annotType: Unit =
-    code"""|object Foo{
-           |  class MyAnnotation extends annotation.StaticAnnotation
-           |}
-           |class MyAnnotation extends annotation.StaticAnnotation
-           |class Annotation2(a: String) extends annotation.StaticAnnotation
-           |val x = 1: @MyAnnot${m1}
-           |type X = Int @MyAnnot${m2}
-           |val y = 1: @Foo.MyAnnot${m3}
-           |val z = 1: @Foo.MyAnnotation @MyAnno${m4}
-           |type Y = Int @MyAnnotation @Foo.MyAnnota${m5}
-           |val w = 1: @Annotation2("abc": @Foo.MyAnnot${m6})
-           |""".withSource
-      .completion(
-        m1,
-        Set(
-          ("MyAnnotation", Class, "MyAnnotation"),
-          ("MyAnnotation", Module, "MyAnnotation")
-        )
-      ).completion(
-        m2,
-        Set(
-          ("MyAnnotation", Class, "MyAnnotation"),
-          ("MyAnnotation", Module, "MyAnnotation")
-        )
-      ).completion(
-        m3,
-        Set(
-          ("MyAnnotation", Class, "Foo.MyAnnotation"),
-          ("MyAnnotation", Module, "Foo.MyAnnotation")
-        )
-      ).completion(
-        m4,
-        Set(
-          ("MyAnnotation", Class, "MyAnnotation"),
-          ("MyAnnotation", Module, "MyAnnotation")
-        )
-      ).completion(
-        m5,
-        Set(
-          ("MyAnnotation", Class, "Foo.MyAnnotation"),
-          ("MyAnnotation", Module, "Foo.MyAnnotation")
-        )
-      ).completion(
-        m6,
-        Set(
-          ("MyAnnotation", Class, "Foo.MyAnnotation"),
-          ("MyAnnotation", Module, "Foo.MyAnnotation")
-        )
+    val expected1 = Set(
+        ("MyAnnotation", Class, "MyAnnotation"),
+        ("MyAnnotation", Module, "MyAnnotation"),
       )
+    val expected2 = Set(
+        ("MyAnnotation", Class, "Foo.MyAnnotation"),
+        ("MyAnnotation", Module, "Foo.MyAnnotation"),
+      )
+    code"""object Foo{
+          |  class MyAnnotation extends annotation.StaticAnnotation
+          |}
+          |class MyAnnotation extends annotation.StaticAnnotation
+          |class Annotation2(a: String) extends annotation.StaticAnnotation
+          |val x = 1: @MyAnnot${m1}
+          |type X = Int @MyAnnot${m2}
+          |val y = 1: @Foo.MyAnnot${m3}
+          |val z = 1: @Foo.MyAnnotation @MyAnno${m4}
+          |type Y = Int @MyAnnotation @Foo.MyAnnota${m5}
+          |val w = 1: @Annotation2("abc": @Foo.MyAnnot${m6})
+          |"""
+      .completion(m1, expected1)
+      .completion(m2, expected1)
+      .completion(m3, expected2)
+      .completion(m4, expected1)
+      .completion(m5, expected2)
+      .completion(m6, expected2)
 
   @Test def i13624_annotation : Unit =
     code"""@annotation.implicitNot${m1}
           |@annotation.implicitNotFound @mai${m2}"""
-          .withSource
-          .completion(m1,
-            Set(
-              ("implicitNotFound", Class, "scala.annotation.implicitNotFound"),
-              ("implicitNotFound", Module, "scala.annotation.implicitNotFound")
-            )
-          )
-          .completion(m2,
-            Set(
-              ("main", Class, "scala.main"),
-              ("main", Module, "main")
-            )
-          )
+      .completion(m1,
+          ("implicitNotFound", Class, "scala.annotation.implicitNotFound"),
+          ("implicitNotFound", Module, "scala.annotation.implicitNotFound"),
+      )
+      .completion(m2,
+          ("main", Class, "scala.main"),
+          ("main", Module, "main"),
+      )
 
   @Test def i13623_annotation : Unit =
     code"""import annot${m1}"""
-          .withSource
-          .completion(m1,
-            Set(
-              ("annotation", Module, "scala.annotation")
-            )
-          )
+      .completion(("annotation", Module, "scala.annotation"))
 
   @Test def importAnnotationAfterImport : Unit =
     code"""import java.lang.annotation; import annot${m1}"""
-        .withSource
-        .completion(m1,
-          Set(
-            ("annotation", Module, "scala.annotation")
-          )
-        )
+      .completion(("annotation", Module, "scala.annotation"))
+
   @Test def completeTemplateConstrArgType: Unit = {
-    val expected = Set(
-      ("Future", Class, "scala.concurrent.Future"),
-      ("Future", Module, "scala.concurrent.Future")
-    )
     code"""import scala.concurrent.Future
-          |class Foo(x: Fut${m1})""".withSource
-      .completion(m1, expected) 
+          |class Foo(x: Fut${m1})"""
+      .completion(
+        ("Future", Class, "scala.concurrent.Future"),
+        ("Future", Module, "scala.concurrent.Future")
+      )
   }
 
   @Test def completeTemplateParents: Unit = {
-    val expected = Set(
-      ("Future", Class, "scala.concurrent.Future"),
-      ("Future", Module, "scala.concurrent.Future")
-    )
     code"""import scala.concurrent.Future
-          |class Foo extends Futu${m1}""".withSource
-      .completion(m1, expected) 
+          |class Foo extends Futu${m1}"""
+      .completion(
+        ("Future", Class, "scala.concurrent.Future"),
+        ("Future", Module, "scala.concurrent.Future")
+      )
   }
 
   @Test def completeTemplateSelfType: Unit = {
-    val expected = Set(
-      ("Future", Class, "scala.concurrent.Future"),
-      ("Future", Module, "scala.concurrent.Future")
-    )
     code"""import scala.concurrent.Future
-          |class Foo[A]{ self: Futu${m1} => }""".withSource
-      .completion(m1, expected) 
+          |class Foo[A]{ self: Futu${m1} => }"""
+      .completion(
+        ("Future", Class, "scala.concurrent.Future"),
+        ("Future", Module, "scala.concurrent.Future")
+      )
   }
 
   @Test def backticks: Unit = {
-    val expected = Set(
-      ("getClass", Method, "[X0 >: Foo.Bar.type](): Class[? <: X0]"),
-      ("ensuring", Method, "(cond: Boolean): A"),
-      ("##", Method, "=> Int"),
-      ("nn", Method, "=> Foo.Bar.type"),
-      ("==", Method, "(x$0: Any): Boolean"),
-      ("ensuring", Method, "(cond: Boolean, msg: => Any): A"),
-      ("ne", Method, "(x$0: Object): Boolean"),
-      ("valueOf", Method, "($name: String): Foo.Bar"),
-      ("equals", Method, "(x$0: Any): Boolean"),
-      ("wait", Method, "(x$0: Long): Unit"),
-      ("hashCode", Method, "(): Int"),
-      ("notifyAll", Method, "(): Unit"),
-      ("values", Method, "=> Array[Foo.Bar]"),
-      ("→", Method, "[B](y: B): (A, B)"),
-      ("!=", Method, "(x$0: Any): Boolean"),
-      ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
-      ("asInstanceOf", Method, "[X0] => X0"),
-      ("->", Method, "[B](y: B): (A, B)"),
-      ("wait", Method, "(x$0: Long, x$1: Int): Unit"),
-      ("`back-tick`", Field, "Foo.Bar"),
-      ("notify", Method, "(): Unit"),
-      ("formatted", Method, "(fmtstr: String): String"),
-      ("ensuring", Method, "(cond: A => Boolean, msg: => Any): A"),
-      ("wait", Method, "(): Unit"),
-      ("isInstanceOf", Method, "[X0] => Boolean"),
-      ("`match`", Field, "Foo.Bar"),
-      ("toString", Method, "(): String"),
-      ("ensuring", Method, "(cond: A => Boolean): A"),
-      ("eq", Method, "(x$0: Object): Boolean"),
-      ("synchronized", Method, "[X0](x$0: X0): X0")
-    )
     code"""object Foo:
-           |  enum Bar:
-           |    case `back-tick`
-           |    case `match`
-           |  
-           |  val x = Bar.${m1}"""
-             .withSource.completion(m1, expected)
+          |  enum Bar:
+          |    case `back-tick`
+          |    case `match`
+          |
+          |  val x = Bar.${m1}"""
+      .completion(
+        ("getClass", Method, "[X0 >: Foo.Bar.type](): Class[? <: X0]"),
+        ("ensuring", Method, "(cond: Boolean): A"),
+        ("##", Method, "=> Int"),
+        ("nn", Method, "=> Foo.Bar.type"),
+        ("==", Method, "(x$0: Any): Boolean"),
+        ("ensuring", Method, "(cond: Boolean, msg: => Any): A"),
+        ("ne", Method, "(x$0: Object): Boolean"),
+        ("valueOf", Method, "($name: String): Foo.Bar"),
+        ("equals", Method, "(x$0: Any): Boolean"),
+        ("wait", Method, "(x$0: Long): Unit"),
+        ("hashCode", Method, "(): Int"),
+        ("notifyAll", Method, "(): Unit"),
+        ("values", Method, "=> Array[Foo.Bar]"),
+        ("→", Method, "[B](y: B): (A, B)"),
+        ("!=", Method, "(x$0: Any): Boolean"),
+        ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
+        ("asInstanceOf", Method, "[X0] => X0"),
+        ("->", Method, "[B](y: B): (A, B)"),
+        ("wait", Method, "(x$0: Long, x$1: Int): Unit"),
+        ("`back-tick`", Field, "Foo.Bar"),
+        ("notify", Method, "(): Unit"),
+        ("formatted", Method, "(fmtstr: String): String"),
+        ("ensuring", Method, "(cond: A => Boolean, msg: => Any): A"),
+        ("wait", Method, "(): Unit"),
+        ("isInstanceOf", Method, "[X0] => Boolean"),
+        ("`match`", Field, "Foo.Bar"),
+        ("toString", Method, "(): String"),
+        ("ensuring", Method, "(cond: A => Boolean): A"),
+        ("eq", Method, "(x$0: Object): Boolean"),
+        ("synchronized", Method, "[X0](x$0: X0): X0")
+      )
   }
 
   @Test def backticksPrefix: Unit = {
-    val expected = Set(
-      ("`back-tick`", Field, "Foo.Bar"),
-    )
     code"""object Foo:
-           |  enum Bar:
-           |    case `back-tick`
-           |    case `match`
-           |  
-           |  val x = Bar.`back${m1}"""
-             .withSource.completion(m1, expected)
+          |  enum Bar:
+          |    case `back-tick`
+          |    case `match`
+          |
+          |  val x = Bar.`back${m1}"""
+      .completion(("`back-tick`", Field, "Foo.Bar"))
   }
 
   @Test def backticksSpace: Unit = {
-    val expected = Set(
-      ("`has space`", Field, "Foo.Bar"),
-    )
     code"""object Foo:
-           |  enum Bar:
-           |    case `has space`
-           |  
-           |  val x = Bar.`has s${m1}"""
-             .withSource.completion(m1, expected)
+          |  enum Bar:
+          |    case `has space`
+          |
+          |  val x = Bar.`has s${m1}"""
+      .completion(("`has space`", Field, "Foo.Bar"))
   }
 
   @Test def backticksCompleteBoth: Unit = {
-    val expected = Set(
-      ("formatted", Method, "(fmtstr: String): String"),
-      ("`foo-bar`", Field, "Int"),
-      ("foo", Field, "Int")
-    )
     code"""object Foo:
-           |  object Bar:
-           |    val foo = 1
-           |    val `foo-bar` = 2
-           |    val `bar` = 3
-           |  
-           |  val x = Bar.fo${m1}"""
-             .withSource.completion(m1, expected)
+          |  object Bar:
+          |    val foo = 1
+          |    val `foo-bar` = 2
+          |    val `bar` = 3
+          |
+          |  val x = Bar.fo${m1}"""
+      .completion(
+        ("formatted", Method, "(fmtstr: String): String"),
+        ("`foo-bar`", Field, "Int"),
+        ("foo", Field, "Int")
+      )
   }
 
   @Test def backticksWhenNotNeeded: Unit = {
-    val expected = Set(
-      ("`formatted`", Method, "(fmtstr: String): String"),
-      ("`foo-bar`", Field, "Int"),
-      ("`foo`", Field, "Int")
-    )
     code"""object Foo:
-           |  object Bar:
-           |    val foo = 1
-           |    val `foo-bar` = 2
-           |  
-           |  val x = Bar.`fo${m1}"""
-             .withSource.completion(m1, expected)
+          |  object Bar:
+          |    val foo = 1
+          |    val `foo-bar` = 2
+          |
+          |  val x = Bar.`fo${m1}"""
+      .completion(
+        ("`formatted`", Method, "(fmtstr: String): String"),
+        ("`foo-bar`", Field, "Int"),
+        ("`foo`", Field, "Int")
+      )
   }
 
   @Test def backticksImported: Unit = {
-    val expected = Set(
-      ("`scalaUtilChainingOps`", Method, "[A](a: A): scala.util.ChainingOps[A]"),
-      ("`synchronized`", Method, "[X0](x$0: X0): X0")
-    )
-    code"""import scala.util.chaining.`s${m1}"""
-             .withSource.completion(m1, expected)
+    code"import scala.util.chaining.`s${m1}"
+      .completion(
+        ("`scalaUtilChainingOps`", Method, "[A](a: A): scala.util.ChainingOps[A]"),
+        ("`synchronized`", Method, "[X0](x$0: X0): X0")
+      )
   }
 
   @Test def matchTypeCompletions: Unit = {
-    val expected = Set(
-      ("fooTest", Method, "(y: Int): Int"),
-    )
     code"""case class Foo(x: Int) {
-           |  def fooTest(y: Int): Int = ???
-           |}
-           |type Elem[X] = X match {
-           |  case Int => Foo
-           |  case Any => X
-           |}
-           |def elem[X](x: X): Elem[X] = x match {
-           |  case x: Int => Foo(x)
-           |  case x: Any => x
-           |}
-           |object Test: 
-           |  elem(1).foo${m1}"""
-             .withSource.completion(m1, expected)
+          |  def fooTest(y: Int): Int = ???
+          |}
+          |type Elem[X] = X match {
+          |  case Int => Foo
+          |  case Any => X
+          |}
+          |def elem[X](x: X): Elem[X] = x match {
+          |  case x: Int => Foo(x)
+          |  case x: Any => x
+          |}
+          |object Test:
+          |  elem(1).foo${m1}"""
+      .completion(("fooTest", Method, "(y: Int): Int"))
   }
 
   @Test def higherKindedMatchTypeDeclaredCompletion: Unit = {
-    val expected = Set(
-      ("map", Method, "[B](f: Int => B): Foo[B]"),
-    )
     code"""trait Foo[A] {
-           |  def map[B](f: A => B): Foo[B] = ???
-           |}
-           |case class Bar[F[_]](bar: F[Int])
-           |type M[T] = T match {
-           |  case Int => Foo[Int]
-           |}
-           |object Test:
-           |  val x = Bar[M](new Foo[Int]{})
-           |  x.bar.m${m1}"""
-             .withSource.completion(m1, expected)
+          |  def map[B](f: A => B): Foo[B] = ???
+          |}
+          |case class Bar[F[_]](bar: F[Int])
+          |type M[T] = T match {
+          |  case Int => Foo[Int]
+          |}
+          |object Test:
+          |  val x = Bar[M](new Foo[Int]{})
+          |  x.bar.m${m1}"""
+      .completion(("map", Method, "[B](f: Int => B): Foo[B]"))
   }
 
   @Test def higherKindedMatchTypeLazyCompletion: Unit = {
-    val expected = Set(
-      ("map", Method, "[B](f: Int => B): Foo[B]"),
-    )
     code"""trait Foo[A] {
-           |  def map[B](f: A => B): Foo[B] = ???
-           |}
-           |case class Bar[F[_]](bar: F[Int])
-           |type M[T] = T match {
-           |  case Int => Foo[Int]
-           |}
-           |def foo(x: Bar[M]) = x.bar.m${m1}"""
-             .withSource.completion(m1, expected)
+          |  def map[B](f: A => B): Foo[B] = ???
+          |}
+          |case class Bar[F[_]](bar: F[Int])
+          |type M[T] = T match {
+          |  case Int => Foo[Int]
+          |}
+          |def foo(x: Bar[M]) = x.bar.m${m1}"""
+      .completion(("map", Method, "[B](f: Int => B): Foo[B]"))
   }
 
-  // This test is not passing due to https://github.com/lampepfl/dotty/issues/14687
-  // @Test def higherKindedMatchTypeImplicitConversionCompletion: Unit = {
-  //   val expected = Set(
-  //     ("mapBoo", Method, "[B](op: Int => B): Boo[B]"),
-  //     ("mapFoo", Method, "[B](op: Int => B): Foo[B]"),
-  //   )
-  //   code"""import scala.language.implicitConversions
-  //          |case class Foo[A](x: A) {
-  //          |  def mapFoo[B](op: A => B): Foo[B] = ???
-  //          |}
-  //          |case class Boo[A](x: A) {
-  //          |  def mapBoo[B](op: A => B): Boo[B] = ???
-  //          |}
-  //          |type M[A] = A match {
-  //          |  case Int => Foo[Int]
-  //          |}
-  //          |implicit def fooToBoo[A](x: Foo[A]): Boo[A] = Boo(x.x)
-  //          |case class Bar[F[_]](bar: F[Int])
-  //          |def foo(x: Bar[M]) = x.bar.m${m1}"""
-  //            .withSource.completion(m1, expected)
-  // }
+  @Test def higherKindedMatchTypeImplicitConversionCompletion: Unit = {
+    code"""import scala.language.implicitConversions
+          |case class Foo[A](x: A) {
+          |  def mapFoo[B](op: A => B): Foo[B] = ???
+          |}
+          |case class Boo[A](x: A) {
+          |  def mapBoo[B](op: A => B): Boo[B] = ???
+          |}
+          |type M[A] = A match {
+          |  case Int => Foo[Int]
+          |}
+          |implicit def fooToBoo[A](x: Foo[A]): Boo[A] = Boo(x.x)
+          |case class Bar[F[_]](bar: F[Int])
+          |def foo(x: Bar[M]) = x.bar.m${m1}"""
+      .completion(
+        ("mapBoo", Method, "[B](op: Int => B): Boo[B]"),
+        ("mapFoo", Method, "[B](op: Int => B): Foo[B]")
+      )
+  }
+
+  @Test def higherKindedTypeInferenceTest: Unit = {
+    val expected = Set(
+        ("fooTest", Method, "(x: Int): String")
+      )
+    code"""class Test[A, B] {
+          |  def fooTest(x: A): B = ???
+          |}
+          |
+          |object M:
+          |  val test = new Test[Int, String] {}
+          |  test.foo${m1}
+          |  (new Test[Int, String] {}).foo${m2}"""
+      .completion(m1, expected)
+      .completion(m2, expected)
+  }
+
+  @Test def higherKindedImplicitConversionsCompletions: Unit = {
+    val expected = Set(
+      ("mapBoo", Method, "[B](f: Int => B): Boo[B]"),
+      ("mapFoo", Method, "[B](f: Int => B): Foo[B]"),
+    )
+    code"""import scala.language.implicitConversions
+          |case class Foo[A](x: A) {
+          |  def mapFoo[B](f: A => B): Foo[B] = ???
+          |}
+          |case class Boo[C](x: C) {
+          |  def mapBoo[B](f: C => B): Boo[B] = ???
+          |}
+          |implicit def fooToBoo[D](x: Foo[D]): Boo[D] = Boo(x.x)
+          |object Test:
+          |  val x = Foo(1)
+          |  x.ma${m1}
+          |  Foo(1).ma${m2}"""
+      .completion(m1, expected)
+      .completion(m2, expected)
+  }
 
   @Test def higherKindedMatchTypeExtensionMethodCompletion: Unit = {
-    val expected = Set(
-      ("mapFoo", Method, "[B](f: Int => B): Foo[B]"),
-      ("mapExtensionMethod", Method, "[B](f: Int => B): Foo[B]"),
-    )
     code"""trait Foo[A] {
-        |  def mapFoo[B](f: A => B): Foo[B] = ???
-        |}
-        |extension[A] (x: Foo[A]) {
-        |  def mapExtensionMethod[B](f: A => B): Foo[B] = ???
-        |}
-        |case class Baz[F[_]](baz: F[Int])
-        |type M[T] = T match {
-        |  case Int => Foo[Int]
-        |}
-        |case class Bar[F[_]](bar: F[Int])
-        |def foo(x: Bar[M]) = x.bar.ma${m1}"""
-          .withSource.completion(m1, expected)
+          |  def mapFoo[B](f: A => B): Foo[B] = ???
+          |}
+          |extension[A] (x: Foo[A]) {
+          |  def mapExtensionMethod[B](f: A => B): Foo[B] = ???
+          |}
+          |case class Baz[F[_]](baz: F[Int])
+          |type M[T] = T match {
+          |  case Int => Foo[Int]
+          |}
+          |case class Bar[F[_]](bar: F[Int])
+          |def foo(x: Bar[M]) = x.bar.ma${m1}"""
+      .completion(
+        ("mapFoo", Method, "[B](f: Int => B): Foo[B]"),
+        ("mapExtensionMethod", Method, "[B](f: Int => B): Foo[B]"),
+      )
   }
 
   @Test def packageCompletionsOutsideImport: Unit = {
-    val expected = Set(
-      ("java", Module, "java"),
-      ("javax", Module, "javax"),
-    )
     code"""object Foo { ja${m1}"""
-             .withSource.completion(m1, expected)
+      .completion(
+        ("java", Module, "java"),
+        ("javax", Module, "javax"),
+      )
   }
 
   @Test def topLevelPackagesCompletionsOutsideImport: Unit = {
-    val expected = Set(
-      ("example", Module, "example"),
-    )
     code"""package example:
           |    def foo = ""
           |
           |def main = exa${m1}"""
-             .withSource.completion(m1, expected)
+      .completion(("example", Module, "example"))
   }
 
+  @Test def typeAliasCompletions: Unit = {
+    code"""class Test() {
+          |  def fooTest(x: Int): Unit = ???
+          |}
+          |type TestAlias = Test
+          |object O:
+          |  val test: TestAlias = new Test()
+          |  test.foo${m1}"""
+      .completion(("fooTest", Method, "(x: Int): Unit"))
+  }
+
+  @Test def higherKindedTypeAliasesCompletions: Unit = {
+    val expected = Set(("fooTest", Method, "(x: Int): Option[Unit]"))
+    code"""trait Test[F[_]] {
+          |  def fooTest(x: Int): F[Unit] = ???
+          |}
+          |
+          |type TestAlias[M[_[_]]] = M[Option]
+          |object O:
+          |  val test: TestAlias[Test] = new Test[Option] {}
+          |  val test2: Test[Option] = new Test[Option] {}
+          |  test.foo${m1}
+          |  test2.foo${m2}"""
+      .completion(m1, expected)
+      .completion(m2, expected)
+  }
+
+  @Test def `???`: Unit = {
+    code"""object O:
+          |  ???.${m1}"""
+      .noCompletions()
+  }
+
+  @Test def singleDenotNoCompletions: Unit = {
+    code"""class Test(val symbol: String)
+          |class BetterTest(symbol: Int) extends Test(symbol.toString):
+          |  symb$m1
+          |object O:
+          |  def t(test: BetterTest) = test.symb$m2"""
+      .completion(m1, ("symbol", Field, "Int"))
+      .completion(m2, ("symbol", Field, "String"))
+  }
+
+  @Test def refinedNonselectable: Unit = {
+    code"""trait Foo
+          |trait Bar extends Foo
+          |
+          |trait Quux:
+          |  def aaa: Foo
+          |  def bbb: Foo
+          |  def ccc(s: String): String
+          |  private def ddd(): Boolean = ???
+          |
+          |val quux = new Quux:
+          |  def aaa: Foo = ???
+          |  def bbb: Bar = ??? // overriden signature
+          |  def ccc(s: String): String = ???
+          |  def ccc(i: Int): Int = ??? // overloaded
+          |  private def ddd(): Boolean = ???
+          |  def eee(): Boolean = ???
+          |  private def fff(): Boolean = ???
+          |  val ggg: Int = ???
+          |
+          |val a = quux.aa${m1}
+          |val b = quux.bb${m2}
+          |val c = quux.cc${m3}
+          |val d = quux.dd${m4}
+          |val e = quux.ee${m5}
+          |val f = quux.ff${m6}
+          |val g = quux.gg${m7}
+          |object imported:
+          |  import quux.*
+          |  val b = bb${m8}"""
+            .completion(m1, ("aaa", Method, "=> Foo"))
+            .completion(m2, ("bbb", Method, "=> Bar"))
+            .completion(m3, ("ccc", Method, "(s: String): String"))
+            .noCompletions(m4)
+            .noCompletions(m5)
+            .noCompletions(m6)
+            .noCompletions(m7)
+            .completion(m8, ("bbb", Method, "=> Bar"))
+  }
+
+  @Test def refinedSelectable: Unit = {
+    code"""trait Foo
+          |trait Bar extends Foo
+          |
+          |trait Quux extends Selectable:
+          |  def aaa: Foo
+          |  def bbb: Foo
+          |  def ccc(s: String): String
+          |  private def ddd(): Boolean = ???
+          |
+          |val quux = new Quux:
+          |  def aaa: Foo = ???
+          |  def bbb: Bar = ??? // overriden signature
+          |  def ccc(s: String): String = ???
+          |  def ccc(i: Int): Int = ??? // overloaded
+          |  private def ddd(): Boolean = ???
+          |  def eee(): Boolean = ???
+          |  private def fff(): Boolean = ???
+          |  val ggg: Int = ???
+          |
+          |val a = quux.aa${m1}
+          |val b = quux.bb${m2}
+          |val c = quux.cc${m3}
+          |val d = quux.dd${m4}
+          |val e = quux.ee${m5}
+          |val f = quux.ff${m6}
+          |val g = quux.gg${m7}
+          |object imported:
+          |  import quux.*
+          |  val b = bb${m8}"""
+            .completion(m1, ("aaa", Method, "=> Foo"))
+            .completion(m2, ("bbb", Method, "=> Bar"))
+            .completion(m3, ("ccc", Method, "(s: String): String"), ("ccc", Method, "(i: Int): Int"))
+            .noCompletions(m4)
+            .completion(m5, ("eee", Method, "(): Boolean"))
+            .noCompletions(m6)
+            .completion(m7, ("ggg", Field, "Int"))
+            .completion(m8, ("bbb", Method, "=> Bar"))
+  }
+
+  @Test def refinedSelectableFromImplicitConversion: Unit = {
+    code"""case class Wrapper[A](inner: A) extends Selectable
+          |object Wrapper:
+          |  implicit def refineWrapper[A](wrapper: Wrapper[A])(using refiner: Refiner[A]): refiner.Refined = ???
+          |
+          |trait Refiner[A]:
+          |  type Refined
+          |
+          |case class Foo(name: String)
+          |object Foo:
+          |  given Refiner[Foo] with
+          |    type Refined = Wrapper[Foo] { def name: String }
+          |
+          |def fooWrapper: Wrapper[Foo] = ???
+          |def name: Wrapper[String] = fooWrapper.na${m1}"""
+      .completion(m1, Set(("name", Method, "=> String")))
+  }
+
+  @Test def transparentMacro: Unit = {
+    val p1 = Project.withSources(
+      code"""package p1
+            |import scala.quoted.*
+            |
+            |trait Foo:
+            |  def xxxa = 0
+            |
+            |class Bar extends Foo:
+            |  def xxxb = 1
+            |
+            |transparent inline def bar: Foo = $${ barImpl }
+            |def barImpl(using Quotes) = '{ new Bar }
+            |"""
+    )
+    val p2 = Project.dependingOn(p1).withSources(
+      code"""package p2
+            |val x = p1.bar.xx${m1}
+            """
+    )
+    withProjects(p1, p2).completion(m1, Set(("xxxa", Method, "=> Int"), ("xxxb", Method, "=> Int")))
+  }
+
+
+  @Test def implicitlyRefinedWithTransparentMacro: Unit = {
+    val p1 = Project.withSources(
+      code"""package p1
+            |import scala.quoted.*
+            |import scala.language.implicitConversions
+            |
+            |case class Wrapper[A](inner: A) extends Selectable:
+            |  def selectDynamic(name: String) = ???
+            |object Wrapper:
+            |  implicit def refineWrapper[A](wrapper: Wrapper[A])(using refiner: Refiner[A]): refiner.Refined = ???
+            |
+            |trait Refiner[A]:
+            |  type Refined
+            |
+            |case class Foo(name: String)
+            |object Foo:
+            |  transparent inline given fooRefiner: Refiner[Foo] = $${ fooRefinerImpl }
+            |
+            |def fooRefinerImpl(using Quotes): Expr[Refiner[Foo]] = '{
+            |  new Refiner[Foo] {
+            |    type Refined = Wrapper[Foo] { def name: String }
+            |  }
+            |}
+            |"""
+    )
+    val p2 = Project.dependingOn(p1).withSources(
+      code"""package p2
+            |import p1.*
+            |def fooWrapper: Wrapper[Foo] = ???
+            |def name = fooWrapper.na${m1}
+            """
+    )
+    withProjects(p1, p2).completion(m1, Set(("name", Method, "=> String")))
+  }
 }

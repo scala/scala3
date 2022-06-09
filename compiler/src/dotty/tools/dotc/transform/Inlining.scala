@@ -69,8 +69,6 @@ class Inlining extends MacroTransform {
           if tree1.tpe.isError then tree1
           else Inliner.inlineCall(tree1)
         case _: GenericApply if tree.symbol.isQuote =>
-          if level == 0 then
-            ctx.compilationUnit.needsQuotePickling = true
           super.transform(tree)(using StagingContext.quoteContext)
         case _: GenericApply if tree.symbol.isExprSplice =>
           super.transform(tree)(using StagingContext.spliceContext)

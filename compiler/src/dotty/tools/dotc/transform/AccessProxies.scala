@@ -58,7 +58,7 @@ abstract class AccessProxies {
 
   /** Add all needed accessors to the `body` of class `cls` */
   def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = {
-    val accDefs = accessorDefs(cls)
+    val accDefs = accessorDefs(cls).toList
     transforms.println(i"add accessors for $cls: $accDefs%, %")
     if (accDefs.isEmpty) body else body ++ accDefs
   }
@@ -76,9 +76,10 @@ abstract class AccessProxies {
     }
 
     /** A fresh accessor symbol */
-    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, span: Span)(using Context): TermSymbol = {
-      val sym = newSymbol(owner, name, Synthetic | Method, info, coord = span).entered
-      if (sym.allOverriddenSymbols.exists(!_.is(Deferred))) sym.setFlag(Override)
+    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, accessed: Symbol)(using Context): TermSymbol = {
+      val sym = newSymbol(owner, name, Synthetic | Method, info, coord = accessed.span).entered
+      if accessed.is(Private) then sym.setFlag(Final)
+      else if sym.allOverriddenSymbols.exists(!_.is(Deferred)) then sym.setFlag(Override)
       sym
     }
 
@@ -86,7 +87,7 @@ abstract class AccessProxies {
     protected def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(using Context): Symbol = {
       def refersToAccessed(sym: Symbol) = accessedBy.get(sym).contains(accessed)
       owner.info.decl(accessorName).suchThat(refersToAccessed).symbol.orElse {
-        val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed.span)
+        val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed)
         accessedBy(acc) = accessed
         acc
       }

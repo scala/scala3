@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Compile-time operations"
-movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/compiletime-ops.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/compiletime-ops.html
 ---
 
 ## The `scala.compiletime` Package
@@ -107,7 +107,7 @@ If an inline expansion results in a call `error(msgStr)` the compiler
 produces an error message containing the given `msgStr`.
 
 ```scala
-import scala.compiletime.{error, code}
+import scala.compiletime.{error, codeOf}
 
 inline def fail() =
   error("failed for a reason")
@@ -118,10 +118,10 @@ fail() // error: failed for a reason
 or
 
 ```scala
-inline def fail(p1: => Any) =
-  error(code"failed on: $p1")
+inline def fail(inline p1: Any) =
+  error("failed on: " + codeOf(p1))
 
-fail(identity("foo")) // error: failed on: identity("foo")
+fail(identity("foo")) // error: failed on: identity[String]("foo")
 ```
 
 ### The `scala.compiletime.ops` package

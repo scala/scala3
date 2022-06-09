@@ -261,7 +261,7 @@ object PatternMatcher {
         def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
           args match {
             case arg :: args1 =>
-              val sym :: syms1 = syms
+              val sym :: syms1 = syms: @unchecked
               patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
             case Nil =>
               assert(syms.isEmpty)
@@ -411,7 +411,7 @@ object PatternMatcher {
                 assert(implicits.isEmpty)
                 acc
             }
-            val mt @ MethodType(_) = extractor.tpe.widen
+            val mt @ MethodType(_) = extractor.tpe.widen: @unchecked
             val unapp0 = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
             val unapp = applyImplicits(unapp0, implicits, mt.resultType)
             unapplyPlan(unapp, args)
@@ -659,7 +659,7 @@ object PatternMatcher {
      */
     private def inlineVars(plan: Plan): Plan = {
       val refCount = varRefCount(plan)
-      val LetPlan(topSym, _) = plan
+      val LetPlan(topSym, _) = plan: @unchecked
 
       def toDrop(sym: Symbol) = initializer.get(sym) match {
         case Some(rhs) =>
@@ -864,7 +864,7 @@ object PatternMatcher {
         else (scrutinee.select(nme.toInt), defn.IntType)
 
       def primLiteral(lit: Tree): Tree =
-        val Literal(constant) = lit
+        val Literal(constant) = lit: @unchecked
         if (constant.tag == Constants.IntTag) lit
         else if (constant.tag == Constants.StringTag) lit
         else cpy.Literal(lit)(Constant(constant.intValue))

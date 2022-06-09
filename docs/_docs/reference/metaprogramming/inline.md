@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: Inline
-movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/inline.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/inline.html
 ---
 
 ## Inline Definitions

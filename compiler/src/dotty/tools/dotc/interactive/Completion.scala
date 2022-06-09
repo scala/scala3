@@ -12,11 +12,11 @@ import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Scopes._
-import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NoType, TermRef, Type}
+import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, RefinedType, TermRef, Type, TypeProxy}
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
@@ -85,9 +85,9 @@ object Completion {
    * @param content The source content that we'll check the positions for the prefix
    * @param start The start position we'll start to look for the prefix at
    * @param end The end position we'll look for the prefix at
-   * @return Either the full prefix including the ` or an empty string 
+   * @return Either the full prefix including the ` or an empty string
    */
-  private def checkBacktickPrefix(content: Array[Char], start: Int, end: Int): String = 
+  private def checkBacktickPrefix(content: Array[Char], start: Int, end: Int): String =
     content.lift(start) match
       case Some(char) if char == '`' =>
         content.slice(start, end).mkString
@@ -111,7 +111,7 @@ object Completion {
       // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
       case (select: untpd.Select) :: _ if select.name == nme.ERROR =>
         checkBacktickPrefix(select.source.content(), select.nameSpan.start, select.span.end)
-     
+
       // import scala.util.chaining.`s<TAB> will result in a Ident(<error>)
       case (ident: untpd.Ident) :: _ if ident.name == nme.ERROR =>
         checkBacktickPrefix(ident.source.content(), ident.span.start, ident.span.end)
@@ -161,7 +161,7 @@ object Completion {
                           |                prefix  = ${completer.prefix},
                           |                term    = ${completer.mode.is(Mode.Term)},
                           |                type    = ${completer.mode.is(Mode.Type)}
-                          |                results = $backtickCompletions%, %""")
+                          |                results = $backtickedCompletions%, %""")
     (offset, backtickedCompletions)
   }
 
@@ -177,14 +177,14 @@ object Completion {
   // https://github.com/com-lihaoyi/Ammonite/blob/73a874173cd337f953a3edc9fb8cb96556638fdd/amm/util/src/main/scala/ammonite/util/Model.scala
   private def needsBacktick(s: String) =
     val chunks = s.split("_", -1)
-    
+
     val validChunks = chunks.zipWithIndex.forall { case (chunk, index) =>
       chunk.forall(Chars.isIdentifierPart) ||
       (chunk.forall(Chars.isOperatorPart) &&
         index == chunks.length - 1 &&
         !(chunks.lift(index - 1).contains("") && index - 1 == 0))
     }
-    
+
     val validStart =
       Chars.isIdentifierStart(s(0)) || chunks(0).forall(Chars.isOperatorPart)
 
@@ -310,10 +310,12 @@ object Completion {
       resultMappings
     }
 
-    /** Replaces underlying type with reduced one, when it's MatchType */
-    def reduceUnderlyingMatchType(qual: Tree)(using Context): Tree=
-      qual.tpe.widen match 
-        case ctx.typer.MatchTypeInDisguise(mt) => qual.withType(mt)
+    /** Widen only those types which are applied or are exactly nothing
+     */
+    def widenQualifier(qual: Tree)(using Context): Tree =
+      qual.tpe.widenDealias match
+        case widenedType if widenedType.isExactlyNothing => qual.withType(widenedType)
+        case appliedType: AppliedType => qual.withType(appliedType)
         case _ => qual
 
     /** Completions for selections from a term.
@@ -321,17 +323,17 @@ object Completion {
      *  and so do members from extensions over members from implicit conversions
      */
     def selectionCompletions(qual: Tree)(using Context): CompletionMap =
-      val reducedQual = reduceUnderlyingMatchType(qual)
+      val adjustedQual = widenQualifier(qual)
 
-      implicitConversionMemberCompletions(reducedQual) ++
-        extensionCompletions(reducedQual) ++
-        directMemberCompletions(reducedQual)
+      implicitConversionMemberCompletions(adjustedQual) ++
+        extensionCompletions(adjustedQual) ++
+        directMemberCompletions(adjustedQual)
 
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
      */
     def directMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.widenDealias.isExactlyNothing then
+      if qual.tpe.isExactlyNothing then
         Map.empty
       else
         accessibleMembers(qual.tpe).groupByName
@@ -378,12 +380,13 @@ object Completion {
 
     /** Completions from implicit conversions including old style extensions using implicit classes */
     private def implicitConversionMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.widenDealias.isExactlyNothing || qual.tpe.isNullType then
+      if qual.tpe.isExactlyNothing || qual.tpe.isNullType then
         Map.empty
       else
-        val membersFromConversion =
-          implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState()).flatMap(accessibleMembers)
-        membersFromConversion.toSeq.groupByName
+        implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState())
+          .flatMap(accessibleMembers)
+          .toSeq
+          .groupByName
 
     /** Completions from extension methods */
     private def extensionCompletions(qual: Tree)(using Context): CompletionMap =
@@ -471,33 +474,53 @@ object Completion {
         || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
       )
 
+    private def extractRefinements(site: Type)(using Context): Seq[SingleDenotation] =
+      site match
+        case RefinedType(parent, name, info) =>
+          val flags = info match
+            case _: (ExprType | MethodOrPoly) => Method
+            case _ => EmptyFlags
+          val symbol = newSymbol(owner = NoSymbol, name, flags, info)
+          val denot = SymDenotation(symbol, NoSymbol, name, flags, info)
+          denot +: extractRefinements(parent)
+        case tp: TypeProxy => extractRefinements(tp.underlying)
+        case _ => List.empty
+
     /** @param site The type to inspect.
      *  @return The members of `site` that are accessible and pass the include filter.
      */
     private def accessibleMembers(site: Type)(using Context): Seq[SingleDenotation] = {
       def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
         try
-          buf ++= site.member(name).alternatives
+          val member = site.member(name)
+          if member.symbol.is(ParamAccessor) && !member.symbol.isAccessibleFrom(site) then
+            buf ++= site.nonPrivateMember(name).alternatives
+          else
+            buf ++= member.alternatives
         catch
           case ex: TypeError =>
 
-      site.memberDenots(completionsFilter, appendMemberSyms).collect {
+      val members = site.memberDenots(completionsFilter, appendMemberSyms).collect {
         case mbr if include(mbr, mbr.name)
                     && mbr.symbol.isAccessibleFrom(site) => mbr
       }
+      val refinements = extractRefinements(site).filter(mbr => include(mbr, mbr.name))
+
+      members ++ refinements
     }
 
     /**
      * Given `qual` of type T, finds all the types S such that there exists an implicit conversion
-     * from T to S.
+     * from T to S. It then applies conversion method for proper type parameter resolution.
      *
      * @param qual The argument to which the implicit conversion should be applied.
-     * @return The set of types that `qual` can be converted to.
+     * @return The set of types after `qual` implicit conversion.
      */
     private def implicitConversionTargets(qual: Tree)(using Context): Set[Type] = {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
-      val targets = conversions.map(_.widen.finalResultType)
+      val targets = conversions.map(_.tree.tpe)
+
       interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
       targets
     }

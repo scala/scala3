@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Scala 2 Macros"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html
 ---
 
 The previous, experimental macro system has been dropped.

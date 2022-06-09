@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Macros Spec"
-movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros-spec.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros-spec.html
 ---
 
 ## Implementation
@@ -10,13 +10,13 @@ movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros-spe
 
 Compared to the [Scala 3 reference grammar](../syntax.md)
 there are the following syntax changes:
-```ebnf
+```
 SimpleExpr      ::=  ...
                   |  ‘'’ ‘{’ Block ‘}’
                   |  ‘'’ ‘[’ Type ‘]’
-                  |  ‘$’ ‘{’ Block ‘}’ ;
+                  |  ‘$’ ‘{’ Block ‘}’
 SimpleType      ::=  ...
-                  |  ‘$’ ‘{’ Block ‘}’ ;
+                  |  ‘$’ ‘{’ Block ‘}’
 ```
 In addition, an identifier `$x` starting with a `$` that appears inside
 a quoted expression or type is treated as a splice `${x}` and a quoted identifier
@@ -57,36 +57,36 @@ extends simply-typed lambda calculus with quotes and splices.
 ### Syntax
 
 The syntax of terms, values, and types is given as follows:
-```ebnf
+```
 Terms         t  ::=  x                 variable
                       (x: T) => t       lambda
                       t t               application
                       't                quote
-                      $t                splice ;
+                      $t                splice
 
 Values        v  ::=  (x: T) => t       lambda
-                      'u                quote ;
+                      'u                quote
 
-Simple terms  u  ::=  x  |  (x: T) => u  |  u u  |  't ;
+Simple terms  u  ::=  x  |  (x: T) => u  |  u u  |  't
 
 Types         T  ::=  A                 base type
                       T -> T            function type
-                      expr T            quoted ;
+                      expr T            quoted
 ```
 Typing rules are formulated using a stack of environments
 `Es`. Individual environments `E` consist as usual of variable
 bindings `x: T`. Environments can be combined using the two
 combinators `'` and `$`.
-```ebnf
+```
 Environment   E  ::=  ()                empty
-                      E, x: T ;
+                      E, x: T
 
 Env. stack    Es ::=  ()                empty
                       E                 simple
-                      Es * Es           combined ;
+                      Es * Es           combined
 
 Separator     *  ::=  '
-                      $ ;
+                      $
 ```
 The two environment combinators are both associative with left and
 right identity `()`.
@@ -108,9 +108,9 @@ rule says that splice and quotes cancel each other out. The third rule
 is a context rule; it says that reduction is allowed in the hole `[ ]`
 position of an evaluation context.  Evaluation contexts `e` and
 splice evaluation context `e_s` are defined syntactically as follows:
-```ebnf
-Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[${e}] ;
-Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s ;
+```
+Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[${e}]
+Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
 ```
 
 ### Typing rules

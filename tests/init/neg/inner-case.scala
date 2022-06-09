@@ -4,8 +4,8 @@ class Foo {
   }
 
   val a = Inner(5)    // ok
-  println(a)           // error
+  println(a)          // error
 
   var count = 0
-  println(a)           // ok
+  println(a)          // ok
 }

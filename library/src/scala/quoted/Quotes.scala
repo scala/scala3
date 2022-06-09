@@ -1,6 +1,6 @@
 package scala.quoted
 
-import scala.annotation.{ experimental, since }
+import scala.annotation.experimental
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
@@ -67,7 +67,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Emits an error and aborts if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
      */
-    @since("3.1")
     def valueOrAbort(using FromExpr[T]): T
 
   end extension
@@ -847,18 +846,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end IdentMethods
 
     /** Pattern representing a `_` wildcard. */
-    @since("3.1")
     type Wildcard <: Ident
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Wildcard` */
-    @since("3.1")
     given WildcardTypeTest: TypeTest[Tree, Wildcard]
 
     /** Module object of `type Wildcard`  */
     val Wildcard: WildcardModule
 
     /** Methods of the module object `val Wildcard` */
-    @since("3.1")
     trait WildcardModule { this: Wildcard.type =>
       /** Create a tree representing a `_` wildcard. */
       def apply(): Wildcard
@@ -1676,19 +1672,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end WhileMethods
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypedOrTest` */
-    @since("3.1")
     given TypedOrTestTypeTest: TypeTest[Tree, TypedOrTest]
 
     /** Tree representing a type ascription or type test pattern `x: T` in the source code. */
-    @since("3.1")
     type TypedOrTest <: Tree
 
     /** Module object of `type TypedOrTest`  */
-    @since("3.1")
     val TypedOrTest: TypedOrTestModule
 
     /** Methods of the module object `val TypedOrTest` */
-    @since("3.1")
     trait TypedOrTestModule { this: TypedOrTest.type =>
 
       /** Create a type ascription `<x: Tree>: <tpt: TypeTree>` */
@@ -1701,11 +1693,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypedOrTest` available without any imports */
-    @since("3.1")
     given TypedOrTestMethods: TypedOrTestMethods
 
     /** Extension methods of `TypedOrTest` */
-    @since("3.1")
     trait TypedOrTestMethods:
       extension (self: TypedOrTest)
         def tree: Tree
@@ -1733,7 +1723,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param sym  The type symbol for which we are creating a type tree reference.
        */
-      @experimental
       def ref(typeSymbol: Symbol): TypeTree
     }
 
@@ -2240,7 +2229,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Unapply` */
     trait UnapplyModule { this: Unapply.type =>
       /** Create an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
-      @since("3.1")
       def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
       /** Copy an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
@@ -2362,7 +2350,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isGiven: Boolean
         /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
-        @since("3.1")
         def isErased: Boolean
     end TermParamClauseMethods
 
@@ -2655,7 +2642,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          * @return true if the dealiased type of `self` is `TupleN[T1, T2, ..., Tn]`
          */
-        @since("3.1")
         def isTupleN: Boolean
 
         /** The type <this . sym>, reduced if possible */
@@ -2670,11 +2656,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Substitute all types that refer in their symbol attribute to
          *  one of the symbols in `from` by the corresponding types in `to`.
          */
-        @experimental
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr
 
         /** The applied type arguments (empty if there is no such arguments) */
-        @experimental
         def typeArgs: List[TypeRepr]
       end extension
     }
@@ -2825,6 +2809,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val AppliedType` */
     trait AppliedTypeModule { this: AppliedType.type =>
+      /** Applied the type constructor `T` to a list of type arguments `T_1,..,T_n` to create `T[T_1,..,T_n]` */
+      def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr])
     }
 
@@ -3620,7 +3606,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  def decls(cls: Symbol): List[Symbol] =
        *    List(Symbol.newMethod(cls, "foo", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit])))
        *
-       *  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents = parents.map(_.tpe), decls, selfInfo = None)
+       *  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents = parents.map(_.tpe), decls, selfType = None)
        *  val fooSym = cls.declaredMethod("foo").head
        *
        *  val fooDef = DefDef(fooSym, argss => Some('{println(s"Calling foo")}.asTerm))
@@ -3857,7 +3843,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def memberField(name: String): Symbol
 
         /** Get named non-private fields declared or inherited */
-        @since("3.1")
         def fieldMember(name: String): Symbol
 
         /** Get all non-private fields declared or inherited */
@@ -3865,7 +3850,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def memberFields: List[Symbol]
 
         /** Get all non-private fields declared or inherited */
-        @since("3.1")
         def fieldMembers: List[Symbol]
 
         /** Get non-private named methods defined directly inside the class */
@@ -3888,10 +3872,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Get all non-private methods declared or inherited */
         def methodMembers: List[Symbol]
 
-        /** Get non-private named methods defined directly inside the class */
+        /** Get non-private named type defined directly inside the class */
         def declaredType(name: String): List[Symbol]
 
-        /** Get all non-private methods defined directly inside the class, excluding constructors */
+        /** Get all non-private types defined directly inside the class */
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
@@ -3982,7 +3966,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  //}
          *  ```
          */
-        @experimental
         def asQuotes: Nested
 
         /** Type reference to the symbol usable in the scope of its owner.
@@ -3992,11 +3975,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  @pre symbol.isType returns true
          */
-        @experimental
         def typeRef: TypeRef
 
-        /** Term reference to the symbol usable in the scope of its owner. */
-        @experimental
+        /** Term reference to the symbol usable in the scope of its owner.
+         *
+         *  @pre symbol.isType returns false
+         */
         def termRef: TermRef
       end extension
     }
@@ -4757,14 +4741,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             val owner = tree.symbol
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))
           case tree: ClassDef =>
-            val constructor @ DefDef(_, _, _, _) = transformStatement(tree.constructor)(tree.symbol)
+            val constructor @ DefDef(_, _, _, _) = transformStatement(tree.constructor)(tree.symbol): @unchecked
             val parents = tree.parents.map(transformTree(_)(tree.symbol))
             val self = tree.self.map { slf =>
               transformStatement(slf)(tree.symbol) match
                 case self: ValDef => self
             }
             val body = tree.body.map(transformStatement(_)(tree.symbol))
-            ClassDef.copy(tree)(tree.name, constructor, parents, self, body)
+            ClassDef.copy(tree)(tree.name, constructor.asInstanceOf[DefDef], parents, self, body) // cast as workaround for lampepfl/dotty#14821. TODO remove when referenceVersion >= 3.2.0-RC1
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Export =>

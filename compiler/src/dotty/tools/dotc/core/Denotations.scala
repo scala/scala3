@@ -551,7 +551,7 @@ object Denotations {
           case _ => NoType
       case tp1: PolyType =>
         tp2 match
-          case tp2: PolyType if sameLength(tp1.paramNames, tp2.paramNames) =>
+          case tp2: PolyType if tp1.paramNames.hasSameLengthAs(tp2.paramNames) =>
             val resType = infoMeet(tp1.resType, tp2.resType.subst(tp2, tp1), safeIntersection)
             if resType.exists then
               tp1.derivedLambdaType(

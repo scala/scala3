@@ -106,6 +106,13 @@ object LazyVals {
     r
   }
 
+  def getOffsetStatic(field: java.lang.reflect.Field) =
+    val r = unsafe.objectFieldOffset(field)
+    if (debug)
+      println(s"getOffset(${field.getDeclaringClass}, ${field.getName}) = $r")
+    r
+
+
   object Names {
     final val state = "STATE"
     final val cas = "CAS"

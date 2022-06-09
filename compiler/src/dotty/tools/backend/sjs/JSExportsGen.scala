@@ -119,7 +119,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       if (kind != overallKind) {
         bad = true
         report.error(
-            em"export overload conflicts with export of $firstSym: they are of different types ($kind / $overallKind)",
+            em"export overload conflicts with export of $firstSym: they are of different types (${kind.tryToShow} / ${overallKind.tryToShow})",
             info.pos)
       }
     }
@@ -356,7 +356,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         None
       } else {
         val formalArgsRegistry = new FormalArgsRegistry(1, false)
-        val (List(arg), None) = formalArgsRegistry.genFormalArgs()
+        val (List(arg), None) = formalArgsRegistry.genFormalArgs(): @unchecked
         val body = genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
             setters.map(new ExportedSymbol(_, static)), jstpe.AnyType, None)
         Some((arg, body))

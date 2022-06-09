@@ -201,7 +201,7 @@ object Phases {
     private var mySbtExtractDependenciesPhase: Phase = _
     private var myPicklerPhase: Phase = _
     private var myInliningPhase: Phase = _
-    private var myPickleQuotesPhase: Phase = _
+    private var mySplicingPhase: Phase = _
     private var myFirstTransformPhase: Phase = _
     private var myCollectNullableFieldsPhase: Phase = _
     private var myRefChecksPhase: Phase = _
@@ -224,7 +224,7 @@ object Phases {
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
     final def inliningPhase: Phase = myInliningPhase
-    final def pickleQuotesPhase: Phase = myPickleQuotesPhase
+    final def splicingPhase: Phase = mySplicingPhase
     final def firstTransformPhase: Phase = myFirstTransformPhase
     final def collectNullableFieldsPhase: Phase = myCollectNullableFieldsPhase
     final def refchecksPhase: Phase = myRefChecksPhase
@@ -250,7 +250,7 @@ object Phases {
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
       myInliningPhase = phaseOfClass(classOf[Inlining])
-      myPickleQuotesPhase = phaseOfClass(classOf[PickleQuotes])
+      mySplicingPhase = phaseOfClass(classOf[Splicing])
       myFirstTransformPhase = phaseOfClass(classOf[FirstTransform])
       myCollectNullableFieldsPhase = phaseOfClass(classOf[CollectNullableFields])
       myRefChecksPhase = phaseOfClass(classOf[RefChecks])
@@ -402,6 +402,9 @@ object Phases {
     final def prev: Phase =
       if (id > FirstPhaseId) myBase.phases(start - 1) else NoPhase
 
+    final def prevMega(using Context): Phase =
+      ctx.base.fusedContaining(ctx.phase.prev)
+
     final def next: Phase =
       if (hasNext) myBase.phases(end + 1) else NoPhase
 
@@ -426,7 +429,7 @@ object Phases {
   def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
   def inliningPhase(using Context): Phase               = ctx.base.inliningPhase
-  def pickleQuotesPhase(using Context): Phase           = ctx.base.pickleQuotesPhase
+  def splicingPhase(using Context): Phase               = ctx.base.splicingPhase
   def firstTransformPhase(using Context): Phase         = ctx.base.firstTransformPhase
   def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
   def elimRepeatedPhase(using Context): Phase           = ctx.base.elimRepeatedPhase

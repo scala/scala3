@@ -33,6 +33,8 @@ import scala.tools.asm.tree._
 import tpd._
 import StdNames._
 import dotty.tools.io._
+import scala.tools.asm.MethodTooLargeException
+import scala.tools.asm.ClassTooLargeException
 
 class GenBCode extends Phase {
 
@@ -59,7 +61,7 @@ class GenBCode extends Phase {
 
   private var myPrimitives: DottyPrimitives = null
 
-  def run(using Context): Unit =
+  override def run(using Context): Unit =
     if myPrimitives == null then myPrimitives = new DottyPrimitives(ctx)
     new GenBCodePipeline(
       DottyBackendInterface(outputDir, superCallsMap),
@@ -354,6 +356,8 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
     *          - converting the plain ClassNode to byte array and placing it on queue-3
     */
   class Worker2 {
+    import bTypes.ClassBType
+    import bTypes.coreBTypes.jliLambdaMetaFactoryAltMetafactoryHandle
     // lazy val localOpt = new LocalOpt(new Settings())
 
     private def localOptimizations(classNode: ClassNode): Unit = {
@@ -370,7 +374,7 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
           val insn = iter.next()
           insn match {
             case indy: InvokeDynamicInsnNode
-              if indy.bsm == BCodeBodyBuilder.lambdaMetaFactoryAltMetafactoryHandle =>
+              if indy.bsm == jliLambdaMetaFactoryAltMetafactoryHandle =>
                 import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
                 val metafactoryFlags = indy.bsmArgs(3).asInstanceOf[Integer].toInt
                 val isSerializable = (metafactoryFlags & FLAG_SERIALIZABLE) != 0
@@ -408,7 +412,6 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
       */
     private def addLambdaDeserialize(classNode: ClassNode, implMethodsArray: Array[Handle]): Unit = {
       import asm.Opcodes._
-      import BCodeBodyBuilder._
       import bTypes._
       import coreBTypes._
 
@@ -420,12 +423,12 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
       // stack map frames and invokes the `getCommonSuperClass` method. This method expects all
       // ClassBTypes mentioned in the source code to exist in the map.
 
-      val serlamObjDesc = MethodBType(jliSerializedLambdaRef :: Nil, ObjectReference).descriptor
+      val serlamObjDesc = MethodBType(jliSerializedLambdaRef :: Nil, ObjectRef).descriptor
 
       val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serlamObjDesc, null, null)
       def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
         mv.visitVarInsn(ALOAD, 0)
-        mv.visitInvokeDynamicInsn("lambdaDeserialize", serlamObjDesc, lambdaDeserializeBootstrapHandle, targetMethods: _*)
+        mv.visitInvokeDynamicInsn("lambdaDeserialize", serlamObjDesc, jliLambdaDeserializeBootstrapHandle, targetMethods: _*)
       }
 
       val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See See MAX_MH_ARITY in CallSite.java
@@ -450,6 +453,34 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
       mv.visitInsn(ARETURN)
     }
 
+    private def setInnerClasses(classNode: ClassNode): Unit = if (classNode != null) {
+      classNode.innerClasses.clear()
+      val (declared, referred) = collectNestedClasses(classNode)
+      addInnerClasses(classNode, declared, referred)
+    }
+
+    /**
+     * Visit the class node and collect all referenced nested classes.
+     */
+    private def collectNestedClasses(classNode: ClassNode): (List[ClassBType], List[ClassBType]) = {
+      // type InternalName = String
+      val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
+        def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
+          bTypes.classBTypeFromInternalName(internalName).info.memberClasses
+
+        def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
+          val c = bTypes.classBTypeFromInternalName(internalName)
+          Option.when(c.isNestedClass)(c)
+        }
+
+        def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
+          // don't crash on invalid generic signatures
+        }
+      }
+      c.visit(classNode)
+      (c.declaredInnerClasses.toList, c.referredInnerClasses.toList)
+    }
+
     def run(): Unit = {
       while (true) {
         val item = q2.poll
@@ -464,6 +495,8 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
             val serializableLambdas = collectSerializableLambdas(plainNode)
             if (serializableLambdas.nonEmpty)
               addLambdaDeserialize(plainNode, serializableLambdas)
+            setInnerClasses(plainNode)
+            setInnerClasses(item.mirror.classNode)
             addToQ3(item)
           } catch {
             case ex: InterruptedException =>
@@ -512,7 +545,7 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
     *    (c) tear down (closing the classfile-writer and clearing maps)
     *
     */
-  def run(t: Tree): Unit = {
+  def run(t: Tree)(using Context): Unit = {
     this.tree = t
 
     // val bcodeStart = Statistics.startTimer(BackendStats.bcodeTimer)
@@ -558,18 +591,29 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
     *    (c) dequeue one at a time from queue-2, convert it to byte-array,    place in queue-3
     *    (d) serialize to disk by draining queue-3.
     */
-  private def buildAndSendToDisk(needsOutFolder: Boolean) = {
+  private def buildAndSendToDisk(needsOutFolder: Boolean)(using Context) = {
+    try
+      feedPipeline1()
+      // val genStart = Statistics.startTimer(BackendStats.bcodeGenStat)
+      (new Worker1(needsOutFolder)).run()
+      // Statistics.stopTimer(BackendStats.bcodeGenStat, genStart)
 
-    feedPipeline1()
-    // val genStart = Statistics.startTimer(BackendStats.bcodeGenStat)
-    (new Worker1(needsOutFolder)).run()
-    // Statistics.stopTimer(BackendStats.bcodeGenStat, genStart)
+      (new Worker2).run()
 
-    (new Worker2).run()
-
-    // val writeStart = Statistics.startTimer(BackendStats.bcodeWriteTimer)
-    drainQ3()
-    // Statistics.stopTimer(BackendStats.bcodeWriteTimer, writeStart)
+      // val writeStart = Statistics.startTimer(BackendStats.bcodeWriteTimer)
+      drainQ3()
+      // Statistics.stopTimer(BackendStats.bcodeWriteTimer, writeStart)
+    catch
+      case e: MethodTooLargeException =>
+        val method = 
+          s"${e.getClassName.replaceAll("/", ".")}.${e.getMethodName}"
+        val msg = 
+          s"Generated bytecode for method '$method' is too large. Size: ${e.getCodeSize} bytes. Limit is 64KB" 
+        report.error(msg)
+      case e: ClassTooLargeException =>
+        val msg = 
+          s"Class '${e.getClassName.replaceAll("/", ".")}' is too large. Constant pool size: ${e.getConstantPoolCount}. Limit is 64K entries"
+        report.error(msg)
 
   }
 

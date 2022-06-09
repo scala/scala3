@@ -73,7 +73,7 @@ class Erasure extends Phase with DenotTransformer {
       assert(ctx.phase == this, s"transforming $ref at ${ctx.phase}")
       if (ref.symbol eq defn.ObjectClass) {
         // After erasure, all former Any members are now Object members
-        val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info
+        val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info: @unchecked
         val extendedScope = decls.cloneScope
         for decl <- defn.AnyClass.classInfo.decls do
           if !decl.isConstructor then extendedScope.enter(decl)
@@ -266,7 +266,7 @@ object Erasure {
     def constant(tree: Tree, const: Tree)(using Context): Tree =
       (if (isPureExpr(tree)) const else Block(tree :: Nil, const)).withSpan(tree.span)
 
-    final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
+    final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary()}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(tycon, _) =>
           New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
@@ -286,7 +286,7 @@ object Erasure {
       }
     }
 
-    def unbox(tree: Tree, pt: Type)(using Context): Tree = trace(i"unboxing ${tree.showSummary}: ${tree.tpe} as a $pt") {
+    def unbox(tree: Tree, pt: Type)(using Context): Tree = trace(i"unboxing ${tree.showSummary()}: ${tree.tpe} as a $pt") {
       pt match {
         case ErasedValueType(tycon, underlying) =>
           def unboxedTree(t: Tree) =
@@ -385,7 +385,7 @@ object Erasure {
       case _: FunProto | AnyFunctionProto => tree
       case _ => tree.tpe.widen match
         case mt: MethodType if tree.isTerm =>
-          assert(mt.paramInfos.isEmpty)
+          assert(mt.paramInfos.isEmpty)//, i"bad adapt for $tree: $mt")
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
           if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
@@ -452,7 +452,7 @@ object Erasure {
       val implReturnsUnit = implResultType.classSymbol eq defn.UnitClass
       // The SAM that this closure should implement.
       // At this point it should be already guaranteed that there's only one method to implement
-      val Seq(sam: MethodType) = lambdaType.possibleSamMethods.map(_.info)
+      val Seq(sam: MethodType) = lambdaType.possibleSamMethods.map(_.info): @unchecked
       val samParamTypes = sam.paramInfos
       val samResultType = sam.resultType
 
@@ -695,7 +695,19 @@ object Erasure {
         return tree.asInstanceOf[Tree] // we are re-typing a primitive array op
 
       val owner = mapOwner(origSym)
-      val sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
+      var sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
+      if !sym.exists then
+        // We fail the sym.exists test for pos/i15158.scala, where we pass an infinitely
+        // recurring match type to an overloaded constructor. An equivalent test
+        // with regular apply methods succeeds. It's at present unclear whether
+        //  - the program should be rejected, or
+        //  - there is another fix.
+        // Therefore, we apply the fix to use the pre-erasure symbol, but only
+        // for constructors, in order not to mask other possible bugs that would
+        // trigger the assert(sym.exists, ...) below.
+        val prevSym = tree.symbol(using preErasureCtx)
+        if prevSym.isConstructor then sym = prevSym
+
       assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
 
       if owner == defn.ObjectClass then checkValue(qual1)
@@ -713,7 +725,7 @@ object Erasure {
 
       def adaptIfSuper(qual: Tree): Tree = qual match {
         case Super(thisQual, untpd.EmptyTypeIdent) =>
-          val SuperType(thisType, supType) = qual.tpe
+          val SuperType(thisType, supType) = qual.tpe: @unchecked
           if (sym.owner.is(Flags.Trait))
             cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
               .withType(SuperType(thisType, sym.owner.typeRef))
@@ -1031,7 +1043,7 @@ object Erasure {
     }
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =
-      trace(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
+      trace(i"adapting ${tree.showSummary()}: ${tree.tpe} to $pt", show = true) {
         if ctx.phase != erasurePhase && ctx.phase != erasurePhase.next then
           // this can happen when reading annotations loaded during erasure,
           // since these are loaded at phase typer.
