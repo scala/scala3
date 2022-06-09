@@ -408,11 +408,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       }
       val mirrorRef =
         if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
-        else
-          if defn.isTupleClass(cls) then // add `|| cls == defn.PairClass` when we support TupleXXL
-            newTupleMirror(arity = typeElems.size)
-          else
-            anonymousMirror(monoType, ExtendsProductMirror, span)
+        else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
+        else anonymousMirror(monoType, ExtendsProductMirror, span)
       withNoErrors(mirrorRef.cast(mirrorType))
     end makeProductMirror
 
