@@ -37,4 +37,11 @@ class NamedPatternMatching {
     ).checkExpectedErrors()
   }
 
+  @Test def executionTest: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runPos")
+    aggregateTests(
+      compileFile("tests/run/runNamedPatternMatching.scala", defaultOptions),
+    ).checkRuns()
+  }
+
 }

@@ -1400,7 +1400,11 @@ trait Applications extends Compatibility {
         // TODO: Maybe the 'reorder' method above can be reused, or be template
         if (bunchedArgs != Nil && argTypes != Nil) {
 
-          val typeInfoOfGetMethod = unapplyFn.tpe.widen.asInstanceOf[MethodType].resType.member(nme.get).info
+          val typeInfoOfGetMethod =
+            if unapplyFn.tpe.widen.asInstanceOf[MethodType].resType.member(nme.get).exists then
+              unapplyFn.tpe.widen.asInstanceOf[MethodType].resType.member(nme.get).info
+            else
+              unapplyFn.tpe.widen.asInstanceOf[MethodType].resType
 
           val names = typeInfoOfGetMethod
             .memberDenots(typeNameFilter, (name, buf) => if (name.toString == "Names") buf += typeInfoOfGetMethod.member(name).asSingleDenotation)
