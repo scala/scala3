@@ -34,6 +34,7 @@ class NamedPatternMatching {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
     aggregateTests(
       compileFile("tests/neg/negNamedPatternMatching.scala", defaultOptions),
+      compileFile("tests/neg/bad-unapplies.scala", defaultOptions),
     ).checkExpectedErrors()
   }
 

@@ -1458,6 +1458,10 @@ trait Applications extends Compatibility {
             })
             unapplyPatterns += typed(term, argTypes.head)
             argTypes = argTypes.tail
+        } else {
+          // Check for positional arguments
+          if (argTypes != Nil || bunchedArgs != Nil)
+            report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.srcPos)
         }
 
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns.result), ownType)
