@@ -2075,7 +2075,7 @@ object Types {
     private var myNarrow: TermRef | Null = null
     override def narrow(using Context): TermRef = {
       if (myNarrow == null) myNarrow = super.narrow
-      myNarrow.nn
+      myNarrow.uncheckedNN
     }
   }
 
@@ -3027,7 +3027,7 @@ object Types {
 
     def recThis: RecThis = {
       if (myRecThis == null) myRecThis = new RecThisImpl(this)
-      myRecThis.nn
+      myRecThis.uncheckedNN
     }
 
     override def underlying(using Context): Type = parent
@@ -3449,7 +3449,7 @@ object Types {
             case _ :: rest => newParamRef(i) :: recur(rest, i + 1)
             case _ => Nil
         myParamRefs = recur(paramNames, 0)
-      myParamRefs.nn
+      myParamRefs.uncheckedNN
     }
 
     /** Like `paramInfos` but substitute parameter references with the given arguments */
@@ -4223,7 +4223,7 @@ object Types {
         myTryCompiletimeConstantFold = tryCompiletimeConstantFoldImpl
         if !isProvisional then
           myTryCompiletimeConstantFoldPeriod = ctx.period
-      myTryCompiletimeConstantFold.nn
+      myTryCompiletimeConstantFold.uncheckedNN
 
     private def tryCompiletimeConstantFoldImpl(using Context): Type = tycon match {
       case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
@@ -4647,7 +4647,7 @@ object Types {
     private var myRepr: Name | Null = null
     def repr(using Context): Name = {
       if (myRepr == null) myRepr = SkolemName.fresh()
-      myRepr.nn
+      myRepr.uncheckedNN
     }
 
     override def toString: String = s"Skolem($hashCode)"
@@ -4886,7 +4886,7 @@ object Types {
 
             TypeComparer.tracked(matchCases)
           }
-      myReduced.nn
+      myReduced.uncheckedNN
     }
 
     override def computeHash(bs: Binders): Int = doHash(bs, scrutinee, bound :: cases)
@@ -4945,14 +4945,14 @@ object Types {
           else if (ctx.erasedTypes) appliedRef
           else AndType(givenSelf, appliedRef)
         }
-      selfTypeCache.nn
+      selfTypeCache.uncheckedNN
     }
 
     def appliedRef(using Context): Type = {
       if (appliedRefCache == null)
         appliedRefCache =
           TypeRef(prefix, cls).appliedTo(cls.classDenot.typeParams.map(_.typeRef))
-      appliedRefCache.nn
+      appliedRefCache.uncheckedNN
     }
 
     // cached because baseType needs parents
@@ -4961,7 +4961,7 @@ object Types {
     override def parents(using Context): List[Type] = {
       if (parentsCache == null)
         parentsCache = declaredParents.mapConserve(_.asSeenFrom(prefix, cls.owner))
-      parentsCache.nn
+      parentsCache.uncheckedNN
     }
 
     protected def newLikeThis(prefix: Type, declaredParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(using Context): ClassInfo =
