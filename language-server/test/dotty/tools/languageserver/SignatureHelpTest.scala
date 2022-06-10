@@ -17,18 +17,70 @@ class SignatureHelpTest {
       .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
+  @Test def properFunctionReturnWithoutParenthesis: Unit = {
+    val listSignature = S("apply", List("A"), List(List(P("elems", "A*"))), Some("List[A]"))
+    val optionSignature = S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
+    code"""object O {
+          |  List(1, 2$m1
+          |}
+          |object T {
+          |  List(Option(1$m2
+          |}
+          |object Z {
+          |  List(Option(1)$m3
+          |}"""
+      .signatureHelp(m1, List(listSignature), Some(0), 0)
+      .signatureHelp(m2, List(optionSignature), Some(0), 0)
+      .signatureHelp(m3, List(listSignature), Some(0), 0)
+  }
+
+  @Test def partialyFailedCurriedFunctions: Unit = {
+    val listSignature = S("curry", Nil, List(List(P("a", "Int"), P("b", "Int")), List(P("c", "Int"))), Some("Int"))
+    code"""object O {
+          |def curry(a: Int, b: Int)(c: Int) = a
+          |  curry(1$m1)$m2(3$m3)
+          |}"""
+      .signatureHelp(m1, List(listSignature), Some(0), 0)
+      .signatureHelp(m2, List(listSignature), Some(0), 0)
+      .signatureHelp(m3, List(listSignature), Some(0), 2)
+  }
+
+  @Test def optionProperSignature: Unit = {
+    val signature = S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
+    code"""object O {
+          |  Option(1, 2, 3, $m1)
+          |}"""
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+  @Test def noSignaturesForTuple: Unit = {
+    code"""object O {
+          |  (1, $m1, $m2)
+          |}"""
+      .signatureHelp(m1, Nil, Some(0), 0)
+      .signatureHelp(m2, Nil, Some(0), 0)
+  }
+
   @Test def fromScala2: Unit = {
-    val applySig =
-      // TODO: Ideally this should say `List[A]`, not `CC[A]`
-      S("apply[A]", Nil, List(List(P("elems", "A*"))), Some("CC[A]"))
-    val mapSig =
-      S("map[B]", Nil, List(List(P("f", "A => B"))), Some("List[B]"))
+    val applySig = S("apply", List("A"), List(List(P("elems", "A*"))), Some("List[A]"))
+    val mapSig = S("map[B]", Nil, List(List(P("f", "Int => B"))), Some("List[B]"))
     code"""object O {
              List($m1)
              List(1, 2, 3).map($m2)
            }"""
       .signatureHelp(m1, List(applySig), Some(0), 0)
       .signatureHelp(m2, List(mapSig), Some(0), 0)
+  }
+
+  @Test def typeParameterMethodApply: Unit = {
+    val testSig = S("method", Nil, List(List()), Some("Int"))
+    code"""case class Foo[A](test: A) {
+          |  def method(): A = ???
+          |}
+          |object O {
+          |  Foo(5).method($m1)
+          |}"""
+      .signatureHelp(m1, List(testSig), Some(0), 0)
   }
 
   @Test def unapplyBooleanReturn: Unit = {
@@ -40,7 +92,7 @@ class SignatureHelpTest {
           |    case s @ Even(${m1}) => println(s"s has an even number of characters")
           |    case s               => println(s"s has an odd number of characters")
           """
-      .signatureHelp(m1, Nil, Some(0), -1)
+      .signatureHelp(m1, Nil, Some(0), 0)
   }
 
   @Test def unapplyCustomClass: Unit = {
@@ -115,7 +167,7 @@ class SignatureHelpTest {
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), -1)
       .signatureHelp(m3, List(signature), Some(0), -1)
-      .signatureHelp(m4, Nil, Some(0), 0)
+      .signatureHelp(m4, List(signature), Some(0), -1)
   }
 
   @Test def unapplyClass: Unit = {
@@ -154,6 +206,73 @@ class SignatureHelpTest {
       .signatureHelp(m2, List(signature), Some(0), 1)
   }
 
+  @Test def noUnapplySignatureWhenApplyingUnapply: Unit = {
+    val signature = S("unapply", List("A"), List(List(P("a", "A"))), Some("Some[(A, A)]"))
+
+    code"""
+          |object And {
+          |  def unapply[A](a: A): Some[(A, A)] = Some((a, a))
+          |}
+          |object a {
+          |  And.unapply($m1)
+          |}
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+  @Test def nestedOptionReturnedInUnapply: Unit = {
+    val signature = S("", Nil, List(List(P("", "Option[Int]"))), None)
+
+    code"""object OpenBrowserCommand {
+          |  def unapply(command: String): Option[Option[Int]] = {
+          |    Some(Some(1))
+          |  }
+          |
+          |  "" match {
+          |    case OpenBrowserCommand($m1) =>
+          |  }
+          |}
+          """
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+  @Test def unknownTypeUnapply: Unit = {
+    val signature = S("", Nil, List(List(P("a", "A"), P("b", "B"))), None)
+    val signature2 = S("", Nil, List(List(P("a", "Int"), P("b", "Any"))), None)
+
+    code"""case class Two[A, B](a: A, b: B)
+          |object Main {
+          |  (null: Any) match {
+          |    case Two(1, $m1) =>
+          |    case Option(5) =>
+          |  }
+          |  Two(1, null: Any) match {
+          |    case Two(x, $m2)
+          |  }
+          |
+          |}
+          """
+      .signatureHelp(m1, List(signature), Some(0), 1)
+      .signatureHelp(m2, List(signature2), Some(0), 1)
+  }
+
+  @Test def sequenceMatchUnapply: Unit = {
+    val signatureSeq = S("", Nil, List(List(P("", "Seq[Int]"))), None)
+    val signatureVariadicExtractor = S("", Nil, List(List(P("", "Int"), P("","List[Int]"))), None)
+
+    code"""case class Two[A, B](a: A, b: B)
+          |object Main {
+          |  Seq(1,2,3) match {
+          |    case Seq($m1) =>
+          |    case h$m2 :: t$m3 =>
+          |  }
+          |}
+          """
+      .signatureHelp(m1, List(signatureSeq), Some(0), 0)
+      .signatureHelp(m2, List(signatureVariadicExtractor), Some(0), 0)
+      .signatureHelp(m3, List(signatureVariadicExtractor), Some(0), 1)
+  }
+
   @Test def productTypeClassMatch: Unit = {
     val signature = S("", Nil, List(List(P("", "String"), P("", "String"))), None)
 
@@ -173,7 +292,8 @@ class SignatureHelpTest {
   }
 
   @Test def nameBasedMatch: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+    val nameBasedMatch = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+    val singleMatch = S("", Nil, List(List(P("", "ProdEmpty.type"))), None)
 
     code"""object ProdEmpty:
           |  def _1: Int = ???
@@ -185,10 +305,51 @@ class SignatureHelpTest {
           |object Test:
           |  "" match
           |    case ProdEmpty(${m1}, ${m2}) => ???
+          |    case ProdEmpty(${m3}) => ???
+          |    case _ => ()
+          """
+      .signatureHelp(m1, List(nameBasedMatch), Some(0), 0)
+      .signatureHelp(m2, List(nameBasedMatch), Some(0), 1)
+      .signatureHelp(m3, List(singleMatch), Some(0), 0)
+  }
+
+  @Test def nameBasedMatchWithWrongGet: Unit = {
+    val nameBasedMatch = S("", Nil, List(List(P("", "Int"))), None)
+    val singleMatch = S("", Nil, List(List(P("", "Int"))), None)
+
+    code"""object ProdEmpty:
+          |  def _1: Int = ???
+          |  def _2: String = ???
+          |  def isEmpty = true
+          |  def unapply(s: String): this.type = this
+          |  def get = 5
+          |
+          |object Test:
+          |  "" match
+          |    case ProdEmpty(${m1}, ${m2}) => ???
+          |    case ProdEmpty(${m3}) => ???
+          |    case _ => ()
+          """
+      .signatureHelp(m1, List(nameBasedMatch), Some(0), 0)
+      .signatureHelp(m2, List(nameBasedMatch), Some(0), -1)
+      .signatureHelp(m3, List(singleMatch), Some(0), 0)
+  }
+
+  @Test def nameBasedSingleMatchOrder: Unit = {
+    val signature = S("", Nil, List(List(P("", "String"))), None)
+
+    code"""object ProdEmpty:
+          |  def _1: Int = 1
+          |  def isEmpty = true
+          |  def unapply(s: String): this.type = this
+          |  def get: String = ""
+          |
+          |object Test:
+          |  "" match
+          |    case ProdEmpty(${m1}) => ???
           |    case _ => ()
           """
       .signatureHelp(m1, List(signature), Some(0), 0)
-      .signatureHelp(m2, List(signature), Some(0), 1)
   }
 
   @Test def getObjectMatch: Unit = {
@@ -207,7 +368,7 @@ class SignatureHelpTest {
       .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
-  @Test def sequenceMatch: Unit = {
+  @Test def customSequenceMatch: Unit = {
     val signature = S("", Nil, List(List(P("", "Seq[Char]"))), None)
 
     code"""object CharList:
