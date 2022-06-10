@@ -3981,10 +3981,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     /** Convert constructor proxy reference to a new expression */
     def newExpr =
-      val qual = (tree: @unchecked) match
-        case Select(qual, nme.apply) => qual
-        case Ident(nme.apply) => This(tree.symbol.owner.asClass).withSpan(tree.span)
-      val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
+      val qual = qualifier(tree)
       val tpt = qual match
         case Ident(name) =>
           cpy.Ident(qual)(name.toTypeName)
@@ -3992,6 +3989,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Select(qual)(pre, name.toTypeName)
         case qual: This if qual.symbol.is(ModuleClass) =>
           cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
+      val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),
