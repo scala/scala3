@@ -146,9 +146,9 @@ private sealed trait VerboseSettings:
   val Xprint: Setting[List[String]] = PhasesSetting("-Vprint", "Print out program after", aliases = List("-Xprint"))
   val XshowPhases: Setting[Boolean] = BooleanSetting("-Vphases", "List compiler phases.", aliases = List("-Xshow-phases"))
 
-  val Vprofile: Setting[Boolean] = BooleanSetting("-Vprofile", "Show information about sizes and compiletime complexity.")
-  val VprofileSortedBy = ChoiceSetting("-Vprofile-sorted-by", "key", "Show information about sizes and compiletime complexity sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
-  val VprofileDetails = IntSetting("-Vprofile-details", "List tasty sizes of a given number of most complex methods", 0)
+  val Vprofile: Setting[Boolean] = BooleanSetting("-Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
+  val VprofileSortedBy = ChoiceSetting("-Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
+  val VprofileDetails = IntSetting("-Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
 
 /** -W "Warnings" settings
  */
