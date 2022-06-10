@@ -117,9 +117,12 @@ object Types {
             case t: TypeRef =>
               !t.currentSymbol.isStatic && {
                 (t: Type).mightBeProvisional = false // break cycles
-                t.symbol.is(Provisional)
+                // We can use flagsUNSAFE here because in the worth case, we
+                // will overapproximate isProvisional by returning true if the
+                // denotation has not been completed yet.
+                t.symbol.flagsUNSAFE.is(Provisional)
                 || test(t.prefix, theAcc)
-                || t.info.match
+                || t.denot.infoOrCompleter.match
                     case info: AliasingBounds => test(info.alias, theAcc)
                     case TypeBounds(lo, hi) => test(lo, theAcc) || test(hi, theAcc)
                     case _ => false
@@ -4212,7 +4215,17 @@ object Types {
     def isUnreducibleWild(using Context): Boolean =
       tycon.isLambdaSub && hasWildcardArg && !isMatchAlias
 
-    def tryCompiletimeConstantFold(using Context): Type = tycon match {
+    var myTryCompiletimeConstantFold: Type | Null = null
+    var myTryCompiletimeConstantFoldPeriod: Period = Nowhere
+
+    def tryCompiletimeConstantFold(using Context): Type =
+      if myTryCompiletimeConstantFoldPeriod != ctx.period then
+        myTryCompiletimeConstantFold = tryCompiletimeConstantFoldImpl
+        if !isProvisional then
+          myTryCompiletimeConstantFoldPeriod = ctx.period
+      myTryCompiletimeConstantFold.nn
+
+    private def tryCompiletimeConstantFoldImpl(using Context): Type = tycon match {
       case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
         extension (tp: Type) def fixForEvaluation: Type =
           tp.normalized.dealias match {
