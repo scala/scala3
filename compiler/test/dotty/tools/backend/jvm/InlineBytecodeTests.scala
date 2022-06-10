@@ -108,13 +108,13 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
   */
-
+/*
   @Test def inlineNn = {
     val source =
       s"""
          |class Foo {
          |  def meth1(x: Int | Null): Int = x.nn
-         |  def meth2(x: Int | Null): Int = scala.runtime.Scala3RunTime.nn(x)
+         |  def meth2(x: Int | Null): Int = x.getClass; x
          |}
          """.stripMargin
 
@@ -132,7 +132,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
         diffInstructions(instructions1, instructions2))
     }
   }
-
+*/
   @Test def i4947 = {
     val source = """class Foo {
                    |  transparent inline def track[T](inline f: T): T = {
