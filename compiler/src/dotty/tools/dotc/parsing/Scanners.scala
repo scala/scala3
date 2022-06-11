@@ -313,8 +313,13 @@ object Scanners {
           // when skipping and therefore might erroneously end up syncing on a nested OUTDENT.
       if debugTokenStream then
         println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
-      while !atStop do
+      var noProgress = 0
+        // Defensive measure to ensure we always get out of the following while loop
+        // even if source file is weirly formatted (i.e. we never reach EOF
+      while !atStop && noProgress < 3 do
+        val prevOffset = offset
         nextToken()
+        if offset == prevOffset then noProgress += 1 else noProgress = 0
       if debugTokenStream then
         println(s"\nSTOP SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       if token == OUTDENT then dropUntil(_.isInstanceOf[Indented])
