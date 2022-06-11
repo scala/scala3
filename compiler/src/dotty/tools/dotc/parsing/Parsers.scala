@@ -2838,7 +2838,7 @@ object Parsers {
      */
     def namedPattern(location: Location = Location.InPattern): Tree =
       // TODO: Figure out the performance impact of this lookahead
-      if (in.token == IDENTIFIER && in.lookahead.token == EQUALS)
+      if ((in.token == IDENTIFIER || in.token == BACKQUOTED_IDENT) && in.lookahead.token == EQUALS) then
         val ident = termIdent()
         accept(EQUALS)
         NamedArg(ident.name, pattern(location))

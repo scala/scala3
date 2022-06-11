@@ -10,7 +10,7 @@ object Age:
     Some(age.hidden.asInstanceOf)
 
 object StringExample:
-  def unapply(str: String): Option[(Char, Char) & { type Names = "first" *: "last" *: EmptyTuple }]  =
+  def unapply(str: String): (Char, Char) & { type Names = "first" *: "\"" *: EmptyTuple }  =
     Some((str.head, str.last)).asInstanceOf
 
 case class User(name: String, age: Age, city: String)
@@ -27,7 +27,7 @@ val User(name = name, age = Age(years = years)) = user
 
 // partial function
 val maybeTom = Some(user).collect {
-  case u @ User(name = StringExample(last = 'm')) => u
+  case u @ User(name = StringExample(`"` = 'm')) => u
 }
 
 val berlinerNames = for
