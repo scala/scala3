@@ -2745,14 +2745,13 @@ object Parsers {
     def pattern3(): Tree =
       val p = infixPattern()
       if followingIsVararg() then
-        atSpan(in.skipToken()) {
-          p match
-            case p @ Ident(name) if name.isVarPattern =>
-              Typed(p, Ident(tpnme.WILDCARD_STAR))
-            case _ =>
-              syntaxError(em"`*` must follow pattern variable")
-              p
-        }
+        val start = in.skipToken()
+        p match
+          case p @ Ident(name) if name.isVarPattern =>
+            Typed(p, atSpan(start) { Ident(tpnme.WILDCARD_STAR) })
+          case _ =>
+            syntaxError(em"`*` must follow pattern variable", start)
+            p
       else p
 
     /**  Pattern2    ::=  [id `@'] Pattern3
