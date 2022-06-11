@@ -5,9 +5,15 @@ object Test:
   //TODO: Test this
   object UserEx:
     class UserExtractor(user: User) extends Product:
-      def _1 = println("Got name"); user.name
-      def _2 = println("Got age"); user.age
-      def _3 = println("Got city"); user.city
+      def _1: String =
+        println("Got name")
+        return user.name
+      def _2: Int =
+        println("Got age")
+        user.age
+      def _3: String =
+        println("Got city")
+        user.city
 
       type Names = ("name", "age", "city")
 
@@ -34,7 +40,8 @@ object Test:
       ("name", user.name) +:: ("age", user.age) +:: ("city", user.city) +:: empty
 
   def main(args: Array[String]): Unit =
-    val UserEx(city = _, name = _) = User("Guy", 25, "Paris")
+    val UserEx(city = c, name = _) = User("Guy", 25, "Paris")
+    println("city = " + c: String)
     val UserEx2(city = _, name = n) = User("Guy", 25, "Paris")
 
     println(n)
