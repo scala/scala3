@@ -2831,6 +2831,7 @@ object Parsers {
 
     /** Patterns          ::=  PatternArgument [`,' PatternArgument]
      */
+    // TODO: Should the parser handle the rule that named patterns can't come after positional patterns?
     def patterns(location: Location = Location.InPattern): List[Tree] =
       commaSeparated(() => namedPattern(location))
 
