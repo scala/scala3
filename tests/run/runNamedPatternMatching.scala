@@ -2,8 +2,8 @@ object Test:
 
   class User(val name: String, val age: Int, val city: String)
 
-  //TODO: Test this
   object UserEx:
+    type Reverse[A, B] = (B, A)
     class UserExtractor(user: User) extends Product:
       def _1: String =
         println("Got name")
@@ -15,7 +15,7 @@ object Test:
         println("Got city")
         user.city
 
-      type Names = ("name", "age", "city")
+      type Names = "name" *: Reverse["city", "age"]
 
       // Members declared in scala.Equals
       def canEqual(that: Any): Boolean = ???
@@ -41,7 +41,7 @@ object Test:
 
   def main(args: Array[String]): Unit =
     val UserEx(city = c, name = _) = User("Guy", 25, "Paris")
-    println("city = " + c: String)
+    println("city = " + c)
     val UserEx2(city = _, name = n) = User("Guy", 25, "Paris")
 
     println(n)
