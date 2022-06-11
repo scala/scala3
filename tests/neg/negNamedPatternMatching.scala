@@ -10,12 +10,37 @@ object Age:
   def unapply(age: Age): Some[Int] =
     Some(age)
 
-case class User(name: String, age: Age, city: String)
+type City = City.City
 
-val user = User(name = "Anna", age = Age(10), city = "Berlin")
+object City:
+  opaque type City = String
+
+  class ExCity(city: City) extends Product:
+    def _1: String = city
+
+    private[City] type Names = "name" *: EmptyTuple
+
+    // Members declared in scala.Equals
+    def canEqual(that: Any): Boolean = ???
+
+    // Members declared in scala.Product
+    def productArity: Int = ???
+    def productElement(n: Int): Any = ???
+
+  City("test") match
+    case City("test") => null
+    case _ => null
+
+  def apply(name: String): City = name
+
+  def unapply(age: City): ExCity = ExCity(age)
+
+case class User(name: String, age: Age, city: City)
+
+val user = User(name = "Anna", age = Age(10), city = City("Berlin"))
 
 val annasCity = user match
-  case User(names = "Tom", city = city) => ??? // error
+  case User(names = "Tom", city = city) => null // error
   case User(city = _, 10) => null // error
   case User(age = Age(years = 10)) => null // error
   case User(
@@ -24,3 +49,4 @@ val annasCity = user match
     name = "Tom 3" // error
     ) => null
   case User(_, name = "Anna") => null // error
+  case User(city = City(name = "Berlin")) => null // error

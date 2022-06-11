@@ -1407,6 +1407,7 @@ trait Applications extends Compatibility {
             resTypeOfUnapplyFn.member(nme.get).info
                 .orElse(resTypeOfUnapplyFn)
                 .member(tpnme.Names)
+                .accessibleFrom(selType)
                 // TODO: Is it possible to get something else than a SingleDenotation?
                 .asSingleDenotation
 
