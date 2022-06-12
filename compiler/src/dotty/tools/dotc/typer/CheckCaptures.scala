@@ -246,8 +246,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         val qualCs = qualType.captureSet
         //println(i"intersect $qualType, ${selType.widen}, $qualCs, $selCs")
-        if selCs.subCaptures(qualCs, frozen = true).isOK then selType
-        else selType.widen.stripCapturing.capturing(selCs ** qualCs)
+        if qualCs.mightSubcapture(selCs) then
+          selType.widen.stripCapturing.capturing(qualCs)
+        else
+          selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
     override def recheckClosure(tree: Closure, pt: Type)(using Context): Type =
@@ -412,13 +414,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         case tp @ CapturingType(tp1, refs) =>
           tree.fun match
             case Select(qual, nme.apply)
-            if defn.isFunctionType(qual.tpe.widen) =>
-              qual.tpe match
-                case ref: CaptureRef
-                if ref.isTracked && tree.args.forall(_.tpe.captureSet.isAlwaysEmpty) =>
-                  tp.derivedCapturingType(tp1, refs ** ref.singletonCaptureSet)
-                    .showing(i"narrow $tree: $tp --> $result", capt)
-                case _ => tp
+            if defn.isFunctionType(qual.tpe.widen)
+                && tree.args.forall(_.tpe.captureSet.isAlwaysEmpty)
+                && qual.tpe.captureSet.mightSubcapture(refs)
+            =>
+              tp.derivedCapturingType(tp1, qual.tpe.captureSet)
+                .showing(i"narrow $tree: $tp --> $result", capt)
             case _ => tp
         case tp => tp
 
