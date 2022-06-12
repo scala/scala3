@@ -60,6 +60,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** Indicates whether the subtype check used GADT bounds */
   private var GADTused: Boolean = false
 
+  protected var canWidenAbstract: Boolean = true
+
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
 
@@ -757,9 +759,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def tryBaseType(cls2: Symbol) = {
       val base = nonExprBaseType(tp1, cls2)
-      if (base.exists && (base `ne` tp1))
-        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
-        base.isInstanceOf[OrType] && fourthTry
+      if base.exists && (base ne tp1)
+        && (!caseLambda.exists || canWidenAbstract || tp1.widen.underlyingClassRef(refinementOK = true).exists)
+      then
+        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
+        || base.isInstanceOf[OrType] && fourthTry
           // if base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
@@ -776,7 +780,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
+            (!caseLambda.exists || canWidenAbstract) && isSubType(hi1, tp2, approx.addLow)
+            || compareGADT
+            || tryLiftedToThis1
           case _ =>
             // `Mode.RelaxedOverriding` is only enabled when checking Java overriding
             // in explicit nulls, and `Null` becomes a bottom type, which allows
@@ -2845,7 +2851,16 @@ object TypeComparer {
     comparing(_.tracked(op))
 }
 
+object TrackingTypeComparer:
+  enum MatchResult:
+    case Reduced(tp: Type)
+    case Disjoint
+    case Stuck
+    case NoInstance(param: Name, bounds: TypeBounds)
+
 class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+  import TrackingTypeComparer.*
+
   init(initctx)
 
   override def trackingTypeComparer = this
@@ -2883,15 +2898,25 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   def matchCases(scrut: Type, cases: List[Type])(using Context): Type = {
-    def paramInstances = new TypeAccumulator[Array[Type]] {
-      def apply(inst: Array[Type], t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` caseLambda =>
-          inst(n) = approximation(t, fromBelow = variance >= 0).simplified
-          inst
+
+    def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
+      def apply(insts: Array[Type], t: Type) = t match
+        case param @ TypeParamRef(b, n) if b eq caseLambda =>
+          insts(n) = {
+            if canApprox then
+              approximation(param, fromBelow = variance >= 0)
+            else constraint.entry(param) match
+              case entry: TypeBounds =>
+                val lo = fullLowerBound(param)
+                val hi = fullUpperBound(param)
+                if isSubType(hi, lo) then lo else TypeBounds(lo, hi)
+              case inst =>
+                assert(inst.exists, i"param = $param\nconstraint = $constraint")
+                inst
+          }.simplified
+          insts
         case _ =>
-          foldOver(inst, t)
-      }
-    }
+          foldOver(insts, t)
 
     def instantiateParams(inst: Array[Type]) = new TypeMap {
       def apply(t: Type) = t match {
@@ -2907,7 +2932,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
      *           None         if the match fails and we should consider the following cases
      *                        because scrutinee and pattern do not overlap
      */
-    def matchCase(cas: Type): Option[Type] = trace(i"match case $cas vs $scrut", matchTypes) {
+    def matchCase(cas: Type): MatchResult = trace(i"match case $cas vs $scrut", matchTypes) {
       val cas1 = cas match {
         case cas: HKTypeLambda =>
           caseLambda = constrained(cas)
@@ -2918,34 +2943,48 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
       val defn.MatchCase(pat, body) = cas1: @unchecked
 
-      if (isSubType(scrut, pat))
-        // `scrut` is a subtype of `pat`: *It's a Match!*
-        Some {
-          caseLambda match {
-            case caseLambda: HKTypeLambda =>
-              val instances = paramInstances(new Array(caseLambda.paramNames.length), pat)
-              instantiateParams(instances)(body).simplified
-            case _ =>
-              body
-          }
-        }
+      def matches(canWidenAbstract: Boolean): Boolean =
+        val saved = this.canWidenAbstract
+        this.canWidenAbstract = canWidenAbstract
+        try necessarySubType(scrut, pat)
+        finally this.canWidenAbstract = saved
+
+      def redux(canApprox: Boolean): MatchResult =
+        caseLambda match
+          case caseLambda: HKTypeLambda =>
+            val instances = paramInstances(canApprox)(new Array(caseLambda.paramNames.length), pat)
+            instances.indices.find(instances(_).isInstanceOf[TypeBounds]) match
+              case Some(i) if !canApprox =>
+                MatchResult.NoInstance(caseLambda.paramNames(i), instances(i).bounds)
+              case _ =>
+                MatchResult.Reduced(instantiateParams(instances)(body).simplified)
+          case _ =>
+            MatchResult.Reduced(body)
+
+      if caseLambda.exists && matches(canWidenAbstract = false) then
+        redux(canApprox = true)
+      else if matches(canWidenAbstract = true) then
+        redux(canApprox = false)
       else if (provablyDisjoint(scrut, pat))
         // We found a proof that `scrut` and `pat` are incompatible.
         // The search continues.
-        None
+        MatchResult.Disjoint
       else
-        Some(NoType)
+        MatchResult.Stuck
     }
 
     def recur(remaining: List[Type]): Type = remaining match
       case cas :: remaining1 =>
         matchCase(cas) match
-          case None =>
+          case MatchResult.Disjoint =>
             recur(remaining1)
-          case Some(NoType) =>
+          case MatchResult.Stuck =>
             MatchTypeTrace.stuck(scrut, cas, remaining1)
             NoType
-          case Some(tp) =>
+          case MatchResult.NoInstance(pname, bounds) =>
+            MatchTypeTrace.noInstance(scrut, cas, pname, bounds)
+            NoType
+          case MatchResult.Reduced(tp) =>
             tp
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)

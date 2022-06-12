@@ -200,6 +200,7 @@ class CompilationTests {
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     aggregateTests(
+      compileFile("tests/run-custom-args/typeclass-derivation1.scala", defaultOptions.without(yCheckOptions*)),
       compileFile("tests/run-custom-args/tuple-cons.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),

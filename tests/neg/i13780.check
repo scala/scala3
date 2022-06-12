@@ -1,0 +1,34 @@
+-- [E007] Type Mismatch Error: tests/neg/i13780.scala:18:31 ------------------------------------------------------------
+18 |  def int[X <: Y]: Int = unpair[X]  // error
+   |                         ^^^^^^^^^
+   |                         Found:    Head[X]
+   |                         Required: Int
+   |
+   |                         where:    X is a type in method int with bounds <: B.this.Y
+   |
+   |
+   |                         Note: a match type could not be fully reduced:
+   |
+   |                           trying to reduce  Head[X]
+   |                           failed since selector  X
+   |                           does not uniquely determine parameter a in  case (a, b) => a
+   |                           The computed bounds for the parameter are:   >: Int.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i13780.scala:23:37 ------------------------------------------------------------
+23 |  def string[X <: Y]: String = unpair[X]   // error
+   |                               ^^^^^^^^^
+   |                               Found:    Head[X]
+   |                               Required: String
+   |
+   |                               where:    X is a type in method string with bounds <: C.this.Y
+   |
+   |
+   |                               Note: a match type could not be fully reduced:
+   |
+   |                                 trying to reduce  Head[X]
+   |                                 failed since selector  X
+   |                                 does not uniquely determine parameter a in  case (a, b) => a
+   |                                 The computed bounds for the parameter are:   >: String.
+   |
+   | longer explanation available when compiling with `-explain`

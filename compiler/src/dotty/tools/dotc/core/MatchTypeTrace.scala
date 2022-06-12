@@ -4,6 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Decorators._
 import util.Property
+import Names.Name
 
 /** A utility module to produce match type reduction traces in error messages.
  */
@@ -13,6 +14,7 @@ object MatchTypeTrace:
     case TryReduce(scrut: Type)
     case NoMatches(scrut: Type, cases: List[Type])
     case Stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])
+    case NoInstance(scrut: Type, stuckCase: Type, pname: Name, bounds: TypeBounds)
     case EmptyScrutinee(scrut: Type)
   import TraceEntry._
 
@@ -61,6 +63,9 @@ object MatchTypeTrace:
    */
   def stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])(using Context) =
     matchTypeFail(Stuck(scrut, stuckCase, otherCases))
+
+  def noInstance(scrut: Type, stuckCase: Type, pname: Name, bounds: TypeBounds)(using Context) =
+    matchTypeFail(NoInstance(scrut, stuckCase, pname, bounds))
 
   /** Record a failure that scrutinee `scrut` is provably empty.
    *  Only the first failure is recorded.
@@ -114,6 +119,10 @@ object MatchTypeTrace:
            |  Therefore, reduction cannot advance to the remaining case$s
            |
            |    ${casesText(otherCases)}"""
+    case NoInstance(scrut, stuckCase, pname, bounds) =>
+      i"""  failed since selector  $scrut
+         |  does not uniquely determine parameter $pname in  ${caseText(stuckCase)}
+         |  The computed bounds for the parameter are:  $bounds."""
 
   def noMatchesText(scrut: Type, cases: List[Type])(using Context): String =
     i"""failed since selector  $scrut
