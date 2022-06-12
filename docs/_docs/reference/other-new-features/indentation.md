@@ -491,7 +491,7 @@ xs.map: x =>
 ```
 and the following would also be legal:
 ```scala
-xs.foldLeft: (x, y) =>
+xs.foldLeft(0): (x, y) =>
   x + y
 ```
 
