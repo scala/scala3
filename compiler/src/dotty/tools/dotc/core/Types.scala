@@ -5953,7 +5953,13 @@ object Types {
         case _ =>
           scrutinee match
             case Range(lo, hi) => range(bound.bounds.lo, bound.bounds.hi)
-            case _ => tp.derivedMatchType(bound, scrutinee, cases)
+            case _ =>
+              if cases.exists(isRange) then
+                Range(
+                  tp.derivedMatchType(bound, scrutinee, cases.map(lower)),
+                  tp.derivedMatchType(bound, scrutinee, cases.map(upper)))
+              else
+                tp.derivedMatchType(bound, scrutinee, cases)
 
     override protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
       if info eq tp.info then tp
