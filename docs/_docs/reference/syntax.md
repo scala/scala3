@@ -252,7 +252,7 @@ InfixExpr         ::=  PrefixExpr
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ <<< CaseClauses >>>
 PrefixExpr        ::=  [PrefixOperator] SimpleExpr
-PrefixOperator    ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
+PrefixOperator    ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’                                    -- unless backquoted
 SimpleExpr        ::=  SimpleRef
                     |  Literal
                     |  ‘_’

@@ -2293,10 +2293,10 @@ object Parsers {
         isOperator = !(location.inArgs && followingIsVararg()))
 
     /** PrefixExpr       ::= [PrefixOperator'] SimpleExpr
-     *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
+     *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’ (if not backquoted)
      */
     val prefixExpr: Location => Tree = location =>
-      if isIdent && nme.raw.isUnary(in.name)
+      if in.token == IDENTIFIER && nme.raw.isUnary(in.name)
          && in.canStartExprTokens.contains(in.lookahead.token)
       then
         val start = in.offset
