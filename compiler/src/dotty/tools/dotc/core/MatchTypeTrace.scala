@@ -14,7 +14,7 @@ object MatchTypeTrace:
     case TryReduce(scrut: Type)
     case NoMatches(scrut: Type, cases: List[Type])
     case Stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])
-    case NoInstance(scrut: Type, stuckCase: Type, pname: Name, bounds: TypeBounds)
+    case NoInstance(scrut: Type, stuckCase: Type, fails: List[(Name, TypeBounds)])
     case EmptyScrutinee(scrut: Type)
   import TraceEntry._
 
@@ -64,8 +64,8 @@ object MatchTypeTrace:
   def stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])(using Context) =
     matchTypeFail(Stuck(scrut, stuckCase, otherCases))
 
-  def noInstance(scrut: Type, stuckCase: Type, pname: Name, bounds: TypeBounds)(using Context) =
-    matchTypeFail(NoInstance(scrut, stuckCase, pname, bounds))
+  def noInstance(scrut: Type, stuckCase: Type, fails: List[(Name, TypeBounds)])(using Context) =
+    matchTypeFail(NoInstance(scrut, stuckCase, fails))
 
   /** Record a failure that scrutinee `scrut` is provably empty.
    *  Only the first failure is recorded.
@@ -87,7 +87,7 @@ object MatchTypeTrace:
       case _ =>
         op
 
-  private def caseText(tp: Type)(using Context): String = tp match
+  def caseText(tp: Type)(using Context): String = tp match
     case tp: HKTypeLambda => caseText(tp.resultType)
     case defn.MatchCase(any, body) if any eq defn.AnyType => i"case _ => $body"
     case defn.MatchCase(pat, body) => i"case $pat => $body"
@@ -119,10 +119,13 @@ object MatchTypeTrace:
            |  Therefore, reduction cannot advance to the remaining case$s
            |
            |    ${casesText(otherCases)}"""
-    case NoInstance(scrut, stuckCase, pname, bounds) =>
+    case NoInstance(scrut, stuckCase, fails) =>
+      def params = if fails.length == 1 then "parameter" else "parameters"
       i"""  failed since selector  $scrut
-         |  does not uniquely determine parameter $pname in  ${caseText(stuckCase)}
-         |  The computed bounds for the parameter are:  $bounds."""
+         |  does not uniquely determine $params ${fails.map(_._1)}%, % in
+         |    ${caseText(stuckCase)}
+         |  The computed bounds for the $params are:
+         |    ${fails.map((name, bounds) => i"$name$bounds")}%\n    %"""
 
   def noMatchesText(scrut: Type, cases: List[Type])(using Context): String =
     i"""failed since selector  $scrut

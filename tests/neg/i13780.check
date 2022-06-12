@@ -11,8 +11,11 @@
    |
    |                           trying to reduce  Head[X]
    |                           failed since selector  X
-   |                           does not uniquely determine parameter a in  case (a, b) => a
-   |                           The computed bounds for the parameter are:   >: Int.
+   |                           does not uniquely determine parameters a, b in
+   |                             case (a, b) => a
+   |                           The computed bounds for the parameters are:
+   |                             a >: Int
+   |                             b >: Int
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/i13780.scala:23:37 ------------------------------------------------------------
@@ -28,7 +31,10 @@
    |
    |                                 trying to reduce  Head[X]
    |                                 failed since selector  X
-   |                                 does not uniquely determine parameter a in  case (a, b) => a
-   |                                 The computed bounds for the parameter are:   >: String.
+   |                                 does not uniquely determine parameters a, b in
+   |                                   case (a, b) => a
+   |                                 The computed bounds for the parameters are:
+   |                                   a >: String
+   |                                   b >: String
    |
    | longer explanation available when compiling with `-explain`
