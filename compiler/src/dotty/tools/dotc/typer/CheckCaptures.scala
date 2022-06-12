@@ -421,8 +421,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.recheckApply(tree, pt) match
         case tp @ CapturingType(tp1, refs) =>
           tree.fun match
-            case Select(qual, nme.apply)
-            if defn.isFunctionType(qual.tpe.widen)
+            case Select(qual, _)
+            if !tree.fun.symbol.isConstructor
                 && qual.tpe.captureSet.mightSubcapture(refs)
                 && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
             =>
