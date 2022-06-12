@@ -50,3 +50,6 @@ val annasCity = user match
     ) => null
   case User(_, name = "Anna") => null // error
   case User(city = City(name = "Berlin")) => null // error
+
+// TODO: Don't show an error about recursive value
+val User(names = notRecursive) = user // error // error
