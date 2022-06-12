@@ -33,7 +33,7 @@ class Asploder extends Root[Cov[Box[Int & String]]] {
 }
 
 object Main {
-  def foo[T <: Cov[Box[Int]]](c: Root[T]): Trait2 = c.thing
+  def foo[T <: Cov[Box[Int]]](c: Root[T]): Trait2 = c.thing  // error
   def explode = foo(new Asploder)
 
   def main(args: Array[String]): Unit =
