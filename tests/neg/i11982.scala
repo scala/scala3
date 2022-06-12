@@ -6,10 +6,10 @@ object Unpair {
 
   def unpair[X <: Tuple2[?, ?]](
       using a: ValueOf[Tuple.Head[X]],
-            b: ValueOf[Tuple.Head[Tuple.Tail[X]]]  // error
-  ): Tuple2[Tuple.Head[X], Tuple.Head[Tuple.Tail[X]]] =  // error
+            b: ValueOf[Tuple.Head[Tuple.Tail[X]]]
+  ): Tuple2[Tuple.Head[X], Tuple.Head[Tuple.Tail[X]]] =
     type AA = Tuple.Head[X]
-    type BB = Tuple.Head[Tuple.Tail[X]]  // error
+    type BB = Tuple.Head[Tuple.Tail[X]]
     pair[AA, BB](using a, b)
 }
 
@@ -19,7 +19,7 @@ object UnpairApp {
   type Tshape = ("msg", 42)
 
   // the following won't compile when in the same file as Unpair
-  val p1: ("msg", 42) = unpair[Tshape]
+  val p1: ("msg", 42) = unpair[Tshape]  // error: no singleton value for Any
 
   @main def pairHello: Unit =
     assert(p1 == ("msg", 42))

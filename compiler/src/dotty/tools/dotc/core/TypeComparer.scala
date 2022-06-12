@@ -2860,7 +2860,7 @@ object TrackingTypeComparer:
     case Reduced(tp: Type)
     case Disjoint
     case Stuck
-    case NoInstance(param: Name, bounds: TypeBounds)
+    case NoInstance(fails: List[(Name, TypeBounds)])
 
 class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   import TrackingTypeComparer.*
@@ -2906,25 +2906,25 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
       def apply(insts: Array[Type], t: Type) = t match
         case param @ TypeParamRef(b, n) if b eq caseLambda =>
-          insts(n) = {
+          insts(n) =
             if canApprox then
-              approximation(param, fromBelow = variance >= 0)
+              approximation(param, fromBelow = variance >= 0).simplified
             else constraint.entry(param) match
               case entry: TypeBounds =>
                 val lo = fullLowerBound(param)
                 val hi = fullUpperBound(param)
-                if isSubType(hi, lo) then lo else TypeBounds(lo, hi)
+                if isSubType(hi, lo) then lo.simplified else Range(lo, hi)
               case inst =>
                 assert(inst.exists, i"param = $param\nconstraint = $constraint")
-                inst
-          }.simplified
+                inst.simplified
           insts
         case _ =>
           foldOver(insts, t)
 
-    def instantiateParams(inst: Array[Type]) = new TypeMap {
+    def instantiateParams(insts: Array[Type]) = new ApproximatingTypeMap {
+      variance = 0
       def apply(t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` caseLambda => inst(n)
+        case t @ TypeParamRef(b, n) if b `eq` caseLambda => insts(n)
         case t: LazyRef => apply(t.ref)
         case _ => mapOver(t)
       }
@@ -2957,11 +2957,15 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         caseLambda match
           case caseLambda: HKTypeLambda =>
             val instances = paramInstances(canApprox)(new Array(caseLambda.paramNames.length), pat)
-            instances.indices.find(instances(_).isInstanceOf[TypeBounds]) match
-              case Some(i) if !canApprox =>
-                MatchResult.NoInstance(caseLambda.paramNames(i), instances(i).bounds)
-              case _ =>
-                MatchResult.Reduced(instantiateParams(instances)(body).simplified)
+            instantiateParams(instances)(body) match
+              case Range(lo, hi) =>
+                MatchResult.NoInstance {
+                  caseLambda.paramNames.zip(instances).collect {
+                    case (name, Range(lo, hi)) => (name, TypeBounds(lo, hi))
+                  }
+                }
+              case redux =>
+                MatchResult.Reduced(redux.simplified)
           case _ =>
             MatchResult.Reduced(body)
 
@@ -2985,8 +2989,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           case MatchResult.Stuck =>
             MatchTypeTrace.stuck(scrut, cas, remaining1)
             NoType
-          case MatchResult.NoInstance(pname, bounds) =>
-            MatchTypeTrace.noInstance(scrut, cas, pname, bounds)
+          case MatchResult.NoInstance(fails) =>
+            MatchTypeTrace.noInstance(scrut, cas, fails)
             NoType
           case MatchResult.Reduced(tp) =>
             tp
