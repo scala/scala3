@@ -1809,22 +1809,15 @@ object Parsers {
         NamedArg(name.toTypeName, argType())
       }
 
-      def otherArgs(first: Tree, arg: () => Tree): List[Tree] = {
-        val rest =
-          if (in.token == COMMA) {
-            in.nextToken()
-            commaSeparated(arg)
-          }
-          else Nil
-        first :: rest
-      }
       if (namedOK && in.token == IDENTIFIER)
-        argType() match {
-          case Ident(name) if in.token == EQUALS =>
-            in.nextToken()
-            otherArgs(NamedArg(name, argType()), () => namedTypeArg())
-          case firstArg =>
-            otherArgs(firstArg, () => argType())
+        in.currentRegion.withCommasExpected {
+          argType() match {
+            case Ident(name) if in.token == EQUALS =>
+              in.nextToken()
+              commaSeparatedRest(NamedArg(name, argType()), () => namedTypeArg())
+            case firstArg =>
+              commaSeparatedRest(firstArg, () => argType())
+          }
         }
       else commaSeparated(() => argType())
     }
