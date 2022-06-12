@@ -1401,11 +1401,9 @@ trait Applications extends Compatibility {
         // TODO: Maybe the 'reorder' method above can be reused, or be template
         if (bunchedArgs != Nil && remainingArgTypes != Nil) {
 
-          val resTypeOfUnapplyFn = unapplyFn.tpe.widen.asInstanceOf[MethodType].resType
-
           val names: SingleDenotation =
-            resTypeOfUnapplyFn.member(nme.get).info
-                .orElse(resTypeOfUnapplyFn)
+            mt.resType.member(nme.get).info
+                .orElse(mt.resType)
                 .member(tpnme.Names)
                 .accessibleFrom(selType)
                 // TODO: Is it possible to get something else than a SingleDenotation?
