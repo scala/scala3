@@ -19,6 +19,7 @@ import rewrites.Rewrites.patch
 import config.Feature
 import config.Feature.migrateTo3
 import config.SourceVersion.`3.0`
+import reporting.{NoProfile, Profile}
 
 object Scanners {
 
@@ -161,7 +162,7 @@ object Scanners {
         errorButContinue("trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(using Context) extends ScannerCommon(source) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile)(using Context) extends ScannerCommon(source) {
     val keepComments = !ctx.settings.YdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
@@ -404,6 +405,7 @@ object Scanners {
       getNextToken(lastToken)
       if isAfterLineEnd then handleNewLine(lastToken)
       postProcessToken(lastToken, lastName)
+      profile.recordNewToken()
       printState()
 
     final def printState() =
@@ -644,6 +646,8 @@ object Scanners {
           errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
       if token != OUTDENT then
         handleNewIndentWidth(currentRegion, _.otherIndentWidths += nextWidth)
+      if next.token == EMPTY then
+        profile.recordNewLine()
     end handleNewLine
 
     def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth) =
