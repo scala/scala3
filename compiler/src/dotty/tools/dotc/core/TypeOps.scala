@@ -175,7 +175,13 @@ object TypeOps:
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>
-        tp // See documentation of `Types#simplified`
+        // See documentation of `Types#simplified`
+        val addTypeVars = new TypeMap:
+          val constraint = ctx.typerState.constraint
+          def apply(t: Type): Type = t match
+            case t: TypeParamRef => constraint.typeVarOfParam(t).orElse(t)
+            case _ => this.mapOver(t)
+        addTypeVars(tp)
       case tp: SkolemType =>
         // Mapping over a skolem creates a new skolem which by definition won't
         // be =:= to the original one.
