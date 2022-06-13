@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.printing.Texts._
 
 
-class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
+class ReplPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   val debugPrint = _ctx.settings.YprintDebug.value
 
