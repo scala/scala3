@@ -2930,12 +2930,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       }
     }
 
-    /** Match a single case.
-     *  @return  Some(tp)     if the match succeeds with type `tp`
-     *           Some(NoType) if the match fails, and there is an overlap between pattern and scrutinee
-     *           None         if the match fails and we should consider the following cases
-     *                        because scrutinee and pattern do not overlap
-     */
+    /** Match a single case. */
     def matchCase(cas: Type): MatchResult = trace(i"match case $cas vs $scrut", matchTypes) {
       val cas1 = cas match {
         case cas: HKTypeLambda =>
