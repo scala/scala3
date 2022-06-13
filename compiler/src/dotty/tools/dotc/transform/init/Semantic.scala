@@ -777,7 +777,7 @@ object Semantic:
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-      def tryLeak(warm: Warm, argValues: List[Value]): Contextual[Value] =
+      def tryLeak(warm: Warm, nonHotOuterClass: Symbol, argValues: List[Value]): Contextual[Value] =
         val argInfos2 = args.zip(argValues).map { (argInfo, v) => argInfo.copy(value = v) }
         val errors = Reporter.stopEarly {
           given Trace = Trace.empty
@@ -791,8 +791,7 @@ object Semantic:
             yield
               i + 1
 
-          val indices2 = if warm.outer.isHot then indices else 0 :: indices
-          val error = UnsafeLeaking(trace.toVector, errors.head, indices2)
+          val error = UnsafeLeaking(trace.toVector, errors.head, nonHotOuterClass, indices)
           reporter.report(error)
           Hot
         else
@@ -814,7 +813,7 @@ object Semantic:
           else
             val outer = Hot
             val warm = Warm(klass, outer, ctor, args2).ensureObjectExists()
-            tryLeak(warm, args2)
+            tryLeak(warm, NoSymbol, args2)
 
         case Cold =>
           val error = CallCold(ctor, trace.toVector)
@@ -832,7 +831,7 @@ object Semantic:
           val argsWidened = args.map(_.value).widenArgs
           val warm = Warm(klass, outer, ctor, argsWidened).ensureObjectExists()
           if argsWidened.exists(_.isCold) then
-            tryLeak(warm, argsWidened)
+            tryLeak(warm, klass.owner.lexicallyEnclosingClass, argsWidened)
           else
             val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
             warm.callConstructor(ctor, argInfos2)

@@ -100,23 +100,34 @@ object Errors:
         "Promoting the value to fully initialized failed due to the following problem:\n" +
         error.show
 
-  /** Unsafe leaking a non-hot value as constructor arguments */
-  case class UnsafeLeaking(trace: Seq[Tree], error: Error, argsIndices: List[Int]) extends Error:
+  /** Unsafe leaking a non-hot value as constructor arguments
+   *
+   *  Invariant: argsIndices.nonEmpty
+   */
+  case class UnsafeLeaking(trace: Seq[Tree], error: Error, nonHotOuterClass: Symbol, argsIndices: List[Int]) extends Error:
     def show(using Context): String =
       "Problematic object instantiation: " + argumentInfo() + stacktrace() + "\n" +
         "It leads to the following error during object initialization:\n" +
         error.show
 
-    private def argumentInfo(): String =
-      val multiple = argsIndices.size > 1
-      val part1 =
-        argsIndices.zipWithIndex.foldLeft("") { case (acc, (pos, i)) =>
-          val text1 = if pos == 0 then "the outer" else "arg " + pos.toString
-          val text2 =
-            if i == argsIndices.size - 2 then text1 + " and "
-            else if i == argsIndices.size - 1 then text1
-            else text1 + ", "
+    private def punctuation(i: Int): String =
+      if i == argsIndices.size - 2 then " and "
+      else if i == argsIndices.size - 1 then ""
+      else ", "
+
+    private def argumentInfo()(using Context): String =
+      val multiple = argsIndices.size > 1 || nonHotOuterClass.exists
+      val init =
+        if nonHotOuterClass.exists
+        then  "the outer " + nonHotOuterClass.name.show + ".this" + punctuation(-1)
+        else ""
+
+      val subject =
+        argsIndices.zipWithIndex.foldLeft(init) { case (acc, (pos, i)) =>
+          val text1 = "arg " + pos.toString
+          val text2 = text1 + punctuation(i)
           acc + text2
         }
-      val part2 = if multiple then " are not fully initialized." else " is not fully initialized."
-      part1 + part2
+      val verb = if multiple then " are " else " is "
+      val adjective = "not fully initialized."
+      subject + verb + adjective
