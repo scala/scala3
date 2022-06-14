@@ -1,0 +1,32 @@
+-- Error: tests/neg/i15311.scala:16:4 ----------------------------------------------------------------------------------
+16 |def test =  // error
+   |^
+   |Recursion limit exceeded.
+   |Maybe there is an illegal cyclic reference?
+   |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
+   |A recurring operation is (inner to outer):
+   |
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  ...
+   |
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined food.T
+   |  check fully defined Template[food.T]
+17 |  eat(ham)
+18 |  eat(food.self)

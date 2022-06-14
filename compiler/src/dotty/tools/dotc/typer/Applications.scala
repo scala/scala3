@@ -1118,7 +1118,7 @@ trait Applications extends Compatibility {
    */
   def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
-      fullyDefinedType(tree.tpe, "array", tree.span)
+      fullyDefinedType(tree.tpe, "array", tree.srcPos)
 
       def newGenericArrayCall =
         ref(defn.DottyArraysModule)
@@ -1333,7 +1333,7 @@ trait Applications extends Compatibility {
         val ownType =
           if (selType <:< unapplyArgType) {
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
-            fullyDefinedType(unapplyArgType, "pattern selector", tree.span)
+            fullyDefinedType(unapplyArgType, "pattern selector", tree.srcPos)
             selType.dropAnnot(defn.UncheckedAnnot) // need to drop @unchecked. Just because the selector is @unchecked, the pattern isn't.
           }
           else {
@@ -1564,7 +1564,7 @@ trait Applications extends Compatibility {
             // `isSubType` as a TypeVar might get constrained by a TypeRef it's
             // part of.
             val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
-            fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.span)
+            fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.srcPos)
 
             val tparams = newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
             isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)

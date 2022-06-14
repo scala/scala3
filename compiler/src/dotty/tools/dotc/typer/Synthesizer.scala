@@ -53,8 +53,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedTypeTest: SpecialHandler =
     (formal, span) => formal.argInfos match {
       case arg1 :: arg2 :: Nil if !defn.isBottomClass(arg2.typeSymbol) =>
-        val tp1 = fullyDefinedType(arg1, "TypeTest argument", span)
-        val tp2 = fullyDefinedType(arg2, "TypeTest argument", span).normalized
+        val srcPos = ctx.source.atSpan(span)
+        val tp1 = fullyDefinedType(arg1, "TypeTest argument", srcPos)
+        val tp2 = fullyDefinedType(arg2, "TypeTest argument", srcPos).normalized
         val sym2 = tp2.typeSymbol
         if tp1 <:< tp2 then
           // optimization when we know the typetest will always succeed
@@ -192,7 +193,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     formal.argTypes match
       case args @ (arg1 :: arg2 :: Nil) =>
-        List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", span))
+        List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", ctx.source.atSpan(span)))
         if canComparePredefined(arg1, arg2)
             || !Implicits.strictEquality && explore(validEqAnyArgs(arg1, arg2))
         then withNoErrors(ref(defn.CanEqual_canEqualAny).appliedToTypes(args).withSpan(span))
@@ -209,7 +210,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
     formal.argInfos match
       case arg :: Nil =>
-        fullyDefinedType(arg, "ValueOf argument", span).normalized.dealias match
+        fullyDefinedType(arg, "ValueOf argument", ctx.source.atSpan(span)).normalized.dealias match
           case ConstantType(c: Constant) =>
             withNoErrors(success(Literal(c)))
           case tp: TypeRef if tp.isRef(defn.UnitClass) =>
@@ -649,7 +650,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     formal.argInfos match
       case arg :: Nil =>
-        val manifest = synthesize(fullyDefinedType(arg, "Manifest argument", span), kind, topLevel = true)
+        val manifest = synthesize(fullyDefinedType(arg, "Manifest argument", ctx.source.atSpan(span)), kind, topLevel = true)
         if manifest != EmptyTree then
           report.deprecationWarning(
             i"""Compiler synthesis of Manifest and OptManifest is deprecated, instead
