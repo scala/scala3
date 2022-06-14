@@ -42,12 +42,12 @@ trait TypesSupport:
         import reflect._
         tpeTree match
           case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe)
-          case tpeTree: TypeTree => inner(tpeTree.tpe)
-          case term:  Term => inner(term.tpe)
+          case tpeTree: TypeTree => topLevelProcess(tpeTree.tpe)
+          case term:  Term => topLevelProcess(term.tpe)
 
   given TypeSyntax: AnyRef with
     extension (using Quotes)(tpe: reflect.TypeRepr)
-      def asSignature: SSignature = inner(tpe)
+      def asSignature: SSignature = topLevelProcess(tpe)
 
 
   private def plain(str: String): SignaturePart = Plain(str)
@@ -85,6 +85,12 @@ trait TypesSupport:
         case ThisType(tref: TypeRef) if tref.name == "scala" => true
         case _ => false
       case _ => false
+
+  private def topLevelProcess(using Quotes)(tp: reflect.TypeRepr): SSignature =
+    import reflect._
+    tp match
+      case ThisType(tpe) => inner(tpe) :+ plain(".this.type")
+      case tpe => inner(tpe)
 
   // TODO #23 add support for all types signatures that makes sense
   private def inner(using Quotes)(tp: reflect.TypeRepr)(using indent: Int = 0): SSignature =
