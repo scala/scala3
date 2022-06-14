@@ -111,7 +111,7 @@ sealed abstract class CaptureSet extends Showable:
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
    */
-  def accountsFor(x: CaptureRef)(using ctx: Context): Boolean =
+  def accountsFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true) {
       elems.exists(_.subsumes(x))
       || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
@@ -122,11 +122,18 @@ sealed abstract class CaptureSet extends Showable:
    *  for `x` in a state where we assume all supersets of `x` have just the elements
    *  known at this point.
    */
-  def mightAccountFor(x: CaptureRef)(using ctx: Context): Boolean =
+  def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
       elems.exists(_.subsumes(x))
       || !x.isRootCapability && x.captureSetOfInfo.elems.forall(mightAccountFor)
     }
+
+  /** A more optimistic version of subCaptures used to choose one of two typing rules
+   *  for selctions and applications. `cs1 mightSubcapture cs2` if `cs2` might account for
+   *  every element currently known to be in `cs1`.
+   */
+  def mightSubcapture(that: CaptureSet)(using Context): Boolean =
+    elems.forall(that.mightAccountFor)
 
   /** The subcapturing test */
   final def subCaptures(that: CaptureSet, frozen: Boolean)(using Context): CompareResult =

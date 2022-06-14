@@ -238,6 +238,16 @@ class CheckCaptures extends Recheck, SymTransformer:
           else i"references $cs1 are not all"
         report.error(i"$header included in allowed capture set ${res.blocking}", pos)
 
+    /** A specialized implementation of the selection rule.
+     *
+     *  E |- f: Cf { m: Cr R }
+     *  ------------------------
+     *  E |- f.m: C R
+     *
+     *  The implementation picks as `C` one of `{f}` or `Cr`, depending on the
+     *  outcome of a `mightSubcapture` test. It picks `{f}` if this might subcapture Cr
+     *  and Cr otherwise.
+     */
     override def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) = {
       val selType = super.recheckSelection(tree, qualType, name)
       val selCs = selType.widen.captureSet
@@ -246,8 +256,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         val qualCs = qualType.captureSet
         //println(i"intersect $qualType, ${selType.widen}, $qualCs, $selCs")
-        if selCs.subCaptures(qualCs, frozen = true).isOK then selType
-        else selType.widen.stripCapturing.capturing(selCs ** qualCs)
+        if qualCs.mightSubcapture(selCs) then
+          selType.widen.stripCapturing.capturing(qualCs)
+        else
+          selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
     override def recheckClosure(tree: Closure, pt: Type)(using Context): Type =
@@ -393,32 +405,30 @@ class CheckCaptures extends Recheck, SymTransformer:
         finally curEnv = curEnv.outer
       recheckFinish(result, arg, pt)
 
-    /** A specialized implementation of the apply rule from https://github.com/lampepfl/dotty/discussions/14387:
+    /** A specialized implementation of the apply rule.
      *
-     * E |- f: Cf (Ra -> Cr Rr)
-     * E |- a: Ra
-     * ------------------------
-     * E |- f a: Cr /\ {f} Rr
+     *  E |- f: Cf (Ra -> Cr Rr)
+     *  E |- a: Ra
+     *  ------------------------
+     *  E |- f a: C Rr
      *
-     * Specialized for the case where `f` is a tracked and the arguments are pure.
-     * This replaces the previous rule #13657 while still allowing the code in pos/lazylists1.scala.
-     * We could consider generalizing to the case where the function arguments have non-empty
-     * capture sets as suggested in #14387, but that would make capture set computations more complex,
-     * so we should also evaluate the performance impact.
+     *  The implementation picks as `C` one of `{f, a}` or `Cr`, depending on the
+     *  outcome of a `mightSubcapture` test. It picks `{f, a}` if this might subcapture Cr
+     *  and Cr otherwise.
      */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       includeCallCaptures(tree.symbol, tree.srcPos)
       super.recheckApply(tree, pt) match
         case tp @ CapturingType(tp1, refs) =>
           tree.fun match
-            case Select(qual, nme.apply)
-            if defn.isFunctionType(qual.tpe.widen) =>
-              qual.tpe match
-                case ref: CaptureRef
-                if ref.isTracked && tree.args.forall(_.tpe.captureSet.isAlwaysEmpty) =>
-                  tp.derivedCapturingType(tp1, refs ** ref.singletonCaptureSet)
-                    .showing(i"narrow $tree: $tp --> $result", capt)
-                case _ => tp
+            case Select(qual, _)
+            if !tree.fun.symbol.isConstructor
+                && qual.tpe.captureSet.mightSubcapture(refs)
+                && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
+            =>
+              tp.derivedCapturingType(tp1, tree.args.foldLeft(qual.tpe.captureSet)((cs, arg) =>
+                cs ++ arg.tpe.captureSet))
+                .showing(i"narrow $tree: $tp --> $result", capt)
             case _ => tp
         case tp => tp
 
