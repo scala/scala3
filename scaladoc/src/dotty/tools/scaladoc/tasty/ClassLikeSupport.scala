@@ -368,7 +368,7 @@ trait ClassLikeSupport:
       val overriddenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
       Origin.Overrides(overriddenSyms.map(s => Overridden(s.name, s.dri)).toSeq)
 
-    mkMember(methodSymbol, methodKind, memberInfo.res.asSignature)(origin = origin, deprecated = methodSymbol.isDeprecated())
+    mkMember(methodSymbol, methodKind, method.returnTpt.tpe.asSignature)(origin = origin, deprecated = methodSymbol.isDeprecated())
 
   def mkParameter(
     argument: ValDef,
