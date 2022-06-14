@@ -638,6 +638,11 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
           tp.derivedLambdaType(names ++ rt.paramNames, formals ++ rt.paramInfos, rt.resultType)
+        case NoType =>
+          // Can happen if we smuggle in a Nothing in the qualifier. Normally we prevent that
+          // in Checking.checkMembersOK, but compiler-generated code can bypass this test.
+          // See i15377.scala for a test case.
+          NoType
         case rt =>
           tp.derivedLambdaType(names, formals, rt)
       }
