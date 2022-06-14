@@ -1260,9 +1260,14 @@ trait Applications extends Compatibility {
      */
     def trySelectUnapply(qual: untpd.Tree)(fallBack: (Tree, TyperState) => Tree): Tree = {
       // try first for non-overloaded, then for overloaded ocurrences
-      def tryWithName(name: TermName)(fallBack: (Tree, TyperState) => Tree)(using Context): Tree = {
-        def tryWithProto(pt: Type)(using Context) = {
-          val result = typedExpr(untpd.Select(qual, name), new UnapplyFunProto(pt, this))
+      def tryWithName(name: TermName)(fallBack: (Tree, TyperState) => Tree)(using Context): Tree =
+
+        def tryWithProto(qual: untpd.Tree, targs: List[Tree], pt: Type)(using Context) =
+          val proto = UnapplyFunProto(pt, this)
+          val unapp = untpd.Select(qual, name)
+          val result =
+            if targs.isEmpty then typedExpr(unapp, proto)
+            else typedExpr(unapp, PolyProto(targs, proto)).appliedToTypeTrees(targs)
           if !result.symbol.exists
              || result.symbol.name == name
              || ctx.reporter.hasErrors
@@ -1270,18 +1275,26 @@ trait Applications extends Compatibility {
           else notAnExtractor(result)
           	// It might be that the result of typedExpr is an `apply` selection or implicit conversion.
           	// Reject in this case.
-        }
-        tryEither {
-          tryWithProto(selType)
-        } {
-          (sel, state) =>
-            tryEither {
-              tryWithProto(WildcardType)
-            } {
-              (_, _) => fallBack(sel, state)
-            }
-        }
-      }
+
+        def tryWithTypeArgs(qual: untpd.Tree, targs: List[Tree])(fallBack: (Tree, TyperState) => Tree): Tree =
+          tryEither {
+            tryWithProto(qual, targs, selType)
+          } {
+            (sel, state) =>
+              tryEither {
+                tryWithProto(qual, targs, WildcardType)
+              } {
+                (_, _) => fallBack(sel, state)
+              }
+          }
+
+        qual match
+          case TypeApply(qual1, targs) =>
+            tryWithTypeArgs(qual1, targs.mapconserve(typedType(_)))((t, ts) =>
+              tryWithTypeArgs(qual, Nil)(fallBack))
+          case _ =>
+            tryWithTypeArgs(qual, Nil)(fallBack)
+      end tryWithName
 
       // try first for unapply, then for unapplySeq
       tryWithName(nme.unapply) {
