@@ -1,9 +1,12 @@
 #toc {
-  position: absolute;
-  right: 0;
   display: flex;
   flex-direction: column;
   padding: 0 calc(1 * var(--base-spacing));
+  width: calc(29 * var(--base-spacing));
+}
+
+#toc-container {
+  position: absolute;
 }
 
 #toc ul {
@@ -17,13 +20,32 @@
 
 @media (min-width: 1920px) {
   #toc {
-    margin-right: calc(36.75 * var(--base-spacing));
+    margin-left: calc(8.5 * var(--base-spacing));
   }
 }
 
 @media (max-width: 1920px) {
   #toc {
-    margin-right: calc(6 * var(--base-spacing));
+    margin-left: calc(8.5 * var(--base-spacing));
+  }
+}
+
+@media (max-width: 1436px) {
+  #toc {
+    margin-left: calc(8.5 * var(--base-spacing));
+    margin-right: calc(8.5 * var(--base-spacing));
+  }
+}
+
+@media (max-width: 1376px) {
+  #toc {
+    margin-left: calc(6 * var(--base-spacing));
+  }
+}
+
+@media (max-width: 1366px) {
+  #toc {
+    left: calc(102 * var(--base-spacing));
   }
 }
 

@@ -84,4 +84,4 @@ trait SiteRenderer(using DocContext) extends Locations:
     document.select("img").forEach { element =>
       element.attr("src", processLocalLink(element.attr("src")))
     } // foreach does not work here. Why?
-    PageContent(raw(document.outerHtml()), toc)
+    PageContent(div(raw(document.outerHtml())), toc)
