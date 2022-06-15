@@ -4178,9 +4178,11 @@ object Types {
       myGround > 0
 
     private[Types] def cachedIsStable(using Context): Boolean =
-      // We need to invalidate the cache when the period changes because the
-      // case `TermRef` of `Type#isStable` reads denotations, which depend on
-      // the period. See docs/_docs/internals/periods.md for more information.
+      // We need to invalidate the cache when the run changes because the case
+      // `TermRef` of `Type#isStable` reads denotations, which depend on the
+      // run. See docs/_docs/internals/periods.md for more information. We do
+      // not need to check the phase because once a type is not provisional, its
+      // stability should not change anymore.
       if myisStableRunId != ctx.runId then
         val res: Boolean = computeIsStable
         // We don't cache if the type is provisional because `Type#isStable`
