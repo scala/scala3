@@ -10,6 +10,10 @@
   color: var(--text-primary);
 }
 
+#content > div:first-child {
+  overflow: hidden;
+}
+
 @media (min-width: 1920px) {
   #content {
     width: calc(90 * var(--base-spacing));

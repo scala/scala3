@@ -18,6 +18,11 @@
   margin-bottom: calc(2.5 * var(--base-spacing));
 }
 
+#toc li > ul {
+  margin-top: calc(2.5 * var(--base-spacing));
+  margin-left: calc(1.5 * var(--base-spacing));
+}
+
 @media (min-width: 1920px) {
   #toc {
     margin-left: calc(8.5 * var(--base-spacing));
@@ -33,6 +38,9 @@
 @media (max-width: 1436px) {
   #toc {
     margin-left: calc(8.5 * var(--base-spacing));
+    margin-right: calc(8.5 * var(--base-spacing));
+  }
+  #toc-container {
     margin-right: calc(8.5 * var(--base-spacing));
   }
 }
