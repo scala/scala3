@@ -1035,7 +1035,8 @@ object Erasure {
       typed(tree.arg, pt)
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
-      val stats0 = addRetainedInlineBodies(stats)(using preErasureCtx)
+      // discard Imports first, since Bridges will use tree's symbol
+      val stats0 = addRetainedInlineBodies(stats.filter(!_.isInstanceOf[untpd.Import]))(using preErasureCtx)
       val stats1 =
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats0)
         else stats0
