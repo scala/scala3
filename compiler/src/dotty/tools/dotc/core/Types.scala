@@ -117,9 +117,10 @@ object Types {
             case t: TypeRef =>
               !t.currentSymbol.isStatic && {
                 (t: Type).mightBeProvisional = false // break cycles
-                t.symbol.is(Provisional)
+                t.symbol.flagsUNSAFE.is(Provisional)
                 || test(t.prefix, theAcc)
-                || t.info.match
+                || t.denot.infoOrCompleter.match
+                    case info: LazyType => true
                     case info: AliasingBounds => test(info.alias, theAcc)
                     case TypeBounds(lo, hi) => test(lo, theAcc) || test(hi, theAcc)
                     case _ => false
