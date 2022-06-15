@@ -4169,6 +4169,9 @@ object Types {
     private var myisStableRunId: RunId = NoRunId
     private var myIsStable: Boolean = uninitialized
 
+    private var myEvalRunId: RunId = NoRunId
+    private var myEvalued: Type = uninitialized
+
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
@@ -4278,7 +4281,17 @@ object Types {
     def isUnreducibleWild(using Context): Boolean =
       tycon.isLambdaSub && hasWildcardArg && !isMatchAlias
 
-    def tryCompiletimeConstantFold(using Context): Type = tycon match {
+    def tryCompiletimeConstantFold(using Context): Type =
+      if myEvalRunId == ctx.runId then myEvalued
+      else
+        val res = tryCompiletimeConstantFold1
+        if !isProvisional then
+          myEvalRunId = ctx.runId
+          myEvalued = res
+        res
+
+    // todo: move to separate module
+    def tryCompiletimeConstantFold1(using Context): Type = tycon match {
       case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
         extension (tp: Type) def fixForEvaluation: Type =
           tp.normalized.dealias match {
