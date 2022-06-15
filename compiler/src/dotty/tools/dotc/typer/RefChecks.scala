@@ -316,7 +316,7 @@ object RefChecks {
     /* Check that all conditions for overriding `other` by `member`
        * of class `clazz` are met.
        */
-    def checkOverride(member: Symbol, other: Symbol): Unit = {
+    def checkOverride(member: Symbol, other: Symbol): Unit =
       def memberTp(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
         else self.memberInfo(member)
@@ -373,6 +373,11 @@ object RefChecks {
         if trueMatch && noErrorType then
           emitOverrideError(overrideErrorMsg(msg, compareTypes))
 
+      def overrideDeprecation(what: String, member: Symbol, other: Symbol, fix: String): Unit =
+        report.deprecationWarning(
+          s"overriding $what${infoStringWithLocation(other)} is deprecated;\n  ${infoString(member)} should be $fix.",
+          if member.owner == clazz then member.srcPos else clazz.srcPos)
+
       def autoOverride(sym: Symbol) =
         sym.is(Synthetic) && (
           desugar.isDesugaredCaseClassMethodName(member.name) || // such names are added automatically, can't have an override preset.
@@ -423,6 +428,7 @@ object RefChecks {
         def otherIsJavaProtected = other.isAllOf(JavaProtected)               // or o is Java defined and protected (see #3946)
         memberIsPublic || protectedOK && (accessBoundaryOK || otherIsJavaProtected)
       end isOverrideAccessOK
+
       if !member.hasTargetName(other.targetName) then
         overrideTargetNameError()
       else if !isOverrideAccessOK then
@@ -509,21 +515,9 @@ object RefChecks {
           overrideError("cannot have a @targetName annotation since external names would be different")
       else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.12)
         overrideError("may not override non-experimental member")
-      else
-        checkOverrideDeprecated()
-    }
+      else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
+        overrideDeprecation("", member, other, "removed or renamed")
     end checkOverride
-
-    /* TODO enable; right now the annotation is scala-private, so cannot be seen
-         * here.
-         */
-    def checkOverrideDeprecated() = { /*
-          if (other.hasDeprecatedOverridingAnnotation) {
-            val suffix = other.deprecatedOverridingMessage map (": " + _) getOrElse ""
-            val msg = s"overriding ${other.fullLocationString} is deprecated$suffix"
-            unit.deprecationWarning(member.pos, msg)
-          }*/
-    }
 
     OverridingPairsChecker(clazz, self).checkAll(checkOverride)
     printMixinOverrideErrors()
