@@ -101,7 +101,6 @@ class Compiler {
          new TupleOptimizations,     // Optimize generic operations on tuples
          new LetOverApply,           // Lift blocks from receivers of applications
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
-    List(new DropImports) ::         // Drop all (language-) imports
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new PureStats,              // Remove pure stats from blocks

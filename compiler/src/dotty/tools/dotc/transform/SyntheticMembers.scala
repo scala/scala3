@@ -122,7 +122,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
       def nameRef: Tree =
         if isJavaEnumValue then
-          Select(This(clazz), nme.name).ensureApplied
+          val name = Select(This(clazz), nme.name).ensureApplied
+          if ctx.explicitNulls then name.cast(defn.StringType) else name
         else
           identifierRef
 

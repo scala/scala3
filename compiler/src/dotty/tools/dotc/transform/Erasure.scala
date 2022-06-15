@@ -43,7 +43,7 @@ class Erasure extends Phase with DenotTransformer {
   override def description: String = Erasure.description
 
   /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[String] = Set(InterceptedMethods.name, ElimRepeated.name, DropImports.name)
+  override def runsAfter: Set[String] = Set(InterceptedMethods.name, ElimRepeated.name)
 
   override def changesMembers: Boolean = true // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
@@ -1042,6 +1042,12 @@ object Erasure {
       val (stats2, finalCtx) = super.typedStats(stats1, exprOwner)
       (stats2.filterConserve(!_.isEmpty), finalCtx)
     }
+
+    /** Finally drops all (language-) imports in erasure.
+     *  Since some of the language imports change the subtyping,
+     *  we cannot check the trees before erasure.
+     */
+    override def typedImport(tree: untpd.Import)(using Context) = EmptyTree
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =
       trace(i"adapting ${tree.showSummary()}: ${tree.tpe} to $pt", show = true) {
