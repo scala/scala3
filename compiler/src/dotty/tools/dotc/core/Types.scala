@@ -35,6 +35,7 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
+import compiletime.uninitialized
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -4159,14 +4160,14 @@ object Types {
   extends CachedProxyType with ValueType {
 
     private var validSuper: Period = Nowhere
-    private var cachedSuper: Type = _
+    private var cachedSuper: Type = uninitialized
 
     // Boolean caches: 0 = uninitialized, -1 = false, 1 = true
     private var myStableHash: Byte = 0
     private var myGround: Byte = 0
 
-    private var myIsStablePeriod: Period = Nowhere
-    private var myIsStable: Boolean = false
+    private var myisStableRunId: RunId = NoRunId
+    private var myIsStable: Boolean = uninitialized
 
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
@@ -4176,12 +4177,12 @@ object Types {
       // We need to invalidate the cache when the period changes because the
       // case `TermRef` of `Type#isStable` reads denotations, which depend on
       // the period. See docs/_docs/internals/periods.md for more information.
-      if myIsStablePeriod != ctx.period then
+      if myisStableRunId != ctx.runId then
         val res: Boolean = computeIsStable
         // We don't cache if the type is provisional because `Type#isStable`
         // calls `Type#stripTypeVar` which might return different results later.
         if !isProvisional then
-          myIsStablePeriod = ctx.period
+          myisStableRunId = ctx.runId
           myIsStable = res
         res
       else
