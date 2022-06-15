@@ -242,7 +242,10 @@ object Semantic:
       /** The cache for expression values from last iteration */
       private var last: ExprValueCache =  Map.empty
 
-      /** The updated cache for expression values based on the cache values from the last iteration */
+      /** The updated cache for expression values based on the cache values from the last iteration
+       *
+       *  Both `last` and `current` are required to make sure an expression is evaluated once in each iteration.
+       */
       private var current: ExprValueCache = Map.empty
 
       /** Global cached values for expressions
@@ -294,10 +297,36 @@ object Semantic:
         if current.contains(value, expr) then current.get(value, expr)
         else stable.get(value, expr)
 
-      /** Copy the value of `(value, expr)` from the last cache to the current cache
-       * (assuming it's `Hot` if it doesn't exist in the cache).
+      /** Conditionally perform an operation
        *
-       * Then, runs `fun` and update the caches if the values change.
+       *  If the operation returns true, the changes are commited. Otherwise, the changes are reverted.
+       */
+      def conditionally[T](fn: => (Boolean, T)): T =
+        val last2 = this.last
+        val current2 = this.current
+        val stable2 = this.stable
+        val heap2 = this.heap
+        val heapStable2 = this.heapStable
+        val changed2 = this.changed
+        val (commit, value) = fn
+
+        if commit then
+          this.last = last2
+          this.current = current2
+          this.stable = stable2
+          this.heap = heap2
+          this.heapStable = heapStable2
+          this.changed = changed2
+
+        value
+
+      /** Copy the value of `(value, expr)` from the last cache to the current cache
+       *
+       *  It assumes the value is `Hot` if it doesn't exist in the last cache.
+       *
+       *  It update the current caches if the values change.
+       *
+       *  The two caches are required because we want to make sure in a new iteration, an expression is evaluated once.
        */
       def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Value): Contextual[Value] =
         val assumeValue: Value =
@@ -312,7 +341,6 @@ object Semantic:
         val actual = fun
         if actual != assumeValue then
           this.changed = true
-          this.last = this.last.updatedNested(value, expr, actual)
           this.current = this.current.updatedNested(value, expr, actual)
         else
           // It's tempting to cache the value in stable, but it's unsound.
@@ -339,13 +367,13 @@ object Semantic:
        *
        *  1. Reset changed flag.
        *
-       *  2. Reset current cache (last cache already synced in `assume`).
+       *  2. Use current cache as last cache and set current cache to be empty.
        *
-       *  3. Revert heap if instable.
-       *
+       *  3. Revert heap to stable.
        */
       def prepareForNextIteration()(using Context) =
         this.changed = false
+        this.last = this.current
         this.current = Map.empty
         this.heap = this.heapStable
 
@@ -542,12 +570,15 @@ object Semantic:
       // We may reset the outers or params of a populated warm object.
       // This is the case if we need access the field of a warm object, which
       // requires population of parameters and outers; and later create an
-      // instance of the exact warm object, which requires initialization check.
+      // instance of the exact warm object, whose initialization will reset
+      // the outer and constructor parameters.
       //
       // See tests/init/neg/unsound1.scala
-      assert(!obj.hasField(field) || field.is(Flags.ParamAccessor) && obj.field(field) == value, field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + ref)
+      val changed = !obj.hasField(field) || obj.field(field) != value
+      def isParamUpdate = field.isOneOf(Flags.ParamAccessor | Flags.Param) && obj.field(field) == value
+      assert(!obj.hasField(field) || isParamUpdate, field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + ref)
       val obj2 = obj.copy(fields = obj.fields.updated(field, value))
-      cache.updateObject(ref, obj2)
+      if changed then cache.updateObject(ref, obj2)
     }
 
     /** Update the immediate outer of the given `klass` of the abstract object
