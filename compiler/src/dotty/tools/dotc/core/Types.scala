@@ -595,7 +595,7 @@ object Types {
       try
         this match
           case tp: TypeProxy =>
-            tp.underlying.baseClasses
+            tp.superType.baseClasses
           case tp: ClassInfo =>
             tp.cls.classDenot.baseClasses
           case _ => Nil
