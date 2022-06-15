@@ -1892,7 +1892,8 @@ object Types {
      *  but its simplification is `Serializable`). This means that simplification
      *  should never be used in a `MethodicType`, because that could
      *  lead to a different `signature`. Since this isn't very useful anyway,
-     *  this method handles this by never simplifying inside a `MethodicType`.
+     *  this method handles this by never simplifying inside a `MethodicType`,
+     *  except for replacing type parameters with associated type variables.
      */
     def simplified(using Context): Type = TypeOps.simplify(this, null)
 
