@@ -10,7 +10,6 @@ import StdNames.*
 import NameKinds.OuterSelectName
 
 import ast.tpd.*
-import util.EqHashMap
 import config.Printers.init as printer
 import reporting.trace as log
 
@@ -198,17 +197,51 @@ object Semantic:
    * Note: It's tempting to use location of trees as key. That should
    * be avoided as a template may have the same location as its single
    * statement body. Macros may also create incorrect locations.
-   *
    */
 
   object Cache:
-    opaque type CacheStore = mutable.Map[Value, EqHashMap[Tree, Value]]
+    /** Cache for expressions
+     *
+     *  Ref -> Tree -> Value
+     *
+     *  The first key is the value of `this` for the expression. We do not need
+     *  environment, because the environment is always hot.
+     */
+    private type ExprValueCache = Map[Value, Map[TreeWrapper, Value]]
+
+    /** The heap for abstract objects
+     *
+     *  The heap objects are immutable.
+     */
     private type Heap = Map[Ref, Objekt]
 
+    /** A wrapper for trees for storage in maps based on referential equality of trees. */
+    private abstract class TreeWrapper:
+      def tree: Tree
+
+      override final def equals(other: Any): Boolean =
+        other match
+        case that: TreeWrapper => this.tree eq that.tree
+        case _ => false
+
+      override final def hashCode = tree.hashCode
+
+    /** The immutable wrapper is intended to be stored as key in the heap. */
+    private class ImmutableTreeWrapper(val tree: Tree) extends TreeWrapper
+
+    /** For queries on the heap, reuse the same wrapper to avoid unnecessary allocation. */
+    private class MutableTreeWrapper extends TreeWrapper:
+      var queryTree: Tree | Null = null
+      def tree: Tree = queryTree match
+        case tree: Tree => tree
+        case null => ???
+
+    private val queryTreeMapper: MutableTreeWrapper = new MutableTreeWrapper
+
     class Cache:
-      private var last: CacheStore =  mutable.Map.empty
-      private var current: CacheStore = mutable.Map.empty
-      private val stable: CacheStore = mutable.Map.empty
+      private var last: ExprValueCache =  Map.empty
+      private var current: ExprValueCache = Map.empty
+      private var stable: ExprValueCache = Map.empty
       private var changed: Boolean = false
 
       /** Abstract heap stores abstract objects
@@ -243,8 +276,8 @@ object Semantic:
         current.contains(value, expr) || stable.contains(value, expr)
 
       def apply(value: Value, expr: Tree) =
-        if current.contains(value, expr) then current(value)(expr)
-        else stable(value)(expr)
+        if current.contains(value, expr) then current.get(value, expr)
+        else stable.get(value, expr)
 
       /** Copy the value of `(value, expr)` from the last cache to the current cache
        * (assuming it's `Hot` if it doesn't exist in the cache).
@@ -256,16 +289,16 @@ object Semantic:
           if last.contains(value, expr) then
             last.get(value, expr)
           else
-            last.put(value, expr, Hot)
+            this.last = last.updatedNested(value, expr, Hot)
             Hot
           end if
-        current.put(value, expr, assumeValue)
+        this.current = current.updatedNested(value, expr, assumeValue)
 
         val actual = fun
         if actual != assumeValue then
           this.changed = true
-          last.put(value, expr, actual)
-          current.put(value, expr, actual)
+          this.last = this.last.updatedNested(value, expr, actual)
+          this.current = this.current.updatedNested(value, expr, actual)
         else
           // It's tempting to cache the value in stable, but it's unsound.
           // The reason is that the current value may depend on other values
@@ -280,12 +313,12 @@ object Semantic:
 
       /** Commit current cache to stable cache. */
       private def commitToStableCache() =
-        current.foreach { (v, m) =>
-          // It's useless to cache value for ThisRef.
-          if v.isWarm then m.iterator.foreach { (e, res) =>
-            stable.put(v, e, res)
-          }
-        }
+        for
+          (v, m) <- current
+          if v.isWarm          // It's useless to cache value for ThisRef.
+          (wrapper, res) <- m
+        do
+          this.stable = stable.updatedNestedWrapper(v, wrapper.asInstanceOf[ImmutableTreeWrapper], res)
 
       /** Prepare cache for the next iteration
        *
@@ -298,7 +331,7 @@ object Semantic:
        */
       def prepareForNextIteration()(using Context) =
         this.changed = false
-        this.current = mutable.Map.empty
+        this.current = Map.empty
         this.heap = this.heapStable
 
       /** Prepare for checking next class
@@ -319,8 +352,8 @@ object Semantic:
           this.commitToStableCache()
           this.heapStable = this.heap
 
-        this.last = mutable.Map.empty
-        this.current = mutable.Map.empty
+        this.last = Map.empty
+        this.current = Map.empty
 
       def updateObject(ref: Ref, obj: Objekt) =
         assert(!this.heapStable.contains(ref))
@@ -331,14 +364,28 @@ object Semantic:
       def getObject(ref: Ref) = heap(ref)
     end Cache
 
-    extension (cache: CacheStore)
-      def contains(value: Value, expr: Tree) = cache.contains(value) && cache(value).contains(expr)
-      def get(value: Value, expr: Tree): Value = cache(value)(expr)
-      def remove(value: Value, expr: Tree) = cache(value).remove(expr)
-      def put(value: Value, expr: Tree, result: Value): Unit = {
-        val innerMap = cache.getOrElseUpdate(value, new EqHashMap[Tree, Value])
-        innerMap(expr) = result
-      }
+    extension (cache: ExprValueCache)
+      private def contains(value: Value, expr: Tree) =
+        queryTreeMapper.queryTree = expr
+        cache.contains(value) && cache(value).contains(queryTreeMapper)
+
+      private def get(value: Value, expr: Tree): Value =
+        queryTreeMapper.queryTree = expr
+        cache(value)(queryTreeMapper)
+
+      private def removed(value: Value, expr: Tree) =
+        queryTreeMapper.queryTree = expr
+        val innerMap2 = cache(value).removed(queryTreeMapper)
+        cache.updated(value, innerMap2)
+
+      private def updatedNested(value: Value, expr: Tree, result: Value): ExprValueCache =
+        val wrapper = new ImmutableTreeWrapper(expr)
+        updatedNestedWrapper(value, wrapper, result)
+
+      private def updatedNestedWrapper(value: Value, wrapper: ImmutableTreeWrapper, result: Value): ExprValueCache =
+        val innerMap = cache.getOrElse(value, Map.empty[TreeWrapper, Value])
+        val innerMap2 = innerMap.updated(wrapper, result)
+        cache.updated(value, innerMap2)
     end extension
   end Cache
 
