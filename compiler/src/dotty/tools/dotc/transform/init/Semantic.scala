@@ -144,56 +144,6 @@ object Semantic:
 
     def hasField(f: Symbol) = fields.contains(f)
 
-  /** The environment stores values for constructor parameters
-   *
-   *  For performance and usability, we restrict parameters to be either `Cold`
-   *  or `Hot`.
-   *
-   *  Despite that we have environment for evaluating expressions in secondary
-   *  constructors, we don't need to put environment as the cache key. The
-   *  reason is that constructor parameters are determined by the value of
-   *  `this` --- it suffices to make the value of `this` as part of the cache
-   *  key.
-   *
-   *  This crucially depends on the fact that in the initialization process
-   *  there can be exactly one call to a specific constructor for a given
-   *  receiver. However, once we relax the design to allow non-hot values to
-   *  methods and functions, we have to put the environment as part of the cache
-   *  key. The reason is that given the same receiver, a method or function may
-   *  be called with different arguments -- they are not decided by the receiver
-   *  anymore.
-   *
-   *  TODO: remove Env as it is only used to pass value from `callConstructor` -> `eval` -> `init`.
-   *  It goes through `eval` for caching (termination) purposes.
-   */
-  object Env:
-    opaque type Env = Map[Symbol, Value]
-
-    val empty: Env = Map.empty
-
-    def apply(bindings: Map[Symbol, Value]): Env = bindings
-
-    def apply(ddef: DefDef, args: List[Value])(using Context): Env =
-      val params = ddef.termParamss.flatten.map(_.symbol)
-      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
-      params.zip(args).toMap
-
-    extension (env: Env)
-      def lookup(sym: Symbol)(using Context): Value = env(sym)
-
-      def getOrElse(sym: Symbol, default: Value)(using Context): Value = env.getOrElse(sym, default)
-
-      def union(other: Env): Env = env ++ other
-
-      def isHot: Boolean = env.values.forall(_ == Hot)
-  end Env
-
-  type Env = Env.Env
-  inline def env(using env: Env) = env
-  inline def withEnv[T](env: Env)(op: Env ?=> T): T = op(using env)
-
-  import Env.*
-
   object Promoted:
     class PromotionInfo:
       var isCurrentObjectPromoted: Boolean = false
@@ -399,7 +349,7 @@ object Semantic:
 // ----- Checker State -----------------------------------
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Env, Context, Trace, Promoted, Cache, Reporter) ?=> T
+  type Contextual[T] = (Context, Trace, Promoted, Cache, Reporter) ?=> T
 
 // ----- Error Handling -----------------------------------
 
@@ -692,10 +642,8 @@ object Semantic:
                 outer.instantiate(klass, klass.primaryConstructor, args)
               else
                 reporter.reportAll(argErrors)
-                withEnv(if isLocal then env else Env.empty) {
-                  extendTrace(ddef) {
-                    eval(ddef.rhs, ref, cls, cacheResult = true)
-                  }
+                extendTrace(ddef) {
+                  eval(ddef.rhs, ref, cls, cacheResult = true)
                 }
             else if ref.canIgnoreMethodCall(target) then
               Hot
@@ -726,15 +674,14 @@ object Semantic:
     }
 
     def callConstructor(ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-      // init "fake" param fields for the secondary constructor
-      def addParamsAsFields(env: Env, ref: Ref, ctorDef: DefDef) = {
-        val paramSyms = ctorDef.termParamss.flatten.map(_.symbol)
-        paramSyms.map { acc =>
-          val value = env.lookup(acc)
-          ref.updateField(acc, value)
-          printer.println(acc.show + " initialized with " + value)
-        }
-      }
+      // init "fake" param fields for parameters of primary and secondary constructors
+      def addParamsAsFields(args: List[Value], ref: Ref, ctorDef: DefDef) =
+        val params = ctorDef.termParamss.flatten.map(_.symbol)
+        assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
+        for (param, value) <- params.zip(args) do
+          ref.updateField(param, value)
+          printer.println(param.show + " initialized with " + value)
+
       value match {
         case Hot | Cold | _: RefSet | _: Fun =>
           report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, trace.toVector.last)
@@ -744,13 +691,12 @@ object Semantic:
           if ctor.hasSource then
             val cls = ctor.owner.enclosingClass.asClass
             val ddef = ctor.defTree.asInstanceOf[DefDef]
-            val env2 = Env(ddef, args.map(_.value).widenArgs)
+            val args2 = args.map(_.value).widenArgs
+            addParamsAsFields(args2, ref, ddef)
             if ctor.isPrimaryConstructor then
-              given Env = env2
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
               extendTrace(cls.defTree) { init(tpl, ref, cls) }
             else
-              addParamsAsFields(env2, ref, ddef)
               val initCall = ddef.rhs match
                 case Block(call :: _, _) => call
                 case call => call
@@ -763,14 +709,13 @@ object Semantic:
           if ctor.hasSource then
             val cls = ctor.owner.enclosingClass.asClass
             val ddef = ctor.defTree.asInstanceOf[DefDef]
-            val env2 = Env(ddef, args.map(_.value).widenArgs)
+            val args2 = args.map(_.value).widenArgs
+            addParamsAsFields(args2, ref, ddef)
             if ctor.isPrimaryConstructor then
-              given Env = env2
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
               extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
               ref
             else
-              addParamsAsFields(env2, ref, ddef)
               extendTrace(ddef) { eval(ddef.rhs, ref, cls, cacheResult = true) }
           else if ref.canIgnoreMethodCall(ctor) then
             Hot
@@ -1057,16 +1002,18 @@ object Semantic:
       val thisRef = task.value
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
-      val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
-
       @tailrec
       def iterate(): Unit = {
         given Promoted = Promoted.empty
         given Trace = Trace.empty.add(thisRef.klass.defTree)
-        given Env = Env(paramValues)
         given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
 
         thisRef.ensureFresh()
+
+        // set up constructor parameters
+        for param <- tpl.constr.termParamss.flatten do
+          thisRef.updateField(param.symbol, Hot)
+
         log("checking " + task) { eval(tpl, thisRef, thisRef.klass) }
         reporter.errors.foreach(_.issue)
 
@@ -1433,7 +1380,7 @@ object Semantic:
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
   def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show) {
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
-      vdef.name -> env.lookup(vdef.symbol)
+      vdef.name -> thisV.objekt.field(vdef.symbol)
     }.toMap
 
     // init param fields
@@ -1446,7 +1393,7 @@ object Semantic:
     // Tasks is used to schedule super constructor calls.
     // Super constructor calls are delayed until all outers are set.
     type Tasks = mutable.ArrayBuffer[() => Unit]
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], tasks: Tasks)(using Env): Unit =
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], tasks: Tasks): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass)
@@ -1461,7 +1408,7 @@ object Semantic:
         }
 
     // parents
-    def initParent(parent: Tree, tasks: Tasks)(using Env) =
+    def initParent(parent: Tree, tasks: Tasks) =
       parent match
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass)
@@ -1479,8 +1426,6 @@ object Semantic:
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
     if !klass.is(Flags.Trait) then
-      given Env = Env.empty
-
       // outers are set first
       val tasks = new mutable.ArrayBuffer[() => Unit]
 
@@ -1526,7 +1471,6 @@ object Semantic:
     // class body
     if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
-        given Env = Env.empty
         val res = eval(vdef.rhs, thisV, klass)
         thisV.updateField(vdef.symbol, res)
         fieldsChanged = true
@@ -1534,10 +1478,9 @@ object Semantic:
       case _: MemberDef =>
 
       case tree =>
-        if fieldsChanged && thisV.isThisRef then thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject()
+        if fieldsChanged && thisV.isThisRef then
+          thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject()
         fieldsChanged = false
-
-        given Env = Env.empty
         eval(tree, thisV, klass)
     }
 
