@@ -23,7 +23,7 @@ class PatmatExhaustivityTest {
   val options = List("-pagewidth", "80", "-color:never", "-Ystop-after:explicitSelf", "-classpath", TestConfiguration.basicClasspath)
 
   private def compile(files: List[JPath]): Seq[String] = {
-    val opts         = toolArgsFor(files)
+    val opts         = toolArgsFor(files).get(ToolName.Scalac).getOrElse(Nil)
     val stringBuffer = new StringWriter()
     val printWriter  = new PrintWriter(stringBuffer)
     val reporter = TestReporter.simplifiedReporter(printWriter)
