@@ -479,10 +479,16 @@ object Semantic:
         RefSet(refs1 ++ diff)
 
     /** Conservatively approximate the value with `Cold` or `Hot` */
-    def widenArg: Value =
+    def widenArg: Contextual[Value] =
       a match
-      case _: Ref | _: Fun => Cold
-      case RefSet(refs) => refs.map(_.widenArg).join
+      case _: Ref | _: Fun =>
+        val errors = Reporter.stopEarly { a.promote("Argument cannot be promoted to hot") }
+        if errors.isEmpty then Hot
+        else Cold
+
+      case RefSet(refs) =>
+        refs.map(_.widenArg).join
+
       case _ => a
 
 
@@ -491,7 +497,7 @@ object Semantic:
       if values.isEmpty then Hot
       else values.reduce { (v1, v2) => v1.join(v2) }
 
-    def widenArgs: List[Value] = values.map(_.widenArg).toList
+    def widenArgs: Contextual[List[Value]] = values.map(_.widenArg).toList
 
 
   extension (ref: Ref)
@@ -738,12 +744,13 @@ object Semantic:
           if ctor.hasSource then
             val cls = ctor.owner.enclosingClass.asClass
             val ddef = ctor.defTree.asInstanceOf[DefDef]
-            given Env = Env(ddef, args.map(_.value).widenArgs)
+            val env2 = Env(ddef, args.map(_.value).widenArgs)
             if ctor.isPrimaryConstructor then
+              given Env = env2
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
               extendTrace(cls.defTree) { init(tpl, ref, cls) }
             else
-              addParamsAsFields(env, ref, ddef)
+              addParamsAsFields(env2, ref, ddef)
               val initCall = ddef.rhs match
                 case Block(call :: _, _) => call
                 case call => call
@@ -756,13 +763,14 @@ object Semantic:
           if ctor.hasSource then
             val cls = ctor.owner.enclosingClass.asClass
             val ddef = ctor.defTree.asInstanceOf[DefDef]
-            given Env = Env(ddef, args.map(_.value).widenArgs)
+            val env2 = Env(ddef, args.map(_.value).widenArgs)
             if ctor.isPrimaryConstructor then
+              given Env = env2
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
               extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
               ref
             else
-              addParamsAsFields(env, ref, ddef)
+              addParamsAsFields(env2, ref, ddef)
               extendTrace(ddef) { eval(ddef.rhs, ref, cls, cacheResult = true) }
           else if ref.canIgnoreMethodCall(ctor) then
             Hot
