@@ -1101,7 +1101,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def noLeaks(t: Tree): Boolean = escapingRefs(t, localSyms).isEmpty
     if (noLeaks(tree)) tree
     else {
-      fullyDefinedType(tree.tpe, "block", tree.span)
+      fullyDefinedType(tree.tpe, "block", tree.srcPos)
       var avoidingType = TypeOps.avoid(tree.tpe, localSyms)
       val ptDefined = isFullyDefined(pt, ForceDegree.none)
       if (ptDefined && !(avoidingType.widenExpr <:< pt)) avoidingType = pt
@@ -1534,7 +1534,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         if tree.isInline then checkInInlineContext("inline match", tree.srcPos)
         val sel1 = typedExpr(tree.selector)
-        val rawSelectorTpe = fullyDefinedType(sel1.tpe, "pattern selector", tree.span)
+        val rawSelectorTpe = fullyDefinedType(sel1.tpe, "pattern selector", tree.srcPos)
         val selType = rawSelectorTpe match
           case c: ConstantType if tree.isInline => c
           case otherTpe => otherTpe.widen

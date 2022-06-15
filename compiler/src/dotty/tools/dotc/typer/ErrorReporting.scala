@@ -257,7 +257,7 @@ class ImplicitSearchError(
       ++ ErrorReporting.matchReductionAddendum(pt)
   }
 
-  private def formatMsg(shortForm: String)(headline: String = shortForm) = arg match 
+  private def formatMsg(shortForm: String)(headline: String = shortForm) = arg match
     case arg: Trees.SearchFailureIdent[?] =>
       arg.tpe match
         case _: NoMatchingImplicits => headline
@@ -318,7 +318,7 @@ class ImplicitSearchError(
       case _           => Nil
     }
     def resolveTypes(targs: List[tpd.Tree])(using Context) =
-      targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.span))
+      targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
 
     // We can extract type arguments from:
     //   - a function call:

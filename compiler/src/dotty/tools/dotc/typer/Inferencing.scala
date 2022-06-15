@@ -8,7 +8,7 @@ import Contexts._, Types._, Flags._, Symbols._
 import ProtoTypes._
 import NameKinds.{AvoidNameKind, UniqueName}
 import util.Spans._
-import util.{Stats, SimpleIdentityMap}
+import util.{Stats, SimpleIdentityMap, SrcPos}
 import Decorators._
 import config.Printers.{gadts, typr}
 import annotation.tailrec
@@ -28,11 +28,11 @@ object Inferencing {
    *  but only if the overall result of `isFullyDefined` is `true`.
    *  Variables that are successfully minimized do not count as uninstantiated.
    */
-  def isFullyDefined(tp: Type, force: ForceDegree.Value)(using Context): Boolean = {
+  def isFullyDefined(tp: Type, force: ForceDegree.Value, handleOverflow: Boolean = false)(using Context): Boolean = {
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result =
       try new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
-      catch case ex: StackOverflowError =>
+      catch case ex: RecursionOverflow if handleOverflow =>
         false // can happen for programs with illegal recusions, e.g. neg/recursive-lower-constraint.scala
     if (result) nestedCtx.typerState.commit()
     result
@@ -49,9 +49,13 @@ object Inferencing {
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
    */
-  def fullyDefinedType(tp: Type, what: String, span: Span)(using Context): Type =
-    if (isFullyDefined(tp, ForceDegree.all)) tp
-    else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $span") // !!! DEBUG
+  def fullyDefinedType(tp: Type, what: String, pos: SrcPos)(using Context): Type =
+    try
+      if isFullyDefined(tp, ForceDegree.all) then tp
+      else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos")
+    catch case ex: RecursionOverflow =>
+      report.error(ex, pos)
+      UnspecifiedErrorType
 
   /** Instantiate selected type variables `tvars` in type `tp` in a special mode:
    *   1. If a type variable is constrained from below (i.e. constraint bound != given lower bound)
@@ -171,33 +175,37 @@ object Inferencing {
 
     private var toMaximize: List[TypeVar] = Nil
 
-    def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
-      case _: WildcardType | _: ProtoType =>
-        false
-      case tvar: TypeVar if !tvar.isInstantiated =>
-        force.appliesTo(tvar)
-        && ctx.typerState.constraint.contains(tvar)
-        && {
-          val direction = instDirection(tvar.origin)
-          if minimizeSelected then
-            if direction <= 0 && tvar.hasLowerBound then
+    def apply(x: Boolean, tp: Type): Boolean =
+      try tp.dealias match
+        case _: WildcardType | _: ProtoType =>
+          false
+        case tvar: TypeVar if !tvar.isInstantiated =>
+          force.appliesTo(tvar)
+          && ctx.typerState.constraint.contains(tvar)
+          && {
+            val direction = instDirection(tvar.origin)
+            if minimizeSelected then
+              if direction <= 0 && tvar.hasLowerBound then
+                instantiate(tvar, fromBelow = true)
+              else if direction >= 0 && tvar.hasUpperBound then
+                instantiate(tvar, fromBelow = false)
+              // else hold off instantiating unbounded unconstrained variable
+            else if direction != 0 then
+              instantiate(tvar, fromBelow = direction < 0)
+            else if variance >= 0 && (force.ifBottom == IfBottom.ok || tvar.hasLowerBound) then
               instantiate(tvar, fromBelow = true)
-            else if direction >= 0 && tvar.hasUpperBound then
-              instantiate(tvar, fromBelow = false)
-            // else hold off instantiating unbounded unconstrained variable
-          else if direction != 0 then
-            instantiate(tvar, fromBelow = direction < 0)
-          else if variance >= 0 && (force.ifBottom == IfBottom.ok || tvar.hasLowerBound) then
-            instantiate(tvar, fromBelow = true)
-          else if variance >= 0 && force.ifBottom == IfBottom.fail then
-            return false
-          else
-            toMaximize = tvar :: toMaximize
-          foldOver(x, tvar)
-        }
-      case tp =>
-        foldOver(x, tp)
-    }
+            else if variance >= 0 && force.ifBottom == IfBottom.fail then
+              return false
+            else
+              toMaximize = tvar :: toMaximize
+            foldOver(x, tvar)
+          }
+        case tp =>
+          reporting.trace(s"IFT $tp") {
+            foldOver(x, tp)
+          }
+      catch case ex: Throwable =>
+        handleRecursive("check fully defined", tp.show, ex)
 
     def process(tp: Type): Boolean =
       // Maximize type vars in the order they were visited before */
@@ -313,7 +321,7 @@ object Inferencing {
       val (tl1, tvars) = constrained(tl, tree)
       var tree1 = AppliedTypeTree(tree.withType(tl1), tvars)
       tree1.tpe <:< pt
-      fullyDefinedType(tree1.tpe, "template parent", tree.span)
+      fullyDefinedType(tree1.tpe, "template parent", tree.srcPos)
       tree1
     case _ =>
       tree

@@ -1467,7 +1467,7 @@ class Namer { typer: Typer =>
               else {
                 if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(GivenOrImplicit))
                   missingType(denot.symbol, "parent ")(using creationContext)
-                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.span)
+                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.srcPos)
               }
             case _ =>
               UnspecifiedErrorType.assertingErrorsReported
@@ -1890,7 +1890,7 @@ class Namer { typer: Typer =>
     def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
     def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
-    def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
+    def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.srcPos)
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
       if sym.isInlineVal then lhsType else inherited
