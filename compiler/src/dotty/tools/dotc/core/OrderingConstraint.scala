@@ -53,7 +53,7 @@ object OrderingConstraint {
       if (es == null) initial else es(idx)
     }
 
-    /** The `current` constraint but with the entry for `param` updated to `entry`.
+    /** The `current` constraint but with the entry for the param at index `idx` updated to `entry`.
      *  `current` is used linearly. If it is different from `prev` then `current` is
      *  known to be dead after the call. Hence it is OK to update destructively
      *  parts of `current` which are not shared by `prev`.
@@ -134,7 +134,7 @@ import OrderingConstraint._
  *               lambda's type parameters. The second half might contain type variables that
  *               track the corresponding parameters, or is left empty (filled with nulls).
  *               An instantiated type parameter is represented by having its instance type in
- *               the corresponding array entry. The dual use of arrays for poly params
+ *               the corresponding array entry. The dual use of arrays for type bounds
  *               and typevars is to save space and hopefully gain some speed.
  *
  *  @param lowerMap a map from TypeLambdas to arrays. Each array entry corresponds
@@ -458,7 +458,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       todos: mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint],
       isUpper: Boolean)(using Context): Type = tp match {
     case param: TypeParamRef if contains(param) =>
-      todos += (if isUpper then order(_, _, param) else order(_, param, _))
+      todos += (if isUpper
+        then (current: This, lo: TypeParamRef) => current.order(this, lo, param)
+        else (current: This, hi: TypeParamRef) => current.order(this, param, hi)
+      )
       NoType
     case tp: TypeBounds =>
       val lo1 = stripParams(tp.lo, todos, !isUpper).orElse(defn.NothingType)
@@ -569,51 +572,40 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         inst
   end ensureNonCyclic
 
-  /** Add the fact `param1 <: param2` to the constraint `current` and propagate
+  /** Add the fact `param1 <: param2` to this constraint and propagate
    *  `<:<` relationships between parameters ("edges") but not bounds.
    */
-  def order(current: This, param1: TypeParamRef, param2: TypeParamRef, direction: UnificationDirection = NoUnification)(using Context): This =
-    // /!\ Careful here: we're adding constraints on `current`, not `this`, so
-    // think twice when using an instance method! We only need to pass `this` as
-    // the `prev` argument in methods on `ConstraintLens`.
-    // TODO: Refactor this code to take `prev` as a parameter and add
-    // constraints on `this` instead?
-    if param1 == param2 || current.isLess(param1, param2) then current
+  private[OrderingConstraint] def order(prev: This, param1: TypeParamRef, param2: TypeParamRef,
+      direction: UnificationDirection = NoUnification)(using Context): This =
+    if param1 == param2 || isLess(param1, param2) then this
     else
-      assert(current.contains(param1), i"$param1")
-      assert(current.contains(param2), i"$param2")
+      assert(contains(param1), i"$param1")
+      assert(contains(param2), i"$param2")
       val unifying = direction != NoUnification
       val newUpper = {
-        val up = current.exclusiveUpper(param2, param1)
+        val up = exclusiveUpper(param2, param1)
         if unifying then
           // Since param2 <:< param1 already holds now, filter out param1 to avoid adding
           //   duplicated orderings.
           val filtered = up.filterNot(_ eq param1)
           // Only add bounds for param2 if it will be kept in the constraint after unification.
-          if direction == KeepParam2 then
-            param2 :: filtered
-          else
-            filtered
-        else
-          param2 :: up
+          if direction == KeepParam2 then param2 :: filtered else filtered
+        else param2 :: up
       }
       val newLower = {
-        val lower = current.exclusiveLower(param1, param2)
+        val lower = exclusiveLower(param1, param2)
         if unifying then
           // Similarly, filter out param2 from lowerly-ordered parameters
           //   to avoid duplicated orderings.
           val filtered = lower.filterNot(_ eq param2)
           // Only add bounds for param1 if it will be kept in the constraint after unification.
-          if direction == KeepParam1 then
-            param1 :: filtered
-          else
-            filtered
-        else
-          param1 :: lower
+          if direction == KeepParam1 then param1 :: filtered else filtered
+        else param1 :: lower
       }
-      val current1 = newLower.foldLeft(current)(upperLens.map(this, _, _, newUpper ::: _))
-      val current2 = newUpper.foldLeft(current1)(lowerLens.map(this, _, _, newLower ::: _))
-      current2
+      var current = this
+      current = newLower.foldLeft(current)((curr, p) => upperLens.map(prev, curr, p, newUpper ::: _))
+      current = newUpper.foldLeft(current)((curr, p) => lowerLens.map(prev, curr, p, newLower ::: _))
+      current
     end if
   end order
 
@@ -634,20 +626,21 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case _ =>
       Nil
 
-  private def updateEntry(current: This, param: TypeParamRef, newEntry: Type)(using Context): This = {
+  private def updateEntry(prev: This, param: TypeParamRef, newEntry: Type)(using Context): This = {
     if Config.checkNoWildcardsInConstraint then assert(!newEntry.containsWildcardTypes)
-    val oldEntry = current.entry(param)
-    var current1 = boundsLens.update(this, current, param, newEntry)
+    val oldEntry = entry(param)
+    var current = this
+    current = boundsLens.update(prev, current, param, newEntry)
       .adjustDeps(newEntry, oldEntry, param)
     newEntry match {
       case TypeBounds(lo, hi) =>
-        for p <- dependentParams(lo, isUpper = false) do
-          current1 = order(current1, p, param)
-        for p <- dependentParams(hi, isUpper = true) do
-          current1 = order(current1, param, p)
+        for p <- prev.dependentParams(lo, isUpper = false) do
+          current = current.order(prev, p, param)
+        for p <- prev.dependentParams(hi, isUpper = true) do
+          current = current.order(prev, param, p)
       case _ =>
     }
-    current1
+    current
   }
 
   /** The public version of `updateEntry`. Guarantees that there are no cycles */
