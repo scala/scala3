@@ -248,19 +248,6 @@ object Types {
       val d = defn
       hasClassSymbol(d.NothingClass) || hasClassSymbol(d.NullClass)
 
-    /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
-     *  Implemented like `isRef`, but follows more types: all type proxies as well as and- and or-types
-     */
-    private[Types] def isTightPrefix(sym: Symbol)(using Context): Boolean = stripTypeVar match {
-      case tp: NamedType => tp.info.isTightPrefix(sym)
-      case tp: ClassInfo => tp.cls eq sym
-      case tp: Types.ThisType => tp.cls eq sym
-      case tp: TypeProxy => tp.superType.isTightPrefix(sym)
-      case tp: AndType => tp.tp1.isTightPrefix(sym) && tp.tp2.isTightPrefix(sym)
-      case tp: OrType => tp.tp1.isTightPrefix(sym) || tp.tp2.isTightPrefix(sym)
-      case _ => false
-    }
-
     /** True if this type is an instance of the given `cls` or an instance of
      *  a non-bottom subclass of `cls`.
      */
