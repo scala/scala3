@@ -239,9 +239,24 @@ object Semantic:
     private val queryTreeMapper: MutableTreeWrapper = new MutableTreeWrapper
 
     class Cache:
+      /** The cache for expression values from last iteration */
       private var last: ExprValueCache =  Map.empty
+
+      /** The updated cache for expression values based on the cache values from the last iteration */
       private var current: ExprValueCache = Map.empty
+
+      /** Global cached values for expressions
+       *
+       *  The values are only added when a fixed point is reached.
+       *
+       *  It is intended to improve performance for computation related to warm values.
+       */
       private var stable: ExprValueCache = Map.empty
+
+      /** Whether the current heap is different from the last heap?
+       *
+       *  `changed == true` implies that the fixed point has been reached.
+       */
       private var changed: Boolean = false
 
       /** Abstract heap stores abstract objects
