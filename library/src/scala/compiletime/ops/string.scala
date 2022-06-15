@@ -11,7 +11,7 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  type +[+X <: String, +Y <: String] <: String
+  type +[X <: String, Y <: String] <: String
 
   /** Length of a `String` singleton type.
    *  ```scala
@@ -22,7 +22,7 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  type Length[+X <: String] <: Int
+  type Length[X <: String] <: Int
 
   /** Substring of a `String` singleton type, with a singleton type
    * begin inclusive index `IBeg`, and a singleton type exclusive end index `IEnd`.
@@ -37,7 +37,7 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  type Substring[+S <: String, +IBeg <: Int, +IEnd <: Int] <: String
+  type Substring[S <: String, IBeg <: Int, IEnd <: Int] <: String
 
   /** Tests if this `String` singleton type matches the given
    * regular expression `String` singleton type.
@@ -49,7 +49,7 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  type Matches[+S <: String, +Regex <: String] <: Boolean
+  type Matches[S <: String, Regex <: String] <: Boolean
 
   /** Returns the Char type at the specified index.
    *  An index ranges from 0 to Length[S] - 1. The first Char of
@@ -62,4 +62,4 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  type CharAt[+S <: String, +Idx <: Int] <: Char
+  type CharAt[S <: String, Idx <: Int] <: Char

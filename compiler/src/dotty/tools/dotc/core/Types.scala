@@ -175,6 +175,7 @@ object Types {
         // see: tests/explicit-nulls/pos/flow-stable.scala.disabled
         tp.tp1.isStable && (realizability(tp.tp2) eq Realizable) ||
         tp.tp2.isStable && (realizability(tp.tp1) eq Realizable)
+      case tp: AppliedType => tp.cachedIsStable
       case _ => false
     }
 
@@ -4162,9 +4163,31 @@ object Types {
     private var myStableHash: Byte = 0
     private var myGround: Byte = 0
 
+    private var myIsStablePeriod: Period = Nowhere
+    private var myIsStable: Boolean = false
+
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
+
+    private[Types] def cachedIsStable(using Context): Boolean =
+      // We need to invalidate the cache when the period changes because the
+      // case `TermRef` of `Type#isStable` reads denotations, which depend on
+      // the period. See docs/_docs/internals/periods.md for more information.
+      if myIsStablePeriod != ctx.period then
+        val res: Boolean = computeIsStable
+        // We don't cache if the type is provisional because `Type#isStable`
+        // calls `Type#stripTypeVar` which might return different results later.
+        if !isProvisional then
+          myIsStablePeriod = ctx.period
+          myIsStable = res
+        res
+      else
+        myIsStable
+
+    private def computeIsStable(using Context): Boolean = tycon match
+      case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) && args.forall(_.isStable) => true
+      case _ => false
 
     override def underlying(using Context): Type = tycon
 
@@ -4243,7 +4266,7 @@ object Types {
             // final val one = 1
             // type Two = one.type + one.type
             // ```
-            case tp: TermRef => tp.underlying
+            case tp: TypeProxy if tp.underlying.isStable => tp.underlying.fixForEvaluation
             case tp => tp
           }
 
