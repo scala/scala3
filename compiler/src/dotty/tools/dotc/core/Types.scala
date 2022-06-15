@@ -354,7 +354,8 @@ object Types {
      *
      */
     def isErroneous(using Context): Boolean =
-      widen.existsPart(_.isError, forceLazy = false)
+      try widen.existsPart(_.isError, forceLazy = false)
+      catch case ex: TypeError => true
 
     /** Is this type unusable for implicit search or overloading resolution
      *  since it has embedded errors that can match anything? This is weaker and more
