@@ -1950,6 +1950,7 @@ object Types {
       case TypeBounds(_, hi) => hi
       case st => st
     }
+    def superTypeNormalized(using Context): Type = superType.normalized
 
     /** Same as superType, except for two differences:
      *   - opaque types are treated as transparent aliases
@@ -4199,9 +4200,27 @@ object Types {
           case tycon: TypeRef if tycon.symbol.isClass => tycon
           case tycon: TypeProxy =>
             if isMatchAlias then validSuper = Nowhere
-            tycon.superType.applyIfParameterized(args).normalized
+            val was = tycon.superType.applyIfParameterized(args)
+            if false then
+              val now = was.normalized
+              if was ne now then
+                println(i"norm $was / $now")
+                new Error().printStackTrace()
+            was
           case _ => defn.AnyType
       cachedSuper
+
+    override def superTypeNormalized(using Context) =
+      if ctx.period != validSuper then
+        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
+        cachedSuper = tycon match
+          case tycon: HKTypeLambda => defn.AnyType
+          case tycon: TypeRef if tycon.symbol.isClass => tycon
+          case tycon: TypeProxy =>
+            if isMatchAlias then validSuper = Nowhere
+            tycon.superType.applyIfParameterized(args)
+          case _ => defn.AnyType
+      cachedSuper.normalized
 
     override def translucentSuperType(using Context): Type = tycon match {
       case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
