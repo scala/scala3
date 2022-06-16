@@ -1010,12 +1010,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** `tree ne null` (might need a cast to be type correct) */
     def testNotNull(using Context): Tree = {
-      val receiver = if (tree.tpe.isBottomType)
-        // If the receiver is of type `Nothing` or `Null`, add an ascription so that the selection
-        // succeeds: e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
-        Typed(tree, TypeTree(defn.AnyRefType))
-      else tree.ensureConforms(defn.ObjectType)
-      receiver.select(defn.Object_ne).appliedTo(nullLiteral).withSpan(tree.span)
+      // If the receiver is of type `Nothing` or `Null`, add an ascription or cast
+      // so that the selection succeeds.
+      // e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
+      val receiver =
+        if tree.tpe.isBottomType then
+          if ctx.explicitNulls then tree.cast(defn.AnyRefType)
+          else Typed(tree, TypeTree(defn.AnyRefType))
+        else tree.ensureConforms(defn.ObjectType)
+      // also need to cast the null literal to AnyRef in explicit nulls
+      val nullLit = if ctx.explicitNulls then nullLiteral.cast(defn.AnyRefType) else nullLiteral
+      receiver.select(defn.Object_ne).appliedTo(nullLit).withSpan(tree.span)
     }
 
     /** If inititializer tree is `_`, the default value of its type,
