@@ -118,7 +118,7 @@ object Semantic:
   end Warm
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Ref, klass: ClassSymbol, env: Env) extends Value
+  case class Fun(expr: Tree, thisV: Ref, klass: ClassSymbol) extends Value
 
   /** A value which represents a set of addresses
    *
@@ -144,7 +144,7 @@ object Semantic:
 
     def hasField(f: Symbol) = fields.contains(f)
 
-  /** The environment for method parameters
+  /** The environment stores values for constructor parameters
    *
    *  For performance and usability, we restrict parameters to be either `Cold`
    *  or `Hot`.
@@ -162,6 +162,9 @@ object Semantic:
    *  key. The reason is that given the same receiver, a method or function may
    *  be called with different arguments -- they are not decided by the receiver
    *  anymore.
+   *
+   *  TODO: remove Env as it is only used to pass value from `callConstructor` -> `eval` -> `init`.
+   *  It goes through `eval` for caching (termination) purposes.
    */
   object Env:
     opaque type Env = Map[Symbol, Value]
@@ -588,7 +591,7 @@ object Semantic:
               Hot
 
         case fun: Fun =>
-          report.error("unexpected tree in selecting a function, fun = " + fun.expr.show, fun.expr)
+          report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show, fun.expr)
           Hot
 
         case RefSet(refs) =>
@@ -596,7 +599,7 @@ object Semantic:
       }
     }
 
-    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args, printer, (_: Value).show) {
+    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
       def promoteArgs(): Contextual[Unit] = args.foreach(_.promote)
 
       def isSyntheticApply(meth: Symbol) =
@@ -704,21 +707,19 @@ object Semantic:
             else
               value.select(target, needResolve = false)
 
-        case Fun(body, thisV, klass, env) =>
+        case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then value // a call like `fun.tupled`
           else
             promoteArgs()
-            withEnv(env) {
-              eval(body, thisV, klass, cacheResult = true)
-            }
+            eval(body, thisV, klass, cacheResult = true)
 
         case RefSet(refs) =>
           refs.map(_.call(meth, args, receiver, superType)).join
       }
     }
 
-    def callConstructor(ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args, printer, (_: Value).show) {
+    def callConstructor(ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
       // init "fake" param fields for the secondary constructor
       def addParamsAsFields(env: Env, ref: Ref, ctorDef: DefDef) = {
         val paramSyms = ctorDef.termParamss.flatten.map(_.symbol)
@@ -775,7 +776,27 @@ object Semantic:
     }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, (_: Value).show) {
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+      def tryLeak(warm: Warm, nonHotOuterClass: Symbol, argValues: List[Value]): Contextual[Value] =
+        val argInfos2 = args.zip(argValues).map { (argInfo, v) => argInfo.copy(value = v) }
+        val errors = Reporter.stopEarly {
+          given Trace = Trace.empty
+          warm.callConstructor(ctor, argInfos2)
+        }
+        if errors.nonEmpty then
+          val indices =
+            for
+              (arg, i) <- argValues.zipWithIndex
+              if arg.isCold
+            yield
+              i + 1
+
+          val error = UnsafeLeaking(trace.toVector, errors.head, nonHotOuterClass, indices)
+          reporter.report(error)
+          Hot
+        else
+          warm
+
       if promoted.isCurrentObjectPromoted then Hot
       else value match {
         case Hot  =>
@@ -792,9 +813,7 @@ object Semantic:
           else
             val outer = Hot
             val warm = Warm(klass, outer, ctor, args2).ensureObjectExists()
-            val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
-            warm.callConstructor(ctor, argInfos2)
-            warm
+            tryLeak(warm, NoSymbol, args2)
 
         case Cold =>
           val error = CallCold(ctor, trace.toVector)
@@ -810,13 +829,16 @@ object Semantic:
             case _ => ref
 
           val argsWidened = args.map(_.value).widenArgs
-          val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
           val warm = Warm(klass, outer, ctor, argsWidened).ensureObjectExists()
-          warm.callConstructor(ctor, argInfos2)
-          warm
+          if argsWidened.exists(_.isCold) then
+            tryLeak(warm, klass.owner.lexicallyEnclosingClass, argsWidened)
+          else
+            val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
+            warm.callConstructor(ctor, argInfos2)
+            warm
 
-        case Fun(body, thisV, klass, env) =>
-          report.error("unexpected tree in instantiating a function, fun = " + body.show, trace.toVector.last)
+        case Fun(body, thisV, klass) =>
+          report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show, trace.toVector.last)
           Hot
 
         case RefSet(refs) =>
@@ -830,21 +852,14 @@ object Semantic:
       val sym = tmref.symbol
 
       if sym.is(Flags.Param) && sym.owner.isConstructor then
-        // if we can get the field from the Ref (which can only possibly be
-        // a secondary constructor parameter), then use it.
-        if (ref.objekt.hasField(sym))
-          ref.objekt.field(sym)
-        // instances of local classes inside secondary constructors cannot
-        // reach here, as those values are abstracted by Cold instead of Warm.
-        // This enables us to simplify the domain without sacrificing
-        // expressiveness nor soundess, as local classes inside secondary
-        // constructors are uncommon.
-        else if sym.isContainedIn(klass) then
-          env.lookup(sym)
-        else
-          // We don't know much about secondary constructor parameters in outer scope.
-          // It's always safe to approximate them with `Cold`.
-          Cold
+        val enclosingClass = sym.owner.enclosingClass.asClass
+        val thisValue2 = resolveThis(enclosingClass, ref, klass)
+        thisValue2 match
+        case Hot => Hot
+        case ref: Ref => ref.objekt.field(sym)
+        case _ =>
+            report.error("[Internal error] unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
+            Hot
       else if sym.is(Flags.Param) then
         Hot
       else
@@ -861,7 +876,7 @@ object Semantic:
               case ref: Ref => eval(vdef.rhs, ref, enclosingClass)
 
               case _ =>
-                 report.error("unexpected defTree when accessing local variable, sym = " + sym.show + ", defTree = " + sym.defTree.show, trace.toVector.last)
+                 report.error("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
                  Hot
             end match
 
@@ -932,10 +947,10 @@ object Semantic:
             if errors.nonEmpty then promoted.remove(warm)
             reporter.reportAll(errors)
 
-        case fun @ Fun(body, thisV, klass, env) =>
+        case fun @ Fun(body, thisV, klass) =>
           if !promoted.contains(fun) then
             val errors = Reporter.stopEarly {
-              val res = withEnv(env) {
+              val res = {
                 given Trace = Trace.empty
                 eval(body, thisV, klass)
               }
@@ -1120,7 +1135,7 @@ object Semantic:
     args.foreach { arg =>
       val res =
         if arg.isByName then
-          Fun(arg.tree, thisV, klass, env)
+          Fun(arg.tree, thisV, klass)
         else
           eval(arg.tree, thisV, klass)
 
@@ -1226,10 +1241,10 @@ object Semantic:
           }
 
       case closureDef(ddef) =>
-        Fun(ddef.rhs, thisV, klass, env)
+        Fun(ddef.rhs, thisV, klass)
 
       case PolyFun(body) =>
-        Fun(body, thisV, klass, env)
+        Fun(body, thisV, klass)
 
       case Block(stats, expr) =>
         eval(stats, thisV, klass)
@@ -1302,8 +1317,8 @@ object Semantic:
         Hot
 
       case _ =>
-        throw new Exception("unexpected tree: " + expr.show)
-
+        report.error("[Internal error] unexpected tree", expr)
+        Hot
 
   /** Handle semantics of leaf nodes */
   def cases(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
@@ -1331,7 +1346,8 @@ object Semantic:
         Hot
 
       case _ =>
-        throw new Exception("unexpected type: " + tp)
+        report.error("[Internal error] unexpected type " + tp, trace.toVector.last)
+        Hot
   }
 
   /** Resolve C.this that appear in `klass` */
@@ -1345,15 +1361,15 @@ object Semantic:
           val obj = ref.objekt
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !obj.hasOuter(klass) then
-            val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj, trace.toVector)
-            report.error(error.show + error.stacktrace, trace.toVector.last)
+            val error = PromoteError("[Internal error] outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj, trace.toVector)
+            report.error(error.show, trace.toVector.last)
             Hot
           else
             resolveThis(target, obj.outer(klass), outerCls)
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass)).join
         case fun: Fun =>
-          report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, trace.toVector.last)
+          report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, trace.toVector.last)
           Cold
         case Cold => Cold
 
@@ -1381,14 +1397,15 @@ object Semantic:
             resolveThis(target, thisV, cur)
 
           case None =>
-            report.warning("unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
+            // TODO: use error once we fix https://github.com/lampepfl/dotty/issues/15465
+            report.warning("[Internal error] unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
             Cold
 
       case RefSet(refs) =>
         refs.map(ref => resolveOuterSelect(target, ref, hops)).join
 
       case fun: Fun =>
-        report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
+        report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
         Cold
 
       case Cold => Cold
@@ -1515,6 +1532,10 @@ object Semantic:
         given Env = Env.empty
         eval(tree, thisV, klass)
     }
+
+    // ensure we try promotion once even if class body is empty
+    if fieldsChanged && thisV.isThisRef then
+      thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject()
 
     // The result value is ignored, use Hot to avoid futile fixed point computation
     Hot

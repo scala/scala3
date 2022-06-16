@@ -86,7 +86,7 @@ object Implicits:
    */
   abstract class ImplicitRefs(initctx: Context) {
     val irefCtx =
-      if (initctx == NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled)
+      if (initctx eq NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled)
     protected given Context = irefCtx
 
     /** The nesting level of this context. Non-zero only in ContextialImplicits */
