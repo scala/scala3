@@ -217,7 +217,7 @@ final class newMain extends MainAnnotation[FromString, Any]:
         hasParseErrors = true
         () => throw new AssertionError("trying to get invalid argument")
 
-
+  @experimental // MiMa does not check scope inherited @experimental
   private object Help:
 
     /** The name of the special argument to display the method's help.
@@ -321,6 +321,7 @@ final class newMain extends MainAnnotation[FromString, Any]:
 
   end Help
 
+  @experimental // MiMa does not check scope inherited @experimental
   private class Names(info: Info):
 
     checkNames()
