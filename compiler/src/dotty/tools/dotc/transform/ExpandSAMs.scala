@@ -53,7 +53,7 @@ class ExpandSAMs extends MiniPhase:
         case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
           val tpe1 = checkRefinements(tpe, fn)
           toPartialFunction(tree, tpe1)
-        case tpe @ SAMType(_) if ExpandSAMs.isPlatformSam(tpe.classSymbol.asClass) =>
+        case tpe @ SAMType(_) if ExpandSAMs.isPlatformSam(tpe.classSymbol.asClass) && !definesNarrowedOverrides(tpe) =>
           checkRefinements(tpe, fn)
           tree
         case tpe =>
@@ -65,6 +65,12 @@ class ExpandSAMs extends MiniPhase:
     case _ =>
       tree
   }
+
+  private def definesNarrowedOverrides(tpe: Type)(using Context): Boolean = 
+    tpe.decls.exists { sym => 
+      val resultType = sym.info.resultType
+      sym.allOverriddenSymbols.exists(resultType <:< _.info.resultType)  
+    }
 
   /** A partial function literal:
    *
