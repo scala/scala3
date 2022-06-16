@@ -219,7 +219,7 @@ object Scala3:
         !name.is(NameKinds.WildcardParamName)
         && !name.is(NameKinds.EvidenceParamName)
         && { name match
-          case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
+          case core.AnyNumberedName(nme.EMPTY, _) => true
           case _                                       => false
         }
   end NameOps

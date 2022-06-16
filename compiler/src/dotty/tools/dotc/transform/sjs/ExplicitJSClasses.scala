@@ -18,6 +18,7 @@ import core.StdNames.nme
 import core.SymDenotations.SymDenotation
 import core.Names._
 import core.NameKinds._
+import core.UniqueNameKind
 import SymUtils._
 
 import util.Store

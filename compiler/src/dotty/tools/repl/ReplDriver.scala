@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.Phases.{unfusedPhases, typerPhase}
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
-import dotty.tools.dotc.core.NameKinds.SimpleNameKind
+import dotty.tools.dotc.core.SimpleNameKind
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name

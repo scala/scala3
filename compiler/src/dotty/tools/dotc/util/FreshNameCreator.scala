@@ -4,7 +4,7 @@ package util
 
 import scala.collection.mutable
 import core.Names.TermName
-import core.NameKinds.UniqueNameKind
+import core.UniqueNameKind
 import core.StdNames.str
 
 abstract class FreshNameCreator {
