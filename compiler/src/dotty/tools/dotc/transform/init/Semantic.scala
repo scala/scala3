@@ -296,28 +296,28 @@ object Semantic:
         case None => stable.get(value, expr)
         case res => res
 
-      /** Conditionally perform an operation
+      /** Backup the state of the cache
        *
-       *  If the operation returns true, the changes are commited. Otherwise, the changes are reverted.
+       *  All the shared data structures must be immutable.
        */
-      def conditionally[T](fn: => (Boolean, T)): T =
-        val last2 = this.last
-        val current2 = this.current
-        val stable2 = this.stable
-        val heap2 = this.heap
-        val heapStable2 = this.heapStable
-        val changed2 = this.changed
-        val (commit, value) = fn
+      def backup(): Cache =
+        val cache = new Cache
+        cache.last = this.last
+        cache.current = this.current
+        cache.stable = this.stable
+        cache.heap = this.heap
+        cache.heapStable = this.heapStable
+        cache.changed = this.changed
+        cache
 
-        if commit then
-          this.last = last2
-          this.current = current2
-          this.stable = stable2
-          this.heap = heap2
-          this.heapStable = heapStable2
-          this.changed = changed2
-
-        value
+      /** Restore state from a backup */
+      def restore(cache: Cache) =
+        this.last = cache.last
+        this.current = cache.current
+        this.stable = cache.stable
+        this.heap = cache.heap
+        this.heapStable = cache.heapStable
+        this.changed = cache.changed
 
       /** Copy the value of `(value, expr)` from the last cache to the current cache
        *
@@ -459,21 +459,36 @@ object Semantic:
     def report(err: Error): Unit
     def reportAll(errs: Seq[Error]): Unit = for err <- errs do report(err)
 
+  /** A TryReporter cannot be simply thrown away
+   *
+   *  Either `abort` should be called or the errors be reported.
+   */
+  trait TryReporter extends Reporter:
+    def abort()(using Cache): Unit
+    def errors: List[Error]
+
   object Reporter:
     class BufferedReporter extends Reporter:
       private val buf = new mutable.ArrayBuffer[Error]
       def errors = buf.toList
       def report(err: Error) = buf += err
 
+    class TryBufferedReporter(backup: Cache) extends BufferedReporter with TryReporter:
+      def abort()(using Cache): Unit = cache.restore(backup)
+
     class ErrorFound(val error: Error) extends Exception
     class StopEarlyReporter extends Reporter:
       def report(err: Error) = throw new ErrorFound(err)
 
-    /** Capture all errors and return as a list */
-    def errorsIn(fn: Reporter ?=> Unit): List[Error] =
-      val reporter = new BufferedReporter
+    /** Capture all errors with a TryReporter
+     *
+     *  The TryReporter cannot be thrown away: either `abort` must be called or
+     *  the errors must be reported.
+     */
+    def errorsIn(fn: Reporter ?=> Unit)(using Cache): TryReporter =
+      val reporter = new TryBufferedReporter(cache.backup())
       fn(using reporter)
-      reporter.errors.toList
+      reporter
 
     /** Stop on first error */
     def stopEarly(fn: Reporter ?=> Unit): List[Error] =
@@ -485,6 +500,11 @@ object Semantic:
       catch case ex: ErrorFound =>
         ex.error :: Nil
 
+    def hasErrors(fn: Reporter ?=> Unit)(using Cache): Boolean =
+      val backup = cache.backup()
+      val errors = stopEarly(fn)
+      cache.restore(backup)
+      errors.nonEmpty
 
   inline def reporter(using r: Reporter): Reporter = r
 
@@ -517,9 +537,8 @@ object Semantic:
     def widenArg: Contextual[Value] =
       a match
       case _: Ref | _: Fun =>
-        val errors = Reporter.stopEarly { a.promote("Argument cannot be promoted to hot") }
-        if errors.isEmpty then Hot
-        else Cold
+        val hasError = Reporter.hasErrors { a.promote("Argument cannot be promoted to hot") }
+        if hasError then Cold else Hot
 
       case RefSet(refs) =>
         refs.map(_.widenArg).join
@@ -662,9 +681,11 @@ object Semantic:
         var allArgsHot = true
         val allParamTypes = methodType.paramInfoss.flatten.map(_.repeatedToSingle)
         val errors = allParamTypes.zip(args).flatMap { (info, arg) =>
-          val errors = Reporter.errorsIn { arg.promote }
-          allArgsHot = allArgsHot && errors.isEmpty
-          info match
+          val tryReporter = Reporter.errorsIn { arg.promote }
+          allArgsHot = allArgsHot && tryReporter.errors.isEmpty
+          if tryReporter.errors.isEmpty then tryReporter.errors
+          else
+            info match
             case typeParamRef: TypeParamRef =>
               val bounds = typeParamRef.underlying.bounds
               val isWithinBounds = bounds.lo <:< defn.NothingType && defn.AnyType <:< bounds.hi
@@ -673,8 +694,12 @@ object Semantic:
               // type parameter T with Any as its upper bound and Nothing as its lower bound.
               // the other arguments should either correspond to a parameter type that is T
               // or that does not contain T as a component.
-              if isWithinBounds && !otherParamContains then Nil else errors
-            case _ => errors
+              if isWithinBounds && !otherParamContains then
+                tryReporter.abort()
+                Nil
+              else
+                tryReporter.errors
+            case _ => tryReporter.errors
         }
         (errors, allArgsHot)
 
@@ -721,15 +746,16 @@ object Semantic:
             if target.hasSource then
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
-              val argErrors = Reporter.errorsIn { promoteArgs() }
+              val tryReporter = Reporter.errorsIn { promoteArgs() }
               // normal method call
-              if argErrors.nonEmpty && isSyntheticApply(meth) then
+              if tryReporter.errors.nonEmpty && isSyntheticApply(meth) then
+                tryReporter.abort()
                 val klass = meth.owner.companionClass.asClass
                 val outerCls = klass.owner.lexicallyEnclosingClass.asClass
                 val outer = resolveOuterSelect(outerCls, ref, 1)
                 outer.instantiate(klass, klass.primaryConstructor, args)
               else
-                reporter.reportAll(argErrors)
+                reporter.reportAll(tryReporter.errors)
                 extendTrace(ddef) {
                   eval(ddef.rhs, ref, cls, cacheResult = true)
                 }
@@ -841,15 +867,15 @@ object Semantic:
       if promoted.isCurrentObjectPromoted then Hot
       else value match {
         case Hot  =>
-          val buffer = new mutable.ArrayBuffer[Error]
+          var allHot = true
           val args2 = args.map { arg =>
-            val errors = Reporter.errorsIn { arg.promote }
-            buffer ++= errors
-            if errors.isEmpty then Hot
-            else arg.value.widenArg
+            val hasErrors = Reporter.hasErrors { arg.promote }
+            allHot = allHot && !hasErrors
+            if hasErrors then arg.value.widenArg
+            else Hot
           }
 
-          if buffer.isEmpty then
+          if allHot then
             Hot
           else
             val outer = Hot
@@ -998,7 +1024,7 @@ object Semantic:
               given Trace = Trace.empty.add(body)
               res.promote("The function return value is not fully initialized.")
             }
-            if (errors.nonEmpty)
+            if errors.nonEmpty then
               reporter.report(UnsafePromotion(msg, trace.toVector, errors.head))
             else
               promoted.add(fun)
