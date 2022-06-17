@@ -236,8 +236,6 @@ object Semantic:
         case tree: Tree => tree
         case null => ???
 
-    private val queryTreeMapper: MutableTreeWrapper = new MutableTreeWrapper
-
     class Cache:
       /** The cache for expression values from last iteration */
       private var last: ExprValueCache =  Map.empty
@@ -288,14 +286,15 @@ object Semantic:
       /** Used to revert heap to last stable heap. */
       private var heapStable: Heap = Map.empty
 
+      /** Used to avoid allocation, its state does not matter */
+      private given MutableTreeWrapper = new MutableTreeWrapper
+
       def hasChanged = changed
 
-      def contains(value: Value, expr: Tree) =
-        current.contains(value, expr) || stable.contains(value, expr)
-
-      def apply(value: Value, expr: Tree) =
-        if current.contains(value, expr) then current.get(value, expr)
-        else stable.get(value, expr)
+      def get(value: Value, expr: Tree): Option[Value] =
+        current.get(value, expr) match
+        case None => stable.get(value, expr)
+        case res => res
 
       /** Conditionally perform an operation
        *
@@ -330,12 +329,12 @@ object Semantic:
        */
       def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Value): Contextual[Value] =
         val assumeValue: Value =
-          if last.contains(value, expr) then
-            last.get(value, expr)
-          else
+          last.get(value, expr) match
+          case Some(value) => value
+          case None =>
             this.last = last.updatedNested(value, expr, Hot)
             Hot
-          end if
+
         this.current = current.updatedNested(value, expr, assumeValue)
 
         val actual = fun
@@ -408,17 +407,13 @@ object Semantic:
     end Cache
 
     extension (cache: ExprValueCache)
-      private def contains(value: Value, expr: Tree) =
-        queryTreeMapper.queryTree = expr
-        cache.contains(value) && cache(value).contains(queryTreeMapper)
+      private def get(value: Value, expr: Tree)(using queryWrapper: MutableTreeWrapper): Option[Value] =
+        queryWrapper.queryTree = expr
+        cache.get(value).flatMap(_.get(queryWrapper))
 
-      private def get(value: Value, expr: Tree): Value =
-        queryTreeMapper.queryTree = expr
-        cache(value)(queryTreeMapper)
-
-      private def removed(value: Value, expr: Tree) =
-        queryTreeMapper.queryTree = expr
-        val innerMap2 = cache(value).removed(queryTreeMapper)
+      private def removed(value: Value, expr: Tree)(using queryWrapper: MutableTreeWrapper) =
+        queryWrapper.queryTree = expr
+        val innerMap2 = cache(value).removed(queryWrapper)
         cache.updated(value, innerMap2)
 
       private def updatedNested(value: Value, expr: Tree, result: Value): ExprValueCache =
@@ -1167,10 +1162,14 @@ object Semantic:
    *  it is located.
    *
    *  This method only handles cache logic and delegates the work to `cases`.
+   *
+   *  The parameter `cacheResult` is used to reduce the size of the cache.
    */
   def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
-    if (cache.contains(thisV, expr)) cache(thisV, expr)
-    else cache.assume(thisV, expr, cacheResult) { cases(expr, thisV, klass) }
+    cache.get(thisV, expr) match
+    case Some(value) => value
+    case None =>
+      cache.assume(thisV, expr, cacheResult) { cases(expr, thisV, klass) }
   }
 
   /** Evaluate a list of expressions */
