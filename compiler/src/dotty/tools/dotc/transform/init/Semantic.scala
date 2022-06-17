@@ -168,44 +168,56 @@ object Semantic:
   import Promoted.*
   inline def promoted(using p: Promoted): Promoted = p
 
-  /** Interpreter configuration
+  /** Cache used in fixed point computation
    *
-   * The (abstract) interpreter can be seen as a push-down automaton
-   * that transits between the configurations where the stack is the
-   * implicit call stack of the meta-language.
+   *  The analysis computes the least fixed point for the cache (see doc for
+   *   `ExprValueCache`).
    *
-   * It's important that the configuration is finite for the analysis
-   * to terminate.
+   *  For the fixed point computation to terminate, we need to make sure that
+   *  the domain of the cache, i.e. the key pair (Ref, Tree) is finite. As the
+   *  code is finite, we only need to carefully design the abstract domain to
+   *  be finitary.
    *
-   * For soundness, we need to compute fixed point of the cache, which
-   * maps configuration to evaluation result.
+   *  We also need to make sure that the computing function (i.e. the abstract
+   *  interpreter) is monotone. Error handling breaks monotonicity of the
+   *  abstract interpreter, because when an error happens, we always return
+   *  the bottom value `Hot` for an expression. It is not a threat for
+   *  termination because when an error happens, we stop the fixed point
+   *  computation at the end of the iteration where the error happens.
    *
-   * Thanks to heap monotonicity, heap is not part of the configuration.
-   *
-   * This class is only used for the purpose of documentation.
+   *  Note: It's tempting to use location of trees as key. That should
+   *  be avoided as a template may have the same location as its single
+   *  statement body. Macros may also create incorrect locations.
    */
-  case class Config(thisV: Value, expr: Tree)
-
-  /** Cache used to terminate the analysis
-   *
-   * A finitary configuration is not enough for the analysis to
-   * terminate.  We need to use cache to let the interpreter "know"
-   * that it can terminate.
-   *
-   * For performance reasons we use curried key.
-   *
-   * Note: It's tempting to use location of trees as key. That should
-   * be avoided as a template may have the same location as its single
-   * statement body. Macros may also create incorrect locations.
-   */
-
   object Cache:
     /** Cache for expressions
      *
      *  Ref -> Tree -> Value
      *
      *  The first key is the value of `this` for the expression. We do not need
-     *  environment, because the environment is always hot.
+     *  environment in the key, because the environment is always hot.
+     *
+     *  We do not need the heap in the key, because the value of an expression
+     *  is only determined by the value of `this`. The heap is immutable: the
+     *  abstract values for object fields never change within one iteration.
+     *  The initial abstraction of a field is always a safe over-approximation
+     *  thanks to monotonicity of initialization states.
+     *
+     *  If the heap is unstable in an iteration, the cache should also be
+     *  unstable. This is because all values stored in the heap are also present
+     *  in the cache. Therefore, we only need to track whether the cache is
+     *  stable between two iterations.
+     *
+     *  The heap is not part of the fixed point computation -- we throw the
+     *  unstable heap from last iteration away. In contrast, we use the unstable
+     *  output cache from the last iteration as input for the next iteration.
+     *  This is safe because the heap is determined by the cache -- it is a
+     *  "local" data to the computing function, conceptually. Local data is
+     *  always safe be discarded.
+     *
+     *  Now, if a fixed point is reached, the local data contains stable data
+     *  that could be reused to check other classes. We employ this trick to
+     *  improve performance of the analysis.
      */
     private type ExprValueCache = Map[Value, Map[TreeWrapper, Value]]
 
@@ -323,7 +335,7 @@ object Semantic:
        *
        *  It assumes the value is `Hot` if it doesn't exist in the last cache.
        *
-       *  It update the current caches if the values change.
+       *  It updates the current caches if the values change.
        *
        *  The two caches are required because we want to make sure in a new iteration, an expression is evaluated once.
        */
