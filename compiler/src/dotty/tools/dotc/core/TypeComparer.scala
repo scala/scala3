@@ -1112,7 +1112,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                       if tycon1sym == tycon2sym && tycon1sym.isAliasType then
                         val preConstraint = constraint
                         isSubArgs(args1, args2, tp1, tparams)
-                        && tryAlso(preConstraint, recur(tp1.superType, tp2.superType))
+                        && tryAlso(preConstraint, recur(tp1.superTypeNormalized, tp2.superTypeNormalized))
                       else
                         isSubArgs(args1, args2, tp1, tparams)
                     }
@@ -1177,7 +1177,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        */
       def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
         if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isInstanceOf[MatchAlias])
-          if (tyconIsTypeRef) recur(tp1, tp2.superType)
+          if (tyconIsTypeRef) recur(tp1, tp2.superTypeNormalized)
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
           fallback(tycon2bounds.lo)
@@ -1249,11 +1249,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
           !sym.isClass && {
             defn.isCompiletimeAppliedType(sym) && compareCompiletimeAppliedType(tp1, tp2, fromBelow = false) ||
-            recur(tp1.superType, tp2) ||
+            recur(tp1.superTypeNormalized, tp2) ||
             tryLiftedToThis1
           }|| byGadtBounds
         case tycon1: TypeProxy =>
-          recur(tp1.superType, tp2)
+          recur(tp1.superTypeNormalized, tp2)
         case _ =>
           false
       }
@@ -2645,9 +2645,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         !(tp2 <:< tp1)
         && (provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1))
       case (tp1: NamedType, _) if gadtBounds(tp1.symbol) != null =>
-        provablyDisjoint(gadtBounds(tp1.symbol).uncheckedNN.hi, tp2) || provablyDisjoint(tp1.superType, tp2)
+        provablyDisjoint(gadtBounds(tp1.symbol).uncheckedNN.hi, tp2)
+        || provablyDisjoint(tp1.superTypeNormalized, tp2)
       case (_, tp2: NamedType) if gadtBounds(tp2.symbol) != null =>
-        provablyDisjoint(tp1, gadtBounds(tp2.symbol).uncheckedNN.hi) || provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(tp1, gadtBounds(tp2.symbol).uncheckedNN.hi)
+        || provablyDisjoint(tp1, tp2.superTypeNormalized)
       case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
         tp1.termSymbol != tp2.termSymbol
       case (tp1: TermRef, tp2: TypeRef) if isEnumValue(tp1) =>
@@ -2663,11 +2665,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case (tp1: Type, tp2: Type) if defn.isTupleNType(tp2) =>
         provablyDisjoint(tp1, tp2.toNestedPairs)
       case (tp1: TypeProxy, tp2: TypeProxy) =>
-        provablyDisjoint(tp1.superType, tp2) || provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(tp1.superTypeNormalized, tp2) || provablyDisjoint(tp1, tp2.superTypeNormalized)
       case (tp1: TypeProxy, _) =>
-        provablyDisjoint(tp1.superType, tp2)
+        provablyDisjoint(tp1.superTypeNormalized, tp2)
       case (_, tp2: TypeProxy) =>
-        provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(tp1, tp2.superTypeNormalized)
       case _ =>
         false
     }
