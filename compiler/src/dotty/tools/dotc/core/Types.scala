@@ -255,7 +255,7 @@ object Types {
       case tp: NamedType => tp.info.isTightPrefix(sym)
       case tp: ClassInfo => tp.cls eq sym
       case tp: Types.ThisType => tp.cls eq sym
-      case tp: TypeProxy => tp.underlying.isTightPrefix(sym)
+      case tp: TypeProxy => tp.superType.isTightPrefix(sym)
       case tp: AndType => tp.tp1.isTightPrefix(sym) && tp.tp2.isTightPrefix(sym)
       case tp: OrType => tp.tp1.isTightPrefix(sym) || tp.tp2.isTightPrefix(sym)
       case _ => false
@@ -331,7 +331,7 @@ object Types {
           val sym = tp.symbol
           if (sym.isClass) sym == defn.AnyKindClass else loop(tp.translucentSuperType)
         case tp: TypeProxy =>
-          loop(tp.underlying)
+          loop(tp.underlying) // underlying OK here since an AnyKinded type cannot be a type argument of another type
         case _ =>
           false
       }
@@ -342,6 +342,7 @@ object Types {
     final def isNotNull(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
       case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
+      case tp: AppliedType => tp.superType.isNotNull
       case tp: TypeBounds => tp.lo.isNotNull
       case tp: TypeProxy => tp.underlying.isNotNull
       case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
@@ -501,7 +502,7 @@ object Types {
         val sym = tp.symbol
         if (sym.isClass) sym else tp.superType.classSymbol
       case tp: TypeProxy =>
-        tp.underlying.classSymbol
+        tp.superType.classSymbol
       case tp: ClassInfo =>
         tp.cls
       case AndType(l, r) =>
@@ -535,7 +536,7 @@ object Types {
         val sym = tp.symbol
         if (include(sym)) sym :: Nil else tp.superType.parentSymbols(include)
       case tp: TypeProxy =>
-        tp.underlying.parentSymbols(include)
+        tp.superType.parentSymbols(include)
       case tp: ClassInfo =>
         tp.cls :: Nil
       case AndType(l, r) =>
@@ -557,7 +558,7 @@ object Types {
         val sym = tp.symbol
         sym == cls || !sym.isClass && tp.superType.hasClassSymbol(cls)
       case tp: TypeProxy =>
-        tp.underlying.hasClassSymbol(cls)
+        tp.superType.hasClassSymbol(cls)
       case tp: ClassInfo =>
         tp.cls == cls
       case AndType(l, r) =>
@@ -571,12 +572,14 @@ object Types {
      *  bounds of type variables in the constraint.
      */
     def isMatchableBound(using Context): Boolean = dealias match
-      case tp: TypeRef => tp.symbol == defn.MatchableClass
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        sym == defn.MatchableClass || !sym.isClass && tp.superType.isMatchableBound
       case tp: TypeParamRef =>
         ctx.typerState.constraint.entry(tp) match
           case bounds: TypeBounds => bounds.hi.isMatchableBound
           case _ => false
-      case tp: TypeProxy => tp.underlying.isMatchableBound
+      case tp: TypeProxy => tp.superType.isMatchableBound
       case tp: AndType => tp.tp1.isMatchableBound || tp.tp2.isMatchableBound
       case tp: OrType => tp.tp1.isMatchableBound && tp.tp2.isMatchableBound
       case _ => false
