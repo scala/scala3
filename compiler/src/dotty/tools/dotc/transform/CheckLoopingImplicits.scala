@@ -6,7 +6,7 @@ import MegaPhase.MiniPhase
 import Contexts.*, Types.*, Symbols.*, SymDenotations.*, Flags.*
 import ast.*
 import Decorators.*
-
+import StdNames.*
 
 object CheckLoopingImplicits:
   val name: String = "checkLoopingImplicits"
@@ -60,6 +60,9 @@ class CheckLoopingImplicits extends MiniPhase:
       case Block(stats, expr) =>
         stats.foreach(checkNotLooping)
         checkNotLooping(expr)
+      case Inlined(_, bindings, expr) =>
+        bindings.foreach(checkNotLooping)
+        checkNotLooping(expr)
       case Typed(expr, _) =>
         checkNotLooping(expr)
       case Assign(lhs, rhs) =>
@@ -84,7 +87,9 @@ class CheckLoopingImplicits extends MiniPhase:
         checkNotLooping(t.rhs)
       case _ =>
 
-    if sym.isOneOf(GivenOrImplicit | Lazy | ExtensionMethod) then
+    if sym.isOneOf(GivenOrImplicit | Lazy | ExtensionMethod)
+      || sym.name == nme.apply && sym.owner.is(Module) && sym.owner.sourceModule.isOneOf(GivenOrImplicit)
+    then
       checkNotLooping(mdef.rhs)
     mdef
   end transform
