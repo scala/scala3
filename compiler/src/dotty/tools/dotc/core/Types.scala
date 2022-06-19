@@ -618,7 +618,7 @@ object Types {
       case tp: ClassInfo =>
         tp.decls
       case tp: TypeProxy =>
-        tp.underlying.decls
+        tp.superType.decls
       case _ =>
         EmptyScope
     }
@@ -644,7 +644,7 @@ object Types {
       case tp: ClassInfo =>
         tp.decls.denotsNamed(name).filterWithFlags(EmptyFlags, excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
-        tp.underlying.findDecl(name, excluded)
+        tp.superType.findDecl(name, excluded)
       case err: ErrorType =>
         newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
       case _ =>
@@ -888,7 +888,7 @@ object Types {
           def showPrefixSafely(pre: Type)(using Context): String = pre.stripTypeVar match {
             case pre: TermRef => i"${pre.symbol.name}."
             case pre: TypeRef => i"${pre.symbol.name}#"
-            case pre: TypeProxy => showPrefixSafely(pre.underlying)
+            case pre: TypeProxy => showPrefixSafely(pre.superType)
             case _ => if (pre.typeSymbol.exists) i"${pre.typeSymbol.name}#" else "."
           }
 
@@ -915,7 +915,7 @@ object Types {
         val ns = tp.parent.memberNames(keepOnly, pre)
         if (keepOnly(pre, tp.refinedName)) ns + tp.refinedName else ns
       case tp: TypeProxy =>
-        tp.underlying.memberNames(keepOnly, pre)
+        tp.superType.memberNames(keepOnly, pre)
       case tp: AndType =>
         tp.tp1.memberNames(keepOnly, pre) | tp.tp2.memberNames(keepOnly, pre)
       case tp: OrType =>
@@ -1371,7 +1371,7 @@ object Types {
           // which ensures that `X$ <:< X.type` returns true.
           single(tp.symbol.companionModule.termRef.asSeenFrom(tp.prefix, tp.symbol.owner))
         case tp: TypeProxy =>
-          tp.underlying.atoms match
+          tp.superType.atoms match
             case Atoms.Range(_, hi) => Atoms.Range(Set.empty, hi)
             case Atoms.Unknown => Atoms.Unknown
         case _ => Atoms.Unknown
@@ -1615,7 +1615,7 @@ object Types {
       case tp: ClassInfo =>
         tp.prefix
       case tp: TypeProxy =>
-        tp.underlying.normalizedPrefix
+        tp.superType.normalizedPrefix
       case _ =>
         NoType
     }
