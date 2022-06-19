@@ -1,3 +1,7 @@
+-- [E008] Not Found Error: tests/neg-custom-args/jdk-9-app.scala:1:17 --------------------------------------------------
+1 |import java.lang.ProcessHandle // error: not a member
+  |                 ^^^^^^^^^^^^^
+  |                 value ProcessHandle is not a member of java.lang
 -- [E006] Not Found Error: tests/neg-custom-args/jdk-9-app.scala:4:10 --------------------------------------------------
 4 |  println(ProcessHandle.current().pid()) // error: not found
   |          ^^^^^^^^^^^^^

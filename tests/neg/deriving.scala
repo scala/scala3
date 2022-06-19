@@ -1,4 +1,4 @@
-import reflect.Generic
+import reflect.Generic // error: Generic is not a member of reflect
 
 sealed trait A derives Generic // error: cannot take shape, it has anonymous or inaccessible subclasses
 
