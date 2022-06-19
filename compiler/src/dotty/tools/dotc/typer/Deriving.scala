@@ -286,7 +286,7 @@ trait Deriving {
             case tp @ TypeRef(prefix, _) if tp.symbol.isClass =>
               prefix.select(tp.symbol.companionModule).asInstanceOf[TermRef]
             case tp: TypeProxy =>
-              companionRef(tp.underlying)
+              companionRef(tp.superType)
           }
           val resultType = instantiated(sym.info)
           val companion = companionRef(resultType)

@@ -104,7 +104,7 @@ object TypeUtils {
       case self @ TypeRef(prefix, _) if self.symbol.isClass =>
         prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
       case self: TypeProxy =>
-        self.underlying.mirrorCompanionRef
+        self.superType.mirrorCompanionRef
     }
 
     /** Is this type a methodic type that takes implicit parameters (both old and new) at some point? */
