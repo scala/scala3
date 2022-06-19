@@ -1690,14 +1690,20 @@ object Types {
      *  is returned. If no function type is found, Any is returned.
      */
     def findFunctionType(using Context): Type = dealias match
-      case tp: AndOrType =>
+      case tp: AndType =>
         tp.tp1.findFunctionType & tp.tp2.findFunctionType
+      case tp: OrType =>
+        val tf1 = tp.tp1.findFunctionType
+        val tf2 = tp.tp2.findFunctionType
+        if !tf1.exists then tf2
+        else if !tf2.exists then tf1
+        else NoType
       case t if defn.isNonRefinedFunction(t) =>
         t
       case t @ SAMType(_) =>
         t
       case _ =>
-        defn.AnyType
+        NoType
 
     /** This type seen as a TypeBounds */
     final def bounds(using Context): TypeBounds = this match {
