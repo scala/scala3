@@ -33,7 +33,7 @@ trait Deriving {
       case tp: TypeRef if tp.symbol.isClass => tp
       case tp: TypeRef if tp.symbol.isAbstractType => NoType
       case tp: TermRef => NoType
-      case tp: TypeProxy => underlyingClassRef(tp.underlying)
+      case tp: TypeProxy => underlyingClassRef(tp.superType)
       case _ => NoType
     }
 
