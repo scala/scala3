@@ -1584,7 +1584,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp: RecType => fix(tp.parent).substRecThis(tp, anchor)
       case tp @ RefinedType(parent, rname, rinfo) => tp.derivedRefinedType(fix(parent), rname, rinfo)
       case tp: TypeParamRef => fixOrElse(bounds(tp).hi, tp)
-      case tp: TypeProxy => fixOrElse(tp.underlying, tp)
+      case tp: TypeProxy => fixOrElse(tp.superType, tp)
       case tp: AndType => tp.derivedAndType(fix(tp.tp1), fix(tp.tp2))
       case tp: OrType  => tp.derivedOrType (fix(tp.tp1), fix(tp.tp2))
       case tp => tp
@@ -1857,7 +1857,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
     case tp: SingletonType if tp.isStable => tp
     case tp: ValueType => SkolemType(tp)
-    case tp: TypeProxy => ensureStableSingleton(tp.underlying)
+    case tp: TypeProxy => ensureStableSingleton(tp.superType)
     case tp => assert(ctx.reporter.errorsReported); SkolemType(tp)
   }
 
