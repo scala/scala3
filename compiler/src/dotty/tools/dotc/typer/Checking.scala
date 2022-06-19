@@ -1429,6 +1429,27 @@ trait Checking {
         em"""Implementation restriction: cannot generate CanThrow capability for this kind of catch.
             |CanThrow capabilities can only be generated $req.""",
         pat.srcPos)
+
+  /** (1) Check that every named import selector refers to a type or value member of the
+   *  qualifier type.
+   *  (2) Check that no import selector is renamed more than once.
+   */
+  def checkImportSelectors(qualType: Type, selectors: List[untpd.ImportSelector])(using Context): Unit =
+    val seen = mutable.Set.empty[Name]
+
+    def checkIdent(sel: untpd.ImportSelector): Unit =
+      if sel.name != nme.ERROR
+          && !qualType.member(sel.name).exists
+          && !qualType.member(sel.name.toTypeName).exists
+      then
+        report.error(NotAMember(qualType, sel.name, "value"), sel.imported.srcPos)
+      if seen.contains(sel.name) then
+        report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
+      seen += sel.name
+
+    for sel <- selectors do
+      if !sel.isWildcard then checkIdent(sel)
+  end checkImportSelectors
 }
 
 trait ReChecking extends Checking {
@@ -1466,4 +1487,5 @@ trait NoChecking extends ReChecking {
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
   override def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit = ()
   override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = ()
+  override def checkImportSelectors(qualType: Type, selectors: List[untpd.ImportSelector])(using Context): Unit = ()
 }

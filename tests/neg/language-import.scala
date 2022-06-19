@@ -3,7 +3,7 @@ object a:
   import l.noAutoTupling     // error
   import l.experimental.genericNumberLiterals  // error
   val scala = c
-  import scala.language.noAutoTupling  // error
+  import scala.language.noAutoTupling  // error // error
   val language = b
   import language.experimental.genericNumberLiterals // error
 
