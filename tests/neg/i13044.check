@@ -1,3 +1,135 @@
+-- Warning: tests/neg/i13044.scala:50:40 -------------------------------------------------------------------------------
+50 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
+   |                                        ^^^^^^^^^^
+   |Infinite loop in function body
+   |{
+   |  val SchemaDerivation_this: Schema.type = Schema
+   |  {
+   |    val SchemaDerivation_this: (SchemaDerivation_this : Schema.type) = SchemaDerivation_this
+   |    {
+   |      val $scrutinee1: 
+   |        scala.deriving.Mirror.Product{
+   |          MirroredMonoType = A; MirroredType = A; MirroredLabel = ("A" : String); MirroredElemTypes = (A, B); 
+   |            MirroredElemLabels = (("a" : String), ("b" : String))
+   |        }
+   |       = 
+   |        A.$asInstanceOf[
+   |          scala.deriving.Mirror.Product{
+   |            MirroredMonoType = A; MirroredType = A; MirroredLabel = ("A" : String); MirroredElemTypes = (A, B); 
+   |              MirroredElemLabels = (("a" : String), ("b" : String))
+   |          }
+   |        ]
+   |      val m: 
+   |        scala.deriving.Mirror.Product{
+   |          MirroredMonoType = A; MirroredType = A; MirroredLabel = ("A" : String); MirroredElemTypes = (A, B); 
+   |            MirroredElemLabels = (("a" : String), ("b" : String))
+   |        }
+   |       = $scrutinee1
+   |      lazy val fields: List[Schema[Any]] = 
+   |        {
+   |          val SchemaDerivation_this: (SchemaDerivation_this : (SchemaDerivation_this : Schema.type)) = 
+   |            SchemaDerivation_this
+   |          {
+   |            val builder: Schema[Any] = TestApp.typeSchema.asInstanceOf[Schema[Any]]
+   |            {
+   |              val SchemaDerivation_this: 
+   |                (SchemaDerivation_this : (SchemaDerivation_this : (SchemaDerivation_this : Schema.type)))
+   |               = SchemaDerivation_this
+   |              (
+   |                {
+   |                  val builder: Schema[Any] = 
+   |                    {
+   |                      val SchemaDerivation_this: Schema.type = Schema
+   |                      (
+   |                        {
+   |                          val SchemaDerivation_this: (SchemaDerivation_this : Schema.type) = SchemaDerivation_this
+   |                          {
+   |                            val $scrutinee4: 
+   |                              scala.deriving.Mirror.Product{
+   |                                MirroredMonoType = B; MirroredType = B; MirroredLabel = ("B" : String); 
+   |                                  MirroredElemTypes = C *: EmptyTuple.type
+   |                                ; MirroredElemLabels = ("c" : String) *: EmptyTuple.type
+   |                              }
+   |                             = 
+   |                              B.$asInstanceOf[
+   |                                scala.deriving.Mirror.Product{
+   |                                  MirroredMonoType = B; MirroredType = B; MirroredLabel = ("B" : String); 
+   |                                    MirroredElemTypes = C *: EmptyTuple.type
+   |                                  ; MirroredElemLabels = ("c" : String) *: EmptyTuple.type
+   |                                }
+   |                              ]
+   |                            val m: 
+   |                              scala.deriving.Mirror.Product{
+   |                                MirroredMonoType = B; MirroredType = B; MirroredLabel = ("B" : String); 
+   |                                  MirroredElemTypes = C *: EmptyTuple.type
+   |                                ; MirroredElemLabels = ("c" : String) *: EmptyTuple.type
+   |                              }
+   |                             = $scrutinee4
+   |                            lazy val fields: List[Schema[Any]] = 
+   |                              {
+   |                                val SchemaDerivation_this: 
+   |                                  (SchemaDerivation_this : (SchemaDerivation_this : Schema.type))
+   |                                 = SchemaDerivation_this
+   |                                {
+   |                                  val builder: Schema[Any] = 
+   |                                    {
+   |                                      val SchemaDerivation_this: Schema.type = Schema
+   |                                      (
+   |                                        {
+   |                                          val SchemaDerivation_this: (...SchemaDerivation_this : ....type) = 
+   |                                            SchemaDerivation_this
+   |                                          {
+   |                                            val $scrutinee6: 
+   |                                              ...{
+   |                                                MirroredMonoType...; MirroredType...; MirroredLabel...; 
+   |                                                  MirroredElemTypes...
+   |                                                ; MirroredElemLabels...
+   |                                              }
+   |                                             = ....$asInstanceOf[...]
+   |                                            val m: ... = ...$scrutinee6
+   |                                            lazy val fields: ... = 
+   |                                              {
+   |                                                val SchemaDerivation_this: ... = ...
+   |                                                ...:...
+   |                                              }
+   |                                            {
+   |                                              final class $anon() extends ...(), ... {
+   |                                                def build: ... = ...
+   |                                              }
+   |                                              ...():...
+   |                                            }
+   |                                          }:...[...]
+   |                                        }
+   |                                      :Schema[C])
+   |                                    }.asInstanceOf[Schema[Any]]
+   |                                  SchemaDerivation_this.recurse[EmptyTuple.type].::[Schema[Any]](builder)
+   |                                }:List[Schema[Any]]
+   |                              }
+   |                            {
+   |                              final class $anon() extends Object(), Schema[B] {
+   |                                def build: B = ???
+   |                              }
+   |                              new Object with Schema[B] {...}():Schema[B]
+   |                            }
+   |                          }:Schema[B]
+   |                        }
+   |                      :Schema[B])
+   |                    }.asInstanceOf[Schema[Any]]
+   |                  SchemaDerivation_this.recurse[EmptyTuple.type].::[Schema[Any]](builder)
+   |                }
+   |              :List[Schema[Any]])
+   |            }.::[Schema[Any]](builder)
+   |          }:List[Schema[Any]]
+   |        }
+   |      {
+   |        final class $anon() extends Object(), Schema[A] {
+   |          def build: A = ???
+   |        }
+   |        new Object with Schema[A] {...}():Schema[A]
+   |      }
+   |    }:Schema[A]
+   |  }:Schema[A]
+   |}
 -- Error: tests/neg/i13044.scala:50:40 ---------------------------------------------------------------------------------
 50 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
    |                                        ^^^^^^^^^^
