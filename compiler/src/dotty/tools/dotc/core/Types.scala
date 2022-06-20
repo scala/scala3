@@ -1686,7 +1686,7 @@ object Types {
     }
 
     /** Determine the expected function type from the prototype.
-     *  If no function type is found, Any is returned. If multiple
+     *  If no function type is found, NoType is returned. If multiple
      *  function types are found in an intersection, their intersection
      *  is returned. This works since `&` invokes `TypeComparer.distributeAnd`, which
      *  ensures that `(A1 => B1) & (A2 => B2)` simplifies to `(A1 | A2) => (B1 & B2)`,
