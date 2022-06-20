@@ -194,8 +194,7 @@ object Semantic:
      *
      *  Ref -> Tree -> Value
      *
-     *  The first key is the value of `this` for the expression. We do not need
-     *  environment in the key, because the environment is always hot.
+     *  The first key is the value of `this` for the expression.
      *
      *  We do not need the heap in the key, because the value of an expression
      *  is only determined by the value of `this`. The heap is immutable: the
@@ -268,7 +267,7 @@ object Semantic:
 
       /** Whether the current heap is different from the last heap?
        *
-       *  `changed == true` implies that the fixed point has been reached.
+       *  `changed == false` implies that the fixed point has been reached.
        */
       private var changed: Boolean = false
 
