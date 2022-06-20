@@ -183,7 +183,9 @@ object Semantic:
    *  abstract interpreter, because when an error happens, we always return
    *  the bottom value `Hot` for an expression. It is not a threat for
    *  termination because when an error happens, we stop the fixed point
-   *  computation at the end of the iteration where the error happens.
+   *  computation at the end of the iteration where the error happens. Care
+   *  must be paid to tests of errors, monotonicity will be broken if we simply
+   *  ignore the test errors (See `TryReporter`).
    *
    *  Note: It's tempting to use location of trees as key. That should
    *  be avoided as a template may have the same location as its single
@@ -240,7 +242,11 @@ object Semantic:
     /** The immutable wrapper is intended to be stored as key in the heap. */
     private class ImmutableTreeWrapper(val tree: Tree) extends TreeWrapper
 
-    /** For queries on the heap, reuse the same wrapper to avoid unnecessary allocation. */
+    /** For queries on the heap, reuse the same wrapper to avoid unnecessary allocation.
+     *
+     *  A `MutableTreeWrapper` is only ever used temporarily for querying a map,
+     *  and is never inserted to the map.
+     */
     private class MutableTreeWrapper extends TreeWrapper:
       var queryTree: Tree | Null = null
       def tree: Tree = queryTree match
@@ -251,9 +257,13 @@ object Semantic:
       /** The cache for expression values from last iteration */
       private var last: ExprValueCache =  Map.empty
 
-      /** The updated cache for expression values based on the cache values from the last iteration
+      /** The output cache for expression values
        *
-       *  Both `last` and `current` are required to make sure an expression is evaluated once in each iteration.
+       *  The output cache is computed based on the cache values `last` from the
+       *  last iteration.
+       *
+       *  Both `last` and `current` are required to make sure an encountered
+       *  expression is evaluated once in each iteration.
        */
       private var current: ExprValueCache = Map.empty
 
@@ -473,8 +483,15 @@ object Semantic:
   /** A TryReporter cannot be simply thrown away
    *
    *  Either `abort` should be called or the errors be reported.
+   *
+   *  If errors are ignored and `abort` is not called, the monotonicity of the
+   *  computation function is not guaranteed, thus termination of fixed-point
+   *  computation becomes a problem.
    */
   trait TryReporter extends Reporter:
+    /**
+     * Revert the cache to previous state.
+     */
     def abort()(using Cache): Unit
     def errors: List[Error]
 
