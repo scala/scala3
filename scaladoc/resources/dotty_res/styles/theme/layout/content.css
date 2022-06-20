@@ -359,12 +359,13 @@
 .membersList h2 {
   border-bottom: 1px solid var(--border-default);
   padding-bottom: calc(3 * var(--base-spacing));
+  padding-top: calc(3 * var(--base-spacing));
 }
 
 .membersList > button {
   position: absolute;
   right: 0;
-  top: calc(0.5 * var(--base-spacing));
+  top: calc(3.5 * var(--base-spacing));
 }
 
 .membersList .documentableList {
