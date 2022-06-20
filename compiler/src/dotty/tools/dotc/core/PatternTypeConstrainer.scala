@@ -234,7 +234,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     def refinementIsInvariant(tp: Type): Boolean = tp match {
       case tp: SingletonType => true
       case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
-      case tp: TypeProxy => refinementIsInvariant(tp.underlying)
+      case tp: TypeProxy => refinementIsInvariant(tp.superType)
       case _ => false
     }
 

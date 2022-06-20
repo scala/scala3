@@ -1565,8 +1565,8 @@ class Definitions {
   def tupleTypes(tp: Type, bound: Int = Int.MaxValue)(using Context): Option[List[Type]] = {
     @tailrec def rec(tp: Type, acc: List[Type], bound: Int): Option[List[Type]] = tp.normalized.dealias match {
       case _ if bound < 0 => Some(acc.reverse)
-      case tp: AppliedType if defn.PairClass == tp.classSymbol => rec(tp.args(1), tp.args.head :: acc, bound - 1)
-      case tp: AppliedType if defn.isTupleClass(tp.tycon.classSymbol) => Some(acc.reverse ::: tp.args)
+      case tp: AppliedType if PairClass == tp.classSymbol => rec(tp.args(1), tp.args.head :: acc, bound - 1)
+      case tp: AppliedType if isTupleNType(tp) => Some(acc.reverse ::: tp.args)
       case tp: TermRef if tp.symbol == defn.EmptyTupleModule => Some(acc.reverse)
       case _ => None
     }

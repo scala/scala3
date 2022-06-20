@@ -248,19 +248,6 @@ object Types {
       val d = defn
       hasClassSymbol(d.NothingClass) || hasClassSymbol(d.NullClass)
 
-    /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
-     *  Implemented like `isRef`, but follows more types: all type proxies as well as and- and or-types
-     */
-    private[Types] def isTightPrefix(sym: Symbol)(using Context): Boolean = stripTypeVar match {
-      case tp: NamedType => tp.info.isTightPrefix(sym)
-      case tp: ClassInfo => tp.cls eq sym
-      case tp: Types.ThisType => tp.cls eq sym
-      case tp: TypeProxy => tp.underlying.isTightPrefix(sym)
-      case tp: AndType => tp.tp1.isTightPrefix(sym) && tp.tp2.isTightPrefix(sym)
-      case tp: OrType => tp.tp1.isTightPrefix(sym) || tp.tp2.isTightPrefix(sym)
-      case _ => false
-    }
-
     /** True if this type is an instance of the given `cls` or an instance of
      *  a non-bottom subclass of `cls`.
      */
@@ -331,7 +318,7 @@ object Types {
           val sym = tp.symbol
           if (sym.isClass) sym == defn.AnyKindClass else loop(tp.translucentSuperType)
         case tp: TypeProxy =>
-          loop(tp.underlying)
+          loop(tp.underlying) // underlying OK here since an AnyKinded type cannot be a type argument of another type
         case _ =>
           false
       }
@@ -342,6 +329,7 @@ object Types {
     final def isNotNull(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
       case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
+      case tp: AppliedType => tp.superType.isNotNull
       case tp: TypeBounds => tp.lo.isNotNull
       case tp: TypeProxy => tp.underlying.isNotNull
       case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
@@ -501,7 +489,7 @@ object Types {
         val sym = tp.symbol
         if (sym.isClass) sym else tp.superType.classSymbol
       case tp: TypeProxy =>
-        tp.underlying.classSymbol
+        tp.superType.classSymbol
       case tp: ClassInfo =>
         tp.cls
       case AndType(l, r) =>
@@ -535,7 +523,7 @@ object Types {
         val sym = tp.symbol
         if (include(sym)) sym :: Nil else tp.superType.parentSymbols(include)
       case tp: TypeProxy =>
-        tp.underlying.parentSymbols(include)
+        tp.superType.parentSymbols(include)
       case tp: ClassInfo =>
         tp.cls :: Nil
       case AndType(l, r) =>
@@ -557,7 +545,7 @@ object Types {
         val sym = tp.symbol
         sym == cls || !sym.isClass && tp.superType.hasClassSymbol(cls)
       case tp: TypeProxy =>
-        tp.underlying.hasClassSymbol(cls)
+        tp.superType.hasClassSymbol(cls)
       case tp: ClassInfo =>
         tp.cls == cls
       case AndType(l, r) =>
@@ -571,12 +559,14 @@ object Types {
      *  bounds of type variables in the constraint.
      */
     def isMatchableBound(using Context): Boolean = dealias match
-      case tp: TypeRef => tp.symbol == defn.MatchableClass
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        sym == defn.MatchableClass || !sym.isClass && tp.superType.isMatchableBound
       case tp: TypeParamRef =>
         ctx.typerState.constraint.entry(tp) match
           case bounds: TypeBounds => bounds.hi.isMatchableBound
           case _ => false
-      case tp: TypeProxy => tp.underlying.isMatchableBound
+      case tp: TypeProxy => tp.superType.isMatchableBound
       case tp: AndType => tp.tp1.isMatchableBound || tp.tp2.isMatchableBound
       case tp: OrType => tp.tp1.isMatchableBound && tp.tp2.isMatchableBound
       case _ => false
@@ -615,7 +605,7 @@ object Types {
       case tp: ClassInfo =>
         tp.decls
       case tp: TypeProxy =>
-        tp.underlying.decls
+        tp.superType.decls
       case _ =>
         EmptyScope
     }
@@ -641,7 +631,7 @@ object Types {
       case tp: ClassInfo =>
         tp.decls.denotsNamed(name).filterWithFlags(EmptyFlags, excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
-        tp.underlying.findDecl(name, excluded)
+        tp.superType.findDecl(name, excluded)
       case err: ErrorType =>
         newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
       case _ =>
@@ -885,7 +875,7 @@ object Types {
           def showPrefixSafely(pre: Type)(using Context): String = pre.stripTypeVar match {
             case pre: TermRef => i"${pre.symbol.name}."
             case pre: TypeRef => i"${pre.symbol.name}#"
-            case pre: TypeProxy => showPrefixSafely(pre.underlying)
+            case pre: TypeProxy => showPrefixSafely(pre.superType)
             case _ => if (pre.typeSymbol.exists) i"${pre.typeSymbol.name}#" else "."
           }
 
@@ -912,7 +902,7 @@ object Types {
         val ns = tp.parent.memberNames(keepOnly, pre)
         if (keepOnly(pre, tp.refinedName)) ns + tp.refinedName else ns
       case tp: TypeProxy =>
-        tp.underlying.memberNames(keepOnly, pre)
+        tp.superType.memberNames(keepOnly, pre)
       case tp: AndType =>
         tp.tp1.memberNames(keepOnly, pre) | tp.tp2.memberNames(keepOnly, pre)
       case tp: OrType =>
@@ -1365,7 +1355,7 @@ object Types {
           // which ensures that `X$ <:< X.type` returns true.
           single(tp.symbol.companionModule.termRef.asSeenFrom(tp.prefix, tp.symbol.owner))
         case tp: TypeProxy =>
-          tp.underlying.atoms match
+          tp.superType.atoms match
             case Atoms.Range(_, hi) => Atoms.Range(Set.empty, hi)
             case Atoms.Unknown => Atoms.Unknown
         case _ => Atoms.Unknown
@@ -1609,7 +1599,7 @@ object Types {
       case tp: ClassInfo =>
         tp.prefix
       case tp: TypeProxy =>
-        tp.underlying.normalizedPrefix
+        tp.superType.normalizedPrefix
       case _ =>
         NoType
     }
