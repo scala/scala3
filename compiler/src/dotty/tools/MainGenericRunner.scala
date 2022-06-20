@@ -194,7 +194,7 @@ object MainGenericRunner {
 
       case ExecuteMode.PossibleRun =>
         val newClasspath = (settings.classPath :+ ".").flatMap(_.split(classpathSeparator).filter(_.nonEmpty)).map(File(_).toURI.toURL)
-        import dotty.tools.runner.RichClassLoader._
+        import dotty.tools.runner.ClassLoaderOps._
         val newClassLoader = ScalaClassLoader.fromURLsParallelCapable(newClasspath)
         val targetToRun = settings.possibleEntryPaths.to(LazyList).find { entryPath =>
           newClassLoader.tryToLoadClass(entryPath).orElse {

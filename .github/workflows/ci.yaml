@@ -461,6 +461,216 @@ jobs:
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
+  test_java11:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+
+    if: "(
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_java11]')
+         )"
+
+    steps:
+      - name: Install JDK 11
+        run: apt-get update && apt-get install -y openjdk-11-jdk-headless
+
+      - name: Set JDK 11 as default
+        run: echo "/usr/lib/jvm/java-11-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Test
+        run: |
+          ./project/scripts/sbt "scala3-bootstrapped/compile; scala3-bootstrapped/testOnly dotty.tools.repl.Disassemb* dotty.tools.repl.Javap* dotty.tools.repl.Asmp*"
+
+  test_java15:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+
+    if: "(
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_java15]')
+         )"
+
+    steps:
+      - name: Install JDK 15
+        run: apt-get update && apt-get install -y openjdk-15-jdk-headless
+
+      - name: Set JDK 15 as default
+        run: echo "/usr/lib/jvm/java-15-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Test
+        run: |
+          ./project/scripts/sbt "scala3-bootstrapped/compile; scala3-bootstrapped/testOnly dotty.tools.repl.Disassemb* dotty.tools.repl.Javap* dotty.tools.repl.Asmp*"
+
+  test_java17:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+
+    if: "(
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_java17]')
+         )"
+
+    steps:
+      - name: Install JDK 17
+        run: apt-get update && apt-get install -y openjdk-17-jdk-headless
+
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Test
+        run: |
+          ./project/scripts/sbt "scala3-bootstrapped/compile; scala3-bootstrapped/testOnly dotty.tools.repl.Disassemb* dotty.tools.repl.Javap* dotty.tools.repl.Asmp*"
+
+  test_java18:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+
+    if: "(
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_java18]')
+         )"
+
+    steps:
+      - name: Install JDK 18
+        run: curl https://download.java.net/java/GA/jdk18/43f95e8614114aeaa8e8a5fcf20a682d/36/GPL/openjdk-18_linux-x64_bin.tar.gz | tar -C /usr/lib/jvm -xzf -
+
+      - name: Set JDK 18 as default
+        run: echo "/usr/lib/jvm/jdk-18/bin" >> $GITHUB_PATH
+
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Test
+        run: |
+          ./project/scripts/sbt "scala3-bootstrapped/compile; scala3-bootstrapped/testOnly dotty.tools.repl.Disassemb* dotty.tools.repl.Javap* dotty.tools.repl.Asmp*"
+
+  test_java19:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+
+    if: "(
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_java19]')
+         )"
+
+    steps:
+      - name: Install JDK 19
+        run: curl https://download.java.net/java/early_access/jdk19/21/GPL/openjdk-19-ea+21_linux-x64_bin.tar.gz | tar -C /usr/lib/jvm -xzf -
+
+      - name: Set JDK 19 as default
+        run: echo "/usr/lib/jvm/jdk-19/bin" >> $GITHUB_PATH
+
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Test
+        run: |
+          ./project/scripts/sbt "scala3-bootstrapped/compile; scala3-bootstrapped/testOnly dotty.tools.repl.Disassemb* dotty.tools.repl.Javap* dotty.tools.repl.Asmp*"
+
   publish_nightly:
     runs-on: [self-hosted, Linux]
     container:

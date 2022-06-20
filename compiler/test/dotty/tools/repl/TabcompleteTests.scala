@@ -207,10 +207,12 @@ class TabcompleteTests extends ReplTest {
   @Test def commands = initially {
     assertEquals(
       List(
+        ":asmp",
         ":doc",
         ":exit",
         ":help",
         ":imports",
+        ":javap",
         ":load",
         ":quit",
         ":reset",

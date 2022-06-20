@@ -123,6 +123,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   }
   private def readHeapUsage() = RealProfiler.memoryMx.getHeapMemoryUsage.getUsed
 
+  @annotation.nowarn("cat=deprecation")
   private def doGC: Unit = {
     System.gc()
     System.runFinalization()
