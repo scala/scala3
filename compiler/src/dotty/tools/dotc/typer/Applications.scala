@@ -1171,7 +1171,7 @@ trait Applications extends Compatibility {
    *  type by means of a type ascription, as long as the widened type is
    *  still compatible with the expected type.
    *  The underlying type is the intersection of all class parents of the
-   *  orginal type.
+   *  original type.
    */
   def widenEnumCase(tree: Tree, pt: Type)(using Context): Tree =
     val sym = tree.symbol
@@ -1259,7 +1259,7 @@ trait Applications extends Compatibility {
      *  whereas overloaded variants need to have a conforming variant.
      */
     def trySelectUnapply(qual: untpd.Tree)(fallBack: (Tree, TyperState) => Tree): Tree = {
-      // try first for non-overloaded, then for overloaded ocurrences
+      // try first for non-overloaded, then for overloaded occurrences
       def tryWithName(name: TermName)(fallBack: (Tree, TyperState) => Tree)(using Context): Tree =
 
         def tryWithProto(qual: untpd.Tree, targs: List[Tree], pt: Type)(using Context) =
@@ -2080,7 +2080,7 @@ trait Applications extends Compatibility {
         mappedSym.rawParamss = alt.symbol.rawParamss
           // we need rawParamss to find parameters with default arguments,
           // but we do not need to be precise right now, since this is just a pre-test before
-          // we look up defult getters. If at some point we extract default arguments from the
+          // we look up default getters. If at some point we extract default arguments from the
           // parameter symbols themselves, we have to find the right parameter by name, not position.
           // That means it's OK to copy parameters wholesale rather than tailoring them to always
           // correspond to the type transformation.
@@ -2203,7 +2203,7 @@ trait Applications extends Compatibility {
    *  This reset is needed because otherwise the original results might
    *  have added constraints to type parameters which are no longer
    *  implied after harmonization. No essential constraints are lost by this because
-   *  the result of harmomization will be compared again with the expected type.
+   *  the result of harmonization will be compared again with the expected type.
    *  Test cases where this matters are in pos/harmomize.scala.
    */
   def harmonic[T](harmonize: List[T] => List[T], pt: Type)(op: => List[T])(using Context): List[T] =
@@ -2262,7 +2262,7 @@ trait Applications extends Compatibility {
    *  with the type parameters of the extension (T1, T2) inferred.
    *  None is returned if the implicit search fails for any of the leading implicit parameters
    *  or if the receiver has a wrong type (note that in general the type of the receiver
-   *  might depend on the exact types of the found instances of the proceding implicits).
+   *  might depend on the exact types of the found instances of the proceeding implicits).
    *  No implicit search is tried for implicits following the receiver or for parameters of the def (D, E).
    */
   def tryApplyingExtensionMethod(methodRef: TermRef, receiver: Tree)(using Context): Option[Tree] =
