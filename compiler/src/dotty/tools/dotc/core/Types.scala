@@ -987,10 +987,7 @@ object Types {
           (name, buf) => buf += member(name).asSingleDenotation)
     }
 
-    /** The set of implicit term members of this type
-     *  @param kind   A subset of {Implicit, Given} that specifies what kind of implicit should
-     *                be returned
-     */
+    /** The set of implicit term members of this type */
     final def implicitMembers(using Context): List[TermRef] = {
       record("implicitMembers")
       memberDenots(implicitFilter,
