@@ -10,10 +10,12 @@ window.addEventListener("DOMContentLoaded", () => {
   var elements = document.getElementsByClassName("documentableElement")
   if (elements) {
     for (i = 0; i < elements.length; i++) {
-      elements[i].onclick = function (e) {
-        if (!$(e.target).is("a") && e.fromSnippet !== true)
-          this.classList.toggle("expand")
-          this.querySelector(".show-content").classList.toggle("expand")
+      if (elements[i].querySelector(".show-content") !== null) {
+        elements[i].onclick = function (e) {
+          if (!$(e.target).is("a") && e.fromSnippet !== true)
+            this.classList.toggle("expand")
+            this.querySelector(".show-content").classList.toggle("expand")
+        }
       }
     }
   }

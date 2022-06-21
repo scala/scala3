@@ -107,20 +107,25 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val classLikeInfo: TagArg = classLikeParts(m)
 
+    val attributes = Seq(
+      docAttributes(m),
+      companion(m),
+      deprecation(m),
+      defintionClasses(m),
+      inheritedFrom(m),
+      source(m),
+      classLikeInfo
+    ).filter {
+      case Nil => false
+      case _ => true
+    }
+
     Seq(
-      Option.when(withBrief)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
-      Some(
+      Option.when(withBrief && comment.flatMap(_.short).nonEmpty)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
+      Option.when(bodyContents.nonEmpty || attributes.nonEmpty)(
         div(cls := "cover")(
           div(cls := "doc")(bodyContents),
-          dl(cls := "attributes")(
-            docAttributes(m),
-            companion(m),
-            deprecation(m),
-            defintionClasses(m),
-            inheritedFrom(m),
-            source(m),
-            classLikeInfo
-          )
+          dl(cls := "attributes")(attributes*)
         )
       )
     ).flatten
@@ -164,10 +169,11 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Seq(member.companion.flatMap( (_, dri) => link(dri)).fold(iconSpan)(link => a(href := link)(iconSpan)))
   }
 
-  def annotations(member: Member) =
+  def annotations(member: Member): Option[TagArg] =
    val rawBuilder = SignatureBuilder().annotationsBlock(member)
    val signatures = rawBuilder.content
-   span(cls := "annotations monospace")(signatures.map(renderElement(_)))
+   val rendered = signatures.map(renderElement(_))
+   Option.when(rendered.nonEmpty)(span(cls := "annotations monospace")(rendered))
 
   def member(member: Member) =
     val filterAttributes = FilterAttributes.attributesFor(member)
@@ -176,18 +182,24 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       ++ anchor
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 
+    val originInf = originInfo(member)
+    val memberInf = memberInfo(member, withBrief = true)
+    val annots = annotations(member)
+
     div(topLevelAttr:_*)(
-      button(cls := "icon-button show-content"),
+      Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button show-content")).toList,
       if !member.needsOwnPage then a(Attr("link") := link(member.dri).getOrElse("#"), cls := "documentableAnchor") else Nil,
-      div(annotations(member)),
+      annots.map(div(_)).toList,
       div(cls := "header monospace")(memberSignature(member)),
-      div(cls := "docs")(
-        span(cls := "modifiers"), // just to have padding on left
-        div(
-          div(cls := "originInfo")(originInfo(member):_*),
-          div(cls := "memberDocumentation")(memberInfo(member, withBrief = true)),
+      Option.when(originInf.nonEmpty || memberInf.nonEmpty)(
+        div(cls := "docs")(
+          span(cls := "modifiers"), // just to have padding on left
+          div(
+            div(cls := "originInfo")(originInf*),
+            div(cls := "memberDocumentation")(memberInf*),
+          )
         )
-      )
+      ).toList
     )
 
   private case class MGroup(header: AppliedTag, members: Seq[Member], groupName: String)
@@ -428,7 +440,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         ) ++ companionBadge(m) ++
         Seq(
           div(cls := "main-signature mono-medium")(
-            annotations(m),
+            annotations(m).getOrElse(Nil),
             memberSignature(m)
           )
         )
