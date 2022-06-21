@@ -165,6 +165,10 @@
   border-bottom: 1px solid var(--text-secondary);
 }
 
+#content .cover-header a, #content .cover-header a:hover {
+  border-bottom: none;
+}
+
 #content :not(pre) > code {
   color: var(--code-props-content);
   font-family: "FiraCode-Regular";
@@ -305,7 +309,7 @@
 
 .cover-header .micon {
   position: relative;
-  z-index: 10;
+  z-index: 1;
 }
 
 .cover-header .micon.companion {

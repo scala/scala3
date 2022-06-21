@@ -387,9 +387,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
       def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
         if list.isEmpty then Nil
-        else Seq(div(cls := "mono-small-inline") { list.map { link =>
-          div(link.signature.map(renderElement(_)))
-        }})
+        else Seq(
+          div(cls := "mono-small-inline supertypes")(
+            span(),
+            list.map { link =>
+              div(link.signature.map(renderElement(_)))
+            }
+        ))
 
       val supertypes = signatureList(m.parents, "supertypes", m.parents.length > 5)
       val subtypes = signatureList(m.knownChildren, "subtypes", m.knownChildren.length > 5)
