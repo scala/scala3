@@ -15,10 +15,9 @@ import dotty.tools.io.{VirtualDirectory => Directory}
 import scala.tools.asm
 import asm._
 import asm.tree._
-import scala.collection.JavaConverters._
 
 import io.{AbstractFile, JavaClassPath, VirtualDirectory}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.tools.asm.{ClassWriter, ClassReader}
 import scala.tools.asm.tree._
 import java.io.{File => JFile, InputStream}

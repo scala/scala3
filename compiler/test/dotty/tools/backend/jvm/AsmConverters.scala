@@ -5,7 +5,7 @@ import scala.language.unsafeNulls
 import scala.tools.asm
 import asm._
 import asm.tree._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /** Makes using ASM from tests more convenient.
  *

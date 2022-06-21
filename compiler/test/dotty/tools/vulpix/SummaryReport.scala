@@ -63,7 +63,7 @@ final class NoSummaryReport extends SummaryReporting {
  *  which outputs to a log file in `./testlogs/`
  */
 final class SummaryReport extends SummaryReporting {
-  import scala.collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
 
   private val startingMessages = new java.util.concurrent.ConcurrentLinkedDeque[String]
   private val failedTests = new java.util.concurrent.ConcurrentLinkedDeque[String]
