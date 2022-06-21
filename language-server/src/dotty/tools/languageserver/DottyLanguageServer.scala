@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.eclipse.lsp4j
 
 import scala.collection._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 import scala.io.Codec
 

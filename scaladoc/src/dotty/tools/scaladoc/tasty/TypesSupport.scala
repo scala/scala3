@@ -1,7 +1,7 @@
 package dotty.tools.scaladoc
 package tasty
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import scala.quoted._
 

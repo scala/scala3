@@ -4,7 +4,7 @@ package site
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.`type`.TypeReference;
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.util.Optional
 import scala.beans._
 

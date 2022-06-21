@@ -20,7 +20,7 @@ import liqp.parser.Flavor
 import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import scala.io.Source
 import dotty.tools.scaladoc.snippets._

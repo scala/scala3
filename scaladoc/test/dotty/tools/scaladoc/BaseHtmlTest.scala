@@ -44,7 +44,7 @@ class BaseHtmlTest:
     finally IO.delete(dest)
   end withGeneratedDoc
   class DocumentContext(d: Document, path: Path):
-    import collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
 
     def niceMsg(msg: String) = s"$msg in $path (body):\n ${d.html()}:\n"
 

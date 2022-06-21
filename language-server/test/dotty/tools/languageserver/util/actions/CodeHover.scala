@@ -5,7 +5,7 @@ import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 
 import org.junit.Assert.{assertEquals, assertNull, assertTrue}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * An action requesting for the info shown when `range` is hovered.

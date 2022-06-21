@@ -3,7 +3,7 @@ package renderers
 
 import scala.collection.immutable.SortedMap
 import util.HTML._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc.translators.FilterAttributes
 import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
@@ -30,7 +30,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def inheritedFrom(m: Member) = m.inheritedFrom match
     case Some(InheritedFrom(name, dri, isSourceSuperclassHidden)) =>
-      val hiddenNameSuffix = if isSourceSuperclassHidden then " (hidden)" else "" 
+      val hiddenNameSuffix = if isSourceSuperclassHidden then " (hidden)" else ""
       tableRow("Inherited from:", signatureRenderer.renderLink(name + hiddenNameSuffix, dri))
     case _ => Nil
 

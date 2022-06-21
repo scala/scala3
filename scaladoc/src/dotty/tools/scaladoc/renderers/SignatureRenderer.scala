@@ -2,7 +2,7 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.net.URI
 import java.net.URL
 import java.util.{List => JList, Set => JSet}
