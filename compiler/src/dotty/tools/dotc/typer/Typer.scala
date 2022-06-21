@@ -1059,7 +1059,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val (stats1, exprCtx) = withoutMode(Mode.Pattern) {
       typedBlockStats(tree.stats)
     }
-    val expr1 = typedExpr(tree.expr, pt.dropIfProto)(using exprCtx)
+    var expr1 = typedExpr(tree.expr, pt.dropIfProto)(using exprCtx)
+
+    // If unsafe nulls is enabled inside a block but not enabled outside
+    // and the type does not conform the expected type without unsafe nulls,
+    // we will cast the last expression to the expected type.
+    // See: tests/explicit-nulls/pos/unsafe-block.scala
+    if ctx.mode.is(Mode.SafeNulls)
+      && !exprCtx.mode.is(Mode.SafeNulls)
+      && pt.isValueType
+      && !inContext(exprCtx.addMode(Mode.SafeNulls))(expr1.tpe <:< pt) then
+      expr1 = expr1.cast(pt)
+
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1)
         .withType(expr1.tpe)
@@ -2602,7 +2613,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 |The selector is not a member of an object or package.""")
     else typd(imp.expr, AnySelectionProto)
 
-  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Tree =
+  def typedImport(imp: untpd.Import)(using Context): Tree =
+    val sym = retrieveSym(imp)
     val expr1 = typedImportQualifier(imp, typedExpr(_, _)(using ctx.withOwner(sym)))
     checkLegalImportPath(expr1)
     val selectors1 = typedSelectors(imp.selectors)
@@ -2869,7 +2881,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
-          case tree: untpd.Import => typedImport(tree, retrieveSym(tree))
+          case tree: untpd.Import => typedImport(tree)
           case tree: untpd.Export => typedExport(tree)
           case tree: untpd.Match => typedMatch(tree, pt)
           case tree: untpd.Return => typedReturn(tree)

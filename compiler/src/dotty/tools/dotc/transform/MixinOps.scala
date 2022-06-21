@@ -6,6 +6,7 @@ import Symbols._, Types._, Contexts._, DenotTransformers._, Flags._
 import util.Spans._
 import SymUtils._
 import StdNames._, NameOps._
+import typer.Nullables
 
 class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._
@@ -80,13 +81,20 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     prefss =>
       val (targs, vargss) = splitArgs(prefss)
       val tapp = superRef(target).appliedToTypeTrees(targs)
-      vargss match
+      val rhs = vargss match
         case Nil | List(Nil) =>
           // Overriding is somewhat loose about `()T` vs `=> T`, so just pick
           // whichever makes sense for `target`
           tapp.ensureApplied
         case _ =>
           tapp.appliedToArgss(vargss)
+      if ctx.explicitNulls && target.is(JavaDefined) && !ctx.phase.erasedTypes then
+        // We may forward to a super Java member in resolveSuper phase.
+        // Since this is still before erasure, the type can be nullable
+        // and causes error during checking. So we need to enable
+        // unsafe-nulls to construct the rhs.
+        Block(Nullables.importUnsafeNulls :: Nil, rhs)
+      else rhs
 
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] =
     cls.baseClasses.iterator
