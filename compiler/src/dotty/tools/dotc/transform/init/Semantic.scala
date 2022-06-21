@@ -1006,6 +1006,19 @@ object Semantic:
       }
     }
 
+    def nonInitFields(): Contextual[List[Symbol]] =
+      val obj = ref.objekt
+      ref.klass.baseClasses.flatMap { klass =>
+        if klass.hasSource then
+          klass.info.decls.filter { member =>
+            !member.isOneOf(Flags.Method | Flags.Lazy | Flags.Deferred)
+            && !member.isType
+            && !obj.hasField(member)
+          }
+        else
+          Nil
+      }
+
   end extension
 
   extension (thisRef: ThisRef)
@@ -1032,8 +1045,12 @@ object Semantic:
           reporter.report(PromoteError(msg, trace.toVector))
 
         case thisRef: ThisRef =>
-          if !thisRef.tryPromoteCurrentObject() then
-            reporter.report(PromoteError(msg, trace.toVector))
+          val emptyFields = thisRef.nonInitFields()
+          if emptyFields.isEmpty then
+            promoted.promoteCurrent(thisRef)
+          else
+            val fields = "Non initialized field(s): " + emptyFields.map(_.show).mkString(", ") + "."
+            reporter.report(PromoteError(msg + "\n" + fields, trace.toVector))
 
         case warm: Warm =>
           if !promoted.contains(warm) then
