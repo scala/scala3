@@ -5977,7 +5977,13 @@ object Types {
         case _ =>
           scrutinee match
             case Range(lo, hi) => range(bound.bounds.lo, bound.bounds.hi)
-            case _ => tp.derivedMatchType(bound, scrutinee, cases)
+            case _ =>
+              if cases.exists(isRange) then
+                Range(
+                  tp.derivedMatchType(bound, scrutinee, cases.map(lower)),
+                  tp.derivedMatchType(bound, scrutinee, cases.map(upper)))
+              else
+                tp.derivedMatchType(bound, scrutinee, cases)
 
     override protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
       if info eq tp.info then tp
@@ -6013,7 +6019,7 @@ object Types {
   /** A range of possible types between lower bound `lo` and upper bound `hi`.
    *  Only used internally in `ApproximatingTypeMap`.
    */
-  private case class Range(lo: Type, hi: Type) extends UncachedGroundType {
+  case class Range(lo: Type, hi: Type) extends UncachedGroundType {
     assert(!lo.isInstanceOf[Range])
     assert(!hi.isInstanceOf[Range])
 

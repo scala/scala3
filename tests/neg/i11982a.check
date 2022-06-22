@@ -1,0 +1,45 @@
+-- [E057] Type Mismatch Error: tests/neg/i11982a.scala:9:34 ------------------------------------------------------------
+9 |            b: ValueOf[Tuple.Head[Tuple.Tail[X]]]  // error
+  |                                  ^
+  |                                  Type argument Tuple.Tail[X] does not conform to upper bound NonEmptyTuple
+  |
+  |                                  Note: a match type could not be fully reduced:
+  |
+  |                                    trying to reduce  Tuple.Tail[X]
+  |                                    failed since selector  X
+  |                                    does not uniquely determine parameter xs in
+  |                                      case _ *: xs => xs
+  |                                    The computed bounds for the parameter are:
+  |                                      xs >: Any *: EmptyTuple.type <: Tuple
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E057] Type Mismatch Error: tests/neg/i11982a.scala:10:38 -----------------------------------------------------------
+10 |  ): Tuple2[Tuple.Head[X], Tuple.Head[Tuple.Tail[X]]] =  // error
+   |                                      ^
+   |                                      Type argument Tuple.Tail[X] does not conform to upper bound NonEmptyTuple
+   |
+   |                                      Note: a match type could not be fully reduced:
+   |
+   |                                        trying to reduce  Tuple.Tail[X]
+   |                                        failed since selector  X
+   |                                        does not uniquely determine parameter xs in
+   |                                          case _ *: xs => xs
+   |                                        The computed bounds for the parameter are:
+   |                                          xs >: Any *: EmptyTuple.type <: Tuple
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E057] Type Mismatch Error: tests/neg/i11982a.scala:12:25 -----------------------------------------------------------
+12 |    type BB = Tuple.Head[Tuple.Tail[X]]  // error
+   |                         ^
+   |                         Type argument Tuple.Tail[X] does not conform to upper bound NonEmptyTuple
+   |
+   |                         Note: a match type could not be fully reduced:
+   |
+   |                           trying to reduce  Tuple.Tail[X]
+   |                           failed since selector  X
+   |                           does not uniquely determine parameter xs in
+   |                             case _ *: xs => xs
+   |                           The computed bounds for the parameter are:
+   |                             xs >: Any *: EmptyTuple.type <: Tuple
+   |
+   | longer explanation available when compiling with `-explain`
