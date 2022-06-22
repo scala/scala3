@@ -19,7 +19,7 @@ object NonLocalReturns {
   }
 
   /** Performs a nonlocal return by throwing an exception. */
-  def throwReturn[T](result: T)(using returner: ReturnThrowable[T]): Nothing =
+  def throwReturn[T](result: T)(using returner: ReturnThrowable[? >: T]): Nothing =
     returner.throwReturn(result)
 
   /** Enable nonlocal returns in `op`. */
