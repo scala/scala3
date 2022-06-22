@@ -527,7 +527,7 @@ object Checking {
       fail("Traits cannot have secondary constructors" + addendum)
     checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
-    if (sym.isType && !sym.is(Deferred))
+    if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
