@@ -1,5 +1,5 @@
 import collection.{mutable, concurrent}
-import collection.JavaConverters.*
+import scala.jdk.CollectionConverters.*
 import java.util.concurrent.ConcurrentHashMap as CHM
 
 object Bar {

@@ -22,7 +22,7 @@ def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
 /** Executes shell command, returns false in case of error. */
 def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: Map[String, String]): Int =
-  import collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
   val command = binary +: arguments
   log(command.mkString(" "))
   val builder = new ProcessBuilder(command: _*).directory(projectDir.toFile).inheritIO()

@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import java.lang.Character.isWhitespace
 import java.nio.file.{Files, Paths}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /** A simple enough command line parser.
  */

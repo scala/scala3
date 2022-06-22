@@ -7,7 +7,7 @@ import org.junit.Test
 
 import scala.tools.asm.Opcodes._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class InlineBytecodeTests extends DottyBytecodeTest {
   import ASMConverters._

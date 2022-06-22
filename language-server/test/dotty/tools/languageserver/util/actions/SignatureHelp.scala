@@ -9,7 +9,7 @@ import dotty.tools.dotc.util.Signatures.Signature
 import org.eclipse.lsp4j.{MarkupContent, ParameterInformation, SignatureInformation}
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import SignatureHelp._
 

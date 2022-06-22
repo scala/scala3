@@ -4,7 +4,7 @@ import java.util.ServiceLoader
 import java.io.File
 import java.io.FileWriter
 import java.util.jar._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import collection.immutable.ArraySeq
 
 import java.nio.file.{ Files, Paths }

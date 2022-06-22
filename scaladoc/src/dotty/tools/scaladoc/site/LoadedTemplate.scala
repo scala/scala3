@@ -6,7 +6,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 import org.jsoup.Jsoup
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 
 case class LazyEntry(getKey: String, value: () => String) extends JMapEntry[String, Object]:
