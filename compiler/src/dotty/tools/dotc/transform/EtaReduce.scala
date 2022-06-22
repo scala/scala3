@@ -48,6 +48,10 @@ class EtaReduce extends MiniPhase:
         fn
       case TypeApply(Select(qual, _), _) if rhs.symbol.isTypeCast && rhs.span.isSynthetic =>
         tryReduce(mdef, qual)
+      case Apply(_, arg :: Nil) if Erasure.Boxing.isUnbox(rhs.symbol) && rhs.span.isSynthetic =>
+        tryReduce(mdef, arg)
+      case Block(call :: Nil, unit @ Literal(Constants.Constant(()))) if unit.span.isSynthetic =>
+        tryReduce(mdef, call)
       case _ =>
         tree
 
