@@ -9,7 +9,7 @@ import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 
 import annotation.tailrec
 import collection.mutable.ArrayBuffer
-import reflect.ClassTag
+import reflect.{ClassTag, Enum}
 import scala.util.{Success, Failure}
 
 object Settings:
@@ -61,7 +61,8 @@ object Settings:
     prefix: String = "",
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
-    propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
+    propertyClass: Option[Class[?]] = None,
+  )(private[Settings] val idx: Int) {
 
     private var changed: Boolean = false
 
@@ -264,6 +265,9 @@ object Settings:
 
     def MultiChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
       publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
+
+    def EnumSetting[E <: Enum](name: String, helpArg: String, descr: String, choices: Array[E], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, default, helpArg, Some(choices.toList.map(_.toString)), aliases = aliases))
 
     def IntSetting(name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
       publish(Setting(name, descr, default, aliases = aliases))

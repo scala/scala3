@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
 
-import scala.util.chaining._
+import scala.util.chaining.given
 
 class ScalaSettings extends SettingGroup with AllScalaSettings
 
@@ -156,6 +156,8 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+  val Xlint: Setting[List[String]] = EnumSetting("-Wlint", "warning", "Enable recommended warnings.", LintWarning.values, default = Nil, aliases = List("-Xlint"))
+  def isLintEnabled(w: LintWarning)(using Context): Boolean = Xlint.value.contains(w.toString)
 
   val Wunused: Setting[List[String]] = MultiChoiceSetting(
     name = "-Wunused",
@@ -339,3 +341,7 @@ private sealed trait YSettings:
   val YforceInlineWhileTyping: Setting[Boolean] = BooleanSetting("-Yforce-inline-while-typing", "Make non-transparent inline methods inline when typing. Emulates the old inlining behavior of 3.0.0-M3.")
 end YSettings
 
+/** Warnings that may be queried with `ctx.settings.isLintEnabled`. */
+enum LintWarning:
+  case deprecation, longLit
+end LintWarning

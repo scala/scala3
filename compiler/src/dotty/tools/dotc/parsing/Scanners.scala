@@ -11,6 +11,7 @@ import util.Chars._
 import util.{SourcePosition, CharBuffer}
 import util.Spans.Span
 import config.Config
+import config.LintWarning
 import Tokens._
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
@@ -1488,7 +1489,7 @@ object Scanners {
         getFraction()
       // 1l is an acknowledged bad practice
       def lintel(): Unit =
-        if ch == 'l' then
+        if ch == 'l' && ctx.settings.isLintEnabled(LintWarning.longLit) then
           val msg = "Lowercase el for long is not recommended because it is easy to confuse with numeral 1; use uppercase L instead"
           report.deprecationWarning(msg, sourcePos(offset + litBuf.length))
       // after int: 5e7f, 42L, 42.toDouble but not 42b.
