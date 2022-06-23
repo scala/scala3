@@ -2030,7 +2030,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if tycon == defn.andType || tycon == defn.orType then
         checkedArgs = checkedArgs.mapconserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
-      else if tycon.flagsUNSAFE.is(Provisional) then
+      else if tycon.isProvisional then
         // A type with Provisional flag is either an alias or abstract type.
         // If it is an alias type, it would mean the type is cyclic
         // If it is an abstract type, it would mean the type is an irreducible

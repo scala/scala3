@@ -285,7 +285,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Dealias type if it can be done without forcing the TypeRef's info */
   def safeDealias(using Context): Type = self match {
     case self: TypeRef
-    if self.denot.exists && self.symbol.isAliasType && !self.symbol.flagsUNSAFE.is(Provisional) =>
+    if self.denot.exists && self.symbol.isAliasType && !self.symbol.isProvisional =>
       self.superType.stripTypeVar.safeDealias
     case _ =>
       self
