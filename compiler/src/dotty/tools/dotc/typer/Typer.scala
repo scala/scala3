@@ -2027,12 +2027,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       var checkedArgs = preCheckKinds(args1, paramBounds)
         // check that arguments conform to bounds is done in phase PostTyper
       val tycon = tpt1.symbol
-      if (tycon == defn.andType)
+      if tycon == defn.andType || tycon == defn.orType then
         checkedArgs = checkedArgs.mapconserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
-      else if (tycon == defn.orType)
-        checkedArgs = checkedArgs.mapconserve(arg =>
-          checkSimpleKinded(checkNoWildcard(arg)))
+      else if tycon.flagsUNSAFE.is(Provisional) then
+        // A type with Provisional flag is either an alias or abstract type.
+        // If it is an alias type, it would mean the type is cyclic
+        // If it is an abstract type, it would mean the type is an irreducible
+        // application of a higher-kinded type to a wildcard argument.
+        // Either way, the wildcard argument is illegal.
+        // The early test here is needed, so that we do not accidentally reduce
+        // an application of a Provisional type away so that the type constructor
+        // is no longer present on the roght hand side. See neg/i15507.scala.
+        checkedArgs = checkedArgs.mapconserve(checkNoWildcard)
       else if tycon == defn.throwsAlias
           && checkedArgs.length == 2
           && checkedArgs(1).tpe.derivesFrom(defn.RuntimeExceptionClass)
