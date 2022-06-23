@@ -71,8 +71,13 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
+        # DON'T add dist/pack!
+        # Adding dist/pack bootstraps the compiler
+        # which undermines the point of these tests:
+        # to quickly run the tests without the cost of bootstrapping
+        # and also to run tests when the compiler doesn't bootstrap
         run: |
-          ./project/scripts/sbt ";dist/pack; compile ;test"
+          ./project/scripts/sbt ";compile ;test"
           ./project/scripts/cmdTests
 
   test:
