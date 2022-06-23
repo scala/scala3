@@ -405,8 +405,8 @@ object Inferencing {
     val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
     vs foreachBinding { (tvar, v) =>
       if !tvar.isInstantiated then
-        if (v == 1) tvar.instantiate(fromBelow = false)
-        else if (v == -1) tvar.instantiate(fromBelow = true)
+        if (v == 1 && tvar.hasUpperBound) tvar.instantiate(fromBelow = false)
+        else if (v == -1 && tvar.hasLowerBound) tvar.instantiate(fromBelow = true)
         else {
           val bounds = TypeComparer.fullBounds(tvar.origin)
           if bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) then
