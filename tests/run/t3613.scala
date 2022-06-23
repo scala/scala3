@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class Boopy {
     private val s = new Schnuck
     def observer : PartialFunction[ Any, Unit ] = s.observer

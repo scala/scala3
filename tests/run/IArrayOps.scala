@@ -173,9 +173,14 @@
 
   println(iarr1.zipWithIndex.toSeq)
 
+  def portableBufferToString[A](x: scala.collection.Iterable[A]): String =
+    x match
+      case x: scala.collection.mutable.Buffer[A] => x.mkString("Buffer(", ", ", ")")
+      case _ => s"not a buffer $x"
+
   println(iarr1.to(List))
   println(iarr1.to(Vector))
-  println(iarr1.toBuffer)
+  println(portableBufferToString(iarr1.toBuffer))
   println(iarr1.toIndexedSeq)
   println(iarr1.toIterable)
   println(iarr1.toList)
@@ -243,6 +248,9 @@
       (x, y)
   ).toSeq)
 
+  def portableToString(x: Any): String =
+    if x == () then "()" else x.toString // portable on Scala.js
+
   println(
     (for
       x1 <- List(1)
@@ -251,14 +259,14 @@
       x4 <- IArray(2: Short)
       x5 <- IArray(3)
       x6 <- IArray(4L)
-      x7 <- IArray(5f)
-      x8 <- IArray(6d)
+      x7 <- IArray(5.5f)
+      x8 <- IArray(6.5d)
       x9 <- IArray('a')
       x10 <- IArray("abc")
       x11 <- IArray("xyz": Any)
       x12 <- IArray(())
     yield
-      (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12)
+      (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, portableToString(x12))
   ).toSeq)
 
   println(
@@ -269,12 +277,12 @@
       x4 <- IArray(2: Short)
       x5 <- IArray(3)
       x6 <- IArray(4L)
-      x7 <- IArray(5f)
-      x8 <- IArray(6d)
+      x7 <- IArray(5.5f)
+      x8 <- IArray(6.5d)
       x9 <- IArray('a')
       x10 <- IArray("abc")
       x11 <- IArray("xyz": Any)
       x12 <- IArray(())
     yield
-      (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12)
+      (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, portableToString(x12))
   ).toSeq)

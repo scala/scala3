@@ -1,4 +1,4 @@
-
+// scalajs: --skip
 
 object Test extends App {
   JavaTest.main(null)

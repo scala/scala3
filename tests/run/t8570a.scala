@@ -11,4 +11,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     println((new T1 {}).run)
   }
+
+  def println(x: Any): Unit =
+    Console.println(if (x == ()) "()" else x) // portable on Scala.js
 }

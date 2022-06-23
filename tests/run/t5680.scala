@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Test extends App {
   val x = Array[Unit]((), ())
   println(x.toString.substring(0, x.toString.indexOf(";")))

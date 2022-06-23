@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import collection.mutable.ListBuffer
 
 //object Test extends App {

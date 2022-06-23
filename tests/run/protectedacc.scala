@@ -28,7 +28,7 @@ package p {
       protected val x = 10;
 
       protected def meth1(x: Int) = x + 1;
-      protected def meth1(x: Double) = x + 1
+      protected def meth1(x: Double) = x + 1.1
       protected def meth2(x: Int)(y: String) = y + (x - 1);
       protected def meth3 = Array(1, 2)
 

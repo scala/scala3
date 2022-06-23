@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import java.io.*
 import scala.util.Using
 

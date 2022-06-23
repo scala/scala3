@@ -1,3 +1,4 @@
+// scalajs: --skip
 
 trait T1
 trait T2 extends T1

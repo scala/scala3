@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import java.lang.reflect.Modifier
 
 trait T {

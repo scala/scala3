@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.io.Source
 import java.io.ByteArrayInputStream
 

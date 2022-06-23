@@ -9,4 +9,6 @@ object Test extends App {
   println(x2((0,1)))
   println(x3((0,1)))
 
+  def println(x: Any): Unit =
+    Console.println(if (x == ()) "()" else x) // portable on Scala.js
 }

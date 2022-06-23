@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 /* Similar to t10490 -- but defines `Foo` in the object.
  * Placing this test within t10490 makes it work without a fix, that's why it's independent.
  * Note that this was already working, we add it to make sure we don't regress

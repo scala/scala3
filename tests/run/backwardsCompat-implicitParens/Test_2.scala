@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 @main def Test =
   given Int = 1
   given String = "x"

@@ -96,6 +96,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         self.copy(flags = flags.without(flags1: _*))
     }
 
+    lazy val allToolArgs: ToolArgs =
+      toolArgsFor(sourceFiles.toList.map(_.toPath), getCharsetFromEncodingOpt(flags))
+
     /** Generate the instructions to redo the test from the command line */
     def buildInstructions(errors: Int, warnings: Int): String = {
       val sb = new StringBuilder
@@ -198,6 +201,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     def sourceFiles = compilationGroups.map(_._2).flatten.toArray
   }
+
+  protected def shouldSkipTestSource(testSource: TestSource): Boolean =
+    false
 
   private trait CompilationLogic { this: Test =>
     def suppressErrors = false
@@ -344,13 +350,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** All testSources left after filtering out */
     private val filteredSources =
-      if (testFilter.isEmpty) testSources
-      else testSources.filter {
-        case JointCompilationSource(_, files, _, _, _, _) =>
-          testFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
-        case SeparateCompilationSource(_, dir, _, _) =>
-          testFilter.exists(dir.getPath.contains)
-      }
+      val filteredByName =
+        if (testFilter.isEmpty) testSources
+        else testSources.filter {
+          case JointCompilationSource(_, files, _, _, _, _) =>
+            testFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
+          case SeparateCompilationSource(_, dir, _, _) =>
+            testFilter.exists(dir.getPath.contains)
+        }
+      filteredByName.filterNot(shouldSkipTestSource(_))
 
     /** Total amount of test sources being compiled by this test */
     val sourceCount = filteredSources.length
@@ -739,7 +747,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       if (Properties.testsNoRun) addNoRunWarning()
-      else runMain(testSource.runClassPath) match {
+      else runMain(testSource.runClassPath, testSource.allToolArgs) match {
         case Success(output) => checkFile match {
           case Some(file) if file.exists => diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
           case _ =>

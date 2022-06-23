@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 object Test extends Enumeration {
   val foo = Value
   def bar = withName("foo")

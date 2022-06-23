@@ -9,7 +9,7 @@
     val s: Short = 345
     val b: Byte = 12
     val z: Boolean = true
-    val f: Float = 3.14f
+    val f: Float = 3.5
     val j: Long = 98762147483647L
     val d: Double = 3.1415d
 

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Test {
   def bar1(x: Any) = 1
   def bar1(x: String*) = 2

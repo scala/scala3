@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 /** A demonstrator for a new algorithm to handle lazy vals. The idea is that
  *  we use the field slot itself for all synchronization; there are no separate bitmaps
  *  or locks. The type of a field is always Object. The field goes through the following

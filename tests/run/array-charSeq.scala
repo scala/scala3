@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import runtime.ArrayCharSequence
 
 object Test {

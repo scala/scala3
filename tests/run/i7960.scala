@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future}

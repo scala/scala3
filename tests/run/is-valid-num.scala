@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 /*
  * filter: inliner warnings; re-run with -Yinline-warnings for details
  */

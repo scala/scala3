@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 import scala.runtime.ScalaRunTime.stringOf
 
 final class ArrayOpt[T](val xs: Array[T]) extends AnyVal {

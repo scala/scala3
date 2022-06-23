@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 // A contains a field A.theValue$$local accessible using the
 // generated getter A.theValue()
 class A(val theValue: Int) {

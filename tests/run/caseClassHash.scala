@@ -7,7 +7,7 @@ object Test {
     val foo1 = mkFoo[Double](5.0d)
     val foo2 = mkFoo[Long](5l)
 
-    List(foo1, foo2, foo1.##, foo2.##, foo1 == foo2) foreach println
+    List(foo1.##, foo2.##, foo1 == foo2) foreach println
 
     println("## method 1: " + foo1.##)
     println("## method 2: " + foo2.##)
