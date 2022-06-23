@@ -9,7 +9,7 @@ import SymDenotations.LazyType
 import Decorators._
 import util.Stats._
 import Names._
-import Flags.Module
+import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
 
 object TypeApplications {
@@ -284,7 +284,8 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** Dealias type if it can be done without forcing the TypeRef's info */
   def safeDealias(using Context): Type = self match {
-    case self: TypeRef if self.denot.exists && self.symbol.isAliasType =>
+    case self: TypeRef
+    if self.denot.exists && self.symbol.isAliasType && !self.symbol.flagsUNSAFE.is(Provisional) =>
       self.superType.stripTypeVar.safeDealias
     case _ =>
       self

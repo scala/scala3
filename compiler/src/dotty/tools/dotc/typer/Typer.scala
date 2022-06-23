@@ -2035,10 +2035,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // If it is an alias type, it would mean the type is cyclic
         // If it is an abstract type, it would mean the type is an irreducible
         // application of a higher-kinded type to a wildcard argument.
-        // Either way, the wildcard argument is illegal.
-        // The early test here is needed, so that we do not accidentally reduce
-        // an application of a Provisional type away so that the type constructor
-        // is no longer present on the roght hand side. See neg/i15507.scala.
+        // Either way, the wildcard argument is illegal. The early test of
+        // `checkNoWildcard` here is needed, so that we do not accidentally reduce
+        // an application of a Provisional type away, which would mean that the type constructor
+        // is no longer present on the right hand side. See neg/i15507.scala.
         checkedArgs = checkedArgs.mapconserve(checkNoWildcard)
       else if tycon == defn.throwsAlias
           && checkedArgs.length == 2
