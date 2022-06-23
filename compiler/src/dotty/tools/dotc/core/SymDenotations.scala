@@ -658,6 +658,9 @@ object SymDenotations {
       containsOpaques ||
       is(Module, butNot = Package) && owner.seesOpaques
 
+    def isProvisional(using Context): Boolean =
+      flagsUNSAFE.is(Provisional) // do not force the info to check the flag
+
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:
      *  1. It is the symbol referred to in the selfInfo part of the ClassInfo
