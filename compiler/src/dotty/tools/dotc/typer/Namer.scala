@@ -905,7 +905,7 @@ class Namer { typer: Typer =>
       if denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass then
         val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
         denot.info.parents.foreach { parent => register(child, parent.classSymbol.asClass) }
-      else if denot.is(CaseVal, butNot = Method | Module) then
+      else if denot.is(CaseVal, butNot = MethodOrModule) then
         assert(denot.is(Enum), denot)
         denot.info.classSymbols.foreach { parent => register(denot.symbol, parent) }
       end if

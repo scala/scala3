@@ -185,14 +185,14 @@ object ExplicitOuter {
 
   /** A new param accessor for the outer field in class `cls` */
   private def newOuterParamAccessor(cls: ClassSymbol)(using Context) =
-    newOuterSym(cls, cls, nme.OUTER, Private | Local | ParamAccessor)
+    newOuterSym(cls, cls, nme.OUTER, LocalParamAccessor)
 
   /** A new outer accessor for class `cls` which is a member of `owner` */
   private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(using Context) = {
     val deferredIfTrait = if (owner.is(Trait)) Deferred else EmptyFlags
     val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
     newOuterSym(owner, cls, outerAccName(cls),
-      Final | Method | StableRealizable | outerAccIfOwn | deferredIfTrait)
+      Final | StableMethod | outerAccIfOwn | deferredIfTrait)
   }
 
   private def outerAccName(cls: ClassSymbol)(using Context): TermName =

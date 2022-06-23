@@ -258,7 +258,7 @@ object EtaExpansion extends LiftImpure {
     val paramTypes: List[Tree] =
       if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
-    var paramFlag = Synthetic | Param
+    var paramFlag = SyntheticParam
     if (mt.isContextualMethod) paramFlag |= Given
     else if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = mt.paramNames.lazyZip(paramTypes).map((name, tpe) =>

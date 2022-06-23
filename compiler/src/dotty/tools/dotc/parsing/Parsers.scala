@@ -2873,7 +2873,7 @@ object Parsers {
       if (mods.is(Private) && mods.hasPrivateWithin)
         normalize(mods &~ Private)
       else if (mods.isAllOf(AbstractOverride))
-        normalize(addFlag(mods &~ (Abstract | Override), AbsOverride))
+        normalize(addFlag(mods &~ AbstractOverride, AbsOverride))
       else
         mods
 
@@ -3034,7 +3034,7 @@ object Parsers {
       val tps = commaSeparated(funArgType)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
-      val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
+      val paramFlags = if ofClass then LocalParamAccessor else Param
       tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | impliedMods.flags))
 
     /** ClsParamClause    ::=  ‘(’ [‘erased’] ClsParams ‘)’ | UsingClsParamClause

@@ -502,7 +502,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     else if (sym.is(Module))
       if (sym.moduleClass.isNoInitsRealClass) PurePath else IdempotentPath
     else if (sym.is(Lazy)) IdempotentPath
-    else if sym.isAllOf(Inline | Param) then Impure
+    else if sym.isAllOf(InlineParam) then Impure
     else PurePath
   }
 

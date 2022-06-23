@@ -435,7 +435,7 @@ object Inliner {
          | Literal(_) =>
         true
       case Ident(_) =>
-        isPureRef(tree) || tree.symbol.isAllOf(Inline | Param)
+        isPureRef(tree) || tree.symbol.isAllOf(InlineParam)
       case Select(qual, _) =>
         if (tree.symbol.is(Erased)) true
         else isPureRef(tree) && apply(qual)
@@ -969,7 +969,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
             case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
             case t: SingletonType =>
-              if t.termSymbol.isAllOf(Inline | Param) then apply(t.widenTermRefExpr)
+              if t.termSymbol.isAllOf(InlineParam) then apply(t.widenTermRefExpr)
               else paramProxy.getOrElse(t, mapOver(t))
             case t => mapOver(t)
           }
