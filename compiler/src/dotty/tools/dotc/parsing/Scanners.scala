@@ -751,6 +751,8 @@ object Scanners {
           closeIndented()
         case EOF =>
           if !source.maybeIncomplete then closeIndented()
+        case STRINGPART =>
+          finishStringPart()
         case _ =>
       }
     }
@@ -1269,46 +1271,13 @@ object Scanners {
         getStringPart(multiLine)
       }
       else if (ch == '$') {
-        def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
-          @tailrec def loopRest(): Unit =
-            if ch != SU && isUnicodeIdentifierPart(ch) then
-              putChar(ch) ; nextRawChar()
-              loopRest()
-            else if atSupplementary(ch, isUnicodeIdentifierPart) then
-              putChar(ch) ; nextRawChar()
-              putChar(ch) ; nextRawChar()
-              loopRest()
-            else
-              finishNamedToken(IDENTIFIER, target = next)
-          end loopRest
-          setStrVal()
-          token = STRINGPART
-          next.lastOffset = charOffset - 1
-          next.offset = charOffset - 1
-          putChar(ch) ; nextRawChar()
-          if hasSupplement then
-            putChar(ch) ; nextRawChar()
-          loopRest()
-        end getInterpolatedIdentRest
-
         nextRawChar()
-        if (ch == '$' || ch == '"') {
+        if ch == '$' || ch == '"' then
           putChar(ch)
           nextRawChar()
           getStringPart(multiLine)
-        }
-        else if (ch == '{') {
-          setStrVal()
-          token = STRINGPART
-        }
-        else if isUnicodeIdentifierStart(ch) || ch == '_' then
-          getInterpolatedIdentRest(hasSupplement = false)
-        else if atSupplementary(ch, isUnicodeIdentifierStart) then
-          getInterpolatedIdentRest(hasSupplement = true)
         else
-          error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected", off = charOffset - 2)
-          putChar('$')
-          getStringPart(multiLine)
+          token = STRINGPART
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))
@@ -1324,6 +1293,42 @@ object Scanners {
         }
       }
     end getStringPart
+
+    private def finishStringPart() =
+      def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
+        @tailrec def loopRest(): Unit =
+          if ch != SU && isUnicodeIdentifierPart(ch) then
+            putChar(ch) ; nextRawChar()
+            loopRest()
+          else if atSupplementary(ch, isUnicodeIdentifierPart) then
+            putChar(ch) ; nextRawChar()
+            putChar(ch) ; nextRawChar()
+            loopRest()
+          else
+            finishNamedToken(IDENTIFIER, target = next)
+        end loopRest
+        setStrVal()
+        token = STRINGPART
+        next.lastOffset = charOffset - 1
+        next.offset = charOffset - 1
+        putChar(ch) ; nextRawChar()
+        if hasSupplement then
+          putChar(ch) ; nextRawChar()
+        loopRest()
+      end getInterpolatedIdentRest
+      // begin
+      if ch == '{' then
+        setStrVal()
+        token = STRINGPART
+      else if isUnicodeIdentifierStart(ch) || ch == '_' then
+        getInterpolatedIdentRest(hasSupplement = false)
+      else if atSupplementary(ch, isUnicodeIdentifierStart) then
+        getInterpolatedIdentRest(hasSupplement = true)
+      else
+        error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected", off = charOffset - 2)
+        putChar('$')
+        getStringPart(multiLine = false)
+    end finishStringPart
 
     private def fetchStringPart(multiLine: Boolean) = {
       offset = charOffset - 1
