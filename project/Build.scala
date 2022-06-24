@@ -169,9 +169,10 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      "-Xfatal-warnings",
+      //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
+      "-Xfatal-warnings",                         // -Werror in modern usage
       "-encoding", "UTF8",
-      "-language:implicitConversions"
+      "-language:implicitConversions",
     ),
 
     (Compile / compile / javacOptions) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
