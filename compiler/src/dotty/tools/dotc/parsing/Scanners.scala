@@ -695,10 +695,10 @@ object Scanners {
       getNextToken(token)
       if token == END && !isEndMarker then token = IDENTIFIER
 
-    def reset() = {
+    def reset() =
+      if next.token != EMPTY && !isInstanceOf[LookaheadScanner] then report.error(s"Internal: lookAhead/reset would erase next token ${tokenString(next.token)} after ${tokenString(token)}", sourcePos())
       next.copyFrom(this)
       this.copyFrom(prev)
-    }
 
     def closeIndented() = currentRegion match
       case r: Indented if !r.isOutermost => insert(OUTDENT, offset)
@@ -1080,16 +1080,24 @@ object Scanners {
 // Lookahead ---------------------------------------------------------------
 
     /** The next token after this one.
+     *
      *  The token is computed via fetchToken, so complex two word
      *  tokens such as CASECLASS are not recognized.
      *  Newlines and indent/unindent tokens are skipped.
      *
+     *  Since interpolation prefetches both STRINGPART and an expression,
+     *  use a scanner for rare case. Otherwise the next is overwritten on reset.
      */
-     def lookahead: TokenData =
-      if next.token == EMPTY then
+    def lookahead: TokenData =
+      if next.token != EMPTY then next
+      else if token == INTERPOLATIONID then
+        val scan = LookaheadScanner()
+        scan.nextToken()
+        scan
+      else
         lookAhead()
         reset()
-      next
+        next
 
     class LookaheadScanner(val allowIndent: Boolean = false) extends Scanner(source, offset) {
       override def languageImportContext = Scanner.this.languageImportContext
