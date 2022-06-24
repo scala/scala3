@@ -1,5 +1,6 @@
 package dotty.tools.dotc.profile
 
+import scala.annotation.*
 import scala.language.unsafeNulls
 
 import java.io.{FileWriter, PrintWriter}
@@ -123,6 +124,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   }
   private def readHeapUsage() = RealProfiler.memoryMx.getHeapMemoryUsage.getUsed
 
+  @nowarn
   private def doGC: Unit = {
     System.gc()
     System.runFinalization()
