@@ -695,10 +695,10 @@ object Scanners {
       getNextToken(token)
       if token == END && !isEndMarker then token = IDENTIFIER
 
-    def reset() = {
+    def reset() =
+      assert(next.token == EMPTY || isInstanceOf[LookaheadScanner], s"lookAhead/reset would erase next token ${tokenString(next.token)} after ${tokenString(token)}")
       next.copyFrom(this)
       this.copyFrom(prev)
-    }
 
     def closeIndented() = currentRegion match
       case r: Indented if !r.isOutermost => insert(OUTDENT, offset)
