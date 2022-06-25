@@ -4,6 +4,7 @@ package transform
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
+import ast.tpd.*
 import collection.mutable
 import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
@@ -23,7 +24,6 @@ import coverage.*
   * The result can then be consumed by the Scoverage tool.
   */
 class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
-  import ast.tpd._
 
   override def phaseName = InstrumentCoverage.name
 
@@ -60,7 +60,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
   /** Transforms trees to insert calls to Invoker.invoked to compute the coverage when the code is called */
   private class CoverageTransformer extends Transformer:
-    override def transform(tree: Tree)(using ctx: Context): Tree =
+    override def transform(tree: Tree)(using Context): Tree =
       inContext(transformCtx(tree)) { // necessary to position inlined code properly
         tree match
           // simple cases
@@ -284,10 +284,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         val sym = fun.symbol
         sym.exists &&
         sym == defn.Boolean_&& || sym == defn.Boolean_||
-
-      def isContextual(fun: Apply): Boolean =
-        val args = fun.args
-        args.nonEmpty && args.head.symbol.isAllOf(GivenOrImplicit)
 
       val fun = tree.fun
       val nestedApplyNeedsLift = fun match
