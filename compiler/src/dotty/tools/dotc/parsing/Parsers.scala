@@ -3957,8 +3957,8 @@ object Parsers {
      */
     def selfType(): ValDef =
       if (in.isIdent || in.token == THIS)
-            && in.lookahead.isColon && followingIsSelfType()
-            || in.lookahead.token == ARROW
+        && (in.lookahead.isColon && followingIsSelfType()
+            || in.lookahead.token == ARROW)
       then
         atSpan(in.offset) {
           val selfName =
