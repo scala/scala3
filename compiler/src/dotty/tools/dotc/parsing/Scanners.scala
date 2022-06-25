@@ -1281,7 +1281,6 @@ object Scanners {
               putChar(ch) ; nextRawChar()
               loopRest()
             else
-              assert(next.token == EMPTY)
               finishNamedToken(IDENTIFIER, target = next)
           end loopRest
           setStrVal()
