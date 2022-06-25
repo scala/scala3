@@ -273,12 +273,26 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * should not be changed to {val $x = f(); T($x)}(1) but to {val $x = f(); val $y = 1; T($x)($y)}
      */
     private def needsLift(tree: Apply)(using Context): Boolean =
-      def isBooleanOperator(fun: Tree) =
-        // We don't want to lift a || getB(), to avoid calling getB if a is true.
-        // Same idea with a && getB(): if a is false, getB shouldn't be called.
-        val sym = fun.symbol
-        sym.exists &&
+      inline def isShortCircuitedOp(sym: Symbol) =
         sym == defn.Boolean_&& || sym == defn.Boolean_||
+
+      inline def isCompilerIntrinsic(sym: Symbol) =
+        sym == defn.StringContext_s ||
+        sym == defn.StringContext_f ||
+        sym == defn.StringContext_raw
+
+      def isUnliftableFun(fun: Tree) =
+        /*
+         * We don't want to lift a || getB(), to avoid calling getB if a is true.
+         * Same idea with a && getB(): if a is false, getB shouldn't be called.
+         *
+         * On top of that, the `s`, `f` and `raw` string interpolators are special-cased
+         * by the compiler and will disappear in phase StringInterpolatorOpt, therefore
+         * they shouldn't be lifted.
+         */
+        val sym = fun.symbol
+        sym.exists && (isShortCircuitedOp(sym) || isCompilerIntrinsic(sym))
+      end
 
       val fun = tree.fun
       val nestedApplyNeedsLift = fun match
@@ -286,7 +300,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         case _ => false
 
       nestedApplyNeedsLift ||
-      !isBooleanOperator(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
 
     /** Check if the body of a DefDef can be instrumented with instrumentBody. */
     private def canInstrumentDefDef(tree: DefDef)(using Context): Boolean =
