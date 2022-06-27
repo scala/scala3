@@ -2,10 +2,6 @@
 6 |            if b == null then b = new B(this) // error
   |                                  ^^^^^^^^^^^
   |                                  The RHS of reassignment must be fully initialized. Calling trace:
-  |                                  -> object Foo {	[ inherit-non-hot.scala:2 ]
-  |                                     ^
-  |                                  -> val c = new C	[ inherit-non-hot.scala:19 ]
-  |                                             ^^^^^
   |                                  -> class C extends A {	[ inherit-non-hot.scala:15 ]
   |                                     ^
   |                                  -> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]

@@ -1143,10 +1143,10 @@ object Semantic:
   case class Task(value: ThisRef)
 
   class WorkList private[Semantic]():
-    private var pendingTasks: List[Task] = Nil
+    private val pendingTasks: mutable.ArrayBuffer[Task] = new mutable.ArrayBuffer
 
     def addTask(task: Task): Unit =
-      if !pendingTasks.contains(task) then pendingTasks = task :: pendingTasks
+      if !pendingTasks.contains(task) then pendingTasks.append(task)
 
     /** Process the worklist until done */
     final def work()(using Cache, Context): Unit =
