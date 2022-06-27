@@ -209,7 +209,15 @@ final class ProperGadtConstraint private(
   def isNarrowing: Boolean = wasConstrained
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = {
-    val res = approximation(tvarOrError(sym).origin, fromBelow = fromBelow)
+    val res =
+      approximation(tvarOrError(sym).origin, fromBelow = fromBelow) match
+        case tpr: TypeParamRef =>
+          // Here we do externalization when the returned type is a TypeParamRef,
+          //  b/c ConstraintHandling.approximation may return internal types when
+          //  the type variable is instantiated. See #15531.
+          externalize(tpr)
+        case tp => tp
+
     gadts.println(i"approximating $sym ~> $res")
     res
   }
