@@ -10,10 +10,10 @@ import JavadocAnchorCreator.getJavadocType
 
 object SymOps:
 
-  extension (using Quotes)(sym: reflect.Symbol)
+  extension (using Quotes)(sym: quotes.reflect.Symbol)
 
     def isImplicitClass: Boolean =
-      import reflect._
+      import quotes.reflect.*
       sym.isClassDef && sym.maybeOwner != Symbol.noSymbol
         && sym.maybeOwner.declaredMethods.exists { methodSymbol =>
           methodSymbol.name == sym.name && methodSymbol.flags.is(Flags.Implicit) && methodSymbol.flags.is(Flags.Method)
@@ -27,7 +27,7 @@ object SymOps:
       sym.packageName.split('.').toList
 
     def className: Option[String] =
-      import reflect._
+      import quotes.reflect.*
       if (sym.isClassDef && !sym.flags.is(Flags.Package)) Some(
         Some(sym.maybeOwner).filter(s => s.exists).flatMap(_.className).fold("")(cn => cn + "$") + sym.name
       ).filterNot(_.contains("package$"))
@@ -54,7 +54,7 @@ object SymOps:
 
 
     def getVisibility(): Visibility =
-      import reflect._
+      import quotes.reflect.*
       import VisibilityScope._
 
       def explicitScope(ownerType: TypeRepr): VisibilityScope =
@@ -83,7 +83,7 @@ object SymOps:
 
     // Order here determines order in documenation
     def getExtraModifiers(): Seq[Modifier] =
-      import reflect._
+      import quotes.reflect.*
       Seq(
         Flags.Final -> Modifier.Final,
         Flags.Sealed -> Modifier.Sealed,
@@ -112,54 +112,54 @@ object SymOps:
         case _ => false
 
     def shouldDocumentClasslike(using dctx: DocContext): Boolean =
-      import reflect._
+      import quotes.reflect.*
       !sym.isHiddenByVisibility
       && !sym.flags.is(Flags.Synthetic)
       && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
 
-    def getCompanionSymbol: Option[reflect.Symbol] = Some(sym.companionClass).filter(_.exists)
+    def getCompanionSymbol: Option[quotes.reflect.Symbol] = Some(sym.companionClass).filter(_.exists)
 
     def isCompanionObject: Boolean =
-      import reflect._
+      import quotes.reflect.*
       sym.flags.is(Flags.Module) && sym.companionClass.exists
 
     def isGiven: Boolean =
-      import reflect._
+      import quotes.reflect.*
       sym.flags.is(Flags.Given)
 
     def isExported: Boolean =
-      import reflect._
+      import quotes.reflect.*
       sym.flags.is(Flags.Exported)
 
     def isOverridden: Boolean =
-      import reflect._
+      import quotes.reflect.*
       sym.flags.is(Flags.Override)
 
     def isExtensionMethod: Boolean =
-      import reflect._
+      import quotes.reflect.*
       sym.flags.is(Flags.ExtensionMethod)
 
     def isArtifact: Boolean =
-      import reflect._
+      import quotes.reflect.*
       sym.flags.is(Flags.Artifact)
 
     def isLeftAssoc: Boolean = !sym.name.endsWith(":")
 
-    def extendedSymbol: Option[reflect.ValDef] =
-      import reflect.*
+    def extendedSymbol: Option[quotes.reflect.ValDef] =
+      import quotes.reflect.*
       Option.when(sym.isExtensionMethod){
         val termParamss = sym.tree.asInstanceOf[DefDef].termParamss
         if sym.isLeftAssoc || termParamss.size == 1 then termParamss(0).params(0)
         else termParamss(1).params(0)
       }
 
-    def extendedTypeParams: List[reflect.TypeDef] =
-      import reflect.*
-      val method = sym.tree.asInstanceOf[DefDef]
+    def extendedTypeParams: List[quotes.reflect.TypeDef] =
+      import quotes.reflect.*
+      val method = sym.tree.asInstanceOf[DefDef] // TODO use pattern matching instead of unchecked cast
       method.leadingTypeParams
 
-    def extendedTermParamLists: List[reflect.TermParamClause] =
-      import reflect.*
+    def extendedTermParamLists: List[quotes.reflect.TermParamClause] =
+      import quotes.reflect.*
       if sym.nonExtensionLeadingTypeParams.nonEmpty then
         sym.nonExtensionParamLists.takeWhile {
           case _: TypeParamClause => false
@@ -170,8 +170,8 @@ object SymOps:
       else
         List.empty
 
-    def nonExtensionTermParamLists: List[reflect.TermParamClause] =
-      import reflect.*
+    def nonExtensionTermParamLists: List[quotes.reflect.TermParamClause] =
+      import quotes.reflect.*
       if sym.nonExtensionLeadingTypeParams.nonEmpty then
         sym.nonExtensionParamLists.dropWhile {
           case _: TypeParamClause => false
@@ -184,8 +184,8 @@ object SymOps:
           case tpc: TermParamClause => tpc
         }
 
-    def nonExtensionParamLists: List[reflect.ParamClause] =
-      import reflect.*
+    def nonExtensionParamLists: List[quotes.reflect.ParamClause] =
+      import quotes.reflect.*
       val method = sym.tree.asInstanceOf[DefDef]
       if sym.isExtensionMethod then
         val params = method.paramss
@@ -194,8 +194,8 @@ object SymOps:
         else params.head :: params.tail.drop(toDrop)
       else method.paramss
 
-    def nonExtensionLeadingTypeParams: List[reflect.TypeDef] =
-      import reflect.*
+    def nonExtensionLeadingTypeParams: List[quotes.reflect.TypeDef] =
+      import quotes.reflect.*
       sym.nonExtensionParamLists.collectFirst {
         case TypeParamClause(params) => params
       }.toList.flatten
@@ -210,10 +210,10 @@ class SymOpsWithLinkCache:
 
   private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
 
-  extension (using Quotes)(sym: reflect.Symbol)
+  extension (using Quotes)(sym: quotes.reflect.Symbol)
 
     private def constructPath(location: Seq[String], anchor: Option[String], link: ExternalDocLink): String =
-      import reflect.*
+      import quotes.reflect.*
       val extension = ".html"
       val docURL = link.documentationUrl.toString
       def constructPathForJavadoc: String =
@@ -247,7 +247,7 @@ class SymOpsWithLinkCache:
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri(using dctx: DocContext): DRI =
-      import reflect.*
+      import quotes.reflect.*
       if sym == Symbol.noSymbol then topLevelDri
       else
         val method =
@@ -263,7 +263,7 @@ class SymOpsWithLinkCache:
         val location = (sym.packageNameSplitted ++ className).map(escapeFilename(_))
 
         val externalLink = {
-            import reflect._
+            import quotes.reflect.*
             import dotty.tools.dotc
             given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
@@ -289,7 +289,7 @@ class SymOpsWithLinkCache:
           s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
 
-    def driInContextOfInheritingParent(par: reflect.Symbol)(using dctx: DocContext): DRI = sym.dri.copy(
+    def driInContextOfInheritingParent(par: quotes.reflect.Symbol)(using dctx: DocContext): DRI = sym.dri.copy(
       location = par.dri.location,
       externalLink = None
     )

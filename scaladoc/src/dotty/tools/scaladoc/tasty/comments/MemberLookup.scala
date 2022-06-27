@@ -7,23 +7,23 @@ import scala.quoted._
 trait MemberLookup {
 
   def memberLookupResult(using Quotes)(
-    symbol: reflect.Symbol,
+    symbol: quotes.reflect.Symbol,
     label: String,
-    inheritingParent: Option[reflect.Symbol] = None
-  ): (reflect.Symbol, String, Option[reflect.Symbol]) =
+    inheritingParent: Option[quotes.reflect.Symbol] = None
+  ): (quotes.reflect.Symbol, String, Option[quotes.reflect.Symbol]) =
     (symbol, label, inheritingParent)
 
   def lookup(using Quotes, DocContext)(
     query: Query,
-    owner: reflect.Symbol,
-  ): Option[(reflect.Symbol, String, Option[reflect.Symbol])] = lookupOpt(query, Some(owner))
+    owner: quotes.reflect.Symbol,
+  ): Option[(quotes.reflect.Symbol, String, Option[quotes.reflect.Symbol])] = lookupOpt(query, Some(owner))
 
   def lookupOpt(using Quotes, DocContext)(
     query: Query,
-    ownerOpt: Option[reflect.Symbol],
-  ): Option[(reflect.Symbol, String, Option[reflect.Symbol])] =
+    ownerOpt: Option[quotes.reflect.Symbol],
+  ): Option[(quotes.reflect.Symbol, String, Option[quotes.reflect.Symbol])] =
     try
-      import reflect._
+      import quotes.reflect.*
 
       def nearestClass(sym: Symbol): Symbol =
         if sym.isClassDef then sym else nearestClass(sym.owner)
@@ -91,8 +91,8 @@ trait MemberLookup {
           report.warn(msg, e)
         None
 
-  private def hackMembersOf(using Quotes)(rsym: reflect.Symbol) = {
-    import reflect._
+  private def hackMembersOf(using Quotes)(rsym: quotes.reflect.Symbol) = {
+    import quotes.reflect.*
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
@@ -104,7 +104,7 @@ trait MemberLookup {
     members.asInstanceOf[Iterator[Symbol]]
   }
 
-  private def hackIsNotAbsent(using Quotes)(rsym: reflect.Symbol) =
+  private def hackIsNotAbsent(using Quotes)(rsym: quotes.reflect.Symbol) =
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
@@ -116,9 +116,9 @@ trait MemberLookup {
 
   private def localLookup(using Quotes)(
     sel: MemberLookup.Selector,
-    owner: reflect.Symbol
-  ): Iterator[reflect.Symbol] = {
-    import reflect._
+    owner: quotes.reflect.Symbol
+  ): Iterator[quotes.reflect.Symbol] = {
+    import quotes.reflect.*
 
     def findMatch(syms: Iterator[Symbol]): Iterator[Symbol] = {
       def matches(s: Symbol): Boolean =
@@ -171,9 +171,9 @@ trait MemberLookup {
   }
 
   private def downwardLookup(using Quotes)(
-    query: List[String], owner: reflect.Symbol
-  ): Option[(reflect.Symbol, Option[reflect.Symbol])] = {
-    import reflect._
+    query: List[String], owner: quotes.reflect.Symbol
+  ): Option[(quotes.reflect.Symbol, Option[quotes.reflect.Symbol])] = {
+    import quotes.reflect.*
     query match {
       case Nil => None
       case q :: Nil =>
@@ -191,7 +191,7 @@ trait MemberLookup {
         res match {
           case None => None
           case Some(sym) =>
-            val externalOwner: Option[reflect.Symbol] =
+            val externalOwner: Option[Symbol] =
               if owner eq sym.owner then None
               else if owner.flags.is(Flags.Module) && !owner.flags.is(Flags.Package) then Some(owner.moduleClass)
               else if owner.isClassDef then Some(owner)

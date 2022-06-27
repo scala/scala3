@@ -37,16 +37,16 @@ trait TypesSupport:
     }.flatten.map(_.asSignature)
 
   given TreeSyntax: AnyRef with
-    extension (using Quotes)(tpeTree: reflect.Tree)
+    extension (using Quotes)(tpeTree: quotes.reflect.Tree)
       def asSignature: SSignature =
-        import reflect._
+        import quotes.reflect.*
         tpeTree match
           case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe)
           case tpeTree: TypeTree => topLevelProcess(tpeTree.tpe)
           case term:  Term => topLevelProcess(term.tpe)
 
   given TypeSyntax: AnyRef with
-    extension (using Quotes)(tpe: reflect.TypeRepr)
+    extension (using Quotes)(tpe: quotes.reflect.TypeRepr)
       def asSignature: SSignature = topLevelProcess(tpe)
 
 
@@ -60,9 +60,9 @@ trait TypesSupport:
 
   extension (on: SignaturePart) def l: List[SignaturePart] = List(on)
 
-  private def tpe(using Quotes)(symbol: reflect.Symbol): SSignature =
+  private def tpe(using Quotes)(symbol: quotes.reflect.Symbol): SSignature =
     import SymOps._
-    val suffix = if symbol.isValDef || symbol.flags.is(reflect.Flags.Module) then plain(".type").l else Nil
+    val suffix = if symbol.isValDef || symbol.flags.is(quotes.reflect.Flags.Module) then plain(".type").l else Nil
     val dri: Option[DRI] = Option(symbol).filterNot(_.isHiddenByVisibility).map(_.dri)
     dotty.tools.scaladoc.Type(symbol.normalizedName, dri) :: suffix
 
@@ -70,31 +70,31 @@ trait TypesSupport:
     case List(single) => single
     case other => other.reduce((r, e) => r ++ plain(", ").l ++ e)
 
-  private def isRepeatedAnnotation(using Quotes)(term: reflect.Term) =
-    import reflect._
+  private def isRepeatedAnnotation(using Quotes)(term: quotes.reflect.Term) =
+    import quotes.reflect.*
     term.tpe match
       case t: TypeRef => t.name == "Repeated" && t.qualifier.match
         case ThisType(tref: TypeRef) if tref.name == "internal" => true
         case _ => false
       case _ => false
 
-  private def isRepeated(using Quotes)(typeRepr: reflect.TypeRepr) =
-    import reflect._
+  private def isRepeated(using Quotes)(typeRepr: quotes.reflect.TypeRepr) =
+    import quotes.reflect.*
     typeRepr match
       case t: TypeRef => t.name == "<repeated>" && t.qualifier.match
         case ThisType(tref: TypeRef) if tref.name == "scala" => true
         case _ => false
       case _ => false
 
-  private def topLevelProcess(using Quotes)(tp: reflect.TypeRepr): SSignature =
-    import reflect._
+  private def topLevelProcess(using Quotes)(tp: quotes.reflect.TypeRepr): SSignature =
+    import quotes.reflect.*
     tp match
       case ThisType(tpe) => inner(tpe) :+ plain(".this.type")
       case tpe => inner(tpe)
 
   // TODO #23 add support for all types signatures that makes sense
-  private def inner(using Quotes)(tp: reflect.TypeRepr)(using indent: Int = 0): SSignature =
-    import reflect._
+  private def inner(using Quotes)(tp: quotes.reflect.TypeRepr)(using indent: Int = 0): SSignature =
+    import quotes.reflect.*
     def noSupported(name: String): SSignature =
       println(s"WARN: Unsupported type: $name: ${tp.show}")
       plain(s"Unsupported[$name]").l
@@ -310,8 +310,8 @@ trait TypesSupport:
           s"${tpe.show(using Printer.TypeReprStructure)}"
         throw MatchError(msg)
 
-  private def typeBound(using Quotes)(t: reflect.TypeRepr, low: Boolean) =
-    import reflect._
+  private def typeBound(using Quotes)(t: quotes.reflect.TypeRepr, low: Boolean) =
+    import quotes.reflect.*
     val ignore = if (low) t.typeSymbol == defn.NothingClass else t.typeSymbol == defn.AnyClass
     val prefix = keyword(if low then " >: " else " <: ")
     t match {
@@ -321,8 +321,8 @@ trait TypesSupport:
       case _ => Nil
     }
 
-  private def typeBoundsTreeOfHigherKindedType(using Quotes)(low: reflect.TypeRepr, high: reflect.TypeRepr) =
-    import reflect._
+  private def typeBoundsTreeOfHigherKindedType(using Quotes)(low: quotes.reflect.TypeRepr, high: quotes.reflect.TypeRepr) =
+    import quotes.reflect.*
     def regularTypeBounds(low: TypeRepr, high: TypeRepr) =
       if low == high then keyword(" = ").l ++ inner(low)
       else typeBound(low, low = true) ++ typeBound(high, low = false)

@@ -18,8 +18,8 @@ trait ClassLikeSupport:
 
   private given qctx.type = qctx
 
-  private def bareClasslikeKind(using Quotes)(symbol: reflect.Symbol): Kind =
-    import reflect._
+  private def bareClasslikeKind(using Quotes)(symbol: quotes.reflect.Symbol): Kind =
+    import quotes.reflect.*
     if symbol.flags.is(Flags.Module) then Kind.Object
     else if symbol.flags.is(Flags.Trait) then  Kind.Trait(Nil, Nil)
     else if symbol.flags.is(Flags.Enum) then Kind.Enum(Nil, Nil)
@@ -210,7 +210,7 @@ trait ClassLikeSupport:
       }
     ).map(_.copy(inheritedFrom = inheritance))
 
-  extension (using Quotes)(c: reflect.ClassDef)
+  extension (using Quotes)(c: quotes.reflect.ClassDef)
 
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
@@ -242,13 +242,13 @@ trait ClassLikeSupport:
       c.symbol.fullName match {
         case "scala.Predef$" =>
           ownMembers ++
-          extractPatchMembers(qctx.reflect.Symbol.requiredClass("scala.runtime.stdLibPatches.Predef$"))
+          extractPatchMembers(Symbol.requiredClass("scala.runtime.stdLibPatches.Predef$"))
         case "scala.language$" =>
           ownMembers ++
-          extractPatchMembers(qctx.reflect.Symbol.requiredModule("scala.runtime.stdLibPatches.language").moduleClass)
+          extractPatchMembers(Symbol.requiredModule("scala.runtime.stdLibPatches.language").moduleClass)
         case "scala.language$.experimental$" =>
           ownMembers ++
-          extractPatchMembers(qctx.reflect.Symbol.requiredModule("scala.runtime.stdLibPatches.language.experimental").moduleClass)
+          extractPatchMembers(Symbol.requiredModule("scala.runtime.stdLibPatches.language.experimental").moduleClass)
         case _ => ownMembers
       }
 

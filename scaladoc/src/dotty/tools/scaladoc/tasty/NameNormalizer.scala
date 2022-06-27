@@ -9,9 +9,9 @@ import SymOps._
 
 object NameNormalizer {
 
-  extension (using Quotes)(s: reflect.Symbol)
+  extension (using Quotes)(s: quotes.reflect.Symbol)
     def normalizedName: String = {
-      import reflect.*
+      import quotes.reflect.*
       val withoutObjectSuffix = if s.flags.is(Flags.Module) then s.name.stripSuffix("$") else s.name
       val constructorNormalizedName = if s.isClassConstructor then "this" else withoutObjectSuffix
       val escaped = escapedName(constructorNormalizedName)

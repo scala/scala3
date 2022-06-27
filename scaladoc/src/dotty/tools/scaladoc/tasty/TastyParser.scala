@@ -4,7 +4,7 @@ package tasty
 
 import java.util.regex.Pattern
 
-import scala.util.{Try, Success, Failure}
+import scala.util.{Try => UtilTry, Success, Failure}
 import scala.tasty.inspector.DocTastyInspector
 import scala.quoted._
 
@@ -29,23 +29,24 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
   private val topLevels = Seq.newBuilder[(String, Member)]
   private var rootDoc: Option[Comment] = None
 
-  def processCompilationUnit(using Quotes)(root: reflect.Tree): Unit = ()
+  def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit = ()
 
   override def postProcess(using Quotes): Unit =
+    import quotes.reflect.{report => _, *}
+
     // hack into the compiler to get a list of all top-level trees
     // in principle, to do this, one would collect trees in processCompilationUnit
     // however, path-dependent types disallow doing so w/o using casts
-    inline def hackForeachTree(thunk: reflect.Tree => Unit): Unit =
+    def hackForeachTree(thunk: Tree => Unit): Unit =
       given dctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
       dctx.run.nn.units.foreach { compilationUnit =>
         // mirrors code from TastyInspector
-        thunk(compilationUnit.tpdTree.asInstanceOf[reflect.Tree])
+        thunk(compilationUnit.tpdTree.asInstanceOf[Tree])
       }
 
-    val symbolsToSkip: Set[reflect.Symbol] =
+    val symbolsToSkip: Set[Symbol] =
       ctx.args.identifiersToSkip.flatMap { ref =>
-        val qrSymbol = reflect.Symbol
-        Try(qrSymbol.requiredPackage(ref)).orElse(Try(qrSymbol.requiredClass(ref))) match {
+        UtilTry(Symbol.requiredPackage(ref)).orElse(UtilTry(Symbol.requiredClass(ref))) match {
           case Success(sym) => Some(sym)
           case Failure(err) =>
             report.warning(
@@ -58,7 +59,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
 
     val patternsToSkip: List[Pattern] =
       ctx.args.regexesToSkip.flatMap { regexString =>
-        Try(Pattern.compile(regexString)) match
+        UtilTry(Pattern.compile(regexString)) match
           case Success(pat) => Some(pat)
           case Failure(err) =>
             report.warning(
@@ -68,12 +69,12 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
             None
       }
 
-    def isSkipped(sym: reflect.Symbol): Boolean =
-      def isSkippedById(sym: reflect.Symbol): Boolean =
+    def isSkipped(sym: Symbol): Boolean =
+      def isSkippedById(sym: Symbol): Boolean =
         if !sym.exists then false else
           symbolsToSkip.contains(sym) || isSkipped(sym.owner)
 
-      def isSkippedByRx(sym: reflect.Symbol): Boolean =
+      def isSkippedByRx(sym: Symbol): Boolean =
         val symStr = sym.fullName
         patternsToSkip.exists(p => p.matcher(symStr).matches())
 
@@ -83,7 +84,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
     def driFor(link: String): Option[DRI] =
       val symOps = new SymOpsWithLinkCache
       import symOps._
-      Try(QueryParser(link).readQuery()).toOption.flatMap(query =>
+      UtilTry(QueryParser(link).readQuery()).toOption.flatMap(query =>
         MemberLookup.lookupOpt(query, None).map {
           case (sym, _, inheritingParent) => inheritingParent match
             case Some(parent) => sym.driInContextOfInheritingParent(parent)

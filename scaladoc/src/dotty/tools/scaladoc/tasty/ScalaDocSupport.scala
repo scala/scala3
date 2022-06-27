@@ -10,8 +10,8 @@ import scala.quoted._
 
 object ScaladocSupport:
 
-  def parseCommentString(using Quotes, DocContext)(comment: String, sym: reflect.Symbol, pos: Option[reflect.Position]): Comment =
-    import reflect.report
+  def parseCommentString(using Quotes, DocContext)(comment: String, sym: quotes.reflect.Symbol, pos: Option[quotes.reflect.Position]): Comment =
+    import quotes.reflect.report
     val preparsed = comments.Preparser.preparse(comments.Cleaner.clean(comment))
 
     def pathBasedCommentSyntax(): CommentSyntax =
@@ -41,7 +41,7 @@ object ScaladocSupport:
     }
     parser.parse(preparsed)
 
-  def parseComment(using Quotes, DocContext)(docstring: String, tree: reflect.Tree): Option[Comment] =
+  def parseComment(using Quotes, DocContext)(docstring: String, tree: quotes.reflect.Tree): Option[Comment] =
     val commentString: String =
       if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
         import dotty.tools.dotc
