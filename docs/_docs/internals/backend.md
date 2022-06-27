@@ -6,8 +6,13 @@ title: "Backend Internals"
 The code for the JVM backend is split up by functionality and assembled in
 `GenBCode.scala`. This file defines class `GenBCode`, the compiler phase.
 
+The workflow is split into `CodeGen.scala` Scala compilation context aware responsible for emitting bytecode,
+and `PostProcessor.scala` which can be used for parallelized, context agnostic processing. In Scala 2 `PostProcessor`,
+was responsible for performing bytecode optimization, e.g. inlining method calls. In Scala 3 it is only used for writing
+Class files and Tasty to disk.
+
 ```
-class GenBCodePipeline -[defines]-->        PlainClassBuilder
+class CodeGen.Impl -[defines]-->        PlainClassBuilder
      |                                              |
  [extends]                                      [extends]
      |                                              |
@@ -18,14 +23,14 @@ BCodeBodyBuilder   ---------------->        PlainBodyBuilder
 BCodeSkelBuilder   ---------------->        PlainSkelBuilder
      |                                       /      |       \
  BCodeHelpers      ---------------->  BCClassGen BCAnnotGen ...  (more components)
-     |    |         \
-     |    |          \------------->  helper methods
-     |    |           \------------>  JMirrorBuilder, JBeanInfoBuilder (uses some components, e.g. BCInnerClassGen)
-     |    |
-     |   BytecodeWriters  --------->        methods and classes to write byte code files
+     |              \
+     |               \------------->  helper methods
+     |                \------------>  JMirrorBuilder, JAndroidBuilder (uses some components, e.g. BCInnerClassGen)
+     |                 \----------->  `backendUtils`: utility for bytecode related ops, contains mapping for supported classfile version
      |
 BCodeIdiomatic     ---------------->        utilities for code generation, e.g. genPrimitiveArithmetic
                     \-------------->        `bTypes`: maps and fields for common BTypes
+                     \------------->        `int`: synchronized interface between PostProcessor and compiltion ctx
 ```
 
 The `BTypes.scala` class contains the `BType` class and predefined BTypes
@@ -34,27 +39,32 @@ The `BTypes.scala` class contains the `BType` class and predefined BTypes
 Compiler creates a `GenBCode` `Phase`, calls `runOn(compilationUnits)`,
 which calls `run(context)`. This:
 
-* initializes `myPrimitives` defined in `DottyPrimitives` (maps primitive
-  members, like `int.+`, to bytecode instructions)
-* creates a `GenBCodePipeline` and calls `run(tree)`
+* initializes lazily components reused by all `compilationUnits` using same instance of Context:
+  - `bTypes`, used by `CodeGen` and `PostProcessro`, defined in `BCodeIdiomatic`  (BType maps, common BTypes like `StringRef`)
+  - `backendInterface:` - proxy to Context specific operations
+  - `codeGen: CodeGen` - uses `backendInterface`, `bTypes`, initializes instance of `DottyPrimitives` and defines `JMirrorBuilder` instance and implements bytecode generation flow (maps primitive members, like `int.+`, to bytecode instructions)
+  - `fontendAccess` - synchronized `PostProcessor` interface to compiler settings, reporting and GenBCode context (e.g. list of entrypoints)
+  - `postProcessor` - compilation context agnostic module dedicated to parallel processing of produced bytecode. Currently used only for writing Tasty and Class files. Defines `backendUtils` and `classfileWriter`
+* sets context of current compilation unit to the shared context instance
+* calls `codeGen.genUnit(ctx.compilation)` which returns structure with generated definitions (both Class files and Tasty)
+* calls postProcessing of generated definition in `postProcessor`
+* calls registered callbacks if needed for every generated class
 
-`GenBCodePipeline` now:
+Upon calling `codeGen.genUnit` it:
+* creates `PlainClassBuilder` instance for each generated `TypeDef` and creates ASM `ClassNode`
+* creates optional mirror class if needed
+* generates Tasty file content and store its attributes in either mirror or plain class node
 
-* initializes the `bTypes` field of `GenBCodePipeline` defined in `BCodeIdiomatic`
-  (BType maps, common BTypes like `StringRef`)
-* creates `BytecodeWriter` and `JMirrorBuilder` instances (on each compiler run)
-* `buildAndSendToDisk(units)`: uses work queues, see below.
-  - `GenBCodePipeline.feedPipeline1` adds ClassDefs to `q1`
-  - `Worker1.run` creates ASM `ClassNodes`, adds to `q2`. It creates one
-    `PlainClassBuilder` for each compilation unit.
-  - `Worker2.run` adds byte arrays (one for each class) to `q3`
-  - `GenBCodePipeline.drainQ3` writes byte arrays to disk
+`PostProcessor` is later:
+* enriching `ClassNode` with collected serializable lambdas
+* sets its inner classes
+* serializes class and writes it to file, optionally it can execute register callbacks for each generated file
+* writes generated Tasty to file
 
 
 ## Architecture ##
 The architecture of `GenBCode` is the same as in Scalac. It can be partitioned
 into weakly coupled components (called "subsystems" below):
-
 
 ### (a) The queue subsystem ###
 Queues mediate between processors, queues don't know what each processor does.
@@ -126,4 +136,4 @@ emitting:
 
 
 ### (f) Building an ASM ClassNode given an AST TypeDef ###
-It's done by `PlainClassBuilder`(see `GenBCode.scala`).
+It's done by `PlainClassBuilder`(see `CodeGen.scala`).

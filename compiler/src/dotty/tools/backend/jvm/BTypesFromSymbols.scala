@@ -14,20 +14,14 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.core.StdNames
+import dotty.tools.dotc.core.Phases
 
 /**
  * This class mainly contains the method classBTypeFromSymbol, which extracts the necessary
  * information from a symbol and its type to create the corresponding ClassBType. It requires
  * access to the compiler (global parameter).
- *
- * The mixin CoreBTypes defines core BTypes that are used in the backend. Building these BTypes
- * uses classBTypeFromSymbol, hence requires access to the compiler (global).
- *
- * BTypesFromSymbols extends BTypes because the implementation of BTypes requires access to some
- * of the core btypes. They are declared in BTypes as abstract members. Note that BTypes does
- * not have access to the compiler instance.
  */
-class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
+class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAccess: PostProcessorFrontendAccess) extends BTypes {
   import int.{_, given}
   import DottyBackendInterface.{symExtensions, _}
 
@@ -37,39 +31,18 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   val bCodeAsmCommon: BCodeAsmCommon[int.type ] = new BCodeAsmCommon(int)
   import bCodeAsmCommon._
 
-  // Why the proxy, see documentation of class [[CoreBTypes]].
-  val coreBTypes: CoreBTypesProxy[this.type] = new CoreBTypesProxy[this.type](this)
+  val coreBTypes = new CoreBTypesFromSymbols[I]{
+    val bTypes: BTypesFromSymbols.this.type = BTypesFromSymbols.this
+  }
   import coreBTypes._
 
-  final def intializeCoreBTypes(): Unit = {
-    coreBTypes.setBTypes(new CoreBTypes[this.type](this))
-  }
-
-  private[this] val perRunCaches: Caches = new Caches {
-    def newAnyRefMap[K <: AnyRef, V](): mutable.AnyRefMap[K, V] = new mutable.AnyRefMap[K, V]()
-    def newWeakMap[K, V](): mutable.WeakHashMap[K, V] = new mutable.WeakHashMap[K, V]()
-    def recordCache[T <: Clearable](cache: T): T = cache
-    def newMap[K, V](): mutable.HashMap[K, V] = new mutable.HashMap[K, V]()
-    def newSet[K](): mutable.Set[K] = new mutable.HashSet[K]
-  }
-
-  // TODO remove abstraction
-  private abstract class Caches {
-    def recordCache[T <: Clearable](cache: T): T
-    def newWeakMap[K, V](): collection.mutable.WeakHashMap[K, V]
-    def newMap[K, V](): collection.mutable.HashMap[K, V]
-    def newSet[K](): collection.mutable.Set[K]
-    def newAnyRefMap[K <: AnyRef, V](): collection.mutable.AnyRefMap[K, V]
-  }
-
-  @threadUnsafe protected lazy val classBTypeFromInternalNameMap = {
-    perRunCaches.recordCache(collection.concurrent.TrieMap.empty[String, ClassBType])
-  }
+  @threadUnsafe protected lazy val classBTypeFromInternalNameMap =
+    collection.concurrent.TrieMap.empty[String, ClassBType]
 
   /**
    * Cache for the method classBTypeFromSymbol.
    */
-  @threadUnsafe private lazy val convertedClasses = perRunCaches.newMap[Symbol, ClassBType]()
+  @threadUnsafe private lazy val convertedClasses = collection.mutable.HashMap.empty[Symbol, ClassBType]
 
   /**
    * The ClassBType for a class symbol `sym`.
