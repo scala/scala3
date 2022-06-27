@@ -3779,7 +3779,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // The check "safeToInstantiate" in `maximizeType` works to prevent unsound GADT casts.
             val target =
               if tree.tpe.isSingleton then
-                val conj = AndType(tree.tpe, pt)
+                // In the target type, when the singleton type is intersected, we also intersect
+                //   the GADT-approximated type of the singleton to avoid the loss of 
+                //   information. See #14776.
+                val gadtApprox = Inferencing.approximateGADT(tree.tpe.widen)
+                gadts.println(i"gadt approx $wtp ~~~ $gadtApprox")
+                val conj =
+                  AndType(AndType(tree.tpe, gadtApprox), pt)
                 if tree.tpe.isStable && !conj.isStable then
                   // this is needed for -Ycheck. Without the annotation Ycheck will
                   // skolemize the result type which will lead to different types before
