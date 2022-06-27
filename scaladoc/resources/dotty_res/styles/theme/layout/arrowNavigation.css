@@ -1,0 +1,15 @@
+.arrow-navigation {
+  display: flex;
+  margin-bottom: calc(6 * var(--base-spacing));
+  margin-top: calc(6 * var(--base-spacing));
+}
+
+.arrow-navigation > div:last-child {
+  margin-left: auto;
+}
+
+.arrow-navigation > div > span {
+  display: block;
+  margin-bottom: calc(1 * var(--base-spacing));
+  color: var(--text-secondary);
+}

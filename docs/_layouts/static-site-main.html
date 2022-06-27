@@ -6,29 +6,37 @@ layout: main
   <div id="site-header"></div>
   {% if page.movedTo %}
   <aside class="warning">
-    This is a nightly documentation. The content of this page may not be consistent with the current stable version of language.
-    Click <a href="{{ page.nightlyOf }}">here</a> to find the stable version of this page.
+    This is a nightly documentation. The content of this page may not be
+    consistent with the current stable version of language. Click
+    <a href="{{ page.nightlyOf }}">here</a> to find the stable version of this
+    page.
   </aside>
   {% endif %} {{ content }}
-  <nav class="arrows-wrapper" aria-label="Page navigation">
+  <nav class="arrow-navigation" aria-label="Page navigation">
     {% if page.previous %}
-    <a
-      rel="prev"
-      href="{{ page.previous }}"
-      class="arrows previous"
-      aria-keyshortcuts="Left"
-    >
-      <i class="fa fa-angle-left"></i>
-    </a>
+    <div>
+      <span class="body-small">Previous</span>
+      <a
+        rel="prev"
+        href="{{ page.previous.url }}"
+        aria-keyshortcuts="Left"
+        class="body-medium"
+      >
+        <span class="body-medium">{{ page.previous.title }}</span>
+      </a>
+    </div>
     {% endif %} {% if page.next %}
-    <a
-      rel="next"
-      href="{{ page.next }}"
-      class="arrows next"
-      aria-keyshortcuts="Right"
-    >
-      <i class="fa fa-angle-right"></i>
-    </a>
+    <div>
+      <span class="body-small">Next</span>
+      <a
+        rel="next"
+        href="{{ page.next.url }}"
+        aria-keyshortcuts="Right"
+        class="body-medium"
+      >
+        <span class="body-medium">{{ page.next.title }}</span>
+      </a>
+    </div>
     {% endif %}
   </nav>
   <div class="content-contributors hidden">

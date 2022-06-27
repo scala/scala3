@@ -97,42 +97,16 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   val commonResources: Seq[Resource] = {
     val fromResources = List(
-      "styles/theme/colors.css",
-      "styles/theme/color-tokens.css",
-      "styles/theme/spacing.css",
-      "styles/theme/typography.css",
-
-      // layout
-      "styles/theme/layout/container.css",
-      "styles/theme/layout/header.css",
-      "styles/theme/layout/leftMenu.css",
-      "styles/theme/layout/sideMenu.css",
-      "styles/theme/layout/searchBar.css",
-      "styles/theme/layout/floatingButton.css",
-      "styles/theme/layout/mobileMenu.css",
-      "styles/theme/layout/footer.css",
-      "styles/theme/layout/content.css",
-
-      // components
-      "styles/theme/components/switcher.css",
-      "styles/theme/components/navigation-item.css",
-      "styles/theme/components/button/icon-button.css",
-      "styles/theme/components/button/text-button.css",
-      "styles/theme/components/dropdown-menu.css",
-      "styles/theme/components/divider.css",
-      "styles/theme/components/table-of-content.css",
-      "styles/theme/components/contributors.css",
-      "styles/theme/components/code-snippet.css",
-      "styles/theme/components/api-member.css",
-
+      "styles/theme/bundle.css",
+      "styles/theme/components/bundle.css",
+      "styles/theme/components/button/bundle.css",
+      "styles/theme/layout/bundle.css",
       "styles/nord-light.css",
       "styles/dotty-icons.css",
-      "styles/diagram.css",
       "styles/filter-bar.css",
       "styles/code-snippets.css",
       "styles/searchbar.css",
       "styles/social-links.css",
-      "styles/ux.css",
       "styles/versions-dropdown.css",
       "styles/fontawesome.css",
       "hljs/highlight.pack.js",
@@ -177,12 +151,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
   val staticSiteOnlyResourcesPaths: Seq[String] = staticSiteOnlyResources.map(_.path)
 
   def searchData(pages: Seq[Page]) =
-    def flattenToText(signature: Signature): String =
-      signature.map {
-        case Type(name, dri) => name
-        case Plain(s) => s
-        case Keyword(s) => s
-      }.mkString
+    val signatureProvider = ScalaSignatureProvider()
+    def flattenToText(signature: Signature): String = signature.getName
 
     def mkEntry(dri: DRI, name: String, text: String, extensionTarget: String, descr: String, kind: String) = jsonObject(
         "l" -> jsonString(relativeInternalOrAbsoluteExternalPath(dri)),
@@ -203,8 +173,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       val (res, pageName) =  page.content match
         case m: Member if m.kind != Kind.RootPackage =>
           def processMember(member: Member, fqName: List[String]): Seq[(JSON, Seq[String])] =
-            val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())().asInstanceOf[InlineSignatureBuilder]
-            val sig = Signature(Plain(member.name)) ++ signatureBuilder.names.reverse
+            val signature: MemberSignature = signatureProvider.rawSignature(member)()
+            val sig = Signature(Plain(member.name)) ++ signature.suffix
             val descr = fqName.mkString(".")
             val entry = mkEntry(member.dri, member.name, flattenToText(sig), extensionTarget(member), descr, member.kind.name)
             val children = member
@@ -488,6 +458,30 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/icon-buttons/minus/light/hover.svg"),
       dottyRes("images/icon-buttons/minus/light/selected.svg"),
       dottyRes("images/icon-buttons/minus/light/default.svg"),
+      dottyRes("images/type-dark-big.svg"),
+      dottyRes("images/type-big.svg"),
+      dottyRes("images/enum-dark-big.svg"),
+      dottyRes("images/enum-big.svg"),
+      dottyRes("images/method-dark-big.svg"),
+      dottyRes("images/method-big.svg"),
+      dottyRes("images/given-dark-big.svg"),
+      dottyRes("images/given-big.svg"),
+      dottyRes("images/static-dark-big.svg"),
+      dottyRes("images/static-big.svg"),
+      dottyRes("images/def-dark-big.svg"),
+      dottyRes("images/def-big.svg"),
+      dottyRes("images/val-dark-big.svg"),
+      dottyRes("images/val-big.svg"),
+      dottyRes("images/trait-dark-big.svg"),
+      dottyRes("images/trait-big.svg"),
+      dottyRes("images/object-dark-big.svg"),
+      dottyRes("images/object-big.svg"),
+      dottyRes("images/class-dark-big.svg"),
+      dottyRes("images/class-big.svg"),
+      dottyRes("images/package-dark-big.svg"),
+      dottyRes("images/package-big.svg"),
+      dottyRes("images/thick.svg"),
+      dottyRes("images/thick-dark.svg"),
       searchData(pages),
       scastieConfiguration(),
     )

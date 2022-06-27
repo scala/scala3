@@ -1,0 +1,72 @@
+.diagram-class {
+  position: relative;
+}
+
+#inheritance-diagram > button:nth-of-type(1) {
+  display: none;
+  position: absolute;
+  right: 0;
+}
+
+#inheritance-diagram > button:nth-of-type(2) {
+  display: none;
+  position: absolute;
+  right: calc(13 * var(--base-spacing));
+}
+
+#inheritance-diagram.shown > button:nth-of-type(3) {
+  display: none;
+}
+
+#inheritance-diagram.shown > button:nth-of-type(1) {
+  display: block;
+}
+
+#inheritance-diagram.shown > button:nth-of-type(2) {
+  display: block;
+}
+
+#graph {
+  display: none;
+}
+
+#inheritance-diagram.shown #graph {
+  display: block;
+  width: 100%;
+  height: calc(50 * var(--base-spacing));
+}
+
+#inheritance-diagram .vertex {
+  border-radius: 4px;
+}
+
+/* Colors */
+
+#inheritance-diagram span, #inheritance-diagram a {
+  color: var(--grey1) !important;
+}
+
+#inheritance-diagram .edgePath {
+  stroke: var(--grey12);
+}
+
+#inheritance-diagram .class {
+  fill: var(--mint11);
+}
+
+#inheritance-diagram .trait {
+  fill: var(--sky11);
+}
+
+#inheritance-diagram .object {
+  fill: var(--indigo11);
+}
+
+#inheritance-diagram .enum {
+  fill: var(--orange11);
+}
+
+#inheritance-diagram .enumcase {
+  fill: var(--orange11);
+}
+

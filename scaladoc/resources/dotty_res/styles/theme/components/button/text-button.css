@@ -2,27 +2,35 @@
   display: flex;
 }
 
-a:link { text-decoration: none; }
-a:visited { text-decoration: none; }
-a:hover { text-decoration: none; }
-a:active { text-decoration: none; }
+a:link {
+  text-decoration: none;
+}
+a:visited {
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: none;
+}
+a:active {
+  text-decoration: none;
+}
 
 .text-button {
-  color: var(--action-primary-content-default);
+  color: var(--action-primary-content-default) !important;
   text-decoration: none;
   cursor: pointer;
 }
 
 .text-button:hover {
-  color: var(--action-primary-content-hover);
+  color: var(--action-primary-content-hover) !important;
 }
 
 .text-button:active {
-  color: var(--action-primary-content-active);
+  color: var(--action-primary-content-active) !important;
 }
 
 .text-button.selected {
-  color: var(--action-primary-content-selected);
+  color: var(--action-primary-content-selected) !important;
 }
 
 .text-button:focus-visible {
@@ -68,4 +76,36 @@ a:active { text-decoration: none; }
 
 .theme-dark .text-button.with-arrow.selected::after {
   content: url("../../../../images/icon-buttons/arrow-down/dark/selected.svg");
+}
+
+/* button with link */
+
+#content .text-button.with-link {
+  text-decoration: none;
+  margin-bottom: calc(1 * var(--base-spacing));
+  display: inline-block;
+}
+
+.text-button.with-link::after {
+  content: url("../../../../images/icon-buttons/link/light/default.svg");
+}
+
+.theme-dark .text-button.with-link::after {
+  content: url("../../../../images/icon-buttons/link/dark/default.svg");
+}
+
+.text-button.with-link:hover::after {
+  content: url("../../../../images/icon-buttons/link/light/hover.svg");
+}
+
+.theme-dark .text-button.with-link:hover::after {
+  content: url("../../../../images/icon-buttons/link/dark/hover.svg");
+}
+
+.text-button.with-link.selected::after {
+  content: url("../../../../images/icon-buttons/link/light/selected.svg");
+}
+
+.theme-dark .text-button.with-link.selected::after {
+  content: url("../../../../images/icon-buttons/link/dark/selected.svg");
 }

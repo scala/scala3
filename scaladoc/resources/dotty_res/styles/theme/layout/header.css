@@ -16,6 +16,10 @@
   z-index: 2;
 }
 
+#header .project-name {
+  color: var(--text-primary);
+}
+
 #dark-project-logo {
   display: none;
 }

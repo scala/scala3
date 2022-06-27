@@ -16,7 +16,7 @@ object ScalaModuleProvider:
     def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.members.flatMap(flattenMember)
 
     val topLevelPackage =
-      Member("API", site.apiPageDRI, Kind.RootPackage, members = packageMembers, docs = rootDoc)
+      Member("API", "", site.apiPageDRI, Kind.RootPackage, members = packageMembers, docs = rootDoc)
 
     val original = Module(topLevelPackage, flattenMember(topLevelPackage).toMap)
 

@@ -47,17 +47,19 @@ enum Modifier(val name: String, val prefix: Boolean):
 case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
 trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
-trait Classlike
+trait Classlike:
+  def typeParams: Seq[TypeParameter] = Seq.empty
+  def argsLists: Seq[ParametersList] = Seq.empty
 
 enum Kind(val name: String):
   case RootPackage extends Kind("")
   case Package extends Kind("package")
-  case Class(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
+  case Class(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[ParametersList])
     extends Kind("class") with Classlike
   case Object extends Kind("object") with Classlike
-  case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
+  case Trait(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[ParametersList])
     extends Kind("trait") with Classlike
-  case Enum(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList]) extends Kind("enum") with Classlike
+  case Enum(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[ParametersList]) extends Kind("enum") with Classlike
   case EnumCase(kind: Object.type | Kind.Type | Val.type | Class) extends Kind("case")
   case Def(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("def")
@@ -124,11 +126,14 @@ sealed trait SignaturePart:
   val name: String
 
 // TODO (longterm) properly represent signatures
+case class Name(override val name: String, dri: DRI) extends SignaturePart
 case class Type(override val name: String, dri: Option[DRI]) extends SignaturePart
 case class Keyword(override val name: String) extends SignaturePart
 case class Plain(override val name: String) extends SignaturePart
 
 type Signature = List[SignaturePart]
+
+case class MemberSignature(prefix: Signature, kind: Signature, name: Signature, suffix: Signature)
 
 object Signature:
   def apply(names: (SignaturePart)*): Signature = names.toList
@@ -148,6 +153,7 @@ object HierarchyGraph:
 
 case class Member(
   name: String,
+  fullName: String,
   dri: DRI,
   kind: Kind,
   visibility: Visibility = Visibility.Unrestricted,
@@ -164,7 +170,7 @@ case class Member(
   parents: Seq[LinkToType] = Nil,
   selfType: Option[LinkToType] = None,
   knownChildren: Seq[LinkToType] = Nil,
-  companion: Option[DRI] = None,
+  companion: Option[(Kind, DRI)] = None,
   deprecated: Option[Annotation] = None,
 ):
   def needsOwnPage: Boolean =
@@ -242,6 +248,7 @@ extension (m: Module)
 extension (s: Signature)
   def getName: String =
     s.map {
+      case Name(s, _) => s
       case Plain(s) => s
       case Type(s, _) => s
       case Keyword(s) => s

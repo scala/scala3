@@ -1,0 +1,56 @@
+.attributes {
+  width: 100%;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: calc(6 * var(--base-spacing));
+}
+
+.attributes .attributes {
+  border-bottom: none;
+}
+
+.attributes p {
+  margin: 0;
+}
+
+.attributes > dt {
+  float: left;
+  width: 30%;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--border-default);
+  padding-top: calc(2.5 * var(--base-spacing));
+  padding-bottom: calc(2.5 * var(--base-spacing));
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.attributes > dd {
+  float: left;
+  width: 70%;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--border-default);
+  padding-top: calc(2.5 * var(--base-spacing));
+  padding-bottom: calc(2.5 * var(--base-spacing));
+}
+
+.attributes > dd > .attributes > dt {
+  border: none;
+  padding: 0;
+  text-align: initial;
+  width: 20%;
+}
+
+.attributes > dd > .attributes > dd {
+  border: none;
+  padding: 0;
+  text-align: initial;
+  width: 80%;
+}
+
+.documentableElement .attributes {
+  margin-bottom: 0;
+}

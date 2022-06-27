@@ -10,10 +10,32 @@ window.addEventListener("DOMContentLoaded", () => {
   var elements = document.getElementsByClassName("documentableElement")
   if (elements) {
     for (i = 0; i < elements.length; i++) {
-      elements[i].onclick = function (e) {
-        if (!$(e.target).is("a") && e.fromSnippet !== true)
-          this.classList.toggle("expand")
-          this.querySelector(".show-content").classList.toggle("expand")
+      if (elements[i].querySelector(".show-content") !== null) {
+        elements[i].onclick = function (e) {
+          if (!$(e.target).is("a") && e.fromSnippet !== true)
+            this.classList.toggle("expand")
+            this.querySelector(".show-content").classList.toggle("expand")
+        }
+      }
+    }
+  }
+
+  var documentableLists = document.getElementsByClassName("documentableList")
+  if (documentableLists) {
+    for (i = 0; i < documentableLists.length; i++) {
+      documentableLists[i].children[0].onclick = function(e) {
+        this.classList.toggle("expand");
+        this.parentElement.classList.toggle("expand");
+      }
+    }
+  }
+
+  var memberLists = document.getElementsByClassName("membersList")
+  if (memberLists) {
+    for (i = 0; i < memberLists.length; i++) {
+      memberLists[i].children[0].onclick = function(e) {
+        this.classList.toggle("expand");
+        this.parentElement.classList.toggle("expand");
       }
     }
   }
@@ -27,6 +49,23 @@ window.addEventListener("DOMContentLoaded", () => {
     $(this).toggleClass("expanded")
     e.stopPropagation()
   });
+
+  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
+    el.lastChild.click()
+    el.first.addClass("expanded")
+    el.parent.addClass("expanded")
+  }))
+
+  document.querySelectorAll(".supertypes").forEach(el => el.firstChild.addEventListener('click', () => {
+    el.classList.toggle("collapsed");
+    el.firstChild.classList.toggle("expand");
+  }))
+
+
+  document.querySelectorAll(".subtypes").forEach(el => el.firstChild.addEventListener('click', () => {
+    el.classList.toggle("collapsed");
+    el.firstChild.classList.toggle("expand");
+  }))
 
   document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
     el.lastChild.click()
@@ -50,24 +89,6 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelectorAll(".side-menu a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
-
-  $('.names .tab').on('click', function () {
-    parent = $(this).parents(".tabs").first()
-    shown = $(this).hasClass('selected')
-    single = parent.hasClass("single")
-
-    if (single) parent.find(".tab.selected").removeClass('selected')
-
-    id = $(this).attr('data-togglable')
-    myTab = parent.find("[data-togglable='" + id + "'].tab")
-    if (!shown) { myTab.addClass('selected') }
-    if (shown && !single) myTab.removeClass('selected')
-
-    if (!shown && $(this).filter(".showGraph").length > 0) {
-      showGraph()
-      $(this).find(".showGraph").removeClass("showGraph")
-    }
-  })
 
   if (location.hash) {
     var target = location.hash.substring(1);
@@ -136,19 +157,24 @@ window.addEventListener("DOMContentLoaded", () => {
     mobileMenuCloseIcon.addEventListener('click', _e => {
       document.getElementById("mobile-menu").classList.remove("show")
     })
+
+
+  // when document is loaded graph needs to be shown
 });
 
 var zoom;
 var transform;
 
 function showGraph() {
+  document.getElementById("inheritance-diagram").classList.add("shown")
   if ($("svg#graph").children().length == 0) {
     var dotNode = document.querySelector("#dot")
+
     if (dotNode) {
       var svg = d3.select("#graph");
       var radialGradient = svg.append("defs").append("radialGradient").attr("id", "Gradient");
-      radialGradient.append("stop").attr("stop-color", "var(--aureole)").attr("offset", "20%");
-      radialGradient.append("stop").attr("stop-color", "var(--code-bg)").attr("offset", "100%");
+      radialGradient.append("stop").attr("stop-color", "var(--yellow9)").attr("offset", "30%");
+      radialGradient.append("stop").attr("stop-color", "var(--background-default)").attr("offset", "100%");
 
       var inner = svg.append("g");
 
@@ -166,8 +192,10 @@ function showGraph() {
         g.setNode(v, {
           labelType: "html",
           label: g.node(v).label,
-          style: g.node(v).style,
-          id: g.node(v).id
+          class: g.node(v).class,
+          id: g.node(v).id,
+          rx: "4px",
+          ry: "4px"
         });
       });
       g.setNode("node0Cluster", {
@@ -178,9 +206,30 @@ function showGraph() {
 
       g.edges().forEach(function (v) {
         g.setEdge(v, {
-          arrowhead: "vee"
+          arrowhead: "hollowPoint",
         });
       });
+
+      render.arrows().hollowPoint = function normal(parent, id, edge, type) {
+        var marker = parent.append("marker")
+          .attr("id", id)
+          .attr("viewBox", "0 0 10 10")
+          .attr("refX", 9)
+          .attr("refY", 5)
+          .attr("markerUnits", "strokeWidth")
+          .attr("markerWidth", 12)
+          .attr("markerHeight", 12)
+          .attr("orient", "auto");
+
+        var path = marker.append("path")
+          .attr("d", "M 0 0 L 10 5 L 0 10 z")
+          .style("stroke-width", 1)
+          .style("stroke-dasharray", "1,0")
+          .style("fill", "var(--grey12)")
+          .style("stroke", "var(--grey12)");
+        dagreD3.util.applyStyle(path, edge[type + "Style"]);
+      };
+
       render(inner, g);
 
       // Set the 'fit to content graph' upon landing on the page
@@ -214,6 +263,10 @@ function showGraph() {
       node0ClusterRect.setAttribute("y", node0Rect.getAttribute("y") - 40);
     }
   }
+}
+
+function hideGraph() {
+  document.getElementById("inheritance-diagram").classList.remove("shown")
 }
 
 function zoomOut() {

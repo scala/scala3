@@ -12,7 +12,7 @@
   border: 1px solid var(--border-default);
   border-top: none;
   border-left: none;
-  transition:left 0.2s linear;
+  transition: left 0.2s linear;
 }
 
 @media (max-width: 480px) {
@@ -31,7 +31,7 @@
   }
 }
 
-@media (max-width: 390px) {
+@media (max-width: 428px) {
   #leftColumn {
     height: calc(100% - (8 * var(--base-spacing)));
     width: 100%;

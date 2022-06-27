@@ -213,7 +213,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         div(cls := "header-container-left")(
           projectLogoElem.toSeq,
           darkProjectLogoElem.toSeq,
-          span(cls := "project-name")(args.name),
+          span(cls := "project-name h300")(args.name),
           span(onclick := "dropdownHandler(event)", cls := "text-button with-arrow", id := "dropdown-trigger")(
             a(args.projectVersion.map(v => div(cls:="projectVersion")(v)).toSeq),
           ),
@@ -313,12 +313,14 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       div(id := "scaladoc-searchBar"),
       div(id := "main")(
         parentsHtml,
-        div(id := "content")(
+        div(id := "content", cls := "body-medium")(
           content.content,
           renderTableOfContents(content.toc).fold(Nil) { toc =>
             div(id := "toc", cls:="body-small")(
-            span(cls := "toc-title h200")("In this article"),
-            toc
+            div(id := "toc-container") (
+              span(cls := "toc-title h200")("In this article"),
+              toc
+            ),
           )
           },
         ),

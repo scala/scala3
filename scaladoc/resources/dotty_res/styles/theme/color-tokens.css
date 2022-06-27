@@ -46,27 +46,28 @@
   --semantic-background-red: var(--red3);
 
   /* code */
-  --code-props-content: var(--red11);
+  --code-props-content: var(--crimson11);
   --code-props-background: var(--red3);
 
   --code-syntax-highlighting-comment: var(--grey11);
   --code-syntax-highlighting-quote: var(--grey11);
   --code-syntax-highlighting-line-number: var(--grey8);
-  --code-syntax-highlighting-title: var(--mint11);
+  --code-syntax-highlighting-title: var(--grass9);
   --code-syntax-highlighting-keyword: var(--indigo11);
   --code-syntax-highlighting-code-fg: var(--grey12);
   --code-syntax-highlighting-literal: var(--crimson11);
-  --code-syntax-highlighting-type: var(--grass9);
+  --code-syntax-highlighting-type: var(--mint11);
   --code-syntax-highlighting-subst: var(--yellow11);
   --code-syntax-highlighting-meta: var(--yellow11);
   --code-syntax-highlighting-string: var(--lime9);
-  --code-syntax-highlighting-deletion: var(--purple9);
+  --code-syntax-highlighting-addition: var(--grass9);
+  --code-syntax-highlighting-deletion: var(--crimson11);
   --code-syntax-highlighting-variable: var(--purple9);
 
   --code-method-highlighting-type: var(--purple9);
   --code-method-highlighting-type-link: var(--sky11);
   --code-method-highlighting-code-fg: var(--grey12);
-  --code-method-highlighting-link-sig-fig: var(--sky11);
+  --code-method-highlighting-link-sig-fig: var(--indigo11);
   --code-method-highlighting-keyword: var(--crimson11);
 
   /* api child */
@@ -123,27 +124,28 @@
   --action-primary-border-default: var(--grey6);
 
   /* code */
-  --code-props-content: var(--red11);
+  --code-props-content: var(--crimson11);
   --code-props-background: var(--red3);
 
   --code-syntax-highlighting-comment: var(--grey11);
   --code-syntax-highlighting-quote: var(--grey11);
   --code-syntax-highlighting-line-number: var(--grey8);
-  --code-syntax-highlighting-title: var(--mint11);
+  --code-syntax-highlighting-title: var(--grass9);
   --code-syntax-highlighting-keyword: var(--indigo11);
   --code-syntax-highlighting-code-fg: var(--grey12);
   --code-syntax-highlighting-literal: var(--crimson11);
-  --code-syntax-highlighting-type: var(--grass9);
+  --code-syntax-highlighting-type: var(--mint11);
   --code-syntax-highlighting-subst: var(--yellow11);
   --code-syntax-highlighting-meta: var(--yellow11);
   --code-syntax-highlighting-string: var(--lime9);
-  --code-syntax-highlighting-deletion: var(--purple9);
+  --code-syntax-highlighting-addition: var(--grass9);
+  --code-syntax-highlighting-deletion: var(--crimson11);
   --code-syntax-highlighting-variable: var(--purple9);
 
   --code-method-highlighting-type: var(--purple9);
   --code-method-highlighting-type-link: var(--sky11);
   --code-method-highlighting-code-fg: var(--grey12);
-  --code-method-highlighting-link-sig-fig: var(--sky11);
+  --code-method-highlighting-link-sig-fig: var(--indigo11);
   --code-method-highlighting-keyword: var(--crimson11);
 
   /* semantic */

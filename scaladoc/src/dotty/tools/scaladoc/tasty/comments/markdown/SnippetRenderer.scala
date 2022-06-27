@@ -155,3 +155,14 @@ object SnippetRenderer:
       node.hasContext,
       node.compilationResult.fold(false)(_.isSuccessful)
     )
+
+  def renderSnippet(content: String, language: Option[String] = None): String =
+    val codeLines = content.split("\n").map(_ + "\n").toSeq
+    div(cls := "snippet mono-small-block")(
+      pre(
+        code(language.fold(Nil)(l => Seq(cls := s"language-$l")))(
+          raw(wrapCodeLines(codeLines).map(_.toHTML).mkString)
+        )
+      ),
+      div(cls := "buttons")()
+    ).toString

@@ -3,7 +3,8 @@ class FilterGroup extends Component {
     super(props);
 
     this.filterToggleRef = findRef(".filterToggleButton");
-    this.filterLowerContainerRef = findRef(".filterLowerContainer");
+    this.filtersContainerRef = findRef(".filtersContainer");
+    this.documentableFilterRef = findRef(".documentableFilter");
 
     withEvent(
       this.filterToggleRef,
@@ -14,12 +15,11 @@ class FilterGroup extends Component {
     this.render(this.props);
   }
 
-  onFilterClick = ({
-    currentTarget: {
-      dataset: { key, value },
-    },
-  }) => {
+  onFilterClick = (e) => {
+    const {currentTarget: {dataset: {key, value}}} = e;
     this.props.onFilterToggle(key, value);
+    e.stopPropagation();
+    e.preventDefault();
   };
 
   onSelectAllClick = ({
@@ -30,18 +30,31 @@ class FilterGroup extends Component {
     this.props.onGroupSelectChange(key, true);
   };
 
-  onDeselectAllClick = ({
-    currentTarget: {
-      dataset: { key },
-    },
-  }) => {
-    this.props.onGroupSelectChange(key, false);
+  onDeselectAllClick = (e) => {
+    this.props.onGroupSelectChange(e.currentTarget.dataset.key, false);
+    e.stopPropagation();
+    e.preventDefault();
   };
+
+  onClearFilters = () => {
+    Object.entries(this.props.filter.filters)
+    .forEach(([key, _values]) => this.props.onGroupSelectChange(key, false))
+  };
+
+  showPillDropdown = (e) => {
+    this.props.onPillClick(e.currentTarget.dataset.key);
+    e.stopPropagation();
+    e.preventDefault();
+  }
+
+  hidePillDropdown = () => {
+    this.props.onPillCollapse();
+  }
 
   attachFiltersClicks() {
     const refs = findRefs(
-      "button.filterButtonItem",
-      this.filterLowerContainerRef
+      "li.filterButtonItem",
+      this.filtersContainerRef
     );
     attachListeners(refs, "click", this.onFilterClick);
   }
@@ -49,15 +62,34 @@ class FilterGroup extends Component {
   attachSelectingButtonsClicks() {
     const selectAllRefs = findRefs(
       "button.selectAll",
-      this.filterLowerContainerRef
+      this.filtersContainerRef
     );
+
     const deselectAllRefs = findRefs(
-      "button.deselectAll",
-      this.filterLowerContainerRef
+      "span.deselectAll",
+      this.filtersContainerRef
     );
+
+    const deselectAllRefsWithClearButton = findRefs(
+      "button.clearButton",
+      this.documentableFilterRef
+    );
+
+    const onPillClick = findRefs(
+      "div.pill",
+      this.filtersContainerRef
+    )
+
+    const onOutsidePillClick = findRefs(
+      "#main",
+    )
 
     attachListeners(selectAllRefs, "click", this.onSelectAllClick);
     attachListeners(deselectAllRefs, "click", this.onDeselectAllClick);
+    attachListeners(deselectAllRefsWithClearButton, "click", this.onClearFilters);
+    attachListeners(onPillClick, "click", this.showPillDropdown);
+    attachListeners(onOutsidePillClick, "click", this.hidePillDropdown);
+
   }
 
   isActive(isActive) {
@@ -75,7 +107,7 @@ class FilterGroup extends Component {
     return Object.entries(values).sort(([a], [b]) =>  {
       if (a === defaultGroupFilter) {
         return -1
-      } 
+      }
 
       if (b === defaultGroupFilter) {
         return 1
@@ -85,38 +117,76 @@ class FilterGroup extends Component {
     })
   }
 
-  getFilterGroup(filterKey, values) {
+  getFirstSelected(filterKey, values) {
+    const sortedValues = this.getSortedValues(filterKey, values);
+    const firstSelected = sortedValues.find(([_name, filterObject]) => filterObject.selected);
+    return firstSelected ? firstSelected[0] : "";
+  }
+
+  getNumberOfSelectedFilters = (filterKey, values) => {
+    const sortedValues = this.getSortedValues(filterKey, values);
+    return sortedValues.reduce((prev, curr) => {
+      if(curr[1].selected) {
+        return prev +1;
+      }
+      return prev
+    }, 0)
+  }
+
+  getFilterGroup(filterKey, values, selectedPill) {
+    const firstSelected = this.getFirstSelected(filterKey, values);
+    const numberOfSelectedFilters = this.getNumberOfSelectedFilters(filterKey, values);
+    const numberToDisplay = numberOfSelectedFilters > 1
+      ? `+${numberOfSelectedFilters -1}`
+      : ""
+
+    const isMenuVisible = selectedPill === filterKey;
+
     return `
-      <div class="filterGroup" data-test-id="filterGroup">
-        <div class="groupTitle">
-          <span data-test-id="filterGroupTitle">${filterKey.substring(1)}</span>
-          <div class="groupButtonsContainer" data-test-id="filterGroupBatchToggle">
-            <button class="selectAll" data-key="${filterKey}">Select All</button>
-            <button class="deselectAll" data-key="${filterKey}">Deselect All</button>
-          </div>
+      <div
+        class="pill-container body-small ${isMenuVisible ? "menu-visible" : ""}"
+        tabindex="1"
+      >
+        <div class="pill ${numberOfSelectedFilters > 0 ? "has-value" : ""}" data-key="${filterKey}">
+          <span class="filter-name">${filterKey.substring(1)}</span>
+          ${firstSelected} ${numberToDisplay}
+          <span
+            class="icon-button close deselectAll"
+            data-key="${filterKey}"
+            />
         </div>
-        <div class="filterList" data-test-id="filterGroupList">
+        <ul>
           ${this.getSortedValues(filterKey, values)
             .map(
               ([key, data]) =>
-                `<button class="filterButtonItem ${this.isActive(
-                  data.selected
-                )} ${this.isVisible(
+              `<li
+                class="filterButtonItem  ${this.isVisible(
                   data.visible
-                )}" data-key="${filterKey}" data-selected="${data.selected}" data-value="${key}" data-test-id="filterGroupButton">${key}</button>`
+                )}"
+                data-selected="${data.selected}"
+                data-test-id="filterGroupButton"
+                data-key="${filterKey}"
+                data-selected="${data.selected}"
+                data-value="${key}"
+                ${this.isActive(
+                  data.selected
+                )}"
+              >
+              ${key}
+              </li>`
             )
-            .join(" ")}
-        </div>
+          .join(" ")}
+        </ul>
       </div>
     `;
   }
 
-  render({ filter }) {
+  render({ filter, selectedPill }) {
     attachDOM(
-      this.filterLowerContainerRef,
+      this.filtersContainerRef,
       Object.entries(filter.filters)
         .filter(([_key, values]) => Object.values(values).some((v) => v.visible))
-        .map(([key, values]) => this.getFilterGroup(key, values))
+        .map(([key, values]) => this.getFilterGroup(key, values, selectedPill)),
     );
 
     this.attachFiltersClicks();

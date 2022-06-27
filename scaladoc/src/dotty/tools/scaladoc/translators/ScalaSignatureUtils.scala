@@ -1,31 +1,13 @@
 package dotty.tools.scaladoc
 package translators
 
-case class InlineSignatureBuilder(names: Signature = Nil, preName: Signature = Nil) extends SignatureBuilder:
-  override def plain(str: String): SignatureBuilder = copy(names = Plain(str) +: names)
-  override def name(str: String, dri: DRI): SignatureBuilder = copy(names = Nil, preName = names)
-  override def tpe(text: String, dri: Option[DRI]): SignatureBuilder = copy(names = Type(text, dri) +: names)
-  override def keyword(str: String): SignatureBuilder = copy(names = Keyword(str) +: names)
-  def tpe(text: String, dri: DRI): SignatureBuilder = copy(names = Type(text, Some(dri)) +: names)
-  override def signature(s: Signature): SignatureBuilder = copy(names = s.reverse ++ names)
-
-object InlineSignatureBuilder:
-  def typeSignatureFor(d: Member): Signature =
-      ScalaSignatureProvider.rawSignature(d, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder].names.reverse
-
-trait SignatureBuilder extends ScalaSignatureUtils {
-  def keyword(str: String): SignatureBuilder
-  def plain(str: String): SignatureBuilder
-  def name (str: String, dri: DRI): SignatureBuilder
-  def tpe(str: String, dri: Option[DRI]): SignatureBuilder
-  def signature(s: Signature): SignatureBuilder = s.foldLeft(this){
-    case (bld, Type(a, b)) => bld.tpe(a, b)
-    case (bld, Keyword(a)) => bld.keyword(a)
-    case (bld, Plain(a)) => bld.plain(a)
-  }
-
-  // Support properly once we rewrite signature builder
-  def memberName(name: String, dri: DRI) = plain(name)
+case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtils:
+  def plain(str: String): SignatureBuilder = copy(content = content :+ Plain(str))
+  def name(str: String, dri: DRI): SignatureBuilder = copy(content = content :+ Name(str, dri))
+  def tpe(text: String, dri: Option[DRI]): SignatureBuilder = copy(content = content :+ Type(text, dri))
+  def keyword(str: String): SignatureBuilder = copy(content = content :+ Keyword(str))
+  def tpe(text: String, dri: DRI): SignatureBuilder = copy(content = content :+ Type(text, Some(dri)))
+  def signature(s: Signature): SignatureBuilder = copy(content = content ++ s)
 
   def list[E](
     elements: Seq[E],
@@ -76,12 +58,21 @@ trait SignatureBuilder extends ScalaSignatureUtils {
       addParameterName(name).plain(value)
   }
 
-  def modifiersAndVisibility(t: Member, kind: String) =
+  def parentsSignature(member: Member): SignatureBuilder =
+    member.directParents match
+      case Nil => this
+      case extendType :: withTypes =>
+        val extendPart = keyword(" extends ").signature(extendType.signature)
+        withTypes.foldLeft(extendPart)((bdr2, tpe) => bdr2.keyword(" with ").signature(tpe.signature))
+
+  def modifiersAndVisibility(t: Member) =
     val (prefixMods, suffixMods) = t.modifiers.partition(_.prefix)
     val all = prefixMods.map(_.name) ++ Seq(t.visibility.asSignature) ++ suffixMods.map(_.name)
     val filtered = all.filter(_.trim.nonEmpty)
-    val intermediate = if filtered.nonEmpty then keyword(filtered.toSignatureString()) else this
-    intermediate.keyword(kind + " ")
+    if filtered.nonEmpty then keyword(filtered.toSignatureString()) else this
+
+  def kind(t: Member) =
+    keyword(t.kind.name + " ")
 
   def generics(on: Seq[TypeParameter]) = list(on.toList, List(Plain("[")), List(Plain("]"))){ (bdr, e) =>
     bdr.annotationsInline(e).keyword(e.variance).tpe(e.name, Some(e.dri)).signature(e.signature)
@@ -94,11 +85,10 @@ trait SignatureBuilder extends ScalaSignatureUtils {
       bld.list(pList.parameters, prefix = List(Plain("("), Keyword(pList.modifiers)), suffix = List(Plain(")")), forcePrefixAndSuffix = true) { (bld, p) =>
         val annotationsAndModifiers = bld.annotationsInline(p)
           .keyword(p.modifiers)
-        val name = p.name.fold(annotationsAndModifiers)(annotationsAndModifiers.memberName(_, p.dri).plain(": "))
+        val name = p.name.fold(annotationsAndModifiers)(annotationsAndModifiers.name(_, p.dri).plain(": "))
         name.signature(p.signature)
       }
     }
-}
 
 trait ScalaSignatureUtils:
   extension (tokens: Seq[String]) def toSignatureString(): String =
