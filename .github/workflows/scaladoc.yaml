@@ -7,6 +7,9 @@ on:
   pull_request:
     branches-ignore:
       - 'language-reference-stable'
+permissions:
+  contents: read
+
 jobs:
   build:
     env:

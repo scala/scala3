@@ -9,8 +9,14 @@ on:
       - 'language-reference-stable'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-and-push:
+    permissions:
+      contents: write  # for Git to git push
+      pull-requests: write  # for peter-evans/create-pull-request to create a PR
     runs-on: ubuntu-latest
     steps:
       - name: Get current date

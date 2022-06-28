@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - 'language-reference-backport'
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
