@@ -16,8 +16,6 @@ import collection.mutable
 
 import scala.annotation.internal.sharable
 
-import config.Printers.gadts
-
 object Inferencing {
 
   import tpd._
@@ -411,10 +409,16 @@ object Inferencing {
     Stats.record("maximizeType")
     val vs = variances(tp)
     val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
+    val gadtBounds = ctx.gadt.symbols.map(ctx.gadt.bounds(_).nn)
     vs foreachBinding { (tvar, v) =>
       if !tvar.isInstantiated then
-        if (v == 1) tvar.instantiate(fromBelow = false)
-        else if (v == -1) tvar.instantiate(fromBelow = true)
+        // if the tvar is covariant/contravariant (v == 1/-1, respectively) in the input type tp
+        // then check the tvar doesn't occur in the opposite GADT bound (lower/upper) within any of the GADT bounds
+        // if it doesn't occur then it's safe to instantiate the tvar
+        // Eg neg/i14983 the C in Node[+C] is in the GADT lower bound X >: List[C] so maximising to Node[Any] is unsound
+        // Eg pos/precise-pattern-type the T in Tree[-T] is in no GADT upper bound so can maximise to Tree[Type]
+        val safeToInstantiate = v != 0 && gadtBounds.forall(tb => !tvar.occursIn(if v == 1 then tb.lo else tb.hi))
+        if safeToInstantiate then tvar.instantiate(fromBelow = v == -1)
         else {
           val bounds = TypeComparer.fullBounds(tvar.origin)
           if bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) then

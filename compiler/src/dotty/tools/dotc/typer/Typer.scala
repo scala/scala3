@@ -3764,9 +3764,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                res
               } =>
             // Insert an explicit cast, so that -Ycheck in later phases succeeds.
-            // I suspect, but am not 100% sure that this might affect inferred types,
-            // if the expected type is a supertype of the GADT bound. It would be good to come
-            // up with a test case for this.
+            // The check "safeToInstantiate" in `maximizeType` works to prevent unsound GADT casts.
             val target =
               if tree.tpe.isSingleton then
                 val conj = AndType(tree.tpe, pt)

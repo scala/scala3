@@ -49,6 +49,8 @@ sealed abstract class GadtConstraint extends Showable {
   /** See [[ConstraintHandling.approximation]] */
   def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type
 
+  def symbols: List[Symbol]
+
   def fresh: GadtConstraint
 
   /** Restore the state from other [[GadtConstraint]], probably copied using [[fresh]] */
@@ -217,6 +219,8 @@ final class ProperGadtConstraint private(
     res
   }
 
+  override def symbols: List[Symbol] = mapping.keys
+
   override def fresh: GadtConstraint = new ProperGadtConstraint(
     myConstraint,
     mapping,
@@ -314,6 +318,8 @@ final class ProperGadtConstraint private(
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
+
+  override def symbols: List[Symbol] = Nil
 
   override def fresh = new ProperGadtConstraint
   override def restore(other: GadtConstraint): Unit =
