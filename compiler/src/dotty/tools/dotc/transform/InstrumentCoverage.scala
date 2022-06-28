@@ -282,7 +282,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
       def isContextual(fun: Apply): Boolean =
         val args = fun.args
-        args.nonEmpty && args.head.symbol.isAllOf(Given | Implicit)
+        args.nonEmpty && args.head.symbol.isAllOf(GivenOrImplicit)
 
       val fun = tree.fun
       val nestedApplyNeedsLift = fun match

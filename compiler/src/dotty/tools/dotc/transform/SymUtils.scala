@@ -128,7 +128,7 @@ object SymUtils:
           isCodefined(mt.resultType)
         case res =>
           self.isCoDefinedGiven(res.typeSymbol)
-      self.isAllOf(Given | Method) && isCodefined(self.info)
+      self.isAllOf(GivenMethod) && isCodefined(self.info)
 
     // TODO Scala 3.x: only check for inline vals (no final ones)
     def isInlineVal(using Context) =
