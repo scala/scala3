@@ -106,11 +106,17 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       resObj
         .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
         .map(_.invoke(null))
-    val string = value.map(replStringOf(_))
+
+    val resultSym = sym.info.classSymbol
+    val valueString = if (resultSym.isValueClass && !resultSym.isPrimitiveValueClass) then
+      value.map(value => s"${sym.info.classSymbol.name}@${value.hashCode.toHexString}")
+    else
+      value.map(replStringOf(_))
+
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
     else
-      string.map { s =>
+      valueString.map { s =>
         if (s.startsWith(REPL_WRAPPER_NAME_PREFIX))
           s.drop(REPL_WRAPPER_NAME_PREFIX.length).dropWhile(c => c.isDigit || c == '$')
         else
