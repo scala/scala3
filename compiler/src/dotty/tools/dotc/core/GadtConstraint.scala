@@ -193,12 +193,7 @@ final class ProperGadtConstraint private(
       case null => null
       // TODO: Improve flow typing so that ascription becomes redundant
       case tv: TypeVar =>
-        def retrieveBounds: TypeBounds =
-          bounds(tv.origin) match {
-            case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
-              TypeAlias(reverseMapping(tpr).nn.typeRef)
-            case tb => tb
-          }
+        def retrieveBounds: TypeBounds = externalize(bounds(tv.origin)).bounds
         retrieveBounds
           //.showing(i"gadt bounds $sym: $result", gadts)
           //.ensuring(containsNoInternalTypes(_))
@@ -268,6 +263,7 @@ final class ProperGadtConstraint private(
     case param: TypeParamRef => reverseMapping(param) match
       case sym: Symbol => sym.typeRef
       case null        => param
+    case tp: TypeAlias       => tp.derivedAlias(externalize(tp.alias, theMap))
     case tp                  => (if theMap == null then ExternalizeMap() else theMap).mapOver(tp)
 
   private class ExternalizeMap(using Context) extends TypeMap:
