@@ -97,9 +97,6 @@ object Signatures {
       case tp @ TypeApply(fun, types) => applyCallInfo(span, types, fun, true)
       case _ => (0, 0, Nil)
 
-
-  private val CLOSING_SYMBOLS = Seq(')', ']')
-
   /**
    * Finds enclosing application from given `path` for `span`.
    *
@@ -119,9 +116,11 @@ object Signatures {
       case _ => true
     } match {
       case Nil => tpd.EmptyTree
-      case direct :: enclosing :: _ if CLOSING_SYMBOLS.contains(direct.source(span.end -1)) => enclosing
+      case direct :: enclosing :: _ if isClosingSymbol(direct.source(span.end -1)) => enclosing
       case direct :: _ => direct
     }
+
+  private def isClosingSymbol(ch: Char) = ch == ')' || ch == ']'
 
   /**
    * Extracts call information for applied type tree:
@@ -187,10 +186,9 @@ object Signatures {
       val curriedArguments = countParams(fun, alternatives(alternativeIndex))
       // We have to shift all arguments by number of type parameters to properly show activeParameter index
       val typeParamsShift = if !isTypeApply then fun.symbol.denot.paramSymss.flatten.filter(_.isType).length else 0
-      val paramIndex = params.indexWhere(_.span.contains(span)) match {
+      val paramIndex = params.indexWhere(_.span.contains(span)) match
         case -1 => (params.length - 1 max 0) + curriedArguments + typeParamsShift
         case n => n + curriedArguments + typeParamsShift
-      }
 
       val pre = treeQualifier(fun)
       val alternativesWithTypes = alternatives.map(_.asSeenFrom(pre.tpe.widenTermRefExpr))
@@ -389,10 +387,9 @@ object Signatures {
           info.classSymbol.derivesFrom(ctx.definitions.DummyImplicitClass))
 
     def toParamss(tp: Type)(using Context): List[List[Param]] =
-      val rest = tp.resultType match {
+      val rest = tp.resultType match
         case res: MethodType => if isDummyImplicit(res) then Nil else toParamss(res)
         case _ => Nil
-      }
 
       val currentParams = (tp.paramNamess, tp.paramInfoss) match
         case (params :: _, infos :: _) => params zip infos
@@ -425,12 +422,13 @@ object Signatures {
         val typeParams = denot.info match
           case poly: PolyType =>
             val tparams = poly.paramNames.zip(poly.paramInfos)
-            tparams.map {
-              case (evidence, _) if evidenceParams.exists((name: TypeName, _: Type) => name == evidence) =>
-                val tpe = evidenceParams.find((name: TypeName, _: Type) => name == evidence)
-                val typeName = tpe.flatMap(tparam => tparam._2.show.split('.').lastOption).getOrElse("")
-                s"${evidence.show}: ${typeName}"
-              case (name, info) => name.show + info.show
+            tparams.map { (name, info) =>
+              evidenceParams.find((evidenceName: TypeName, _: Type) => name == evidenceName).flatMap {
+                case (_, tparam) => tparam.show.split('.').lastOption
+              } match {
+                case Some(evidenceTypeName) => s"${name.show}: ${evidenceTypeName}"
+                case None => name.show + info.show
+              }
             }
           case _ => Nil
         val (name, returnType) =
@@ -498,11 +496,10 @@ object Signatures {
    * @return The number of parameters that are passed.
    */
   private def countParams(tree: tpd.Tree, denot: SingleDenotation, alreadyCurried: Int = 0)(using Context): Int =
-    tree match {
+    tree match
       case Apply(fun, params) =>
          countParams(fun, denot, alreadyCurried + 1) + denot.symbol.paramSymss(alreadyCurried).length
       case _ => 0
-    }
 
   /**
    * Inspect `err` to determine, if it is an error related to application of an overloaded
@@ -528,20 +525,18 @@ object Signatures {
     // If the user writes `foo(bar, <cursor>)`, the typer will insert a synthetic
     // `null` parameter: `foo(bar, null)`. This may influence what's the "best"
     // alternative, so we discard it.
-    val userParams = params match {
+    val userParams = params match
       case xs :+ (nul @ Literal(Constant(null))) if nul.span.isZeroExtent => xs
       case _ => params
-    }
     val userParamsTypes = userParams.map(_.tpe)
 
     // Assign a score to each alternative (how many parameters are correct so far), and
     // use that to determine what is the current active signature.
     val alternativesScores = alternatives.map { alt =>
-      alt.info.stripPoly match {
+      alt.info.stripPoly match
         case tpe: MethodType =>
           userParamsTypes.zip(tpe.paramInfos).takeWhile{ case (t0, t1) => t0 <:< t1 }.size
         case _ => 0
-      }
     }
     val bestAlternative =
       if (alternativesScores.isEmpty) 0
