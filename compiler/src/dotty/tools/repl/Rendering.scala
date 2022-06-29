@@ -100,12 +100,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   private def valueOf(sym: Symbol)(using Context): Option[String] =
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
-    val value = resObj
+    val symValue = resObj
       .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
-      .map(_.invoke(null))
-      .flatMap(rewrapValueClass(sym.info.classSymbol, _))
-
-    val valueString = value.map(replStringOf)
+      .flatMap(result => rewrapValueClass(sym.info.classSymbol, result.invoke(null)))
+    val valueString = symValue.map(replStringOf)
 
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
@@ -117,23 +115,16 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
           s
       }
 
-  /** Rewrap value classes to their's Wrappers and evaluate their `toString` value.
+  /** Rewrap value class to their Wrapper class
    *
    * @param sym Value Class symbol
    * @param value underlying value
    */
-  def rewrapValueClass(sym: Symbol, value: Object)(using Context): Option[Object] =
+  private def rewrapValueClass(sym: Symbol, value: Object)(using Context): Option[Object] =
     if (sym.isValueClass && !sym.isPrimitiveValueClass) then
       val valueClassName = sym.flatName.encode.toString
       val valueClass = Class.forName(valueClassName, true, classLoader())
-
-      for {
-        constructor    <- valueClass.getConstructors.headOption
-        toStringMethod <- valueClass.getMethods.find(_.getName == nme.toString_.toString)
-      } yield {
-        val instance = constructor.newInstance(value)
-        toStringMethod.invoke(instance)
-      }
+      valueClass.getConstructors.headOption.map(_.newInstance(value))
     else
       Some(value)
 
