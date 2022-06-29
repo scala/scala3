@@ -4,7 +4,7 @@ package renderers
 import scala.collection.immutable.SortedMap
 import scala.util.chaining._
 import util.HTML._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc.translators.FilterAttributes
 import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
 import com.vladsch.flexmark.util.ast.{Node => MdNode}

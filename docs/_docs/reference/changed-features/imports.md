@@ -48,7 +48,8 @@ are offered under settings `-source 3.1-migration -rewrite`.
 
 ```
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
+ImportExpr        ::= SimpleRef {‘.’ id} ‘.’ ImportSpec
+                    | SimpleRef `as` id
 ImportSpec        ::=  NamedSelector
                     |  WildcardSelector
                     | ‘{’ ImportSelectors) ‘}’

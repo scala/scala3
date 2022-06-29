@@ -1191,7 +1191,7 @@ object desugar {
             mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
-              .withSpan(pat.span.startPos).withMods(patMods)
+              .withSpan(pat.span.union(rhs.span)).withMods(patMods)
           val useSelectors = vars.length <= 22
           def selector(n: Int) =
             if useSelectors then Select(Ident(tmpName), nme.selectorName(n))
@@ -1235,18 +1235,31 @@ object desugar {
       rhsOK(rhs)
   }
 
+  def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
+    def check(rhs: Tree): MemberDef = rhs match
+      case bounds: TypeBoundsTree if bounds.alias.isEmpty =>
+        report.error(i"opaque type must have a right-hand side", tree.srcPos)
+        tree.withMods(tree.mods.withoutFlags(Opaque))
+      case LambdaTypeTree(_, body) => check(body)
+      case _ => tree
+    if !tree.mods.is(Opaque) then tree
+    else tree match
+      case TypeDef(_, rhs) => check(rhs)
+      case _ => tree
+
   /** Check that modifiers are legal for the definition `tree`.
    *  Right now, we only check for `opaque`. TODO: Move other modifier checks here.
    */
   def checkModifiers(tree: Tree)(using Context): Tree = tree match {
     case tree: MemberDef =>
       var tested: MemberDef = tree
-      def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
+      def checkApplicable(flag: Flag, test: MemberDefTest): MemberDef =
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
           report.error(ModifierNotAllowedForDefinition(flag), tree.srcPos)
-          tested = tested.withMods(tested.mods.withoutFlags(flag))
-        }
-      checkApplicable(Opaque, legalOpaque)
+           tested.withMods(tested.mods.withoutFlags(flag))
+        } else tested
+      tested = checkOpaqueAlias(tested)
+      tested = checkApplicable(Opaque, legalOpaque)
       tested
     case _ =>
       tree
@@ -1564,10 +1577,10 @@ object desugar {
        *  also replaced by Binds with fresh names.
        */
       def makeIdPat(pat: Tree): (Tree, Ident) = pat match {
-        case Bind(name, pat1) =>
+        case bind @ Bind(name, pat1) =>
           if name == nme.WILDCARD then
             val name = UniqueName.fresh()
-            (cpy.Bind(pat)(name, pat1), Ident(name))
+            (cpy.Bind(pat)(name, pat1).withMods(bind.mods), Ident(name))
           else (pat, Ident(name))
         case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD => (id, id)
         case Typed(id: Ident, _) if isVarPattern(id) && id.name != nme.WILDCARD => (pat, id)
@@ -1666,7 +1679,12 @@ object desugar {
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
           val (defpat0, id0) = makeIdPat(gen.pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
-          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map(makePatDef(_, Modifiers(), _, _))
+          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map { (valeq, defpat, rhs) =>
+            val mods = defpat match
+              case defTree: DefTree => defTree.mods
+              case _ => Modifiers()
+            makePatDef(valeq, mods, defpat, rhs)
+          }
           val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
           val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
@@ -1911,8 +1929,6 @@ object desugar {
         new UntypedTreeTraverser {
           def traverse(tree: untpd.Tree)(using Context): Unit = tree match {
             case Splice(expr) => collect(expr)
-            case TypSplice(expr) =>
-              report.error(TypeSpliceInValPattern(expr), tree.srcPos)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)

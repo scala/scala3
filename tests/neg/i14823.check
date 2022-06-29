@@ -2,5 +2,5 @@
 8 |val baz = summon[Mirror.Of[SubA[Int] | SubB[Int]]] // error
   |                                                  ^
   |No given instance of type deriving.Mirror.Of[SubA[Int] | SubB[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[SubA[Int] | SubB[Int]]: 
-  |	* class Cov is not a generic product 
-  |	* class Cov is not a generic sum because it is not a sealed class
+  |	* type `SubA[Int] | SubB[Int]` is not a generic product because its subpart `SubA[Int] | SubB[Int]` is a top-level union type.
+  |	* type `SubA[Int] | SubB[Int]` is not a generic sum because its subpart `SubA[Int] | SubB[Int]` is a top-level union type.

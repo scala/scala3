@@ -846,7 +846,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     // Term members that are neither methods nor modules are fields
     classSym.info.decls.filter { f =>
-      !f.isOneOf(Method | Module) && f.isTerm
+      !f.isOneOf(MethodOrModule) && f.isTerm
         && !f.hasAnnotation(jsdefn.JSNativeAnnot)
         && !f.hasAnnotation(jsdefn.JSOptionalAnnot)
         && !f.hasAnnotation(jsdefn.JSExportStaticAnnot)

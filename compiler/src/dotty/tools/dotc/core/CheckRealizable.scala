@@ -132,7 +132,7 @@ class CheckRealizable(using Context) {
     case tp: RefinedType => refinedNames(tp.parent) + tp.refinedName
     case tp: AndType => refinedNames(tp.tp1) ++ refinedNames(tp.tp2)
     case tp: OrType  => refinedNames(tp.tp1) ++ refinedNames(tp.tp2)
-    case tp: TypeProxy => refinedNames(tp.underlying)
+    case tp: TypeProxy => refinedNames(tp.superType)
     case _ => Set.empty
   }
 

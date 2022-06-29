@@ -19,9 +19,9 @@ The `derives` clause generates the following given instances for the `Eq`, `Orde
 companion object of `Tree`,
 
 ```scala
-given [T: Eq]       : Eq[Tree[T]]    = Eq.derived
-given [T: Ordering] : Ordering[Tree] = Ordering.derived
-given [T: Show]     : Show[Tree]     = Show.derived
+given [T: Eq]       : Eq[Tree[T]]       = Eq.derived
+given [T: Ordering] : Ordering[Tree[T]] = Ordering.derived
+given [T: Show]     : Show[Tree[T]]     = Show.derived
 ```
 
 We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Show` instances are _derived instances_.

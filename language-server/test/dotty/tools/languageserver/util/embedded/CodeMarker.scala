@@ -3,7 +3,7 @@ package dotty.tools.languageserver.util.embedded
 import dotty.tools.languageserver.util.server.TestFile
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import org.eclipse.lsp4j._
 

@@ -75,9 +75,6 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   def maybeIncomplete: Boolean = _maybeInComplete
 
-  /** Tab increment; can be overridden */
-  def tabInc: Int = 8
-
   override def name: String = file.name
   override def path: String = file.path
   override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
@@ -197,12 +194,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {
     var idx = startOfLine(offset)
-    var col = 0
-    while (idx != offset) {
-      col += (if (idx < content().length && content()(idx) == '\t') (tabInc - col) % tabInc else 1)
-      idx += 1
-    }
-    col
+    offset - idx
   }
 
   /** The padding of the column corresponding to `offset`, includes tabs */

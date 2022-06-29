@@ -70,7 +70,7 @@ object LambdaLift:
     private def generateProxies()(using Context): Unit =
       for owner <- deps.tracked do
         val fvs = deps.freeVars(owner).toList
-        val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
+        val newFlags = Synthetic | (if (owner.isClass) PrivateParamAccessor else Param)
         report.debuglog(i"free var proxy of ${owner.showLocated}: $fvs%, %")
         val freeProxyPairs =
           for fv <- fvs yield

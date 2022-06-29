@@ -114,7 +114,7 @@ local and imported definitions. Members completions take possible implicit conve
 
 We also improved the `find references` functionality. It is more robust and much faster!
 
-Try it out in [Visual Studio Code](https://dotty.epfl.ch/docs/usage/ide-support.html)!
+Try it out in [Visual Studio Code](https://docs.scala-lang.org/scala3/getting-started.html#using-vscode-with-metals)!
 
 ### Better and safer types in pattern matching (improved GADT support)
 
@@ -204,7 +204,7 @@ using Dotty with sbt, see the
 
 ### IDE support
 It is very easy to start using the Dotty IDE in any Dotty project by following
-the [IDE guide](https://dotty.epfl.ch/docs/usage/ide-support.html).
+the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala3/getting-started.html).
 
 
 ### Standalone installation

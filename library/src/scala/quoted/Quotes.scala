@@ -6,10 +6,11 @@ import scala.reflect.TypeTest
 /** Current Quotes in scope
  *
  *  Usage:
- *  ```scala sc:nocompile
+ *  ```scala
+ *  import scala.quoted._
  *  def myExpr[T](using Quotes): Expr[T] = {
  *     import quotes.reflect._
- *     ...
+ *     ???
  *  }
  *  ```
  */
@@ -1722,7 +1723,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param sym  The type symbol for which we are creating a type tree reference.
        */
-      @experimental
       def ref(typeSymbol: Symbol): TypeTree
     }
 
@@ -2287,9 +2287,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *
      *  `ParamClause` encodes the following enumeration
      *  ```scala
-     *  enum ParamClause:
-     *    case TypeParamClause(params: List[TypeDef])
-     *    case TermParamClause(params: List[ValDef])
+     *  //{
+     *  import scala.quoted._
+     *  def inQuotes(using Quotes) = {
+     *    val q: Quotes = summon[Quotes]
+     *    import q.reflect._
+     *  //}
+     *    enum ParamClause:
+     *      case TypeParamClause(params: List[TypeDef])
+     *      case TermParamClause(params: List[ValDef])
+     *  //{
+     *  }
+     *  //}
      *  ```
      */
     type ParamClause <: AnyRef
@@ -2522,12 +2531,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *  Usage:
         *  ```scala
         *  //{
+        *  import scala.quoted._
         *  def f(using Quotes) = {
-        *  val typeRepr: TypeRepr = ???
+        *    val q: Quotes = summon[Quotes]
+        *    import q.reflect._
+        *    val typeRepr: TypeRepr = ???
         *  //}
-        *  typeRepr.asType match
-        *    case '[t] =>
-        *      '{ val x: t = ??? }
+        *    typeRepr.asType match
+        *      case '[t] =>
+        *        '{ val x: t = ??? }
         *  //{
         *  }
         *  //}
@@ -2644,11 +2656,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Substitute all types that refer in their symbol attribute to
          *  one of the symbols in `from` by the corresponding types in `to`.
          */
-        @experimental
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr
 
         /** The applied type arguments (empty if there is no such arguments) */
-        @experimental
         def typeArgs: List[TypeRepr]
       end extension
     }
@@ -2800,7 +2810,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val AppliedType` */
     trait AppliedTypeModule { this: AppliedType.type =>
       /** Applied the type constructor `T` to a list of type arguments `T_1,..,T_n` to create `T[T_1,..,T_n]` */
-      @experimental
       def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr])
     }
@@ -3929,25 +3938,34 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  Usages:
          *  ```scala
-         *  def rhsExpr(using Quotes): Expr[Unit] = '{ val y = ???; (y, y) }
-         *  def aValDef(using Quotes)(owner: Symbol) =
+         *  def rhsExpr(using q: Quotes): Expr[Unit] =
+         *    import q.reflect._
+         *    '{ val y = ???; (y, y) }
+         *  def aValDef(using q: Quotes)(owner: q.reflect.Symbol) =
+         *    import q.reflect._
          *    val sym = Symbol.newVal(owner, "x", TypeRepr.of[Unit], Flags.EmptyFlags, Symbol.noSymbol)
          *    val rhs = rhsExpr(using sym.asQuotes).asTerm
          *    ValDef(sym, Some(rhs))
          *  ```
          *
          *  ```scala
-         *  new TreeMap:
-         *    override def transformTerm(tree: Term)(owner: Symbol): Term =
-         *      tree match
-         *        case tree: Ident =>
-         *          given Quotes = owner.asQuotes
-         *          // Definitions contained in the quote will be owned by `owner`.
-         *          // No need to use `changeOwner` in this case.
-         *          '{ val x = ???; x }.asTerm
+         *  //{
+         *  def inQuotes(using q: Quotes) = {
+         *    import q.reflect._
+         *  //}
+         *    new TreeMap:
+         *      override def transformTerm(tree: Term)(owner: Symbol): Term =
+         *        tree match
+         *          case tree: Ident =>
+         *            given Quotes = owner.asQuotes
+         *            // Definitions contained in the quote will be owned by `owner`.
+         *            // No need to use `changeOwner` in this case.
+         *            '{ val x = ???; x }.asTerm
+         *  //{
+         *  }
+         *  //}
          *  ```
          */
-        @experimental
         def asQuotes: Nested
 
         /** Type reference to the symbol usable in the scope of its owner.
@@ -3957,11 +3975,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  @pre symbol.isType returns true
          */
-        @experimental
         def typeRef: TypeRef
 
-        /** Term reference to the symbol usable in the scope of its owner. */
-        @experimental
+        /** Term reference to the symbol usable in the scope of its owner.
+         *
+         *  @pre symbol.isType returns false
+         */
         def termRef: TermRef
       end extension
     }
@@ -4515,9 +4534,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  class MyTreeAccumulator[X] extends TreeAccumulator[X] {
-    *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ???
+    *  //{
+    *  def inQuotes(using q: Quotes) = {
+    *    import q.reflect._
+    *  //}
+    *    class MyTreeAccumulator[X] extends TreeAccumulator[X] {
+    *      def foldTree(x: X, tree: Tree)(owner: Symbol): X = ???
+    *    }
+    *  //{
     *  }
+    *  //}
     *  ```
     */
     trait TreeAccumulator[X]:
@@ -4621,9 +4647,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  class MyTraverser extends TreeTraverser {
-    *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ???
+    *  //{
+    *  def inQuotes(using q: Quotes) = {
+    *    import q.reflect._
+    *  //}
+    *    class MyTraverser extends TreeTraverser {
+    *      override def traverseTree(tree: Tree)(owner: Symbol): Unit = ???
+    *    }
+    *  //{
     *  }
+    *  //}
     *  ```
     */
     trait TreeTraverser extends TreeAccumulator[Unit]:
@@ -4640,9 +4673,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  class MyTreeMap extends TreeMap {
-    *    override def transformTree(tree: Tree)(owner: Symbol): Tree = ???
+    *  //{
+    *  def inQuotes(using q: Quotes) = {
+    *    import q.reflect._
+    *  //}
+    *    class MyTreeMap extends TreeMap {
+    *      override def transformTree(tree: Tree)(owner: Symbol): Tree = ???
+    *    }
+    *  //{
     *  }
+    *  //}
     *  ```
     *
     *  Use `Symbol.asQuotes` to create quotes with the correct owner within the TreeMap.

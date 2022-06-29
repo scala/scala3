@@ -258,12 +258,8 @@ case class TastyMemberSource(path: java.nio.file.Path, lineNumber: Int)
 
 object SnippetCompilerData:
   case class Position(line: Int, column: Int)
-  case class ClassInfo(tpe: Option[String], names: Seq[String], generics: Option[String])
-
 case class SnippetCompilerData(
   packageName: String,
-  classInfos: Seq[SnippetCompilerData.ClassInfo],
-  imports: List[String],
   position: SnippetCompilerData.Position
 )
 

@@ -4,7 +4,7 @@ import dotty.tools.languageserver.util.{PositionContext, SymInfo}
 import org.eclipse.lsp4j.WorkspaceSymbolParams
 import org.junit.Assert.assertEquals
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * An action requesting for all the symbols in the workspace matching `query`.

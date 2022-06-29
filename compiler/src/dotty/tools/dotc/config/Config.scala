@@ -226,4 +226,10 @@ object Config {
    *  reduces the number of allocated denotations by ~50%.
    */
   inline val reuseSymDenotations = true
+
+  /** If true, check levels of type variables and create fresh ones as needed.
+   *  This is necessary for soundness (see 3ab18a9), but also causes several
+   *  regressions that should be fixed before turning this on.
+   */
+  inline val checkLevels = false
 }

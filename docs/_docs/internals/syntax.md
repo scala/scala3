@@ -3,6 +3,20 @@ layout: doc-page
 title: "Scala 3 Syntax Summary"
 ---
 
+<!--
+
+This page has a companion page at _docs/reference/syntax.md.
+
+!! Make sure to edit both pages in sync. !!
+
+reference/syntax.md shows the official Scala 3 syntax, without deprecated or experimental features.
+
+internals/syntax.md shows the Scala 3 syntax as supported by the parser, including
+deprecated and experimental features. It also gives some indications how
+productions map to AST nodes.
+
+-->
+
 The following description of Scala tokens uses literal characters `‘c’` when
 referring to the ASCII fragment `\u0000` – `\u007F`.
 
@@ -27,7 +41,7 @@ upper            ::=  ‘A’ | … | ‘Z’ | ‘\$’ | ‘_’  “… and U
 lower            ::=  ‘a’ | … | ‘z’ “… and Unicode category Ll”
 letter           ::=  upper | lower “… and Unicode categories Lo, Lt, Lm, Nl”
 digit            ::=  ‘0’ | … | ‘9’
-paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’ | ‘'(’ | ‘'[’ | ‘'{’
+paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’
 delim            ::=  ‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’
 opchar           ::=  ‘!’ | ‘#’ | ‘%’ | ‘&’ | ‘*’ | ‘+’ | ‘-’ | ‘/’ | ‘:’ |
                       ‘<’ | ‘=’ | ‘>’ | ‘?’ | ‘@’ | ‘\’ | ‘^’ | ‘|’ | ‘~’
@@ -45,6 +59,7 @@ id               ::=  plainid
                    |  ‘`’ { charNoBackQuoteOrNewline | UnicodeEscape | charEscapeSeq } ‘`’
 idrest           ::=  {letter | digit} [‘_’ op]
 quoteId          ::=  ‘'’ alphaid
+spliceId         ::=  ‘$’ alphaid ;
 
 integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | nonZeroDigit [{digit | ‘_’} digit]
@@ -87,7 +102,6 @@ nl               ::=  “new line character”
 semi             ::=  ‘;’ |  nl {nl}
 ```
 
-
 ## Optional Braces
 
 The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../reference/other-new-features/indentation.md)
@@ -95,14 +109,17 @@ The lexical analyzer also inserts `indent` and `outdent` tokens that represent r
 In the context-free productions below we use the notation `<<< ts >>>`
 to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
 notation `:<<< ts >>>` indicates a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent` that follows
-a `:` at the end of a line.
+a `colon` token.
 
+A `colon` token reads as the standard colon "`:`" but is generated instead of it where `colon` is legal according to the context free syntax, but only if the previous token
+is an alphanumeric identifier, a backticked identifier, or one of the tokens `this`, `super`, `new`, "`)`", and "`]`".
 
 ```
+colon         ::=  ':'    -- with side conditions explained above
  <<< ts >>>   ::=  ‘{’ ts ‘}’
                 |  indent ts outdent
 :<<< ts >>>   ::=  [nl] ‘{’ ts ‘}’
-                |  `:` indent ts outdent
+                |  colon indent ts outdent
 ```
 
 ## Keywords
@@ -123,7 +140,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
+as  derives  end  extension  infix  inline  opaque  open  throws transparent  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -183,8 +200,7 @@ SimpleType1       ::=  id                                                       
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
                     |  ‘(’ Types ‘)’                                            Tuple(ts)
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
-                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
-                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- only inside quoted pattern
+                    |  TypeSplice                                               -- deprecated syntax
                     |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
                     |  SimpleType1 ‘#’ id                                       Select(t, name)
 Singleton         ::=  SimpleRef
@@ -197,7 +213,7 @@ FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
 ParamValueType    ::=  Type [‘*’]                                               PostfixOp(t, "*")
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
-Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
+Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
 Types             ::=  Type {‘,’ Type}
@@ -231,20 +247,19 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
 Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
-PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
+PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op) -- only if language.postfixOperators is enabled
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
-                    |  InfixExpr id ‘:’ IndentedExpr
+                    |  InfixExpr id ColonArgument
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ <<< CaseClauses >>>                              Match(expr, cases)
-PrefixExpr        ::=  [PrefixOperator] SimpleExpr                             PrefixOp(expr, op)
-PrefixOperator    ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
+PrefixExpr        ::=  [PrefixOperator] SimpleExpr                              PrefixOp(expr, op)
+PrefixOperator    ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’                                    -- unless backquoted
 SimpleExpr        ::=  SimpleRef
                     |  Literal
                     |  ‘_’
                     |  BlockExpr
-                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
-                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- only inside quoted pattern
+                    |  ExprSplice
                     |  Quoted
                     |  quoteId                                                  -- only inside splices
                     |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]        New(constr | templ)
@@ -254,13 +269,21 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
-                    |  SimpleExpr ‘:’ IndentedExpr                              -- under language.experimental.fewerBraces
-                    |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedExpr         -- under language.experimental.fewerBraces
+                    |  SimpleExpr ColonArgument                                 -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
-                    |  XmlExpr													                        -- to be dropped
-IndentedExpr      ::=  indent CaseClauses | Block outdent
-Quoted            ::=  ‘'’ ‘{’ Block ‘}’  
+                    |  XmlExpr							-- to be dropped
+ColonArgument     ::=  colon [LambdaStart]
+                       indent (CaseClauses | Block) outdent
+LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
+                    |  HkTypeParamClause ‘=>’
+Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
+ExprSplice        ::= spliceId                                                  -- if inside quoted block
+                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
+                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
+TypeSplice        ::= spliceId                                                  -- if inside quoted type -- deprecated syntax
+                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted type pattern -- deprecated syntax
+                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted type pattern -- deprecated syntax
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
@@ -295,7 +318,7 @@ TypeCaseClause    ::=  ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  Pattern2 [‘:’ RefinedType]                               Bind(name, Typed(Ident(wildcard), tpe))
-Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
+Pattern2          ::=  [id ‘@’] InfixPattern [‘*’]                              Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
@@ -417,7 +440,7 @@ ObjectDef         ::=  id [Template]                                            
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefParamClause`, `UsingParamClause` must be present
-StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ TemplateBody]
+StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
                        ‘(’ DefParam ‘)’ {UsingParamClause} ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
@@ -431,6 +454,7 @@ ConstrExpr        ::=  SelfInvocation
                     |  <<< SelfInvocation {semi BlockStat} >>>
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
 
+WithTemplateBody  ::=  <<< [SelfType] TemplateStat {semi TemplateStat} >>>
 TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>
 TemplateStat      ::=  Import
                     |  Export

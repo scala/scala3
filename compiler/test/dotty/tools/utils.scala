@@ -15,8 +15,10 @@ import scala.util.Using.resource
 import scala.util.chaining.given
 import scala.util.control.{ControlThrowable, NonFatal}
 
+import dotc.config.CommandLineParser
+
 def scripts(path: String): Array[File] = {
-  val dir = new File(getClass.getResource(path).getPath)
+  val dir = new File(this.getClass.getResource(path).getPath)
   assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
   dir.listFiles.filter { f =>
     val path = if f.isDirectory then f.getPath + "/" else f.getPath
@@ -48,24 +50,49 @@ def assertThrows[T <: Throwable: ClassTag](p: T => Boolean)(body: => Any): Unit 
     case NonFatal(other) => throw AssertionError(s"Wrong exception: expected ${implicitly[ClassTag[T]]} but was ${other.getClass.getName}").tap(_.addSuppressed(other))
 end assertThrows
 
-def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): List[String] =
-  files.flatMap(path => toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List))))
+/** Famous tool names in the ecosystem. Used for tool args in test files. */
+enum ToolName:
+  case Scala, Scalac, Java, Javac, Test
+object ToolName:
+  def named(s: String): ToolName = values.find(_.toString.equalsIgnoreCase(s)).getOrElse(throw IllegalArgumentException(s))
 
-// Inspect the first 10 of the given lines for compiler options of the form
+/** Take a prefix of each file, extract tool args, parse, and combine.
+ *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
+ */
+def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): Map[ToolName, List[String]] =
+  files.foldLeft(Map.empty[ToolName, List[String]]) { (res, path) =>
+    val toolargs = toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List)))
+    toolargs.foldLeft(res) {
+      case (acc, (tool, args)) =>
+        val name = ToolName.named(tool)
+        val tokens = CommandLineParser.tokenize(args)
+        acc.updatedWith(name)(v0 => v0.map(_ ++ tokens).orElse(Some(tokens)))
+    }
+  }
+
+def toolArgsFor(tool: ToolName)(lines: List[String]): List[String] =
+  toolArgsParse(lines).collectFirst { case (name, args) if tool eq ToolName.named(name) => CommandLineParser.tokenize(args) }.getOrElse(Nil)
+
+// scalac: arg1 arg2, with alternative opening, optional space, alt names, text that is not */ up to end.
+// groups are (name, args)
+private val toolArg = raw"(?://|/\*| \*) ?(?i:(${ToolName.values.mkString("|")})):((?:[^*]|\*(?!/))*)".r.unanchored
+
+// Inspect the lines for compiler options of the form
 // `// scalac: args`, `/* scalac: args`, ` * scalac: args`.
-// If args string ends in close comment, drop the `*` `/`.
-// If split, parse the args string as a command line.
-// (from scala.tools.partest.nest.Runner#toolArgsFor)
-def toolArgsParse(lines: List[String]): List[String] = {
-  val tag  = "scalac:"
-  val endc = "*" + "/"    // be forgiving of /* scalac: ... */
-  def stripped(s: String) = s.substring(s.indexOf(tag) + tag.length).stripSuffix(endc)
-  val args = lines.to(LazyList).take(10).filter { s =>
-       s.contains("//" + tag)
-    || s.contains("// " + tag)
-    || s.contains("/* " + tag)
-    || s.contains(" * " + tag)
-    // but avoid picking up comments like "% scalac ./a.scala" and "$ scalac a.scala"
-  }.map(stripped).headOption
-  args.map(dotc.config.CommandLineParser.tokenize).getOrElse(Nil)
-}
+// If args string ends in close comment, stop at the `*` `/`.
+// Returns all the matches by the regex.
+def toolArgsParse(lines: List[String]): List[(String,String)] =
+  lines.flatMap { case toolArg(name, args) => List((name, args)) case _ => Nil }
+
+import org.junit.Test
+import org.junit.Assert._
+
+class ToolArgsTest:
+  @Test def `missing toolarg is absent`: Unit = assertEquals(Nil, toolArgsParse(List("")))
+  @Test def `toolarg is present`: Unit = assertEquals(("test", " -hey") :: Nil, toolArgsParse("// test: -hey" :: Nil))
+  @Test def `tool is present`: Unit = assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test)("// test: -hey" :: Nil))
+  @Test def `missing tool is absent`: Unit = assertEquals(Nil, toolArgsFor(ToolName.Javac)("// test: -hey" :: Nil))
+  @Test def `multitool is present`: Unit =
+    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
+    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Javac)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
+end ToolArgsTest

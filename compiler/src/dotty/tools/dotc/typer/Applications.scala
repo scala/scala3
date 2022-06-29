@@ -1118,7 +1118,7 @@ trait Applications extends Compatibility {
    */
   def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
-      fullyDefinedType(tree.tpe, "array", tree.span)
+      fullyDefinedType(tree.tpe, "array", tree.srcPos)
 
       def newGenericArrayCall =
         ref(defn.DottyArraysModule)
@@ -1171,7 +1171,7 @@ trait Applications extends Compatibility {
    *  type by means of a type ascription, as long as the widened type is
    *  still compatible with the expected type.
    *  The underlying type is the intersection of all class parents of the
-   *  orginal type.
+   *  original type.
    */
   def widenEnumCase(tree: Tree, pt: Type)(using Context): Tree =
     val sym = tree.symbol
@@ -1259,10 +1259,15 @@ trait Applications extends Compatibility {
      *  whereas overloaded variants need to have a conforming variant.
      */
     def trySelectUnapply(qual: untpd.Tree)(fallBack: (Tree, TyperState) => Tree): Tree = {
-      // try first for non-overloaded, then for overloaded ocurrences
-      def tryWithName(name: TermName)(fallBack: (Tree, TyperState) => Tree)(using Context): Tree = {
-        def tryWithProto(pt: Type)(using Context) = {
-          val result = typedExpr(untpd.Select(qual, name), new UnapplyFunProto(pt, this))
+      // try first for non-overloaded, then for overloaded occurrences
+      def tryWithName(name: TermName)(fallBack: (Tree, TyperState) => Tree)(using Context): Tree =
+
+        def tryWithProto(qual: untpd.Tree, targs: List[Tree], pt: Type)(using Context) =
+          val proto = UnapplyFunProto(pt, this)
+          val unapp = untpd.Select(qual, name)
+          val result =
+            if targs.isEmpty then typedExpr(unapp, proto)
+            else typedExpr(unapp, PolyProto(targs, proto)).appliedToTypeTrees(targs)
           if !result.symbol.exists
              || result.symbol.name == name
              || ctx.reporter.hasErrors
@@ -1270,18 +1275,26 @@ trait Applications extends Compatibility {
           else notAnExtractor(result)
           	// It might be that the result of typedExpr is an `apply` selection or implicit conversion.
           	// Reject in this case.
-        }
-        tryEither {
-          tryWithProto(selType)
-        } {
-          (sel, state) =>
-            tryEither {
-              tryWithProto(WildcardType)
-            } {
-              (_, _) => fallBack(sel, state)
-            }
-        }
-      }
+
+        def tryWithTypeArgs(qual: untpd.Tree, targs: List[Tree])(fallBack: (Tree, TyperState) => Tree): Tree =
+          tryEither {
+            tryWithProto(qual, targs, selType)
+          } {
+            (sel, state) =>
+              tryEither {
+                tryWithProto(qual, targs, WildcardType)
+              } {
+                (_, _) => fallBack(sel, state)
+              }
+          }
+
+        qual match
+          case TypeApply(qual1, targs) =>
+            tryWithTypeArgs(qual1, targs.mapconserve(typedType(_)))((t, ts) =>
+              tryWithTypeArgs(qual, Nil)(fallBack))
+          case _ =>
+            tryWithTypeArgs(qual, Nil)(fallBack)
+      end tryWithName
 
       // try first for unapply, then for unapplySeq
       tryWithName(nme.unapply) {
@@ -1333,7 +1346,7 @@ trait Applications extends Compatibility {
         val ownType =
           if (selType <:< unapplyArgType) {
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
-            fullyDefinedType(unapplyArgType, "pattern selector", tree.span)
+            fullyDefinedType(unapplyArgType, "pattern selector", tree.srcPos)
             selType.dropAnnot(defn.UncheckedAnnot) // need to drop @unchecked. Just because the selector is @unchecked, the pattern isn't.
           }
           else {
@@ -1564,7 +1577,7 @@ trait Applications extends Compatibility {
             // `isSubType` as a TypeVar might get constrained by a TypeRef it's
             // part of.
             val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
-            fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.span)
+            fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.srcPos)
 
             val tparams = newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
             isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
@@ -2067,7 +2080,7 @@ trait Applications extends Compatibility {
         mappedSym.rawParamss = alt.symbol.rawParamss
           // we need rawParamss to find parameters with default arguments,
           // but we do not need to be precise right now, since this is just a pre-test before
-          // we look up defult getters. If at some point we extract default arguments from the
+          // we look up default getters. If at some point we extract default arguments from the
           // parameter symbols themselves, we have to find the right parameter by name, not position.
           // That means it's OK to copy parameters wholesale rather than tailoring them to always
           // correspond to the type transformation.
@@ -2190,7 +2203,7 @@ trait Applications extends Compatibility {
    *  This reset is needed because otherwise the original results might
    *  have added constraints to type parameters which are no longer
    *  implied after harmonization. No essential constraints are lost by this because
-   *  the result of harmomization will be compared again with the expected type.
+   *  the result of harmonization will be compared again with the expected type.
    *  Test cases where this matters are in pos/harmomize.scala.
    */
   def harmonic[T](harmonize: List[T] => List[T], pt: Type)(op: => List[T])(using Context): List[T] =
@@ -2249,7 +2262,7 @@ trait Applications extends Compatibility {
    *  with the type parameters of the extension (T1, T2) inferred.
    *  None is returned if the implicit search fails for any of the leading implicit parameters
    *  or if the receiver has a wrong type (note that in general the type of the receiver
-   *  might depend on the exact types of the found instances of the proceding implicits).
+   *  might depend on the exact types of the found instances of the proceeding implicits).
    *  No implicit search is tried for implicits following the receiver or for parameters of the def (D, E).
    */
   def tryApplyingExtensionMethod(methodRef: TermRef, receiver: Tree)(using Context): Option[Tree] =
@@ -2288,27 +2301,6 @@ trait Applications extends Compatibility {
         None
     catch
       case NonFatal(_) => None
-
-  /** Tries applying conversion method reference to a provided receiver
-   *
-   *  returns converted tree in case of success.
-   *  None is returned if conversion method application fails.
-   */
-  def tryApplyingImplicitConversion(conversionMethodRef: TermRef, receiver: Tree)(using Context): Option[Tree] =
-    val conversionMethodTree = ref(conversionMethodRef, needLoad = false)
-    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
-
-    try
-      val appliedTree = inContext(newCtx) {
-        typed(untpd.Apply(conversionMethodTree, untpd.TypedSplice(receiver) :: Nil))
-      }
-
-      if appliedTree.tpe.exists && !appliedTree.tpe.isError then
-        Some(appliedTree)
-      else
-        None
-    catch
-      case NonFatal(x) => None
 
   def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
     methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&

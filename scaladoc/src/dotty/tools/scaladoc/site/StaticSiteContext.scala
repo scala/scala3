@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.util.Try
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.annotation.static
 
 class StaticSiteContext(
@@ -23,8 +23,8 @@ class StaticSiteContext(
   val docsPath = root.toPath.resolve("_docs")
   val blogPath = root.toPath.resolve("_blog")
 
-  def relativize(path: Path): Path = 
-    if args.apiSubdirectory then 
+  def relativize(path: Path): Path =
+    if args.apiSubdirectory then
       docsPath.relativize(path)
     else
       val relativised = docsPath.relativize(path)

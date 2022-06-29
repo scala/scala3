@@ -279,12 +279,15 @@ trait TypeAssigner {
       tp
   }
 
+  def safeSubstMethodParams(mt: MethodType, argTypes: List[Type])(using Context): Type =
+    if mt.isResultDependent then safeSubstParams(mt.resultType, mt.paramRefs, argTypes)
+    else mt.resultType
+
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(using Context): Apply = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
-          if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
-          else fntpe.resultType
+        if (fntpe.paramInfos.hasSameLengthAs(args) || ctx.phase.prev.relaxedTyping)
+          safeSubstMethodParams(fntpe, args.tpes)
         else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
       case t =>
@@ -355,7 +358,7 @@ trait TypeAssigner {
                 if tp eq pt then pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
                 else tp)
             val argTypes = args.tpes.mapConserve(ensureFresh)
-            if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
+            if (argTypes.hasSameLengthAs(paramNames)) pt.instantiate(argTypes)
             else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
           }
         }
@@ -471,7 +474,7 @@ trait TypeAssigner {
     assert(!hasNamedArg(args) || ctx.reporter.errorsReported, tree)
     val tparams = tycon.tpe.typeParams
     val ownType =
-      if (sameLength(tparams, args))
+      if (tparams.hasSameLengthAs(args))
         if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
         else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe, soft = false)
         else tycon.tpe.appliedTo(args.tpes)

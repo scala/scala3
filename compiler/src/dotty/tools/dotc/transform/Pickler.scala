@@ -11,7 +11,7 @@ import Periods._
 import Phases._
 import Symbols._
 import Flags.Module
-import reporting.ThrowingReporter
+import reporting.{ThrowingReporter, Profile}
 import collection.mutable
 import scala.concurrent.{Future, Await, ExecutionContext}
 import scala.concurrent.duration.Duration
@@ -70,6 +70,7 @@ class Pickler extends Phase {
         picklers(cls) = pickler
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
+      Profile.current.recordTasty(treePkl.buf.length)
       val positionWarnings = new mutable.ListBuffer[String]()
       val pickledF = inContext(ctx.fresh) {
         Future {

@@ -99,7 +99,7 @@ object PatternMatcher {
     private val initializer = MutableSymbolMap[Tree]()
 
     private def newVar(rhs: Tree, flags: FlagSet, tpe: Type): TermSymbol =
-      newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
+      newSymbol(ctx.owner, PatMatStdBinderName.fresh(), SyntheticCase | flags,
         sanitize(tpe), coord = rhs.span)
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 

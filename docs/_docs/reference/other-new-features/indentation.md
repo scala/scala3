@@ -61,7 +61,7 @@ There are two rules:
 
      - after the leading parameters of an `extension`, or
      - after a `with` in a given instance, or
-     - after a ": at end of line" token (see below)
+     - after a `:` at the start of a template body (see discussion of `<colon>` below), or
      - after one of the following tokens:
 
        ```
@@ -134,12 +134,14 @@ is parsed as `if x then a + b + c else d`.
 
 The Scala grammar uses the term _template body_ for the definitions of a class, trait, or object that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule.
 
-If at the point where a template body can start there is a `:` that occurs at the end
-of a line, and that is followed by at least one indented statement, the recognized
-token is changed from ":" to ": at end of line". The latter token is one of the tokens
-that can start an indentation region. The Scala grammar is changed so an optional ": at end of line" is allowed in front of a template body.
+A template body can alternatively consist of a colon followed by one or more indented statements. To this purpose we introduce a new `<colon>` token that reads as
+the standard colon "`:`" but is generated instead of it where `<colon>`
+is legal according to the context free syntax, but only if the previous token
+is an alphanumeric identifier, a backticked identifier, or one of the tokens `this`, `super`, "`)`", and "`]`".
 
-Analogous rules apply for enum bodies and local packages containing nested definitions.
+An indentation region can start after a `<colon>`. A template body may be either enclosed in braces, or it may start with
+`<colon> <indent>` and end with `<outdent>`.
+Analogous rules apply for enum bodies, type refinements, and local packages containing nested definitions.
 
 With these new rules, the following constructs are all valid:
 
@@ -170,17 +172,19 @@ In each case, the `:` at the end of line can be replaced without change of meani
 
 The syntax changes allowing this are as follows:
 
-```
-Template    ::=  InheritClauses [colonEol] [TemplateBody]
-EnumDef     ::=  id ClassConstr InheritClauses [colonEol] EnumBody
-Packaging   ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’
-SimpleExpr  ::=  ‘new’ ConstrApp {‘with’ ConstrApp} [[colonEol] TemplateBody]
-```
+Define for an arbitrary sequence of tokens or non-terminals `TS`:
 
-Here, `colonEol` stands for ": at end of line", as described above.
-The lexical analyzer is modified so that a `:` at the end of a line
-is reported as `colonEol` if the parser is at a point where a `colonEol` is
-valid as next token.
+```
+:<<< TS >>>   ::=   ‘{’ TS ‘}’
+                |   <colon> <indent" TS <outdent>
+```
+Then the grammar changes as follows:
+```
+TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>
+EnumBody          ::=  :<<< [SelfType] EnumStat {semi EnumStat} >>>
+Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+Packaging         ::=  ‘package’ QualId :<<< TopStats >>>
+```
 
 ### Spaces vs Tabs
 
@@ -444,15 +448,15 @@ indented regions where possible. When invoked with options `-rewrite -no-indent`
 The `-indent` option only works on [new-style syntax](./control-syntax.md). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
 `-rewrite -indent`. To go in the opposite direction, from indented code to old-style syntax, it's `-rewrite -no-indent`, followed by `-rewrite -old-syntax`.
 
-### Variant: Indentation Marker `:`
+### Variant: Indentation Marker `:` for Arguments
 
-Generally, the possible indentation regions coincide with those regions where braces `{...}` are also legal, no matter whether the braces enclose an expression or a set of definitions. There is one exception, though: Arguments to function can be enclosed in braces but they cannot be simply indented instead. Making indentation always significant for function arguments would be too restrictive and fragile.
+Generally, the possible indentation regions coincide with those regions where braces `{...}` are also legal, no matter whether the braces enclose an expression or a set of definitions. There is one exception, though: Arguments to functions can be enclosed in braces but they cannot be simply indented instead. Making indentation always significant for function arguments would be too restrictive and fragile.
 
 To allow such arguments to be written without braces, a variant of the indentation scheme is implemented under language import
 ```scala
 import language.experimental.fewerBraces
 ```
-This variant is more contentious and less stable than the rest of the significant indentation scheme. In this variant, a colon `:` at the end of a line is also one of the possible tokens that opens an indentation region. Examples:
+In this variant, a `<colon>` token is also recognized where function argument would be expected. Examples:
 
 ```scala
 times(10):
@@ -463,23 +467,43 @@ times(10):
 or
 
 ```scala
-xs.map:
-  x =>
-    val y = x - 1
-    y * y
-```
-
-The colon is usable not only for lambdas and by-name parameters, but
-also even for ordinary parameters:
-
-```scala
-credentials ++ :
+credentials `++`:
   val file = Path.userHome / ".credentials"
   if file.exists
   then Seq(Credentials(file))
   else Seq()
 ```
 
-How does this syntax variant work? Colons at the end of lines are their own token, distinct from normal `:`.
-The Scala grammar is changed so that colons at end of lines are accepted at all points
-where an opening brace enclosing an argument is legal. Special provisions are taken so that method result types can still use a colon on the end of a line, followed by the actual type on the next.
+or
+
+```scala
+xs.map:
+  x =>
+    val y = x - 1
+    y * y
+```
+What's more, a `:` in these settings can also be followed on the same line by the parameter part and arrow of a lambda. So the last example could be compressed to this:
+
+```scala
+xs.map: x =>
+  val y = x - 1
+  y * y
+```
+and the following would also be legal:
+```scala
+xs.foldLeft(0): (x, y) =>
+  x + y
+```
+
+The grammar changes for this variant are as follows.
+
+```
+SimpleExpr       ::=  ...
+                   |  SimpleExpr ColonArgument
+InfixExpr        ::=  ...
+                   |  InfixExpr id ColonArgument
+ColonArgument    ::=  colon [LambdaStart]
+                      indent (CaseClauses | Block) outdent
+LambdaStart      ::=  FunParams (‘=>’ | ‘?=>’)
+                   |  HkTypeParamClause ‘=>’
+```

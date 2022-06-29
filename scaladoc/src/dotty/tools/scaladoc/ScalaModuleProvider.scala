@@ -1,7 +1,7 @@
 package dotty.tools.scaladoc
 
 import dotty.tools.scaladoc.tasty.ScaladocTastyInspector
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import transformers._
 
 case class Module(rootPackage: Member, members: Map[DRI, Member])

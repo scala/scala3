@@ -1,6 +1,6 @@
 package foo.bar
 
-import jdk.jfr.Enabled
+class Enabled extends annotation.Annotation
 
 @Enabled
 @Deprecated

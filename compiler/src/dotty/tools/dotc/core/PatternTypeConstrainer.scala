@@ -138,13 +138,28 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val andType = buildAndType(baseClasses)
           !andType.exists || constrainPatternType(pat, andType)
         case _ =>
-          val upcasted: Type = scrut match {
-            case scrut: TypeProxy => scrut.superType
-            case _ => NoType
+          def tryGadtBounds = scrut match {
+            case scrut: TypeRef =>
+              ctx.gadt.bounds(scrut.symbol) match {
+                case tb: TypeBounds =>
+                  val hi = tb.hi
+                  constrainPatternType(pat, hi)
+                case null => true
+              }
+            case _ => true
           }
-          if (upcasted.exists)
-            tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
-          else true
+
+          def trySuperType =
+            val upcasted: Type = scrut match {
+              case scrut: TypeProxy =>
+                scrut.superType
+              case _ => NoType
+            }
+            if (upcasted.exists)
+              tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
+            else true
+
+          tryGadtBounds && trySuperType
       }
     }
 
@@ -219,7 +234,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     def refinementIsInvariant(tp: Type): Boolean = tp match {
       case tp: SingletonType => true
       case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
-      case tp: TypeProxy => refinementIsInvariant(tp.underlying)
+      case tp: TypeProxy => refinementIsInvariant(tp.superType)
       case _ => false
     }
 
@@ -254,14 +269,17 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val result =
             tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
               val variance = param.paramVarianceSign
-              if variance != 0 && !assumeInvariantRefinement then true
-              else {
+              if variance == 0 || assumeInvariantRefinement ||
+                // As a special case, when pattern and scrutinee types have the same type constructor,
+                // we infer better bounds for pattern-bound abstract types.
+                argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
+              then
                 val TypeBounds(loS, hiS) = argS.bounds
                 var res = true
                 if variance <  1 then res &&= isSubType(loS, argP)
                 if variance > -1 then res &&= isSubType(argP, hiS)
                 res
-              }
+              else true
             }
           if !result then
             constraint = saved

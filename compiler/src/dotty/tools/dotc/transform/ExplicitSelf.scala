@@ -27,7 +27,10 @@ class ExplicitSelf extends MiniPhase {
   override def description: String = ExplicitSelf.description
 
   private def needsCast(tree: RefTree, cls: ClassSymbol)(using Context) =
-    !cls.is(Package) && cls.givenSelfType.exists && !cls.derivesFrom(tree.symbol.owner)
+    !cls.is(Package)
+    && cls.givenSelfType.exists
+    && tree.symbol.exists
+    && !cls.derivesFrom(tree.symbol.owner)
 
   private def castQualifier(tree: RefTree, cls: ClassSymbol, thiz: Tree)(using Context) =
     val selfType = cls.classInfo.selfType

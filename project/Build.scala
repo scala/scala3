@@ -57,9 +57,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.1.3-RC3"
+  val referenceVersion = "3.2.0-RC1"
 
-  val baseVersion = "3.2.0-RC1"
+  val baseVersion = "3.2.1-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -75,7 +75,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.1.2"
+  val previousDottyVersion = "3.1.3"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -169,9 +169,10 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      "-Xfatal-warnings",
+      //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
+      "-Xfatal-warnings",                         // -Werror in modern usage
       "-encoding", "UTF8",
-      "-language:implicitConversions"
+      "-language:implicitConversions",
     ),
 
     (Compile / compile / javacOptions) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
@@ -1247,6 +1248,10 @@ object Build {
   lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
   lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
 
+  lazy val `scala3-bench-micro` = project.in(file("bench-micro"))
+    .asDottyBench(Bootstrapped)
+    .settings(Jmh / run / mainClass := Some("org.openjdk.jmh.Main"))
+
   val testcasesOutputDir = taskKey[Seq[String]]("Root directory where tests classses are generated")
   val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
   val testDocumentationRoot = taskKey[String]("Root directory where tests documentation are stored")
@@ -1434,7 +1439,7 @@ object Build {
             .add(ProjectVersion("3.1.2")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
-              dottySrcLink("language-reference-stable", temp.getAbsolutePath + "=")
+              s"${temp.getAbsolutePath}=github://lampepfl/dotty/language-reference-stable"
             )))
             .withTargets(List("___fake___.scala"))
         }
@@ -1898,8 +1903,7 @@ object ScaladocConfigs {
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
-        s"${dottyLibRoot}/scala/quoted=compile",
-        s"${dottyLibRoot}/scala/compiletime=compile"
+        s"${dottyLibRoot}/scala=compile",
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))

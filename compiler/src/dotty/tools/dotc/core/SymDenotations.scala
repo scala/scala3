@@ -92,6 +92,10 @@ object SymDenotations {
         if (myFlags.is(Trait)) NoInitsInterface & bodyFlags // no parents are initialized from a trait
         else NoInits & bodyFlags & parentFlags)
 
+    final def setStableConstructor()(using Context): Unit =
+      val ctorStable = if myFlags.is(Trait) then myFlags.is(NoInits) else isNoInitsRealClass
+      if ctorStable then primaryConstructor.setFlag(StableRealizable)
+
     def isCurrent(fs: FlagSet)(using Context): Boolean =
       def knownFlags(info: Type): FlagSet = info match
         case _: SymbolLoader | _: ModuleCompleter => FromStartFlags
@@ -653,6 +657,9 @@ object SymDenotations {
     def seesOpaques(using Context): Boolean =
       containsOpaques ||
       is(Module, butNot = Package) && owner.seesOpaques
+
+    def isProvisional(using Context): Boolean =
+      flagsUNSAFE.is(Provisional) // do not force the info to check the flag
 
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:

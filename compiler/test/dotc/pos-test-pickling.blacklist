@@ -18,6 +18,7 @@ i7740b.scala
 i6507b.scala
 i12299a.scala
 i13871.scala
+i15181.scala
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
@@ -41,6 +42,8 @@ i9999.scala
 13491.scala
 7512.scala
 i6505.scala
+i15158.scala
+i15155.scala
 
 # Opaque type
 i5720.scala
@@ -81,3 +84,6 @@ i4176-gadt.scala
 i13974a.scala
 
 java-inherited-type1
+
+# avoidance bug
+i15174.scala

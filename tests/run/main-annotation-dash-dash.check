@@ -1,0 +1,17 @@
+str = x
+rest = y,z
+
+str = x
+rest = y,z
+
+str = -a
+rest = x,y,z
+
+str = x
+rest = y,z
+
+str = y
+rest = z
+
+Error: missing argument for --str
+Usage: foo [--str] <String> [<String> [<String> [...]]]

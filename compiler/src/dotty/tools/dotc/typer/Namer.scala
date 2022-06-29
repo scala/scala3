@@ -905,7 +905,7 @@ class Namer { typer: Typer =>
       if denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass then
         val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
         denot.info.parents.foreach { parent => register(child, parent.classSymbol.asClass) }
-      else if denot.is(CaseVal, butNot = Method | Module) then
+      else if denot.is(CaseVal, butNot = MethodOrModule) then
         assert(denot.is(Enum), denot)
         denot.info.classSymbols.foreach { parent => register(denot.symbol, parent) }
       end if
@@ -1229,6 +1229,7 @@ class Namer { typer: Typer =>
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
               val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
               ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
+                .etaExpandCFT(using ctx.withOwner(forwarder))
             })
             if forwarder.isInlineMethod then
               PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
@@ -1466,7 +1467,7 @@ class Namer { typer: Typer =>
               else {
                 if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(GivenOrImplicit))
                   missingType(denot.symbol, "parent ")(using creationContext)
-                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.span)
+                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.srcPos)
               }
             case _ =>
               UnspecifiedErrorType.assertingErrorsReported
@@ -1578,10 +1579,7 @@ class Namer { typer: Typer =>
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.invalidateMemberCaches() // we might have checked for a member when parents were not known yet.
       cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
-      val ctorStable =
-        if cls.is(Trait) then cls.is(NoInits)
-        else cls.isNoInitsRealClass
-      if ctorStable then cls.primaryConstructor.setFlag(StableRealizable)
+      cls.setStableConstructor()
       processExports(using localCtx)
       defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
@@ -1674,7 +1672,23 @@ class Namer { typer: Typer =>
             // This case applies if the closure result type contains uninstantiated
             // type variables. In this case, constrain the closure result from below
             // by the parameter-capture-avoiding type of the body.
-            typedAheadExpr(mdef.rhs, tpt.tpe).tpe
+            val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
+
+            // The following part is important since otherwise we might instantiate
+            // the closure result type with a plain functon type that refers
+            // to local parameters. An example where this happens in `dependent-closures.scala`
+            // If the code after `val rhsType` is commented out, this file fails pickling tests.
+            // AVOIDANCE TODO: Follow up why this happens, and whether there
+            // are better ways to achieve this. It would be good if we could get rid of this code.
+            // It seems at least partially redundant with the nesting level checking on TypeVar
+            // instantiation.
+            if !Config.checkLevels then
+              val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
+              if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
+                report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
+                  i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
+            //println(i"lifting $rhsType over $termParamss -> $hygienicType = ${tpt.tpe}")
+            //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>
         }
         WildcardType
@@ -1876,7 +1890,7 @@ class Namer { typer: Typer =>
     def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
     def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
-    def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
+    def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.srcPos)
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
       if sym.isInlineVal then lhsType else inherited

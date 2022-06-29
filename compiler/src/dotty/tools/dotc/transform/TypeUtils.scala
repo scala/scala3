@@ -52,34 +52,43 @@ object TypeUtils {
     /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs,
      *  or -1 if this is not a tuple type.
      */
-    def tupleArity(using Context): Int = self match {
+    def tupleArity(using Context): Int = self/*.dealias*/ match { // TODO: why does dealias cause a failure in tests/run-deep-subtype/Tuple-toArray.scala
       case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         val arity = tl.tupleArity
         if (arity < 0) arity else arity + 1
       case self: SingletonType =>
         if self.termSymbol == defn.EmptyTupleModule then 0 else -1
-      case self if defn.isTupleClass(self.classSymbol) =>
-        self.dealias.argInfos.length
+      case self: AndOrType =>
+        val arity1 = self.tp1.tupleArity
+        val arity2 = self.tp2.tupleArity
+        if arity1 == arity2 then arity1 else -1
       case _ =>
-        -1
+        if defn.isTupleNType(self) then self.dealias.argInfos.length
+        else -1
     }
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs */
-    def tupleElementTypes(using Context): List[Type] = self match {
+    def tupleElementTypes(using Context): Option[List[Type]] = self.dealias match {
       case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
-        hd :: tl.tupleElementTypes
+        tl.tupleElementTypes.map(hd :: _)
       case self: SingletonType =>
-        assert(self.termSymbol == defn.EmptyTupleModule, "not a tuple")
-        Nil
-      case self if defn.isTupleClass(self.classSymbol) =>
-        self.dealias.argInfos
+        if self.termSymbol == defn.EmptyTupleModule then Some(Nil) else None
+      case AndType(tp1, tp2) =>
+        // We assume that we have the following property:
+        // (T1, T2, ..., Tn) & (U1, U2, ..., Un) = (T1 & U1, T2 & U2, ..., Tn & Un)
+        tp1.tupleElementTypes.zip(tp2.tupleElementTypes).map { case (t1, t2) => t1 & t2 }
+      case OrType(tp1, tp2) =>
+        None // We can't combine the type of two tuples
       case _ =>
-        throw new AssertionError("not a tuple")
+        if defn.isTupleClass(self.typeSymbol) then Some(self.dealias.argInfos)
+        else None
     }
 
     /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(using Context): Type =
-      TypeOps.nestedPairs(tupleElementTypes)
+      tupleElementTypes match
+        case Some(types) => TypeOps.nestedPairs(types)
+        case None => throw new AssertionError("not a tuple")
 
     def refinedWith(name: Name, info: Type)(using Context) = RefinedType(self, name, info)
 
@@ -87,15 +96,15 @@ object TypeUtils {
      *  of this type, while keeping the same prefix.
      */
     def mirrorCompanionRef(using Context): TermRef = self match {
-      case OrType(tp1, tp2) =>
-        val r1 = tp1.mirrorCompanionRef
-        val r2 = tp2.mirrorCompanionRef
-        assert(r1.symbol == r2.symbol, em"mirrorCompanionRef mismatch for $self: $r1, $r2 did not have the same symbol")
-        r1
+      case AndType(tp1, tp2) =>
+        val c1 = tp1.classSymbol
+        val c2 = tp2.classSymbol
+        if c1.isSubClass(c2) then tp1.mirrorCompanionRef
+        else tp2.mirrorCompanionRef // precondition: the parts of the AndType have already been checked to be non-overlapping
       case self @ TypeRef(prefix, _) if self.symbol.isClass =>
         prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
       case self: TypeProxy =>
-        self.underlying.mirrorCompanionRef
+        self.superType.mirrorCompanionRef
     }
 
     /** Is this type a methodic type that takes implicit parameters (both old and new) at some point? */

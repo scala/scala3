@@ -10,18 +10,18 @@ class M(x: Int) {
     class L1(x: Int) { val n: Int = 5 }
 
     class A(b: B, x: Int) {
-      println(d.n)      // error
+      println(d.n)
 
       class L2(x: Int) { val n: Int = 5 }
 
       def this(b: B) = {
         this(b, 5)
-        println(d.n)  // error
+        println(d.n)
 
         class Inner() {
-          println(d.n)   // error
-          println(b.n)   // error
-          def foo() = println(b.n)  // error
+          println(d.n)
+          println(b.n)
+          def foo() = println(b.n)
         }
         Inner().foo()
 
@@ -39,7 +39,7 @@ class M(x: Int) {
       val n: Int = 10
     }
 
-    new A(new B(new D))
+    new A(new B(new D))  // error
 
     trait T {
       val m: Int = 10
@@ -51,7 +51,7 @@ class M(x: Int) {
 
     class D {
       val b = new B(this)
-      val c = new C(b, 5)
+      val c = new C(b, 5)   // error
     }
   }
 }

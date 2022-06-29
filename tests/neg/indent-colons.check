@@ -1,0 +1,61 @@
+-- Error: tests/neg/indent-colons.scala:6:4 ----------------------------------------------------------------------------
+6 |    :  // error
+  |    ^
+  |    end of statement expected but ':' found
+-- Error: tests/neg/indent-colons.scala:12:2 ---------------------------------------------------------------------------
+12 |  :  // error
+   |  ^
+   |  end of statement expected but ':' found
+-- Error: tests/neg/indent-colons.scala:19:2 ---------------------------------------------------------------------------
+19 |  :  // error
+   |  ^
+   |  end of statement expected but ':' found
+-- [E018] Syntax Error: tests/neg/indent-colons.scala:26:14 ------------------------------------------------------------
+26 |  val y = 1 + : // error
+   |              ^
+   |              expression expected but [31m:[0m found
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E018] Syntax Error: tests/neg/indent-colons.scala:30:27 ------------------------------------------------------------
+30 |  val all = credentials ++ :  // error
+   |                           ^
+   |                           expression expected but [31m:[0m found
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E134] Type Error: tests/neg/indent-colons.scala:23:12 --------------------------------------------------------------
+23 |  val x = 1.+ :  // error
+   |          ^^^
+   |          None of the overloaded alternatives of method + in class Int with types
+   |           (x: Double): Double
+   |           (x: Float): Float
+   |           (x: Long): Long
+   |           (x: Int): Int
+   |           (x: Char): Int
+   |           (x: Short): Int
+   |           (x: Byte): Int
+   |           (x: String): String
+   |          match expected type (2 : Int)
+-- [E006] Not Found Error: tests/neg/indent-colons.scala:32:7 ----------------------------------------------------------
+32 |    if file.isEmpty  // error
+   |       ^^^^
+   |       Not found: file
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/indent-colons.scala:34:13 ---------------------------------------------------------
+34 |    else Seq(file) // error
+   |             ^^^^
+   |             Not found: file
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/indent-colons.scala:4:2 ----------------------------------------------------------------------------
+4 |  tryEither:  // error
+  |  ^^^^^^^^^
+  |  missing arguments for method tryEither
+-- Error: tests/neg/indent-colons.scala:10:2 ---------------------------------------------------------------------------
+10 |  tryEither:  // error
+   |  ^^^^^^^^^
+   |  missing arguments for method tryEither
+-- Error: tests/neg/indent-colons.scala:17:2 ---------------------------------------------------------------------------
+17 |  Some(3).fold:  // error
+   |  ^^^^^^^^^^^^
+   |  missing arguments for method fold in class Option

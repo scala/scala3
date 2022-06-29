@@ -362,7 +362,7 @@ object ProtoTypes {
      *    - t2 is a ascription (t22: T) and t1 is at the outside of t22
      *    - t2 is a closure (...) => t22 and t1 is at the outside of t22
      */
-    def hasInnerErrors(t: Tree): Boolean = t match
+    def hasInnerErrors(t: Tree)(using Context): Boolean = t match
       case Typed(expr, tpe) => hasInnerErrors(expr)
       case closureDef(mdef) => hasInnerErrors(mdef.rhs)
       case _ =>
@@ -793,7 +793,7 @@ object ProtoTypes {
               else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
               val ft = defn.FunctionOf(mt.paramInfos, rt)
-              if (mt.paramInfos.nonEmpty || ft <:< pt) ft else rt
+              if mt.paramInfos.nonEmpty || (ft frozen_<:< pt) then ft else rt
           }
         }
       case et: ExprType =>

@@ -46,7 +46,7 @@ package xcollections:
     val empty: LazyList[Nothing] = new:
       protected def force(): LazyList[Nothing] = this
 
-    object #:: :
+    object `#::`:
       def unapply[T](xs: LazyList[T]): Option[(T, LazyList[T])] =
         if xs.isEmpty then None
         else Some((xs.head, xs.tail))

@@ -410,6 +410,70 @@ object Inliner {
 
   }
 
+  /** Very similar to TreeInfo.isPureExpr, but with the following inliner-only exceptions:
+   *  - synthetic case class apply methods, when the case class constructor is empty, are
+   *    elideable but not pure. Elsewhere, accessing the apply method might cause the initialization
+   *    of a containing object so they are merely idempotent.
+   */
+  object isElideableExpr {
+    def isStatElideable(tree: Tree)(using Context): Boolean = unsplice(tree) match {
+      case EmptyTree
+         | TypeDef(_, _)
+         | Import(_, _)
+         | DefDef(_, _, _, _) =>
+        true
+      case vdef @ ValDef(_, _, _) =>
+        if (vdef.symbol.flags is Mutable) false else apply(vdef.rhs)
+      case _ =>
+        false
+    }
+
+    def apply(tree: Tree)(using Context): Boolean = unsplice(tree) match {
+      case EmptyTree
+         | This(_)
+         | Super(_, _)
+         | Literal(_) =>
+        true
+      case Ident(_) =>
+        isPureRef(tree) || tree.symbol.isAllOf(InlineParam)
+      case Select(qual, _) =>
+        if (tree.symbol.is(Erased)) true
+        else isPureRef(tree) && apply(qual)
+      case New(_) | Closure(_, _, _) =>
+        true
+      case TypeApply(fn, _) =>
+        if (fn.symbol.is(Erased) || fn.symbol == defn.QuotedTypeModule_of) true else apply(fn)
+      case Apply(fn, args) =>
+        val isCaseClassApply = {
+          val cls = tree.tpe.classSymbol
+          val meth = fn.symbol
+          meth.name == nme.apply &&
+          meth.flags.is(Synthetic) &&
+          meth.owner.linkedClass.is(Case) &&
+          cls.isNoInitsRealClass &&
+          funPart(fn).match
+            case Select(qual, _) => qual.symbol.is(Synthetic) // e.g: disallow `{ ..; Foo }.apply(..)`
+            case meth @ Ident(_) => meth.symbol.is(Synthetic) // e.g: allow `import Foo.{ apply => foo }; foo(..)`
+            case _               => false
+        }
+        if isPureApply(tree, fn) then
+          apply(fn) && args.forall(apply)
+        else if (isCaseClassApply)
+          args.forall(apply)
+        else if (fn.symbol.is(Erased)) true
+        else false
+      case Typed(expr, _) =>
+        apply(expr)
+      case Block(stats, expr) =>
+        apply(expr) && stats.forall(isStatElideable)
+      case Inlined(_, bindings, expr) =>
+        apply(expr) && bindings.forall(isStatElideable)
+      case NamedArg(_, expr) =>
+        apply(expr)
+      case _ =>
+        false
+    }
+  }
 }
 
 /** Produces an inlined version of `call` via its `inlined` method.
@@ -573,9 +637,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           else if lastSelf.exists then
             ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
           else
-            inlineCallPrefix match
-              case Super(_, _) => This(rhsClsSym.asClass)
-              case _ => inlineCallPrefix
+            val pre = inlineCallPrefix match
+              case Super(qual, _) => qual
+              case pre => pre
+            val preLevel = inlinedMethod.owner.ownersIterator.length
+            if preLevel > level then pre.outerSelect(preLevel - level, selfSym.info)
+            else pre
+
       val binding = accountForOpaques(
         ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span))
       bindingsBuf += binding
@@ -689,67 +757,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     || tpe.cls.isContainedIn(inlinedMethod)
     || tpe.cls.is(Package)
     || tpe.cls.isStaticOwner && !(tpe.cls.seesOpaques && inlinedMethod.isContainedIn(tpe.cls))
-
-  /** Very similar to TreeInfo.isPureExpr, but with the following inliner-only exceptions:
-   *  - synthetic case class apply methods, when the case class constructor is empty, are
-   *    elideable but not pure. Elsewhere, accessing the apply method might cause the initialization
-   *    of a containing object so they are merely idempotent.
-   */
-  object isElideableExpr {
-    def isStatElideable(tree: Tree)(using Context): Boolean = unsplice(tree) match {
-      case EmptyTree
-         | TypeDef(_, _)
-         | Import(_, _)
-         | DefDef(_, _, _, _) =>
-        true
-      case vdef @ ValDef(_, _, _) =>
-        if (vdef.symbol.flags is Mutable) false else apply(vdef.rhs)
-      case _ =>
-        false
-    }
-
-    def apply(tree: Tree): Boolean = unsplice(tree) match {
-      case EmptyTree
-         | This(_)
-         | Super(_, _)
-         | Literal(_) =>
-        true
-      case Ident(_) =>
-        isPureRef(tree) || tree.symbol.isAllOf(Inline | Param)
-      case Select(qual, _) =>
-        if (tree.symbol.is(Erased)) true
-        else isPureRef(tree) && apply(qual)
-      case New(_) | Closure(_, _, _) =>
-        true
-      case TypeApply(fn, _) =>
-        if (fn.symbol.is(Erased) || fn.symbol == defn.QuotedTypeModule_of) true else apply(fn)
-      case Apply(fn, args) =>
-        val isCaseClassApply = {
-          val cls = tree.tpe.classSymbol
-          val meth = fn.symbol
-          meth.name == nme.apply &&
-          meth.flags.is(Synthetic) &&
-          meth.owner.linkedClass.is(Case) &&
-          cls.isNoInitsRealClass
-        }
-        if isPureApply(tree, fn) then
-          apply(fn) && args.forall(apply)
-        else if (isCaseClassApply)
-          args.forall(apply)
-        else if (fn.symbol.is(Erased)) true
-        else false
-      case Typed(expr, _) =>
-        apply(expr)
-      case Block(stats, expr) =>
-        apply(expr) && stats.forall(isStatElideable)
-      case Inlined(_, bindings, expr) =>
-        apply(expr) && bindings.forall(isStatElideable)
-      case NamedArg(_, expr) =>
-        apply(expr)
-      case _ =>
-        false
-      }
-  }
 
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
@@ -962,7 +969,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
             case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
             case t: SingletonType =>
-              if t.termSymbol.isAllOf(Inline | Param) then apply(t.widenTermRefExpr)
+              if t.termSymbol.isAllOf(InlineParam) then apply(t.widenTermRefExpr)
               else paramProxy.getOrElse(t, mapOver(t))
             case t => mapOver(t)
           }

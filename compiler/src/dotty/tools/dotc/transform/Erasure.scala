@@ -153,6 +153,7 @@ class Erasure extends Phase with DenotTransformer {
   override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     assertErased(tree)
     tree match {
+      case _: tpd.Import => assert(false, i"illegal tree: $tree")
       case res: tpd.This =>
         assert(!ExplicitOuter.referencesOuter(ctx.owner.lexicallyEnclosingClass, res),
           i"Reference to $res from ${ctx.owner.showLocated}")
@@ -385,7 +386,7 @@ object Erasure {
       case _: FunProto | AnyFunctionProto => tree
       case _ => tree.tpe.widen match
         case mt: MethodType if tree.isTerm =>
-          assert(mt.paramInfos.isEmpty)
+          assert(mt.paramInfos.isEmpty)//, i"bad adapt for $tree: $mt")
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
           if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
@@ -695,7 +696,19 @@ object Erasure {
         return tree.asInstanceOf[Tree] // we are re-typing a primitive array op
 
       val owner = mapOwner(origSym)
-      val sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
+      var sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
+      if !sym.exists then
+        // We fail the sym.exists test for pos/i15158.scala, where we pass an infinitely
+        // recurring match type to an overloaded constructor. An equivalent test
+        // with regular apply methods succeeds. It's at present unclear whether
+        //  - the program should be rejected, or
+        //  - there is another fix.
+        // Therefore, we apply the fix to use the pre-erasure symbol, but only
+        // for constructors, in order not to mask other possible bugs that would
+        // trigger the assert(sym.exists, ...) below.
+        val prevSym = tree.symbol(using preErasureCtx)
+        if prevSym.isConstructor then sym = prevSym
+
       assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
 
       if owner == defn.ObjectClass then checkValue(qual1)
@@ -1022,13 +1035,20 @@ object Erasure {
       typed(tree.arg, pt)
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
-      val stats0 = addRetainedInlineBodies(stats)(using preErasureCtx)
+      // discard Imports first, since Bridges will use tree's symbol
+      val stats0 = addRetainedInlineBodies(stats.filter(!_.isInstanceOf[untpd.Import]))(using preErasureCtx)
       val stats1 =
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats0)
         else stats0
       val (stats2, finalCtx) = super.typedStats(stats1, exprOwner)
       (stats2.filterConserve(!_.isEmpty), finalCtx)
     }
+
+    /** Finally drops all (language-) imports in erasure.
+     *  Since some of the language imports change the subtyping,
+     *  we cannot check the trees before erasure.
+     */
+    override def typedImport(tree: untpd.Import)(using Context) = EmptyTree
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =
       trace(i"adapting ${tree.showSummary()}: ${tree.tpe} to $pt", show = true) {

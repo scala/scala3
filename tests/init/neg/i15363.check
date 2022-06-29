@@ -1,0 +1,15 @@
+-- Error: tests/init/neg/i15363.scala:3:10 -----------------------------------------------------------------------------
+3 |  val b = new B(this) // error
+  |          ^^^^^^^^^^^
+  |          Problematic object instantiation: arg 1 is not fully initialized. Calling trace:
+  |          -> class A:	[ i15363.scala:1 ]
+  |             ^
+  |          -> val b = new B(this) // error	[ i15363.scala:3 ]
+  |                     ^^^^^^^^^^^
+  |
+  |          It leads to the following error during object initialization:
+  |          Access field on a value with an unknown initialization status. Calling trace:
+  |          -> class B(a: A):	[ i15363.scala:7 ]
+  |             ^
+  |          -> val x = a.m	[ i15363.scala:8 ]
+  |                     ^^^

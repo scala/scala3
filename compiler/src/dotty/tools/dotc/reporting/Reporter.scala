@@ -214,14 +214,14 @@ abstract class Reporter extends interfaces.ReporterResult {
     b.mkString("\n")
   }
 
-  def summarizeUnreportedWarnings(using Context): Unit =
+  def summarizeUnreportedWarnings()(using Context): Unit =
     for (settingName, count) <- unreportedWarnings do
       val were = if count == 1 then "was" else "were"
       val msg = s"there $were ${countString(count, settingName.tail + " warning")}; re-run with $settingName for details"
       report(Warning(msg, NoSourcePosition))
 
   /** Print the summary of warnings and errors */
-  def printSummary(using Context): Unit = {
+  def printSummary()(using Context): Unit = {
     val s = summary
     if (s != "") report(new Info(s, NoSourcePosition))
   }

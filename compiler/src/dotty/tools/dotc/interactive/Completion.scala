@@ -12,18 +12,17 @@ import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Scopes._
-import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, TermRef, Type}
+import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, RefinedType, TermRef, Type, TypeProxy}
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
-import dotty.tools.dotc.core.Types.TypeRef
 
 /**
  * One of the results of a completion query.
@@ -475,20 +474,39 @@ object Completion {
         || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
       )
 
+    private def extractRefinements(site: Type)(using Context): Seq[SingleDenotation] =
+      site match
+        case RefinedType(parent, name, info) =>
+          val flags = info match
+            case _: (ExprType | MethodOrPoly) => Method
+            case _ => EmptyFlags
+          val symbol = newSymbol(owner = NoSymbol, name, flags, info)
+          val denot = SymDenotation(symbol, NoSymbol, name, flags, info)
+          denot +: extractRefinements(parent)
+        case tp: TypeProxy => extractRefinements(tp.superType)
+        case _ => List.empty
+
     /** @param site The type to inspect.
      *  @return The members of `site` that are accessible and pass the include filter.
      */
     private def accessibleMembers(site: Type)(using Context): Seq[SingleDenotation] = {
       def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
         try
-          buf ++= site.member(name).alternatives
+          val member = site.member(name)
+          if member.symbol.is(ParamAccessor) && !member.symbol.isAccessibleFrom(site) then
+            buf ++= site.nonPrivateMember(name).alternatives
+          else
+            buf ++= member.alternatives
         catch
           case ex: TypeError =>
 
-      site.memberDenots(completionsFilter, appendMemberSyms).collect {
+      val members = site.memberDenots(completionsFilter, appendMemberSyms).collect {
         case mbr if include(mbr, mbr.name)
                     && mbr.symbol.isAccessibleFrom(site) => mbr
       }
+      val refinements = extractRefinements(site).filter(mbr => include(mbr, mbr.name))
+
+      members ++ refinements
     }
 
     /**
@@ -501,8 +519,7 @@ object Completion {
     private def implicitConversionTargets(qual: Tree)(using Context): Set[Type] = {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
-      val convertedTrees = conversions.flatMap(typer.tryApplyingImplicitConversion(_, qual))
-      val targets = convertedTrees.map(_.tpe.finalResultType)
+      val targets = conversions.map(_.tree.tpe)
 
       interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
       targets

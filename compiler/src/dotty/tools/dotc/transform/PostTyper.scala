@@ -430,21 +430,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case tpe => tpe
             }
           )
-        case Import(expr, selectors) =>
-          val exprTpe = expr.tpe
-          val seen = mutable.Set.empty[Name]
-
-          def checkIdent(sel: untpd.ImportSelector): Unit =
-            if !exprTpe.member(sel.name).exists
-               && !exprTpe.member(sel.name.toTypeName).exists then
-              report.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.srcPos)
-            if seen.contains(sel.name) then
-              report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
-            seen += sel.name
-
-          for sel <- selectors do
-            if !sel.isWildcard then checkIdent(sel)
-          super.transform(tree)
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
             // The added mode signals that bounds in a pattern need not

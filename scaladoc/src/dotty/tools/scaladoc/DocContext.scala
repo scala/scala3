@@ -5,7 +5,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc.site.StaticSiteContext
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.SourceFile

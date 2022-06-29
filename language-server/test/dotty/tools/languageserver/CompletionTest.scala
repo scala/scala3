@@ -1275,4 +1275,186 @@ class CompletionTest {
       .noCompletions()
   }
 
+  @Test def singleDenotNoCompletions: Unit = {
+    code"""class Test(val symbol: String)
+          |class BetterTest(symbol: Int) extends Test(symbol.toString):
+          |  symb$m1
+          |object O:
+          |  def t(test: BetterTest) = test.symb$m2"""
+      .completion(m1, ("symbol", Field, "Int"))
+      .completion(m2, ("symbol", Field, "String"))
+  }
+
+  @Test def refinedNonselectable: Unit = {
+    code"""trait Foo
+          |trait Bar extends Foo
+          |
+          |trait Quux:
+          |  def aaa: Foo
+          |  def bbb: Foo
+          |  def ccc(s: String): String
+          |  private def ddd(): Boolean = ???
+          |
+          |val quux = new Quux:
+          |  def aaa: Foo = ???
+          |  def bbb: Bar = ??? // overriden signature
+          |  def ccc(s: String): String = ???
+          |  def ccc(i: Int): Int = ??? // overloaded
+          |  private def ddd(): Boolean = ???
+          |  def eee(): Boolean = ???
+          |  private def fff(): Boolean = ???
+          |  val ggg: Int = ???
+          |
+          |val a = quux.aa${m1}
+          |val b = quux.bb${m2}
+          |val c = quux.cc${m3}
+          |val d = quux.dd${m4}
+          |val e = quux.ee${m5}
+          |val f = quux.ff${m6}
+          |val g = quux.gg${m7}
+          |object imported:
+          |  import quux.*
+          |  val b = bb${m8}"""
+            .completion(m1, ("aaa", Method, "=> Foo"))
+            .completion(m2, ("bbb", Method, "=> Bar"))
+            .completion(m3, ("ccc", Method, "(s: String): String"))
+            .noCompletions(m4)
+            .noCompletions(m5)
+            .noCompletions(m6)
+            .noCompletions(m7)
+            .completion(m8, ("bbb", Method, "=> Bar"))
+  }
+
+  @Test def refinedSelectable: Unit = {
+    code"""trait Foo
+          |trait Bar extends Foo
+          |
+          |trait Quux extends Selectable:
+          |  def aaa: Foo
+          |  def bbb: Foo
+          |  def ccc(s: String): String
+          |  private def ddd(): Boolean = ???
+          |
+          |val quux = new Quux:
+          |  def aaa: Foo = ???
+          |  def bbb: Bar = ??? // overriden signature
+          |  def ccc(s: String): String = ???
+          |  def ccc(i: Int): Int = ??? // overloaded
+          |  private def ddd(): Boolean = ???
+          |  def eee(): Boolean = ???
+          |  private def fff(): Boolean = ???
+          |  val ggg: Int = ???
+          |
+          |val a = quux.aa${m1}
+          |val b = quux.bb${m2}
+          |val c = quux.cc${m3}
+          |val d = quux.dd${m4}
+          |val e = quux.ee${m5}
+          |val f = quux.ff${m6}
+          |val g = quux.gg${m7}
+          |object imported:
+          |  import quux.*
+          |  val b = bb${m8}"""
+            .completion(m1, ("aaa", Method, "=> Foo"))
+            .completion(m2, ("bbb", Method, "=> Bar"))
+            .completion(m3, ("ccc", Method, "(s: String): String"), ("ccc", Method, "(i: Int): Int"))
+            .noCompletions(m4)
+            .completion(m5, ("eee", Method, "(): Boolean"))
+            .noCompletions(m6)
+            .completion(m7, ("ggg", Field, "Int"))
+            .completion(m8, ("bbb", Method, "=> Bar"))
+  }
+
+  @Test def refinedSelectableFromImplicitConversion: Unit = {
+    code"""case class Wrapper[A](inner: A) extends Selectable
+          |object Wrapper:
+          |  implicit def refineWrapper[A](wrapper: Wrapper[A])(using refiner: Refiner[A]): refiner.Refined = ???
+          |
+          |trait Refiner[A]:
+          |  type Refined
+          |
+          |case class Foo(name: String)
+          |object Foo:
+          |  given Refiner[Foo] with
+          |    type Refined = Wrapper[Foo] { def name: String }
+          |
+          |def fooWrapper: Wrapper[Foo] = ???
+          |def name: Wrapper[String] = fooWrapper.na${m1}"""
+      .completion(m1, Set(("name", Method, "=> String")))
+  }
+
+  @Test def transparentMacro: Unit = {
+    val p1 = Project.withSources(
+      code"""package p1
+            |import scala.quoted.*
+            |
+            |trait Foo:
+            |  def xxxa = 0
+            |
+            |class Bar extends Foo:
+            |  def xxxb = 1
+            |
+            |transparent inline def bar: Foo = $${ barImpl }
+            |def barImpl(using Quotes) = '{ new Bar }
+            |"""
+    )
+    val p2 = Project.dependingOn(p1).withSources(
+      code"""package p2
+            |val x = p1.bar.xx${m1}
+            """
+    )
+    withProjects(p1, p2).completion(m1, Set(("xxxa", Method, "=> Int"), ("xxxb", Method, "=> Int")))
+  }
+
+
+  @Test def implicitlyRefinedWithTransparentMacro: Unit = {
+    val p1 = Project.withSources(
+      code"""package p1
+            |import scala.quoted.*
+            |import scala.language.implicitConversions
+            |
+            |case class Wrapper[A](inner: A) extends Selectable:
+            |  def selectDynamic(name: String) = ???
+            |object Wrapper:
+            |  implicit def refineWrapper[A](wrapper: Wrapper[A])(using refiner: Refiner[A]): refiner.Refined = ???
+            |
+            |trait Refiner[A]:
+            |  type Refined
+            |
+            |case class Foo(name: String)
+            |object Foo:
+            |  transparent inline given fooRefiner: Refiner[Foo] = $${ fooRefinerImpl }
+            |
+            |def fooRefinerImpl(using Quotes): Expr[Refiner[Foo]] = '{
+            |  new Refiner[Foo] {
+            |    type Refined = Wrapper[Foo] { def name: String }
+            |  }
+            |}
+            |"""
+    )
+    val p2 = Project.dependingOn(p1).withSources(
+      code"""package p2
+            |import p1.*
+            |def fooWrapper: Wrapper[Foo] = ???
+            |def name = fooWrapper.na${m1}
+            """
+    )
+    withProjects(p1, p2).completion(m1, Set(("name", Method, "=> String")))
+  }
+
+  @Test def generatedValDefCompletions: Unit = {
+    val expected = ("testMethod", Method, "=> Unit")
+    code"""case class Test(x: Int, y: Int)
+          |def testMethod: Unit = ???
+          |object M:
+          |  val (x, y) =
+          |    testMet$m1
+          |    (1, 2)
+          |  val Test(x, y) =
+          |    testMet$m2
+          |    Test(1, 2)
+          """
+            .completion(m1, expected)
+            .completion(m2, expected)
+  }
 }

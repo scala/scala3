@@ -1,7 +1,7 @@
 class A(b: B, x: Int) {
   def this(b: B) = {
     this(b, 5)
-    println(b.n)  // error
+    println(b.n)
   }
 }
 
@@ -15,5 +15,5 @@ class C(b: B) extends A(b) {
 
 class D {
   val b = new B(this)
-  val c = new C(b, 5)
+  val c = new C(b, 5) // error
 }

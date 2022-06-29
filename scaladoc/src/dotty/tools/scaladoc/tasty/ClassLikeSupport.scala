@@ -1,6 +1,6 @@
 package dotty.tools.scaladoc.tasty
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 import dotty.tools.scaladoc.Inkuire
@@ -376,7 +376,7 @@ trait ClassLikeSupport:
       val overriddenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
       Origin.Overrides(overriddenSyms.map(s => Overridden(s.name, s.dri)).toSeq)
 
-    mkMember(methodSymbol, methodKind, memberInfo.res.asSignature)(origin = origin, deprecated = methodSymbol.isDeprecated())
+    mkMember(methodSymbol, methodKind, method.returnTpt.tpe.asSignature)(origin = origin, deprecated = methodSymbol.isDeprecated())
 
   def mkParameter(
     argument: ValDef,
