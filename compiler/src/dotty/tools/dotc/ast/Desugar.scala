@@ -231,7 +231,7 @@ object desugar {
 
     def desugarContextBounds(rhs: Tree): Tree = rhs match
       case ContextBounds(tbounds, cxbounds) =>
-        val iflag = if sourceVersion.isAtLeast(`future`) then Given else Implicit
+        val iflag = if sourceVersion.isAtLeast(`3.2`) then Given else Implicit
         evidenceParamBuf ++= makeImplicitParameters(
           cxbounds, iflag, forPrimaryConstructor = isPrimaryConstructor)
         tbounds
