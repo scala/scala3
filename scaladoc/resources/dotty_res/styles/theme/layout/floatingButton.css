@@ -25,99 +25,99 @@
 }
 
 #mobile-sidebar-toggle::after {
-  content: url("../../../../images/icon-buttons/menu-animated/light/default.svg");
+  content: url("../../../images/icon-buttons/menu-animated/light/default.svg");
 }
 
 #mobile-sidebar-toggle:hover::after {
-  content: url("../../../../images/icon-buttons/menu-animated/light/hover.svg");
+  content: url("../../../images/icon-buttons/menu-animated/light/hover.svg");
 }
 
 #mobile-sidebar-toggle:active::after {
-  content: url("../../../../images/icon-buttons/menu-animated/light/active.svg");
+  content: url("../../../images/icon-buttons/menu-animated/light/active.svg");
 }
 
 #mobile-sidebar-toggle:disabled::after {
-  content: url("../../../../images/icon-buttons/menu-animated/light/disabled.svg");
+  content: url("../../../images/icon-buttons/menu-animated/light/disabled.svg");
 }
 
 #mobile-sidebar-toggle:focus::after {
-  content: url("../../../../images/icon-buttons/menu-animated/light/focus.svg");
+  content: url("../../../images/icon-buttons/menu-animated/light/focus.svg");
 }
 
 #mobile-sidebar-toggle.selected::after {
-  content: url("../../../../images/icon-buttons/menu-animated/light/selected.svg");
+  content: url("../../../images/icon-buttons/menu-animated/light/selected.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle::after {
-  content: url("../../../../images/icon-buttons/menu-animated/dark/default.svg");
+  content: url("../../../images/icon-buttons/menu-animated/dark/default.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle:hover::after {
-  content: url("../../../../images/icon-buttons/menu-animated/dark/hover.svg");
+  content: url("../../../images/icon-buttons/menu-animated/dark/hover.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle:active::after {
-  content: url("../../../../images/icon-buttons/menu-animated/dark/active.svg");
+  content: url("../../../images/icon-buttons/menu-animated/dark/active.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle:disabled::after {
-  content: url("../../../../images/icon-buttons/menu-animated/dark/disabled.svg");
+  content: url("../../../images/icon-buttons/menu-animated/dark/disabled.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle:focus::after {
-  content: url("../../../../images/icon-buttons/menu-animated/dark/focus.svg");
+  content: url("../../../images/icon-buttons/menu-animated/dark/focus.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle.selected::after {
-  content: url("../../../../images/icon-buttons/menu-animated/dark/selected.svg");
+  content: url("../../../images/icon-buttons/menu-animated/dark/selected.svg");
 }
 
 #mobile-sidebar-toggle.menu-shown::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/light/default.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/light/default.svg");
 }
 
 #mobile-sidebar-toggle.menu-shown:hover::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/light/hover.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/light/hover.svg");
 }
 
 #mobile-sidebar-toggle.menu-shown:active::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/light/active.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/light/active.svg");
 }
 
 #mobile-sidebar-toggle.menu-shown:disabled::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/light/disabled.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/light/disabled.svg");
 }
 
 #mobile-sidebar-toggle.menu-shown:focus::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/light/focus.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/light/focus.svg");
 }
 
 #mobile-sidebar-toggle.menu-shown.selected::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/light/selected.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/light/selected.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle.menu-shown::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/dark/default.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/dark/default.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle.menu-shown:hover::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/dark/hover.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/dark/hover.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle.menu-shown:active::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/dark/active.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/dark/active.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle.menu-shown:disabled::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/dark/disabled.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/dark/disabled.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle.menu-shown:focus::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/dark/focus.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/dark/focus.svg");
 }
 
 .theme-dark #mobile-sidebar-toggle.menu-shown.selected::after {
-  content: url("../../../../images/icon-buttons/menu-animated-open/dark/selected.svg");
+  content: url("../../../images/icon-buttons/menu-animated-open/dark/selected.svg");
 }
 
 @media (max-width: 1024px) {
