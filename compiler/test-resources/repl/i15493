@@ -105,3 +105,12 @@ val res25: String = NString@364492
 
 scala> "test"
 val res26: String = test
+
+scala> class CustomToString(val x: Int) extends AnyVal { override def toString(): String = s"Test$x" }
+// defined class CustomToString
+
+scala> CustomToString(23)
+val res27: CustomToString = Test23
+
+scala> res27.toString
+val res28: String = Test23

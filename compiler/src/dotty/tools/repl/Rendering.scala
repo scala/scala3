@@ -23,7 +23,7 @@ import dotc.reporting.Diagnostic
  *       `ReplDriver#resetToInitial` is called, the accompanying instance of
  *       `Rendering` is no longer valid.
  */
-private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
+private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   import Rendering._
 
@@ -80,38 +80,32 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
    * then this bug will surface, so perhaps better not?
    * https://github.com/scala/bug/issues/12337
    */
-  private[repl] def truncate(str: String): String = {
+  private[repl] def truncate(str: String): String =
     val showTruncated = " ... large output truncated, print value to show all"
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
     if ncp <= MaxStringElements then str
     else str.substring(0, str.offsetByCodePoints(0, MaxStringElements - 1)) + showTruncated
-  }
 
   /** Return a String representation of a value we got from `classLoader()`. */
-  private[repl] def replStringOf(value: Object)(using Context): String = {
+  private[repl] def replStringOf(value: Object)(using Context): String =
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
     val res = myReplStringOf(value)
     if res == null then "null // non-null reference has null-valued toString" else truncate(res)
-  }
 
   /** Load the value of the symbol using reflection.
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol)(using Context): Option[String] = {
+  private def valueOf(sym: Symbol)(using Context): Option[String] =
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
-    val value =
-      resObj
-        .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
-        .map(_.invoke(null))
+    val value = resObj
+      .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
+      .map(_.invoke(null))
+      .flatMap(rewrapValueClass(sym.info.classSymbol, _))
 
-    val resultSym = sym.info.classSymbol
-    val valueString = if (resultSym.isValueClass && !resultSym.isPrimitiveValueClass) then
-      value.map(value => s"${sym.info.classSymbol.name}@${value.hashCode.toHexString}")
-    else
-      value.map(replStringOf(_))
+    val valueString = value.map(replStringOf)
 
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
@@ -122,7 +116,26 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
         else
           s
       }
-  }
+
+  /** Rewrap value classes to their's Wrappers and evaluate their `toString` value.
+   *
+   * @param sym Value Class symbol
+   * @param value underlying value
+   */
+  def rewrapValueClass(sym: Symbol, value: Object)(using Context): Option[Object] =
+    if (sym.isValueClass && !sym.isPrimitiveValueClass) then
+      val valueClassName = sym.flatName.encode.toString
+      val valueClass = Class.forName(valueClassName, true, classLoader())
+
+      for {
+        constructor    <- valueClass.getConstructors.headOption
+        toStringMethod <- valueClass.getMethods.find(_.getName == nme.toString_.toString)
+      } yield {
+        val instance = constructor.newInstance(value)
+        toStringMethod.invoke(instance)
+      }
+    else
+      Some(value)
 
   def renderTypeDef(d: Denotation)(using Context): Diagnostic =
     infoDiagnostic("// defined " ++ d.symbol.showUser, d)
@@ -177,9 +190,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =
     new Diagnostic.Info(msg, d.symbol.sourcePos)
 
-}
 
-object Rendering {
+object Rendering:
   final val REPL_WRAPPER_NAME_PREFIX = str.REPL_SESSION_LINE
 
   extension (s: Symbol)
@@ -188,5 +200,3 @@ object Rendering {
       val text = printer.dclText(s)
       text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
     }
-
-}
