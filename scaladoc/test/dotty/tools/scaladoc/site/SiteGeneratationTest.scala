@@ -23,7 +23,7 @@ class SiteGeneratationTest extends BaseHtmlTest:
     parents: Seq[String] = Nil,
     checks: DocumentContext => Unit = _ => ())(using ProjectContext) =
       withHtmlFile(path){ content  =>
-        content.assertTextsIn(".projectName", projectName)
+        content.assertTextsIn(".project-name", projectName)
         content.assertTextsIn(".projectVersion", projectVersion)
         content.assertTextsIn("h1", header)
         content.assertTextsIn("title", title)
@@ -41,8 +41,8 @@ class SiteGeneratationTest extends BaseHtmlTest:
     checkFile("docs/index.html")(title = projectName, header = s"$projectName in header")
 
   def testApiPages(
-    mainTitle: String = "API",
-    parents: Seq[String] = Seq(projectName),
+    mainTitle: String = projectName,
+    parents: Seq[String] = Seq.empty,
     hasToplevelIndexIndex: Boolean = false)(using ProjectContext) =
       checkFile((if hasToplevelIndexIndex then "api/" else "" )+ "index.html")(
         title = mainTitle,
@@ -72,7 +72,7 @@ class SiteGeneratationTest extends BaseHtmlTest:
 
     withHtmlFile("tests/site/SomeClass.html"){ content  =>
       content.assertAttr(".breadcrumbs a","href",
-        "../../docs/index.html", "../../index.html", "../site.html", "SomeClass.html"
+        "../../index.html", "../site.html", "SomeClass.html"
       )
     }
   }

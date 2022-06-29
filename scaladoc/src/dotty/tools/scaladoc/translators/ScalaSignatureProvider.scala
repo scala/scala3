@@ -37,7 +37,7 @@ class ScalaSignatureProvider:
       case trt: Kind.Trait =>
         traitSignature(documentable, trt)
       case Kind.Val | Kind.Var | Kind.Implicit(Kind.Val, _) =>
-        fieldSignature(documentable, kind.name)
+        fieldSignature(documentable, kind)
       case tpe: Kind.Type =>
         typeSignature(tpe, documentable)
       case Kind.Package =>
@@ -52,10 +52,10 @@ class ScalaSignatureProvider:
       case Kind.Unknown =>
         ???
 
-  private def classLikeSignature(member: Member, kind: Classlike): MemberSignature =
+  private def classLikeSignature(member: Member, kind: Kind & Classlike)(showKind: Kind = kind): MemberSignature =
     MemberSignature(
       builder.modifiersAndVisibility(member),
-      builder.kind(member),
+      builder.kind(showKind),
       builder.name(member.name, member.dri),
       builder
         .generics(kind.typeParams)
@@ -65,7 +65,7 @@ class ScalaSignatureProvider:
 
 
   private def enumEntrySignature(member: Member, cls: Kind.Class): MemberSignature =
-    classLikeSignature(member, cls)
+    classLikeSignature(member, cls)()
 
   private def enumPropertySignature(entry: Member): MemberSignature =
     val modifiedType = entry.signature.map {
@@ -75,13 +75,13 @@ class ScalaSignatureProvider:
 
     MemberSignature(
       builder.modifiersAndVisibility(entry),
-      builder.kind(entry),
+      builder.kind(entry.kind),
       builder.name(entry.name, entry.dri),
       builder.keyword(" extends ").signature(modifiedType)
     )
 
   private def givenClassSignature(member: Member, cls: Kind.Class): MemberSignature =
-    val initialSignature = classLikeSignature(member, cls)
+    val initialSignature = classLikeSignature(member, cls)(member.kind)
 
     member.kind match
       case Kind.Given(_, Some(instance), _) => initialSignature
@@ -89,21 +89,21 @@ class ScalaSignatureProvider:
       case _ => initialSignature
 
   private def classSignature(clazz: Member, cls: Kind.Class): MemberSignature =
-    classLikeSignature(clazz, cls)
+    classLikeSignature(clazz, cls)()
 
   private def objectSignature(clazz: Member): MemberSignature =
-    classLikeSignature(clazz, Kind.Object)
+    classLikeSignature(clazz, Kind.Object)()
 
   private def traitSignature(clazz: Member, cls: Kind.Trait): MemberSignature =
-    classLikeSignature(clazz, cls)
+    classLikeSignature(clazz, cls)()
 
   private def enumSignature(clazz: Member, cls: Kind.Enum): MemberSignature =
-    classLikeSignature(clazz, cls)
+    classLikeSignature(clazz, cls)()
 
-  private def methodLikeSignature(method: Member, kind: Kind.Def, instance: Option[Signature] = None): MemberSignature =
+  private def methodLikeSignature(method: Member, kind: Kind.Def, instance: Option[Signature] = None)(showKind: Kind = kind): MemberSignature =
     MemberSignature(
       builder.modifiersAndVisibility(method),
-      builder.kind(method),
+      builder.kind(showKind),
       builder.name(method.name, method.dri),
       builder
         .generics(kind.typeParams)
@@ -115,41 +115,41 @@ class ScalaSignatureProvider:
 
   private def methodSignature(method: Member, cls: Kind.Def): MemberSignature =
     method.kind match {
-      case _: Kind.Constructor => methodLikeSignature(method, cls, None)
-      case _ => methodLikeSignature(method, cls, Some(method.signature))
+      case _: Kind.Constructor => methodLikeSignature(method, cls, None)()
+      case _ => methodLikeSignature(method, cls, Some(method.signature))()
     }
 
   private def extensionSignature(extension: Member, fun: Kind.Def): MemberSignature =
-    methodLikeSignature(extension, fun, Some(extension.signature))
+    methodLikeSignature(extension, fun, Some(extension.signature))()
 
   private def givenMethodSignature(method: Member, body: Kind.Def): MemberSignature = method.kind match
     case Kind.Given(_, iOpt @ Some(instance), _) =>
-      methodLikeSignature(method, body, iOpt)
+      methodLikeSignature(method, body, iOpt)(method.kind)
     case _ =>
-      methodLikeSignature(method, body)
+      methodLikeSignature(method, body)(method.kind)
 
-  private def fieldLikeSignature(member: Member, instance: Option[Signature] = None): MemberSignature =
+  private def fieldLikeSignature(member: Member, kind: Kind, instance: Option[Signature] = None): MemberSignature =
     MemberSignature(
       builder.modifiersAndVisibility(member),
-      builder.kind(member),
+      builder.kind(kind),
       builder.name(member.name, member.dri),
       instance.fold(builder)(i => builder.plain(": ").signature(i))
     )
 
 
-  private def fieldSignature(member: Member, kind: String): MemberSignature =
-    fieldLikeSignature(member, Some(member.signature))
+  private def fieldSignature(member: Member, kind: Kind): MemberSignature =
+    fieldLikeSignature(member, kind, Some(member.signature))
 
   private def givenValSignature(field: Member): MemberSignature = field.kind match
     case Kind.Given(_, iOpt @ Some(instance), _) =>
-      fieldLikeSignature(field, iOpt)
+      fieldLikeSignature(field, field.kind, iOpt)
     case _ =>
-      fieldLikeSignature(field, None)
+      fieldLikeSignature(field, field.kind, None)
 
   private def typeSignature(tpe: Kind.Type, typeDef: Member): MemberSignature =
     MemberSignature(
       builder.modifiersAndVisibility(typeDef),
-      builder.kind(typeDef),
+      builder.kind(tpe),
       builder.name(typeDef.name, typeDef.dri),
       builder.generics(tpe.typeParams).pipe { bdr =>
         if (!tpe.opaque) {
