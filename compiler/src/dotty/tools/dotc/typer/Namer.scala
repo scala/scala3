@@ -17,6 +17,7 @@ import tpd.tpes
 import Variances.alwaysInvariant
 import config.{Config, Feature}
 import config.Printers.typr
+import inlines.{Inlines, PrepareInlineable}
 import parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
 import Annotations._
@@ -844,7 +845,7 @@ class Namer { typer: Typer =>
         def rhsToInline(using Context): tpd.Tree =
           if !original.symbol.exists && !hasDefinedSymbol(original) then
             throw
-              if sym.isCompleted then Inliner.MissingInlineInfo()
+              if sym.isCompleted then Inlines.MissingInlineInfo()
               else CyclicReference(sym)
           val mdef = typedAheadExpr(original).asInstanceOf[tpd.DefDef]
           PrepareInlineable.wrapRHS(original, mdef.tpt, mdef.rhs)

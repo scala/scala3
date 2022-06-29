@@ -19,7 +19,7 @@ import core.Constants._
 import core.Definitions._
 import core.Annotations.BodyAnnotation
 import typer.NoChecking
-import typer.Inliner
+import inlines.Inlines
 import typer.ProtoTypes._
 import typer.ErrorReporting.errorTree
 import typer.Checking.checkValue
@@ -886,7 +886,7 @@ object Erasure {
 
     override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
       super.typedInlined(tree, pt) match {
-        case tree: Inlined => Inliner.dropInlined(tree)
+        case tree: Inlined => Inlines.dropInlined(tree)
       }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =

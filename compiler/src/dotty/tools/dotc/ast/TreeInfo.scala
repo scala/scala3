@@ -999,6 +999,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           case _ => None
       case _ => None
   end AssertNotNull
+
+  object ConstantValue {
+    def unapply(tree: Tree)(using Context): Option[Any] =
+      tree match
+        case Typed(expr, _) => unapply(expr)
+        case Inlined(_, Nil, expr) => unapply(expr)
+        case Block(Nil, expr) => unapply(expr)
+        case _ =>
+          tree.tpe.widenTermRefExpr.normalized match
+            case ConstantType(Constant(x)) => Some(x)
+            case _ => None
+  }
 }
 
 object TreeInfo {

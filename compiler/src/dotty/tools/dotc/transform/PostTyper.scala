@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
 import scala.collection.mutable
 import core._
 import dotty.tools.dotc.typer.Checking
-import dotty.tools.dotc.typer.Inliner
+import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.typer.VarianceChecker
 import typer.ErrorReporting.errorTree
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
@@ -282,7 +282,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.isType then
             checkNotPackage(tree)
           else
-            if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
+            if tree.symbol.is(Inline) && !Inlines.inInlineMethod then
               ctx.compilationUnit.needsInlining = true
             checkNoConstructorProxy(tree)
             tree.tpe match {
@@ -356,7 +356,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           val pos = call.sourcePos
-          val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
+          val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
           withNoCheckNews(templ.parents.flatMap(newPart)) {

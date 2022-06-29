@@ -11,6 +11,7 @@ import Constants._
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
 import Decorators._
 import Uniques._
+import inlines.Inlines
 import config.Printers.typr
 import util.SourceFile
 import TypeComparer.necessarySubType
@@ -109,7 +110,7 @@ object ProtoTypes {
      *  achieved by replacing expected type parameters with wildcards.
      */
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
-      if (Inliner.isInlineable(meth)) {
+      if (Inlines.isInlineable(meth)) {
         constrainResult(mt, wildApprox(pt))
         true
       }

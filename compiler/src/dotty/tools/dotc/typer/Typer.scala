@@ -29,6 +29,7 @@ import Inferencing._
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
+import inlines.{Inlines, PrepareInlineable}
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
@@ -1698,7 +1699,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if (bounds != null) sym.info = bounds
           }
           b
-        case t: UnApply if t.symbol.is(Inline) => Inliner.inlinedUnapply(t)
+        case t: UnApply if t.symbol.is(Inline) => Inlines.inlinedUnapply(t)
         case t => t
       }
   }
@@ -3032,7 +3033,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               else ctx.withNotNullInfos(initialNotNullInfos)
             typed(mdef)(using newCtx) match {
               case mdef1: DefDef
-              if mdef1.symbol.is(Inline, butNot = Deferred) && !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
+              if mdef1.symbol.is(Inline, butNot = Deferred) && !Inlines.bodyToInline(mdef1.symbol).isEmpty =>
                 buf ++= inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
                   // from separately compiled files - the original BodyAnnotation is not kept.
@@ -3120,8 +3121,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  Overwritten in Retyper to return `mdef` unchanged.
    */
   protected def inlineExpansion(mdef: DefDef)(using Context): List[Tree] =
-    tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol))
-    :: (if mdef.symbol.isRetainedInlineMethod then Inliner.bodyRetainer(mdef) :: Nil else Nil)
+    tpd.cpy.DefDef(mdef)(rhs = Inlines.bodyToInline(mdef.symbol))
+    :: (if mdef.symbol.isRetainedInlineMethod then Inlines.bodyRetainer(mdef) :: Nil else Nil)
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     withoutMode(Mode.PatternOrTypeBits)(typed(tree, pt))
@@ -3719,12 +3720,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
       else
         val meth = methPart(tree).symbol
-        if meth.isAllOf(DeferredInline) && !Inliner.inInlineMethod then
+        if meth.isAllOf(DeferredInline) && !Inlines.inInlineMethod then
           errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
-        else if Inliner.needsInlining(tree) then
+        else if Inlines.needsInlining(tree) then
           tree.tpe <:< wildApprox(pt)
           val errorCount = ctx.reporter.errorCount
-          val inlined = Inliner.inlineCall(tree)
+          val inlined = Inlines.inlineCall(tree)
           if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
           else inlined
         else if (tree.symbol.isScala2Macro &&
