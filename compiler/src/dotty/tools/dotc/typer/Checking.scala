@@ -15,7 +15,6 @@ import ProtoTypes._
 import Scopes._
 import CheckRealizable._
 import ErrorReporting.errorTree
-import rewrites.Rewrites.patch
 import util.Spans.Span
 import Phases.refchecksPhase
 import Constants.Constant
@@ -23,6 +22,7 @@ import Constants.Constant
 import util.SrcPos
 import util.Spans.Span
 import rewrites.Rewrites.patch
+import inlines.Inlines
 import transform.SymUtils._
 import transform.ValueClasses._
 import Decorators._
@@ -1234,7 +1234,7 @@ trait Checking {
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit =
-    if !Inliner.inInlineMethod && !ctx.isInlineContext then
+    if !Inlines.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
 
   /** Check arguments of compiler-defined annotations */

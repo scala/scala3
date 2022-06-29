@@ -9,7 +9,7 @@ import SymUtils._
 import dotty.tools.dotc.ast.tpd
 
 import dotty.tools.dotc.core.StagingContext._
-import dotty.tools.dotc.typer.Inliner
+import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 
 
@@ -43,7 +43,7 @@ class Inlining extends MacroTransform {
                 traverseChildren(tree)(using StagingContext.quoteContext)
               case _: GenericApply if tree.symbol.isExprSplice =>
                 traverseChildren(tree)(using StagingContext.spliceContext)
-              case tree: RefTree if !Inliner.inInlineMethod && StagingContext.level == 0 =>
+              case tree: RefTree if !Inlines.inInlineMethod && StagingContext.level == 0 =>
                 assert(!tree.symbol.isInlineMethod, tree.show)
               case _ =>
                 traverseChildren(tree)
@@ -64,10 +64,10 @@ class Inlining extends MacroTransform {
           else super.transform(tree)
         case _: Typed | _: Block =>
           super.transform(tree)
-        case _ if Inliner.needsInlining(tree) =>
+        case _ if Inlines.needsInlining(tree) =>
           val tree1 = super.transform(tree)
           if tree1.tpe.isError then tree1
-          else Inliner.inlineCall(tree1)
+          else Inlines.inlineCall(tree1)
         case _: GenericApply if tree.symbol.isQuote =>
           super.transform(tree)(using StagingContext.quoteContext)
         case _: GenericApply if tree.symbol.isExprSplice =>

@@ -14,7 +14,8 @@ import Uniques._
 import ast.Trees._
 import ast.untpd
 import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
-import typer.{Implicits, ImportInfo, Inliner, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import inlines.Inliner
 import Nullables._
 import Implicits.ContextualImplicits
 import config.Settings._
