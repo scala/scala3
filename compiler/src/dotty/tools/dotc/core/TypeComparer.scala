@@ -1566,9 +1566,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v > 0 then isSubType(arg1, arg2)
-                else if v < 0 then isSubType(arg2, arg1)
-                else isSameType(arg1, arg2)
+                if v < 0 then isSubType(arg2, arg1)
+                else if v > 0 then isSubType(arg1, arg2)
+                else isSameType(arg2, arg1)
 
         isSubArg(args1.head, args2.head)
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
@@ -2034,22 +2034,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def isSameType(tp1: Type, tp2: Type): Boolean =
     if tp1 eq NoType then false
     else if tp1 eq tp2 then true
+    else if sames != null && (sames.nn.lookup(tp1) eq tp2) then true
     else
-      sames != null && (sames.nn.lookup(tp1) eq tp2)
-      || {
-        val savedSames = sames
-        sameLevel += 1
-        if sameLevel >= startSameTypeTrackingLevel then
-          Stats.record("cache same type")
-          sames = new util.EqHashMap()
-        val res =
-          try isSubType(tp1, tp2) && isSubType(tp2, tp1)
-          finally
-            sameLevel -= 1
-            sames = savedSames
-        if res && sames != null then sames.nn(tp2) = tp1
-        res
-      }
+      val savedSames = sames
+      sameLevel += 1
+      if sameLevel >= startSameTypeTrackingLevel then
+        Stats.record("cache same type")
+        sames = new util.EqHashMap()
+      val res =
+        try isSubType(tp1, tp2) && isSubType(tp2, tp1)
+        finally
+          sameLevel -= 1
+          sames = savedSames
+      if res && sames != null then sames.nn(tp2) = tp1
+      res
 
   override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = isSameType(tp1, tp2)
 
