@@ -56,6 +56,7 @@ class CoverageTests:
         val expected = fixWindowsPaths(Files.readAllLines(expectFile).asScala)
         val obtained = fixWindowsPaths(Files.readAllLines(targetFile).asScala)
         if expected != obtained then
+          // FIXME: zip will drop part of the output if one is shorter (i.e. will not print anything of one is a refix of the other)
           for ((exp, actual),i) <- expected.zip(obtained).filter(_ != _).zipWithIndex do
             Console.err.println(s"wrong line ${i+1}:")
             Console.err.println(s"  expected: $exp")

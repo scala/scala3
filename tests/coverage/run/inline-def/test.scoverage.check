@@ -1,0 +1,208 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+inline-def/test.scala
+<empty>
+A
+Class
+<empty>.A
+<init>
+66
+67
+4
+<init>
+Apply
+false
+0
+false
+B
+
+1
+inline-def/test.scala
+<empty>
+A
+Class
+<empty>.A
+foo$retainedBody
+134
+148
+7
+toString
+Apply
+false
+0
+false
+"foo".toString
+
+2
+inline-def/test.scala
+<empty>
+A
+Class
+<empty>.A
+foo$retainedBody
+134
+134
+7
+foo$retainedBody
+DefDef
+false
+0
+false
+
+
+3
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+225
+228
+12
+<init>
+Apply
+false
+0
+false
+A()
+
+4
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+231
+243
+13
+println
+Apply
+false
+0
+false
+println(a.x)
+
+5
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+134
+148
+7
+toString
+Apply
+false
+0
+false
+"foo".toString
+
+6
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+246
+260
+14
+println
+Apply
+false
+0
+false
+println(a.foo)
+
+7
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+176
+190
+8
+toString
+Apply
+false
+0
+false
+"bar".toString
+
+8
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+263
+277
+15
+println
+Apply
+false
+0
+false
+println(a.bar)
+
+9
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+295
+309
+17
+println
+Apply
+false
+0
+false
+println(b.foo)
+
+10
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+192
+206
+11
+Test
+DefDef
+false
+0
+false
+@main
+def Test
+

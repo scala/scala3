@@ -131,17 +131,22 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             cpy.ValDef(tree)(rhs = rhs)
 
           case tree: DefDef =>
-            // Only transform the params (for the default values) and the rhs.
-            val paramss = transformParamss(tree.paramss)
-            val rhs = transform(tree.rhs)
-            val finalRhs =
-              if canInstrumentDefDef(tree) then
-                // Ensure that the rhs is always instrumented, if possible
-                instrumentBody(tree, rhs)
-              else
-                rhs
-            cpy.DefDef(tree)(tree.name, paramss, tree.tpt, finalRhs)
-
+            if tree.symbol.isOneOf(Inline | Erased) then
+              // Inline and erased definitions will not be in the generated code and therefore do not need to be instrumented.
+              // Note that a retained inline method will have a `$retained` variant that will be instrumented.
+              tree
+            else
+              // Only transform the params (for the default values) and the rhs.
+              val paramss = transformParamss(tree.paramss)
+              val rhs = transform(tree.rhs)
+              val finalRhs =
+                if canInstrumentDefDef(tree) then
+                  // Ensure that the rhs is always instrumented, if possible
+                  instrumentBody(tree, rhs)
+                else
+                  rhs
+              cpy.DefDef(tree)(tree.name, paramss, tree.tpt, finalRhs)
+            end if
           case tree: PackageDef =>
             // only transform the statements of the package
             cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
@@ -330,4 +335,4 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
 object InstrumentCoverage:
   val name: String = "instrumentCoverage"
-  val description: String = "instrument code for coverage cheking"
+  val description: String = "instrument code for coverage checking"

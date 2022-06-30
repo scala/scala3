@@ -1,0 +1,89 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+erased-def/test.scala
+<empty>
+A
+Class
+<empty>.A
+foo
+103
+110
+4
+foo
+DefDef
+false
+0
+false
+def foo
+
+1
+erased-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+179
+182
+8
+<init>
+Apply
+false
+0
+false
+A()
+
+2
+erased-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+289
+303
+12
+println
+Apply
+false
+0
+false
+println("foo")
+
+3
+erased-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+146
+160
+7
+Test
+DefDef
+false
+0
+false
+@main
+def Test
+
