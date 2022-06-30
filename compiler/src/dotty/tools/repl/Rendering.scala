@@ -14,6 +14,7 @@ import dotc.core.Symbols.{Symbol, defn}
 import dotc.core.StdNames.{nme, str}
 import dotc.printing.ReplPrinter
 import dotc.reporting.Diagnostic
+import dotc.transform.ValueClasses
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a
@@ -121,7 +122,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    * @param value underlying value
    */
   private def rewrapValueClass(sym: Symbol, value: Object)(using Context): Option[Object] =
-    if (sym.isValueClass && !sym.isPrimitiveValueClass) then
+    if ValueClasses.isDerivedValueClass(sym) then
       val valueClassName = sym.flatName.encode.toString
       val valueClass = Class.forName(valueClassName, true, classLoader())
       valueClass.getConstructors.headOption.map(_.newInstance(value))

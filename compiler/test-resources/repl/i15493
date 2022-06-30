@@ -114,3 +114,21 @@ val res27: CustomToString = Test23
 
 scala> res27.toString
 val res28: String = Test23
+
+scala> class `<>`(x: Int) extends AnyVal
+// defined class <>
+
+scala> `<>`(23)
+val res29: <> = less$greater@17
+
+scala> res29.toString
+val res30: String = less$greater@17
+
+scala> class `🤪`(x: Int) extends AnyVal
+// defined class 🤪
+
+scala> `🤪`(23)
+val res31: 🤪 = uD83E$uDD2A@17
+
+scala> res31.toString
+val res32: String = uD83E$uDD2A@17
