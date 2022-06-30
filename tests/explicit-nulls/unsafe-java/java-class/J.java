@@ -1,6 +1,6 @@
 import java.util.List;
 
-public class JC {
+public class J {
 
   public int a;
 

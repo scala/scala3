@@ -548,7 +548,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           ref(ownType).withSpan(tree.span)
         case _ =>
           tree.withType(ownType)
-      val tree2 = toNotNullTermRef(tree1, pt)
+      val tree2 = toNotNullTermRef(tree1, pt).tryToCastToCanEqualNull
       checkLegalValue(tree2, pt)
       tree2
 

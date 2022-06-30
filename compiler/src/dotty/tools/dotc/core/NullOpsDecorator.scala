@@ -6,6 +6,7 @@ import Contexts._
 import Flags._
 import Symbols._
 import Types._
+import transform.SymUtils._
 
 /** Defines operations on nullable types and tree. */
 object NullOpsDecorator:
@@ -80,23 +81,26 @@ object NullOpsDecorator:
       case _          => tree
 
     def tryToCastToCanEqualNull(using Context): Tree =
+      // return the tree directly if not at Typer phase
+      if !(ctx.explicitNulls && ctx.phase.isTyper) then return tree
+
       val sym = tree.symbol
       val tp = tree.tpe
 
       if !ctx.mode.is(Mode.UnsafeJavaReturn)
         || !sym.is(JavaDefined)
-        || sym.is(Package)
+        || sym.isNoValue
         || !sym.isTerm
         || tp.isError then
         return tree
 
       tree match
-        case _: Apply if sym.is(Method) && !sym.isConstructor =>
+        case _: Apply if sym.is(Method) =>
           val tp2 = tp.replaceOrNull
           if tp ne tp2 then
             tree.cast(tp2)
           else tree
-        case _: Select if !sym.is(Method) =>
+        case _: Select | _: Ident if !sym.is(Method) =>
           val tpw = tp.widen
           val tp2 = tpw.replaceOrNull
           if tpw ne tp2 then
