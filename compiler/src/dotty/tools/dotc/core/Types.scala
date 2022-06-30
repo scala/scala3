@@ -1672,19 +1672,30 @@ object Types {
       case _ => resultType
     }
 
-    /** Determine the expected function type from the prototype. If multiple
-     *  function types are found in a union or intersection, their intersection
-     *  is returned. If no function type is found, Any is returned.
+    /** Determine the expected function type from the prototype.
+     *  If no function type is found, NoType is returned. If multiple
+     *  function types are found in an intersection, their intersection
+     *  is returned. This works since `&` invokes `TypeComparer.distributeAnd`, which
+     *  ensures that `(A1 => B1) & (A2 => B2)` simplifies to `(A1 | A2) => (B1 & B2)`,
+     *  so the result is again a function type. An analogous distribution mechanism
+     *  does not exist for `|`. Therefore, a union of function types also yields `NoType`,
+     *  since we cannot determine a single expected function type.
      */
     def findFunctionType(using Context): Type = dealias match
-      case tp: AndOrType =>
+      case tp: AndType =>
         tp.tp1.findFunctionType & tp.tp2.findFunctionType
+      case tp: OrType =>
+        val tf1 = tp.tp1.findFunctionType
+        val tf2 = tp.tp2.findFunctionType
+        if !tf1.exists then tf2
+        else if !tf2.exists then tf1
+        else NoType
       case t if defn.isNonRefinedFunction(t) =>
         t
       case t @ SAMType(_) =>
         t
       case _ =>
-        defn.AnyType
+        NoType
 
     /** This type seen as a TypeBounds */
     final def bounds(using Context): TypeBounds = this match {
