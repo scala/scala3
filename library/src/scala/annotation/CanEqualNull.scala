@@ -14,7 +14,7 @@ package scala.annotation
  *  val s3: String = s2
  *  val s4: String @CanEqualNull = s1
  *
- *  val ss: Array[String @CanEqualNull] = ??
+ *  val ss: Array[String @CanEqualNull] = ???
  *  ss.map(_ == null)
  *  ```
  */
