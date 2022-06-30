@@ -32,9 +32,9 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     if ids != null then
       val ownId = nextId
       nextId += 1
-      ids.nn.put(this, ownId)
+      ids.nn.put(this: @unchecked, ownId)
       if ownId == debugId then
-        println(s"Debug tree (id=$debugId) creation \n$this\n")
+        println(s"Debug tree (id=$debugId) creation \n${this: @unchecked}\n")
         Thread.dumpStack()
 
   allocateId()
@@ -83,7 +83,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    *  the left, or, if that one does not exist, to the start position of the envelope
    *  of all children to the right.
    */
-  def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = this match {
+  def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = (this: @unchecked) match {
     case Trees.Inlined(call, _, _) =>
       call.span
     case _ =>
@@ -106,7 +106,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
       }
       val limit = productArity
       def includeChildren(span: Span, n: Int): Span =
-        if (n < limit) includeChildren(include(span, productElement(n)), n + 1)
+        if (n < limit) includeChildren(include(span, productElement(n): @unchecked), n + 1)
         else span
       val span1 = includeChildren(startSpan, 0)
       val span2 =

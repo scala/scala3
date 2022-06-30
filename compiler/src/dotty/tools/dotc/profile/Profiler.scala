@@ -100,10 +100,6 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   def outDir: AbstractFile = ctx.settings.outputDir.value
 
   val id: Int = RealProfiler.idGen.incrementAndGet()
-  RealProfiler.gcMx foreach {
-    case emitter: NotificationEmitter => emitter.addNotificationListener(this, null, null)
-    case gc => println(s"Cant connect gcListener to ${gc.getClass}")
-  }
 
   private val mainThread = Thread.currentThread()
 
@@ -128,6 +124,11 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   private def doGC: Unit = {
     System.gc()
     System.runFinalization()
+  }
+
+  RealProfiler.gcMx foreach {
+    case emitter: NotificationEmitter => emitter.addNotificationListener(this, null, null)
+    case gc => println(s"Cant connect gcListener to ${gc.getClass}")
   }
 
   reporter.header(this)

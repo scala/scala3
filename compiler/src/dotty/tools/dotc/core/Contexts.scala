@@ -819,7 +819,7 @@ object Contexts {
 
   @sharable object NoContext extends Context((null: ContextBase | Null).uncheckedNN) {
     source = NoSource
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
   }
 
   /** A context base defines state and associated methods that exist once per
