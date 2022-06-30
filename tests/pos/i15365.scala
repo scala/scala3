@@ -14,4 +14,4 @@ class OptionInputType[TO](ofType: InputType[TO]) extends InputType[Option[TO]]
 type Argument[TA]
 def argument[Ta](argumentType: InputType[Ta])(implicit fromInput: FromInput[Ta], res: WithoutInputTypeTags[Ta]): Argument[Option[Ta]] = ???
 
-def test = argument(OptionInputType(??? : InputType[WithTag[Boolean, Int]])) :: Nil // error
+def test = argument(OptionInputType(??? : InputType[WithTag[Boolean, Int]])) :: Nil
