@@ -132,3 +132,13 @@ val res31: 🤪 = uD83E$uDD2A@17
 
 scala> res31.toString
 val res32: String = uD83E$uDD2A@17
+
+scala> object Outer { class Foo(x: Int) extends AnyVal }
+// defined object Outer
+
+scala> Outer.Foo(23)
+val res33: Outer.Foo = Outer$Foo@17
+
+scala> res33.toString
+val res34: String = Outer$Foo@17
+
