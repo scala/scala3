@@ -54,6 +54,11 @@
   margin-left: calc(3 * var(--base-spacing));
 }
 
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
 #mobile-menu-toggle {
   display: none;
 }
