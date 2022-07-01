@@ -37,7 +37,7 @@ class ReplPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
       if (sym.is(Method)) {
         sym.info match {
           case tp: ExprType => ":" ~~ toText(tp.resType)
-          case _ => toText(sym.info)
+          case info => toText(info)
         }
       }
       else if (sym.isType && sym.info.isTypeAlias) toText(sym.info)
