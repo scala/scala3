@@ -1029,8 +1029,8 @@ object PatternMatcher {
     end checkSwitch
 
     val optimizations: List[(String, Plan => Plan)] = List(
-      "mergeTests" -> mergeTests: @unchecked,
-      "inlineVars" -> inlineVars: @unchecked
+      "mergeTests" -> mergeTests,
+      "inlineVars" -> inlineVars
     )
 
     /** Translate pattern match to sequence of tests. */
