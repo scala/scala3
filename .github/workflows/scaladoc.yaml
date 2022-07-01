@@ -42,14 +42,13 @@ jobs:
       - name: Compile and test scala3doc-js
         run: ./project/scripts/sbt scaladoc-js-main/test
 
-      # - name: Compile and test
-      #   run: |
-      #     ./project/scripts/sbt scaladoc/test
-      #     ./project/scripts/cmdScaladocTests
-      #     Temporarily turn off testing to be able to publish test documentation without tests passing
+      - name: Compile and test
+        run: |
+          ./project/scripts/sbt scaladoc/test
+          ./project/scripts/cmdScaladocTests
 
-      # - name: Locally publish self
-      #   run: ./project/scripts/sbt scaladoc/publishLocal
+      - name: Locally publish self
+        run: ./project/scripts/sbt scaladoc/publishLocal
 
       - name: Generate self documentation
         run: ./project/scripts/sbt scaladoc/generateSelfDocumentation

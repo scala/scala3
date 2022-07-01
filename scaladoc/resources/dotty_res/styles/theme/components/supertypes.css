@@ -14,6 +14,7 @@
 
 .supertypes > div {
   display: none;
+  margin-bottom: 6px;
 }
 
 .supertypes > div:nth-child(2),
@@ -22,7 +23,6 @@
 .supertypes > div:nth-child(5),
 .supertypes > div:nth-child(6) {
   display: block;
-  margin-bottom: 6px;
 }
 
 .supertypes.collapsed > div {

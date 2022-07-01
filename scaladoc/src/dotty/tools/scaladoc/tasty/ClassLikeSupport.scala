@@ -376,7 +376,13 @@ trait ClassLikeSupport:
       val overriddenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
       Origin.Overrides(overriddenSyms.map(s => Overridden(s.name, s.dri)).toSeq)
 
-    mkMember(methodSymbol, methodKind, method.returnTpt.tpe.asSignature)(origin = origin, deprecated = methodSymbol.isDeprecated())
+    val modifiers = methodKind match
+      case _: Kind.Given => methodSymbol
+        .getExtraModifiers()
+        .filterNot(m => m == Modifier.Lazy || m == Modifier.Final)
+      case _ => methodSymbol.getExtraModifiers()
+
+    mkMember(methodSymbol, methodKind, method.returnTpt.tpe.asSignature)(modifiers = modifiers, origin = origin, deprecated = methodSymbol.isDeprecated())
 
   def mkParameter(
     argument: ValDef,
@@ -456,7 +462,13 @@ trait ClassLikeSupport:
       else if valDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(Kind.Val)
       else defaultKind
 
-    mkMember(valDef.symbol, kind, memberInfo.res.asSignature)(deprecated = valDef.symbol.isDeprecated())
+    val modifiers = kind match
+      case _: Kind.Given => valDef.symbol
+        .getExtraModifiers()
+        .filterNot(m => m == Modifier.Lazy || m == Modifier.Final)
+      case _ => valDef.symbol.getExtraModifiers()
+
+    mkMember(valDef.symbol, kind, memberInfo.res.asSignature)(modifiers = modifiers, deprecated = valDef.symbol.isDeprecated())
 
   def mkMember(symbol: Symbol, kind: Kind, signature: DSignature)(
     modifiers: Seq[Modifier] = symbol.getExtraModifiers(),
