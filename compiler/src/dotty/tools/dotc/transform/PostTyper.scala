@@ -14,6 +14,7 @@ import Decorators._
 import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
+import util.SrcPos
 import reporting._
 
 object PostTyper {
@@ -180,6 +181,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
 
+    private def checkGoodBounds(tpe: Type, pos: SrcPos)(using Context): Unit = tpe.dealias match
+      case tpe: TypeRef =>
+        checkGoodBounds(tpe.info, pos)
+      case TypeBounds(lo, hi) if !(lo <:< hi) =>
+        report.error(i"type argument has unrealizable bounds $tpe", pos)
+      case _ =>
+
     private def removeUnwantedAnnotations(sym: Symbol, metaAnnotSym: Symbol,
         metaAnnotSymBackup: Symbol, keepIfNoRelevantAnnot: Boolean)(using Context): Unit =
       def shouldKeep(annot: Annotation): Boolean =
@@ -342,7 +350,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
-          args.foreach(checkInferredWellFormed)
+          for arg <- args do
+            checkInferredWellFormed(arg)
+            checkGoodBounds(arg.tpe, arg.srcPos)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
