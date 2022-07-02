@@ -18,6 +18,7 @@ import typer.LiftCoverage
 import util.{SourcePosition, Property}
 import util.Spans.Span
 import coverage.*
+import localopt.StringInterpolatorOpt.isCompilerIntrinsic
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -278,13 +279,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * should not be changed to {val $x = f(); T($x)}(1) but to {val $x = f(); val $y = 1; T($x)($y)}
      */
     private def needsLift(tree: Apply)(using Context): Boolean =
-      inline def isShortCircuitedOp(sym: Symbol) =
+      def isShortCircuitedOp(sym: Symbol) =
         sym == defn.Boolean_&& || sym == defn.Boolean_||
-
-      inline def isCompilerIntrinsic(sym: Symbol) =
-        sym == defn.StringContext_s ||
-        sym == defn.StringContext_f ||
-        sym == defn.StringContext_raw
 
       def isUnliftableFun(fun: Tree) =
         /*
