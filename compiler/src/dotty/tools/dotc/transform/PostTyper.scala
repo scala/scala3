@@ -345,7 +345,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           for arg <- args do
             checkInferredWellFormed(arg)
-            Checking.checkGoodBounds(arg.tpe, arg.srcPos)
+            if !arg.span.isSynthetic then
+              // only check explicit type arguments. We rely on inferred type arguments
+              // to either have good bounds (if they come from a constraint), or be derived
+              // from values that recursively need to have good bounds.
+              Checking.checkGoodBounds(arg.tpe, arg.srcPos)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
