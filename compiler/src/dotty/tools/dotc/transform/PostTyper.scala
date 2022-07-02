@@ -345,7 +345,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           for arg <- args do
             checkInferredWellFormed(arg)
-            if !arg.span.isSynthetic then
+            val isInferred = arg.isInstanceOf[InferredTypeTree] || arg.span.isSynthetic
+            if !isInferred then
               // only check explicit type arguments. We rely on inferred type arguments
               // to either have good bounds (if they come from a constraint), or be derived
               // from values that recursively need to have good bounds.

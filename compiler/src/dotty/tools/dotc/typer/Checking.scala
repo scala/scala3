@@ -86,14 +86,17 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(using Context): Unit =
     checkBounds(args, tl.paramInfos, _.substParams(tl, _))
 
-  def checkGoodBounds(tpe: Type, pos: SrcPos)(using Context): Boolean = tpe.dealias match
-    case tpe: TypeRef =>
-      checkGoodBounds(tpe.info, pos)
-    case TypeBounds(lo, hi) if !(lo <:< hi) =>
-      report.error(i"type argument has unrealizable bounds $tpe", pos)
-      false
-    case _ =>
-      true
+  def checkGoodBounds(tpe: Type, pos: SrcPos)(using Context): Boolean =
+    def recur(tp: Type) = tp.dealias match
+      case tp: TypeRef =>
+        checkGoodBounds(tp.info, pos)
+      case TypeBounds(lo, hi) if !(lo <:< hi) =>
+        val argStr = if tp eq tpe then "" else i" $tpe"
+        report.error(i"type argument$argStr has potentially unrealizable bounds $tp", pos)
+        false
+      case _ =>
+        true
+    recur(tpe)
 
   /** Check applied type trees for well-formedness. This means
    *   - all arguments are within their corresponding bounds
