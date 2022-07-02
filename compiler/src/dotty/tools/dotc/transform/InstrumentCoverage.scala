@@ -4,6 +4,7 @@ package transform
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
+import ast.tpd.*
 import collection.mutable
 import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
@@ -17,13 +18,13 @@ import typer.LiftCoverage
 import util.{SourcePosition, Property}
 import util.Spans.Span
 import coverage.*
+import localopt.StringInterpolatorOpt.isCompilerIntrinsic
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
   * The result can then be consumed by the Scoverage tool.
   */
 class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
-  import ast.tpd._
 
   override def phaseName = InstrumentCoverage.name
 
@@ -60,7 +61,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
   /** Transforms trees to insert calls to Invoker.invoked to compute the coverage when the code is called */
   private class CoverageTransformer extends Transformer:
-    override def transform(tree: Tree)(using ctx: Context): Tree =
+    override def transform(tree: Tree)(using Context): Tree =
       inContext(transformCtx(tree)) { // necessary to position inlined code properly
         tree match
           // simple cases
@@ -278,16 +279,21 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * should not be changed to {val $x = f(); T($x)}(1) but to {val $x = f(); val $y = 1; T($x)($y)}
      */
     private def needsLift(tree: Apply)(using Context): Boolean =
-      def isBooleanOperator(fun: Tree) =
-        // We don't want to lift a || getB(), to avoid calling getB if a is true.
-        // Same idea with a && getB(): if a is false, getB shouldn't be called.
-        val sym = fun.symbol
-        sym.exists &&
+      def isShortCircuitedOp(sym: Symbol) =
         sym == defn.Boolean_&& || sym == defn.Boolean_||
 
-      def isContextual(fun: Apply): Boolean =
-        val args = fun.args
-        args.nonEmpty && args.head.symbol.isAllOf(GivenOrImplicit)
+      def isUnliftableFun(fun: Tree) =
+        /*
+         * We don't want to lift a || getB(), to avoid calling getB if a is true.
+         * Same idea with a && getB(): if a is false, getB shouldn't be called.
+         *
+         * On top of that, the `s`, `f` and `raw` string interpolators are special-cased
+         * by the compiler and will disappear in phase StringInterpolatorOpt, therefore
+         * they shouldn't be lifted.
+         */
+        val sym = fun.symbol
+        sym.exists && (isShortCircuitedOp(sym) || isCompilerIntrinsic(sym))
+      end
 
       val fun = tree.fun
       val nestedApplyNeedsLift = fun match
@@ -295,7 +301,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         case _ => false
 
       nestedApplyNeedsLift ||
-      !isBooleanOperator(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
 
     /** Check if the body of a DefDef can be instrumented with instrumentBody. */
     private def canInstrumentDefDef(tree: DefDef)(using Context): Boolean =

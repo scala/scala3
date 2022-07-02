@@ -159,23 +159,39 @@ class LiftComplex extends Lifter {
 }
 object LiftComplex extends LiftComplex
 
-/** Lift complex + lift the prefixes */
-object LiftCoverage extends LiftComplex {
+/** Lift impure + lift the prefixes */
+object LiftCoverage extends LiftImpure {
 
-  private val LiftEverything = new Property.Key[Boolean]
+  // Property indicating whether we're currently lifting the arguments of an application
+  private val LiftingArgs = new Property.Key[Boolean]
 
-  private inline def liftEverything(using Context): Boolean =
-    ctx.property(LiftEverything).contains(true)
+  private inline def liftingArgs(using Context): Boolean =
+    ctx.property(LiftingArgs).contains(true)
 
-  private def liftEverythingContext(using Context): Context =
-    ctx.fresh.setProperty(LiftEverything, true)
+  private def liftingArgsContext(using Context): Context =
+    ctx.fresh.setProperty(LiftingArgs, true)
+
+  /** Variant of `noLift` for the arguments of applications.
+   *  To produce the right coverage information (especially in case of exceptions), we must lift:
+   *  - all the applications, except the erased ones
+   *  - all the impure arguments
+   *
+   * There's no need to lift the other arguments.
+   */
+  private def noLiftArg(arg: tpd.Tree)(using Context): Boolean =
+    arg match
+      case a: tpd.Apply => a.symbol.is(Erased) // don't lift erased applications, but lift all others
+      case tpd.Block(stats, expr) => stats.forall(noLiftArg) && noLiftArg(expr)
+      case tpd.Inlined(_, bindings, expr) => noLiftArg(expr)
+      case tpd.Typed(expr, _) => noLiftArg(expr)
+      case _ => super.noLift(arg)
 
   override def noLift(expr: tpd.Tree)(using Context) =
-    !liftEverything && super.noLift(expr)
+    if liftingArgs then noLiftArg(expr) else super.noLift(expr)
 
   def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
     val liftedFun = liftApp(defs, tree.fun)
-    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftEverythingContext)
+    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
     tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
   }
 }
