@@ -103,6 +103,7 @@ object Typer {
    */
   private[typer] def isSyntheticApply(tree: tpd.Tree): Boolean = tree match {
     case tree: tpd.Select => tree.hasAttachment(InsertedApply)
+    case TypeApply(fn, _) => isSyntheticApply(fn)
     case _ => false
   }
 
