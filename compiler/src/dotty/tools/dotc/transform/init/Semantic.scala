@@ -1349,12 +1349,12 @@ object Semantic:
         case Select(qual, _) =>
           eval(qual, thisV, klass)
           val res = eval(rhs, thisV, klass)
-          extendTrace(rhs) {
+          extendTrace(expr) {
             res.ensureHot("The RHS of reassignment must be fully initialized.")
           }
         case id: Ident =>
           val res = eval(rhs, thisV, klass)
-          extendTrace(rhs) {
+          extendTrace(expr) {
             res.ensureHot("The RHS of reassignment must be fully initialized.")
           }
 
