@@ -1446,7 +1446,9 @@ import transform.SymUtils._
   }
 
   class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
-    extends TypeMismatchMsg(tpe, bound)(DoesNotConformToBoundID) {
+    extends TypeMismatchMsg(
+      if which == "lower" then bound else tpe,
+      if which == "lower" then tpe else bound)(DoesNotConformToBoundID) {
     def msg = em"Type argument ${tpe} does not conform to $which bound $bound"
   }
 
