@@ -52,11 +52,13 @@ object Semantic:
    *
    */
   sealed abstract class Value:
-    def show: String = this match
+    def show(using Context): String = this match
+      case ThisRef(klass) =>
+        "ThisRef[" + klass.show + "]"
       case Warm(klass, outer, ctor, args) =>
-        "Warm[" + klass + "] { outer = " + outer.show + ", args = " + args.map(_.show).mkString("(", ", ", ")") + " }"
+        "Warm[" + klass.show + "] { outer = " + outer.show + ", args = " + args.map(_.show).mkString("(", ", ", ")") + " }"
       case Fun(expr, thisV, klass) =>
-        "Fun { this = " + thisV.show + ", owner = " + klass + " }"
+        "Fun { this = " + thisV.show + ", owner = " + klass.show + " }"
       case RefSet(values) =>
         values.map(_.show).mkString("Set { ", ", ", " }")
       case _ =>
