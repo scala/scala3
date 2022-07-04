@@ -14,6 +14,7 @@ import Decorators._
 import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
+import util.SrcPos
 import reporting._
 
 object PostTyper {
@@ -342,7 +343,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
-          args.foreach(checkInferredWellFormed)
+          for arg <- args do
+            checkInferredWellFormed(arg)
+            val isInferred = arg.isInstanceOf[InferredTypeTree] || arg.span.isSynthetic
+            if !isInferred then
+              // only check explicit type arguments. We rely on inferred type arguments
+              // to either have good bounds (if they come from a constraint), or be derived
+              // from values that recursively need to have good bounds.
+              Checking.checkGoodBounds(arg.tpe, arg.srcPos)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])

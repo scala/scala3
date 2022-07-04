@@ -14,7 +14,7 @@ import util.SimpleIdentityMap
 
 import collection.mutable
 
-/** A utility object offering methods for rewriting inlined code */
+/** A utility class offering methods for rewriting inlined code */
 class InlineReducer(inliner: Inliner)(using Context):
   import tpd.*
   import Inliner.{isElideableExpr, DefBuffer}

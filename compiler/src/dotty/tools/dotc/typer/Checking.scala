@@ -73,10 +73,11 @@ object Checking {
           showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
     }
     for (arg, which, bound) <- TypeOps.boundsViolations(args, boundss, instantiate, app) do
-      report.error(
-          showInferred(DoesNotConformToBound(arg.tpe, which, bound),
-              app, tpt),
-          arg.srcPos.focus)
+      if checkGoodBounds(arg.tpe, arg.srcPos.focus) then
+        report.error(
+            showInferred(DoesNotConformToBound(arg.tpe, which, bound),
+                app, tpt),
+            arg.srcPos.focus)
 
   /** Check that type arguments `args` conform to corresponding bounds in `tl`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
@@ -84,6 +85,18 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(using Context): Unit =
     checkBounds(args, tl.paramInfos, _.substParams(tl, _))
+
+  def checkGoodBounds(tpe: Type, pos: SrcPos)(using Context): Boolean =
+    def recur(tp: Type) = tp.dealias match
+      case tp: TypeRef =>
+        checkGoodBounds(tp.info, pos)
+      case TypeBounds(lo, hi) if !(lo <:< hi) =>
+        val argStr = if tp eq tpe then "" else i" $tpe"
+        report.error(i"type argument$argStr has potentially unrealizable bounds $tp", pos)
+        false
+      case _ =>
+        true
+    recur(tpe)
 
   /** Check applied type trees for well-formedness. This means
    *   - all arguments are within their corresponding bounds

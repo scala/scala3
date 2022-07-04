@@ -1,0 +1,4 @@
+-- Error: tests/neg/i15568.scala:3:15 ----------------------------------------------------------------------------------
+3 |type Bar = Foo[? >: Int <: String] // error
+  |               ^
+  |               type argument has potentially unrealizable bounds  >: Int <: String
