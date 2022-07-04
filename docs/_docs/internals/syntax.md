@@ -287,7 +287,8 @@ TypeSplice        ::= spliceId                                                  
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
-ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’                          exprs
+ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’                          exprs
+                    |  ‘(’ ‘using’ ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’              exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
                     |  BlockExpr
