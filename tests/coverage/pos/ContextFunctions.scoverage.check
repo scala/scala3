@@ -92,6 +92,23 @@ covtest
 Imperative
 Class
 covtest.Imperative
+readPerson
+252
+295
+13
+invoked
+Apply
+false
+0
+false
+OnError((e) => readName2(using e)(using s))
+
+5
+ContextFunctions.scala
+covtest
+Imperative
+Class
+covtest.Imperative
 $anonfun
 267
 294
@@ -103,7 +120,7 @@ false
 false
 readName2(using e)(using s)
 
-5
+6
 ContextFunctions.scala
 covtest
 Imperative
@@ -119,23 +136,6 @@ false
 0
 false
 readName2(using e)(using s)
-
-6
-ContextFunctions.scala
-covtest
-Imperative
-Class
-covtest.Imperative
-readPerson
-252
-295
-13
-invoked
-Apply
-false
-0
-false
-OnError((e) => readName2(using e)(using s))
 
 7
 ContextFunctions.scala

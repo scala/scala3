@@ -31,7 +31,7 @@ class StringInterpolatorOpt extends MiniPhase:
     tree match
       case tree: RefTree =>
         val sym = tree.symbol
-        assert(sym != defn.StringContext_raw && sym != defn.StringContext_s && sym != defn.StringContext_f,
+        assert(!StringInterpolatorOpt.isCompilerIntrinsic(sym),
           i"$tree in ${ctx.owner.showLocated} should have been rewritten by phase $phaseName")
       case _ =>
 
@@ -162,3 +162,9 @@ class StringInterpolatorOpt extends MiniPhase:
 object StringInterpolatorOpt:
   val name: String = "interpolators"
   val description: String = "optimize s, f, and raw string interpolators"
+
+  /** Is this symbol one of the s, f or raw string interpolator? */
+  def isCompilerIntrinsic(sym: Symbol)(using Context): Boolean =
+    sym == defn.StringContext_s ||
+    sym == defn.StringContext_f ||
+    sym == defn.StringContext_raw
