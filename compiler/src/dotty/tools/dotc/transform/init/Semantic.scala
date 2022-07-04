@@ -1036,9 +1036,9 @@ object Semantic:
   extension (value: Value)
     /** Promotion of values to hot */
     def promote(msg: String): Contextual[Unit] = log("promoting " + value + ", promoted = " + promoted, printer) {
-      if promoted.isCurrentObjectPromoted then Nil else
+      if !promoted.isCurrentObjectPromoted then
 
-        value.match
+        value match
         case Hot   =>
 
         case Cold  =>
@@ -1099,8 +1099,9 @@ object Semantic:
      */
     def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
       val classRef = warm.klass.appliedRef
-      if classRef.memberClasses.nonEmpty || !warm.isFullyFilled then
-        return PromoteError(msg, trace.toVector) :: Nil
+      val hasInnerClass = classRef.memberClasses.filter(_.symbol.hasSource).nonEmpty
+      if hasInnerClass then
+        return PromoteError(msg + "Promotion cancelled as the value contains inner classes. ", trace.toVector) :: Nil
 
       val errors = Reporter.stopEarly {
         for klass <- warm.klass.baseClasses if klass.hasSource do
@@ -1635,7 +1636,8 @@ object Semantic:
     if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val res = eval(vdef.rhs, thisV, klass)
-        thisV.updateField(vdef.symbol, res)
+        val hasErrors = Reporter.hasErrors { res.promote("try promote value to hot") }
+        thisV.updateField(vdef.symbol, if hasErrors then res else Hot)
         fieldsChanged = true
 
       case _: MemberDef =>
