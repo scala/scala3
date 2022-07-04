@@ -1,4 +1,4 @@
--- Error: tests/neg/i15568.scala:3:15 ----------------------------------------------------------------------------------
+-- [E057] Type Mismatch Error: tests/neg/i15568.scala:3:15 -------------------------------------------------------------
 3 |type Bar = Foo[? >: Int <: String] // error
   |               ^
-  |               type has potentially conflicting bounds  >: Int <: String
+  |               Type argument  >: Int <: String does not overlap with upper bound String

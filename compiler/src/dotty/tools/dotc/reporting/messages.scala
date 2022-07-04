@@ -1448,9 +1448,16 @@ import transform.SymUtils._
   class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
     extends TypeMismatchMsg(
       if which == "lower" then bound else tpe,
-      if which == "lower" then tpe else bound)(DoesNotConformToBoundID) {
-    def msg = em"Type argument ${tpe} does not conform to $which bound $bound"
-  }
+      if which == "lower" then tpe else bound)(DoesNotConformToBoundID):
+    private def isBounds = tpe match
+      case TypeBounds(lo, hi) => lo ne hi
+      case _ => false
+    override def canExplain = !isBounds
+    def msg =
+      if isBounds then
+        em"Type argument ${tpe} does not overlap with $which bound $bound"
+      else
+        em"Type argument ${tpe} does not conform to $which bound $bound"
 
   class DoesNotConformToSelfType(category: String, selfType: Type, cls: Symbol,
                                  otherSelf: Type, relation: String, other: Symbol)(

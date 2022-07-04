@@ -3923,43 +3923,6 @@ Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:24): FilenameWithSpaces <- example/FilenameWithSpaces#
 
-expect/i5854.scala
-------------------
-
-Summary:
-Schema => SemanticDB v4
-Uri => i5854.scala
-Text => empty
-Language => Scala
-Symbols => 6 entries
-Occurrences => 16 entries
-
-Symbols:
-i5854/B# => class B extends Object { self: B => +4 decls }
-i5854/B#`<init>`(). => primary ctor <init> (): B
-i5854/B#a. => val method a String
-i5854/B#b. => val method b Object { type A  >: Any <: Nothing }
-i5854/B#loop(). => method loop (): Nothing
-local0 => type A  >: Any <: Nothing
-
-Occurrences:
-[0:8..0:13): i5854 <- i5854/
-[2:6..2:7): B <- i5854/B#
-[7:6..7:7): a <- i5854/B#a.
-[7:9..7:15): String -> scala/Predef.String#
-[7:24..7:27): Any -> scala/Any#
-[7:30..7:31): b -> i5854/B#b.
-[7:36..7:43): Nothing -> scala/Nothing#
-[7:46..7:52): String -> scala/Predef.String#
-[8:6..8:7): b <- i5854/B#b.
-[8:16..8:17): A <- local0
-[8:21..8:24): Any -> scala/Any#
-[8:28..8:35): Nothing -> scala/Nothing#
-[8:40..8:44): loop -> i5854/B#loop().
-[9:6..9:10): loop <- i5854/B#loop().
-[9:14..9:21): Nothing -> scala/Nothing#
-[9:24..9:28): loop -> i5854/B#loop().
-
 expect/i9727.scala
 ------------------
 
