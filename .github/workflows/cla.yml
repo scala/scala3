@@ -5,7 +5,8 @@ on:
     branches:
       - 'language-reference-backport'
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   check:
