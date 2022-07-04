@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class Foo {
   def foo: PartialFunction[Int, Int] = { case x => x + 1 }
 }

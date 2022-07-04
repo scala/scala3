@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 sealed trait Expression:
   def eval(): Int
 case class Number(n: Int) extends Expression:

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.reflect.{classTag, ClassTag, NoManifest}
 
 @main def Test: Unit =

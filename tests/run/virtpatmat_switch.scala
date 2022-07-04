@@ -30,7 +30,7 @@ object Test extends App {
   }
 
   try {
-    implicitDefault(5)
+    implicitDefault(100000)
   } catch {
     case e: MatchError => println(e)
   }

@@ -1,9 +1,6 @@
-
-
+// scalajs: --skip
 
 import util.hashing.Hashing
-
-
 
 object Test {
 

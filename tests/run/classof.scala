@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class ValueClass(val i: Integer) extends AnyVal
 class SomeClass
 

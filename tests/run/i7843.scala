@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.concurrent._, duration.*
 
 object Test {

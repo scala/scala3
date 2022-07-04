@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 import scala.util.TupledFunction
 
 object Test {

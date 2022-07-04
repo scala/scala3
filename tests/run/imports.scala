@@ -7,11 +7,9 @@
 object checker {
   def check(location: String, what: String, value: Any): Unit = {
     Console.print("In " + location + ", " + what + ".toString() returns ");
-    Console.flush();
     val string: String = if (value == null) "null" else value.toString();
     val test = if (string == location) "ok" else "KO";
     Console.println(string + " -> " + test);
-    Console.flush();
   }
 }
 

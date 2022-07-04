@@ -1,3 +1,5 @@
+// scalajs: --compliant-semantics
+
 object Test extends App {
   val ns = (0 until 20)
   val arr = new Array[Int](10)

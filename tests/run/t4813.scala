@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 import collection.mutable.*
 import reflect.*
 

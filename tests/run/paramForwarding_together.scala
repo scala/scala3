@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class A(val member: Int) {
   def getAMember = member
 }

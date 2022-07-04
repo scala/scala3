@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Test {
 
   inline def fact[T](inline i: Int)(inline f: T): Int = {

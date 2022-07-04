@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 public class Test {
   public static void s(Object s) {
     System.out.println(s);

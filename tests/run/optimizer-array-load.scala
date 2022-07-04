@@ -1,3 +1,5 @@
+// scalajs: --compliant-semantics
+
 object Test {
   def f() = {
     val ar = Array.ofDim[Int](5)

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import java.lang.reflect.Executable
 
 case class Tested(foo: Int, bar: String, baz: Double):

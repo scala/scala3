@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 trait Okay extends Serializable {
   def okay: Okay
 }

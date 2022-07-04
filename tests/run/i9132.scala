@@ -1,4 +1,10 @@
 @main def Test =
   scala.collection.mutable.ArrayBuilder.make[Unit] += ()
-  Console.println ()
-  Console println ()
+  Portable.println ()
+  Portable println ()
+
+object Portable:
+  def println(x: Any): Unit =
+    Console.println(if x == () then "()" else x.toString) // portable on Scala.js
+  def println(): Unit =
+    Console.println()

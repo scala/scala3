@@ -23,7 +23,6 @@ def foo[T](x: T): Matchable =
 def g[T <: Matchable](x: T) = x
 
 @main def Test =
-  val x: Matchable = foo(1)
+  val x: Matchable = foo(110000)
   val y: Matchable = foo("hello")
   assert(x != y)
-

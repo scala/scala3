@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class Foo
 object Foo extends Bar
 

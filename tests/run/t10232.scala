@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
 object Test {

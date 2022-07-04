@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 object Test extends App {
   import collection.mutable.*
   val m = new HashMap[Int, Set[String]] with MultiMap[Int, String]

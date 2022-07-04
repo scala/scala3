@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 import language.experimental.namedTypeArguments
 object Test extends App {
   // Types

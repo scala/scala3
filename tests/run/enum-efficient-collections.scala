@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 enum Day extends java.lang.Enum[Day] {
   case MONDAY, TUESDAY, SATURDAY, WEDNESDAY
 }

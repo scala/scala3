@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Foo:
   @scala.annotation.targetName("w") def \/\/ = "W"
 

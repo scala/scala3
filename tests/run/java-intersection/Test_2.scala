@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import java.io.Serializable
 
 class Sub extends A_1 {

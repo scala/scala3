@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import repeatable._
 
 @Plain_0(1)

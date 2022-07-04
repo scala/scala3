@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 object Days extends Enumeration {
   type Day = DayValue
   val Mon, Tue, Wed, Thu, Fri, Sat, Sun = new DayValue // DayValue
