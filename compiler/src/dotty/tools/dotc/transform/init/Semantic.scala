@@ -52,7 +52,15 @@ object Semantic:
    *
    */
   sealed abstract class Value:
-    def show: String = this.toString()
+    def show: String = this match
+      case Warm(klass, outer, ctor, args) =>
+        "Warm[" + klass + "] { outer = " + outer.show + ", args = " + args.map(_.show).mkString("(", ", ", ")") + " }"
+      case Fun(expr, thisV, klass) =>
+        "Fun { this = " + thisV.show + ", owner = " + klass + " }"
+      case RefSet(values) =>
+        values.map(_.show).mkString("Set { ", ", ", " }")
+      case _ =>
+        this.toString()
 
     def isHot = this == Hot
     def isCold = this == Cold
@@ -1351,12 +1359,12 @@ object Semantic:
           eval(qual, thisV, klass)
           val res = eval(rhs, thisV, klass)
           extendTrace(expr) {
-            res.ensureHot("The RHS of reassignment must be fully initialized.")
+            res.ensureHot("The RHS of reassignment must be fully initialized. Found = " + res.show + ". ")
           }
         case id: Ident =>
           val res = eval(rhs, thisV, klass)
           extendTrace(expr) {
-            res.ensureHot("The RHS of reassignment must be fully initialized.")
+            res.ensureHot("The RHS of reassignment must be fully initialized. Found = " + res.show + ". ")
           }
 
       case closureDef(ddef) =>
