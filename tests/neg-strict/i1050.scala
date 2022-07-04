@@ -100,7 +100,7 @@ object Indirect {
   trait U {
     trait X {
       val q: A & B = ???
-      type M = q.L
+      type M = q.L // error: conflicting bounds
     }
     final lazy val p: X = ???
     def brand(x: Any): p.M = x // error: conflicting bounds
@@ -119,7 +119,7 @@ object Indirect2 {
     }
     trait X {
       val q: Y = ???
-      type M = q.r.L
+      type M = q.r.L  // error: conflicting bounds
     }
     final lazy val p: X = ???
     def brand(x: Any): p.M = x // error: conflicting bounds
@@ -152,7 +152,7 @@ object Rec2 {
     }
     trait X {
       val q: Y = ???
-      type M = q.r.L
+      type M = q.r.L // error: conflicting bounds
     }
     final lazy val p: X = ???
     def brand(x: Any): p.M = x // error: conflicting bounds
@@ -171,7 +171,7 @@ object Indirect3 {
     }
     trait X {
       val q: Y = ???
-      type M = q.r.L
+      type M = q.r.L // error: conflicting bounds
     }
     final lazy val p: X = ???
     def brand(x: Any): p.M = x // error: conflicting bounds

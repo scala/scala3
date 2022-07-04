@@ -87,12 +87,12 @@ object Checking {
     checkBounds(args, tl.paramInfos, _.substParams(tl, _))
 
   def checkGoodBounds(tpe: Type, pos: SrcPos)(using Context): Boolean =
-    def recur(tp: Type) = tp.dealias match
+    def recur(tp: Type): Boolean = tp.dealias match
       case tp: TypeRef =>
-        checkGoodBounds(tp.info, pos)
-      case TypeBounds(lo, hi) if !(lo <:< hi) =>
-        val argStr = if tp eq tpe then "" else i" $tpe"
-        report.error(i"type argument$argStr has potentially unrealizable bounds $tp", pos)
+        recur(tp.info)
+      case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
+        val tpStr = if tp eq tpe then "" else i" $tpe"
+        report.error(i"type$tpStr has potentially conflicting bounds $tp", pos)
         false
       case _ =>
         true
