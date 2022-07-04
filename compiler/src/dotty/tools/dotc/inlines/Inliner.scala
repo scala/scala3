@@ -1046,9 +1046,9 @@ class Inliner(val call: tpd.Tree)(using Context):
     new TreeAccumulator[List[Symbol]] {
       private var level = -1
       override def apply(syms: List[Symbol], tree: tpd.Tree)(using Context): List[Symbol] =
-        if (level != -1) foldOver(syms, tree)
+        if level != -1 then foldOver(syms, tree)
         else tree match {
-          case tree: RefTree if level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
+          case tree: RefTree if tree.isTerm && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
           case Quoted(body) =>
             level += 1
@@ -1062,6 +1062,8 @@ class Inliner(val call: tpd.Tree)(using Context):
             level -= 1
             try apply(syms, body)
             finally level += 1
+          case _: TypTree =>
+            syms
           case _ =>
             foldOver(syms, tree)
         }
