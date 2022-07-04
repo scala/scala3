@@ -37,3 +37,9 @@ def andThenSub[A, B, C](f: A <:< B, g: B <:< C): A <:< C =
   type t[X] >: Any <: Nothing  // error
   val unsound: List[Nothing] = List(5 : Any) : List[t[String]]
   (unsound.head : Unit => Unit).apply(())
+
+@main def Test7 =
+  trait A:
+    type t >: Any <: Nothing
+  val unsound: List[Nothing] = List(5 : Any) : List[A#t] // error
+  (unsound.head : Unit => Unit).apply(())

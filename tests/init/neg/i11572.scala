@@ -3,7 +3,7 @@ class A {
     def get: X
   }
   trait Bounded {
-    type T >: Cov[Int] <: Cov[String] // error
+    type T >: Cov[Int] <: Cov[String]
   }
   val t: Bounded = new Bounded {  // error
     // Note: using this instead of t produces an error (as expected)
