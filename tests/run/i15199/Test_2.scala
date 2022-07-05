@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class ScalaChild extends Child_1
 
 @main def Test(): Unit =
