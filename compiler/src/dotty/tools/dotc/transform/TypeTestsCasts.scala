@@ -59,7 +59,7 @@ object TypeTestsCasts {
       def apply(tp: Type) = tp match {
         case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           WildcardType
-        case tp if tp.hasAnnotation(defn.UncheckedAnnot) =>
+        case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedAnnot =>
           WildcardType
         case _ => mapOver(tp)
       }
