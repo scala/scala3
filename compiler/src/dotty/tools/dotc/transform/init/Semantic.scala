@@ -802,8 +802,11 @@ object Semantic:
             else
               // no source code available
               promoteArgs()
-              val error = CallUnknown(target, trace.toVector)
-              reporter.report(error)
+              // try promoting the receiver as last resort
+              val hasErrors = Reporter.hasErrors { ref.promote("try promote value to hot") }
+              if hasErrors then
+                val error = CallUnknown(target, trace.toVector)
+                reporter.report(error)
               Hot
           else
             // method call resolves to a field
@@ -1646,8 +1649,7 @@ object Semantic:
     if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val res = eval(vdef.rhs, thisV, klass)
-        val hasErrors = Reporter.hasErrors { res.promote("try promote value to hot") }
-        thisV.updateField(vdef.symbol, if hasErrors then res else Hot)
+        thisV.updateField(vdef.symbol, res)
         fieldsChanged = true
 
       case _: MemberDef =>
