@@ -50,6 +50,8 @@ class Pickler extends Phase {
   private val beforePickling = new mutable.HashMap[ClassSymbol, String]
   private val picklers = new mutable.HashMap[ClassSymbol, TastyPickler]
 
+  private val typeSimplifier = new TypeSimplifyTransformer
+
   /** Drop any elements of this list that are linked module classes of other elements in the list */
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {
     val companionModuleClasses =
@@ -60,8 +62,6 @@ class Pickler extends Phase {
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
-
-    val typeSimplifier = new TypeSimplifyTransformer
 
     for
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
@@ -137,9 +137,6 @@ class Pickler extends Phase {
         cls -> unpickler
       }
     pickling.println("************* entered toplevel ***********")
-
-    val typeSimplifier = new TypeSimplifyTransformer
-
     for ((cls, unpickler) <- unpicklers) {
       val unpickled = typeSimplifier.transform(unpickler.rootTrees)
       testSame(i"$unpickled%\n%", beforePickling(cls), cls)
