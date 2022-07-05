@@ -118,21 +118,21 @@ object MainGenericRunner {
   @sharable val scalaOption = raw"""@.*""".r
   @sharable val colorOption = raw"""-color:.*""".r
   @tailrec
-  def process(args: List[String], settings: Settings): Settings = args match
+  def processArgs(args: List[String], settings: Settings): Settings = args match
     case Nil =>
       settings
     case "-run" :: fqName :: tail =>
-      process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
+      processArgs(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
       val (tailargs, newEntries) = processClasspath(cp, tail)
-      process(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
+      processArgs(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
     case ("-version" | "--version") :: _ =>
       settings.copy(
         executeMode = ExecuteMode.Repl,
         residualArgs = List("-version")
       )
     case ("-v" | "-verbose" | "--verbose") :: tail =>
-      process(
+      processArgs(
         tail,
         settings.copy(
           verbose = true,
@@ -140,18 +140,18 @@ object MainGenericRunner {
         )
       )
     case "-save" :: tail =>
-      process(tail, settings.withSave)
+      processArgs(tail, settings.withSave)
     case "-nosave" :: tail =>
-      process(tail, settings.noSave)
+      processArgs(tail, settings.noSave)
     case "-with-compiler" :: tail =>
-      process(tail, settings.withCompiler)
+      processArgs(tail, settings.withCompiler)
     case (o @ javaOption(striped)) :: tail =>
-      process(tail, settings.withJavaArgs(striped).withScalaArgs(o))
+      processArgs(tail, settings.withJavaArgs(striped).withScalaArgs(o))
     case (o @ scalaOption(_*)) :: tail =>
       val remainingArgs = (CommandLineParser.expandArg(o) ++ tail).toList
-      process(remainingArgs, settings)
+      processArgs(remainingArgs, settings)
     case (o @ colorOption(_*)) :: tail =>
-      process(tail, settings.withScalaArgs(o))
+      processArgs(tail, settings.withScalaArgs(o))
     case "-e" :: expression :: tail =>
       val mainSource = s"@main def main(args: String *): Unit =\n  ${expression}"
       settings
@@ -169,13 +169,13 @@ object MainGenericRunner {
           .withScriptArgs(tail*)
       else
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
-        process(tail, newSettings.withResidualArgs(arg))
-  end process
+        processArgs(tail, newSettings.withResidualArgs(arg))
+  end processArgs
 
-  def main(args: Array[String]): Unit =
+  def process(args: Array[String]): Boolean =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" ")).filter(_.nonEmpty)
     val allArgs = scalaOpts ++ args
-    val settings = process(allArgs.toList, Settings())
+    val settings = processArgs(allArgs.toList, Settings())
     if settings.exitCode != 0 then System.exit(settings.exitCode)
 
     def removeCompiler(cp: Array[String]) =
@@ -185,12 +185,13 @@ object MainGenericRunner {
       else
         cp
 
-    def run(settings: Settings): Unit = settings.executeMode match
+    def run(settings: Settings): Option[Throwable] = settings.executeMode match
       case ExecuteMode.Repl =>
         val properArgs =
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs
         repl.Main.main(properArgs.toArray)
+        None
 
       case ExecuteMode.PossibleRun =>
         val newClasspath = (settings.classPath :+ ".").flatMap(_.split(classpathSeparator).filter(_.nonEmpty)).map(File(_).toURI.toURL)
@@ -207,10 +208,11 @@ object MainGenericRunner {
           case None =>
             settings.withExecuteMode(ExecuteMode.Repl)
         run(newSettings)
+
       case ExecuteMode.Run =>
         val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
         val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
-        val res = ObjectRunner.runAndCatch(newClasspath, settings.targetToRun, settings.residualArgs).flatMap {
+        ObjectRunner.runAndCatch(newClasspath, settings.targetToRun, settings.residualArgs).flatMap {
           case ex: ClassNotFoundException if ex.getMessage == settings.targetToRun =>
             val file = settings.targetToRun
             Jar(file).mainClass match
@@ -220,7 +222,7 @@ object MainGenericRunner {
                 Some(IllegalArgumentException(s"No main class defined in manifest in jar: $file"))
           case ex => Some(ex)
         }
-        errorFn("", res)
+
       case ExecuteMode.Script =>
         val targetScript = Paths.get(settings.targetScript).toFile
         val targetJar = settings.targetScript.replaceAll("[.][^\\/]*$", "")+".jar"
@@ -232,11 +234,10 @@ object MainGenericRunner {
           sys.props("script.path") = targetScript.toPath.toAbsolutePath.normalize.toString
           val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
           val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
-          val res = if mainClass.nonEmpty then
+          if mainClass.nonEmpty then
             ObjectRunner.runAndCatch(newClasspath :+ File(targetJar).toURI.toURL, mainClass, settings.scriptArgs)
           else
             Some(IllegalArgumentException(s"No main class defined in manifest in jar: $precompiledJar"))
-          errorFn("", res)
 
         else
           val properArgs =
@@ -247,6 +248,8 @@ object MainGenericRunner {
               ++ List("-script", settings.targetScript)
               ++ settings.scriptArgs
           scripting.Main.main(properArgs.toArray)
+          None
+
       case ExecuteMode.Expression =>
         val cp = settings.classPath match {
           case Nil => ""
@@ -265,12 +268,16 @@ object MainGenericRunner {
         else
           run(settings.withExecuteMode(ExecuteMode.Repl))
 
-    run(settings)
+    run(settings) match
+      case e @ Some(ex) => errorFn("", e)
+      case _            => true
 
-
-  def errorFn(str: String, e: Option[Throwable] = None, isFailure: Boolean = true): Boolean = {
+  def errorFn(str: String, e: Option[Throwable] = None): Boolean =
     if (str.nonEmpty) Console.err.println(str)
     e.foreach(_.printStackTrace())
-    !isFailure
-  }
+    false
+
+  def main(args: Array[String]): Unit =
+    if (!process(args)) System.exit(1)
+
 }

@@ -12,7 +12,7 @@ import Util.*
 class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Driver:
   override def sourcesRequired: Boolean = false
 
-  def compileAndRun(classpath: List[String] = Nil): Unit =
+  def compileAndRun(classpath: List[String] = Nil): Option[Throwable] =
     val outDir = Files.createTempDirectory("scala3-expression")
     outDir.toFile.deleteOnExit()
 
@@ -26,7 +26,7 @@ class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Dri
 
         val output = ctx.settings.outputDir.value
         if ctx.reporter.hasErrors then
-          throw StringDriverException("Errors encountered during compilation")
+          Some(StringDriverException("Errors encountered during compilation"))
 
         try
           val classpath = s"${ctx.settings.classpath.value}${pathsep}${sys.props("java.class.path")}"
@@ -34,12 +34,13 @@ class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Dri
           sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
           val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, classpathEntries, scalaSource)
           mainMethod.invoke(null, Array.empty[String])
+          None
         catch
           case e: java.lang.reflect.InvocationTargetException =>
             throw e.getCause
         finally
           deleteFile(outDir.toFile)
-      case None =>
+      case None => None
   end compileAndRun
 
 end StringDriver
