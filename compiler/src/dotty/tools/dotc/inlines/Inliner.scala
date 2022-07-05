@@ -275,12 +275,18 @@ class Inliner(val call: tpd.Tree)(using Context):
     // All needed this-proxies, paired-with and sorted-by nesting depth of
     // the classes they represent (innermost first)
     val sortedProxies = thisProxy.toList
-      .map((cls, proxy) => (cls.ownersIterator.length, proxy.symbol))
+      .map((cls, proxy) => (cls.ownersIterator.length, proxy.symbol, cls))
       .sortBy(-_._1)
 
+    def outerSelect(prefix: Symbol, prefixCls: Symbol, level: Int, info: Type) =
+      val tpt = TypeTree(adaptToPrefix(prefixCls.appliedRef))
+      val qual = Typed(ref(prefix), tpt)
+      qual.outerSelect(level, info)
+
     var lastSelf: Symbol = NoSymbol
+    var lastCls: Symbol = NoSymbol
     var lastLevel: Int = 0
-    for ((level, selfSym) <- sortedProxies) {
+    for ((level, selfSym, cls) <- sortedProxies) {
       val rhs = selfSym.info.dealias match
         case info: TermRef
         if info.isStable && (lastSelf.exists || isPureExpr(inlineCallPrefix)) =>
@@ -292,7 +298,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           if rhsClsSym.is(Module) && rhsClsSym.isStatic then
             ref(rhsClsSym.sourceModule)
           else if lastSelf.exists then
-            ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
+            outerSelect(lastSelf, lastCls, lastLevel - level, selfSym.info)
           else
             val pre = inlineCallPrefix match
               case Super(qual, _) => qual
@@ -307,6 +313,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
       lastSelf = selfSym
       lastLevel = level
+      lastCls = cls
     }
   }
 
@@ -417,6 +424,8 @@ class Inliner(val call: tpd.Tree)(using Context):
     || tpe.cls.is(Package)
     || tpe.cls.isStaticOwner && !(tpe.cls.seesOpaques && inlinedMethod.isContainedIn(tpe.cls))
 
+  private def adaptToPrefix(tp: Type) = tp.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
+
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
    *  1a. If given type refers to a static this, thisProxy binds it to corresponding global reference,
@@ -432,14 +441,11 @@ class Inliner(val call: tpd.Tree)(using Context):
   private def registerType(tpe: Type): Unit = tpe match {
     case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
-      def adaptToPrefix(tp: Type) = tp.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
       val proxyType = inlineCallPrefix.tpe.dealias.tryNormalize match {
         case typeMatchResult if typeMatchResult.exists => typeMatchResult
         case _ => adaptToPrefix(tpe).widenIfUnstable
       }
       thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
-      if (!tpe.cls.isStaticOwner)
-        registerType(inlinedMethod.owner.thisType) // make sure we have a base from which to outer-select
       for (param <- tpe.cls.typeParams)
         paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
     case tpe: NamedType
