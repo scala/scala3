@@ -105,7 +105,8 @@ would typecheck.
 
 Inline methods can be recursive. For instance, when called with a constant
 exponent `n`, the following method for `power` will be implemented by
-straight inline code without any loop or recursion.
+straight inline code without any loop or recursion. It is worth to note that the number of successive
+inlines is limited and can be modified by the compiler setting `-Xmax-inlines`.
 
 ```scala
 inline def power(x: Double, n: Int): Double =
