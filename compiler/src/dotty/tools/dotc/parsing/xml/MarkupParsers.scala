@@ -68,17 +68,18 @@ object MarkupParsers {
       if (ch == SU) throw TruncatedXMLControl
       else reportSyntaxError(msg)
 
-    var input : CharArrayReader = _
+    var input: CharArrayReader = _
     def lookahead(): BufferedIterator[Char] =
       (input.buf drop input.charOffset).iterator.buffered
 
     import parser.{ symbXMLBuilder => handle }
 
-    def curOffset : Int = input.charOffset - 1
-    var tmppos : Span = NoSpan
+    def curOffset: Int = input.lastCharOffset
+
+    var tmppos: Span = NoSpan
     def ch: Char = input.ch
     /** this method assign the next character to ch and advances in input */
-    def nextch(): Unit = { input.nextChar() }
+    def nextch(): Unit = input.nextChar()
 
     protected def ch_returning_nextch: Char = {
       val result = ch; input.nextChar(); result
@@ -166,10 +167,8 @@ object MarkupParsers {
       xTakeUntil(handle.charData, () => Span(start, curOffset, mid), "]]>")
     }
 
-    def xUnparsed: Tree = {
-      val start = curOffset
+    def xUnparsed(start: Int): Tree =
       xTakeUntil(handle.unparsed, () => Span(start, curOffset, start), "</xml:unparsed>")
-    }
 
     /** Comment ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
      *
@@ -273,7 +272,7 @@ object MarkupParsers {
      *                | xmlTag1 '/' '>'
      */
     def element: Tree = {
-      val start = curOffset
+      val start = curOffset - 1 // include <
       val (qname, attrMap) = xTag(())
       if (ch == '/') { // empty element
         xToken("/>")
@@ -282,7 +281,7 @@ object MarkupParsers {
       else { // handle content
         xToken('>')
         if (qname == "xml:unparsed")
-          return xUnparsed
+          return xUnparsed(start)
 
         debugLastStartElement = (start, qname) :: debugLastStartElement
         val ts = content
@@ -329,9 +328,9 @@ object MarkupParsers {
         case c @ TruncatedXMLControl  =>
           ifTruncated(c.getMessage)
         case c @ (MissingEndTagControl | ConfusedAboutBracesControl) =>
-          parser.syntaxError(c.getMessage + debugLastElem + ">", debugLastPos)
+          parser.syntaxError(s"${c.getMessage}${debugLastElem}>", debugLastPos)
         case _: ArrayIndexOutOfBoundsException =>
-          parser.syntaxError("missing end tag in XML literal for <%s>" format debugLastElem, debugLastPos)
+          parser.syntaxError(s"missing end tag in XML literal for <$debugLastElem>", debugLastPos)
       }
       finally parser.in.resume(saved)
 
@@ -342,14 +341,13 @@ object MarkupParsers {
     }
 
     /** Use a lookahead parser to run speculative body, and return the first char afterward. */
-    private def charComingAfter(body: => Unit): Char = {
+    private def charComingAfter(body: => Unit): Char =
       try {
         input = input.lookaheadReader()
         body
         ch
       }
       finally input = parser.in
-    }
 
     /** xLiteral = element { element }
      *  @return Scala representation of this xml literal
@@ -360,7 +358,7 @@ object MarkupParsers {
         handle.isPattern = false
 
         val ts = new ArrayBuffer[Tree]
-        val start = curOffset
+        val start = curOffset - 1 // include <, start == parser.in.offset
         tmppos = Span(curOffset)    // Iuli: added this line, as it seems content_LT uses tmppos when creating trees
         content_LT(ts)
 
@@ -431,7 +429,7 @@ object MarkupParsers {
      *                  | Name [S] '/' '>'
      */
     def xPattern: Tree = {
-      var start = curOffset
+      val start = curOffset - 1 // include <
       val qname = xName
       debugLastStartElement = (start, qname) :: debugLastStartElement
       xSpaceOpt()
