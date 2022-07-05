@@ -129,6 +129,10 @@ object ScaladocGeneration {
     def key: String = "-usejavacp"
   }
 
+  case class QuickLinks(value: List[String]) extends Arg[List[String]] {
+    def key: String = "-quick-links"
+  }
+
   import _root_.scala.reflect._
 
   trait GenerationConfig {

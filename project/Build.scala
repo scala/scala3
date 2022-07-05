@@ -1324,6 +1324,7 @@ object Build {
       val (dirs, files) = IO.listFiles(dir).toList.partition(_.isDirectory)
       val targetDir = (Compile / resourceManaged).value.toPath.resolve(unmanagedResources.toPath.relativize(dir.toPath)).toFile
       val bundleFile = targetDir / "bundle.css"
+      if (bundleFile.exists) bundleFile.delete()
       files.foreach(file => IO.append(bundleFile, IO.readBytes(file)))
       bundleFile :: dirs.flatMap(createBundle)
     }
@@ -1836,7 +1837,17 @@ object ScaladocConfigs {
       projectFooter,
       defaultTemplate,
       Author(true),
-      Groups(true)
+      Groups(true),
+      QuickLinks(
+        List(
+          "Download::https://www.scala-lang.org/download/",
+          "Documentation::https://docs.scala-lang.org/",
+          "Libraries::https://index.scala-lang.org",
+          "Contribute::https://www.scala-lang.org/contribute/",
+          "Blog::https://www.scala-lang.org/blog/",
+          "Community::https://www.scala-lang.org/community/"
+        )
+      )
     )
   }
 

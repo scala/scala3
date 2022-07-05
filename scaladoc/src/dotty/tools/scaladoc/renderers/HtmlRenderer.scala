@@ -208,37 +208,28 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         )
       }
 
+    def quickLinks(mobile: Boolean = false): TagArg =
+      val className = if mobile then "mobile-menu-item" else "text-button"
+      args.quickLinks.map { quickLink =>
+        a(href := quickLink.url, cls := className)(quickLink.text)
+      }
+
     div(id := "")(
       div(id := "header", cls := "body-small")(
         div(cls := "header-container-left")(
-          projectLogoElem.toSeq,
-          darkProjectLogoElem.toSeq,
-          span(cls := "project-name h300")(args.name),
+          a(href := pathToRoot(link.dri), cls := "logo-container")(
+            projectLogoElem.toSeq,
+            darkProjectLogoElem.toSeq,
+            span(cls := "project-name h300")(args.name)
+          ),
           span(onclick := "dropdownHandler(event)", cls := "text-button with-arrow", id := "dropdown-trigger")(
             a(args.projectVersion.map(v => div(cls:="projectVersion")(v)).toSeq),
           ),
           div(id := "version-dropdown", cls := "dropdown-menu") ()
         ),
          div(cls:="header-container-right")(
-            button(id := "search-toggle", cls := "icon-button"),
-            a(href := "https://www.scala-lang.org/download/", cls := "text-button") (
-              "Download",
-            ),
-            a(href := "https://docs.scala-lang.org/", cls := "text-button") (
-              "Documentation",
-            ),
-            a(href := "https://index.scala-lang.org", cls := "text-button") (
-              "Libraries",
-            ),
-            a(href := "https://www.scala-lang.org/contribute/", cls := "text-button") (
-              "Contribute",
-            ),
-            a(href := "https://www.scala-lang.org/contribute/", cls := "text-button") (
-              "Blog",
-            ),
-            a(href := "https://www.scala-lang.org/blog/", cls := "text-button") (
-              "Community",
-            ),
+          button(id := "search-toggle", cls := "icon-button"),
+          quickLinks(),
           span(id := "theme-toggle", cls := "icon-button"),
           span(id := "mobile-menu-toggle", cls := "icon-button hamburger"),
         ),
@@ -253,24 +244,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         ),
         div(cls := "mobile-menu-container body-medium")(
           input(id := "mobile-scaladoc-searchbar-input", cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything"),
-          a(href := "https://www.scala-lang.org/download/", cls := "mobile-menu-item") (
-            "Download",
-          ),
-          a(href := "https://docs.scala-lang.org/", cls := "mobile-menu-item") (
-            "Documentation",
-          ),
-          a(href := "https://index.scala-lang.org", cls := "mobile-menu-item") (
-            "Libraries",
-          ),
-          a(href := "https://www.scala-lang.org/contribute/", cls := "mobile-menu-item contribute") (
-            "Contribute",
-          ),
-          a(href := "https://www.scala-lang.org/contribute/", cls := "mobile-menu-item") (
-            "Blog",
-          ),
-          a(href := "https://www.scala-lang.org/blog/", cls := "mobile-menu-item") (
-            "Community",
-          ),
+          quickLinks(mobile = true),
           span(id := "mobile-theme-toggle", cls := "mobile-menu-item mode"),
         )
       ),
