@@ -12,6 +12,7 @@ import Phases._
 import Symbols._
 import Flags.Module
 import reporting.{ThrowingReporter, Profile}
+import typer.Nullables
 import collection.mutable
 import scala.concurrent.{Future, Await, ExecutionContext}
 import scala.concurrent.duration.Duration
@@ -60,13 +61,15 @@ class Pickler extends Phase {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
 
+    val typeSimplifier = new TypeSimplifyTransformer
+
     for
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
       tree <- sliceTopLevel(unit.tpdTree, cls)
     do
       val pickler = new TastyPickler(cls)
       if ctx.settings.YtestPickler.value then
-        beforePickling(cls) = tree.show
+        beforePickling(cls) = typeSimplifier.transform(tree).show
         picklers(cls) = pickler
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
@@ -134,8 +137,11 @@ class Pickler extends Phase {
         cls -> unpickler
       }
     pickling.println("************* entered toplevel ***********")
+
+    val typeSimplifier = new TypeSimplifyTransformer
+
     for ((cls, unpickler) <- unpicklers) {
-      val unpickled = unpickler.rootTrees
+      val unpickled = typeSimplifier.transform(unpickler.rootTrees)
       testSame(i"$unpickled%\n%", beforePickling(cls), cls)
     }
   }
@@ -151,4 +157,21 @@ class Pickler extends Phase {
                    |
                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
   end testSame
+
+  // Overwrite types of If, Match, and Try nodes with simplified types
+  // to avoid inconsistencies in unsafe nulls
+  class TypeSimplifyTransformer extends TreeMapWithPreciseStatContexts:
+    override def transform(tree: Tree)(using Context): Tree =
+      try tree match
+        case _: If | _: Match | _: Try if Nullables.unsafeNullsEnabled =>
+          val newTree = super.transform(tree)
+          newTree.overwriteType(newTree.tpe.simplified)
+          newTree
+        case _ =>
+          super.transform(tree)
+      catch
+        case ex: TypeError =>
+          report.error(ex, tree.srcPos)
+          tree
+  end TypeSimplifyTransformer
 }

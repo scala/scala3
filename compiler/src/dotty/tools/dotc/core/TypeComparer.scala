@@ -2141,7 +2141,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @note  We do not admit singleton types in or-types as lubs.
    */
   def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false, isSoft: Boolean = true): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain, isSoft=$isSoft)", subtyping, show = true) /*<|<*/ {
-    if tp1 eq tp2 then tp1
+    if (tp1 eq tp2) tp1
     else if !tp1.exists || (tp2 eq WildcardType) then tp1
     else if !tp2.exists || (tp1 eq WildcardType) then tp2
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp1
@@ -2157,19 +2157,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 if (hi1 & hi2).isEmpty then return orType(tp1, tp2)
               case none =>
           case none =>
-
-        // Simplifying the super type is important to avoid
-        // inconsistant result in union type.
         val t1 = mergeIfSuper(tp1, tp2, canConstrain)
-        if t1.exists then return t1.simplified
+        if (t1.exists) return t1
 
         val t2 = mergeIfSuper(tp2, tp1, canConstrain)
-        if t2.exists then return t2.simplified
+        if (t2.exists) return t2
 
-        def widen(tp: Type) = if widenInUnions then tp.widen else tp.widenIfUnstable
+        def widen(tp: Type) = if (widenInUnions) tp.widen else tp.widenIfUnstable
         val tp1w = widen(tp1)
         val tp2w = widen(tp2)
-        if (tp1 ne tp1w) || (tp2 ne tp2w) then lub(tp1w, tp2w, canConstrain = canConstrain, isSoft = isSoft)
+        if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w, canConstrain = canConstrain, isSoft = isSoft)
         else orType(tp1w, tp2w, isSoft = isSoft) // no need to check subtypes again
       }
       mergedLub(tp1.stripLazyRef, tp2.stripLazyRef)
