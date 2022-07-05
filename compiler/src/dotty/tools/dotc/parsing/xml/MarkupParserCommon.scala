@@ -232,7 +232,7 @@ private[dotty] trait MarkupParserCommon {
     val rest = until.tail
 
     while (true) {
-      if (ch == head && peek(rest))
+      if ch == head && peek(rest) then
         return handler(positioner(), sb.toString)
       else if (ch == SU)
         truncatedError("")  // throws TruncatedXMLControl in compiler

@@ -68,17 +68,18 @@ object MarkupParsers {
       if (ch == SU) throw TruncatedXMLControl
       else reportSyntaxError(msg)
 
-    var input : CharArrayReader = _
+    var input: CharArrayReader = _
     def lookahead(): BufferedIterator[Char] =
       (input.buf drop input.charOffset).iterator.buffered
 
     import parser.{ symbXMLBuilder => handle }
 
-    def curOffset : Int = input.charOffset - 1
-    var tmppos : Span = NoSpan
+    def curOffset: Int = input.lastCharOffset
+
+    var tmppos: Span = NoSpan
     def ch: Char = input.ch
     /** this method assign the next character to ch and advances in input */
-    def nextch(): Unit = { input.nextChar() }
+    def nextch(): Unit = input.nextChar()
 
     protected def ch_returning_nextch: Char = {
       val result = ch; input.nextChar(); result
@@ -329,9 +330,9 @@ object MarkupParsers {
         case c @ TruncatedXMLControl  =>
           ifTruncated(c.getMessage)
         case c @ (MissingEndTagControl | ConfusedAboutBracesControl) =>
-          parser.syntaxError(c.getMessage + debugLastElem + ">", debugLastPos)
+          parser.syntaxError(s"${c.getMessage}$debugLastElem>", debugLastPos)
         case _: ArrayIndexOutOfBoundsException =>
-          parser.syntaxError("missing end tag in XML literal for <%s>" format debugLastElem, debugLastPos)
+          parser.syntaxError(s"missing end tag in XML literal for <$debugLastElem>", debugLastPos)
       }
       finally parser.in.resume(saved)
 
@@ -342,14 +343,13 @@ object MarkupParsers {
     }
 
     /** Use a lookahead parser to run speculative body, and return the first char afterward. */
-    private def charComingAfter(body: => Unit): Char = {
+    private def charComingAfter(body: => Unit): Char =
       try {
         input = input.lookaheadReader()
         body
         ch
       }
       finally input = parser.in
-    }
 
     /** xLiteral = element { element }
      *  @return Scala representation of this xml literal
