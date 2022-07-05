@@ -409,15 +409,17 @@ object Inferencing {
     Stats.record("maximizeType")
     val vs = variances(tp)
     val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
-    val gadtBounds = ctx.gadt.symbols.map(ctx.gadt.bounds(_).nn)
+    val gadtVariances = ctx.gadt.symbols.map(sym => variances(ctx.gadt.bounds(sym).nn))
     vs foreachBinding { (tvar, v) =>
       if !tvar.isInstantiated then
         // if the tvar is covariant/contravariant (v == 1/-1, respectively) in the input type tp
-        // then check the tvar doesn't occur in the opposite GADT bound (lower/upper) within any of the GADT bounds
-        // if it doesn't occur then it's safe to instantiate the tvar
-        // Eg neg/i14983 the C in Node[+C] is in the GADT lower bound X >: List[C] so maximising to Node[Any] is unsound
-        // Eg pos/precise-pattern-type the T in Tree[-T] is in no GADT upper bound so can maximise to Tree[Type]
-        val safeToInstantiate = v != 0 && gadtBounds.forall(tb => !tvar.occursIn(if v == 1 then tb.lo else tb.hi))
+        // then it is safe to instantiate if it has the same variance within the GADT bounds.
+        // Eg neg/i14983 the C in Node[+C] differs in variance to the GADT bound X >: List[C] so maximising to Node[Any] is unsound
+        // Eg pos/precise-pattern-type the T in Tree[-T] is in no GADT bound so can maximise to Tree[Type]
+        val safeToInstantiate = v != 0 && gadtVariances.forall { vmap =>
+          val v2 = vmap(tvar)
+          v2 == null || v2 == v
+        }
         if safeToInstantiate then tvar.instantiate(fromBelow = v == -1)
         else {
           val bounds = TypeComparer.fullBounds(tvar.origin)
