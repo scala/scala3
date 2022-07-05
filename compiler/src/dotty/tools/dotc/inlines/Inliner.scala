@@ -278,10 +278,10 @@ class Inliner(val call: tpd.Tree)(using Context):
       .map((cls, proxy) => (cls.ownersIterator.length, proxy.symbol, cls))
       .sortBy(-_._1)
 
-    def outerSelect(prefix: Symbol, prefixCls: Symbol, level: Int, info: Type) =
+    def outerSelect(prefix: Tree, prefixCls: Symbol, hops: Int, info: Type) =
       val tpt = TypeTree(adaptToPrefix(prefixCls.appliedRef))
-      val qual = Typed(ref(prefix), tpt)
-      qual.outerSelect(level, info)
+      val qual = Typed(prefix, tpt)
+      qual.outerSelect(hops, info)
 
     var lastSelf: Symbol = NoSymbol
     var lastCls: Symbol = NoSymbol
@@ -298,13 +298,13 @@ class Inliner(val call: tpd.Tree)(using Context):
           if rhsClsSym.is(Module) && rhsClsSym.isStatic then
             ref(rhsClsSym.sourceModule)
           else if lastSelf.exists then
-            outerSelect(lastSelf, lastCls, lastLevel - level, selfSym.info)
+            outerSelect(ref(lastSelf), lastCls, lastLevel - level, selfSym.info)
           else
             val pre = inlineCallPrefix match
               case Super(qual, _) => qual
               case pre => pre
             val preLevel = inlinedMethod.owner.ownersIterator.length
-            if preLevel > level then pre.outerSelect(preLevel - level, selfSym.info)
+            if preLevel > level then outerSelect(pre, inlinedMethod.owner, preLevel - level, selfSym.info)
             else pre
 
       val binding = accountForOpaques(
