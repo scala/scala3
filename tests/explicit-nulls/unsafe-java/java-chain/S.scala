@@ -1,4 +1,4 @@
-import scala.language.unsafeJavaReturn
+import scala.language.experimental.unsafeJavaReturn
 
 def f = {
   val j: J2 = new J2()

@@ -18,4 +18,5 @@ package scala.annotation
  *  ss.map(_ == null)
  *  ```
  */
+@experimental
 final class CanEqualNull extends RefiningAnnotation

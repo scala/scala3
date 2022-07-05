@@ -368,7 +368,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if ctx.settings.YexplicitNulls.value then
       if !Feature.enabledBySetting(nme.unsafeNulls) then
         start = start.addMode(Mode.SafeNulls)
-      if Feature.enabledBySetting(nme.unsafeJavaReturn) then
+      if Feature.enabledBySetting(Feature.unsafeJavaReturn) then
         start = start.addMode(Mode.UnsafeJavaReturn)
     ctx.initialize()(using start) // re-initialize the base context with start
 

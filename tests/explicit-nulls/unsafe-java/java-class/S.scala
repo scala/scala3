@@ -1,4 +1,4 @@
-import scala.language.unsafeJavaReturn
+import scala.language.experimental.unsafeJavaReturn
 
 import scala.annotation.CanEqualNull
 import java.{util => ju}

@@ -1,4 +1,4 @@
-import scala.language.unsafeJavaReturn
+import scala.language.experimental.unsafeJavaReturn
 
 import java.lang.reflect.Method
 

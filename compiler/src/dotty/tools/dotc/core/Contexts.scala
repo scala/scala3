@@ -26,6 +26,7 @@ import scala.io.Codec
 import collection.mutable
 import printing._
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
+import config.Feature
 import classfile.ReusableDataReader
 import StdNames.nme
 
@@ -649,7 +650,7 @@ object Contexts {
           case Some(false)  =>
             setMode(this.mode | Mode.SafeNulls)
           case _ =>
-        importInfo.mentionsFeature(nme.unsafeJavaReturn) match
+        importInfo.mentionsFeature(Feature.unsafeJavaReturn) match
           case Some(true) =>
             setMode(this.mode | Mode.UnsafeJavaReturn)
           case Some(false) =>

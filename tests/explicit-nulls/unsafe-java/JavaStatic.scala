@@ -1,4 +1,4 @@
-import language.unsafeJavaReturn
+import language.experimental.unsafeJavaReturn
 
 import java.math.MathContext, MathContext._
 
