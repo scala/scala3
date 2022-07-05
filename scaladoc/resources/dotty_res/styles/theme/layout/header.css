@@ -5,7 +5,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: calc(1.75 * var(--base-spacing)) calc(3 * var(--base-spacing));
+  padding: calc(2 * var(--base-spacing)) calc(3 * var(--base-spacing));
   position: absolute;
   height: var(--header-height);
   left: 0px;

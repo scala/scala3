@@ -84,6 +84,7 @@ a:active {
   text-decoration: none;
   margin-bottom: calc(1 * var(--base-spacing));
   display: inline-block;
+  border-bottom: none;
 }
 
 .text-button.with-link::after {
