@@ -165,13 +165,15 @@
   border-bottom: 1px solid var(--text-secondary);
 }
 
-#content .cover-header a, #content .cover-header a:hover {
+#content .cover-header a,
+#content .cover-header a:hover {
   border-bottom: none;
 }
 
 #content :not(pre) > code {
   color: var(--code-props-content);
   font-family: "FiraCode-Regular";
+  background-color: var(--red3);
 }
 
 .breadcrumbs {

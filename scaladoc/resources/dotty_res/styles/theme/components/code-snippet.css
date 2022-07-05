@@ -8,6 +8,8 @@
   border: 1px solid transparent;
   color: var(--text-primary);
   overflow-x: scroll;
+  margin-bottom: calc(3 * var(--base-spacing));
+  margin-top: calc(3 * var(--base-spacing));
 }
 
 .snippet pre {
