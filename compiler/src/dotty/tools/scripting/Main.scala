@@ -36,21 +36,18 @@ object Main:
   def main(args: Array[String]): Unit =
     val (compilerArgs, scriptFile, scriptArgs, saveJar, invokeFlag) = distinguishArgs(args)
     val driver = ScriptingDriver(compilerArgs, scriptFile, scriptArgs)
-    try driver.compileAndRun { (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
+    driver.compileAndRun { (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
       // write expanded classpath to java.class.path property, so called script can see it
       sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
       if saveJar then
         // write a standalone jar to the script parent directory
         writeJarfile(outDir, scriptFile, scriptArgs, classpathEntries, mainClass)
       invokeFlag
-    }
-    catch
-      case ScriptingException(msg) =>
-        println(s"Error: $msg")
+    } match
+      case Some(ex) =>
+        println(ex.getMessage)
         sys.exit(1)
-
-      case e: java.lang.reflect.InvocationTargetException =>
-        throw e.getCause
+      case _ =>
 
   private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
       classpathEntries:Seq[Path], mainClassName: String): Unit =

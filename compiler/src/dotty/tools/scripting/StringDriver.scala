@@ -27,19 +27,21 @@ class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Dri
         val output = ctx.settings.outputDir.value
         if ctx.reporter.hasErrors then
           Some(StringDriverException("Errors encountered during compilation"))
-
-        try
-          val classpath = s"${ctx.settings.classpath.value}${pathsep}${sys.props("java.class.path")}"
-          val classpathEntries: Seq[Path] = ClassPath.expandPath(classpath, expandStar=true).map { Paths.get(_) }
-          sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
-          val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, classpathEntries, scalaSource)
-          mainMethod.invoke(null, Array.empty[String])
-          None
-        catch
-          case e: java.lang.reflect.InvocationTargetException =>
-            throw e.getCause
-        finally
-          deleteFile(outDir.toFile)
+        else
+          try
+            val classpath = s"${ctx.settings.classpath.value}${pathsep}${sys.props("java.class.path")}"
+            val classpathEntries: Seq[Path] = ClassPath.expandPath(classpath, expandStar=true).map { Paths.get(_) }
+            sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
+            detectMainClassAndMethod(outDir, classpathEntries, scalaSource) match
+              case Right((mainClass, mainMethod)) =>
+                mainMethod.invoke(null, Array.empty[String])
+                None
+              case Left(ex) => Some(ex)
+          catch
+            case e: java.lang.reflect.InvocationTargetException =>
+              throw e.getCause
+          finally
+            deleteFile(outDir.toFile)
       case None => None
   end compileAndRun
 
