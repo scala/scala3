@@ -408,3 +408,7 @@
 #content section {
   margin-top: calc(6 * var(--base-spacing));
 }
+
+#content section:last-child {
+  margin-bottom: calc(6 * var(--base-spacing));
+}

@@ -21,6 +21,7 @@
 
 #content .content-contributors .contributors-container div a {
   text-decoration: none;
+  border-bottom: none;
 }
 
 .content-contributors .contributors-container {
