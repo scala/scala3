@@ -1515,8 +1515,7 @@ object Semantic:
             resolveThis(target, thisV, cur)
 
           case None =>
-            // TODO: use error once we fix https://github.com/lampepfl/dotty/issues/15465
-            report.warning("[Internal error] unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
+            report.error("[Internal error] unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
             Cold
 
       case RefSet(refs) =>
