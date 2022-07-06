@@ -779,8 +779,8 @@ object Semantic:
               if tryReporter.errors.nonEmpty && isSyntheticApply(meth) then
                 tryReporter.abort()
                 val klass = meth.owner.companionClass.asClass
-                val outerCls = klass.owner.lexicallyEnclosingClass.asClass
-                val outer = resolveOuterSelect(outerCls, ref, 1)
+                val targetCls = klass.owner.lexicallyEnclosingClass.asClass
+                val outer = resolveThis(targetCls, ref, meth.owner.asClass)
                 outer.instantiate(klass, klass.primaryConstructor, args)
               else
                 reporter.reportAll(tryReporter.errors)
@@ -1322,9 +1322,12 @@ object Semantic:
         val qual = eval(qualifier, thisV, klass)
 
         name match
-          case OuterSelectName(_, hops) =>
-            val SkolemType(tp) = expr.tpe: @unchecked
-            withTrace(trace2) { resolveOuterSelect(tp.classSymbol.asClass, qual, hops) }
+          case OuterSelectName(_, _) =>
+            val current = qualifier.tpe.classSymbol
+            val target = expr.tpe.widenSingleton.classSymbol.asClass
+            withTrace(trace2) {
+              resolveThis(target, qual, current.asClass)
+            }
           case _ =>
             withTrace(trace2) { qual.select(expr.symbol) }
 
@@ -1491,41 +1494,6 @@ object Semantic:
           Cold
         case Cold => Cold
 
-  }
-
-  /** Resolve outer select introduced during inlining.
-   *
-   *  See `tpd.outerSelect` and `ElimOuterSelect`.
-   */
-  def resolveOuterSelect(target: ClassSymbol, thisV: Value, hops: Int): Contextual[Value] = log("resolving outer " + target.show + ", this = " + thisV.show + ", hops = " + hops, printer, (_: Value).show) {
-    // Is `target` reachable from `cls` with the given `hops`?
-    def reachable(cls: ClassSymbol, hops: Int): Boolean = log("reachable from " + cls + " -> " + target + " in " + hops, printer) {
-      if hops == 0 then cls == target
-      else reachable(cls.owner.lexicallyEnclosingClass.asClass, hops - 1)
-    }
-
-    thisV match
-      case Hot => Hot
-
-      case ref: Ref =>
-        val obj = ref.objekt
-        val curOpt = obj.klass.baseClasses.find(cls => reachable(cls, hops))
-        curOpt match
-          case Some(cur) =>
-            resolveThis(target, thisV, cur)
-
-          case None =>
-            report.error("[Internal error] unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
-            Cold
-
-      case RefSet(refs) =>
-        refs.map(ref => resolveOuterSelect(target, ref, hops)).join
-
-      case fun: Fun =>
-        report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, trace.toVector.last.srcPos)
-        Cold
-
-      case Cold => Cold
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
