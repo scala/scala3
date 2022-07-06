@@ -608,6 +608,8 @@ jobs:
         run: .github/workflows/scripts/triggerUnmanagedCommunityBuild.sh "${{ secrets.BUILD_TOKEN }}" "$THISBUILD_VERSION"
 
   publish_release:
+    permissions:
+      contents: write  # for actions/create-release to create a release
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2021-03-22
