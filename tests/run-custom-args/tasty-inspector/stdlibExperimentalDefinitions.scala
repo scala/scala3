@@ -51,7 +51,6 @@ val experimentalDefinitionInLibrary = Set(
   // Needs user feedback.
   // This annotation makes it possible to use `==` and `!=` to compare reference types and null in explicit nulls.
   "scala.annotation.CanEqualNull",
-  "scala.annotation.CanEqualNull$",
 
   //// New APIs: Mirror
   // Can be stabilized in 3.3.0 or later.
