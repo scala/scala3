@@ -431,7 +431,7 @@ object MarkupParsers {
      *                  | Name [S] '/' '>'
      */
     def xPattern: Tree = {
-      var start = curOffset
+      val start = curOffset
       val qname = xName
       debugLastStartElement = (start, qname) :: debugLastStartElement
       xSpaceOpt()
