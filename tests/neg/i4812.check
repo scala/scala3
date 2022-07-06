@@ -1,0 +1,28 @@
+-- Error: tests/neg/i4812.scala:8:11 -----------------------------------------------------------------------------------
+8 |      case prev: A => // error: the type test for A cannot be checked at runtime
+  |           ^
+  |           the type test for A cannot be checked at runtime
+-- Error: tests/neg/i4812.scala:18:11 ----------------------------------------------------------------------------------
+18 |      case prev: A => // error: the type test for A cannot be checked at runtime
+   |           ^
+   |           the type test for A cannot be checked at runtime
+-- Error: tests/neg/i4812.scala:28:11 ----------------------------------------------------------------------------------
+28 |      case prev: A => // error: the type test for A cannot be checked at runtime
+   |           ^
+   |           the type test for A cannot be checked at runtime
+-- Error: tests/neg/i4812.scala:38:11 ----------------------------------------------------------------------------------
+38 |      case prev: A => // error: the type test for A cannot be checked at runtime
+   |           ^
+   |           the type test for A cannot be checked at runtime
+-- Error: tests/neg/i4812.scala:50:13 ----------------------------------------------------------------------------------
+50 |        case prev: A => // error: the type test for A cannot be checked at runtime
+   |             ^
+   |             the type test for A cannot be checked at runtime
+-- Error: tests/neg/i4812.scala:60:11 ----------------------------------------------------------------------------------
+60 |      case prev: A => // error: the type test for A cannot be checked at runtime
+   |           ^
+   |           the type test for A cannot be checked at runtime
+-- Error: tests/neg/i4812.scala:96:11 ----------------------------------------------------------------------------------
+96 |      case x: B => // error: the type test for B cannot be checked at runtime
+   |           ^
+   |           the type test for B cannot be checked at runtime
