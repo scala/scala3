@@ -512,7 +512,7 @@ object TypeOps:
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) =
         val sym = tp.symbol
-        !sym.isStatic && forbidden.contains(sym)
+        forbidden.contains(sym)
 
       override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
