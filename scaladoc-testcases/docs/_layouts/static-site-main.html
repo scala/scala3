@@ -1,36 +1,34 @@
 ---
-layout: main
+extraJS:
+  - js/contributors.js
+extraCSS:
+  - css/bootstrap.min.css
+  - css/content-contributors.css
 ---
 
-<div class="site-container">
-  <div id="site-header"></div>
+<div class="container">
   {{ content }}
-  <div class="divider" />
-  <nav class="arrow-navigation" aria-label="Page navigation">
+  <nav class="arrows-wrapper" aria-label="Page navigation">
     {% if page.previous %}
-    <div>
-      <span class="body-small">Previous</span>
-      <a
-        rel="prev"
-        href="{{ page.previous.url }}"
-        aria-keyshortcuts="Left"
-        class="body-medium"
-      >
-        <span class="body-medium">{{ page.previous.title }}</span>
-      </a>
-    </div>
+    <a
+      rel="prev"
+      href="{{ page.previous.url }}"
+      class="arrows previous"
+      aria-keyshortcuts="Left"
+    >
+      <span>{{ page.previous.title }}</span>
+      <i class="fa fa-angle-left"></i>
+    </a>
     {% endif %} {% if page.next %}
-    <div>
-      <span class="body-small">Next</span>
-      <a
-        rel="next"
-        href="{{ page.next.url }}"
-        aria-keyshortcuts="Right"
-        class="body-medium"
-      >
-        <span class="body-medium">{{ page.next.title }}</span>
-      </a>
-    </div>
+    <a
+      rel="next"
+      href="{{ page.next.url }}"
+      class="arrows next"
+      aria-keyshortcuts="Right"
+    >
+      <span>{{ page.next.title }}</span>
+      <i class="fa fa-angle-right"></i>
+    </a>
     {% endif %}
   </nav>
   <div class="content-contributors hidden">

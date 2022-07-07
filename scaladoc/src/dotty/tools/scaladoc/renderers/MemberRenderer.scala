@@ -125,7 +125,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Option.when(bodyContents.nonEmpty || attributes.nonEmpty)(
         div(cls := "cover")(
           div(cls := "doc")(bodyContents),
-          h1(cls := "h500")("Attributes"),
+          h2(cls := "h500")("Attributes"),
           dl(cls := "attributes")(attributes*)
         )
       )
@@ -327,7 +327,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       }.toSeq
 
     div(cls := "membersList expand")(
-    h1(cls := "h500")("Members list"),
+    h2(cls := "h500")("Members list"),
     renderTabs(
       singleSelection = false,
       buildGroup("Packages", Seq(
