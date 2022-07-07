@@ -363,27 +363,27 @@
   margin-bottom: calc(3 * var(--base-spacing));
 }
 
-.membersList {
+.tab {
   position: relative;
 }
 
-.membersList h2 {
+.tab h2 {
   border-bottom: 1px solid var(--border-default);
   padding-bottom: calc(3 * var(--base-spacing));
   padding-top: calc(3 * var(--base-spacing));
 }
 
-.membersList > button {
+.tab > button {
   position: absolute;
   right: 0;
   top: calc(3.5 * var(--base-spacing));
 }
 
-.membersList .documentableList {
+.tab .documentableList {
   display: none;
 }
 
-.membersList.expand .documentableList {
+.tab.expand .documentableList {
   display: block;
 }
 
