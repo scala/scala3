@@ -150,6 +150,11 @@
   color: var(--text-primary);
 }
 
+/* content first paragraph */
+#content .first-p {
+  color: var(--text-secondary);
+}
+
 /* content list */
 #content li {
   color: var(--text-primary);

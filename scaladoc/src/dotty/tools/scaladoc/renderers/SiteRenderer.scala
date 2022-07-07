@@ -78,6 +78,10 @@ trait SiteRenderer(using DocContext) extends Locations:
         }
       }
 
+    document.select("header + p").forEach(firstParagraph =>
+      firstParagraph.addClass("body-large")
+      firstParagraph.addClass("first-p")
+    )
     document.select("a").forEach(element =>
       element.attr("href", processLocalLinkWithGuard(element.attr("href")))
     )
