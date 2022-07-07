@@ -3385,22 +3385,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  If all this fails, error
    *  Parameters as for `typedUnadapted`.
    */
-  def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean = true)(using Context): Tree =
+  def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
     try
-      trace(i"adapting $tree to $pt ${if (tryGadtHealing) "" else "(tryGadtHealing=false)" }", typr, show = true) {
+      trace(i"adapting $tree to $pt", typr, show = true) {
         record("adapt")
-        adapt1(tree, pt, locked, tryGadtHealing)
+        adapt1(tree, pt, locked)
       }
     catch case ex: TypeError => errorTree(tree, ex, tree.srcPos.focus)
 
   final def adapt(tree: Tree, pt: Type)(using Context): Tree =
     adapt(tree, pt, ctx.typerState.ownedVars)
 
-  private def adapt1(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree = {
+  private def adapt1(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
     assert(pt.exists && !pt.isInstanceOf[ExprType] || ctx.reporter.errorsReported)
     def methodStr = err.refStr(methPart(tree).tpe)
 
-    def readapt(tree: Tree, shouldTryGadtHealing: Boolean = tryGadtHealing)(using Context) = adapt(tree, pt, locked, shouldTryGadtHealing)
+    def readapt(tree: Tree)(using Context) = adapt(tree, pt, locked)
     def readaptSimplified(tree: Tree)(using Context) = readapt(simplify(tree, pt, locked))
 
     def missingArgs(mt: MethodType) =
