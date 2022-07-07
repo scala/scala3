@@ -43,5 +43,12 @@ layout: main
   <div class="content-contributors hidden">
     <h1 class="h200">Contributors to this page</h1>
     <div id="documentation-contributors" class="contributors-container"></div>
+    {% if urls.editSource %}
+    <div class="github-edit-button">
+      <a class="text-button with-link body-small" href="{{ urls.editSource }}">
+        Edit this page on GitHub
+      </a>
+    </div>
+    {% endif %}
   </div>
 </div>
