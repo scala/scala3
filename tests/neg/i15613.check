@@ -1,0 +1,41 @@
+-- Error: tests/neg/i15613.scala:11:12 ---------------------------------------------------------------------------------
+11 |def test = f(X) // error
+   |            ^
+   |            No given instance of type T was found for parameter x$1 of method f
+   |            (Supplied arguments may be missing keyword `using`.)
+-- Error: tests/neg/i15613.scala:13:18 ---------------------------------------------------------------------------------
+13 |def noTypeTest = f(42) // error
+   |                  ^
+   |                  No given instance of type T was found for parameter x$1 of method f
+   |                  (Supplied arguments may be missing keyword `using`.)
+-- Error: tests/neg/i15613.scala:15:18 ---------------------------------------------------------------------------------
+15 |def plainWrong = f() // error no addendum
+   |                  ^
+   |                  No given instance of type T was found for parameter x$1 of method f
+-- Error: tests/neg/i15613.scala:19:28 ---------------------------------------------------------------------------------
+19 |def noTypeTestIsAnnoying = g(42) // error
+   |                            ^
+   |                            No given instance of type T was found for parameter x$1 of method g
+   |                            (Supplied arguments may be missing keyword `using`.)
+-- Error: tests/neg/i15613.scala:21:17 ---------------------------------------------------------------------------------
+21 |def testCount = f(42, 27) // error no addendum
+   |                 ^
+   |                 No given instance of type T was found for parameter x$1 of method f
+-- Error: tests/neg/i15613.scala:25:21 ---------------------------------------------------------------------------------
+25 |def testMulti = multi(X, 42) // error
+   |                     ^
+   |                     No given instance of type T was found for parameter x$1 of method multi
+   |                     (Supplied arguments may be missing keyword `using`.)
+-- Error: tests/neg/i15613.scala:27:24 ---------------------------------------------------------------------------------
+27 |def testBadMulti = multi(X, 42, 27) // error no addendum
+   |                        ^
+   |                        No given instance of type T was found for parameter x$1 of method multi
+-- Error: tests/neg/i15613.scala:31:31 ---------------------------------------------------------------------------------
+31 |def testWithMessage = u[String] // error no addendum
+   |                               ^
+   |                               No U[String]!
+-- Error: tests/neg/i15613.scala:33:43 ---------------------------------------------------------------------------------
+33 |def testWithMessageWithAddendum = u[String](42) // error with addendum
+   |                                           ^
+   |                                           No U[String]!
+   |                                           (Supplied arguments may be missing keyword `using`.)

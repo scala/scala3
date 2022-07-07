@@ -890,7 +890,8 @@ trait Implicits:
     arg: Tree,
     pt: Type,
     where: String,
-    paramSymWithMethodCallTree: Option[(Symbol, Tree)] = None
+    paramSymWithMethodCallTree: Option[(Symbol, Tree)] = None,
+    missingUsing: String = "",
   )(using Context): String = {
     def findHiddenImplicitsCtx(c: Context): Context =
       if c == NoContext then c
@@ -914,7 +915,7 @@ trait Implicits:
           // example where searching for a nested type causes an infinite loop.
           None
 
-    val error = new ImplicitSearchError(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, importSuggestionAddendum(pt))
+    val error = new ImplicitSearchError(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, importSuggestionAddendum(pt), missingUsing)
     error.missingArgMsg
   }
 

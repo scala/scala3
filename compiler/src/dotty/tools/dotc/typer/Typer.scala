@@ -3575,12 +3575,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 .map((_, tree))
             else
               None
-
+          def missingUsing = pt match
+            case pt: FunProto if wtp.isContextualMethod && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty && pt.args.length == wtp.paramNames.length =>
+              "\n(Supplied arguments may be missing keyword `using`.)"
+            case _ => ""
           wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach { (paramName, formal, arg) =>
             arg.tpe match {
               case failure: SearchFailureType =>
                 report.error(
-                  missingArgMsg(arg, formal, implicitParamString(paramName, methodStr, tree), paramSymWithMethodTree(paramName)),
+                  missingArgMsg(arg, formal, implicitParamString(paramName, methodStr, tree), paramSymWithMethodTree(paramName), missingUsing),
                   tree.srcPos.endPos
                 )
               case _ =>

@@ -235,7 +235,8 @@ class ImplicitSearchError(
   where: String,
   paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
   ignoredInstanceNormalImport: => Option[SearchSuccess],
-  importSuggestionAddendum: => String
+  importSuggestionAddendum: => String,
+  missingUsing: String,
 )(using ctx: Context) {
 
   def missingArgMsg = arg.tpe match {
@@ -254,6 +255,7 @@ class ImplicitSearchError(
         .getOrElse(defaultImplicitNotFoundMessage)
       formatMsg(shortMessage)()
       ++ hiddenImplicitsAddendum
+      ++ missingUsing
       ++ ErrorReporting.matchReductionAddendum(pt)
   }
 
