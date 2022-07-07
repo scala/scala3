@@ -239,6 +239,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           span(cls := "mobile-menu-logo")(
             projectLogoElem.toSeq,
             darkProjectLogoElem.toSeq,
+            span(cls := "project-name h300")(args.name)
           ),
           button(id := "mobile-menu-close", cls := "icon-button close"),
         ),

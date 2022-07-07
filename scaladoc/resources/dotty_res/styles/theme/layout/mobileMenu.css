@@ -13,15 +13,25 @@
   display: block;
 }
 
+#mobile-menu .project-name {
+  color: var(--text-primary);
+}
+
 .mobile-menu-header {
   align-items: center;
 }
 
 .mobile-menu-logo {
   opacity: 0.5;
+  display: flex;
+  align-items: center;
 }
 
-@media(min-width: 768px){
+.mobile-menu-logo .project-name {
+  margin-left: calc(2 * var(--base-spacing));
+}
+
+@media (min-width: 768px) {
   #mobile-menu {
     display: none;
   }
@@ -67,11 +77,11 @@
 }
 
 .mobile-menu-item.mode::after {
-  content: "Dark mode"
+  content: "Dark mode";
 }
 
 .theme-dark .mobile-menu-item.mode::after {
-  content: "Light mode"
+  content: "Light mode";
 }
 
 /* contribute item dark */
@@ -203,5 +213,5 @@
 #mobile-scaladoc-searchbar-input {
   height: calc(4.5 * var(--base-spacing));
   background-position: 10px 10px;
-  margin-bottom: calc(1.5 * var(--base-spacing));;
+  margin-bottom: calc(1.5 * var(--base-spacing));
 }
