@@ -64,6 +64,9 @@
   --code-syntax-highlighting-deletion: var(--crimson11);
   --code-syntax-highlighting-variable: var(--purple9);
 
+  --code-syntax-highlighting-scrollbar: var(--grey8);
+  --code-syntax-highlighting-scrollbar-hover: var(--grey9);
+
   --code-method-highlighting-type: var(--purple9);
   --code-method-highlighting-type-link: var(--sky11);
   --code-method-highlighting-code-fg: var(--grey12);
@@ -141,6 +144,9 @@
   --code-syntax-highlighting-addition: var(--grass9);
   --code-syntax-highlighting-deletion: var(--crimson11);
   --code-syntax-highlighting-variable: var(--purple9);
+
+  --code-syntax-highlighting-scrollbar: var(--grey8);
+  --code-syntax-highlighting-scrollbar-hover: var(--grey9);
 
   --code-method-highlighting-type: var(--purple9);
   --code-method-highlighting-type-link: var(--sky11);
