@@ -8,6 +8,8 @@
   border: 1px solid transparent;
   color: var(--text-primary);
   overflow-x: scroll;
+  margin-bottom: calc(3 * var(--base-spacing));
+  margin-top: calc(3 * var(--base-spacing));
 }
 
 .snippet pre {
@@ -164,4 +166,28 @@
 
 .hljs-variable {
   color: var(--code-syntax-highlighting-variable);
+}
+
+/* Scrollbar */
+
+/*   For Firefox */
+.snippet {
+  scrollbar-color: var(--code-syntax-highlighting-scrollbar);
+  scrollbar-width: thin;
+}
+
+/*   For Chrome */
+
+.snippet::-webkit-scrollbar-thumb {
+  background-color: var(--code-syntax-highlighting-scrollbar);
+  border-radius: 3px;
+}
+
+.snippet::-webkit-scrollbar-thumb:hover {
+  background-color: var(--code-syntax-highlighting-scrollbar-hover);
+}
+
+.snippet::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }

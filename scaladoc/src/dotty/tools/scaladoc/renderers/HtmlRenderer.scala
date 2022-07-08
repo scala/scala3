@@ -239,6 +239,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           span(cls := "mobile-menu-logo")(
             projectLogoElem.toSeq,
             darkProjectLogoElem.toSeq,
+            span(cls := "project-name h300")(args.name)
           ),
           button(id := "mobile-menu-close", cls := "icon-button close"),
         ),
@@ -252,14 +253,14 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       div(id := "leftColumn", cls := "body-small")(
         Seq(
           div(cls:= "switcher-container")(
-            apiNavOpt match {
-              case Some(isApiActive, apiNav) =>
-                Seq(a(id := "api-nav-button", cls:= s"switcher h100 ${if isApiActive then "selected" else ""}", href := pathToPage(link.dri, rootApiPage.get.link.dri))("API"))
-              case _ => Nil
-            },
             docsNavOpt match {
               case Some(isDocsActive, docsNav) =>
                 Seq(a(id := "docs-nav-button", cls:= s"switcher h100 ${if isDocsActive then "selected" else ""}", href := pathToPage(link.dri, rootDocsPage.get.link.dri))("Docs"))
+              case _ => Nil
+            },
+            apiNavOpt match {
+              case Some(isApiActive, apiNav) =>
+                Seq(a(id := "api-nav-button", cls:= s"switcher h100 ${if isApiActive then "selected" else ""}", href := pathToPage(link.dri, rootApiPage.get.link.dri))("API"))
               case _ => Nil
             }
           ),

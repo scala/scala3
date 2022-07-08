@@ -58,6 +58,11 @@
 }
 
 @media (max-width: 1024px) {
+  #toc {
+    margin-left: calc(6 * var(--base-spacing));
+    margin-right: 0;
+  }
+
   #toc.sidebar-shown {
     display: none;
   }
@@ -77,6 +82,7 @@
 #content .toc-nav a {
   color: var(--action-primary-content-default);
   text-decoration: none;
+  border-bottom: none;
 }
 
 #toc li:hover > a {
