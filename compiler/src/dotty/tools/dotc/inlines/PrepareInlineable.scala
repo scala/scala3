@@ -54,8 +54,7 @@ object PrepareInlineable {
      */
     abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert {
       def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName =
-        val accName = InlineAccessorName(name)
-        if site.is(Trait) then accName.expandedName(site) else accName
+        InlineAccessorName(name).expandedName(site)
 
       /** A definition needs an accessor if it is private, protected, or qualified private
        *  and it is not part of the tree that gets inlined. The latter test is implemented
