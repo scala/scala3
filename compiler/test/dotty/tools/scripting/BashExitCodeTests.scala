@@ -2,6 +2,8 @@ package dotty
 package tools
 package scripting
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.nio.file.Files
 import org.junit.Test
