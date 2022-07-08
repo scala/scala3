@@ -3731,6 +3731,8 @@ object Parsers {
 
       def addParamMod(mod: () => Mod) = impliedMods = addMod(impliedMods, atSpan(in.skipToken()) { mod() })
 
+      def paramModAdvice = "It is a keyword only at the beginning of a parameter clause."
+
       def paramMods() =
         if in.token == IMPLICIT then
           report.errorOrMigrationWarning(
@@ -3748,6 +3750,8 @@ object Parsers {
           if initialMods.is(Given) then
             syntaxError(em"`using` is already implied here, should not be given explicitly", in.offset)
           addParamMod(() => Mod.Given())
+          if in.isColon then
+            syntaxErrorOrIncomplete(ExpectedTokenButFoundSoftKeyword(IDENTIFIER, COLONop, nme.using, paramModAdvice))
 
       def param(): ValDef = {
         val start = in.offset
@@ -3774,8 +3778,20 @@ object Parsers {
           mods |= Param
         }
         atSpan(start, nameStart) {
-          val name = ident()
-          acceptColon()
+          val name = ident() match
+            case nme.using if !in.isColon =>
+              val msg = ExpectedTokenButFoundSoftKeyword(expected = COLONop, found = in.token, nme.using, paramModAdvice)
+              val span = Span(in.offset, in.offset + (if in.name != null then in.name.show.length else 0))
+              val pickOne =
+                if in.token == IDENTIFIER then
+                  while in.isSoftModifierInParamModifierPosition do ident() // skip to intended name, discard mods
+                  ident()
+                else nme.using
+              syntaxErrorOrIncomplete(msg, span)
+              pickOne
+            case name =>
+              acceptColon()
+              name
           if (in.token == ARROW && paramOwner.isClass && !mods.is(Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
               // needed?, it's checked later anyway
@@ -3811,7 +3827,7 @@ object Parsers {
             syntaxError(em"`using` expected")
           Nil
         else
-          val clause =
+          val clause = {
             if paramOwner == ParamOwner.ExtensionPrefix
                 && !isIdent(nme.using) && !isIdent(nme.erased)
             then
@@ -3841,7 +3857,8 @@ object Parsers {
                 else contextTypes(paramOwner, numLeadParams, impliedMods)
               params match
                 case Nil => Nil
-                case (h :: t) => h.withAddedFlags(firstParamMod.flags) :: t
+                case h :: t => h.withAddedFlags(firstParamMod.flags) :: t
+          }
           checkVarArgsRules(clause)
           clause
       }

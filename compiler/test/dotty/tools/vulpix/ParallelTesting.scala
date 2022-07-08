@@ -948,7 +948,12 @@ trait ParallelTesting extends RunnerOrchestration:
 
       Option {
         if actualErrors == 0 then s"\nNo errors found when compiling neg test $testSource"
-        else if expectedErrors == 0 then s"\nNo errors expected/defined in $testSource -- use // error or // nopos-error"
+        else if expectedErrors == 0 then
+          s"""|No expected errors marked in $testSource -- use // error or // nopos-error
+              |actual error count: $actualErrors
+              |${unexpected.mkString("Unexpected errors:\n", "\n", "")}
+              |$showErrors
+              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
         else if expectedErrors != actualErrors then
           s"""|Wrong number of errors encountered when compiling $testSource
               |expected: $expectedErrors, actual: $actualErrors
