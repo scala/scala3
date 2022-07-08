@@ -52,7 +52,17 @@ object Semantic:
    *
    */
   sealed abstract class Value:
-    def show: String = this.toString()
+    def show(using Context): String = this match
+      case ThisRef(klass) =>
+        "ThisRef[" + klass.show + "]"
+      case Warm(klass, outer, ctor, args) =>
+        "Warm[" + klass.show + "] { outer = " + outer.show + ", args = " + args.map(_.show).mkString("(", ", ", ")") + " }"
+      case Fun(expr, thisV, klass) =>
+        "Fun { this = " + thisV.show + ", owner = " + klass.show + " }"
+      case RefSet(values) =>
+        values.map(_.show).mkString("Set { ", ", ", " }")
+      case _ =>
+        this.toString()
 
     def isHot = this == Hot
     def isCold = this == Cold
@@ -792,8 +802,11 @@ object Semantic:
             else
               // no source code available
               promoteArgs()
-              val error = CallUnknown(target, trace.toVector)
-              reporter.report(error)
+              // try promoting the receiver as last resort
+              val hasErrors = Reporter.hasErrors { ref.promote("try promote value to hot") }
+              if hasErrors then
+                val error = CallUnknown(target, trace.toVector)
+                reporter.report(error)
               Hot
           else
             // method call resolves to a field
@@ -1036,9 +1049,9 @@ object Semantic:
   extension (value: Value)
     /** Promotion of values to hot */
     def promote(msg: String): Contextual[Unit] = log("promoting " + value + ", promoted = " + promoted, printer) {
-      if promoted.isCurrentObjectPromoted then Nil else
+      if !promoted.isCurrentObjectPromoted then
 
-        value.match
+        value match
         case Hot   =>
 
         case Cold  =>
@@ -1099,8 +1112,9 @@ object Semantic:
      */
     def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
       val classRef = warm.klass.appliedRef
-      if classRef.memberClasses.nonEmpty || !warm.isFullyFilled then
-        return PromoteError(msg, trace.toVector) :: Nil
+      val hasInnerClass = classRef.memberClasses.filter(_.symbol.hasSource).nonEmpty
+      if hasInnerClass then
+        return PromoteError(msg + "Promotion cancelled as the value contains inner classes. ", trace.toVector) :: Nil
 
       val errors = Reporter.stopEarly {
         for klass <- warm.klass.baseClasses if klass.hasSource do
@@ -1352,13 +1366,13 @@ object Semantic:
         case Select(qual, _) =>
           eval(qual, thisV, klass)
           val res = eval(rhs, thisV, klass)
-          extendTrace(rhs) {
-            res.ensureHot("The RHS of reassignment must be fully initialized.")
+          extendTrace(expr) {
+            res.ensureHot("The RHS of reassignment must be fully initialized. Found = " + res.show + ". ")
           }
         case id: Ident =>
           val res = eval(rhs, thisV, klass)
-          extendTrace(rhs) {
-            res.ensureHot("The RHS of reassignment must be fully initialized.")
+          extendTrace(expr) {
+            res.ensureHot("The RHS of reassignment must be fully initialized. Found = " + res.show + ". ")
           }
 
       case closureDef(ddef) =>

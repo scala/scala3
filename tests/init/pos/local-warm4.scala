@@ -15,7 +15,7 @@ object localWarm {
         override def increment(): Unit = {
             def updateA(): Unit = {
                 val newA = new A(y)
-                a = newA // error
+                a = newA // ok: newA can be promoted to hot
             }
             y = y + 1
             updateA()
