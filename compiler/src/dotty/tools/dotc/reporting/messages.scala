@@ -287,7 +287,7 @@ extends NotFoundMsg(MissingIdentID) {
         |imported from elsewhere.
         |
         |Possible reasons why no matching declaration was found:
-        | - The declaration or the use is mis-spelt.
+        | - The declaration or the use is misspelled.
         | - An import is missing."""
   }
 }
@@ -1220,6 +1220,17 @@ extends SyntaxMsg(ExpectedTokenButFoundID) {
     else
       ""
 }
+
+class ExpectedTokenButFoundSoftKeyword(expected: Token, found: Token, soft: Name, advice: String = "")(using Context)
+extends SyntaxMsg(ExpectedTokenButFoundID):
+  def addendum = if !advice.isEmpty then s"\n$advice" else advice
+  def msg(using Context) =
+    val expectedText = if Tokens.isIdentifier(expected) then "an identifier" else Tokens.showToken(expected)
+    val what = if Tokens.isIdentifier(found) || expected == Tokens.COLONop then "an identifier" else "the soft keyword"
+    s"""$expectedText expected, but ${Tokens.showToken(found)} found.
+       |The soft keyword `$soft` was taken as $what in this context.$addendum""".stripMargin
+  def explain(using Context) = s"The soft keyword `$soft` has special meaning only in certain contexts.$addendum"
+end ExpectedTokenButFoundSoftKeyword
 
 class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(using Context)
 extends SyntaxMsg(MixedLeftAndRightAssociativeOpsID) {
