@@ -148,7 +148,7 @@ object CompilationUnit {
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
       for annot <- tree.symbol.annotations do
-        if annot.tree.symbol.owner.derivesFrom(defn.QuotedMacroAnnotationClass) then
+        if annot.tree.symbol.denot != NoDenotation && annot.tree.symbol.owner.derivesFrom(defn.QuotedMacroAnnotationClass) then
           ctx.compilationUnit.hasMacroAnnotations = true
       traverseChildren(tree)
     }
