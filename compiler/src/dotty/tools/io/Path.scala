@@ -170,7 +170,7 @@ class Path private[io] (val jpath: JPath) {
   // returns the filename without the extension.
   def stripExtension: String = name stripSuffix ("." + extension)
   // returns the Path with the extension.
-  def addExtension(ext: String): Path = new Path(jpath.resolveSibling(name + "." + ext))
+  def addExtension(ext: String): Path = new Path(jpath.resolveSibling(name + ext))
   // changes the existing extension out for a new one, or adds it
   // if the current path has none.
   def changeExtension(ext: String): Path =
