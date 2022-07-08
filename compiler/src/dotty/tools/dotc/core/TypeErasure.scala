@@ -328,6 +328,9 @@ object TypeErasure {
         isGenericArrayElement(tp.alias, isScala2)
       case tp: TypeBounds =>
         !fitsInJVMArray(tp.hi)
+      case tp: MatchType =>
+        val alts = tp.alternatives
+        alts.nonEmpty && !fitsInJVMArray(alts.reduce(OrType(_, _, soft = true)))
       case tp: TypeProxy =>
         isGenericArrayElement(tp.translucentSuperType, isScala2)
       case tp: AndType =>
