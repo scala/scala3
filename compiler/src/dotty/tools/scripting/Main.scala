@@ -43,11 +43,10 @@ object Main:
         // write a standalone jar to the script parent directory
         writeJarfile(outDir, scriptFile, scriptArgs, classpathEntries, mainClass)
       invokeFlag
-    } match
-      case Some(ex) =>
-        println(ex.getMessage)
-        sys.exit(1)
-      case _ =>
+    }.map {
+      case ScriptingException(msg) => println(msg)
+      case ex => ex.printStackTrace
+    }.foreach(_ => System.exit(1))
 
   private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
       classpathEntries:Seq[Path], mainClassName: String): Unit =

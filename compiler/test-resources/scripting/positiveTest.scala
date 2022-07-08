@@ -1,0 +1,1 @@
+@main def positiveTest = println("Hello World!")

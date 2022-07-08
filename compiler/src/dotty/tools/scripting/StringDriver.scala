@@ -8,6 +8,7 @@ import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts, Contexts.{ Context, ctx }
 import dotty.tools.io.{ PlainDirectory, Directory, ClassPath }
 import Util.*
+import dotty.tools.dotc.util.SourceFile
 
 class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Driver:
   override def sourcesRequired: Boolean = false
@@ -18,11 +19,12 @@ class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Dri
 
     setup(compilerArgs, initCtx.fresh) match
       case Some((toCompile, rootCtx)) =>
-        given Context = rootCtx.fresh.setSetting(rootCtx.settings.outputDir,
-          new PlainDirectory(Directory(outDir)))
+        given Context = rootCtx.fresh.setSetting(rootCtx.settings.outputDir, new PlainDirectory(Directory(outDir)))
 
         val compiler = newCompiler
-        compiler.newRun.compileFromStrings(List(scalaSource))
+
+        val source = SourceFile.virtual("expression", scalaSource)
+        compiler.newRun.compileSources(List(source))
 
         val output = ctx.settings.outputDir.value
         if ctx.reporter.hasErrors then
@@ -39,7 +41,7 @@ class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Dri
               case Left(ex) => Some(ex)
           catch
             case e: java.lang.reflect.InvocationTargetException =>
-              throw e.getCause
+              Some(e.getCause)
           finally
             deleteFile(outDir.toFile)
       case None => None
