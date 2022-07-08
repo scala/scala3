@@ -23,7 +23,7 @@ class SiteGeneratationTest extends BaseHtmlTest:
     parents: Seq[String] = Nil,
     checks: DocumentContext => Unit = _ => ())(using ProjectContext) =
       withHtmlFile(path){ content  =>
-        content.assertTextsIn(".project-name", projectName)
+        content.assertTextsIn(".project-name", projectName, projectName) // There are two elements with project name: one for desktop, one for mobile
         content.assertTextsIn(".projectVersion", projectVersion)
         content.assertTextsIn("h1", header)
         content.assertTextsIn("title", title)

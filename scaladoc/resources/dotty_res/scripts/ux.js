@@ -30,7 +30,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  var memberLists = document.getElementsByClassName("membersList")
+  var memberLists = document.getElementsByClassName("tab")
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {
       memberLists[i].children[0].onclick = function(e) {

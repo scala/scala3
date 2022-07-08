@@ -125,6 +125,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Option.when(bodyContents.nonEmpty || attributes.nonEmpty)(
         div(cls := "cover")(
           div(cls := "doc")(bodyContents),
+          h2(cls := "h500")("Attributes"),
           dl(cls := "attributes")(attributes*)
         )
       )
@@ -260,7 +261,15 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val children = all.flatten.flatten
     if children.isEmpty then emptyTab
-    else Tab(name, name, h2(tabAttr(name), cls := "h300")(name) +: children, "selected")
+    else Tab(
+      name,
+      name,
+      Seq(
+        button(cls := "icon-button show-content expand"),
+        h2(tabAttr(name), cls := "h300")(name)
+      ) ++ children,
+      "expand"
+    )
 
   case class ExpandedGroup(name: AppliedTag, description: AppliedTag, prio: Int)
 
@@ -289,7 +298,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             members.map(member)
           ))
       }
-      Tab("Grouped members", "custom_groups", content, "selected")
+      Tab("Grouped members", "custom_groups", content, "expand")
 
   def buildMembers(s: Member): AppliedTag =
     def partitionIntoGroups(members: Seq[Member]) =
@@ -318,7 +327,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       }.toSeq
 
     div(cls := "membersList expand")(
-    button(cls := "icon-button show-content expand"),
+    h2(cls := "h500")("Members list"),
     renderTabs(
       singleSelection = false,
       buildGroup("Packages", Seq(

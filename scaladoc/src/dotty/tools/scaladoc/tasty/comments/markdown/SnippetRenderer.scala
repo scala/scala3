@@ -11,7 +11,7 @@ case class SnippetLine(content: String, lineNo: Int, classes: Set[String] = Set.
   def withAttribute(name: String, value: String) = this.copy(attributes = attributes.updated(name, value))
   def toHTML =
     val label = if messages.nonEmpty then s"""label="${messages.map(_.escapeReservedTokens).mkString("\n")}"""" else ""
-    s"""<span line-number="${lineNo}" class="${classes.mkString(" ")}"><span class="tooltip-container" $label></span>$content</span>"""
+    s"""<span line-number="${lineNo + 1}" class="${classes.mkString(" ")}"><span class="tooltip-container" $label></span>$content</span>"""
 
 object SnippetRenderer:
   val hiddenStartSymbol = "//{"
