@@ -3,7 +3,7 @@ package dotc
 
 import core._
 import Contexts._
-import SymDenotations.ClassDenotation
+import SymDenotations.{ClassDenotation, NoDenotation}
 import Symbols._
 import util.{FreshNameCreator, SourceFile, NoSource}
 import util.Spans.Span
