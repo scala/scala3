@@ -1,4 +1,4 @@
-package bar.slf4j
+package bar
 
 trait MDCAdapter
 

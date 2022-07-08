@@ -1,8 +1,8 @@
-package foo.slf4j.impl;
+package foo;
 
-import bar.slf4j.MDCAdapter;
-import bar.slf4j.ScalaMDCAdapter;
-import bar.slf4j.ScalaMDCAdapter$;
+import bar.MDCAdapter;
+import bar.ScalaMDCAdapter;
+import bar.ScalaMDCAdapter$;
 
 public class JavaMDCBinder {
     public static final JavaMDCBinder SINGLETON = new JavaMDCBinder();
