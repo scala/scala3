@@ -13,7 +13,7 @@ import ScriptTestEnv.*
 
 
 object BashExitCodeTests:
-  def testFiles = scripts("/scripting")
+  def testFiles = scripts("/scripting/exit-code-tests")
 
   /*
    * Compiles the class checking exit code
