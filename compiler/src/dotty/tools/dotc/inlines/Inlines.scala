@@ -185,7 +185,15 @@ object Inlines:
     // transforms the patterns into terms, the `inlinePatterns` phase removes this anonymous class by β-reducing
     // the call to the `unapply`.
 
-    val UnApply(fun, implicits, patterns) = unapp
+    object SplitFunAndGivenArgs:
+      def unapply(tree: Tree): (Tree, List[List[Tree]]) = tree match
+        case Apply(SplitFunAndGivenArgs(fn, argss), args) => (fn, argss :+ args)
+        case _ => (tree, Nil)
+    val UnApply(SplitFunAndGivenArgs(fun, leadingImplicits), trailingImplicits, patterns) = unapp
+    if leadingImplicits.flatten.nonEmpty then
+      // To support them see https://github.com/lampepfl/dotty/pull/13158
+      report.error("inline unapply methods with given parameters before the scrutinee are not supported", fun)
+
     val sym = unapp.symbol
     val cls = newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
     val constr = newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
@@ -204,7 +212,7 @@ object Inlines:
     val cdef = ClassDef(cls, DefDef(constr), List(unapply))
     val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
     val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
-    cpy.UnApply(unapp)(newFun, implicits, patterns)
+    cpy.UnApply(unapp)(newFun, trailingImplicits, patterns)
   end inlinedUnapply
 
   /** For a retained inline method, another method that keeps track of
