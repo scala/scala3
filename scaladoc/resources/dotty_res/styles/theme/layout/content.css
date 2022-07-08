@@ -14,6 +14,13 @@
   overflow: hidden;
 }
 
+#content.sidebar-shown {
+  -webkit-transition: width 0.3s ease-in-out;
+  -moz-transition: width 0.3s ease-in-out;
+  -o-transition: width 0.3s ease-in-out;
+  transition: width 0.3s ease-in-out;
+}
+
 @media (min-width: 1920px) {
   #content {
     width: calc(90 * var(--base-spacing));
