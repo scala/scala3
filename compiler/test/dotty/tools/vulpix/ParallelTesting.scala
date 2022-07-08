@@ -202,8 +202,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def sourceFiles = compilationGroups.map(_._2).flatten.toArray
   }
 
-  protected def shouldSkipTestSource(testSource: TestSource): Boolean =
-    false
+  protected def shouldSkipTestSource(testSource: TestSource): Boolean = false
 
   private trait CompilationLogic { this: Test =>
     def suppressErrors = false
@@ -423,20 +422,21 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     /** Print a progress bar for the current `Test` */
-    private def updateProgressMonitor(start: Long): Unit = {
-      val tCompiled = testSourcesCompleted
-      if (tCompiled < sourceCount) {
-        val timestamp = (System.currentTimeMillis - start) / 1000
-        val progress = (tCompiled.toDouble / sourceCount * 40).toInt
+    private def updateProgressMonitor(start: Long): Unit =
+      if testSourcesCompleted < sourceCount then
+        realStdout.print(s"\r${makeProgressBar(start)}")
 
-        realStdout.print(
-          "[" + ("=" * (math.max(progress - 1, 0))) +
-            (if (progress > 0) ">" else "") +
-            (" " * (39 - progress)) +
-            s"] completed ($tCompiled/$sourceCount, $failureCount failed, ${timestamp}s)\r"
-        )
-      }
-    }
+    private def finishProgressMonitor(start: Long): Unit =
+      realStdout.println(s"\r${makeProgressBar(start)}")
+
+    private def makeProgressBar(start: Long): String =
+      val tCompiled = testSourcesCompleted
+      val timestamp = (System.currentTimeMillis - start) / 1000
+      val progress = (tCompiled.toDouble / sourceCount * 40).toInt
+      val past = "=" * math.max(progress - 1, 0)
+      val curr = if progress > 0 then ">" else ""
+      val next = " " * (40 - progress)
+      s"[$past$curr$next] completed ($tCompiled/$sourceCount, $failureCount failed, ${timestamp}s)"
 
     /** Wrapper function to make sure that the compiler itself did not crash -
      *  if it did, the test should automatically fail.
@@ -490,9 +490,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         else None
       } else None
 
-      val reporter =
-        TestReporter.reporter(realStdout, logLevel =
-          if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
+      val reporter = mkReporter
 
       val driver =
         if (times == 1) new Driver
@@ -599,8 +597,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val command = scalacCommand ++ flags1.all ++ files.map(_.getAbsolutePath)
       val process = Runtime.getRuntime.exec(command)
 
-      val reporter = TestReporter.reporter(realStdout, logLevel =
-        if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
+      val reporter = mkReporter
       val errorsText = Source.fromInputStream(process.getErrorStream).mkString
       if process.waitFor() != 0 then
         val diagnostics = parseErrors(errorsText, compiler, pageWidth)
@@ -618,9 +615,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       val classes = flattenFiles(targetDir).filter(isTastyFile).map(_.toString)
 
-      val reporter =
-        TestReporter.reporter(realStdout, logLevel =
-          if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
+      val reporter = mkReporter
 
       val driver = new Driver
 
@@ -629,68 +624,51 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       reporter
     }
 
+    private def mkLogLevel = if suppressErrors || suppressAllOutput then ERROR + 1 else ERROR
+    private def mkReporter = TestReporter.reporter(realStdout, logLevel = mkLogLevel)
+
     private[ParallelTesting] def executeTestSuite(): this.type = {
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
-
-      if (filteredSources.nonEmpty) {
-        val pool = threadLimit match {
-          case Some(i) => JExecutors.newWorkStealingPool(i)
-          case None => JExecutors.newWorkStealingPool()
-        }
-
+      if filteredSources.nonEmpty then
+        val pool = JExecutors.newWorkStealingPool(threadLimit.getOrElse(Runtime.getRuntime.availableProcessors()))
         val timer = new Timer()
         val logProgress = isInteractive && !suppressAllOutput
         val start = System.currentTimeMillis()
-        if (logProgress) {
-          val task = new TimerTask {
-            def run(): Unit = updateProgressMonitor(start)
-          }
-          timer.schedule(task, 100, 200)
-        }
+        if logProgress then
+          timer.schedule((() => updateProgressMonitor(start)): TimerTask, 100/*ms*/, 200/*ms*/)
 
-        val eventualResults = filteredSources.map { target =>
+        val eventualResults = for target <- filteredSources yield
           pool.submit(encapsulatedCompilation(target))
-        }
 
         pool.shutdown()
 
-        if (!pool.awaitTermination(20, TimeUnit.MINUTES)) {
+        if !pool.awaitTermination(20, TimeUnit.MINUTES) then
           val remaining = new ListBuffer[TestSource]
-          filteredSources.lazyZip(eventualResults).foreach { (src, res) =>
-            if (!res.isDone)
+          for (src, res) <- filteredSources.lazyZip(eventualResults) do
+            if !res.isDone then
               remaining += src
-          }
 
           pool.shutdownNow()
           System.setOut(realStdout)
           System.setErr(realStderr)
           throw new TimeoutException(s"Compiling targets timed out, remaining targets: ${remaining.mkString(", ")}")
-        }
+        end if
 
-        eventualResults.foreach { x =>
-          try x.get()
-          catch {
-            case ex: Exception =>
-              System.err.println(ex.getMessage)
-              ex.printStackTrace()
-          }
-        }
+        for fut <- eventualResults do
+          try fut.get()
+          catch case ex: Exception =>
+            System.err.println(ex.getMessage)
+            ex.printStackTrace()
 
-        if (logProgress) {
+        if logProgress then
           timer.cancel()
-          val timestamp = (System.currentTimeMillis - start) / 1000
-          realStdout.println(
-            s"[=======================================] completed ($sourceCount/$sourceCount, $failureCount failed, ${timestamp}s)"
-          )
-        }
+          finishProgressMonitor(start)
 
-        if (didFail) {
+        if didFail then
           reportFailed()
           failedTestSources.toSet.foreach(addFailedTest)
           reproduceInstructions.foreach(addReproduceInstruction)
-        }
         else reportPassed()
-      }
       else echo {
         testFilter match
           case _ :: _ => s"""No files matched "${testFilter.mkString(",")}" in test"""
