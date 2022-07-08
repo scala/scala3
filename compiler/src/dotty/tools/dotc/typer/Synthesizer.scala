@@ -40,11 +40,28 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               val classTag = ref(defn.ClassTagModule)
               val tag =
                 if defn.SpecialClassTagClasses.contains(sym) then
-                  classTag.select(sym.name.toTermName)
+                  classTag.select(sym.name.toTermName).withSpan(span)
                 else
-                  val clsOfType = escapeJavaArray(erasure(tp))
-                  classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(clsOfType))
-              withNoErrors(tag.withSpan(span))
+                  def clsOfType(tp: Type): Type =
+                    val tp1 = tp.dealias
+                    if tp1.isMatch then
+                      val matchTp = tp1.underlyingIterator.collect {
+                          case mt: MatchType => mt
+                        }.next
+                      matchTp.alternatives.map(clsOfType) match
+                        case ct1 :: cts if cts.forall(ct1 == _) => ct1
+                        case _ => NoType
+                    else
+                      escapeJavaArray(erasure(tp))
+                  val ctype = clsOfType(tp)
+                  if ctype.exists then
+                    classTag.select(nme.apply)
+                      .appliedToType(tp)
+                      .appliedTo(clsOf(ctype))
+                      .withSpan(span)
+                  else
+                    EmptyTree
+              withNoErrors(tag)
             case tp => EmptyTreeNoError
         else EmptyTreeNoError
       case _ => EmptyTreeNoError
