@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   padding: 0 calc(1 * var(--base-spacing));
-  width: calc(28 * var(--base-spacing));
+  width: calc(29 * var(--base-spacing));
 }
 
 #toc-container {
@@ -58,6 +58,11 @@
 }
 
 @media (max-width: 1024px) {
+  #toc {
+    margin-left: calc(6 * var(--base-spacing));
+    margin-right: 0;
+  }
+
   #toc.sidebar-shown {
     display: none;
   }

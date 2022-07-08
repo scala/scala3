@@ -82,7 +82,7 @@
   }
 
   #content > div:first-child {
-    width: auto;
+    width: calc(100% - calc(29 * var(--base-spacing)));
   }
 
   #content.sidebar-shown {
