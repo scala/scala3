@@ -20,7 +20,6 @@ import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd
 import typer.Implicits.SearchFailureType
-import typer.PrepareInlineable
 import SymDenotations.NoDenotation
 
 import scala.collection.mutable
@@ -30,7 +29,6 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
-import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 
