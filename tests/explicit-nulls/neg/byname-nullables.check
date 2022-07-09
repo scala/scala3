@@ -25,6 +25,9 @@
 81 |    if x != null then f(byName(x), 1)   // error: none of the overloaded methods match argument types
    |                      ^
    |                      None of the overloaded alternatives of method f in object Test7 with types
-   |                       (x: => String, y: Int): String
-   |                       (x: String, y: String): String
+   |
+   |                       f(x: => String, y: Int): String
+   |
+   |                       f(x: String, y: String): String
+   |
    |                      match arguments (String | Null, (1 : Int))

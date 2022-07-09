@@ -26,14 +26,23 @@
 23 |  val x = 1.+ :  // error
    |          ^^^
    |          None of the overloaded alternatives of method + in class Int with types
-   |           (x: Double): Double
-   |           (x: Float): Float
-   |           (x: Long): Long
-   |           (x: Int): Int
-   |           (x: Char): Int
-   |           (x: Short): Int
-   |           (x: Byte): Int
-   |           (x: String): String
+   |
+   |           +(x: Double): Double
+   |
+   |           +(x: Float): Float
+   |
+   |           +(x: Long): Long
+   |
+   |           +(x: Int): Int
+   |
+   |           +(x: Char): Int
+   |
+   |           +(x: Short): Int
+   |
+   |           +(x: Byte): Int
+   |
+   |           +(x: String): String
+   |
    |          match expected type (2 : Int)
 -- [E006] Not Found Error: tests/neg/indent-colons.scala:32:7 ----------------------------------------------------------
 32 |    if file.isEmpty  // error

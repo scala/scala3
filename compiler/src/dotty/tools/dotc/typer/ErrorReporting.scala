@@ -98,8 +98,8 @@ object ErrorReporting {
       val denots = Vector.newBuilder[String]
       val registry = TypeRegistry()
 
-      inline def renderParamList(names: List[String], types: List[Type], maxLength: Int = 40) = 
-        val params = names.zip(types).map {case (name, tpe) => 
+      inline def renderParamList(names: List[String], types: List[Type]) = 
+        val params = names.zip(types).map { case (name, tpe) => 
           registry.getFullName(tpe)          
           MarginString.Chunk(s"$name: ${registry.getShortName(tpe).applied}")
         }
@@ -118,23 +118,30 @@ object ErrorReporting {
         
         val paramNamess = info.paramNamess.map(_.map(_.show))
         val paramTypes = info.paramInfoss
+        val resultType = info.finalResultType
 
         val methodPrefix = " " + name
 
-        val paramLists = 
-          paramNamess.zip(paramTypes).map(t => 
-              renderParamList(t._1, t._2)
-          ).toVector
+        val typeParamsSection = 
+          info match 
+          case pt: PolyType => 
+            val typeParams = pt.paramNames
+            if typeParams.isEmpty then "" 
+            else 
+              typeParams.map(_.show).mkString("[", ", ", "]")
+          case _ => ""
+          
 
-        val lines = MarginString.Group(
-            paramLists, 
+        val paramLists = MarginString.Group(
+            paramNamess.zip(paramTypes).map(t => renderParamList(t._1, t._2)).toVector, 
             ChunkJoiner.nonBreakable("")
           ).lines(60).map(MarginString.Chunk.apply)
 
         MarginString.Group(
-            lines, 
+            paramLists, 
             ChunkJoiner.nonBreakable("\n " + (" " * methodPrefix.size)), 
-            prefix = Some(ChunkJoiner.nonBreakable(methodPrefix))
+            prefix = Some(ChunkJoiner.nonBreakable(methodPrefix + typeParamsSection)),
+            suffix = Some(ChunkJoiner.nonBreakable(": " + registry.getShortName(resultType).applied))
           )
           .lines(0)
           .foreach(denots += _)

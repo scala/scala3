@@ -7,15 +7,21 @@
   |        render(42)    failed with
   |
   |            Ambiguous overload. The overloaded alternatives of method render in object Test with types
-  |             [B](b: B)(using x$2: DummyImplicit): Char
-  |             [A](a: A): String
+  |            
+  |             render[B](b: B)(x$2: DummyImplicit): Char
+  |            
+  |             render[A](a: A): String
+  |            
   |            both match arguments ((42 : Int))
 -- [E051] Reference Error: tests/neg/i6183.scala:7:9 -------------------------------------------------------------------
 7 |    Test.render(42) // error
   |    ^^^^^^^^^^^
   |    Ambiguous overload. The overloaded alternatives of method render in object Test with types
-  |     [B](b: B)(using x$2: DummyImplicit): Char
-  |     [A](a: A): String
+  |
+  |     render[B](b: B)(x$2: DummyImplicit): Char
+  |
+  |     render[A](a: A): String
+  |
   |    both match arguments ((42 : Int))
   |
   | longer explanation available when compiling with `-explain`

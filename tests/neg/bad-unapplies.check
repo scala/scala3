@@ -2,8 +2,11 @@
 22 |    case A("2") => // error (cannot resolve overloading)
    |         ^
    |         Ambiguous overload. The overloaded alternatives of method unapply in object A with types
-   |          (x: B): Option[String]
-   |          (x: A): Option[String]
+   |
+   |          unapply(x: B): Option[String]
+   |
+   |          unapply(x: A): Option[String]
+   |
    |         both match arguments (C)
    |
    | longer explanation available when compiling with `-explain`

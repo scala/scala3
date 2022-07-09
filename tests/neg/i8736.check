@@ -16,9 +16,13 @@
 31 |  def res3: Boolean = rec.get("z") // error: ambiguous
    |                      ^^^^^^^
    |                Ambiguous overload. The overloaded alternatives of method (k: ("k" : String)): String with types
-   |                 (k: ("k" : String)): String
-   |                 (k: ("v" : String)): Int
-   |                 (k: ("z" : String)): Boolean
+   |
+   |                 <none>(k: ("k" : String)): String
+   |
+   |                 <none>(k: ("v" : String)): Int
+   |
+   |                 <none>(k: ("z" : String)): Boolean
+   |
    |                all match arguments (("z" : String))
    |
    |                Note: Overloaded definitions introduced by refinements cannot be resolved

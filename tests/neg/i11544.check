@@ -2,8 +2,11 @@
 6 |  val n = m1.foo(23)  // error
   |          ^^^^^^
   |          Ambiguous overload. The overloaded alternatives of method (str: String, int: Int): Int with types
-  |           (str: String, int: Int): Int
-  |           (arg: Int): Int
+  |
+  |           <none>(str: String, int: Int): Int
+  |
+  |           <none>(arg: Int): Int
+  |
   |          both match arguments ((23 : Int))
   |
   |          Note: Overloaded definitions introduced by refinements cannot be resolved
