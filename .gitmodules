@@ -100,7 +100,7 @@
 [submodule "community-build/community-projects/cats-effect-3"]
 	path = community-build/community-projects/cats-effect-3
 	url = https://github.com/dotty-staging/cats-effect.git
-	branch = series/3.x
+	branch = series/3.3.x
 [submodule "community-build/community-projects/scala-parallel-collections"]
 	path = community-build/community-projects/scala-parallel-collections
 	url = https://github.com/dotty-staging/scala-parallel-collections.git
