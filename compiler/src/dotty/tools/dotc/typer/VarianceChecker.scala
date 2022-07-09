@@ -35,17 +35,11 @@ object VarianceChecker {
           def error(tref: TypeParamRef) = {
             val paramName = tl.paramNames(tref.paramNum).toTermName
             val v = paramVarianceSign(tref)
-            val paramVarianceStr = if (v < 0) "contra" else "co"
-            val occursStr = variance match {
-              case -1 => "contra"
-              case 0 => "in"
-              case 1 => "co"
-            }
             val pos = tree.tparams
               .find(_.name.toTermName == paramName)
               .map(_.srcPos)
               .getOrElse(tree.srcPos)
-            report.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
+            report.error(em"${varianceLabel(v)} type parameter $paramName occurs in ${varianceLabel(variance)} position in ${tl.resType}", pos)
           }
           def apply(x: Boolean, t: Type) = x && {
             t match {
@@ -66,11 +60,6 @@ object VarianceChecker {
     checkType(bounds.lo)
     checkType(bounds.hi)
   end checkLambda
-
-  private def varianceLabel(v: Variance): String =
-    if (v is Covariant) "covariant"
-    else if (v is Contravariant) "contravariant"
-    else "invariant"
 }
 
 class VarianceChecker(using Context) {
@@ -113,7 +102,7 @@ class VarianceChecker(using Context) {
       val relative = relativeVariance(tvar, base)
       if (relative == Bivariant) None
       else {
-        val required = compose(relative, this.variance)
+        val required = if variance == 1 then relative else if variance == -1 then flip(relative) else Invariant
         def tvar_s = s"$tvar (${varianceLabel(tvar.flags)} ${tvar.showLocated})"
         def base_s = s"$base in ${base.owner}" + (if (base.owner.isClass) "" else " in " + base.owner.enclosingClass)
         report.log(s"verifying $tvar_s is ${varianceLabel(required)} at $base_s")
