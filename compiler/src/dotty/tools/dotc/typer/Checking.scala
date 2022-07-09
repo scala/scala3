@@ -91,7 +91,7 @@ object Checking {
       report.error(em"$sym has possibly conflicting bounds $bad", sym.srcPos)
     !bad.exists
 
-  /** If `tp` dealiases to a typebounds L..H where not L <:< R
+  /** If `tp` dealiases to a typebounds L..H where not L <:< H
    *  return the potentially conflicting bounds, otherwise return NoType.
    */
   private def findBadBounds(tp: Type)(using Context): Type = tp.dealias match
