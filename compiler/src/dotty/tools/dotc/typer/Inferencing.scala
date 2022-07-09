@@ -28,12 +28,9 @@ object Inferencing {
    *  but only if the overall result of `isFullyDefined` is `true`.
    *  Variables that are successfully minimized do not count as uninstantiated.
    */
-  def isFullyDefined(tp: Type, force: ForceDegree.Value, handleOverflow: Boolean = false)(using Context): Boolean = {
+  def isFullyDefined(tp: Type, force: ForceDegree.Value)(using Context): Boolean = {
     val nestedCtx = ctx.fresh.setNewTyperState()
-    val result =
-      try new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
-      catch case ex: RecursionOverflow if handleOverflow =>
-        false // can happen for programs with illegal recusions, e.g. neg/recursive-lower-constraint.scala
+    val result = new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
     if (result) nestedCtx.typerState.commit()
     result
   }
