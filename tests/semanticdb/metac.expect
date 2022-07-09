@@ -3945,20 +3945,20 @@ local0 => type A  >: Any <: Nothing
 Occurrences:
 [0:8..0:13): i5854 <- i5854/
 [2:6..2:7): B <- i5854/B#
-[3:6..3:7): a <- i5854/B#a.
-[3:9..3:15): String -> scala/Predef.String#
-[3:24..3:27): Any -> scala/Any#
-[3:30..3:31): b -> i5854/B#b.
-[3:36..3:43): Nothing -> scala/Nothing#
-[3:46..3:52): String -> scala/Predef.String#
-[4:6..4:7): b <- i5854/B#b.
-[4:16..4:17): A <- local0
-[4:21..4:24): Any -> scala/Any#
-[4:28..4:35): Nothing -> scala/Nothing#
-[4:40..4:44): loop -> i5854/B#loop().
-[5:6..5:10): loop <- i5854/B#loop().
-[5:14..5:21): Nothing -> scala/Nothing#
-[5:24..5:28): loop -> i5854/B#loop().
+[7:6..7:7): a <- i5854/B#a.
+[7:9..7:15): String -> scala/Predef.String#
+[7:24..7:27): Any -> scala/Any#
+[7:30..7:31): b -> i5854/B#b.
+[7:36..7:43): Nothing -> scala/Nothing#
+[7:46..7:52): String -> scala/Predef.String#
+[8:6..8:7): b <- i5854/B#b.
+[8:16..8:17): A <- local0
+[8:21..8:24): Any -> scala/Any#
+[8:28..8:35): Nothing -> scala/Nothing#
+[8:40..8:44): loop -> i5854/B#loop().
+[9:6..9:10): loop <- i5854/B#loop().
+[9:14..9:21): Nothing -> scala/Nothing#
+[9:24..9:28): loop -> i5854/B#loop().
 
 expect/i9727.scala
 ------------------
