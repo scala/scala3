@@ -35,7 +35,7 @@ class TypeRegistry:
     case at: AppliedType => at.tycon 
     case _ => tpe
 
-  private def nameIt(canonical: String, template: String, tpe: Type) =
+  private def nameIt(canonical: String, template: String, tpe: Type): String =
     val cnt = shortNames.count((t, r) => r.canonical == canonical && tpe != t)
     val idx = cnt.toChar match 
       case 0 => ""
@@ -49,14 +49,14 @@ class TypeRegistry:
       case 8 => "⁸"
       case 9 => "⁹"
     
-    template.replaceAll("<cnt>", idx)
+    template.replaceAll("<cnt>", idx).nn
 
   private def computeShortName(tpe: Type)(using Context): ShortTypeName = 
     shortNames.getOrElseUpdate(concrete(tpe), {
       val short = 
         tpe match 
         case n: NamedType => 
-          val nm = n.name.lastPart.show.nn
+          val nm = n.name.lastPart.show
           val nmTemplate = nm + "<cnt>"
           val value = nameIt(nm, nmTemplate, n)
           ShortTypeName(value, value, nm)
