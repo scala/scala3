@@ -28,43 +28,35 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
-    formal.argInfos match
-      case arg :: Nil =>
-        if isFullyDefined(arg, ForceDegree.all) then
-          arg match
-            case defn.ArrayOf(elemTp) =>
-              val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
-              if etag.tpe.isError then EmptyTreeNoError else withNoErrors(etag.select(nme.wrap))
-            case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
-              val sym = tp.typeSymbol
-              val classTag = ref(defn.ClassTagModule)
-              val tag =
-                if defn.SpecialClassTagClasses.contains(sym) then
-                  classTag.select(sym.name.toTermName).withSpan(span)
-                else
-                  def clsOfType(tp: Type): Type =
-                    val tp1 = tp.dealias
-                    if tp1.isMatch then
-                      val matchTp = tp1.underlyingIterator.collect {
-                          case mt: MatchType => mt
-                        }.next
-                      matchTp.alternatives.map(clsOfType) match
-                        case ct1 :: cts if cts.forall(ct1 == _) => ct1
-                        case _ => NoType
-                    else
-                      escapeJavaArray(erasure(tp))
-                  val ctype = clsOfType(tp)
-                  if ctype.exists then
-                    classTag.select(nme.apply)
-                      .appliedToType(tp)
-                      .appliedTo(clsOf(ctype))
-                      .withSpan(span)
-                  else
-                    EmptyTree
-              withNoErrors(tag)
-            case tp => EmptyTreeNoError
-        else EmptyTreeNoError
-      case _ => EmptyTreeNoError
+    val tag = formal.argInfos match
+      case arg :: Nil if isFullyDefined(arg, ForceDegree.all) =>
+        arg match
+          case defn.ArrayOf(elemTp) =>
+            val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
+            if etag.tpe.isError then EmptyTree else etag.select(nme.wrap)
+          case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
+            val sym = tp.typeSymbol
+            val classTagModul = ref(defn.ClassTagModule)
+            if defn.SpecialClassTagClasses.contains(sym) then
+              classTagModul.select(sym.name.toTermName).withSpan(span)
+            else
+              def clsOfType(tp: Type): Type = tp.dealias.underlyingMatchType match
+                case matchTp: MatchType =>
+                  matchTp.alternatives.map(clsOfType) match
+                    case ct1 :: cts if cts.forall(ct1 == _) => ct1
+                    case _ => NoType
+                case _ =>
+                  escapeJavaArray(erasure(tp))
+              val ctype = clsOfType(tp)
+              if ctype.exists then
+                classTagModul.select(nme.apply)
+                  .appliedToType(tp)
+                  .appliedTo(clsOf(ctype))
+                  .withSpan(span)
+              else EmptyTree
+          case _ => EmptyTree
+      case _ => EmptyTree
+    (tag, Nil)
   end synthesizedClassTag
 
   val synthesizedTypeTest: SpecialHandler =

@@ -15,10 +15,10 @@ type ScalaType[U <: DType] <: Int | Float = U match
 abstract class Tensor[T <: DType]:
   def toArray: Array[ScalaType[T]]
 
-object FloatTensor extends Tensor[Float16]:
-  def toArray: Array[Float] = Array(1, 2, 3)
+object IntTensor extends Tensor[Int32]:
+  def toArray: Array[Int] = Array(1, 2, 3)
 
 @main
 def Test =
-  val t = FloatTensor: Tensor[Float16] // Tensor[Float32]
+  val t = IntTensor: Tensor[Int32]
   println(t.toArray.headOption) // was ClassCastException
