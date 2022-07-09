@@ -1,0 +1,28 @@
+-- [E134] Type Error: tests/neg/overload-error-message.scala:45:2 ------------------------------------------------------
+45 |  method(new World, new World, 25, new World, new HelloWorldFactory) // error
+   |  ^^^^^^
+   |None of the overloaded alternatives of method method with types
+   |
+   | method(p1: String, p1_1: HelloWorldFactory, p2: World, p3: World, 
+   |        p4: HelloWorldFactory)
+   |
+   | method(p1: World, p1_1: HelloWorldFactory, p2: World, p3: World, p4: HelloWorldFactory)
+   |
+   | method(p1: World, p2: World¹, p3: World, p4: HelloWorldFactory, p5: HelloWorldFactory, 
+   |        p6: HelloWorldFactory, p7: HelloWorldFactory)
+   |
+   |where
+   |  HelloWorldFactory is bla.longname.otherlongname.HelloWorldFactory
+   |  World             is hello.World
+   |  World¹            is bye.World
+   |match arguments (hello.World, hello.World, (25 : Int), hello.World, bla.longname.otherlongname.HelloWorldFactory)
+-- [E134] Type Error: tests/neg/overload-error-message.scala:46:2 ------------------------------------------------------
+46 |  generic(25, false) // error
+   |  ^^^^^^^
+   |  None of the overloaded alternatives of method generic with types
+   |
+   |   generic(bla: Int)(x$2: Numeric[T1], x$3: Numeric[T1])
+   |
+   |   generic(bla: Int, a: String, h: List[Int])(x$4: Numeric[T1], x$5: Numeric[T1])
+   |
+   |  match arguments ((25 : Int), (false : Boolean))

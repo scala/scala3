@@ -96,47 +96,26 @@ object ErrorReporting {
 
     def overloadedAltsStr(alts: List[SingleDenotation])(using ctx: Context): String = {
       val denots = Vector.newBuilder[String]
-      val fullNames = collection.mutable.Map.empty[Type, String]
-      val shortNames = collection.mutable.Map.empty[Type, String]
-
-      inline def getShortName(tpe: Type) = 
-        shortNames.getOrElseUpdate(tpe, {
-          val short = tpe match 
-            case n: NamedType => 
-              n.name.lastPart.show
-            case _ => tpe.show
-
-          val alreadyPresent = shortNames.count((t, str) => str == short && t != tpe)
-
-          alreadyPresent match 
-            case 0 => short
-            case 1 => short + "¹"
-            case 2 => short + "²"
-            case 3 => short + "³"
-            case _ =>  tpe.show
-        }
-      )
-
-      end getShortName
+      val registry = TypeRegistry()
 
       inline def renderParamList(names: List[String], types: List[Type], maxLength: Int = 40) = 
         val params = names.zip(types).map {case (name, tpe) => 
-          fullNames.getOrElseUpdate(tpe, tpe.show)
-          MarginString.Chunk(s"$name: ${getShortName(tpe)}")
+          registry.getFullName(tpe)          
+          MarginString.Chunk(s"$name: ${registry.getShortName(tpe).applied}")
         }
 
         MarginString.Group(
           params.toVector, 
           ChunkJoiner.rightBreakable(", "), 
           prefix = Some(ChunkJoiner.rightBreakable("(")), 
-          suffix = Some(ChunkJoiner(")"))
+          suffix = Some(ChunkJoiner.rightBreakable(")"))
         )
       end renderParamList
 
       alts.foreach { alt => 
-        val info = alt.info.stripPoly
+        val info = alt.info
         val name = alt.name.show
-
+        
         val paramNamess = info.paramNamess.map(_.map(_.show))
         val paramTypes = info.paramInfoss
 
@@ -150,7 +129,7 @@ object ErrorReporting {
         val lines = MarginString.Group(
             paramLists, 
             ChunkJoiner.nonBreakable("")
-          ).lines(40).map(MarginString.Chunk.apply)
+          ).lines(60).map(MarginString.Chunk.apply)
 
         MarginString.Group(
             lines, 
@@ -159,23 +138,28 @@ object ErrorReporting {
           )
           .lines(0)
           .foreach(denots += _)
-        
       }
 
-      val allMentionedTypes = fullNames.toList.sortBy(_._2).map(_._1)
-      val maxShortLength = shortNames.maxByOption(_._2.length).map(_._2.length).getOrElse(0)
+      val allMentionedTypes = registry.allShortNames
+        .toVector
+        .filter((tpe, shortName) => registry.getFullName(tpe) != shortName.ref)
+        .sortBy(_._2.ref)
+        .map(_._1)
 
+      val maxShortLength = registry.allShortNames.values.maxByOption(_.ref.length).map(_.ref.length).getOrElse(0)
+      
       denots += ""
-      denots += "where"
+
+      if allMentionedTypes.nonEmpty then 
+        denots += "where"
 
       import printing.Highlighting.*
 
       allMentionedTypes.foreach {tpe => 
-        val shortName = shortNames(tpe)
-        val longName = fullNames(tpe)
-        if shortName != longName then 
-          val paddedName = shortNames(tpe).padTo(maxShortLength, ' ')
-          denots += s"  ${Cyan(paddedName).show} is $longName"
+        val shortName = registry.getShortName(tpe)
+        val longName = registry.getFullName(tpe)
+        val paddedName = shortName.ref.padTo(maxShortLength, ' ')
+        denots += s"  ${Cyan(paddedName).show} is $longName"
       }
 
       em"overloaded alternatives of ${denotStr(alts.head)} with types\n" +
