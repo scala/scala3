@@ -56,7 +56,7 @@ class TypeRegistry:
       val short = 
         tpe match 
         case n: NamedType => 
-          val nm = n.name.lastPart.show
+          val nm = n.name.lastPart.show.nn
           val nmTemplate = nm + "<cnt>"
           val value = nameIt(nm, nmTemplate, n)
           ShortTypeName(value, value, nm)
