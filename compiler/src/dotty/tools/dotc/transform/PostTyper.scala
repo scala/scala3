@@ -16,6 +16,7 @@ import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import util.SrcPos
 import reporting._
+import NameKinds.WildcardParamName
 
 object PostTyper {
   val name: String = "posttyper"
@@ -345,12 +346,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           for arg <- args do
             checkInferredWellFormed(arg)
-            val isInferred = arg.isInstanceOf[InferredTypeTree] || arg.span.isSynthetic
-            if !isInferred then
-              // only check explicit type arguments. We rely on inferred type arguments
-              // to either have good bounds (if they come from a constraint), or be derived
-              // from values that recursively need to have good bounds.
-              Checking.checkGoodBounds(arg.tpe, arg.srcPos)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
@@ -403,13 +398,20 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               val reference = ctx.settings.sourceroot.value
               val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
               sym.addAnnotation(Annotation.makeSourceFile(relativePath))
-          else (tree.rhs, sym.info) match
-            case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
-              VarianceChecker.checkLambda(rhs, bounds)
-              if sym.isOpaqueAlias then
-                VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
-            case _ =>
+          else
+            if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
+              Checking.checkGoodBounds(tree.symbol)
+            (tree.rhs, sym.info) match
+              case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
+                VarianceChecker.checkLambda(rhs, bounds)
+                if sym.isOpaqueAlias then
+                  VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
+              case _ =>
           processMemberDef(super.transform(tree))
+        case tree: Bind =>
+          if tree.symbol.isType && !tree.symbol.name.is(WildcardParamName) then
+            Checking.checkGoodBounds(tree.symbol)
+          super.transform(tree)
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.srcPos)
           super.transform(tree)
