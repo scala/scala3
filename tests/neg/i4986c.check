@@ -1,64 +1,64 @@
--- Error: tests/neg/i4986c.scala:38:7 ----------------------------------------------------------------------------------
-38 |  test.f // error
+-- Error: tests/neg/i4986c.scala:42:7 ----------------------------------------------------------------------------------
+42 |  test.f // error
    |       ^
    |       Missing X$Y for Test[Char]
--- Error: tests/neg/i4986c.scala:39:8 ----------------------------------------------------------------------------------
-39 |  test.g[Int] // error
+-- Error: tests/neg/i4986c.scala:43:8 ----------------------------------------------------------------------------------
+43 |  test.g[Int] // error
    |        ^
    |        Missing Outer[Int] with OuterMember = pkg.Outer[Int]#OuterMember
--- Error: tests/neg/i4986c.scala:40:8 ----------------------------------------------------------------------------------
-40 |  test.h[X$Y] // error
+-- Error: tests/neg/i4986c.scala:44:8 ----------------------------------------------------------------------------------
+44 |  test.h[X$Y] // error
    |        ^
    |        Missing Outer[pkg.X$Y] with OuterMember = pkg.Outer[pkg.X$Y]#OuterMember
--- Error: tests/neg/i4986c.scala:41:8 ----------------------------------------------------------------------------------
-41 |  test.i[Option[String]] // error
+-- Error: tests/neg/i4986c.scala:45:8 ----------------------------------------------------------------------------------
+45 |  test.i[Option[String]] // error
    |        ^
    |        Missing implicit outer param of type Outer[Option[String]] for Test[Char]
--- Error: tests/neg/i4986c.scala:42:8 ----------------------------------------------------------------------------------
-42 |  test.j[(Long, Long), Int | String, Array] // error
+-- Error: tests/neg/i4986c.scala:46:8 ----------------------------------------------------------------------------------
+46 |  test.j[(Long, Long), Int | String, Array] // error
    |        ^
    |Missing Inner[Int | String, Array] with InnerMember = pkg.Outer[(Long, Long)]#Inner[Int | String, Array]#InnerMember from Outer[(Long, Long)] with OuterMember = pkg.Outer[(Long, Long)]#OuterMember
--- Error: tests/neg/i4986c.scala:43:8 ----------------------------------------------------------------------------------
-43 |  test.k[Either[String, Any], Seq[Seq[Char]], Vector] // error
+-- Error: tests/neg/i4986c.scala:47:8 ----------------------------------------------------------------------------------
+47 |  test.k[Either[String, Any], Seq[Seq[Char]], Vector] // error
    |        ^
    |    Missing implicit inner param of type Outer[Either[String, Any]]#Inner[Seq[Seq[Char]], Vector] for Test[Char]
--- Error: tests/neg/i4986c.scala:45:12 ---------------------------------------------------------------------------------
-45 |  implicitly[Outer[Option[String] | List[Iterable[Char]]] { type MyType = BigDecimal }] // error
+-- Error: tests/neg/i4986c.scala:49:12 ---------------------------------------------------------------------------------
+49 |  implicitly[Outer[Option[String] | List[Iterable[Char]]] { type MyType = BigDecimal }] // error
    |            ^
    |Missing Outer[Option[String] | List[Iterable[Char]]] with OuterMember = pkg.Outer[Option[String] | List[Iterable[Char]]]{MyType = BigDecimal}#OuterMember
--- Error: tests/neg/i4986c.scala:46:12 ---------------------------------------------------------------------------------
-46 |  implicitly[(Outer[Option[String] | List[Iterable[Char]]] { type MyType = BigDecimal })#Inner[Byte, Seq]] // error
+-- Error: tests/neg/i4986c.scala:50:12 ---------------------------------------------------------------------------------
+50 |  implicitly[(Outer[Option[String] | List[Iterable[Char]]] { type MyType = BigDecimal })#Inner[Byte, Seq]] // error
    |            ^
    |Missing Inner[Byte, Seq] with InnerMember = pkg.Outer[Option[String] | List[Iterable[Char]]]{MyType = BigDecimal}#Inner[Byte, Seq]#InnerMember from Outer[Option[String] | List[Iterable[Char]]] with OuterMember = pkg.Outer[Option[String] | List[Iterable[Char]]]{MyType = BigDecimal}#OuterMember
--- Error: tests/neg/i4986c.scala:47:12 ---------------------------------------------------------------------------------
-47 |  implicitly[Outer[Int] @myAnnot] // error
+-- Error: tests/neg/i4986c.scala:51:12 ---------------------------------------------------------------------------------
+51 |  implicitly[Outer[Int] @myAnnot] // error
    |            ^
    |            Missing Outer[Int] with OuterMember = pkg.Outer[Int] @myAnnot#OuterMember
--- Error: tests/neg/i4986c.scala:52:12 ---------------------------------------------------------------------------------
-52 |  implicitly[Outer[Int] { type OuterMember = Long }] // error
+-- Error: tests/neg/i4986c.scala:56:12 ---------------------------------------------------------------------------------
+56 |  implicitly[Outer[Int] { type OuterMember = Long }] // error
    |            ^
    |            Missing Outer[Int] with OuterMember = Long
--- Error: tests/neg/i4986c.scala:53:12 ---------------------------------------------------------------------------------
-53 |  implicitly[outer.type] // error
+-- Error: tests/neg/i4986c.scala:57:12 ---------------------------------------------------------------------------------
+57 |  implicitly[outer.type] // error
    |            ^
    |            Missing Outer[Int] with OuterMember = pkg.Test.outer.OuterMember
--- Error: tests/neg/i4986c.scala:54:12 ---------------------------------------------------------------------------------
-54 |  implicitly[(Outer[Int] { type OuterMember = Long })#Inner[Long, Iterator] { type InnerMember = Byte }] // error
+-- Error: tests/neg/i4986c.scala:58:12 ---------------------------------------------------------------------------------
+58 |  implicitly[(Outer[Int] { type OuterMember = Long })#Inner[Long, Iterator] { type InnerMember = Byte }] // error
    |            ^
    |            Missing Inner[Long, Iterator] with InnerMember = Byte from Outer[Int] with OuterMember = Long
--- Error: tests/neg/i4986c.scala:55:12 ---------------------------------------------------------------------------------
-55 |  implicitly[outer.Inner[Long, Iterator] { type InnerMember = Byte }] // error
+-- Error: tests/neg/i4986c.scala:59:12 ---------------------------------------------------------------------------------
+59 |  implicitly[outer.Inner[Long, Iterator] { type InnerMember = Byte }] // error
    |            ^
    |Missing Inner[Long, Iterator] with InnerMember = Byte from Outer[Int] with OuterMember = pkg.Test.outer.OuterMember
--- Error: tests/neg/i4986c.scala:56:12 ---------------------------------------------------------------------------------
-56 |  implicitly[inner.type] // error
+-- Error: tests/neg/i4986c.scala:60:12 ---------------------------------------------------------------------------------
+60 |  implicitly[inner.type] // error
    |            ^
    |Missing Inner[Long, Iterator] with InnerMember = pkg.Test.inner.InnerMember from Outer[Int] with OuterMember = pkg.Test.outer.OuterMember
--- Error: tests/neg/i4986c.scala:58:12 ---------------------------------------------------------------------------------
-58 |  implicitly[U[Int, Option, Map]] // error
+-- Error: tests/neg/i4986c.scala:62:12 ---------------------------------------------------------------------------------
+62 |  implicitly[U[Int, Option, Map]] // error
    |            ^
    |            There's no U[Int, Option, Map]
--- Error: tests/neg/i4986c.scala:62:5 ----------------------------------------------------------------------------------
-62 |  i.m[Option[Long]] // error
+-- Error: tests/neg/i4986c.scala:66:5 ----------------------------------------------------------------------------------
+66 |  i.m[Option[Long]] // error
    |     ^
-   |     String; List; [A, _] =>> List[Option[?]]; Int; Option[Long]; 
+   |     There is no '' but it's unchecked; String; List; [A, _] =>> List[Option[?]]; Int; Option[Long]
