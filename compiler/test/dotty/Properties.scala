@@ -8,8 +8,8 @@ import java.nio.file._
 object Properties {
 
   /** If property is unset or "TRUE" we consider it `true` */
-  private def propIsNullOrTrue(prop: String): Boolean = {
-    val prop = System.getProperty("dotty.tests.interactive")
+  private def propIsNullOrTrue(name: String): Boolean = {
+    val prop = System.getProperty(name)
     prop == null || prop == "TRUE"
   }
 
