@@ -1152,7 +1152,7 @@ object SymDenotations {
       isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
     final def isTransparentTrait(using Context): Boolean =
-      isAllOf(TransparentTrait)
+      is(TransparentType)
       || defn.assumedTransparentTraits.contains(symbol)
       || isClass && hasAnnotation(defn.TransparentTraitAnnot)
 

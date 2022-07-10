@@ -495,7 +495,7 @@ object Checking {
     }
     if sym.is(Transparent) then
       if sym.isType then
-        if !sym.is(Trait) then fail(em"`transparent` can only be used for traits".toMessage)
+        if !sym.isExtensibleClass then fail(em"`transparent` can only be used for extensible classes and traits".toMessage)
       else
         if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods".toMessage)
     if (!sym.isClass && sym.is(Abstract))
