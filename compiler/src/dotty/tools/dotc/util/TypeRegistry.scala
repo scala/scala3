@@ -1,17 +1,16 @@
-package dotty.tools 
-package dotc
+package dotty.tools.dotc.util
 
 import collection.mutable.Map as MMap
 
-import core.Types.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Contexts.Context
 
 case class ShortTypeName(ref: String, applied: String, canonical: String)
 
-class TypeRegistry:
-  inline def getShortName(tpe: Type)(using Context) = computeShortName(tpe)
+final class TypeRegistry:
+  def getShortName(tpe: Type)(using Context) = computeShortName(tpe)
 
-  inline def getFullName(tpe: Type)(using Context) = 
+  def getFullName(tpe: Type)(using Context) = 
     fullNames.getOrElseUpdate(tpe, {
       val concreteType = concrete(tpe)
 
@@ -21,9 +20,9 @@ class TypeRegistry:
     })
 
 
-  inline def allShortNames: Map[Type, ShortTypeName] = shortNames.toMap
+  def allShortNames: Map[Type, ShortTypeName] = shortNames.toMap
 
-  inline def allTypes: scala.collection.Set[Type] = shortNames.keySet
+  def allTypes: scala.collection.Set[Type] = shortNames.keySet
 
   private val fullNames = MMap.empty[Type, String]
   private val shortNames = MMap.empty[Type, ShortTypeName]
@@ -73,7 +72,7 @@ class TypeRegistry:
 
     })
 
-  private inline def computeFullName(tpe: Type)(using Context) = 
+  private def computeFullName(tpe: Type)(using Context) = 
     tpe.show
 
 
