@@ -17,7 +17,8 @@ import collection.mutable
 import scala.util.matching.Regex
 import dotty.tools.dotc.core.Names.TypeName
 import dotty.tools.dotc.util.MarginString
-import dotty.tools.dotc.util.ChunkJoiner
+import MarginString.Joiner
+import dotty.tools.dotc.util.TypeRegistry
 
 object ErrorReporting {
 
@@ -106,9 +107,9 @@ object ErrorReporting {
 
         MarginString.Group(
           params.toVector, 
-          ChunkJoiner.rightBreakable(", "), 
-          prefix = Some(ChunkJoiner.rightBreakable("(")), 
-          suffix = Some(ChunkJoiner.rightBreakable(")"))
+          Joiner.rightBreakable(", "), 
+          prefix = Some(Joiner.rightBreakable("(")), 
+          suffix = Some(Joiner.rightBreakable(")"))
         )
       end renderParamList
 
@@ -134,14 +135,14 @@ object ErrorReporting {
 
         val paramLists = MarginString.Group(
             paramNamess.zip(paramTypes).map(t => renderParamList(t._1, t._2)).toVector, 
-            ChunkJoiner.nonBreakable("")
+            Joiner.nonBreakable("")
           ).lines(60).map(MarginString.Chunk.apply)
 
         MarginString.Group(
             paramLists, 
-            ChunkJoiner.nonBreakable("\n " + (" " * methodPrefix.size)), 
-            prefix = Some(ChunkJoiner.nonBreakable(methodPrefix + typeParamsSection)),
-            suffix = Some(ChunkJoiner.nonBreakable(": " + registry.getShortName(resultType).applied))
+            Joiner.nonBreakable("\n " + (" " * methodPrefix.size)), 
+            prefix = Some(Joiner.nonBreakable(methodPrefix + typeParamsSection)),
+            suffix = Some(Joiner.nonBreakable(": " + registry.getShortName(resultType).applied))
           )
           .lines(0)
           .foreach(denots += _)
