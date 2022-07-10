@@ -1839,7 +1839,11 @@ class Definitions {
       requiredClass("scala.collection.generic.IsMap"),
       requiredClass("scala.collection.generic.IsSeq"),
       requiredClass("scala.collection.generic.Subtractable"),
-      requiredClass("scala.collection.immutable.StrictOptimizedSeqOps")
+      requiredClass("scala.collection.immutable.StrictOptimizedSeqOps"),
+      AnyClass,
+      AnyValClass,
+      ObjectClass,
+      MatchableClass
     )
 
   // ----- primitive value class machinery ------------------------------------------

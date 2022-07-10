@@ -550,6 +550,10 @@ trait ConstraintHandling {
         inst
   end approximation
 
+  private def isTransparent(tp: Type)(using Context): Boolean = tp match
+    case AndType(tp1, tp2) => isTransparent(tp1) && isTransparent(tp2)
+    case _ => tp.typeSymbol.isTransparentTrait && !tp.isLambdaSub
+
   /** If `tp` is an intersection such that some operands are transparent trait instances
    *  and others are not, replace as many transparent trait instances as possible with Any
    *  as long as the result is still a subtype of `bound`. But fall back to the
@@ -563,7 +567,7 @@ trait ConstraintHandling {
 
     def dropOneTransparentTrait(tp: Type): Type =
       val tpd = tp.dealias
-      if tpd.typeSymbol.isTransparentTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
+      if isTransparent(tpd) && !kept.contains(tpd) then
         dropped = tpd :: dropped
         defn.AnyType
       else tpd match
@@ -648,7 +652,16 @@ trait ConstraintHandling {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else dropTransparentTraits(widenIrreducible(widenOr(widenSingle(inst))), bound)
+      else
+        val widenedFromSingle = widenSingle(inst)
+        val widenedFromUnion = widenOr(widenedFromSingle)
+        val widened =
+          if (widenedFromUnion ne widenedFromSingle) && isTransparent(widenedFromUnion) then
+            widenedFromSingle
+          else
+            dropTransparentTraits(widenedFromUnion, bound)
+        widenIrreducible(widened)
+
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
