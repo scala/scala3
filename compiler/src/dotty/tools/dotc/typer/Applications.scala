@@ -1410,7 +1410,10 @@ trait Applications extends Compatibility {
                 .asSingleDenotation
 
           val positionOfStringNames: Map[String, Int] =
-            if names.exists then
+            if qual.symbol.name == nme.unapplySeq then
+              report.error(i"'${qual}' named patterns are not supported for var arg patterns", qual)
+              Map.empty
+            else if names.exists then
               // TODO: why doesn't names.info.dealias works?
               def dealias(typ: Type): Type = typ match
                 case alias: TypeAlias => alias.alias

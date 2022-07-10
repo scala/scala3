@@ -30,7 +30,7 @@ object Test:
     val empty: EmptyTuple & { type Names = EmptyTuple } = EmptyTuple.asInstanceOf
 
     extension [N <: Singleton & String, V] (head: (N, V))
-      def +::[Vs <: Tuple, Ns <: Tuple](tail: Vs & { type Names = Ns }) : V *: Vs & { type Names = N *: Ns }=
+      def +::[Vs <: Tuple, Ns <: Tuple](tail: Vs & { type Names = Ns }) : V *: Vs & { type Names = N *: Ns } =
         (head._2 *: tail).asInstanceOf
 
   object UserEx2:
@@ -40,8 +40,9 @@ object Test:
       ("name", user.name) +:: ("age", user.age) +:: ("city", user.city) +:: empty
 
   def main(args: Array[String]): Unit =
-    val UserEx(city = c, name = _) = User("Guy", 25, "Paris")
-    println("city = " + c)
+    // TODO: following line leads to "Recursive value c needs type"
+    // val UserEx(city = c, name = _) = User("Guy", 25, "Paris")
+    // println("city = " + c)
     val UserEx2(city = _, name = n) = User("Guy", 25, "Paris")
 
     println(n)

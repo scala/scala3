@@ -36,3 +36,7 @@
    |                              Recursive value notRecursive needs type
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/negNamedPatternMatching.scala:63:7 -----------------------------------------------------------------
+63 |  case MySeq(head = 1, tail = 2) => ??? // error
+   |       ^^^^^
+   |       'patterns.MySeq' doesn't support named patterns

@@ -53,3 +53,13 @@ val annasCity = user match
 
 // TODO: Don't show an error about recursive value
 val User(names = notRecursive) = user // error // error
+
+
+object MySeq:
+  def unapplySeq[A](x: Seq[A]): Some[Seq[A]] & { type Names = ("first", "second") } =
+    Some(x).asInstanceOf[Some[Seq[A]] & { type Names = ("first", "second") }]
+
+val x = Seq(1, 2) match {
+  case MySeq(head = 1, tail = 2) => ??? // error
+  case _ => println("Also nope")
+}
