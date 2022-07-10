@@ -1466,7 +1466,7 @@ trait Applications extends Compatibility {
     case mt: MethodType if mt.isImplicitMethod =>
       stripImplicit(resultTypeApprox(mt))
     case pt: PolyType =>
-      pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
+      pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType)).asInstanceOf[PolyType].flatten
     case _ =>
       tp
   }
@@ -1520,7 +1520,7 @@ trait Applications extends Compatibility {
       else compareOwner(cls1, sym2)
     else 0
 
-  /** Compare to alternatives of an overloaded call or an implicit search.
+  /** Compare two alternatives of an overloaded call or an implicit search.
    *
    *  @param  alt1, alt2      Non-overloaded references indicating the two choices
    *  @return  1   if 1st alternative is preferred over 2nd
