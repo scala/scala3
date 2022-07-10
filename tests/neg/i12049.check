@@ -31,20 +31,20 @@
    |
    |                              case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
    |                              case EmptyTuple => EmptyTuple
--- Error: tests/neg/i12049.scala:24:20 ---------------------------------------------------------------------------------
+-- Error: tests/neg/i12049.scala:24:14 ---------------------------------------------------------------------------------
 24 |val _ = summon[M[B]]  // error
-   |                    ^
-   |                    No given instance of type M[B] was found for parameter x of method summon in object Predef
+   |              ^
+   |              No given instance of type M[B] was found for parameter x of method summon in object Predef
    |
-   |                    Note: a match type could not be fully reduced:
+   |              Note: a match type could not be fully reduced:
    |
-   |                      trying to reduce  M[B]
-   |                      failed since selector  B
-   |                      does not match  case A => Int
-   |                      and cannot be shown to be disjoint from it either.
-   |                      Therefore, reduction cannot advance to the remaining case
+   |                trying to reduce  M[B]
+   |                failed since selector  B
+   |                does not match  case A => Int
+   |                and cannot be shown to be disjoint from it either.
+   |                Therefore, reduction cannot advance to the remaining case
    |
-   |                        case B => String
+   |                  case B => String
 -- Error: tests/neg/i12049.scala:25:26 ---------------------------------------------------------------------------------
 25 |val _ = summon[String =:= Last[Int *: Int *: Boolean *: String *: EmptyTuple]] // error
    |                          ^

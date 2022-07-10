@@ -11,9 +11,9 @@
    |
    |                  import unsafeExceptions.canThrowAny
    |
--- Error: tests/neg/saferExceptions.scala:17:46 ------------------------------------------------------------------------
+-- Error: tests/neg/saferExceptions.scala:17:40 ------------------------------------------------------------------------
 17 |  def baz(x: Int): Int throws Failure = bar(x)  // error
-   |                                              ^
+   |                                        ^
    |      The capability to throw exception java.io.IOException is missing.
    |      The capability can be provided by one of the following:
    |       - Adding a using clause `(using CanThrow[java.io.IOException])` to the definition of the enclosing method

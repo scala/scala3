@@ -1,16 +1,16 @@
--- Error: tests/neg/safeThrowsStrawman.scala:17:32 ---------------------------------------------------------------------
+-- Error: tests/neg/safeThrowsStrawman.scala:17:19 ---------------------------------------------------------------------
 17 |  if x then 1 else raise(Fail())  // error
-   |                                ^
-   |                                The capability to throw exception scalax.Fail is missing.
-   |                                The capability can be provided by one of the following:
-   |                                 - A using clause `(using CanThrow[scalax.Fail])`
-   |                                 - A raises clause in a result type such as `X raises scalax.Fail`
-   |                                 - an enclosing `try` that catches scalax.Fail
--- Error: tests/neg/safeThrowsStrawman.scala:27:15 ---------------------------------------------------------------------
+   |                   ^
+   |                   The capability to throw exception scalax.Fail is missing.
+   |                   The capability can be provided by one of the following:
+   |                    - A using clause `(using CanThrow[scalax.Fail])`
+   |                    - A raises clause in a result type such as `X raises scalax.Fail`
+   |                    - an enclosing `try` that catches scalax.Fail
+-- Error: tests/neg/safeThrowsStrawman.scala:27:12 ---------------------------------------------------------------------
 27 |    println(bar)        // error
-   |               ^
-   |               The capability to throw exception Exception is missing.
-   |               The capability can be provided by one of the following:
-   |                - A using clause `(using CanThrow[Exception])`
-   |                - A raises clause in a result type such as `X raises Exception`
-   |                - an enclosing `try` that catches Exception
+   |            ^
+   |            The capability to throw exception Exception is missing.
+   |            The capability can be provided by one of the following:
+   |             - A using clause `(using CanThrow[Exception])`
+   |             - A raises clause in a result type such as `X raises Exception`
+   |             - an enclosing `try` that catches Exception

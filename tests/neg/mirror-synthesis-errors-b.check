@@ -1,40 +1,40 @@
--- Error: tests/neg/mirror-synthesis-errors-b.scala:21:56 --------------------------------------------------------------
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:21:18 --------------------------------------------------------------
 21 |val testA = summon[Mirror.ProductOf[Cns[Int] & Sm[Int]]] // error: unreleated
-   |                                                        ^
+   |                  ^
    |No given instance of type deriving.Mirror.ProductOf[Cns[Int] & Sm[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.ProductOf[Cns[Int] & Sm[Int]]: type `Cns[Int] & Sm[Int]` is not a generic product because its subpart `Cns[Int] & Sm[Int]` is an intersection of unrelated definitions class Cns and class Sm.
--- Error: tests/neg/mirror-synthesis-errors-b.scala:22:56 --------------------------------------------------------------
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:22:18 --------------------------------------------------------------
 22 |val testB = summon[Mirror.ProductOf[Sm[Int] & Cns[Int]]] // error: unreleated
-   |                                                        ^
+   |                  ^
    |No given instance of type deriving.Mirror.ProductOf[Sm[Int] & Cns[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.ProductOf[Sm[Int] & Cns[Int]]: type `Sm[Int] & Cns[Int]` is not a generic product because its subpart `Sm[Int] & Cns[Int]` is an intersection of unrelated definitions class Sm and class Cns.
--- Error: tests/neg/mirror-synthesis-errors-b.scala:23:49 --------------------------------------------------------------
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:23:18 --------------------------------------------------------------
 23 |val testC = summon[Mirror.Of[Cns[Int] & Sm[Int]]] // error: unreleated
-   |                                                 ^
+   |                  ^
    |No given instance of type deriving.Mirror.Of[Cns[Int] & Sm[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[Cns[Int] & Sm[Int]]: 
    |	* type `Cns[Int] & Sm[Int]` is not a generic product because its subpart `Cns[Int] & Sm[Int]` is an intersection of unrelated definitions class Cns and class Sm.
    |	* type `Cns[Int] & Sm[Int]` is not a generic sum because its subpart `Cns[Int] & Sm[Int]` is an intersection of unrelated definitions class Cns and class Sm.
--- Error: tests/neg/mirror-synthesis-errors-b.scala:24:49 --------------------------------------------------------------
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:24:18 --------------------------------------------------------------
 24 |val testD = summon[Mirror.Of[Sm[Int] & Cns[Int]]] // error: unreleated
-   |                                                 ^
+   |                  ^
    |No given instance of type deriving.Mirror.Of[Sm[Int] & Cns[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[Sm[Int] & Cns[Int]]: 
    |	* type `Sm[Int] & Cns[Int]` is not a generic product because its subpart `Sm[Int] & Cns[Int]` is an intersection of unrelated definitions class Sm and class Cns.
    |	* type `Sm[Int] & Cns[Int]` is not a generic sum because its subpart `Sm[Int] & Cns[Int]` is an intersection of unrelated definitions class Sm and class Cns.
--- Error: tests/neg/mirror-synthesis-errors-b.scala:25:55 --------------------------------------------------------------
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:25:18 --------------------------------------------------------------
 25 |val testE = summon[Mirror.ProductOf[Sm[Int] & Nn.type]] // error: unreleated
-   |                                                       ^
+   |                  ^
    |No given instance of type deriving.Mirror.ProductOf[Sm[Int] & Nn.type] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.ProductOf[Sm[Int] & Nn.type]: type `Sm[Int] & Nn.type` is not a generic product because its subpart `Sm[Int] & Nn.type` is an intersection of unrelated definitions class Sm and object Nn.
--- Error: tests/neg/mirror-synthesis-errors-b.scala:26:55 --------------------------------------------------------------
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:26:18 --------------------------------------------------------------
 26 |val testF = summon[Mirror.ProductOf[Nn.type & Sm[Int]]] // error: unreleated
-   |                                                       ^
+   |                  ^
    |No given instance of type deriving.Mirror.ProductOf[Nn.type & Sm[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.ProductOf[Nn.type & Sm[Int]]: type `Nn.type & Sm[Int]` is not a generic product because its subpart `Nn.type & Sm[Int]` is an intersection of unrelated definitions object Nn and class Sm.
--- Error: tests/neg/mirror-synthesis-errors-b.scala:27:54 --------------------------------------------------------------
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:27:18 --------------------------------------------------------------
 27 |val testG = summon[Mirror.Of[Foo.A.type & Foo.B.type]] // error: unreleated
-   |                                                      ^
+   |                  ^
    |No given instance of type deriving.Mirror.Of[(Foo.A : Foo) & (Foo.B : Foo)] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[(Foo.A : Foo) & (Foo.B : Foo)]: 
    |	* type `(Foo.A : Foo) & (Foo.B : Foo)` is not a generic product because its subpart `(Foo.A : Foo) & (Foo.B : Foo)` is an intersection of unrelated definitions value A and value B.
    |	* type `(Foo.A : Foo) & (Foo.B : Foo)` is not a generic sum because its subpart `(Foo.A : Foo) & (Foo.B : Foo)` is an intersection of unrelated definitions value A and value B.
--- Error: tests/neg/mirror-synthesis-errors-b.scala:28:54 --------------------------------------------------------------
+-- Error: tests/neg/mirror-synthesis-errors-b.scala:28:18 --------------------------------------------------------------
 28 |val testH = summon[Mirror.Of[Foo.B.type & Foo.A.type]] // error: unreleated
-   |                                                      ^
+   |                  ^
    |No given instance of type deriving.Mirror.Of[(Foo.B : Foo) & (Foo.A : Foo)] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[(Foo.B : Foo) & (Foo.A : Foo)]: 
    |	* type `(Foo.B : Foo) & (Foo.A : Foo)` is not a generic product because its subpart `(Foo.B : Foo) & (Foo.A : Foo)` is an intersection of unrelated definitions value B and value A.
    |	* type `(Foo.B : Foo) & (Foo.A : Foo)` is not a generic sum because its subpart `(Foo.B : Foo) & (Foo.A : Foo)` is an intersection of unrelated definitions value B and value A.

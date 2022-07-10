@@ -1,8 +1,8 @@
--- Error: tests/neg/subtyping.scala:8:27 -------------------------------------------------------------------------------
+-- Error: tests/neg/subtyping.scala:8:14 -------------------------------------------------------------------------------
 8 |    implicitly[B#X <:< A#X] // error: no implicit argument
-  |                           ^
-  |                           Cannot prove that B#X <:< A#X.
--- Error: tests/neg/subtyping.scala:12:27 ------------------------------------------------------------------------------
+  |              ^
+  |              Cannot prove that B#X <:< A#X.
+-- Error: tests/neg/subtyping.scala:12:14 ------------------------------------------------------------------------------
 12 |    implicitly[a.T <:< a.U] // error: no implicit argument
-   |                           ^
-   |                           Cannot prove that a.T <:< a.U.
+   |              ^
+   |              Cannot prove that a.T <:< a.U.

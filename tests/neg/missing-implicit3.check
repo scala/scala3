@@ -1,6 +1,6 @@
--- Error: tests/neg/missing-implicit3.scala:13:36 ----------------------------------------------------------------------
+-- Error: tests/neg/missing-implicit3.scala:13:21 ----------------------------------------------------------------------
 13 |val sortedFoos = sort(List(new Foo)) // error
-   |                                    ^
+   |                     ^
    |   No given instance of type ord.Ord[ord.Foo] was found for an implicit parameter of method sort in package ord.
    |   I found:
    |

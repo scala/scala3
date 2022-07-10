@@ -23,23 +23,23 @@
    |           ^^^^^^^^^^^
    |           given patterns are not allowed in a val definition,
    |           please bind to an identifier and use an alias given.
--- Error: tests/neg/i11897.scala:16:18 ---------------------------------------------------------------------------------
+-- Error: tests/neg/i11897.scala:16:15 ---------------------------------------------------------------------------------
 16 |  assert(summon[A] == A(23)) // error
-   |                  ^
-   |                  No given instance of type A was found for parameter x of method summon in object Predef
--- Error: tests/neg/i11897.scala:17:18 ---------------------------------------------------------------------------------
+   |               ^
+   |               No given instance of type A was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11897.scala:17:15 ---------------------------------------------------------------------------------
 17 |  assert(summon[B] == B(false)) // error
-   |                  ^
-   |                  No given instance of type B was found for parameter x of method summon in object Predef
--- Error: tests/neg/i11897.scala:18:18 ---------------------------------------------------------------------------------
+   |               ^
+   |               No given instance of type B was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11897.scala:18:15 ---------------------------------------------------------------------------------
 18 |  assert(summon[C] == C("c")) // error
-   |                  ^
-   |                  No given instance of type C was found for parameter x of method summon in object Predef
--- Error: tests/neg/i11897.scala:19:18 ---------------------------------------------------------------------------------
+   |               ^
+   |               No given instance of type C was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11897.scala:19:15 ---------------------------------------------------------------------------------
 19 |  assert(summon[E] == E(93)) // error
-   |                  ^
-   |                  No given instance of type E was found for parameter x of method summon in object Predef
--- Error: tests/neg/i11897.scala:20:18 ---------------------------------------------------------------------------------
+   |               ^
+   |               No given instance of type E was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11897.scala:20:15 ---------------------------------------------------------------------------------
 20 |  assert(summon[G] == G(101)) // error
-   |                  ^
-   |                  No given instance of type G was found for parameter x of method summon in object Predef
+   |               ^
+   |               No given instance of type G was found for parameter x of method summon in object Predef

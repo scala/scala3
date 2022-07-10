@@ -1,8 +1,8 @@
--- Error: tests/neg/i14025.scala:1:88 ----------------------------------------------------------------------------------
+-- Error: tests/neg/i14025.scala:1:16 ----------------------------------------------------------------------------------
 1 |val foo = summon[deriving.Mirror.Product { type MirroredType = [X] =>> [Y] =>> (X, Y) }] // error
-  |                                                                                        ^
+  |                ^
   |No given instance of type deriving.Mirror.Product{MirroredType[X] = [Y] =>> (X, Y)} was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Product{MirroredType[X] = [Y] =>> (X, Y)}: type `[X] =>> [Y] =>> (X, Y)` is not a generic product because its subpart `[X] =>> [Y] =>> (X, Y)` is not a supported kind (either `*` or `* -> *`)
--- Error: tests/neg/i14025.scala:2:90 ----------------------------------------------------------------------------------
+-- Error: tests/neg/i14025.scala:2:16 ----------------------------------------------------------------------------------
 2 |val bar = summon[deriving.Mirror.Sum { type MirroredType = [X] =>> [Y] =>> List[(X, Y)] }] // error
-  |                                                                                          ^
+  |                ^
   |No given instance of type deriving.Mirror.Sum{MirroredType[X] = [Y] =>> List[(X, Y)]} was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Sum{MirroredType[X] = [Y] =>> List[(X, Y)]}: type `[X] =>> [Y] =>> List[(X, Y)]` is not a generic sum because its subpart `[X] =>> [Y] =>> List[(X, Y)]` is not a supported kind (either `*` or `* -> *`)

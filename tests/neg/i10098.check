@@ -1,16 +1,16 @@
--- Error: tests/neg/i10098.scala:20:32 ---------------------------------------------------------------------------------
+-- Error: tests/neg/i10098.scala:20:12 ---------------------------------------------------------------------------------
 20 |  implicitly[Bar12[Int, String]] // error
-   |                                ^
-   |                                There's no Foo2[String, Int]
--- Error: tests/neg/i10098.scala:21:32 ---------------------------------------------------------------------------------
+   |            ^
+   |            There's no Foo2[String, Int]
+-- Error: tests/neg/i10098.scala:21:12 ---------------------------------------------------------------------------------
 21 |  implicitly[Bar21[Int, String]] // error
-   |                                ^
-   |                                There's no Foo1[String, Int]
--- Error: tests/neg/i10098.scala:22:32 ---------------------------------------------------------------------------------
+   |            ^
+   |            There's no Foo1[String, Int]
+-- Error: tests/neg/i10098.scala:22:12 ---------------------------------------------------------------------------------
 22 |  implicitly[Baz12[Int, String]] // error
-   |                                ^
-   |                                There's no Baz12[Int, String]
--- Error: tests/neg/i10098.scala:23:32 ---------------------------------------------------------------------------------
+   |            ^
+   |            There's no Baz12[Int, String]
+-- Error: tests/neg/i10098.scala:23:12 ---------------------------------------------------------------------------------
 23 |  implicitly[Baz21[Int, String]] // error
-   |                                ^
-   |                                There's no Baz21[Int, String]
+   |            ^
+   |            There's no Baz21[Int, String]

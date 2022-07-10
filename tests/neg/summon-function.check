@@ -1,4 +1,4 @@
--- Error: tests/neg/summon-function.scala:2:23 -------------------------------------------------------------------------
+-- Error: tests/neg/summon-function.scala:2:8 --------------------------------------------------------------------------
 2 |  summon[Int => String] // error
-  |                       ^
-  |               No given instance of type Int => String was found for parameter x of method summon in object Predef
+  |        ^
+  |        No given instance of type Int => String was found for parameter x of method summon in object Predef

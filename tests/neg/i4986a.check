@@ -1,6 +1,6 @@
--- Error: tests/neg/i4986a.scala:6:57 ----------------------------------------------------------------------------------
+-- Error: tests/neg/i4986a.scala:6:49 ----------------------------------------------------------------------------------
 6 |  def foo(l: Lst[Int]) = l.map[Int, List[String]](x => 1) // error
-  |                                                         ^
+  |                                                 ^
   |Cannot construct a collection of type List[String] with elements of type Int based on a collection of type List[Int]..
   |I found:
   |

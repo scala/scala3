@@ -1,4 +1,4 @@
--- Error: tests/neg/i10603b.scala:4:35 ---------------------------------------------------------------------------------
+-- Error: tests/neg/i10603b.scala:4:20 ---------------------------------------------------------------------------------
 4 |  val x = implicitly[List[Boolean]] // error
-  |                                   ^
-  |                                   No implicit view available from Int => Boolean.
+  |                    ^
+  |                    No implicit view available from Int => Boolean.

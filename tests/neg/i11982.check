@@ -1,4 +1,4 @@
--- Error: tests/neg/i11982.scala:22:38 ---------------------------------------------------------------------------------
+-- Error: tests/neg/i11982.scala:22:30 ---------------------------------------------------------------------------------
 22 |  val p1: ("msg", 42) = unpair[Tshape]  // error: no singleton value for Any
-   |                                      ^
-   |                                      No singleton value available for Any.
+   |                              ^
+   |                              No singleton value available for Any.

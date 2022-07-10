@@ -3,16 +3,16 @@
    |         ^^^^^^^^^^
    |         Implementation restriction: cannot generate CanThrow capability for this kind of catch.
    |         CanThrow capabilities can only be generated for cases of the form `ex: T` where `T` is fully defined.
--- Error: tests/neg/i13864.scala:9:10 ----------------------------------------------------------------------------------
+-- Error: tests/neg/i13864.scala:9:4 -----------------------------------------------------------------------------------
 9 |    foo(1) // error
-  |          ^
-  |          The capability to throw exception Ex[Int] is missing.
-  |          The capability can be provided by one of the following:
-  |           - Adding a using clause `(using CanThrow[Ex[Int]])` to the definition of the enclosing method
-  |           - Adding `throws Ex[Int]` clause after the result type of the enclosing method
-  |           - Wrapping this piece of code with a `try` block that catches Ex[Int]
+  |    ^
+  |    The capability to throw exception Ex[Int] is missing.
+  |    The capability can be provided by one of the following:
+  |     - Adding a using clause `(using CanThrow[Ex[Int]])` to the definition of the enclosing method
+  |     - Adding `throws Ex[Int]` clause after the result type of the enclosing method
+  |     - Wrapping this piece of code with a `try` block that catches Ex[Int]
   |
-  |          The following import might fix the problem:
+  |    The following import might fix the problem:
   |
-  |            import unsafeExceptions.canThrowAny
+  |      import unsafeExceptions.canThrowAny
   |

@@ -1,6 +1,6 @@
--- Error: tests/neg/i14127.scala:6:55 ----------------------------------------------------------------------------------
-6 |    *: Int *: Int *: Int *: Int *: Int *: EmptyTuple)]] // error
-  |                                                       ^
+-- Error: tests/neg/i14127.scala:3:17 ----------------------------------------------------------------------------------
+3 |val mT23 = summon[Mirror.Of[( // error
+  |                 ^
   |No given instance of type deriving.Mirror.Of[(Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, 
   |  Int
   |, Int, Int)] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[(Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, 

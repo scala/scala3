@@ -1,24 +1,24 @@
--- Error: tests/neg/i14823a.scala:16:48 --------------------------------------------------------------------------------
+-- Error: tests/neg/i14823a.scala:16:16 --------------------------------------------------------------------------------
 16 |val foo = summon[Mirror.Of[Box[Int] | Box[Int]]] // error
-   |                                                ^
+   |                ^
    |No given instance of type deriving.Mirror.Of[Box[Int] | Box[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[Box[Int] | Box[Int]]: 
    |	* type `Box[Int] | Box[Int]` is not a generic product because its subpart `Box[Int] | Box[Int]` is a top-level union type.
    |	* type `Box[Int] | Box[Int]` is not a generic sum because its subpart `Box[Int] | Box[Int]` is a top-level union type.
--- Error: tests/neg/i14823a.scala:17:58 --------------------------------------------------------------------------------
+-- Error: tests/neg/i14823a.scala:17:16 --------------------------------------------------------------------------------
 17 |val bar = summon[MirrorK1.Of[[X] =>> Box[Int] | Box[Int]]] // error
-   |                                                          ^
+   |                ^
    |No given instance of type MirrorK1.Of[[X] =>> Box[Int] | Box[Int]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type MirrorK1.Of[[X] =>> Box[Int] | Box[Int]]: 
    |	* type `[A] =>> Box[Int] | Box[Int]` is not a generic product because its subpart `Box[Int] | Box[Int]` is a top-level union type.
    |	* type `[A] =>> Box[Int] | Box[Int]` is not a generic sum because its subpart `Box[Int] | Box[Int]` is a top-level union type.
--- Error: tests/neg/i14823a.scala:18:63 --------------------------------------------------------------------------------
+-- Error: tests/neg/i14823a.scala:18:16 --------------------------------------------------------------------------------
 18 |def baz = summon[deriving.Mirror.Of[Foo[String] | Foo[String]]] // error
-   |                                                               ^
+   |                ^
    |No given instance of type deriving.Mirror.Of[Foo[String] | Foo[String]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[Foo[String] | Foo[String]]: 
    |	* type `Foo[String] | Foo[String]` is not a generic product because its subpart `Foo[String] | Foo[String]` is a top-level union type.
    |	* type `Foo[String] | Foo[String]` is not a generic sum because its subpart `Foo[String] | Foo[String]` is a top-level union type.
--- Error: tests/neg/i14823a.scala:20:66 --------------------------------------------------------------------------------
+-- Error: tests/neg/i14823a.scala:20:16 --------------------------------------------------------------------------------
 20 |def qux = summon[deriving.Mirror.Of[Option[Int] | Option[String]]] // error
-   |                                                                  ^
+   |                ^
    |No given instance of type deriving.Mirror.Of[Option[Int] | Option[String]] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[Option[Int] | Option[String]]: 
    |	* type `Option[Int] | Option[String]` is not a generic product because its subpart `Option[Int] | Option[String]` is a top-level union type.
    |	* type `Option[Int] | Option[String]` is not a generic sum because its subpart `Option[Int] | Option[String]` is a top-level union type.

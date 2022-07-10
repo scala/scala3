@@ -1,6 +1,6 @@
--- Error: tests/neg/missing-implicit-2.scala:4:24 ----------------------------------------------------------------------
+-- Error: tests/neg/missing-implicit-2.scala:4:21 ----------------------------------------------------------------------
 4 |val f = Future[Unit] { } // error
-  |                        ^
+  |                     ^
   |                     Cannot find an implicit ExecutionContext. You might add
   |                     an (implicit ec: ExecutionContext) parameter to your method.
   |
