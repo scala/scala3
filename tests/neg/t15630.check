@@ -1,0 +1,8 @@
+-- Error: tests/neg/t15630.scala:2:14 ----------------------------------------------------------------------------------
+2 |def f = summon[Int] // error
+  |              ^
+  |              No given instance of type Int was found for parameter x of method summon in object Predef
+-- Error: tests/neg/t15630.scala:8:13 ----------------------------------------------------------------------------------
+8 |def h: Int = g // error
+  |             ^
+  |             No given instance of type T was found for parameter x$1 of method g

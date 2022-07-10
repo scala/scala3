@@ -3581,7 +3581,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case failure: SearchFailureType =>
                 report.error(
                   missingArgMsg(arg, formal, implicitParamString(paramName, methodStr, tree), paramSymWithMethodTree(paramName)),
-                  tree.srcPos.endPos
+                  tree.srcPos.focus
                 )
               case _ =>
             }
