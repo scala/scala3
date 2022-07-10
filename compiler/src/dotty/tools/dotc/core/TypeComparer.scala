@@ -487,7 +487,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         // If LHS is a hard union, constrain any type variables of the RHS with it as lower bound
         // before splitting the LHS into its constituents. That way, the RHS variables are
-        // constraint by the hard union and can be instantiated to it. If we just split and add
+        // constrained by the hard union and can be instantiated to it. If we just split and add
         // the two parts of the LHS separately to the constraint, the lower bound would become
         // a soft union.
         def constrainRHSVars(tp2: Type): Boolean = tp2.dealiasKeepRefiningAnnots match
@@ -495,23 +495,46 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case AndType(tp21, tp22) => constrainRHSVars(tp21) && constrainRHSVars(tp22)
           case _ => true
 
-        widenOK
-        || joinOK
-        || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
-        || containsAnd(tp1)
-            && !joined
-            && {
-              joined = true
-              try inFrozenGadt(recur(tp1.join, tp2))
-              finally joined = false
-            }
-            // An & on the left side loses information. We compensate by also trying the join.
-            // This is less ad-hoc than it looks since we produce joins in type inference,
-            // and then need to check that they are indeed supertypes of the original types
-            // under -Ycheck. Test case is i7965.scala.
-            // On the other hand, we could get a combinatorial explosion by applying such joins
-            // recursively, so we do it only once. See i14870.scala as a test case, which would
-            // loop for a very long time without the recursion brake.
+        /** Mark toplevel type vars in `tp2` as hard in the current typerState */
+        def hardenTypeVars(tp2: Type): Unit = tp2.dealiasKeepRefiningAnnots match
+          case tvar: TypeVar if constraint.contains(tvar.origin) =>
+            state.hardVars += tvar
+          case tp2: TypeParamRef if constraint.contains(tp2) =>
+            hardenTypeVars(constraint.typeVarOfParam(tp2))
+          case tp2: AndOrType =>
+            hardenTypeVars(tp2.tp1)
+            hardenTypeVars(tp2.tp2)
+          case _ =>
+
+        val res = widenOK
+          || joinOK
+          || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
+          || containsAnd(tp1)
+              && !joined
+              && {
+                joined = true
+                try inFrozenGadt(recur(tp1.join, tp2))
+                finally joined = false
+              }
+              // An & on the left side loses information. We compensate by also trying the join.
+              // This is less ad-hoc than it looks since we produce joins in type inference,
+              // and then need to check that they are indeed supertypes of the original types
+              // under -Ycheck. Test case is i7965.scala.
+              // On the other hand, we could get a combinatorial explosion by applying such joins
+              // recursively, so we do it only once. See i14870.scala as a test case, which would
+              // loop for a very long time without the recursion brake.
+
+        if res && !tp1.isSoft then
+          // We use a heuristic here where every toplevel type variable on the right hand side
+          // is marked so that it converts all soft unions in its lower bound to hard unions
+          // before it is instantiated. The reason is that the union might have come from
+          // (decomposed and reconstituted) `tp1`. But of course there might be false positives
+          // where we also treat unions that come from elsewhere as hard unions. Or the constraint
+          // that created the union is ultimately thrown away, but the type variable will
+          // stay marked. So it is a coarse measure to take. But it works in the obvious cases.
+          hardenTypeVars(tp2)
+
+        res
 
       case CapturingType(parent1, refs1) =>
         if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
@@ -2960,8 +2983,8 @@ object TypeComparer {
   def subtypeCheckInProgress(using Context): Boolean =
     comparing(_.subtypeCheckInProgress)
 
-  def instanceType(param: TypeParamRef, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type =
-    comparing(_.instanceType(param, fromBelow, maxLevel))
+  def instanceType(param: TypeParamRef, fromBelow: Boolean, widenUnions: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type =
+    comparing(_.instanceType(param, fromBelow, widenUnions, maxLevel))
 
   def approximation(param: TypeParamRef, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type =
     comparing(_.approximation(param, fromBelow, maxLevel))
@@ -2981,8 +3004,8 @@ object TypeComparer {
   def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
     comparing(_.addToConstraint(tl, tvars))
 
-  def widenInferred(inst: Type, bound: Type)(using Context): Type =
-    comparing(_.widenInferred(inst, bound))
+  def widenInferred(inst: Type, bound: Type, widenUnions: Boolean)(using Context): Type =
+    comparing(_.widenInferred(inst, bound, widenUnions))
 
   def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
     comparing(_.dropTransparentTraits(tp, bound))

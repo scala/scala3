@@ -13,6 +13,7 @@ import typer.ProtoTypes.{newTypeVar, representedParamRef}
 import UnificationDirection.*
 import NameKinds.AvoidNameKind
 import util.SimpleIdentitySet
+import NullOpsDecorator.stripNull
 
 /** Methods for adding constraints and solving them.
  *
@@ -627,8 +628,11 @@ trait ConstraintHandling {
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
    *      widen (all) the singleton type(s), provided the result is a subtype of `bound`.
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
-   *   2. If `inst` is a union type, approximate the union type from above by an intersection
-   *      of all common base types, provided the result is a subtype of `bound`.
+   *   2a. If `inst` is a union type and `widenUnions` is true, approximate the union type
+   *      from above by an intersection of all common base types, provided the result
+   *      is a subtype of `bound`.
+   *   2b. If `inst` is a union type and `widenUnions` is false, turn it into a hard
+   *      union type (except for unions | Null, which are kept in the state they were).
    *   3. Widen some irreducible applications of higher-kinded types to wildcard arguments
    *      (see @widenIrreducible).
    *   4. Drop transparent traits from intersections (see @dropTransparentTraits).
@@ -641,10 +645,12 @@ trait ConstraintHandling {
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
-  def widenInferred(inst: Type, bound: Type)(using Context): Type =
+  def widenInferred(inst: Type, bound: Type, widenUnions: Boolean)(using Context): Type =
     def widenOr(tp: Type) =
-      val tpw = tp.widenUnion
-      if (tpw ne tp) && (tpw <:< bound) then tpw else tp
+      if widenUnions then
+        val tpw = tp.widenUnion
+        if (tpw ne tp) && (tpw <:< bound) then tpw else tp
+      else tp.hardenUnions
 
     def widenSingle(tp: Type) =
       val tpw = tp.widenSingletons
@@ -664,6 +670,23 @@ trait ConstraintHandling {
         wideInst.dropRepeatedAnnot
   end widenInferred
 
+  /** Convert all toplevel union types in `tp` to hard unions */
+  extension (tp: Type) private def hardenUnions(using Context): Type = tp.widen match
+    case tp: AndType =>
+      tp.derivedAndType(tp.tp1.hardenUnions, tp.tp2.hardenUnions)
+    case tp: RefinedType =>
+      tp.derivedRefinedType(tp.parent.hardenUnions, tp.refinedName, tp.refinedInfo)
+    case tp: RecType =>
+      tp.rebind(tp.parent.hardenUnions)
+    case tp: HKTypeLambda =>
+      tp.derivedLambdaType(resType = tp.resType.hardenUnions)
+    case tp: OrType =>
+      val tp1 = tp.stripNull
+      if tp1 ne tp then tp.derivedOrType(tp1.hardenUnions, defn.NullType)
+      else tp.derivedOrType(tp.tp1.hardenUnions, tp.tp2.hardenUnions, soft = false)
+    case _ =>
+      tp
+
   /** The instance type of `param` in the current constraint (which contains `param`).
    *  If `fromBelow` is true, the instance type is the lub of the parameter's
    *  lower bounds; otherwise it is the glb of its upper bounds. However,
@@ -672,10 +695,10 @@ trait ConstraintHandling {
    *  The instance type is not allowed to contain references to types nested deeper
    *  than `maxLevel`.
    */
-  def instanceType(param: TypeParamRef, fromBelow: Boolean, maxLevel: Int)(using Context): Type = {
+  def instanceType(param: TypeParamRef, fromBelow: Boolean, widenUnions: Boolean, maxLevel: Int)(using Context): Type = {
     val approx = approximation(param, fromBelow, maxLevel).simplified
     if fromBelow then
-      val widened = widenInferred(approx, param)
+      val widened = widenInferred(approx, param, widenUnions)
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore
       // cannot be used as an instantiation of `param` without creating a loop.
@@ -683,7 +706,7 @@ trait ConstraintHandling {
       // (we do not check for non-toplevel occurences: those should never occur
       // since `addOneBound` disallows recursive lower bounds).
       if constraint.occursAtToplevel(param, widened) then
-        instanceType(param, fromBelow, maxLevel)
+        instanceType(param, fromBelow, widenUnions, maxLevel)
       else
         widened
     else

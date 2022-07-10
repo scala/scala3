@@ -25,19 +25,20 @@ object TyperState {
 
   type LevelMap = SimpleIdentityMap[TypeVar, Integer]
 
-  opaque type Snapshot = (Constraint, TypeVars, LevelMap)
+  opaque type Snapshot = (Constraint, TypeVars, TypeVars, LevelMap)
 
   extension (ts: TyperState)
     def snapshot()(using Context): Snapshot =
-      (ts.constraint, ts.ownedVars, ts.upLevels)
+      (ts.constraint, ts.ownedVars, ts.hardVars, ts.upLevels)
 
     def resetTo(state: Snapshot)(using Context): Unit =
-      val (constraint, ownedVars, upLevels) = state
+      val (constraint, ownedVars, hardVars, upLevels) = state
       for tv <- ownedVars do
         if !ts.ownedVars.contains(tv) then // tv has been instantiated
           tv.resetInst(ts)
       ts.constraint = constraint
       ts.ownedVars = ownedVars
+      ts.hardVars = hardVars
       ts.upLevels = upLevels
 }
 
@@ -91,6 +92,14 @@ class TyperState() {
   def ownedVars: TypeVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
 
+  /** The set of type variables `tv` such that, if `tv` is instantiated to
+   *  its lower bound, top-level soft unions in the instance type are converted
+   *  to hard unions instead of being widened in `widenOr`.
+   */
+  private var myHardVars: TypeVars = _
+  def hardVars: TypeVars = myHardVars
+  def hardVars_=(tvs: TypeVars): Unit = myHardVars = tvs
+
   private var upLevels: LevelMap = _
 
   /** Initializes all fields except reporter, isCommittable, which need to be
@@ -103,6 +112,7 @@ class TyperState() {
     this.myConstraint = constraint
     this.previousConstraint = constraint
     this.myOwnedVars = SimpleIdentitySet.empty
+    this.myHardVars = SimpleIdentitySet.empty
     this.upLevels = SimpleIdentityMap.empty
     this.isCommitted = false
     this
@@ -114,6 +124,7 @@ class TyperState() {
     val ts = TyperState().init(this, this.constraint)
       .setReporter(reporter)
       .setCommittable(committable)
+    ts.hardVars = this.hardVars
     ts.upLevels = upLevels
     ts
 
@@ -180,6 +191,7 @@ class TyperState() {
       constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
       if targetState.constraint eq previousConstraint then
         targetState.constraint = constraint
+        targetState.hardVars = hardVars
         if !ownedVars.isEmpty then ownedVars.foreach(targetState.includeVar)
       else
         targetState.mergeConstraintWith(this)
@@ -238,6 +250,7 @@ class TyperState() {
           val otherLos = other.lower(p)
           val otherHis = other.upper(p)
           val otherEntry = other.entry(p)
+          if that.hardVars.contains(tv) then this.myHardVars += tv
           (  (otherLos eq constraint.lower(p)) || otherLos.forall(_ <:< p)) &&
           (  (otherHis eq constraint.upper(p)) || otherHis.forall(p <:< _)) &&
           ((otherEntry eq constraint.entry(p)) || otherEntry.match
