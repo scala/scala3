@@ -15,7 +15,6 @@ import ProtoTypes._
 import Scopes._
 import CheckRealizable._
 import ErrorReporting.errorTree
-import rewrites.Rewrites.patch
 import util.Spans.Span
 import Phases.refchecksPhase
 import Constants.Constant
@@ -23,6 +22,7 @@ import Constants.Constant
 import util.SrcPos
 import util.Spans.Span
 import rewrites.Rewrites.patch
+import inlines.Inlines
 import transform.SymUtils._
 import transform.ValueClasses._
 import Decorators._
@@ -84,6 +84,20 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(using Context): Unit =
     checkBounds(args, tl.paramInfos, _.substParams(tl, _))
+
+  def checkGoodBounds(sym: Symbol)(using Context): Boolean =
+    val bad = findBadBounds(sym.typeRef)
+    if bad.exists then
+      report.error(em"$sym has possibly conflicting bounds $bad", sym.srcPos)
+    !bad.exists
+
+  /** If `tp` dealiases to a typebounds L..H where not L <:< H
+   *  return the potentially conflicting bounds, otherwise return NoType.
+   */
+  private def findBadBounds(tp: Type)(using Context): Type = tp.dealias match
+    case tp: TypeRef => findBadBounds(tp.info)
+    case tp @ TypeBounds(lo, hi) if !(lo <:< hi) => tp
+    case _ => NoType
 
   /** Check applied type trees for well-formedness. This means
    *   - all arguments are within their corresponding bounds
@@ -527,7 +541,7 @@ object Checking {
       fail("Traits cannot have secondary constructors" + addendum)
     checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
-    if (sym.isType && !sym.is(Deferred))
+    if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
@@ -1234,7 +1248,7 @@ trait Checking {
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit =
-    if !Inliner.inInlineMethod && !ctx.isInlineContext then
+    if !Inlines.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
 
   /** Check arguments of compiler-defined annotations */

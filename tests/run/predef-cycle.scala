@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class Force {
   val t1 = new Thread {
     override def run(): Unit = {

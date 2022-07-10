@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 trait Foo {
   @volatile private[this] var x: String = ""
   @volatile private var y: String = ""

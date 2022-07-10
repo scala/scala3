@@ -175,7 +175,7 @@ object JSEncoding {
     js.StringLiteral(encodeFieldSymAsString(sym))
 
   private def encodeFieldSymAsString(sym: Symbol)(using Context): String = {
-    require(sym.owner.isClass && sym.isTerm && !sym.isOneOf(Method | Module),
+    require(sym.owner.isClass && sym.isTerm && !sym.isOneOf(MethodOrModule),
         "encodeFieldSym called with non-field symbol: " + sym)
 
     val name0 = sym.javaSimpleName

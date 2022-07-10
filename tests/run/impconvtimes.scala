@@ -14,6 +14,6 @@ object Test {
 
 
   def main(args: Array[String]): scala.Unit = {
-    Console.println("3.0 * Hour = " + (3.0 * Hour))
+    Console.println("3.5 * Hour = " + (3.5 * Hour))
   }
 }

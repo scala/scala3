@@ -137,7 +137,7 @@ class ExpandSAMs extends MiniPhase:
     def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(using Context) = {
       val selector = tree.selector
       val selectorTpe = selector.tpe.widen
-      val defaultSym = newSymbol(pfParam.owner, nme.WILDCARD, Synthetic | Case, selectorTpe)
+      val defaultSym = newSymbol(pfParam.owner, nme.WILDCARD, SyntheticCase, selectorTpe)
       val defaultCase =
         CaseDef(
           Bind(defaultSym, Underscore(selectorTpe)),

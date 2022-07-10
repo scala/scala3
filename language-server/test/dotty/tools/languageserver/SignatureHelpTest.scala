@@ -29,9 +29,70 @@ class SignatureHelpTest {
           |object Z {
           |  List(Option(1)$m3
           |}"""
-      .signatureHelp(m1, List(listSignature), Some(0), 0)
-      .signatureHelp(m2, List(optionSignature), Some(0), 0)
-      .signatureHelp(m3, List(listSignature), Some(0), 0)
+      .signatureHelp(m1, List(listSignature), Some(0), 1)
+      .signatureHelp(m2, List(optionSignature), Some(0), 1)
+      .signatureHelp(m3, List(listSignature), Some(0), 1)
+  }
+
+  @Test def errorTypeParameter: Unit = {
+    val emptySignature = S("empty", List("K", "V"), Nil, Some("Map[K, V]"))
+    code"""object O:
+          |  Map.empty[WrongType, $m1]
+          """
+        .signatureHelp(m1, List(emptySignature), Some(0), 1)
+  }
+
+  @Test def methodTypeParameter: Unit = {
+    val applySignature = S("apply", List("K", "V"), List(List(P("elems", "(K, V)*"))), Some("Map[K, V]"))
+    val emptySignature = S("empty", List("K", "V"), Nil, Some("Map[K, V]"))
+    code"""object O:
+          |  Map[$m1]
+          |  Map.empty[$m2]
+          |  Map.empty[Int, $m3]
+          """
+        .signatureHelp(m1, List(applySignature), Some(0), 0)
+        .signatureHelp(m2, List(emptySignature), Some(0), 0)
+        .signatureHelp(m3, List(emptySignature), Some(0), 1)
+  }
+
+  @Test def classTypeParameter: Unit = {
+    val signature = S("Test", List("K", "V"), Nil, Some("Test"))
+    code"""object O:
+          |  class Test[K, V] {}
+          |  new Test[$m1]
+          |  new Test[String, $m2]
+          """
+        .signatureHelp(m1, List(signature), Some(0), 0)
+        .signatureHelp(m2, List(signature), Some(0), 1)
+  }
+
+  @Test def traitTypeParameter: Unit = {
+    val signature = S("Test", List("K", "V"), Nil, Some("Test"))
+    code"""object O:
+          |  trait Test[K, V] {}
+          |  new Test[$m1] {}
+          |  new Test[String, $m2]
+          """
+        .signatureHelp(m1, List(signature), Some(0), 0)
+        .signatureHelp(m2, List(signature), Some(0), 1)
+  }
+
+  @Test def typeAliasTypeParameter: Unit = {
+    val signature = S("Test", List("K"), Nil, Some("Test"))
+    code"""object O:
+          |  type Test[K] = List[K]
+          |  def test(x: Test[$m1])
+          """
+        .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+  @Test def typeParameterIndex: Unit = {
+    val mapSignature = S("map", List("B"), List(List(P("f", "Int => B"))), Some("List[B]"))
+    code"""object O {
+             List(1, 2, 3).map[$m1]($m2)
+           }"""
+      .signatureHelp(m1, List(mapSignature), Some(0), 0)
+      .signatureHelp(m2, List(mapSignature), Some(0), 1)
   }
 
   @Test def partialyFailedCurriedFunctions: Unit = {
@@ -50,7 +111,7 @@ class SignatureHelpTest {
     code"""object O {
           |  Option(1, 2, 3, $m1)
           |}"""
-      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m1, List(signature), Some(0), 1)
   }
 
   @Test def noSignaturesForTuple: Unit = {
@@ -63,13 +124,13 @@ class SignatureHelpTest {
 
   @Test def fromScala2: Unit = {
     val applySig = S("apply", List("A"), List(List(P("elems", "A*"))), Some("List[A]"))
-    val mapSig = S("map[B]", Nil, List(List(P("f", "Int => B"))), Some("List[B]"))
+    val mapSig = S("map", List("B"), List(List(P("f", "Int => B"))), Some("List[B]"))
     code"""object O {
              List($m1)
              List(1, 2, 3).map($m2)
            }"""
-      .signatureHelp(m1, List(applySig), Some(0), 0)
-      .signatureHelp(m2, List(mapSig), Some(0), 0)
+      .signatureHelp(m1, List(applySig), Some(0), 1)
+      .signatureHelp(m2, List(mapSig), Some(0), 1)
   }
 
   @Test def typeParameterMethodApply: Unit = {
@@ -217,7 +278,7 @@ class SignatureHelpTest {
           |  And.unapply($m1)
           |}
           """
-      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m1, List(signature), Some(0), 1)
   }
 
   @Test def nestedOptionReturnedInUnapply: Unit = {
@@ -711,7 +772,7 @@ class SignatureHelpTest {
              def foo[M[X], T[Z] <: M[Z], U >: T](p0: M[Int], p1: T[Int], p2: U): Int = ???
              foo($m1)
            }"""
-      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m1, List(signature), Some(0), 3)
   }
 
   @Test def constructorCall: Unit = {
@@ -820,10 +881,10 @@ class SignatureHelpTest {
              new Foo(???, ???, $m3)
              new Foo(???, ???, ???)($m4)
            }"""
-      .signatureHelp(m1, List(signature), Some(0), 0)
-      .signatureHelp(m2, List(signature), Some(0), 1)
-      .signatureHelp(m3, List(signature), Some(0), 2)
-      .signatureHelp(m4, List(signature), Some(0), 3)
+      .signatureHelp(m1, List(signature), Some(0), 3)
+      .signatureHelp(m2, List(signature), Some(0), 4)
+      .signatureHelp(m3, List(signature), Some(0), 5)
+      .signatureHelp(m4, List(signature), Some(0), 6)
   }
 
   @Test def showDoc: Unit = {

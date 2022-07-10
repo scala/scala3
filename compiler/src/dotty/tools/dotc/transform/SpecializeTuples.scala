@@ -6,7 +6,7 @@ import ast.Trees.*, ast.tpd, core.*
 import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
 import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
-import typer.Inliner.isElideableExpr
+import inlines.Inliner.isElideableExpr
 
 /** Specializes Tuples by replacing tuple construction and selection trees.
  *

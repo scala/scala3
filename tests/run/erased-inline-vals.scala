@@ -1,3 +1,4 @@
+// scalajs: --skip
 
 abstract class A:
   def x: Int

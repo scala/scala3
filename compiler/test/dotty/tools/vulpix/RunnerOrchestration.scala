@@ -48,7 +48,7 @@ trait RunnerOrchestration {
   def safeMode: Boolean
 
   /** Running a `Test` class's main method from the specified `dir` */
-  def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
+  def runMain(classPath: String, toolArgs: ToolArgs)(implicit summaryReport: SummaryReporting): Status =
     monitor.runMain(classPath)
 
   /** Kill all processes */

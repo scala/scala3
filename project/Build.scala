@@ -57,7 +57,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.1.3"
+  val referenceVersion = "3.2.0-RC2"
 
   val baseVersion = "3.2.1-RC1"
 
@@ -169,9 +169,10 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      "-Xfatal-warnings",
+      //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
+      "-Xfatal-warnings",                         // -Werror in modern usage
       "-encoding", "UTF8",
-      "-language:implicitConversions"
+      "-language:implicitConversions",
     ),
 
     (Compile / compile / javacOptions) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
@@ -1227,6 +1228,11 @@ object Build {
     dependsOn(`scala3-compiler` % "test->test").
     settings(
       commonNonBootstrappedSettings,
+
+      libraryDependencies ++= Seq(
+        "org.scala-js" %% "scalajs-linker" % scalaJSVersion % Test cross CrossVersion.for3Use2_13,
+        "org.scala-js" %% "scalajs-env-nodejs" % "1.3.0" % Test cross CrossVersion.for3Use2_13,
+      ),
 
       // Change the baseDirectory when running the tests
       Test / baseDirectory := baseDirectory.value.getParentFile,

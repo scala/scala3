@@ -27,88 +27,6 @@ object Variances {
     else if (v == Contravariant) Covariant
     else v
 
-  /** Map everything below Bivariant to Invariant */
-  def cut(v: Variance): Variance =
-    if (v == Bivariant) v else Invariant
-
-  def compose(v: Variance, boundsVariance: Int): Variance =
-    if (boundsVariance == 1) v
-    else if (boundsVariance == -1) flip(v)
-    else cut(v)
-
-  /** Compute variance of type parameter `tparam` in types of all symbols `sym`. */
-  def varianceInSyms(syms: List[Symbol])(tparam: Symbol)(using Context): Variance =
-    syms.foldLeft(Bivariant) ((v, sym) => v & varianceInSym(sym)(tparam))
-
-  /** Compute variance of type parameter `tparam` in type of symbol `sym`. */
-  def varianceInSym(sym: Symbol)(tparam: Symbol)(using Context): Variance =
-    if (sym.isAliasType) cut(varianceInType(sym.info)(tparam))
-    else varianceInType(sym.info)(tparam)
-
-  /** Compute variance of type parameter `tparam` in all types `tps`. */
-  def varianceInTypes(tps: List[Type])(tparam: Symbol)(using Context): Variance =
-    tps.foldLeft(Bivariant) ((v, tp) => v & varianceInType(tp)(tparam))
-
-  /** Compute variance of type parameter `tparam` in all type arguments
-   *  <code>tps</code> which correspond to formal type parameters `tparams1`.
-   */
-  def varianceInArgs(tps: List[Type], tparams1: List[Symbol])(tparam: Symbol)(using Context): Variance = {
-    var v: Variance = Bivariant;
-    for ((tp, tparam1) <- tps zip tparams1) {
-      val v1 = varianceInType(tp)(tparam)
-      v = v & (if (tparam1.is(Covariant)) v1
-           else if (tparam1.is(Contravariant)) flip(v1)
-           else cut(v1))
-    }
-    v
-  }
-
-  /** Compute variance of type parameter `tparam` in all type annotations `annots`. */
-  def varianceInAnnots(annots: List[Annotation])(tparam: Symbol)(using Context): Variance =
-    annots.foldLeft(Bivariant) ((v, annot) => v & varianceInAnnot(annot)(tparam))
-
-  /** Compute variance of type parameter `tparam` in type annotation `annot`. */
-  def varianceInAnnot(annot: Annotation)(tparam: Symbol)(using Context): Variance =
-    varianceInType(annot.tree.tpe)(tparam)
-
-  /** Compute variance of type parameter <code>tparam</code> in type <code>tp</code>. */
-  def varianceInType(tp: Type)(tparam: Symbol)(using Context): Variance = tp match {
-    case TermRef(pre, _) =>
-      varianceInType(pre)(tparam)
-    case tp @ TypeRef(pre, _) =>
-      if (tp.symbol == tparam) Covariant else varianceInType(pre)(tparam)
-    case tp @ TypeBounds(lo, hi) =>
-      if (lo eq hi) cut(varianceInType(hi)(tparam))
-      else flip(varianceInType(lo)(tparam)) & varianceInType(hi)(tparam)
-    case tp @ RefinedType(parent, _, rinfo) =>
-      varianceInType(parent)(tparam) & varianceInType(rinfo)(tparam)
-    case tp: RecType =>
-      varianceInType(tp.parent)(tparam)
-    case tp: MethodOrPoly =>
-      flip(varianceInTypes(tp.paramInfos)(tparam)) & varianceInType(tp.resultType)(tparam)
-    case ExprType(restpe) =>
-      varianceInType(restpe)(tparam)
-    case tp @ AppliedType(tycon, args) =>
-      def varianceInArgs(v: Variance, args: List[Type], tparams: List[ParamInfo]): Variance =
-        args match {
-          case arg :: args1 =>
-            varianceInArgs(
-              v & compose(varianceInType(arg)(tparam), tparams.head.paramVarianceSign),
-              args1, tparams.tail)
-          case nil =>
-            v
-        }
-      varianceInArgs(varianceInType(tycon)(tparam), args, tycon.typeParams)
-    case AnnotatedType(tp, annot) =>
-      varianceInType(tp)(tparam) & varianceInAnnot(annot)(tparam)
-    case AndType(tp1, tp2) =>
-      varianceInType(tp1)(tparam) & varianceInType(tp2)(tparam)
-    case OrType(tp1, tp2) =>
-      varianceInType(tp1)(tparam) & varianceInType(tp2)(tparam)
-    case _ =>
-      Bivariant
-  }
-
   def setStructuralVariances(lam: HKTypeLambda)(using Context): Unit =
     assert(!lam.isDeclaredVarianceLambda)
     for param <- lam.typeParams do param.storedVariance = Bivariant
@@ -127,12 +45,12 @@ object Variances {
   /** Does variance `v1` conform to variance `v2`?
    *  This is the case if the variances are the same or `sym` is nonvariant.
    */
-   def varianceConforms(v1: Int, v2: Int): Boolean =
+  def varianceConforms(v1: Int, v2: Int): Boolean =
     v1 == v2 || v2 == 0
 
   /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
    */
-   def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(using Context): Boolean =
+  def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(using Context): Boolean =
     tparam1.paramVariance.isAllOf(tparam2.paramVariance)
 
   /** Do the variances of type parameters `tparams1` conform to the variances
@@ -147,15 +65,18 @@ object Variances {
     if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)
     else tparams1.hasSameLengthAs(tparams2)
 
-  def varianceSign(sym: Symbol)(using Context): String =
-    varianceSign(sym.variance)
-
   def varianceSign(v: Variance): String = varianceSign(varianceToInt(v))
+  def varianceLabel(v: Variance): String = varianceLabel(varianceToInt(v))
 
   def varianceSign(v: Int): String =
     if (v > 0) "+"
     else if (v < 0) "-"
     else ""
+
+  def varianceLabel(v: Int): String =
+    if v < 0 then "contravariant"
+    else if v > 0 then "covariant"
+    else "invariant"
 
   val alwaysInvariant: Any => Invariant.type = Function.const(Invariant)
 }

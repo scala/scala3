@@ -5,9 +5,9 @@ scala> object Foo2 { type T[+A] = [B] =>> (A, B) }
 scala> object Foo3 { type T[+A] = [B] =>> [C] =>> (A, B) }
 // defined object Foo3
 scala> ((1, 2): Foo1.T[Int]): Foo1.T[Any]
-val res0: (Any, Int) = (1,2)
+val res0: Foo1.T[Any] = (1,2)
 scala> ((1, 2): Foo2.T[Int][Int]): Foo2.T[Any][Int]
-val res1: (Any, Int) = (1,2)
+val res1: Foo2.T[Any][Int] = (1,2)
 scala> (1, 2): Foo3.T[Int][Int]
 -- [E056] Syntax Error: --------------------------------------------------------
 1 | (1, 2): Foo3.T[Int][Int]
@@ -15,10 +15,10 @@ scala> (1, 2): Foo3.T[Int][Int]
   |         Missing type parameter for Foo3.T[Int][Int]
 1 error found
 scala> ((1, 2): Foo3.T[Int][Int][Int]): Foo3.T[Any][Int][Int]
-val res2: (Any, Int) = (1,2)
+val res2: Foo3.T[Any][Int][Int] = (1,2)
 scala> object Foo3 { type T[A] = [B] =>> [C] =>> (A, B) }
 // defined object Foo3
 scala> ((1, 2): Foo3.T[Int][Int][Int])
-val res3: (Int, Int) = (1,2)
+val res3: Foo3.T[Int][Int][Int] = (1,2)
 scala> ((1, 2): Foo3.T[Int][Int][Int])
-val res4: (Int, Int) = (1,2)
+val res4: Foo3.T[Int][Int][Int] = (1,2)

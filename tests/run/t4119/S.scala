@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class S extends foo.bar.J {
   sss =>
 

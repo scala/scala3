@@ -31,7 +31,7 @@ object ForwardDepChecks:
       stats.foldLeft(outer.levelAndIndex, 0) {(mi, stat) =>
         val (m, idx) = mi
         val m1 = stat match {
-          case stat: MemberDef => m.updated(stat.symbol, (this, idx))
+          case stat: MemberDef => m.updated(stat.symbol, (this: @unchecked, idx))
           case _ => m
         }
         (m1, idx + 1)

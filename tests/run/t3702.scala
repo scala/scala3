@@ -1,6 +1,6 @@
 object Test {
   def foo(h: Any, t: List[Any]) = h match {
-    case 5 :: _     => ()
+    case 5 :: _     => "hello"
     case List(from) => from
   }
 

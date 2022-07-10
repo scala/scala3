@@ -9,6 +9,7 @@ import core.Denotations.{SingleDenotation, Denotation}
 import core.Flags
 import core.NameOps.isUnapplyName
 import core.Names._
+import core.NameKinds
 import core.Types._
 import core.Symbols.NoSymbol
 import interactive.Interactive
@@ -54,7 +55,8 @@ object Signatures {
    *
    * @param path The path to the function application
    * @param span The position of the cursor
-   * @return A triple containing the index of the parameter being edited, the index of functeon
+   *
+   * @return     A triple containing the index of the parameter being edited, the index of functeon
    *         being called, the list of overloads of this function).
    */
   def signatureHelp(path: List[tpd.Tree], pos: Span)(using Context): (Int, Int, List[Signature]) =
@@ -65,7 +67,8 @@ object Signatures {
    *
    * @param path The path to the function application
    * @param span The position of the cursor
-   * @return A triple containing the index of the parameter being edited, the index of the function
+   *
+   * @return     A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
   @deprecated(
@@ -82,49 +85,76 @@ object Signatures {
    *
    * @param path The path to the function application
    * @param span The position of the cursor
+   *
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
   def computeSignatureHelp(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[Signature]) =
     findEnclosingApply(path, span) match
-      case tpd.EmptyTree => (0, 0, Nil)
       case Apply(fun, params) => applyCallInfo(span, params, fun)
       case UnApply(fun, _, patterns) => unapplyCallInfo(span, fun, patterns)
+      case appliedTypeTree @ AppliedTypeTree(_, types) => appliedTypeTreeCallInfo(appliedTypeTree, types)
+      case tp @ TypeApply(fun, types) => applyCallInfo(span, types, fun, true)
+      case _ => (0, 0, Nil)
 
   /**
    * Finds enclosing application from given `path` for `span`.
    *
    * @param path The path to the function application
    * @param span The position of the cursor
+   *
    * @return Tree which encloses closest application containing span.
    *         In case if cursor is pointing on closing parenthesis and
    *         next subsequent application exists, it returns the latter
    */
   private def findEnclosingApply(path: List[tpd.Tree], span: Span)(using Context): tpd.Tree =
     path.filterNot {
-      case apply @ Apply(fun, _) => fun.span.contains(span) || isTuple(apply)
-      case unapply @ UnApply(fun, _, _) => fun.span.contains(span) || isTuple(unapply)
+      case apply @ Apply(fun, _) => fun.span.contains(span) || isValid(apply)
+      case unapply @ UnApply(fun, _, _) => fun.span.contains(span) || isValid(unapply)
+      case typeTree @ AppliedTypeTree(fun, _) => fun.span.contains(span) || isValid(typeTree)
+      case typeApply @ TypeApply(fun, _) => fun.span.contains(span) || isValid(typeApply)
       case _ => true
     } match {
       case Nil => tpd.EmptyTree
-      case direct :: enclosing :: _ if direct.source(span.end -1) == ')' => enclosing
+      case direct :: enclosing :: _ if isClosingSymbol(direct.source(span.end -1)) => enclosing
       case direct :: _ => direct
     }
 
+  private def isClosingSymbol(ch: Char) = ch == ')' || ch == ']'
+
   /**
-   * Extracts call information for a function application.
+   * Extracts call information for applied type tree:
    *
-   * @param span The position of the cursor
-   * @param params Current function parameters
-   * @param fun Function tree which is being applied
+   * @param types Currently applied function type parameters
+   * @param fun   Function tree which is being applied
+   */
+  private def appliedTypeTreeCallInfo(
+    fun: tpd.Tree,
+    types: List[tpd.Tree]
+  )(using Context): (Int, Int, List[Signature]) =
+    val typeName = fun.symbol.name.show
+    val typeParams = fun.symbol.typeRef.typeParams.map(_.paramName.show)
+    val denot = fun.denot.asSingleDenotation
+    val activeParameter = (types.length - 1) max 0
+
+    val signature = Signature(typeName, typeParams, Nil, Some(typeName) , None, Some(denot))
+    (activeParameter, 0, List(signature))
+
+  /**
+   * Extracts call information for a function application and type application.
    *
+   * @param span        The position of the cursor
+   * @param params      Current function parameters
+   * @param fun         Function tree which is being applied
+   * @param isTypeApply Is a type application
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
   private def applyCallInfo(
     span: Span,
     params: List[tpd.Tree],
-    fun: tpd.Tree
+    fun: tpd.Tree,
+    isTypeApply: Boolean = false
   )(using Context): (Int, Int, List[Signature]) =
     def treeQualifier(tree: tpd.Tree): tpd.Tree = tree match
         case Apply(qual, _) => treeQualifier(qual)
@@ -154,10 +184,11 @@ object Signatures {
 
     if alternativeIndex < alternatives.length then
       val curriedArguments = countParams(fun, alternatives(alternativeIndex))
-      val paramIndex = params.indexWhere(_.span.contains(span)) match {
-        case -1 => (params.length - 1 max 0) + curriedArguments
-        case n => n + curriedArguments
-      }
+      // We have to shift all arguments by number of type parameters to properly show activeParameter index
+      val typeParamsShift = if !isTypeApply then fun.symbol.denot.paramSymss.flatten.filter(_.isType).length else 0
+      val paramIndex = params.indexWhere(_.span.contains(span)) match
+        case -1 => (params.length - 1 max 0) + curriedArguments + typeParamsShift
+        case n => n + curriedArguments + typeParamsShift
 
       val pre = treeQualifier(fun)
       val alternativesWithTypes = alternatives.map(_.asSeenFrom(pre.tpe.widenTermRefExpr))
@@ -170,9 +201,9 @@ object Signatures {
   /**
    * Extracts call informatioin for function in unapply context.
    *
-   * @param span The position of the cursor
+   * @param span   The position of the cursor
    * @param params Current function parameters
-   * @param fun Unapply function tree
+   * @param fun    Unapply function tree
    *
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
@@ -202,7 +233,8 @@ object Signatures {
    * Extract parameter names from `resultType` only if `resultType` is case class and `denot` is synthetic.
    *
    * @param resultType Function result type
-   * @param denot Function denotation
+   * @param denot      Function denotation
+   *
    * @return List of lists of names of parameters if `resultType` is case class without overriden unapply
    */
   private def extractParamNamess(resultType: Type, denot: Denotation)(using Context): List[List[Name]] =
@@ -214,9 +246,10 @@ object Signatures {
   /**
    * Extract parameter types from `resultType` in unapply context.
    *
-   * @param resultType Function result type
-   * @param denot Function denotation
+   * @param resultType   Function result type
+   * @param denot        Function denotation
    * @param patternsSize Number of pattern trees present in function tree
+   *
    * @return List of lists of types present in unapply clause
    */
   private def extractParamTypess(
@@ -263,13 +296,19 @@ object Signatures {
       case (-1, pos) => -1 // there are patterns, we must be outside range so we set no active parameter
       case _ => (maximumParams - 1) min patternPosition max 0 // handle unapplySeq to always highlight Seq[A] on elements
 
-  private def isTuple(tree: tpd.Tree)(using Context): Boolean =
-    tree.symbol != NoSymbol && ctx.definitions.isTupleClass(tree.symbol.owner.companionClass)
+  /**
+   * Checks if tree is valid for signatureHelp. Skipped trees are either tuple type or function type
+   *
+   * @param tree tree to validate
+   */
+  private def isValid(tree: tpd.Tree)(using Context): Boolean =
+    ctx.definitions.isTupleNType(tree.tpe) || ctx.definitions.isFunctionType(tree.tpe)
 
   /**
    * Get unapply method result type omiting unknown types and another method calls.
    *
    * @param fun Unapply tree
+   *
    * @return Proper unapply method type after extracting result from method types and omiting unknown types.
    */
   private def unapplyMethodResult(fun: tpd.Tree)(using Context): Type =
@@ -292,9 +331,10 @@ object Signatures {
    *
    *  @see [[https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html]]
    *
-   *  @param resultType Final result type for unapply
+   *  @param resultType   Final result type for unapply
    *  @param patternCount Currently applied patterns to unapply function
    *  @param isUnapplySeq true if unapply name equals "unapplySeq", false otherwise
+   *
    *  @return List of List of types dependent on option less extractor type.
    */
   private def mapOptionLessUnapply(
@@ -333,40 +373,63 @@ object Signatures {
    * Creates signature for apply method.
    *
    * @param denot Function denotation for which apply signature is returned.
+   *
    * @return Signature if denot is a function, None otherwise
    */
   private def toApplySignature(denot: SingleDenotation)(using Context): Option[Signature] = {
     val symbol = denot.symbol
     val docComment = ParsedComment.docOf(symbol)
 
-    def toParamss(tp: MethodType)(using Context): List[List[Param]] = {
-      val rest = tp.resType match {
-        case res: MethodType =>
-          // Hide parameter lists consisting only of DummyImplicit,
-          if (res.resultType.isParameterless &&
-              res.isImplicitMethod &&
-              res.paramInfos.forall(info =>
-                info.classSymbol.derivesFrom(ctx.definitions.DummyImplicitClass)))
-            Nil
-          else
-            toParamss(res)
+    def isDummyImplicit(res: MethodType): Boolean =
+      res.resultType.isParameterless &&
+        res.isImplicitMethod &&
+        res.paramInfos.forall(info =>
+          info.classSymbol.derivesFrom(ctx.definitions.DummyImplicitClass))
+
+    def toParamss(tp: Type)(using Context): List[List[Param]] =
+      val rest = tp.resultType match
+        case res: MethodType => if isDummyImplicit(res) then Nil else toParamss(res)
         case _ => Nil
-      }
-      val params = tp.paramNames.zip(tp.paramInfos).map { case (name, info) =>
-        Signatures.Param(
-          name.show,
-          info.widenTermRefExpr.show,
-          docComment.flatMap(_.paramDoc(name)),
-          isImplicit = tp.isImplicitMethod)
-      }
-      params :: rest
-    }
+
+      val currentParams = (tp.paramNamess, tp.paramInfoss) match
+        case (params :: _, infos :: _) => params zip infos
+        case _ => Nil
+
+      val params = currentParams.map { (name, info) =>
+          Signatures.Param(
+            name.show,
+            info.widenTermRefExpr.show,
+            docComment.flatMap(_.paramDoc(name)),
+            isImplicit = tp.isImplicitMethod
+          )
+        }
+
+      (params :: rest)
+
+    def isSyntheticEvidence(name: String) =
+      if !name.startsWith(NameKinds.EvidenceParamName.separator) then false else
+        symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.is(Flags.Implicit))
 
     denot.info.stripPoly match
-      case tpe: MethodType =>
-        val paramss = toParamss(tpe)
+      case tpe: (MethodType | AppliedType | TypeRef | TypeParamRef) =>
+        val paramss = toParamss(tpe).map(_.filterNot(param => isSyntheticEvidence(param.name)))
+        val evidenceParams = (tpe.paramNamess.flatten zip tpe.paramInfoss.flatten).flatMap {
+          case (name, AppliedType(tpe, (ref: TypeParamRef) :: _)) if isSyntheticEvidence(name.show) =>
+            Some(ref.paramName -> tpe)
+          case _ => None
+        }
+
         val typeParams = denot.info match
-          case poly: PolyType => poly.paramNames.zip(poly.paramInfos).map { case (x, y) => x.show + y.show }
+          case poly: PolyType =>
+            val tparams = poly.paramNames.zip(poly.paramInfos)
+            tparams.map { (name, info) =>
+              evidenceParams.find((evidenceName: TypeName, _: Type) => name == evidenceName).flatMap {
+                case (_, tparam) => tparam.show.split('.').lastOption
+              } match {
+                case Some(evidenceTypeName) => s"${name.show}: ${evidenceTypeName}"
+                case None => name.show + info.show
+              }
+            }
           case _ => Nil
         val (name, returnType) =
           if (symbol.isConstructor) then
@@ -400,10 +463,11 @@ object Signatures {
    * where _$n is only present for synthetic product extractors such as case classes.
    * In rest of cases signature skips them resulting in pattern (T1, T2, T3, Tn)
    *
-   * @param denot Unapply denotation
+   * @param denot      Unapply denotation
    * @param paramNames Parameter names for unapply final result type.
-   *                   It non empty only when unapply returns synthetic product as for case classes.
+   *                     It non empty only when unapply returns synthetic product as for case classes.
    * @param paramTypes Parameter types for unapply final result type.
+   *
    * @return Signature if paramTypes is non empty, None otherwise
    */
   private def toUnapplySignature(denot: SingleDenotation, paramNames: List[Name], paramTypes: List[Type])(using Context): Option[Signature] =
@@ -425,17 +489,17 @@ object Signatures {
    * `countParams` should be 3. It also takes into considerations unapplied arguments so for `foo(1)(3)`
    * we will still get 3, as first application `foo(1)` takes 2 parameters with currently only 1 applied.
    *
-   * @param tree The tree to inspect.
-   * @param denot Denotation of function we are trying to apply
+   * @param tree           The tree to inspect.
+   * @param denot          Denotation of function we are trying to apply
    * @param alreadyCurried Number of subsequent Apply trees before current tree
+   *
    * @return The number of parameters that are passed.
    */
   private def countParams(tree: tpd.Tree, denot: SingleDenotation, alreadyCurried: Int = 0)(using Context): Int =
-    tree match {
+    tree match
       case Apply(fun, params) =>
          countParams(fun, denot, alreadyCurried + 1) + denot.symbol.paramSymss(alreadyCurried).length
       case _ => 0
-    }
 
   /**
    * Inspect `err` to determine, if it is an error related to application of an overloaded
@@ -447,6 +511,7 @@ object Signatures {
    *
    * @param err    The error message to inspect.
    * @param params The parameters that were given at the call site.
+   *
    * @return A pair composed of the index of the best alternative (0 if no alternatives
    *         were found), and the list of alternatives.
    */
@@ -460,20 +525,18 @@ object Signatures {
     // If the user writes `foo(bar, <cursor>)`, the typer will insert a synthetic
     // `null` parameter: `foo(bar, null)`. This may influence what's the "best"
     // alternative, so we discard it.
-    val userParams = params match {
+    val userParams = params match
       case xs :+ (nul @ Literal(Constant(null))) if nul.span.isZeroExtent => xs
       case _ => params
-    }
     val userParamsTypes = userParams.map(_.tpe)
 
     // Assign a score to each alternative (how many parameters are correct so far), and
     // use that to determine what is the current active signature.
     val alternativesScores = alternatives.map { alt =>
-      alt.info.stripPoly match {
+      alt.info.stripPoly match
         case tpe: MethodType =>
           userParamsTypes.zip(tpe.paramInfos).takeWhile{ case (t0, t1) => t0 <:< t1 }.size
         case _ => 0
-      }
     }
     val bestAlternative =
       if (alternativesScores.isEmpty) 0

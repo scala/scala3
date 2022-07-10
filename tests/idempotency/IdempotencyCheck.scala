@@ -3,7 +3,7 @@ import java.io.File as JFile
 import java.nio.file.{ Files as JFiles, Path as JPath, Paths as JPaths }
 import java.util.stream.Stream as JStream
 
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters.*
 
 object IdempotencyCheck {
   def checkIdempotency(dir1: String, dir2: String): Unit = {

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Test {
   def main(args: Array[String]): Unit = {
     val j = new J_2()

@@ -33,7 +33,7 @@ trait Deriving {
       case tp: TypeRef if tp.symbol.isClass => tp
       case tp: TypeRef if tp.symbol.isAbstractType => NoType
       case tp: TermRef => NoType
-      case tp: TypeProxy => underlyingClassRef(tp.underlying)
+      case tp: TypeProxy => underlyingClassRef(tp.superType)
       case _ => NoType
     }
 
@@ -49,7 +49,7 @@ trait Deriving {
         // If we set the Synthetic flag here widenGiven will widen too far and the
         // derived instance will have too low a priority to be selected over a freshly
         // derived instance at the summoning site.
-        val flags = if info.isInstanceOf[MethodOrPoly] then Given | Method else Given | Lazy
+        val flags = if info.isInstanceOf[MethodOrPoly] then GivenMethod else Given | Lazy
         synthetics +=
           newSymbol(ctx.owner, instanceName, flags, info, coord = pos.span)
             .entered
@@ -286,7 +286,7 @@ trait Deriving {
             case tp @ TypeRef(prefix, _) if tp.symbol.isClass =>
               prefix.select(tp.symbol.companionModule).asInstanceOf[TermRef]
             case tp: TypeProxy =>
-              companionRef(tp.underlying)
+              companionRef(tp.superType)
           }
           val resultType = instantiated(sym.info)
           val companion = companionRef(resultType)

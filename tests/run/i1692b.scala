@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.annotation.threadUnsafe
 
 class VCInt(val x: Int) extends AnyVal

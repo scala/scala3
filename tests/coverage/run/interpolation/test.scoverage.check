@@ -75,16 +75,16 @@ interpolation/test.scala
 Test$
 Object
 <empty>.Test$
-main
-147
-176
+hexa
+113
+126
 6
-apply
+f
 Apply
 false
 0
 false
-List("d", "o", "t", "t", "y")
+f"0x${i}%04x"
 
 4
 interpolation/test.scala
@@ -92,16 +92,16 @@ interpolation/test.scala
 Test$
 Object
 <empty>.Test$
-$anonfun
-220
-229
-8
-s
-Apply
+hexa
+82
+90
+5
+hexa
+DefDef
 false
 0
 false
-s"$i: $s"
+def hexa
 
 5
 interpolation/test.scala
@@ -109,16 +109,16 @@ interpolation/test.scala
 Test$
 Object
 <empty>.Test$
-$anonfun
-212
-230
-8
-println
+main
+195
+224
+9
+apply
 Apply
 false
 0
 false
-println(s"$i: $s")
+List("d", "o", "t", "t", "y")
 
 6
 interpolation/test.scala
@@ -126,16 +126,16 @@ interpolation/test.scala
 Test$
 Object
 <empty>.Test$
-main
-182
-231
-8
-map
+$anonfun
+267
+276
+10
+s
 Apply
 false
 0
 false
-xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
+s"$i: $s"
 
 7
 interpolation/test.scala
@@ -143,10 +143,146 @@ interpolation/test.scala
 Test$
 Object
 <empty>.Test$
+$anonfun
+259
+277
+10
+println
+Apply
+false
+0
+false
+println(s"$i: $s")
+
+8
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
 main
-82
-90
-5
+229
+278
+10
+map
+Apply
+false
+0
+false
+xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
+
+9
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+292
+308
+12
+simple
+Apply
+false
+0
+false
+simple(1, "abc")
+
+10
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+284
+309
+12
+println
+Apply
+false
+0
+false
+println(simple(1, "abc"))
+
+11
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+322
+331
+13
+hexa
+Apply
+false
+0
+false
+hexa(127)
+
+12
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+314
+332
+13
+println
+Apply
+false
+0
+false
+println(hexa(127))
+
+13
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+345
+354
+14
+raw
+Apply
+false
+0
+false
+raw"a\nb"
+
+14
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+337
+355
+14
+println
+Apply
+false
+0
+false
+println(raw"a\nb")
+
+15
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+130
+138
+8
 main
 DefDef
 false

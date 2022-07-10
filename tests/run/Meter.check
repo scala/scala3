@@ -1,12 +1,12 @@
-2.0
-4.0m
+2.0714285714285716
+5.6m
 false
 x.isInstanceOf[Meter]: true
-x.hashCode: 1072693248
+x.hashCode: 1502609408
 x == y: true
 a == b: true
 testing native arrays
-List(1.0m, 2.0m)
-1.0m
->>>1.0m<<< 1.0m
->>>2.0m<<< 2.0m
+List(1.4m, 2.8m)
+1.4m
+>>>1.4m<<< 1.4m
+>>>2.8m<<< 2.8m

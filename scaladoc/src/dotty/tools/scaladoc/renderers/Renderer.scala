@@ -2,7 +2,7 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import collection.mutable.ListBuffer
 import java.net.URI
 import java.net.URL

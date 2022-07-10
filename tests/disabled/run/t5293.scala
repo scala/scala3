@@ -1,7 +1,7 @@
 
 
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 
 

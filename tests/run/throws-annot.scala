@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 /** Test the @throws annotation */
 import java.io.IOException
 

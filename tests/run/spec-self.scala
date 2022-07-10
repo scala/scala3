@@ -1,5 +1,5 @@
 class Foo0 extends (() => Double) {
-  def apply() = 5.0d
+  def apply() = 5.5d
 }
 
 class Foo1 extends (Double => Double) {
@@ -9,6 +9,6 @@ class Foo1 extends (Double => Double) {
 object Test {
   def main(args: Array[String]): Unit = {
     println((new Foo0)())
-    println((new Foo1)(5.0d))
+    println((new Foo1)(5.5d))
   }
 }

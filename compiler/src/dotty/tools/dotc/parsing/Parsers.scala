@@ -2574,8 +2574,8 @@ object Parsers {
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
           if casePat then GenCheckMode.FilterAlways
-          else if sourceVersion.isAtLeast(`3.2`) then GenCheckMode.CheckAndFilter
           else if sourceVersion.isAtLeast(`future`) then GenCheckMode.Check
+          else if sourceVersion.isAtLeast(`3.2`) then GenCheckMode.CheckAndFilter
           else GenCheckMode.FilterNow  // filter on source version < 3.2, for backward compat
         GenFrom(pat, subExpr(), checkMode)
       }
@@ -2885,7 +2885,7 @@ object Parsers {
       if (mods.is(Private) && mods.hasPrivateWithin)
         normalize(mods &~ Private)
       else if (mods.isAllOf(AbstractOverride))
-        normalize(addFlag(mods &~ (Abstract | Override), AbsOverride))
+        normalize(addFlag(mods &~ AbstractOverride, AbsOverride))
       else
         mods
 
@@ -3046,7 +3046,7 @@ object Parsers {
       val tps = commaSeparated(funArgType)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
-      val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
+      val paramFlags = if ofClass then LocalParamAccessor else Param
       tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | impliedMods.flags))
 
     /** ClsParamClause    ::=  ‘(’ [‘erased’] ClsParams ‘)’ | UsingClsParamClause
@@ -3969,8 +3969,8 @@ object Parsers {
      */
     def selfType(): ValDef =
       if (in.isIdent || in.token == THIS)
-            && in.lookahead.isColon && followingIsSelfType()
-            || in.lookahead.token == ARROW
+        && (in.lookahead.isColon && followingIsSelfType()
+            || in.lookahead.token == ARROW)
       then
         atSpan(in.offset) {
           val selfName =

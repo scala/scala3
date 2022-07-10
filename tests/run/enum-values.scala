@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import reflect.Selectable.reflectiveSelectable
 import deriving.Mirror
 

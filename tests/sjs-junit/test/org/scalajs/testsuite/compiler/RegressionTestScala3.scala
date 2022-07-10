@@ -59,6 +59,25 @@ class RegressionTestScala3 {
     assertEquals(0L, Foo.bar().x)
     assertEquals(5L, Foo.bar(5L).x)
   }
+
+  @Test def etaReduceIssue15494(): Unit = {
+    // Also known as tests/run/i14623.scala for Scala/JVM
+
+    object Thunk {
+      private[this] val impl =
+        ((x: Any) => x).asInstanceOf[(=> Any) => Function0[Any]]
+
+      def asFunction0[A](thunk: => A): Function0[A] = impl(thunk).asInstanceOf[Function0[A]]
+    }
+
+    var i = 0
+    val f1 = { () => i += 1; "" }
+    assertSame(f1, Thunk.asFunction0(f1()))
+    val f2 = { () => i += 1; i }
+    assertSame(f2, Thunk.asFunction0(f2()))
+    val f3 = { () => i += 1 }
+    assertSame(f3, Thunk.asFunction0(f3()))
+  }
 }
 
 object RegressionTestScala3 {

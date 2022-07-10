@@ -568,7 +568,7 @@ object Names {
           enterIfNew(cs, offset, len)
       }
 
-    addEntryAt(0, EmptyTermName)
+    addEntryAt(0, EmptyTermName: @unchecked)
   end NameTable
 
   /** Hashtable for finding term names quickly. */

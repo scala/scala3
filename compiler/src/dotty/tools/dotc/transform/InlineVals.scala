@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import dotty.tools.dotc.typer.Inliner
+import dotty.tools.dotc.inlines.Inlines
 
 /** Check that `tree.rhs` can be right hand-side of an `inline` value definition. */
 class InlineVals extends MiniPhase:
@@ -31,7 +31,7 @@ class InlineVals extends MiniPhase:
   /** Check that `tree.rhs` can be right hand-side of an `inline` value definition. */
   private def checkInlineConformant(tree: ValDef)(using Context): Unit = {
     if tree.symbol.is(Inline, butNot = DeferredOrTermParamOrAccessor)
-      && !Inliner.inInlineMethod
+      && !Inlines.inInlineMethod
     then
       val rhs = tree.rhs
       val tpt = tree.tpt

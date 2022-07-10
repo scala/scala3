@@ -1,3 +1,4 @@
+// scalajs: --skip
 
 case class A(s: String)
 

@@ -387,7 +387,7 @@ class ImplicitSearchError(
           .map(userDefinedImplicitNotFoundTypeMessage)
           .find(_.isDefined).flatten
       case tp: TypeProxy =>
-        recur(tp.underlying)
+        recur(tp.superType)
       case tp: AndType =>
         recur(tp.tp1).orElse(recur(tp.tp2))
       case _ =>

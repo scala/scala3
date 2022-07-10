@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 trait NoInit {
   def meth(x: Int): Int
 }

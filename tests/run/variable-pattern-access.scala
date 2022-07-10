@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class A {
   val (a, b) = (1, 2)
 }

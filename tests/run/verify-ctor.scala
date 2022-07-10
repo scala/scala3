@@ -1,6 +1,11 @@
+object NothingMethod {
+  def nothingMethod(): Nothing =
+    throw new Exception("boom")
+}
+
 class Foo(val str: String) {
   def this(arr: Array[Char]) = this({
-    if (arr.length == 0) sys.exit(1)
+    if (arr.length == 0) NothingMethod.nothingMethod()
     new String(arr)
   })
 }

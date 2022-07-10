@@ -1441,4 +1441,20 @@ class CompletionTest {
     )
     withProjects(p1, p2).completion(m1, Set(("name", Method, "=> String")))
   }
+
+  @Test def generatedValDefCompletions: Unit = {
+    val expected = ("testMethod", Method, "=> Unit")
+    code"""case class Test(x: Int, y: Int)
+          |def testMethod: Unit = ???
+          |object M:
+          |  val (x, y) =
+          |    testMet$m1
+          |    (1, 2)
+          |  val Test(x, y) =
+          |    testMet$m2
+          |    Test(1, 2)
+          """
+            .completion(m1, expected)
+            .completion(m2, expected)
+  }
 }

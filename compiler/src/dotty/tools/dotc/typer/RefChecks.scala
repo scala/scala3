@@ -490,7 +490,7 @@ object RefChecks {
           "(this rule is designed to prevent ``accidental overrides'')")
       else if (other.isStableMember && !member.isStableMember) // (1.5)
         overrideError("needs to be a stable, immutable value")
-      else if (member.is(ModuleVal) && !other.isRealMethod && !other.isOneOf(Deferred | Lazy))
+      else if (member.is(ModuleVal) && !other.isRealMethod && !other.isOneOf(DeferredOrLazy))
         overrideError("may not override a concrete non-lazy value")
       else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
                  !warnOnMigration(overrideErrorMsg("may not override a non-lazy value"), member.srcPos, version = `3.0`))

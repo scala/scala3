@@ -122,7 +122,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
       def nameRef: Tree =
         if isJavaEnumValue then
-          Select(This(clazz), nme.name).ensureApplied
+          val name = Select(This(clazz), nme.name).ensureApplied
+          if ctx.explicitNulls then name.cast(defn.StringType) else name
         else
           identifierRef
 
@@ -256,7 +257,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *
      */
     def equalsBody(that: Tree)(using Context): Tree = {
-      val thatAsClazz = newSymbol(ctx.owner, nme.x_0, Synthetic | Case, clazzType, coord = ctx.owner.span) // x$0
+      val thatAsClazz = newSymbol(ctx.owner, nme.x_0, SyntheticCase, clazzType, coord = ctx.owner.span) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))) // x$0 @ (_: C @unchecked)
       // compare primitive fields first, slow equality checks of non-primitive fields can be skipped when primitives differ
@@ -404,11 +405,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       .exists
 
   private def writeReplaceDef(clazz: ClassSymbol)(using Context): TermSymbol =
-    newSymbol(clazz, nme.writeReplace, Method | Private | Synthetic,
+    newSymbol(clazz, nme.writeReplace, PrivateMethod | Synthetic,
         MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
 
   private def readResolveDef(clazz: ClassSymbol)(using Context): TermSymbol =
-    newSymbol(clazz, nme.readResolve, Method | Private | Synthetic,
+    newSymbol(clazz, nme.readResolve, PrivateMethod | Synthetic,
         MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
 
   /** If this is a static object `Foo`, add the method:

@@ -8,8 +8,7 @@ import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
-import util.Stats
-import util.NoSourcePosition
+import util.{Stats, NoSourcePosition, EqHashMap}
 import config.Config
 import config.Feature.migrateTo3
 import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
@@ -162,6 +161,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** A flag to prevent recursive joins when comparing AndTypes on the left */
   private var joined = false
+
+  /** A variable to keep track of number of outstanding isSameType tests */
+  private var sameLevel = 0
+
+  /** A map that records successful isSameType comparisons.
+   *  Used together with `sameLevel` to avoid exponential blowUp of isSameType
+   *  comparisons for deeply nested invariant applied types.
+   */
+  private var sames: util.EqHashMap[Type, Type] | Null = null
+
+  /** The `sameLevel` nesting depth from which on we want to keep track
+   *  of isSameTypes suucesses using `sames`
+   */
+  val startSameTypeTrackingLevel = 3
 
   private inline def inFrozenGadtIf[T](cond: Boolean)(inline op: T): T = {
     val savedFrozenGadt = frozenGadt
@@ -1553,8 +1566,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                (v > 0 || isSubType(arg2, arg1)) &&
-                (v < 0 || isSubType(arg1, arg2))
+                if v < 0 then isSubType(arg2, arg1)
+                else if v > 0 then isSubType(arg1, arg2)
+                else isSameType(arg2, arg1)
 
         isSubArg(args1.head, args2.head)
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
@@ -1590,7 +1604,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp: RecType => fix(tp.parent).substRecThis(tp, anchor)
       case tp @ RefinedType(parent, rname, rinfo) => tp.derivedRefinedType(fix(parent), rname, rinfo)
       case tp: TypeParamRef => fixOrElse(bounds(tp).hi, tp)
-      case tp: TypeProxy => fixOrElse(tp.underlying, tp)
+      case tp: TypeProxy => fixOrElse(tp.superType, tp)
       case tp: AndType => tp.derivedAndType(fix(tp.tp1), fix(tp.tp2))
       case tp: OrType  => tp.derivedOrType (fix(tp.tp1), fix(tp.tp2))
       case tp => tp
@@ -1863,7 +1877,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
     case tp: SingletonType if tp.isStable => tp
     case tp: ValueType => SkolemType(tp)
-    case tp: TypeProxy => ensureStableSingleton(tp.underlying)
+    case tp: TypeProxy => ensureStableSingleton(tp.superType)
     case tp => assert(ctx.reporter.errorsReported); SkolemType(tp)
   }
 
@@ -2012,11 +2026,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   // Type equality =:=
 
-  /** Two types are the same if are mutual subtypes of each other */
+  /** Two types are the same if they are mutual subtypes of each other.
+   *  To avoid exponential blowup for deeply nested invariant applied types,
+   *  we cache successes once the stack of outstanding isSameTypes reaches
+   *  depth `startSameTypeTrackingLevel`. See pos/i15525.scala, where this matters.
+   */
   def isSameType(tp1: Type, tp2: Type): Boolean =
-    if (tp1 eq NoType) false
-    else if (tp1 eq tp2) true
-    else isSubType(tp1, tp2) && isSubType(tp2, tp1)
+    if tp1 eq NoType then false
+    else if tp1 eq tp2 then true
+    else if sames != null && (sames.nn.lookup(tp1) eq tp2) then true
+    else
+      val savedSames = sames
+      sameLevel += 1
+      if sameLevel >= startSameTypeTrackingLevel then
+        Stats.record("cache same type")
+        sames = new util.EqHashMap()
+      val res =
+        try isSubType(tp1, tp2) && isSubType(tp2, tp1)
+        finally
+          sameLevel -= 1
+          sames = savedSames
+      if res && sames != null then sames.nn(tp2) = tp1
+      res
 
   override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = isSameType(tp1, tp2)
 

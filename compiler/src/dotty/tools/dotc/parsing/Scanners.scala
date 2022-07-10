@@ -162,7 +162,7 @@ object Scanners {
         errorButContinue("trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile)(using Context) extends ScannerCommon(source) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
     val keepComments = !ctx.settings.YdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
@@ -185,10 +185,7 @@ object Scanners {
     val indentSyntax =
       ((if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
        || rewriteNoIndent)
-      && { this match
-        case self: LookaheadScanner => self.allowIndent
-        case _ => true
-      }
+      && allowIndent
 
     if (rewrite) {
       val s = ctx.settings
@@ -662,7 +659,7 @@ object Scanners {
           true
         else token == COLONfollow && (inTemplate || fewerBracesEnabled)
       if enabled then
-        lookAhead()
+        peekAhead()
         val atEOL = isAfterLineEnd || token == EOF
         reset()
         if atEOL then token = COLONeol
@@ -690,15 +687,14 @@ object Scanners {
         insert(OUTDENT, offset)
       case _ =>
 
-    def lookAhead() =
+    def peekAhead() =
       prev.copyFrom(this)
       getNextToken(token)
       if token == END && !isEndMarker then token = IDENTIFIER
 
-    def reset() = {
+    def reset() =
       next.copyFrom(this)
       this.copyFrom(prev)
-    }
 
     def closeIndented() = currentRegion match
       case r: Indented if !r.isOutermost => insert(OUTDENT, offset)
@@ -717,12 +713,12 @@ object Scanners {
       }
       (token: @switch) match {
         case CASE =>
-          lookAhead()
+          peekAhead()
           if (token == CLASS) fuse(CASECLASS)
           else if (token == OBJECT) fuse(CASEOBJECT)
           else reset()
         case SEMI =>
-          lookAhead()
+          peekAhead()
           if (token != ELSE) reset()
         case COMMA =>
           def isEnclosedInParens(r: Region): Boolean = r match
@@ -733,7 +729,7 @@ object Scanners {
             case r: Indented if isEnclosedInParens(r.outer) =>
               insert(OUTDENT, offset)
             case _ =>
-              lookAhead()
+              peekAhead()
               if isAfterLineEnd
                  && currentRegion.commasExpected
                  && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
@@ -1083,15 +1079,18 @@ object Scanners {
      *  The token is computed via fetchToken, so complex two word
      *  tokens such as CASECLASS are not recognized.
      *  Newlines and indent/unindent tokens are skipped.
-     *
+     *  Restriction: `lookahead` is illegal if the current token is INTERPOLATIONID
      */
-     def lookahead: TokenData =
+    def lookahead: TokenData =
       if next.token == EMPTY then
-        lookAhead()
+        assert(token != INTERPOLATIONID)
+          // INTERPOLATONIDs are followed by a string literal, which can set next
+          // in peekAhead(). In that case, the following reset() would forget that token.
+        peekAhead()
         reset()
       next
 
-    class LookaheadScanner(val allowIndent: Boolean = false) extends Scanner(source, offset) {
+    class LookaheadScanner(val allowIndent: Boolean = false) extends Scanner(source, offset, allowIndent = allowIndent) {
       override def languageImportContext = Scanner.this.languageImportContext
     }
 

@@ -5,4 +5,7 @@ object Test {
     println(b() % a())
     println((b().toFloat % a().toFloat).toFloat)
     println((b().toDouble % a().toDouble).toFloat)
+
+  def println(x: Float): Unit =
+    Console.println(x.toDouble) // portable on Scala.js
 }

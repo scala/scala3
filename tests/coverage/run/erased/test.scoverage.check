@@ -1,0 +1,208 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+foo
+149
+162
+4
+s
+Apply
+false
+0
+false
+s"foo(a)($b)"
+
+1
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+foo
+141
+163
+4
+println
+Apply
+false
+0
+false
+println(s"foo(a)($b)")
+
+2
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+foo
+92
+99
+3
+foo
+DefDef
+false
+0
+false
+def foo
+
+3
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+identity
+213
+228
+8
+s
+Apply
+false
+0
+false
+s"identity($s)"
+
+4
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+identity
+205
+229
+8
+println
+Apply
+false
+0
+false
+println(s"identity($s)")
+
+5
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+identity
+169
+181
+7
+identity
+DefDef
+false
+0
+false
+def identity
+
+6
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+264
+270
+13
+e
+Apply
+false
+0
+false
+e("a")
+
+7
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+260
+276
+13
+foo
+Apply
+false
+0
+false
+foo(e("a"))("b")
+
+8
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+291
+307
+14
+identity
+Apply
+false
+0
+false
+identity("idem")
+
+9
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+279
+308
+14
+foo
+Apply
+false
+0
+false
+foo(e("a"))(identity("idem"))
+
+10
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+235
+249
+12
+Test
+DefDef
+false
+0
+false
+@main
+def Test
+

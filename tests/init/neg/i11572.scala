@@ -5,7 +5,7 @@ class A {
   trait Bounded {
     type T >: Cov[Int] <: Cov[String]
   }
-  val t: Bounded = new Bounded {     // error
+  val t: Bounded = new Bounded {  // error
     // Note: using this instead of t produces an error (as expected)
     override type T >: t.T <: t.T
   }

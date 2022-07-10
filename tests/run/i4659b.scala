@@ -1,3 +1,5 @@
+// scalajs: --compliant-semantics
+
 case class SourcePosition(outer: SourcePosition = (NoSourcePosition: SourcePosition))
 
 // The code should not compile -- currently out of reach

@@ -275,7 +275,8 @@ ExprSplice        ::= spliceId                                                  
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type
                     |  Expr
-ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’
+ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’
+                    |  ‘(’ ‘using’ ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’
 ArgumentExprs     ::=  ParArgumentExprs
                     |  BlockExpr

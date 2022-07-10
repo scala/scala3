@@ -36,7 +36,7 @@ import org.jline.reader._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have

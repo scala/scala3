@@ -483,7 +483,7 @@ object Completion {
           val symbol = newSymbol(owner = NoSymbol, name, flags, info)
           val denot = SymDenotation(symbol, NoSymbol, name, flags, info)
           denot +: extractRefinements(parent)
-        case tp: TypeProxy => extractRefinements(tp.underlying)
+        case tp: TypeProxy => extractRefinements(tp.superType)
         case _ => List.empty
 
     /** @param site The type to inspect.

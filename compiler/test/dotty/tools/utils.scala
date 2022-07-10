@@ -52,14 +52,16 @@ end assertThrows
 
 /** Famous tool names in the ecosystem. Used for tool args in test files. */
 enum ToolName:
-  case Scala, Scalac, Java, Javac, Test
+  case Scala, Scalac, Java, Javac, ScalaJS, Test
 object ToolName:
   def named(s: String): ToolName = values.find(_.toString.equalsIgnoreCase(s)).getOrElse(throw IllegalArgumentException(s))
+
+type ToolArgs = Map[ToolName, List[String]]
 
 /** Take a prefix of each file, extract tool args, parse, and combine.
  *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
  */
-def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): Map[ToolName, List[String]] =
+def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
   files.foldLeft(Map.empty[ToolName, List[String]]) { (res, path) =>
     val toolargs = toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List)))
     toolargs.foldLeft(res) {

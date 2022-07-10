@@ -14,7 +14,7 @@ import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 import dotty.tools.scaladoc.tasty.comments.wiki.Paragraph
 import dotty.tools.scaladoc.DocPart
 import dotty.tools.scaladoc.tasty.{ SymOpsWithLinkCache, SymOps }
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc.snippets._
 
 class Repr(val qctx: Quotes)(val sym: qctx.reflect.Symbol)

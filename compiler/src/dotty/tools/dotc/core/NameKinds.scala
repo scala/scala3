@@ -85,7 +85,7 @@ object NameKinds {
       case _ => None
     }
 
-    simpleNameKinds(tag) = this
+    simpleNameKinds(tag) = this: @unchecked
   }
 
   /** The kind of names that get formed by adding a prefix to an underlying name */
@@ -152,7 +152,7 @@ object NameKinds {
 
     def infoString: String = s"Qualified $separator"
 
-    qualifiedNameKinds(tag) = this
+    qualifiedNameKinds(tag) = this: @unchecked
   }
 
   /** An extractor for qualified names of an arbitrary kind */
@@ -190,7 +190,7 @@ object NameKinds {
       else -1
     }
 
-    numberedNameKinds(tag) = this
+    numberedNameKinds(tag) = this: @unchecked
   }
 
   /** An extractor for numbered names of arbitrary kind */
@@ -225,7 +225,7 @@ object NameKinds {
     def fresh(prefix: TypeName)(using Context): TypeName =
       fresh(prefix.toTermName).toTypeName
 
-    uniqueNameKinds(separator) = this
+    uniqueNameKinds(separator) = this: @unchecked
   }
 
   /** An extractor for unique names of arbitrary kind */

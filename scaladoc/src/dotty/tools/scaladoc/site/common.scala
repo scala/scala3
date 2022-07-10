@@ -17,7 +17,7 @@ import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.html.HtmlRenderer
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 val docsRootDRI: DRI = DRI(location = "_docs/index", symbolUUID = staticFileSymbolUUID)
 val apiPageDRI: DRI = DRI(location = "api/index")

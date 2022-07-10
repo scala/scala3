@@ -63,7 +63,7 @@ object TypeUtils {
         val arity2 = self.tp2.tupleArity
         if arity1 == arity2 then arity1 else -1
       case _ =>
-        if defn.isTupleClass(self.classSymbol) then self.dealias.argInfos.length
+        if defn.isTupleNType(self) then self.dealias.argInfos.length
         else -1
     }
 
@@ -80,7 +80,7 @@ object TypeUtils {
       case OrType(tp1, tp2) =>
         None // We can't combine the type of two tuples
       case _ =>
-        if defn.isTupleClass(self.classSymbol) then Some(self.dealias.argInfos)
+        if defn.isTupleClass(self.typeSymbol) then Some(self.dealias.argInfos)
         else None
     }
 
@@ -104,7 +104,7 @@ object TypeUtils {
       case self @ TypeRef(prefix, _) if self.symbol.isClass =>
         prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
       case self: TypeProxy =>
-        self.underlying.mirrorCompanionRef
+        self.superType.mirrorCompanionRef
     }
 
     /** Is this type a methodic type that takes implicit parameters (both old and new) at some point? */

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 case class Foo(s: String)
 
 object Test {

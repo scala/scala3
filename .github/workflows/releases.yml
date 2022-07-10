@@ -2,6 +2,9 @@ name: Releases
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   publish_release:
     runs-on: [self-hosted, Linux]

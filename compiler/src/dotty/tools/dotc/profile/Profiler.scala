@@ -1,5 +1,6 @@
 package dotty.tools.dotc.profile
 
+import scala.annotation.*
 import scala.language.unsafeNulls
 
 import java.io.{FileWriter, PrintWriter}
@@ -81,7 +82,7 @@ private [profile] object NoOpProfiler extends Profiler {
   override def finished(): Unit = ()
 }
 private [profile] object RealProfiler {
-  import scala.collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
   val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
   val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
   val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
@@ -99,10 +100,6 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   def outDir: AbstractFile = ctx.settings.outputDir.value
 
   val id: Int = RealProfiler.idGen.incrementAndGet()
-  RealProfiler.gcMx foreach {
-    case emitter: NotificationEmitter => emitter.addNotificationListener(this, null, null)
-    case gc => println(s"Cant connect gcListener to ${gc.getClass}")
-  }
 
   private val mainThread = Thread.currentThread()
 
@@ -123,9 +120,15 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   }
   private def readHeapUsage() = RealProfiler.memoryMx.getHeapMemoryUsage.getUsed
 
+  @nowarn
   private def doGC: Unit = {
     System.gc()
     System.runFinalization()
+  }
+
+  RealProfiler.gcMx foreach {
+    case emitter: NotificationEmitter => emitter.addNotificationListener(this, null, null)
+    case gc => println(s"Cant connect gcListener to ${gc.getClass}")
   }
 
   reporter.header(this)

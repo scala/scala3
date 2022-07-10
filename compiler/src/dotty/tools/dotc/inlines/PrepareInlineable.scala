@@ -1,6 +1,6 @@
 package dotty.tools
 package dotc
-package typer
+package inlines
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import Trees._
@@ -14,6 +14,7 @@ import StdNames.nme
 import Contexts._
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, UniqueInlineName}
+import inlines.Inlines
 import NameOps._
 import Annotations._
 import transform.{AccessProxies, PCPCheckAndHeal, Splicer}
@@ -72,7 +73,7 @@ object PrepareInlineable {
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
-        (Inliner.inInlineMethod || StagingContext.level > 0)
+        (Inlines.inInlineMethod || StagingContext.level > 0)
 
       def preTransform(tree: Tree)(using Context): Tree
 
@@ -282,7 +283,7 @@ object PrepareInlineable {
     }
 
   private def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
-    if Inliner.inInlineMethod(using ctx.outer) then
+    if Inlines.inInlineMethod(using ctx.outer) then
       report.error(ex"Implementation restriction: nested inline methods are not supported", inlined.srcPos)
 
     if (inlined.is(Macro) && !ctx.isAfterTyper) {

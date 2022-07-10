@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 /*
  * filter: inliner warnings; re-run with
  */

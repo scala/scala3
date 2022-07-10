@@ -9,6 +9,7 @@ import Symbols._
 import ImportInfo.withRootImports
 import parsing.{Parser => ParserPhase}
 import config.Printers.typr
+import inlines.PrepareInlineable
 import util.Stats._
 
 /**

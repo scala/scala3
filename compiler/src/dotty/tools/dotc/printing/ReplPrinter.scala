@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.printing.Texts._
 
 
-class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
+class ReplPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   val debugPrint = _ctx.settings.YprintDebug.value
 
@@ -37,7 +37,7 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
       if (sym.is(Method)) {
         sym.info match {
           case tp: ExprType => ":" ~~ toText(tp.resType)
-          case _ => toText(sym.info)
+          case info => toText(info)
         }
       }
       else if (sym.isType && sym.info.isTypeAlias) toText(sym.info)

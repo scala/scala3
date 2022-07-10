@@ -4,7 +4,7 @@ import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.{PositionContext, SymInfo}
 import org.junit.Assert.assertEquals
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * An action requesting for the symbols found in the document matching `marker`.

@@ -29,6 +29,7 @@ import Inferencing._
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
+import inlines.{Inlines, PrepareInlineable}
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
@@ -102,6 +103,7 @@ object Typer {
    */
   private[typer] def isSyntheticApply(tree: tpd.Tree): Boolean = tree match {
     case tree: tpd.Select => tree.hasAttachment(InsertedApply)
+    case TypeApply(fn, _) => isSyntheticApply(fn)
     case _ => false
   }
 
@@ -1059,7 +1061,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val (stats1, exprCtx) = withoutMode(Mode.Pattern) {
       typedBlockStats(tree.stats)
     }
-    val expr1 = typedExpr(tree.expr, pt.dropIfProto)(using exprCtx)
+    var expr1 = typedExpr(tree.expr, pt.dropIfProto)(using exprCtx)
+
+    // If unsafe nulls is enabled inside a block but not enabled outside
+    // and the type does not conform the expected type without unsafe nulls,
+    // we will cast the last expression to the expected type.
+    // See: tests/explicit-nulls/pos/unsafe-block.scala
+    if ctx.mode.is(Mode.SafeNulls)
+      && !exprCtx.mode.is(Mode.SafeNulls)
+      && pt.isValueType
+      && !inContext(exprCtx.addMode(Mode.SafeNulls))(expr1.tpe <:< pt) then
+      expr1 = expr1.cast(pt)
+
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1)
         .withType(expr1.tpe)
@@ -1687,7 +1700,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if (bounds != null) sym.info = bounds
           }
           b
-        case t: UnApply if t.symbol.is(Inline) => Inliner.inlinedUnapply(t)
+        case t: UnApply if t.symbol.is(Inline) => Inlines.inlinedUnapply(t)
         case t => t
       }
   }
@@ -2016,12 +2029,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       var checkedArgs = preCheckKinds(args1, paramBounds)
         // check that arguments conform to bounds is done in phase PostTyper
       val tycon = tpt1.symbol
-      if (tycon == defn.andType)
+      if tycon == defn.andType || tycon == defn.orType then
         checkedArgs = checkedArgs.mapconserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
-      else if (tycon == defn.orType)
-        checkedArgs = checkedArgs.mapconserve(arg =>
-          checkSimpleKinded(checkNoWildcard(arg)))
+      else if tycon.isProvisional then
+        // A type with Provisional flag is either an alias or abstract type.
+        // If it is an alias type, it would mean the type is cyclic
+        // If it is an abstract type, it would mean the type is an irreducible
+        // application of a higher-kinded type to a wildcard argument.
+        // Either way, the wildcard argument is illegal. The early test of
+        // `checkNoWildcard` here is needed, so that we do not accidentally reduce
+        // an application of a Provisional type away, which would mean that the type constructor
+        // is no longer present on the right hand side. See neg/i15507.scala.
+        checkedArgs = checkedArgs.mapconserve(checkNoWildcard)
       else if tycon == defn.throwsAlias
           && checkedArgs.length == 2
           && checkedArgs(1).tpe.derivesFrom(defn.RuntimeExceptionClass)
@@ -2602,7 +2622,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 |The selector is not a member of an object or package.""")
     else typd(imp.expr, AnySelectionProto)
 
-  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Tree =
+  def typedImport(imp: untpd.Import)(using Context): Tree =
+    val sym = retrieveSym(imp)
     val expr1 = typedImportQualifier(imp, typedExpr(_, _)(using ctx.withOwner(sym)))
     checkLegalImportPath(expr1)
     val selectors1 = typedSelectors(imp.selectors)
@@ -2851,7 +2872,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
               typedTypeOrClassDef
             case tree: untpd.Labeled => typedLabeled(tree)
-            case _ => typedUnadapted(desugar(tree), pt, locked)
+            case _ => typedUnadapted(desugar(tree, pt), pt, locked)
           }
         }
 
@@ -2869,7 +2890,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
-          case tree: untpd.Import => typedImport(tree, retrieveSym(tree))
+          case tree: untpd.Import => typedImport(tree)
           case tree: untpd.Export => typedExport(tree)
           case tree: untpd.Match => typedMatch(tree, pt)
           case tree: untpd.Return => typedReturn(tree)
@@ -2904,7 +2925,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.Splice => typedSplice(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
           case tree: untpd.Hole => typedHole(tree, pt)
-          case _ => typedUnadapted(desugar(tree), pt, locked)
+          case _ => typedUnadapted(desugar(tree, pt), pt, locked)
         }
 
         try
@@ -3013,7 +3034,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               else ctx.withNotNullInfos(initialNotNullInfos)
             typed(mdef)(using newCtx) match {
               case mdef1: DefDef
-              if mdef1.symbol.is(Inline, butNot = Deferred) && !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
+              if mdef1.symbol.is(Inline, butNot = Deferred) && !Inlines.bodyToInline(mdef1.symbol).isEmpty =>
                 buf ++= inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
                   // from separately compiled files - the original BodyAnnotation is not kept.
@@ -3101,8 +3122,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  Overwritten in Retyper to return `mdef` unchanged.
    */
   protected def inlineExpansion(mdef: DefDef)(using Context): List[Tree] =
-    tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol))
-    :: (if mdef.symbol.isRetainedInlineMethod then Inliner.bodyRetainer(mdef) :: Nil else Nil)
+    tpd.cpy.DefDef(mdef)(rhs = Inlines.bodyToInline(mdef.symbol))
+    :: (if mdef.symbol.isRetainedInlineMethod then Inlines.bodyRetainer(mdef) :: Nil else Nil)
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     withoutMode(Mode.PatternOrTypeBits)(typed(tree, pt))
@@ -3700,12 +3721,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
       else
         val meth = methPart(tree).symbol
-        if meth.isAllOf(DeferredInline) && !Inliner.inInlineMethod then
+        if meth.isAllOf(DeferredInline) && !Inlines.inInlineMethod then
           errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
-        else if Inliner.needsInlining(tree) then
+        else if Inlines.needsInlining(tree) then
           tree.tpe <:< wildApprox(pt)
           val errorCount = ctx.reporter.errorCount
-          val inlined = Inliner.inlineCall(tree)
+          val inlined = Inlines.inlineCall(tree)
           if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
           else inlined
         else if (tree.symbol.isScala2Macro &&

@@ -1,3 +1,4 @@
+// scalajs: --skip
 
 import Term.*
 import Pattern.*

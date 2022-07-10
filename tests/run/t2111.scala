@@ -1,3 +1,4 @@
+// scalajs: --skip --pending
 
 object Test extends App {
 

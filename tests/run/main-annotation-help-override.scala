@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.annotation.newMain
 import scala.annotation.newMain.alias
 import scala.util.Try

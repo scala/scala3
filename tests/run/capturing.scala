@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class MT(sf: MT => String) {
   // `s` is retained as a field, but `sf` should not be.
   val s = sf(this)

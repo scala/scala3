@@ -1,9 +1,4 @@
-
-
-
-
-
-
+// scalajs: --skip
 
 object Test {
 

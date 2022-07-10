@@ -1,21 +1,29 @@
 package dotty.tools.dotc.config
 
-import scala.annotation.tailrec
-import scala.collection.mutable.ArrayBuffer
 import java.lang.Character.isWhitespace
 import java.nio.file.{Files, Paths}
-import scala.collection.JavaConverters._
+import scala.annotation.tailrec
+import scala.collection.mutable.ArrayBuffer
+import scala.jdk.CollectionConverters.*
 
-/** A simple enough command line parser.
+/** Split a line of text using shell conventions.
  */
 object CommandLineParser:
   inline private val DQ  = '"'
   inline private val SQ  = '\''
   inline private val EOF = -1
 
-  /** Split the line into tokens separated by whitespace or quotes.
+  /** Split the line into tokens separated by whitespace.
    *
-   *  Invoke `errorFn` with message on bad quote.
+   *  Single or double quotes can be embedded to preserve internal whitespace:
+   *
+   *  `""" echo "hello, world!" """`   => "echo" :: "hello, world!" :: Nil
+   *  `""" echo hello,' 'world! """`   => "echo" :: "hello, world!" :: Nil
+   *  `""" echo \"hello, world!\" """` => "echo" :: "\"hello," :: "world!\"" :: Nil
+   *
+   *  The embedded quotes are stripped. Escaping backslash is not stripped.
+   *
+   *  Invoke `errorFn` with a descriptive message if an end quote is missing.
    */
   def tokenize(line: String, errorFn: String => Unit): List[String] =
 
@@ -23,13 +31,14 @@ object CommandLineParser:
 
     var pos   = 0
     var start = 0
-    val qpos  = new ArrayBuffer[Int](16)    // positions of paired quotes
+    val qpos  = new ArrayBuffer[Int](16)    // positions of paired quotes in current token
 
     inline def cur    = if done then EOF else line.charAt(pos): Int
     inline def bump() = pos += 1
     inline def done   = pos >= line.length
 
-    def skipToQuote(q: Int): Boolean =
+    // Skip to the given unescaped end quote; false on no more input.
+    def skipToEndQuote(q: Int): Boolean =
       var escaped = false
       def terminal = cur match
         case _ if escaped => escaped = false ; false
@@ -39,13 +48,18 @@ object CommandLineParser:
       while !terminal do bump()
       !done
 
-    @tailrec def skipToDelim(): Boolean =
+    // Skip to the next whitespace word boundary; record unescaped embedded quotes; false on missing quote.
+    def skipToDelim(): Boolean =
+      var escaped = false
       inline def quote() = { qpos += pos ; bump() }
-      cur match
-        case q @ (DQ | SQ)        => { quote() ; skipToQuote(q) } && { quote() ; skipToDelim() }
-        case -1                   => true
+      @tailrec def advance(): Boolean = cur match
+        case _ if escaped         => escaped = false ; bump() ; advance()
+        case '\\'                 => escaped = true ; bump() ; advance()
+        case q @ (DQ | SQ)        => { quote() ; skipToEndQuote(q) } && { quote() ; advance() }
+        case EOF                  => true
         case c if isWhitespace(c) => true
-        case _                    => bump(); skipToDelim()
+        case _                    => bump(); advance()
+      advance()
 
     def copyText(): String =
       val buf = new java.lang.StringBuilder
@@ -64,6 +78,7 @@ object CommandLineParser:
           p = qpos(i)
       buf.toString
 
+    // the current token, stripped of any embedded quotes.
     def text(): String =
       val res =
         if qpos.isEmpty then line.substring(start, pos)
@@ -74,7 +89,7 @@ object CommandLineParser:
 
     inline def badquote() = errorFn(s"Unmatched quote [${qpos.last}](${line.charAt(qpos.last)})")
 
-    inline def skipWhitespace() = while isWhitespace(cur) do pos += 1
+    inline def skipWhitespace() = while isWhitespace(cur) do bump()
 
     @tailrec def loop(): List[String] =
       skipWhitespace()
@@ -85,12 +100,11 @@ object CommandLineParser:
         badquote()
         Nil
       else
-        accum = text() :: accum
+        accum ::= text()
         loop()
     end loop
 
     loop()
-
   end tokenize
 
   def tokenize(line: String): List[String] = tokenize(line, x => throw new ParseException(x))
