@@ -419,11 +419,13 @@ object Types {
 
     /** Is this a match type or a higher-kinded abstraction of one?
      */
-    def isMatch(using Context): Boolean = stripped match {
-      case _: MatchType => true
-      case tp: HKTypeLambda => tp.resType.isMatch
-      case tp: AppliedType => tp.isMatchAlias
-      case _ => false
+    def isMatch(using Context): Boolean = underlyingMatchType.exists
+
+    def underlyingMatchType(using Context): Type = stripped match {
+      case tp: MatchType => tp
+      case tp: HKTypeLambda => tp.resType.underlyingMatchType
+      case tp: AppliedType if tp.isMatchAlias => tp.superType.underlyingMatchType
+      case _ => NoType
     }
 
     /** Is this a higher-kinded type lambda with given parameter variances? */
