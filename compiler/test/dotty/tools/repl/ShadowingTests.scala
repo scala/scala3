@@ -122,7 +122,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |val y: String = foo
          |
          |scala> if (true) x else y
-         |val res0: Matchable = 42
+         |val res0: Int | String = 42
          |""".stripMargin.linesIterator.toList
     )
 
