@@ -59,6 +59,23 @@ Literals$package$
 Object
 covtest.Literals$package$
 f
+177
+180
+8
+???
+Ident
+false
+0
+false
+???
+
+3
+Literals.scala
+covtest
+Literals$package$
+Object
+covtest.Literals$package$
+f
 137
 142
 8
@@ -69,7 +86,7 @@ false
 false
 def f
 
-3
+4
 Literals.scala
 covtest
 Literals$package$
@@ -86,7 +103,7 @@ false
 false
 f(0,1,2)(3)
 
-4
+5
 Literals.scala
 covtest
 Literals$package$
