@@ -1829,8 +1829,11 @@ class Definitions {
 
   @tu lazy val assumedTransparentClasses =
     Set[Symbol](ComparableClass, ProductClass, SerializableClass,
+      AnyClass, AnyValClass, ObjectClass, MatchableClass,
       // add these for now, until we had a chance to retrofit 2.13 stdlib
       // we should do a more through sweep through it then.
+      requiredClass("scala.collection.IterableOps"),
+      requiredClass("scala.collection.SeqOps"),
       requiredClass("scala.collection.SortedOps"),
       requiredClass("scala.collection.StrictOptimizedSortedSetOps"),
       requiredClass("scala.collection.generic.DefaultSerializable"),
@@ -1840,10 +1843,6 @@ class Definitions {
       requiredClass("scala.collection.generic.IsSeq"),
       requiredClass("scala.collection.generic.Subtractable"),
       requiredClass("scala.collection.immutable.StrictOptimizedSeqOps"),
-      AnyClass,
-      AnyValClass,
-      ObjectClass,
-      MatchableClass
     )
 
   // ----- primitive value class machinery ------------------------------------------
