@@ -1827,23 +1827,53 @@ class Definitions {
   def isInfix(sym: Symbol)(using Context): Boolean =
     (sym eq Object_eq) || (sym eq Object_ne)
 
-  @tu lazy val assumedTransparentClasses =
-    Set[Symbol](ComparableClass, ProductClass, SerializableClass,
-      AnyClass, AnyValClass, ObjectClass, MatchableClass,
-      // add these for now, until we had a chance to retrofit 2.13 stdlib
-      // we should do a more through sweep through it then.
-      requiredClass("scala.collection.IterableOps"),
-      requiredClass("scala.collection.SeqOps"),
-      requiredClass("scala.collection.SortedOps"),
-      requiredClass("scala.collection.StrictOptimizedSortedSetOps"),
-      requiredClass("scala.collection.generic.DefaultSerializable"),
-      requiredClass("scala.collection.generic.IsIterable"),
-      requiredClass("scala.collection.generic.IsIterableOnce"),
-      requiredClass("scala.collection.generic.IsMap"),
-      requiredClass("scala.collection.generic.IsSeq"),
-      requiredClass("scala.collection.generic.Subtractable"),
-      requiredClass("scala.collection.immutable.StrictOptimizedSeqOps"),
-    )
+  @tu lazy val assumedTransparentNames: Map[Name, Set[Symbol]] =
+    // add these for now, until we had a chance to retrofit 2.13 stdlib
+    // we should do a more through sweep through it then.
+    val strs = Map(
+      "Any" -> Set("scala", "scala.scalajs.js"),
+      "AnyVal" -> Set("scala"),
+      "Matchable" -> Set("scala"),
+      "Product" -> Set("scala"),
+      "Object" -> Set("java.lang", "scala.scalajs.js"),
+      "Comparable" -> Set("java.lang"),
+      "Serializable" -> Set("java.io"),
+      "BitSetOps" -> Set("scala.collection"),
+      "IndexedSeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "IterableOnceOps" -> Set("scala.collection"),
+      "IterableOps" -> Set("scala.collection"),
+      "LinearSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "MapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "SeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "SetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "SortedMapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "SortedOps" -> Set("scala.collection"),
+      "SortedSetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "StrictOptimizedIterableOps" -> Set("scala.collection"),
+      "StrictOptimizedLinearSeqOps" -> Set("scala.collection"),
+      "StrictOptimizedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "StrictOptimizedSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "StrictOptimizedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "StrictOptimizedSortedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "StrictOptimizedSortedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "ArrayDequeOps" -> Set("scala.collection.mutable"),
+      "DefaultSerializable" -> Set("scala.collection.generic"),
+      "IsIterable" -> Set("scala.collection.generic"),
+      "IsIterableLowPriority" -> Set("scala.collection.generic"),
+      "IsIterableOnce" -> Set("scala.collection.generic"),
+      "IsIterableOnceLowPriority" -> Set("scala.collection.generic"),
+      "IsMap" -> Set("scala.collection.generic"),
+      "IsSeq" -> Set("scala.collection.generic"))
+    strs.map { case (simple, pkgs) => (
+        simple.toTypeName,
+        pkgs.map(pkg => staticRef(pkg.toTermName, isPackage = true).symbol.moduleClass)
+      )
+    }
+
+  def isAssumedTransparent(sym: Symbol): Boolean =
+    assumedTransparentNames.get(sym.name) match
+      case Some(pkgs) => pkgs.contains(sym.owner)
+      case none => false
 
   // ----- primitive value class machinery ------------------------------------------
 

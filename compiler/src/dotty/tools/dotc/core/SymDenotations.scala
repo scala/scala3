@@ -1153,7 +1153,7 @@ object SymDenotations {
 
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType)
-      || defn.assumedTransparentClasses.contains(symbol)
+      || defn.isAssumedTransparent(symbol)
       || isClass && hasAnnotation(defn.TransparentTraitAnnot)
 
     /** The class containing this denotation which has the given effective name. */
