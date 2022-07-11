@@ -816,10 +816,13 @@ trait Checking {
         case RefutableExtractor =>
           val extractor =
             val UnApply(fn, _, _) = pat: @unchecked
-            fn match
+            tpd.funPart(fn) match
               case Select(id, _) => id
-              case TypeApply(Select(id, _), _) => id
-          em"pattern binding uses refutable extractor `$extractor`"
+              case _ => EmptyTree
+          if extractor.isEmpty then
+            em"pattern binding uses refutable extractor"
+          else
+            em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
         if isPatDef then "adding `: @unchecked` after the expression"
