@@ -246,6 +246,23 @@ test$package$
 Object
 <empty>.test$package$
 Test
+276
+285
+14
+integer
+Select
+false
+0
+false
+a.integer
+
+14
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
 264
 286
 14
@@ -256,7 +273,7 @@ false
 false
 a.msg(i, 0, a.integer)
 
-14
+15
 lifting/test.scala
 <empty>
 test$package$
@@ -273,7 +290,58 @@ false
 false
 println(x)
 
-15
+16
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+306
+310
+16
+ex
+Select
+false
+0
+false
+a.ex
+
+17
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+321
+325
+16
+ex
+Select
+false
+0
+false
+a.ex
+
+18
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+321
+333
+16
+integer
+Select
+false
+0
+false
+a.ex.integer
+
+19
 lifting/test.scala
 <empty>
 test$package$
@@ -290,7 +358,7 @@ false
 false
 a.ex.msg(i, 0, a.ex.integer)
 
-16
+20
 lifting/test.scala
 <empty>
 test$package$
@@ -307,7 +375,7 @@ false
 false
 println(x)
 
-17
+21
 lifting/test.scala
 <empty>
 test$package$
@@ -324,7 +392,7 @@ false
 false
 f()
 
-18
+22
 lifting/test.scala
 <empty>
 test$package$
@@ -341,7 +409,7 @@ false
 false
 a.msg(f(), 0, i)
 
-19
+23
 lifting/test.scala
 <empty>
 test$package$
@@ -358,7 +426,7 @@ false
 false
 println(x)
 
-20
+24
 lifting/test.scala
 <empty>
 test$package$
