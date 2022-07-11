@@ -478,7 +478,7 @@ class Namer { typer: Typer =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
-            assert(childStart != other.span.start, i"duplicate child annotation $child / $other")
+            assert(childStart != other.span.start || child.source != other.source, i"duplicate child annotation $child / $other")
             val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot): @unchecked
             prefix ::: otherAnnot :: insertInto(rest)
           }
