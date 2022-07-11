@@ -1831,11 +1831,11 @@ class Definitions {
     // add these for now, until we had a chance to retrofit 2.13 stdlib
     // we should do a more through sweep through it then.
     val strs = Map(
-      "Any" -> Set("scala", "scala.scalajs.js"),
+      "Any" -> Set("scala"),
       "AnyVal" -> Set("scala"),
       "Matchable" -> Set("scala"),
       "Product" -> Set("scala"),
-      "Object" -> Set("java.lang", "scala.scalajs.js"),
+      "Object" -> Set("java.lang"),
       "Comparable" -> Set("java.lang"),
       "Serializable" -> Set("java.io"),
       "BitSetOps" -> Set("scala.collection"),
