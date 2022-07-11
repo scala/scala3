@@ -1135,6 +1135,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case elsep: untpd.If => isIncomplete(elsep)
       case _ => false
 
+    def gadtAdaptBranch(tree: Tree, branchPt: Type): Tree =
+      TypeComparer.testSubType(tree.tpe.widenExpr, branchPt) match {
+        case CompareResult.OKwithGADTUsed => tree.cast(branchPt)
+        case _ => tree
+      }
+
     val branchPt = if isIncomplete(tree) then defn.UnitType else pt.dropIfProto
 
     val result =
@@ -1148,7 +1154,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
           thenp0 :: elsep0 :: Nil
         }: @unchecked
-        assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
+
+        val resType = thenp1.tpe | elsep1.tpe
+
+        val thenp2 = gadtAdaptBranch(thenp1, resType)
+        val elsep2 = gadtAdaptBranch(elsep1, resType)
+
+        cpy.If(tree)(cond1, thenp2, elsep2).withType(resType)
 
     def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
     def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
