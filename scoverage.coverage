@@ -1,0 +1,88 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+../dotty/src/main/scala/Macro.scala
+example
+Test$
+Object
+example.Test$
+x
+212
+217
+13
+x
+DefDef
+false
+0
+false
+
+
+1
+src/main/scala/Main.scala
+example
+Test$
+Object
+example.Test$
+foo
+52
+59
+5
+foo
+DefDef
+false
+0
+false
+def foo
+
+2
+src/main/scala/Main.scala
+example
+Test$
+Object
+example.Test$
+hello
+99
+112
+8
+println
+Apply
+false
+0
+false
+println("JD")
+
+3
+src/main/scala/Main.scala
+example
+Test$
+Object
+example.Test$
+hello
+75
+90
+7
+hello
+DefDef
+false
+0
+false
+@main def hello
+

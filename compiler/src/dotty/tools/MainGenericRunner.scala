@@ -15,7 +15,7 @@ import dotty.tools.io.Jar
 import dotty.tools.runner.ScalaClassLoader
 import java.nio.file.Paths
 import dotty.tools.dotc.config.CommandLineParser
-import dotty.tools.scripting.StringDriver
+import dotty.tools.scripting.{StringDriver, StringDriverException, ScriptingException}
 
 enum ExecuteMode:
   case Guess
@@ -247,8 +247,7 @@ object MainGenericRunner {
               ++ settings.scalaArgs
               ++ List("-script", settings.targetScript)
               ++ settings.scriptArgs
-          scripting.Main.main(properArgs.toArray)
-          None
+          scripting.Main.process(properArgs.toArray)
 
       case ExecuteMode.Expression =>
         val cp = settings.classPath match {
@@ -269,8 +268,9 @@ object MainGenericRunner {
           run(settings.withExecuteMode(ExecuteMode.Repl))
 
     run(settings) match
-      case e @ Some(ex) => errorFn("", e)
-      case _            => true
+      case Some(ex: (StringDriverException | ScriptingException)) => errorFn(ex.getMessage)
+      case e @ Some(ex)                                           => errorFn("", e)
+      case _                                                      => true
 
   def errorFn(str: String, e: Option[Throwable] = None): Boolean =
     if (str.nonEmpty) Console.err.println(str)
