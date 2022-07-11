@@ -37,7 +37,7 @@ class ScriptEngine extends AbstractScriptEngine {
   @throws[ScriptException]
   def eval(script: String, context: ScriptContext): Object = {
     val vid = state.valIndex
-    state = driver.run(script)(state)
+    state = driver.run(script)(using state)
     val oid = state.objectIndex
     Class.forName(s"${Rendering.REPL_WRAPPER_NAME_PREFIX}$oid", true, rendering.classLoader()(using state.context))
       .getDeclaredMethods.find(_.getName == s"${str.REPL_RES_PREFIX}$vid")
