@@ -8,7 +8,6 @@ import java.net.{ URLClassLoader }
 import java.lang.reflect.{ Modifier, Method }
 
 object Util:
-
   def deleteFile(target: File): Unit =
     if target.isDirectory then
       for member <- target.listFiles.toList
@@ -16,7 +15,11 @@ object Util:
     target.delete()
   end deleteFile
 
-  def detectMainClassAndMethod(outDir: Path, classpathEntries: Seq[Path], srcFile: String): (String, Method) =
+  def detectMainClassAndMethod(
+    outDir: Path,
+    classpathEntries: Seq[Path],
+    srcFile: String
+  ): Either[Throwable, (String, Method)] =
     val classpathUrls = (classpathEntries :+ outDir).map { _.toUri.toURL }
     val cl = URLClassLoader(classpathUrls.toArray)
 
@@ -48,11 +51,10 @@ object Util:
 
     mains match
       case Nil =>
-        throw StringDriverException(s"No main methods detected for [${srcFile}]")
+        Left(StringDriverException(s"No main methods detected for [${srcFile}]"))
       case _ :: _ :: _ =>
-        throw StringDriverException(
-          s"internal error: Detected the following main methods:\n${mains.mkString("\n")}")
-      case m :: Nil => m
+        Left(StringDriverException(s"Internal error: Detected the following main methods:\n${mains.mkString("\n")}"))
+      case mainMethod :: Nil => Right(mainMethod)
     end match
   end detectMainClassAndMethod
 

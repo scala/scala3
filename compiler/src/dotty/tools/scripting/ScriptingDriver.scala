@@ -11,7 +11,7 @@ import dotty.tools.io.{ PlainDirectory, Directory, ClassPath }
 import Util.*
 
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
-  def compileAndRun(pack:(Path, Seq[Path], String) => Boolean = null): Unit =
+  def compileAndRun(pack:(Path, Seq[Path], String) => Boolean = null): Option[Throwable] =
     val outDir = Files.createTempDirectory("scala3-scripting")
     outDir.toFile.deleteOnExit()
     setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh) match
@@ -20,26 +20,25 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
           new PlainDirectory(Directory(outDir)))
 
         if doCompile(newCompiler, toCompile).hasErrors then
-          throw ScriptingException("Errors encountered during compilation")
-
-        try
-          val classpath = s"${ctx.settings.classpath.value}${pathsep}${sys.props("java.class.path")}"
-          val classpathEntries: Seq[Path] = ClassPath.expandPath(classpath, expandStar=true).map { Paths.get(_) }
-          val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, classpathEntries, scriptFile.toString)
-          val invokeMain: Boolean =
-            Option(pack) match
-              case Some(func) =>
-                func(outDir, classpathEntries, mainClass)
-              case None =>
-                true
-            end match
-          if invokeMain then mainMethod.invoke(null, scriptArgs)
-        catch
-          case e: java.lang.reflect.InvocationTargetException =>
-            throw e.getCause
-        finally
-          deleteFile(outDir.toFile)
-      case None =>
+          Some(ScriptingException("Errors encountered during compilation"))
+        else
+          try
+            val classpath = s"${ctx.settings.classpath.value}${pathsep}${sys.props("java.class.path")}"
+            val classpathEntries: Seq[Path] = ClassPath.expandPath(classpath, expandStar=true).map { Paths.get(_) }
+            detectMainClassAndMethod(outDir, classpathEntries, scriptFile.toString) match
+              case Right((mainClass, mainMethod)) =>
+                val invokeMain: Boolean = Option(pack).map { func =>
+                    func(outDir, classpathEntries, mainClass)
+                  }.getOrElse(true)
+                if invokeMain then mainMethod.invoke(null, scriptArgs)
+                None
+              case Left(ex) => Some(ex)
+          catch
+            case e: java.lang.reflect.InvocationTargetException =>
+              Some(e.getCause)
+          finally
+            deleteFile(outDir.toFile)
+      case None => None
   end compileAndRun
 
 end ScriptingDriver
