@@ -1827,7 +1827,7 @@ class Definitions {
   def isInfix(sym: Symbol)(using Context): Boolean =
     (sym eq Object_eq) || (sym eq Object_ne)
 
-  @tu lazy val assumedTransparentTraits =
+  @tu lazy val assumedTransparentClasses =
     Set[Symbol](ComparableClass, ProductClass, SerializableClass,
       // add these for now, until we had a chance to retrofit 2.13 stdlib
       // we should do a more through sweep through it then.

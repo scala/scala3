@@ -1151,9 +1151,9 @@ object SymDenotations {
     final def isEffectivelySealed(using Context): Boolean =
       isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
-    final def isTransparentTrait(using Context): Boolean =
+    final def isTransparentClass(using Context): Boolean =
       is(TransparentType)
-      || defn.assumedTransparentTraits.contains(symbol)
+      || defn.assumedTransparentClasses.contains(symbol)
       || isClass && hasAnnotation(defn.TransparentTraitAnnot)
 
     /** The class containing this denotation which has the given effective name. */
