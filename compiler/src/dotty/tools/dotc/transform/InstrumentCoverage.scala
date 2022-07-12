@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package transform
 
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 
 import ast.tpd.*
 import collection.mutable
@@ -13,10 +12,10 @@ import core.Symbols.{defn, Symbol}
 import core.Constants.Constant
 import core.NameOps.isContextFunction
 import core.Types.*
-import typer.LiftCoverage
-import util.{SourcePosition, Property}
-import util.Spans.Span
 import coverage.*
+import typer.LiftCoverage
+import util.SourcePosition
+import util.Spans.Span
 import localopt.StringInterpolatorOpt
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
@@ -43,7 +42,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     val outputPath = ctx.settings.coverageOutputDir.value
 
     // Ensure the dir exists
-    val dataDir = new File(outputPath)
+    val dataDir = File(outputPath)
     val newlyCreated = dataDir.mkdirs()
 
     if !newlyCreated then
@@ -189,7 +188,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def recordStatement(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Int =
       val id = statementId
       statementId += 1
-      val statement = new Statement(
+      val statement = Statement(
         source = ctx.source.file.name,
         location = Location(tree),
         id = id,
