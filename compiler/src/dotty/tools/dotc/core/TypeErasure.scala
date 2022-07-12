@@ -599,7 +599,9 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
       else if (semiEraseVCs && isDerivedValueClass(tycon.classSymbol)) eraseDerivedValueClass(tp)
       else apply(tp.translucentSuperType)
-    case _: TermRef | _: ThisType =>
+    case tp: TermRef =>
+      this(underlyingOfTermRef(tp))
+    case _: ThisType =>
       this(tp.widen)
     case SuperType(thistpe, supertpe) =>
       SuperType(this(thistpe), this(supertpe))
@@ -683,6 +685,10 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     case tp if (tp `eq` NoType) || (tp `eq` NoPrefix) =>
       tp
   }
+
+  private def underlyingOfTermRef(tp: TermRef)(using Context) = tp.widen match
+    case tpw @ MethodType(Nil) if tp.symbol.isGetter => tpw.resultType
+    case tpw => tpw
 
   private def eraseArray(tp: Type)(using Context) = {
     val defn.ArrayOf(elemtp) = tp: @unchecked
@@ -829,7 +835,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case JavaArrayType(elem) =>
         sigName(elem) ++ "[]"
       case tp: TermRef =>
-        sigName(tp.widen)
+        sigName(underlyingOfTermRef(tp))
       case ExprType(rt) =>
         sigName(defn.FunctionOf(Nil, rt))
       case tp: TypeVar =>
