@@ -99,6 +99,13 @@ class Pickler extends Phase {
               println(i"**** pickled info of $cls")
               println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
             }
+          // println(i"**** pickled info of $cls")
+          // println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
+          if cls.show.contains("MainGenericRunner") then
+            import java.nio.file.{Paths, Files}
+            import java.nio.charset.StandardCharsets
+
+            Files.write(Paths.get("debug.txt"), TastyPrinter.showContents(pickled, true).getBytes(StandardCharsets.UTF_8))
           pickled
         }(using ExecutionContext.global)
       }
@@ -137,7 +144,7 @@ class Pickler extends Phase {
       }
     pickling.println("************* entered toplevel ***********")
     for ((cls, unpickler) <- unpicklers) {
-      val unpickled = unpickler.rootTrees
+      val unpickled = typeSimplifier.transform(unpickler.rootTrees)
       testSame(i"$unpickled%\n%", beforePickling(cls), cls)
     }
   }
