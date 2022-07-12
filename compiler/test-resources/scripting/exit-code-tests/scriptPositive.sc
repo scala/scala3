@@ -1,1 +1,0 @@
-@main def scriptPositive = println("Hello world!")

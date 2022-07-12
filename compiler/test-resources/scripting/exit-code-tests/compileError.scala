@@ -1,1 +1,0 @@
-@main def compileError = prin
