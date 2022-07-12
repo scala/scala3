@@ -179,8 +179,8 @@ For example, if the arguments to an `new`-expression are transitively
 initialized, so is the result. If the receiver and arguments in a method call
 are transitively initialized, so is the result.
 
-Local reasoning about initialization is the key to give rise to a fast
-initialization checker, as it avoids whole-program analysis.
+Local reasoning about initialization gives rise to a fast initialization
+checker, as it avoids whole-program analysis.
 
 The principle of authority goes hand-in-hand with monotonicity: the principle
 of monotonicity stipulates that initialization states cannot go backwards, while
@@ -254,12 +254,12 @@ With the established principles and design goals, following rules are imposed:
    `List.apply(e)`, the argument `e` may be non-hot. If that is the case, the
    result value of the parametric method call is taken as _cold_.
 
-5. Method calls on hot values with effectively hot arguments product hot results.
+5. Method calls on hot values with effectively hot arguments produce hot results.
 
    This rule is assured by local reasoning about initialization.
 
 6. Method calls on `ThisRef` and warm values will be resolved statically and the
-   method bodies will be checked.
+   corresponding method bodies are checked.
 
 7. In a new expression `new p.C(args)`, if the values of `p` and `args` are
    effectively hot, then the result value is also hot.
@@ -267,7 +267,8 @@ With the established principles and design goals, following rules are imposed:
    This is assured by local reasoning about initialization.
 
 8. In a new expression `new p.C(args)`, if any value of `p` and `args` is not
-   effectively hot, then the result value takes the form `Warm[C] { outer = Vp, args = Vargs }`.
+   effectively hot, then the result value takes the form `Warm[C] { outer = Vp, args = Vargs }`. The initialization code for the class `C` is checked again to make
+   sure the non-hot values are used properly.
 
    In the above, `Vp` is the widened value of `p` --- the widening happens if `p`
    is a warm value `Warm[D] { outer = V, args }` and we widen it to
