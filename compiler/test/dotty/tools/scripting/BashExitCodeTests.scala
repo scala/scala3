@@ -47,7 +47,7 @@ object BashExitCodeTests:
     val testClassFile = temporaryDir.files.find(_.getName == s"$className.class")
     assert(testClassFile.isDefined)
     val commandline = (Seq(scalaPath, "-classpath", temporaryDir.absPath, className)).mkString(" ")
-    val (validTest, exitCode, o, e) = bashCommand(commandline)
+    val (validTest, exitCode, _, _) = bashCommand(commandline)
       if verifyValid(validTest) then
         assertEquals(expectedExitCode, exitCode)
 
@@ -74,7 +74,7 @@ object BashExitCodeTests:
    */
   private def testCommandExitCode(args: Seq[String], expectedExitCode: Int): Unit =
     val commandline = args.mkString(" ")
-    val (validTest, exitCode, output, erroutput) = bashCommand(commandline)
+    val (validTest, exitCode, _, _) = bashCommand(commandline)
     if verifyValid(validTest) then
       assertEquals(expectedExitCode, exitCode)
 
@@ -118,7 +118,9 @@ object BashExitCodeTests:
    * Returns path to the generated tasty file for given directory and classname
    */
   private def getGeneratedTastyPath(className: String)(using temporaryDir: File): String =
-    temporaryDir.toPath.resolve(s"$className.tasty").toString
+    val file = temporaryDir.files.find(_.getName == s"$className.tasty")
+    assert(file.isDefined)
+    file.get.absPath
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BashExitCodeTests:
