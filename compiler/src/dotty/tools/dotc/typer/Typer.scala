@@ -1135,6 +1135,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case elsep: untpd.If => isIncomplete(elsep)
       case _ => false
 
+    // Insert a GADT cast if the type of the branch does not conform
+    //   to the type assigned to the whole if tree.
+    // This happens when the computation of the type of the if tree
+    //   uses GADT constraints. See #15646.
     def gadtAdaptBranch(tree: Tree, branchPt: Type): Tree =
       TypeComparer.testSubType(tree.tpe.widenExpr, branchPt) match {
         case CompareResult.OKwithGADTUsed =>
@@ -1157,9 +1161,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         }: @unchecked
 
         val resType = thenp1.tpe | elsep1.tpe
-
         val thenp2 :: elsep2 :: Nil =
           (thenp1 :: elsep1 :: Nil) map { t =>
+            // Adapt each branch to ensure that their types conforms to the
+            //   type assigned to the if tree by inserting GADT casts.
             gadtAdaptBranch(t, resType)
           }: @unchecked
 
@@ -4218,7 +4223,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if tree.tpe.isSingleton then
         // In the target type, when the singleton type is intersected, we also intersect
         //   the GADT-approximated type of the singleton to avoid the loss of
-        //   information. See #14776.
+        //   information. See #15646.
         val gadtApprox = Inferencing.approximateGADT(wtp)
         gadts.println(i"gadt approx $wtp ~~~ $gadtApprox")
         val conj =
