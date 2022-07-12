@@ -28,7 +28,7 @@ object BashExitCodeTests:
   )(using temporaryDir: File): Unit =
     assertTestExists(testName) { testFile =>
       val testFilePath = testFile.absPath
-      val commandline = (Seq(scalacPath, "-d", temporaryDir, testFilePath)).mkString(" ")
+      val commandline = (Seq(scalacPath, "-d", temporaryDir.absPath, testFilePath)).mkString(" ")
       val (validTest, exitCode, _, _) = bashCommand(commandline)
       if verifyValid(validTest) then
         assertEquals(expectedExitCode, exitCode)
@@ -46,7 +46,7 @@ object BashExitCodeTests:
   )(using temporaryDir: File): Unit =
     val testClassFile = temporaryDir.files.find(_.getName == s"$className.class")
     assert(testClassFile.isDefined)
-    val commandline = (Seq(scalaPath, "-classpath", temporaryDir.getAbsolutePath, className)).mkString(" ")
+    val commandline = (Seq(scalaPath, "-classpath", temporaryDir.absPath, className)).mkString(" ")
     val (validTest, exitCode, o, e) = bashCommand(commandline)
       if verifyValid(validTest) then
         assertEquals(expectedExitCode, exitCode)
