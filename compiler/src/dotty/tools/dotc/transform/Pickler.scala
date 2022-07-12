@@ -12,7 +12,6 @@ import Phases._
 import Symbols._
 import Flags.Module
 import reporting.{ThrowingReporter, Profile}
-import typer.Nullables
 import collection.mutable
 import scala.concurrent.{Future, Await, ExecutionContext}
 import scala.concurrent.duration.Duration
@@ -50,7 +49,7 @@ class Pickler extends Phase {
   private val beforePickling = new mutable.HashMap[ClassSymbol, String]
   private val picklers = new mutable.HashMap[ClassSymbol, TastyPickler]
 
-  private val typeSimplifier = new TypeSimplifyTransformer
+  private val typeSimplifier = new TypeSimplifier
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {
@@ -69,7 +68,7 @@ class Pickler extends Phase {
     do
       val pickler = new TastyPickler(cls)
       if ctx.settings.YtestPickler.value then
-        beforePickling(cls) = typeSimplifier.transform(tree).show
+        beforePickling(cls) = tree.show
         picklers(cls) = pickler
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
@@ -157,10 +156,10 @@ class Pickler extends Phase {
 
   // Overwrite types of If, Match, and Try nodes with simplified types
   // to avoid inconsistencies in unsafe nulls
-  class TypeSimplifyTransformer extends TreeMapWithPreciseStatContexts:
+  class TypeSimplifier extends TreeMapWithPreciseStatContexts:
     override def transform(tree: Tree)(using Context): Tree =
       try tree match
-        case _: If | _: Match | _: Try if Nullables.unsafeNullsEnabled =>
+        case _: If | _: Match | _: Try =>
           val newTree = super.transform(tree)
           newTree.overwriteType(newTree.tpe.simplified)
           newTree
@@ -170,5 +169,5 @@ class Pickler extends Phase {
         case ex: TypeError =>
           report.error(ex, tree.srcPos)
           tree
-  end TypeSimplifyTransformer
+  end TypeSimplifier
 }
