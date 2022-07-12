@@ -40,7 +40,7 @@ val x5 =
 
 val x6 =
   implicit def barToFoo4(bar: Bar): Foo =
-    lazy val y = bar.toFoo  // error
+    lazy val y = bar.toFoo
     if false then y else ???
   val foo: Foo = Bar(1)
 
