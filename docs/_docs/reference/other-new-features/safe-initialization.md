@@ -203,14 +203,15 @@ classes and multiple constructors:
 
 - __Warm[C] { outer = V, ctor, args = Vs }__: A warm object of class `C`, where the immediate outer of `C` is `V`, the constructor is `ctor` and constructor arguments are `Vs`.
 
-The initialization checker checks each class separately. The abstraction `ThisRef`
+The initialization checker checks each concrete class separately. The abstraction `ThisRef`
 represents the current object under initialization:
 
 - __ThisRef[C]__: The current object of class `C` under initialization.
 
-The initialization state of the current object is stored in the heap as an
+The initialization state of the current object is stored in the abstract heap as an
 abstract object. The abstract heap also serves as a cache for the field values
-of warm objects.
+of warm objects. `Warm` and `ThisRef` are "addresses" of the abstract objects stored
+in the abstract heap.
 
 Two more abstractions are introduced to support functions and conditional
 expressions:
@@ -220,6 +221,23 @@ expressions:
   inside the class `C`.
 
 - __Refset(Vs)__: A set of abstract values `Vs`.
+
+A value `v` is _effectively hot_ if any of the following is true:
+
+- `v` is `Hot`.
+- `v` is `ThisRef` and all fields of the underlying object are assigned.
+- `v` is `Warm[C] { ... }` and
+  1. `C` does not contain inner classes; and
+  2. Calling any method on `v` encounters no initialization errors and the method return value is _effectively hot_; and
+  3. Each field of `v` is _effectively hot_.
+- `v` is `Fun(e, V, C)` and calling the function encounters no errors and the
+  function return value is _effectively hot_.
+- The root object (refered by `ThisRef`) is _effectively hot_.
+
+An effectively hot value can be regarded as transitively initialized thus can
+be safely leaked via method arguments or as RHS of an reassignment.
+The initialization checker tries to promote non-hot values to effectively hot
+whenenver possible.
 
 ## Rules
 
@@ -241,7 +259,7 @@ With the established principles and design goals, the following rules are impose
 
    Escape of `this` in the constructor is commonly regarded as an anti-pattern.
 
-   However, escape of `this` as argument to another constructor is allowed, to support
+   However, passing non-hot values as argument to another constructor is allowed, to support
    creation of cyclic data structures. The checker will ensure that the escaped
    non-initialized object is not used, i.e. calling methods or accessing fields
    on the escaped object is not allowed.
@@ -282,18 +300,6 @@ With the established principles and design goals, the following rules are impose
 
 9. The scrutinee in a pattern match and the values in return and throw statements must be _effectively hot_.
 
-A value `v` is _effectively hot_ if any of the following is true:
-
-- `v` is `Hot`.
-- `v` is `ThisRef` and all fields of the underlying object are assigned.
-- `v` is `Warm[C] { outer = V, ctor, args = Vs }` and
-  1. `C` does not contain inner classes;
-  2. Calling any method on `v` encounters no initialization errors and the method return value is _effectively hot_;
-  3. Each field of `v` is _effectively hot_.
-- `v` is `Fun(e, V, C)` and calling the function encounters no errors and the
-  function return value is _effectively hot_.
-- `ThisRef` is _effectively hot_.
-
 ## Modularity
 
 The analysis takes the primary constructor of concrete classes as entry points.
@@ -306,7 +312,7 @@ tightly coupled. For example, adding a method in the superclass requires
 recompiling the child class for checking safe overriding.
 
 Initialization is no exception in this respect. The initialization of an object
-essentially invovles close interaction between subclass and superclass. If the
+essentially involves close interaction between subclass and superclass. If the
 superclass is defined in another project, the crossing of project boundary
 cannot be avoided for soundness of the analysis.
 
@@ -333,5 +339,5 @@ mark some fields as lazy.
 ## References
 
 1. Fähndrich, M. and Leino, K.R.M., 2003, July. [_Heap monotonic typestates_](https://www.microsoft.com/en-us/research/publication/heap-monotonic-typestate/). In International Workshop on Aliasing, Confinement and Ownership in object-oriented programming (IWACO).
-2. Fengyun Liu, Ondřej Lhoták, Aggelos Biboudis, Paolo G. Giarrusso, and Martin Odersky. 2020. [_A type-and-effect system for object initialization_](https://dl.acm.org/doi/10.1145/3428243). OOPSLA, 2020.
-3. Fengyun Liu, Ondřej Lhoták, Enze Xing, Nguyen Cao Pham. 2021 [_Safe object initialization, abstractly_](https://dl.acm.org/doi/10.1145/3486610.3486895)
+2. Fengyun Liu, Ondřej Lhoták, Aggelos Biboudis, Paolo G. Giarrusso, and Martin Odersky. [_A type-and-effect system for object initialization_](https://dl.acm.org/doi/10.1145/3428243). OOPSLA, 2020.
+3. Fengyun Liu, Ondřej Lhoták, Enze Xing, Nguyen Cao Pham. [_Safe object initialization, abstractly_](https://dl.acm.org/doi/10.1145/3486610.3486895). Scala 2021.
