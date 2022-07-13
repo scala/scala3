@@ -432,8 +432,7 @@ object TypeOps:
     override def apply(tp: Type): Type =
       try
         tp match
-          case tp: TermRef
-          if toAvoid(tp) =>
+          case tp: TermRef if toAvoid(tp) =>
             tp.info.widenExpr.dealias match {
               case info: SingletonType => apply(info)
               case info => range(defn.NothingType, apply(info))

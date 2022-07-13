@@ -2459,10 +2459,12 @@ object Types {
       ctx.base.underlyingRecursions -= 1
 
     /** The argument corresponding to class type parameter `tparam` as seen from
-     *  prefix `pre`. Can produce a TypeBounds type in case prefix is an & or | type
-     *  and parameter is non-variant.
+     *  prefix `pre`. Can produce a TypeBounds type if `widenAbstract` is true,
+     *  or prefix is an & or | type and parameter is non-variant.
+     *  Otherwise, a typebounds argument is dropped and the original type parameter
+     *  reference is returned.
      */
-    def argForParam(pre: Type)(using Context): Type = {
+    def argForParam(pre: Type, widenAbstract: Boolean = false)(using Context): Type = {
       val tparam = symbol
       val cls = tparam.owner
       val base = pre.baseType(cls)
@@ -2474,7 +2476,7 @@ object Types {
           while (tparams.nonEmpty && args.nonEmpty) {
             if (tparams.head.eq(tparam))
               return args.head match {
-                case _: TypeBounds => TypeRef(pre, tparam)
+                case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
                 case arg => arg
               }
             tparams = tparams.tail
@@ -5581,10 +5583,10 @@ object Types {
             // if H#T = U, then for any x in L..H, x.T =:= U,
             // hence we can replace with U under all variances
             reapply(alias.rewrapAnnots(tp1))
-          case tp: TypeBounds =>
+          case bounds: TypeBounds =>
             // If H#T = ? >: S <: U, then for any x in L..H, S <: x.T <: U,
             // hence we can replace with S..U under all variances
-            expandBounds(tp)
+            expandBounds(bounds)
           case info: SingletonType =>
             // if H#x: y.type, then for any x in L..H, x.type =:= y.type,
             // hence we can replace with y.type under all variances
