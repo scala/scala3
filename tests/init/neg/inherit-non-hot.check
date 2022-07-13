@@ -12,4 +12,4 @@
   |                     ^^^^^^^^^^^^^^^
   |
   |Promoting the value to fully initialized failed due to the following problem:
-  |Cannot prove that the field val a is fully initialized.
+  |Cannot prove that the field value a is fully initialized. Found = Cold. 

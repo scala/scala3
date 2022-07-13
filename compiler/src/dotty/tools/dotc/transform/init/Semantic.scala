@@ -1231,7 +1231,7 @@ object Semantic:
   /** Utility definition used for better error-reporting of argument errors */
   case class ArgInfo(value: Value, trace: Trace):
     def promote: Contextual[Unit] = withTrace(trace) {
-      value.promote("Cannot prove the argument is fully initialized. Only fully initialized values are safe to leak. \nFound = " + value.show + ". ")
+      value.promote("Cannot prove the argument is fully initialized. Only fully initialized values are safe to leak.\nFound = " + value.show + ". ")
     }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`

@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/unsound1.scala:2:35 ---------------------------------------------------------------------------
 2 |  if (m > 0) println(foo(m - 1).a2.n) // error
   |                     ^^^^^^^^^^^^^^^
-  |                     Access field on a value with an unknown initialization status. Calling trace:
+  |                     Access field variable n on a cold object. Calling trace:
   |                     -> class A(m: Int) {	[ unsound1.scala:1 ]
   |                        ^
   |                     -> if (m > 0) println(foo(m - 1).a2.n) // error	[ unsound1.scala:2 ]

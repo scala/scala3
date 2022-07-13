@@ -8,7 +8,7 @@
   |                     ^^^^^^^^^^^
   |
   |          It leads to the following error during object initialization:
-  |          Access field on a value with an unknown initialization status. Calling trace:
+  |          Access field value m on a cold object. Calling trace:
   |          -> class B(a: A):	[ i15363.scala:7 ]
   |             ^
   |          -> val x = a.m	[ i15363.scala:8 ]
