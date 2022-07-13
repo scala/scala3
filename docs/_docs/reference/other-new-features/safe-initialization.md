@@ -108,7 +108,7 @@ By _reasonable usage_, we include the following use cases (but not restricted to
 
 ## Principles
 
-To achieve the goals, we uphold following fundamental principles:
+To achieve the goals, we uphold the following fundamental principles:
 _stackability_, _monotonicity_, _scopability_ and _authority_.
 
 Stackability means that all fields of a class are initialized at the end of the
