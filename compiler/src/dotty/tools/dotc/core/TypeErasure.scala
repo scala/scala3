@@ -689,6 +689,15 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       tp
   }
 
+  /** Widen term ref, skipping any `()` parameter of an eventual getter. Used to erase a TermRef.
+   *  Since getters are introduced after erasure, one would think that erasing a TermRef
+   *  could just use `widen`. However, it's possible that the TermRef got read from a class
+   *  file after Getters (i.e. in the backend). In that case, the reference will not get
+   *  an earlier denotation even when time travelling forward to erasure. Hence, we
+   *  need to take the extra precaution of going from nullary method types to their resuls.
+   *  A test case where this is needed is pos/i15649.scala, which fails non-deterministically
+   *  if `underlyingOfTermRef` is replaced by `widen`.
+   */
   private def underlyingOfTermRef(tp: TermRef)(using Context) = tp.widen match
     case tpw @ MethodType(Nil) if tp.symbol.isGetter => tpw.resultType
     case tpw => tpw
