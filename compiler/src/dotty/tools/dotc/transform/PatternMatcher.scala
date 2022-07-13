@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import scala.annotation.tailrec
@@ -388,7 +389,9 @@ object PatternMatcher {
         case Typed(pat, tpt) =>
           val isTrusted = pat match {
             case UnApply(extractor, _, _) =>
-              extractor.symbol.is(Synthetic) && extractor.symbol.owner.linkedClass.is(Case)
+              extractor.symbol.is(Synthetic)
+              && extractor.symbol.owner.linkedClass.is(Case)
+              && !hasExplicitTypeArgs(extractor)
             case _ => false
           }
           TestPlan(TypeTest(tpt, isTrusted), scrutinee, tree.span,
