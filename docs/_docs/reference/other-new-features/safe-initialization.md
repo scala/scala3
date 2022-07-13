@@ -215,7 +215,7 @@ of warm objects.
 Two more abstractions are introduced to support functions and conditional
 expressions:
 
-- __Fun(e, V, C)__: A abstract function value where `e` is the code, `V` is the
+- __Fun(e, V, C)__: An abstract function value where `e` is the code, `V` is the
   abstract value for `this` inside the function body and the function is located
   inside the class `C`.
 
@@ -223,7 +223,7 @@ expressions:
 
 ## Rules
 
-With the established principles and design goals, following rules are imposed:
+With the established principles and design goals, the following rules are imposed:
 
 1. The field access `e.f` or method call `e.m()` is illegal if `e` is _cold_.
 
@@ -234,14 +234,14 @@ With the established principles and design goals, following rules are imposed:
 3. In an assignment `o.x = e`, the expression `e` must be _effectively hot_.
 
    This is how monotonicity is enforced in the system. Note that in an
-   initialization `val f: T = e`, the expression `e` may point to an non-hot
+   initialization `val f: T = e`, the expression `e` may point to a non-hot
    value.
 
 4. Arguments to method calls must be _effectively hot_.
 
    Escape of `this` in the constructor is commonly regarded as an anti-pattern.
 
-   However, escape of `this` as constructor arguments are allowed, to support
+   However, escape of `this` as argument to another constructor is allowed, to support
    creation of cyclic data structures. The checker will ensure that the escaped
    non-initialized object is not used, i.e. calling methods or accessing fields
    on the escaped object is not allowed.
@@ -250,7 +250,7 @@ With the established principles and design goals, following rules are imposed:
    the method call `Some.apply(e)` will be interpreted as `new Some(e)`, thus
    is valid even if `e` is not hot.
 
-   Another exception too this rule is parametric method calls. For example, in
+   Another exception to this rule is parametric method calls. For example, in
    `List.apply(e)`, the argument `e` may be non-hot. If that is the case, the
    result value of the parametric method call is taken as _cold_.
 
@@ -277,18 +277,18 @@ With the established principles and design goals, following rules are imposed:
    The variable `Vargs` represents values of `args` with non-hot values widened
    to `Cold`.
 
-   The widening is motivated to finitize the abstract domain and ensure
-   terimination of the initialization check.
+   The motivation for the widening is to finitize the abstract domain and ensure
+   termination of the initialization check.
 
-9. The scrutinee in pattern match, the values in return and throw statements must be _effectively hot_.
+9. The scrutinee in a pattern match and the values in return and throw statements must be _effectively hot_.
 
 A value `v` is _effectively hot_ if any of the following is true:
 
 - `v` is `Hot`.
-- `v` is `ThisRef` and all fields of the underlying object are initialized.
+- `v` is `ThisRef` and all fields of the underlying object are assigned.
 - `v` is `Warm[C] { outer = V, ctor, args = Vs }` and
   1. `C` does not contain inner classes;
-  2. Calling any method on `v` encounters no errors and the method return value is _effectively hot_;
+  2. Calling any method on `v` encounters no initialization errors and the method return value is _effectively hot_;
   3. Each field of `v` is _effectively hot_.
 - `v` is `Fun(e, V, C)` and calling the function encounters no errors and the
   function return value is _effectively hot_.
