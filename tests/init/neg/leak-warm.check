@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/leak-warm.scala:19:18 -------------------------------------------------------------------------
 19 |    val l2 = l.map(_.m()) // error
    |             ^^^^^^^^^^^^
-   |             Call method on a value with an unknown initialization. Calling trace:
+   |             Call method method map on a cold object. Calling trace:
    |             -> object leakWarm {	[ leak-warm.scala:1 ]
    |                ^
    |             -> val l2 = l.map(_.m()) // error	[ leak-warm.scala:19 ]

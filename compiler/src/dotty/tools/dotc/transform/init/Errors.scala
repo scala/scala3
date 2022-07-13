@@ -82,11 +82,11 @@ object Errors:
 
   case class AccessCold(field: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
-      "Access field on a value with an unknown initialization status." + stacktrace()
+      "Access field " + field.show +  " on a cold object." + stacktrace()
 
   case class CallCold(meth: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
-      "Call method on a value with an unknown initialization." + stacktrace()
+      "Call method " + meth.show + " on a cold object." + stacktrace()
 
   case class CallUnknown(meth: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =

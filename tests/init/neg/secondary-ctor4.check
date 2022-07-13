@@ -8,7 +8,7 @@
    |                         ^^^^^^^^^^^
    |
    |              It leads to the following error during object initialization:
-   |              Access field on a value with an unknown initialization status. Calling trace:
+   |              Access field value n on a cold object. Calling trace:
    |              -> def this(b: B, x: Int) = this(b)	[ secondary-ctor4.scala:49 ]
    |                                          ^^^^^^^
    |              -> class C(b: B) extends A(b) with T {	[ secondary-ctor4.scala:48 ]
@@ -33,7 +33,7 @@
    |       ^^^^^^^^^^^^^^^^^^^
    |
    |    It leads to the following error during object initialization:
-   |    Access field on a value with an unknown initialization status. Calling trace:
+   |    Access field value n on a cold object. Calling trace:
    |    -> def this(b: B) = {	[ secondary-ctor4.scala:17 ]
    |       ^
    |    -> Inner().foo()	[ secondary-ctor4.scala:26 ]

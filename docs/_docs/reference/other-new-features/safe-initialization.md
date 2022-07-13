@@ -6,6 +6,9 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/safe-
 
 Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ysafe-init`.
 
+The design and implementation of the initialization checker is described in the
+paper _Safe object initialization, abstractly_ [3].
+
 ## A Quick Glance
 
 To get a feel of how it works, we first show several examples below.
@@ -105,8 +108,8 @@ By _reasonable usage_, we include the following use cases (but not restricted to
 
 ## Principles
 
-To achieve the goals, we uphold three fundamental principles:
-_stackability_, _monotonicity_ and _scopability_.
+To achieve the goals, we uphold the following fundamental principles:
+_stackability_, _monotonicity_, _scopability_ and _authority_.
 
 Stackability means that all fields of a class are initialized at the end of the
 class body. Scala enforces this property in syntax by demanding that all fields
@@ -159,14 +162,16 @@ Monotonicity is based on a well-known technique called _heap monotonic
 typestate_ to ensure soundness in the presence of aliasing
 [1]. Roughly speaking, it means initialization state should not go backwards.
 
-Scopability means that there are no side channels to access to partially constructed objects. Control effects like coroutines, delimited
+Scopability means that there are no side channels to access to partially
+constructed objects. Control effects like coroutines, delimited
 control, resumable exceptions may break the property, as they can transport a
 value upper in the stack (not in scope) to be reachable from the current scope.
 Static fields can also serve as a teleport thus breaks this property.  In the
 implementation, we need to enforce that teleported values are transitively
 initialized.
 
-The principles enable _local reasoning_ of initialization, which means:
+The three principles above contribute to _local reasoning about initialization_,
+which means:
 
 > An initialized environment can only produce initialized values.
 
@@ -174,25 +179,126 @@ For example, if the arguments to an `new`-expression are transitively
 initialized, so is the result. If the receiver and arguments in a method call
 are transitively initialized, so is the result.
 
+Local reasoning about initialization gives rise to a fast initialization
+checker, as it avoids whole-program analysis.
+
+The principle of authority goes hand-in-hand with monotonicity: the principle
+of monotonicity stipulates that initialization states cannot go backwards, while
+the principle of authority stipulates that the initialization states may not
+go forward at arbitrary locations due to aliasing. In Scala, we may only
+advance initialization states of objects in the class body when a field is
+defined with a mandatory initializer or at local reasoning points when the object
+becomes transitively initialized.
+
+## Abstract Values
+
+There are three fundamental abstractions for initialization states of objects:
+
+- __Cold__: A cold object may have uninitialized fields.
+- __Warm__: A warm object has all its fields initialized but may reach _cold_ objects.
+- __Hot__: A hot object is transitively initialized, i.e., it only reaches warm objects.
+
+In the initialization checker, the abstraction `Warm` is refined to handle inner
+classes and multiple constructors:
+
+- __Warm[C] { outer = V, ctor, args = Vs }__: A warm object of class `C`, where the immediate outer of `C` is `V`, the constructor is `ctor` and constructor arguments are `Vs`.
+
+The initialization checker checks each concrete class separately. The abstraction `ThisRef`
+represents the current object under initialization:
+
+- __ThisRef[C]__: The current object of class `C` under initialization.
+
+The initialization state of the current object is stored in the abstract heap as an
+abstract object. The abstract heap also serves as a cache for the field values
+of warm objects. `Warm` and `ThisRef` are "addresses" of the abstract objects stored
+in the abstract heap.
+
+Two more abstractions are introduced to support functions and conditional
+expressions:
+
+- __Fun(e, V, C)__: An abstract function value where `e` is the code, `V` is the
+  abstract value for `this` inside the function body and the function is located
+  inside the class `C`.
+
+- __Refset(Vs)__: A set of abstract values `Vs`.
+
+A value `v` is _effectively hot_ if any of the following is true:
+
+- `v` is `Hot`.
+- `v` is `ThisRef` and all fields of the underlying object are assigned.
+- `v` is `Warm[C] { ... }` and
+  1. `C` does not contain inner classes; and
+  2. Calling any method on `v` encounters no initialization errors and the method return value is _effectively hot_; and
+  3. Each field of `v` is _effectively hot_.
+- `v` is `Fun(e, V, C)` and calling the function encounters no errors and the
+  function return value is _effectively hot_.
+- The root object (refered by `ThisRef`) is _effectively hot_.
+
+An effectively hot value can be regarded as transitively initialized thus can
+be safely leaked via method arguments or as RHS of an reassignment.
+The initialization checker tries to promote non-hot values to effectively hot
+whenenver possible.
+
 ## Rules
 
-With the established principles and design goals, following rules are imposed:
+With the established principles and design goals, the following rules are imposed:
 
-1. In an assignment `o.x = e`, the expression `e` may only point to transitively initialized objects.
+1. The field access `e.f` or method call `e.m()` is illegal if `e` is _cold_.
+
+   A cold value should not be used.
+
+2. The field access `e.f` is invalid if `e` has the value `ThisRef` and `f` is not initialized.
+
+3. In an assignment `o.x = e`, the expression `e` must be _effectively hot_.
 
    This is how monotonicity is enforced in the system. Note that in an
-   initialization `val f: T = e`, the expression `e` may point to an object
-   under initialization. This requires a distinction between mutation and
-   initialization in order to enforce different rules. Scala
-   has different syntax for them, it thus is not an issue.
+   initialization `val f: T = e`, the expression `e` may point to a non-hot
+   value.
 
-2. Objects under initialization may not be passed as arguments to method calls.
+4. Arguments to method calls must be _effectively hot_.
 
    Escape of `this` in the constructor is commonly regarded as an anti-pattern.
-   However, escape of `this` as constructor arguments are allowed, to support
+
+   However, passing non-hot values as argument to another constructor is allowed, to support
    creation of cyclic data structures. The checker will ensure that the escaped
    non-initialized object is not used, i.e. calling methods or accessing fields
    on the escaped object is not allowed.
+
+   An exception is for calling synthetic `apply`s of case classes. For example,
+   the method call `Some.apply(e)` will be interpreted as `new Some(e)`, thus
+   is valid even if `e` is not hot.
+
+   Another exception to this rule is parametric method calls. For example, in
+   `List.apply(e)`, the argument `e` may be non-hot. If that is the case, the
+   result value of the parametric method call is taken as _cold_.
+
+5. Method calls on hot values with effectively hot arguments produce hot results.
+
+   This rule is assured by local reasoning about initialization.
+
+6. Method calls on `ThisRef` and warm values will be resolved statically and the
+   corresponding method bodies are checked.
+
+7. In a new expression `new p.C(args)`, if the values of `p` and `args` are
+   effectively hot, then the result value is also hot.
+
+   This is assured by local reasoning about initialization.
+
+8. In a new expression `new p.C(args)`, if any value of `p` and `args` is not
+   effectively hot, then the result value takes the form `Warm[C] { outer = Vp, args = Vargs }`. The initialization code for the class `C` is checked again to make
+   sure the non-hot values are used properly.
+
+   In the above, `Vp` is the widened value of `p` --- the widening happens if `p`
+   is a warm value `Warm[D] { outer = V, args }` and we widen it to
+   `Warm[D] { outer = Cold, args }`.
+
+   The variable `Vargs` represents values of `args` with non-hot values widened
+   to `Cold`.
+
+   The motivation for the widening is to finitize the abstract domain and ensure
+   termination of the initialization check.
+
+9. The scrutinee in a pattern match and the values in return and throw statements must be _effectively hot_.
 
 ## Modularity
 
@@ -206,7 +312,7 @@ tightly coupled. For example, adding a method in the superclass requires
 recompiling the child class for checking safe overriding.
 
 Initialization is no exception in this respect. The initialization of an object
-essentially invovles close interaction between subclass and superclass. If the
+essentially involves close interaction between subclass and superclass. If the
 superclass is defined in another project, the crossing of project boundary
 cannot be avoided for soundness of the analysis.
 
@@ -233,4 +339,5 @@ mark some fields as lazy.
 ## References
 
 1. Fähndrich, M. and Leino, K.R.M., 2003, July. [_Heap monotonic typestates_](https://www.microsoft.com/en-us/research/publication/heap-monotonic-typestate/). In International Workshop on Aliasing, Confinement and Ownership in object-oriented programming (IWACO).
-2. Fengyun Liu, Ondřej Lhoták, Aggelos Biboudis, Paolo G. Giarrusso, and Martin Odersky. 2020. [_A type-and-effect system for object initialization_](https://dl.acm.org/doi/10.1145/3428243). OOPSLA, 2020.
+2. Fengyun Liu, Ondřej Lhoták, Aggelos Biboudis, Paolo G. Giarrusso, and Martin Odersky. [_A type-and-effect system for object initialization_](https://dl.acm.org/doi/10.1145/3428243). OOPSLA, 2020.
+3. Fengyun Liu, Ondřej Lhoták, Enze Xing, Nguyen Cao Pham. [_Safe object initialization, abstractly_](https://dl.acm.org/doi/10.1145/3486610.3486895). Scala 2021.
