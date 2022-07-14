@@ -310,13 +310,13 @@ object Types {
      *  ThisType of `symd`'s owner, or a reference to `symd`'s owner.'
      */
     def isArgPrefixOf(symd: SymDenotation)(using Context): Boolean =
-      symd.exists && !symd.owner.is(Package) && // Early exit if possible because the next check would force SymbolLoaders
-      symd.isAllOf(ClassTypeParam) && {
-        this match {
+      symd.exists
+      && !symd.owner.is(Package) // Early exit if possible because the next check would force SymbolLoaders
+      && symd.isAllOf(ClassTypeParam)
+      && { this match
           case tp: ThisType => tp.cls ne symd.owner
           case tp: TypeRef => tp.symbol ne symd.owner
           case _ => true
-        }
       }
 
     /** Is this type a (possibly aliased) singleton type? */
@@ -2331,7 +2331,8 @@ object Types {
             i"""bad parameter reference $this at ${ctx.phase}
                |the parameter is ${param.showLocated} but the prefix $prefix
                |does not define any corresponding arguments.
-               |idx = $idx, args = $args""")
+               |idx = $idx, args = $args%, %,
+               |constraint = ${ctx.typerState.constraint}""")
         NoDenotation
       }
     }
