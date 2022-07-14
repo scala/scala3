@@ -270,12 +270,15 @@ class Inliner(val call: tpd.Tree)(using Context):
         assert(argss.isEmpty)
         true
 
+  /** The number of enclosing classes of this class, plus one */
+  private def classNestingLevel(cls: Symbol) = cls.ownersIterator.count(_.isClass)
+
   // Compute val-definitions for all this-proxies and append them to `bindingsBuf`
   private def computeThisBindings() = {
     // All needed this-proxies, paired-with and sorted-by nesting depth of
     // the classes they represent (innermost first)
     val sortedProxies = thisProxy.toList
-      .map((cls, proxy) => (cls.ownersIterator.length, proxy.symbol, cls))
+      .map((cls, proxy) => (classNestingLevel(cls), proxy.symbol, cls))
       .sortBy(-_._1)
 
     def outerSelect(prefix: Tree, prefixCls: Symbol, hops: Int, info: Type) =
@@ -303,7 +306,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             val pre = inlineCallPrefix match
               case Super(qual, _) => qual
               case pre => pre
-            val preLevel = inlinedMethod.owner.ownersIterator.length
+            val preLevel = classNestingLevel(inlinedMethod.owner)
             if preLevel > level then outerSelect(pre, inlinedMethod.owner, preLevel - level, selfSym.info)
             else pre
 
