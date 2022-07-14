@@ -479,6 +479,9 @@ object Semantic:
       def add(node: Tree): Trace = trace :+ node
       def toVector: Vector[Tree] = trace
 
+    def show(using trace: Trace, ctx: Context): String = buildStacktrace(trace, "\n")
+
+    def position(using trace: Trace): Tree = trace.last
   type Trace = Trace.Trace
 
   import Trace.*
@@ -693,7 +696,7 @@ object Semantic:
               Hot
           else
             if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
-              report.error("Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + buildStacktrace(trace.toVector, "\n"))
+              report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
               Hot
             else
               // This is possible due to incorrect type cast.
@@ -701,7 +704,7 @@ object Semantic:
               Hot
 
         case fun: Fun =>
-          report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show, fun.expr)
+          report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show + Trace.show, fun.expr)
           Hot
 
         case RefSet(refs) =>
@@ -826,7 +829,7 @@ object Semantic:
               value.select(target, receiver, needResolve = false)
           else
             if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
-              report.error("Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + buildStacktrace(trace.toVector, "\n"))
+              report.error("Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
               Hot
             else
               // This is possible due to incorrect type cast.
@@ -856,7 +859,7 @@ object Semantic:
 
       value match {
         case Hot | Cold | _: RefSet | _: Fun =>
-          report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, trace.toVector.last)
+          report.error("[Internal error] unexpected constructor call, meth = " + ctor + ", value = " + value + Trace.show, Trace.position)
           Hot
 
         case ref: Warm if ref.isPopulatingParams =>
@@ -963,7 +966,7 @@ object Semantic:
             warm
 
         case Fun(body, thisV, klass) =>
-          report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show, trace.toVector.last)
+          report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show + Trace.show, Trace.position)
           Hot
 
         case RefSet(refs) =>
@@ -983,7 +986,7 @@ object Semantic:
         case Hot => Hot
         case ref: Ref => ref.objekt.field(sym)
         case _ =>
-            report.error("[Internal error] unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
+            report.error("[Internal error] unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
             Hot
       else if sym.is(Flags.Param) then
         Hot
@@ -1001,7 +1004,7 @@ object Semantic:
               case ref: Ref => eval(vdef.rhs, ref, enclosingClass)
 
               case _ =>
-                 report.error("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
+                 report.error("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
                  Hot
             end match
 
@@ -1469,7 +1472,7 @@ object Semantic:
         Hot
 
       case _ =>
-        report.error("[Internal error] unexpected tree", expr)
+        report.error("[Internal error] unexpected tree" + Trace.show, expr)
         Hot
 
   /** Handle semantics of leaf nodes */
@@ -1498,7 +1501,7 @@ object Semantic:
         Hot
 
       case _ =>
-        report.error("[Internal error] unexpected type " + tp, trace.toVector.last)
+        report.error("[Internal error] unexpected type " + tp + Trace.show, Trace.position)
         Hot
   }
 
@@ -1513,15 +1516,15 @@ object Semantic:
           val obj = ref.objekt
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !obj.hasOuter(klass) then
-            val error = PromoteError("[Internal error] outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj, trace.toVector)
-            report.error(error.show, trace.toVector.last)
+            val error = "[Internal error] outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj + Trace.show
+            report.error(error, Trace.position)
             Hot
           else
             resolveThis(target, obj.outer(klass), outerCls)
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass)).join
         case fun: Fun =>
-          report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, trace.toVector.last)
+          report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
           Cold
         case Cold => Cold
 
