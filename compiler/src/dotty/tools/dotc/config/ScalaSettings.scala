@@ -253,6 +253,10 @@ private sealed trait XSettings:
   }
 
   val XmacroSettings: Setting[List[String]] = MultiStringSetting("-Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
+
+  // XML parsing options
+  //"Convert PCData to Text and coalesce sibling nodes"
+  val Xxml = ChoiceSetting("-Xxml", "property", "Configure XML parsing.", List("coalescing"), "coalescing")
 end XSettings
 
 /** -Y "Forking" as in forked tongue or "Private" settings */

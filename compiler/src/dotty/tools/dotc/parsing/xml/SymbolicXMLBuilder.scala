@@ -12,6 +12,7 @@ import Flags.Mutable
 import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
 import Symbols._, Contexts._
 import util.Spans._
+import util.Property
 import Parsers.Parser
 
 /** This class builds instance of `Tree` that represent XML.
@@ -25,12 +26,13 @@ import Parsers.Parser
  *  @author  Burak Emir
  *  @version 1.0
  */
-class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
+class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean, isCoalescing: Boolean)(using Context) {
 
   import Constants.Constant
   import untpd._
 
   import parser.atSpan
+  import SymbolicXMLBuilder.*
 
   private[parsing] var isPattern: Boolean = _
 
@@ -115,8 +117,9 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   // create scala.xml.Text here <: scala.xml.Node
   final def text(span: Span, txt: String): Tree = atSpan(span) {
-    if (isPattern) makeTextPat(const(txt))
-    else makeText1(const(txt))
+    val t = if isPattern then makeTextPat(const(txt)) else makeText1(const(txt))
+    if isCoalescing then t.putAttachment(TextAttacheKey, TextAttache(span, txt))
+    t
   }
 
   def makeTextPat(txt: Tree): Apply               = Apply(_scala_xml__Text, List(txt))
@@ -259,3 +262,8 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     atSpan(span.toSynthetic)(new XMLBlock(nsResult, new XMLBlock(attrResult, body)))
   }
 }
+object SymbolicXMLBuilder:
+  val TextAttacheKey: Property.Key[TextAttache] = Property.Key[TextAttache]()
+  /** Attachment for trees deriving from text nodes (Text, CData, entities). Used for coalescing. */
+  case class TextAttache(span: Span, text: String)
+end SymbolicXMLBuilder

@@ -5,6 +5,7 @@ package xml
 
 import scala.language.unsafeNulls
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
@@ -16,10 +17,12 @@ import Constants._
 import util.SourceFile
 import Utility._
 
+import SymbolicXMLBuilder.*
+
 
 // XXX/Note: many/most of the functions in here are almost direct cut and pastes
 // from another file - scala.xml.parsing.MarkupParser, it looks like.
-// (It was like that when I got here.) They used to be commented "[Duplicate]" butx
+// (It was like that when I got here.) They used to be commented "[Duplicate]" but
 // since approximately all of them were, I snipped it as noise.  As far as I can
 // tell this wasn't for any particularly good reason, but slightly different
 // compiler and library parser interfaces meant it would take some setup.
@@ -49,7 +52,7 @@ object MarkupParsers {
     override def getMessage: String = "input ended while parsing XML"
   }
 
-  class MarkupParser(parser: Parser, final val preserveWS: Boolean)(implicit src: SourceFile) extends MarkupParserCommon {
+  class MarkupParser(parser: Parser, final val preserveWS: Boolean, isCoalescing: Boolean)(implicit src: SourceFile) extends MarkupParserCommon {
 
     import Tokens.{ LBRACE, RBRACE }
 
@@ -182,22 +185,17 @@ object MarkupParsers {
       xTakeUntil(handle.comment, () => Span(start, curOffset, start), "-->")
     }
 
-    def appendText(span: Span, ts: Buffer[Tree], txt: String): Unit = {
-      def append(t: String) = ts append handle.text(span, t)
-
-      if (preserveWS) append(txt)
-      else {
-        val sb = new StringBuilder()
-
-        txt foreach { c =>
-          if (!isSpace(c)) sb append c
-          else if (sb.isEmpty || !isSpace(sb.last)) sb append ' '
-        }
-
-        val trimmed = sb.toString.trim
-        if (!trimmed.isEmpty) append(trimmed)
-      }
-    }
+    def appendText(span: Span, ts: Buffer[Tree], txt: String): Unit =
+      val clean =
+        if preserveWS then txt
+        else
+          val sb = StringBuilder()
+          txt foreach { c =>
+            if !isSpace(c) then sb += c
+            else if sb.isEmpty || !isSpace(sb.last) then sb += ' '
+          }
+          sb.toString.trim
+      if !clean.isEmpty then ts += handle.text(span, clean)
 
     /** adds entity/character to ts as side-effect
      *  @precond ch == '&'
@@ -227,48 +225,74 @@ object MarkupParsers {
       if (xCheckEmbeddedBlock) ts append xEmbeddedExpr
       else appendText(p, ts, xText)
 
-    /** Returns true if it encounters an end tag (without consuming it),
-     *  appends trees to ts as side-effect.
-     *
-     *  @param ts ...
-     *  @return   ...
+    /** At an open angle-bracket, detects an end tag
+     *  or consumes CDATA, comment, PI or element.
+     *  Trees are appended to `ts` as a side-effect.
+     *  @return true if an end tag (without consuming it)
      */
-    private def content_LT(ts: ArrayBuffer[Tree]): Boolean = {
-      if (ch == '/')
-        return true   // end tag
-
-      val toAppend = ch match {
-        case '!'    => nextch() ; if (ch =='[') xCharData else xComment // CDATA or Comment
-        case '?'    => nextch() ; xProcInstr                            // PI
-        case _      => element                                          // child node
+    private def content_LT(ts: ArrayBuffer[Tree]): Boolean =
+      (ch == '/') || {
+        val toAppend = ch match
+          case '!' => nextch() ; if (ch =='[') xCharData else xComment // CDATA or Comment
+          case '?' => nextch() ; xProcInstr                            // PI
+          case _   => element                                          // child node
+        ts += toAppend
+        false
       }
 
-      ts append toAppend
-      false
-    }
-
-    def content: Buffer[Tree] = {
+    def content: Buffer[Tree] =
       val ts = new ArrayBuffer[Tree]
-      while (true) {
-        if (xEmbeddedBlock)
-          ts append xEmbeddedExpr
-        else {
+      @tailrec def loopContent(): Unit =
+        if xEmbeddedBlock then
+          ts += xEmbeddedExpr
+          loopContent()
+        else
           tmppos = Span(curOffset)
-          ch match {
-            // end tag, cdata, comment, pi or child node
-            case '<'  => nextch() ; if (content_LT(ts)) return ts
-            // either the character '{' or an embedded scala block }
-            case '{'  => content_BRACE(tmppos, ts)  // }
-            // EntityRef or CharRef
-            case '&'  => content_AMP(ts)
-            case SU   => return ts
-            // text content - here xEmbeddedBlock might be true
-            case _    => appendText(tmppos, ts, xText)
-          }
-        }
-      }
-      unreachable
-    }
+          ch match
+            case '<' =>           // end tag, cdata, comment, pi or child node
+              nextch()
+              if !content_LT(ts) then loopContent()
+            case '{'  =>          // literal brace or embedded Scala block
+              content_BRACE(tmppos, ts)
+              loopContent()
+            case '&' =>           // EntityRef or CharRef
+              content_AMP(ts)
+              loopContent()
+            case SU  => ()
+            case _   =>           // text content - here xEmbeddedBlock might be true
+              appendText(tmppos, ts, xText)
+              loopContent()
+        end if
+      // merge text sections and strip attachments
+      def coalesce(): ArrayBuffer[Tree] =
+        def copy() =
+          val buf = ArrayBuffer.empty[Tree]
+          val acc = StringBuilder()
+          var pos: PositionType = NoSpan
+          def emit() =
+            if acc.nonEmpty then
+              appendText(pos, buf, acc.toString)
+              acc.clear()
+          for t <- ts do
+            t.getAttachment(TextAttacheKey) match {
+              case Some(ta) =>
+                if acc.isEmpty then pos = ta.span
+                acc append ta.text
+              case _        =>
+                emit()
+                buf += t
+            }
+          emit()
+          buf
+        end copy
+        // begin
+        val res = if ts.count(_.hasAttachment(TextAttacheKey)) > 1 then copy() else ts
+        for t <- res do t.removeAttachment(TextAttacheKey)
+        res
+      end coalesce
+      loopContent()
+      if isCoalescing then coalesce() else ts
+    end content
 
     /** '<' element ::= xmlTag1 '>'  { xmlExpr | '{' simpleExpr '}' } ETag
      *                | xmlTag1 '/' '>'
@@ -300,24 +324,19 @@ object MarkupParsers {
     /** parse character data.
      *  precondition: xEmbeddedBlock == false (we are not in a scala block)
      */
-    private def xText: String = {
+    private def xText: String =
       assert(!xEmbeddedBlock, "internal error: encountered embedded block")
-      val buf = new StringBuilder
-      def done = buf.toString
-
-      while (ch != SU) {
-        if (ch == '}') {
-          if (charComingAfter(nextch()) == '}') nextch()
-          else errorBraces()
-        }
-
-        buf append ch
-        nextch()
-        if (xCheckEmbeddedBlock || ch == '<' ||  ch == '&')
-          return done
-      }
-      done
-    }
+      val buf = StringBuilder()
+      if (ch != SU)
+        while
+          if ch == '}' then
+            if charComingAfter(nextch()) == '}' then nextch()
+            else errorBraces()
+          buf += ch
+          nextch()
+          !(ch == SU || xCheckEmbeddedBlock || ch == '<' ||  ch == '&')
+        do ()
+      buf.toString
 
     /** Some try/catch/finally logic used by xLiteral and xLiteralPattern.  */
     inline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
@@ -369,7 +388,7 @@ object MarkupParsers {
           while {
             xSpaceOpt()
             nextch()
-            ts.append(element)
+            content_LT(ts)
             charComingAfter(xSpaceOpt()) == '<'
           } do ()
           handle.makeXMLseq(Span(start, curOffset, start), ts)
@@ -453,11 +472,11 @@ object MarkupParsers {
               if (ch != '/') ts append xPattern   // child
               else return false                   // terminate
 
-            case '{'  => // embedded Scala patterns
-              while (ch == '{') {
-                nextch()
+            case '{' if xCheckEmbeddedBlock => // embedded Scala patterns, if not double brace
+              while
                 ts ++= xScalaPatterns
-              }
+                xCheckEmbeddedBlock
+              do ()
               assert(!xEmbeddedBlock, "problem with embedded block")
 
             case SU   =>
