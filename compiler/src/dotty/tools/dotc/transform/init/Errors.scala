@@ -18,55 +18,57 @@ object Errors:
 
     def pos(using Context): SourcePosition = trace.last.sourcePos
 
+    def stacktrace(preamble: String = " Calling trace:\n")(using Context): String = buildStacktrace(trace, preamble)
+
     def issue(using Context): Unit =
       report.warning(show, this.pos)
-
-    def stacktrace(preamble: String = " Calling trace:\n")(using Context): String = if trace.isEmpty then "" else preamble + {
-      var lastLineNum = -1
-      var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
-      trace.foreach { tree =>
-        val pos = tree.sourcePos
-        val prefix = "-> "
-        val line =
-          if pos.source.exists then
-            val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-            val code = SyntaxHighlighting.highlight(pos.lineContent.trim.nn)
-            i"$code\t$loc"
-          else
-            tree.show
-        val positionMarkerLine =
-          if pos.exists && pos.source.exists then
-            positionMarker(pos)
-          else ""
-
-        // always use the more precise trace location
-        if lastLineNum == pos.line then
-          lines.dropRightInPlace(1)
-
-        lines += (prefix + line + "\n" + positionMarkerLine)
-
-        lastLineNum = pos.line
-      }
-      val sb = new StringBuilder
-      for line <- lines do sb.append(line)
-      sb.toString
-    }
-
-    /** Used to underline source positions in the stack trace
-     *  pos.source must exist
-     */
-    private def positionMarker(pos: SourcePosition): String =
-      val trimmed = pos.lineContent.takeWhile(c => c.isWhitespace).length
-      val padding = pos.startColumnPadding.substring(trimmed).nn + "   "
-      val carets =
-        if (pos.startLine == pos.endLine)
-          "^" * math.max(1, pos.endColumn - pos.startColumn)
-        else "^"
-
-      s"$padding$carets\n"
-
-    override def toString() = this.getClass.getName.nn
   end Error
+
+  def buildStacktrace(trace: Seq[Tree], preamble: String)(using Context): String = if trace.isEmpty then "" else preamble + {
+    var lastLineNum = -1
+    var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
+    trace.foreach { tree =>
+      val pos = tree.sourcePos
+      val prefix = "-> "
+      val line =
+        if pos.source.exists then
+          val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
+          val code = SyntaxHighlighting.highlight(pos.lineContent.trim.nn)
+          i"$code\t$loc"
+        else
+          tree.show
+      val positionMarkerLine =
+        if pos.exists && pos.source.exists then
+          positionMarker(pos)
+        else ""
+
+      // always use the more precise trace location
+      if lastLineNum == pos.line then
+        lines.dropRightInPlace(1)
+
+      lines += (prefix + line + "\n" + positionMarkerLine)
+
+      lastLineNum = pos.line
+    }
+    val sb = new StringBuilder
+    for line <- lines do sb.append(line)
+    sb.toString
+  }
+
+  /** Used to underline source positions in the stack trace
+   *  pos.source must exist
+   */
+  private def positionMarker(pos: SourcePosition): String =
+    val trimmed = pos.lineContent.takeWhile(c => c.isWhitespace).length
+    val padding = pos.startColumnPadding.substring(trimmed).nn + "   "
+    val carets =
+      if (pos.startLine == pos.endLine)
+        "^" * math.max(1, pos.endColumn - pos.startColumn)
+      else "^"
+
+    s"$padding$carets\n"
+
+  override def toString() = this.getClass.getName.nn
 
   /** Access non-initialized field */
   case class AccessNonInit(field: Symbol, trace: Seq[Tree]) extends Error:

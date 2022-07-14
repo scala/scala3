@@ -652,7 +652,7 @@ object Semantic:
       value.promote(msg)
       value
 
-    def select(field: Symbol, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show) {
+    def select(field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show) {
       if promoted.isCurrentObjectPromoted then Hot
       else value match {
         case Hot  =>
@@ -668,13 +668,11 @@ object Semantic:
           if target.is(Flags.Lazy) then
             val rhs = target.defTree.asInstanceOf[ValDef].rhs
             eval(rhs, ref, target.owner.asClass, cacheResult = true)
-          else
+          else if target.exists then
             val obj = ref.objekt
             if obj.hasField(target) then
               obj.field(target)
             else if ref.isInstanceOf[Warm] then
-              if !target.exists then
-                println("obj.klass = " + obj.klass.show + ", field = " + field.show)
               assert(obj.klass.isSubClass(target.owner))
               if target.is(Flags.ParamAccessor) then
                 // possible for trait parameters
@@ -693,13 +691,21 @@ object Semantic:
               val error = AccessNonInit(target, trace.toVector)
               reporter.report(error)
               Hot
+          else
+            if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
+              report.error("Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + buildStacktrace(trace.toVector, "\n"))
+              Hot
+            else
+              // This is possible due to incorrect type cast.
+              // See tests/init/pos/Type.scala
+              Hot
 
         case fun: Fun =>
           report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show, fun.expr)
           Hot
 
         case RefSet(refs) =>
-          refs.map(_.select(field)).join
+          refs.map(_.select(field, receiver)).join
       }
     }
 
@@ -811,13 +817,21 @@ object Semantic:
                 val error = CallUnknown(target, trace.toVector)
                 reporter.report(error)
               Hot
-          else
+          else if target.exists then
             // method call resolves to a field
             val obj = ref.objekt
             if obj.hasField(target) then
               obj.field(target)
             else
-              value.select(target, needResolve = false)
+              value.select(target, receiver, needResolve = false)
+          else
+            if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
+              report.error("Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + buildStacktrace(trace.toVector, "\n"))
+              Hot
+            else
+              // This is possible due to incorrect type cast.
+              // See tests/init/pos/Type.scala
+              Hot
 
         case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
@@ -1126,12 +1140,12 @@ object Semantic:
               if member.is(Flags.Method, butNot = Flags.Accessor) then
                 withTrace(Trace.empty) {
                   val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
-                  val res = warm.call(member, args, receiver = NoType, superType = NoType)
+                  val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
                   res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ". ")
                 }
               else
                 withTrace(Trace.empty) {
-                  val res = warm.select(member)
+                  val res = warm.select(member, receiver = warm.klass.typeRef)
                   res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ". ")
                 }
           end for
@@ -1346,7 +1360,7 @@ object Semantic:
               resolveThis(target, qual, current.asClass)
             }
           case _ =>
-            withTrace(trace2) { qual.select(expr.symbol) }
+            withTrace(trace2) { qual.select(expr.symbol, receiver = qualifier.tpe) }
 
       case _: This =>
         cases(expr.tpe, thisV, klass)
@@ -1468,7 +1482,7 @@ object Semantic:
         thisV.accessLocal(tmref, klass)
 
       case tmref: TermRef =>
-        cases(tmref.prefix, thisV, klass).select(tmref.symbol)
+        cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
 
       case tp @ ThisType(tref) =>
         val cls = tref.classSymbol.asClass
