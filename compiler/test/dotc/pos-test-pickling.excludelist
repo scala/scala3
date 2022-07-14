@@ -148,3 +148,6 @@ i21415.scala
 
 # missing symbol (unsure why it errors here)
 java-records
+
+# XML parsing
+t3368.scala

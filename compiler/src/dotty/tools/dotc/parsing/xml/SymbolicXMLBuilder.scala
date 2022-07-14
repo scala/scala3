@@ -11,7 +11,9 @@ import Decorators.*
 import Flags.Mutable
 import Names.*, StdNames.*, ast.Trees.*, ast.{tpd, untpd}
 import Symbols.*, Contexts.*
+import util.chaining.*
 import util.Spans.*
+import util.Property
 import Parsers.Parser
 import dotty.tools.dotc.ast.tpd.TreeOps
 
@@ -26,12 +28,13 @@ import dotty.tools.dotc.ast.tpd.TreeOps
  *  @author  Burak Emir
  *  @version 1.0
  */
-class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
+class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean, isCoalescing: Boolean)(using Context) {
 
   import Constants.Constant
   import untpd.*
 
   import parser.atSpan
+  import SymbolicXMLBuilder.*
 
   private[parsing] var isPattern: Boolean = uninitialized
 
@@ -43,6 +46,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     val _MetaData: TypeName            = "MetaData"
     val _NamespaceBinding: TypeName    = "NamespaceBinding"
     val _NodeBuffer: TypeName          = "NodeBuffer"
+    val _PCData: TypeName              = "PCData"
     val _PrefixedAttribute: TypeName   = "PrefixedAttribute"
     val _ProcInstr: TypeName           = "ProcInstr"
     val _Text: TypeName                = "Text"
@@ -53,6 +57,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
   private object xmlterms extends ScalaTermNames {
     val _Null: TermName     = "Null"
     val __Elem: TermName    = "Elem"
+    val _PCData: TermName   = "PCData"
     val __Text: TermName    = "Text"
     val _TopScope: TermName = "TopScope"
     val _buf: TermName      = "$buf"
@@ -64,7 +69,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
   }
 
   import xmltypes.{_Comment, _Elem, _EntityRef, _Group, _MetaData, _NamespaceBinding, _NodeBuffer,
-    _PrefixedAttribute, _ProcInstr, _Text, _Unparsed, _UnprefixedAttribute}
+    _PCData, _PrefixedAttribute, _ProcInstr, _Text, _Unparsed, _UnprefixedAttribute}
 
   import xmlterms.{_Null, __Elem, __Text, _TopScope, _buf, _md, _plus, _scope, _tmpscope, _xml,
     _toVector}
@@ -129,12 +134,18 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
   final def text(span: Span, txt: String): Tree = atSpan(span) {
     if (isPattern) makeTextPat(const(txt))
     else makeText1(const(txt))
-  }
+  }.tap(t => if isCoalescing then t.putAttachment(TextAttacheKey, TextAttache(span, txt)))
 
   def makeTextPat(txt: Tree): Apply               = Apply(_scala_xml__Text, List(txt))
   def makeText1(txt: Tree): Tree                  = New(_scala_xml_Text, LL(txt))
   def comment(span: Span, text: String): Tree  = atSpan(span)( Comment(const(text)) )
-  def charData(span: Span, txt: String): Tree  = atSpan(span)( makeText1(const(txt)) )
+
+  def charData(span: Span, txt: String): Tree =
+    if ctx.settings.Ycoalescing.value then text(span, txt)
+    else
+      atSpan(span):
+        if isPattern then Apply(_scala_xml(xmlterms._PCData), List(const(txt)))
+        else New(_scala_xml(_PCData), LL(const(txt)))
 
   def procInstr(span: Span, target: String, txt: String): Tree =
     atSpan(span)( ProcInstr(const(target), const(txt)) )
@@ -272,3 +283,8 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     atSpan(span.toSynthetic)(new XMLBlock(nsResult, new XMLBlock(attrResult, body)))
   }
 }
+object SymbolicXMLBuilder:
+  val TextAttacheKey: Property.Key[TextAttache] = Property.Key[TextAttache]()
+  /** Attachment for trees deriving from text nodes (Text, CData, entities). Used for coalescing. */
+  case class TextAttache(span: Span, text: String)
+end SymbolicXMLBuilder

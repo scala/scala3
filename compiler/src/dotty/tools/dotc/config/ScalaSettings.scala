@@ -592,6 +592,9 @@ private sealed trait YSettings:
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
   val YimplicitToGiven: Setting[Boolean] = BooleanSetting(ForkSetting, "Yimplicit-to-given", "Allows to rewrite the implicit keywords to their scala-3 given counterparts. Does not adjust imports. Use in conjunction with --rewrite.")
 
+  // XML parsing options
+  val Ycoalescing: Setting[Boolean] = BooleanSetting(ForkSetting, "Yxml-coalescing", "Convert PCData to Text and coalesce sibling nodes")
+
   // Deprecated: lifted from -Y to -X
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
   val YtermConflict: Setting[String] = ChoiceSetting(ForkSetting, "Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error", deprecation = Deprecation.renamed("-Xresolve-term-conflict"))

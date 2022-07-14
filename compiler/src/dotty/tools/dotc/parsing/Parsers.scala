@@ -592,7 +592,7 @@ object Parsers {
      */
     lazy val xmlp: xml.MarkupParsers.MarkupParser = {
       myFirstXmlPos = source.atSpan(Span(in.offset))
-      new MarkupParser(this, true)
+      new MarkupParser(this, preserveWS = true, isCoalescing = ctx.settings.Ycoalescing.value)
     }
 
     /** The position of the first XML literal encountered while parsing,
@@ -601,7 +601,7 @@ object Parsers {
     def firstXmlPos: SourcePosition = myFirstXmlPos
     private var myFirstXmlPos: SourcePosition = NoSourcePosition
 
-    object symbXMLBuilder extends xml.SymbolicXMLBuilder(this, true) // DEBUG choices
+    object symbXMLBuilder extends xml.SymbolicXMLBuilder(this, preserveWS = true, isCoalescing = ctx.settings.Ycoalescing.value)
 
     def xmlLiteral() : Tree = xmlDeprecationWarning(xmlp.xLiteral)
     def xmlLiteralPattern() : Tree = xmlDeprecationWarning(xmlp.xLiteralPattern)
