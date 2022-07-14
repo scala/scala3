@@ -1141,7 +1141,7 @@ object Semantic:
           val obj = warm.objekt
           val outer = obj.outer(klass)
           val ctor = klass.primaryConstructor
-          val hotSegmentCountered = !ctor.hasSource || outer.isHot && {
+          val isHotSegment = outer.isHot && {
             val ctorDef = ctor.defTree.asInstanceOf[DefDef]
             val params = ctorDef.termParamss.flatten.map(_.symbol)
             // We have cached all parameters on the object
@@ -1151,7 +1151,7 @@ object Semantic:
           // If the outer and parameters of a class are all hot, then accessing fields and methods of the current
           // segment of the object should be OK. They may only create problems via virtual method calls on `this`, but
           // those methods are checked as part of the check for the class where they are defined.
-          if !hotSegmentCountered then
+          if !isHotSegment then
             for member <- klass.info.decls do
               if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
                 if member.is(Flags.Method, butNot = Flags.Accessor) then
