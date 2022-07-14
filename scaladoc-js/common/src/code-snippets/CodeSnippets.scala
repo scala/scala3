@@ -130,6 +130,8 @@ class CodeSnippets:
 
         scastie.Embedded(popup.querySelector("pre"), scastieConfig)
 
+        popup.querySelector("li.btn.run-button").asInstanceOf[html.Element].click()
+
         e.stopPropagation()
       )
 

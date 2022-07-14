@@ -150,6 +150,40 @@
   width: unset !important;
 }
 
+.tooltip-container {
+  display: none;
+}
+.tooltip:hover .tooltip-container {
+  display: unset;
+}
+.tooltip:hover .tooltip-container::after {
+  content: attr(label);
+  padding: 4px 8px;
+  color: white;
+  background-color:black;
+  position: absolute;
+  z-index:10;
+  box-shadow:0 0 3px #444;
+  opacity: 0.8;
+}
+
+.snippet .buttons .tooltip::after {
+  top: 32px;
+}
+
+.snippet-error {
+  border-bottom: 2px dotted red;
+}
+.snippet-warn {
+  border-bottom: 2px dotted orange;
+}
+.snippet-info {
+  border-bottom: 2px dotted teal;
+}
+.snippet-debug {
+  border-bottom: 2px dotted pink;
+}
+
 .hljs-keyword {
   color: var(--code-method-highlighting-keyword);
 }
