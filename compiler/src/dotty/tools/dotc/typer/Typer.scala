@@ -1135,6 +1135,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case elsep: untpd.If => isIncomplete(elsep)
       case _ => false
 
+    // Insert a GADT cast if the type of the branch does not conform
+    //   to the type assigned to the whole if tree.
+    // This happens when the computation of the type of the if tree
+    //   uses GADT constraints. See #15646.
+    def gadtAdaptBranch(tree: Tree, branchPt: Type): Tree =
+      TypeComparer.testSubType(tree.tpe.widenExpr, branchPt) match {
+        case CompareResult.OKwithGADTUsed =>
+          insertGadtCast(tree, tree.tpe.widen, branchPt)
+        case _ => tree
+      }
+
     val branchPt = if isIncomplete(tree) then defn.UnitType else pt.dropIfProto
 
     val result =
@@ -1148,7 +1159,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
           thenp0 :: elsep0 :: Nil
         }: @unchecked
-        assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
+
+        val resType = thenp1.tpe | elsep1.tpe
+        val thenp2 :: elsep2 :: Nil =
+          (thenp1 :: elsep1 :: Nil) map { t =>
+            // Adapt each branch to ensure that their types conforms to the
+            //   type assigned to the if tree by inserting GADT casts.
+            gadtAdaptBranch(t, resType)
+          }: @unchecked
+
+        cpy.If(tree)(cond1, thenp2, elsep2).withType(resType)
 
     def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
     def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
@@ -3763,20 +3783,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                  gadts.println(i"unnecessary GADTused for $tree: ${tree.tpe.widenExpr} vs $pt in ${ctx.source}")
                res
               } =>
-            // Insert an explicit cast, so that -Ycheck in later phases succeeds.
-            // The check "safeToInstantiate" in `maximizeType` works to prevent unsound GADT casts.
-            val target =
-              if tree.tpe.isSingleton then
-                val conj = AndType(tree.tpe, pt)
-                if tree.tpe.isStable && !conj.isStable then
-                  // this is needed for -Ycheck. Without the annotation Ycheck will
-                  // skolemize the result type which will lead to different types before
-                  // and after checking. See i11955.scala.
-                  AnnotatedType(conj, Annotation(defn.UncheckedStableAnnot))
-                else conj
-              else pt
-            gadts.println(i"insert GADT cast from $tree to $target")
-            tree.cast(target)
+            insertGadtCast(tree, wtp, pt)
           case _ =>
             //typr.println(i"OK ${tree.tpe}\n${TypeComparer.explained(_.isSubType(tree.tpe, pt))}") // uncomment for unexpected successes
             tree
@@ -4207,4 +4214,36 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           EmptyTree
     else typedExpr(call, defn.AnyType)
 
+  /** Insert GADT cast to target type `pt` on the `tree`
+    *   so that -Ycheck in later phases succeeds.
+    *  The check "safeToInstantiate" in `maximizeType` works to prevent unsound GADT casts.
+    */
+  private def insertGadtCast(tree: Tree, wtp: Type, pt: Type)(using Context): Tree =
+    val target =
+      if tree.tpe.isSingleton then
+        // In the target type, when the singleton type is intersected, we also intersect
+        //   the GADT-approximated type of the singleton to avoid the loss of
+        //   information. See #15646.
+        val gadtApprox = Inferencing.approximateGADT(wtp)
+        gadts.println(i"gadt approx $wtp ~~~ $gadtApprox")
+        val conj =
+          TypeComparer.testSubType(gadtApprox, pt) match {
+            case CompareResult.OK =>
+              // GADT approximation of the tree type is a subtype of expected type under empty GADT
+              //   constraints, so it is enough to only have the GADT approximation.
+              AndType(tree.tpe, gadtApprox)
+            case _ =>
+              // In other cases, we intersect both the approximated type and the expected type.
+              AndType(AndType(tree.tpe, gadtApprox), pt)
+          }
+        if tree.tpe.isStable && !conj.isStable then
+          // this is needed for -Ycheck. Without the annotation Ycheck will
+          // skolemize the result type which will lead to different types before
+          // and after checking. See i11955.scala.
+          AnnotatedType(conj, Annotation(defn.UncheckedStableAnnot))
+        else conj
+      else pt
+    gadts.println(i"insert GADT cast from $tree to $target")
+    tree.cast(target)
+  end insertGadtCast
 }
