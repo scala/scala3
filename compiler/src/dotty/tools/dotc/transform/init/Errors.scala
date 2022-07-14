@@ -97,7 +97,7 @@ object Errors:
   case class UnsafePromotion(msg: String, trace: Seq[Tree], error: Error) extends Error:
     def show(using Context): String =
       msg + stacktrace() + "\n" +
-        "Promoting the value to fully initialized failed due to the following problem:\n" +
+        "Promoting the value to hot failed due to the following problem:\n" +
         error.show
 
   /** Unsafe leaking a non-hot value as constructor arguments
@@ -129,5 +129,5 @@ object Errors:
           acc + text2
         }
       val verb = if multiple then " are " else " is "
-      val adjective = "not fully initialized."
+      val adjective = "not hot."
       subject + verb + adjective

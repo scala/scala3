@@ -1083,7 +1083,7 @@ object Semantic:
                 eval(body, thisV, klass)
               }
               given Trace = Trace.empty.add(body)
-              res.promote("The function return value is not fully initialized. Found = " + res.show + ". ")
+              res.promote("The function return value is not hot. Found = " + res.show + ". ")
             }
             if errors.nonEmpty then
               reporter.report(UnsafePromotion(msg, trace.toVector, errors.head))
@@ -1127,12 +1127,12 @@ object Semantic:
                 withTrace(Trace.empty) {
                   val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
                   val res = warm.call(member, args, receiver = NoType, superType = NoType)
-                  res.promote("Cannot prove that the return value of " + member.show + " is fully initialized. Found = " + res.show + ". ")
+                  res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ". ")
                 }
               else
                 withTrace(Trace.empty) {
                   val res = warm.select(member)
-                  res.promote("Cannot prove that the field " + member.show + " is fully initialized. Found = " + res.show + ". ")
+                  res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ". ")
                 }
           end for
         end for
@@ -1233,7 +1233,7 @@ object Semantic:
   /** Utility definition used for better error-reporting of argument errors */
   case class ArgInfo(value: Value, trace: Trace):
     def promote: Contextual[Unit] = withTrace(trace) {
-      value.promote("Cannot prove the method argument is fully initialized. Only fully initialized values are safe to leak.\nFound = " + value.show + ". ")
+      value.promote("Cannot prove the method argument is hot. Only hot values are safe to leak.\nFound = " + value.show + ". ")
     }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
@@ -1370,12 +1370,12 @@ object Semantic:
           eval(qual, thisV, klass)
           val res = eval(rhs, thisV, klass)
           extendTrace(expr) {
-            res.ensureHot("The RHS of reassignment must be fully initialized. Found = " + res.show + ". ")
+            res.ensureHot("The RHS of reassignment must be hot. Found = " + res.show + ". ")
           }
         case id: Ident =>
           val res = eval(rhs, thisV, klass)
           extendTrace(expr) {
-            res.ensureHot("The RHS of reassignment must be fully initialized. Found = " + res.show + ". ")
+            res.ensureHot("The RHS of reassignment must be hot. Found = " + res.show + ". ")
           }
 
       case closureDef(ddef) =>
@@ -1398,14 +1398,14 @@ object Semantic:
       case Match(selector, cases) =>
         val res = eval(selector, thisV, klass)
         extendTrace(selector) {
-          res.ensureHot("The value to be matched needs to be fully initialized. Found = " + res.show + ". ")
+          res.ensureHot("The value to be matched needs to be hot. Found = " + res.show + ". ")
         }
         eval(cases.map(_.body), thisV, klass).join
 
       case Return(expr, from) =>
         val res = eval(expr, thisV, klass)
         extendTrace(expr) {
-          res.ensureHot("return expression must be fully initialized. Found = " + res.show + ". ")
+          res.ensureHot("return expression must be hot. Found = " + res.show + ". ")
         }
 
       case WhileDo(cond, body) =>
