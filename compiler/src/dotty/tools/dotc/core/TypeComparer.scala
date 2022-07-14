@@ -536,7 +536,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
           && (isBottom(tp1) || GADTusage(tp2.symbol))
 
-        isSubApproxHi(tp1, info2.lo) || compareGADT || tryLiftedToThis2 || fourthTry
+        isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
+        || compareGADT
+        || tryLiftedToThis2
+        || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -786,14 +789,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def fourthTry: Boolean = tp1 match {
       case tp1: TypeRef =>
         tp1.info match {
-          case TypeBounds(_, hi1) =>
+          case info1 @ TypeBounds(lo1, hi1) =>
             def compareGADT =
               tp1.symbol.onGadtBounds(gbounds1 =>
                 isSubTypeWhenFrozen(gbounds1.hi, tp2)
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            (!caseLambda.exists || canWidenAbstract) && isSubType(hi1, tp2, approx.addLow)
+            (!caseLambda.exists || canWidenAbstract)
+                && isSubType(hi1, tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
             || compareGADT
             || tryLiftedToThis1
           case _ =>
