@@ -24,7 +24,7 @@ object codecs {
   }
   val codec = new Z
 
-  println(codec)   // error
+  println(codec)   // OK, can be safely promoted
 
   val n = 10 // prevent early promotion
 }
