@@ -1138,20 +1138,34 @@ object Semantic:
 
       val errors = Reporter.stopEarly {
         for klass <- warm.klass.baseClasses if klass.hasSource do
-          for member <- klass.info.decls do
-            if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
-              if member.is(Flags.Method, butNot = Flags.Accessor) then
-                withTrace(Trace.empty) {
-                  val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
-                  val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
-                  res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ". ")
-                }
-              else
-                withTrace(Trace.empty) {
-                  val res = warm.select(member, receiver = warm.klass.typeRef)
-                  res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ". ")
-                }
-          end for
+          val obj = warm.objekt
+          val outer = obj.outer(klass)
+          val ctor = klass.primaryConstructor
+          val hotSegmentCountered = !ctor.hasSource || outer.isHot && {
+            val ctorDef = ctor.defTree.asInstanceOf[DefDef]
+            val params = ctorDef.termParamss.flatten.map(_.symbol)
+            // We have cached all parameters on the object
+            params.forall(param => obj.field(param).isHot)
+          }
+
+          // If the outer and parameters of a class are all hot, then accessing fields and methods of the current
+          // segment of the object should be OK. They may only create problems via virtual method calls on `this`, but
+          // those methods are checked as part of the check for the class where they are defined.
+          if !hotSegmentCountered then
+            for member <- klass.info.decls do
+              if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
+                if member.is(Flags.Method, butNot = Flags.Accessor) then
+                  withTrace(Trace.empty) {
+                    val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
+                    val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
+                    res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ". ")
+                  }
+                else
+                  withTrace(Trace.empty) {
+                    val res = warm.select(member, receiver = warm.klass.typeRef)
+                    res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ". ")
+                  }
+            end for
         end for
       }
 
