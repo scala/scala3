@@ -8,7 +8,7 @@ import dotc.util.{ SourcePosition, SourceFile }
 import dotc.core.Contexts._
 import dotc.core.Symbols.Symbol
 import dotc.report
-import dotc.typer.Inliner.InliningPosition
+import dotc.inlines.Inlines.InliningPosition
 import collection.mutable
 
 /**
