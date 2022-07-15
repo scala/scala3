@@ -235,7 +235,7 @@ A value `v` is _effectively hot_ if any of the following is true:
 - The root object (refered by `ThisRef`) is _effectively hot_.
 
 An effectively hot value can be regarded as transitively initialized thus can
-be safely leaked via method arguments or as RHS of an reassignment.
+be safely leaked via method arguments or as RHS of reassignment.
 The initialization checker tries to promote non-hot values to effectively hot
 whenenver possible.
 
