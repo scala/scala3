@@ -11,7 +11,7 @@ import NameKinds.BodyRetainerName
 import SymDenotations.SymDenotation
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import dotty.tools.dotc.util.{SourceFile, SourcePosition, SrcPos}
+import dotty.tools.dotc.util.{SourceFile, SourcePosition, SrcPos, Property}
 import parsing.Parsers.Parser
 import transform.{PostTyper, Inlining, CrossVersionChecks}
 
@@ -27,6 +27,9 @@ object Inlines:
    *  cyclic reference. i14772.scala shows a case where this happens.
    */
   private[dotc] class MissingInlineInfo extends Exception
+
+  object InliningPosition extends Property.StickyKey[InliningPosition]
+  case class InliningPosition(sourcePos: SourcePosition, topLevelSymbol: Option[Symbol])
 
   /** `sym` is an inline method with a known body to inline.
    */
@@ -246,58 +249,10 @@ object Inlines:
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(using Context): Tree =
-    val tree1 =
-      if inlined.bindings.isEmpty then inlined.expansion
-      else cpy.Block(inlined)(inlined.bindings, inlined.expansion)
-    // Reposition in the outer most inlined call
-    if (enclosingInlineds.nonEmpty) tree1 else reposition(tree1, inlined.span)
-
-  def reposition(tree: Tree, callSpan: Span)(using Context): Tree =
-    // Reference test tests/run/i4947b
-
-    val curSource = ctx.compilationUnit.source
-
-    // Tree copier that changes the source of all trees to `curSource`
-    val cpyWithNewSource = new TypedTreeCopier {
-      override protected def sourceFile(tree: tpd.Tree): SourceFile = curSource
-      override protected val untpdCpy: untpd.UntypedTreeCopier = new untpd.UntypedTreeCopier {
-        override protected def sourceFile(tree: untpd.Tree): SourceFile = curSource
-      }
-    }
-
-    /** Removes all Inlined trees, replacing them with blocks.
-     *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
-     *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
-     *
-     *  Until we implement JSR-45, we cannot represent in output positions in other source files.
-     *  So, reposition inlined code from other files with the call position.
-     */
-    class Reposition extends TreeMap(cpyWithNewSource) {
-
-      override def transform(tree: Tree)(using Context): Tree = {
-        def fixSpan[T <: untpd.Tree](copied: T): T =
-          copied.withSpan(if tree.source == curSource then tree.span else callSpan)
-        def finalize(copied: untpd.Tree) =
-          fixSpan(copied).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
-
-        inContext(ctx.withSource(curSource)) {
-          tree match
-            case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
-            case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
-            case tree: This => finalize(untpd.This(tree.qual)(curSource))
-            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(curSource))
-            case tree: TypeTree => finalize(tpd.TypeTree(tree.tpe))
-            case tree: DefTree => super.transform(tree).setDefTree
-            case EmptyTree => tree
-            case _ => fixSpan(super.transform(tree))
-        }
-      }
-    }
-
-    (new Reposition).transform(tree)
-  end reposition
+    val topLevelClass = Option.when(!inlined.call.isEmpty)(inlined.call.symbol.topLevelClass)
+    val inliningPosition = InliningPosition(inlined.sourcePos, topLevelClass)
+    val withPos = inlined.expansion.withAttachment(InliningPosition, inliningPosition)
+    if inlined.bindings.isEmpty then withPos else cpy.Block(inlined)(inlined.bindings, withPos)
 
   /** Leave only a call trace consisting of
    *  - a reference to the top-level class from which the call was inlined,
