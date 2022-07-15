@@ -1126,9 +1126,6 @@ object Semantic:
      *  If the object contains nested classes as members, the checker simply
      *  reports a warning to avoid expensive checks.
      *
-     *  TODO: we need to revisit whether this is needed once we make the
-     *  system more flexible in other dimentions: e.g. leak to
-     *  methods or constructors, or use ownership for creating cold data structures.
      */
     def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
       val classRef = warm.klass.appliedRef
@@ -1136,37 +1133,57 @@ object Semantic:
       if hasInnerClass then
         return PromoteError(msg + "Promotion cancelled as the value contains inner classes. ", trace.toVector) :: Nil
 
-      val errors = Reporter.stopEarly {
-        for klass <- warm.klass.baseClasses if klass.hasSource do
-          val obj = warm.objekt
-          val outer = obj.outer(klass)
-          val ctor = klass.primaryConstructor
-          val isHotSegment = outer.isHot && {
-            val ctorDef = ctor.defTree.asInstanceOf[DefDef]
-            val params = ctorDef.termParamss.flatten.map(_.symbol)
-            // We have cached all parameters on the object
-            params.forall(param => obj.field(param).isHot)
-          }
+      val obj = warm.objekt
 
-          // If the outer and parameters of a class are all hot, then accessing fields and methods of the current
-          // segment of the object should be OK. They may only create problems via virtual method calls on `this`, but
-          // those methods are checked as part of the check for the class where they are defined.
-          if !isHotSegment then
-            for member <- klass.info.decls do
-              if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
-                if member.is(Flags.Method, butNot = Flags.Accessor) then
-                  withTrace(Trace.empty) {
-                    val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
-                    val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
-                    res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ". ")
-                  }
-                else
-                  withTrace(Trace.empty) {
-                    val res = warm.select(member, receiver = warm.klass.typeRef)
-                    res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ". ")
-                  }
-            end for
-        end for
+      def doPromote(klass: ClassSymbol, subClass: ClassSymbol, subClassSegmentHot: Boolean)(using Reporter): Unit =
+        val outer = obj.outer(klass)
+        val isHotSegment = outer.isHot && {
+          val ctor = klass.primaryConstructor
+          val ctorDef = ctor.defTree.asInstanceOf[DefDef]
+          val params = ctorDef.termParamss.flatten.map(_.symbol)
+          // We have cached all parameters on the object
+          params.forall(param => obj.field(param).isHot)
+        }
+
+        // check invariant: subClassSegmentHot => isHotSegment
+        if subClassSegmentHot && !isHotSegment then
+          report.error("[Internal error] Expect current segment to hot in promotion, current klass = " + klass.show +
+              ", subclass = " + subClass.show + Trace.show, Trace.position)
+
+        // If the outer and parameters of a class are all hot, then accessing fields and methods of the current
+        // segment of the object should be OK. They may only create problems via virtual method calls on `this`, but
+        // those methods are checked as part of the check for the class where they are defined.
+        if !isHotSegment then
+          for member <- klass.info.decls do
+            if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
+              given Trace = Trace.empty
+              if member.is(Flags.Method, butNot = Flags.Accessor) then
+                val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
+                val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
+                withTrace(trace.add(member.defTree)) {
+                  res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ". ")
+                }
+              else
+                val res = warm.select(member, receiver = warm.klass.typeRef)
+                withTrace(trace.add(member.defTree)) {
+                  res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ". ")
+                }
+          end for
+
+        // Promote parents
+        //
+        // Note that a parameterized trait may only get parameters from the class that extends the trait.
+        // A trait may not supply constructor arguments to another trait.
+        if !klass.is(Flags.Trait) then
+          for parent <- klass.parentSyms if parent.hasSource do doPromote(parent.asClass, klass, isHotSegment)
+          // We still need to handle indirectly extended traits via traits, which are not in the parent list.
+          val superCls = klass.superClass
+          val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
+          for mixin <- mixins if mixin.hasSource do doPromote(mixin.asClass, klass, isHotSegment)
+      end doPromote
+
+      val errors = Reporter.stopEarly {
+        doPromote(warm.klass, subClass = warm.klass, subClassSegmentHot = false)
       }
 
       if errors.isEmpty then Nil
