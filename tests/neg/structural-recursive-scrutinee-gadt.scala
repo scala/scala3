@@ -1,5 +1,5 @@
-// This file is part of tests for inferring GADT constraints from type members,
-// which needed to be reverted because of soundness issues.
+// This file is part of tests for inferring GADT constraints from type members.
+// They are now supported by path-dependent GADT reasoning. See #14754.
 //
 // Lines with "// limitation" are the ones that we could soundly allow.
 object Test {

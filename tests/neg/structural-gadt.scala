@@ -1,7 +1,5 @@
-// This file is part of tests for inferring GADT constraints from type members,
-// which needed to be reverted because of soundness issues.
-//
-// Lines with "// limitation" are the ones that we could soundly allow.
+// This file is part of tests for inferring GADT constraints from type members.
+// They are now supported by path-dependent GADT reasoning. See #14754.
 object Test {
 
   trait Expr { type T }
@@ -11,19 +9,19 @@ object Test {
   def foo[A](e: Expr { type T = A }) = e match {
     case _: IntLit =>
       val a: A = 0 // error
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
 
     case _: Expr { type T <: Int } =>
       val a: A = 0 // error
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
 
     case _: IntExpr =>
       val a: A = 0
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
 
     case _: Expr { type T = Int } =>
       val a: A = 0
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
   }
 
   def bar[A](e: Expr { type T <: A }) = e match {
