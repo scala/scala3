@@ -1765,6 +1765,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val pat1 = gadtCtx.gadt.withScrutineePath(scrutineePath) {
       typedPattern(tree.pat, wideSelType)(using gadtCtx)
     }
+
+    if scrutineePath.ne(null) && pat1.symbol.isPatternBound then
+      gadtCtx.gadt.supplyPatternPath(pat1.symbol.termRef)
+
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(
         using gadtCtx))

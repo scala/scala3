@@ -184,7 +184,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       val scrutineePath: TermRef | SkolemType = realScrutineePath match
         case null => SkolemType(scrut)
         case _ => realScrutineePath
-      val patternPath: SkolemType = SkolemType(pat)
+      val patternPath: SkolemType = ctx.gadt.createPatternSkolem(pat)
 
       val saved = state.nn.constraint
       val savedGadt = ctx.gadt.fresh

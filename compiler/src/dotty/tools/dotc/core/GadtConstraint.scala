@@ -73,6 +73,12 @@ sealed abstract class GadtConstraint extends Showable {
   /** Set the scrutinee path. */
   def withScrutineePath[T](path: TermRef | Null)(op: => T): T
 
+  /** Supply the real pattern path. */
+  def supplyPatternPath(path: TermRef)(using Context): Unit
+
+  /** Create a skolem type for pattern. */
+  def createPatternSkolem(pat: Type): SkolemType
+
   /** Is the symbol registered in the constraint?
    *
    * @note this is true even if the symbol is constrained to be equal to another type, unlike [[Constraint.contains]].
@@ -114,7 +120,8 @@ final class ProperGadtConstraint private(
   private var pathDepReverseMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
   private var wasConstrained: Boolean,
   private var myScrutineePath: TermRef | Null,
-  private var myUnionFind: SimpleIdentityMap[PathType, PathType]
+  private var myUnionFind: SimpleIdentityMap[PathType, PathType],
+  private var myPatternSkolem: SkolemType | Null,
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
@@ -126,7 +133,8 @@ final class ProperGadtConstraint private(
     pathDepReverseMapping = SimpleIdentityMap.empty,
     wasConstrained = false,
     myScrutineePath = null,
-    myUnionFind = SimpleIdentityMap.empty
+    myUnionFind = SimpleIdentityMap.empty,
+    myPatternSkolem = null,
   )
 
   // /** Exposes ConstraintHandling.subsumes */
@@ -672,7 +680,8 @@ final class ProperGadtConstraint private(
     pathDepReverseMapping,
     wasConstrained,
     myScrutineePath,
-    myUnionFind
+    myUnionFind,
+    myPatternSkolem,
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -685,6 +694,7 @@ final class ProperGadtConstraint private(
       this.wasConstrained = other.wasConstrained
       this.myScrutineePath = other.myScrutineePath
       this.myUnionFind = other.myUnionFind
+      this.myPatternSkolem = other.myPatternSkolem
     case _ => ;
   }
 
@@ -692,10 +702,32 @@ final class ProperGadtConstraint private(
 
   override def resetScrutineePath(): Unit = myScrutineePath = null
 
+  override def supplyPatternPath(path: TermRef)(using Context): Unit =
+    if myPatternSkolem eq null then
+      ()
+    else
+      pathDepMapping(myPatternSkolem.nn) match {
+        case null =>
+        case m: SimpleIdentityMap[Symbol, TypeVar] =>
+          pathDepMapping = pathDepMapping.updated(path, m)
+          m foreachBinding { (sym, tvar) =>
+            val tpr = tvar.origin
+            pathDepReverseMapping = pathDepReverseMapping.updated(tpr, TypeRef(path, sym))
+          }
+      }
+  end supplyPatternPath
+
+  override def createPatternSkolem(pat: Type): SkolemType =
+    myPatternSkolem = SkolemType(pat)
+    myPatternSkolem.nn
+  end createPatternSkolem
+
   override def withScrutineePath[T](path: TermRef | Null)(op: => T): T =
     val saved = this.myScrutineePath
     this.myScrutineePath = path
+
     val result = op
+
     this.myScrutineePath = saved
     result
 
@@ -826,6 +858,10 @@ final class ProperGadtConstraint private(
   override def resetScrutineePath(): Unit = ()
 
   override def withScrutineePath[T](path: TermRef | Null)(op: => T): T = op
+
+  override def supplyPatternPath(path: TermRef)(using Context): Unit = ()
+
+  override def createPatternSkolem(pat: Type): SkolemType = unsupported("EmptyGadtConstraint.createPatternSkolem")
 
   override def fresh = new ProperGadtConstraint
   override def restore(other: GadtConstraint): Unit =
