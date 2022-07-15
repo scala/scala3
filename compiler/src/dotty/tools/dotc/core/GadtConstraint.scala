@@ -728,9 +728,10 @@ final class ProperGadtConstraint private(
   private def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match
     case param: TypeParamRef => reverseMapping(param) match
       case sym: Symbol => sym.typeRef
-      case null => pathDepReverseMapping(param) match
-        case tp: TypeRef => tp
-        case null => param
+      case null        =>
+        pathDepReverseMapping(param) match
+          case tp: TypeRef => tp
+          case null        => param
     case tp: TypeAlias       => tp.derivedAlias(externalize(tp.alias, theMap))
     case tp                  => (if theMap == null then ExternalizeMap() else theMap).mapOver(tp)
 
@@ -747,10 +748,6 @@ final class ProperGadtConstraint private(
   private def tvarOrError(ntp: NamedType)(using Context): TypeVar =
     tvarOf(ntp).ensuring(_ != null, i"not a constrainable type: $ntp").uncheckedNN
 
-  // private def containsNoInternalTypes(
-  //   tp: Type,
-  //   acc: TypeAccumulator[Boolean] | Null = null
-  // )(using Context): Boolean = tp match {
   private def containsNoInternalTypes(tp: Type, theAcc: TypeAccumulator[Boolean] | Null = null)(using Context): Boolean = tp match {
     case tpr: TypeParamRef => !reverseMapping.contains(tpr)
     case tv: TypeVar => !reverseMapping.contains(tv.origin)
