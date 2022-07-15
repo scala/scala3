@@ -2,7 +2,7 @@
 9 |        compare() // error
   |        ^^^^^^^
   |        Cannot prove the method argument is hot. Only hot values are safe to leak.
-  |        Found = ThisRef[class B]. 
+  |        Found = ThisRef[class B].
   |        Non initialized field(s): value result. Calling trace:
   |        -> class B extends A {	[ default-this.scala:6 ]
   |           ^

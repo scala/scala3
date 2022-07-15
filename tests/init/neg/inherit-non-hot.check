@@ -12,4 +12,6 @@
   |                             ^^^^^^^^^^^^^^^
   |
   |        Promoting the value to hot failed due to the following problem:
-  |        Cannot prove that the field value a is hot. Found = Cold. 
+  |        Cannot prove that the field value a is hot. Found = Cold. Promotion trace:
+  |        -> class B(a: A) {	[ inherit-non-hot.scala:10 ]
+  |                   ^^^^

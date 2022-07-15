@@ -1100,7 +1100,7 @@ object Semantic:
                 eval(body, thisV, klass)
               }
               given Trace = Trace.empty.add(body)
-              res.promote("The function return value is not hot. Found = " + res.show + ". ")
+              res.promote("The function return value is not hot. Found = " + res.show + ".")
             }
             if errors.nonEmpty then
               reporter.report(UnsafePromotion(msg, trace.toVector, errors.head))
@@ -1131,7 +1131,7 @@ object Semantic:
       val classRef = warm.klass.appliedRef
       val hasInnerClass = classRef.memberClasses.filter(_.symbol.hasSource).nonEmpty
       if hasInnerClass then
-        return PromoteError(msg + "Promotion cancelled as the value contains inner classes. ", trace.toVector) :: Nil
+        return PromoteError(msg + "Promotion cancelled as the value contains inner classes.", trace.toVector) :: Nil
 
       val obj = warm.objekt
 
@@ -1161,12 +1161,12 @@ object Semantic:
                 val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
                 val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
                 withTrace(trace.add(member.defTree)) {
-                  res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ". ")
+                  res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ".")
                 }
               else
                 val res = warm.select(member, receiver = warm.klass.typeRef)
                 withTrace(trace.add(member.defTree)) {
-                  res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ". ")
+                  res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ".")
                 }
           end for
 
@@ -1281,7 +1281,7 @@ object Semantic:
   /** Utility definition used for better error-reporting of argument errors */
   case class ArgInfo(value: Value, trace: Trace):
     def promote: Contextual[Unit] = withTrace(trace) {
-      value.promote("Cannot prove the method argument is hot. Only hot values are safe to leak.\nFound = " + value.show + ". ")
+      value.promote("Cannot prove the method argument is hot. Only hot values are safe to leak.\nFound = " + value.show + ".")
     }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`

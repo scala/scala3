@@ -2,7 +2,7 @@
 11 |    l.foreach(a => a.addX(this)) // error
    |              ^^^^^^^^^^^^^^^^^
    |              Cannot prove the method argument is hot. Only hot values are safe to leak.
-   |              Found = Fun { this = ThisRef[class Outer], owner = class Outer }.  Calling trace:
+   |              Found = Fun { this = ThisRef[class Outer], owner = class Outer }. Calling trace:
    |              -> class Outer {	[ closureLeak.scala:1 ]
    |                 ^
    |              -> l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
@@ -10,7 +10,7 @@
    |
    |              Promoting the value to hot failed due to the following problem:
    |              Cannot prove the method argument is hot. Only hot values are safe to leak.
-   |              Found = ThisRef[class Outer]. 
-   |              Non initialized field(s): value p. Calling trace:
+   |              Found = ThisRef[class Outer].
+   |              Non initialized field(s): value p. Promotion trace:
    |              -> l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
    |                                       ^^^^

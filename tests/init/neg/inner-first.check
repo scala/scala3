@@ -2,7 +2,7 @@
 3 |    println(this)           // error
   |            ^^^^
   |            Cannot prove the method argument is hot. Only hot values are safe to leak.
-  |            Found = ThisRef[class B]. 
+  |            Found = ThisRef[class B].
   |            Non initialized field(s): value n. Calling trace:
   |            -> class B:	[ inner-first.scala:2 ]
   |               ^

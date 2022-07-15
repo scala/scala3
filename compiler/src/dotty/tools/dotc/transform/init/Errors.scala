@@ -6,19 +6,27 @@ package init
 import ast.tpd._
 import core._
 import util.SourcePosition
+import util.Property
 import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
 
 import scala.collection.mutable
 
 object Errors:
+  private val IsFromPromotion = new Property.Key[Boolean]
+
   sealed trait Error:
     def trace: Seq[Tree]
     def show(using Context): String
 
     def pos(using Context): SourcePosition = trace.last.sourcePos
 
-    def stacktrace(preamble: String = " Calling trace:\n")(using Context): String = buildStacktrace(trace, preamble)
+    def stacktrace(using Context): String =
+      val preamble: String =
+        if ctx.property(IsFromPromotion).nonEmpty
+        then " Promotion trace:\n"
+        else " Calling trace:\n"
+      buildStacktrace(trace, preamble)
 
     def issue(using Context): Unit =
       report.warning(show, this.pos)
@@ -74,33 +82,35 @@ object Errors:
   case class AccessNonInit(field: Symbol, trace: Seq[Tree]) extends Error:
     def source: Tree = trace.last
     def show(using Context): String =
-      "Access non-initialized " + field.show + "." + stacktrace()
+      "Access non-initialized " + field.show + "." + stacktrace
 
     override def pos(using Context): SourcePosition = field.sourcePos
 
   /** Promote a value under initialization to fully-initialized */
   case class PromoteError(msg: String, trace: Seq[Tree]) extends Error:
-    def show(using Context): String = msg + stacktrace()
+    def show(using Context): String = msg + stacktrace
 
   case class AccessCold(field: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
-      "Access field " + field.show +  " on a cold object." + stacktrace()
+      "Access field " + field.show +  " on a cold object." + stacktrace
 
   case class CallCold(meth: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
-      "Call method " + meth.show + " on a cold object." + stacktrace()
+      "Call method " + meth.show + " on a cold object." + stacktrace
 
   case class CallUnknown(meth: Symbol, trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       val prefix = if meth.is(Flags.Method) then "Calling the external method " else "Accessing the external field"
-      prefix + meth.show + " may cause initialization errors." + stacktrace()
+      prefix + meth.show + " may cause initialization errors." + stacktrace
 
   /** Promote a value under initialization to fully-initialized */
   case class UnsafePromotion(msg: String, trace: Seq[Tree], error: Error) extends Error:
     def show(using Context): String =
-      msg + stacktrace() + "\n" +
-        "Promoting the value to hot failed due to the following problem:\n" +
-        error.show
+      msg + stacktrace + "\n" +
+        "Promoting the value to hot failed due to the following problem:\n" + {
+          val ctx2 = ctx.withProperty(IsFromPromotion, Some(true))
+          error.show(using ctx2)
+        }
 
   /** Unsafe leaking a non-hot value as constructor arguments
    *
@@ -108,7 +118,7 @@ object Errors:
    */
   case class UnsafeLeaking(trace: Seq[Tree], error: Error, nonHotOuterClass: Symbol, argsIndices: List[Int]) extends Error:
     def show(using Context): String =
-      "Problematic object instantiation: " + argumentInfo() + stacktrace() + "\n" +
+      "Problematic object instantiation: " + argumentInfo() + stacktrace + "\n" +
         "It leads to the following error during object initialization:\n" +
         error.show
 

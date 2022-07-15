@@ -2,27 +2,27 @@
 4 |  val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error
   |                                  ^^^^^^^^^^^^^^^
   |              Cannot prove the method argument is hot. Only hot values are safe to leak.
-  |              Found = Fun { this = ThisRef[object Test], owner = object Test }.  Calling trace:
+  |              Found = Fun { this = ThisRef[object Test], owner = object Test }. Calling trace:
   |              -> object Test {	[ t3273.scala:3 ]
   |                 ^
   |              -> val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
   |                                                 ^^^^^^^^^^^^^^^
   |
   |              Promoting the value to hot failed due to the following problem:
-  |              Access non-initialized value num1. Calling trace:
+  |              Access non-initialized value num1. Promotion trace:
   |              -> val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
   |                                                 ^^^^
 -- Error: tests/init/neg/t3273.scala:5:61 ------------------------------------------------------------------------------
 5 |  val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error
   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |              Cannot prove the method argument is hot. Only hot values are safe to leak.
-  |              Found = Fun { this = ThisRef[object Test], owner = object Test }.  Calling trace:
+  |              Found = Fun { this = ThisRef[object Test], owner = object Test }. Calling trace:
   |              -> object Test {	[ t3273.scala:3 ]
   |                 ^
   |              -> val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   |              Promoting the value to hot failed due to the following problem:
-  |              Access non-initialized value num2. Calling trace:
+  |              Access non-initialized value num2. Promotion trace:
   |              -> val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
   |                                                 ^^^^

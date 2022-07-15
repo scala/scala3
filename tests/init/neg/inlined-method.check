@@ -2,7 +2,7 @@
 8 |    scala.runtime.Scala3RunTime.assertFailed(message) // error
   |                                             ^^^^^^^
   |                          Cannot prove the method argument is hot. Only hot values are safe to leak.
-  |                          Found = ThisRef[class InlineError]. 
+  |                          Found = ThisRef[class InlineError].
   |                          Non initialized field(s): value v. Calling trace:
   |                          -> class InlineError {	[ inlined-method.scala:1 ]
   |                             ^
