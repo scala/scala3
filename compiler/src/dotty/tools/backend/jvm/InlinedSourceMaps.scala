@@ -157,7 +157,7 @@ object InlinedSourceMaps:
           val offset = sourcePos.startLine - request.origPos.startLine
           Some(request.firstFakeLine + offset + 1)
         case None =>
-          report.warning(s"${sourcePos.show} was inlined in ${cunit.source} but its inlining position was not recorded.")
+          // report.warning(s"${sourcePos.show} was inlined in ${cunit.source} but its inlining position was not recorded.")
           None
 
 
