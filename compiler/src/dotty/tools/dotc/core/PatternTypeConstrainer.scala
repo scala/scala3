@@ -275,9 +275,10 @@ trait PatternTypeConstrainer { self: TypeComparer =>
                 argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
               then
                 val TypeBounds(loS, hiS) = argS.bounds
+                val TypeBounds(loP, hiP) = argP.bounds
                 var res = true
-                if variance <  1 then res &&= isSubType(loS, argP)
-                if variance > -1 then res &&= isSubType(argP, hiS)
+                if variance <  1 then res &&= isSubType(loS, hiP)
+                if variance > -1 then res &&= isSubType(loP, hiS)
                 res
               else true
             }
