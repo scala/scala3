@@ -4509,7 +4509,7 @@ object Types {
    *                        - On instantiation, replacing any param in the param bound
    *                          with a level greater than nestingLevel (see `fullLowerBound`).
    */
-  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState | Null, val nestingLevel: Int) extends CachedProxyType with ValueType {
+  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState | Null, var nestingLevel: Int) extends CachedProxyType with ValueType {
     private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
@@ -4574,7 +4574,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      val tp = TypeComparer.instanceType(origin, fromBelow)
+      val tp = TypeComparer.instanceType(origin, fromBelow, nestingLevel)
       if myInst.exists then // The line above might have triggered instantiation of the current type variable
         myInst
       else
