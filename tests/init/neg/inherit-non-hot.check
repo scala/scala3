@@ -1,15 +1,17 @@
 -- Error: tests/init/neg/inherit-non-hot.scala:6:32 --------------------------------------------------------------------
 6 |            if b == null then b = new B(this) // error
   |                              ^^^^^^^^^^^^^^^
-  |The RHS of reassignment must be fully initialized. Found = Warm[class B] { outer = Hot, args = (Cold) }.  Calling trace:
-  |-> class C extends A {	[ inherit-non-hot.scala:15 ]
-  |   ^
-  |-> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
-  |                ^^^
-  |-> def toB: B =	[ inherit-non-hot.scala:5 ]
-  |   ^
-  |-> if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
-  |                     ^^^^^^^^^^^^^^^
+  |        The RHS of reassignment must be hot. Found = Warm[class B] { outer = Hot, args = (Cold) }.  Calling trace:
+  |        -> class C extends A {	[ inherit-non-hot.scala:15 ]
+  |           ^
+  |        -> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
+  |                        ^^^
+  |        -> def toB: B =	[ inherit-non-hot.scala:5 ]
+  |           ^
+  |        -> if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
+  |                             ^^^^^^^^^^^^^^^
   |
-  |Promoting the value to fully initialized failed due to the following problem:
-  |Cannot prove that the field value a is fully initialized. Found = Cold. 
+  |        Promoting the value to hot failed due to the following problem:
+  |        Cannot prove that the field value a is hot. Found = Cold. Promotion trace:
+  |        -> class B(a: A) {	[ inherit-non-hot.scala:10 ]
+  |                   ^^^^
