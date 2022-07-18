@@ -8,6 +8,8 @@ import Symbols.*
 import Types.*
 import StdNames.*
 import NameKinds.OuterSelectName
+import NameKinds.SuperAccessorName
+import NameOps.unexpandedName
 
 import ast.tpd.*
 import config.Printers.init as printer
@@ -788,7 +790,9 @@ object Semantic:
             if !needResolve then
               meth
             else if superType.exists then
-              resolveSuper(ref.klass, superType, meth)
+              meth
+            else if meth.name.is(SuperAccessorName) then
+              ResolveSuper.rebindSuper(ref.klass, meth)
             else
               resolve(ref.klass, meth)
 
@@ -829,7 +833,7 @@ object Semantic:
               value.select(target, receiver, needResolve = false)
           else
             if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
-              report.error("Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
+              report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
               Hot
             else
               // This is possible due to incorrect type cast.
@@ -1175,9 +1179,8 @@ object Semantic:
         // Note that a parameterized trait may only get parameters from the class that extends the trait.
         // A trait may not supply constructor arguments to another trait.
         if !klass.is(Flags.Trait) then
-          for parent <- klass.parentSyms if parent.hasSource do doPromote(parent.asClass, klass, isHotSegment)
-          // We still need to handle indirectly extended traits via traits, which are not in the parent list.
           val superCls = klass.superClass
+          if superCls.hasSource then doPromote(superCls.asClass, klass, isHotSegment)
           val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
           for mixin <- mixins if mixin.hasSource do doPromote(mixin.asClass, klass, isHotSegment)
       end doPromote
@@ -1768,16 +1771,3 @@ object Semantic:
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.appliedRef)
   }
-
-  def resolveSuper(cls: ClassSymbol, superType: Type, sym: Symbol)(using Context): Symbol =
-    import annotation.tailrec
-    @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
-      case bc :: bcs1 =>
-        val cand = sym.matchingDecl(bcs.head, cls.thisType)
-          .suchThat(alt => !alt.is(Flags.Deferred)).symbol
-        if (cand.exists) cand else loop(bcs.tail)
-      case _ =>
-        NoSymbol
-    }
-    loop(cls.info.baseClasses.dropWhile(sym.owner != _))
-
