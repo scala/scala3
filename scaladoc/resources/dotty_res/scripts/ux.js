@@ -12,9 +12,10 @@ window.addEventListener("DOMContentLoaded", () => {
     for (i = 0; i < elements.length; i++) {
       if (elements[i].querySelector(".show-content") !== null) {
         elements[i].onclick = function (e) {
-          if (!$(e.target).is("a") && e.fromSnippet !== true)
+          if (!$(e.target).is("a") && e.fromSnippet !== true) {
             this.classList.toggle("expand")
             this.querySelector(".show-content").classList.toggle("expand")
+          }
         }
       }
     }

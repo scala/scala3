@@ -9,6 +9,7 @@
 
   /* icon */
   --icon-default: var(--grey11);
+  --icon-hover: var(--grey12);
 
   /* border */
   --border-default: var(--grey5);
@@ -104,6 +105,7 @@
 
   /* icon */
   --icon-default: var(--grey11);
+  --icon-hover: var(--grey12);
 
   /* border */
   --border-default: var(--grey6);

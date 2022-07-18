@@ -94,6 +94,11 @@ object SnippetRenderer:
         line.copy(content = begin + s"""<span class="hideable">$comment</span>""" + end)
       case _ => line
 
+  private def reindexLines(lines: Seq[SnippetLine]) =
+    lines.zipWithIndex.map {
+      case (line, newIdx) => line.copy(lineNo = newIdx)
+    }
+
   private def wrapCodeLines(codeLines: Seq[String]): Seq[SnippetLine] =
     val snippetLines = codeLines.zipWithIndex.map {
       case (content, idx) => SnippetLine(content.escapeReservedTokens, idx)
@@ -133,7 +138,7 @@ object SnippetRenderer:
   ).toString
 
   def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], success: Boolean): String =
-    val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).apply(codeLines).map(_.toHTML)
+    val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).andThen(reindexLines).apply(codeLines).map(_.toHTML)
     val codeHTML = s"""<code class="language-scala">${transformedLines.mkString("")}</code>"""
     val isRunnable = success
     val attrs = Seq(

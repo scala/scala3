@@ -98,14 +98,90 @@
 }
 
 .snippet .copy-button {
-  display: none;
   position: absolute;
   top: calc(3 * var(--base-spacing));
   right: calc(3 * var(--base-spacing));
 }
 
-.snippet:hover .copy-button {
+.snippet .run-button {
+  position: absolute;
+  top: calc(3 * var(--base-spacing));
+  right: calc(6 * var(--base-spacing));
+}
+
+.snippet .run-button {
+  color: var(--icon-default);
+}
+
+.snippet .run-button:hover {
+  color: var(--icon-hover);
+}
+
+.snippet .icon-button {
+  display: none;
+}
+
+.snippet:hover .icon-button {
   display: block;
+}
+
+.snippet-popup-content {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  margin-left: -25%;
+  background-color: rgba(245, 245, 245, 1);
+  padding: calc(2 * var(--base-spacing));
+  border-radius: 4px;
+  width: 50%;
+}
+
+.snippet-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.569);
+  z-index: 3;
+}
+
+.scastie.embedded {
+  width: unset !important;
+}
+
+.tooltip-container {
+  display: none;
+}
+.tooltip:hover .tooltip-container {
+  display: unset;
+}
+.tooltip:hover .tooltip-container::after {
+  content: attr(label);
+  padding: 4px 8px;
+  color: white;
+  background-color:black;
+  position: absolute;
+  z-index:10;
+  box-shadow:0 0 3px #444;
+  opacity: 0.8;
+}
+
+.snippet .buttons .tooltip::after {
+  top: 32px;
+}
+
+.snippet-error {
+  border-bottom: 2px dotted red;
+}
+.snippet-warn {
+  border-bottom: 2px dotted orange;
+}
+.snippet-info {
+  border-bottom: 2px dotted teal;
+}
+.snippet-debug {
+  border-bottom: 2px dotted pink;
 }
 
 .hljs-keyword {
