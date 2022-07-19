@@ -1557,6 +1557,29 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  /** Check that final mutable var accessors are final */
+  @Test def i10835 = {
+    val source =
+      s"""class A {
+        |  final var x = 1
+        |}
+        |""".stripMargin
+    checkBCode(source){dir =>
+      val clsIn      = dir.lookupName("A.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      def isFinal(access: Int) = (access & Opcodes.ACC_FINAL) != 0
+
+      val field = clsNode.fields.asScala.find(_.name == "x").map(_.access)
+      assertTrue("field is not final", field.exists(!isFinal(_)))
+      assertTrue("field is private", field.exists(acc => (acc & Opcodes.ACC_PRIVATE) != 0))
+
+      val methods = clsNode.methods.asScala
+      def methodAccess(name: String) = methods.find(_.name == name).map(_.access)
+      assertTrue("getter is final", methodAccess("x").exists(isFinal))
+      assertTrue("setter is final", methodAccess("x_$eq").exists(isFinal))
+    }
+  }
+
   /** Check that erasure if `Int | Nothing` is `int` */
   @Test def i14970 = {
     val source =

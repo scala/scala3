@@ -310,7 +310,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     // tests/run/serialize.scala and https://github.com/typelevel/cats-effect/pull/2360).
     val privateFlag = !sym.isClass && (sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass))
 
-    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable) && !sym.enclosingClass.is(Trait)
+    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable, butNot = Accessor) && !sym.enclosingClass.is(Trait)
 
     import asm.Opcodes._
     import GenBCodeOps.addFlagIf
