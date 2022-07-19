@@ -1,0 +1,28 @@
+-- Error: tests/init/neg/super-resolution2.scala:19:6 ------------------------------------------------------------------
+19 |  val n = 40 // error
+   |      ^
+   |      Access non-initialized value n. Calling trace:
+   |      -> class N extends A with B:	[ super-resolution2.scala:9 ]
+   |         ^
+   |      -> new Inner	[ super-resolution2.scala:16 ]
+   |         ^^^^^^^^^
+   |      -> class Inner:	[ super-resolution2.scala:12 ]
+   |         ^
+   |      -> N.super[A].foo()	[ super-resolution2.scala:13 ]
+   |         ^^^^^^^^^^^^^^^^
+   |      -> def foo(): Int = n	[ super-resolution2.scala:3 ]
+   |                          ^
+-- Error: tests/init/neg/super-resolution2.scala:18:6 ------------------------------------------------------------------
+18 |  val m = 30 // error
+   |      ^
+   |      Access non-initialized value m. Calling trace:
+   |      -> class N extends A with B:	[ super-resolution2.scala:9 ]
+   |         ^
+   |      -> new Inner	[ super-resolution2.scala:16 ]
+   |         ^^^^^^^^^
+   |      -> class Inner:	[ super-resolution2.scala:12 ]
+   |         ^
+   |      -> N.super.foo()	[ super-resolution2.scala:14 ]
+   |         ^^^^^^^^^^^^^
+   |      -> def foo(): Int = m	[ super-resolution2.scala:7 ]
+   |                          ^
