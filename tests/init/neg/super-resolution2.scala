@@ -7,7 +7,7 @@ trait B:
   def foo(): Int = m
 
 class N extends A with B:
-  override def foo(): Int = 10 * super.foo()
+  override def foo(): Int = a * super.foo()
 
   class Inner:
     N.super[A].foo()
@@ -17,3 +17,4 @@ class N extends A with B:
 
   val m = 30 // error
   val n = 40 // error
+  val a = 50

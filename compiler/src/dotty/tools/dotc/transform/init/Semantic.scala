@@ -9,7 +9,6 @@ import Types.*
 import StdNames.*
 import NameKinds.OuterSelectName
 import NameKinds.SuperAccessorName
-import NameOps.unexpandedName
 
 import ast.tpd.*
 import config.Printers.init as printer
