@@ -2004,8 +2004,34 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           wrongNumberOfTypeArgs(tpt1.tpe, tparams, args, tree.srcPos)
           args = args.take(tparams.length)
         }
+
+        // If type constructor is not a class type, we need to eliminate
+        // any references to other parameter types of the underlying hk lambda
+        // in order not to get orphan parameters. Test case in pos/i15564.scala.
+        // Note 1: It would be better to substitute actual arguments for corresponding
+        // formal paramaters, but it looks very hard to do this at the point where
+        // a bound type variable is created.
+        // Note 2: If the type constructor is a class type, no sanitization is needed
+        // since we can refer to the other paraeters with dependent types C[...]#X.
+        def sanitizeBounds(bounds: Type, tycon: Type): Type =
+          def underlyingLambda(tp: Type): Type = tp match
+            case tp: HKTypeLambda => tp
+            case tp: TypeProxy => underlyingLambda(tp.superType)
+            case _ => NoType
+          val tl = underlyingLambda(tycon)
+          val widenMap = new TypeOps.AvoidMap:
+            def toAvoid(tp: NamedType) = false
+            override def apply(tp: Type): Type = tp match
+              case tp: TypeParamRef if tp.binder == tl => emptyRange
+              case _ => super.apply(tp)
+          widenMap(bounds)
+
         def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
-          def tparamBounds = tparam.paramInfoAsSeenFrom(tpt1.tpe.appliedTo(tparams.map(_ => TypeBounds.empty)))
+          def tparamBounds =
+            val bounds =
+              tparam.paramInfoAsSeenFrom(tpt1.tpe.appliedTo(tparams.map(_ => TypeBounds.empty)))
+            if tparam.isInstanceOf[Symbol] then bounds
+            else sanitizeBounds(bounds, tpt1.tpe)
           val (desugaredArg, argPt) =
             if ctx.mode.is(Mode.Pattern) then
               (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparamBounds)
