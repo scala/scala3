@@ -1464,8 +1464,9 @@ trait Checking {
         report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
       seen += sel.name
 
-    for sel <- selectors do
-      if !sel.isWildcard then checkIdent(sel)
+    if !ctx.compilationUnit.isJava then
+      for sel <- selectors do
+        if !sel.isWildcard then checkIdent(sel)
   end checkImportSelectors
 }
 
