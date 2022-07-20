@@ -488,7 +488,7 @@ object SymDenotations {
           if kind == FlatName && !encl.is(JavaDefined) then qn.compactified else qn
         val fn = name replace {
           case name: SimpleName => qualify(name)
-          case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
+          case name @ AnyQualifiedName(_, _) => qualify(name.toSimpleName)
         }
         if (name.isTypeName) fn.toTypeName else fn.toTermName
       }
