@@ -486,10 +486,18 @@ object SymDenotations {
         def qualify(n: SimpleName) =
           val qn = kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
           if kind == FlatName && !encl.is(JavaDefined) then qn.compactified else qn
-        val fn = name replace {
+        def expand(name: Name): Name = name.replace {
           case name: SimpleName => qualify(name)
-          case name @ AnyQualifiedName(_, _) => qualify(name.toSimpleName)
+          case name @ DerivedName(qual, info: QualifiedInfo) =>
+            if kind == TraitSetterName then
+              qualify(name.toSimpleName)
+                // TODO: Find out why TraitSetterNames can't be kept as QualifiedNames
+            else
+              expand(qual).derived(info)
+                // In all other cases, keep the qualified name, so that it can be recovered later.
+                // An example where this matters is run/i15702.scala
         }
+        val fn = expand(name)
         if (name.isTypeName) fn.toTypeName else fn.toTermName
       }
 

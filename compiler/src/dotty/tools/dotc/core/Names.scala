@@ -69,7 +69,7 @@ object Names {
 
     /** Apply rewrite rule given by `f` to some part of this name, skipping and rewrapping
      *  other decorators.
-     *  Stops at derived names whose kind has `definesNewName = true`.
+     *  Stops at `DerivedName`s with infos of kind `QualifiedInfo`.
      *  If `f` does not apply to any part, return name unchanged.
      */
     def replace(f: PartialFunction[Name, Name]): ThisName

@@ -146,7 +146,10 @@ object NameOps {
 
     /** Revert the expanded name. */
     def unexpandedName: N = likeSpacedN {
-      name.replace { case ExpandedName(_, unexp) => unexp }
+      name.replace {
+        case ExpandedName(_, unexp) => unexp
+        case DerivedName(qual, info: QualifiedInfo) => qual.unexpandedName.derived(info)
+      }
     }
 
     def errorName: N = likeSpacedN(name ++ nme.ERROR)
