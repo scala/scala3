@@ -757,7 +757,12 @@ final class ProperGadtConstraint private(
 
   // ---- Private ----------------------------------------------------------
 
-  private def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match
+  /** Externalize the internal TypeParamRefs in the given type.
+    *
+    * We declare the method as `protected` instead of `private`, because declaring it as
+    * private will break a pickling test. This is a temporary workaround.
+    */
+  protected def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match
     case param: TypeParamRef => reverseMapping(param) match
       case sym: Symbol => sym.typeRef
       case null        =>
