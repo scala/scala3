@@ -24,10 +24,18 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
-import org.scalajs.linker.interface.ModuleInitializer
+import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
 
 object DottyJSPlugin extends AutoPlugin {
   import Build._
+
+  object autoImport {
+    val switchToESModules: StandardConfig => StandardConfig =
+      config => config.withModuleKind(ModuleKind.ESModule)
+  }
+
+  val writePackageJSON = taskKey[Unit](
+      "Write package.json to configure module type for Node.js")
 
   override def requires: Plugins = ScalaJSPlugin
 
@@ -51,6 +59,21 @@ object DottyJSPlugin extends AutoPlugin {
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
+
+    Compile / jsEnvInput := (Compile / jsEnvInput).dependsOn(writePackageJSON).value,
+    Test / jsEnvInput := (Test / jsEnvInput).dependsOn(writePackageJSON).value,
+
+    writePackageJSON := {
+      val packageType = scalaJSLinkerConfig.value.moduleKind match {
+        case ModuleKind.NoModule       => "commonjs"
+        case ModuleKind.CommonJSModule => "commonjs"
+        case ModuleKind.ESModule       => "module"
+      }
+
+      val path = target.value / "package.json"
+
+      IO.write(path, s"""{"type": "$packageType"}\n""")
+    },
   )
 }
 
@@ -1202,6 +1225,19 @@ object Build {
       // A first blacklist of tests for those that do not compile or do not link
       (Test / managedSources) ++= {
         val dir = fetchScalaJSSource.value / "test-suite"
+
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (Test / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
+        }
+
+        val moduleKind = linkerConfig.moduleKind
+        val hasModules = moduleKind != ModuleKind.NoModule
+
+        def conditionally(cond: Boolean, subdir: String): Seq[File] =
+          if (!cond) Nil
+          else (dir / subdir ** "*.scala").get
+
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
@@ -1220,8 +1256,27 @@ object Build {
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
-          ++ (dir / "js/src/test/require-no-modules" ** "*.scala").get
+
+          ++ conditionally(!hasModules, "js/src/test/require-no-modules")
+          ++ conditionally(hasModules, "js/src/test/require-modules")
+          ++ conditionally(hasModules && !linkerConfig.closureCompiler, "js/src/test/require-multi-modules")
+          ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-dynamic-import")
+          ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-esmodule")
         )
+      },
+
+      Test / managedResources ++= {
+        val testDir = fetchScalaJSSource.value / "test-suite/js/src/test"
+
+        val common = (testDir / "resources" ** "*.js").get
+
+        val moduleSpecific = scalaJSLinkerConfig.value.moduleKind match {
+          case ModuleKind.NoModule       => Nil
+          case ModuleKind.CommonJSModule => (testDir / "resources-commonjs" ** "*.js").get
+          case ModuleKind.ESModule       => (testDir / "resources-esmodule" ** "*.js").get
+        }
+
+        common ++ moduleSpecific
       },
     )
 
