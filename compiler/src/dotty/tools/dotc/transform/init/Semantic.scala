@@ -1148,7 +1148,9 @@ object Semantic:
           params.forall(param => obj.field(param).isHot)
         }
 
-        // check invariant: subClassSegmentHot => isHotSegment
+        // Check invariant: subClassSegmentHot ==> isHotSegment
+        //
+        // This invariant holds because of the Scala/Java/JVM restriction that we cannot use `this` in super constructor calls.
         if subClassSegmentHot && !isHotSegment then
           report.error("[Internal error] Expect current segment to hot in promotion, current klass = " + klass.show +
               ", subclass = " + subClass.show + Trace.show, Trace.position)
