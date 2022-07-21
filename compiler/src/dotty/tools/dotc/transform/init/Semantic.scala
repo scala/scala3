@@ -1132,10 +1132,6 @@ object Semantic:
      */
     def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
       val classRef = warm.klass.appliedRef
-      val hasInnerClass = classRef.memberClasses.filter(_.symbol.hasSource).nonEmpty
-      if hasInnerClass then
-        return PromoteError(msg + "Promotion cancelled as the value contains inner classes.", trace.toVector) :: Nil
-
       val obj = warm.objekt
 
       def doPromote(klass: ClassSymbol, subClass: ClassSymbol, subClassSegmentHot: Boolean)(using Reporter): Unit =
@@ -1160,7 +1156,10 @@ object Semantic:
         // those methods are checked as part of the check for the class where they are defined.
         if !isHotSegment then
           for member <- klass.info.decls do
-            if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
+            if member.isClass then
+              val error = PromoteError(msg + " Promotion cancelled as the value contains inner classes.", trace.toVector)
+              reporter.report(error)
+            else if !member.isType && !member.isConstructor  && !member.is(Flags.Deferred) then
               given Trace = Trace.empty
               if member.is(Flags.Method, butNot = Flags.Accessor) then
                 val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
