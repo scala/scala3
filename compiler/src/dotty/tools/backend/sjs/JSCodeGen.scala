@@ -353,14 +353,17 @@ class JSCodeGen()(using genCtx: Context) {
       tree match {
         case EmptyTree => ()
 
-        case _: ValDef =>
-          () // fields are added via genClassFields()
+        case vd: ValDef =>
+          // fields are added via genClassFields(), but we need to generate the JS native members
+          val sym = vd.symbol
+          if (!sym.is(Module) && sym.hasAnnotation(jsdefn.JSNativeAnnot))
+            generatedNonFieldMembers += genJSNativeMemberDef(vd)
 
         case dd: DefDef =>
           val sym = dd.symbol
-
-          if (sym.hasAnnotation(jsdefn.JSNativeAnnot))
-            generatedNonFieldMembers += genJSNativeMemberDef(dd)
+          if sym.hasAnnotation(jsdefn.JSNativeAnnot) then
+            if !sym.is(Accessor) then
+              generatedNonFieldMembers += genJSNativeMemberDef(dd)
           else
             generatedNonFieldMembers ++= genMethod(dd)
 
@@ -1379,12 +1382,12 @@ class JSCodeGen()(using genCtx: Context) {
   // Generate a method -------------------------------------------------------
 
   /** Generates the JSNativeMemberDef. */
-  def genJSNativeMemberDef(tree: DefDef): js.JSNativeMemberDef = {
+  def genJSNativeMemberDef(tree: ValOrDefDef): js.JSNativeMemberDef = {
     implicit val pos = tree.span
 
     val sym = tree.symbol
     val flags = js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic)
-    val methodName = encodeMethodSym(sym)
+    val methodName = encodeJSNativeMemberSym(sym)
     val jsNativeLoadSpec = computeJSNativeLoadSpecOfValDef(sym)
     js.JSNativeMemberDef(flags, methodName, jsNativeLoadSpec)
   }
@@ -1782,6 +1785,8 @@ class JSCodeGen()(using genCtx: Context) {
           genLoadModule(sym)
         } else if (sym.is(JavaStatic)) {
           genLoadStaticField(sym)
+        } else if (sym.hasAnnotation(jsdefn.JSNativeAnnot)) {
+          genJSNativeMemberSelect(tree)
         } else {
           val (field, boxed) = genAssignableField(sym, qualifier)
           if (boxed) unbox(field, atPhase(elimErasedValueTypePhase)(sym.info))
@@ -3030,7 +3035,7 @@ class JSCodeGen()(using genCtx: Context) {
       else
         genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
     } else if (sym.hasAnnotation(jsdefn.JSNativeAnnot)) {
-      genJSNativeMemberCall(tree, isStat)
+      genJSNativeMemberCall(tree)
     } else {
       genApplyMethodMaybeStatically(genExpr(receiver), sym, genActualArgs(sym, args))
     }
@@ -3161,14 +3166,21 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   /** Gen JS code for a call to a native JS def or val. */
-  private def genJSNativeMemberCall(tree: Apply, isStat: Boolean): js.Tree = {
+  private def genJSNativeMemberSelect(tree: Tree): js.Tree =
+    genJSNativeMemberSelectOrCall(tree, Nil)
+
+  /** Gen JS code for a call to a native JS def or val. */
+  private def genJSNativeMemberCall(tree: Apply): js.Tree =
+    genJSNativeMemberSelectOrCall(tree, tree.args)
+
+  /** Gen JS code for a call to a native JS def or val. */
+  private def genJSNativeMemberSelectOrCall(tree: Tree, args: List[Tree]): js.Tree = {
     val sym = tree.symbol
-    val Apply(_, args) = tree
 
     implicit val pos = tree.span
 
     val jsNativeMemberValue =
-      js.SelectJSNativeMember(encodeClassName(sym.owner), encodeMethodSym(sym))
+      js.SelectJSNativeMember(encodeClassName(sym.owner), encodeJSNativeMemberSym(sym))
 
     val boxedResult =
       if (sym.isJSGetter) jsNativeMemberValue
