@@ -38,6 +38,8 @@ final class JSDefinitions()(using Context) {
     def JSPackage_native(using Context) = JSPackage_nativeR.symbol
     @threadUnsafe lazy val JSPackage_undefinedR = ScalaJSJSPackageClass.requiredMethodRef("undefined")
     def JSPackage_undefined(using Context) = JSPackage_undefinedR.symbol
+    @threadUnsafe lazy val JSPackage_dynamicImportR = ScalaJSJSPackageClass.requiredMethodRef("dynamicImport")
+    def JSPackage_dynamicImport(using Context) = JSPackage_dynamicImportR.symbol
 
   @threadUnsafe lazy val JSNativeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.native")
   def JSNativeAnnot(using Context) = JSNativeAnnotType.symbol.asClass
@@ -176,6 +178,13 @@ final class JSDefinitions()(using Context) {
     def Runtime_withContextualJSClassValue(using Context) = Runtime_withContextualJSClassValueR.symbol
     @threadUnsafe lazy val Runtime_linkingInfoR = RuntimePackageClass.requiredMethodRef("linkingInfo")
     def Runtime_linkingInfo(using Context) = Runtime_linkingInfoR.symbol
+    @threadUnsafe lazy val Runtime_dynamicImportR = RuntimePackageClass.requiredMethodRef("dynamicImport")
+    def Runtime_dynamicImport(using Context) = Runtime_dynamicImportR.symbol
+
+  @threadUnsafe lazy val DynamicImportThunkType: TypeRef = requiredClassRef("scala.scalajs.runtime.DynamicImportThunk")
+  def DynamicImportThunkClass(using Context) = DynamicImportThunkType.symbol.asClass
+    @threadUnsafe lazy val DynamicImportThunkClass_applyR = DynamicImportThunkClass.requiredMethodRef(nme.apply)
+    def DynamicImportThunkClass_apply(using Context) = DynamicImportThunkClass_applyR.symbol
 
   @threadUnsafe lazy val SpecialPackageVal = requiredPackage("scala.scalajs.js.special")
   @threadUnsafe lazy val SpecialPackageClass = SpecialPackageVal.moduleClass.asClass

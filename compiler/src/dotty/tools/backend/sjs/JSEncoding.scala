@@ -54,6 +54,8 @@ object JSEncoding {
   private val ScalaRuntimeNothingClassName = ClassName("scala.runtime.Nothing$")
   private val ScalaRuntimeNullClassName = ClassName("scala.runtime.Null$")
 
+  private val dynamicImportForwarderSimpleName = SimpleMethodName("dynamicImport$")
+
   // Fresh local name generator ----------------------------------------------
 
   class LocalNameGenerator {
@@ -219,6 +221,13 @@ object JSEncoding {
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.info)
     val methodName = MethodName(name.mangledString, Nil, resultTypeRef)
+    js.MethodIdent(methodName)
+  }
+
+  def encodeDynamicImportForwarderIdent(params: List[Symbol])(using Context, ir.Position): js.MethodIdent = {
+    val paramTypeRefs = params.map(sym => paramOrResultTypeRef(sym.info))
+    val resultTypeRef = jstpe.ClassRef(ir.Names.ObjectClass)
+    val methodName = MethodName(dynamicImportForwarderSimpleName, paramTypeRefs, resultTypeRef)
     js.MethodIdent(methodName)
   }
 
