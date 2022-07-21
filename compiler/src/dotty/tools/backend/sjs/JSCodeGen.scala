@@ -1829,7 +1829,15 @@ class JSCodeGen()(using genCtx: Context) {
         }
 
       case Block(stats, expr) =>
-        js.Block(stats.map(genStat) :+ genStatOrExpr(expr, isStat))
+        // #15419 Collapse { <undefined-param>; BoxedUnit } to <undefined-param>
+        val genStatsAndExpr0 = stats.map(genStat(_)) :+ genStatOrExpr(expr, isStat)
+        val genStatsAndExpr = genStatsAndExpr0 match {
+          case (undefParam @ js.Transient(UndefinedParam)) :: js.Undefined() :: Nil =>
+            undefParam :: Nil
+          case _ =>
+            genStatsAndExpr0
+        }
+        js.Block(genStatsAndExpr)
 
       case Typed(expr, _) =>
         expr match {
