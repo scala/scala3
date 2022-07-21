@@ -23,7 +23,11 @@ object Mixin {
   val description: String = "expand trait fields and trait initializers"
 
   def traitSetterName(getter: TermSymbol)(using Context): TermName =
+    extension (name: Name) def qualifiedToSimple = name.replace {
+      case n @ AnyQualifiedName(_, _) => n.toSimpleName
+    }
     getter.ensureNotPrivate.name
+      .qualifiedToSimple  // TODO: Find out why TraitSetterNames can't be defined over QualifiedNames
       .expandedName(getter.owner, TraitSetterName)
       .asTermName.syntheticSetterName
 }

@@ -489,13 +489,9 @@ object SymDenotations {
         def expand(name: Name): Name = name.replace {
           case name: SimpleName => qualify(name)
           case name @ DerivedName(qual, info: QualifiedInfo) =>
-            if kind == TraitSetterName then
-              qualify(name.toSimpleName)
-                // TODO: Find out why TraitSetterNames can't be kept as QualifiedNames
-            else
-              expand(qual).derived(info)
-                // In all other cases, keep the qualified name, so that it can be recovered later.
-                // An example where this matters is run/i15702.scala
+            expand(qual).derived(info)
+              // Keep the qualified name, so that it can be recovered later.
+              // An example where this matters is run/i15702.scala
         }
         val fn = expand(name)
         if (name.isTypeName) fn.toTypeName else fn.toTermName
