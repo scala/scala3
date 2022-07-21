@@ -146,9 +146,8 @@ object NameOps {
 
     /** Revert the expanded name. */
     def unexpandedName: N = likeSpacedN {
-      name.replace {
+      name.replaceDeep {
         case ExpandedName(_, unexp) => unexp
-        case DerivedName(qual, info: QualifiedInfo) => qual.unexpandedName.derived(info)
       }
     }
 

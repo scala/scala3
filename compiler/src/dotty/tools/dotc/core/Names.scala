@@ -69,10 +69,17 @@ object Names {
 
     /** Apply rewrite rule given by `f` to some part of this name, skipping and rewrapping
      *  other decorators.
-     *  Stops at `DerivedName`s with infos of kind `QualifiedInfo`.
+     *  Stops at DerivedNames with infos of kind QualifiedInfo.
      *  If `f` does not apply to any part, return name unchanged.
      */
     def replace(f: PartialFunction[Name, Name]): ThisName
+
+    /** Same as replace, but does not stop at DerivedNames with infos of kind QualifiedInfo. */
+    def replaceDeep(f: PartialFunction[Name, Name]): ThisName =
+      replace(f.orElse {
+        case DerivedName(underlying, info: QualifiedInfo) =>
+          underlying.replaceDeep(f).derived(info)
+      })
 
     /** If partial function `f` is defined for some part of this name, apply it
      *  in a Some, otherwise None.

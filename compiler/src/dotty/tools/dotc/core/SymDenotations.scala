@@ -486,15 +486,10 @@ object SymDenotations {
         def qualify(n: SimpleName) =
           val qn = kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
           if kind == FlatName && !encl.is(JavaDefined) then qn.compactified else qn
-        def expand(name: Name): Name = name.replace {
-          case name: SimpleName => qualify(name)
-          case name @ DerivedName(qual, info: QualifiedInfo) =>
-            expand(qual).derived(info)
-              // Keep the qualified name, so that it can be recovered later.
-              // An example where this matters is run/i15702.scala
+        val fn = name.replaceDeep {
+          case n: SimpleName => qualify(n)
         }
-        val fn = expand(name)
-        if (name.isTypeName) fn.toTypeName else fn.toTermName
+        if name.isTypeName then fn.toTypeName else fn.toTermName
       }
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
