@@ -486,11 +486,10 @@ object SymDenotations {
         def qualify(n: SimpleName) =
           val qn = kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
           if kind == FlatName && !encl.is(JavaDefined) then qn.compactified else qn
-        val fn = name replace {
-          case name: SimpleName => qualify(name)
-          case name @ AnyQualifiedName(_, _) => qualify(name.toSimpleName)
+        val fn = name.replaceDeep {
+          case n: SimpleName => qualify(n)
         }
-        if (name.isTypeName) fn.toTypeName else fn.toTermName
+        if name.isTypeName then fn.toTypeName else fn.toTermName
       }
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
