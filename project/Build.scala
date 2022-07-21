@@ -775,7 +775,7 @@ object Build {
     },
 
     // Note: bench/profiles/projects.yml should be updated accordingly.
-    Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
+    Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
 
     repl := (Compile / console).value,
     Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
