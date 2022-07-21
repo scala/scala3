@@ -1157,7 +1157,7 @@ object Semantic:
         if !isHotSegment then
           for member <- klass.info.decls do
             if member.isClass then
-              val error = PromoteError(msg + " Promotion cancelled as the value contains inner classes.", trace.toVector)
+              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".", Vector.empty)
               reporter.report(error)
             else if !member.isType && !member.isConstructor  && !member.is(Flags.Deferred) then
               given Trace = Trace.empty
