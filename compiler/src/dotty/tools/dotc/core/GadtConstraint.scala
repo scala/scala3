@@ -362,7 +362,6 @@ final class ProperGadtConstraint private(
                   case tv: TypeVar => tv.origin
                   case null => tp
                 }
-              case tv: TypeVar => if isUpper then defn.AnyType else defn.NothingType
               case tp => tp
 
             loop(tp)
