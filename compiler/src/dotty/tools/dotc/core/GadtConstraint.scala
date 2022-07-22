@@ -12,6 +12,7 @@ import printing._
 
 import scala.annotation.internal.sharable
 import Denotations.{Denotation, SingleDenotation}
+import SymDenotations.NoDenotation
 
 /** Types that represent a path. Can either be a TermRef or a SkolemType. */
 type PathType = TermRef | SkolemType
@@ -283,9 +284,12 @@ final class ProperGadtConstraint private(
         case TypeAlias(_) => true
         case _ => false
 
+      def nonPrivate: Boolean = !denot1.isInstanceOf[NoDenotation.type]
+
       (denot1.symbol.is(Flags.Deferred) || isTypeAlias)
       && !denot1.symbol.is(Flags.Opaque)
       && !denot1.symbol.isClass
+      && nonPrivate
     }
 
   private def isConstrainableTypeMember(path: PathType, sym: Symbol)(using Context): Boolean =
