@@ -344,7 +344,11 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       */
     private def isCompilerIntrinsicMethod(sym: Symbol)(using Context): Boolean =
       val owner = sym.maybeOwner
-      owner.eq(defn.AnyClass) || owner.isPrimitiveValueClass
+      owner.exists && (
+        owner.eq(defn.AnyClass) ||
+        owner.isPrimitiveValueClass ||
+        owner.maybeOwner == defn.CompiletimePackageClass
+      )
 
 object InstrumentCoverage:
   val name: String = "instrumentCoverage"
