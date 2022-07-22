@@ -24,7 +24,9 @@ object JSPrimitives {
 
   inline val UNITVAL = JS_NATIVE + 1 // () value, which is undefined
 
-  inline val JS_IMPORT = UNITVAL + 1        // js.import.apply(specifier)
+  inline val JS_NEW_TARGET = UNITVAL + 1 // js.new.target
+
+  inline val JS_IMPORT = JS_NEW_TARGET + 1  // js.import.apply(specifier)
   inline val JS_IMPORT_META = JS_IMPORT + 1 // js.import.meta
 
   inline val CONSTRUCTOROF = JS_IMPORT_META + 1                         // runtime.constructorOf(clazz)
@@ -104,6 +106,8 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.JSPackage_native, JS_NATIVE)
 
     addPrimitive(defn.BoxedUnit_UNIT, UNITVAL)
+
+    addPrimitive(jsdefn.JSNew_target, JS_NEW_TARGET)
 
     addPrimitive(jsdefn.JSImport_apply, JS_IMPORT)
     addPrimitive(jsdefn.JSImport_meta, JS_IMPORT_META)

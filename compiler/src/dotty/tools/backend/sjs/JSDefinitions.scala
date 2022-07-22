@@ -145,6 +145,11 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val JSConstructorTag_materializeR = JSConstructorTagModule.requiredMethodRef("materialize")
     def JSConstructorTag_materialize(using Context) = JSConstructorTag_materializeR.symbol
 
+  @threadUnsafe lazy val JSNewModuleRef = requiredModuleRef("scala.scalajs.js.new")
+  def JSNewModule(using Context) = JSNewModuleRef.symbol
+    @threadUnsafe lazy val JSNew_targetR = JSNewModule.requiredMethodRef("target")
+    def JSNew_target(using Context) = JSNew_targetR.symbol
+
   @threadUnsafe lazy val JSImportModuleRef = requiredModuleRef("scala.scalajs.js.import")
   def JSImportModule(using Context) = JSImportModuleRef.symbol
     @threadUnsafe lazy val JSImport_applyR = JSImportModule.requiredMethodRef(nme.apply)

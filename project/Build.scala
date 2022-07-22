@@ -1218,6 +1218,7 @@ object Build {
             )).get
 
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
+          ++ (dir / "js/src/test/require-new-target" ** "*.scala").get
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
           ++ (dir / "js/src/test/require-no-modules" ** "*.scala").get

@@ -3791,6 +3791,19 @@ class JSCodeGen()(using genCtx: Context) {
         // BoxedUnit.UNIT, which is the boxed version of ()
         js.Undefined()
 
+      case JS_NEW_TARGET =>
+        // js.new.target
+        val valid = currentMethodSym.get.isClassConstructor && currentClassSym.isNonNativeJSClass
+        if (!valid) {
+          report.error(
+              "Illegal use of js.`new`.target.\n" +
+              "It can only be used in the constructor of a JS class, " +
+              "as a statement or in the rhs of a val or var.\n" +
+              "It cannot be used inside a lambda or by-name parameter, nor in any other location.",
+              tree.sourcePos)
+        }
+        js.JSNewTarget()
+
       case JS_IMPORT =>
         // js.import(arg)
         val arg = genArgs1
