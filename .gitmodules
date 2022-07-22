@@ -200,7 +200,7 @@
 	url = https://github.com/dotty-staging/scalacheck-effect.git
 [submodule "community-build/community-projects/fs2"]
 	path = community-build/community-projects/fs2
-	url = https://github.com/dotty-staging/fs2.git
+	url = https://github.com/ckipp01/fs2.git
 [submodule "community-build/community-projects/libretto"]
 	path = community-build/community-projects/libretto
 	url = https://github.com/dotty-staging/libretto.git
