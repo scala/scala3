@@ -292,25 +292,18 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
           assert(currentOwner.isTerm, s"unexpected owner: $currentOwner at ${tree.sourcePos}")
 
-          val cls = newNormalizedClassSymbol(currentOwner, tpnme.ANON_CLASS, Synthetic | Final,
-              List(jsdefn.DynamicImportThunkType), coord = span)
-          val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
+          // new DynamicImportThunk { def apply(): Any = body }
+          val dynamicImportThunkAnonClass = AnonClass(currentOwner, List(jsdefn.DynamicImportThunkType), span) { cls =>
+            val applySym = newSymbol(cls, nme.apply, Method, MethodType(Nil, Nil, defn.AnyType), coord = span).entered
+            val newBody = transform(body).changeOwnerAfter(currentOwner, applySym, thisPhase)
+            val applyDefDef = DefDef(applySym, newBody)
+            List(applyDefDef)
+          }
 
-          val applySym = newSymbol(cls, nme.apply, Method, MethodType(Nil, Nil, defn.AnyType), coord = span).entered
-          val newBody = transform(body).changeOwnerAfter(currentOwner, applySym, thisPhase)
-          val applyDefDef = DefDef(applySym, newBody)
-
-          // class $anon extends DynamicImportThunk
-          val cdef = ClassDef(cls, DefDef(constr), List(applyDefDef)).withSpan(span)
-
-          /* runtime.DynamicImport[A]({
-           *   class $anon ...
-           *   new $anon
-           * })
-           */
+          // runtime.DynamicImport[A](new ...)
           ref(jsdefn.Runtime_dynamicImport)
             .appliedToTypeTree(tpeArg)
-            .appliedTo(Block(cdef :: Nil, New(cls.typeRef, Nil)))
+            .appliedTo(dynamicImportThunkAnonClass)
 
         // Compile-time errors and warnings for js.Dynamic.literal
         case Apply(Apply(fun, nameArgs), args)
