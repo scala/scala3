@@ -2,4 +2,4 @@ set -e
 
 path=$(cs fetch -p org.scala-lang:scala-compiler:2.13.0)
 
-measure -source 3.0-migration -classpath "$path" $(find $PROG_HOME/dotty/community-build/community-projects/scalap/src/scalap -name "*.scala")
+measure -source 3.0-migration -classpath "$path" -Ysafe-init $(find $PROG_HOME/dotty/community-build/community-projects/scalap/src/scalap -name "*.scala")
