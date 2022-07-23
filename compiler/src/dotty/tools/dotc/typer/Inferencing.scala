@@ -437,7 +437,8 @@ object Inferencing {
     }
 
     // We add the created symbols to GADT constraint here.
-    if (res.nonEmpty) ctx.gadt.addToConstraint(res)
+    if res.nonEmpty then ctx.gadt.addToConstraint(res)
+
     res
   }
 

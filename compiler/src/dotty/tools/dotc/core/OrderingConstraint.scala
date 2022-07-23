@@ -454,7 +454,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  of the parameter elsewhere in the constraint by type `tp`.
    */
   def replace(param: TypeParamRef, tp: Type)(using Context): OrderingConstraint =
-    val replacement = tp.dealiasKeepAnnots.stripTypeVar
+    val replacement = tp.dealiasKeepAnnots
     if param == replacement then this.checkNonCyclic()
     else
       assert(replacement.isValueTypeOrLambda)
