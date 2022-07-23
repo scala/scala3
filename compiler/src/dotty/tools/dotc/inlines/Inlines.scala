@@ -195,23 +195,26 @@ object Inlines:
       report.error("inline unapply methods with given parameters before the scrutinee are not supported", fun)
 
     val sym = unapp.symbol
-    val cls = newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
-    val constr = newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
 
-    val targs = fun match
-      case TypeApply(_, targs) => targs
-      case _ => Nil
-    val unapplyInfo = sym.info match
-      case info: PolyType => info.instantiate(targs.map(_.tpe))
-      case info => info
+    var unapplySym1: Symbol = NoSymbol // created from within AnonClass() and used afterwards
 
-    val unappplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
-    val unapply = DefDef(unappplySym, argss =>
-      inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
-    )
-    val cdef = ClassDef(cls, DefDef(constr), List(unapply))
-    val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
-    val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
+    val newUnapply = AnonClass(ctx.owner, List(defn.ObjectType), sym.coord) { cls =>
+      val targs = fun match
+        case TypeApply(_, targs) => targs
+        case _ => Nil
+      val unapplyInfo = sym.info match
+        case info: PolyType => info.instantiate(targs.map(_.tpe))
+        case info => info
+
+      val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
+      val unapply = DefDef(unapplySym.asTerm, argss =>
+        inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unapplySym))
+      )
+      unapplySym1 = unapplySym
+      List(unapply)
+    }
+
+    val newFun = newUnapply.select(unapplySym1).withSpan(unapp.span)
     cpy.UnApply(unapp)(newFun, trailingImplicits, patterns)
   end inlinedUnapply
 

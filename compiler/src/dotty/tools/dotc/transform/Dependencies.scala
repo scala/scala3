@@ -7,6 +7,8 @@ import SymUtils.*
 import collection.mutable.{LinkedHashMap, TreeSet}
 import annotation.constructorOnly
 
+import dotty.tools.backend.sjs.JSDefinitions.jsdefn
+
 /** Exposes the dependencies of the `root` tree in three functions or maps:
  *  `freeVars`, `tracked`, and `logicalOwner`.
  */
@@ -182,14 +184,24 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
     def setLogicOwner(local: Symbol) =
       val encClass = local.owner.enclosingClass
       val preferEncClass =
-        encClass.isStatic
-          // non-static classes can capture owners, so should be avoided
-        && (encClass.isProperlyContainedIn(local.topLevelClass)
-             // can be false for symbols which are defined in some weird combination of supercalls.
-            || encClass.is(ModuleClass, butNot = Package)
-                // needed to not cause deadlocks in classloader. see t5375.scala
-            )
-      logicOwner(sym) = if preferEncClass then encClass else local.enclosingPackageClass 
+        (
+          encClass.isStatic
+            // non-static classes can capture owners, so should be avoided
+          && (encClass.isProperlyContainedIn(local.topLevelClass)
+              // can be false for symbols which are defined in some weird combination of supercalls.
+              || encClass.is(ModuleClass, butNot = Package)
+                  // needed to not cause deadlocks in classloader. see t5375.scala
+              )
+        )
+        || (
+          /* Scala.js: Never move any member beyond the boundary of a DynamicImportThunk.
+           * DynamicImportThunk subclasses are boundaries between the eventual ES modules
+           * that can be dynamically loaded. Moving members across that boundary changes
+           * the dynamic and static dependencies between ES modules, which is forbidden.
+           */
+          ctx.settings.scalajs.value && encClass.isSubClass(jsdefn.DynamicImportThunkClass)
+        )
+      logicOwner(sym) = if preferEncClass then encClass else local.enclosingPackageClass
 
     tree match
       case tree: Ident =>

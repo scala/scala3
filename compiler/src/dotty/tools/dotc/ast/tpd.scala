@@ -340,27 +340,35 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  Its position is the union of all functions in `fns`.
    */
   def AnonClass(parents: List[Type], fns: List[TermSymbol], methNames: List[TermName])(using Context): Block = {
-    val owner = fns.head.owner
+    AnonClass(fns.head.owner, parents, fns.map(_.span).reduceLeft(_ union _)) { cls =>
+      def forwarder(fn: TermSymbol, name: TermName) = {
+        val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
+        for overridden <- fwdMeth.allOverriddenSymbols do
+          if overridden.is(Extension) then fwdMeth.setFlag(Extension)
+          if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
+        DefDef(fwdMeth, ref(fn).appliedToArgss(_))
+      }
+      fns.lazyZip(methNames).map(forwarder)
+    }
+  }
+
+  /** An anonymous class
+   *
+   *      new parents { body }
+   *
+   * with the specified owner and position.
+   */
+  def AnonClass(owner: Symbol, parents: List[Type], coord: Coord)(body: ClassSymbol => List[Tree])(using Context): Block =
     val parents1 =
       if (parents.head.classSymbol.is(Trait)) {
         val head = parents.head.parents.head
         if (head.isRef(defn.AnyClass)) defn.AnyRefType :: parents else head :: parents
       }
       else parents
-    val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
-        coord = fns.map(_.span).reduceLeft(_ union _))
+    val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1, coord = coord)
     val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
-    def forwarder(fn: TermSymbol, name: TermName) = {
-      val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
-      for overridden <- fwdMeth.allOverriddenSymbols do
-        if overridden.is(Extension) then fwdMeth.setFlag(Extension)
-        if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
-      DefDef(fwdMeth, ref(fn).appliedToArgss(_))
-    }
-    val forwarders = fns.lazyZip(methNames).map(forwarder)
-    val cdef = ClassDef(cls, DefDef(constr), forwarders)
+    val cdef = ClassDef(cls, DefDef(constr), body(cls))
     Block(cdef :: Nil, New(cls.typeRef, Nil))
-  }
 
   def Import(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import =
     ta.assignType(untpd.Import(expr, selectors), newImportSymbol(ctx.owner, expr))

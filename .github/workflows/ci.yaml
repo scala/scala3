@@ -122,9 +122,13 @@ jobs:
 
       - name: Cmd Tests
         run: |
-          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
+
+      - name: Scala.js Test
+        run: |
+          ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
 
   test_windows_fast:
     runs-on: [self-hosted, Windows]
@@ -167,7 +171,7 @@ jobs:
         shell: cmd
 
       - name: Scala.js Test
-        run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
+        run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
 
   test_windows_full:
@@ -193,7 +197,7 @@ jobs:
         shell: cmd
 
       - name: Scala.js Test
-        run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
+        run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
 
   mima:
@@ -464,9 +468,13 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
+
+      - name: Scala.js Test
+        run: |
+          ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
 
   publish_nightly:
     runs-on: [self-hosted, Linux]

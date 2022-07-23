@@ -279,6 +279,32 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           val ctorOf = ref(jsdefn.JSPackage_constructorOf).appliedToTypeTree(tpeArg)
           ref(jsdefn.Runtime_newConstructorTag).appliedToType(tpeArg.tpe).appliedTo(ctorOf)
 
+        /* Rewrite js.dynamicImport[T](body) into
+         *
+         * runtime.dynamicImport[T](
+         *   new DynamicImportThunk { def apply(): Any = body }
+         * )
+         */
+        case Apply(TypeApply(fun, List(tpeArg)), List(body))
+            if fun.symbol == jsdefn.JSPackage_dynamicImport =>
+          val span = tree.span
+          val currentOwner = ctx.owner
+
+          assert(currentOwner.isTerm, s"unexpected owner: $currentOwner at ${tree.sourcePos}")
+
+          // new DynamicImportThunk { def apply(): Any = body }
+          val dynamicImportThunkAnonClass = AnonClass(currentOwner, List(jsdefn.DynamicImportThunkType), span) { cls =>
+            val applySym = newSymbol(cls, nme.apply, Method, MethodType(Nil, Nil, defn.AnyType), coord = span).entered
+            val newBody = transform(body).changeOwnerAfter(currentOwner, applySym, thisPhase)
+            val applyDefDef = DefDef(applySym, newBody)
+            List(applyDefDef)
+          }
+
+          // runtime.DynamicImport[A](new ...)
+          ref(jsdefn.Runtime_dynamicImport)
+            .appliedToTypeTree(tpeArg)
+            .appliedTo(dynamicImportThunkAnonClass)
+
         // Compile-time errors and warnings for js.Dynamic.literal
         case Apply(Apply(fun, nameArgs), args)
             if fun.symbol == jsdefn.JSDynamicLiteral_applyDynamic ||

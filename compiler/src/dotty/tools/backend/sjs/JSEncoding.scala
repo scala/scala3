@@ -24,6 +24,8 @@ import org.scalajs.ir.UTF8String
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
+import JSDefinitions.jsdefn
+
 /** Encoding of symbol names for JavaScript
  *
  *  Some issues that this encoding solves:
@@ -53,6 +55,8 @@ object JSEncoding {
 
   private val ScalaRuntimeNothingClassName = ClassName("scala.runtime.Nothing$")
   private val ScalaRuntimeNullClassName = ClassName("scala.runtime.Null$")
+
+  private val dynamicImportForwarderSimpleName = SimpleMethodName("dynamicImport$")
 
   // Fresh local name generator ----------------------------------------------
 
@@ -211,14 +215,32 @@ object JSEncoding {
     js.MethodIdent(methodName)
   }
 
-  def encodeStaticMemberSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position): js.MethodIdent = {
+  def encodeJSNativeMemberSym(sym: Symbol)(using Context, ir.Position): js.MethodIdent = {
+    require(sym.hasAnnotation(jsdefn.JSNativeAnnot),
+        "encodeJSNativeMemberSym called with non-native symbol: " + sym)
+    if (sym.is(Method))
+      encodeMethodSym(sym)
+    else
+      encodeFieldSymAsMethod(sym)
+  }
+
+  def encodeStaticMemberSym(sym: Symbol)(using Context, ir.Position): js.MethodIdent = {
     require(sym.is(Flags.JavaStaticTerm),
         "encodeStaticMemberSym called with non-static symbol: " + sym)
+    encodeFieldSymAsMethod(sym)
+  }
 
+  private def encodeFieldSymAsMethod(sym: Symbol)(using Context, ir.Position): js.MethodIdent = {
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.info)
     val methodName = MethodName(name.mangledString, Nil, resultTypeRef)
+    js.MethodIdent(methodName)
+  }
+
+  def encodeDynamicImportForwarderIdent(params: List[Symbol])(using Context, ir.Position): js.MethodIdent = {
+    val paramTypeRefs = params.map(sym => paramOrResultTypeRef(sym.info))
+    val resultTypeRef = jstpe.ClassRef(ir.Names.ObjectClass)
+    val methodName = MethodName(dynamicImportForwarderSimpleName, paramTypeRefs, resultTypeRef)
     js.MethodIdent(methodName)
   }
 
