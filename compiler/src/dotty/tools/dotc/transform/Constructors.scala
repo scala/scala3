@@ -154,14 +154,19 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         case Ident(_) | Select(This(_), _) =>
           var sym = tree.symbol
           def isOverridableSelect = tree.isInstanceOf[Select] && !sym.isEffectivelyFinal
-          def keepUnlessInSuperCall = sym.is(Mutable) || isOverridableSelect
-            // If true, switch to constructor parameters only in the super call.
+          def switchOutsideSupercall = !sym.is(Mutable) && !isOverridableSelect
+            // If true, switch to constructor parameters also in the constructor body
+            // that follows the super call.
             // Variables need to go through the getter since they might have been updated.
             // References via this need to use the getter as well as long as that getter
-            // can be overriddem. This is needed to handle overrides correctly. See run/i15723.scala.
-            // But in a supercall we need to switch to parameters in any case since then
-            // calling the virtual getter would be illegal.
-          if sym.is(ParamAccessor) && (!keepUnlessInSuperCall || inSuperCall) then
+            // can be overridden. This is needed to handle overrides correctly. See run/i15723.scala.
+            // Note that in a supercall we need to switch to parameters in any case since then
+            // calling the virtual getter call would be illegal.
+            //
+            // Note: We intentionally treat references via this and identifiers differently
+            // here. Identifiers in a constructor always bind to the parameter. This is
+            // done for backwards compatbility.
+          if sym.is(ParamAccessor) && (switchOutsideSupercall || inSuperCall) then
             sym = sym.subst(accessors, paramSyms)
           if sym.maybeOwner.isConstructor then ref(sym).withSpan(tree.span) else tree
         case Apply(fn, Nil) =>
