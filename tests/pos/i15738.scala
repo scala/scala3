@@ -1,14 +1,14 @@
 object Test {
   trait Transaction
-  type Transactional[T] = (Transaction) ?=> T
+  type Transactional[T] = (t: Transaction) ?=> T
 
   def ff(x: Int): Transactional[Int] = {
-    //summon[Transaction]
+    summon[Transaction]
     x
   }
 
   def fff(x: Int): Transactional[Int] = {
-    //summon[Transaction]
+    summon[Transaction]
     val x1 = ff(x)
     x1
   }
