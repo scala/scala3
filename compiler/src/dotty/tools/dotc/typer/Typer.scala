@@ -3704,7 +3704,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         missingArgs(wtp)
     }
 
-    def isContextFunctionRef(wtp: Type): Boolean = wtp match {
+    def isContextFunctionRef(wtp: Type): Boolean = wtp.dealias match {
       case RefinedType(parent, nme.apply, _) =>
         isContextFunctionRef(parent) // apply refinements indicate a dependent CFT
       case _ =>
