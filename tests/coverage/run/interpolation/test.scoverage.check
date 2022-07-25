@@ -126,6 +126,23 @@ interpolation/test.scala
 Test$
 Object
 <empty>.Test$
+main
+229
+244
+10
+zipWithIndex
+Select
+false
+0
+false
+xs.zipWithIndex
+
+7
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
 $anonfun
 267
 276
@@ -137,7 +154,7 @@ false
 false
 s"$i: $s"
 
-7
+8
 interpolation/test.scala
 <empty>
 Test$
@@ -154,7 +171,7 @@ false
 false
 println(s"$i: $s")
 
-8
+9
 interpolation/test.scala
 <empty>
 Test$
@@ -171,7 +188,7 @@ false
 false
 xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
 
-9
+10
 interpolation/test.scala
 <empty>
 Test$
@@ -188,7 +205,7 @@ false
 false
 simple(1, "abc")
 
-10
+11
 interpolation/test.scala
 <empty>
 Test$
@@ -205,7 +222,7 @@ false
 false
 println(simple(1, "abc"))
 
-11
+12
 interpolation/test.scala
 <empty>
 Test$
@@ -222,7 +239,7 @@ false
 false
 hexa(127)
 
-12
+13
 interpolation/test.scala
 <empty>
 Test$
@@ -239,7 +256,7 @@ false
 false
 println(hexa(127))
 
-13
+14
 interpolation/test.scala
 <empty>
 Test$
@@ -256,7 +273,7 @@ false
 false
 raw"a\nb"
 
-14
+15
 interpolation/test.scala
 <empty>
 Test$
@@ -273,7 +290,7 @@ false
 false
 println(raw"a\nb")
 
-15
+16
 interpolation/test.scala
 <empty>
 Test$
