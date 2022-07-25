@@ -1,3 +1,4 @@
+// Compiles under #14026
 class Inv[A <: Singleton](x: A)
 object Inv {
   def empty[A <: Singleton]: Inv[A] = new Inv(???)

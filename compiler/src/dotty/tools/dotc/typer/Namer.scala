@@ -1683,6 +1683,10 @@ class Namer { typer: Typer =>
             // are better ways to achieve this. It would be good if we could get rid of this code.
             // It seems at least partially redundant with the nesting level checking on TypeVar
             // instantiation.
+            // It turns out if we fix levels on instantiation we still need this code.
+            // Examples that fail otherwise are pos/scalaz-redux.scala and pos/java-futures.scala.
+            // So fixing levels at instantiation avoids the soundness problem but apparently leads
+            // to type inference problems since it comes too late.
             if !Config.checkLevels then
               val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))

@@ -4501,13 +4501,9 @@ object Types {
    *  @param  creatorState  The typer state in which the variable was created.
    *  @param  nestingLevel  Symbols with a nestingLevel strictly greater than this
    *                        will not appear in the instantiation of this type variable.
-   *                        This is enforced in `ConstraintHandling` by:
-   *                        - Maintaining the invariant that the `nonParamBounds`
-   *                          of a type variable never refer to a type with a
-   *                          greater `nestingLevel` (see `legalBound` for the reason
-   *                          why this cannot be delayed until instantiation).
-   *                        - On instantiation, replacing any param in the param bound
-   *                          with a level greater than nestingLevel (see `fullLowerBound`).
+   *                        This is enforced in `ConstraintHandling#fixLevels`.
+   *                        The `nestingLevel` of a type variable can be made smaller when
+   *                        fixing the levels for some other type variable instance.
    */
   final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState | Null, var nestingLevel: Int) extends CachedProxyType with ValueType {
     private var currentOrigin = initOrigin

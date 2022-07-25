@@ -1,3 +1,4 @@
+// Compiles under 14026
 object Test {
   sealed trait Container { s =>
     type A

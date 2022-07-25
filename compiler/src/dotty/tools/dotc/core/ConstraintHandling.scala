@@ -463,14 +463,30 @@ trait ConstraintHandling {
       }
     }
 
+  /** Fix instance type `tp` by avoidance  so that it does not contain references
+   *  to types at level > `maxLevel`.
+   *  @param tp         the type to be fixed
+   *  @param fromBelow  whether type was obtained from lower bound
+   *  @param maxLevel   the maximum level of references allowed
+   *  @param param      the parameter that was instantiated
+   */
   private def fixLevels(tp: Type, fromBelow: Boolean, maxLevel: Int, param: TypeParamRef)(using Context) =
 
     def needsFix(tp: NamedType) =
       (tp.prefix eq NoPrefix) && tp.symbol.nestingLevel > maxLevel
 
+    /** An accumulator that determines whether levels need to be fixed
+     *  and computes on the side sets of nested type variables that need
+     *  to be instantiated.
+     */
     class NeedsLeveling extends TypeAccumulator[Boolean]:
       if !fromBelow then variance = -1
+
+      /** Nested type variables that should be instiated to theor lower (respoctively
+       *  upper) bounds.
+       */
       var nestedVarsLo, nestedVarsHi: SimpleIdentitySet[TypeVar] = SimpleIdentitySet.empty
+
       def apply(need: Boolean, tp: Type) =
         need || tp.match
           case tp: NamedType =>
@@ -483,17 +499,24 @@ trait ConstraintHandling {
               if variance > 0 then nestedVarsLo += tp
               else if variance < 0 then nestedVarsHi += tp
               else tp.nestingLevel = maxLevel
+                // For invariant type variables, we use a different strategy.
+                // Rather than instantiating to a bound and then propagating in an
+                // AvoidMap, change the nesting level of an invariant type
+                // variable to `maxLevel`. This means that the type variable will be
+                // instantiated later to a less nested type. If there are other references
+                // to the same type variable that do not come from the type undergoing
+                // `fixLevels`, this could lead to coarser types. But it has the potential
+                // to give a better approximation for the current type, since it avoids forming
+                // a Range in invariant position, which can lead to very coarse types further out.
               true
             else false
           case _ =>
             foldOver(need, tp)
+    end NeedsLeveling
 
     class LevelAvoidMap extends TypeOps.AvoidMap:
       if !fromBelow then variance = -1
       def toAvoid(tp: NamedType) = needsFix(tp)
-      //override def apply(tp: Type): Type = tp match
-      //  case tp: LazyRef => tp
-      //  case _ => super.apply(tp)
 
     if ctx.isAfterTyper then tp
     else
@@ -512,6 +535,8 @@ trait ConstraintHandling {
    *  contains a reference to the parameter itself (such occurrences can arise
    *  for F-bounded types, `addOneBound` ensures that they never occur in the
    *  lower bound).
+   *  The solved type is not allowed to contain references to types nested deeper
+   *  than `maxLevel`.
    *  Wildcard types in bounds are approximated by their upper or lower bounds.
    *  The constraint is left unchanged.
    *  @return the instantiating type
@@ -639,6 +664,8 @@ trait ConstraintHandling {
    *  lower bounds; otherwise it is the glb of its upper bounds. However,
    *  a lower bound instantiation can be a singleton type only if the upper bound
    *  is also a singleton type.
+   *  The instance type is not allowed to contain references to types nested deeper
+   *  than `maxLevel`.
    */
   def instanceType(param: TypeParamRef, fromBelow: Boolean, maxLevel: Int)(using Context): Type = {
     val approx = approximation(param, fromBelow, maxLevel).simplified
