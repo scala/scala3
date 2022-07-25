@@ -3704,16 +3704,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         missingArgs(wtp)
     }
 
-    def isContextFunctionRef(wtp: Type): Boolean = wtp.dealias match {
-      case RefinedType(parent, nme.apply, _) =>
-        isContextFunctionRef(parent) // apply refinements indicate a dependent CFT
-      case _ =>
-        val underlying = wtp.underlyingClassRef(refinementOK = false) // other refinements are not OK
-        defn.isContextFunctionClass(underlying.classSymbol)
-    }
-
     def adaptNoArgsOther(wtp: Type, functionExpected: Boolean): Tree = {
-      val implicitFun = isContextFunctionRef(wtp) && !untpd.isContextualClosure(tree)
+      val implicitFun = defn.isContextFunctionType(wtp) && !untpd.isContextualClosure(tree)
       def caseCompanion =
           functionExpected &&
           tree.symbol.is(Module) &&
