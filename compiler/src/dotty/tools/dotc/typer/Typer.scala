@@ -3980,8 +3980,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case None => tree
           else tree // other adaptations for selections are handled in typedSelect
         case _ if ctx.mode.is(Mode.ImplicitsEnabled) && tree.tpe.isValueType =>
-          checkConversionsSpecific(pt, tree.srcPos)
-          inferView(tree, pt) match
+          if pt.isRef(defn.AnyValClass, skipRefined = false)
+              || pt.isRef(defn.ObjectClass, skipRefined = false)
+          then
+            recover(TooUnspecific(pt))
+          else inferView(tree, pt) match
             case SearchSuccess(found, _, _, isExtension) =>
               if isExtension then found
               else

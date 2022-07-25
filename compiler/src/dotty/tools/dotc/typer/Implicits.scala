@@ -503,6 +503,14 @@ object Implicits:
   @sharable val ImplicitSearchTooLargeFailure: SearchFailure =
     SearchFailure(ImplicitSearchTooLarge, NoSpan)(using NoContext)
 
+  /** A failure value indicating that an implicit search for a conversion was not tried */
+  class TooUnspecific(target: Type) extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty):
+    override def whyNoConversion(using Context): String =
+      i"""
+         |Note that implicit conversions were not tried because the result of an implicit conversion
+         |must be more specific than $target"""
+    override def toString = s"TooUnspecific"
+
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(using Context): String =
