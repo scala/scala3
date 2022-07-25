@@ -265,9 +265,8 @@ object projects:
 
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
-    sbtTestCommand   = "jvm/test;js/test",
-    sbtPublishCommand = "jvm/publishLocal;js/publishLocal",
-    sbtDocCommand = forceDoc("jvm")
+    sbtTestCommand   = "coreJVM/test;coreJS/test",
+    sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal"
   )
 
   lazy val scalatest: SbtCommunityProject = SbtCommunityProject(
