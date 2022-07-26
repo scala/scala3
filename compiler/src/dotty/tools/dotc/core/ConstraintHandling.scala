@@ -103,12 +103,15 @@ trait ConstraintHandling {
    *  of `1`. So the lower bound is `1 | x.M` and when we level-avoid that we
    *  get `1 | Int & String`, which simplifies to `Int`.
    */
-  protected var trustBounds = true
+  private var myTrustBounds = true
 
   inline def withUntrustedBounds(op: => Type): Type =
-    val saved = trustBounds
-    trustBounds = false
-    try op finally trustBounds = saved
+    val saved = myTrustBounds
+    myTrustBounds = false
+    try op finally myTrustBounds = saved
+
+  def trustBounds: Boolean =
+    !Config.checkLevelsOnInstantiation || myTrustBounds
 
   def checkReset() =
     assert(addConstraintInvocations == 0)
@@ -131,7 +134,7 @@ trait ConstraintHandling {
     level <= maxLevel
     || ctx.isAfterTyper || !ctx.typerState.isCommittable // Leaks in these cases shouldn't break soundness
     || level == Int.MaxValue // See `nestingLevel` above.
-    || !Config.checkLevels
+    || !Config.checkLevelsOnConstraints
 
   /** If `param` is nested deeper than `maxLevel`, try to instantiate it to a
    *  fresh type variable of level `maxLevel` and return the new variable.
@@ -518,7 +521,7 @@ trait ConstraintHandling {
       if !fromBelow then variance = -1
       def toAvoid(tp: NamedType) = needsFix(tp)
 
-    if ctx.isAfterTyper then tp
+    if !Config.checkLevelsOnInstantiation || ctx.isAfterTyper then tp
     else
       val needsLeveling = NeedsLeveling()
       if needsLeveling(false, tp) then

@@ -1687,7 +1687,7 @@ class Namer { typer: Typer =>
             // Examples that fail otherwise are pos/scalaz-redux.scala and pos/java-futures.scala.
             // So fixing levels at instantiation avoids the soundness problem but apparently leads
             // to type inference problems since it comes too late.
-            if !Config.checkLevels then
+            if !Config.checkLevelsOnConstraints then
               val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
                 report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
