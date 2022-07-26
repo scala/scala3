@@ -631,7 +631,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def isSubInfo(info1: Type, info2: Type): Boolean = (info1, info2) match
           case (info1: PolyType, info2: PolyType) =>
-            sameLength(info1.paramNames, info2.paramNames)
+            info1.paramNames.hasSameLengthAs(info2.paramNames)
             && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
           case (info1: MethodType, info2: MethodType) =>
             matchingMethodParams(info1, info2, precise = false)

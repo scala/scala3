@@ -187,7 +187,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       recheck(tree.fun).widen match
         case fntpe: MethodType =>
-          assert(sameLength(fntpe.paramInfos, tree.args))
+          assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
           val formals =
             if tree.symbol.is(JavaDefined) then mapJavaArgs(fntpe.paramInfos)
             else fntpe.paramInfos
@@ -208,7 +208,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       recheck(tree.fun).widen match
         case fntpe: PolyType =>
-          assert(sameLength(fntpe.paramInfos, tree.args))
+          assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
           val argTypes = tree.args.map(recheck(_))
           constFold(tree, fntpe.instantiate(argTypes))
 
