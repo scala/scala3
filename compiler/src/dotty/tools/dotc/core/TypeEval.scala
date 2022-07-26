@@ -64,7 +64,12 @@ object TypeEval:
         // currently not a concrete known type
         case _: TypeParamRef => None
         // constant if the term is constant
-        case t: TermRef => isConst(t.underlying)
+        case t: TermRef =>
+          if t.denot.symbol.flagsUNSAFE.is(Flags.Param) then
+            // might be substituted later
+            None
+          else
+            isConst(t.underlying)
         // an operation type => recursively check all argument compositions
         case applied: AppliedType if defn.isCompiletimeAppliedType(applied.typeSymbol) =>
           val argsConst = applied.args.map(isConst)
