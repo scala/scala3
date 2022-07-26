@@ -904,7 +904,7 @@ object Parsers {
       && {
         lookahead.observeColonEOL(inTemplate = false)
         lookahead.nextToken()
-        canStartTypeTokens.contains(lookahead.token)
+        canStartInfixTypeTokens.contains(lookahead.token)
       }
 
     /** Is current ident a `*`, and is it followed by a `)`, `, )`, `,EOF`? The latter two are not
@@ -4031,8 +4031,8 @@ object Parsers {
       stats.toList
     }
 
-    /** SelfType ::=  id [‘:’ InfixType] ‘=>’
-     *            |  ‘this’ ‘:’ InfixType ‘=>’
+    /** SelfType ::=  id [‘:’ [CaptureSet] InfixType] ‘=>’
+     *            |  ‘this’ ‘:’ [CaptureSet] InfixType ‘=>’
      */
     def selfType(): ValDef =
       if (in.isIdent || in.token == THIS)
@@ -4048,7 +4048,10 @@ object Parsers {
           val selfTpt =
             if in.isColon then
               in.nextToken()
-              infixType()
+              if in.token == LBRACE && followingIsCaptureSet() then
+                CapturingTypeTree(captureSet(), infixType())
+              else
+                infixType()
             else
               if selfName == nme.WILDCARD then accept(COLONfollow)
               TypeTree()
