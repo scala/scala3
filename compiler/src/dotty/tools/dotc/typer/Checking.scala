@@ -721,12 +721,6 @@ object Checking {
           else "Cannot override non-inline parameter with an inline parameter",
           p1.srcPos)
 
-  def checkConversionsSpecific(to: Type, pos: SrcPos)(using Context): Unit =
-    if to.isRef(defn.AnyValClass, skipRefined = false)
-       || to.isRef(defn.ObjectClass, skipRefined = false)
-    then
-      report.error(em"the result of an implicit conversion must be more specific than $to", pos)
-
   def checkValue(tree: Tree)(using Context): Unit =
     val sym = tree.tpe.termSymbol
     if sym.isNoValue && !ctx.isJava then
