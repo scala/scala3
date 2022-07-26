@@ -2988,7 +2988,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       def redux(canApprox: Boolean): MatchResult =
         caseLambda match
           case caseLambda: HKTypeLambda =>
-            val instances = paramInstances(canApprox)(new Array(caseLambda.paramNames.length), pat)
+            val instances = paramInstances(canApprox)(Array.fill(caseLambda.paramNames.length)(NoType), pat)
             instantiateParams(instances)(body) match
               case Range(lo, hi) =>
                 MatchResult.NoInstance {
