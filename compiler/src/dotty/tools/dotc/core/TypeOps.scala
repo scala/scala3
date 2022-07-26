@@ -712,7 +712,16 @@ object TypeOps:
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
+    val ctx1 = ctx.fresh.setExploreTyperState().setFreshGADTBounds
+    val ctx2 = parent match
+      case _: RefinedType =>
+        ctx1
+        // patmat/t9657
+        // When running Bicycle.type <:< Vehicle { A = P }
+        // TypeComparer is happy to infer GADT bounds P >: Pedal.type <: Petrol.type & Pedal.type
+        // Despite the fact that Bicycle is an object, and thus final, so its type A can only be Pedal.type.
+      case _              => ctx1.addMode(Mode.GadtConstraintInference)
+    inContext(ctx2) {
       instantiateToSubType(childTp, parent).dealias
     }
   }
@@ -828,6 +837,13 @@ object TypeOps:
     val inferThisMap = new InferPrefixMap
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
+
+    val getAbstractSymbols = new TypeAccumulator[List[Symbol]]:
+      def apply(xs: List[Symbol], tp: Type) = tp.dealias match
+        case tp: TypeRef if !tp.symbol.isClass => foldOver(tp.symbol :: xs, tp)
+        case tp                                => foldOver(xs, tp)
+    val syms2 = getAbstractSymbols(Nil, tp2).reverse
+    if syms2.nonEmpty then ctx.gadt.addToConstraint(syms2)
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
