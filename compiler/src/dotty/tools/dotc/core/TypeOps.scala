@@ -712,16 +712,7 @@ object TypeOps:
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    val ctx1 = ctx.fresh.setExploreTyperState().setFreshGADTBounds
-    val ctx2 = parent match
-      case _: RefinedType =>
-        ctx1
-        // patmat/t9657
-        // When running Bicycle.type <:< Vehicle { A = P }
-        // TypeComparer is happy to infer GADT bounds P >: Pedal.type <: Petrol.type & Pedal.type
-        // Despite the fact that Bicycle is an object, and thus final, so its type A can only be Pedal.type.
-      case _              => ctx1.addMode(Mode.GadtConstraintInference)
-    inContext(ctx2) {
+    inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds.addMode(Mode.GadtConstraintInference)) {
       instantiateToSubType(childTp, parent).dealias
     }
   }

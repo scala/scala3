@@ -1945,8 +1945,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
-      else if (isUpper) gadtAddUpperBound(tparam, bound)
-      else gadtAddLowerBound(tparam, bound)
+      else
+        val savedGadt = ctx.gadt.fresh
+        val success = if isUpper then gadtAddUpperBound(tparam, bound) else gadtAddLowerBound(tparam, bound)
+        if !success then ctx.gadt.restore(savedGadt)
+        success
     }
   }
 
