@@ -712,7 +712,7 @@ object TypeOps:
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
+    inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds.addMode(Mode.GadtConstraintInference)) {
       instantiateToSubType(childTp, parent).dealias
     }
   }
@@ -828,6 +828,13 @@ object TypeOps:
     val inferThisMap = new InferPrefixMap
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
+
+    val getAbstractSymbols = new TypeAccumulator[List[Symbol]]:
+      def apply(xs: List[Symbol], tp: Type) = tp.dealias match
+        case tp: TypeRef if !tp.symbol.isClass => foldOver(tp.symbol :: xs, tp)
+        case tp                                => foldOver(xs, tp)
+    val syms2 = getAbstractSymbols(Nil, tp2).reverse
+    if syms2.nonEmpty then ctx.gadt.addToConstraint(syms2)
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to

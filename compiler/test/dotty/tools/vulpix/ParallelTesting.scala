@@ -168,7 +168,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   ) extends TestSource {
     def sourceFiles: Array[JFile] = files.filter(isSourceFile)
 
-    override def toString() = outDir.toString
+    override def toString() = sourceFiles match { case Array(f) => f.getPath case _ => outDir.getPath }
   }
 
   /** A test source whose files will be compiled separately according to their
