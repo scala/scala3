@@ -1,4 +1,5 @@
 package scala.annotation
+import annotation.experimental
 
 /** Marks an annotated class as a capability.
  *  If the annotation is present and -Ycc is set, any (possibly aliased
@@ -10,4 +11,4 @@ package scala.annotation
  *  THere, the capture set of any instance of `CanThrow` is assumed to be
  *  `{*}`.
  */
-final class capability extends StaticAnnotation
+@experimental final class capability extends StaticAnnotation
