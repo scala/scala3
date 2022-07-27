@@ -1,6 +1,7 @@
 package scala
+import annotation.experimental
 
 /** An annotation that indicates capture
  */
-class retains(xs: Any*) extends annotation.StaticAnnotation
+@experimental class retains(xs: Any*) extends annotation.StaticAnnotation
 
