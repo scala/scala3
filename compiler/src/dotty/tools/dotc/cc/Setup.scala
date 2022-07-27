@@ -333,7 +333,7 @@ extends tpd.TreeTraverser:
         mapOver(t)
   end SubstParams
 
-  private def transformTT(tree: TypeTree, boxed: Boolean)(using Context) =
+  private def transformTT(tree: TypeTree, boxed: Boolean)(using Context): Unit =
     tree.rememberType(
       if tree.isInstanceOf[InferredTypeTree]
       then transformInferredType(tree.tpe, boxed)
@@ -349,6 +349,10 @@ extends tpd.TreeTraverser:
       case tree @ ValDef(_, tpt: TypeTree, _) if tree.symbol.is(Mutable) =>
         transformTT(tpt, boxed = true)
         traverse(tree.rhs)
+      case tree @ TypeApply(fn, args) =>
+        traverse(fn)
+        for case arg: TypeTree <- args do
+          transformTT(arg, boxed = true)
       case _ =>
         traverseChildren(tree)
     tree match
