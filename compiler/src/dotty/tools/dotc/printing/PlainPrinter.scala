@@ -208,7 +208,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else if ctx.settings.YccDebug.value then
           changePrec(GlobalPrec)(box ~ refs.show ~ " " ~ toText(parent))
         else if !refs.isConst && refs.elems.isEmpty then
-          changePrec(GlobalPrec)("?" ~ " " ~ toText(parent))
+          changePrec(GlobalPrec)(box ~ "?" ~ " " ~ toText(parent))
         else if Config.printCaptureSetsAsPrefix then
           changePrec(GlobalPrec)(box ~ toText(refs) ~ " " ~ toText(parent))
         else

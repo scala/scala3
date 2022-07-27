@@ -37,6 +37,6 @@
 17 |  def tail = xs() // error: cannot have an inferred type
    |  ^^^^^^^^^^^^^^^
    |  Non-local method tail cannot have an inferred result type
-   |  {LazyCons.this.xs} lazylists.LazyList[? T]
+   |  {LazyCons.this.xs} lazylists.LazyList[box ? T]
    |  with non-empty capture set {LazyCons.this.xs}.
    |  The type needs to be declared explicitly.
