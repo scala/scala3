@@ -1131,7 +1131,6 @@ object Semantic:
      *
      */
     def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
-      val classRef = warm.klass.appliedRef
       val obj = warm.objekt
 
       def doPromote(klass: ClassSymbol, subClass: ClassSymbol, subClassSegmentHot: Boolean)(using Reporter): Unit =
@@ -1268,16 +1267,17 @@ object Semantic:
    */
   def check()(using Cache, WorkList, Context) = workList.work()
 
-  /** Perform actions with initial checking state.
+  /** Check the specified tasks
    *
-   *      Semantic.withInitialState {
+   *      Semantic.checkTasks {
    *         Semantic.addTask(...)
-   *         ...
-   *         Semantic.check()
    *      }
    */
-  def withInitialState[T](work: (Cache, WorkList) ?=> T): T =
-    work(using new Cache, new WorkList)
+  def checkTasks(using Context)(taskBuilder: WorkList ?=> Unit): Unit =
+    val workList = new WorkList
+    val cache = new Cache
+    taskBuilder(using workList)
+    Semantic.check()(using cache, workList, ctx)
 
 // ----- Semantic definition --------------------------------
 
