@@ -339,8 +339,8 @@ extends tpd.TreeTraverser:
       then transformInferredType(tree.tpe, boxed)
       else transformExplicitType(tree.tpe, boxed))
 
-  private def updateInfo(sym: Symbol, tpe: Type)(using Context) =
-    sym.updateInfoBetween(preRecheckPhase, thisPhase, tpe)
+  private def updateInfo(sym: Symbol, info: Type)(using Context) =
+    sym.updateInfoBetween(preRecheckPhase, thisPhase, info)
 
   def traverse(tree: Tree)(using Context): Unit =
     tree match

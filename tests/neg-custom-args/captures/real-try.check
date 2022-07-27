@@ -19,5 +19,5 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:30:4 -----------------------------------------------------------
 30 |  b.x // error
    |  ^^^
-   |  The expression's type {*} () -> Unit is not allowed to capture the root capability `*`.
+   |  The expression's type box {*} () -> Unit is not allowed to capture the root capability `*`.
    |  This usually means that a capability persists longer than its allowed lifetime.

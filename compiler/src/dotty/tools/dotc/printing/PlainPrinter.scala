@@ -202,7 +202,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ EventuallyCapturingType(parent, refs) =>
         def box =
-          Str("box ") provided tp.isBoxed && ctx.settings.YccDebug.value
+          Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
         if printDebug && !refs.isConst then
           changePrec(GlobalPrec)(box ~ s"$refs " ~ toText(parent))
         else if ctx.settings.YccDebug.value then

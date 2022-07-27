@@ -41,6 +41,6 @@
 31 |  val z2 = h[() -> Cap](() => x)(() => C())  // error
    |                        ^^^^^^^
    |                        Found:    {x} () -> Cap
-   |                        Required: () -> Cap
+   |                        Required: () -> box {*} C
    |
    | longer explanation available when compiling with `-explain`
