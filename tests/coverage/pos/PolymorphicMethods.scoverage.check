@@ -19,66 +19,15 @@
 # '' sign
 # ------------------------------------------
 0
-MatchNumbers.scala
+PolymorphicMethods.scala
 covtest
-MatchNumbers$
+PolyMeth$
 Object
-covtest.MatchNumbers$
+covtest.PolyMeth$
 f
-106
-126
-6
-<none>
-Block
-false
-0
-false
-case x: Int if x < 0
-
-1
-MatchNumbers.scala
-covtest
-MatchNumbers$
-Object
-covtest.MatchNumbers$
-f
-137
-148
-7
-<none>
-Block
-false
-0
-false
-case x: Int
-
-2
-MatchNumbers.scala
-covtest
-MatchNumbers$
-Object
-covtest.MatchNumbers$
-f
-158
-170
-8
-<none>
-Block
-false
-0
-false
-case y: Long
-
+36
+41
 3
-MatchNumbers.scala
-covtest
-MatchNumbers$
-Object
-covtest.MatchNumbers$
-f
-69
-74
-5
 f
 DefDef
 false
@@ -86,37 +35,71 @@ false
 false
 def f
 
+1
+PolymorphicMethods.scala
+covtest
+PolyMeth$
+Object
+covtest.PolyMeth$
+<init>
+60
+69
 4
-MatchNumbers.scala
-covtest
-MatchNumbers$
-Object
-covtest.MatchNumbers$
-<init>
-185
-189
-10
 f
 Apply
 false
 0
 false
-f(0)
+this.f(0)
 
-5
-MatchNumbers.scala
+2
+PolymorphicMethods.scala
 covtest
-MatchNumbers$
+PolyMeth$
 Object
-covtest.MatchNumbers$
+covtest.PolyMeth$
 <init>
-192
-197
-11
+147
+158
+6
+<init>
+Apply
+false
+0
+false
+C[String]()
+
+3
+PolymorphicMethods.scala
+covtest
+PolyMeth$
+Object
+covtest.PolyMeth$
+<init>
+147
+170
+6
 f
 Apply
 false
 0
 false
-f(1L)
+C[String]().f("str", 0)
+
+4
+PolymorphicMethods.scala
+covtest
+C
+Class
+covtest.C
+f
+187
+192
+9
+f
+DefDef
+false
+0
+false
+def f
 
