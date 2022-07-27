@@ -892,8 +892,17 @@ trait Applications extends Compatibility {
   def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = {
 
     def realApply(using Context): Tree = {
+      val resultProto = tree.fun match
+        case Select(New(_), _) if pt.isInstanceOf[ValueType] => pt
+          // Don't ignore expected value types of `new` expressions. If we have a `new C()`
+          // with expected type `C[T]` we want to use the type to instantiate `C`
+          // immediately. This is necessary since `C` might _also_ have using clauses
+          // that we want to instantiate with the best available type. See i15664.scala.
+        case _ => IgnoredProto(pt)
+          // Do ignore other expected result types, since there might be an implicit conversion
+          // on the result. We could drop this if we disallow unrestricted implicit conversions.
       val originalProto =
-        new FunProto(tree.args, IgnoredProto(pt))(this, tree.applyKind)(using argCtx(tree))
+        new FunProto(tree.args, resultProto)(this, tree.applyKind)(using argCtx(tree))
       record("typedApply")
       val fun1 = typedExpr(tree.fun, originalProto)
 

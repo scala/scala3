@@ -3304,25 +3304,23 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // try an implicit conversion or given extension
     if ctx.mode.is(Mode.ImplicitsEnabled) && !tree.name.isConstructorName && qual.tpe.isValueType then
       try
-        trace(i"try insert impl on qualifier $tree $pt") {
-          val selProto = selectionProto
-          inferView(qual, selProto) match
-            case SearchSuccess(found, _, _, isExtension) =>
-              if isExtension then return found
-              else
-                checkImplicitConversionUseOK(found)
-                return withoutMode(Mode.ImplicitsEnabled)(typedSelect(tree, pt, found))
-            case failure: SearchFailure =>
-              if failure.isAmbiguous then
-                return
-                  if !inSelect // in a selection we will do the canDefineFurther afterwards
-                     && canDefineFurther(qual.tpe.widen)
-                  then
-                    tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, inSelect)
-                  else
-                    err.typeMismatch(qual, selProto, failure.reason) // TODO: report NotAMember instead, but need to be aware of failure
-              rememberSearchFailure(qual, failure)
-        }
+        val selProto = selectionProto
+        trace(i"try insert impl on qualifier $tree $pt") { inferView(qual, selProto) } match
+          case SearchSuccess(found, _, _, isExtension) =>
+            if isExtension then return found
+            else
+              checkImplicitConversionUseOK(found)
+              return withoutMode(Mode.ImplicitsEnabled)(typedSelect(tree, pt, found))
+          case failure: SearchFailure =>
+            if failure.isAmbiguous then
+              return
+                if !inSelect // in a selection we will do the canDefineFurther afterwards
+                    && canDefineFurther(qual.tpe.widen)
+                then
+                  tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, inSelect)
+                else
+                  err.typeMismatch(qual, selProto, failure.reason) // TODO: report NotAMember instead, but need to be aware of failure
+            rememberSearchFailure(qual, failure)
       catch case ex: TypeError => nestedFailure(ex)
 
     EmptyTree
