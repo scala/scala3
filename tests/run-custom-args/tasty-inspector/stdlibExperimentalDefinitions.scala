@@ -46,6 +46,13 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.newMain.Help$",
   "scala.annotation.newMain.Names",
 
+  //// New feature: capture checking
+  "scala.annotation.capability",
+  "scala.annotation.internal.CaptureChecked",
+  "scala.annotation.internal.requiresCapability",
+  "scala.retains",
+  "scala.retainsByName",
+
   //// New APIs: Mirror
   // Can be stabilized in 3.3.0 or later.
   "scala.deriving.Mirror$.fromProductTyped", // This API is a bit convoluted. We may need some more feedback before we can stabilize it.
