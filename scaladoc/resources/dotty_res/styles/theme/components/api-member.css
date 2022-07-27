@@ -13,6 +13,7 @@
 
 .documentableElement .signature {
   margin-right: calc(3 * var(--base-spacing));
+  line-height: 1.5;
 }
 
 .documentableElement:hover {

@@ -424,3 +424,34 @@
 #content section:last-child {
   margin-bottom: calc(6 * var(--base-spacing));
 }
+
+.membersList {
+  position: relative;
+}
+
+#concise-view-switch {
+  position: absolute;
+  right: 0;
+  top: var(--base-spacing);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.membersList.concise .documentableElement {
+  padding-top: var(--base-spacing);
+  padding-bottom: var(--base-spacing);
+  margin: var(--base-spacing);
+}
+
+.membersList.concise .documentableBrief p {
+  margin-block-start: 0.5em;
+}
+
+.membersList.concise .documentableElement .modifiers {
+  display: none;
+}
+
+.membersList.concise .documentableElement.expand .modifiers {
+  display: unset;
+}

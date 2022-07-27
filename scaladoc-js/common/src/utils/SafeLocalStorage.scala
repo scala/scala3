@@ -20,7 +20,7 @@ class SafeLocalStorage[T <: js.Any](key: String, defaultValue: T) {
   def checkSupport[U](defaultValue: U)(callback: () => U): U =
     if isLocalStorageSupported then callback() else defaultValue
 
-  def parseData(data: String): T =
+  private def parseData(data: String): T =
     try {
       Option(JSON.parse(data).asInstanceOf[T]).getOrElse(defaultValue)
     } catch {

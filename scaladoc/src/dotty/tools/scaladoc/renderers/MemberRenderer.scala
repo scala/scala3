@@ -328,6 +328,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     div(cls := "membersList expand")(
     h2(cls := "h500")("Members list"),
+    div(cls := "body-small", id := "concise-view-switch")(
+      span("Concise view"),
+      label(cls := "switch")(
+        input(Attr("type") := "checkbox")(),
+        span(cls := "slider")()
+      )
+    ),
     renderTabs(
       singleSelection = false,
       buildGroup("Packages", Seq(
