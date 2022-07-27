@@ -49,6 +49,8 @@ extends tpd.TreeTraverser:
     def apply(t: Type) = mapOver(t) match
       case t1 @ AppliedType(tycon, args) if !defn.isNonRefinedFunction(t1) =>
         t1.derivedAppliedType(tycon, args.mapConserve(box))
+      case t1: AliasingBounds =>
+        t1.derivedAlias(t1.alias)
       case t1 @ TypeBounds(lo, hi) =>
         t1.derivedTypeBounds(box(lo), box(hi))
       case t1 =>
@@ -337,6 +339,9 @@ extends tpd.TreeTraverser:
       then transformInferredType(tree.tpe, boxed)
       else transformExplicitType(tree.tpe, boxed))
 
+  private def updateInfo(sym: Symbol, tpe: Type)(using Context) =
+    sym.updateInfoBetween(preRecheckPhase, thisPhase, tpe)
+
   def traverse(tree: Tree)(using Context): Unit =
     tree match
       case tree: DefDef if isExcluded(tree.symbol) =>
@@ -388,11 +393,10 @@ extends tpd.TreeTraverser:
               def complete(denot: SymDenotation)(using Context) =
                 denot.info = newInfo
                 recheckDef(tree, sym)
-            sym.updateInfoBetween(preRecheckPhase, thisPhase, completer)
+            updateInfo(sym, completer)
       case tree: Bind =>
         val sym = tree.symbol
-        sym.updateInfoBetween(preRecheckPhase, thisPhase,
-          transformInferredType(sym.info, boxed = false))
+        updateInfo(sym, transformInferredType(sym.info, boxed = false))
       case tree: TypeDef if tree.symbol.isClass =>
         val cls = tree.symbol.asClass
         val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
@@ -401,12 +405,18 @@ extends tpd.TreeTraverser:
           val newInfo = ClassInfo(prefix, cls, ps, decls,
             CapturingType(cinfo.selfType, localRefs)
               .showing(i"inferred self type for $cls: $result", capt))
-          cls.updateInfoBetween(preRecheckPhase, thisPhase, newInfo)
+          updateInfo(cls, newInfo)
           cls.thisType.asInstanceOf[ThisType].invalidateCaches()
           if cls.is(ModuleClass) then
             val modul = cls.sourceModule
-            modul.updateInfoBetween(preRecheckPhase, thisPhase,
-              CapturingType(modul.info, localRefs))
+            updateInfo(modul, CapturingType(modul.info, localRefs))
             modul.termRef.invalidateCaches()
+      case tree: TypeDef =>
+        val info = atPhase(preRecheckPhase)(tree.symbol.info)
+        val newInfo = transformExplicitType(info, boxed = false)
+        if newInfo ne info then
+          updateInfo(tree.symbol, newInfo)
+          capt.println(i"update info of ${tree.symbol} from $info to $newInfo")
+
       case _ =>
 end Setup
