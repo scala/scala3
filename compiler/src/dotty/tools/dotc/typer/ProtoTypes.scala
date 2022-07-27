@@ -188,20 +188,33 @@ object ProtoTypes {
       case _ => false
 
     override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean =
-      name == nme.WILDCARD || hasUnknownMembers(tp1) ||
-      {
-        val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
-        def qualifies(m: SingleDenotation) =
-          val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
-          isAccessible
-          && (memberProto.isRef(defn.UnitClass)
-             || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
-              // Note: can't use `m.info` here because if `m` is a method, `m.info`
-              //       loses knowledge about `m`'s default arguments.
-        mbr match { // hasAltWith inlined for performance
-          case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
-          case _ => mbr hasAltWith qualifies
-        }
+      name == nme.WILDCARD
+      || hasUnknownMembers(tp1)
+      || {
+        try
+          val mbr = if privateOK then tp1.member(name) else tp1.nonPrivateMember(name)
+          def qualifies(m: SingleDenotation) =
+            val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
+            isAccessible
+            && (memberProto.isRef(defn.UnitClass)
+              || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
+                // Note: can't use `m.info` here because if `m` is a method, `m.info`
+                //       loses knowledge about `m`'s default arguments.
+          mbr match // hasAltWith inlined for performance
+            case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
+            case _ => mbr hasAltWith qualifies
+        catch case ex: TypeError =>
+          // A scenario where this can happen is in pos/15673.scala:
+          // We have a type `CC[A]#C` where `CC`'s upper bound is `[X] => Any`, but
+          // the current constraint stipulates CC <: SeqOps[...], where `SeqOps` defines
+          // the `C` parameter. We try to resolve this using `argDenot` but `argDenot`
+          // consults the base type of `CC`, which is not `SeqOps`, so it does not
+          // find a corresponding argument. In fact, `argDenot` is not allowed to
+          // consult short-lived things like the current constraint, so it has no other
+          // choice. The problem will be healed later, when normal selection fails
+          // and we try to instantiate type variables to compensate. But we have to make
+          // sure we do not issue a type error before we get there.
+          false
       }
 
     def underlying(using Context): Type = WildcardType
