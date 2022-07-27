@@ -101,7 +101,24 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
           // (fun)[args]
           case TypeApply(fun, args) =>
-            cpy.TypeApply(tree)(transform(fun), args)
+            val tfun = transform(fun)
+            tfun match
+              case InstrumentCoverage.InstrumentedBlock(invokeCall, expr) =>
+                // expr[T] shouldn't be transformed to
+                // {invoked(...), expr}[T]
+                //
+                // but to
+                // {invoked(...), expr[T]}
+                //
+                // This is especially important for trees like (expr[T])(args),
+                // for which the wrong transformation crashes the compiler.
+                // See tests/coverage/pos/PolymorphicExtensions.scala
+                Block(
+                  invokeCall :: Nil,
+                  cpy.TypeApply(tree)(expr, args)
+                )
+              case _ =>
+                cpy.TypeApply(tree)(tfun, args)
 
           // a.b
           case Select(qual, name) =>
@@ -242,12 +259,12 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           val statementId = recordStatement(parent, pos, false)
           insertInvokeCall(body, pos, statementId)
 
-    /** Returns the tree, prepended by a call to Invoker.invoker */
+    /** Returns the tree, prepended by a call to Invoker.invoked */
     private def insertInvokeCall(tree: Tree, pos: SourcePosition, statementId: Int)(using Context): Tree =
       val callSpan = syntheticSpan(pos)
       Block(invokeCall(statementId, callSpan) :: Nil, tree).withSpan(callSpan.union(tree.span))
 
-    /** Generates Invoked.invoked(id, DIR) */
+    /** Generates Invoker.invoked(id, DIR) */
     private def invokeCall(id: Int, span: Span)(using Context): Tree =
       val outputPath = ctx.settings.coverageOutputDir.value
       ref(defn.InvokedMethodRef).withSpan(span)
@@ -353,3 +370,15 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 object InstrumentCoverage:
   val name: String = "instrumentCoverage"
   val description: String = "instrument code for coverage checking"
+
+  /** Extractor object for trees produced by `insertInvokeCall`. */
+  object InstrumentedBlock:
+    private def isInvokedCall(app: Apply)(using Context): Boolean =
+      app.span.isSynthetic && app.symbol == defn.InvokedMethodRef.symbol
+
+    def unapply(t: Tree)(using Context): Option[(Apply, Tree)] =
+      t match
+        case Block((app: Apply) :: Nil, expr) if isInvokedCall(app) =>
+          Some((app, expr))
+        case _ =>
+          None

@@ -1,0 +1,105 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+PolymorphicMethods.scala
+covtest
+PolyMeth$
+Object
+covtest.PolyMeth$
+f
+36
+41
+3
+f
+DefDef
+false
+0
+false
+def f
+
+1
+PolymorphicMethods.scala
+covtest
+PolyMeth$
+Object
+covtest.PolyMeth$
+<init>
+60
+69
+4
+f
+Apply
+false
+0
+false
+this.f(0)
+
+2
+PolymorphicMethods.scala
+covtest
+PolyMeth$
+Object
+covtest.PolyMeth$
+<init>
+147
+158
+6
+<init>
+Apply
+false
+0
+false
+C[String]()
+
+3
+PolymorphicMethods.scala
+covtest
+PolyMeth$
+Object
+covtest.PolyMeth$
+<init>
+147
+170
+6
+f
+Apply
+false
+0
+false
+C[String]().f("str", 0)
+
+4
+PolymorphicMethods.scala
+covtest
+C
+Class
+covtest.C
+f
+187
+192
+9
+f
+DefDef
+false
+0
+false
+def f
+
