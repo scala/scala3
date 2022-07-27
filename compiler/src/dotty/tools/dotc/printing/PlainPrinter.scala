@@ -422,8 +422,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           case tp: AliasingBounds =>
             " = " ~ toText(tp.alias)
           case TypeBounds(lo, hi) =>
-            (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo))
-            ~ (if hi.isAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
+            (if lo.isExactlyNothing then Text() else " >: " ~ toText(lo))
+            ~ (if hi.isExactlyAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
         tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
