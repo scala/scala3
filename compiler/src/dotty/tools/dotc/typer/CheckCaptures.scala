@@ -207,19 +207,19 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def addResultBoxes(tp: Type)(using Context): Type =
       def includeBoxed(res: Type) = tp.capturing(res.boxedCaptured)
-      val tpw = tp.widen
-      val boxedTpw = tpw.dealias match
+      val tp1 = tp.dealias
+      val boxedTp = tp1 match
         case tp1 @ AppliedType(_, args) if defn.isNonRefinedFunction(tp1) =>
           includeBoxed(args.last)
         case tp1 @ RefinedType(_, _, rinfo) if defn.isFunctionType(tp1) =>
           includeBoxed(rinfo.finalResultType)
         case tp1 @ CapturingType(parent, refs) =>
           val boxedParent = addResultBoxes(parent)
-          if boxedParent eq parent then tpw
+          if boxedParent eq parent then tp1
           else boxedParent.capturing(refs)
         case _ =>
-          tpw
-      if boxedTpw eq tpw then tp else boxedTpw
+          tp1
+      if boxedTp eq tp1 then tp else boxedTp
     end addResultBoxes
 
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
@@ -255,7 +255,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         selType
       else
         val qualCs = qualType.captureSet
-        //println(i"intersect $qualType, ${selType.widen}, $qualCs, $selCs")
+        capt.println(i"intersect $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
         if qualCs.mightSubcapture(selCs) then
           selType.widen.stripCapturing.capturing(qualCs)
         else

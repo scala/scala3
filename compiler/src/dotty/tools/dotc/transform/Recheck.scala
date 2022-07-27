@@ -138,7 +138,7 @@ abstract class Recheck extends Phase, SymTransformer:
             excluded = if tree.symbol.is(Private) then EmptyFlags else Private
           ).suchThat(tree.symbol == _)
         constFold(tree, qualType.select(name, mbr))
-          //.showing(i"recheck select $qualType . $name : ${mbr.symbol.info} = $result")
+          //.showing(i"recheck select $qualType . $name : ${mbr.info} = $result")
 
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
@@ -204,6 +204,7 @@ abstract class Recheck extends Phase, SymTransformer:
               Nil
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
           constFold(tree, instantiate(fntpe, argTypes, tree.fun.symbol))
+            //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
 
     def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       recheck(tree.fun).widen match
