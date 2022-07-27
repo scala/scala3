@@ -1,4 +1,4 @@
-// scalajs: --skip --pending
+// scalajs: --skip
 
 object Days extends Enumeration {
   type Day = DayValue

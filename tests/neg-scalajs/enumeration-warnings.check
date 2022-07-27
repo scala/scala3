@@ -1,0 +1,60 @@
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:6:4 -------------------------------------------------------------
+6 |    Value // error
+  |    ^^^^^
+  |    Could not transform call to scala.Enumeration.Value.
+  |    The resulting program is unlikely to function properly as this operation requires reflection.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:10:9 ------------------------------------------------------------
+10 |    Value(4) // error
+   |    ^^^^^^^^
+   |    Could not transform call to scala.Enumeration.Value.
+   |    The resulting program is unlikely to function properly as this operation requires reflection.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:15:15 -----------------------------------------------------------
+15 |  val a = Value(null) // error
+   |          ^^^^^^^^^^^
+   |          Passing null as name to scala.Enumeration.Value requires reflection at run-time.
+   |          The resulting program is unlikely to function properly.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:16:15 -----------------------------------------------------------
+16 |  val b = Value(10, null) // error
+   |          ^^^^^^^^^^^^^^^
+   |          Passing null as name to scala.Enumeration.Value requires reflection at run-time.
+   |          The resulting program is unlikely to function properly.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:20:10 -----------------------------------------------------------
+20 |  val a = new Val // error
+   |          ^^^^^^^
+   |          Calls to the non-string constructors of scala.Enumeration.Val require reflection at run-time.
+   |          The resulting program is unlikely to function properly.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:21:10 -----------------------------------------------------------
+21 |  val b = new Val(10) // error
+   |          ^^^^^^^^^^^
+   |          Calls to the non-string constructors of scala.Enumeration.Val require reflection at run-time.
+   |          The resulting program is unlikely to function properly.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:25:10 -----------------------------------------------------------
+25 |  val a = new Val(null) // error
+   |          ^^^^^^^^^^^^^
+   |          Passing null as name to a constructor of scala.Enumeration.Val requires reflection at run-time.
+   |          The resulting program is unlikely to function properly.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:26:10 -----------------------------------------------------------
+26 |  val b = new Val(10, null) // error
+   |          ^^^^^^^^^^^^^^^^^
+   |          Passing null as name to a constructor of scala.Enumeration.Val requires reflection at run-time.
+   |          The resulting program is unlikely to function properly.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:30:31 -----------------------------------------------------------
+30 |  protected class Val1 extends Val // error
+   |                               ^^^
+   |                   Calls to the non-string constructors of scala.Enumeration.Val require reflection at run-time.
+   |                   The resulting program is unlikely to function properly.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:31:31 -----------------------------------------------------------
+31 |  protected class Val2 extends Val(1) // error
+   |                               ^^^^^^
+   |                   Calls to the non-string constructors of scala.Enumeration.Val require reflection at run-time.
+   |                   The resulting program is unlikely to function properly.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:35:31 -----------------------------------------------------------
+35 |  protected class Val1 extends Val(null) // error
+   |                               ^^^^^^^^^
+   |                 Passing null as name to a constructor of scala.Enumeration.Val requires reflection at run-time.
+   |                 The resulting program is unlikely to function properly.
+-- Error: tests/neg-scalajs/enumeration-warnings.scala:36:31 -----------------------------------------------------------
+36 |  protected class Val2 extends Val(1, null) // error
+   |                               ^^^^^^^^^^^^
+   |                 Passing null as name to a constructor of scala.Enumeration.Val requires reflection at run-time.
+   |                 The resulting program is unlikely to function properly.

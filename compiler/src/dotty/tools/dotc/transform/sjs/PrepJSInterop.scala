@@ -163,7 +163,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           else if (enclosingOwner is OwnerKind.JSType)
             transformValOrDefDefInJSType(tree)
           else
-            super.transform(tree) // There is nothing special to do for a Scala val or def
+            transformScalaValOrDefDef(tree)
       }
     }
 
@@ -186,9 +186,14 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       if (sym == jsdefn.PseudoUnionClass)
         sym.addAnnotation(jsdefn.JSTypeAnnot)
 
-      val kind =
-        if (sym.is(Module)) OwnerKind.ScalaMod
-        else OwnerKind.ScalaClass
+      val kind = if (sym.isSubClass(jsdefn.scalaEnumeration.EnumerationClass)) {
+        if (sym.is(Module)) OwnerKind.EnumMod
+        else if (sym == jsdefn.scalaEnumeration.EnumerationClass) OwnerKind.EnumImpl
+        else OwnerKind.EnumClass
+      } else {
+        if (sym.is(Module)) OwnerKind.NonEnumScalaMod
+        else OwnerKind.NonEnumScalaClass
+      }
       enterOwner(kind) {
         super.transform(tree)
       }
@@ -322,6 +327,38 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
           super.transform(tree)
 
+        // Warnings for scala.Enumeration.Value that could not be transformed
+        case _:Ident | _:Select | _:Apply if jsdefn.scalaEnumeration.isValueMethodNoName(tree.symbol) =>
+          report.warning(
+              "Could not transform call to scala.Enumeration.Value.\n" +
+              "The resulting program is unlikely to function properly as this operation requires reflection.",
+              tree)
+          super.transform(tree)
+
+        // Warnings for scala.Enumeration.Value with a `null` name
+        case Apply(_, args) if jsdefn.scalaEnumeration.isValueMethodName(tree.symbol) && isNullLiteral(args.last) =>
+          report.warning(
+              "Passing null as name to scala.Enumeration.Value requires reflection at run-time.\n" +
+              "The resulting program is unlikely to function properly.",
+              tree)
+          super.transform(tree)
+
+        // Warnings for scala.Enumeration.Val without name
+        case _: Apply if jsdefn.scalaEnumeration.isValCtorNoName(tree.symbol) =>
+          report.warning(
+              "Calls to the non-string constructors of scala.Enumeration.Val require reflection at run-time.\n" +
+              "The resulting program is unlikely to function properly.",
+              tree)
+          super.transform(tree)
+
+        // Warnings for scala.Enumeration.Val with a `null` name
+        case Apply(_, args) if jsdefn.scalaEnumeration.isValCtorName(tree.symbol) && isNullLiteral(args.last) =>
+          report.warning(
+              "Passing null as name to a constructor of scala.Enumeration.Val requires reflection at run-time.\n" +
+              "The resulting program is unlikely to function properly.",
+              tree)
+          super.transform(tree)
+
         case _: Export =>
           if enclosingOwner is OwnerKind.JSNative then
             report.error("Native JS traits, classes and objects cannot contain exported definitions.", tree)
@@ -334,6 +371,10 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           super.transform(tree)
       }
     }
+
+    private def isNullLiteral(tree: Tree): Boolean = tree match
+      case Literal(Constant(null)) => true
+      case _                       => false
 
     private def validateJSConstructorOf(tree: Tree, tpeArg: Tree)(using Context): Unit = {
       val tpe = checkClassType(tpeArg.tpe, tpeArg.srcPos, traitReq = false, stablePrefixReq = false)
@@ -622,6 +663,50 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
             // We already emitted an error in checkAndGetJSNativeLoadingSpecAnnotOf
             ()
         }
+      }
+    }
+
+    /** Transforms a non-`@js.native` ValDef or DefDef in a Scala class. */
+    private def transformScalaValOrDefDef(tree: ValOrDefDef)(using Context): Tree = {
+      tree match {
+        // Catch ValDefs in enumerations with simple calls to Value
+        case vd: ValDef
+            if (enclosingOwner is OwnerKind.Enum) && jsdefn.scalaEnumeration.isValueMethodNoName(vd.rhs.symbol) =>
+          val enumDefn = jsdefn.scalaEnumeration
+
+          // Extract the Int argument if it is present
+          val optIntArg = vd.rhs match {
+            case _:Select | _:Ident      => None
+            case Apply(_, intArg :: Nil) => Some(intArg)
+          }
+
+          val defaultName = vd.name.getterName.encode.toString
+
+          /* Construct the following tree
+           *
+           *   if (nextName != null && nextName.hasNext)
+           *     nextName.next()
+           *   else
+           *     <defaultName>
+           */
+          val thisClass = vd.symbol.owner.asClass
+          val nextNameTree = This(thisClass).select(enumDefn.Enumeration_nextName)
+          val nullCompTree = nextNameTree.select(nme.NE).appliedTo(Literal(Constant(null)))
+          val hasNextTree = nextNameTree.select(enumDefn.hasNext)
+          val condTree = nullCompTree.select(nme.ZAND).appliedTo(hasNextTree)
+          val nameTree = If(condTree, nextNameTree.select(enumDefn.next).appliedToNone, Literal(Constant(defaultName)))
+
+          val newRhs = optIntArg match {
+            case None =>
+              This(thisClass).select(enumDefn.Enumeration_Value_StringArg).appliedTo(nameTree)
+            case Some(intArg) =>
+              This(thisClass).select(enumDefn.Enumeration_Value_IntStringArg).appliedTo(intArg, nameTree)
+          }
+
+          cpy.ValDef(vd)(rhs = newRhs)
+
+        case _ =>
+          super.transform(tree)
       }
     }
 
@@ -1055,9 +1140,9 @@ object PrepJSInterop {
     // Base kinds - those form a partition of all possible enclosing owners
 
     /** A Scala class/trait. */
-    val ScalaClass = new OwnerKind(0x01)
+    val NonEnumScalaClass = new OwnerKind(0x01)
     /** A Scala object. */
-    val ScalaMod = new OwnerKind(0x02)
+    val NonEnumScalaMod = new OwnerKind(0x02)
     /** A native JS class/trait, which extends js.Any. */
     val JSNativeClass = new OwnerKind(0x04)
     /** A native JS object, which extends js.Any. */
@@ -1068,11 +1153,25 @@ object PrepJSInterop {
     val JSTrait = new OwnerKind(0x20)
     /** A non-native JS object. */
     val JSMod = new OwnerKind(0x40)
+    /** A Scala class/trait that extends Enumeration. */
+    val EnumClass = new OwnerKind(0x80)
+    /** A Scala object that extends Enumeration. */
+    val EnumMod = new OwnerKind(0x100)
+    /** The Enumeration class itself. */
+    val EnumImpl = new OwnerKind(0x200)
 
     // Compound kinds
 
+    /** A Scala class/trait, possibly Enumeration-related. */
+    val ScalaClass = NonEnumScalaClass | EnumClass | EnumImpl
+    /** A Scala object, possibly Enumeration-related. */
+    val ScalaMod = NonEnumScalaMod | EnumMod
+
     /** A Scala class, trait or object, i.e., anything not extending js.Any. */
     val ScalaType = ScalaClass | ScalaMod
+
+    /** A Scala class/trait/object extending Enumeration, but not Enumeration itself. */
+    val Enum = EnumClass | EnumMod
 
     /** A native JS class/trait/object. */
     val JSNative = JSNativeClass | JSNativeMod

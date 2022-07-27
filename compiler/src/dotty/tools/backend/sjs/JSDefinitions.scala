@@ -5,6 +5,7 @@ import scala.language.unsafeNulls
 import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.core._
+import Names._
 import Types._
 import Contexts._
 import Symbols._
@@ -255,6 +256,45 @@ final class JSDefinitions()(using Context) {
       allRefClassesCache = fullNames.map(name => requiredClass(name)).toSet
     }
     allRefClassesCache
+  }
+
+  /** Definitions related to scala.Enumeration. */
+  object scalaEnumeration {
+    val nmeValue = termName("Value")
+    val nmeVal = termName("Val")
+    val hasNext = termName("hasNext")
+    val next = termName("next")
+
+    @threadUnsafe lazy val EnumerationClass = requiredClass("scala.Enumeration")
+      @threadUnsafe lazy val Enumeration_Value_NoArg = EnumerationClass.requiredValue(nmeValue)
+      @threadUnsafe lazy val Enumeration_Value_IntArg = EnumerationClass.requiredMethod(nmeValue, List(defn.IntType))
+      @threadUnsafe lazy val Enumeration_Value_StringArg = EnumerationClass.requiredMethod(nmeValue, List(defn.StringType))
+      @threadUnsafe lazy val Enumeration_Value_IntStringArg = EnumerationClass.requiredMethod(nmeValue, List(defn.IntType, defn.StringType))
+      @threadUnsafe lazy val Enumeration_nextName = EnumerationClass.requiredMethod(termName("nextName"))
+
+    @threadUnsafe lazy val EnumerationValClass = EnumerationClass.requiredClass("Val")
+      @threadUnsafe lazy val Enumeration_Val_NoArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, Nil)
+      @threadUnsafe lazy val Enumeration_Val_IntArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.IntType))
+      @threadUnsafe lazy val Enumeration_Val_StringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.StringType))
+      @threadUnsafe lazy val Enumeration_Val_IntStringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.IntType, defn.StringType))
+
+    def isValueMethod(sym: Symbol)(using Context): Boolean =
+      sym.name == nmeValue && sym.owner == EnumerationClass
+
+    def isValueMethodNoName(sym: Symbol)(using Context): Boolean =
+      isValueMethod(sym) && (sym == Enumeration_Value_NoArg || sym == Enumeration_Value_IntArg)
+
+    def isValueMethodName(sym: Symbol)(using Context): Boolean =
+      isValueMethod(sym) && (sym == Enumeration_Value_StringArg || sym == Enumeration_Value_IntStringArg)
+
+    def isValCtor(sym: Symbol)(using Context): Boolean =
+      sym.isClassConstructor && sym.owner == EnumerationValClass
+
+    def isValCtorNoName(sym: Symbol)(using Context): Boolean =
+      isValCtor(sym) && (sym == Enumeration_Val_NoArg || sym == Enumeration_Val_IntArg)
+
+    def isValCtorName(sym: Symbol)(using Context): Boolean =
+      isValCtor(sym) && (sym == Enumeration_Val_StringArg || sym == Enumeration_Val_IntStringArg)
   }
 
   /** Definitions related to the treatment of JUnit bootstrappers. */
