@@ -50,7 +50,7 @@ def test(c: Cap, d: Cap, e: Cap) =
   val eff2 = [A] => (x: A) => if x == e then x else x
 
   val a0 = identity[{d, y} Cap -> Unit]
-  val a0c: ({d, y} Cap -> Unit) -> {d, y} Cap -> Unit = a0
+  val a0c: {d, y} ({d, y} Cap -> Unit) -> {d, y} Cap -> Unit = a0
   val a1 = zs.map[{d, y} Cap -> Unit](a0)
   val a1c: LIST[{d, y} Cap -> Unit] = a1
   val a2 = zs.map[{d, y} Cap -> Unit](identity[{d, y} Cap -> Unit])
@@ -65,7 +65,7 @@ def test(c: Cap, d: Cap, e: Cap) =
   val a6c: LIST[{d, c} Cap -> Unit] = a6
 
   val b0 = eff[{d, y} Cap -> Unit]
-  val b0c: {e} ({d, y} Cap -> Unit) -> {d, y} Cap -> Unit = b0
+  val b0c: {e, d, y} ({d, y} Cap -> Unit) -> {d, y} Cap -> Unit = b0
   val b1 = zs.map[{d, y} Cap -> Unit](a0)
   val b1c: {e} LIST[{d, y} Cap -> Unit] = b1
   val b2 = zs.map[{d, y} Cap -> Unit](eff[{d, y} Cap -> Unit])
@@ -80,7 +80,7 @@ def test(c: Cap, d: Cap, e: Cap) =
   val b6c: {e} LIST[{d, c} Cap -> Unit] = b6
 
   val c0 = eff2[{d, y} Cap -> Unit]
-  val c0c: {e} ({d, y} Cap -> Unit) -> {d, y} Cap -> Unit = c0
+  val c0c: {e, d, y} ({d, y} Cap -> Unit) -> {d, y} Cap -> Unit = c0
   val c1 = zs.map[{d, y} Cap -> Unit](a0)
   val c1c: {e} LIST[{d, y} Cap -> Unit] = c1
   val c2 = zs.map[{d, y} Cap -> Unit](eff2[{d, y} Cap -> Unit])
