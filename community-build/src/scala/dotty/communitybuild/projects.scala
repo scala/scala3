@@ -484,7 +484,7 @@ object projects:
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "ciJVM",
+    sbtTestCommand = "ciJVM; ciJS",
     sbtPublishCommand = "publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
     dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
@@ -752,7 +752,7 @@ object projects:
 
   lazy val http4s = SbtCommunityProject(
     project = "http4s",
-    sbtTestCommand = """set ThisBuild / tlFatalWarnings := false; server/test; client/test; ember-core/test; ember-server/test; ember-client/test; circe/test""",
+    sbtTestCommand = """set ThisBuild / tlFatalWarnings := false; rootJVM/test""",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
     dependencies = List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
