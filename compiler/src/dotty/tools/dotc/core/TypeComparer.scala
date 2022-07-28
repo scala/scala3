@@ -114,8 +114,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
-  protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
-  protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
+  protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadt.addBound(sym, b, isUpper)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
 
@@ -1947,7 +1946,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       if (bound.isRef(tparam)) false
       else
         val savedGadt = ctx.gadt.fresh
-        val success = if isUpper then gadtAddUpperBound(tparam, bound) else gadtAddLowerBound(tparam, bound)
+        val success = gadtAddBound(tparam, bound, isUpper)
         if !success then ctx.gadt.restore(savedGadt)
         success
     }
@@ -2930,15 +2929,9 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.gadtBounds(sym)
   }
 
-  override def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = {
+  override def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean =
     if (sym.exists) footprint += sym.typeRef
-    super.gadtAddLowerBound(sym, b)
-  }
-
-  override def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = {
-    if (sym.exists) footprint += sym.typeRef
-    super.gadtAddUpperBound(sym, b)
-  }
+    super.gadtAddBound(sym, b, isUpper)
 
   override def typeVarInstance(tvar: TypeVar)(using Context): Type = {
     footprint += tvar
@@ -3116,6 +3109,11 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(using Context): Boolean =
     traceIndented(s"add constraint ${show(param)} ${if (fromBelow) ">:" else "<:"} ${show(bound)} $frozenNotice, constraint = ${show(ctx.typerState.constraint)}") {
       super.addConstraint(param, bound, fromBelow)
+    }
+
+  override def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean =
+    traceIndented(s"add GADT constraint ${show(sym)} ${if isUpper then "<:" else ">:"} ${show(b)} $frozenNotice, GADT constraint = ${show(ctx.gadt.debugBoundsDescription)}") {
+      super.gadtAddBound(sym, b, isUpper)
     }
 
   def lastTrace(header: String): String = header + { try b.toString finally b.clear() }
