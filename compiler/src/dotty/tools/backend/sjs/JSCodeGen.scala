@@ -2863,14 +2863,12 @@ class JSCodeGen()(using genCtx: Context) {
 
     if (mustUseAnyComparator) {
       val equalsMethod: Symbol = {
-        // scalastyle:off line.size.limit
         val ptfm = ctx.platform
         if (lsym.derivesFrom(defn.BoxedNumberClass)) {
           if (rsym.derivesFrom(defn.BoxedNumberClass)) externalEqualsNumNum
           else if (rsym.derivesFrom(defn.BoxedCharClass)) externalEqualsNumObject // will be externalEqualsNumChar in 2.12, SI-9030
           else externalEqualsNumObject
         } else externalEquals
-        // scalastyle:on line.size.limit
       }
       genApplyStatic(equalsMethod, List(lsrc, rsrc))
     } else {
