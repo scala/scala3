@@ -30,22 +30,12 @@ jobs:
           fetch-depth: 0
           ssh-key: ${{ secrets.DOCS_KEY }}
 
-      - name: Cache Coursier
-        uses: actions/cache@v1
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
         with:
-          path: ~/.cache/coursier
-          key: sbt-coursier-cache
-
-      - name: Cache SBT
-        uses: actions/cache@v1
-        with:
-          path: ~/.sbt
-          key: sbt-${{ hashFiles('**/build.sbt') }}
-
-      - name: Set up JDK 11
-        uses: actions/setup-java@v1
-        with:
-          java-version: 11
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
 
       - name: Generate reference documentation and test links
         run: |
