@@ -932,7 +932,8 @@ object PatternMatcher {
           }
           emitWithMashedConditions(plan :: Nil)
         case LetPlan(sym, body) =>
-          seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
+          val valDef = ValDef(sym, initializer(sym).ensureConforms(sym.info)).withSpan(sym.span)
+          seq(valDef :: Nil, emit(body))
         case LabeledPlan(label, expr) =>
           Labeled(label, emit(expr))
         case ReturnPlan(label) =>
