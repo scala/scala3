@@ -6,6 +6,10 @@ body {
   overflow: hidden;
 }
 
+[id] {
+  scroll-margin-top: calc(10 * var(--base-spacing));
+}
+
 #container {
   --header-height: calc(8 * var(--base-spacing));
 }

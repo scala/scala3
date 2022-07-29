@@ -179,7 +179,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   def member(member: Member) =
     val filterAttributes = FilterAttributes.attributesFor(member)
     val anchor = if member.dri.anchor.isEmpty then Nil else Seq(id := member.dri.anchor)
-    def topLevelAttr = Seq(cls := "documentableElement mono-small-inline")
+    def topLevelAttr = Seq(cls := "documentableElement")
       ++ anchor
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 

@@ -145,6 +145,10 @@
 
 /* content headers */
 
+#content h1:first-of-type {
+  line-height: normal;
+}
+
 #content h1,
 #content h2 {
   color: var(--text-primary);
