@@ -149,7 +149,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         interpolator().traverse(tpt.knownType)
           .showing(i"solved vars in ${tpt.knownType}", capt)
 
-    private var curEnv: Env = Env(NoSymbol, CaptureSet.empty, false, null)
+    private var curEnv: Env = Env(NoSymbol, CaptureSet.empty, isBoxed = false, null)
 
     private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
     def capturedVars(sym: Symbol)(using Context) =
@@ -204,9 +204,13 @@ class CheckCaptures extends Recheck, SymTransformer:
      *
      *   and that also propagates C into the type of the unboxing expression.
      *   TODO: Generalize this to boxed captues in other parts of a function type.
+     *   Test case in pos-.../boxed1.scala.
      */
     def addResultBoxes(tp: Type)(using Context): Type =
-      def includeBoxed(res: Type) = tp.capturing(res.boxedCaptured)
+      def includeBoxed(res: Type) =
+        //if !res.boxedCaptured.isAlwaysEmpty then
+        //  println(i"add boxed $tp from ${res.boxedCaptured}")
+        tp.capturing(res.boxedCaptured)
       val tp1 = tp.dealias
       val boxedTp = tp1 match
         case tp1 @ AppliedType(_, args) if defn.isNonRefinedFunction(tp1) =>
@@ -219,7 +223,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           else boxedParent.capturing(refs)
         case _ =>
           tp1
-      if boxedTp eq tp1 then tp else boxedTp
+      if (boxedTp eq tp1) then tp else boxedTp
     end addResultBoxes
 
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
@@ -323,7 +327,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !Synthetics.isExcluded(sym) then
         val saved = curEnv
         val localSet = capturedVars(sym)
-        if !localSet.isAlwaysEmpty then curEnv = Env(sym, localSet, false, curEnv)
+        if !localSet.isAlwaysEmpty then curEnv = Env(sym, localSet, isBoxed = false, curEnv)
         try super.recheckDefDef(tree, sym)
         finally
           interpolateVarsIn(tree.tpt)
@@ -334,7 +338,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val localSet = capturedVars(cls)
       for parent <- impl.parents do
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos)
-      if !localSet.isAlwaysEmpty then curEnv = Env(cls, localSet, false, curEnv)
+      if !localSet.isAlwaysEmpty then curEnv = Env(cls, localSet, isBoxed = false, curEnv)
       try
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
         checkSubset(localSet, thisSet, tree.srcPos)
@@ -425,10 +429,12 @@ class CheckCaptures extends Recheck, SymTransformer:
             if !tree.fun.symbol.isConstructor
                 && qual.tpe.captureSet.mightSubcapture(refs)
                 && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
+                && !qual.tpe.isBoxedCapturing
+                && !tree.args.exists(_.tpe.isBoxedCapturing)
             =>
               tp.derivedCapturingType(tp1, tree.args.foldLeft(qual.tpe.captureSet)((cs, arg) =>
                 cs ++ arg.tpe.captureSet))
-                .showing(i"narrow $tree: $tp --> $result", capt)
+                .showing(i"narrow $tree: $tp, refs = $refs, qual = ${qual.tpe.captureSet} --> $result", capt)
             case _ => tp
         case tp => tp
 
@@ -443,7 +449,13 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.recheckTyped(tree)
 
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
-      val res = super.recheck(tree, pt)
+      val res =
+        if tree.isTerm && pt.isBoxedCapturing then
+          val saved = curEnv
+          curEnv = Env(curEnv.owner, CaptureSet.Var(), isBoxed = true, curEnv)
+          try super.recheck(tree, pt)
+          finally curEnv = saved
+        else super.recheck(tree, pt)
       if tree.isTerm then
         includeBoxedCaptures(res, tree.srcPos)
       res
@@ -470,7 +482,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           checkNotUniversal(parent)
         case _ =>
       checkNotUniversal(typeToCheck)
-      val tpe1 = if tree.isTerm then addResultBoxes(tpe) else tpe
+      val tpe1 = if false && tree.isTerm then addResultBoxes(tpe) else tpe
       super.recheckFinish(tpe1, tree, pt)
 
     /** This method implements the rule outlined in #14390:
@@ -482,7 +494,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  they are already accounted for by `Cx` and adding them explicitly to `Cx`
      *  changes nothing.
      */
-    override def checkConformsExpr(original: Type, actual: Type, expected: Type, tree: Tree)(using Context): Unit =
+    override def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
       def isPure(info: Type): Boolean = info match
         case info: PolyType => isPure(info.resType)
         case info: MethodType => info.paramInfos.forall(_.captureSet.isAlwaysEmpty) && isPure(info.resType)
@@ -511,8 +523,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           expected.derivedCapturingType(ecore, erefs1)
         case _ =>
           expected
+      val actual1 = adaptBoxed(actual, expected1, covariant = true)
       //println(i"check conforms $actual <<< $expected1")
-      super.checkConformsExpr(original, actual, expected1, tree)
+      super.checkConformsExpr(actual1, expected1, tree)
+
+    def adaptBoxed(actual: Type, expected: Type, covariant: Boolean)(using Context): Type =
+      actual
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       Setup(preRecheckPhase, thisPhase, recheckDef)

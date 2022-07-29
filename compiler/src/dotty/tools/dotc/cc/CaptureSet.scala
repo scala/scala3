@@ -124,8 +124,12 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
-      elems.exists(_.subsumes(x))
-      || !x.isRootCapability && x.captureSetOfInfo.elems.forall(mightAccountFor)
+      elems.exists(elem => elem.subsumes(x) || elem.isRootCapability)
+      || !x.isRootCapability
+        && {
+          val elems = x.captureSetOfInfo.elems
+          !elems.isEmpty && elems.forall(mightAccountFor)
+        }
     }
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules

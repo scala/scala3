@@ -388,17 +388,17 @@ abstract class Recheck extends Phase, SymTransformer:
         // Don't report closure nodes, since their span is a point; wait instead
         // for enclosing block to preduce an error
       case _ =>
-        checkConformsExpr(tpe, tpe.widenExpr, pt.widenExpr, tree)
+        checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
 
-    def checkConformsExpr(original: Type, actual: Type, expected: Type, tree: Tree)(using Context): Unit =
+    def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
       //println(i"check conforms $actual <:< $expected")
       val isCompatible =
         actual <:< expected
         || expected.isRepeatedParam
             && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
       if !isCompatible then
-        recheckr.println(i"conforms failed for ${tree}: $original vs $expected")
-        err.typeMismatch(tree.withType(original), expected)
+        recheckr.println(i"conforms failed for ${tree}: $actual vs $expected")
+        err.typeMismatch(tree.withType(actual), expected)
       else if debugSuccesses then
         tree match
           case _: Ident =>
