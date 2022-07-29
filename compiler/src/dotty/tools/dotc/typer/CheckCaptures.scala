@@ -186,11 +186,15 @@ class CheckCaptures extends Recheck, SymTransformer:
           includeIn(curEnv.outer)
 
     def includeBoxedCaptures(tp: Type, pos: SrcPos)(using Context): Unit =
+      includeBoxedCaptures(tp.boxedCaptured, pos)
+
+    def includeBoxedCaptures(refs: CaptureSet, pos: SrcPos)(using Context): Unit =
       if curEnv.isOpen then
         val ownEnclosure = ctx.owner.enclosingMethodOrClass
-        val targetSet = tp.boxedCaptured.filter {
+        val targetSet = refs.filter {
           case ref: TermRef => ref.symbol.enclosure != ownEnclosure
-          case _ => true
+          case ref: ThisType => true
+          case _ => false
         }
         checkSubset(targetSet, curEnv.captured, pos)
 
@@ -255,7 +259,9 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) = {
       val selType = super.recheckSelection(tree, qualType, name)
       val selCs = selType.widen.captureSet
-      if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
+      if selCs.isAlwaysEmpty
+          || selType.widen.isBoxedCapturing
+          || qualType.isBoxedCapturing then
         selType
       else
         val qualCs = qualType.captureSet
