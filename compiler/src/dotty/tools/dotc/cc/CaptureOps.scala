@@ -40,15 +40,13 @@ extension (tp: Type)
       if (parent eq p) && (refs eq r) then tp
       else CapturingType(parent, refs, tp.isBoxed)
 
-  /** If this is  type variable instantiated or upper bounded with a capturing type,
-   *  the capture set associated with that type. Extended to and-or types and
-   *  type proxies in the obvious way. If a term has a type with a boxed captureset,
-   *  that captureset counts towards the capture variables of the envirionment.
-   */
+  /** The boxed capture set of a type */
   def boxedCaptured(using Context): CaptureSet =
     def getBoxed(tp: Type): CaptureSet = tp match
       case tp @ CapturingType(parent, refs) =>
-        if tp.isBoxed then refs else getBoxed(parent)
+        val pcs = getBoxed(parent)
+        if tp.isBoxed then refs ++ pcs else pcs
+      case tp: TypeRef if tp.symbol.isAbstractType => CaptureSet.empty
       case tp: TypeProxy => getBoxed(tp.superType)
       case tp: AndType => getBoxed(tp.tp1) ++ getBoxed(tp.tp2)
       case tp: OrType => getBoxed(tp.tp1) ** getBoxed(tp.tp2)

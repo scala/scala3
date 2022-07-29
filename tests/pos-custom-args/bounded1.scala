@@ -12,7 +12,7 @@ def test(c: Cap) =
   val r1 = b.elem
   val r1c: {c} Int -> Int = r1
   val r2 = b.lateElem
-  val r2c: () -> {c} Int -> Int = r2 // error
+  val r2c: () -> {c} Int -> Int = r2 // was error now OK
 
 def test2(c: Cap) =
   class B[X <: {*} Any](x: X):
