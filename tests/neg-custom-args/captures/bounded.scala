@@ -1,3 +1,4 @@
+// To be revisited
 class CC
 type Cap = {*} CC
 
@@ -14,7 +15,7 @@ def test(c: Cap) =
   val r2c: () -> {c} Int -> Int = r2 // error
 
 def test2(c: Cap) =
-  class B[X](x: X):
+  class B[X <: {*} Any](x: X):
     def elem = x
     def lateElem = () => x
 
@@ -23,4 +24,4 @@ def test2(c: Cap) =
   val r1 = b.elem
   val r1c: {c} Int -> Int = r1
   val r2 = b.lateElem
-  val r2c: () -> {c} Int -> Int = r2 // error
+  val r2c: () -> {c} Int -> Int = r2 // was error now OK

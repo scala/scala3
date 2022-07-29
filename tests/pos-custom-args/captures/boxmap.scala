@@ -8,11 +8,11 @@ def box[T <: Top](x: T): Box[T] =
 def map[A <: Top, B <: Top](b: Box[A])(f: A => B): Box[B] =
   b[Box[B]]((x: A) => box(f(x)))
 
-def lazymap[A <: Top, B <: Top](b: Box[A])(f: A => B): (() -> Box[B]) @retains(f) =
+def lazymap[A <: Top, B <: Top](b: Box[A])(f: A => B): (() -> Box[B]) =
   () => b[Box[B]]((x: A) => box(f(x)))
 
 def test[A <: Top, B <: Top] =
   def lazymap[A <: Top, B <: Top](b: Box[A])(f: A => B) =
     () => b[Box[B]]((x: A) => box(f(x)))
-  val x: (b: Box[A]) -> (f: A => B) -> (() -> Box[B]) @retains(f) = lazymap[A, B]
+  val x: (b: Box[A]) -> (f: A => B) -> (() -> Box[B]) = lazymap[A, B]
   ()
