@@ -804,7 +804,7 @@ object Trees {
   }
 
   /** mods val name: tpt = rhs */
-  case class ValDef[+T <: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
+  case class ValDef[+T <: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T], ValOrTypeDef[T] {
     type ThisTree[+T <: Untyped] = ValDef[T]
     assert(isEmpty || (tpt ne genericEmptyTree))
@@ -814,7 +814,7 @@ object Trees {
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[+T <: Untyped] private[ast] (name: TermName,
-      paramss: List[ParamClause[T]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
+      paramss: List[ParamClause[T]], tpt: Tree[T], private var preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {
     type ThisTree[+T <: Untyped] = DefDef[T]
     assert(tpt ne genericEmptyTree)
@@ -855,7 +855,7 @@ object Trees {
    *                            if this is of class untpd.DerivingTemplate.
    *                            Typed templates only have parents.
    */
-  case class Template[+T <: Untyped] private[ast] (constr: DefDef[T], parentsOrDerived: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
+  case class Template[+T <: Untyped] private[ast] (constr: DefDef[T], parentsOrDerived: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList[T])(implicit @constructorOnly src: SourceFile)
     extends DefTree[T] with WithLazyField[List[Tree[T]]] {
     type ThisTree[+T <: Untyped] = Template[T]
     def unforcedBody: LazyTreeList[T] = unforced
@@ -924,12 +924,12 @@ object Trees {
     myTpe = NoType.asInstanceOf[T]
     type ThisTree[+T <: Untyped] = Thicket[T]
 
-    def mapElems(op: Tree[T] => Tree[T] @uncheckedVariance): Thicket[T] = {
+    def mapElems[U >: T <: Untyped](op: Tree[T] => Tree[U]): Thicket[U] = {
       val newTrees = trees.mapConserve(op)
       if (trees eq newTrees)
         this
       else
-        Thicket[T](newTrees)(source).asInstanceOf[this.type]
+        Thicket[U](newTrees)(source).asInstanceOf[this.type]
     }
 
     override def foreachInThicket(op: Tree[T] => Unit): Unit =

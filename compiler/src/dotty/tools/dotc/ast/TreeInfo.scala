@@ -16,9 +16,6 @@ import scala.annotation.tailrec
 
 trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
-  // Note: the <: Type constraint looks necessary (and is needed to make the file compile in dotc).
-  // But Scalac accepts the program happily without it. Need to find out why.
-
   def unsplice(tree: Trees.Tree[T]): Trees.Tree[T] = tree
 
   def isDeclarationOrTypeDef(tree: Tree): Boolean = unsplice(tree) match {

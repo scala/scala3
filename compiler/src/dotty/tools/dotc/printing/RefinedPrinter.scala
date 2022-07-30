@@ -40,7 +40,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def printerContext: Context = myCtx
 
-  def withEnclosingDef(enclDef: Tree[? <: Untyped])(op: => Text): Text = {
+  def withEnclosingDef(enclDef: Tree[?])(op: => Text): Text = {
     val savedCtx = myCtx
     if (enclDef.hasType && enclDef.symbol.exists)
       myCtx = ctx.withOwner(enclDef.symbol)
@@ -990,7 +990,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   protected def toTextPackageId[T <: Untyped](pid: Tree[T]): Text =
-    if (homogenizedView && pid.hasType) toTextLocal(pid.tpe.asInstanceOf[Showable])
+    if (homogenizedView && pid.hasType) toTextLocal(pid.typeOpt)
     else toTextLocal(pid)
 
   protected def packageDefText(tree: PackageDef): Text = {
