@@ -1,8 +1,8 @@
 .switch {
   position: relative;
   display: inline-block;
-  width: 32px;
-  height: 18px;
+  width: calc(4 * var(--base-spacing));
+  height: calc(calc(2 * var(--base-spacing)) + 2px);
   margin: var(--base-spacing);
 }
 
@@ -22,14 +22,14 @@
   background-color: var(--switch-background-default);
   -webkit-transition: .4s;
   transition: .4s;
-  border-radius: 34px;
+  border-radius: calc(calc(4 * var(--base-spacing)) + 2px);
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 16px;
-  width: 16px;
+  height: calc(2 * var(--base-spacing));
+  width: calc(2 * var(--base-spacing));
   left: 1px;
   bottom: 1px;
   background-color: var(--switch-button);
@@ -47,7 +47,7 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-  -webkit-transform: translateX(14px);
-  -ms-transform: translateX(14px);
-  transform: translateX(14px);
+  -webkit-transform: translateX(calc(calc(2 * var(--base-spacing)) - 2px));
+  -ms-transform: translateX(calc(calc(2 * var(--base-spacing)) - 2px));
+  transform: translateX(calc(calc(2 * var(--base-spacing)) - 2px));
 }
