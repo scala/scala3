@@ -156,11 +156,6 @@
   margin-block-start: 0;
 }
 
-/* content paragraph */
-#content p {
-  color: var(--text-primary);
-}
-
 /* content first paragraph */
 #content .first-p {
   color: var(--text-secondary);
@@ -189,7 +184,6 @@
 #content :not(pre) > code {
   color: var(--code-props-content);
   font-family: "FiraCode-Regular";
-  background-color: var(--red3);
 }
 
 .breadcrumbs {

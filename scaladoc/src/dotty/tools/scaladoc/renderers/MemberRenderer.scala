@@ -151,7 +151,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val signature: MemberSignature = signatureProvider.rawSignature(member)()
     Seq(
-      div(cls := "signature")(
+      div(cls := "signature mono-small-inline")(
         span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
         span(cls := "kind")(signature.kind.map(renderElement(_))),
         signature.name.map(renderElement(_, nameClasses*)),
@@ -189,7 +189,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     div(topLevelAttr:_*)(
       Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button show-content")).toList,
-      if !member.needsOwnPage then a(Attr("link") := link(member.dri).getOrElse("#"), cls := "documentableAnchor") else Nil,
       annots.map(div(_)).toList,
       div(cls := "header monospace")(memberSignature(member)),
       Option.when(originInf.nonEmpty || memberInf.nonEmpty)(

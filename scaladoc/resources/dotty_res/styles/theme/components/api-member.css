@@ -20,6 +20,10 @@
   cursor: pointer;
 }
 
+.documentableElement .documentableBrief {
+  color: var(--text-secondary);
+}
+
 .documentableElement .annotations {
   display: none;
 }
@@ -49,10 +53,6 @@
 
 .documentableElement:hover .icon-button {
   display: block;
-}
-
-#content .documentableElement p {
-  color: var(--text-primary);
 }
 
 [t="k"] {
