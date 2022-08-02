@@ -1261,12 +1261,6 @@ object Semantic:
   /** Add a checking task to the work list */
   def addTask(thisRef: ThisRef)(using WorkList) = workList.addTask(Task(thisRef))
 
-  /** Perform check on the work list until it becomes empty
-   *
-   *  Should only be called once from the checker.
-   */
-  def check()(using Cache, WorkList, Context) = workList.work()
-
   /** Check the specified tasks
    *
    *      Semantic.checkTasks {
@@ -1277,7 +1271,7 @@ object Semantic:
     val workList = new WorkList
     val cache = new Cache
     taskBuilder(using workList)
-    Semantic.check()(using cache, workList, ctx)
+    workList.work()(using cache, ctx)
 
 // ----- Semantic definition --------------------------------
 
