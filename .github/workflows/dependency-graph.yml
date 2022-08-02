@@ -1,0 +1,12 @@
+name: Update Dependency Graph
+on:
+  push:
+    branches:
+      - main # default branch of the project
+jobs:
+  dependency-graph:
+    name: Update Dependency Graph
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: scalacenter/sbt-dependency-submission@v2
