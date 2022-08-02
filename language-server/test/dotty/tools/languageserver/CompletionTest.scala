@@ -1454,7 +1454,24 @@ class CompletionTest {
           |    testMet$m2
           |    Test(1, 2)
           """
-            .completion(m1, expected)
-            .completion(m2, expected)
+      .completion(m1, expected)
+      .completion(m2, expected)
+  }
+
+  @Test def exportCompletions: Unit = {
+    code"""object Foo:
+          |  def xDef = 1
+          |  val xVal = 1
+          |  class xClass()
+          |  object xObject {}
+          |object Test:
+          |  export Foo.x${m1}
+          """
+      .completion(m1, Set(
+        ("xDef", Method, "=> Int"),
+        ("xVal", Field, "Int"),
+        ("xObject", Module, "Foo.xObject"),
+        ("xClass", Module, "Foo.xClass"),
+        ("xClass", Class, "Foo.xClass")))
   }
 }
