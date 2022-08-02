@@ -1,5 +1,5 @@
 // Usage
-// > scala-cli project/scripts/dottyCompileBisect.scala -- File.scala
+// > scala-cli project/scripts/dottyCompileBisect.scala -- File1.scala File2.scala
 //
 // This script will bisect the compilation failure starting with a fast bisection on released nightly builds.
 // Then it will bisect the commits between the last nightly that worked and the first nightly that failed.
@@ -9,19 +9,19 @@ import sys.process._
 import scala.io.Source
 import Releases.Release
 
-@main def dottyCompileBisect(file: String): Unit =
-  val releaseBisect = ReleaseBisect(file)
+@main def dottyCompileBisect(files: String*): Unit =
+  val releaseBisect = ReleaseBisect(files.toList)
   val fistBadRelease = releaseBisect.bisect(Releases.allReleases)
   println("\nFinished bisecting releases\n")
   fistBadRelease.previous match
     case Some(lastGoodRelease) =>
       println(s"Last good release: $lastGoodRelease\nFirst bad release: $fistBadRelease\n")
-      val commitBisect = CommitBisect(file)
+      val commitBisect = CommitBisect(files.toList)
       commitBisect.bisect(lastGoodRelease.hash, fistBadRelease.hash)
     case None =>
       println(s"No good release found")
 
-class ReleaseBisect(file: String):
+class ReleaseBisect(files: List[String]):
 
   def bisect(releases: Vector[Release]): Release =
     assert(releases.length > 1, "Need at least 2 releases to bisect")
@@ -35,7 +35,7 @@ class ReleaseBisect(file: String):
 
   private def isGoodRelease(release: Release): Boolean =
     println(s"Testing ${release.version}")
-    val res = s"""scala-cli compile $file -S "${release.version}"""".!
+    val res = s"""scala-cli compile ${files.mkString(" ")} -S "${release.version}"""".!
     val isGood = res == 0
     println(s"Test result: ${release.version} is a ${if isGood then "good" else "bad"} release\n")
     isGood
@@ -64,10 +64,10 @@ object Releases:
 
     override def toString: String = version
 
-class CommitBisect(file: String):
+class CommitBisect(files: List[String]):
   def bisect(lastGoodHash: String, fistBadHash: String): Unit =
     println(s"Starting bisecting commits $lastGoodHash..$fistBadHash\n")
     "git bisect start".!
     s"git bisect bad $fistBadHash".!
     s"git bisect good $lastGoodHash".!
-    s"git bisect run sh project/scripts/dottyCompileBisect.sh $file".!
+    s"git bisect run sh project/scripts/dottyCompileBisect.sh ${files.mkString(" ")}".!
