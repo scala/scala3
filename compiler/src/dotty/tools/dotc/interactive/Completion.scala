@@ -232,10 +232,8 @@ object Completion {
       val mappings = collection.mutable.Map.empty[Name, List[ScopedDenotations]].withDefaultValue(List.empty)
       def addMapping(name: Name, denots: ScopedDenotations) =
         mappings(name) = mappings(name) :+ denots
-      var ctx = context
 
-      while ctx ne NoContext do
-        given Context = ctx
+      ctx.outersIterator.foreach { case ctx @ given Context =>
         if ctx.isImportContext then
           importedCompletions.foreach { (name, denots) =>
             addMapping(name, ScopedDenotations(denots, ctx))
@@ -251,9 +249,7 @@ object Completion {
             .groupByName.foreach { (name, denots) =>
               addMapping(name, ScopedDenotations(denots, ctx))
             }
-
-        ctx = ctx.outer
-      end while
+      }
 
       var resultMappings = Map.empty[Name, Seq[SingleDenotation]]
 
