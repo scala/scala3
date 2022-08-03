@@ -36,6 +36,11 @@ object Reporter {
       assert(line.isPresent() == true)
       assert(line.get() == 9)
 
+      val diagnosticCode = mainProblem.diagnosticCode()
+      assert(diagnosticCode.isPresent() == true)
+      val code = diagnosticCode.get()
+      assert(diagnosticCode.get().code() == "6")
+
       val pointer = mainProblem.position().pointer()
       assert(pointer.isPresent() == true)
       assert(pointer.get() == 10)
