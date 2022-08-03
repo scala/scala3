@@ -812,8 +812,8 @@ object desugar {
         val originalVparamsIt = originalVparamss.iterator.flatten
         derivedVparamss match {
           case first :: rest =>
-            first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
-            rest.flatten.map(_.withMods(originalVparamsIt.next().mods))
+            first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor | Final)) ++
+            rest.flatten.map(_.withMods(originalVparamsIt.next().mods | Final))
           case _ =>
             Nil
         }
