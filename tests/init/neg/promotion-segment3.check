@@ -1,0 +1,12 @@
+-- Error: tests/init/neg/promotion-segment3.scala:9:6 ------------------------------------------------------------------
+9 |  bar(new B)  // error
+  |      ^^^^^
+  |      Cannot prove the method argument is hot. Only hot values are safe to leak.
+  |      Found = Warm[class B] { outer = ThisRef[class A] }. Calling trace:
+  |      -> class A:	[ promotion-segment3.scala:2 ]
+  |         ^
+  |      -> bar(new B)  // error	[ promotion-segment3.scala:9 ]
+  |             ^^^^^
+  |
+  |      Promoting the value to hot failed due to the following problem:
+  |      Promotion cancelled as the value contains inner class C.

@@ -1,0 +1,58 @@
+-- Error: tests/init/neg/super-resolution3.scala:27:6 ------------------------------------------------------------------
+27 |  val n = 40 // error
+   |      ^
+   |      Access non-initialized value n. Calling trace:
+   |      -> class C extends A with M with N:	[ super-resolution3.scala:22 ]
+   |         ^
+   |      -> new Inner()	[ super-resolution3.scala:23 ]
+   |         ^^^^^^^^^^^
+   |      -> class Inner:	[ super-resolution3.scala:17 ]
+   |         ^
+   |      -> N.super[A].foo()	[ super-resolution3.scala:18 ]
+   |         ^^^^^^^^^^^^^^^^
+   |      -> def foo(): Int = n	[ super-resolution3.scala:3 ]
+   |                          ^
+-- Error: tests/init/neg/super-resolution3.scala:26:6 ------------------------------------------------------------------
+26 |  val m = 30 // error
+   |      ^
+   |      Access non-initialized value m. Calling trace:
+   |      -> class C extends A with M with N:	[ super-resolution3.scala:22 ]
+   |         ^
+   |      -> new Inner()	[ super-resolution3.scala:23 ]
+   |         ^^^^^^^^^^^
+   |      -> class Inner:	[ super-resolution3.scala:17 ]
+   |         ^
+   |      -> N.super.foo()	[ super-resolution3.scala:19 ]
+   |         ^^^^^^^^^^^^^
+   |      -> override def foo(): Int = a + super.foo()	[ super-resolution3.scala:11 ]
+   |                                       ^^^^^^^^^^^
+   |      -> def foo(): Int = m	[ super-resolution3.scala:7 ]
+   |                          ^
+-- Error: tests/init/neg/super-resolution3.scala:24:6 ------------------------------------------------------------------
+24 |  val a = 10 // error
+   |      ^
+   |      Access non-initialized value a. Calling trace:
+   |      -> class C extends A with M with N:	[ super-resolution3.scala:22 ]
+   |         ^
+   |      -> new Inner()	[ super-resolution3.scala:23 ]
+   |         ^^^^^^^^^^^
+   |      -> class Inner:	[ super-resolution3.scala:17 ]
+   |         ^
+   |      -> N.super.foo()	[ super-resolution3.scala:19 ]
+   |         ^^^^^^^^^^^^^
+   |      -> override def foo(): Int = a + super.foo()	[ super-resolution3.scala:11 ]
+   |                                   ^
+-- Error: tests/init/neg/super-resolution3.scala:25:6 ------------------------------------------------------------------
+25 |  val b = 20 // error
+   |      ^
+   |      Access non-initialized value b. Calling trace:
+   |      -> class C extends A with M with N:	[ super-resolution3.scala:22 ]
+   |         ^
+   |      -> new Inner()	[ super-resolution3.scala:23 ]
+   |         ^^^^^^^^^^^
+   |      -> class Inner:	[ super-resolution3.scala:17 ]
+   |         ^
+   |      -> foo()	[ super-resolution3.scala:20 ]
+   |         ^^^^^
+   |      -> override def foo(): Int = b * super.foo()	[ super-resolution3.scala:15 ]
+   |                                   ^

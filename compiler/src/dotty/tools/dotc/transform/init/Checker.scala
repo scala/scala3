@@ -31,13 +31,11 @@ class Checker extends Phase {
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val checkCtx = ctx.fresh.setPhase(this.start)
-    Semantic.withInitialState {
+    Semantic.checkTasks(using checkCtx) {
       val traverser = new InitTreeTraverser()
       units.foreach { unit => traverser.traverse(unit.tpdTree) }
-      given Context = checkCtx
-      Semantic.check()
-      super.runOn(units)
     }
+    units
 
   def run(using Context): Unit = {
     // ignore, we already called `Semantic.check()` in `runOn`

@@ -1131,11 +1131,6 @@ object Semantic:
      *
      */
     def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
-      val classRef = warm.klass.appliedRef
-      val hasInnerClass = classRef.memberClasses.filter(_.symbol.hasSource).nonEmpty
-      if hasInnerClass then
-        return PromoteError(msg + "Promotion cancelled as the value contains inner classes.", trace.toVector) :: Nil
-
       val obj = warm.objekt
 
       def doPromote(klass: ClassSymbol, subClass: ClassSymbol, subClassSegmentHot: Boolean)(using Reporter): Unit =
@@ -1148,7 +1143,9 @@ object Semantic:
           params.forall(param => obj.field(param).isHot)
         }
 
-        // check invariant: subClassSegmentHot => isHotSegment
+        // Check invariant: subClassSegmentHot ==> isHotSegment
+        //
+        // This invariant holds because of the Scala/Java/JVM restriction that we cannot use `this` in super constructor calls.
         if subClassSegmentHot && !isHotSegment then
           report.error("[Internal error] Expect current segment to hot in promotion, current klass = " + klass.show +
               ", subclass = " + subClass.show + Trace.show, Trace.position)
@@ -1158,7 +1155,10 @@ object Semantic:
         // those methods are checked as part of the check for the class where they are defined.
         if !isHotSegment then
           for member <- klass.info.decls do
-            if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
+            if member.isClass then
+              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".", Vector.empty)
+              reporter.report(error)
+            else if !member.isType && !member.isConstructor  && !member.is(Flags.Deferred) then
               given Trace = Trace.empty
               if member.is(Flags.Method, butNot = Flags.Accessor) then
                 val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
@@ -1261,22 +1261,17 @@ object Semantic:
   /** Add a checking task to the work list */
   def addTask(thisRef: ThisRef)(using WorkList) = workList.addTask(Task(thisRef))
 
-  /** Perform check on the work list until it becomes empty
+  /** Check the specified tasks
    *
-   *  Should only be called once from the checker.
-   */
-  def check()(using Cache, WorkList, Context) = workList.work()
-
-  /** Perform actions with initial checking state.
-   *
-   *      Semantic.withInitialState {
+   *      Semantic.checkTasks {
    *         Semantic.addTask(...)
-   *         ...
-   *         Semantic.check()
    *      }
    */
-  def withInitialState[T](work: (Cache, WorkList) ?=> T): T =
-    work(using new Cache, new WorkList)
+  def checkTasks(using Context)(taskBuilder: WorkList ?=> Unit): Unit =
+    val workList = new WorkList
+    val cache = new Cache
+    taskBuilder(using workList)
+    workList.work()(using cache, ctx)
 
 // ----- Semantic definition --------------------------------
 
