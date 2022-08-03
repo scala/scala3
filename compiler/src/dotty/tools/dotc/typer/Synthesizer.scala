@@ -541,7 +541,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     if checkFormal(formal) then
       formal.member(tpnme.MirroredType).info match
         case TypeBounds(mirroredType, _) =>
-          synth(fullyDefinedType(mirroredType, "Mirror.*Of argument", ctx.source.atSpan(span)), formal, span)
+          val defined = fullyDefinedType(mirroredType, "Mirror.*Of argument", ctx.source.atSpan(span))
+          val stripped = TypeOps.stripTypeVars(defined)
+          synth(stripped, formal, span)
         case other => EmptyTreeNoError
     else EmptyTreeNoError
 
