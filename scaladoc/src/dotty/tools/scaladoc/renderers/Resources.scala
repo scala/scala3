@@ -17,9 +17,9 @@ import util._
 import translators._
 
 enum Resource(val path: String):
-  case Text(override val path: String, content: String) extends Resource(path)
-  case Classpath(override val path: String, name: String) extends Resource(path)
-  case File(override val path: String, file: Path) extends Resource(path)
+  case Text(private[this] val path: String, content: String) extends Resource(path)
+  case Classpath(private[this] val path: String, name: String) extends Resource(path)
+  case File(private[this] val path: String, file: Path) extends Resource(path)
   case URL(url: String) extends Resource(url)
   case URLToCopy(url: String, dest: String) extends Resource(url)
 

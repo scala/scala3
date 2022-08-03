@@ -50,9 +50,9 @@ case class RenderingContext(
 case class ResolvedPage(code: String, resources: List[String] = Nil)
 
 enum TemplateName(val name: String):
-  case YamlDefined(override val name: String) extends TemplateName(name)
-  case SidebarDefined(override val name: String) extends TemplateName(name)
-  case FilenameDefined(override val name: String) extends TemplateName(name)
+  case YamlDefined(private[this] val name: String) extends TemplateName(name)
+  case SidebarDefined(private[this] val name: String) extends TemplateName(name)
+  case FilenameDefined(private[this] val name: String) extends TemplateName(name)
 
 /**
  * case class for the template files.
