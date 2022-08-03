@@ -22,3 +22,8 @@ object Test2 {
   }
 
 }
+
+object Test3 {
+  val cw = new Test()
+  val mirrorParent = summon[deriving.Mirror.Of[cw.Parent]]
+}
