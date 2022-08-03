@@ -47,6 +47,19 @@ class LoadTests extends ReplTest {
                  |""".stripMargin
   )
 
+  @Test def truncated = loadTest(
+    file    = """|def f: Unit =
+                 |  for i <- 1 to 2
+                 |  do
+                 |    println(i)""".stripMargin, // was: unindent expected, but eof found
+    defs    = """|def f: Unit
+                 |""".stripMargin,
+    runCode = """f""",
+    output  = """|1
+                 |2
+                 |""".stripMargin
+  )
+
   def loadTest(file: String, defs: String, runCode: String, output: String) =
     eval(s":load ${writeFile(file)}") andThen {
       assertMultiLineEquals(defs, storedOutput())
