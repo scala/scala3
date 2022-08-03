@@ -1474,4 +1474,48 @@ class CompletionTest {
         ("xClass", Module, "Foo.xClass"),
         ("xClass", Class, "Foo.xClass")))
   }
+
+  @Test def patternGuardCompletions: Unit = {
+    code"""object Foo:
+          |  1 match { case foo if fo${m1} => }
+          |  1 match { case foo => fo${m2} }
+          """
+      .completion(m1, Set(("foo", Field, "Int")))
+      .completion(m2, Set(("foo", Field, "Int")))
+  }
+
+  @Test def patternGuardCompletionsUnApply: Unit = {
+    code"""object Foo:
+          |  Some(1) match { case Some(foo) if fo${m1} => }
+          |  Some(1) match { case Some(foo) => fo${m2} }
+          """
+      .completion(m1, Set(("foo", Field, "Int")))
+      .completion(m2, Set(("foo", Field, "Int")))
+  }
+
+  @Test def patternGuardCompletionsNested: Unit = {
+    code"""object Foo:
+          |  ((1, 2), 3) match { case ((foo1, foo2), foo3) if fo${m1} => }
+          |  ((1, 2), 3) match { case ((foo1, foo2), foo3) => fo${m2} }
+          """
+      .completion(m1, Set(("foo1", Field, "Int"), ("foo2", Field, "Int"), ("foo3", Field, "Int")))
+      .completion(m2, Set(("foo1", Field, "Int"), ("foo2", Field, "Int"), ("foo3", Field, "Int")))
+  }
+
+  @Test def patternGuardCompletionsSeq: Unit = {
+    code"""object Foo:
+          |  Seq(1, 2) match { case foo1 :: foo2 if fo${m1} => }
+          |  Seq(1, 2) match { case foo1 :: foo2 => fo${m2} }
+          """
+      .completion(m1, Set(("foo1", Field, "Int"), ("foo2", Field, "List[Int]")))
+      .completion(m2, Set(("foo1", Field, "Int"), ("foo2", Field, "List[Int]")))
+  }
+
+  @Test def noCompletionsInsidePatternBind: Unit = {
+    code"""object Foo:
+          |  (1, 2) match { case (foo, fo${m1}
+          """
+      .noCompletions()
+  }
+
 }
