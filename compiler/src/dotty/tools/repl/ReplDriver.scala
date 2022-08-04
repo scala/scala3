@@ -146,7 +146,7 @@ class ReplDriver(settings: Array[String],
          |Type in expressions for evaluation. Or try :help.""".stripMargin)
 
     /** Blockingly read a line, getting back a parse result */
-    def readLine(state: State): ParseResult = {
+    def readLine()(using state: State): ParseResult = {
       val completer: Completer = { (_, line, candidates) =>
         val comps = completions(line.cursor, line.line, state)
         candidates.addAll(comps.asJava)
@@ -154,7 +154,7 @@ class ReplDriver(settings: Array[String],
       given Context = state.context
       try {
         val line = terminal.readLine(completer)
-        ParseResult(line)(state)
+        ParseResult(line)
       } catch {
         case _: EndOfFileException |
             _: UserInterruptException => // Ctrl+D or Ctrl+C
@@ -163,7 +163,7 @@ class ReplDriver(settings: Array[String],
     }
 
     @tailrec def loop(using state: State)(): State = {
-      val res = readLine(state)
+      val res = readLine()
       if (res == Quit) state
       else loop(using interpret(res))()
     }
@@ -173,8 +173,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(using state: State): State = runBody {
-    val parsed = ParseResult(input)(state)
-    interpret(parsed)
+    interpret(ParseResult.complete(input))
   }
 
   private def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))

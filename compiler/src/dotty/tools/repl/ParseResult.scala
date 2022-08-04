@@ -139,7 +139,7 @@ object ParseResult {
     Settings.command -> (arg => Settings(arg)),
   )
 
-  def apply(source: SourceFile)(implicit state: State): ParseResult = {
+  def apply(source: SourceFile)(using state: State): ParseResult = {
     val sourceCode = source.content().mkString
     sourceCode match {
       case "" => Newline
@@ -167,8 +167,14 @@ object ParseResult {
     }
   }
 
-  def apply(sourceCode: String)(implicit state: State): ParseResult =
-    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = true))
+  def apply(sourceCode: String)(using state: State): ParseResult =
+    maybeIncomplete(sourceCode, maybeIncomplete = true)
+
+  def complete(sourceCode: String)(using state: State): ParseResult =
+    maybeIncomplete(sourceCode, maybeIncomplete = false)
+
+  private def maybeIncomplete(sourceCode: String, maybeIncomplete: Boolean)(using state: State): ParseResult =
+    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = maybeIncomplete))
 
   /** Check if the input is incomplete.
    *
