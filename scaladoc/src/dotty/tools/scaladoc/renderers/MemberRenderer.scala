@@ -39,11 +39,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def docAttributes(m: Member): Seq[AppliedTag] =
 
-    def nested(name: String, on: SortedMap[String, DocPart]): Seq[AppliedTag] =
-      if on.isEmpty then Nil else
-        tableRow(name, dl(cls := "attributes")(
-          on.map { case (name, value) => tableRow(name, renderDocPart(value))}.toList:_*
-        ))
+    def flattened(on: SortedMap[String, DocPart]): Seq[AppliedTag] =
+      on.flatMap { case (name, value) => tableRow(name, renderDocPart(value))}.toSeq
 
     def list(name: String, on: List[DocPart]): Seq[AppliedTag] =
       if on.isEmpty then Nil else tableRow(name, div(on.map(e => div(renderDocPart(e)))))
@@ -54,10 +51,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors:", authors) else Nil
 
     m.docs.fold(Nil)(d =>
-      nested("Type parameters:", d.typeParams) ++
-      nested("Value parameters:", d.valueParams) ++
+      flattened(d.typeParams) ++
+      flattened(d.valueParams) ++
       opt("Returns:", d.result) ++
-      nested("Throws:", d.throws) ++
+      list("Throws:", d.throws) ++
       opt("Constructor:", d.constructor) ++
       authors(d.authors) ++
       list("See also:", d.see) ++
@@ -151,7 +148,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val signature: MemberSignature = signatureProvider.rawSignature(member)()
     Seq(
-      div(cls := "signature")(
+      div(cls := "signature mono-small-inline")(
         span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
         span(cls := "kind")(signature.kind.map(renderElement(_))),
         signature.name.map(renderElement(_, nameClasses*)),
@@ -179,7 +176,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   def member(member: Member) =
     val filterAttributes = FilterAttributes.attributesFor(member)
     val anchor = if member.dri.anchor.isEmpty then Nil else Seq(id := member.dri.anchor)
-    def topLevelAttr = Seq(cls := "documentableElement mono-small-inline")
+    def topLevelAttr = Seq(cls := "documentableElement")
       ++ anchor
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 
@@ -189,7 +186,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     div(topLevelAttr:_*)(
       Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button show-content")).toList,
-      if !member.needsOwnPage then a(Attr("link") := link(member.dri).getOrElse("#"), cls := "documentableAnchor") else Nil,
       annots.map(div(_)).toList,
       div(cls := "header monospace")(memberSignature(member)),
       Option.when(originInf.nonEmpty || memberInf.nonEmpty)(
@@ -328,6 +324,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     div(cls := "membersList expand")(
     h2(cls := "h500")("Members list"),
+    div(cls := "body-small", id := "concise-view-switch")(
+      span("Concise view"),
+      label(cls := "switch")(
+        input(Attr("type") := "checkbox")(),
+        span(cls := "slider")()
+      )
+    ),
     renderTabs(
       singleSelection = false,
       buildGroup("Packages", Seq(

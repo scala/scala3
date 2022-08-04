@@ -177,8 +177,6 @@ class List {
         .every(([filterKey, value]) => {
           const filterGroup = filter.filters[filterKey]
 
-          console.log(Object.entries(filterGroup).filter(arr => arr[1].selected))
-
           return Object.entries(filterGroup).filter(arr => arr[1].selected).length == 0 || value.split(",").some(v => (filterGroup && filterGroup[v].selected))
         })
 

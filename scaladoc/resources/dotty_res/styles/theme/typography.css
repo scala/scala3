@@ -106,3 +106,7 @@
   line-height: 20px;
   font-family: "FiraCode-Regular";
 }
+
+:root {
+  font-variant-ligatures: none;
+}

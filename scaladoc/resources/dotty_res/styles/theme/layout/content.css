@@ -145,16 +145,15 @@
 
 /* content headers */
 
+#content h1:first-of-type {
+  line-height: normal;
+}
+
 #content h1,
 #content h2 {
   color: var(--text-primary);
   margin-block-end: 0;
   margin-block-start: 0;
-}
-
-/* content paragraph */
-#content p {
-  color: var(--text-primary);
 }
 
 /* content first paragraph */
@@ -185,7 +184,6 @@
 #content :not(pre) > code {
   color: var(--code-props-content);
   font-family: "FiraCode-Regular";
-  background-color: var(--red3);
 }
 
 .breadcrumbs {
@@ -423,4 +421,35 @@
 
 #content section:last-child {
   margin-bottom: calc(6 * var(--base-spacing));
+}
+
+.membersList {
+  position: relative;
+}
+
+#concise-view-switch {
+  position: absolute;
+  right: 0;
+  top: var(--base-spacing);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.membersList.concise .documentableElement {
+  padding-top: var(--base-spacing);
+  padding-bottom: var(--base-spacing);
+  margin: var(--base-spacing);
+}
+
+.membersList.concise .documentableBrief p {
+  margin-block-start: 0.5em;
+}
+
+.membersList.concise .documentableElement .modifiers {
+  display: none;
+}
+
+.membersList.concise .documentableElement.expand .modifiers {
+  display: unset;
 }

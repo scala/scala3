@@ -92,6 +92,11 @@
   --shadow-first: var(--shadow1);
   --shadow-second: var(--shadow2);
   --shadow-inset: var(--grey7);
+
+  /* switch */
+  --switch-button: var(--grey1);
+  --switch-background-default: var(--grey9);
+  --switch-background-selected: var(--indigo8);
 }
 
 :root.theme-dark {
@@ -187,4 +192,9 @@
   --shadow-first: var(--shadow1);
   --shadow-second: var(--shadow2);
   --shadow-inset: var(--grey7);
+
+  /* switch */
+  --switch-button: var(--grey12);
+  --switch-background-default: var(--grey9);
+  --switch-background-selected: var(--indigo11);
 }

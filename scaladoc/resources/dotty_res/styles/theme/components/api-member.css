@@ -13,10 +13,15 @@
 
 .documentableElement .signature {
   margin-right: calc(3 * var(--base-spacing));
+  line-height: 1.5;
 }
 
 .documentableElement:hover {
   cursor: pointer;
+}
+
+.documentableElement .documentableBrief {
+  color: var(--text-secondary);
 }
 
 .documentableElement .annotations {
@@ -48,10 +53,6 @@
 
 .documentableElement:hover .icon-button {
   display: block;
-}
-
-#content .documentableElement p {
-  color: var(--text-primary);
 }
 
 [t="k"] {
