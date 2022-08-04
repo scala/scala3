@@ -39,11 +39,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def docAttributes(m: Member): Seq[AppliedTag] =
 
-    def nested(name: String, on: SortedMap[String, DocPart]): Seq[AppliedTag] =
-      if on.isEmpty then Nil else
-        tableRow(name, dl(cls := "attributes")(
-          on.map { case (name, value) => tableRow(name, renderDocPart(value))}.toList:_*
-        ))
+    def flattened(on: SortedMap[String, DocPart]): Seq[AppliedTag] =
+      on.flatMap { case (name, value) => tableRow(name, renderDocPart(value))}.toSeq
 
     def list(name: String, on: List[DocPart]): Seq[AppliedTag] =
       if on.isEmpty then Nil else tableRow(name, div(on.map(e => div(renderDocPart(e)))))
@@ -54,10 +51,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors:", authors) else Nil
 
     m.docs.fold(Nil)(d =>
-      nested("Type parameters:", d.typeParams) ++
-      nested("Value parameters:", d.valueParams) ++
+      flattened(d.typeParams) ++
+      flattened(d.valueParams) ++
       opt("Returns:", d.result) ++
-      nested("Throws:", d.throws) ++
+      list("Throws:", d.throws) ++
       opt("Constructor:", d.constructor) ++
       authors(d.authors) ++
       list("See also:", d.see) ++
