@@ -1518,4 +1518,14 @@ class CompletionTest {
       .noCompletions()
   }
 
+  @Test def badTypeCompletions: Unit = {
+    code"""trait Foo
+          |object Test:
+          |  def foo: ArrayBuffer[Fo${m1}] = ???
+          """
+      .completion(m1, Set(
+          ("Foo",Class,"Foo")
+        )
+      )
+  }
 }
