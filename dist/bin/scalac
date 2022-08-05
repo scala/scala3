@@ -87,7 +87,7 @@ eval "\"$JAVACMD\"" \
    "${java_args[@]}" \
    "-classpath \"$jvm_cp_args\"" \
    "-Dscala.usejavacp=true" \
-   "-Dscala.home=$PROG_HOME" \
+   "-Dscala.home=\"$PROG_HOME\"" \
    "dotty.tools.MainGenericCompiler" \
    "${scala_args[@]}"
 
