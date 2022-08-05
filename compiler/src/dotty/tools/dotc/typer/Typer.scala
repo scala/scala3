@@ -1993,7 +1993,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       typed(tree.tpt, AnyTypeConstructorProto)
     }
     val tparams = tpt1.tpe.typeParams
-    if (tparams.isEmpty) {
+     if tpt1.tpe.isError then
+       val args1 = tree.args.mapconserve(typedType(_))
+       assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
+     else if (tparams.isEmpty) {
       report.error(TypeDoesNotTakeParameters(tpt1.tpe, tree.args), tree.srcPos)
       tpt1
     }
