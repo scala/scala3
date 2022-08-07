@@ -16,6 +16,8 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
   import CaptureAnnotation.*
   import tpd.*
 
+  var boxedType: Type = NoType
+
   override def tree(using Context) =
     val elems = refs.elems.toList.map {
       case cr: TermRef => ref(cr)
