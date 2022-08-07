@@ -7,6 +7,7 @@ import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*
 import config.Printers.{capt, recheckr}
+import config.Config
 import ast.{tpd, untpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkParents}
@@ -120,7 +121,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           // ^^^ TODO: Can we avoid doing overrides checks twice?
           // We need to do them here since only at this phase CaptureTypes are relevant
           // But maybe we can then elide the check during the RefChecks phase if -Ycc is set?
+          Config.checkBoxes = false // !!!
           checkAllOverrides(ctx.owner.asClass)
+          Config.checkBoxes = true // !!!
         case _ =>
       traverseChildren(t)
 
@@ -529,12 +532,63 @@ class CheckCaptures extends Recheck, SymTransformer:
           expected.derivedCapturingType(ecore, erefs1)
         case _ =>
           expected
-      val actual1 = adaptBoxed(actual, expected1, covariant = true)
-      //println(i"check conforms $actual <<< $expected1")
-      super.checkConformsExpr(actual1, expected1, tree)
+      val normActual = adaptBoxed(actual, expected1, tree.srcPos)
+      //println(i"check conforms $actual1 <<< $expected1")
+      super.checkConformsExpr(normActual, expected1, tree)
 
-    def adaptBoxed(actual: Type, expected: Type, covariant: Boolean)(using Context): Type =
-      actual
+    /** Adapt `actual` type to `expected` type by inserting boxing and unboxing conversions */
+    def adaptBoxed(actual: Type, expected: Type, pos: SrcPos)(using Context): Type =
+
+      def adaptFun(actual: Type, aargs: List[Type], ares: Type, expected: Type,
+          covariant: Boolean,
+          reconstruct: (List[Type], Type) => Type): Type =
+        val (eargs, eres) = expected.dealias match
+          case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
+          case _ => (aargs.map(_ => WildcardType), WildcardType)
+        val aargs1 = aargs.zipWithConserve(eargs)(adapt(_, _, !covariant))
+        val ares1 = adapt(ares, eres, covariant)
+        if (ares1 eq ares) && (aargs1 eq aargs) then actual
+        else reconstruct(aargs1, ares1)
+
+      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = actual.dealias match
+        case actual @ CapturingType(parent, refs) =>
+          val parent1 = adapt(parent, expected, covariant)
+          if actual.isBoxed != expected.isBoxedCapturing then
+            val uni = if covariant then refs.isUniversal else expected.captureSet.isUniversal
+            if uni then // TODO: better to constrain the set to be not universal
+              capt.println(i"ABORTING $actual vs $expected")
+              actual
+            else
+              if covariant == actual.isBoxed then includeBoxedCaptures(refs, pos)
+              CapturingType(parent1, refs, boxed = !actual.isBoxed)
+          else if parent1 eq parent then actual
+          else CapturingType(parent1, refs, boxed = actual.isBoxed)
+        case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
+          adaptFun(actual, args.init, args.last, expected, covariant,
+              (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
+        case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
+          adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant,
+            (aargs1, ares1) =>
+              rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
+                .toFunctionType(isJava = false, alwaysDependent = true))
+        case _ => actual
+
+      if Config.checkBoxes then
+        var actualw = actual.widenDealias
+        actual match
+          case ref: CaptureRef if ref.isTracked =>
+            actualw match
+              case CapturingType(p, refs) =>
+                actualw = actualw.derivedCapturingType(p, ref.singletonCaptureSet)
+              case _ =>
+          case _ =>
+        val adapted = adapt(actualw, expected, covariant = true)
+        if adapted ne actualw then
+          capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
+          adapted
+        else actual
+      else actual
+    end adaptBoxed
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       Setup(preRecheckPhase, thisPhase, recheckDef)
