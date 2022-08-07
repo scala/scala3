@@ -121,9 +121,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // ^^^ TODO: Can we avoid doing overrides checks twice?
           // We need to do them here since only at this phase CaptureTypes are relevant
           // But maybe we can then elide the check during the RefChecks phase if -Ycc is set?
-          Config.checkBoxes = false // !!!
           checkAllOverrides(ctx.owner.asClass)
-          Config.checkBoxes = true // !!!
         case _ =>
       traverseChildren(t)
 

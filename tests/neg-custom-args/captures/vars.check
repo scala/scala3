@@ -15,13 +15,6 @@
    |  ^^^^^^
    |  The expression's type box {*} String -> String is not allowed to capture the root capability `*`.
    |  This usually means that a capability persists longer than its allowed lifetime.
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:21:13 -----------------------------------------
-21 |    b = List(g) // error !!! Probably spurious due to box comparison
-   |             ^
-   |             Found:    Seq[{cap3} String -> ? String]
-   |             Required: Seq[box {cap3} (x$0: ? String) -> ? String]
-   |
-   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/vars.scala:30:8 ---------------------------------------------------------------
 30 |  local { cap3 => // error
    |  ^
