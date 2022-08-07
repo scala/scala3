@@ -1,16 +1,16 @@
--- Error: tests/neg-custom-args/captures/try.scala:24:3 ----------------------------------------------------------------
-22 |  val a = handle[Exception, CanThrow[Exception]] {
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:22:49 ------------------------------------------
+22 |  val a = handle[Exception, CanThrow[Exception]] { // error !!! was for 2nd arg
+   |                                                 ^
+   |                              Found:    ? ({*} CT[Exception]) -> {*} CT[? >: box ? Exception <: box ? Exception]
+   |                              Required: CanThrow[Exception] => box {*} CT[Exception]
 23 |    (x: CanThrow[Exception]) => x
-24 |  }{ // error
-   |          ^
-   |          The expression's type box {*} CT[Exception] is not allowed to capture the root capability `*`.
-   |          This usually means that a capability persists longer than its allowed lifetime.
-25 |    (ex: Exception) => ???
-26 |  }
+24 |  }{
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:28:43 ------------------------------------------
 28 |  val b = handle[Exception, () -> Nothing] {  // error
    |                                           ^
-   |                                           Found:    ? (x: CanThrow[Exception]) -> {x} () -> ? Nothing
+   |                                           Found:    ? (x: {*} CT[Exception]) -> {x} () -> ? Nothing
    |                                           Required: CanThrow[Exception] => () -> Nothing
 29 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 30 |  } {

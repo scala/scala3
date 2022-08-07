@@ -24,4 +24,4 @@ def test(E: Cap) =
       if xs.isEmpty then LazyNil
       else
         val cons = () => (f(xs.head), xs.tail.map(f))
-        LazyCons(cons)
+        new LazyCons(cons.asInstanceOf) // !!!
