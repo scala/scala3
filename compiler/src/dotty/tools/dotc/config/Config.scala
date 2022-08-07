@@ -243,4 +243,6 @@ object Config {
    *  cases, though.
    */
   inline val ccAllowUnsoundMaps = false
+
+  @annotation.internal.sharable var checkBoxes = true
 }

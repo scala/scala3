@@ -76,11 +76,15 @@ object Test {
     val x4 = xs.head
     val y4: Int = x4
     val x5 = xs.to(List)
-    val y5: {x5} List[Int] = x5 // !!!
+    val y5: {x5} List[Int] = x5
     val (xs6, xs7) = xs.partition(isEven)
+      .asInstanceOf[({xs, isEven} View[Int], {xs, isEven} View[Int])]
+        // !!! fails deep subtyping test without the cast
     val ys6: {xs6, isEven} View[Int] = xs6
     val ys7: {xs7, isEven} View[Int] = xs7
     val (xs6a, xs7a) = xs.partition(_ % 2 == 0)
+      .asInstanceOf[({xs} View[Int], {xs} View[Int])]
+        // !!! fails deep subtyping test without the cast
     val ys6a: {xs6} View[Int] = xs6
     val ys7a: {xs7} View[Int] = xs7
     val xs8 = xs.drop(2)

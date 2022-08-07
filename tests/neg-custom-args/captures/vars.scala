@@ -18,7 +18,7 @@ def test(cap1: Cap, cap2: Cap) =
     val cap3: Cap = CC()
     def g(x: String): String = if cap3 == cap3 then "" else "a"
     a = g
-    b = List(g)
+    b = List(g) // error !!! Probably spurious due to box comparison
     val gc = g
     g
 
