@@ -531,7 +531,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
           expected
       val normActual = adaptBoxed(actual, expected1, tree.srcPos)
-      //println(i"check conforms $actual1 <<< $expected1")
+      //println(i"check conforms $normActual <<< $expected1")
       super.checkConformsExpr(normActual, expected1, tree)
 
     /** Adapt `actual` type to `expected` type by inserting boxing and unboxing conversions */
