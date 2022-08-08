@@ -28,7 +28,7 @@ extends tpd.TreeTraverser:
 
   private def box(tp: Type)(using Context): Type = tp.dealias match
     case tp @ CapturingType(parent, refs) if !tp.isBoxed =>
-      CapturingType(parent, refs, boxed = true)
+      tp.boxed
     case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
       val res = args.last
       val boxedRes = box(res)
