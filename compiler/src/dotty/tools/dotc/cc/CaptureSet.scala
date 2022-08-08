@@ -423,6 +423,7 @@ object CaptureSet:
   abstract class DerivedVar(initialElems: Refs)(using @constructorOnly ctx: Context)
   extends Var(initialElems):
     def source: Var
+    val stack = if debugSets && this.isInstanceOf[Mapped] then (new Throwable).getStackTrace().nn.take(20) else null
 
     addSub(source)
 
@@ -437,7 +438,6 @@ object CaptureSet:
     (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
   extends DerivedVar(initial.elems):
     addSub(initial)
-    val stack = if debugSets then (new Throwable).getStackTrace().nn.take(20) else null
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       addNewElemsImpl(newElems: Refs, origin: CaptureSet)
