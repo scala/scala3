@@ -199,38 +199,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         }
         checkSubset(targetSet, curEnv.captured, pos)
 
-    /** If result type of a function type has toplevel boxed captures, propagate
-     *  them to the function type as a whole. Such boxed captures
-     *  can be created by substitution or as-seen-from. Propagating captures to the
-     *  left simulates an unbox operation on the result. I.e. if f has type `A -> box C B`
-     *  then in theory we need to unbox with
-     *
-     *      x => C o- f(x)
-     *
-     *   and that also propagates C into the type of the unboxing expression.
-     *   TODO: Generalize this to boxed captues in other parts of a function type.
-     *   Test case in pos-.../boxed1.scala.
-     */
-    def addResultBoxes(tp: Type)(using Context): Type =
-      def includeBoxed(res: Type) =
-        //if !res.boxedCaptureSet.isAlwaysEmpty then
-        //  println(i"add boxed $tp from ${res.boxedCaptureSet}")
-        tp.capturing(res.boxedCaptureSet)
-      val tp1 = tp.dealias
-      val boxedTp = tp1 match
-        case tp1 @ AppliedType(_, args) if defn.isNonRefinedFunction(tp1) =>
-          includeBoxed(args.last)
-        case tp1 @ RefinedType(_, _, rinfo) if defn.isFunctionType(tp1) =>
-          includeBoxed(rinfo.finalResultType)
-        case tp1 @ CapturingType(parent, refs) =>
-          val boxedParent = addResultBoxes(parent)
-          if boxedParent eq parent then tp1
-          else boxedParent.capturing(refs)
-        case _ =>
-          tp1
-      if (boxedTp eq tp1) then tp else boxedTp
-    end addResultBoxes
-
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
       assert(cs1.subCaptures(cs2, frozen = false).isOK, i"$cs1 is not a subset of $cs2")
 
@@ -260,9 +228,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) = {
       val selType = super.recheckSelection(tree, qualType, name)
       val selCs = selType.widen.captureSet
-      if selCs.isAlwaysEmpty
-          || selType.widen.isBoxedCapturing
-          || qualType.isBoxedCapturing then
+      if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
         selType
       else
         val qualCs = qualType.captureSet
@@ -489,8 +455,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           checkNotUniversal(parent)
         case _ =>
       checkNotUniversal(typeToCheck)
-      val tpe1 = if false && tree.isTerm then addResultBoxes(tpe) else tpe
-      super.recheckFinish(tpe1, tree, pt)
+      super.recheckFinish(tpe, tree, pt)
 
     /** This method implements the rule outlined in #14390:
      *  When checking an expression `e: T` against an expected type `Cx Tx`
