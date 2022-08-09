@@ -12,7 +12,7 @@ def box[T](v: T) : Observe[T] = {
 }
 
 def main() : Int = {
-   val boxed : Observe[{*} C] = box(newC)
+   val boxed : Observe[{*} C] = box(newC)  // error
    boxed(unsafe)
 
    0
