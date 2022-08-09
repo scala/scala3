@@ -245,6 +245,4 @@ object Config {
    *  cases, though.
    */
   inline val ccAllowUnsoundMaps = false
-
-  val checkBoxes = true
 }

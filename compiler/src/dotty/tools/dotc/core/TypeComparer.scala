@@ -2555,9 +2555,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     refs1.subCaptures(refs2, frozen)
 
   protected def sameBoxed(tp1: Type, tp2: Type, refs: CaptureSet)(using Context): Boolean =
-    !Config.checkBoxes
-      || (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-      || refs.subCaptures(CaptureSet.empty, frozenConstraint).isOK
+    (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
+    || refs.subCaptures(CaptureSet.empty, frozenConstraint).isOK
 
   // ----------- Diagnostics --------------------------------------------------
 
