@@ -45,33 +45,19 @@ extends tpd.TreeTraverser:
       else tp1.derivedLambdaType(resType = boxedRes)
     case _ => tp
 
-  private def addBoxes(using Context) = new TypeMap:
-    def apply(t: Type) = mapOver(t) match
-      case t1 @ AppliedType(tycon, args) if !defn.isNonRefinedFunction(t1) =>
-        t1.derivedAppliedType(tycon, args.mapConserve(box))
-      case t1: AliasingBounds =>
-        t1.derivedAlias(t1.alias)
-      case t1 @ TypeBounds(lo, hi) =>
-        t1.derivedTypeBounds(box(lo), box(hi))
-      case t1 =>
-        t1
-    override def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
-      tp.derivedCapturingType(this(parent), refs)
-  end addBoxes
-
   /** Expand some aliases of function types to the underlying functions.
    *  Right now, these are only $throws aliases, but this could be generalized.
    */
-  def expandInlineAlias(tp: Type)(using Context) = tp match
+  def expandThrowsAlias(tp: Type)(using Context) = tp match
     case AppliedType(tycon, res :: exc :: Nil) if tycon.typeSymbol == defn.throwsAlias =>
       // hard-coded expansion since $throws aliases in stdlib are defined with `?=>` rather than `?->`
       defn.FunctionOf(defn.CanThrowClass.typeRef.appliedTo(exc) :: Nil, res, isContextual = true, isErased = true)
     case _ => tp
 
-  private def expandInlineAliases(using Context) = new TypeMap:
+  private def expandThrowsAliases(using Context) = new TypeMap:
     def apply(t: Type) = t match
       case _: AppliedType =>
-        val t1 = expandInlineAlias(t)
+        val t1 = expandThrowsAlias(t)
         if t1 ne t then apply(t1) else mapOver(t)
       case _: LazyRef =>
         t
@@ -208,7 +194,7 @@ extends tpd.TreeTraverser:
       try ts.mapConserve(this) finally isTopLevel = saved
 
     def apply(t: Type) =
-      val tp = expandInlineAlias(t)
+      val tp = expandThrowsAlias(t)
       val tp1 = tp match
         case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
           apply(parent)
@@ -296,9 +282,7 @@ extends tpd.TreeTraverser:
     if boxed then box(tp1) else tp1
 
   private def transformExplicitType(tp: Type, boxed: Boolean)(using Context): Type =
-    var tp1 = addBoxes(tp)
-    if boxed then tp1 = box(tp1)
-    tp1 = expandInlineAliases(tp1)
+    val tp1 = expandThrowsAliases(if boxed then box(tp) else tp)
     if tp1 ne tp then capt.println(i"expanded: $tp --> $tp1")
     if ctx.settings.YccNoAbbrev.value then tp1
     else expandAbbreviations(tp1)
