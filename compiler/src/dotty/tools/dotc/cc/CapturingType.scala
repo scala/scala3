@@ -14,6 +14,7 @@ object CapturingType:
     if refs.isAlwaysEmpty then parent
     else parent match
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
+        // Fuse types except if nested type is boxed and current one isn't.
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
         AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
