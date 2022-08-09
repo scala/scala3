@@ -68,7 +68,7 @@ extension (tp: Type)
         //.showing(i"boxedUF $tp in $tycon = $result")
 
   /** The boxed capture set of a type */
-  def boxedCaptured(using Context): CaptureSet =
+  def boxedCaptureSet(using Context): CaptureSet =
     def getBoxed(tp: Type): CaptureSet = tp match
       case tp @ CapturingType(parent, refs) =>
         val pcs = getBoxed(parent)
@@ -80,7 +80,7 @@ extension (tp: Type)
       case _ => CaptureSet.empty
     getBoxed(tp)
 
-  def isBoxedCapturing(using Context) = !tp.boxedCaptured.isAlwaysEmpty
+  def isBoxedCapturing(using Context) = !tp.boxedCaptureSet.isAlwaysEmpty
 
   def stripCapturing(using Context): Type = tp.dealiasKeepAnnots match
     case CapturingType(parent, _) =>
@@ -132,4 +132,10 @@ extension (tp: AnnotatedType)
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
+
+extension (ts: List[Type])
+  def boxedUnlessFun(tycon: Type)(using Context) =
+    if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionClass(tycon.typeSymbol)
+    then ts
+    else ts.mapconserve(_.boxed)
 
