@@ -571,20 +571,18 @@ class CheckCaptures extends Recheck, SymTransformer:
                 .toFunctionType(isJava = false, alwaysDependent = true))
         case _ => actual
 
-      if Config.checkBoxes then
-        var actualw = actual.widenDealias
-        actual match
-          case ref: CaptureRef if ref.isTracked =>
-            actualw match
-              case CapturingType(p, refs) =>
-                actualw = actualw.derivedCapturingType(p, ref.singletonCaptureSet)
-              case _ =>
-          case _ =>
-        val adapted = adapt(actualw, expected, covariant = true)
-        if adapted ne actualw then
-          capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
-          adapted
-        else actual
+      var actualw = actual.widenDealias
+      actual match
+        case ref: CaptureRef if ref.isTracked =>
+          actualw match
+            case CapturingType(p, refs) =>
+              actualw = actualw.derivedCapturingType(p, ref.singletonCaptureSet)
+            case _ =>
+        case _ =>
+      val adapted = adapt(actualw, expected, covariant = true)
+      if adapted ne actualw then
+        capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
+        adapted
       else actual
     end adaptBoxed
 
