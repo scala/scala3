@@ -42,14 +42,8 @@ extension (tp: Type)
       else CapturingType(parent, refs, tp.isBoxed)
 
   def boxed(using Context): Type = tp.dealias match
-    case tp @ CapturingType(parent, refs) =>
-      def boxedTp = parent.boxed match
-        case CapturingType(parent1, refs1) =>
-          CapturingType(parent1, refs ++ refs1, boxed = true)
-        case parent1 =>
-          CapturingType(parent1, refs, boxed = true)
-      if tp.isBoxed || refs.isAlwaysEmpty then tp
-      else tp.annot match
+    case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
+      tp.annot match
         case ann: CaptureAnnotation =>
           ann.boxedType(tp)
         case ann =>
@@ -64,7 +58,6 @@ extension (tp: Type)
     if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionClass(tycon.typeSymbol)
     then tp
     else tp.boxed
-        //.showing(i"boxedUF $tp in $tycon = $result")
 
   /** The boxed capture set of a type */
   def boxedCaptureSet(using Context): CaptureSet =
