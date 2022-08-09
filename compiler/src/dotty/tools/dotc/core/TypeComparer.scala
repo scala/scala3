@@ -2097,13 +2097,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case TypeRef(q: PathType, _) => (path eq q) && bound.isRef(sym)
             case _ => false
 
-          isConstrainable && {
-            gadts.println(i"narrow gadt bound of pdt $path -> ${sym}: from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${isRef}")
+          rollbackGadtUnless {
+            isConstrainable && {
+              gadts.println(i"narrow gadt bound of pdt $path -> ${sym}: from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${isRef}")
 
-            if isRef then false
-            else if isUpper then gadtAddUpperBound(path, sym, bound)
-            else gadtAddLowerBound(path, sym, bound)
+              if isRef then false
+              else if isUpper then gadtAddUpperBound(path, sym, bound)
+              else gadtAddLowerBound(path, sym, bound)
+            }
           }
+
         case _ => false
 
       narrowTypeParams || narrowPathDepType
