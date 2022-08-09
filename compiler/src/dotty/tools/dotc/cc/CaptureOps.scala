@@ -11,7 +11,7 @@ import util.Property.Key
 import tpd.*
 
 private val Captures: Key[CaptureSet] = Key()
-private val Boxed: Key[Type] = Key()
+private val BoxedType: Key[BoxedTypeCache] = Key()
 
 def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
   case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
@@ -51,13 +51,12 @@ extension (tp: Type)
       if tp.isBoxed || refs.isAlwaysEmpty then tp
       else tp.annot match
         case ann: CaptureAnnotation =>
-          if !ann.boxedType.exists then ann.boxedType = boxedTp
-          ann.boxedType
+          ann.boxedType(tp)
         case ann =>
-          ann.tree.getAttachment(Boxed) match
-            case None => ann.tree.putAttachment(Boxed, boxedTp)
+          ann.tree.getAttachment(BoxedType) match
+            case None => ann.tree.putAttachment(BoxedType, BoxedTypeCache())
             case _ =>
-          ann.tree.attachment(Boxed)
+          ann.tree.attachment(BoxedType)(tp)
     case _ =>
       tp
 
