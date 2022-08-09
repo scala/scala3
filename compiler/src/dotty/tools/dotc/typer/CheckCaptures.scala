@@ -187,7 +187,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           includeIn(curEnv.outer)
 
     def includeBoxedCaptures(tp: Type, pos: SrcPos)(using Context): Unit =
-      includeBoxedCaptures(tp.boxedCaptured, pos)
+      includeBoxedCaptures(tp.boxedCaptureSet, pos)
 
     def includeBoxedCaptures(refs: CaptureSet, pos: SrcPos)(using Context): Unit =
       if curEnv.isOpen then
@@ -213,9 +213,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def addResultBoxes(tp: Type)(using Context): Type =
       def includeBoxed(res: Type) =
-        //if !res.boxedCaptured.isAlwaysEmpty then
-        //  println(i"add boxed $tp from ${res.boxedCaptured}")
-        tp.capturing(res.boxedCaptured)
+        //if !res.boxedCaptureSet.isAlwaysEmpty then
+        //  println(i"add boxed $tp from ${res.boxedCaptureSet}")
+        tp.capturing(res.boxedCaptureSet)
       val tp1 = tp.dealias
       val boxedTp = tp1 match
         case tp1 @ AppliedType(_, args) if defn.isNonRefinedFunction(tp1) =>
