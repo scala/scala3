@@ -73,7 +73,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false): Boolean = trace.force(i"constrainPatternType(${scrutRepr(scrut)}, $pat)", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false, typeMembersTouched: Boolean = false): Boolean = trace(i"constrainPatternType(${scrutRepr(scrut)}, $pat)", gadts) {
 
     def classesMayBeCompatible: Boolean = {
       import Flags._
@@ -119,7 +119,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           // consider all parents
           val parents = scrut.parents
           val andType = buildAndType(parents)
-          !andType.exists || constrainPatternType(pat, andType)
+          !andType.exists || constrainPatternType(pat, andType, typeMembersTouched = true)
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
           val patCls = pat.classSymbol
           // find all shared parents in the inheritance hierarchy between pat and scrut
@@ -136,7 +136,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
           val baseClasses = allSyms map scrut.baseType
           val andType = buildAndType(baseClasses)
-          !andType.exists || constrainPatternType(pat, andType)
+          !andType.exists || constrainPatternType(pat, andType, typeMembersTouched = true)
         case _ =>
           def tryGadtBounds = scrut match {
             case scrut: TypeRef =>
@@ -175,25 +175,71 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case tp => tp
     }
 
-    dealiasDropNonmoduleRefs(scrut) match {
-      case OrType(scrut1, scrut2) =>
-        either(constrainPatternType(pat, scrut1), constrainPatternType(pat, scrut2))
-      case AndType(scrut1, scrut2) =>
-        constrainPatternType(pat, scrut1) && constrainPatternType(pat, scrut2)
-      case scrut: RefinedOrRecType =>
-        constrainPatternType(pat, stripRefinement(scrut))
-      case scrut => dealiasDropNonmoduleRefs(pat) match {
-        case OrType(pat1, pat2) =>
-          either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
-        case AndType(pat1, pat2) =>
-          constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
-        case pat: RefinedOrRecType =>
-          constrainPatternType(stripRefinement(pat), scrut)
-        case pat =>
-          tryConstrainSimplePatternType(pat, scrut)
-          || classesMayBeCompatible && constrainUpcasted(scrut)
+    def constrainTypeMembers = trace(i"constrainTypeMembers(${scrutRepr(scrut)}, $pat)") {
+      val realScrutineePath = ctx.gadt.scrutineePath
+      /* We reset scrutinee path so that the path will only be used at top level. */
+      ctx.gadt.resetScrutineePath()
+
+      val scrutineePath: TermRef | SkolemType = realScrutineePath match
+        case null => SkolemType(scrut)
+        case _ => realScrutineePath
+      val patternPath: SkolemType = SkolemType(pat)
+
+      val saved = state.nn.constraint
+      val savedGadt = ctx.gadt.fresh
+
+      def registerScrutinee = ctx.gadt.contains(scrutineePath) || ctx.gadt.addToConstraint(scrutineePath)
+      def registerPattern = ctx.gadt.addToConstraint(patternPath)   // Pattern path is a freshly-created skolem,
+                                                                    // so it will always be un-registered at this point
+
+      val result = registerScrutinee && registerPattern && {
+        val scrutineeTypeMembers = Map.from {
+          ctx.gadt.registeredTypeMembers(scrutineePath) map { x => x.name -> x }
+        }
+        val patternTypeMembers = Map.from {
+          ctx.gadt.registeredTypeMembers(patternPath) map { x => x.name -> x }
+        }
+
+        (scrutineeTypeMembers.keySet intersect patternTypeMembers.keySet) forall { name =>
+          val scrutineeSymbol = scrutineeTypeMembers(name)
+          val patternSymbol = patternTypeMembers(name)
+
+          val scrutineeType = TypeRef(scrutineePath, scrutineeSymbol)
+          val patternType = TypeRef(patternPath, patternSymbol)
+
+          isSubType(scrutineeType, patternType) && isSubType(patternType, scrutineeType)
+        }
       }
+
+      if !result then
+        constraint = saved
+        ctx.gadt.restore(savedGadt)
+
+      result
     }
+
+    def constrainTypeParams =
+      dealiasDropNonmoduleRefs(scrut) match {
+        case OrType(scrut1, scrut2) =>
+          either(constrainPatternType(pat, scrut1, typeMembersTouched = true), constrainPatternType(pat, scrut2, typeMembersTouched = true))
+        case AndType(scrut1, scrut2) =>
+          constrainPatternType(pat, scrut1, typeMembersTouched = true) && constrainPatternType(pat, scrut2, typeMembersTouched = true)
+        case scrut: RefinedOrRecType =>
+          constrainPatternType(pat, stripRefinement(scrut))
+        case scrut => dealiasDropNonmoduleRefs(pat) match {
+          case OrType(pat1, pat2) =>
+            either(constrainPatternType(pat1, scrut, typeMembersTouched = true), constrainPatternType(pat2, scrut, typeMembersTouched = true))
+          case AndType(pat1, pat2) =>
+            constrainPatternType(pat1, scrut, typeMembersTouched = true) && constrainPatternType(pat2, scrut, typeMembersTouched = true)
+          case pat: RefinedOrRecType =>
+            constrainPatternType(stripRefinement(pat), scrut, typeMembersTouched = true)
+          case pat =>
+            tryConstrainSimplePatternType(pat, scrut)
+            || classesMayBeCompatible && constrainUpcasted(scrut)
+        }
+      }
+
+    constrainTypeParams && (typeMembersTouched || constrainTypeMembers)
   }
 
   /** Show the scrutinee. Will show the path if available. */

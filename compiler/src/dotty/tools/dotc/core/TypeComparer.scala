@@ -118,7 +118,22 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
-  protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadt.addBound(sym, b, isUpper)
+
+  /** This variant of gadtBounds works for all named types.
+   * It queries GADT bounds for both type parameters and path-dependent types.
+   */
+  protected def gadtBounds(tp: NamedType)(using Context) =
+    ctx.gadt.bounds(tp.symbol) match
+      case null =>
+        tp match
+          case TypeRef(p: PathType, _) => ctx.gadt.bounds(p, tp.symbol)
+          case _ => null
+      case tb => tb
+
+  protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadt.addBound(sym, b, isUpper = isUpper)
+
+  protected def gadtAddLowerBound(path: PathType, sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(path, sym, b, isUpper = false)
+  protected def gadtAddUpperBound(path: PathType, sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(path, sym, b, isUpper = true)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
 
@@ -191,6 +206,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   extension (sym: Symbol)
     private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
       val bounds = gadtBounds(sym)
+      bounds != null && op(bounds)
+
+  extension (tp: NamedType)
+    private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
+      val bounds = gadtBounds(tp)
       bounds != null && op(bounds)
 
   private inline def comparingTypeLambdas(tl1: TypeLambda, tl2: TypeLambda)(op: => Boolean): Boolean =
@@ -540,17 +560,26 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def thirdTryNamed(tp2: NamedType): Boolean = tp2.info match {
       case info2: TypeBounds =>
+        /** Checks whether tp1 is registered.
+         * Both type parameters and path-dependent types are considered.
+         */
+        def tpRegistered(tp: TypeRef) = ctx.gadt.contains(tp.symbol) || {
+          tp match
+            case tp @ TypeRef(p: PathType, _) => ctx.gadt.contains(p, tp.symbol)
+            case _ => false
+        }
+
         def compareGADT: Boolean =
-          tp2.symbol.onGadtBounds(gbounds2 =>
+          tp2.onGadtBounds(gbounds2 =>
             isSubTypeWhenFrozen(tp1, gbounds2.lo)
             || tp1.match
-                case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
+                case tp1: TypeRef if tpRegistered(tp1) =>
                   // Note: since we approximate constrained types only with their non-param bounds,
                   // we need to manually handle the case when we're comparing two constrained types,
                   // one of which is constrained to be a subtype of another.
                   // We do not need similar code in fourthTry, since we only need to care about
                   // comparing two constrained types, and that case will be handled here first.
-                  ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
+                  { ctx.gadt.isLess(tp1, tp2) } && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
                 case _ => false
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
           && (isBottom(tp1) || GADTusage(tp2.symbol))
@@ -858,7 +887,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp1.info match {
           case info1 @ TypeBounds(lo1, hi1) =>
             def compareGADT =
-              tp1.symbol.onGadtBounds(gbounds1 =>
+              tp1.onGadtBounds(gbounds1 =>
                 isSubTypeWhenFrozen(gbounds1.hi, tp2)
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
@@ -2017,6 +2046,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case _ => proto.isMatchedBy(tp, keepConstraint = true)
   }
 
+  private def rollbackGadtUnless(op: => Boolean): Boolean =
+    val savedGadt = ctx.gadt.fresh
+    val result = op
+    if !result then ctx.gadt.restore(savedGadt)
+    result
+  end rollbackGadtUnless
+
   /** Narrow gadt.bounds for the type parameter referenced by `tr` to include
    *  `bound` as an upper or lower bound (which depends on `isUpper`).
    *  Test that the resulting bounds are still satisfiable.
@@ -2024,14 +2060,31 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
     val boundImprecise = approx.high || approx.low
     ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
-      val tparam = tr.symbol
-      gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
-      if (bound.isRef(tparam)) false
-      else
-        val savedGadt = ctx.gadt.fresh
-        val success = gadtAddBound(tparam, bound, isUpper)
-        if !success then ctx.gadt.restore(savedGadt)
-        success
+      def narrowTypeParams = ctx.gadt.contains(tr.symbol) && {
+        val tparam = tr.symbol
+        gadts.println(i"narrow gadt bound of tparam $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
+        if (bound.isRef(tparam)) false
+        else
+          rollbackGadtUnless {
+            if isUpper then
+              gadtAddUpperBound(tparam, bound)
+            else
+              gadtAddLowerBound(tparam, bound)
+          }
+      }
+
+      def narrowPathDepType = tr match
+        case TypeRef(path: PathType, _) =>
+          ctx.gadt.contains(path, tr.symbol) && {
+            val sym = tr.symbol
+            gadts.println(i"narrow gadt bound of pdt $path -> ${sym}: from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(sym)}")
+
+            if (bound.isRef(sym)) false
+            else false
+          }
+        case _ => false
+
+      narrowTypeParams || narrowPathDepType
     }
   }
 
@@ -3046,6 +3099,21 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean =
     if (sym.exists) footprint += sym.typeRef
     super.gadtAddBound(sym, b, isUpper)
+
+  override def gadtBounds(tp: NamedType)(using Context): TypeBounds | Null = {
+      if (tp.symbol.exists) footprint += tp
+      super.gadtBounds(tp)
+    }
+
+  override def gadtAddLowerBound(path: PathType, sym: Symbol, b: Type): Boolean = {
+    if (sym.exists) footprint += TypeRef(path, sym)
+    super.gadtAddLowerBound(path, sym, b)
+  }
+
+  override def gadtAddUpperBound(path: PathType, sym: Symbol, b: Type): Boolean = {
+    if (sym.exists) footprint += TypeRef(path, sym)
+    super.gadtAddUpperBound(path, sym, b)
+  }
 
   override def typeVarInstance(tvar: TypeVar)(using Context): Type = {
     footprint += tvar
