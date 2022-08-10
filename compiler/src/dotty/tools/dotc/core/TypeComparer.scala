@@ -446,7 +446,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ => false
           } ||
           isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2) || {
-            if (canConstrain(tp1) && !approx.high)
+            if canConstrain(tp1) && isPreciseBound(fromBelow = false) then
               addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
             else thirdTry
           }
@@ -613,6 +613,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         fourthTry
     }
 
+    def isPreciseBound(fromBelow: Boolean): Boolean =
+      if ctx.mode.is(Mode.GadtConstraintInference) then
+        !(approx.low || approx.high)
+      else
+        if fromBelow then !approx.low else !approx.high
+
     def compareTypeParamRef(tp2: TypeParamRef): Boolean =
       assumedTrue(tp2) || {
         val alwaysTrue =
@@ -626,7 +632,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if (frozenConstraint) recur(tp1, bounds(tp2).lo.boxed)
           else isSubTypeWhenFrozen(tp1, tp2)
         alwaysTrue || {
-          if (canConstrain(tp2) && !approx.low)
+          if canConstrain(tp2) && isPreciseBound(fromBelow = true) then
             addConstraint(tp2, tp1.widenExpr, fromBelow = true)
           else fourthTry
         }
