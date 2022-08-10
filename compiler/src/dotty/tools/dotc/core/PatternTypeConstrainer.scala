@@ -194,6 +194,12 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
       ctx.gadt.addEquality(scrutineePath, patternPath)
 
+      pat match {
+        case ptPath: TermRef =>
+          ctx.gadt.addEquality(scrutineePath, ptPath)
+        case _ =>
+      }
+
       val registerScrutinee = ctx.gadt.contains(scrutineePath) || ctx.gadt.addToConstraint(scrutineePath)
       val registerPattern = ctx.gadt.addToConstraint(patternPath)   // Pattern path is a freshly-created skolem,
                                                                     // so it will always be un-registered at this point

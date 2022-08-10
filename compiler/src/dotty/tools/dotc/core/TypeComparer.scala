@@ -590,6 +590,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         || fourthTry
 
       case _ =>
+        def compareSingletonGADT: Boolean =
+          (tp1, tp2) match {
+            case (tp1: TermRef, tp2: TermRef) => ctx.gadt.isEquivalent(tp1, tp2)
+            case _ => false
+          }
+
         val cls2 = tp2.symbol
         if (cls2.isClass)
           if (cls2.typeParams.isEmpty) {
@@ -610,6 +616,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           }
           else if tp1.isLambdaSub && !tp1.isAnyKind then
             return recur(tp1, EtaExpansion(tp2))
+
+        if compareSingletonGADT then return true
+
         fourthTry
     }
 

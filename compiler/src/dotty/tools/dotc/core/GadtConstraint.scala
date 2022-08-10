@@ -59,7 +59,7 @@ sealed abstract class GadtConstraint extends Showable {
   /** Further constrain a path-dependent type already present in the constraint. */
   def addBound(p: PathType, sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
-  def addEquality(p: PathType, q: PathType): Unit
+  def addEquality(p: PathType, q: PathType)(using Context): Unit
 
   def isEquivalent(p: PathType, q: PathType): Boolean
 
@@ -552,22 +552,25 @@ final class ProperGadtConstraint private(
   }
 
   private def lookupPath(p: PathType): PathType | Null =
-    def recur(p: PathType, steps: Int = 0): PathType | Null = myUnionFind(p) match
+    def recur(p: PathType): PathType | Null = myUnionFind(p) match
       case null => null
       case q: PathType if q eq p => q
       case q: PathType =>
-        if steps <= 1024 then
-          recur(q, steps + 1)
-        else
-          assert(false, "lookup step exceeding the threshold, possibly because of a loop in the union find")
+        recur(q)
+
     recur(p)
 
-  override def addEquality(p: PathType, q: PathType): Unit =
-    val newRep: PathType = lookupPath(p) match
-      case null => lookupPath(q) match
-        case null => p
-        case r: PathType => r
-      case r: PathType => r
+  override def addEquality(p: PathType, q: PathType)(using Context): Unit =
+    val pRep: PathType | Null = lookupPath(p)
+    val qRep: PathType | Null = lookupPath(q)
+
+    val newRep = (pRep, qRep) match
+      case (null, null) => p
+      case (null, r: PathType) => r
+      case (r: PathType, null) => r
+      case (r1: PathType, r2: PathType) =>
+        myUnionFind = myUnionFind.updated(r2, r1)
+        r1
 
     myUnionFind = myUnionFind.updated(p, newRep)
     myUnionFind = myUnionFind.updated(q, newRep)
@@ -700,15 +703,26 @@ final class ProperGadtConstraint private(
     if myPatternSkolem eq null then
       ()
     else
-      pathDepMapping(myPatternSkolem.nn) match {
-        case null =>
-        case m: SimpleIdentityMap[Symbol, TypeVar] =>
-          pathDepMapping = pathDepMapping.updated(path, m)
-          m foreachBinding { (sym, tvar) =>
-            val tpr = tvar.origin
-            pathDepReverseMapping = pathDepReverseMapping.updated(tpr, TypeRef(path, sym))
-          }
-      }
+      def updateMappings() =
+        pathDepMapping(myPatternSkolem.nn) match {
+          case null =>
+          case m: SimpleIdentityMap[Symbol, TypeVar] =>
+            pathDepMapping = pathDepMapping.updated(path, m)
+            m foreachBinding { (sym, tvar) =>
+              val tpr = tvar.origin
+              pathDepReverseMapping = pathDepReverseMapping.updated(tpr, TypeRef(path, sym))
+            }
+        }
+
+      def updateUnionFind() =
+        myUnionFind(myPatternSkolem.nn) match {
+          case null =>
+          case repr: PathType =>
+            myUnionFind = myUnionFind.updated(path, repr)
+        }
+
+      updateMappings()
+      updateUnionFind()
   end supplyPatternPath
 
   override def createPatternSkolem(pat: Type): SkolemType =
@@ -799,16 +813,25 @@ final class ProperGadtConstraint private(
   override def debugBoundsDescription(using Context): String = {
     val sb = new mutable.StringBuilder
     sb ++= constraint.show
-    sb += '\n'
+    sb ++= "\nType parameter bounds:\n"
     mapping.foreachBinding { case (sym, _) =>
       sb ++= i"$sym: ${fullBounds(sym)}\n"
     }
-    sb += '\n'
+    sb ++= "\nPath-dependent type bounds:\n"
     pathDepMapping foreachBinding { case (path, m) =>
       m foreachBinding { case (sym, _) =>
         sb ++= i"$path.$sym: ${fullBounds(TypeRef(path, sym))}\n"
       }
     }
+    sb ++= "\nSingleton equalities:\n"
+    myUnionFind foreachBinding { case (path, _) =>
+      val repr = lookupPath(path)
+      repr match
+        case repr: PathType if repr ne path =>
+          sb ++= i"$path.type: $repr.type\n"
+        case _ =>
+    }
+
     sb.result
   }
 }
@@ -844,7 +867,7 @@ final class ProperGadtConstraint private(
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
   override def addBound(path: PathType, sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
-  override def addEquality(p: PathType, q: PathType) = ()
+  override def addEquality(p: PathType, q: PathType)(using Context) = ()
 
   override def isEquivalent(p: PathType, q: PathType) = false
 
