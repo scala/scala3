@@ -10,6 +10,7 @@ import Contexts.ctx
 import dotty.tools.dotc.reporting.trace
 import config.Feature.migrateTo3
 import config.Printers._
+import dotty.tools.dotc.core.SymDenotations.NoDenotation
 
 trait PatternTypeConstrainer { self: TypeComparer =>
 
@@ -175,6 +176,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case tp => tp
     }
 
+    /** Reconstruct subtype constraints for type members.
+      */
     def constrainTypeMembers = trace(i"constrainTypeMembers(${scrutRepr(scrut)}, $pat)", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       import NameKinds.DepParamName
       val realScrutineePath = ctx.gadt.scrutineePath
@@ -191,36 +194,54 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
       ctx.gadt.addEquality(scrutineePath, patternPath)
 
-      def registerScrutinee = ctx.gadt.contains(scrutineePath) || ctx.gadt.addToConstraint(scrutineePath)
-      def registerPattern = ctx.gadt.addToConstraint(patternPath)   // Pattern path is a freshly-created skolem,
+      val registerScrutinee = ctx.gadt.contains(scrutineePath) || ctx.gadt.addToConstraint(scrutineePath)
+      val registerPattern = ctx.gadt.addToConstraint(patternPath)   // Pattern path is a freshly-created skolem,
                                                                     // so it will always be un-registered at this point
 
-      val res = !registerScrutinee || !registerPattern || {
-        val scrutineeTypeMembers = Map.from {
-          ctx.gadt.registeredTypeMembers(scrutineePath) map { x => x.name -> x }
-        }
-        val patternTypeMembers = Map.from {
-          ctx.gadt.registeredTypeMembers(patternPath) map { x => x.name -> x }
-        }
 
-        (scrutineeTypeMembers.keySet intersect patternTypeMembers.keySet) forall { name =>
-          val scrutineeSymbol = scrutineeTypeMembers(name)
-          val patternSymbol = patternTypeMembers(name)
+      /** Reconstruct subtype constraints for a type member (with symbol `sym`)
+        of path `p`, given that `p` and `q` are cohabitated.
 
-          val scrutineeType = TypeRef(scrutineePath, scrutineeSymbol)
-          val patternType = TypeRef(patternPath, patternSymbol)
+        There are three cases when we want to constrain the type member T of
+        path p and q:
 
-          def constrainSP =
-            isSubType(scrutineeType, patternType)
-              .showing(i"after $scrutineePath.$scrutineeSymbol <:< $patternType: result = $result, gadt = ${ctx.gadt.debugBoundsDescription}", gadts)
+        (1) q does not have number T. In this case we should simply return true.
 
-          def constrainPS =
-            isSubType(patternType, scrutineeType)
-              .showing(i"after $patternPath.$patternSymbol <:< $scrutineePath: result = $result, gadt = ${ctx.gadt.debugBoundsDescription}", gadts)
+        (2) q.T is a registered type member. We do SR on p.T <:< q.T, but not
+            q.T <:< p.T, since if q.T is also registered then `constrainTypeMember(q, p, T)`
+            will also be called, during which q.T <:< p.T will be handled.
 
-          constrainPS && constrainSP
-        }
+        (3) q.T is unregistered. We will do SR on p.T <:< q.T and q.T <:< p.T.
+      */
+      def constrainTypeMember(p: PathType, q: PathType, sym: Symbol): Boolean = {
+        def getMemberOrBounds(q: PathType, sym: Symbol): Option[TypeBounds | TypeRef] =
+          if ctx.gadt.contains(q, sym) then
+            Some(TypeRef(q, sym))
+          else
+            val denot = q.member(sym.name)
+            if denot.isInstanceOf[NoDenotation.type] then
+              None
+            else
+              Some(denot.info.bounds)
+
+        val pType = TypeRef(p, sym)
+
+        if ctx.gadt.contains(q, sym) then
+          val tpr = TypeRef(q, sym)
+          isSubType(pType, tpr)
+        else
+          q.member(sym.name).isInstanceOf[NoDenotation.type] || {
+            val tpr = TypeRef(q, sym)
+            isSubType(pType, tpr) && isSubType(tpr, pType)
+          }
       }
+
+      def constrainPath(p: PathType, q: PathType) =
+        ctx.gadt.registeredTypeMembers(p) forall { sym => constrainTypeMember(p, q, sym) }
+      def constrainPS = constrainPath(patternPath, scrutineePath)
+      def constrainSP = constrainPath(scrutineePath, patternPath)
+
+      val res = (!registerPattern || constrainPS) && (!registerScrutinee || constrainSP)
 
       if !res then
         constraint = saved
