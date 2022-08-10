@@ -181,63 +181,87 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     def constrainTypeMembers = trace(i"constrainTypeMembers(${scrutRepr(scrut)}, $pat)", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       import NameKinds.DepParamName
       val realScrutineePath = ctx.gadt.scrutineePath
+
       /* We reset scrutinee path so that the path will only be used at top level. */
       ctx.gadt.resetScrutineePath()
+
+      val saved = state.nn.constraint
+      val savedGadt = ctx.gadt.fresh
 
       val scrutineePath: TermRef | SkolemType = realScrutineePath match
         case null => SkolemType(scrut)
         case _ => realScrutineePath
       val patternPath: SkolemType = ctx.gadt.createPatternSkolem(pat)
 
-      val saved = state.nn.constraint
-      val savedGadt = ctx.gadt.fresh
-
-      ctx.gadt.addEquality(scrutineePath, patternPath)
-
-      pat match {
-        case ptPath: TermRef =>
-          ctx.gadt.addEquality(scrutineePath, ptPath)
-        case _ =>
-      }
-
       val registerScrutinee = ctx.gadt.contains(scrutineePath) || ctx.gadt.addToConstraint(scrutineePath)
       val registerPattern = ctx.gadt.addToConstraint(patternPath)   // Pattern path is a freshly-created skolem,
                                                                     // so it will always be un-registered at this point
 
+      /** Reconstruct subtype constraints for a path `p`, given that `p` and `q`
+        are cohabitated.
 
-      /** Reconstruct subtype constraints for a type member (with symbol `sym`)
-        of path `p`, given that `p` and `q` are cohabitated.
-
-        There are three cases when we want to constrain the type member T of
-        path p and q:
+        When do SR for each type member (denoted as `T`) of path p, there are the
+        following three cases:
 
         (1) q does not have number T. In this case we should simply return true.
 
         (2) q.T is a registered type member. We do SR on p.T <:< q.T, but not
-            q.T <:< p.T, since if q.T is also registered then `constrainTypeMember(q, p, T)`
-            will also be called, during which q.T <:< p.T will be handled.
+            q.T <:< p.T, since if q.T is also registered then
+            `constrainTypeMember(q, p, T)` will also be called, during which
+            q.T <:< p.T will be handled.
 
         (3) q.T is unregistered. We will do SR on p.T <:< q.T and q.T <:< p.T.
       */
-      def constrainTypeMember(p: PathType, q: PathType, sym: Symbol): Boolean =
-        q.member(sym.name).isInstanceOf[NoDenotation.type] || {
-          val pType = TypeRef(p, sym)
-          val qType = TypeRef(q, sym)
+      def reconstructSubTypeFor(p: PathType, q: PathType) =
+        def processMember(sym: Symbol): Boolean =
+          q.member(sym.name).isInstanceOf[NoDenotation.type] || {
+            val pType = TypeRef(p, sym)
+            val qType = TypeRef(q, sym)
 
-          trace(i"constrainTypeMember $pType >:< $qType", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
-            if ctx.gadt.contains(q, sym) then
-              isSubType(pType, qType)
-            else
-              isSubType(pType, qType) && isSubType(qType, pType)
+            trace(i"constrainTypeMember $pType >:< $qType", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
+              if ctx.gadt.contains(q, sym) then
+                isSubType(pType, qType)
+              else
+                isSubType(pType, qType) && isSubType(qType, pType)
+            }
           }
-        }
 
-      def constrainPath(p: PathType, q: PathType) =
-        ctx.gadt.registeredTypeMembers(p) forall { sym => constrainTypeMember(p, q, sym) }
-      def constrainPS = constrainPath(patternPath, scrutineePath)
-      def constrainSP = constrainPath(scrutineePath, patternPath)
+        ctx.gadt.registeredTypeMembers(p) forall { sym => processMember(sym) }
 
-      val res = (!registerPattern || constrainPS) && (!registerScrutinee || constrainSP)
+      /** Reconstruct subtype from the cohabitation between the scrutinee and the
+        pattern. */
+      def constrainPattern: Boolean = {
+        ctx.gadt.addEquality(scrutineePath, patternPath)
+
+        (!registerPattern || reconstructSubTypeFor(patternPath, scrutineePath))
+        && (!registerScrutinee || reconstructSubTypeFor(scrutineePath, patternPath))
+      }
+
+      /** Reconstruct subtype when the pattern is an alias to another path.
+
+        For example, consider the following pattern match:
+
+          p match
+            case q: r.type =>
+
+        Then we can also reconstruct subtype from the cohabitation of p and r.
+        */
+      def maybeConstrainPatternAlias: Boolean = pat match {
+        case ptPath: TermRef =>
+          val registerPtPath = ctx.gadt.contains(ptPath) || ctx.gadt.addToConstraint(ptPath)
+
+          val result =
+            (!registerPtPath || reconstructSubTypeFor(ptPath, scrutineePath))
+            && (!registerScrutinee || reconstructSubTypeFor(scrutineePath, ptPath))
+
+          ctx.gadt.addEquality(scrutineePath, ptPath)
+
+          result
+        case _ =>
+          true
+      }
+
+      val res = constrainPattern && maybeConstrainPatternAlias
 
       if !res then
         constraint = saved
