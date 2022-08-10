@@ -16,6 +16,8 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
   import CaptureAnnotation.*
   import tpd.*
 
+  val boxedType = BoxedTypeCache()
+
   override def tree(using Context) =
     val elems = refs.elems.toList.map {
       case cr: TermRef => ref(cr)
@@ -64,3 +66,16 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     case _ => false
 
 end CaptureAnnotation
+
+/** A one-element cache for the boxed version of an unboxed capturing type */
+class BoxedTypeCache:
+  private var boxed: Type = compiletime.uninitialized
+  private var unboxed: Type = NoType
+
+  def apply(tp: AnnotatedType)(using Context): Type =
+    if tp ne unboxed then
+      unboxed = tp
+      val CapturingType(parent, refs) = tp: @unchecked
+      boxed = CapturingType(parent, refs, boxed = true)
+    boxed
+end BoxedTypeCache

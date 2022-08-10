@@ -202,13 +202,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ EventuallyCapturingType(parent, refs) =>
         def box =
-          Str("box ") provided tp.isBoxed && ctx.settings.YccDebug.value
+          Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
         if printDebug && !refs.isConst then
           changePrec(GlobalPrec)(box ~ s"$refs " ~ toText(parent))
         else if ctx.settings.YccDebug.value then
           changePrec(GlobalPrec)(box ~ refs.show ~ " " ~ toText(parent))
         else if !refs.isConst && refs.elems.isEmpty then
-          changePrec(GlobalPrec)("?" ~ " " ~ toText(parent))
+          changePrec(GlobalPrec)(box ~ "?" ~ " " ~ toText(parent))
         else if Config.printCaptureSetsAsPrefix then
           changePrec(GlobalPrec)(box ~ toText(refs) ~ " " ~ toText(parent))
         else
@@ -422,8 +422,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           case tp: AliasingBounds =>
             " = " ~ toText(tp.alias)
           case TypeBounds(lo, hi) =>
-            (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo))
-            ~ (if hi.isAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
+            (if lo.isExactlyNothing then Text() else " >: " ~ toText(lo))
+            ~ (if hi.isExactlyAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
         tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)

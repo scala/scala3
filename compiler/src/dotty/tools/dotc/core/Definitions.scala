@@ -1650,8 +1650,8 @@ class Definitions {
   def isFunctionType(tp: Type)(using Context): Boolean =
     isNonRefinedFunction(tp.dropDependentRefinement)
 
-  def isFunctionOrPolyType(tp: RefinedType)(using Context): Boolean =
-    isFunctionType(tp) || (tp.parent.typeSymbol eq defn.PolyFunctionClass)
+  def isFunctionOrPolyType(tp: Type)(using Context): Boolean =
+    isFunctionType(tp) || (tp.typeSymbol eq defn.PolyFunctionClass)
 
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
     for base <- bases; tp <- paramTypes do

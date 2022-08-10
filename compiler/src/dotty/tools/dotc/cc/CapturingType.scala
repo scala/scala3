@@ -12,7 +12,12 @@ object CapturingType:
 
   def apply(parent: Type, refs: CaptureSet, boxed: Boolean = false)(using Context): Type =
     if refs.isAlwaysEmpty then parent
-    else AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
+    else parent match
+      case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
+        // Fuse types except if nested type is boxed and current one isn't.
+        apply(parent1, refs ++ refs1, boxed)
+      case _ =>
+        AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
 
   def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet)] =
     if ctx.phase == Phases.checkCapturesPhase && tp.annot.symbol == defn.RetainsAnnot then

@@ -124,8 +124,12 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
-      elems.exists(_.subsumes(x))
-      || !x.isRootCapability && x.captureSetOfInfo.elems.forall(mightAccountFor)
+      elems.exists(elem => elem.subsumes(x) || elem.isRootCapability)
+      || !x.isRootCapability
+        && {
+          val elems = x.captureSetOfInfo.elems
+          !elems.isEmpty && elems.forall(mightAccountFor)
+        }
     }
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
@@ -419,6 +423,7 @@ object CaptureSet:
   abstract class DerivedVar(initialElems: Refs)(using @constructorOnly ctx: Context)
   extends Var(initialElems):
     def source: Var
+    val stack = if debugSets && this.isInstanceOf[Mapped] then (new Throwable).getStackTrace().nn.take(20) else null
 
     addSub(source)
 
@@ -433,7 +438,6 @@ object CaptureSet:
     (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
   extends DerivedVar(initial.elems):
     addSub(initial)
-    val stack = if debugSets then (new Throwable).getStackTrace().nn.take(20) else null
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       addNewElemsImpl(newElems: Refs, origin: CaptureSet)

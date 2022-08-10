@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, retainedElems, isBoxedCapturing, EventuallyCapturingType}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, retainedElems, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -2538,7 +2538,7 @@ object Types {
       val cls = tparam.owner
       val base = pre.baseType(cls)
       base.stripped match {
-        case AppliedType(_, allArgs) =>
+        case AppliedType(tycon, allArgs) =>
           var tparams = cls.typeParams
           var args = allArgs
           var idx = 0
@@ -2546,7 +2546,7 @@ object Types {
             if (tparams.head.eq(tparam))
               return args.head match {
                 case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
-                case arg => arg
+                case arg => arg.boxedUnlessFun(tycon)
               }
             tparams = tparams.tail
             args = args.tail

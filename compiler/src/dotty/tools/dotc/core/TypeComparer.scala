@@ -23,7 +23,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxedUnlessFun}
 
 /** Provides methods to compare types.
  */
@@ -512,10 +512,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // loop for a very long time without the recursion brake.
 
       case CapturingType(parent1, refs1) =>
-        if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK then
-          recur(parent1, tp2)
-        else
-          thirdTry
+        if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+        then recur(parent1, tp2)
+        else thirdTry
       case tp1: AnnotatedType if !tp1.isRefining =>
         recur(tp1.parent, tp2)
       case tp1: MatchType =>
@@ -796,6 +795,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           try
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
             else subCaptures(refs1, refs2, frozenConstraint).isOK
+              && sameBoxed(tp1, tp2, refs1)
               && recur(tp1.widen.stripCapturing, parent2)
           catch case ex: AssertionError =>
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
@@ -1628,7 +1628,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 else if v > 0 then isSubType(arg1, arg2)
                 else isSameType(arg2, arg1)
 
-        isSubArg(args1.head, args2.head)
+        isSubArg(args1.head.boxedUnlessFun(tp1), args2.head.boxedUnlessFun(tp1))
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
 
     recurArgs(args1, args2, tparams2)
@@ -2546,6 +2546,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult.Type =
     refs1.subCaptures(refs2, frozen)
+
+  protected def sameBoxed(tp1: Type, tp2: Type, refs: CaptureSet)(using Context): Boolean =
+    (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
+    || refs.subCaptures(CaptureSet.empty, frozenConstraint).isOK
 
   // ----------- Diagnostics --------------------------------------------------
 

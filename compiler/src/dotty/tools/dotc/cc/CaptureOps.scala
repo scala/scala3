@@ -11,6 +11,7 @@ import util.Property.Key
 import tpd.*
 
 private val Captures: Key[CaptureSet] = Key()
+private val BoxedType: Key[BoxedTypeCache] = Key()
 
 def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
   case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
@@ -40,22 +41,38 @@ extension (tp: Type)
       if (parent eq p) && (refs eq r) then tp
       else CapturingType(parent, refs, tp.isBoxed)
 
-  /** If this is  type variable instantiated or upper bounded with a capturing type,
-   *  the capture set associated with that type. Extended to and-or types and
-   *  type proxies in the obvious way. If a term has a type with a boxed captureset,
-   *  that captureset counts towards the capture variables of the envirionment.
-   */
-  def boxedCaptured(using Context): CaptureSet =
+  def boxed(using Context): Type = tp.dealias match
+    case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
+      tp.annot match
+        case ann: CaptureAnnotation =>
+          ann.boxedType(tp)
+        case ann =>
+          ann.tree.getAttachment(BoxedType) match
+            case None => ann.tree.putAttachment(BoxedType, BoxedTypeCache())
+            case _ =>
+          ann.tree.attachment(BoxedType)(tp)
+    case _ =>
+      tp
+
+  def boxedUnlessFun(tycon: Type)(using Context) =
+    if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionClass(tycon.typeSymbol)
+    then tp
+    else tp.boxed
+
+  /** The boxed capture set of a type */
+  def boxedCaptureSet(using Context): CaptureSet =
     def getBoxed(tp: Type): CaptureSet = tp match
       case tp @ CapturingType(parent, refs) =>
-        if tp.isBoxed then refs else getBoxed(parent)
+        val pcs = getBoxed(parent)
+        if tp.isBoxed then refs ++ pcs else pcs
+      case tp: TypeRef if tp.symbol.isAbstractType => CaptureSet.empty
       case tp: TypeProxy => getBoxed(tp.superType)
       case tp: AndType => getBoxed(tp.tp1) ++ getBoxed(tp.tp2)
       case tp: OrType => getBoxed(tp.tp1) ** getBoxed(tp.tp2)
       case _ => CaptureSet.empty
     getBoxed(tp)
 
-  def isBoxedCapturing(using Context) = !tp.boxedCaptured.isAlwaysEmpty
+  def isBoxedCapturing(using Context) = !tp.boxedCaptureSet.isAlwaysEmpty
 
   def stripCapturing(using Context): Type = tp.dealiasKeepAnnots match
     case CapturingType(parent, _) =>
@@ -107,3 +124,10 @@ extension (tp: AnnotatedType)
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
+
+extension (ts: List[Type])
+  def boxedUnlessFun(tycon: Type)(using Context) =
+    if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionClass(tycon.typeSymbol)
+    then ts
+    else ts.mapconserve(_.boxed)
+

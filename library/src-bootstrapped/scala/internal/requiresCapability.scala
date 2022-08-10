@@ -1,8 +1,8 @@
 package scala.annotation.internal
 
-import scala.annotation.StaticAnnotation
+import annotation.{StaticAnnotation, experimental}
 
 /** An annotation to record a required capaility in the type of a throws
  */
-class requiresCapability(capability: Any) extends StaticAnnotation
+@experimental class requiresCapability(capability: Any) extends StaticAnnotation
 

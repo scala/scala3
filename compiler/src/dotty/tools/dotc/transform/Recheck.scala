@@ -138,7 +138,7 @@ abstract class Recheck extends Phase, SymTransformer:
             excluded = if tree.symbol.is(Private) then EmptyFlags else Private
           ).suchThat(tree.symbol == _)
         constFold(tree, qualType.select(name, mbr))
-          //.showing(i"recheck select $qualType . $name : ${mbr.symbol.info} = $result")
+          //.showing(i"recheck select $qualType . $name : ${mbr.info} = $result")
 
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
@@ -204,6 +204,7 @@ abstract class Recheck extends Phase, SymTransformer:
               Nil
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
           constFold(tree, instantiate(fntpe, argTypes, tree.fun.symbol))
+            //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
 
     def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       recheck(tree.fun).widen match
@@ -387,17 +388,17 @@ abstract class Recheck extends Phase, SymTransformer:
         // Don't report closure nodes, since their span is a point; wait instead
         // for enclosing block to preduce an error
       case _ =>
-        checkConformsExpr(tpe, tpe.widenExpr, pt.widenExpr, tree)
+        checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
 
-    def checkConformsExpr(original: Type, actual: Type, expected: Type, tree: Tree)(using Context): Unit =
+    def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
       //println(i"check conforms $actual <:< $expected")
       val isCompatible =
         actual <:< expected
         || expected.isRepeatedParam
             && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
       if !isCompatible then
-        recheckr.println(i"conforms failed for ${tree}: $original vs $expected")
-        err.typeMismatch(tree.withType(original), expected)
+        recheckr.println(i"conforms failed for ${tree}: $actual vs $expected")
+        err.typeMismatch(tree.withType(actual), expected)
       else if debugSuccesses then
         tree match
           case _: Ident =>
