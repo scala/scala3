@@ -98,8 +98,6 @@ abstract class Recheck extends Phase, SymTransformer:
     // TODO: investigate what goes wrong we Ycheck directly after rechecking.
     // One failing test is pos/i583a.scala
 
-  override def widenSkolems = true
-
   /** Change any `ResetPrivate` flags back to `Private` */
   def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if sym.isAllOf(Recheck.ResetPrivateParamAccessor) then
