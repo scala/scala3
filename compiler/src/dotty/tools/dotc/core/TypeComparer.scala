@@ -592,7 +592,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case _ =>
         def compareSingletonGADT: Boolean =
           (tp1, tp2) match {
-            case (tp1: TermRef, tp2: TermRef) => ctx.gadt.isEquivalent(tp1, tp2)
+            case (tp1: TermRef, tp2: TermRef) =>
+              ctx.gadt.isEquivalent(tp1, tp2) && { GADTused = true; true }
             case _ => false
           }
 
