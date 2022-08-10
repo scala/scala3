@@ -211,11 +211,11 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val patternType = TypeRef(patternPath, patternSymbol)
 
           def constrainSP =
-            ctx.gadt.addBound(scrutineePath, scrutineeSymbol, patternType, isUpper = true)
+            isSubType(scrutineeType, patternType)
               .showing(i"after $scrutineePath.$scrutineeSymbol <:< $patternType: result = $result, gadt = ${ctx.gadt.debugBoundsDescription}", gadts)
 
           def constrainPS =
-            ctx.gadt.addBound(patternPath, patternSymbol, scrutineeType, isUpper = true)
+            isSubType(patternType, scrutineeType)
               .showing(i"after $patternPath.$patternSymbol <:< $scrutineePath: result = $result, gadt = ${ctx.gadt.debugBoundsDescription}", gadts)
 
           constrainPS && constrainSP
