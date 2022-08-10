@@ -275,18 +275,9 @@ final class ProperGadtConstraint private(
       val denot1 = tp.nonPrivateMember(denot.name)
       val tb = denot.info
 
-      // We want to constrain type members whose bounds are type alias
-      // even if they are not deferred.
-      //
-      // For example: when constraining { type A } >:< { type A = Int }
-      //   we want to take the bound (:= Int) of RHS into consideration.
-      def isTypeAlias: Boolean = tb match
-        case TypeAlias(_) => true
-        case _ => false
-
       def nonPrivate: Boolean = !denot1.isInstanceOf[NoDenotation.type]
 
-      (denot1.symbol.is(Flags.Deferred) || isTypeAlias)
+      denot1.symbol.is(Flags.Deferred)
       && !denot1.symbol.is(Flags.Opaque)
       && !denot1.symbol.isClass
       && nonPrivate
