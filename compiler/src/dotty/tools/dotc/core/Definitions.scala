@@ -1152,7 +1152,7 @@ class Definitions {
     }
   }
 
-  /** Extractor for function types representing by-name parameters, of the form
+  /** Extractor for context function types representing by-name parameters, of the form
    *  `() ?=> T`.
    *  Under -Ycc, this becomes `() ?-> T` or `{r1, ..., rN} () ?-> T`.
    */
@@ -1977,7 +1977,8 @@ class Definitions {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() ++ List(JavaEnumClass, captureRoot)
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
+        ++ (JavaEnumClass :: (if ctx.settings.Ycc.value then captureRoot :: Nil else Nil))
 
       isInitialized = true
     }

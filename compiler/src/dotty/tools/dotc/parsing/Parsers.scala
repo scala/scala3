@@ -188,6 +188,8 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
+    def isPureArrow(name: Name): Boolean = ctx.settings.Ycc.value && isIdent(name)
+    def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
@@ -427,7 +429,7 @@ object Parsers {
     */
     def convertToParams(tree: Tree): List[ValDef] =
       val mods =
-        if in.token == CTXARROW || in.isIdent(nme.PURECTXARROW)
+        if in.token == CTXARROW || isPureArrow(nme.PURECTXARROW)
         then Modifiers(Given)
         else EmptyModifiers
       tree match
@@ -958,23 +960,28 @@ object Parsers {
         isArrowIndent()
       else false
 
+    /** Under -Ycc: is the following token sequuence a capture set `{ref1, ..., refN}`
+     *  followed by a token that can start a type?
+     */
     def followingIsCaptureSet(): Boolean =
-      val lookahead = in.LookaheadScanner()
-      def followingIsTypeStart() =
-        lookahead.nextToken()
-        canStartInfixTypeTokens.contains(lookahead.token)
-        || lookahead.token == LBRACKET
-      def recur(): Boolean =
-        (lookahead.isIdent || lookahead.token == THIS) && {
+      ctx.settings.Ycc.value && {
+        val lookahead = in.LookaheadScanner()
+        def followingIsTypeStart() =
           lookahead.nextToken()
-          if lookahead.token == COMMA then
+          canStartInfixTypeTokens.contains(lookahead.token)
+          || lookahead.token == LBRACKET
+        def recur(): Boolean =
+          (lookahead.isIdent || lookahead.token == THIS) && {
             lookahead.nextToken()
-            recur()
-          else
-            lookahead.token == RBRACE && followingIsTypeStart()
-        }
-      lookahead.nextToken()
-      if lookahead.token == RBRACE then followingIsTypeStart() else recur()
+            if lookahead.token == COMMA then
+              lookahead.nextToken()
+              recur()
+            else
+              lookahead.token == RBRACE && followingIsTypeStart()
+          }
+        lookahead.nextToken()
+        if lookahead.token == RBRACE then followingIsTypeStart() else recur()
+      }
 
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -1431,20 +1438,26 @@ object Parsers {
     def captureRef(): Tree =
       if in.token == THIS then simpleRef() else termIdent()
 
+    /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under -Ycc
+     */
+    def captureSet(): List[Tree] = inBraces {
+      if in.token == RBRACE then Nil else commaSeparated(captureRef)
+    }
+
     /** Type           ::=  FunType
      *                   |  HkTypeParamClause ‘=>>’ Type
      *                   |  FunParamClause ‘=>>’ Type
      *                   |  MatchType
      *                   |  InfixType
-     *                   |  CaptureSet Type
+     *                   |  CaptureSet Type                            -- under -Ycc
      *  FunType        ::=  (MonoFunType | PolyFunType)
-     *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’ | ‘->’ | ‘?->’ ) Type
-     *  PolyFunType    ::=  HKTypeParamClause ('=>' | ‘->’_) Type
+     *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
+     *                   |  (‘->’ | ‘?->’ ) Type                       -- under -Ycc
+     *  PolyFunType    ::=  HKTypeParamClause '=>' Type
+     *                   |  HKTypeParamClause ‘->’ Type                -- under -Ycc
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
-     *  CaptureSet     ::=  `{` CaptureRef {`,` CaptureRef} `}`
-     *  CaptureRef     ::=  Ident
      */
     def typ(): Tree =
       val start = in.offset
@@ -1453,9 +1466,9 @@ object Parsers {
         val paramSpan = Span(start, in.lastOffset)
         atSpan(start, in.offset) {
           var token = in.token
-          if in.isIdent(nme.PUREARROW) then
+          if isPureArrow(nme.PUREARROW) then
             token = ARROW
-          else if in.isIdent(nme.PURECTXARROW) then
+          else if isPureArrow(nme.PURECTXARROW) then
             token = CTXARROW
           else if token == TLARROW then
             if !imods.flags.isEmpty || params.isEmpty then
@@ -1463,7 +1476,6 @@ object Parsers {
               token = ARROW
           else if ctx.settings.Ycc.value then
             // `=>` means impure function under -Ycc whereas `->` is a regular function.
-            // Without -Ycc they both mean regular function.
             imods |= Impure
 
           if token == CTXARROW then
@@ -1514,7 +1526,7 @@ object Parsers {
                   commaSeparatedRest(t, funArgType)
             }
             accept(RPAREN)
-            if isValParamList || in.isArrow || in.isPureArrow then
+            if isValParamList || in.isArrow || isPureArrow then
               functionRest(ts)
             else {
               val ts1 = ts.mapConserve { t =>
@@ -1538,7 +1550,7 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == TLARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
-          else if (in.token == ARROW || in.isIdent(nme.PUREARROW)) {
+          else if (in.token == ARROW || isPureArrow(nme.PUREARROW)) {
             val arrowOffset = in.skipToken()
             val body = toplevelTyp()
             atSpan(start, arrowOffset) {
@@ -1562,7 +1574,7 @@ object Parsers {
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if isIdent(nme.PUREARROW) || isIdent(nme.PURECTXARROW) then
+          if isPureArrow then
             functionRest(t :: Nil)
           else
             if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
@@ -1625,7 +1637,7 @@ object Parsers {
 
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartInfixTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
-        isOperator = !followingIsVararg() && !isIdent(nme.PUREARROW) && !isIdent(nme.PURECTXARROW))
+        isOperator = !followingIsVararg() && !isPureArrow)
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
      */
@@ -1864,7 +1876,7 @@ object Parsers {
     }
 
     def paramTypeOf(core: () => Tree): Tree =
-      if in.token == ARROW || isIdent(nme.PUREARROW) then
+      if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
         val tp = atSpan(in.skipToken()) { ByNameTypeTree(core()) }
         if isImpure && ctx.settings.Ycc.value then ImpureByNameTypeTree(tp) else tp
@@ -1973,10 +1985,6 @@ object Parsers {
       else if in.token == LBRACE && followingIsCaptureSet() then
         CapturingTypeTree(captureSet(), infixType())
       else infixType()
-
-    def captureSet(): List[Tree] = inBraces {
-      if in.token == RBRACE then Nil else commaSeparated(captureRef)
-    }
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
@@ -4074,8 +4082,6 @@ object Parsers {
      *                     |
      *  EnumStat         ::= TemplateStat
      *                     | Annotations Modifiers EnumCase
-     *  SelfType         ::= id [‘:’ [CaptureSet] InfixType] ‘=>’
-     *                     | ‘this’ ‘:’ [CaptureSet] InfixType ‘=>’
      */
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
       val stats = new ListBuffer[Tree]
