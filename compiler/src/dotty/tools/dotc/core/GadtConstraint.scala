@@ -413,7 +413,7 @@ final class ProperGadtConstraint private(
     val buf = new mutable.StringBuilder
     buf ++= "{\n"
     typeMembers foreach { denot =>
-      buf ++= i"  ${denot.symbol}: ${denot.info.bounds} ${denot.info.bounds.toString}\n"
+      buf ++= i"  ${denot.symbol}: ${denot.info.bounds} [ ${denot.info.bounds.toString} ]\n"
     }
     buf ++= "}"
     buf.result
