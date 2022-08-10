@@ -447,7 +447,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           } ||
           isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2) || {
             if canConstrain(tp1) && isPreciseBound(fromBelow = false) then
-              trace(i"addConstraint($tp1, <: $tp2)") { addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound }
+              addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
             else thirdTry
           }
         compareTypeParamRef
@@ -633,7 +633,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           else isSubTypeWhenFrozen(tp1, tp2)
         alwaysTrue || {
           if canConstrain(tp2) && isPreciseBound(fromBelow = true) then
-            trace(i"addConstriant($tp2, >: $tp1)") { addConstraint(tp2, tp1.widenExpr, fromBelow = true) }
+            addConstraint(tp2, tp1.widenExpr, fromBelow = true)
           else fourthTry
         }
       }
