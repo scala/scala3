@@ -213,28 +213,18 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
         (3) q.T is unregistered. We will do SR on p.T <:< q.T and q.T <:< p.T.
       */
-      def constrainTypeMember(p: PathType, q: PathType, sym: Symbol): Boolean = {
-        def getMemberOrBounds(q: PathType, sym: Symbol): Option[TypeBounds | TypeRef] =
-          if ctx.gadt.contains(q, sym) then
-            Some(TypeRef(q, sym))
-          else
-            val denot = q.member(sym.name)
-            if denot.isInstanceOf[NoDenotation.type] then
-              None
+      def constrainTypeMember(p: PathType, q: PathType, sym: Symbol): Boolean =
+        q.member(sym.name).isInstanceOf[NoDenotation.type] || {
+          val pType = TypeRef(p, sym)
+          val qType = TypeRef(q, sym)
+
+          trace(i"constrainTypeMember $pType >:< $qType", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
+            if ctx.gadt.contains(q, sym) then
+              isSubType(pType, qType)
             else
-              Some(denot.info.bounds)
-
-        val pType = TypeRef(p, sym)
-
-        if ctx.gadt.contains(q, sym) then
-          val tpr = TypeRef(q, sym)
-          isSubType(pType, tpr)
-        else
-          q.member(sym.name).isInstanceOf[NoDenotation.type] || {
-            val tpr = TypeRef(q, sym)
-            isSubType(pType, tpr) && isSubType(tpr, pType)
+              isSubType(pType, qType) && isSubType(qType, pType)
           }
-      }
+        }
 
       def constrainPath(p: PathType, q: PathType) =
         ctx.gadt.registeredTypeMembers(p) forall { sym => constrainTypeMember(p, q, sym) }
