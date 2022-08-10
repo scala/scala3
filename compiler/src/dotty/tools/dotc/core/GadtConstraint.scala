@@ -138,15 +138,6 @@ final class ProperGadtConstraint private(
     myPatternSkolem = null,
   )
 
-  // /** Exposes ConstraintHandling.subsumes */
-  // def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
-  //   def extractConstraint(g: GadtConstraint) = g match {
-  //     case s: ProperGadtConstraint => s.constraint
-  //     case EmptyGadtConstraint => OrderingConstraint.empty
-  //   }
-  //   subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
-  // }
-
   /** Whether `left` subsumes `right`?
     *
     * `left` and `right` both stem from the constraint `pre`, with different type reasoning performed,
