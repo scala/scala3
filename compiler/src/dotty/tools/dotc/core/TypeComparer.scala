@@ -606,6 +606,35 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def compareRefined: Boolean =
           val tp1w = tp1.widen
+
+          if ctx.phase == Phases.checkCapturesPhase then
+
+            // A relaxed version of subtyping for dependent functions where method types
+            // are treated as contravariant.
+            // TODO: Merge with isSubInfo in hasMatchingMember. Currently, we can't since
+            // the isSubinfo of hasMatchingMember has problems dealing with PolyTypes
+            // (---> orphan params during pickling)
+            def isSubInfo(info1: Type, info2: Type): Boolean = (info1, info2) match
+              case (info1: PolyType, info2: PolyType) =>
+                info1.paramNames.hasSameLengthAs(info2.paramNames)
+                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+              case (info1: MethodType, info2: MethodType) =>
+                matchingMethodParams(info1, info2, precise = false)
+                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+              case _ =>
+                isSubType(info1, info2)
+
+            if defn.isFunctionType(tp2) then
+              tp1w.widenDealias match
+                case tp1: RefinedType =>
+                  return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
+                case _ =>
+            else if tp2.parent.typeSymbol == defn.PolyFunctionClass then
+              tp1.member(nme.apply).info match
+                case info1: PolyType =>
+                  return isSubInfo(info1, tp2.refinedInfo)
+                case _ =>
+
           val skipped2 = skipMatching(tp1w, tp2)
           if (skipped2 eq tp2) || !Config.fastPathForRefinedSubtype then
             if containsAnd(tp1) then
@@ -627,28 +656,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           else // fast path, in particular for refinements resulting from parameterization.
             isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2) &&
             recur(tp1, skipped2)
-
-        def isSubInfo(info1: Type, info2: Type): Boolean = (info1, info2) match
-          case (info1: PolyType, info2: PolyType) =>
-            info1.paramNames.hasSameLengthAs(info2.paramNames)
-            && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-          case (info1: MethodType, info2: MethodType) =>
-            matchingMethodParams(info1, info2, precise = false)
-            && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-          case _ =>
-            isSubType(info1, info2)
-
-        if ctx.phase == Phases.checkCapturesPhase then
-          if defn.isFunctionType(tp2) then
-            tp1.widenDealias match
-              case tp1: RefinedType =>
-                return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
-              case _ =>
-          else if tp2.parent.typeSymbol == defn.PolyFunctionClass then
-            tp1.member(nme.apply).info match
-              case info1: PolyType =>
-                return isSubInfo(info1, tp2.refinedInfo)
-              case _ =>
+        end compareRefined
 
         compareRefined
       case tp2: RecType =>
@@ -790,7 +798,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         compareTypeBounds
       case CapturingType(parent2, refs2) =>
-        def compareCaptured =
+        def compareCapturing =
           val refs1 = tp1.captureSet
           try
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
@@ -800,7 +808,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           catch case ex: AssertionError =>
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex
-        compareCaptured || fourthTry
+        compareCapturing || fourthTry
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
@@ -861,7 +869,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
-              case CapturingType(tp1, _) => isNullable(tp1)
+              case AnnotatedType(tp1, _) => isNullable(tp1)
               case _ => false
             val sym1 = tp1.symbol
             (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
@@ -879,15 +887,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ => false
             }
           case _ => false
-        comparePaths || {
-          var tp1w = tp1.underlying.widenExpr
+
+        def tp1widened =
+          val tp1w = tp1.underlying.widenExpr
           tp1 match
             case tp1: CaptureRef if tp1.isTracked =>
-              val stripped = tp1w.stripCapturing
-              tp1w = CapturingType(stripped, tp1.singletonCaptureSet)
+              CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
             case _ =>
-          isSubType(tp1w, tp2, approx.addLow)
-        }
+              tp1w
+
+        comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
         isNewSubType(tp1.parent)
       case tp1: RecType =>
@@ -1617,7 +1626,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ =>
             arg1 match
               case arg1: TypeBounds =>
-                CaptureSet.subCapturesRange(arg1, arg2) || compareCaptured(arg1, arg2)
+                CaptureSet.subCapturesRange(arg1, arg2)
+                  // subCapturesRange is important for invariant arguments that get expanded
+                  // to TypeBounds where each bound is obtained by adding a captureset variable
+                  // to the argument type. If subCapturesRange returns true we know that arg1's'
+                  // capture set can be unified with arg2's capture set, so it only remains to
+                  // check the underlying types with `isSubArg`.
+                  && isSubArg(arg1.hi.stripCapturing, arg2.stripCapturing)
+                || compareCaptured(arg1, arg2)
               case ExprType(arg1res)
               if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
                    && defn.isByNameFunction(arg2.dealias) =>
@@ -2054,6 +2070,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               if precise then
                 isSameTypeWhenFrozen(formal1, formal2a)
               else if ctx.phase == Phases.checkCapturesPhase then
+                // allow to constrain capture set variables
                 isSubType(formal2a, formal1)
               else
                 isSubTypeWhenFrozen(formal2a, formal1)
@@ -2477,7 +2494,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
     case CapturingType(parent1, refs1) =>
-      if subCaptures(tp2.captureSet, refs1, frozen = true).isOK then
+      if subCaptures(tp2.captureSet, refs1, frozen = true).isOK
+        && tp1.isBoxedCapturing == tp2.isBoxedCapturing
+      then
         parent1 & tp2
       else
         tp1.derivedCapturingType(parent1 & tp2, refs1)
@@ -2546,9 +2565,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult.Type =
     refs1.subCaptures(refs2, frozen)
 
-  protected def sameBoxed(tp1: Type, tp2: Type, refs: CaptureSet)(using Context): Boolean =
+  /** Is the boxing status of tp1 and tp2 the same, or alternatively, is
+   *  the capture sets `refs1` of `tp1` a subcapture of the empty set?
+   *  In the latter case, boxing status does not matter.
+   */
+  protected def sameBoxed(tp1: Type, tp2: Type, refs1: CaptureSet)(using Context): Boolean =
     (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-    || refs.subCaptures(CaptureSet.empty, frozenConstraint).isOK
+    || refs1.subCaptures(CaptureSet.empty, frozenConstraint).isOK
 
   // ----------- Diagnostics --------------------------------------------------
 

@@ -51,6 +51,8 @@ extension (tp: Type)
             case None => ann.tree.putAttachment(BoxedType, BoxedTypeCache())
             case _ =>
           ann.tree.attachment(BoxedType)(tp)
+    case tp: RealTypeBounds =>
+      tp.derivedTypeBounds(tp.lo.boxed, tp.hi.boxed)
     case _ =>
       tp
 
@@ -84,7 +86,7 @@ extension (tp: Type)
 
   /** Under -Ycc, map regular function type to impure function type
    */
-  def adaptFunctionType(using Context): Type = tp match
+  def adaptFunctionTypeUnderCC(using Context): Type = tp match
     case AppliedType(fn, args)
     if ctx.settings.Ycc.value && defn.isFunctionClass(fn.typeSymbol) =>
       val fname = fn.typeSymbol.name

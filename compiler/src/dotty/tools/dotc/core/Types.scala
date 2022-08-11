@@ -1537,6 +1537,7 @@ object Types {
       case _                  => if (isRepeatedParam) this.argTypesHi.head else this
     }
 
+    /** The capture set of this type. Overridden and cached in CaptureRef */
     def captureSet(using Context): CaptureSet = CaptureSet.ofType(this)
 
     // ----- Normalizing typerefs over refined types ----------------------------
@@ -1831,8 +1832,9 @@ object Types {
 
     /** Turn type into a function type.
      *  @pre this is a method type without parameter dependencies.
-     *  @param dropLast  The number of trailing parameters that should be dropped
-     *                   when forming the function type.
+     *  @param dropLast        the number of trailing parameters that should be dropped
+     *                         when forming the function type.
+     *  @param alwaysDependent if true, always create a dependent function type.
      */
     def toFunctionType(isJava: Boolean, dropLast: Int = 0, alwaysDependent: Boolean = false)(using Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
@@ -1878,10 +1880,14 @@ object Types {
       case _ => this
     }
 
+    /** A type capturing `ref` */
     def capturing(ref: CaptureRef)(using Context): Type =
       if captureSet.accountsFor(ref) then this
       else CapturingType(this, ref.singletonCaptureSet)
 
+    /** A type capturing the capture set `cs`. If this type is already a capturing type
+     *  the two capture sets are combined.
+     */
     def capturing(cs: CaptureSet)(using Context): Type =
       if cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
       else this match
@@ -2077,16 +2083,29 @@ object Types {
     private var myCaptureSetRunId: Int = NoRunId
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
 
+    /** Can the reference be tracked? This is true for all ThisTypes or ParamRefs
+     *  but only for some NamedTypes.
+     */
     def canBeTracked(using Context): Boolean
+
+    /** Is the reference tracked? This is true if it can be tracked and the capture
+     *  set of the underlying type is not always empty.
+     */
     final def isTracked(using Context): Boolean = canBeTracked && !captureSetOfInfo.isAlwaysEmpty
+
+    /** Is this reference the root capability `*` ? */
     def isRootCapability(using Context): Boolean = false
+
+    /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
 
+    /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
       if mySingletonCaptureSet == null then
         mySingletonCaptureSet = CaptureSet(this.normalizedRef)
       mySingletonCaptureSet.uncheckedNN
 
+    /** The capture set of the type underlying this reference */
     def captureSetOfInfo(using Context): CaptureSet =
       if ctx.runId == myCaptureSetRunId then myCaptureSet.nn
       else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then CaptureSet.empty
@@ -2173,9 +2192,6 @@ object Types {
     private var myStableHash: Byte = 0
     private var mySignature: Signature = _
     private var mySignatureRunId: Int = NoRunId
-
-    private var myCaptureSet: CaptureSet = _
-    private var myCaptureSetRunId: Int = NoRunId
 
     // Invariants:
     // (1) checkedPeriod != Nowhere     =>  lastDenotation != null
@@ -2763,7 +2779,7 @@ object Types {
      *  or a method term parameter. References to term parameters of classes
      *  cannot be tracked individually.
      *  They are subsumed in the capture sets of the enclosing class.
-     *  TODO: ^^^ What avout call-by-name?
+     *  TODO: ^^^ What about call-by-name?
      */
     def canBeTracked(using Context) =
       ((prefix eq NoPrefix)
@@ -3815,8 +3831,8 @@ object Types {
      */
     def isParamDependent(using Context): Boolean = paramDependencyStatus == TrueDeps
 
-    /** Is there either a true or false type dependency, or does the result
-     *  type capture a parameter?
+    /** Is there a dependency involving a reference in a capture set, but
+     *  otherwise no true result dependency?
      */
     def isCaptureDependent(using Context) = dependencyStatus == CaptureDeps
 
@@ -4210,12 +4226,12 @@ object Types {
 
   private object DepStatus {
     type DependencyStatus = Byte
-    final val Unknown: DependencyStatus = 0   // not yet computed
-    final val NoDeps: DependencyStatus = 1    // no dependent parameters found
-    final val FalseDeps: DependencyStatus = 2 // all dependent parameters are prefixes of non-depended alias types
-    final val CaptureDeps: DependencyStatus = 3
-    final val TrueDeps: DependencyStatus = 4  // some truly dependent parameters exist
-    final val StatusMask: DependencyStatus = 7 // the bits indicating actual dependency status
+    final val Unknown: DependencyStatus = 0      // not yet computed
+    final val NoDeps: DependencyStatus = 1       // no dependent parameters found
+    final val FalseDeps: DependencyStatus = 2    // all dependent parameters are prefixes of non-depended alias types
+    final val CaptureDeps: DependencyStatus = 3  // dependencies in capture sets under -Ycc, otherwise only false dependencoes
+    final val TrueDeps: DependencyStatus = 4     // some truly dependent parameters exist
+    final val StatusMask: DependencyStatus = 7   // the bits indicating actual dependency status
     final val Provisional: DependencyStatus = 8  // set if dependency status can still change due to type variable instantiations
   }
 
@@ -5456,20 +5472,27 @@ object Types {
       }
   end VariantTraversal
 
-  /** A supertrait for some typemaps that are bijections. Used for capture checking
+  /** A supertrait for some typemaps that are bijections. Used for capture checking.
    *  BiTypeMaps should map capture references to capture references.
    */
   trait BiTypeMap extends TypeMap:
     thisMap =>
+
+    /** The inverse of the type map as a function */
     def inverse(tp: Type): Type
 
+    /** The inverse of the type map as a BiTypeMap map, which
+     *  has the original type map as its own inverse.
+     */
     def inverseTypeMap(using Context) = new BiTypeMap:
       def apply(tp: Type) = thisMap.inverse(tp)
       def inverse(tp: Type) = thisMap.apply(tp)
 
+    /** A restriction of this map to a function on tracked CaptureRefs */
     def forward(ref: CaptureRef): CaptureRef = this(ref) match
       case result: CaptureRef if result.canBeTracked => result
 
+    /** A restriction of the inverse to a function on tracked CaptureRefs */
     def backward(ref: CaptureRef): CaptureRef = inverse(ref) match
       case result: CaptureRef if result.canBeTracked => result
   end BiTypeMap
@@ -5916,7 +5939,7 @@ object Types {
           else tp.derivedAnnotatedType(underlying, annot)
       }
     override protected def derivedCapturingType(tp: Type, parent: Type, refs: CaptureSet): Type =
-      parent match // ^^^ handle ranges in capture sets as well
+      parent match // TODO ^^^ handle ranges in capture sets as well
         case Range(lo, hi) =>
           range(derivedCapturingType(tp, lo, refs), derivedCapturingType(tp, hi, refs))
         case _ =>

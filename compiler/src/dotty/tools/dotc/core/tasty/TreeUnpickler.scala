@@ -32,7 +32,7 @@ import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
 import transform.SymUtils._
-import cc.adaptFunctionType
+import cc.adaptFunctionTypeUnderCC
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
@@ -493,7 +493,7 @@ class TreeUnpickler(reader: TastyReader,
      *  unless the unpickled class was also compiled with -Ycc.
      */
     private def postProcessFunction(tp: Type)(using Context): Type =
-      if wasCaptureChecked then tp else tp.adaptFunctionType
+      if wasCaptureChecked then tp else tp.adaptFunctionTypeUnderCC
 
 // ------ Reading definitions -----------------------------------------------------
 

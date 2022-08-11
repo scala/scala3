@@ -18,7 +18,7 @@ import typer.ForceDegree
 import typer.Inferencing._
 import typer.IfBottom
 import reporting.TestingReporter
-import cc.{CapturingType, derivedCapturingType, CaptureSet}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -168,9 +168,12 @@ object TypeOps:
         // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
-      case CapturingType(parent, refs) =>
+      case tp @ CapturingType(parent, refs) =>
         if !ctx.mode.is(Mode.Type)
-            && refs.subCaptures(parent.captureSet, frozen = true).isOK then
+            && refs.subCaptures(parent.captureSet, frozen = true).isOK
+            && (tp.isBoxed || !parent.isBoxedCapturing)
+              // fuse types with same boxed status and outer boxed with any type
+        then
           simplify(parent, theMap)
         else
           mapOver
