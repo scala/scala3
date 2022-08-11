@@ -1874,12 +1874,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val expr1 = typed(tree.expr, defn.ThrowableType)
     val cap = checkCanThrow(expr1.tpe.widen, tree.span)
     val res = Throw(expr1).withSpan(tree.span)
-    if cap.isEmpty || !ctx.settings.Ycc.value || ctx.isAfterTyper then res
-    else
+    if ctx.settings.Ycc.value && !cap.isEmpty && !ctx.isAfterTyper then
+      // Record access to the CanThrow capabulity recovered in `cap` by wrapping
+      // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotatoon.
       Typed(res,
         TypeTree(
           AnnotatedType(res.tpe,
             Annotation(defn.RequiresCapabilityAnnot, cap))))
+    else res
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
     val elemProto = pt.stripNull.elemType match {

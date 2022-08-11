@@ -13,7 +13,6 @@ import Decorators._
 import config.Printers.{gadts, typr}
 import annotation.tailrec
 import reporting._
-import cc.{CapturingType, derivedCapturingType}
 import collection.mutable
 
 import scala.annotation.internal.sharable
@@ -526,10 +525,10 @@ object Inferencing {
   }
 
   /** Replace every top-level occurrence of a wildcard type argument by
-    *  a fresh skolem type. The skolem types are of the form $i.CAP, where
-    *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
-    *  type member. See the documentation of `TypeBox` for a rationale why we do this.
-    */
+   *  a fresh skolem type. The skolem types are of the form $i.CAP, where
+   *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
+   *  type member. See the documentation of `TypeBox` for a rationale why we do this.
+   */
   def captureWildcards(tp: Type)(using Context): Type = derivedOnDealias(tp) {
     case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
       val tparams = tycon.typeParamSymbols
@@ -545,7 +544,6 @@ object Inferencing {
     case tp: RefinedType => tp.derivedRefinedType(captureWildcards(tp.parent), tp.refinedName, tp.refinedInfo)
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
-    case CapturingType(parent, refs) => tp.derivedCapturingType(captureWildcards(parent), refs)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
     case _ => tp
   }
@@ -736,7 +734,6 @@ trait Inferencing { this: Typer =>
             if !argType.isSingleton then argType = SkolemType(argType)
             argType <:< tvar
         case _ =>
-          () // scala-meta complains if this is missing, but I could not mimimize further
   end constrainIfDependentParamRef
 }
 

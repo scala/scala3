@@ -291,16 +291,14 @@ trait TypeAssigner {
 
   def safeSubstMethodParams(mt: MethodType, argTypes: List[Type])(using Context): Type =
     if mt.isResultDependent then safeSubstParams(mt.resultType, mt.paramRefs, argTypes)
+    else if mt.isCaptureDependent then mt.resultType.substParams(mt, argTypes)
     else mt.resultType
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(using Context): Apply = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
         if (fntpe.paramInfos.hasSameLengthAs(args) || ctx.phase.prev.relaxedTyping)
-          if fntpe.isCaptureDependent then
-            fntpe.resultType.substParams(fntpe, args.tpes)
-          else
-            safeSubstMethodParams(fntpe, args.tpes)
+          safeSubstMethodParams(fntpe, args.tpes)
         else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
       case t =>
