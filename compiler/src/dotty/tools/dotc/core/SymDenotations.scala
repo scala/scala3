@@ -230,6 +230,9 @@ object SymDenotations {
       ensureCompleted(); myAnnotations
     }
 
+    /** The annotations without ensuring that the symbol is completed.
+     *  Used for diagnostics where we don't want to force symbols.
+     */
     final def annotationsUNSAFE(using Context): List[Annotation] = myAnnotations
 
     /** Update the annotations of this denotation */

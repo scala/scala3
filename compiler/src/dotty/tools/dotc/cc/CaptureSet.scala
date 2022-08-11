@@ -575,6 +575,12 @@ object CaptureSet:
   def mapRefs(xs: Refs, tm: TypeMap, variance: Int)(using Context): CaptureSet =
     mapRefs(xs, extrapolateCaptureRef(_, tm, variance))
 
+  /** Return true iff
+   *   - arg1 is a TypeBounds >: CL T <: CH T of two capturing types with equal parents.
+   *   - arg2 is a capturing type CA U
+   *   - CH <: CA <: CL
+   *  In other words, we can unify CL, CH and CA.
+   */
   def subCapturesRange(arg1: TypeBounds, arg2: Type)(using Context): Boolean = arg1 match
     case TypeBounds(CapturingType(lo, loRefs), CapturingType(hi, hiRefs)) if lo =:= hi =>
       given VarState = VarState()

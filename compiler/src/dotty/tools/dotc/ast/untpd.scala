@@ -217,6 +217,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Infix()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Infix)
 
+    /** Used under -Ycc to mark impure function types `A => B` in `FunctionWithMods` */
     case class Impure()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Impure)
   }
 
@@ -395,6 +396,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit src: SourceFile): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
   def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit src: SourceFile): Inlined = new Inlined(call, bindings, expansion)
   def TypeTree()(implicit src: SourceFile): TypeTree = new TypeTree()
+  def InferredTypeTree()(implicit src: SourceFile): TypeTree = new InferredTypeTree()
   def SingletonTypeTree(ref: Tree)(implicit src: SourceFile): SingletonTypeTree = new SingletonTypeTree(ref)
   def RefinedTypeTree(tpt: Tree, refinements: List[Tree])(implicit src: SourceFile): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
   def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit src: SourceFile): AppliedTypeTree = new AppliedTypeTree(tpt, args)

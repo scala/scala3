@@ -11,7 +11,6 @@ import util.Stats._
 import Names._
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
-import cc.CaptureSet.IdentityCaptRefMap
 import cc.boxedUnlessFun
 
 object TypeApplications {

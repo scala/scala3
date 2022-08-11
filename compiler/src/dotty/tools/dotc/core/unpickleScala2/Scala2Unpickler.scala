@@ -32,7 +32,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 import reporting._
-import cc.adaptFunctionType
+import cc.adaptFunctionTypeUnderCC
 
 object Scala2Unpickler {
 
@@ -825,7 +825,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         else if args.nonEmpty then
           tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
-            .adaptFunctionType
+            .adaptFunctionTypeUnderCC
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>
