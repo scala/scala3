@@ -1810,6 +1810,8 @@ object desugar {
       case ext: ExtMethods =>
         Block(List(ext), Literal(Constant(())).withSpan(ext.span))
       case CapturingTypeTree(refs, parent) =>
+        // convert   `{refs} T`   to `T @retains refs`
+        //           `{refs}-> T` to `-> (T @retainsByName refs)`
         def annotate(annotName: TypeName, tp: Tree) =
           Annotated(tp, New(scalaDot(annotName), List(refs)))
         parent match

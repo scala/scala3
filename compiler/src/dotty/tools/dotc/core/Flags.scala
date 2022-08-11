@@ -314,7 +314,7 @@ object Flags {
   /** A Scala 2x super accessor / an unpickled Scala 2.x class */
   val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")
 
-  /** A parameter with a default value / an impure untpd.Function type */
+  /** A parameter with a default value / an impure untpd.FunctionWithMods type */
   val (_, HasDefault @ _, Impure @ _) = newFlags(27, "<hasdefault>", "<{*}>")
 
   /** An extension method, or a collective extension instance */
@@ -405,7 +405,7 @@ object Flags {
   val (_, _, ChildrenQueried @ _) = newFlags(56, "<children-queried>")
 
   /** A module variable (Scala 2.x only)
-   *  (re-used as a capture checking flag in CheckCaptures)
+   *  (re-used as a flag for private parameter accessors in Recheck)
    */
   val (_, Scala2ModuleVar @ _, _) = newFlags(57, "<modulevar>")
 

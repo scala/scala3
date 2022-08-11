@@ -282,7 +282,6 @@ object StdNames {
 // ----- Term names -----------------------------------------
 
     // Compiler-internal
-    val ANYname: N                  = "<anyname>"
     val CAPTURE_ROOT: N             = "*"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
@@ -350,7 +349,6 @@ object StdNames {
     val AppliedTypeTree: N      = "AppliedTypeTree"
     val ArrayAnnotArg: N        = "ArrayAnnotArg"
     val CAP: N                  = "CAP"
-    val ClassManifestFactory: N = "ClassManifestFactory"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"
     val Eql: N                  = "Eql"

@@ -165,7 +165,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
   def TypeTree(tp: Type, inferred: Boolean = false)(using Context): TypeTree =
-    (if inferred then new InferredTypeTree() else untpd.TypeTree()).withType(tp)
+    (if inferred then untpd.InferredTypeTree() else untpd.TypeTree()).withType(tp)
 
   def SingletonTypeTree(ref: Tree)(using Context): SingletonTypeTree =
     ta.assignType(untpd.SingletonTypeTree(ref), ref)
