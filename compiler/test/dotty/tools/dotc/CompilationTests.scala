@@ -241,8 +241,9 @@ class CompilationTests {
     given TestGroup = TestGroup("recheck")
     aggregateTests(
       compileFilesInDir("tests/new", recheckOptions),
-      compileFilesInDir("tests/pos", recheckOptions, FileFilter.exclude(TestSources.posTestRecheckExcluded)),
-      compileFilesInDir("tests/run", recheckOptions, FileFilter.exclude(TestSources.runTestRecheckExcluded))
+      //Following are disabled since they take too long for what they provide.
+      //compileFilesInDir("tests/pos", recheckOptions, FileFilter.exclude(TestSources.posTestRecheckExcluded)),
+      //compileFilesInDir("tests/run", recheckOptions, FileFilter.exclude(TestSources.runTestRecheckExcluded))
     ).checkCompile()
 
   // Explicit nulls tests

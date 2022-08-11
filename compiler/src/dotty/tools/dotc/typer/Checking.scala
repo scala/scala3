@@ -599,7 +599,7 @@ object Checking {
   def checkNoPrivateLeaks(sym: Symbol)(using Context): Type = {
     class NotPrivate extends TypeMap {
       var errors: List[() => String] = Nil
-      var inCaptureSet: Boolean = false
+      private var inCaptureSet: Boolean = false
 
       def accessBoundary(sym: Symbol): Symbol =
         if (sym.is(Private) || !sym.owner.isClass) sym.owner
@@ -622,7 +622,7 @@ object Checking {
         }
         && !(inCaptureSet && other.isAllOf(LocalParamAccessor))
             // class parameters in capture sets are not treated as leaked since in
-            // phase -Ycc these are treated as normal vals.
+            // phase CheckCaptures these are treated as normal vals.
 
       def apply(tp: Type): Type = tp match {
         case tp: NamedType =>
@@ -660,9 +660,10 @@ object Checking {
         case tp @ AnnotatedType(underlying, annot)
         if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
           val underlying1 = this(underlying)
+          val saved = inCaptureSet
           inCaptureSet = true
           val annot1 = annot.mapWith(this)
-          inCaptureSet = false
+          inCaptureSet = saved
           derivedAnnotatedType(tp, underlying1, annot1)
         case _ =>
           mapOver(tp)
@@ -1434,6 +1435,10 @@ trait Checking {
       val kind = if pattern then "pattern selector" else "value"
       report.warning(MatchableWarning(tp, pattern), pos)
 
+  /** Check that there is an implicit capability to throw a checked exception
+   *  if the saferExceptions feature is turned on. Return that capability is it exists,
+   *  EmptyTree otherwise.
+   */
   def checkCanThrow(tp: Type, span: Span)(using Context): Tree =
     if Feature.enabled(Feature.saferExceptions) && tp.isCheckedException then
       ctx.typer.implicitArgTree(defn.CanThrowClass.typeRef.appliedTo(tp), span)
