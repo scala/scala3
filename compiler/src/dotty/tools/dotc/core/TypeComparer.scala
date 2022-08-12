@@ -779,6 +779,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         && (!caseLambda.exists || canWidenAbstract || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
         isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
+        && { GADTused ||= MatchType.thatReducesUsingGadt(tp1); true }
         || base.isInstanceOf[OrType] && fourthTry
           // if base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
