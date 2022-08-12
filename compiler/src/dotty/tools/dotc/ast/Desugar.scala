@@ -1813,7 +1813,7 @@ object desugar {
         // convert   `{refs} T`   to `T @retains refs`
         //           `{refs}-> T` to `-> (T @retainsByName refs)`
         def annotate(annotName: TypeName, tp: Tree) =
-          Annotated(tp, New(scalaDot(annotName), List(refs)))
+          Annotated(tp, New(scalaAnnotationDot(annotName), List(refs)))
         parent match
           case ByNameTypeTree(restpt) =>
             cpy.ByNameTypeTree(parent)(annotate(tpnme.retainsByName, restpt))

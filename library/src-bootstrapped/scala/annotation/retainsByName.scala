@@ -1,5 +1,4 @@
-package scala
-import annotation.experimental
+package scala.annotation
 
 /** An annotation that indicates capture of an enclosing by-name type
  */

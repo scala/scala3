@@ -1,3 +1,4 @@
+import annotation.retains
 sealed trait IO:
   def puts(msg: Any): Unit = println(msg)
 

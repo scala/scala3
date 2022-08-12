@@ -1,3 +1,4 @@
+import annotation.retains
 class C
 def f(x: C @retains(*), y: C): () -> C =
   () => if x == null then y else y  // error
