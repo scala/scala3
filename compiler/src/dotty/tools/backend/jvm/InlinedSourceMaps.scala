@@ -107,15 +107,18 @@ object InlinedSourceMaps:
         else traverseChildren(tree)
     end RequestCollector
 
-    var lastLine = cunit.tpdTree.sourcePos.endLine
-    def allocate(origPos: SourcePosition): Int =
-      val line = lastLine + 1
-      lastLine += origPos.lines.length
-      line
+    // Don't generate mappings for the quotes compiled at runtime by the staging compiler
+    if cunit.source.file.isVirtual then InlinedSourceMap(cunit, Nil, Map.empty[SourceFile, String])
+    else
+      var lastLine = cunit.tpdTree.sourcePos.endLine
+      def allocate(origPos: SourcePosition): Int =
+        val line = lastLine + 1
+        lastLine += origPos.lines.length
+        line
 
-    RequestCollector(cunit.source).traverse(cunit.tpdTree)
-    val allocated = requests.sortBy(_._1.start).map(r => Request(r._1, r._2, allocate(r._2)))
-    InlinedSourceMap(cunit, allocated.toList, internalNames)
+      RequestCollector(cunit.source).traverse(cunit.tpdTree)
+      val allocated = requests.sortBy(_._1.start).map(r => Request(r._1, r._2, allocate(r._2)))
+      InlinedSourceMap(cunit, allocated.toList, internalNames)
   end sourceMapFor
 
   class InlinedSourceMap private[InlinedSourceMaps] (
