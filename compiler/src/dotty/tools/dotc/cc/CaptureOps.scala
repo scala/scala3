@@ -13,18 +13,24 @@ import tpd.*
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()
 
-def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
+/** The arguments of a @retains or @retainsByName annotation */
+private[cc] def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
   case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
   case _ => Nil
 
+/** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception
 
 extension (tree: Tree)
 
+  /** Map tree with CaptureRef type to its type, throw IllegalCaptureRef otherwise */
   def toCaptureRef(using Context): CaptureRef = tree.tpe match
     case ref: CaptureRef => ref
     case tpe => throw IllegalCaptureRef(tpe)
 
+  /** Convert a @retains or @retainsByName annotation tree to the capture set it represents.
+   *  For efficience, the result is cached as an Attachment on the tree.
+   */
   def toCaptureSet(using Context): CaptureSet =
     tree.getAttachment(Captures) match
       case Some(refs) => refs
@@ -36,11 +42,16 @@ extension (tree: Tree)
 
 extension (tp: Type)
 
+  /** @pre `tp` is a CapturingType */
   def derivedCapturingType(parent: Type, refs: CaptureSet)(using Context): Type = tp match
     case tp @ CapturingType(p, r) =>
       if (parent eq p) && (refs eq r) then tp
       else CapturingType(parent, refs, tp.isBoxed)
 
+  /** If this is a unboxed capturing type with nonempty capture set, its boxed version.
+   *  Or, if type is a TypeBounds of capturing types, the version where the bounds are boxed.
+   *  The identity for all other types.
+   */
   def boxed(using Context): Type = tp.dealias match
     case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
       tp.annot match
@@ -56,12 +67,16 @@ extension (tp: Type)
     case _ =>
       tp
 
+  /** The boxed version of `tp`, unless `tycon` is a function symbol */
   def boxedUnlessFun(tycon: Type)(using Context) =
-    if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionClass(tycon.typeSymbol)
+    if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionSymbol(tycon.typeSymbol)
     then tp
     else tp.boxed
 
-  /** The boxed capture set of a type */
+  /** The capture set of `tp` consisting of all top-level captures under a box.
+   *  Unlike for `boxed` this also considers parents of capture types, unions and
+   *  intersections, and type proxies other than abstract types.
+   */
   def boxedCaptureSet(using Context): CaptureSet =
     def getBoxed(tp: Type): CaptureSet = tp match
       case tp @ CapturingType(parent, refs) =>

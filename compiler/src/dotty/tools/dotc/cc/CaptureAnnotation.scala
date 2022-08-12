@@ -11,13 +11,23 @@ import config.Printers.capt
 import printing.Printer
 import printing.Texts.Text
 
-
+/** An annotation representing a capture set and whether it is boxed.
+ *  It simulates a normal @retains annotation except that it is more efficient,
+ *  supports variables as capture sets, and adds a `boxed` flag.
+ *  These annotations are created during capture checking. Before that
+ *  there are only regular @retains and @retainsByName annotations.
+ *  @param refs    the capture set
+ *  @param boxed   whether the type carrying the annotation is boxed
+ *  @param cls     the underlying class (either annotation.retains or annotation.retainsByName)
+ */
 case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) extends Annotation:
   import CaptureAnnotation.*
   import tpd.*
 
+  /** A cache for boxed version of a capturing type with this annotation */
   val boxedType = BoxedTypeCache()
 
+  /** Reconstitute annotation tree from capture set */
   override def tree(using Context) =
     val elems = refs.elems.toList.map {
       case cr: TermRef => ref(cr)
@@ -30,8 +40,7 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
   override def symbol(using Context) = cls
 
   override def derivedAnnotation(tree: Tree)(using Context): Annotation =
-    if refs == CaptureSet.universal then this
-    else unsupported("derivedAnnotation(Tree)")
+    unsupported(i"derivedAnnotation(Tree), $tree, $refs")
 
   def derivedAnnotation(refs: CaptureSet, boxed: Boolean)(using Context): Annotation =
     if (this.refs eq refs) && (this.boxed == boxed) then this
@@ -42,9 +51,9 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
       this.refs == refs && this.boxed == boxed && this.symbol == that.symbol
     case _ => false
 
-  override def mapWith(tp: TypeMap)(using Context) =
+  override def mapWith(tm: TypeMap)(using Context) =
     val elems = refs.elems.toList
-    val elems1 = elems.mapConserve(tp)
+    val elems1 = elems.mapConserve(tm)
     if elems1 eq elems then this
     else if elems1.forall(_.isInstanceOf[CaptureRef])
     then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[CaptureRef]]*), boxed)
@@ -66,16 +75,3 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     case _ => false
 
 end CaptureAnnotation
-
-/** A one-element cache for the boxed version of an unboxed capturing type */
-class BoxedTypeCache:
-  private var boxed: Type = compiletime.uninitialized
-  private var unboxed: Type = NoType
-
-  def apply(tp: AnnotatedType)(using Context): Type =
-    if tp ne unboxed then
-      unboxed = tp
-      val CapturingType(parent, refs) = tp: @unchecked
-      boxed = CapturingType(parent, refs, boxed = true)
-    boxed
-end BoxedTypeCache
