@@ -1,3 +1,4 @@
+import annotation.retains
 type Top = Any @retains(*)
 
 type Box[+T <: Top] = ([K <: Top] -> (T => K) -> K)

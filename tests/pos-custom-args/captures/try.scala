@@ -1,3 +1,4 @@
+import annotation.retains
 import language.experimental.erasedDefinitions
 
 class CT[E <: Exception]
