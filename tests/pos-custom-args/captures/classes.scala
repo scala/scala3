@@ -1,3 +1,4 @@
+import annotation.retains
 class B
 type Cap = {*} B
 class C(val n: Cap):

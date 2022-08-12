@@ -1,3 +1,4 @@
+import annotation.retains
 class C
 type Cap = {*} C
 

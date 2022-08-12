@@ -1,3 +1,4 @@
+import annotation.retains
 object Test:
 
   class A

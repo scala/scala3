@@ -1,4 +1,4 @@
-import scala.retains
+import annotation.retains
 class C
 type Cap = C @retains(*)
 
