@@ -2,12 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Symbols._, Contexts._
+import Types.*, Symbols.*, Contexts.*
 import printing.Printer
 import printing.Texts.Text
 
-object Constants {
+object Constants:
 
+  type Tag              = Int
   inline val NoTag      = 0
   inline val UnitTag    = 1
   inline val BooleanTag = 2
@@ -22,7 +23,7 @@ object Constants {
   inline val NullTag    = 11
   inline val ClazzTag   = 12
 
-  class Constant(val value: Any, val tag: Int) extends printing.Showable with Product1[Any] {
+  class Constant(val value: Any, val tag: Tag) extends printing.Showable with Product1[Any]:
     import java.lang.Double.doubleToRawLongBits
     import java.lang.Float.floatToRawIntBits
 
@@ -223,9 +224,8 @@ object Constants {
     def get: Any                  = value
     def isEmpty: Boolean          = false
     def _1: Any                   = value
-  }
 
-  object Constant {
+  object Constant:
     def apply(x: Null): Constant         = new Constant(x, NullTag)
     def apply(x: Unit): Constant         = new Constant(x, UnitTag)
     def apply(x: Boolean): Constant      = new Constant(x, BooleanTag)
@@ -257,5 +257,5 @@ object Constants {
       )
 
     def unapply(c: Constant): Constant = c
-  }
-}
+
+  end Constant

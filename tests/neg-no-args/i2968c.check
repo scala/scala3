@@ -1,0 +1,5 @@
+[31m[31m-- Error: tests/neg-no-args/i2968c.scala:3:19 ----------------------------------[0m[0m
+[31m3 |[0m[33mdef[0m [36mf[0m = [31m0x01030507[0m << [31m36L[0m == [31m42[0m   [34m// error[0m
+[31m[31m  |[0m        ^^^^^^^^^^^^^[0m
+[31m  |[0m[33mmethod[0m [35m<<[0m in [33mclass[0m [35mInt[0m is deprecated since 2.12.7: shifting a value by a `Long` argument is deprecated (except when the value is a `Long`).
+[31m  |[0mCall `toInt` on the argument to maintain the current behavior and avoid the deprecation warning.

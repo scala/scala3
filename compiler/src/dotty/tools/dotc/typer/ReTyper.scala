@@ -127,7 +127,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
     catch {
       case NonFatal(ex) =>
         if ctx.phase != Phases.typerPhase && ctx.phase != Phases.inliningPhase then
-          println(i"exception while typing $tree of class ${tree.getClass} # ${tree.uniqueId}")
+          println(i"exception in ${ctx.phase} while typing $tree of class ${tree.getClass} # ${tree.uniqueId}")
         throw ex
     }
 

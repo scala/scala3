@@ -1,0 +1,5 @@
+-- Error: tests/neg/i2968-ycheck.scala:3:19 ----------------------------------------------------------------------------
+3 |def f = 0x01030507 << 36L == 42   // error
+  |        ^^^^^^^^^^^^^
+  |method << in class Int is deprecated since 2.12.7: shifting a value by a `Long` argument is deprecated (except when the value is a `Long`).
+  |Call `toInt` on the argument to maintain the current behavior and avoid the deprecation warning.

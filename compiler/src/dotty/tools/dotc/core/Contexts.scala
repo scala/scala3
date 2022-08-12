@@ -23,7 +23,7 @@ import config.Config
 import reporting._
 import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
 import scala.io.Codec
-import collection.mutable
+import collection.mutable, mutable.ArrayBuffer
 import printing._
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 import classfile.ReusableDataReader
@@ -52,8 +52,10 @@ object Contexts {
   private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
   private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,    store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (usagesLoc,          store11) = store10.newLocation[Any]()          // unusages feature
+  private val (deferredChecksLoc,  store12) = store11.newLocation[DeferredChecks]()
 
-  private val initialStore = store10
+  private val initialStore = store12
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -92,6 +94,9 @@ object Contexts {
 
   inline def atPhaseNoEarlier[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
     op(using if !limit.exists || limit <= ctx.phase then ctx else ctx.withPhase(limit))
+
+  inline def deferredCheck(phase: String)(inline op: Context ?=> Unit)(using Context): Unit =
+    ctx.deferredChecks.add(phase)(op)
 
   inline def inMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
     op(using if mode != ctx.mode then ctx.fresh.setMode(mode) else ctx)
@@ -238,6 +243,8 @@ object Contexts {
 
     /** The current type assigner or typer */
     def typeAssigner: TypeAssigner = store(typeAssignerLoc)
+
+    def deferredChecks: DeferredChecks = store(deferredChecksLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits | Null = null
@@ -812,6 +819,7 @@ object Contexts {
     store = initialStore
       .updated(settingsStateLoc, settingsGroup.defaultState)
       .updated(notNullInfosLoc, Nil)
+      .updated(deferredChecksLoc, DeferredChecks())
       .updated(compilationUnitLoc, NoCompilationUnit)
     searchHistory = new SearchRoot
     gadt = EmptyGadtConstraint
@@ -954,13 +962,13 @@ object Contexts {
 
     protected[dotc] val indentTab: String = "  "
 
-    private[Contexts] val exploreContexts = new mutable.ArrayBuffer[FreshContext]
+    private[Contexts] val exploreContexts = ArrayBuffer.empty[FreshContext]
     private[Contexts] var exploresInUse: Int = 0
 
-    private[Contexts] val changeOwnerContexts = new mutable.ArrayBuffer[FreshContext]
+    private[Contexts] val changeOwnerContexts = ArrayBuffer.empty[FreshContext]
     private[Contexts] var changeOwnersInUse: Int = 0
 
-    private[Contexts] val comparers = new mutable.ArrayBuffer[TypeComparer]
+    private[Contexts] val comparers = ArrayBuffer.empty[TypeComparer]
     private[Contexts] var comparersInUse: Int = 0
 
     private var charArray = new Array[Char](256)
@@ -996,4 +1004,15 @@ object Contexts {
       if (thread == null) thread = Thread.currentThread()
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
   }
+
+  class DeferredChecks:
+    private val checks = mutable.Map[String, ArrayBuffer[Context ?=> Unit]]()
+
+    def add(phase: String)(item: Context ?=> Unit): Unit = checks.getOrElseUpdate(phase, ArrayBuffer.empty).addOne(item)
+
+    def run(phase: String)(using Context): Unit =
+      for items <- checks.remove(phase) do
+        for item <- items do
+          item
+  end DeferredChecks
 }

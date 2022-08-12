@@ -301,6 +301,13 @@ object Decorators {
     def ex(args: Shown*)(using Context): String =
       explained(new StringFormatter(sc).assemble(args))
 
+    /** Print a message and stack trace, for debugging only.
+     */
+    @deprecated("Stack trace facility for debugging only.", since="3.2")
+    def tr(args: Shown*)(using Context): Unit =
+      Console.err.println(i(args*))
+      Thread.dumpStack()
+
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 

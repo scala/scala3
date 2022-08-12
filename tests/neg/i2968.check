@@ -1,0 +1,4 @@
+-- Error: tests/neg/i2968.scala:6:27 -----------------------------------------------------------------------------------
+6 |@main def test() = println(g)     // error
+  |                           ^
+  |                           method g is deprecated since 0.1: 42 is Jackie Robinson's retired number

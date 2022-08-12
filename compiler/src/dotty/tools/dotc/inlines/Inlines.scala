@@ -78,14 +78,18 @@ object Inlines:
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */
-  def inlineCall(tree: Tree)(using Context): Tree =
+  def inlineCall(tree: Tree)(using Context): Tree = inlineCall(tree, retainer = false)
+
+  private def inlineCall(tree: Tree, retainer: Boolean)(using Context): Tree =
     if tree.symbol.denot != SymDenotations.NoDenotation
       && tree.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
     then
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
-    CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
+    if !retainer then
+      CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
+      CrossVersionChecks.checkDeprecatedDeferred(tree.symbol, tree.srcPos)
 
     if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
 
@@ -240,7 +244,8 @@ object Inlines:
     retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))
     DefDef(retainer, prefss =>
       inlineCall(
-        ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos))(
+        ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos),
+        retainer = true)(
         using ctx.withOwner(retainer)))
     .showing(i"retainer for $meth: $result", inlining)
 
