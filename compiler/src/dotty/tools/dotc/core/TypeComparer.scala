@@ -2084,6 +2084,24 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
     val boundImprecise = approx.high || approx.low
     ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
+      def tryRegisterBound: Boolean = bound.match {
+        case tr @ TypeRef(path: PathType, _) =>
+          val sym = tr.symbol
+
+          def register =
+            ctx.gadt.contains(path, sym) || ctx.gadt.contains(sym) || {
+              ctx.gadt.isConstrainablePDT(path, tr.symbol) && {
+                gadts.println(i"!!! registering path on the fly path=$path sym=$sym")
+                ctx.gadt.addToConstraint(path) && ctx.gadt.contains(path, sym)
+              }
+            }
+
+          val result = register
+
+          true
+        case _ => true
+      }
+
       def narrowTypeParams = ctx.gadt.contains(tr.symbol) && {
         val tparam = tr.symbol
         gadts.println(i"narrow gadt bound of tparam $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
@@ -2125,7 +2143,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         case _ => false
 
-      narrowTypeParams || narrowPathDepType
+      tryRegisterBound && narrowTypeParams || narrowPathDepType
     }
   }
 
