@@ -2562,7 +2562,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       false
   }
 
-  protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult.Type =
+  protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
     refs1.subCaptures(refs2, frozen)
 
   /** Is the boxing status of tp1 and tp2 the same, or alternatively, is
@@ -3210,7 +3210,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.addConstraint(param, bound, fromBelow)
     }
 
-  override def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult.Type =
+  override def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
     traceIndented(i"subcaptures $refs1 <:< $refs2 ${if frozen then "frozen" else ""}") {
       super.subCaptures(refs1, refs2, frozen)
     }
