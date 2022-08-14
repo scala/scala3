@@ -176,8 +176,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case tp => tp
     }
 
-    /** Reconstruct subtype constraints for type members.
-      */
+    /** Reconstruct subtype constraints for type members of the scrutinee and the pattern. */
     def constrainTypeMembers = trace(i"constrainTypeMembers(${scrutRepr(scrut)}, $pat)", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       import NameKinds.DepParamName
       val realScrutineePath = ctx.gadt.scrutineePath
