@@ -338,9 +338,13 @@ final class ProperGadtConstraint private(
     val pathType = path.widen
     val typeMembers = constrainableTypeMembers(path).filterNot(_.symbol eq NoSymbol)
 
-    gadts.println(i"> trying to add $path into constraint ...")
-    gadts.println(i"  path.widen = $pathType")
-    gadts.println(i"  type members =\n${debugShowTypeMembers(typeMembers)}")
+    gadts.println {
+      val sb = new mutable.StringBuilder()
+      sb ++= i"* trying to add $path into constraint ...\n"
+      sb ++= i"** path.widen = $pathType\n"
+      sb ++= i"** type members =\n${debugShowTypeMembers(typeMembers)}\n"
+      sb.result()
+    }
 
     typeMembers.nonEmpty && {
       val typeMemberSymbols: List[Symbol] = typeMembers map { x => x.symbol }
@@ -411,7 +415,7 @@ final class ProperGadtConstraint private(
       }
 
       addToConstraint(poly1, tvars)
-        .showing(i"added to constraint: [$poly1] $path\n$debugBoundsDescription", gadts)
+        .showing(i"added to constraint: [$poly1] $path, result = $result\n$debugBoundsDescription", gadts)
     }
   }
 
