@@ -73,7 +73,7 @@ extension (tp: Type)
     then tp
     else tp.boxed
 
-  /** The capture set of `tp` consisting of all top-level captures under a box.
+  /** The capture set consisting of all top-level captures of `tp` that appear under a box.
    *  Unlike for `boxed` this also considers parents of capture types, unions and
    *  intersections, and type proxies other than abstract types.
    */
@@ -89,8 +89,12 @@ extension (tp: Type)
       case _ => CaptureSet.empty
     getBoxed(tp)
 
+  /** Is the boxedCaptureSet of this type nonempty? */
   def isBoxedCapturing(using Context) = !tp.boxedCaptureSet.isAlwaysEmpty
 
+  /** Map capturing type to their parents. Capturing types accessible
+   *  via dealising are also stripped.
+   */
   def stripCapturing(using Context): Type = tp.dealiasKeepAnnots match
     case CapturingType(parent, _) =>
       parent.stripCapturing
@@ -138,11 +142,15 @@ extension (sym: Symbol)
     && !sym.allowsRootCapture
 
 extension (tp: AnnotatedType)
+  /** Is this a boxed capturing type? */
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
 
 extension (ts: List[Type])
+  /** Equivalent to ts.mapconserve(_.boxedUnlessFun(tycon)) but more efficient where
+   *  it is the identity.
+   */
   def boxedUnlessFun(tycon: Type)(using Context) =
     if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionClass(tycon.typeSymbol)
     then ts
