@@ -140,9 +140,17 @@ final class ProperGadtConstraint private(
 
   /** Whether `left` subsumes `right`?
     *
-    * `left` and `right` both stem from the constraint `pre`, with different type reasoning performed,
-    * during which new types might be registered in GadtConstraint. This function will take such newly
-    * registered types into consideration.
+    * `left` and `right` branches from `pre` with different constraint reasoning
+    * performed. During this, new path-dependent types could be registered in `left`
+    * and `right`.
+    *
+    * This function considers the cases where both `left` and `right` register a
+    * new path-depepdent type p.T. The problem is that in this case p.T will have
+    * two different internal representation in `left` and `right`:
+    *    - p.T registered in `left` and has the internal representation T(param)$1
+    *    - p.T registered in `right` and has the internal representation T(param)$2
+    * In `subsumes`, we have to recognize the fact that both T(param)$1 and T(param)$2
+    * represents the same path-dependent type, to give the correct result.
     */
   def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
     def checkSubsumes(c1: Constraint, c2: Constraint, pre: Constraint): Boolean = {
