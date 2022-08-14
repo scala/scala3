@@ -59,10 +59,13 @@ sealed abstract class GadtConstraint extends Showable {
   /** Further constrain a path-dependent type already present in the constraint. */
   def addBound(p: PathType, sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
+  /** Record the equality between two singleton types. */
   def addEquality(p: PathType, q: PathType)(using Context): Unit
 
+  /** Check whether two singleton types are equivalent. */
   def isEquivalent(p: PathType, q: PathType): Boolean
 
+  /** Query the representative member of a singleton type. */
   def reprOf(p: PathType): PathType | Null
 
   /** Scrutinee path of the current pattern matching. */
@@ -180,7 +183,8 @@ final class ProperGadtConstraint private(
         }
 
         checkNewParams && {
-          // compute mappings between the newly-registered type params in the two branches
+          // Computes mappings between the newly-registered type params in 
+          // the two branches.
           def createMappings = {
             var mapping1: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
             var mapping2: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
@@ -207,7 +211,7 @@ final class ProperGadtConstraint private(
             (mapTypeParam(mapping1), mapTypeParam(mapping2))
           }
 
-          // bridge between the newly-registered types in c2 and c1
+          // Bridge between the newly-registered types in c2 and c1
           val (mapping1, mapping2) = createMappings
 
           try {
@@ -263,39 +267,47 @@ final class ProperGadtConstraint private(
       => true
     case _ => false
 
+  /** Check whether a type member is constrainable based on its denotation.
+    *
+    * A type member is considered constrainable if it is abstract, is not
+    * an opaque type, is not a class and is non-private.
+    */
+  private def isConstrainableDenot(denot: Denotation)(using Context): Boolean =
+    denot.symbol.is(Flags.Deferred)
+    && !denot.symbol.is(Flags.Opaque)
+    && !denot.symbol.isClass
+    && !denot.isInstanceOf[NoDenotation.type]
+
   /** Find all constrainable type member denotations of the given type.
    *
-   * All abstract but not opaque type members are returned.
    * Note that we return denotation here, since the bounds of the type member
    * depend on the context (e.g. applied type parameters).
    */
   private def constrainableTypeMembers(tp: Type)(using Context): List[Denotation] =
     tp.typeMembers.toList filter { denot =>
       val denot1 = tp.nonPrivateMember(denot.name)
-      val tb = denot.info
-
-      def nonPrivate: Boolean = !denot1.isInstanceOf[NoDenotation.type]
-
-      denot1.symbol.is(Flags.Deferred)
-      && !denot1.symbol.is(Flags.Opaque)
-      && !denot1.symbol.isClass
-      && nonPrivate
+      isConstrainableDenot(denot1)
     }
 
+  /** Check whether a type member of a path is constrainable. */
   private def isConstrainableTypeMember(path: PathType, sym: Symbol)(using Context): Boolean =
     val mbr = path.nonPrivateMember(sym.name)
     mbr.isInstanceOf[SingleDenotation] && {
       val denot1 = path.nonPrivateMember(mbr.name)
-      val tb = mbr.info
-
-      denot1.symbol.is(Flags.Deferred)
-      && !denot1.symbol.is(Flags.Opaque)
-      && !denot1.symbol.isClass
+      isConstrainableDenot(denot1)
     }
 
+  /** Check whether a path-dependent type is constrainable.
+    *
+    * A path-dependent type p.A is constrainable if its path p and the type member A is
+    * constrainable.
+    */
   override def isConstrainablePDT(path: PathType, sym: Symbol)(using Context): Boolean =
     isConstrainablePath(path) && isConstrainableTypeMember(path, sym)
 
+  /** Get the internal type variable of the path-dependent type. Return null if it
+    * is not registered.
+    */
   private def tvarOf(path: PathType, sym: Symbol)(using Context): TypeVar | Null =
     pathDepMapping(path) match
       case null => null
@@ -310,19 +322,17 @@ final class ProperGadtConstraint private(
         tpr match
           case TypeRef(p: PathType, _) => tvarOf(p, tpr.symbol)
           case _ => null
-      case tv => tv
-
-  /** Try to retrieve the internal type variable for a NamedType. */
-  private def tvarOf(ntp: NamedType)(using Context): TypeVar | Null =
-    ntp match
-      case tp: TypeRef => tvarOf(tp)
-      case _ => null
+      case tv: TypeVar => tv
 
   private def tvarOf(tp: Type)(using Context): TypeVar | Null =
     tp match
       case tp: TypeRef => tvarOf(tp)
       case _ => null
 
+  /** Register all constrainable path-dependent types addressed from the path.
+    * Returns whether the registration succeeds. It also checks whether the path
+    * itself is constrainable.
+    */
   override def addToConstraint(path: PathType)(using Context): Boolean = isConstrainablePath(path) && {
     import NameKinds.DepParamName
     val pathType = path.widen
@@ -384,27 +394,24 @@ final class ProperGadtConstraint private(
         pt => defn.AnyType
       )
 
-      def register: Boolean =
-        val tvars = typeMemberSymbols lazyZip poly1.paramRefs map { (sym, paramRef) =>
-          val tv = TypeVar(paramRef, creatorState = null)
+      val tvars = typeMemberSymbols lazyZip poly1.paramRefs map { (sym, paramRef) =>
+        val tv = TypeVar(paramRef, creatorState = null)
 
-          val externalType = TypeRef(path, sym)
-          pathDepMapping = pathDepMapping.updated(path, {
-            val old: SimpleIdentityMap[Symbol, TypeVar] = pathDepMapping(path) match
-              case null => SimpleIdentityMap.empty
-              case m => m.nn
+        val externalType = TypeRef(path, sym)
+        pathDepMapping = pathDepMapping.updated(path, {
+          val old: SimpleIdentityMap[Symbol, TypeVar] = pathDepMapping(path) match
+            case null => SimpleIdentityMap.empty
+            case m => m.nn
 
-            old.updated(sym, tv)
-          })
-          pathDepReverseMapping = pathDepReverseMapping.updated(tv.origin, externalType)
+          old.updated(sym, tv)
+        })
+        pathDepReverseMapping = pathDepReverseMapping.updated(tv.origin, externalType)
 
-          tv
-        }
+        tv
+      }
 
-        addToConstraint(poly1, tvars)
-          .showing(i"added to constraint: [$poly1] $path\n$debugBoundsDescription", gadts)
-
-      register
+      addToConstraint(poly1, tvars)
+        .showing(i"added to constraint: [$poly1] $path\n$debugBoundsDescription", gadts)
     }
   }
 
@@ -417,6 +424,7 @@ final class ProperGadtConstraint private(
     buf ++= "}"
     buf.result
 
+  /** Get the representative member of the path in the union find. */
   override def reprOf(p: PathType): PathType | Null = lookupPath(p)
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = {
@@ -468,7 +476,7 @@ final class ProperGadtConstraint private(
       .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
-  override def addBound(path: PathType, sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
+  private def addBoundForTvar(tvar: TypeVar, bound: Type, isUpper: Boolean, typeRepr: String)(using Context): Boolean = {
     @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
       case tv: TypeVar =>
         val inst = constraint.instType(tv)
@@ -476,10 +484,10 @@ final class ProperGadtConstraint private(
       case _ => tp
     }
 
-    val symTvar: TypeVar = stripInternalTypeVar(tvarOrError(path, sym)) match {
+    val symTvar: TypeVar = stripInternalTypeVar(tvar) match {
       case tv: TypeVar => tv
       case inst =>
-        gadts.println(i"instantiated: $path.$sym -> $inst")
+        gadts.println(i"instantiated: $typeRepr -> $inst")
         return if (isUpper) isSub(inst, bound) else isSub(bound, inst)
     }
 
@@ -502,52 +510,23 @@ final class ProperGadtConstraint private(
     gadts.println {
       val descr = if (isUpper) "upper" else "lower"
       val op = if (isUpper) "<:" else ">:"
-      i"adding $descr bound $path.$sym $op $bound = $result"
+      i"adding $descr bound $typeRepr $op $bound = $result"
     }
 
     if constraint ne saved then wasConstrained = true
     result
   }
 
+  override def addBound(path: PathType, sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
+    val tvar = tvarOrError(path, sym)
+    val typeRepr = TypeRef(path, sym).show
+    addBoundForTvar(tvar, bound, isUpper, typeRepr)
+  }
+
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
-    @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
-      case tv: TypeVar =>
-        val inst = constraint.instType(tv)
-        if (inst.exists) stripInternalTypeVar(inst) else tv
-      case _ => tp
-    }
-
-    val symTvar: TypeVar = stripInternalTypeVar(tvarOrError(sym)) match {
-      case tv: TypeVar => tv
-      case inst =>
-        gadts.println(i"instantiated: $sym -> $inst")
-        return if (isUpper) isSub(inst, bound) else isSub(bound, inst)
-    }
-
-    val internalizedBound = bound match {
-      case nt: TypeRef =>
-        val ntTvar = tvarOf(nt)
-        if (ntTvar != null) stripInternalTypeVar(ntTvar) else bound
-      case _ => bound
-    }
-
-    val saved = constraint
-    val result = internalizedBound match
-      case boundTvar: TypeVar =>
-        if (boundTvar eq symTvar) true
-        else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
-        else addLess(boundTvar.origin, symTvar.origin)
-      case bound =>
-        addBoundTransitively(symTvar.origin, bound, isUpper)
-
-    gadts.println {
-      val descr = if (isUpper) "upper" else "lower"
-      val op = if (isUpper) "<:" else ">:"
-      i"adding $descr bound $sym $op $bound = $result"
-    }
-
-    if constraint ne saved then wasConstrained = true
-    result
+    val tvar = tvarOrError(sym)
+    val typeRepr = sym.typeRef.show
+    addBoundForTvar(tvar, bound, isUpper, typeRepr)
   }
 
   private def lookupPath(p: PathType): PathType | Null =
