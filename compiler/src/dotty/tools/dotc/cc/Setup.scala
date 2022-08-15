@@ -209,7 +209,7 @@ extends tpd.TreeTraverser:
             else
               tp.derivedAppliedType(tycon1, args1 :+ res1)
           else
-            tp.derivedAppliedType(tycon1, args.mapConserve(arg => box(this(arg))))
+            tp.derivedAppliedType(tycon1, args.mapConserve(arg => this(arg)))
         case tp @ RefinedType(core, rname, rinfo) if defn.isFunctionType(tp) =>
           val rinfo1 = apply(rinfo)
           if rinfo1 ne rinfo then rinfo1.toFunctionType(isJava = false, alwaysDependent = true)
