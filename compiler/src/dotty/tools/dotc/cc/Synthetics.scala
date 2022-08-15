@@ -27,14 +27,22 @@ object Synthetics:
     case DefaultGetterName(nme.copy, _) => sym.is(Synthetic)
     case _ => false
 
-  /** Is `sym` a synthetic apply, copy, or copy default getter method? */
+  /** Is `sym` a synthetic apply, copy, or copy default getter method?
+   *  The types of these symbols are transformed in a special way without
+   *  looking at the definitions's RHS
+   */
   def needsTransform(sym: SymDenotation)(using Context): Boolean =
     isSyntheticCopyMethod(sym)
     || isSyntheticApplyMethod(sym)
     || isSyntheticUnapplyMethod(sym)
     || isSyntheticCopyDefaultGetterMethod(sym)
 
-  /** Method is excluded from regular capture checking */
+  /** Method is excluded from regular capture checking.
+   *  Excluded are synthetic class members
+   *   - that override a synthesized case class symbol, or
+   *   - the fromProduct method, or
+   *   - members transformed specially as indicated by `needsTransform`.
+   */
   def isExcluded(sym: Symbol)(using Context): Boolean =
     sym.is(Synthetic)
     && sym.owner.isClass
