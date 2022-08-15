@@ -341,9 +341,9 @@ Binding           ::=  (id | ‘_’) [‘:’ Type] ;
 Modifier          ::=  LocalModifier
                     |  AccessModifier
                     |  ‘override’
+                    |  ‘final’
                     |  ‘opaque’ ;
 LocalModifier     ::=  ‘abstract’
-                    |  ‘final’
                     |  ‘sealed’
                     |  ‘open’
                     |  ‘implicit’
