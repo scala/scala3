@@ -79,6 +79,8 @@ class Compiler {
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher) ::      // Compile pattern matches
+    List(new TestRecheck.Pre) ::     // Test only: run rechecker, enabled under -Yrecheck-test
+    List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
     List(new CheckCaptures.Pre) ::   // Preparations for check captures phase, enabled under -Ycc
     List(new CheckCaptures) ::       // Check captures, enabled under -Ycc
     List(new ElimOpaque,             // Turn opaque into normal aliases

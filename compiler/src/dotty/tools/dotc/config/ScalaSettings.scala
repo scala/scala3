@@ -325,7 +325,7 @@ private sealed trait YSettings:
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
-  val Yrecheck: Setting[Boolean] = BooleanSetting("-Yrecheck", "Run type rechecks (test only)")
+  val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only)")
   val Ycc: Setting[Boolean] = BooleanSetting("-Ycc", "Check captured references")
   val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Debug info for captured references")
   val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with -Ycc, suppress type abbreviations")
