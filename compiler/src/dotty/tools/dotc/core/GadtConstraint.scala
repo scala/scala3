@@ -357,17 +357,22 @@ final class ProperGadtConstraint private(
                 tp.derivedAndOrType(loop(tp1), loop(tp2))
               case tp @ OrType(tp1, tp2) if isUpper =>
                 tp.derivedOrType(loop(tp1), loop(tp2))
-              case tp @ TypeRef(prefix, des) if prefix eq path =>
+              case tp @ TypeRef(prefix, _) if prefix eq path =>
                 typeMemberSymbols indexOf tp.symbol match
                   case -1 => tp
                   case idx => pt.paramRefs(idx)
-              case tp @ TypeRef(_: RecThis, des) =>
+              case tp @ TypeRef(_: RecThis, _) =>
                 typeMemberSymbols indexOf tp.symbol match
                   case -1 => tp
                   case idx => pt.paramRefs(idx)
               case tp: TypeRef =>
                 tvarOf(tp) match {
-                  case tv: TypeVar => tv.origin
+                  case tv: TypeVar =>
+                    val tp = stripInternalTypeVar(tv)
+                    tp.match {
+                      case tv1: TypeVar => stripTypeVarWhenDependent(tv1)
+                      case tp => tp
+                    }
                   case null => tp
                 }
               case tp => tp
@@ -450,7 +455,12 @@ final class ProperGadtConstraint private(
               params.indexOf(tp.symbol) match {
                 case -1 =>
                   mapping(tp.symbol) match {
-                    case tv: TypeVar => tv.origin
+                    case tv: TypeVar =>
+                      val tp = stripInternalTypeVar(tv)
+                      tp.match {
+                        case tv1: TypeVar => stripTypeVarWhenDependent(tv1)
+                        case tp => tp
+                      }
                     case null => tp
                   }
                 case i => pt.paramRefs(i)
@@ -480,13 +490,22 @@ final class ProperGadtConstraint private(
       .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
+  @annotation.tailrec private def stripInternalTypeVar(tp: Type): Type = tp match {
+    case tv: TypeVar =>
+      val inst = constraint.instType(tv)
+      if (inst.exists) stripInternalTypeVar(inst) else tv
+    case _ => tp
+  }
+
+  private def stripTypeVarWhenDependent(tv: TypeVar): TypeParamRef | TypeVar =
+    val tpr = tv.origin
+    if constraint.contains(tpr) then
+      tpr
+    else
+      tv
+  end stripTypeVarWhenDependent
+
   private def addBoundForTvar(tvar: TypeVar, bound: Type, isUpper: Boolean, typeRepr: String)(using Context): Boolean = {
-    @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
-      case tv: TypeVar =>
-        val inst = constraint.instType(tv)
-        if (inst.exists) stripInternalTypeVar(inst) else tv
-      case _ => tp
-    }
 
     val symTvar: TypeVar = stripInternalTypeVar(tvar) match {
       case tv: TypeVar => tv
