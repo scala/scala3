@@ -893,11 +893,14 @@ trait Applications extends Compatibility {
 
     def realApply(using Context): Tree = {
       val resultProto = tree.fun match
-        case Select(New(_), _) if pt.isInstanceOf[ValueType] => pt
-          // Don't ignore expected value types of `new` expressions. If we have a `new C()`
-          // with expected type `C[T]` we want to use the type to instantiate `C`
-          // immediately. This is necessary since `C` might _also_ have using clauses
-          // that we want to instantiate with the best available type. See i15664.scala.
+        case Select(New(tpt), _) if pt.isInstanceOf[ValueType] =>
+          if tpt.isType && typedAheadType(tpt).tpe.typeSymbol.typeParams.isEmpty then
+            IgnoredProto(pt)
+          else
+            pt // Don't ignore expected value types of `new` expressions with parameterized type.
+                // If we have a `new C()` with expected type `C[T]` we want to use the type to
+                // instantiate `C` immediately. This is necessary since `C` might _also_ have using
+                // clauses that we want to instantiate with the best available type. See i15664.scala.
         case _ => IgnoredProto(pt)
           // Do ignore other expected result types, since there might be an implicit conversion
           // on the result. We could drop this if we disallow unrestricted implicit conversions.
