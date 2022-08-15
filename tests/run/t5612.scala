@@ -1,5 +1,3 @@
-// scalajs: --skip --pending
-
 object L extends Enumeration {
   val One, Two, Three = Value
 }

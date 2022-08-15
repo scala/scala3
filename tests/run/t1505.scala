@@ -1,5 +1,3 @@
-// scalajs: --skip --pending
-
 object Q extends Enumeration {
   val A = Value("A")
   val B = Value("B")

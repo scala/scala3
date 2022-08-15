@@ -1241,7 +1241,6 @@ object Build {
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
-            -- "EnumerationTest.scala" // scala.Enumeration support for Scala.js is not implemented in scalac (yet)
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
