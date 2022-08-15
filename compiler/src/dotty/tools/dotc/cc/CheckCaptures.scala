@@ -128,6 +128,10 @@ class CheckCaptures extends Recheck, SymTransformer:
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
     import ast.tpd.*
 
+    override def keepType(tree: Tree) =
+      super.keepType(tree)
+      || tree.isInstanceOf[Try]  // type of `try` needs tp be checked for * escapes
+
     private def interpolator(startingVariance: Int = 1)(using Context) = new TypeTraverser:
       variance = startingVariance
       override def traverse(t: Type) =

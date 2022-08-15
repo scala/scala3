@@ -20,18 +20,18 @@ import config.Printers.recheckr
 import util.Property
 import StdNames.nme
 import reporting.trace
+import annotation.constructorOnly
 
 object Recheck:
+  import tpd.Tree
 
-  /** A flag used to indicate that a ParamAccessor has been temporily made not-private
+  /** A flag used to indicate that a ParamAccessor has been temporarily made not-private
    *  Only used at the start of the Recheck phase, reset at its end.
    *  The flag repurposes the Scala2ModuleVar flag. No confusion is possible since
    *  Scala2ModuleVar cannot be also ParamAccessors.
    */
   val ResetPrivate = Scala2ModuleVar
   val ResetPrivateParamAccessor = ResetPrivate | ParamAccessor
-
-  import tpd.Tree
 
   /** Attachment key for rechecked types of TypeTrees */
   val RecheckedType = Property.Key[Type]
@@ -83,6 +83,10 @@ object Recheck:
 
     def hasRememberedType: Boolean = tree.hasAttachment(RecheckedType)
 
+/** A base class that runs a simplified typer pass over an already re-typed program. The pass
+ *  does not transform trees but returns instead the re-typed type of each tree as it is
+ *  traversed. The Recheck phase must be directly preceded by a phase of type PreRecheck.
+ */
 abstract class Recheck extends Phase, SymTransformer:
   thisPhase =>
 
@@ -91,7 +95,6 @@ abstract class Recheck extends Phase, SymTransformer:
 
   def preRecheckPhase = this.prev.asInstanceOf[PreRecheck]
 
-  override def isEnabled(using Context) = ctx.settings.Yrecheck.value
   override def changesBaseTypes: Boolean = true
 
   override def isCheckable = false
@@ -109,13 +112,24 @@ abstract class Recheck extends Phase, SymTransformer:
 
   def newRechecker()(using Context): Rechecker
 
-  class Rechecker(ictx: Context):
+  /** The typechecker pass */
+  class Rechecker(@constructorOnly ictx: Context):
     private val ta = ictx.typeAssigner
-    private val keepTypes = inContext(ictx) {
+
+    /** If true, remember types of all tree nodes in attachments so that they
+     *  can be retrieved with `knownType`
+     */
+    private val keepAllTypes = inContext(ictx) {
       ictx.settings.Xprint.value.containsPhase(thisPhase)
     }
 
-    def constFold(tree: Tree, tp: Type)(using Context): Type =
+    /** Should type of `tree` be kept in an attachment so that it can be retrieved with
+     *  `knownType`? By default true only is `keepAllTypes` hold, but can be overridden.
+     */
+    def keepType(tree: Tree): Boolean = keepAllTypes
+
+    /** Constant-folded rechecked type `tp` of tree `tree` */
+    private def constFold(tree: Tree, tp: Type)(using Context): Type =
       val tree1 = tree.withType(tp)
       val tree2 = ConstFold(tree1)
       if tree2 ne tree1 then tree2.tpe else tp
@@ -123,11 +137,11 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckIdent(tree: Ident)(using Context): Type =
       tree.tpe
 
-    /** Keep the symbol of the `select` but re-infer its type */
     def recheckSelect(tree: Select)(using Context): Type =
       val Select(qual, name) = tree
       recheckSelection(tree, recheck(qual).widenIfUnstable, name)
 
+    /** Keep the symbol of the `select` but re-infer its type */
     def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) =
       if name.is(OuterSelectName) then tree.tpe
       else
@@ -169,7 +183,9 @@ abstract class Recheck extends Phase, SymTransformer:
       recheckStats(impl.body)
       sym.typeRef
 
-    // Need to remap Object to FromJavaObject since it got lost in ElimRepeated
+    /** Assuming `formals` are parameters of a Java-defined method, remap Object
+     *  to FromJavaObject since it got lost in ElimRepeated
+     */
     private def mapJavaArgs(formals: List[Type])(using Context): List[Type] =
       val tm = new TypeMap:
         def apply(t: Type) = t match
@@ -177,8 +193,7 @@ abstract class Recheck extends Phase, SymTransformer:
           case _ => mapOver(t)
       formals.mapConserve(tm)
 
-    /** Hook for method type instantiation
-     */
+    /** Hook for method type instantiation */
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
 
@@ -256,13 +271,21 @@ abstract class Recheck extends Phase, SymTransformer:
       recheck(tree.body, pt)
 
     def recheckReturn(tree: Return)(using Context): Type =
-      val rawType = recheck(tree.expr)
+      // Avoid local pattern defined symbols in returns from matchResult blocks
+      // that are inserted by the PatternMatcher transform.
+      // For regular symbols in the case branch, we already avoid them by the rule
+      // for blocks since a case branch is of the form `return[MatchResultN] { ... }`
+      // For source-level returns from methods, there's nothing to avoid, since the
+      // result type of a method with a return must be given explicitly.
       def avoidMap = new TypeOps.AvoidMap:
         def toAvoid(tp: NamedType) =
-          tp.symbol.is(Case) && tp.symbol.owner.isContainedIn(ctx.owner)
+           tp.symbol.is(Case) && tp.symbol.owner.isContainedIn(ctx.owner)
+
+      val rawType = recheck(tree.expr)
       val ownType = avoidMap(rawType)
       checkConforms(ownType, tree.from.symbol.returnProto, tree)
       defn.NothingType
+    end recheckReturn
 
     def recheckWhileDo(tree: WhileDo)(using Context): Type =
       recheck(tree.cond, defn.BooleanType)
@@ -285,7 +308,7 @@ abstract class Recheck extends Phase, SymTransformer:
       seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
 
     def recheckTypeTree(tree: TypeTree)(using Context): Type =
-      knownType(tree)
+      knownType(tree) // allows to install new types at Setup
 
     def recheckAnnotated(tree: Annotated)(using Context): Type =
       tree.tpe match
@@ -326,10 +349,13 @@ abstract class Recheck extends Phase, SymTransformer:
           case tree: ValOrDefDef =>
             if tree.isEmpty then NoType
             else
-              if sym.isUpdatedAfter(preRecheckPhase) then sym.ensureCompleted()
-              else recheckDef(tree, sym)
+              if sym.isUpdatedAfter(preRecheckPhase) then
+                sym.ensureCompleted() // in this case the symbol's completer should recheck the right hand side
+              else
+                recheckDef(tree, sym)
               sym.termRef
           case tree: TypeDef =>
+            // TODO: Should we allow for completers as for ValDefs or DefDefs?
             tree.rhs match
               case impl: Template =>
                 recheckClassDef(tree, impl, sym.asClass)(using ctx.localContext(tree, sym))
@@ -364,11 +390,15 @@ abstract class Recheck extends Phase, SymTransformer:
         case tree => recheckUnnamed(tree, pt)
     end recheckStart
 
+    /** Finish rechecking a tree node: check rechecked type against expected type
+     *  and remember rechecked type in a tree attachment if required.
+     *  @param tpe   the recheched type of `tree`
+     *  @param tree  the rechecked tree
+     *  @param pt    the expected type
+     */
     def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
       checkConforms(tpe, pt, tree)
-      if keepTypes
-        || tree.isInstanceOf[Try]  // type needs tp be checked for * escapes
-      then tree.rememberType(tpe)
+      if keepType(tree) then tree.rememberType(tpe)
       tpe
 
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
@@ -379,8 +409,12 @@ abstract class Recheck extends Phase, SymTransformer:
           throw ex
       }
 
+    /** If true, print info for some successful checkConforms operations (failing ones give
+     *  an error message in any case).
+     */
     private val debugSuccesses = false
 
+    /** Check that widened types of `tpe` and `pt` are compatible. */
     def checkConforms(tpe: Type, pt: Type, tree: Tree)(using Context): Unit = tree match
       case _: DefTree | EmptyTree | _: TypeTree | _: Closure =>
         // Don't report closure nodes, since their span is a point; wait instead
@@ -408,6 +442,7 @@ abstract class Recheck extends Phase, SymTransformer:
 
   end Rechecker
 
+  /** Show tree with rechecked types instead of the types stored in the `.tpe` field */
   override def show(tree: untpd.Tree)(using Context): String =
     val addRecheckedTypes = new TreeMap:
       override def transform(tree: Tree)(using Context): Tree =
@@ -420,12 +455,14 @@ abstract class Recheck extends Phase, SymTransformer:
     }
 end Recheck
 
+/** A class that can be used to test basic rechecking without any customaization */
 object TestRecheck:
-  class Pre extends PreRecheck, IdentityDenotTransformer
+  class Pre extends PreRecheck, IdentityDenotTransformer:
+    override def isEnabled(using Context) = ctx.settings.YrecheckTest.value
 
 class TestRecheck extends Recheck:
   def phaseName: String = "recheck"
-  //override def isEnabled(using Context) = ctx.settings.YrefineTypes.value
+  override def isEnabled(using Context) = ctx.settings.YrecheckTest.value
   def newRechecker()(using Context): Rechecker = Rechecker(ctx)
 
 
