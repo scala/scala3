@@ -155,95 +155,53 @@ final class ProperGadtConstraint private(
     * In `subsumes`, we have to recognize the fact that both T(param)$1 and T(param)$2
     * represents the same path-dependent type, to give the correct result.
     */
-  def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
-    def checkSubsumes(c1: Constraint, c2: Constraint, pre: Constraint): Boolean = {
-      if (c2 eq pre) true
-      else if (c1 eq pre) false
-      else {
-        val saved = constraint
+  def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean =
+    def checkSubsumes(left: ProperGadtConstraint, right: ProperGadtConstraint, pre: ProperGadtConstraint): Boolean = {
+      def rightToLeft: TypeParamRef => TypeParamRef = {
+        val preParams = pre.constraint.domainParams.toSet
+        val mapping = {
+          var res: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
 
-        def computeNewParams =
-          val params1 = c1.domainParams.toSet
-          val params2 = c2.domainParams.toSet
-          val preParams = pre.domainParams.toSet
-          /** Type parameter registered after branching */
-          (params1.diff(preParams), params2.diff(preParams))
-
-        val (newParams1, newParams2) = computeNewParams
-
-        // When new types are registered after pre, for left to subsume right, it should contain all types
-        // newly registered in right.
-        def checkNewParams: Boolean = (left, right) match {
-          case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
-            newParams2 forall { p2 =>
-              val tp2 = right.externalize(p2)
-              left.tvarOf(tp2) != null
+          right.constraint.domainParams.foreach { p2 =>
+            left.tvarOf(right.externalize(p2)) match {
+              case null =>
+              case tv: TypeVar =>
+                res = res.updated(p2, tv.origin)
             }
-          case _ => true
-        }
-
-        checkNewParams && {
-          // Computes mappings between the newly-registered type params in 
-          // the two branches.
-          def createMappings = {
-            var mapping1: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
-            var mapping2: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
-
-            (left, right) match {
-              case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
-                newParams1 foreach { p1 =>
-                  val tp1 = left.externalize(p1)
-                  right.tvarOf(tp1) match {
-                    case null =>
-                    case tvar2: TypeVar =>
-                      mapping1 = mapping1.updated(p1, tvar2.origin)
-                      mapping2 = mapping2.updated(tvar2.origin, p1)
-                  }
-                }
-              case _ =>
-            }
-
-            def mapTypeParam(m: SimpleIdentityMap[TypeParamRef, TypeParamRef])(tpr: TypeParamRef) =
-              m(tpr) match
-                case null => tpr
-                case tpr1: TypeParamRef => tpr1
-
-            (mapTypeParam(mapping1), mapTypeParam(mapping2))
           }
 
-          // Bridge between the newly-registered types in c2 and c1
-          val (mapping1, mapping2) = createMappings
-
-          try {
-            // checks existing type parameters in `pre`
-            def existing: Boolean = pre.forallParams { p =>
-              c1.contains(p) &&
-                c2.upper(p).forall { q =>
-                  c1.isLess(p, mapping1(q))
-                } && isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p))
-            }
-
-            // checks new type parameters in `c1`
-            def added: Boolean = newParams1 forall { p1 =>
-              val p2 = mapping1(p1)
-              c2.upper(p2).forall { q =>
-                c1.isLess(p1, mapping2(q))
-              } && isSubTypeWhenFrozen(c1.nonParamBounds(p1), c2.nonParamBounds(p2))
-            }
-
-            existing && checkNewParams && added
-          } finally constraint = saved
+          res
         }
+
+        def func(p2: TypeParamRef) =
+          if pre.constraint.domainParams contains p2 then p2
+          else mapping(p2)
+
+        func
       }
+
+      def checkParam(p2: TypeParamRef) =
+        rightToLeft(p2).match {
+          case null => false
+          case p1: TypeParamRef =>
+            left.constraint.entry(p1).exists
+            && right.constraint.upper(p1).map(rightToLeft).forall(left.constraint.isLess(p1, _))
+            && isSubTypeWhenFrozen(left.constraint.nonParamBounds(p1), right.constraint.nonParamBounds(p2))
+        }
+
+      def todos: Set[TypeParamRef] =
+        right.constraint.domainParams.toSet ++ pre.constraint.domainParams
+
+      todos.forall(checkParam)
     }
 
-    def extractConstraint(g: GadtConstraint) = g match {
-      case s: ProperGadtConstraint => s.constraint
-      case EmptyGadtConstraint => OrderingConstraint.empty
+    (left, right, pre) match {
+      case (left: ProperGadtConstraint, right: ProperGadtConstraint, pre: ProperGadtConstraint) =>
+        checkSubsumes(left, right, pre)
+      case (_, EmptyGadtConstraint, _) => true
+      case (EmptyGadtConstraint, _, _) => false
+      case (_, _, EmptyGadtConstraint) => false
     }
-
-    checkSubsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
-  }
 
   override protected def legalBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Type =
     // GADT constraints never involve wildcards and are not propagated outside
