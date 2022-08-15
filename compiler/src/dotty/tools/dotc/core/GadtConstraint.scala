@@ -157,42 +157,43 @@ final class ProperGadtConstraint private(
     */
   def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean =
     def checkSubsumes(left: ProperGadtConstraint, right: ProperGadtConstraint, pre: ProperGadtConstraint): Boolean = {
-      def rightToLeft: TypeParamRef => TypeParamRef = {
+      def getRightToLeftMapping: Option[TypeParamRef => TypeParamRef] = {
         val preParams = pre.constraint.domainParams.toSet
         val mapping = {
           var res: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
+          var hasNull: Boolean = false
 
           right.constraint.domainParams.foreach { p2 =>
             left.tvarOf(right.externalize(p2)) match {
               case null =>
+                hasNull = true
               case tv: TypeVar =>
                 res = res.updated(p2, tv.origin)
             }
           }
 
-          res
+          if hasNull then None else Some(res)
         }
 
-        def func(p2: TypeParamRef) =
-          if pre.constraint.domainParams contains p2 then p2
-          else mapping(p2)
-
-        func
+        mapping map { mapping =>
+          def func(p2: TypeParamRef) =
+            if pre.constraint.domainParams contains p2 then p2
+            else mapping(p2).nn
+          func
+        }
       }
 
-      def checkParam(p2: TypeParamRef) =
-        rightToLeft(p2).match {
-          case null => false
-          case p1: TypeParamRef =>
-            left.constraint.entry(p1).exists
-            && right.constraint.upper(p1).map(rightToLeft).forall(left.constraint.isLess(p1, _))
-            && isSubTypeWhenFrozen(left.constraint.nonParamBounds(p1), right.constraint.nonParamBounds(p2))
-        }
+      getRightToLeftMapping map { rightToLeft =>
+        def checkParam(p2: TypeParamRef) =
+          val p1 = rightToLeft(p2)
+          left.constraint.entry(p1).exists
+          && right.constraint.upper(p1).map(rightToLeft).forall(left.constraint.isLess(p1, _))
+          && isSubTypeWhenFrozen(left.constraint.nonParamBounds(p1), right.constraint.nonParamBounds(p2))
+        def todos: Set[TypeParamRef] =
+          right.constraint.domainParams.toSet ++ pre.constraint.domainParams
 
-      def todos: Set[TypeParamRef] =
-        right.constraint.domainParams.toSet ++ pre.constraint.domainParams
-
-      todos.forall(checkParam)
+        todos.forall(checkParam)
+      } getOrElse false
     }
 
     (left, right, pre) match {
@@ -830,7 +831,7 @@ final class ProperGadtConstraint private(
 
   override def isEquivalent(p: PathType, q: PathType) = false
 
-  override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
+  override def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
 
   override def symbols: List[Symbol] = Nil
 

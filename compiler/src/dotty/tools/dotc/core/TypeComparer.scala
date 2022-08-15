@@ -2109,9 +2109,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         else
           rollbackGadtUnless {
             if isUpper then
-              gadtAddUpperBound(tparam, bound)
+              gadtAddBound(tparam, bound, isUpper = true)
             else
-              gadtAddLowerBound(tparam, bound)
+              gadtAddBound(tparam, bound, isUpper = false)
           }
       }
 
