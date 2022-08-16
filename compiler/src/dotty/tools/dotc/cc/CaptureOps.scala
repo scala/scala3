@@ -67,6 +67,10 @@ extension (tp: Type)
     case _ =>
       tp
 
+  /** If `sym` is a type parameter, the boxed version of `tp`, otherwise `tp` */
+  def boxedIfTypeParam(sym: Symbol)(using Context) =
+    if sym.is(TypeParam) then tp.boxed else tp
+
   /** The boxed version of `tp`, unless `tycon` is a function symbol */
   def boxedUnlessFun(tycon: Type)(using Context) =
     if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionSymbol(tycon.typeSymbol)
