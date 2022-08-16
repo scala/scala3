@@ -39,10 +39,25 @@ object CheckCaptures:
         sym
   end Pre
 
+  /** A class describing environments.
+   *  @param owner    the current owner
+   *  @param captured the caputure set containing all references to tracked free variables outside of boxes
+   *  @param isBoxed  true if the environment is inside a box (in which case references are not counted)
+   *  @param outer0   the next enclosing environment or null
+   */
   case class Env(owner: Symbol, captured: CaptureSet, isBoxed: Boolean, outer0: Env | Null):
     def outer = outer0.nn
-    def isOpen = !captured.isAlwaysEmpty && !isBoxed
 
+    def isOutermost = outer0 == null
+
+    /** If an environment is open it tracks free references */
+    def isOpen = !captured.isAlwaysEmpty && !isBoxed
+  end Env
+
+  /** Similar normal substParams, but this is an approximating type map that
+   *  maps parameters in contravariant capture sets to the empty set.
+   *  TODO: check what happens with non-variant.
+   */
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
   extends ApproximatingTypeMap, IdempotentCaptRefMap:
     def apply(tp: Type): Type = tp match
@@ -56,7 +71,7 @@ object CheckCaptures:
       case _ =>
         mapOver(tp)
 
-  /** Check that a @retains annotation only mentions references that can be tracked
+  /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
    */
   def checkWellformed(ann: Tree)(using Context): Unit =
@@ -149,68 +164,25 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
             traverseChildren(t)
 
+    /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
+     *  variantly in it.
+     */
     private def interpolateVarsIn(tpt: Tree)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
         interpolator().traverse(tpt.knownType)
           .showing(i"solved vars in ${tpt.knownType}", capt)
 
-    private var curEnv: Env = Env(NoSymbol, CaptureSet.empty, isBoxed = false, null)
-
-    private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
-    def capturedVars(sym: Symbol)(using Context) =
-      myCapturedVars.getOrElseUpdate(sym,
-        if sym.ownersIterator.exists(_.isTerm) then CaptureSet.Var()
-        else CaptureSet.empty)
-
-    def markFree(sym: Symbol, pos: SrcPos)(using Context): Unit =
-      if sym.exists then
-        val ref = sym.termRef
-        def recur(env: Env): Unit =
-          if env.isOpen && env.owner != sym.enclosure then
-            capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
-            checkElem(ref, env.captured, pos)
-            if env.owner.isConstructor then
-              if env.outer.owner != sym.enclosure then recur(env.outer.outer)
-            else recur(env.outer)
-        if ref.isTracked then recur(curEnv)
-
-    def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
-      if curEnv.isOpen then
-        val ownEnclosure = ctx.owner.enclosingMethodOrClass
-        var targetSet = capturedVars(sym)
-        if !targetSet.isAlwaysEmpty && sym.enclosure == ownEnclosure then
-          targetSet = targetSet.filter {
-            case ref: TermRef => ref.symbol.enclosure != ownEnclosure
-            case _ => true
-          }
-        def includeIn(env: Env) =
-          capt.println(i"Include call capture $targetSet in ${env.owner}")
-          checkSubset(targetSet, env.captured, pos)
-        includeIn(curEnv)
-        if curEnv.owner.isTerm && curEnv.outer.owner.isClass then
-          includeIn(curEnv.outer)
-
-    def includeBoxedCaptures(tp: Type, pos: SrcPos)(using Context): Unit =
-      includeBoxedCaptures(tp.boxedCaptureSet, pos)
-
-    def includeBoxedCaptures(refs: CaptureSet, pos: SrcPos)(using Context): Unit =
-      if curEnv.isOpen then
-        val ownEnclosure = ctx.owner.enclosingMethodOrClass
-        val targetSet = refs.filter {
-          case ref: TermRef => ref.symbol.enclosure != ownEnclosure
-          case ref: ThisType => true
-          case _ => false
-        }
-        checkSubset(targetSet, curEnv.captured, pos)
-
+    /** Assert subcapturing `cs1 <: cs2` */
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
       assert(cs1.subCaptures(cs2, frozen = false).isOK, i"$cs1 is not a subset of $cs2")
 
+    /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos)(using Context) =
       val res = elem.singletonCaptureSet.subCaptures(cs, frozen = false)
       if !res.isOK then
         report.error(i"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking}", pos)
 
+    /** Check subcapturing `cs1 <: cs2`, report error on failure */
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos)(using Context) =
       val res = cs1.subCaptures(cs2, frozen = false)
       if !res.isOK then
@@ -218,6 +190,64 @@ class CheckCaptures extends Recheck, SymTransformer:
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
           else i"references $cs1 are not all"
         report.error(i"$header included in allowed capture set ${res.blocking}", pos)
+
+    /** The current environment */
+    private var curEnv: Env = Env(NoSymbol, CaptureSet.empty, isBoxed = false, null)
+
+    private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
+
+    /** If `sym` is a class or method nested inside a term, a capture set variable representing
+     *  the captured variables of the environment associated with `sym`.
+     */
+    def capturedVars(sym: Symbol)(using Context) =
+      myCapturedVars.getOrElseUpdate(sym,
+        if sym.ownersIterator.exists(_.isTerm) then CaptureSet.Var()
+        else CaptureSet.empty)
+
+    /** For all nested environments up to `limit` perform `op` */
+    def forallOuterEnvsUpTo(limit: Symbol)(op: Env => Unit)(using Context): Unit =
+      def recur(env: Env): Unit =
+        if env.isOpen && env.owner != limit then
+          op(env)
+          if !env.isOutermost then
+            var nextEnv = env.outer
+            if env.owner.isConstructor then
+              if nextEnv.owner != limit && !nextEnv.isOutermost then
+                recur(nextEnv.outer)
+            else recur(nextEnv)
+      recur(curEnv)
+
+    /** Include `sym` in the capture sets of all enclosing environments nested in the
+     *  the environment in which `sym` is defined.
+     */
+    def markFree(sym: Symbol, pos: SrcPos)(using Context): Unit =
+      if sym.exists then
+        val ref = sym.termRef
+        if ref.isTracked then
+          forallOuterEnvsUpTo(sym.enclosure) { env =>
+            capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
+            checkElem(ref, env.captured, pos)
+          }
+
+    /** Make sure (projected) `cs` is a subset of the capture sets of all enclosing
+     *  environments. At each stage, only include references from `cs` that are outside
+     *  the environment's owner
+     */
+    def markFree(cs: CaptureSet, pos: SrcPos)(using Context): Unit =
+      if !cs.isAlwaysEmpty then
+        forallOuterEnvsUpTo(ctx.owner.topLevelClass) { env =>
+          val included = cs.filter {
+            case ref: TermRef => env.owner.isProperlyContainedIn(ref.symbol.owner)
+            case ref: ThisType => env.owner.isProperlyContainedIn(ref.cls)
+            case _ => false
+          }
+          capt.println(i"Include call capture $included in ${env.owner}")
+          checkSubset(included, env.captured, pos)
+        }
+
+    /** Include references captured by the called method in the current environment stack */
+    def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
+      if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
 
     /** A specialized implementation of the selection rule.
      *
@@ -434,7 +464,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           finally curEnv = saved
         else super.recheck(tree, pt)
       if tree.isTerm then
-        includeBoxedCaptures(res, tree.srcPos)
+        markFree(res.boxedCaptureSet, tree.srcPos)
       res
 
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
@@ -526,7 +556,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               capt.println(i"ABORTING $actual vs $expected")
               actual
             else
-              if covariant == actual.isBoxed then includeBoxedCaptures(refs, pos)
+              if covariant == actual.isBoxed then markFree(refs, pos)
               CapturingType(parent1, refs, boxed = !actual.isBoxed)
           else if parent1 eq parent then actual
           else CapturingType(parent1, refs, boxed = actual.isBoxed)
