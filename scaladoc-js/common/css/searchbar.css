@@ -1,77 +1,13 @@
-/* Global search */
-.search-content {
-  padding: 0;
-  margin: var(--content-padding);
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: 5;
-  background: none;
-}
-
-/* popup */
-.popup-wrapper {
-  box-shadow: 0 0 10px var(--border-light) !important;
-  border: 2px solid var(--border-light) !important;
-  font-family: var(--mono-font) !important;
-  width: calc(100% - var(--side-width) - 84px);
-  left: calc(var(--side-width) + 42px) !important;
-}
-.popup-wrapper .indented {
-  text-indent: 1.5em !important;
-}
-.popup-wrapper .disabled {
-  color: var(--inactive-fg) !important;
-  font-weight: 500 !important;
-}
-.action_def:hover, .action_def.hover_a79 {
-  color: var(--selected-fg);
-  background: var(--selected-bg) !important;
-  font-weight: 500;
-}
-.action_def .template-description {
-  margin-left: 2rem;
-  font-style: italic;
-}
-
-/* Landscape phones, portait tablets */
-@media(max-width: 768px) {
-  .popup-wrapper {
-    width: calc(100% - 48px);
-    left: 24px !important;
-  }
-}
-
-/* Portrait phones */
-@media(max-width: 576px) {
-  .search-content {
-    margin: 0 !important;
-    top: 9px !important;
-    right: 12px !important;
-  }
-  .popup-wrapper {
-    width: 100%;
-    left: 0 !important;
-    top: 36px !important;
-  }
-  /* Allow to scroll horizontally in the search results, which is useful on small screens */
-  .popup-wrapper div.ReactVirtualized__Grid__innerScrollContainer {
-    overflow: auto !important;
-  }
-  .popup-wrapper div.ReactVirtualized__Grid__innerScrollContainer > div {
-    min-width: 100%;
-    width: auto !important;
-  }
-}
-
 /* Loading */
 .loading-wrapper {
   text-align: center;
   padding: 4px;
 }
 
-.loading, .loading::before, .loading::after {
-  content: '';
+.loading,
+.loading::before,
+.loading::after {
+  content: "";
   width: 10px;
   height: 10px;
   border-radius: 5px;
@@ -89,7 +25,7 @@
 
 .loading {
   position: relative;
-  animation-delay: .2s;
+  animation-delay: 0.2s;
 }
 
 .loading::before {
@@ -99,7 +35,7 @@
 
 .loading::after {
   left: 15px;
-  animation-delay: .4s;
+  animation-delay: 0.4s;
 }
 
 @keyframes dotFlashing {
@@ -116,124 +52,19 @@
 
 .scaladoc-searchbar-inkuire-package {
   display: none;
-  color: var(--symbol-fg)
+  color: var(--symbol-fg);
 }
 
 div[selected] > .scaladoc-searchbar-inkuire-package {
   display: flex;
 }
 
-.scaladoc-searchbar-inkuire-package > .micon {
-  float: right;
-  margin-left: auto !important;
-}
-
-/* button */
-.search span {
-  background: var(--red500);
-  fill: var(--white);
-  cursor: pointer;
-  border: none;
-  padding: 9px;
-  border-radius: 24px;
-  box-shadow: 0 0 16px var(--code-bg);
-}
-.search span:hover {
-  background: var(--red600);
-}
-
-@media(max-width: 576px) {
-  .search span {
-      background: none;
-      fill: var(--icon-color);
-      cursor: pointer;
-      border: none;
-      padding: 0;
-      box-shadow: none;
-      margin-top: 2px;
-  }
-
-  .search span:hover {
-      fill: var(--link-hover-fg);
-  }
-
-  #scaladoc-searchbar span.pull-right {
-    display: none;
-  }
-}
-
-#scaladoc-search {
-  margin-top: 16px;
-  cursor: pointer;
-  position: fixed;
-  top: 0;
-  right: 20px;
-  z-index: 5;
-}
-
 #scaladoc-searchbar.hidden {
   display: none;
 }
 
-#scaladoc-searchbar {
-  position: fixed;
-  top: 50px;
-  left: calc(5% + var(--side-width));
-  z-index: 5;
-  width: calc(90% - var(--side-width));
-  box-shadow: 2px 2px 8px 0 var(--shadow);
-  font-size: 13px;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
-  background-color: var(--leftbar-bg);
-  color: var(--leftbar-fg);
-}
-
-#scaladoc-searchbar-input {
-  width: 100%;
-  min-height: 32px;
-  border: none;
-  border-bottom: 1px solid #bbb;
-  padding: 10px;
-  background-color: var(--leftbar-bg);
-  color: var(--leftbar-fg);
-}
-
-#scaladoc-searchbar-input:focus {
-  outline: none;
-}
-
-#scaladoc-searchbar-results {
-  display: flex;
-  flex-direction: column;
-  max-height: 500px;
-  overflow: auto;
-}
-
-.scaladoc-searchbar-row {
-  display: flex;
-  background-color: var(--leftbar-bg);
-  color: var(--leftbar-fg);
-  line-height: 24px;
-  padding: 4px 10px 4px 10px;
-}
-
 .scaladoc-searchbar-row.hidden {
   display: none;
-}
-
-.scaladoc-searchbar-row[divider] {
-  border-top: solid 1px var(--leftbar-border);
-}
-
-.scaladoc-searchbar-row .micon {
-  height: 16px;
-  width: 16px;
-  margin: 4px 8px 0px 0px;
-}
-
-.scaladoc-searchbar-row[selected] {
-  background-color: var(--leftbar-hover-bg);
-  color: var(--leftbar-hover-fg);
 }
 
 .scaladoc-searchbar-row[result] {
@@ -259,22 +90,6 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
 .scaladoc-searchbar-row[loadmore] .i {
   margin-left: 4px;
   margin-right: 4px;
-}
-
-.searchbar-hints {
-  padding-top: 5vh;
-  padding-bottom: 5vh;
-  padding-left: 5vw;
-  padding-right: 5vw;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.searchbar-hints-list {
-  font-size: medium;
-  line-height: 2em;
 }
 
 #searchBar {

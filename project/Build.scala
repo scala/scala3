@@ -1379,6 +1379,22 @@ object Build {
     )
   }
 
+  def bundleCSS = Def.task {
+    val unmanagedResources = (Compile / resourceDirectory).value
+    def createBundle(dir: File): Seq[File] = {
+      val (dirs, files) = IO.listFiles(dir).toList.partition(_.isDirectory)
+      val targetDir = (Compile / resourceManaged).value.toPath.resolve(unmanagedResources.toPath.relativize(dir.toPath)).toFile
+      val bundleFile = targetDir / "bundle.css"
+      if (bundleFile.exists) bundleFile.delete()
+      files.foreach(file => IO.append(bundleFile, IO.readBytes(file)))
+      bundleFile :: dirs.flatMap(createBundle)
+    }
+
+    val cssThemePath = unmanagedResources / "dotty_res" / "styles" / "theme"
+
+    createBundle(cssThemePath)
+  }
+
   val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
 
   lazy val scaladoc = project.in(file("scaladoc")).
@@ -1392,7 +1408,10 @@ object Build {
       SourceLinksIntegrationTest / test:= ((SourceLinksIntegrationTest / test) dependsOn generateScalaDocumentation.toTask("")).value,
     ).
     settings(
-      Compile / resourceGenerators += generateStaticAssetsTask.taskValue,
+      Compile / resourceGenerators ++= Seq(
+        generateStaticAssetsTask.taskValue,
+        bundleCSS.taskValue
+      ),
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.8.2",
         "org.jsoup" % "jsoup" % "1.14.3", // Needed to process .html files for static site
@@ -1879,7 +1898,17 @@ object ScaladocConfigs {
       projectFooter,
       defaultTemplate,
       Author(true),
-      Groups(true)
+      Groups(true),
+      QuickLinks(
+        List(
+          "Download::https://www.scala-lang.org/download/",
+          "Documentation::https://docs.scala-lang.org/",
+          "Libraries::https://index.scala-lang.org",
+          "Contribute::https://www.scala-lang.org/contribute/",
+          "Blog::https://www.scala-lang.org/blog/",
+          "Community::https://www.scala-lang.org/community/"
+        )
+      )
     )
   }
 

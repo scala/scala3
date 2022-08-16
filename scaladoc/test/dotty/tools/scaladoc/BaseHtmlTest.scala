@@ -12,7 +12,7 @@ import dotty.tools.scaladoc.test.BuildInfo
 import util.IO
 
 class BaseHtmlTest:
-  val unresolvedLinkSelector = ".documentableBrief span[data-unresolved-link], .cover span[data-unresolved-link]"
+  val unresolvedLinkSelector = ".doc span[data-unresolved-link]"
 
   def projectName = "Test Project Name"
   def  projectVersion = "1.0.1-M1"

@@ -9,6 +9,7 @@ import scala.util.chaining._
 
 import CodeSnippetsGlobals._
 
+
 class CodeSnippets:
   lazy val scastieConfig = getScastieConfiguration
 
@@ -38,12 +39,10 @@ class CodeSnippets:
       case _ =>
     }
     def createShowHideButton(toggleRoot: html.Element) = {
-      div(cls := "snippet-showhide")(
+      div(cls := "snippet-showhide-container")(
         label(cls := "snippet-showhide-button")(
-          input("type" := "checkbox").tap(_.addEventListener("change", _ => toggleHide(toggleRoot))),
-          span(cls := "slider")
+          input("type" := "checkbox", cls := "snippet-showhide").tap(_.addEventListener("change", _ => toggleHide(toggleRoot))),
         ),
-        p("Show collapsed lines")
       )
     }
 
@@ -88,11 +87,14 @@ class CodeSnippets:
   }
 
   private def copyRunButtons(snippet: html.Element) = {
+    val copyButtonIcon = s"""<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M2.5 2.5V9.5H4V11H2C1.44772 11 1 10.5523 1 10V2C1 1.44772 1.44772 1 2 1H10C10.5523 1 11 1.44772 11 2V4H9.5V2.5H2.5Z" fill="#A09FA6"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M5 6C5 5.44772 5.44772 5 6 5H14C14.5523 5 15 5.44772 15 6V14C15 14.5523 14.5523 15 14 15H6C5.44772 15 5 14.5523 5 14V6ZM6.5 13.5V6.5H13.5V13.5H6.5Z" fill="#A09FA6"/>
+</svg>
+ """
     def copyButton = {
       div(
-        button(cls := "copy-button")(
-          i(cls := "far fa-clone")
-        ).tap(_.addEventListener("click", _ => {
+        button(cls := "copy-button icon-button").tap(_.addEventListener("click", _ => {
           val code = snippet.querySelectorAll("code>span:not(.hidden)")
             .map(_.textContent)
             .mkString
@@ -101,88 +103,46 @@ class CodeSnippets:
       )
     }
     def runButton = {
-      val runButton = button(cls := "run-button")(
+      val runButton = button(cls := "run-button icon-button")(
         i(cls := "fas fa-play")
       )
+      runButton.addEventListener("click", e =>
+        val popup = div(cls := "snippet-popup")(
+          div(cls := "snippet-popup-content body-small")(
+            pre(
+              code(
+                snippet.querySelector("pre").textContent
+              )
+            )
+          ).tap(_.addEventListener("click", e => {
+            e.asInstanceOf[js.Dynamic].fromPopup = true
+          }))
+        )
 
-      runButton.addEventListener("click", _ =>
-        if !runButton.hasAttribute("opened") then {
-          scastie.Embedded(snippet.querySelector("pre"), scastieConfig)
-          runButton.setAttribute("opened", "opened")
+        def handler: Event => Unit = (e: Event) => {
+          if js.isUndefined(e.asInstanceOf[js.Dynamic].fromPopup) then {
+            document.body.removeChild(popup)
+          }
         }
-        snippet.querySelector(".scastie .embedded-menu") match {
-          case btn: html.Element =>
-            btn.style = "display:none;"
-          case _ =>
-        }
-        snippet.querySelector(".scastie .embedded-menu .run-button") match {
-          case btn: html.Element => btn.click()
-          case _ =>
-        }
-        snippet.querySelector(".buttons .exit-button") match {
-          case btn: html.Element => btn.parentElement.style = ""
-          case _ =>
-        }
-        snippet.querySelector(".buttons .to-scastie-button") match {
-          case btn: html.Element => btn.parentElement.style = ""
-          case _ =>
-        }
+
+        document.body.appendChild(popup)
+        document.body.addEventListener("click", handler)
+
+        scastie.Embedded(popup.querySelector("pre"), scastieConfig)
+
+        popup.querySelector("li.btn.run-button").asInstanceOf[html.Element].click()
+
+        e.stopPropagation()
       )
 
       div(runButton)
-    }
-    def exitButton = {
-      val exitButton = button(cls := "exit-button")(
-        i(cls := "fas fa-times")
-      )
-
-      val bdiv = div(style := "display:none;")(exitButton)
-
-      exitButton.addEventListener("click", _ =>
-        snippet.querySelector("pre") match {
-          case p: html.Element => p.style = ""
-          case _ =>
-        }
-        snippet.querySelector(".scastie.embedded") match {
-          case s: html.Element => snippet.removeChild(s)
-          case _ =>
-        }
-        snippet.querySelector(".buttons .run-button") match {
-          case btn: html.Element => btn.removeAttribute("opened")
-          case _ =>
-        }
-        snippet.querySelector(".buttons .to-scastie-button") match {
-          case btn: html.Element => btn.parentElement.style = "display:none;"
-          case _ =>
-        }
-        bdiv.style = "display:none;"
-      )
-
-      bdiv
-    }
-
-    def toScastieButton = {
-      val toScastieButton = button(cls := "to-scastie-button")(
-        i(cls := "fas fa-external-link-alt")
-      )
-
-      toScastieButton.addEventListener("click", _ =>
-        snippet.querySelector(".embedded-menu li.logo") match {
-          case toScastie: html.Element => toScastie.click()
-          case _ =>
-        }
-      )
-
-      div("style" := "display:none;")(toScastieButton)
     }
 
     val buttonsSection = getButtonsSection(snippet)
     buttonsSection.foreach(s =>
       s.appendChild(copyButton)
       if snippet.hasAttribute("runnable") then {
-        s.appendChild(toScastieButton)
         s.appendChild(runButton)
-        s.appendChild(exitButton)
       }
     )
   }

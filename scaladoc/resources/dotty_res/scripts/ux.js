@@ -1,4 +1,5 @@
 window.addEventListener("DOMContentLoaded", () => {
+
   var toggler = document.getElementById("leftToggler");
   if (toggler) {
     toggler.onclick = function () {
@@ -9,16 +10,71 @@ window.addEventListener("DOMContentLoaded", () => {
   var elements = document.getElementsByClassName("documentableElement")
   if (elements) {
     for (i = 0; i < elements.length; i++) {
-      elements[i].onclick = function(e) {
-        if(!$(e.target).is("a") && e.fromSnippet !== true)
-          this.classList.toggle("expand")
+      if (elements[i].querySelector(".show-content") !== null) {
+        elements[i].onclick = function (e) {
+          if (!$(e.target).is("a") && e.fromSnippet !== true) {
+            this.classList.toggle("expand")
+            this.querySelector(".show-content").classList.toggle("expand")
+          }
+        }
       }
     }
   }
 
-  $("#sideMenu2 span").on('click', function(){
+  var documentableLists = document.getElementsByClassName("documentableList")
+  if (documentableLists) {
+    for (i = 0; i < documentableLists.length; i++) {
+      documentableLists[i].children[0].onclick = function(e) {
+        this.classList.toggle("expand");
+        this.parentElement.classList.toggle("expand");
+      }
+    }
+  }
+
+  var memberLists = document.getElementsByClassName("tab")
+  if (memberLists) {
+    for (i = 0; i < memberLists.length; i++) {
+      if ($(memberLists[i].children[0]).is("button")) {
+        memberLists[i].children[0].onclick = function(e) {
+          this.classList.toggle("expand");
+          this.parentElement.classList.toggle("expand");
+        }
+      }
+    }
+  }
+
+  $(".side-menu span").on('click', function () {
     $(this).parent().toggleClass("expanded")
   });
+
+  $(".ar").on('click', function (e) {
+    $(this).parent().parent().toggleClass("expanded")
+    $(this).toggleClass("expanded")
+    e.stopPropagation()
+  });
+
+  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
+    el.lastChild.click()
+    el.first.addClass("expanded")
+    el.parent.addClass("expanded")
+  }))
+
+  document.querySelectorAll(".supertypes").forEach(el => el.firstChild.addEventListener('click', () => {
+    el.classList.toggle("collapsed");
+    el.firstChild.classList.toggle("expand");
+  }))
+
+
+  document.querySelectorAll(".subtypes").forEach(el => el.firstChild.addEventListener('click', () => {
+    el.classList.toggle("collapsed");
+    el.firstChild.classList.toggle("expand");
+  }))
+
+  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
+    el.lastChild.click()
+    el.first.addClass("expanded")
+    el.parent.addClass("expanded")
+  }))
 
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
@@ -31,30 +87,11 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-
   document.querySelectorAll('#content section[id]').forEach((section) => {
     observer.observe(section);
   });
 
-  document.querySelectorAll("#sideMenu2 a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
-
-  $('.names .tab').on('click', function() {
-    parent = $(this).parents(".tabs").first()
-    shown = $(this).hasClass('selected')
-    single = parent.hasClass("single")
-
-    if (single) parent.find(".tab.selected").removeClass('selected')
-
-    id = $(this).attr('data-togglable')
-    myTab = parent.find("[data-togglable='" + id + "'].tab")
-    if (!shown) { myTab.addClass('selected') }
-    if (shown && !single) myTab.removeClass('selected')
-
-    if(!shown && $(this).filter(".showGraph").length > 0) {
-      showGraph()
-      $(this).find(".showGraph").removeClass("showGraph")
-    }
-  })
+  document.querySelectorAll(".side-menu a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
   if (location.hash) {
     var target = location.hash.substring(1);
@@ -70,7 +107,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   var logo = document.getElementById("logo");
   if (logo) {
-    logo.onclick = function() {
+    logo.onclick = function () {
       window.location = pathToRoot; // global variable pathToRoot is created by the html renderer
     };
   }
@@ -89,30 +126,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   hljs.registerLanguage("scala", highlightDotty);
   hljs.registerAliases(["dotty", "scala3"], "scala");
-
-  var aliases = ['language-scala', 'language-dotty', 'language-scala3']
-
-  var highlightDeep = function(el) {
-    el.childNodes.forEach(node => {
-      if(node.nodeType == Node.TEXT_NODE) {
-        let newNode = document.createElement('span');
-        newNode.innerHTML = hljs.highlight(node.textContent, {language: 'scala'}).value;
-        el.insertBefore(newNode, node);
-        el.removeChild(node);
-      } else if(node.nodeType == Node.ELEMENT_NODE) {
-        highlightDeep(node);
-      }
-    })
-  }
-
-  document.querySelectorAll('pre code').forEach( el => {
-    if (aliases.some(alias => el.classList.contains(alias))) {
-      highlightDeep(el);
-    } else {
-      hljs.highlightElement(el);
-    }
-  });
-
+  hljs.initHighlighting();
 
   /* listen for the `F` key to be pressed, to focus on the member filter input (if it's present) */
   document.body.addEventListener('keydown', e => {
@@ -127,25 +141,52 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
   })
+
+ // show/hide side menu on mobile view
+ const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
+ sideMenuToggler.addEventListener('click', _e => {
+   document.getElementById("leftColumn").classList.toggle("show")
+   document.getElementById("content").classList.toggle("sidebar-shown")
+   const toc = document.getElementById("toc");
+   if(toc) {
+     toc.classList.toggle("sidebar-shown")
+   }
+   sideMenuToggler.classList.toggle("menu-shown")
+ })
+
+    // show/hide mobile menu on mobile view
+    const mobileMenuOpenIcon = document.getElementById("mobile-menu-toggle");
+    const mobileMenuCloseIcon = document.getElementById("mobile-menu-close");
+    mobileMenuOpenIcon.addEventListener('click', _e => {
+      document.getElementById("mobile-menu").classList.add("show")
+    })
+    mobileMenuCloseIcon.addEventListener('click', _e => {
+      document.getElementById("mobile-menu").classList.remove("show")
+    })
+
+
+  // when document is loaded graph needs to be shown
 });
 
 var zoom;
 var transform;
 
 function showGraph() {
+  document.getElementById("inheritance-diagram").classList.add("shown")
   if ($("svg#graph").children().length == 0) {
     var dotNode = document.querySelector("#dot")
-    if (dotNode){
+
+    if (dotNode) {
       var svg = d3.select("#graph");
       var radialGradient = svg.append("defs").append("radialGradient").attr("id", "Gradient");
-      radialGradient.append("stop").attr("stop-color", "var(--aureole)").attr("offset", "20%");
-      radialGradient.append("stop").attr("stop-color", "var(--code-bg)").attr("offset", "100%");
+      radialGradient.append("stop").attr("stop-color", "var(--yellow9)").attr("offset", "30%");
+      radialGradient.append("stop").attr("stop-color", "var(--background-default)").attr("offset", "100%");
 
       var inner = svg.append("g");
 
       // Set up zoom support
       zoom = d3.zoom()
-        .on("zoom", function({transform}) {
+        .on("zoom", function ({ transform }) {
           inner.attr("transform", transform);
         });
       svg.call(zoom);
@@ -157,8 +198,10 @@ function showGraph() {
         g.setNode(v, {
           labelType: "html",
           label: g.node(v).label,
-          style: g.node(v).style,
-          id: g.node(v).id
+          class: g.node(v).class,
+          id: g.node(v).id,
+          rx: "4px",
+          ry: "4px"
         });
       });
       g.setNode("node0Cluster", {
@@ -167,22 +210,43 @@ function showGraph() {
       });
       g.setParent("node0", "node0Cluster");
 
-      g.edges().forEach(function(v) {
+      g.edges().forEach(function (v) {
         g.setEdge(v, {
-          arrowhead: "vee"
+          arrowhead: "hollowPoint",
         });
       });
+
+      render.arrows().hollowPoint = function normal(parent, id, edge, type) {
+        var marker = parent.append("marker")
+          .attr("id", id)
+          .attr("viewBox", "0 0 10 10")
+          .attr("refX", 9)
+          .attr("refY", 5)
+          .attr("markerUnits", "strokeWidth")
+          .attr("markerWidth", 12)
+          .attr("markerHeight", 12)
+          .attr("orient", "auto");
+
+        var path = marker.append("path")
+          .attr("d", "M 0 0 L 10 5 L 0 10 z")
+          .style("stroke-width", 1)
+          .style("stroke-dasharray", "1,0")
+          .style("fill", "var(--grey12)")
+          .style("stroke", "var(--grey12)");
+        dagreD3.util.applyStyle(path, edge[type + "Style"]);
+      };
+
       render(inner, g);
 
       // Set the 'fit to content graph' upon landing on the page
       var bounds = svg.node().getBBox();
       var parent = svg.node().parentElement;
       var fullWidth = parent.clientWidth || parent.parentNode.clientWidth,
-          fullHeight = parent.clientHeight || parent.parentNode.clientHeight;
+        fullHeight = parent.clientHeight || parent.parentNode.clientHeight;
       var width = bounds.width,
-          height = bounds.height;
+        height = bounds.height;
       var midX = bounds.x + width / 2,
-          midY = bounds.y + height / 2;
+        midY = bounds.y + height / 2;
       if (width == 0 || height == 0) return; // nothing to fit
       var scale = Math.min(fullWidth / width, fullHeight / height) * 0.99; // 0.99 to make a little padding
       var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
@@ -205,6 +269,10 @@ function showGraph() {
       node0ClusterRect.setAttribute("y", node0Rect.getAttribute("y") - 40);
     }
   }
+}
+
+function hideGraph() {
+  document.getElementById("inheritance-diagram").classList.remove("shown")
 }
 
 function zoomOut() {
