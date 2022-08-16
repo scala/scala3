@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
+import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._, SymDenotations.*
 import Decorators._
 import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
@@ -1888,7 +1888,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
   def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
-    trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) {
+    val mbr = tp1.member(name)
+    trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${mbr.info}", subtyping) {
 
       // If the member is an abstract type and the prefix is a path, compare the member itself
       // instead of its bounds. This case is needed situations like:
@@ -1931,7 +1932,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         || symInfo.isInstanceOf[MethodType]
             && symInfo.signature.consistentParams(info2.signature)
 
-      def tp1IsSingleton: Boolean = tp1.isInstanceOf[SingletonType]
+      def allowGadt = mbr match
+        case _ if tp1.isInstanceOf[SingletonType]                                   => false
+        case d: UniqueRefDenotation if d.prefix == NoPrefix && d.symbol != NoSymbol => false
+        case _                                                                      => true
 
       // A relaxed version of isSubType, which compares method types
       // under the standard arrow rule which is contravarient in the parameter types,
@@ -1947,15 +1951,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 matchingMethodParams(info1, info2, precise = false)
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType)
                 && sigsOK(symInfo1, info2)
-              case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
-          case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
+              case _ => inFrozenGadtIf(!allowGadt) { isSubType(info1, info2) }
+          case _ => inFrozenGadtIf(!allowGadt) { isSubType(info1, info2) }
 
       def qualifies(m: SingleDenotation): Boolean =
         val info1 = m.info.widenExpr
         isSubInfo(info1, tp2.refinedInfo.widenExpr, m.symbol.info.orElse(info1))
         || matchAbstractTypeMember(m.info)
 
-      tp1.member(name) match // inlined hasAltWith for performance
+      mbr match // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)
         case mbr => mbr hasAltWith qualifies
     }
