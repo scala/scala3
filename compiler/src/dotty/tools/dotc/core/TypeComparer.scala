@@ -23,7 +23,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxedUnlessFun}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam}
 
 /** Provides methods to compare types.
  */
@@ -424,7 +424,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case tp2: TypeParamRef => constraint.isLess(tp1, tp2)
             case _ => false
           } ||
-          isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
+          isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2) || {
             if (canConstrain(tp1) && !approx.high)
               addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
             else thirdTry
@@ -543,7 +543,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
           && (isBottom(tp1) || GADTusage(tp2.symbol))
 
-        isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
+        isSubApproxHi(tp1, info2.lo.boxedIfTypeParam(tp2.symbol)) && (trustBounds || isSubApproxHi(tp1, info2.hi))
         || compareGADT
         || tryLiftedToThis2
         || fourthTry
@@ -582,7 +582,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // So if the constraint is not yet frozen, we do the same comparison again
           // with a frozen constraint, which means that we get a chance to do the
           // widening in `fourthTry` before adding to the constraint.
-          if (frozenConstraint) recur(tp1, bounds(tp2).lo)
+          if (frozenConstraint) recur(tp1, bounds(tp2).lo.boxed)
           else isSubTypeWhenFrozen(tp1, tp2)
         alwaysTrue || {
           if (canConstrain(tp2) && !approx.low)
@@ -825,7 +825,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     def tryBaseType(cls2: Symbol) = {
-      val base = nonExprBaseType(tp1, cls2)
+      val base = nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
       if base.exists && (base ne tp1)
         && (!caseLambda.exists || canWidenAbstract || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
@@ -848,7 +848,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               && (tp2.isAny || GADTusage(tp1.symbol))
 
             (!caseLambda.exists || canWidenAbstract)
-                && isSubType(hi1, tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
+                && isSubType(hi1.boxedIfTypeParam(tp1.symbol), tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
             || compareGADT
             || tryLiftedToThis1
           case _ =>
