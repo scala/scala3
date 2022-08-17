@@ -3,9 +3,8 @@ layout: doc-page
 title: "Capture Checking"
 ---
 
-Capture checking is a research project that modifies the Scala type system to track references to capabilities in values. It is currently
-implemented in an experimental branch [cc-experiment](https://github.com/lampepfl/dotty/tree/cc-experiment) in the dotty
-repo and can be enabled on this branch with a `-Ycc` compiler option.
+Capture checking is a research project that modifies the Scala type system to track references to capabilities in values. It can be enabled with a `-Ycc` compiler option.
+At present, capture checking is still highly experimental and unstable.
 
 To get an idea what capture checking can do, let's start with a small example:
 ```scala
