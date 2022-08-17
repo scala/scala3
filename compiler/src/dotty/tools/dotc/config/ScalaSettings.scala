@@ -320,14 +320,14 @@ private sealed trait YSettings:
   val YprofileRunGcBetweenPhases: Setting[List[String]] = PhasesSetting("-Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_")
       //.withPostSetHook( _ => YprofileEnabled.value = true )
 
-  // Extremely experimental language features
+  // Experimental language features
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Disable kind polymorphism.")
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
   val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only)")
-  val Ycc: Setting[Boolean] = BooleanSetting("-Ycc", "Check captured references")
-  val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Debug info for captured references")
+  val Ycc: Setting[Boolean] = BooleanSetting("-Ycc", "Check captured references (warning: extremely experimental and unstable)")
+  val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with -Ycc, debug info for captured references")
   val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with -Ycc, suppress type abbreviations")
 
   /** Area-specific debug output */
