@@ -135,6 +135,12 @@ extension (sym: Symbol)
     sym == defn.Compiletime_erasedValue
     || defn.isFunctionClass(sym.maybeOwner)
 
+  /** When applying `sym`, would the result type be unboxed?
+   *  This is the case if the result type contains a top-level reference to an enclosing
+   *  class or method type parameter and the method does not allow root capture.
+   *  If the type parameter is instantiated to a boxed type, that type would
+   *  have to be unboxed in the method's result.
+   */
   def unboxesResult(using Context): Boolean =
     def containsEnclTypeParam(tp: Type): Boolean = tp.strippedDealias match
       case tp @ TypeRef(pre: ThisType, _) => tp.symbol.is(Param)
