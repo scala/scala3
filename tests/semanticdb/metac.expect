@@ -3811,6 +3811,25 @@ Occurrences:
 [6:19..6:20): U -> local0
 [6:24..6:27): ??? -> scala/Predef.`???`().
 
+expect/example-dir/FileInDir.scala
+----------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => example-dir/FileInDir.scala
+Text => empty
+Language => Scala
+Symbols => 2 entries
+Occurrences => 2 entries
+
+Symbols:
+example/FileInDir# => class FileInDir extends Object { self: FileInDir => +1 decls }
+example/FileInDir#`<init>`(). => primary ctor <init> (): FileInDir
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:15): FileInDir <- example/FileInDir#
+
 expect/exports-example-Codec.scala
 ----------------------------------
 
