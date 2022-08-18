@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.concurrent._
 import scala.annotation.*
 import scala.collection.mutable

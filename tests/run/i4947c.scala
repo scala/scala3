@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Foo {
 
   inline def track[T](inline f: T): T = {

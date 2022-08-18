@@ -30,13 +30,13 @@ object Type:
    *  //{
    *  import scala.deriving.*
    *  def f(using Quotes) = {
-   *  import quotes.reflect.*
-   *  val expr: Expr[Any] = ???
+   *    import quotes.reflect.*
+   *    val expr: Expr[Any] = ???
    *  //}
-   *  expr match {
-   *    case '{ $mirrorExpr : Mirror.Sum { type MirroredLabel = label } } =>
-   *      Type.valueOfConstant[label] // Option[String]
-   *  }
+   *    expr match {
+   *      case '{ $mirrorExpr : Mirror.Sum { type MirroredLabel = label } } =>
+   *        Type.valueOfConstant[label] // Option[String]
+   *    }
    *  //{
    *  }
    *  //}
@@ -54,13 +54,13 @@ object Type:
    *  //{
    *  import scala.deriving.*
    *  def f(using Quotes) = {
-   *  import quotes.reflect.*
-   *  val expr: Expr[Any] = ???
+   *    import quotes.reflect.*
+   *    val expr: Expr[Any] = ???
    *  //}
-   *  expr match {
-   *    case '{ type label <: Tuple; $mirrorExpr : Mirror.Sum { type MirroredElemLabels = `label` } } =>
-   *      Type.valueOfTuple[label] // Option[Tuple]
-   *  }
+   *    expr match {
+   *      case '{ type label <: Tuple; $mirrorExpr : Mirror.Sum { type MirroredElemLabels = `label` } } =>
+   *        Type.valueOfTuple[label] // Option[Tuple]
+   *    }
    *  //{
    *  }
    *  //}

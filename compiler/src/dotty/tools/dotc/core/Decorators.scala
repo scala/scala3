@@ -13,10 +13,7 @@ import transform.MegaPhase
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
 
-  /** Extension methods for toType/TermName methods on strings.
-   *  They are in an implicit object for now, so that we can import decorators
-   *  with a normal wildcard. In the future, once #9255 is in trunk, replace with
-   *  a simple collective extension.
+  /** Extension methods for toType/TermName methods on PreNames.
    */
   extension (pn: PreName)
     def toTermName: TermName = pn match

@@ -20,7 +20,7 @@ import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 import com.vladsch.flexmark.util.builder.Extension
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object MarkdownParser {
 

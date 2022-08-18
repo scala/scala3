@@ -1,0 +1,293 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+repeated
+48
+60
+3
+repeated
+DefDef
+false
+0
+false
+def repeated
+
+1
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+f
+79
+84
+5
+f
+DefDef
+false
+0
+false
+def f
+
+2
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+120
+130
+9
+repeated
+Apply
+false
+0
+false
+repeated()
+
+3
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+142
+147
+10
+f
+Apply
+false
+0
+false
+f("")
+
+4
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+133
+153
+10
+repeated
+Apply
+false
+0
+false
+repeated(f(""), "b")
+
+5
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+156
+178
+11
+method
+Apply
+false
+0
+false
+JavaVarargs_1.method()
+
+6
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+181
+205
+12
+method
+Apply
+false
+0
+false
+JavaVarargs_1.method("")
+
+7
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+217
+248
+14
+multiple
+Apply
+false
+0
+false
+JavaVarargs_1.multiple("first")
+
+8
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+251
+261
+15
+println
+Apply
+false
+0
+false
+println(m)
+
+9
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+291
+301
+16
+f
+Apply
+false
+0
+false
+f("first")
+
+10
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+268
+302
+16
+multiple
+Apply
+false
+0
+false
+JavaVarargs_1.multiple(f("first"))
+
+11
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+305
+315
+17
+println
+Apply
+false
+0
+false
+println(m)
+
+12
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+345
+355
+18
+f
+Apply
+false
+0
+false
+f("first")
+
+13
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+322
+371
+18
+multiple
+Apply
+false
+0
+false
+JavaVarargs_1.multiple(f("first"), "a", "b", "c")
+
+14
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+374
+384
+19
+println
+Apply
+false
+0
+false
+println(m)
+
+15
+varargs/test_1.scala
+<empty>
+test_1$package$
+Object
+<empty>.test_1$package$
+Test
+101
+115
+8
+Test
+DefDef
+false
+0
+false
+@main
+def Test
+

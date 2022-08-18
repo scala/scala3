@@ -631,7 +631,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       case tp =>
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
-            if child eq sym then Nil // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
+            if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
             else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
               List(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
             else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)

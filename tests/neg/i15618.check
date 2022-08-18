@@ -1,0 +1,18 @@
+-- Error: tests/neg/i15618.scala:17:44 ---------------------------------------------------------------------------------
+17 |  def toArray: Array[ScalaType[T]] = Array() // error
+   |                                            ^
+   |                                            No ClassTag available for ScalaType[T]
+   |
+   |                                            where:    T is a type in class Tensor with bounds <: DType
+   |
+   |
+   |                                            Note: a match type could not be fully reduced:
+   |
+   |                                              trying to reduce  ScalaType[T]
+   |                                              failed since selector  T
+   |                                              does not match  case Float16 => Float
+   |                                              and cannot be shown to be disjoint from it either.
+   |                                              Therefore, reduction cannot advance to the remaining cases
+   |
+   |                                                case Float32 => Float
+   |                                                case Int32 => Int

@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 import scala.language.dynamics
 
 object dynamicObject extends Dynamic {

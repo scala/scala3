@@ -15,7 +15,7 @@ import org.openjdk.jmh.results.format._
 import java.util.concurrent.TimeUnit
 
 import java.io.{File, FileOutputStream, BufferedWriter, FileWriter}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.io.Source
 import scala.util.Using
 

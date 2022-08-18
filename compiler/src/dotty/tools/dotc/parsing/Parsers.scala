@@ -172,7 +172,7 @@ object Parsers {
 
   class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
-    val in: Scanner = new Scanner(source)
+    val in: Scanner = new Scanner(source, profile = Profile.current)
     // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
@@ -1809,22 +1809,15 @@ object Parsers {
         NamedArg(name.toTypeName, argType())
       }
 
-      def otherArgs(first: Tree, arg: () => Tree): List[Tree] = {
-        val rest =
-          if (in.token == COMMA) {
-            in.nextToken()
-            commaSeparated(arg)
-          }
-          else Nil
-        first :: rest
-      }
       if (namedOK && in.token == IDENTIFIER)
-        argType() match {
-          case Ident(name) if in.token == EQUALS =>
-            in.nextToken()
-            otherArgs(NamedArg(name, argType()), () => namedTypeArg())
-          case firstArg =>
-            otherArgs(firstArg, () => argType())
+        in.currentRegion.withCommasExpected {
+          argType() match {
+            case Ident(name) if in.token == EQUALS =>
+              in.nextToken()
+              commaSeparatedRest(NamedArg(name, argType()), () => namedTypeArg())
+            case firstArg =>
+              commaSeparatedRest(firstArg, () => argType())
+          }
         }
       else commaSeparated(() => argType())
     }
@@ -2293,10 +2286,10 @@ object Parsers {
         isOperator = !(location.inArgs && followingIsVararg()))
 
     /** PrefixExpr       ::= [PrefixOperator'] SimpleExpr
-     *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
+     *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’ (if not backquoted)
      */
     val prefixExpr: Location => Tree = location =>
-      if isIdent && nme.raw.isUnary(in.name)
+      if in.token == IDENTIFIER && nme.raw.isUnary(in.name)
          && in.canStartExprTokens.contains(in.lookahead.token)
       then
         val start = in.offset
@@ -2581,8 +2574,8 @@ object Parsers {
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
           if casePat then GenCheckMode.FilterAlways
-          else if sourceVersion.isAtLeast(`3.2`) then GenCheckMode.CheckAndFilter
           else if sourceVersion.isAtLeast(`future`) then GenCheckMode.Check
+          else if sourceVersion.isAtLeast(`3.2`) then GenCheckMode.CheckAndFilter
           else GenCheckMode.FilterNow  // filter on source version < 3.2, for backward compat
         GenFrom(pat, subExpr(), checkMode)
       }
@@ -2745,14 +2738,13 @@ object Parsers {
     def pattern3(): Tree =
       val p = infixPattern()
       if followingIsVararg() then
-        atSpan(in.skipToken()) {
-          p match
-            case p @ Ident(name) if name.isVarPattern =>
-              Typed(p, Ident(tpnme.WILDCARD_STAR))
-            case _ =>
-              syntaxError(em"`*` must follow pattern variable")
-              p
-        }
+        val start = in.skipToken()
+        p match
+          case p @ Ident(name) if name.isVarPattern =>
+            Typed(p, atSpan(start) { Ident(tpnme.WILDCARD_STAR) })
+          case _ =>
+            syntaxError(em"`*` must follow pattern variable", start)
+            p
       else p
 
     /**  Pattern2    ::=  [id `@'] Pattern3
@@ -2881,7 +2873,7 @@ object Parsers {
       if (mods.is(Private) && mods.hasPrivateWithin)
         normalize(mods &~ Private)
       else if (mods.isAllOf(AbstractOverride))
-        normalize(addFlag(mods &~ (Abstract | Override), AbsOverride))
+        normalize(addFlag(mods &~ AbstractOverride, AbsOverride))
       else
         mods
 
@@ -3042,7 +3034,7 @@ object Parsers {
       val tps = commaSeparated(funArgType)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
-      val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
+      val paramFlags = if ofClass then LocalParamAccessor else Param
       tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | impliedMods.flags))
 
     /** ClsParamClause    ::=  ‘(’ [‘erased’] ClsParams ‘)’ | UsingClsParamClause
@@ -3965,8 +3957,8 @@ object Parsers {
      */
     def selfType(): ValDef =
       if (in.isIdent || in.token == THIS)
-            && in.lookahead.isColon && followingIsSelfType()
-            || in.lookahead.token == ARROW
+        && (in.lookahead.isColon && followingIsSelfType()
+            || in.lookahead.token == ARROW)
       then
         atSpan(in.offset) {
           val selfName =

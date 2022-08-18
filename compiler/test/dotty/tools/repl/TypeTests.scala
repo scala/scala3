@@ -1,9 +1,9 @@
 package dotty.tools.repl
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
-class TypeTests extends ReplTest {
+class TypeTests extends ReplTest:
   @Test def typeOf1 = initially {
     run(":type 1")
     assertEquals("Int", storedOutput().trim)
@@ -27,4 +27,3 @@ class TypeTests extends ReplTest {
     run(":type")
     assertEquals(":type <expression>", storedOutput().trim)
   }
-}

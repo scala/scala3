@@ -416,7 +416,7 @@ object Scala3:
         unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar).nn)
 
       def isJavaIdent =
-        isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
+        symbol.nonEmpty && isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
   end StringOps
 
   given InfoOps: AnyRef with

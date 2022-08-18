@@ -46,7 +46,8 @@ object Predef:
    *  }}}
    */
   extension [T](x: T | Null) inline def nn: x.type & T =
-    scala.runtime.Scala3RunTime.nn(x)
+    if x.asInstanceOf[Any] == null then scala.runtime.Scala3RunTime.nnFail()
+    x.asInstanceOf[x.type & T]
 
   extension (inline x: AnyRef | Null)
     /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`

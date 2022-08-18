@@ -1191,7 +1191,7 @@ object desugar {
             mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
-              .withSpan(pat.span.startPos).withMods(patMods)
+              .withSpan(pat.span.union(rhs.span)).withMods(patMods)
           val useSelectors = vars.length <= 22
           def selector(n: Int) =
             if useSelectors then Select(Ident(tmpName), nme.selectorName(n))
@@ -1504,7 +1504,7 @@ object desugar {
       .withSpan(original.span.withPoint(named.span.start))
 
   /** Main desugaring method */
-  def apply(tree: Tree)(using Context): Tree = {
+  def apply(tree: Tree, pt: Type = NoType)(using Context): Tree = {
 
     /** Create tree for for-comprehension `<for (enums) do body>` or
      *   `<for (enums) yield body>` where mapName and flatMapName are chosen
@@ -1577,10 +1577,10 @@ object desugar {
        *  also replaced by Binds with fresh names.
        */
       def makeIdPat(pat: Tree): (Tree, Ident) = pat match {
-        case Bind(name, pat1) =>
+        case bind @ Bind(name, pat1) =>
           if name == nme.WILDCARD then
             val name = UniqueName.fresh()
-            (cpy.Bind(pat)(name, pat1), Ident(name))
+            (cpy.Bind(pat)(name, pat1).withMods(bind.mods), Ident(name))
           else (pat, Ident(name))
         case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD => (id, id)
         case Typed(id: Ident, _) if isVarPattern(id) && id.name != nme.WILDCARD => (pat, id)
@@ -1679,7 +1679,12 @@ object desugar {
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
           val (defpat0, id0) = makeIdPat(gen.pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
-          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map(makePatDef(_, Modifiers(), _, _))
+          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map { (valeq, defpat, rhs) =>
+            val mods = defpat match
+              case defTree: DefTree => defTree.mods
+              case _ => Modifiers()
+            makePatDef(valeq, mods, defpat, rhs)
+          }
           val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
           val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
@@ -1693,11 +1698,11 @@ object desugar {
       }
     }
 
-    def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match {
+    def makePolyFunction(targs: List[Tree], body: Tree, pt: Type): Tree = body match {
       case Parens(body1) =>
-        makePolyFunction(targs, body1)
+        makePolyFunction(targs, body1, pt)
       case Block(Nil, body1) =>
-        makePolyFunction(targs, body1)
+        makePolyFunction(targs, body1, pt)
       case Function(vargs, res) =>
         assert(targs.nonEmpty)
         // TODO: Figure out if we need a `PolyFunctionWithMods` instead.
@@ -1721,12 +1726,26 @@ object desugar {
         }
         else {
           // Desugar [T_1, ..., T_M] -> (x_1: P_1, ..., x_N: P_N) => body
-          // Into    new scala.PolyFunction { def apply[T_1, ..., T_M](x_1: P_1, ..., x_N: P_N) = body }
+          // with pt [S_1, ..., S_M] -> (O_1, ..., O_N) => R
+          // Into    new scala.PolyFunction { def apply[T_1, ..., T_M](x_1: P_1, ..., x_N: P_N): R2 = body }
+          // where R2 is R, with all references to S_1..S_M replaced with T1..T_M.
+
+          def typeTree(tp: Type) = tp match
+            case RefinedType(parent, nme.apply, PolyType(_, mt)) if parent.typeSymbol eq defn.PolyFunctionClass =>
+              var bail = false
+              def mapper(tp: Type, topLevel: Boolean = false): Tree = tp match
+                case tp: TypeRef              => ref(tp)
+                case tp: TypeParamRef         => Ident(applyTParams(tp.paramNum).name)
+                case AppliedType(tycon, args) => AppliedTypeTree(mapper(tycon), args.map(mapper(_)))
+                case _                        => if topLevel then TypeTree() else { bail = true; genericEmptyTree }
+              val mapped = mapper(mt.resultType, topLevel = true)
+              if bail then TypeTree() else mapped
+            case _ => TypeTree()
 
           val applyVParams = vargs.asInstanceOf[List[ValDef]]
             .map(varg => varg.withAddedFlags(mods.flags | Param))
             New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
-              List(DefDef(nme.apply, applyTParams :: applyVParams :: Nil, TypeTree(), res))
+              List(DefDef(nme.apply, applyTParams :: applyVParams :: Nil, typeTree(pt), res))
               ))
         }
       case _ =>
@@ -1748,7 +1767,7 @@ object desugar {
 
     val desugared = tree match {
       case PolyFunction(targs, body) =>
-        makePolyFunction(targs, body) orElse tree
+        makePolyFunction(targs, body, pt) orElse tree
       case SymbolLit(str) =>
         Apply(
           ref(defn.ScalaSymbolClass.companionModule.termRef),

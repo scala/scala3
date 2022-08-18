@@ -2,7 +2,7 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.net.URI
 import java.net.URL
 import dotty.tools.scaladoc.site._
@@ -78,10 +78,14 @@ trait SiteRenderer(using DocContext) extends Locations:
         }
       }
 
+    document.select("header + p").forEach(firstParagraph =>
+      firstParagraph.addClass("body-large")
+      firstParagraph.addClass("first-p")
+    )
     document.select("a").forEach(element =>
       element.attr("href", processLocalLinkWithGuard(element.attr("href")))
     )
     document.select("img").forEach { element =>
       element.attr("src", processLocalLink(element.attr("src")))
     } // foreach does not work here. Why?
-    PageContent(raw(document.outerHtml()), toc)
+    PageContent(div(raw(document.outerHtml())), toc)

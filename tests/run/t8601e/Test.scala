@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class C {
   def foo: Unit = {StaticInit.fld}
 }

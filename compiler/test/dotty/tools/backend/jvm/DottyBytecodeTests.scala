@@ -1557,6 +1557,29 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  /** Check that final mutable var accessors are final */
+  @Test def i10835 = {
+    val source =
+      s"""class A {
+        |  final var x = 1
+        |}
+        |""".stripMargin
+    checkBCode(source){dir =>
+      val clsIn      = dir.lookupName("A.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      def isFinal(access: Int) = (access & Opcodes.ACC_FINAL) != 0
+
+      val field = clsNode.fields.asScala.find(_.name == "x").map(_.access)
+      assertTrue("field is not final", field.exists(!isFinal(_)))
+      assertTrue("field is private", field.exists(acc => (acc & Opcodes.ACC_PRIVATE) != 0))
+
+      val methods = clsNode.methods.asScala
+      def methodAccess(name: String) = methods.find(_.name == name).map(_.access)
+      assertTrue("getter is final", methodAccess("x").exists(isFinal))
+      assertTrue("setter is final", methodAccess("x_$eq").exists(isFinal))
+    }
+  }
+
   /** Check that erasure if `Int | Nothing` is `int` */
   @Test def i14970 = {
     val source =
@@ -1575,6 +1598,90 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       }
       testSig("foo", "()I")
       testSig("bar", "()I")
+    }
+  }
+
+  @Test def i15535 = {
+    // primary goal of this test is to check that `LineNumber` have correct numbers
+    val source =
+      """object Main {
+        |  def m(x: Int): Unit = {
+        |    x match {
+        |      case y =>
+        |        println(y)
+        |        println(y)
+        |    }
+        |  }
+        |}
+        """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
+      val method  = getMethod(clsNode, "m")
+      val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
+
+      val expected = List(
+        LineNumber(2, Label(0)),
+        LineNumber(3, Label(0)),
+        LineNumber(4, Label(5)), // case y =>
+        LineNumber(5, Label(9)),
+        LineNumber(6, Label(15)),
+      )
+
+      assertSameCode(instructions, expected)
+    }
+  }
+
+  @Test def i15535_2 = {
+    // primary goal of this test is to check that `LineNumber` have correct numbers
+    val source =
+      """object Main {
+        |  def m(x: Matchable): Unit = {
+        |    x match {
+        |      case a if a == 3 =>
+        |        println(a)
+        |        println(a)
+        |      case b: Int =>
+        |        println(b)
+        |        println(b)
+        |      case c @ Left(l) =>
+        |        println(l)
+        |        println(c)
+        |      case d =>
+        |        println(d)
+        |        println(d)
+        |        println(d)
+        |    }
+        |  }
+        |}
+        """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
+      val method  = getMethod(clsNode, "m")
+      val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
+
+      val expected = List(
+        LineNumber(2, Label(0)),
+        LineNumber(3, Label(0)),
+        LineNumber(4, Label(5)), // case a if a == 3 =>
+        LineNumber(5, Label(15)),
+        LineNumber(6, Label(20)),
+        LineNumber(7, Label(26)), // case b: Int =>
+        LineNumber(8, Label(35)),
+        LineNumber(9, Label(41)),
+        LineNumber(10, Label(48)), // case c @ Left(l) =>
+        LineNumber(11, Label(63)),
+        LineNumber(12, Label(68)),
+        LineNumber(13, Label(74)), // case d =>
+        LineNumber(14, Label(79)),
+        LineNumber(15, Label(84)),
+        LineNumber(16, Label(89)),
+      )
+
+      assertSameCode(instructions, expected)
     }
   }
 }

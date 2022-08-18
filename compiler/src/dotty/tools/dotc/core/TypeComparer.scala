@@ -8,8 +8,7 @@ import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
-import util.Stats
-import util.NoSourcePosition
+import util.{Stats, NoSourcePosition, EqHashMap}
 import config.Config
 import config.Feature.migrateTo3
 import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
@@ -60,6 +59,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** Indicates whether the subtype check used GADT bounds */
   private var GADTused: Boolean = false
 
+  protected var canWidenAbstract: Boolean = true
+
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
 
@@ -105,16 +106,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  to the corresponding class parameters, which does not constitute
    *  a true usage of a GADT symbol.
    */
-  private def GADTusage(sym: Symbol) = {
-    if (!sym.owner.isConstructor) GADTused = true
+  private def GADTusage(sym: Symbol): true = recordGadtUsageIf(!sym.owner.isConstructor)
+
+  private def recordGadtUsageIf(cond: Boolean): true = {
+    if cond then
+      GADTused = true
     true
   }
 
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
-  protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
-  protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
+  protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadt.addBound(sym, b, isUpper)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
 
@@ -160,6 +163,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** A flag to prevent recursive joins when comparing AndTypes on the left */
   private var joined = false
+
+  /** A variable to keep track of number of outstanding isSameType tests */
+  private var sameLevel = 0
+
+  /** A map that records successful isSameType comparisons.
+   *  Used together with `sameLevel` to avoid exponential blowUp of isSameType
+   *  comparisons for deeply nested invariant applied types.
+   */
+  private var sames: util.EqHashMap[Type, Type] | Null = null
+
+  /** The `sameLevel` nesting depth from which on we want to keep track
+   *  of isSameTypes suucesses using `sames`
+   */
+  val startSameTypeTrackingLevel = 3
 
   private inline def inFrozenGadtIf[T](cond: Boolean)(inline op: T): T = {
     val savedFrozenGadt = frozenGadt
@@ -497,7 +514,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
      case tp1: MatchType =>
         val reduced = tp1.reduced
-        if (reduced.exists) recur(reduced, tp2) else thirdTry
+        if reduced.exists then
+          recur(reduced, tp2) && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
+        else thirdTry
       case _: FlexType =>
         true
       case _ =>
@@ -521,7 +540,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
           && (isBottom(tp1) || GADTusage(tp2.symbol))
 
-        isSubApproxHi(tp1, info2.lo) || compareGADT || tryLiftedToThis2 || fourthTry
+        isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
+        || compareGADT
+        || tryLiftedToThis2
+        || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -694,7 +716,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
       case tp2: MatchType =>
         val reduced = tp2.reduced
-        if (reduced.exists) recur(tp1, reduced) else fourthTry
+        if reduced.exists then
+          recur(tp1, reduced) && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp2) }
+        else
+          fourthTry
       case tp2: MethodType =>
         def compareMethod = tp1 match {
           case tp1: MethodType =>
@@ -757,9 +782,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def tryBaseType(cls2: Symbol) = {
       val base = nonExprBaseType(tp1, cls2)
-      if (base.exists && (base `ne` tp1))
-        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
-        base.isInstanceOf[OrType] && fourthTry
+      if base.exists && (base ne tp1)
+        && (!caseLambda.exists || canWidenAbstract || tp1.widen.underlyingClassRef(refinementOK = true).exists)
+      then
+        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
+        && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
+        || base.isInstanceOf[OrType] && fourthTry
           // if base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
@@ -769,14 +797,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def fourthTry: Boolean = tp1 match {
       case tp1: TypeRef =>
         tp1.info match {
-          case TypeBounds(_, hi1) =>
+          case info1 @ TypeBounds(lo1, hi1) =>
             def compareGADT =
               tp1.symbol.onGadtBounds(gbounds1 =>
                 isSubTypeWhenFrozen(gbounds1.hi, tp2)
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
+            (!caseLambda.exists || canWidenAbstract)
+                && isSubType(hi1, tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
+            || compareGADT
+            || tryLiftedToThis1
           case _ =>
             // `Mode.RelaxedOverriding` is only enabled when checking Java overriding
             // in explicit nulls, and `Null` becomes a bottom type, which allows
@@ -1112,13 +1143,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                       if tycon1sym == tycon2sym && tycon1sym.isAliasType then
                         val preConstraint = constraint
                         isSubArgs(args1, args2, tp1, tparams)
-                        && tryAlso(preConstraint, recur(tp1.superType, tp2.superType))
+                        && tryAlso(preConstraint, recur(tp1.superTypeNormalized, tp2.superTypeNormalized))
                       else
                         isSubArgs(args1, args2, tp1, tparams)
                     }
                   }
-                  if (res && touchedGADTs) GADTused = true
-                  res
+                  res && recordGadtUsageIf(touchedGADTs)
                 case _ =>
                   false
               }
@@ -1177,7 +1207,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        */
       def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
         if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isInstanceOf[MatchAlias])
-          if (tyconIsTypeRef) recur(tp1, tp2.superType)
+          if (tyconIsTypeRef) recur(tp1, tp2.superTypeNormalized) && recordGadtUsageIf(MatchType.thatReducesUsingGadt(tp2))
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
           fallback(tycon2bounds.lo)
@@ -1191,7 +1221,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 inFrozenGadt { compareLower(bounds2, tyconIsTypeRef = false) }
               }
             case _ => false
-        } && { GADTused = true; true }
+        } && recordGadtUsageIf(true)
 
       tycon2 match {
         case param2: TypeParamRef =>
@@ -1244,16 +1274,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           def byGadtBounds: Boolean =
             sym.onGadtBounds { bounds1 =>
               inFrozenGadt { isSubType(bounds1.hi.applyIfParameterized(args1), tp2, approx.addLow) }
-            } && { GADTused = true; true }
+            } && recordGadtUsageIf(true)
 
 
           !sym.isClass && {
             defn.isCompiletimeAppliedType(sym) && compareCompiletimeAppliedType(tp1, tp2, fromBelow = false) ||
-            recur(tp1.superType, tp2) ||
+            { recur(tp1.superTypeNormalized, tp2) && recordGadtUsageIf(MatchType.thatReducesUsingGadt(tp1)) } ||
             tryLiftedToThis1
-          }|| byGadtBounds
+          } || byGadtBounds
         case tycon1: TypeProxy =>
-          recur(tp1.superType, tp2)
+          recur(tp1.superTypeNormalized, tp2)
         case _ =>
           false
       }
@@ -1547,8 +1577,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                (v > 0 || isSubType(arg2, arg1)) &&
-                (v < 0 || isSubType(arg1, arg2))
+                if v < 0 then isSubType(arg2, arg1)
+                else if v > 0 then isSubType(arg1, arg2)
+                else isSameType(arg2, arg1)
 
         isSubArg(args1.head, args2.head)
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
@@ -1584,7 +1615,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp: RecType => fix(tp.parent).substRecThis(tp, anchor)
       case tp @ RefinedType(parent, rname, rinfo) => tp.derivedRefinedType(fix(parent), rname, rinfo)
       case tp: TypeParamRef => fixOrElse(bounds(tp).hi, tp)
-      case tp: TypeProxy => fixOrElse(tp.underlying, tp)
+      case tp: TypeProxy => fixOrElse(tp.superType, tp)
       case tp: AndType => tp.derivedAndType(fix(tp.tp1), fix(tp.tp2))
       case tp: OrType  => tp.derivedOrType (fix(tp.tp1), fix(tp.tp2))
       case tp => tp
@@ -1857,7 +1888,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
     case tp: SingletonType if tp.isStable => tp
     case tp: ValueType => SkolemType(tp)
-    case tp: TypeProxy => ensureStableSingleton(tp.underlying)
+    case tp: TypeProxy => ensureStableSingleton(tp.superType)
     case tp => assert(ctx.reporter.errorsReported); SkolemType(tp)
   }
 
@@ -1921,8 +1952,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
-      else if (isUpper) gadtAddUpperBound(tparam, bound)
-      else gadtAddLowerBound(tparam, bound)
+      else
+        val savedGadt = ctx.gadt.fresh
+        val success = gadtAddBound(tparam, bound, isUpper)
+        if !success then ctx.gadt.restore(savedGadt)
+        success
     }
   }
 
@@ -2006,11 +2040,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   // Type equality =:=
 
-  /** Two types are the same if are mutual subtypes of each other */
+  /** Two types are the same if they are mutual subtypes of each other.
+   *  To avoid exponential blowup for deeply nested invariant applied types,
+   *  we cache successes once the stack of outstanding isSameTypes reaches
+   *  depth `startSameTypeTrackingLevel`. See pos/i15525.scala, where this matters.
+   */
   def isSameType(tp1: Type, tp2: Type): Boolean =
-    if (tp1 eq NoType) false
-    else if (tp1 eq tp2) true
-    else isSubType(tp1, tp2) && isSubType(tp2, tp1)
+    if tp1 eq NoType then false
+    else if tp1 eq tp2 then true
+    else if sames != null && (sames.nn.lookup(tp1) eq tp2) then true
+    else
+      val savedSames = sames
+      sameLevel += 1
+      if sameLevel >= startSameTypeTrackingLevel then
+        Stats.record("cache same type")
+        sames = new util.EqHashMap()
+      val res =
+        try isSubType(tp1, tp2) && isSubType(tp2, tp1)
+        finally
+          sameLevel -= 1
+          sames = savedSames
+      if res && sames != null then sames.nn(tp2) = tp1
+      res
 
   override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = isSameType(tp1, tp2)
 
@@ -2556,6 +2607,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }.apply(true, tp)
 
     (tp1.dealias, tp2.dealias) match {
+      case _ if !ctx.erasedTypes && tp2.isFromJavaObject =>
+        provablyDisjoint(tp1, defn.AnyType)
+      case _ if !ctx.erasedTypes && tp1.isFromJavaObject =>
+        provablyDisjoint(defn.AnyType, tp2)
       case (tp1: TypeRef, _) if tp1.symbol == defn.SingletonClass =>
         false
       case (_, tp2: TypeRef) if tp2.symbol == defn.SingletonClass =>
@@ -2645,25 +2700,31 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         !(tp2 <:< tp1)
         && (provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1))
       case (tp1: NamedType, _) if gadtBounds(tp1.symbol) != null =>
-        provablyDisjoint(gadtBounds(tp1.symbol).uncheckedNN.hi, tp2) || provablyDisjoint(tp1.superType, tp2)
+        provablyDisjoint(gadtBounds(tp1.symbol).uncheckedNN.hi, tp2)
+        || provablyDisjoint(tp1.superTypeNormalized, tp2)
       case (_, tp2: NamedType) if gadtBounds(tp2.symbol) != null =>
-        provablyDisjoint(tp1, gadtBounds(tp2.symbol).uncheckedNN.hi) || provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(tp1, gadtBounds(tp2.symbol).uncheckedNN.hi)
+        || provablyDisjoint(tp1, tp2.superTypeNormalized)
       case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
         tp1.termSymbol != tp2.termSymbol
       case (tp1: TermRef, tp2: TypeRef) if isEnumValue(tp1) =>
         fullyInstantiated(tp2) && !tp1.classSymbols.exists(_.derivesFrom(tp2.symbol))
       case (tp1: TypeRef, tp2: TermRef) if isEnumValue(tp2) =>
         fullyInstantiated(tp1) && !tp2.classSymbols.exists(_.derivesFrom(tp1.symbol))
+      case (tp1: RefinedType, tp2: RefinedType) if tp1.refinedName == tp2.refinedName =>
+        provablyDisjoint(tp1.parent, tp2.parent) || provablyDisjoint(tp1.refinedInfo, tp2.refinedInfo)
+      case (tp1: TypeAlias, tp2: TypeAlias) =>
+        provablyDisjoint(tp1.alias, tp2.alias)
       case (tp1: Type, tp2: Type) if defn.isTupleNType(tp1) =>
         provablyDisjoint(tp1.toNestedPairs, tp2)
       case (tp1: Type, tp2: Type) if defn.isTupleNType(tp2) =>
         provablyDisjoint(tp1, tp2.toNestedPairs)
       case (tp1: TypeProxy, tp2: TypeProxy) =>
-        provablyDisjoint(tp1.superType, tp2) || provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(tp1.superTypeNormalized, tp2) || provablyDisjoint(tp1, tp2.superTypeNormalized)
       case (tp1: TypeProxy, _) =>
-        provablyDisjoint(tp1.superType, tp2)
+        provablyDisjoint(tp1.superTypeNormalized, tp2)
       case (_, tp2: TypeProxy) =>
-        provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(tp1, tp2.superTypeNormalized)
       case _ =>
         false
     }
@@ -2845,7 +2906,16 @@ object TypeComparer {
     comparing(_.tracked(op))
 }
 
+object TrackingTypeComparer:
+  enum MatchResult:
+    case Reduced(tp: Type)
+    case Disjoint
+    case Stuck
+    case NoInstance(fails: List[(Name, TypeBounds)])
+
 class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+  import TrackingTypeComparer.*
+
   init(initctx)
 
   override def trackingTypeComparer = this
@@ -2867,15 +2937,9 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.gadtBounds(sym)
   }
 
-  override def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = {
+  override def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean =
     if (sym.exists) footprint += sym.typeRef
-    super.gadtAddLowerBound(sym, b)
-  }
-
-  override def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = {
-    if (sym.exists) footprint += sym.typeRef
-    super.gadtAddUpperBound(sym, b)
-  }
+    super.gadtAddBound(sym, b, isUpper)
 
   override def typeVarInstance(tvar: TypeVar)(using Context): Type = {
     footprint += tvar
@@ -2883,31 +2947,36 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   def matchCases(scrut: Type, cases: List[Type])(using Context): Type = {
-    def paramInstances = new TypeAccumulator[Array[Type]] {
-      def apply(inst: Array[Type], t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` caseLambda =>
-          inst(n) = approximation(t, fromBelow = variance >= 0).simplified
-          inst
-        case _ =>
-          foldOver(inst, t)
-      }
-    }
 
-    def instantiateParams(inst: Array[Type]) = new TypeMap {
+    def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
+      def apply(insts: Array[Type], t: Type) = t match
+        case param @ TypeParamRef(b, n) if b eq caseLambda =>
+          insts(n) =
+            if canApprox then
+              approximation(param, fromBelow = variance >= 0).simplified
+            else constraint.entry(param) match
+              case entry: TypeBounds =>
+                val lo = fullLowerBound(param)
+                val hi = fullUpperBound(param)
+                if isSubType(hi, lo) then lo.simplified else Range(lo, hi)
+              case inst =>
+                assert(inst.exists, i"param = $param\nconstraint = $constraint")
+                inst.simplified
+          insts
+        case _ =>
+          foldOver(insts, t)
+
+    def instantiateParams(insts: Array[Type]) = new ApproximatingTypeMap {
+      variance = 0
       def apply(t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` caseLambda => inst(n)
+        case t @ TypeParamRef(b, n) if b `eq` caseLambda => insts(n)
         case t: LazyRef => apply(t.ref)
         case _ => mapOver(t)
       }
     }
 
-    /** Match a single case.
-     *  @return  Some(tp)     if the match succeeds with type `tp`
-     *           Some(NoType) if the match fails, and there is an overlap between pattern and scrutinee
-     *           None         if the match fails and we should consider the following cases
-     *                        because scrutinee and pattern do not overlap
-     */
-    def matchCase(cas: Type): Option[Type] = trace(i"match case $cas vs $scrut", matchTypes) {
+    /** Match a single case. */
+    def matchCase(cas: Type): MatchResult = trace(i"match case $cas vs $scrut", matchTypes) {
       val cas1 = cas match {
         case cas: HKTypeLambda =>
           caseLambda = constrained(cas)
@@ -2918,34 +2987,52 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
       val defn.MatchCase(pat, body) = cas1: @unchecked
 
-      if (isSubType(scrut, pat))
-        // `scrut` is a subtype of `pat`: *It's a Match!*
-        Some {
-          caseLambda match {
-            case caseLambda: HKTypeLambda =>
-              val instances = paramInstances(new Array(caseLambda.paramNames.length), pat)
-              instantiateParams(instances)(body).simplified
-            case _ =>
-              body
-          }
-        }
+      def matches(canWidenAbstract: Boolean): Boolean =
+        val saved = this.canWidenAbstract
+        this.canWidenAbstract = canWidenAbstract
+        try necessarySubType(scrut, pat)
+        finally this.canWidenAbstract = saved
+
+      def redux(canApprox: Boolean): MatchResult =
+        caseLambda match
+          case caseLambda: HKTypeLambda =>
+            val instances = paramInstances(canApprox)(Array.fill(caseLambda.paramNames.length)(NoType), pat)
+            instantiateParams(instances)(body) match
+              case Range(lo, hi) =>
+                MatchResult.NoInstance {
+                  caseLambda.paramNames.zip(instances).collect {
+                    case (name, Range(lo, hi)) => (name, TypeBounds(lo, hi))
+                  }
+                }
+              case redux =>
+                MatchResult.Reduced(redux.simplified)
+          case _ =>
+            MatchResult.Reduced(body)
+
+      if caseLambda.exists && matches(canWidenAbstract = false) then
+        redux(canApprox = true)
+      else if matches(canWidenAbstract = true) then
+        redux(canApprox = false)
       else if (provablyDisjoint(scrut, pat))
         // We found a proof that `scrut` and `pat` are incompatible.
         // The search continues.
-        None
+        MatchResult.Disjoint
       else
-        Some(NoType)
+        MatchResult.Stuck
     }
 
     def recur(remaining: List[Type]): Type = remaining match
       case cas :: remaining1 =>
         matchCase(cas) match
-          case None =>
+          case MatchResult.Disjoint =>
             recur(remaining1)
-          case Some(NoType) =>
+          case MatchResult.Stuck =>
             MatchTypeTrace.stuck(scrut, cas, remaining1)
             NoType
-          case Some(tp) =>
+          case MatchResult.NoInstance(fails) =>
+            MatchTypeTrace.noInstance(scrut, cas, fails)
+            NoType
+          case MatchResult.Reduced(tp) =>
             tp
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
@@ -3030,6 +3117,11 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(using Context): Boolean =
     traceIndented(s"add constraint ${show(param)} ${if (fromBelow) ">:" else "<:"} ${show(bound)} $frozenNotice, constraint = ${show(ctx.typerState.constraint)}") {
       super.addConstraint(param, bound, fromBelow)
+    }
+
+  override def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean =
+    traceIndented(s"add GADT constraint ${show(sym)} ${if isUpper then "<:" else ">:"} ${show(b)} $frozenNotice, GADT constraint = ${show(ctx.gadt.debugBoundsDescription)}") {
+      super.gadtAddBound(sym, b, isUpper)
     }
 
   def lastTrace(header: String): String = header + { try b.toString finally b.clear() }

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.reflect.ClassTag
 
 object Test extends App {

@@ -16,7 +16,7 @@ import Types._
 import Symbols._
 import Names._
 import NameOps._
-import typer.Inliner
+import inlines.Inlines
 import transform.ValueClasses
 import transform.SymUtils._
 import dotty.tools.io.File
@@ -657,7 +657,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
    */
   def apiAnnotations(s: Symbol, inlineOrigin: Symbol): List[api.Annotation] = {
     val annots = new mutable.ListBuffer[api.Annotation]
-    val inlineBody = Inliner.bodyToInline(s)
+    val inlineBody = Inlines.bodyToInline(s)
     if !inlineBody.isEmpty then
       // If the body of an inline def changes, all the reverse dependencies of
       // this method need to be recompiled. sbt has no way of tracking method

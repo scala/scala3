@@ -32,6 +32,34 @@ class ScalaJSCompilationTests extends ParallelTesting {
       compileFilesInDir("tests/neg-scalajs", scalaJSOptions),
     ).checkExpectedErrors()
   }
+
+  // Run tests -----------------------------------------------------------------
+
+  override protected def shouldSkipTestSource(testSource: TestSource): Boolean =
+    testSource.allToolArgs.get(ToolName.ScalaJS).exists(_.contains("--skip"))
+
+  override def runMain(classPath: String, toolArgs: ToolArgs)(implicit summaryReport: SummaryReporting): Status =
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    val scalaJSOptions = toolArgs.getOrElse(ToolName.ScalaJS, Nil)
+
+    try
+      val useCompliantSemantics = scalaJSOptions.contains("--compliant-semantics")
+      val sjsCode = ScalaJSLink.link(classPath, useCompliantSemantics)
+      JSRun.runJSCode(sjsCode)
+    catch
+      case t: Exception =>
+        val writer = new java.io.StringWriter()
+        t.printStackTrace(new java.io.PrintWriter(writer))
+        Failure(writer.toString())
+  end runMain
+
+  @Test def runScalaJS: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runScalaJS")
+    aggregateTests(
+      compileFilesInDir("tests/run", scalaJSOptions),
+    ).checkRuns()
+  }
 }
 
 object ScalaJSCompilationTests {

@@ -12,7 +12,7 @@ import org.junit.experimental.categories.Category
 import java.io.File
 import java.nio.file._
 import java.util.stream.{ Stream => JStream }
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
 import TestSources.sources

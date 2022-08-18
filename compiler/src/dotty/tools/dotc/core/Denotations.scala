@@ -1118,6 +1118,10 @@ object Denotations {
       if !owner.membersNeedAsSeenFrom(pre) && (!ownerIsPrefix || hasOriginalInfo)
          || symbol.is(NonMember)
       then this
+      else if symbol.isAllOf(ClassTypeParam) then
+        val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
+        if arg.exists then derivedSingleDenotation(symbol, arg.bounds, pre)
+        else derived(symbol.info)
       else derived(symbol.info)
     }
   }

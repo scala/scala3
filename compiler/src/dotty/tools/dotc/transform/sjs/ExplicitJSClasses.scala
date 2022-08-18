@@ -364,7 +364,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
           }
 
           val fieldName = jsclassFieldName(innerJSClass.name.asTypeName)
-          val fieldFlags = Synthetic | Artifact
+          val fieldFlags = SyntheticArtifact
           val field = newSymbol(cls, fieldName, fieldFlags, defn.AnyRefType, coord = innerJSClass.coord)
           addAnnotsIfInJSClass(field)
           decls1.enter(field)
@@ -376,7 +376,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
               i"trying to ad-hoc expose objects in non-JS static object ${cls.fullName}")
 
           val getterName = jsobjectGetterNameFor(innerObject)
-          val getterFlags = Method | Synthetic | Artifact
+          val getterFlags = Method | SyntheticArtifact
           val getter = newSymbol(cls, getterName, getterFlags, ExprType(defn.AnyRefType), coord = innerObject.coord)
           addAnnots(getter, innerObject)
           decls1.enter(getter)

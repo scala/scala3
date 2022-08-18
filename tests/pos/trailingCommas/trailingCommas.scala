@@ -85,6 +85,19 @@ trait FunTypeParamClause {
   A,
   B,
   ]: Unit
+
+  def f1[
+  A,
+  ]: Unit
+
+  def g: Unit = f[
+    Int,
+    String,
+  ]
+
+  def g1: Unit = f1[
+    Int,
+  ]
 }
 
 trait SimpleType {

@@ -22,7 +22,6 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
-import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.config.ScalaRelease.*
 
 import scala.annotation.constructorOnly

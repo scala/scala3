@@ -14,7 +14,7 @@ import com.vladsch.flexmark.util.sequence.BasedSequence
 import com.vladsch.flexmark._
 
 import dotty.tools.scaladoc.snippets._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class DocLinkNode(
   val target: DocLink,
@@ -25,8 +25,7 @@ class DocLinkNode(
 case class ExtendedFencedCodeBlock(
   name: Option[String],
   codeBlock: ast.FencedCodeBlock,
-  compilationResult: Option[SnippetCompilationResult],
-  hasContext: Boolean
+  compilationResult: Option[SnippetCompilationResult]
 ) extends BlankLine(codeBlock.getContentChars())
 
 case class Section(

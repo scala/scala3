@@ -138,7 +138,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
    * `refedInnerClasses` may contain duplicates, need not contain the enclosing inner classes of
    * each inner class it lists (those are looked up and included).
    *
-   * This method serializes in the InnerClasses JVM attribute in an appropriate order, 
+   * This method serializes in the InnerClasses JVM attribute in an appropriate order,
    * not necessarily that given by `refedInnerClasses`.
    *
    * can-multi-thread

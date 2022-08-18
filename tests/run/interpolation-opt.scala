@@ -2,15 +2,15 @@ object Test extends App {
 
   val one = 1
   val two = "two"
-  val three = 3.0
+  val threeHalf = 3.5
 
   // Test escaping
-  println(raw"$one plus $two\nis $three")
-  println(s"$one plus $two\nis $three")
+  println(raw"$one plus $two\nis $threeHalf")
+  println(s"$one plus $two\nis $threeHalf")
 
   // Test empty strings between elements
-  println(raw"a$one$two${three}b")
-  println(s"a$one$two${three}b")
+  println(raw"a$one$two${threeHalf}b")
+  println(s"a$one$two${threeHalf}b")
 
   // Test empty string interpolators
   println(raw"")

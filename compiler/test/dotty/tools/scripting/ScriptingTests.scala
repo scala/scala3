@@ -122,7 +122,7 @@ class ScriptingTests:
   /*
    * Compile touchFile.sc to create executable jar, verify jar execution succeeds.
    */
-  @Test def scriptingNoCompileJar =
+  @Test def scriptingNoCompileJar: Unit =
     val scriptFile = touchFileScript
     showScriptUnderTest(scriptFile)
     val expectedJar = script2jar(scriptFile)
@@ -146,6 +146,8 @@ class ScriptingTests:
     if touchedFile.exists then
       printf("success: executable jar created file %s\n", touchedFile)
     assert( touchedFile.exists, s"expected to find file ${touchedFile}" )
+    touchedFile.delete
+    assert( !touchedFile.exists, s"unable to delete ${touchedFile}" )
 
 ///////////////////////////////////
   def touchFileScript = testFiles.find(_.getName == "touchFile.sc").get

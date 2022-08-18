@@ -1,0 +1,4 @@
+-- Error: tests/neg/i15377.scala:11:6 ----------------------------------------------------------------------------------
+11 |  def func(a: A) = a // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  a.A is not defined in inferred type a.A

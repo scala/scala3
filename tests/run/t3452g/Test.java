@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 public class Test {
   public static void main(String[] args) {
     AbstractTrav<String> lsSharp1 = new C1().tail();

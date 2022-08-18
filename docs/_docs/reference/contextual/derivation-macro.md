@@ -31,12 +31,12 @@ given derived[T: Type](using Quotes): Expr[Eq[T]]
 and for comparison reasons we give the same signature we had with `inline`:
 
 ```scala
-inline given derived[T]: (m: Mirror.Of[T]) => Eq[T] = ???
+inline given derived[T](using Mirror.Of[T]): Eq[T] = ???
 ```
 
 Note, that since a type is used in a subsequent stage it will need to be lifted
-to a `Type` by using the corresponding context bound. Also, not that we can
-summon the quoted `Mirror` inside the body of the `derived` this we can omit it
+to a `Type` by using the corresponding context bound. Also, note that we can
+summon the quoted `Mirror` inside the body of the `derived` thus we can omit it
 from the signature. The body of the `derived` method is shown below:
 
 

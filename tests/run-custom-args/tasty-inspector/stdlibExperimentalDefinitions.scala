@@ -31,6 +31,10 @@ val experimentalDefinitionInLibrary = Set(
   // Should we have better support for main annotation macros?
   "scala.annotation.MainAnnotation",
   "scala.annotation.MainAnnotation$",
+  "scala.annotation.MainAnnotation$.Info",
+  "scala.annotation.MainAnnotation$.Parameter",
+  "scala.annotation.MainAnnotation$.ParameterAnnotation",
+
 
   //// New feature: prototype of new version of @main
   // This will never be stabilized. When it is ready it should replace the old @main annotation (requires scala.annotation.MainAnnotation).
@@ -38,6 +42,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.newMain",
   "scala.annotation.newMain$",
   "scala.annotation.newMain$.alias",
+  "scala.annotation.newMain.Help",
+  "scala.annotation.newMain.Help$",
+  "scala.annotation.newMain.Names",
 
   //// New APIs: Mirror
   // Can be stabilized in 3.3.0 or later.

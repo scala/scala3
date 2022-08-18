@@ -1,0 +1,20 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--background-default);
+  height: 100%;
+  overflow: hidden;
+}
+
+[id] {
+  scroll-margin-top: calc(10 * var(--base-spacing));
+}
+
+#container {
+  --header-height: calc(8 * var(--base-spacing));
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
+}

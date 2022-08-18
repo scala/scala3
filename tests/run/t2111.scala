@@ -1,4 +1,3 @@
-
 object Test extends App {
 
   object Color extends Enumeration {

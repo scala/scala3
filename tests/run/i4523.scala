@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class C {
   inline def one = 1
   def foo = {

@@ -65,7 +65,7 @@ done
 # exec here would prevent onExit from being called, leaving terminal in unusable state
 compilerJavaClasspathArgs
 [ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405
-eval "\"$JAVACMD\"" "${java_args[@]}" "-Dscala.home=$PROG_HOME" "-classpath \"$jvm_cp_args\"" "dotty.tools.MainGenericRunner" "-classpath \"$jvm_cp_args\"" "${scala_args[@]}"
+eval "\"$JAVACMD\"" "${java_args[@]}" "-Dscala.home=\"$PROG_HOME\"" "-classpath \"$jvm_cp_args\"" "dotty.tools.MainGenericRunner" "-classpath \"$jvm_cp_args\"" "${scala_args[@]}"
 scala_exit_status=$?
 
 

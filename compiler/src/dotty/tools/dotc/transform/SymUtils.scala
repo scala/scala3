@@ -128,7 +128,7 @@ object SymUtils:
           isCodefined(mt.resultType)
         case res =>
           self.isCoDefinedGiven(res.typeSymbol)
-      self.isAllOf(Given | Method) && isCodefined(self.info)
+      self.isAllOf(GivenMethod) && isCodefined(self.info)
 
     // TODO Scala 3.x: only check for inline vals (no final ones)
     def isInlineVal(using Context) =
@@ -163,7 +163,7 @@ object SymUtils:
     *     and also the location of the generated mirror.
     *   - all of its children are generic products, singletons, or generic sums themselves.
     */
-    def whyNotGenericSum(using Context): String =
+    def whyNotGenericSum(pre: Type)(using Context): String =
       if (!self.is(Sealed))
         s"it is not a sealed ${self.kindString}"
       else if (!self.isOneOf(AbstractOrTrait))
@@ -171,20 +171,34 @@ object SymUtils:
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror
+        val ownerScope = if pre.isInstanceOf[SingletonType] then pre.classSymbol else NoSymbol
         def problem(child: Symbol) = {
 
-          def isAccessible(sym: Symbol): Boolean =
-            (self.isContainedIn(sym) && (companionMirror || ctx.owner.isContainedIn(sym)))
-            || sym.is(Module) && isAccessible(sym.owner)
+          def accessibleMessage(sym: Symbol): String =
+            def inherits(sym: Symbol, scope: Symbol): Boolean =
+              !scope.is(Package) && (scope.derivesFrom(sym) || inherits(sym, scope.owner))
+            def isVisibleToParent(sym: Symbol): Boolean =
+              self.isContainedIn(sym) || sym.is(Module) && isVisibleToParent(sym.owner)
+            def isVisibleToScope(sym: Symbol): Boolean =
+              def isReachable: Boolean = ctx.owner.isContainedIn(sym)
+              def isMemberOfPrefix: Boolean =
+                ownerScope.exists && inherits(sym, ownerScope)
+              isReachable || isMemberOfPrefix || sym.is(Module) && isVisibleToScope(sym.owner)
+            if !isVisibleToParent(sym) then i"to its parent $self"
+            else if !companionMirror && !isVisibleToScope(sym) then i"to call site ${ctx.owner}"
+            else ""
+          end accessibleMessage
+
+          val childAccessible = accessibleMessage(child.owner)
 
           if (child == self) "it has anonymous or inaccessible subclasses"
-          else if (!isAccessible(child.owner)) i"its child $child is not accessible"
+          else if (!childAccessible.isEmpty) i"its child $child is not accessible $childAccessible"
           else if (!child.isClass) "" // its a singleton enum value
           else {
             val s = child.whyNotGenericProduct
             if s.isEmpty then s
             else if child.is(Sealed) then
-              val s = child.whyNotGenericSum
+              val s = child.whyNotGenericSum(pre)
               if s.isEmpty then s
               else i"its child $child is not a generic sum because $s"
             else
@@ -195,7 +209,7 @@ object SymUtils:
         else children.map(problem).find(!_.isEmpty).getOrElse("")
       }
 
-    def isGenericSum(using Context): Boolean = whyNotGenericSum.isEmpty
+    def isGenericSum(pre: Type)(using Context): Boolean = whyNotGenericSum(pre).isEmpty
 
     /** If this is a constructor, its owner: otherwise this. */
     final def skipConstructor(using Context): Symbol =

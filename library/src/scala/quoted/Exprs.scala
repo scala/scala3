@@ -5,14 +5,11 @@ object Exprs:
   /** Matches literal sequence of literal constant value expressions and return a sequence of values.
    *
    *  Usage:
-   *  ```scala sc:nocompile
+   *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
-   *    case Varargs(Exprs(args)) =>
-   *    case Varargs(Exprs(args)) =>
+   *    case Varargs(Exprs(args)) => ???
    *      // args: Seq[Int]
-   *      ...
-   *  }
    *  ```
    *  To directly get the value of all expressions in a sequence `exprs: Seq[Expr[T]]` consider using `exprs.map(_.value)`/`exprs.map(_.valueOrError)` instead.
    */

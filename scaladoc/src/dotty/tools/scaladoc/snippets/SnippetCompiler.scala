@@ -63,11 +63,11 @@ class SnippetCompiler(
           case _ => NoSourcePosition
         val offsetFromLine = sourceFile match
           case NoSource => 0
-          case sf: SourceFile => sf.lineToOffset(diagPos.line + line - innerLineOffset - 1)
+          case sf: SourceFile => sf.lineToOffset(diagPos.line + line - innerLineOffset)
         val offsetFromColumn = diagPos.column + column - innerColumnOffset
         val span = Span(offsetFromLine + offsetFromColumn, offsetFromLine + offsetFromColumn)
         val pos = Some(
-          Position(dotty.tools.dotc.util.SourcePosition(sourceFile, span), diagPos.line)
+          Position(dotty.tools.dotc.util.SourcePosition(sourceFile, span), diagPos.line - innerLineOffset)
         )
         val dmsg = Try(diagnostic.message) match {
           case Success(msg) => msg

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 package a {
   object Outer extends Serializable {
     private object Inner extends Serializable

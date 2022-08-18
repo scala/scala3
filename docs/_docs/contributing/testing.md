@@ -173,6 +173,32 @@ original expect file, or if the user wants to globally replace all expect files 
 `scala3-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect`, and compare the changes via version
 control.
 
+### Test regimes
+
+Continuous integration, managed by GitHub Actions, does not run all jobs when a pull request is created.
+In particular, test jobs for testing under JDK 8 and Windows are not run. Those jobs are run only for the nightly build.
+
+If a PR may fail differentially under either JDK 8 or Windows, the test jobs may be triggered by adding
+a special command to the PR comment text:
+
+```
+[test_java8]
+[test_windows_full]
+```
+Furthermore, CI tests are bootstrapped. A job to also run tests non-bootstrapped may be triggered manually:
+```
+[test_non_bootstrapped]
+```
+A trivial PR, such as a fix for a typo in a comment or when contributing other documentation, may benefit by skipping CI tests altogether:
+```
+[skip ci]
+```
+Other jobs which are normally run can also be selectively skipped:
+```
+[skip community_build]
+[skip test_windows_fast]
+```
+
 ## Troubleshooting
 
 Some of the tests depend on temporary state stored in the `out` directory. In rare cases, that directory

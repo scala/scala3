@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Test {
   object C {
     class B1

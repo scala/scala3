@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import scala.annotation.tailrec
@@ -99,7 +100,7 @@ object PatternMatcher {
     private val initializer = MutableSymbolMap[Tree]()
 
     private def newVar(rhs: Tree, flags: FlagSet, tpe: Type): TermSymbol =
-      newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
+      newSymbol(ctx.owner, PatMatStdBinderName.fresh(), SyntheticCase | flags,
         sanitize(tpe), coord = rhs.span)
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
@@ -388,7 +389,9 @@ object PatternMatcher {
         case Typed(pat, tpt) =>
           val isTrusted = pat match {
             case UnApply(extractor, _, _) =>
-              extractor.symbol.is(Synthetic) && extractor.symbol.owner.linkedClass.is(Case)
+              extractor.symbol.is(Synthetic)
+              && extractor.symbol.owner.linkedClass.is(Case)
+              && !hasExplicitTypeArgs(extractor)
             case _ => false
           }
           TestPlan(TypeTest(tpt, isTrusted), scrutinee, tree.span,
@@ -929,7 +932,8 @@ object PatternMatcher {
           }
           emitWithMashedConditions(plan :: Nil)
         case LetPlan(sym, body) =>
-          seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
+          val valDef = ValDef(sym, initializer(sym).ensureConforms(sym.info)).withSpan(sym.span)
+          seq(valDef :: Nil, emit(body))
         case LabeledPlan(label, expr) =>
           Labeled(label, emit(expr))
         case ReturnPlan(label) =>

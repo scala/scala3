@@ -14,9 +14,16 @@ object Scala3RunTime:
    *
    *  Extracted to minimize the bytecode size at call site.
    */
+  @deprecated("use Predef.nn instead", "3.2")
   def nn[T](x: T | Null): x.type & T =
     val isNull = x == null
-    if (isNull) throw new NullPointerException("tried to cast away nullability, but value is null")
+    if isNull then nnFail()
     else x.asInstanceOf[x.type & T]
 
+  /** Called by the inline extension def `nn`.
+   *
+   *  Extracted to minimize the bytecode size at call site.
+   */
+  def nnFail(): Nothing =
+    throw new NullPointerException("tried to cast away nullability, but value is null")
 end Scala3RunTime

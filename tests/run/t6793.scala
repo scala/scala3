@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 package a { class C1(private[a] val v0: String) }
 package b { class C2(v1: String) extends a.C1(v1) { def foo = v1 } }
 

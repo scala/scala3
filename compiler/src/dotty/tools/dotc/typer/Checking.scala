@@ -15,7 +15,6 @@ import ProtoTypes._
 import Scopes._
 import CheckRealizable._
 import ErrorReporting.errorTree
-import rewrites.Rewrites.patch
 import util.Spans.Span
 import Phases.refchecksPhase
 import Constants.Constant
@@ -23,6 +22,7 @@ import Constants.Constant
 import util.SrcPos
 import util.Spans.Span
 import rewrites.Rewrites.patch
+import inlines.Inlines
 import transform.SymUtils._
 import transform.ValueClasses._
 import Decorators._
@@ -84,6 +84,20 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(using Context): Unit =
     checkBounds(args, tl.paramInfos, _.substParams(tl, _))
+
+  def checkGoodBounds(sym: Symbol)(using Context): Boolean =
+    val bad = findBadBounds(sym.typeRef)
+    if bad.exists then
+      report.error(em"$sym has possibly conflicting bounds $bad", sym.srcPos)
+    !bad.exists
+
+  /** If `tp` dealiases to a typebounds L..H where not L <:< H
+   *  return the potentially conflicting bounds, otherwise return NoType.
+   */
+  private def findBadBounds(tp: Type)(using Context): Type = tp.dealias match
+    case tp: TypeRef => findBadBounds(tp.info)
+    case tp @ TypeBounds(lo, hi) if !(lo <:< hi) => tp
+    case _ => NoType
 
   /** Check applied type trees for well-formedness. This means
    *   - all arguments are within their corresponding bounds
@@ -527,7 +541,7 @@ object Checking {
       fail("Traits cannot have secondary constructors" + addendum)
     checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
-    if (sym.isType && !sym.is(Deferred))
+    if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
@@ -707,12 +721,6 @@ object Checking {
           else "Cannot override non-inline parameter with an inline parameter",
           p1.srcPos)
 
-  def checkConversionsSpecific(to: Type, pos: SrcPos)(using Context): Unit =
-    if to.isRef(defn.AnyValClass, skipRefined = false)
-       || to.isRef(defn.ObjectClass, skipRefined = false)
-    then
-      report.error(em"the result of an implicit conversion must be more specific than $to", pos)
-
   def checkValue(tree: Tree)(using Context): Unit =
     val sym = tree.tpe.termSymbol
     if sym.isNoValue && !ctx.isJava then
@@ -816,10 +824,13 @@ trait Checking {
         case RefutableExtractor =>
           val extractor =
             val UnApply(fn, _, _) = pat: @unchecked
-            fn match
+            tpd.funPart(fn) match
               case Select(id, _) => id
-              case TypeApply(Select(id, _), _) => id
-          em"pattern binding uses refutable extractor `$extractor`"
+              case _ => EmptyTree
+          if extractor.isEmpty then
+            em"pattern binding uses refutable extractor"
+          else
+            em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
         if isPatDef then "adding `: @unchecked` after the expression"
@@ -1234,7 +1245,7 @@ trait Checking {
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit =
-    if !Inliner.inInlineMethod && !ctx.isInlineContext then
+    if !Inlines.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
 
   /** Check arguments of compiler-defined annotations */
@@ -1429,6 +1440,28 @@ trait Checking {
         em"""Implementation restriction: cannot generate CanThrow capability for this kind of catch.
             |CanThrow capabilities can only be generated $req.""",
         pat.srcPos)
+
+  /** (1) Check that every named import selector refers to a type or value member of the
+   *  qualifier type.
+   *  (2) Check that no import selector is renamed more than once.
+   */
+  def checkImportSelectors(qualType: Type, selectors: List[untpd.ImportSelector])(using Context): Unit =
+    val seen = mutable.Set.empty[Name]
+
+    def checkIdent(sel: untpd.ImportSelector): Unit =
+      if sel.name != nme.ERROR
+          && !qualType.member(sel.name).exists
+          && !qualType.member(sel.name.toTypeName).exists
+      then
+        report.error(NotAMember(qualType, sel.name, "value"), sel.imported.srcPos)
+      if seen.contains(sel.name) then
+        report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
+      seen += sel.name
+
+    if !ctx.compilationUnit.isJava then
+      for sel <- selectors do
+        if !sel.isWildcard then checkIdent(sel)
+  end checkImportSelectors
 }
 
 trait ReChecking extends Checking {
@@ -1466,4 +1499,5 @@ trait NoChecking extends ReChecking {
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
   override def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit = ()
   override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = ()
+  override def checkImportSelectors(qualType: Type, selectors: List[untpd.ImportSelector])(using Context): Unit = ()
 }

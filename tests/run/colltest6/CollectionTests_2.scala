@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import Predef.{augmentString as _, wrapString as _, intArrayOps as _, booleanArrayOps as _, genericArrayOps as _, refArrayOps as _, wrapIntArray as _, wrapBooleanArray as _, wrapRefArray as _, genericWrapArray as _, *}
 import scala.reflect.ClassTag
 

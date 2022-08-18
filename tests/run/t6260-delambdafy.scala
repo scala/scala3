@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import java.lang.reflect.Modifier
 
 class C[A](private val a: Any) extends AnyVal

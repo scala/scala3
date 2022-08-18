@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.collection.mutable
 import scala.annotation.*
 import util.CommandLineParser.FromString

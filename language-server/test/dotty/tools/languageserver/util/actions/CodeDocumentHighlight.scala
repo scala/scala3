@@ -5,7 +5,7 @@ import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 import org.eclipse.lsp4j.DocumentHighlightKind
 import org.junit.Assert.assertEquals
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * An action requesting for the ranges that should be highlighted, when a position within `range`

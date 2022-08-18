@@ -31,7 +31,7 @@ object TypeTestsCasts {
   import typer.Inferencing.maximizeType
   import typer.ProtoTypes.constrained
 
-  /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
+  /** Whether `(x: X).isInstanceOf[P]` can be checked at runtime?
    *
    *  First do the following substitution:
    *  (a) replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType
@@ -48,7 +48,8 @@ object TypeTestsCasts {
    *     (c) maximize `pre.F[Xs]` and check `pre.F[Xs] <:< P`
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
-   *  8. otherwise, TRUE
+   *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, FALSE
+   *  9. otherwise, TRUE
    */
   def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = atPhase(Phases.refchecksPhase.next) {
     // Run just before ElimOpaque transform (which follows RefChecks)
@@ -152,10 +153,13 @@ object TypeTestsCasts {
       case AnnotatedType(t, _)  => recur(X, t)
       case tp2: RefinedType     => recur(X, tp2.parent) && TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2)
       case tp2: RecType         => recur(X, tp2.parent)
+      case _
+      if P.classSymbol.isLocal && foundClasses(X).exists(P.classSymbol.isInaccessibleChildOf) => // 8
+        false
       case _                    => true
     })
 
-    val res = recur(X.widen, replaceP(P))
+    val res = X.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot) || recur(X.widen, replaceP(P))
 
     debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
 
@@ -173,15 +177,6 @@ object TypeTestsCasts {
 
         def derivedTree(expr1: Tree, sym: Symbol, tp: Type) =
           cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), List(TypeTree(tp)))
-
-        def effectiveClass(tp: Type): Symbol =
-          if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))
-          else if tp.isRef(defn.AnyValClass) then defn.AnyClass
-          else tp.classSymbol
-
-        def foundClasses(tp: Type, acc: List[Symbol]): List[Symbol] = tp.dealias match
-          case OrType(tp1, tp2) => foundClasses(tp2, foundClasses(tp1, acc))
-          case _ => effectiveClass(tp) :: acc
 
         def inMatch =
           tree.fun.symbol == defn.Any_typeTest ||  // new scheme
@@ -251,7 +246,7 @@ object TypeTestsCasts {
             if expr.tpe.isBottomType then
               report.warning(TypeTestAlwaysDiverges(expr.tpe, testType), tree.srcPos)
             val nestedCtx = ctx.fresh.setNewTyperState()
-            val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
+            val foundClsSyms = foundClasses(expr.tpe.widen)
             val sensical = checkSensical(foundClsSyms)(using nestedCtx)
             if (!sensical) {
               nestedCtx.typerState.commit()
@@ -272,7 +267,7 @@ object TypeTestsCasts {
         def transformAsInstanceOf(testType: Type): Tree = {
           def testCls = effectiveClass(testType.widen)
           def foundClsSymPrimitive = {
-            val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
+            val foundClsSyms = foundClasses(expr.tpe.widen)
             foundClsSyms.size == 1 && foundClsSyms.head.isPrimitiveValueClass
           }
           if (erasure(expr.tpe) <:< testType)
@@ -372,4 +367,16 @@ object TypeTestsCasts {
     }
     interceptWith(expr)
   }
+
+  private def effectiveClass(tp: Type)(using Context): Symbol =
+    if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))
+    else if tp.isRef(defn.AnyValClass) then defn.AnyClass
+    else tp.classSymbol
+
+  private[transform] def foundClasses(tp: Type)(using Context): List[Symbol] =
+    def go(tp: Type, acc: List[Type])(using Context): List[Type] = tp.dealias match
+      case  OrType(tp1, tp2) => go(tp2, go(tp1, acc))
+      case AndType(tp1, tp2) => (for t1 <- go(tp1, Nil); t2 <- go(tp2, Nil); yield AndType(t1, t2)) ::: acc
+      case _                 => tp :: acc
+    go(tp, Nil).map(effectiveClass)
 }

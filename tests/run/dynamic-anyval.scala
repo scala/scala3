@@ -14,9 +14,9 @@ object Test {
   def g[T](x: DynamicValue2[T]) = x.dingo("bippy", 5)
 
   def main(args: Array[String]): Unit = {
-    f(())
+    f(10)
     f(List(1, 2, 3))
-    g(())
+    g(10)
     g(List(1, 2, 3))
   }
 }

@@ -41,7 +41,8 @@ class MissingType(pre: Type, name: Name) extends TypeError {
   }
 }
 
-class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int) extends TypeError {
+class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)
+extends TypeError {
 
   def explanation: String = s"$op $details"
 

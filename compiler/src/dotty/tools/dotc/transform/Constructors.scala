@@ -149,17 +149,26 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     //  (2) If the parameter accessor reference was to an alias getter,
     //      drop the () when replacing by the parameter.
     object intoConstr extends TreeMap {
-      private var isSuperCall = false
+      private var inSuperCall = false
       override def transform(tree: Tree)(using Context): Tree = tree match {
         case Ident(_) | Select(This(_), _) =>
           var sym = tree.symbol
-          if sym.is(ParamAccessor) && (!sym.is(Mutable) || isSuperCall)
-            // Variables need to go through the getter since they might have been updated,
-            // except if we are in a super call, since then the virtual getter call would
-            // be illegal.
-          then
+          def isOverridableSelect = tree.isInstanceOf[Select] && !sym.isEffectivelyFinal
+          def switchOutsideSupercall = !sym.is(Mutable) && !isOverridableSelect
+            // If true, switch to constructor parameters also in the constructor body
+            // that follows the super call.
+            // Variables need to go through the getter since they might have been updated.
+            // References via this need to use the getter as well as long as that getter
+            // can be overridden. This is needed to handle overrides correctly. See run/i15723.scala.
+            // Note that in a supercall we need to switch to parameters in any case since then
+            // calling the virtual getter call would be illegal.
+            //
+            // Note: We intentionally treat references via this and identifiers differently
+            // here. Identifiers in a constructor always bind to the parameter. This is
+            // done for backwards compatbility.
+          if sym.is(ParamAccessor) && (switchOutsideSupercall || inSuperCall) then
             sym = sym.subst(accessors, paramSyms)
-          if (sym.maybeOwner.isConstructor) ref(sym).withSpan(tree.span) else tree
+          if sym.maybeOwner.isConstructor then ref(sym).withSpan(tree.span) else tree
         case Apply(fn, Nil) =>
           val fn1 = transform(fn)
           if ((fn1 ne fn) && fn1.symbol.is(Param) && fn1.symbol.owner.isPrimaryConstructor)
@@ -170,7 +179,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
 
       def apply(tree: Tree, prevOwner: Symbol)(using Context): Tree =
-        isSuperCall = isSuperConstrCall(tree)
+        inSuperCall = isSuperConstrCall(tree)
         transform(tree).changeOwnerAfter(prevOwner, constr.symbol, thisPhase)
     }
 

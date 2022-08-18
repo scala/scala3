@@ -7,7 +7,7 @@ import org.junit.Assert.assertEquals
 
 import org.eclipse.lsp4j.Location
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * An action requesting for all the references to the symbol in `range` within the workspace.

@@ -15,6 +15,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Properties.userDir
 import scala.language.unsafeNulls
 import scala.collection.mutable.Buffer
+import dotty.tools.dotc.util.DiffUtil
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class CoverageTests:
@@ -56,11 +57,8 @@ class CoverageTests:
         val expected = fixWindowsPaths(Files.readAllLines(expectFile).asScala)
         val obtained = fixWindowsPaths(Files.readAllLines(targetFile).asScala)
         if expected != obtained then
-          for ((exp, actual),i) <- expected.zip(obtained).filter(_ != _).zipWithIndex do
-            Console.err.println(s"wrong line ${i+1}:")
-            Console.err.println(s"  expected: $exp")
-            Console.err.println(s"  actual  : $actual")
-          fail(s"$targetFile differs from expected $expectFile")
+          val instructions = FileDiff.diffMessage(expectFile.toString, targetFile.toString)
+          fail(s"Coverage report differs from expected data.\n$instructions")
 
     })
 
@@ -68,10 +66,11 @@ class CoverageTests:
   def computeCoverageInTmp(inputFile: Path, sourceRoot: Path, run: Boolean)(using TestGroup): Path =
     val target = Files.createTempDirectory("coverage")
     val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", sourceRoot.toString)
-    val test = compileFile(inputFile.toString, options)
     if run then
+      val test = compileDir(inputFile.getParent.toString, options)
       test.checkRuns()
     else
+      val test = compileFile(inputFile.toString, options)
       test.checkCompile()
     target
 

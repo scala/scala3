@@ -33,7 +33,7 @@ class CrossVersionChecks extends MiniPhase:
     val xMigrationValue = ctx.settings.Xmigration.value
     if xMigrationValue != NoScalaVersion then
       checkMigration(sym, pos, xMigrationValue)
-
+  end checkUndesiredProperties
 
   /** If @deprecated is present, and the point of reference is not enclosed
    * in either a deprecated member or a scala bridge method, issue a warning.
@@ -175,6 +175,15 @@ class CrossVersionChecks extends MiniPhase:
     checkExperimentalAnnots(tree.symbol)
     tree
   }
+
+  override def transformOther(tree: Tree)(using Context): Tree = tree match
+    case tree: Import =>
+      tree.foreachSubTree {
+        case t: RefTree => checkUndesiredProperties(t.symbol, t.srcPos)
+        case _ =>
+      }
+      tree
+    case _ => tree
 
 end CrossVersionChecks
 

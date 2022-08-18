@@ -29,9 +29,7 @@ object SnippetRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
 
   object FencedCodeBlockHandler extends CustomNodeRenderer[FencedCodeBlock]:
     override def render(node: FencedCodeBlock, c: NodeRendererContext, html: HtmlWriter): Unit =
-      html.raw("""<div class="snippet">""")
-      c.delegateRender()
-      html.raw("""</div>""")
+      html.raw(SnippetRenderer.renderSnippet(node.getContentChars.toString, node.getInfo.toString.split(" ").headOption))
 
   object Render extends NodeRenderer:
     override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[_]] =

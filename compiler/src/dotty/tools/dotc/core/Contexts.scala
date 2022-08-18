@@ -14,7 +14,8 @@ import Uniques._
 import ast.Trees._
 import ast.untpd
 import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
-import typer.{Implicits, ImportInfo, Inliner, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import inlines.Inliner
 import Nullables._
 import Implicits.ContextualImplicits
 import config.Settings._
@@ -818,7 +819,7 @@ object Contexts {
 
   @sharable object NoContext extends Context((null: ContextBase | Null).uncheckedNN) {
     source = NoSource
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
   }
 
   /** A context base defines state and associated methods that exist once per

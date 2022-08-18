@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 // pattern matcher crashes here trying to synthesize an uneeded outer test.
 //     no-symbol does not have an owner
 // at scala.reflect.internal.SymbolTable.abort(SymbolTable.scala:49)

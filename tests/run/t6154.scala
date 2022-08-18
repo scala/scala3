@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Test {
   def foo(a: Int): Unit = {
     var bar: Int = 0

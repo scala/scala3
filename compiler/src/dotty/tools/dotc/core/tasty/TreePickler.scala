@@ -17,6 +17,7 @@ import StdNames.nme
 import transform.SymUtils._
 import config.Config
 import collection.mutable
+import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
 
 
@@ -42,6 +43,8 @@ class TreePickler(pickler: TastyPickler) {
    *  in doing so).
    */
   private val docStrings = util.EqHashMap[untpd.MemberDef, Comment]()
+
+  private var profile: Profile = NoProfile
 
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
@@ -324,6 +327,7 @@ class TreePickler(pickler: TastyPickler) {
     assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)
+    val addr = currentAddr
     withLength {
       pickleName(sym.name)
       pickleParams
@@ -334,6 +338,8 @@ class TreePickler(pickler: TastyPickler) {
       pickleTreeUnlessEmpty(rhs)
       pickleModifiers(sym, mdef)
     }
+    if sym.is(Method) && sym.owner.isClass then
+      profile.recordMethodSize(sym, currentAddr.index - addr.index, mdef.span)
     for
       docCtx <- ctx.docCtx
       comment <- docCtx.docstring(sym)
@@ -769,6 +775,7 @@ class TreePickler(pickler: TastyPickler) {
 // ---- main entry points ---------------------------------------
 
   def pickle(trees: List[Tree])(using Context): Unit = {
+    profile = Profile.current
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
     def missing = forwardSymRefs.keysIterator
       .map(sym => i"${sym.showLocated} (line ${sym.srcPos.line}) #${sym.id}")

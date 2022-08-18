@@ -9,8 +9,14 @@ on:
       - 'language-reference-stable'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-and-push:
+    permissions:
+      contents: write  # for Git to git push
+      pull-requests: write  # for peter-evans/create-pull-request to create a PR
     runs-on: ubuntu-latest
     steps:
       - name: Get current date
@@ -24,22 +30,12 @@ jobs:
           fetch-depth: 0
           ssh-key: ${{ secrets.DOCS_KEY }}
 
-      - name: Cache Coursier
-        uses: actions/cache@v1
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
         with:
-          path: ~/.cache/coursier
-          key: sbt-coursier-cache
-
-      - name: Cache SBT
-        uses: actions/cache@v1
-        with:
-          path: ~/.sbt
-          key: sbt-${{ hashFiles('**/build.sbt') }}
-
-      - name: Set up JDK 11
-        uses: actions/setup-java@v1
-        with:
-          java-version: 11
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
 
       - name: Generate reference documentation and test links
         run: |

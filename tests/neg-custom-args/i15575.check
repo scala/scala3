@@ -1,0 +1,40 @@
+-- [E057] Type Mismatch Error: tests/neg-custom-args/i15575.scala:3:27 -------------------------------------------------
+3 |  def bar[T]: Unit = foo[T & Any] // error
+  |                           ^
+  |                           Type argument T & Any does not conform to lower bound Any
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | I tried to show that
+  |   Any
+  | conforms to
+  |   T & Any
+  | but the comparison trace ended with `false`:
+  |
+  |   ==> Any  <:  T & Any
+  |     ==> Any  <:  T
+  |     <== Any  <:  T = false
+  |   <== Any  <:  T & Any = false
+  |
+  | The tests were made under the empty constraint
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E057] Type Mismatch Error: tests/neg-custom-args/i15575.scala:7:14 -------------------------------------------------
+7 |  val _ = foo[String]  // error
+  |              ^
+  |              Type argument String does not conform to lower bound CharSequence
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | I tried to show that
+  |   CharSequence
+  | conforms to
+  |   String
+  | but the comparison trace ended with `false`:
+  |
+  |   ==> CharSequence  <:  String
+  |     ==> CharSequence  <:  String
+  |     <== CharSequence  <:  String = false
+  |   <== CharSequence  <:  String = false
+  |
+  | The tests were made under the empty constraint
+   ---------------------------------------------------------------------------------------------------------------------

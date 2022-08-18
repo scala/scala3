@@ -5,7 +5,7 @@ import scala.language.unsafeNulls
 import java.io.File
 import java.nio.file._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object TestSources {
 

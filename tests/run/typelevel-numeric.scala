@@ -26,8 +26,8 @@ object Test extends App {
 
   val mlib = MathLib.apply[Double](scala.math.Numeric.DoubleIsFractional)
 
-  val xs = Array(1.0, 1.0)
-  val ys = Array(2.0, -3.0)
+  val xs = Array(1.1, 1.1)
+  val ys = Array(2.1, -3.1)
   val p = mlib.dotProduct(xs, ys)
   println(p)
 }

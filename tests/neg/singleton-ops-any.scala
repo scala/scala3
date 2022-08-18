@@ -37,4 +37,9 @@ object Test {
   val t51 : true = isConst2[1, 1]
   val t52 : false = isConst2[1, one.type]
   val t53 : true = isConst2[1, two.type]
+
+  val t54: 2 = 2
+  summon[IsConst[t54.type] =:= true]
+  def isConst(arg: Int)(using IsConst[arg.type] =:= true): Unit = ???
+  isConst(t54)
 }

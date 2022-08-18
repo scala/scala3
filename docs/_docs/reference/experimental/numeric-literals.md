@@ -73,7 +73,7 @@ trait FromDigits[T]:
   def fromDigits(digits: String): T
 ```
 
-Implementations of the `fromDigits` convert strings of digits to the values of the
+Implementations of `fromDigits` convert strings of digits to the values of the
 implementation type `T`.
 The `digits` string consists of digits between `0` and `9`, possibly preceded by a
 sign ("+" or "-"). Number separator characters `_` are filtered out before

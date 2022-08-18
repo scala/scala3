@@ -28,6 +28,7 @@ seqtype-cycle
 
 # type of super reference changes due to late addition of Mirror.Singleton
 i939.scala
+i13332super.scala
 
 # Match types
 i7872.scala

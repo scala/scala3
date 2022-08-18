@@ -1,9 +1,12 @@
 package scala.runtime
 
+import scala.annotation.*
+
 /**
  * Helper methods used in thread-safe lazy vals.
  */
 object LazyVals {
+  @nowarn
   private[this] val unsafe: sun.misc.Unsafe =
       classOf[sun.misc.Unsafe].getDeclaredFields.nn.find { field =>
         field.nn.getType == classOf[sun.misc.Unsafe] && {
@@ -100,6 +103,7 @@ object LazyVals {
   }
 
   def getOffset(clz: Class[_], name: String): Long = {
+    @nowarn
     val r = unsafe.objectFieldOffset(clz.getDeclaredField(name))
     if (debug)
       println(s"getOffset($clz, $name) = $r")
@@ -107,6 +111,7 @@ object LazyVals {
   }
 
   def getOffsetStatic(field: java.lang.reflect.Field) =
+    @nowarn
     val r = unsafe.objectFieldOffset(field)
     if (debug)
       println(s"getOffset(${field.getDeclaringClass}, ${field.getName}) = $r")

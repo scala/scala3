@@ -33,10 +33,10 @@ object Main:
     (compilerArgs, file, scriptArgs, saveJar, invokeFlag)
   end distinguishArgs
 
-  def main(args: Array[String]): Unit =
+  def process(args: Array[String]): Option[Throwable] =
     val (compilerArgs, scriptFile, scriptArgs, saveJar, invokeFlag) = distinguishArgs(args)
     val driver = ScriptingDriver(compilerArgs, scriptFile, scriptArgs)
-    try driver.compileAndRun { (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
+    driver.compileAndRun { (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
       // write expanded classpath to java.class.path property, so called script can see it
       sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
       if saveJar then
@@ -44,13 +44,12 @@ object Main:
         writeJarfile(outDir, scriptFile, scriptArgs, classpathEntries, mainClass)
       invokeFlag
     }
-    catch
-      case ScriptingException(msg) =>
-        println(s"Error: $msg")
-        sys.exit(1)
 
-      case e: java.lang.reflect.InvocationTargetException =>
-        throw e.getCause
+  def main(args: Array[String]): Unit =
+   process(args).map {
+      case ScriptingException(msg) => println(msg)
+      case ex => ex.printStackTrace
+   }.foreach(_ => System.exit(1))
 
   private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
       classpathEntries:Seq[Path], mainClassName: String): Unit =

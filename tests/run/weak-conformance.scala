@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 import collection.mutable.ArrayBuffer
 object Test extends App {
   inline val b = 33

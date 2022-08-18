@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class Foo {
   def foo() = {
     def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName

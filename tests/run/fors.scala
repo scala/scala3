@@ -74,7 +74,6 @@ object Test extends App {
 
     // arrays
     for (x <- ar) print(x + " "); println()
-
   }
 
   /////////////////// filtering with case ///////////////////
@@ -109,9 +108,38 @@ object Test extends App {
     for case (x, y) <- xs do print(s"${(y, x)} "); println()
   }
 
+  def testGivens(): Unit = {
+    println("\ntestGivens")
+
+    // bound given that is summoned in subsequent bind
+    for
+      a <- List(123)
+      given Int = a
+      b = summon[Int]
+    do
+      println(b)
+
+    // generated given that is summoned in subsequent bind
+    for
+      given Int <- List(456)
+      x = summon[Int]
+    do
+      println(x)
+
+    // pick the correct given
+    for
+      a <- List(789)
+      given Int = a
+      given Int <- List(0)
+      x = summon[Int]
+    do
+      println(x)
+  }
+
   ////////////////////////////////////////////////////
 
   testOld()
   testNew()
   testFiltering()
+  testGivens()
 }
