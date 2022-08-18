@@ -49,6 +49,7 @@ object Scaladoc:
     apiSubdirectory : Boolean = false,
     scastieConfiguration: String = "",
     defaultTemplate: Option[String] = None,
+    quickLinks: List[QuickLink] = List.empty
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -180,6 +181,15 @@ object Scaladoc:
           },right => Some(right))
         }
 
+      val quickLinksParsed =
+        quickLinks.get.flatMap { s =>
+          QuickLink.parse(s) match
+            case Left(err) =>
+              report.warning(err)
+              None
+            case Right(value) => Some(value)
+        }
+
       unsupportedSettings.filter(s => s.get != s.default).foreach { s =>
         report.warning(s"Setting ${s.name} is currently not supported.")
       }
@@ -220,7 +230,8 @@ object Scaladoc:
         generateInkuire.get,
         apiSubdirectory.get,
         scastieConfiguration.get,
-        defaultTemplate.nonDefault
+        defaultTemplate.nonDefault,
+        quickLinksParsed
       )
       (Some(docArgs), newContext)
     }

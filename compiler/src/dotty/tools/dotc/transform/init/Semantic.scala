@@ -8,6 +8,7 @@ import Symbols.*
 import Types.*
 import StdNames.*
 import NameKinds.OuterSelectName
+import NameKinds.SuperAccessorName
 
 import ast.tpd.*
 import config.Printers.init as printer
@@ -56,7 +57,8 @@ object Semantic:
       case ThisRef(klass) =>
         "ThisRef[" + klass.show + "]"
       case Warm(klass, outer, ctor, args) =>
-        "Warm[" + klass.show + "] { outer = " + outer.show + ", args = " + args.map(_.show).mkString("(", ", ", ")") + " }"
+        val argsText = if args.nonEmpty then ", args = " + args.map(_.show).mkString("(", ", ", ")") else ""
+        "Warm[" + klass.show + "] { outer = " + outer.show + argsText + " }"
       case Fun(expr, thisV, klass) =>
         "Fun { this = " + thisV.show + ", owner = " + klass.show + " }"
       case RefSet(values) =>
@@ -478,6 +480,9 @@ object Semantic:
       def add(node: Tree): Trace = trace :+ node
       def toVector: Vector[Tree] = trace
 
+    def show(using trace: Trace, ctx: Context): String = buildStacktrace(trace, "\n")
+
+    def position(using trace: Trace): Tree = trace.last
   type Trace = Trace.Trace
 
   import Trace.*
@@ -651,7 +656,7 @@ object Semantic:
       value.promote(msg)
       value
 
-    def select(field: Symbol, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show) {
+    def select(field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show) {
       if promoted.isCurrentObjectPromoted then Hot
       else value match {
         case Hot  =>
@@ -667,7 +672,7 @@ object Semantic:
           if target.is(Flags.Lazy) then
             val rhs = target.defTree.asInstanceOf[ValDef].rhs
             eval(rhs, ref, target.owner.asClass, cacheResult = true)
-          else
+          else if target.exists then
             val obj = ref.objekt
             if obj.hasField(target) then
               obj.field(target)
@@ -690,13 +695,21 @@ object Semantic:
               val error = AccessNonInit(target, trace.toVector)
               reporter.report(error)
               Hot
+          else
+            if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
+              report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
+              Hot
+            else
+              // This is possible due to incorrect type cast.
+              // See tests/init/pos/Type.scala
+              Hot
 
         case fun: Fun =>
-          report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show, fun.expr)
+          report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show + Trace.show, fun.expr)
           Hot
 
         case RefSet(refs) =>
-          refs.map(_.select(field)).join
+          refs.map(_.select(field, receiver)).join
       }
     }
 
@@ -776,7 +789,9 @@ object Semantic:
             if !needResolve then
               meth
             else if superType.exists then
-              resolveSuper(ref.klass, superType, meth)
+              meth
+            else if meth.name.is(SuperAccessorName) then
+              ResolveSuper.rebindSuper(ref.klass, meth)
             else
               resolve(ref.klass, meth)
 
@@ -808,13 +823,21 @@ object Semantic:
                 val error = CallUnknown(target, trace.toVector)
                 reporter.report(error)
               Hot
-          else
+          else if target.exists then
             // method call resolves to a field
             val obj = ref.objekt
             if obj.hasField(target) then
               obj.field(target)
             else
-              value.select(target, needResolve = false)
+              value.select(target, receiver, needResolve = false)
+          else
+            if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
+              report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
+              Hot
+            else
+              // This is possible due to incorrect type cast.
+              // See tests/init/pos/Type.scala
+              Hot
 
         case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
@@ -839,7 +862,7 @@ object Semantic:
 
       value match {
         case Hot | Cold | _: RefSet | _: Fun =>
-          report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, trace.toVector.last)
+          report.error("[Internal error] unexpected constructor call, meth = " + ctor + ", value = " + value + Trace.show, Trace.position)
           Hot
 
         case ref: Warm if ref.isPopulatingParams =>
@@ -946,7 +969,7 @@ object Semantic:
             warm
 
         case Fun(body, thisV, klass) =>
-          report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show, trace.toVector.last)
+          report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show + Trace.show, Trace.position)
           Hot
 
         case RefSet(refs) =>
@@ -966,7 +989,7 @@ object Semantic:
         case Hot => Hot
         case ref: Ref => ref.objekt.field(sym)
         case _ =>
-            report.error("[Internal error] unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
+            report.error("[Internal error] unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
             Hot
       else if sym.is(Flags.Param) then
         Hot
@@ -984,7 +1007,7 @@ object Semantic:
               case ref: Ref => eval(vdef.rhs, ref, enclosingClass)
 
               case _ =>
-                 report.error("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show, trace.toVector.last)
+                 report.error("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
                  Hot
             end match
 
@@ -1080,7 +1103,7 @@ object Semantic:
                 eval(body, thisV, klass)
               }
               given Trace = Trace.empty.add(body)
-              res.promote("The function return value is not fully initialized.")
+              res.promote("The function return value is not hot. Found = " + res.show + ".")
             }
             if errors.nonEmpty then
               reporter.report(UnsafePromotion(msg, trace.toVector, errors.head))
@@ -1106,33 +1129,63 @@ object Semantic:
      *  If the object contains nested classes as members, the checker simply
      *  reports a warning to avoid expensive checks.
      *
-     *  TODO: we need to revisit whether this is needed once we make the
-     *  system more flexible in other dimentions: e.g. leak to
-     *  methods or constructors, or use ownership for creating cold data structures.
      */
     def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
-      val classRef = warm.klass.appliedRef
-      val hasInnerClass = classRef.memberClasses.filter(_.symbol.hasSource).nonEmpty
-      if hasInnerClass then
-        return PromoteError(msg + "Promotion cancelled as the value contains inner classes. ", trace.toVector) :: Nil
+      val obj = warm.objekt
 
-      val errors = Reporter.stopEarly {
-        for klass <- warm.klass.baseClasses if klass.hasSource do
+      def doPromote(klass: ClassSymbol, subClass: ClassSymbol, subClassSegmentHot: Boolean)(using Reporter): Unit =
+        val outer = obj.outer(klass)
+        val isHotSegment = outer.isHot && {
+          val ctor = klass.primaryConstructor
+          val ctorDef = ctor.defTree.asInstanceOf[DefDef]
+          val params = ctorDef.termParamss.flatten.map(_.symbol)
+          // We have cached all parameters on the object
+          params.forall(param => obj.field(param).isHot)
+        }
+
+        // Check invariant: subClassSegmentHot ==> isHotSegment
+        //
+        // This invariant holds because of the Scala/Java/JVM restriction that we cannot use `this` in super constructor calls.
+        if subClassSegmentHot && !isHotSegment then
+          report.error("[Internal error] Expect current segment to hot in promotion, current klass = " + klass.show +
+              ", subclass = " + subClass.show + Trace.show, Trace.position)
+
+        // If the outer and parameters of a class are all hot, then accessing fields and methods of the current
+        // segment of the object should be OK. They may only create problems via virtual method calls on `this`, but
+        // those methods are checked as part of the check for the class where they are defined.
+        if !isHotSegment then
           for member <- klass.info.decls do
-            if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
+            if member.isClass then
+              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".", Vector.empty)
+              reporter.report(error)
+            else if !member.isType && !member.isConstructor  && !member.is(Flags.Deferred) then
+              given Trace = Trace.empty
               if member.is(Flags.Method, butNot = Flags.Accessor) then
-                withTrace(Trace.empty) {
-                  val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
-                  val res = warm.call(member, args, receiver = NoType, superType = NoType)
-                  res.promote("Cannot prove that the return value of " + member + " is fully initialized.")
+                val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
+                val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
+                withTrace(trace.add(member.defTree)) {
+                  res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ".")
                 }
               else
-                withTrace(Trace.empty) {
-                  val res = warm.select(member)
-                  res.promote("Cannot prove that the field " + member + " is fully initialized.")
+                val res = warm.select(member, receiver = warm.klass.typeRef)
+                withTrace(trace.add(member.defTree)) {
+                  res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ".")
                 }
           end for
-        end for
+
+        // Promote parents
+        //
+        // Note that a parameterized trait may only get parameters from the class that extends the trait.
+        // A trait may not supply constructor arguments to another trait.
+        if !klass.is(Flags.Trait) then
+          val superCls = klass.superClass
+          if superCls.hasSource then doPromote(superCls.asClass, klass, isHotSegment)
+          val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
+          for mixin <- mixins if mixin.hasSource do doPromote(mixin.asClass, klass, isHotSegment)
+      end doPromote
+
+      val errors = Reporter.stopEarly {
+        doPromote(warm.klass, subClass = warm.klass, subClassSegmentHot = false)
       }
 
       if errors.isEmpty then Nil
@@ -1208,29 +1261,24 @@ object Semantic:
   /** Add a checking task to the work list */
   def addTask(thisRef: ThisRef)(using WorkList) = workList.addTask(Task(thisRef))
 
-  /** Perform check on the work list until it becomes empty
+  /** Check the specified tasks
    *
-   *  Should only be called once from the checker.
-   */
-  def check()(using Cache, WorkList, Context) = workList.work()
-
-  /** Perform actions with initial checking state.
-   *
-   *      Semantic.withInitialState {
+   *      Semantic.checkTasks {
    *         Semantic.addTask(...)
-   *         ...
-   *         Semantic.check()
    *      }
    */
-  def withInitialState[T](work: (Cache, WorkList) ?=> T): T =
-    work(using new Cache, new WorkList)
+  def checkTasks(using Context)(taskBuilder: WorkList ?=> Unit): Unit =
+    val workList = new WorkList
+    val cache = new Cache
+    taskBuilder(using workList)
+    workList.work()(using cache, ctx)
 
 // ----- Semantic definition --------------------------------
 
   /** Utility definition used for better error-reporting of argument errors */
   case class ArgInfo(value: Value, trace: Trace):
     def promote: Contextual[Unit] = withTrace(trace) {
-      value.promote("Cannot prove the argument is fully initialized. Only fully initialized values are safe to leak.")
+      value.promote("Cannot prove the method argument is hot. Only hot values are safe to leak.\nFound = " + value.show + ".")
     }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
@@ -1343,7 +1391,7 @@ object Semantic:
               resolveThis(target, qual, current.asClass)
             }
           case _ =>
-            withTrace(trace2) { qual.select(expr.symbol) }
+            withTrace(trace2) { qual.select(expr.symbol, receiver = qualifier.tpe) }
 
       case _: This =>
         cases(expr.tpe, thisV, klass)
@@ -1367,12 +1415,12 @@ object Semantic:
           eval(qual, thisV, klass)
           val res = eval(rhs, thisV, klass)
           extendTrace(expr) {
-            res.ensureHot("The RHS of reassignment must be fully initialized. Found = " + res.show + ". ")
+            res.ensureHot("The RHS of reassignment must be hot. Found = " + res.show + ". ")
           }
         case id: Ident =>
           val res = eval(rhs, thisV, klass)
           extendTrace(expr) {
-            res.ensureHot("The RHS of reassignment must be fully initialized. Found = " + res.show + ". ")
+            res.ensureHot("The RHS of reassignment must be hot. Found = " + res.show + ". ")
           }
 
       case closureDef(ddef) =>
@@ -1395,14 +1443,14 @@ object Semantic:
       case Match(selector, cases) =>
         val res = eval(selector, thisV, klass)
         extendTrace(selector) {
-          res.ensureHot("The value to be matched needs to be fully initialized.")
+          res.ensureHot("The value to be matched needs to be hot. Found = " + res.show + ". ")
         }
         eval(cases.map(_.body), thisV, klass).join
 
       case Return(expr, from) =>
         val res = eval(expr, thisV, klass)
         extendTrace(expr) {
-          res.ensureHot("return expression must be fully initialized.")
+          res.ensureHot("return expression must be hot. Found = " + res.show + ". ")
         }
 
       case WhileDo(cond, body) =>
@@ -1452,7 +1500,7 @@ object Semantic:
         Hot
 
       case _ =>
-        report.error("[Internal error] unexpected tree", expr)
+        report.error("[Internal error] unexpected tree" + Trace.show, expr)
         Hot
 
   /** Handle semantics of leaf nodes */
@@ -1465,7 +1513,7 @@ object Semantic:
         thisV.accessLocal(tmref, klass)
 
       case tmref: TermRef =>
-        cases(tmref.prefix, thisV, klass).select(tmref.symbol)
+        cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
 
       case tp @ ThisType(tref) =>
         val cls = tref.classSymbol.asClass
@@ -1481,7 +1529,7 @@ object Semantic:
         Hot
 
       case _ =>
-        report.error("[Internal error] unexpected type " + tp, trace.toVector.last)
+        report.error("[Internal error] unexpected type " + tp + Trace.show, Trace.position)
         Hot
   }
 
@@ -1496,15 +1544,15 @@ object Semantic:
           val obj = ref.objekt
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !obj.hasOuter(klass) then
-            val error = PromoteError("[Internal error] outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj, trace.toVector)
-            report.error(error.show, trace.toVector.last)
+            val error = "[Internal error] outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj + Trace.show
+            report.error(error, Trace.position)
             Hot
           else
             resolveThis(target, obj.outer(klass), outerCls)
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass)).join
         case fun: Fun =>
-          report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, trace.toVector.last)
+          report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
           Cold
         case Cold => Cold
 
@@ -1717,16 +1765,3 @@ object Semantic:
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.appliedRef)
   }
-
-  def resolveSuper(cls: ClassSymbol, superType: Type, sym: Symbol)(using Context): Symbol =
-    import annotation.tailrec
-    @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
-      case bc :: bcs1 =>
-        val cand = sym.matchingDecl(bcs.head, cls.thisType)
-          .suchThat(alt => !alt.is(Flags.Deferred)).symbol
-        if (cand.exists) cand else loop(bcs.tail)
-      case _ =>
-        NoSymbol
-    }
-    loop(cls.info.baseClasses.dropWhile(sym.owner != _))
-

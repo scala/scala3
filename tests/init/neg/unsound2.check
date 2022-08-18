@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/unsound2.scala:5:26 ---------------------------------------------------------------------------
 5 |        def getN: Int = a.n // error
   |                        ^^^
-  |   Access field on a value with an unknown initialization status. Calling trace:
+  |   Access field value n on a cold object. Calling trace:
   |   -> case class A(x: Int) {	[ unsound2.scala:1 ]
   |      ^
   |   -> println(foo(x).getB)	[ unsound2.scala:8 ]

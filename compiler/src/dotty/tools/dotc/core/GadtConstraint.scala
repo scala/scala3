@@ -49,6 +49,8 @@ sealed abstract class GadtConstraint extends Showable {
   /** See [[ConstraintHandling.approximation]] */
   def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type
 
+  def symbols: List[Symbol]
+
   def fresh: GadtConstraint
 
   /** Restore the state from other [[GadtConstraint]], probably copied using [[fresh]] */
@@ -193,12 +195,7 @@ final class ProperGadtConstraint private(
       case null => null
       // TODO: Improve flow typing so that ascription becomes redundant
       case tv: TypeVar =>
-        def retrieveBounds: TypeBounds =
-          bounds(tv.origin) match {
-            case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
-              TypeAlias(reverseMapping(tpr).nn.typeRef)
-            case tb => tb
-          }
+        def retrieveBounds: TypeBounds = externalize(bounds(tv.origin)).bounds
         retrieveBounds
           //.showing(i"gadt bounds $sym: $result", gadts)
           //.ensuring(containsNoInternalTypes(_))
@@ -221,6 +218,8 @@ final class ProperGadtConstraint private(
     gadts.println(i"approximating $sym ~> $res")
     res
   }
+
+  override def symbols: List[Symbol] = mapping.keys
 
   override def fresh: GadtConstraint = new ProperGadtConstraint(
     myConstraint,
@@ -247,13 +246,7 @@ final class ProperGadtConstraint private(
   override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSameType(tp1, tp2)
 
   override def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
-    val externalizeMap = new TypeMap {
-      def apply(tp: Type): Type = tp match {
-        case tpr: TypeParamRef => externalize(tpr)
-        case tp => mapOver(tp)
-      }
-    }
-    externalizeMap(constraint.nonParamBounds(param)).bounds
+    externalize(constraint.nonParamBounds(param)).bounds
 
   override def fullLowerBound(param: TypeParamRef)(using Context): Type =
     constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
@@ -270,27 +263,28 @@ final class ProperGadtConstraint private(
 
   // ---- Private ----------------------------------------------------------
 
-  private def externalize(param: TypeParamRef)(using Context): Type =
-    reverseMapping(param) match {
+  private def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match
+    case param: TypeParamRef => reverseMapping(param) match
       case sym: Symbol => sym.typeRef
-      case null => param
-    }
+      case null        => param
+    case tp: TypeAlias       => tp.derivedAlias(externalize(tp.alias, theMap))
+    case tp                  => (if theMap == null then ExternalizeMap() else theMap).mapOver(tp)
+
+  private class ExternalizeMap(using Context) extends TypeMap:
+    def apply(tp: Type): Type = externalize(tp, this)(using mapCtx)
 
   private def tvarOrError(sym: Symbol)(using Context): TypeVar =
     mapping(sym).ensuring(_ != null, i"not a constrainable symbol: $sym").uncheckedNN
 
-  private def containsNoInternalTypes(
-    tp: Type,
-    acc: TypeAccumulator[Boolean] | Null = null
-  )(using Context): Boolean = tp match {
+  private def containsNoInternalTypes(tp: Type, theAcc: TypeAccumulator[Boolean] | Null = null)(using Context): Boolean = tp match {
     case tpr: TypeParamRef => !reverseMapping.contains(tpr)
     case tv: TypeVar => !reverseMapping.contains(tv.origin)
     case tp =>
-      (if (acc != null) acc else new ContainsNoInternalTypesAccumulator()).foldOver(true, tp)
+      (if (theAcc != null) theAcc else new ContainsNoInternalTypesAccumulator()).foldOver(true, tp)
   }
 
   private class ContainsNoInternalTypesAccumulator(using Context) extends TypeAccumulator[Boolean] {
-    override def apply(x: Boolean, tp: Type): Boolean = x && containsNoInternalTypes(tp)
+    override def apply(x: Boolean, tp: Type): Boolean = x && containsNoInternalTypes(tp, this)
   }
 
   // ---- Debug ------------------------------------------------------------
@@ -324,6 +318,8 @@ final class ProperGadtConstraint private(
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
+
+  override def symbols: List[Symbol] = Nil
 
   override def fresh = new ProperGadtConstraint
   override def restore(other: GadtConstraint): Unit =

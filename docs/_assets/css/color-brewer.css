@@ -6,14 +6,14 @@ Ported by Fabrício Tavares de Oliveira
 
 */
 
-.hljs {
+/* .hljs {
   background: transparent;
 }
 
 .hljs,
 .hljs-subst {
   color: #000;
-}
+} */
 
 /*.hljs-string,
 .hljs-meta,
@@ -24,7 +24,7 @@ Ported by Fabrício Tavares de Oliveira
   color: #756bb1;
 }*/
 
-.hljs-comment,
+/* .hljs-comment,
 .hljs-quote {
   color: #636363;
 }
@@ -40,7 +40,7 @@ Ported by Fabrício Tavares de Oliveira
 .hljs-deletion,
 .hljs-variable {
   color: #88f;
-}
+} */
 
 /*.hljs-keyword,
 .hljs-selector-tag,
@@ -57,10 +57,10 @@ Ported by Fabrício Tavares de Oliveira
   color: #3182bd;
 }*/
 
-.hljs-emphasis {
+/* .hljs-emphasis {
   font-style: italic;
 }
 
 .hljs-attribute {
   color: #e6550d;
-}
+} */

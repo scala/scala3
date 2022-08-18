@@ -20,7 +20,7 @@ import org.junit.{After, Before}
 import org.junit.Assert._
 
 class ReplTest(options: Array[String] = ReplTest.defaultOptions, out: ByteArrayOutputStream = new ByteArrayOutputStream)
-extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.name)) with MessageRendering {
+extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.name)) with MessageRendering:
   /** Get the stored output from `out`, resetting the buffer */
   def storedOutput(): String = {
     val output = stripColor(out.toString(StandardCharsets.UTF_8.name))
@@ -50,7 +50,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
     def evaluate(state: State, input: String) =
       try {
-        val nstate = run(input.drop(prompt.length))(state)
+        val nstate = run(input.drop(prompt.length))(using state)
         val out = input + EOL + storedOutput()
         (out, nstate)
       }
@@ -102,7 +102,6 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         fail(s"Error in script $name, expected output did not match actual")
     end if
   }
-}
 
 object ReplTest:
   val commonOptions = Array("-color:never", "-language:experimental.erasedDefinitions", "-pagewidth", "80")

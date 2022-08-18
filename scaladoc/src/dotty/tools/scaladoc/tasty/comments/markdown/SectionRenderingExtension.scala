@@ -9,7 +9,7 @@ import com.vladsch.flexmark.ext.wikilink.internal.WikiLinkLinkRefProcessor
 import com.vladsch.flexmark.util.ast._
 import com.vladsch.flexmark.util.options._
 import com.vladsch.flexmark.util.sequence.BasedSequence
-import com.vladsch.flexmark.util.html.AttributeImpl
+import com.vladsch.flexmark.util.html.{ AttributeImpl, Attributes }
 import com.vladsch.flexmark._
 import com.vladsch.flexmark.ast.FencedCodeBlock
 
@@ -24,6 +24,16 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
       val Section(header, body) = node
       val id = idGenerator.getId(header.getText)
       val anchor = AnchorLink(s"#$id")
+      val attributes = Attributes()
+      val headerClass: String = header.getLevel match
+        case 1 => "h500"
+        case 2 => "h300"
+        case 3 => "h200"
+        case 4 => "h100"
+        case _ => "h50"
+      attributes.addValue(AttributeImpl.of("class", headerClass))
+      val embeddedAttributes = EmbeddedAttributeProvider.EmbeddedNodeAttributes(header, attributes)
+      header.prependChild(embeddedAttributes)
       header.prependChild(anchor)
       html.attr(AttributeImpl.of("id", id)).withAttr.tag("section", false, false, () => {
         c.render(header)

@@ -121,6 +121,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => Nil
   }
 
+  /** Is tree explicitly parameterized with type arguments? */
+  def hasExplicitTypeArgs(tree: Tree): Boolean = tree match
+    case TypeApply(tycon, args) =>
+      args.exists(arg => !arg.span.isZeroExtent && !tycon.span.contains(arg.span))
+    case _ => false
+
   /** Is tree a path? */
   def isPath(tree: Tree): Boolean = unsplice(tree) match {
     case Ident(_) | This(_) | Super(_, _) => true

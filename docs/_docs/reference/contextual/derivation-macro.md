@@ -31,7 +31,7 @@ given derived[T: Type](using Quotes): Expr[Eq[T]]
 and for comparison reasons we give the same signature we had with `inline`:
 
 ```scala
-inline given derived[T]: (m: Mirror.Of[T]) => Eq[T] = ???
+inline given derived[T](using Mirror.Of[T]): Eq[T] = ???
 ```
 
 Note, that since a type is used in a subsequent stage it will need to be lifted

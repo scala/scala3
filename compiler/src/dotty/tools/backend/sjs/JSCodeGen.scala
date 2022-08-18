@@ -324,6 +324,8 @@ class JSCodeGen()(using genCtx: Context) {
 
     // Optimizer hints
 
+    val isDynamicImportThunk = sym.isSubClass(jsdefn.DynamicImportThunkClass)
+
     def isStdLibClassWithAdHocInlineAnnot(sym: Symbol): Boolean = {
       val fullName = sym.fullName.toString
       (fullName.startsWith("scala.Tuple") && !fullName.endsWith("$")) ||
@@ -331,6 +333,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     val shouldMarkInline = (
+        isDynamicImportThunk ||
         sym.hasAnnotation(jsdefn.InlineAnnot) ||
         (sym.isAnonymousFunction && !sym.isSubClass(defn.PartialFunctionClass)) ||
         isStdLibClassWithAdHocInlineAnnot(sym))
@@ -350,14 +353,17 @@ class JSCodeGen()(using genCtx: Context) {
       tree match {
         case EmptyTree => ()
 
-        case _: ValDef =>
-          () // fields are added via genClassFields()
+        case vd: ValDef =>
+          // fields are added via genClassFields(), but we need to generate the JS native members
+          val sym = vd.symbol
+          if (!sym.is(Module) && sym.hasAnnotation(jsdefn.JSNativeAnnot))
+            generatedNonFieldMembers += genJSNativeMemberDef(vd)
 
         case dd: DefDef =>
           val sym = dd.symbol
-
-          if (sym.hasAnnotation(jsdefn.JSNativeAnnot))
-            generatedNonFieldMembers += genJSNativeMemberDef(dd)
+          if sym.hasAnnotation(jsdefn.JSNativeAnnot) then
+            if !sym.is(Accessor) then
+              generatedNonFieldMembers += genJSNativeMemberDef(dd)
           else
             generatedNonFieldMembers ++= genMethod(dd)
 
@@ -404,8 +410,12 @@ class JSCodeGen()(using genCtx: Context) {
         Nil
     }
 
+    val optDynamicImportForwarder =
+      if (isDynamicImportThunk) List(genDynamicImportForwarder(sym))
+      else Nil
+
     val allMemberDefsExceptStaticForwarders =
-      generatedMembers ::: memberExports ::: optStaticInitializer
+      generatedMembers ::: memberExports ::: optStaticInitializer ::: optDynamicImportForwarder
 
     // Add static forwarders
     val allMemberDefs = if (!isCandidateForForwarders(sym)) {
@@ -1372,12 +1382,12 @@ class JSCodeGen()(using genCtx: Context) {
   // Generate a method -------------------------------------------------------
 
   /** Generates the JSNativeMemberDef. */
-  def genJSNativeMemberDef(tree: DefDef): js.JSNativeMemberDef = {
+  def genJSNativeMemberDef(tree: ValOrDefDef): js.JSNativeMemberDef = {
     implicit val pos = tree.span
 
     val sym = tree.symbol
     val flags = js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic)
-    val methodName = encodeMethodSym(sym)
+    val methodName = encodeJSNativeMemberSym(sym)
     val jsNativeLoadSpec = computeJSNativeLoadSpecOfValDef(sym)
     js.JSNativeMemberDef(flags, methodName, jsNativeLoadSpec)
   }
@@ -1775,6 +1785,8 @@ class JSCodeGen()(using genCtx: Context) {
           genLoadModule(sym)
         } else if (sym.is(JavaStatic)) {
           genLoadStaticField(sym)
+        } else if (sym.hasAnnotation(jsdefn.JSNativeAnnot)) {
+          genJSNativeMemberSelect(tree)
         } else {
           val (field, boxed) = genAssignableField(sym, qualifier)
           if (boxed) unbox(field, atPhase(elimErasedValueTypePhase)(sym.info))
@@ -1829,7 +1841,15 @@ class JSCodeGen()(using genCtx: Context) {
         }
 
       case Block(stats, expr) =>
-        js.Block(stats.map(genStat) :+ genStatOrExpr(expr, isStat))
+        // #15419 Collapse { <undefined-param>; BoxedUnit } to <undefined-param>
+        val genStatsAndExpr0 = stats.map(genStat(_)) :+ genStatOrExpr(expr, isStat)
+        val genStatsAndExpr = genStatsAndExpr0 match {
+          case (undefParam @ js.Transient(UndefinedParam)) :: js.Undefined() :: Nil =>
+            undefParam :: Nil
+          case _ =>
+            genStatsAndExpr0
+        }
+        js.Block(genStatsAndExpr)
 
       case Typed(expr, _) =>
         expr match {
@@ -2843,14 +2863,12 @@ class JSCodeGen()(using genCtx: Context) {
 
     if (mustUseAnyComparator) {
       val equalsMethod: Symbol = {
-        // scalastyle:off line.size.limit
         val ptfm = ctx.platform
         if (lsym.derivesFrom(defn.BoxedNumberClass)) {
           if (rsym.derivesFrom(defn.BoxedNumberClass)) externalEqualsNumNum
           else if (rsym.derivesFrom(defn.BoxedCharClass)) externalEqualsNumObject // will be externalEqualsNumChar in 2.12, SI-9030
           else externalEqualsNumObject
         } else externalEquals
-        // scalastyle:on line.size.limit
       }
       genApplyStatic(equalsMethod, List(lsrc, rsrc))
     } else {
@@ -3015,7 +3033,7 @@ class JSCodeGen()(using genCtx: Context) {
       else
         genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
     } else if (sym.hasAnnotation(jsdefn.JSNativeAnnot)) {
-      genJSNativeMemberCall(tree, isStat)
+      genJSNativeMemberCall(tree)
     } else {
       genApplyMethodMaybeStatically(genExpr(receiver), sym, genActualArgs(sym, args))
     }
@@ -3146,14 +3164,21 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   /** Gen JS code for a call to a native JS def or val. */
-  private def genJSNativeMemberCall(tree: Apply, isStat: Boolean): js.Tree = {
+  private def genJSNativeMemberSelect(tree: Tree): js.Tree =
+    genJSNativeMemberSelectOrCall(tree, Nil)
+
+  /** Gen JS code for a call to a native JS def or val. */
+  private def genJSNativeMemberCall(tree: Apply): js.Tree =
+    genJSNativeMemberSelectOrCall(tree, tree.args)
+
+  /** Gen JS code for a call to a native JS def or val. */
+  private def genJSNativeMemberSelectOrCall(tree: Tree, args: List[Tree]): js.Tree = {
     val sym = tree.symbol
-    val Apply(_, args) = tree
 
     implicit val pos = tree.span
 
     val jsNativeMemberValue =
-      js.SelectJSNativeMember(encodeClassName(sym.owner), encodeMethodSym(sym))
+      js.SelectJSNativeMember(encodeClassName(sym.owner), encodeJSNativeMemberSym(sym))
 
     val boxedResult =
       if (sym.isJSGetter) jsNativeMemberValue
@@ -3489,6 +3514,36 @@ class JSCodeGen()(using genCtx: Context) {
     }
   }
 
+  /** Generates a static method instantiating and calling this
+   *  DynamicImportThunk's `apply`:
+   *
+   *  {{{
+   *  static def dynamicImport$;<params>;Ljava.lang.Object(<params>): any = {
+   *    new <clsSym>.<init>;<params>:V(<params>).apply;Ljava.lang.Object()
+   *  }
+   *  }}}
+   */
+  private def genDynamicImportForwarder(clsSym: Symbol)(using Position): js.MethodDef = {
+    withNewLocalNameScope {
+      val ctor = clsSym.primaryConstructor
+      val paramSyms = ctor.paramSymss.flatten
+      val paramDefs = paramSyms.map(genParamDef(_))
+
+      val body = {
+        val inst = js.New(encodeClassName(clsSym), encodeMethodSym(ctor), paramDefs.map(_.ref))
+        genApplyMethod(inst, jsdefn.DynamicImportThunkClass_apply, Nil)
+      }
+
+      js.MethodDef(
+          js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
+          encodeDynamicImportForwarderIdent(paramSyms),
+          NoOriginalName,
+          paramDefs,
+          jstpe.AnyType,
+          Some(body))(OptimizerHints.empty, None)
+    }
+  }
+
   /** Boxes a value of the given type before `elimErasedValueType`.
    *
    *  This should be used when sending values to a JavaScript context, which
@@ -3783,6 +3838,19 @@ class JSCodeGen()(using genCtx: Context) {
         // BoxedUnit.UNIT, which is the boxed version of ()
         js.Undefined()
 
+      case JS_NEW_TARGET =>
+        // js.new.target
+        val valid = currentMethodSym.get.isClassConstructor && currentClassSym.isNonNativeJSClass
+        if (!valid) {
+          report.error(
+              "Illegal use of js.`new`.target.\n" +
+              "It can only be used in the constructor of a JS class, " +
+              "as a statement or in the rhs of a val or var.\n" +
+              "It cannot be used inside a lambda or by-name parameter, nor in any other location.",
+              tree.sourcePos)
+        }
+        js.JSNewTarget()
+
       case JS_IMPORT =>
         // js.import(arg)
         val arg = genArgs1
@@ -3791,6 +3859,46 @@ class JSCodeGen()(using genCtx: Context) {
       case JS_IMPORT_META =>
         // js.import.meta
         js.JSImportMeta()
+
+      case DYNAMIC_IMPORT =>
+        // runtime.dynamicImport
+        assert(args.size == 1,
+            s"Expected exactly 1 argument for JS primitive $code but got " +
+            s"${args.size} at $pos")
+
+        args.head match {
+          case Block(stats, expr @ Typed(Apply(fun @ Select(New(tpt), _), args), _)) =>
+            /* stats is always empty if no other compiler plugin is present.
+             * However, code instrumentation (notably scoverage) might add
+             * statements here. If this is the case, the thunk anonymous class
+             * has already been created when the other plugin runs (i.e. the
+             * plugin ran after jsinterop).
+             *
+             * Therefore, it is OK to leave the statements on our side of the
+             * dynamic loading boundary.
+             */
+
+            val clsSym = tpt.symbol
+            val ctor = fun.symbol
+
+            assert(clsSym.isSubClass(jsdefn.DynamicImportThunkClass),
+                s"expected subclass of DynamicImportThunk, got: $clsSym at: ${expr.sourcePos}")
+            assert(ctor.isPrimaryConstructor,
+                s"expected primary constructor, got: $ctor at: ${expr.sourcePos}")
+
+            js.Block(
+                stats.map(genStat(_)),
+                js.ApplyDynamicImport(
+                    js.ApplyFlags.empty,
+                    encodeClassName(clsSym),
+                    encodeDynamicImportForwarderIdent(ctor.paramSymss.flatten),
+                    genActualArgs(ctor, args))
+            )
+
+          case tree =>
+            throw new FatalError(
+                s"Unexpected argument tree in dynamicImport: $tree/${tree.getClass} at: $pos")
+        }
 
       case JS_NATIVE =>
         // js.native

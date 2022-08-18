@@ -74,6 +74,8 @@ trait ConstraintHandling {
   protected def necessaryConstraintsOnly(using Context): Boolean =
     ctx.mode.is(Mode.GadtConstraintInference) || myNecessaryConstraintsOnly
 
+  protected var trustBounds = true
+
   def checkReset() =
     assert(addConstraintInvocations == 0)
     assert(frozenConstraint == false)
@@ -260,12 +262,17 @@ trait ConstraintHandling {
         // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
         // that `param >: bound`.
         val narrowedBounds =
-          val saved = homogenizeArgs
+          val savedHomogenizeArgs = homogenizeArgs
+          val savedTrustBounds = trustBounds
           homogenizeArgs = Config.alignArgsInAnd
           try
+            trustBounds = false
             if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
             else oldBounds.derivedTypeBounds(lo | bound, hi)
-          finally homogenizeArgs = saved
+          finally
+            homogenizeArgs = savedHomogenizeArgs
+            trustBounds = savedTrustBounds
+        //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
         val c1 = constraint.updateEntry(param, narrowedBounds)
         (c1 eq constraint)
         || {

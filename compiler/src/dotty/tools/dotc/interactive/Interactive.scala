@@ -306,7 +306,7 @@ object Interactive {
             case _ =>
           }
           contextOfStat(stats, nested, ctx.owner, localCtx)
-        case tree @ CaseDef(pat, guard, rhs) if nested `eq` rhs =>
+        case tree @ CaseDef(pat, _, _) =>
           val localCtx = outer.fresh.setNewScope
           pat.foreachSubTree {
             case bind: Bind => localCtx.enter(bind.symbol)

@@ -8,6 +8,7 @@ import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
 import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.util.options.MutableDataSet
+import com.vladsch.flexmark.util.sequence.BasedSequence
 
 import scala.quoted._
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
@@ -25,7 +26,7 @@ case class Comment (
   authors:                 List[DocPart],
   see:                     List[DocPart],
   result:                  Option[DocPart],
-  throws:                  SortedMap[String, DocPart],
+  throws:                  List[DocPart],
   valueParams:             SortedMap[String, DocPart],
   typeParams:              SortedMap[String, DocPart],
   version:                 Option[DocPart],
@@ -145,6 +146,16 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
       }
     }
 
+  def linkedExceptions(exceptions: SortedMap[String, T]): List[DocPart] = {
+    exceptions.map { (name, body) =>
+      val link: DocLink = resolveLink(name)
+      val merged = mergeLinkWithBody(link, body)
+      markupToDokka(merged)
+    }.toList
+  }
+
+  def mergeLinkWithBody(link: DocLink, body: T): T
+
   final def parse(preparsed: PreparsedComment): Comment =
     val markup = stringToMarkup(preparsed.body)
     val body = markupToDokkaCommentBody(processSnippets(markup, preparsed))
@@ -154,7 +165,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
       authors                 = filterEmpty(preparsed.authors).map(markupToDokka),
       see                     = filterEmpty(preparsed.see).map(markupToDokka),
       result                  = single("@result", preparsed.result).map(markupToDokka),
-      throws                  = filterEmpty(preparsed.throws).view.mapValues(markupToDokka).to(SortedMap),
+      throws                  = linkedExceptions(filterEmpty(preparsed.throws)),
       valueParams             = filterEmpty(preparsed.valueParams).view.mapValues(markupToDokka).to(SortedMap),
       typeParams              = filterEmpty(preparsed.typeParams).view.mapValues(markupToDokka).to(SortedMap),
       version                 = single("@version", preparsed.version).map(markupToDokka),
@@ -201,6 +212,18 @@ class MarkdownCommentParser(repr: Repr)(using dctx: DocContext)
 
   def processSnippets(root: mdu.Node, preparsed: PreparsedComment): mdu.Node =
     FlexmarkSnippetProcessor.processSnippets(root, Some(preparsed), snippetCheckingFunc(owner))
+
+  def mergeLinkWithBody(link: DocLink, body: mdu.Node): mdu.Node = {
+    import dotty.tools.scaladoc.tasty.comments.markdown._
+    val str = link match
+      case DocLink.ToURL(url) => url
+      case DocLink.ToDRI(dri, name) => name
+      case DocLink.UnresolvedDRI(query, msg) => query
+    val sequence = BasedSequence.EmptyBasedSequence().append(str)
+    val node = new DocLinkNode(link, "", sequence)
+    body.prependChild(node)
+    body
+  }
 }
 
 class WikiCommentParser(repr: Repr)(using DocContext)
@@ -259,3 +282,13 @@ class WikiCommentParser(repr: Repr)(using DocContext)
   def processSnippets(root: wiki.Body, preparsed: PreparsedComment): wiki.Body =
     // Currently not supported
     root
+
+  def mergeLinkWithBody(link: DocLink, body: wiki.Body): wiki.Body =
+    val linkNode = wiki.Link(link, None)
+    val newBody = body match {
+      case wiki.Body(List(wiki.Paragraph(wiki.Chain(content)))) =>
+        val descr = wiki.Text(" ") +: content
+        wiki.Body(List(wiki.Paragraph(wiki.Chain(linkNode +: descr))))
+      case _ => body
+    }
+    newBody

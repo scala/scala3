@@ -721,12 +721,6 @@ object Checking {
           else "Cannot override non-inline parameter with an inline parameter",
           p1.srcPos)
 
-  def checkConversionsSpecific(to: Type, pos: SrcPos)(using Context): Unit =
-    if to.isRef(defn.AnyValClass, skipRefined = false)
-       || to.isRef(defn.ObjectClass, skipRefined = false)
-    then
-      report.error(em"the result of an implicit conversion must be more specific than $to", pos)
-
   def checkValue(tree: Tree)(using Context): Unit =
     val sym = tree.tpe.termSymbol
     if sym.isNoValue && !ctx.isJava then
@@ -830,10 +824,13 @@ trait Checking {
         case RefutableExtractor =>
           val extractor =
             val UnApply(fn, _, _) = pat: @unchecked
-            fn match
+            tpd.funPart(fn) match
               case Select(id, _) => id
-              case TypeApply(Select(id, _), _) => id
-          em"pattern binding uses refutable extractor `$extractor`"
+              case _ => EmptyTree
+          if extractor.isEmpty then
+            em"pattern binding uses refutable extractor"
+          else
+            em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
         if isPatDef then "adding `: @unchecked` after the expression"
@@ -1461,8 +1458,9 @@ trait Checking {
         report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
       seen += sel.name
 
-    for sel <- selectors do
-      if !sel.isWildcard then checkIdent(sel)
+    if !ctx.compilationUnit.isJava then
+      for sel <- selectors do
+        if !sel.isWildcard then checkIdent(sel)
   end checkImportSelectors
 }
 

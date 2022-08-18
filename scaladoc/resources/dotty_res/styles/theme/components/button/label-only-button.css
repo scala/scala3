@@ -1,0 +1,33 @@
+.label-only-button {
+  background-color: var(--action-primary-background-default-ghost);
+  color: var(--action-primary-content-default);
+  border: 1px solid var(--border-default);
+  padding: calc(1.25 * var(--base-spacing)) calc(1.5 * var(--base-spacing));
+  border-radius: 4px;
+}
+
+.label-only-button:hover {
+  background-color: var(--action-primary-background-hover);
+  color: var(--action-primary-content-hover);
+}
+
+.label-only-button:active {
+  background-color: var(--action-primary-background-hover);
+  color: var(--action-primary-content-hover);
+}
+
+.label-only-button.selected {
+  background-color: var(--action-primary-background-hover);
+  color: var(--action-primary-content-selected);
+}
+
+.label-only-button:focus-visible {
+  border: none;
+  outline: none;
+  box-shadow: 0px 0px 0px 2px var(--focus-default);
+}
+
+.label-only-button:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}

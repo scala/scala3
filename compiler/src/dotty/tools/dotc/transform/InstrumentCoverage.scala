@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package transform
 
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 
 import ast.tpd.*
 import collection.mutable
@@ -10,15 +9,14 @@ import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
 import core.Symbols.{defn, Symbol}
-import core.Decorators.{toTermName, i}
 import core.Constants.Constant
 import core.NameOps.isContextFunction
 import core.Types.*
-import typer.LiftCoverage
-import util.{SourcePosition, Property}
-import util.Spans.Span
 import coverage.*
-import localopt.StringInterpolatorOpt.isCompilerIntrinsic
+import typer.LiftCoverage
+import util.SourcePosition
+import util.Spans.Span
+import localopt.StringInterpolatorOpt
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -44,7 +42,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     val outputPath = ctx.settings.coverageOutputDir.value
 
     // Ensure the dir exists
-    val dataDir = new File(outputPath)
+    val dataDir = File(outputPath)
     val newlyCreated = dataDir.mkdirs()
 
     if !newlyCreated then
@@ -66,7 +64,16 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         tree match
           // simple cases
           case tree: (Import | Export | Literal | This | Super | New) => tree
-          case tree if tree.isEmpty || tree.isType => tree // empty Thicket, Ident, TypTree, ...
+          case tree if tree.isEmpty || tree.isType => tree // empty Thicket, Ident (referring to a type), TypeTree, ...
+
+          // identifier
+          case tree: Ident =>
+            val sym = tree.symbol
+            if canInstrumentParameterless(sym) then
+              // call to a local parameterless method f
+              instrument(tree)
+            else
+              tree
 
           // branches
           case tree: If =>
@@ -82,20 +89,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
               finalizer = instrument(transform(tree.finalizer), branch = true)
             )
 
-          // a.f(args)
-          case tree @ Apply(fun: Select, args) =>
-            // don't transform the first Select, but do transform `a.b` in `a.b.f(args)`
-            val transformedFun = cpy.Select(fun)(transform(fun.qualifier), fun.name)
-            if canInstrumentApply(tree) then
-              if needsLift(tree) then
-                val transformed = cpy.Apply(tree)(transformedFun, args) // args will be transformed in instrumentLifted
-                instrumentLifted(transformed)
-              else
-                val transformed = transformApply(tree, transformedFun)
-                instrument(transformed)
-            else
-              transformApply(tree, transformedFun)
-
           // f(args)
           case tree: Apply =>
             if canInstrumentApply(tree) then
@@ -106,24 +99,36 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             else
               transformApply(tree)
 
-          // (f(x))[args]
-          case TypeApply(fun: Apply, args) =>
-            cpy.TypeApply(tree)(transform(fun), args)
+          // (fun)[args]
+          case TypeApply(fun, args) =>
+            val tfun = transform(fun)
+            tfun match
+              case InstrumentCoverage.InstrumentedBlock(invokeCall, expr) =>
+                // expr[T] shouldn't be transformed to
+                // {invoked(...), expr}[T]
+                //
+                // but to
+                // {invoked(...), expr[T]}
+                //
+                // This is especially important for trees like (expr[T])(args),
+                // for which the wrong transformation crashes the compiler.
+                // See tests/coverage/pos/PolymorphicExtensions.scala
+                Block(
+                  invokeCall :: Nil,
+                  cpy.TypeApply(tree)(expr, args)
+                )
+              case _ =>
+                cpy.TypeApply(tree)(tfun, args)
 
           // a.b
           case Select(qual, name) =>
-            if qual.symbol.exists && qual.symbol.is(JavaDefined) then
-              //Java class can't be used as a value, we can't instrument the
-              //qualifier ({<Probe>;System}.xyz() is not possible !) instrument it
-              //as it is
-              instrument(tree)
+            val transformed = cpy.Select(tree)(transform(qual), name)
+            val sym = tree.symbol
+            if canInstrumentParameterless(sym) then
+              // call to a parameterless method
+              instrument(transformed)
             else
-              val transformed = cpy.Select(tree)(transform(qual), name)
-              if transformed.qualifier.isDef then
-                // instrument calls to methods without parameter list
-                instrument(transformed)
-              else
-                transformed
+              transformed
 
           case tree: CaseDef => instrumentCaseDef(tree)
           case tree: ValDef =>
@@ -142,7 +147,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
               val rhs = transform(tree.rhs)
               val finalRhs =
                 if canInstrumentDefDef(tree) then
-                  // Ensure that the rhs is always instrumented, if possible
+                  // Ensure that the rhs is always instrumented, if possible.
+                  // This is useful because methods can be stored and called later, or called by reflection,
+                  // and if the rhs is too simple to be instrumented (like `def f = this`), the method won't show up as covered.
                   instrumentBody(tree, rhs)
                 else
                   rhs
@@ -162,7 +169,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         }
 
     /** Lifts and instruments an application.
-      * Note that if only one arg needs to be lifted, we just lift everything.
+      * Note that if only one arg needs to be lifted, we just lift everything (see LiftCoverage).
       */
     private def instrumentLifted(tree: Apply)(using Context) =
       // lifting
@@ -178,10 +185,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       )
 
     private inline def transformApply(tree: Apply)(using Context): Apply =
-      transformApply(tree, transform(tree.fun))
-
-    private inline def transformApply(tree: Apply, transformedFun: Tree)(using Context): Apply =
-      cpy.Apply(tree)(transformedFun, transform(tree.args))
+      cpy.Apply(tree)(transform(tree.fun), transform(tree.args))
 
     private inline def instrumentCases(cases: List[CaseDef])(using Context): List[CaseDef] =
       cases.map(instrumentCaseDef)
@@ -201,7 +205,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def recordStatement(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Int =
       val id = statementId
       statementId += 1
-      val statement = new Statement(
+      val statement = Statement(
         source = ctx.source.file.name,
         location = Location(tree),
         id = id,
@@ -255,12 +259,12 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           val statementId = recordStatement(parent, pos, false)
           insertInvokeCall(body, pos, statementId)
 
-    /** Returns the tree, prepended by a call to Invoker.invoker */
+    /** Returns the tree, prepended by a call to Invoker.invoked */
     private def insertInvokeCall(tree: Tree, pos: SourcePosition, statementId: Int)(using Context): Tree =
       val callSpan = syntheticSpan(pos)
       Block(invokeCall(statementId, callSpan) :: Nil, tree).withSpan(callSpan.union(tree.span))
 
-    /** Generates Invoked.invoked(id, DIR) */
+    /** Generates Invoker.invoked(id, DIR) */
     private def invokeCall(id: Int, span: Span)(using Context): Tree =
       val outputPath = ctx.settings.coverageOutputDir.value
       ref(defn.InvokedMethodRef).withSpan(span)
@@ -292,7 +296,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
          * they shouldn't be lifted.
          */
         val sym = fun.symbol
-        sym.exists && (isShortCircuitedOp(sym) || isCompilerIntrinsic(sym))
+        sym.exists && (isShortCircuitedOp(sym) || StringInterpolatorOpt.isCompilerIntrinsic(sym))
       end
 
       val fun = tree.fun
@@ -312,7 +316,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     /** Check if an Apply can be instrumented. Prevents this phase from generating incorrect code. */
     private def canInstrumentApply(tree: Apply)(using Context): Boolean =
-      !tree.symbol.isOneOf(Synthetic | Artifact) && // no need to instrument synthetic apply
+      val sym = tree.symbol
+      !sym.isOneOf(Synthetic | Artifact) && // no need to instrument synthetic apply
+      !isCompilerIntrinsicMethod(sym) &&
       (tree.typeOpt match
         case AppliedType(tycon: NamedType, _) =>
           /* If the last expression in a block is a context function, we'll try to
@@ -339,6 +345,40 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           true
       )
 
+    /** Is this the symbol of a parameterless method that we can instrument?
+      * Note: it is crucial that `asInstanceOf` and `isInstanceOf`, among others,
+      * do NOT get instrumented, because that would generate invalid code and crash
+      * in post-erasure checking.
+      */
+    private def canInstrumentParameterless(sym: Symbol)(using Context): Boolean =
+      sym.is(Method, butNot = Synthetic | Artifact) &&
+      sym.info.isParameterless &&
+      !isCompilerIntrinsicMethod(sym)
+
+    /** Does sym refer to a "compiler intrinsic" method, which only exist during compilation,
+      * like Any.isInstanceOf?
+      * If this returns true, the call souldn't be instrumented.
+      */
+    private def isCompilerIntrinsicMethod(sym: Symbol)(using Context): Boolean =
+      val owner = sym.maybeOwner
+      owner.exists && (
+        owner.eq(defn.AnyClass) ||
+        owner.isPrimitiveValueClass ||
+        owner.maybeOwner == defn.CompiletimePackageClass
+      )
+
 object InstrumentCoverage:
   val name: String = "instrumentCoverage"
   val description: String = "instrument code for coverage checking"
+
+  /** Extractor object for trees produced by `insertInvokeCall`. */
+  object InstrumentedBlock:
+    private def isInvokedCall(app: Apply)(using Context): Boolean =
+      app.span.isSynthetic && app.symbol == defn.InvokedMethodRef.symbol
+
+    def unapply(t: Tree)(using Context): Option[(Apply, Tree)] =
+      t match
+        case Block((app: Apply) :: Nil, expr) if isInvokedCall(app) =>
+          Some((app, expr))
+        case _ =>
+          None

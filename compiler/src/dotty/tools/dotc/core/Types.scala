@@ -299,13 +299,13 @@ object Types {
      *  ThisType of `symd`'s owner, or a reference to `symd`'s owner.'
      */
     def isArgPrefixOf(symd: SymDenotation)(using Context): Boolean =
-      symd.exists && !symd.owner.is(Package) && // Early exit if possible because the next check would force SymbolLoaders
-      symd.isAllOf(ClassTypeParam) && {
-        this match {
+      symd.exists
+      && !symd.owner.is(Package) // Early exit if possible because the next check would force SymbolLoaders
+      && symd.isAllOf(ClassTypeParam)
+      && { this match
           case tp: ThisType => tp.cls ne symd.owner
           case tp: TypeRef => tp.symbol ne symd.owner
           case _ => true
-        }
       }
 
     /** Is this type a (possibly aliased) singleton type? */
@@ -2337,7 +2337,8 @@ object Types {
             i"""bad parameter reference $this at ${ctx.phase}
                |the parameter is ${param.showLocated} but the prefix $prefix
                |does not define any corresponding arguments.
-               |idx = $idx, args = $args""")
+               |idx = $idx, args = $args%, %,
+               |constraint = ${ctx.typerState.constraint}""")
         NoDenotation
       }
     }
@@ -2459,10 +2460,12 @@ object Types {
       ctx.base.underlyingRecursions -= 1
 
     /** The argument corresponding to class type parameter `tparam` as seen from
-     *  prefix `pre`. Can produce a TypeBounds type in case prefix is an & or | type
-     *  and parameter is non-variant.
+     *  prefix `pre`. Can produce a TypeBounds type if `widenAbstract` is true,
+     *  or prefix is an & or | type and parameter is non-variant.
+     *  Otherwise, a typebounds argument is dropped and the original type parameter
+     *  reference is returned.
      */
-    def argForParam(pre: Type)(using Context): Type = {
+    def argForParam(pre: Type, widenAbstract: Boolean = false)(using Context): Type = {
       val tparam = symbol
       val cls = tparam.owner
       val base = pre.baseType(cls)
@@ -2474,7 +2477,7 @@ object Types {
           while (tparams.nonEmpty && args.nonEmpty) {
             if (tparams.head.eq(tparam))
               return args.head match {
-                case _: TypeBounds => TypeRef(pre, tparam)
+                case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
                 case arg => arg
               }
             tparams = tparams.tail
@@ -4702,6 +4705,13 @@ object Types {
       myReduced.nn
     }
 
+    /** True if the reduction uses GADT constraints. */
+    def reducesUsingGadt(using Context): Boolean =
+      (reductionContext ne null) && reductionContext.keysIterator.exists {
+        case tp: TypeRef => reductionContext(tp).exists
+        case _           => false
+      }
+
     override def computeHash(bs: Binders): Int = doHash(bs, scrutinee, bound :: cases)
 
     override def eql(that: Type): Boolean = that match {
@@ -4716,6 +4726,21 @@ object Types {
   object MatchType {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(using Context): MatchType =
       unique(new CachedMatchType(bound, scrutinee, cases))
+
+    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp match
+      case MatchType.InDisguise(mt) => mt.reducesUsingGadt
+      case mt: MatchType            => mt.reducesUsingGadt
+      case _                        => false
+
+    /** Extractor for match types hidden behind an AppliedType/MatchAlias. */
+    object InDisguise:
+      def unapply(tp: AppliedType)(using Context): Option[MatchType] = tp match
+        case AppliedType(tycon: TypeRef, args) => tycon.info match
+          case MatchAlias(alias) => alias.applyIfParameterized(args) match
+            case mt: MatchType => Some(mt)
+            case _ => None
+          case _ => None
+        case _ => None
   }
 
   // ------ ClassInfo, Type Bounds --------------------------------------------------
@@ -5581,10 +5606,10 @@ object Types {
             // if H#T = U, then for any x in L..H, x.T =:= U,
             // hence we can replace with U under all variances
             reapply(alias.rewrapAnnots(tp1))
-          case tp: TypeBounds =>
+          case bounds: TypeBounds =>
             // If H#T = ? >: S <: U, then for any x in L..H, S <: x.T <: U,
             // hence we can replace with S..U under all variances
-            expandBounds(tp)
+            expandBounds(bounds)
           case info: SingletonType =>
             // if H#x: y.type, then for any x in L..H, x.type =:= y.type,
             // hence we can replace with y.type under all variances

@@ -178,6 +178,23 @@ test$package$
 Object
 <empty>.test$package$
 Test
+303
+308
+17
+foo
+Select
+false
+0
+false
+b.foo
+
+10
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
 295
 309
 17
@@ -188,7 +205,7 @@ false
 false
 println(b.foo)
 
-10
+11
 inline-def/test.scala
 <empty>
 test$package$

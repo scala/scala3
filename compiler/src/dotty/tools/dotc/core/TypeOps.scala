@@ -432,8 +432,7 @@ object TypeOps:
     override def apply(tp: Type): Type =
       try
         tp match
-          case tp: TermRef
-          if toAvoid(tp) =>
+          case tp: TermRef if toAvoid(tp) =>
             tp.info.widenExpr.dealias match {
               case info: SingletonType => apply(info)
               case info => range(defn.NothingType, apply(info))
@@ -512,7 +511,7 @@ object TypeOps:
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) =
         val sym = tp.symbol
-        !sym.isStatic && forbidden.contains(sym)
+        forbidden.contains(sym)
 
       override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
@@ -713,7 +712,7 @@ object TypeOps:
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
+    inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds.addMode(Mode.GadtConstraintInference)) {
       instantiateToSubType(childTp, parent).dealias
     }
   }
@@ -830,6 +829,13 @@ object TypeOps:
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
 
+    val getAbstractSymbols = new TypeAccumulator[List[Symbol]]:
+      def apply(xs: List[Symbol], tp: Type) = tp.dealias match
+        case tp: TypeRef if !tp.symbol.isClass => foldOver(tp.symbol :: xs, tp)
+        case tp                                => foldOver(xs, tp)
+    val syms2 = getAbstractSymbols(Nil, tp2).reverse
+    if syms2.nonEmpty then ctx.gadt.addToConstraint(syms2)
+
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
     // variance. As this logic is only needed in exhaustivity check,
@@ -861,5 +867,74 @@ object TypeOps:
   /** Apply [[Type.stripTypeVar]] recursively. */
   def stripTypeVars(tp: Type)(using Context): Type =
     new StripTypeVarsMap().apply(tp)
+
+  /** computes a prefix for `child`, derived from its common prefix with `pre`
+   *  - `pre` is assumed to be the prefix of `parent` at a given callsite.
+   *  - `child` is assumed to be the sealed child of `parent`, and reachable according to `whyNotGenericSum`.
+   */
+  def childPrefix(pre: Type, parent: Symbol, child: Symbol)(using Context): Type =
+    // Example, given this class hierarchy, we can see how this should work
+    // when summoning a mirror for `wrapper.Color`:
+    //
+    // package example
+    // object Outer3:
+    //   class Wrapper:
+    //     sealed trait Color
+    //   val wrapper = new Wrapper
+    //   object Inner:
+    //     case object Red extends wrapper.Color
+    //     case object Green extends wrapper.Color
+    //     case object Blue extends wrapper.Color
+    //
+    //   summon[Mirror.SumOf[wrapper.Color]]
+    //                       ^^^^^^^^^^^^^
+    //       > pre = example.Outer3.wrapper.type
+    //       > parent = sealed trait example.Outer3.Wrapper.Color
+    //       > child = module val example.Outer3.Innner.Red
+    //       > parentOwners = [example, Outer3, Wrapper] // computed from definition
+    //       > childOwners = [example, Outer3, Inner] // computed from definition
+    //       > parentRest = [Wrapper] // strip common owners from `childOwners`
+    //       > childRest = [Inner] // strip common owners from `parentOwners`
+    //       > commonPrefix = example.Outer3.type // i.e. parentRest has only 1 element, use 1st subprefix of `pre`.
+    //       > childPrefix = example.Outer3.Inner.type // select all symbols in `childRest` from `commonPrefix`
+
+    /** unwind the prefix into a sequence of sub-prefixes, selecting the one at `limit`
+     *  @return `NoType` if there is an unrecognised prefix type.
+     */
+    def subPrefixAt(pre: Type, limit: Int): Type =
+      def go(pre: Type, limit: Int): Type =
+        if limit == 0 then pre // EXIT: No More prefix
+        else pre match
+          case pre: ThisType          => go(pre.tref.prefix, limit - 1)
+          case pre: TermRef           => go(pre.prefix, limit - 1)
+          case _:SuperType | NoPrefix => pre.ensuring(limit == 1) // EXIT: can't rewind further than this
+          case _                      => NoType // EXIT: unrecognized prefix
+      go(pre, limit)
+    end subPrefixAt
+
+    /** Successively select each symbol in the `suffix` from `pre`, such that they are reachable. */
+    def selectAll(pre: Type, suffix: Seq[Symbol]): Type =
+      suffix.foldLeft(pre)((pre, sym) =>
+        pre.select(
+          if sym.isType && sym.is(Module) then sym.sourceModule
+          else sym
+        )
+      )
+
+    def stripCommonPrefix(xs: List[Symbol], ys: List[Symbol]): (List[Symbol], List[Symbol]) = (xs, ys) match
+      case (x :: xs1, y :: ys1) if x eq y => stripCommonPrefix(xs1, ys1)
+      case _ => (xs, ys)
+
+    val (parentRest, childRest) = stripCommonPrefix(
+      parent.owner.ownersIterator.toList.reverse,
+      child.owner.ownersIterator.toList.reverse
+    )
+
+    val commonPrefix = subPrefixAt(pre, parentRest.size) // unwind parent owners up to common prefix
+
+    if commonPrefix.exists then selectAll(commonPrefix, childRest)
+    else NoType
+
+  end childPrefix
 
 end TypeOps

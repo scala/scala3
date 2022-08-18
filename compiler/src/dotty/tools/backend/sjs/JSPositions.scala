@@ -62,7 +62,7 @@ class JSPositions()(using Context) {
   implicit def implicitSourcePos2irPos(implicit sourcePos: SourcePosition): ir.Position =
     sourceAndSpan2irPos(sourcePos.source, sourcePos.span)
 
-  private object span2irPosCache { // scalastyle:ignore
+  private object span2irPosCache {
     import dotty.tools.dotc.util._
 
     private var lastDotcSource: SourceFile = null

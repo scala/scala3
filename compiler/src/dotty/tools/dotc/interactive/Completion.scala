@@ -60,22 +60,18 @@ object Completion {
    */
   def completionMode(path: List[Tree], pos: SourcePosition): Mode =
     path match {
-      case Ident(_) :: Import(_, _) :: _ =>
-        Mode.Import
+      case Ident(_) :: Import(_, _) :: _ => Mode.ImportOrExport
       case (ref: RefTree) :: _ =>
         if (ref.name.isTermName) Mode.Term
         else if (ref.name.isTypeName) Mode.Type
         else Mode.None
 
       case (sel: untpd.ImportSelector) :: _ =>
-        if sel.imported.span.contains(pos.span) then Mode.Import
+        if sel.imported.span.contains(pos.span) then Mode.ImportOrExport
         else Mode.None // Can't help completing the renaming
 
-      case Import(_, _) :: _ =>
-        Mode.Import
-
-      case _ =>
-        Mode.None
+      case (_: ImportOrExport) :: _ => Mode.ImportOrExport
+      case _ => Mode.None
     }
 
   /** When dealing with <errors> in varios palces we check to see if they are
@@ -103,8 +99,8 @@ object Completion {
       case (sel: untpd.ImportSelector) :: _ =>
         completionPrefix(sel.imported :: Nil, pos)
 
-      case Import(expr, selectors) :: _ =>
-        selectors.find(_.span.contains(pos.span)).map { selector =>
+      case (tree: untpd.ImportOrExport) :: _ =>
+        tree.selectors.find(_.span.contains(pos.span)).map { selector =>
           completionPrefix(selector :: Nil, pos)
         }.getOrElse("")
 
@@ -146,7 +142,7 @@ object Completion {
         case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic  => completer.scopeCompletions
         case Select(qual, _) :: _           if qual.tpe.hasSimpleKind => completer.selectionCompletions(qual)
         case Select(qual, _) :: _                                     => Map.empty
-        case Import(expr, _) :: _                                     => completer.directMemberCompletions(expr)
+        case (tree: ImportOrExport) :: _                              => completer.directMemberCompletions(tree.expr)
         case (_: untpd.ImportSelector) :: Import(expr, _) :: _        => completer.directMemberCompletions(expr)
         case _                                                        => completer.scopeCompletions
       }
@@ -236,10 +232,8 @@ object Completion {
       val mappings = collection.mutable.Map.empty[Name, List[ScopedDenotations]].withDefaultValue(List.empty)
       def addMapping(name: Name, denots: ScopedDenotations) =
         mappings(name) = mappings(name) :+ denots
-      var ctx = context
 
-      while ctx ne NoContext do
-        given Context = ctx
+      ctx.outersIterator.foreach { case ctx @ given Context =>
         if ctx.isImportContext then
           importedCompletions.foreach { (name, denots) =>
             addMapping(name, ScopedDenotations(denots, ctx))
@@ -255,9 +249,7 @@ object Completion {
             .groupByName.foreach { (name, denots) =>
               addMapping(name, ScopedDenotations(denots, ctx))
             }
-
-        ctx = ctx.outer
-      end while
+      }
 
       var resultMappings = Map.empty[Name, Seq[SingleDenotation]]
 
@@ -566,7 +558,7 @@ object Completion {
     val Type: Mode = new Mode(2)
 
     /** Both term and type symbols are allowed */
-    val Import: Mode = new Mode(4) | Term | Type
+    val ImportOrExport: Mode = new Mode(4) | Term | Type
   }
 }
 

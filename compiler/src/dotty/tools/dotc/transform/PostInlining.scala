@@ -26,9 +26,7 @@ class PostInlining extends MacroTransform, IdentityDenotTransformer:
     override def transform(tree: Tree)(using Context): Tree =
       super.transform(tree) match
         case tree1: Template
-        if tree1.hasAttachment(ExtendsSingletonMirror)
-          || tree1.hasAttachment(ExtendsProductMirror)
-          || tree1.hasAttachment(ExtendsSumMirror) =>
+        if tree1.hasAttachment(ExtendsSingletonMirror) || tree1.hasAttachment(ExtendsSumOrProductMirror) =>
           synthMbr.addMirrorSupport(tree1)
         case tree1 => tree1
 

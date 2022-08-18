@@ -110,6 +110,23 @@ test$package$
 Object
 <empty>.test$package$
 Test
+178
+187
+11
+x
+Select
+false
+0
+false
+Impl1().x
+
+6
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
 170
 188
 11
@@ -120,7 +137,7 @@ false
 false
 println(Impl1().x)
 
-6
+7
 trait/test.scala
 <empty>
 test$package$
@@ -137,7 +154,7 @@ false
 false
 Impl2()
 
-7
+8
 trait/test.scala
 <empty>
 test$package$
@@ -154,7 +171,7 @@ false
 false
 println(Impl2().p)
 
-8
+9
 trait/test.scala
 <empty>
 test$package$
@@ -171,7 +188,7 @@ false
 false
 Impl3()
 
-9
+10
 trait/test.scala
 <empty>
 test$package$
@@ -188,7 +205,7 @@ false
 false
 println(Impl3().p)
 
-10
+11
 trait/test.scala
 <empty>
 test$package$

@@ -37,20 +37,22 @@ object TastyPrinter:
     for arg <- args do
       if arg == "-color:never" then () // skip
       else if arg.startsWith("-") then println(s"bad option '$arg' was ignored")
-      else if arg.endsWith(".tasty") then {
+      else if arg.endsWith(".tasty") then
         val path = Paths.get(arg)
-        if Files.exists(path) then printTasty(arg, Files.readAllBytes(path).nn)
-        else println("File not found: " + arg)
-      }
-      else if arg.endsWith(".jar") then {
+        if Files.exists(path) then
+          printTasty(arg, Files.readAllBytes(path).nn)
+        else
+          println("File not found: " + arg)
+          System.exit(1)
+      else if arg.endsWith(".jar") then
         val jar = JarArchive.open(Path(arg), create = false)
         try
           for file <- jar.iterator() if file.name.endsWith(".tasty") do
             printTasty(s"$arg ${file.path}", file.toByteArray)
         finally jar.close()
-
-      }
-      else println(s"Not a '.tasty' or '.jar' file: $arg")
+      else
+        println(s"Not a '.tasty' or '.jar' file: $arg")
+        System.exit(1)
 
     if printLastLine then
       println(line)
