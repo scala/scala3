@@ -151,6 +151,7 @@ trait ClassLikeSupport:
             extSym.symbol.normalizedName,
             typeParams,
             termParams,
+            extSym.tpt.asSignature,
             extSym.tpt.symbol.dri,
             extSym.symbol.pos.get.start
           )
