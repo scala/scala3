@@ -501,7 +501,7 @@ trait ConstraintHandling {
             else if tp.nestingLevel > maxLevel then
               if variance > 0 then nestedVarsLo += tp
               else if variance < 0 then nestedVarsHi += tp
-              else tp.nestingLevel = maxLevel
+              else
                 // For invariant type variables, we use a different strategy.
                 // Rather than instantiating to a bound and then propagating in an
                 // AvoidMap, change the nesting level of an invariant type
@@ -511,6 +511,14 @@ trait ConstraintHandling {
                 // `fixLevels`, this could lead to coarser types. But it has the potential
                 // to give a better approximation for the current type, since it avoids forming
                 // a Range in invariant position, which can lead to very coarse types further out.
+                // TODO: This widening is a side effect that is not undone if a typer state is aborted
+                // I don't think it's a soundness problem, since all that could happen is that
+                // the type variable causes earlier instantiations of other type variables
+                // down the line. But it could produce a hard-to-debug side effect that leads
+                // to worse types than expected. We should find a more robust way to do this.
+                // Maybe instantiating `tp` to another freshly created type at nesting level?
+                constr.println(i"widening nesting level of type variable $tp from ${tp.nestingLevel} to $maxLevel")
+                tp.nestingLevel = maxLevel
               true
             else false
           case _ =>
