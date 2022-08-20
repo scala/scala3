@@ -38,8 +38,8 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   }
 
   def typeCheck(using Context): Unit = monitor("typechecking") {
+    val unit = ctx.compilationUnit
     try
-      val unit = ctx.compilationUnit
       if !unit.suspended then
         unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
         typr.println("typed: " + unit.source)
@@ -48,6 +48,9 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         ctx.run.nn.suppressions.reportSuspendedMessages(unit.source)
     catch
       case ex: CompilationUnit.SuspendException =>
+      case ex: Throwable =>
+        println(s"$ex while typechecking $unit")
+        throw ex
   }
 
   def javaCheck(using Context): Unit = monitor("checking java") {

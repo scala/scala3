@@ -308,7 +308,10 @@ object Phases {
     def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
       units.map { unit =>
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
-        run(using unitCtx)
+        try run(using unitCtx)
+        catch case ex: Throwable =>
+          println(s"$ex while running $phaseName on $unit")
+          throw ex
         unitCtx.compilationUnit
       }
 
