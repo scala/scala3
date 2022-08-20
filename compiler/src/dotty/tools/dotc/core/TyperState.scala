@@ -10,7 +10,7 @@ import config.Config
 import config.Printers.constr
 import collection.mutable
 import java.lang.ref.WeakReference
-import util.Stats
+import util.{Stats, SimpleIdentityMap}
 import Decorators._
 
 import scala.annotation.internal.sharable
@@ -23,24 +23,28 @@ object TyperState {
       .setReporter(new ConsoleReporter())
       .setCommittable(true)
 
-  opaque type Snapshot = (Constraint, TypeVars, TypeVars)
+  type LevelMap = SimpleIdentityMap[TypeVar, Integer]
+
+  opaque type Snapshot = (Constraint, TypeVars, TypeVars, LevelMap)
 
   extension (ts: TyperState)
     def snapshot()(using Context): Snapshot =
       var previouslyInstantiated: TypeVars = SimpleIdentitySet.empty
       for tv <- ts.ownedVars do if tv.inst.exists then previouslyInstantiated += tv
-      (ts.constraint, ts.ownedVars, previouslyInstantiated)
+      (ts.constraint, ts.ownedVars, previouslyInstantiated, ts.upLevels)
 
     def resetTo(state: Snapshot)(using Context): Unit =
-      val (c, tvs, previouslyInstantiated) = state
+      val (c, tvs, previouslyInstantiated, upLevels) = state
       for tv <- tvs do
         if tv.inst.exists && !previouslyInstantiated.contains(tv) then
           tv.resetInst(ts)
       ts.ownedVars = tvs
       ts.constraint = c
+      ts.upLevels = upLevels
 }
 
 class TyperState() {
+  import TyperState.LevelMap
 
   private var myId: Int = _
   def id: Int = myId
@@ -89,6 +93,8 @@ class TyperState() {
   def ownedVars: TypeVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
 
+  private var upLevels: LevelMap = _
+
   /** Initializes all fields except reporter, isCommittable, which need to be
    *  set separately.
    */
@@ -99,6 +105,7 @@ class TyperState() {
     this.myConstraint = constraint
     this.previousConstraint = constraint
     this.myOwnedVars = SimpleIdentitySet.empty
+    this.upLevels = SimpleIdentityMap.empty
     this.isCommitted = false
     this
 
@@ -106,12 +113,26 @@ class TyperState() {
   def fresh(reporter: Reporter = StoreReporter(this.reporter, fromTyperState = true),
       committable: Boolean = this.isCommittable): TyperState =
     util.Stats.record("TyperState.fresh")
-    TyperState().init(this, this.constraint)
+    val ts = TyperState().init(this, this.constraint)
       .setReporter(reporter)
       .setCommittable(committable)
+    ts.upLevels = upLevels
+    ts
 
   /** The uninstantiated variables */
   def uninstVars: collection.Seq[TypeVar] = constraint.uninstVars
+
+  /** The nestingLevel of `tv` in this typer state */
+  def nestingLevel(tv: TypeVar): Int =
+    val own = upLevels(tv)
+    if own == null then tv.initNestingLevel else own.intValue()
+
+  /** Set the nestingLevel of `tv` in this typer state
+   *  @pre this level must be smaller than `tv.initNestingLevel`
+  */
+  def setNestingLevel(tv: TypeVar, level: Int) =
+    assert(level < tv.initNestingLevel)
+    upLevels = upLevels.updated(tv, level)
 
   /** The closest ancestor of this typer state (including possibly this typer state itself)
    *  which is not yet committed, or which does not have a parent.
@@ -164,6 +185,12 @@ class TyperState() {
         if !ownedVars.isEmpty then ownedVars.foreach(targetState.includeVar)
       else
         targetState.mergeConstraintWith(this)
+
+    upLevels.foreachBinding { (tv, level) =>
+      if level < targetState.nestingLevel(tv) then
+        targetState.setNestingLevel(tv, level)
+    }
+    
     targetState.gc()
     isCommitted = true
     ownedVars = SimpleIdentitySet.empty

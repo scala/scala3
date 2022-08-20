@@ -4497,27 +4497,11 @@ object Types {
    *  is different from the variable's creation state (meaning unrolls are possible)
    *  in the current typer state.
    *
-   *  @param  origin        The parameter that's tracked by the type variable.
-   *  @param  creatorState  The typer state in which the variable was created.
-   *  @param  nestingLevel  Symbols with a nestingLevel strictly greater than this
-   *                        will not appear in the instantiation of this type variable.
-   *                        This is enforced in `ConstraintHandling`, dependig on the
-   *                        Config flags setting `checkLevelsOnConstraints` and
-   *                        `checkLevelsOnInstantiation`.
-   *
-   *                        Under `checkLevelsOnConstraints` we maintain the invariant that
-   *                        the `nonParamBounds` of a type variable never refer to a type with a
-   *                        greater `nestingLevel` (see `legalBound` for the reason why this
-   *                        cannot be delayed until instantiation). Then, on instantiation,
-   *                        we replace any param in the param bound with a level greater than
-   *                        nestingLevel (see `fullLowerBound`).
-   *
-   *                        Under `checkLevelsOnInstantiation`, we avoid incorrect levels only
-   *                        when a type variable is instantiated, see `ConstraintHandling$fixLevels`.
-   *                        Under this mode, the `nestingLevel` of a type variable can be made
-   *                        smaller when fixing the levels for some other type variable instance.
+   *  @param  origin           the parameter that's tracked by the type variable.
+   *  @param  creatorState     the typer state in which the variable was created.
+   *  @param  initNestingLevel the initial nesting level of the type variable. (c.f. nestingLevel)
    */
-  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState | Null, var nestingLevel: Int) extends CachedProxyType with ValueType {
+  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState | Null, val initNestingLevel: Int) extends CachedProxyType with ValueType {
     private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
@@ -4548,6 +4532,26 @@ object Types {
      */
     private[core] var owningState: WeakReference[TyperState] | Null =
       if (creatorState == null) null else new WeakReference(creatorState)
+
+    /** The nesting level of this type variable in the current typer state. This is usually
+     *  the same as `initNestingLevel`, but can be decremented by calling `TyperState#setNestingLevel`.
+     *  Symbols with a nestingLevel strictly greater than this level will not appear in the
+     *  instantiation of this type variable. This is enforced in `ConstraintHandling`,
+     *  dependig on the Config flags setting `checkLevelsOnConstraints` and `checkLevelsOnInstantiation`.
+     *
+     *  Under `checkLevelsOnConstraints` we maintain the invariant that
+     *  the `nonParamBounds` of a type variable never refer to a type with a
+     *  greater `nestingLevel` (see `legalBound` for the reason why this
+     *  cannot be delayed until instantiation). Then, on instantiation,
+     *  we replace any param in the param bound with a level greater than
+     *  nestingLevel (see `fullLowerBound`).
+     *
+     *  Under `checkLevelsOnInstantiation`, we avoid incorrect levels only
+     *  when a type variable is instantiated, see `ConstraintHandling$fixLevels`.
+     *  Under this mode, the `nestingLevel` of a type variable can be made
+     *  smaller when fixing the levels for some other type variable instance.
+     */
+    def nestingLevel(using Context): Int = ctx.typerState.nestingLevel(this)
 
     /** The instance type of this variable, or NoType if the variable is currently
      *  uninstantiated
