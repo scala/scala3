@@ -4524,6 +4524,7 @@ object Types {
           owningState = null // no longer needed; null out to avoid a memory leak
 
     private[core] def resetInst(ts: TyperState): Unit =
+      assert(myInst.exists)
       myInst = NoType
       owningState = new WeakReference(ts)
 

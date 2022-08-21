@@ -25,21 +25,19 @@ object TyperState {
 
   type LevelMap = SimpleIdentityMap[TypeVar, Integer]
 
-  opaque type Snapshot = (Constraint, TypeVars, TypeVars, LevelMap)
+  opaque type Snapshot = (Constraint, TypeVars, LevelMap)
 
   extension (ts: TyperState)
     def snapshot()(using Context): Snapshot =
-      var previouslyInstantiated: TypeVars = SimpleIdentitySet.empty
-      for tv <- ts.ownedVars do if tv.inst.exists then previouslyInstantiated += tv
-      (ts.constraint, ts.ownedVars, previouslyInstantiated, ts.upLevels)
+      (ts.constraint, ts.ownedVars, ts.upLevels)
 
     def resetTo(state: Snapshot)(using Context): Unit =
-      val (c, tvs, previouslyInstantiated, upLevels) = state
-      for tv <- tvs do
-        if tv.inst.exists && !previouslyInstantiated.contains(tv) then
+      val (constraint, ownedVars, upLevels) = state
+      for tv <- ownedVars do
+        if !ts.ownedVars.contains(tv) then // tv has been instantiated
           tv.resetInst(ts)
-      ts.ownedVars = tvs
-      ts.constraint = c
+      ts.constraint = constraint
+      ts.ownedVars = ownedVars
       ts.upLevels = upLevels
 }
 
@@ -190,7 +188,7 @@ class TyperState() {
       if level < targetState.nestingLevel(tv) then
         targetState.setNestingLevel(tv, level)
     }
-    
+
     targetState.gc()
     isCommitted = true
     ownedVars = SimpleIdentitySet.empty
