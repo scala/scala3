@@ -96,9 +96,7 @@ class TyperState() {
    *  its lower bound, top-level soft unions in the instance type are converted
    *  to hard unions instead of being widened in `widenOr`.
    */
-  private var myHardVars: TypeVars = _
-  def hardVars: TypeVars = myHardVars
-  def hardVars_=(tvs: TypeVars): Unit = myHardVars = tvs
+  private var hardVars: TypeVars = _
 
   private var upLevels: LevelMap = _
 
@@ -112,7 +110,7 @@ class TyperState() {
     this.myConstraint = constraint
     this.previousConstraint = constraint
     this.myOwnedVars = SimpleIdentitySet.empty
-    this.myHardVars = SimpleIdentitySet.empty
+    this.hardVars = SimpleIdentitySet.empty
     this.upLevels = SimpleIdentityMap.empty
     this.isCommitted = false
     this
@@ -130,6 +128,12 @@ class TyperState() {
 
   /** The uninstantiated variables */
   def uninstVars: collection.Seq[TypeVar] = constraint.uninstVars
+
+  /** Register type variable `tv` as hard. */
+  def hardenTypeVar(tv: TypeVar): Unit = hardVars += tv
+
+  /** Is type variable `tv` registered as hard? */
+  def isHard(tv: TypeVar): Boolean = hardVars.contains(tv)
 
   /** The nestingLevel of `tv` in this typer state */
   def nestingLevel(tv: TypeVar): Int =
@@ -195,6 +199,7 @@ class TyperState() {
         if !ownedVars.isEmpty then ownedVars.foreach(targetState.includeVar)
       else
         targetState.mergeConstraintWith(this)
+        for tv <- hardVars do targetState.hardVars += tv
 
     upLevels.foreachBinding { (tv, level) =>
       if level < targetState.nestingLevel(tv) then
@@ -250,7 +255,6 @@ class TyperState() {
           val otherLos = other.lower(p)
           val otherHis = other.upper(p)
           val otherEntry = other.entry(p)
-          if that.hardVars.contains(tv) then this.myHardVars += tv
           (  (otherLos eq constraint.lower(p)) || otherLos.forall(_ <:< p)) &&
           (  (otherHis eq constraint.upper(p)) || otherHis.forall(p <:< _)) &&
           ((otherEntry eq constraint.entry(p)) || otherEntry.match

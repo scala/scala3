@@ -498,7 +498,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         /** Mark toplevel type vars in `tp2` as hard in the current typerState */
         def hardenTypeVars(tp2: Type): Unit = tp2.dealiasKeepRefiningAnnots match
           case tvar: TypeVar if constraint.contains(tvar.origin) =>
-            state.hardVars += tvar
+            state.hardenTypeVar(tvar)
           case tp2: TypeParamRef if constraint.contains(tp2) =>
             hardenTypeVars(constraint.typeVarOfParam(tp2))
           case tp2: AndOrType =>

@@ -4721,8 +4721,7 @@ object Types {
         instantiateWith(tp)
 
     /** Widen unions when instantiating this variable in the current context? */
-    def widenUnions(using Context): Boolean =
-      !ctx.typerState.hardVars.contains(this)
+    def widenUnions(using Context): Boolean = !ctx.typerState.isHard(this)
 
     /** For uninstantiated type variables: the entry in the constraint (either bounds or
      *  provisional instance value)
