@@ -66,6 +66,13 @@ class ExpandSAMs extends MiniPhase:
       tree
   }
 
+  private def checkNoContextFunction(tpt: Tree)(using Context): Unit =
+    if defn.isContextFunctionType(tpt.tpe) then
+      report.error(
+        em"""Implementation restriction: cannot convert this expression to
+            |partial function with context function result type $tpt""",
+        tpt.srcPos)
+
   /** A partial function literal:
    *
    *  ```
@@ -107,6 +114,8 @@ class ExpandSAMs extends MiniPhase:
    */
   private def toPartialFunction(tree: Block, tpe: Type)(using Context): Tree = {
     val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree: @unchecked
+
+    checkNoContextFunction(anon.tpt)
 
     // The right hand side from which to construct the partial function. This is always a Match.
     // If the original rhs is already a Match (possibly in braces), return that.
