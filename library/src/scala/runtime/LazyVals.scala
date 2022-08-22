@@ -43,7 +43,7 @@ object LazyVals {
 
   /* ------------- Start of public API ------------- */
 
-  trait LazyValControlState
+  sealed trait LazyValControlState
 
   /**
    * Used to indicate the state of a lazy val that is being

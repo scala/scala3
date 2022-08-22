@@ -12,19 +12,16 @@ import java.util.concurrent.TimeUnit
 @Measurement(iterations = 5)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark)
-class InitializedAccess {
+class UninitializedAccessMultiple {
 
-  var holder: LazyHolder = _
-
-  @Setup
-  def prepare: Unit = {
-    holder = new LazyHolder 
-    holder.value
-  }
-
-  @Benchmark
-  def measureInitialized(bh: Blackhole) = {
-    bh.consume(holder)
-    bh.consume(holder.value)
-  }
+    @Benchmark
+    def measureInitialized(bh: Blackhole) = {
+      var i = 0
+      while(i < 100) {
+        val holder = new LazyHolder
+        bh.consume(holder)
+        bh.consume(holder.value)
+        i = i + 1
+      }
+    }
 }

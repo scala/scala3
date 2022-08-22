@@ -390,12 +390,19 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val rhs = memberDef.rhs
     val rhsMappedOwner = rhs.changeOwnerAfter(memberDef.symbol, lazyInitMethodSymbol, this)
     val valueSymbol = newSymbol(accessorMethodSymbol, lazyNme.result, Synthetic | Mutable, defn.ObjectType)
+
+    val immediateValueCondition =
+      if (controlState.tpe <:< tp) then
+        ref(valueSymbol).select(defn.Any_!=).appliedTo(nullLiteral).select(nme.And).appliedTo(ref(valueSymbol).select(defn.Any_isInstanceOf).appliedToTypeTree(controlState)
+          .select(nme.UNARY_!).appliedToNone)
+      else
+        ref(valueSymbol).select(defn.Any_isInstanceOf).appliedToTypeTree(TypeTree(tp))
+
     val accessorBody =
       Block(
         ValDef(valueSymbol, ref(target)) :: Nil,
         If( // if _x != null && !_x.isInstanceOf[LazyValControlState] then
-          ref(valueSymbol).select(defn.Any_!=).appliedTo(nullLiteral).select(nme.And).appliedTo(ref(valueSymbol).select(defn.Any_isInstanceOf).appliedToTypeTree(controlState)
-              .select(nme.UNARY_!).appliedToNone),
+          immediateValueCondition,
             Return(ref(valueSymbol).ensureConforms(tp), accessorMethodSymbol), // then return _x.asInstanceOf[A]
             If(
               ref(valueSymbol).select(defn.Any_==).appliedTo(nullValue),
@@ -419,11 +426,11 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
           ref(lockSymb).select(lazyNme.RLazyVals.waitingRelease).ensureApplied)
       }
       // finally block
-      val fin = If(
+      val fin = Block(If(
           objCasFlag.appliedTo(thiz, offset, evaluating, ref(resSymb)).select(nme.UNARY_!).appliedToNone,
           lockRel,
           unitLiteral
-        ).withType(defn.UnitType)
+        ) :: Nil, Return(ref(resSymb), lazyInitMethodSymbol)).withType(defn.UnitType)
       // entire try block
       val evaluate = Try(
 
