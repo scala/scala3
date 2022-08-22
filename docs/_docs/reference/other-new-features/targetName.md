@@ -23,7 +23,7 @@ VecOps.append(vec1, vec2)
 
 The [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation has no bearing on Scala usages. Any application of that method in Scala has to use `++=`, not `append`.
 
-### Details
+## Details
 
  1. `@targetName` is defined in package `scala.annotation`. It takes a single argument
     of type `String`. That string is called the _external name_ of the definition
@@ -40,7 +40,7 @@ The [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.h
  5. Definitions with names in backticks that are not legal host platform names
     should also have a [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation.
 
-### Relationship with Overriding
+## Relationship with Overriding
 
 [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotations are significant for matching two method definitions to decide whether they conflict or override each other. Two method definitions match if they have the same name, signature, and erased name. Here,
 

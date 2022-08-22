@@ -8,7 +8,7 @@ A new annotation [`@threadUnsafe`](https://scala-lang.org/api/3.x/scala/annotati
 a `lazy val`. When this annotation is used, the initialization of the
 [`lazy val`](../changed-features/lazy-vals-init.md) will use a faster mechanism which is not thread-safe.
 
-### Example
+## Example
 
 ```scala
 import scala.annotation.threadUnsafe

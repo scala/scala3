@@ -91,7 +91,7 @@ enum Color(val rgb: Int):
   case Mix(mix: Int) extends Color(mix)
 ```
 
-### Parameter Variance of Enums
+## Parameter Variance of Enums
 
 By default, parameterized cases of enums with type parameters will copy the type parameters of their parent, along
 with any variance notations. As usual, it is important to use type parameters carefully when they are variant, as shown
@@ -147,7 +147,7 @@ enum View[-T, +U] extends (T => U):
     case refl: Refl[r] => refl.f(t)
 ```
 
-### Syntax of Enums
+## Syntax of Enums
 
 Changes to the syntax fall in two categories: enum definitions and cases inside enums.
 The changes are specified below as deltas with respect to the Scala syntax given [here](../syntax.md)
@@ -168,6 +168,6 @@ The changes are specified below as deltas with respect to the Scala syntax given
     EnumCase  ::=  `case' (id ClassConstr [`extends' ConstrApps]] | ids)
     ```
 
-### Reference
+## Reference
 
 For more information, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970).

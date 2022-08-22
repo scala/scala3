@@ -384,6 +384,6 @@ val intTwo: 2 = natTwo
 
 `natTwo` is inferred to have the singleton type 2.
 
-### Reference
+## Reference
 
 For more information about the semantics of `inline`, see the [Scala 2020: Semantics-preserving inlining for metaprogramming](https://dl.acm.org/doi/10.1145/3426426.3428486) paper.

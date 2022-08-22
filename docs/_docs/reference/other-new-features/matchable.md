@@ -6,7 +6,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/match
 
 A new trait [`Matchable`](https://scala-lang.org/api/3.x/scala/Matchable.html) controls the ability to pattern match.
 
-### The Problem
+## The Problem
 
 The Scala 3 standard library has a type [`IArray`](https://scala-lang.org/api/3.x/scala.html#IArray-0) for immutable
 arrays that is defined like this:
@@ -47,7 +47,7 @@ f(imm)
 
 Finally, note that the problem is not linked to just [opaque types](opaques.md). No unbounded type parameter or abstract type should be decomposable with a pattern match.
 
-### The Solution
+## The Solution
 
 There is a new type [`scala.Matchable`](https://scala-lang.org/api/3.x/scala/Matchable.html) that controls pattern matching. When typing a pattern match of a constructor pattern `C(...)` or
 a type pattern `_: C` it is required that the selector type conforms
@@ -95,7 +95,7 @@ class Object extends Any, Matchable
 [`Matchable`](https://scala-lang.org/api/3.x/scala/Matchable.html) is currently a marker trait without any methods. Over time
 we might migrate methods `getClass` and `isInstanceOf` to it, since these are closely related to pattern-matching.
 
-### `Matchable` and Universal Equality
+## `Matchable` and Universal Equality
 
 Methods that pattern-match on selectors of type `Any` will need a cast once the
 Matchable warning is turned on. The most common such method is the universal
