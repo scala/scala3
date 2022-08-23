@@ -180,10 +180,10 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case Kind.Extension(on, _) =>
           val typeSig = SignatureBuilder()
             .keyword("extension ")
-            .generics(on.typeParams)
+            .typeParamList(on.typeParams)
             .content
           val argsSig = SignatureBuilder()
-            .functionParameters(on.argsLists)
+            .functionTermParameters(on.argsLists)
             .content
           flattenToText(typeSig ++ argsSig)
         case _ => ""
