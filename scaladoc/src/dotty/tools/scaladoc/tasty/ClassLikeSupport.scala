@@ -339,45 +339,66 @@ trait ClassLikeSupport:
   def parseMethod(
       c: ClassDef,
       methodSymbol: Symbol,
-      emptyParamsList: Boolean = false,
       paramPrefix: Symbol => String = _ => "",
       specificKind: (Kind.Def => Kind) = identity
     ): Member =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
-    val paramLists: List[TermParamClause] = methodSymbol.nonExtensionTermParamLists
-    val genericTypes: List[TypeDef] = if (methodSymbol.isClassConstructor) Nil else methodSymbol.nonExtensionLeadingTypeParams
+    val paramLists = methodSymbol.nonExtensionParamLists
 
     val memberInfo = unwrapMemberInfo(c, methodSymbol)
 
-    val basicKind: Kind.Def = Kind.Def(
-      Right(genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes, memberInfo.contextBounds))) +:
-      paramLists.zipWithIndex.flatMap { (pList, index) =>
-        memberInfo.paramLists(index) match
-          case MemberInfo.EvidenceOnlyParameterList => None
-          case MemberInfo.RegularParameterList(info) =>
-            Some(Left(TermParameterList(pList.params.map(
+    val unshuffledMemberInfoParamLists = 
+      if methodSymbol.isExtensionMethod && methodSymbol.isRightAssoc then
+        // Taken from RefinedPrinter.scala
+        val (leadingTyParamss, rest1) = memberInfo.paramLists.span(_.isType)
+        val (leadingUsing, rest2) = rest1.span(_.isUsing)
+        val (rightTyParamss, rest3) = rest2.span(_.isType)
+        val (rightParamss, rest4) = rest3.splitAt(1)
+        val (leftParamss, rest5) = rest4.splitAt(1)
+        val (trailingUsing, rest6) = rest5.span(_.isUsing)
+        if leftParamss.nonEmpty then
+          // leadingTyParamss ::: leadingUsing ::: leftParamss ::: trailingUsing ::: rightTyParamss ::: rightParamss ::: rest6
+          // because of takeRight after, this is equivalent to the following:
+          rightTyParamss ::: rightParamss ::: rest6
+        else
+          memberInfo.paramLists // it wasn't a binary operator, after all.
+      else 
+        memberInfo.paramLists
+
+    val croppedUnshuffledMemberInfoParamLists = unshuffledMemberInfoParamLists.takeRight(paramLists.length)
+
+    val basicDefKind: Kind.Def = Kind.Def(
+      paramLists.zip(croppedUnshuffledMemberInfoParamLists).flatMap{
+        case (_: TermParamClause, MemberInfo.EvidenceOnlyParameterList) => Nil
+        case (pList: TermParamClause, MemberInfo.RegularParameterList(info)) =>
+            Some(Left(api.TermParameterList(pList.params.map(
               mkParameter(_, paramPrefix, memberInfo = info)), paramListModifier(pList.params)
             )))
-          case _ => assert(false, "memberInfo.termParamLists contains a type parameter list !")
+        case (TypeParamClause(genericTypeList), MemberInfo.TypeParameterList(memInfoTypes)) =>
+          Some(Right(genericTypeList.map(mkTypeArgument(_, memInfoTypes, memberInfo.contextBounds))))
+        case (_,_) =>
+          assert(false, s"croppedUnshuffledMemberInfoParamLists and SymOps.nonExtensionParamLists disagree on whether this clause is a type or term one")
       }
     )
 
     val methodKind =
-      if methodSymbol.isClassConstructor then Kind.Constructor(basicKind)
-      else if methodSymbol.flags.is(Flags.Implicit) then extractImplicitConversion(method.returnTpt.tpe) match
-        case Some(conversion) if paramLists.size == 0 || (paramLists.size == 1 && paramLists.head.params.size == 0) =>
-          Kind.Implicit(basicKind, Some(conversion))
-        case None if paramLists.size == 1 && paramLists(0).params.size == 1 =>
-          Kind.Implicit(basicKind, Some(
-            ImplicitConversion(
-              paramLists(0).params(0).tpt.tpe.typeSymbol.dri,
-              method.returnTpt.tpe.typeSymbol.dri
-            )
-          ))
-        case _ =>
-          Kind.Implicit(basicKind, None)
-      else if methodSymbol.flags.is(Flags.Given) then Kind.Given(basicKind, Some(method.returnTpt.tpe.asSignature), extractImplicitConversion(method.returnTpt.tpe))
-      else specificKind(basicKind)
+      if methodSymbol.isClassConstructor then Kind.Constructor(basicDefKind)
+      else if methodSymbol.flags.is(Flags.Implicit) then 
+        val termParamLists: List[TermParamClause] = methodSymbol.nonExtensionTermParamLists
+        extractImplicitConversion(method.returnTpt.tpe) match
+          case Some(conversion) if termParamLists.size == 0 || (termParamLists.size == 1 && termParamLists.head.params.size == 0) =>
+            Kind.Implicit(basicDefKind, Some(conversion))
+          case None if termParamLists.size == 1 && termParamLists(0).params.size == 1 =>
+            Kind.Implicit(basicDefKind, Some(
+              ImplicitConversion(
+                termParamLists(0).params(0).tpt.tpe.typeSymbol.dri,
+                method.returnTpt.tpe.typeSymbol.dri
+              )
+            ))
+          case _ =>
+            Kind.Implicit(basicDefKind, None)
+      else if methodSymbol.flags.is(Flags.Given) then Kind.Given(basicDefKind, Some(method.returnTpt.tpe.asSignature), extractImplicitConversion(method.returnTpt.tpe))
+      else specificKind(basicDefKind)
 
     val origin = if !methodSymbol.isOverridden then Origin.RegularlyDefined else
       val overriddenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)

@@ -52,3 +52,8 @@ extension [A <: List[Char]](using String)(using Unit)(a: A)(using Int)(using Num
 extension (using String)(using Unit)(a: Animal)(using Int)(using Number)
   def f11(b: Any)(c: Any): Any
   = ???
+  def f13(b: Any)[T](c: T): T
+  = ???
+  def f14[D](b: D)[T](c: T): T
+  = ???
+

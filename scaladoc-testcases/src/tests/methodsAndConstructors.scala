@@ -60,3 +60,6 @@ class Methods:
  def withImplicitParam2(v: String)(implicit ab: Double, a: Int, b: String): String
  = ???
 
+ def clauseInterleaving[T](x: T)[U](y: U)(using (T, U)): (T, U)
+ = ???
+
