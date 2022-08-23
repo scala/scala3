@@ -38,13 +38,13 @@ import scala.annotation as ann
 import java as j
 ```
 
-### Migration
+## Migration
 
 To support cross-building, Scala 3.0 supports the old import syntax with `_` for wildcards and `=>` for renamings in addition to the new one. The old syntax
 will be dropped in a future versions. Automatic rewritings from old to new syntax
 are offered under settings `-source 3.1-migration -rewrite`.
 
-### Syntax
+## Syntax
 
 ```
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}

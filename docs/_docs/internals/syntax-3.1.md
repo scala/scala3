@@ -16,7 +16,7 @@ hexDigit      ::= ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | 
 
 Informal descriptions are typeset as `“some comment”`.
 
-### Lexical Syntax
+## Lexical Syntax
 The lexical syntax of Scala is given by the following grammar in EBNF
 form.
 

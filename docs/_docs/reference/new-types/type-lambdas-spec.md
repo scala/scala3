@@ -13,7 +13,7 @@ TypeParam       ::=  {Annotation} (id [HkTypeParamClause] | ‘_’) TypeBounds
 TypeBounds      ::=  [‘>:’ Type] [‘<:’ Type]
 ```
 
-### Type Checking
+## Type Checking
 
 A type lambda such as `[X] =>> F[X]` defines a function from types to types. The parameter(s) may carry bounds.
 If a parameter is bounded, as in `[X >: L <: U] =>> F[X]` it is checked that arguments to the parameters conform to the bounds `L` and `U`.

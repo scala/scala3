@@ -186,7 +186,7 @@ authors would normally implement a `derived` method in this way, however this wa
 authors of the higher level derivation libraries that we expect typical type class authors will use (for a fully
 worked out example of such a library, see [Shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
 
-### How to write a type class `derived` method using low level mechanisms
+## How to write a type class `derived` method using low level mechanisms
 
 The low-level method we will use to implement a type class `derived` method in this example exploits three new
 type-level constructs in Scala 3: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`. Given this definition of the
