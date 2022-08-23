@@ -61,7 +61,7 @@ enum Kind(val name: String):
     extends Kind("trait") with Classlike
   case Enum(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[TermParameterList]) extends Kind("enum") with Classlike
   case EnumCase(kind: Object.type | Kind.Type | Val.type | Class) extends Kind("case")
-  case Def(typeParams: Seq[TypeParameter], argsLists: Seq[TermParameterList])
+  case Def(paramLists: Seq[Either[TermParameterList,TypeParameterList]])
     extends Kind("def")
   case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
   case Constructor(base: Kind.Def) extends Kind("def")

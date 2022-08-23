@@ -346,14 +346,14 @@ trait ClassLikeSupport:
     val memberInfo = unwrapMemberInfo(c, methodSymbol)
 
     val basicKind: Kind.Def = Kind.Def(
-      genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes, memberInfo.contextBounds)),
+      Right(genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes, memberInfo.contextBounds))) +:
       paramLists.zipWithIndex.flatMap { (pList, index) =>
         memberInfo.paramLists(index) match
-          case EvidenceOnlyParameterList => Nil
+          case EvidenceOnlyParameterList => None
           case info: RegularParameterList =>
-            Seq(TermParameterList(pList.params.map(
+            Some(Left(TermParameterList(pList.params.map(
               mkParameter(_, paramPrefix, memberInfo = info)), paramListModifier(pList.params)
-            ))
+            )))
       }
     )
 

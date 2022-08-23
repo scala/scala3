@@ -106,8 +106,7 @@ class ScalaSignatureProvider:
       builder.kind(showKind),
       builder.name(method.name, method.dri),
       builder
-        .typeParamList(kind.typeParams)
-        .functionTermParameters(kind.argsLists)
+        .functionParameters(kind.paramLists)
         .pipe { builder =>
           instance.fold(builder)(i => builder.plain(": ").signature(i))
         }
