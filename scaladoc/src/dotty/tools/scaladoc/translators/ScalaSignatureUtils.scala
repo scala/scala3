@@ -26,7 +26,7 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
   def annotationsBlock(d: Member): SignatureBuilder =
     d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation)}
 
-  def annotationsInline(d: Parameter): SignatureBuilder =
+  def annotationsInline(d: TermParameter): SignatureBuilder =
     d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation) }
 
   def annotationsInline(t: TypeParameter): SignatureBuilder =
@@ -78,7 +78,7 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
     bdr.annotationsInline(e).keyword(e.variance).tpe(e.name, Some(e.dri)).signature(e.signature)
   }
 
-  def functionParameters(params: Seq[ParametersList]) =
+  def functionParameters(params: Seq[TermParameterList]) =
     if params.isEmpty then this.plain("")
     else if params.size == 1 && params(0).parameters == Nil then this.plain("()")
     else this.list(params, separator = List(Plain(""))) { (bld, pList) =>

@@ -45,7 +45,7 @@ trait ClassLikeSupport:
           .filter(s => s.exists && !s.isHiddenByVisibility)
           .map( _.tree.asInstanceOf[DefDef])
       constr.fold(Nil)(
-        _.termParamss.map(pList => ParametersList(pList.params.map(p => mkParameter(p, parameterModifier)), paramListModifier(pList.params)))
+        _.termParamss.map(pList => TermParameterList(pList.params.map(p => mkParameter(p, parameterModifier)), paramListModifier(pList.params)))
         )
 
     if classDef.symbol.flags.is(Flags.Module) then Kind.Object
@@ -146,7 +146,7 @@ trait ClassLikeSupport:
             memberInfo.paramLists(index) match
               case EvidenceOnlyParameterList => Nil
               case info: RegularParameterList =>
-                Seq(ParametersList(paramList.params.map(mkParameter(_, memberInfo = info)), paramListModifier(paramList.params)))
+                Seq(TermParameterList(paramList.params.map(mkParameter(_, memberInfo = info)), paramListModifier(paramList.params)))
           }
           val target = ExtensionTarget(
             extSym.symbol.normalizedName,
@@ -351,7 +351,7 @@ trait ClassLikeSupport:
         memberInfo.paramLists(index) match
           case EvidenceOnlyParameterList => Nil
           case info: RegularParameterList =>
-            Seq(ParametersList(pList.params.map(
+            Seq(TermParameterList(pList.params.map(
               mkParameter(_, paramPrefix, memberInfo = info)), paramListModifier(pList.params)
             ))
       }
@@ -404,7 +404,7 @@ trait ClassLikeSupport:
       val inlinePrefix = if argument.symbol.flags.is(Flags.Inline) then "inline " else ""
       val nameIfNotSynthetic = Option.when(!argument.symbol.flags.is(Flags.Synthetic))(argument.symbol.normalizedName)
       val name = argument.symbol.normalizedName
-      Parameter(
+      TermParameter(
         argument.symbol.getAnnotations(),
         inlinePrefix + prefix(argument.symbol),
         nameIfNotSynthetic,
