@@ -498,7 +498,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     (this.typeVarOfParam(tl.paramRefs(0)) ne that.typeVarOfParam(tl.paramRefs(0)))
 
   def subst(from: TypeLambda, to: TypeLambda)(using Context): OrderingConstraint =
-    def swapKey[T](m: ArrayValuedMap[T]) = m.remove(from).updated(to, m(from).nn)
+    def swapKey[T](m: ArrayValuedMap[T]) =
+      val info = m(from)
+      if info == null then m else m.remove(from).updated(to, info)
     var current = newConstraint(swapKey(boundsMap), swapKey(lowerMap), swapKey(upperMap))
     def subst[T <: Type](x: T): T = x.subst(from, to).asInstanceOf[T]
     current.foreachParam {(p, i) =>
