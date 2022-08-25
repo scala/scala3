@@ -770,7 +770,7 @@ object projects:
     project = "json-scala-values",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(monocle,scalatest, scalacheck)
+    dependencies = List(scalatest, scalacheck)
   )
 
 end projects
