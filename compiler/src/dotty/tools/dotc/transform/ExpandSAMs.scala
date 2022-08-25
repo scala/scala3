@@ -59,8 +59,12 @@ class ExpandSAMs extends MiniPhase:
         case tpe =>
           val tpe1 = checkRefinements(tpe.stripNull, fn)
           val Seq(samDenot) = tpe1.possibleSamMethods
-          cpy.Block(tree)(stats,
-              AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
+          if hasNoArgConstr(tpe1) then
+            cpy.Block(tree)(stats,
+                AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
+          else
+            report.error(em"${tpe1} cannot be instantiated with an empty constructor", tree.srcPos)
+            tree
       }
     case _ =>
       tree
@@ -181,5 +185,19 @@ class ExpandSAMs extends MiniPhase:
       checkRefinements(parent, tree)
     case tpe =>
       tpe
+  }
+
+  private def hasNoArgConstr(tpe: Type)(using Context): Boolean = {
+    def noArgs(ctpe: Type): Boolean = ctpe match {
+      case ctpe: PolyType =>
+        noArgs(ctpe.resType)
+      case ctpe: MethodType =>
+        ctpe.paramInfos.isEmpty
+      case _ =>
+        false
+    }
+    val parent :: _ = tpe.parents: @unchecked
+    val constr = parent.dealias.decl(nme.CONSTRUCTOR).suchThat(constr => noArgs(constr.info))
+    constr != SymDenotations.NoDenotation
   }
 end ExpandSAMs
