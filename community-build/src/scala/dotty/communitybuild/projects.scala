@@ -766,6 +766,13 @@ object projects:
     dependencies = List(utest, scalacheck)
   )
 
+  lazy val jsonScalaValues = SbtCommunityProject(
+    project = "json-scala-values",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List (scalatest, scalacheck)
+  )
+
 end projects
 
 def allProjects = List(
@@ -848,6 +855,7 @@ def allProjects = List(
   projects.spire,
   projects.http4s,
   projects.parboiled2,
+  projects.jsonScalaValues
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
