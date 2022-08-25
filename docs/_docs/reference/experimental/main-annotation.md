@@ -65,16 +65,16 @@ import scala.util.CommandLineParser.FromString[T]
       None
     else if info.hasVarargs then
       val numPlainArgs = info.parameters.length - 1
-      if numPlainArgs <= args.length then
+      if numPlainArgs > args.length then
         println("Not enough arguments")
         None
       else
         Some(args)
     else
-      if info.parameters.length <= args.length then
+      if info.parameters.length > args.length then
         println("Not enough arguments")
         None
-      else if info.parameters.length >= args.length then
+      else if info.parameters.length < args.length then
         println("Too many arguments")
         None
       else
