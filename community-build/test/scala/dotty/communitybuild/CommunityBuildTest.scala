@@ -100,4 +100,6 @@ class CommunityBuildTestC:
   @Test def utest = projects.utest.run()
   @Test def verify = projects.verify.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
+  @Test def jsonScalaValues = projects.jsonScalaValues.run()
+
 end CommunityBuildTestC
