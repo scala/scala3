@@ -1,3 +1,5 @@
+import scala.language.experimental.clauseInterleaving
+
 class Params{
     type U
     def foo[T](x: T)[U >: x.type <: T](using U)[L <: List[U]](l: L): L = ???

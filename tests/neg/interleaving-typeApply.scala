@@ -1,3 +1,5 @@
+import scala.language.experimental.clauseInterleaving
+
 object typeApply:
     
     def f3[T <: Int](using DummyImplicit)[U <: String](): T => T = ???

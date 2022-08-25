@@ -39,10 +39,12 @@ package p2 { // all being in the same package compiles fine
 class A[T] {
 
   def f(x: T)(y: T = x) = y
-  def b[U <: T](x: Int)[V >: T](y: String) = false
 
   def next: T = ???
 
+  import scala.language.experimental.clauseInterleaving
+
+  def b[U <: T](x: Int)[V >: T](y: String) = false
 }
 
 class B extends A[Int] {
@@ -50,19 +52,23 @@ class B extends A[Int] {
   def f(x: Int)(y: Int) = y // error: needs `override' modifier
 
   f(2)()
-  override def b[T <: Int](x: Int)(y: String) = true // error
 
   override def next(): Int = ???    // error: incompatible type
+
+  import scala.language.experimental.clauseInterleaving
+
+  override def b[T <: Int](x: Int)(y: String) = true // error
 }
 
 class C extends A[String] {
 
   override def f(x: String) = x // error
 
-  override def b[T <: String](x: Int)[U >: Int](y: String) = true // error: incompatible type
-
   override def next: Int = ???    // error: incompatible type
 
+  import scala.language.experimental.clauseInterleaving
+
+  override def b[T <: String](x: Int)[U >: Int](y: String) = true // error: incompatible type
 }
 
 class X {

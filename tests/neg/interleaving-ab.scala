@@ -1,3 +1,5 @@
+import scala.language.experimental.clauseInterleaving
+
 object Ab:
   given String = ""
   given Double = 0

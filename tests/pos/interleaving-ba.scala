@@ -1,3 +1,4 @@
+import scala.language.experimental.clauseInterleaving
 
 object BA {
     given String = ""
