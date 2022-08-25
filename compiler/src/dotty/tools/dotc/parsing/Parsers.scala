@@ -3627,8 +3627,18 @@ object Parsers {
         val mods1 = addFlag(mods, Method)
         val ident = termIdent()
         var name = ident.name.asTermName
-        val paramss = typeOrTermParamClauses(ParamOwner.Def, numLeadParams = numLeadParams)
+        val paramss = 
+          if in.featureEnabled(Feature.clauseInterleaving) then 
+            // If you are making interleaving stable manually, please refer to the PR introducing it instead, section "How to make non-experimental"
+            typeOrTermParamClauses(ParamOwner.Def, numLeadParams = numLeadParams)
+          else
+            val tparams = typeParamClauseOpt(ParamOwner.Def)
+            val vparamss = termParamClauses(numLeadParams = numLeadParams)
+
+            joinParams(tparams, vparamss)
+
         var tpt = fromWithinReturnType { typedOpt() }
+        
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if in.token == EQUALS then

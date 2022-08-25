@@ -12,12 +12,17 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.3"),
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E3$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E3$minusmigration$"),
-    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.into"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$into$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.util.boundary"),
     ProblemFilters.exclude[MissingClassProblem]("scala.util.boundary$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.util.boundary$Break"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.util.boundary$Label")
+    ProblemFilters.exclude[MissingClassProblem]("scala.util.boundary$Label"),
+
+    //  New experimental features in 3.3.X
+    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.clauseInterleaving"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$clauseInterleaving$"),
+    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.into"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$into$"),
+    // end of New experimental features in 3.3.X
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
     ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyBuffer.reset"),

@@ -350,10 +350,6 @@ ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
 
-DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
-DefParamClause    ::=  DefTypeParamClause 
-                    |  DefTermParamClause 
-                    |  UsingParamClause
 TypelessClauses   ::=  TypelessClause {TypelessClause}
 TypelessClause    ::=  DefTermParamClause
                     |  UsingParamClause
@@ -417,7 +413,7 @@ Dcl               ::=  RefineDcl
 ValDcl            ::=  ids ‘:’ Type
 VarDcl            ::=  ids ‘:’ Type
 DefDcl            ::=  DefSig ‘:’ Type
-DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
+DefSig            ::=  id [DefTypeParamClause] [TypelessClauses] [DefImplicitClause]
 TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds
 
 Def               ::=  ‘val’ PatDef

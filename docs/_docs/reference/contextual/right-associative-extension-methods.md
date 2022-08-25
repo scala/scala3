@@ -25,7 +25,7 @@ For example:
             (using d: D)                      // <-- trailingUsing
     def +:: [U]                               // <-- rightTyParams
             (y: Y)                            // <-- rightParam
-            [V](using e: E)[W](z: Z)          // <-- rest
+            (using e: E)(z: Z)                // <-- rest
 ```
 
 
@@ -55,7 +55,7 @@ For instance, the `+::` method above would become
                       (y: Y)
                       (x: X)
                       (using d: D)
-                      [V](using e: E)[W](z: Z)
+                      (using e: E)(z: Z)
 ```
 
 This expansion has to be kept in mind when writing right-associative extension
