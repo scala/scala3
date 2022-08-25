@@ -1498,7 +1498,7 @@ object Build {
             .add(OutputDir("scaladoc/output/reference"))
             .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
             .add(ProjectName("Scala 3 Reference"))
-            .add(ProjectVersion("3.1.2")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
+            .add(ProjectVersion("3.1.3")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
               s"${temp.getAbsolutePath}=github://lampepfl/dotty/language-reference-stable"
@@ -1901,12 +1901,12 @@ object ScaladocConfigs {
       Groups(true),
       QuickLinks(
         List(
-          "Download::https://www.scala-lang.org/download/",
-          "Documentation::https://docs.scala-lang.org/",
-          "Libraries::https://index.scala-lang.org",
-          "Contribute::https://www.scala-lang.org/contribute/",
+          "Learn::https://docs.scala-lang.org/",
+          "Install::https://www.scala-lang.org/download/",
+          "Playground::https://scastie.scala-lang.org",
+          "Find\u00A0A\u00A0Library::https://index.scala-lang.org",
+          "Community::https://www.scala-lang.org/community/",
           "Blog::https://www.scala-lang.org/blog/",
-          "Community::https://www.scala-lang.org/community/"
         )
       )
     )
