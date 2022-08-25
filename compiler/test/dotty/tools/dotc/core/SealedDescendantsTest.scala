@@ -91,6 +91,20 @@ class SealedDescendantsTest extends DottyTest {
     )
   end hierarchicalSharedChildrenB
 
+  @Test
+  def javaEnum_i15908: Unit =
+    val source = """package testsealeddescendants"""
+    checkCompile("typer", source) { (_, context) =>
+      given Context = context
+      val cls = requiredClass("java.nio.file.AccessMode")
+
+      assertEquals(
+        List("val READ", "val WRITE", "val EXECUTE"),
+        cls.sealedStrictDescendants.map(_.toString)
+      )
+    }
+  end javaEnum_i15908
+
   def expectedDescendents(source: String, root: String, expected: List[String]) =
     exploreRoot(source, root) { rootCls =>
       val descendents = rootCls.sealedDescendants.map(sym => s"${sym.name}${if (sym.isTerm) ".type" else ""}")

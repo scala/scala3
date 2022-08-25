@@ -1626,7 +1626,7 @@ object SymDenotations {
           // is defined in the same scope as `cls` or in the companion object of `cls`.
           completeChildrenIn(owner)
           completeChildrenIn(companionClass)
-          setFlag(ChildrenQueried)
+          if isType then setFlag(ChildrenQueried)
 
       annotations.collect { case Annotation.Child(child) => child }.reverse
     end children
