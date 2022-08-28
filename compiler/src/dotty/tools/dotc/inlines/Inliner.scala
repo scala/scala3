@@ -847,7 +847,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         }
         val selType = if (sel.isEmpty) wideSelType else selTyped(sel)
         reduceInlineMatch(sel, selType, cases.asInstanceOf[List[CaseDef]], this) match {
-          case Some((caseBindings, rhs0)) =>
+          case MatchRedux.Reduced(caseBindings, rhs0) =>
             // drop type ascriptions/casts hiding pattern-bound types (which are now aliases after reducing the match)
             // note that any actually necessary casts will be reinserted by the typing pass below
             val rhs1 = rhs0 match {
@@ -869,7 +869,7 @@ class Inliner(val call: tpd.Tree)(using Context):
                                 |--- to:
                                 |$rhs""")
             typedExpr(rhs, pt)
-          case None =>
+          case _ =>
             def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
             def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
             val msg =

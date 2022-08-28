@@ -2,11 +2,12 @@ package dotty.tools
 package dotc
 package inlines
 
-import ast.*, core.*
+import ast.*, core.*, tpd.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Contexts.*
 import StdNames.nme
 import transform.SymUtils.*
 import typer.*
+import printing.*, Texts.*
 import Names.TermName
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
 import config.Printers.inlining
@@ -16,7 +17,6 @@ import collection.mutable
 
 /** A utility class offering methods for rewriting inlined code */
 class InlineReducer(inliner: Inliner)(using Context):
-  import tpd.*
   import Inliner.{isElideableExpr, DefBuffer}
   import inliner.{call, newSym, tryInlineArg, paramBindingDef}
 
@@ -189,26 +189,14 @@ class InlineReducer(inliner: Inliner)(using Context):
     case _ => tree
   }
 
-  /** The result type of reducing a match. It consists optionally of a list of bindings
-   *  for the pattern-bound variables and the RHS of the selected case.
-   *  Returns `None` if no case was selected.
-   */
-  type MatchRedux = Option[(List[MemberDef], Tree)]
-
-  /** Same as MatchRedux, but also includes a boolean
-   *  that is true if the guard can be checked at compile time.
-   */
-  type MatchReduxWithGuard = Option[(List[MemberDef], Tree, Boolean)]
-
   /** Reduce an inline match
-    *   @param     mtch          the match tree
     *   @param     scrutinee     the scrutinee expression, assumed to be pure, or
     *                            EmptyTree for a summonFrom
     *   @param     scrutType     its fully defined type, or
     *                            ImplicitScrutineeTypeRef for a summonFrom
+    *   @param     cases         the match cases
     *   @param     typer         The current inline typer
-    *   @return    optionally, if match can be reduced to a matching case: A pair of
-    *              bindings for all pattern-bound variables and the RHS of the case.
+    *   @return    the `MatchRedux` result.
     */
   def reduceInlineMatch(scrutinee: Tree, scrutType: Type, cases: List[CaseDef], typer: Typer)(using Context): MatchRedux = {
 
@@ -384,7 +372,7 @@ class InlineReducer(inliner: Inliner)(using Context):
     val scrutineeSym = newSym(InlineScrutineeName.fresh(), Synthetic, scrutType).asTerm
     val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
 
-    def reduceCase(cdef: CaseDef): MatchReduxWithGuard = {
+    def reduceCase(cdef: CaseDef): MatchRedux = {
       val caseBindingMap = new mutable.ListBuffer[(Symbol, MemberDef)]()
 
       def substBindings(
@@ -403,29 +391,37 @@ class InlineReducer(inliner: Inliner)(using Context):
       val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
       if (reducePattern(caseBindingMap, scrutineeSym.termRef, cdef.pat)(using gadtCtx)) {
         val (caseBindings, from, to) = substBindings(caseBindingMap.toList, mutable.ListBuffer(), Nil, Nil)
-        val (guardOK, canReduceGuard) =
-          if cdef.guard.isEmpty then (true, true)
-          else typer.typed(cdef.guard.subst(from, to), defn.BooleanType) match {
-            case ConstantValue(v: Boolean) => (v, true)
-            case _ => (false, false)
-          }
-        if guardOK then Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to), canReduceGuard))
-        else if canReduceGuard then None
-        else Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to), canReduceGuard))
+        def reduced = MatchRedux.Reduced(caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to))
+        if cdef.guard.isEmpty then reduced
+        else typer.typed(cdef.guard.subst(from, to), defn.BooleanType) match
+          case ConstantValue(v: Boolean) => if v then reduced else MatchRedux.Disjoint
+          case _                         => MatchRedux.Stuck
       }
-      else None
+      else MatchRedux.Disjoint
     }
 
     def recur(cases: List[CaseDef]): MatchRedux = cases match {
-      case Nil => None
+      case Nil => MatchRedux.Stuck
       case cdef :: cases1 =>
         reduceCase(cdef) match
-          case None => recur(cases1)
-          case r @ Some((caseBindings, rhs, canReduceGuard)) if canReduceGuard => Some((caseBindings, rhs))
-          case _ => None
+          case MatchRedux.Disjoint => recur(cases1)
+          case matchRedux          => matchRedux
     }
 
     recur(cases)
   }
 end InlineReducer
 
+/** The result type of reducing a match. It consists, if successful, of a list of bindings
+ *  for the pattern-bound variables and the RHS of the selected case.  If reducing failed, returns `Stuck`.
+ *  During the reduction recursion, `Disjoint` is the result for when the processed case is statically determined
+ *  to be disjoint from the scrutinee. */
+enum MatchRedux extends printing.Showable:
+  case Reduced(caseBindings: List[MemberDef], rhs: Tree)
+  case Stuck
+  case Disjoint
+
+  def toText(p: Printer): Text = this match
+    case Reduced(caseBindings, rhs) => "Reduced(" ~ Text(caseBindings.map(_.toText(p)), ", ") ~ ", " ~ rhs.toText(p) ~ ")"
+    case Stuck                      => "Stuck"
+    case Disjoint                   => "Disjoint"
