@@ -293,13 +293,13 @@ object Decorators {
      *  error messages after the first one if some of their arguments are "non-sensical".
      */
     def em(args: Shown*)(using Context): String =
-      new ErrorMessageFormatter(sc).assemble(args)
+      forErrorMessages(new StringFormatter(sc).assemble(args))
 
     /** Formatting with added explanations: Like `em`, but add explanations to
      *  give more info about type variables and to disambiguate where needed.
      */
     def ex(args: Shown*)(using Context): String =
-      explained(em(args: _*))
+      explained(new StringFormatter(sc).assemble(args))
 
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
