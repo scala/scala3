@@ -376,7 +376,7 @@ object TypeTestsCasts {
   private[transform] def foundClasses(tp: Type)(using Context): List[Symbol] =
     def go(tp: Type, acc: List[Type])(using Context): List[Type] = tp.dealias match
       case  OrType(tp1, tp2) => go(tp2, go(tp1, acc))
-      case AndType(tp1, tp2) => (for t1 <- go(tp1, Nil); t2 <- go(tp2, Nil); yield AndType(t1, t2)) ::: acc
+      case AndType(tp1, tp2) => (for t1 <- go(tp1, Nil); t2 <- go(tp2, Nil) yield AndType(t1, t2)) ::: acc
       case _                 => tp :: acc
     go(tp, Nil).map(effectiveClass)
 }

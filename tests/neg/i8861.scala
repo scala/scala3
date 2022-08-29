@@ -1,3 +1,4 @@
+// Compiles under 14026
 object Test {
   sealed trait Container { s =>
     type A
@@ -22,7 +23,7 @@ object Test {
   // now infers `c.visit[(Int & M | String & M)]`
   def minimalFail[M](c: Container { type A = M }): M = c.visit(
     int = vi => vi.i : vi.A,
-    str = vs => vs.t : vs.A
+    str = vs => vs.t : vs.A // error
   )
 
   def main(args: Array[String]): Unit = {

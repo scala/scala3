@@ -47,7 +47,7 @@ sealed abstract class GadtConstraint extends Showable {
   def isNarrowing: Boolean
 
   /** See [[ConstraintHandling.approximation]] */
-  def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type
+  def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type
 
   def symbols: List[Symbol]
 
@@ -205,9 +205,9 @@ final class ProperGadtConstraint private(
 
   def isNarrowing: Boolean = wasConstrained
 
-  override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = {
+  override def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int)(using Context): Type = {
     val res =
-      approximation(tvarOrError(sym).origin, fromBelow = fromBelow) match
+      approximation(tvarOrError(sym).origin, fromBelow, maxLevel) match
         case tpr: TypeParamRef =>
           // Here we do externalization when the returned type is a TypeParamRef,
           //  b/c ConstraintHandling.approximation may return internal types when
@@ -317,7 +317,7 @@ final class ProperGadtConstraint private(
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
-  override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
+  override def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
 
   override def symbols: List[Symbol] = Nil
 

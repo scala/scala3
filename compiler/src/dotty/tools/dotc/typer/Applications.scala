@@ -2216,7 +2216,13 @@ trait Applications extends Compatibility {
    *  have added constraints to type parameters which are no longer
    *  implied after harmonization. No essential constraints are lost by this because
    *  the result of harmonization will be compared again with the expected type.
-   *  Test cases where this matters are in pos/harmomize.scala.
+   *  Test cases where this matters are in neg/harmomize.scala and run/weak-conformance.scala.
+   *
+   *  Note: this assumes that the internal typing of the arguments using `op` does
+   *  not leave any constraints, so the only info that is reset is the relationship
+   *  between the argument's types and the expected type. I am not sure this will
+   *  always be the case. If that property does not hold, we risk forgetting constraints
+   *  which could lead to unsoundness.
    */
   def harmonic[T](harmonize: List[T] => List[T], pt: Type)(op: => List[T])(using Context): List[T] =
     if (!isFullyDefined(pt, ForceDegree.none)) {

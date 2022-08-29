@@ -165,7 +165,7 @@ object Contexts {
     protected def scope_=(scope: Scope): Unit = _scope = scope
     final def scope: Scope = _scope
 
-    /** The current type comparer */
+    /** The current typerstate */
     private var _typerState: TyperState = _
     protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
     final def typerState: TyperState = _typerState

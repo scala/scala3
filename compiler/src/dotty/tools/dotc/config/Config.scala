@@ -227,9 +227,12 @@ object Config {
    */
   inline val reuseSymDenotations = true
 
-  /** If true, check levels of type variables and create fresh ones as needed.
-   *  This is necessary for soundness (see 3ab18a9), but also causes several
-   *  regressions that should be fixed before turning this on.
+  /** If `checkLevelsOnConstraints` is true, check levels of type variables
+   *  and create fresh ones as needed when bounds are first entered intot he constraint.
+   *  If `checkLevelsOnInstantiation` is true, allow level-incorrect constraints but
+   *  fix levels on type variable instantiation.
    */
-  inline val checkLevels = false
+  inline val checkLevelsOnConstraints = false
+  inline val checkLevelsOnInstantiation = true
+
 }

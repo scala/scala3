@@ -1,3 +1,4 @@
+// Compiles under #14026
 class Inv[A <: Singleton](x: A)
 object Inv {
   def empty[A <: Singleton]: Inv[A] = new Inv(???)
@@ -12,7 +13,8 @@ object Test {
   def inv(cond: Boolean) = // used to leak: Inv[x.type]
     if (cond)
       val x: Int = 1
-      new Inv(x)
+      new Inv(x) // error
     else
-      Inv.empty
+      Inv.empty // error
+
 }

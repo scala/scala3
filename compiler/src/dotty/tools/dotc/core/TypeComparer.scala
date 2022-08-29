@@ -2869,11 +2869,11 @@ object TypeComparer {
   def subtypeCheckInProgress(using Context): Boolean =
     comparing(_.subtypeCheckInProgress)
 
-  def instanceType(param: TypeParamRef, fromBelow: Boolean)(using Context): Type =
-    comparing(_.instanceType(param, fromBelow))
+  def instanceType(param: TypeParamRef, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type =
+    comparing(_.instanceType(param, fromBelow, maxLevel))
 
-  def approximation(param: TypeParamRef, fromBelow: Boolean)(using Context): Type =
-    comparing(_.approximation(param, fromBelow))
+  def approximation(param: TypeParamRef, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type =
+    comparing(_.approximation(param, fromBelow, maxLevel))
 
   def bounds(param: TypeParamRef)(using Context): TypeBounds =
     comparing(_.bounds(param))
@@ -2953,7 +2953,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         case param @ TypeParamRef(b, n) if b eq caseLambda =>
           insts(n) =
             if canApprox then
-              approximation(param, fromBelow = variance >= 0).simplified
+              approximation(param, fromBelow = variance >= 0, Int.MaxValue).simplified
             else constraint.entry(param) match
               case entry: TypeBounds =>
                 val lo = fullLowerBound(param)
