@@ -2,26 +2,22 @@ name: scaladoc
 
 on:
   push:
-    branches-ignore:
-      - 'language-reference-stable'
-  pull_request:
-    branches-ignore:
-      - 'language-reference-stable'
+    branches:
+      - 'scaladoc-fixes'
+
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 
 jobs:
   build:
-    env:
-      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
     runs-on: ubuntu-latest
-    if: "(    github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip docs]')
-         )
-         || contains(github.event.ref, 'scaladoc')
-         || contains(github.event.ref, 'main')"
-
     steps:
       - name: Git Checkout
         uses: actions/checkout@v3
@@ -62,28 +58,21 @@ jobs:
       - name: Generate index file
         run: scaladoc/scripts/mk-index.sh scaladoc/output > scaladoc/output/index.html
 
-      - name: Upload documentation to server
-        uses: azure/CLI@v1
-        if: env.AZURE_STORAGE_SAS_TOKEN
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: Setup Pages
+        uses: actions/configure-pages@v2
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
         with:
-          inlineScript: |
-            DOC_DEST=$(echo pr-${PR_NUMBER:-${GITHUB_REF##*/}} | tr -d -c "[-A-Za-z0-9]")
-            echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
-            az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
-            az storage blob upload-batch --overwrite true -s scaladoc/output -d $DOC_DEST --account-name scala3docstorage
+          # Upload scaladoc content
+          path: 'scaladoc/output'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
 
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest
-    # if false - disable flaky test
-    if: "false && ((    github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip docs]')
-         )
-         || contains(github.event.ref, 'scaladoc')
-         || contains(github.event.ref, 'scala3doc')
-         || contains(github.event.ref, 'main'))"
 
     steps:
       - name: Git Checkout
