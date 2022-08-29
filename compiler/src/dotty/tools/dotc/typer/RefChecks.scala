@@ -95,7 +95,7 @@ object RefChecks {
    *  and required classes. Also check that only `enum` constructs extend
    *  `java.lang.Enum` and no user-written class extends ContextFunctionN.
    */
-  private def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
+  def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
@@ -106,8 +106,9 @@ object RefChecks {
       val psyms = cls.asClass.parentSyms
       for (psym <- psyms)
         checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
-      for (reqd <- cinfo.cls.givenSelfType.classSymbols)
-        checkSelfConforms(reqd, "missing requirement", "required")
+      for reqd <- cinfo.cls.givenSelfType.classSymbols do
+        if reqd != cls then
+          checkSelfConforms(reqd, "missing requirement", "required")
 
       def isClassExtendingJavaEnum =
         !cls.isOneOf(Enum | Trait) && psyms.contains(defn.JavaEnumClass)
@@ -272,7 +273,7 @@ object RefChecks {
    *  TODO This still needs to be cleaned up; the current version is a straight port of what was there
    *       before, but it looks too complicated and method bodies are far too large.
    */
-  private def checkAllOverrides(clazz: ClassSymbol)(using Context): Unit = {
+  def checkAllOverrides(clazz: ClassSymbol)(using Context): Unit = {
     val self = clazz.thisType
     val upwardsSelf = upwardsThisType(clazz)
     var hasErrors = false

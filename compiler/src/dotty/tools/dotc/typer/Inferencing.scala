@@ -12,6 +12,7 @@ import util.{Stats, SimpleIdentityMap, SrcPos}
 import Decorators._
 import config.Printers.{gadts, typr}
 import annotation.tailrec
+import reporting._
 import collection.mutable
 
 import scala.annotation.internal.sharable
@@ -126,8 +127,8 @@ object Inferencing {
       couldInstantiateTypeVar(parent, applied)
     case tp: AndOrType =>
       couldInstantiateTypeVar(tp.tp1, applied) || couldInstantiateTypeVar(tp.tp2, applied)
-    case AnnotatedType(tp, _) =>
-      couldInstantiateTypeVar(tp, applied)
+    case tp: AnnotatedType =>
+      couldInstantiateTypeVar(tp.parent, applied)
     case _ =>
       false
 
@@ -524,10 +525,10 @@ object Inferencing {
   }
 
   /** Replace every top-level occurrence of a wildcard type argument by
-    *  a fresh skolem type. The skolem types are of the form $i.CAP, where
-    *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
-    *  type member. See the documentation of `TypeBox` for a rationale why we do this.
-    */
+   *  a fresh skolem type. The skolem types are of the form $i.CAP, where
+   *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
+   *  type member. See the documentation of `TypeBox` for a rationale why we do this.
+   */
   def captureWildcards(tp: Type)(using Context): Type = derivedOnDealias(tp) {
     case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
       val tparams = tycon.typeParamSymbols
@@ -747,4 +748,3 @@ trait Inferencing { this: Typer =>
 
 enum IfBottom:
   case ok, fail, flip
-

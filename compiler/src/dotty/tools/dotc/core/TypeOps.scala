@@ -16,6 +16,10 @@ import config.Feature
 import typer.ProtoTypes._
 import typer.ForceDegree
 import typer.Inferencing._
+import typer.IfBottom
+import reporting.TestingReporter
+import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing}
+import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -52,7 +56,7 @@ object TypeOps:
   }
 
   /** The TypeMap handling the asSeenFrom */
-  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap {
+  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap, IdempotentCaptRefMap {
     /** Set to true when the result of `apply` was approximated to avoid an unstable prefix. */
     var approximated: Boolean = false
 
@@ -164,6 +168,15 @@ object TypeOps:
         // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
+      case tp @ CapturingType(parent, refs) =>
+        if !ctx.mode.is(Mode.Type)
+            && refs.subCaptures(parent.captureSet, frozen = true).isOK
+            && (tp.isBoxed || !parent.isBoxedCapturing)
+              // fuse types with same boxed status and outer boxed with any type
+        then
+          simplify(parent, theMap)
+        else
+          mapOver
       case tp @ AnnotatedType(parent, annot) =>
         val parent1 = simplify(parent, theMap)
         if annot.symbol == defn.UncheckedVarianceAnnot
@@ -191,7 +204,7 @@ object TypeOps:
     }
   }
 
-  class SimplifyMap(using Context) extends TypeMap {
+  class SimplifyMap(using Context) extends IdentityCaptRefMap {
     def apply(tp: Type): Type = simplify(tp, this)
   }
 
@@ -279,15 +292,23 @@ object TypeOps:
         case _ => false
       }
 
-      // Step 1: Get RecTypes and ErrorTypes out of the way,
+      // Step 1: Get RecTypes and ErrorTypes and CapturingTypes out of the way,
       tp1 match {
-        case tp1: RecType => return tp1.rebind(approximateOr(tp1.parent, tp2))
-        case err: ErrorType => return err
+        case tp1: RecType =>
+          return tp1.rebind(approximateOr(tp1.parent, tp2))
+        case CapturingType(parent1, refs1) =>
+          return tp1.derivedCapturingType(approximateOr(parent1, tp2), refs1)
+        case err: ErrorType =>
+          return err
         case _ =>
       }
       tp2 match {
-        case tp2: RecType => return tp2.rebind(approximateOr(tp1, tp2.parent))
-        case err: ErrorType => return err
+        case tp2: RecType =>
+          return tp2.rebind(approximateOr(tp1, tp2.parent))
+        case CapturingType(parent2, refs2) =>
+          return tp2.derivedCapturingType(approximateOr(tp1, parent2), refs2)
+        case err: ErrorType =>
+          return err
         case _ =>
       }
 
@@ -417,7 +438,7 @@ object TypeOps:
   }
 
   /** An approximating map that drops NamedTypes matching `toAvoid` and wildcard types. */
-  abstract class AvoidMap(using Context) extends AvoidWildcardsMap:
+  abstract class AvoidMap(using Context) extends AvoidWildcardsMap, IdempotentCaptRefMap:
     @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
 
     def toAvoid(tp: NamedType): Boolean

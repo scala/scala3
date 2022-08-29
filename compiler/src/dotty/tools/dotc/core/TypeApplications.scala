@@ -11,6 +11,7 @@ import util.Stats._
 import Names._
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
+import cc.boxedUnlessFun
 
 object TypeApplications {
 
@@ -492,10 +493,9 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def argInfos(using Context): List[Type] = self.stripped match {
-    case AppliedType(tycon, args) => args
+  final def argInfos(using Context): List[Type] = self.stripped match
+    case AppliedType(tycon, args) => args.boxedUnlessFun(tycon)
     case _ => Nil
-  }
 
   /** Argument types where existential types in arguments are disallowed */
   def argTypes(using Context): List[Type] = argInfos mapConserve noBounds

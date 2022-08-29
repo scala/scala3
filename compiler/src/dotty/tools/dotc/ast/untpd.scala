@@ -69,13 +69,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class InterpolatedString(id: TermName, segments: List[Tree])(implicit @constructorOnly src: SourceFile)
     extends TermTree
 
-  /** A function type */
+  /** A function type or closure */
   case class Function(args: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends Tree {
     override def isTerm: Boolean = body.isTerm
     override def isType: Boolean = body.isType
   }
 
-  /** A function type with `implicit`, `erased`, or `given` modifiers */
+  /** A function type or closure with `implicit`, `erased`, or `given` modifiers */
   class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @constructorOnly src: SourceFile)
     extends Function(args, body)
 
@@ -145,6 +145,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case Floating
   }
 
+  /** {x1, ..., xN} T   (only relevant under -Ycc) */
+  case class CapturingTypeTree(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
+
   /** Short-lived usage in typer, does not need copy/transform/fold infrastructure */
   case class DependentTypeTree(tp: List[Symbol] => Type)(implicit @constructorOnly src: SourceFile) extends Tree
 
@@ -213,6 +216,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Transparent()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Transparent)
 
     case class Infix()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Infix)
+
+    /** Used under -Ycc to mark impure function types `A => B` in `FunctionWithMods` */
+    case class Impure()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Impure)
   }
 
   /** Modifiers and annotations for definitions
@@ -390,6 +396,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit src: SourceFile): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
   def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit src: SourceFile): Inlined = new Inlined(call, bindings, expansion)
   def TypeTree()(implicit src: SourceFile): TypeTree = new TypeTree()
+  def InferredTypeTree()(implicit src: SourceFile): TypeTree = new InferredTypeTree()
   def SingletonTypeTree(ref: Tree)(implicit src: SourceFile): SingletonTypeTree = new SingletonTypeTree(ref)
   def RefinedTypeTree(tpt: Tree, refinements: List[Tree])(implicit src: SourceFile): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
   def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit src: SourceFile): AppliedTypeTree = new AppliedTypeTree(tpt, args)
@@ -647,6 +654,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Number if (digits == tree.digits) && (kind == tree.kind) => tree
       case _ => finalize(tree, untpd.Number(digits, kind))
     }
+    def CapturingTypeTree(tree: Tree)(refs: List[Tree], parent: Tree)(using Context): Tree = tree match
+      case tree: CapturingTypeTree if (refs eq tree.refs) && (parent eq tree.parent) => tree
+      case _ => finalize(tree, untpd.CapturingTypeTree(refs, parent))
+
     def TypedSplice(tree: Tree)(splice: tpd.Tree)(using Context): ProxyTree = tree match {
       case tree: TypedSplice if splice `eq` tree.splice => tree
       case _ => finalize(tree, untpd.TypedSplice(splice)(using ctx))
@@ -710,6 +721,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         tree
       case MacroTree(expr) =>
         cpy.MacroTree(tree)(transform(expr))
+      case CapturingTypeTree(refs, parent) =>
+        cpy.CapturingTypeTree(tree)(transform(refs), transform(parent))
       case _ =>
         super.transformMoreCases(tree)
     }
@@ -769,6 +782,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, splice)
       case MacroTree(expr) =>
         this(x, expr)
+      case CapturingTypeTree(refs, parent) =>
+        this(this(x, refs), parent)
       case _ =>
         super.foldMoreCases(x, tree)
     }

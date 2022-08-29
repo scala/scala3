@@ -10,10 +10,12 @@ import util.SrcPos
 import NameOps._
 import collection.mutable
 import reporting._
-import Checking.checkNoPrivateLeaks
+import Checking.{checkNoPrivateLeaks, checkNoWildcard}
+import cc.CaptureSet
 
 trait TypeAssigner {
-  import tpd._
+  import tpd.*
+  import TypeAssigner.*
 
   /** The qualifying class of a this or super with prefix `qual` (which might be empty).
    *  @param packageOk   The qualifier may refer to a package.
@@ -186,6 +188,14 @@ trait TypeAssigner {
     if tpe.isError then tpe
     else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
 
+  def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type = tp match
+    case AppliedType(tycon, args) =>
+      val constr = tycon.typeSymbol
+      if constr == defn.andType then AndType(args(0), args(1))
+      else if constr == defn.orType then OrType(args(0), args(1), soft = false)
+      else tp
+    case _ => tp
+
   /** Type assignment method. Each method takes as parameters
    *   - an untpd.Tree to which it assigns a type,
    *   - typed child trees it needs to access to cpmpute that type,
@@ -281,6 +291,7 @@ trait TypeAssigner {
 
   def safeSubstMethodParams(mt: MethodType, argTypes: List[Type])(using Context): Type =
     if mt.isResultDependent then safeSubstParams(mt.resultType, mt.paramRefs, argTypes)
+    else if mt.isCaptureDependent then mt.resultType.substParams(mt, argTypes)
     else mt.resultType
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(using Context): Apply = {
@@ -353,7 +364,7 @@ trait TypeAssigner {
             // reference to a polytype would have to be a fresh copy of that type,
             // but we want to avoid that because it would increase compilation cost.
             // See pos/i6682a.scala for a test case where the defensive copying matters.
-            val ensureFresh = new TypeMap:
+            val ensureFresh = new TypeMap with CaptureSet.IdempotentCaptRefMap:
               def apply(tp: Type) = mapOver(
                 if tp eq pt then pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
                 else tp)
@@ -444,13 +455,8 @@ trait TypeAssigner {
     if (cases.isEmpty) tree.withType(expr.tpe)
     else tree.withType(TypeComparer.lub(expr.tpe :: cases.tpes))
 
-  def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral = {
-    val ownType = tree match {
-      case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemtpt.tpe)
-      case _ => if (ctx.erasedTypes) defn.SeqType else defn.SeqType.appliedTo(elemtpt.tpe)
-    }
-    tree.withType(ownType)
-  }
+  def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral =
+    tree.withType(seqLitType(tree, elemtpt.tpe))
 
   def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(using Context): SingletonTypeTree =
     tree.withType(ref.tpe)
@@ -474,11 +480,10 @@ trait TypeAssigner {
     assert(!hasNamedArg(args) || ctx.reporter.errorsReported, tree)
     val tparams = tycon.tpe.typeParams
     val ownType =
-      if (tparams.hasSameLengthAs(args))
-        if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
-        else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe, soft = false)
-        else tycon.tpe.appliedTo(args.tpes)
-      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
+      if tparams.hasSameLengthAs(args) then
+        processAppliedType(tree, tycon.tpe.appliedTo(args.tpes))
+      else
+        wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)
   }
 
@@ -545,5 +550,9 @@ trait TypeAssigner {
 
 }
 
+object TypeAssigner extends TypeAssigner:
+  def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
+    case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)
+    case _ => if ctx.erasedTypes then defn.SeqType else defn.SeqType.appliedTo(elemType)
 
-object TypeAssigner extends TypeAssigner
+

@@ -74,9 +74,8 @@ object Checking {
     }
     for (arg, which, bound) <- TypeOps.boundsViolations(args, boundss, instantiate, app) do
       report.error(
-          showInferred(DoesNotConformToBound(arg.tpe, which, bound),
-              app, tpt),
-          arg.srcPos.focus)
+        showInferred(DoesNotConformToBound(arg.tpe, which, bound), app, tpt),
+        arg.srcPos.focus)
 
   /** Check that type arguments `args` conform to corresponding bounds in `tl`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
@@ -147,7 +146,7 @@ object Checking {
         tp match
           case AppliedType(tycon, argTypes) =>
             checkAppliedType(
-              untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree))
+              untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
                 .withType(tp).withSpan(tpt.span.toSynthetic),
               tpt)
           case _ =>
@@ -325,6 +324,7 @@ object Checking {
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
             case _: RefinedOrRecType | _: AppliedType => true
+            case tp: AnnotatedType => isInteresting(tp.parent)
             case _ => false
           }
 
@@ -599,6 +599,7 @@ object Checking {
   def checkNoPrivateLeaks(sym: Symbol)(using Context): Type = {
     class NotPrivate extends TypeMap {
       var errors: List[() => String] = Nil
+      private var inCaptureSet: Boolean = false
 
       def accessBoundary(sym: Symbol): Symbol =
         if (sym.is(Private) || !sym.owner.isClass) sym.owner
@@ -612,12 +613,16 @@ object Checking {
        *  @pre  The signature of `sym` refers to `other`
        */
       def isLeaked(other: Symbol) =
-        other.is(Private, butNot = TypeParam) && {
+        other.is(Private, butNot = TypeParam)
+        && {
           val otherBoundary = other.owner
           val otherLinkedBoundary = otherBoundary.linkedClass
           !(symBoundary.isContainedIn(otherBoundary) ||
             otherLinkedBoundary.exists && symBoundary.isContainedIn(otherLinkedBoundary))
         }
+        && !(inCaptureSet && other.isAllOf(LocalParamAccessor))
+            // class parameters in capture sets are not treated as leaked since in
+            // phase CheckCaptures these are treated as normal vals.
 
       def apply(tp: Type): Type = tp match {
         case tp: NamedType =>
@@ -652,6 +657,14 @@ object Checking {
             declaredParents =
               tp.declaredParents.map(p => transformedParent(apply(p)))
             )
+        case tp @ AnnotatedType(underlying, annot)
+        if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
+          val underlying1 = this(underlying)
+          val saved = inCaptureSet
+          inCaptureSet = true
+          val annot1 = annot.mapWith(this)
+          inCaptureSet = saved
+          derivedAnnotatedType(tp, underlying1, annot1)
         case _ =>
           mapOver(tp)
       }
@@ -1422,9 +1435,15 @@ trait Checking {
       val kind = if pattern then "pattern selector" else "value"
       report.warning(MatchableWarning(tp, pattern), pos)
 
-  def checkCanThrow(tp: Type, span: Span)(using Context): Unit =
+  /** Check that there is an implicit capability to throw a checked exception
+   *  if the saferExceptions feature is turned on. Return that capability is it exists,
+   *  EmptyTree otherwise.
+   */
+  def checkCanThrow(tp: Type, span: Span)(using Context): Tree =
     if Feature.enabled(Feature.saferExceptions) && tp.isCheckedException then
       ctx.typer.implicitArgTree(defn.CanThrowClass.typeRef.appliedTo(tp), span)
+    else
+      EmptyTree
 
   /** Check that catch can generate a good CanThrow exception */
   def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = pat match
@@ -1474,7 +1493,7 @@ trait ReChecking extends Checking {
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
-  override def checkCanThrow(tp: Type, span: Span)(using Context): Unit = ()
+  override def checkCanThrow(tp: Type, span: Span)(using Context): Tree = EmptyTree
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
   override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }

@@ -49,6 +49,8 @@ import transform.TypeUtils._
 import reporting._
 import Nullables._
 import NullOpsDecorator._
+import cc.CheckCaptures
+import config.Config
 
 import scala.annotation.constructorOnly
 
@@ -1200,7 +1202,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ => mapOver(t)
     }
 
-    val pt1 = pt.stripTypeVar.dealias.normalized
+    val pt1 = pt.strippedDealias.normalized
     if (pt1 ne pt1.dropDependentRefinement)
        && defn.isContextFunctionType(pt1.nonPrivateMember(nme.apply).info.finalResultType)
     then
@@ -1282,7 +1284,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val numArgs = args.length
     val isContextual = funFlags.is(Given)
     val isErased = funFlags.is(Erased)
-    val funCls = defn.FunctionClass(numArgs, isContextual, isErased)
+    val isImpure = funFlags.is(Impure)
+    val funSym = defn.FunctionSymbol(numArgs, isContextual, isErased, isImpure)
 
     /** If `app` is a function type with arguments that are all erased classes,
      *  turn it into an erased function type.
@@ -1292,7 +1295,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if !isErased
          && numArgs > 0
          && args.indexWhere(!_.tpe.isErasedClass) == numArgs =>
-        val tycon1 = TypeTree(defn.FunctionClass(numArgs, isContextual, isErased = true).typeRef)
+        val tycon1 = TypeTree(defn.FunctionSymbol(numArgs, isContextual, true, isImpure).typeRef)
           .withSpan(tycon.span)
         assignType(cpy.AppliedTypeTree(app)(tycon1, args), tycon1, args)
       case _ =>
@@ -1319,7 +1322,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         report.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
       val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
       val typeArgs = appDef.termParamss.head.map(_.tpt) :+ resTpt
-      val tycon = TypeTree(funCls.typeRef)
+      val tycon = TypeTree(funSym.typeRef)
       val core = propagateErased(AppliedTypeTree(tycon, typeArgs))
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     end typedDependent
@@ -1330,7 +1333,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
       case _ =>
         propagateErased(
-          typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt))
+          typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ body), pt))
     }
   }
 
@@ -1867,11 +1870,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         desugar.makeTryCase(handler1) :: Nil
     typedTry(untpd.Try(tree.expr, cases, tree.finalizer).withSpan(tree.span), pt)
 
-  def typedThrow(tree: untpd.Throw)(using Context): Tree = {
+  def typedThrow(tree: untpd.Throw)(using Context): Tree =
     val expr1 = typed(tree.expr, defn.ThrowableType)
-    checkCanThrow(expr1.tpe.widen, tree.span)
-    Throw(expr1).withSpan(tree.span)
-  }
+    val cap = checkCanThrow(expr1.tpe.widen, tree.span)
+    val res = Throw(expr1).withSpan(tree.span)
+    if ctx.settings.Ycc.value && !cap.isEmpty && !ctx.isAfterTyper then
+      // Record access to the CanThrow capabulity recovered in `cap` by wrapping
+      // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotatoon.
+      Typed(res,
+        TypeTree(
+          AnnotatedType(res.tpe,
+            Annotation(defn.RequiresCapabilityAnnot, cap))))
+    else res
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
     val elemProto = pt.stripNull.elemType match {
@@ -2332,15 +2342,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // constructors are an exception as we don't allow constraining type params of classes
         rhsCtx.gadt.addToConstraint(tparamSyms)
       else if !sym.isPrimaryConstructor then
-        // otherwise, for secondary constructors we need a context that "knows"
-        // that their type parameters are aliases of the class type parameters.
-        // See pos/i941.scala
-        rhsCtx.gadt.addToConstraint(tparamSyms)
-        tparamSyms.lazyZip(sym.owner.typeParams).foreach { (psym, tparam) =>
-          val tr = tparam.typeRef
-          rhsCtx.gadt.addBound(psym, tr, isUpper = false)
-          rhsCtx.gadt.addBound(psym, tr, isUpper = true)
-        }
+        linkConstructorParams(sym, tparamSyms, rhsCtx)
 
     if sym.isInlineMethod then rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx.addMode(Mode.InExtensionMethod)
@@ -2397,7 +2399,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
-  /** (1) Check that the signature of the class mamber does not return a repeated parameter type
+  /** (1) Check that the signature of the class member does not return a repeated parameter type
    *  (2) If info is an erased class, set erased flag of member
    */
   private def postProcessInfo(sym: Symbol)(using Context): Unit =
@@ -2700,6 +2702,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       registerNowarn(annot1, tree)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
+      val cls = annot1.symbol.maybeOwner
+      if cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot then
+        CheckCaptures.checkWellformed(annot1)
       if arg1.isType then
         assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
       else
@@ -4057,7 +4062,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           else if pt.isInstanceOf[PolyProto] then tree
           else
             var typeArgs = tree match
-              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree)
+              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree(_))
               case _ => Nil
             if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))

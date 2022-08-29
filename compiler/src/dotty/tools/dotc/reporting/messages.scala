@@ -25,6 +25,7 @@ import ast.Trees._
 import ast.untpd
 import ast.tpd
 import transform.SymUtils._
+import cc.CaptureSet.IdentityCaptRefMap
 
 /**  Messages
   *  ========
@@ -250,7 +251,7 @@ import transform.SymUtils._
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
     // these are usually easier to analyze. We exclude F-bounds since these would
     // lead to a recursive infinite expansion.
-    object reported extends TypeMap:
+    object reported extends TypeMap, IdentityCaptRefMap:
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
       var fbounded = false
@@ -294,7 +295,6 @@ import transform.SymUtils._
     override def explain =
       val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
       treeStr + "\n" + super.explain
-
 
   end TypeMismatch
 
@@ -674,7 +674,7 @@ import transform.SymUtils._
     }
   }
 
-  class ByNameParameterNotSupported(tpe: untpd.TypTree)(using Context)
+  class ByNameParameterNotSupported(tpe: untpd.Tree)(using Context)
   extends SyntaxMsg(ByNameParameterNotSupportedID) {
     def msg = em"By-name parameter type ${tpe} not allowed here."
 

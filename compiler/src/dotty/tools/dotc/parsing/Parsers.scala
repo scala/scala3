@@ -188,6 +188,8 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
+    def isPureArrow(name: Name): Boolean = ctx.settings.Ycc.value && isIdent(name)
+    def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
@@ -426,7 +428,10 @@ object Parsers {
     /** Convert tree to formal parameter list
     */
     def convertToParams(tree: Tree): List[ValDef] =
-      val mods = if in.token == CTXARROW then Modifiers(Given) else EmptyModifiers
+      val mods =
+        if in.token == CTXARROW || isPureArrow(nme.PURECTXARROW)
+        then Modifiers(Given)
+        else EmptyModifiers
       tree match
         case Parens(t) =>
           convertToParam(t, mods) :: Nil
@@ -901,7 +906,7 @@ object Parsers {
       && {
         lookahead.observeColonEOL(inTemplate = false)
         lookahead.nextToken()
-        canStartTypeTokens.contains(lookahead.token)
+        canStartInfixTypeTokens.contains(lookahead.token)
       }
 
     /** Is current ident a `*`, and is it followed by a `)`, `, )`, `,EOF`? The latter two are not
@@ -954,6 +959,29 @@ object Parsers {
         lookahead.skipParens()
         isArrowIndent()
       else false
+
+    /** Under -Ycc: is the following token sequuence a capture set `{ref1, ..., refN}`
+     *  followed by a token that can start a type?
+     */
+    def followingIsCaptureSet(): Boolean =
+      ctx.settings.Ycc.value && {
+        val lookahead = in.LookaheadScanner()
+        def followingIsTypeStart() =
+          lookahead.nextToken()
+          canStartInfixTypeTokens.contains(lookahead.token)
+          || lookahead.token == LBRACKET
+        def recur(): Boolean =
+          (lookahead.isIdent || lookahead.token == THIS) && {
+            lookahead.nextToken()
+            if lookahead.token == COMMA then
+              lookahead.nextToken()
+              recur()
+            else
+              lookahead.token == RBRACE && followingIsTypeStart()
+          }
+        lookahead.nextToken()
+        if lookahead.token == RBRACE then followingIsTypeStart() else recur()
+      }
 
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -1405,51 +1433,74 @@ object Parsers {
       case _ => false
     }
 
+    /** CaptureRef  ::=  ident | `this`
+     */
+    def captureRef(): Tree =
+      if in.token == THIS then simpleRef() else termIdent()
+
+    /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under -Ycc
+     */
+    def captureSet(): List[Tree] = inBraces {
+      if in.token == RBRACE then Nil else commaSeparated(captureRef)
+    }
+
     /** Type           ::=  FunType
      *                   |  HkTypeParamClause ‘=>>’ Type
      *                   |  FunParamClause ‘=>>’ Type
      *                   |  MatchType
      *                   |  InfixType
+     *                   |  CaptureSet Type                            -- under -Ycc
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
+     *                   |  (‘->’ | ‘?->’ ) Type                       -- under -Ycc
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
+     *                   |  HKTypeParamClause ‘->’ Type                -- under -Ycc
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
      */
-    def typ(): Tree = {
+    def typ(): Tree =
       val start = in.offset
       var imods = Modifiers()
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
         atSpan(start, in.offset) {
-          if in.token == TLARROW then
+          var token = in.token
+          if isPureArrow(nme.PUREARROW) then
+            token = ARROW
+          else if isPureArrow(nme.PURECTXARROW) then
+            token = CTXARROW
+          else if token == TLARROW then
             if !imods.flags.isEmpty || params.isEmpty then
               syntaxError(em"illegal parameter list for type lambda", start)
-              in.token = ARROW
-            else
-              for case ValDef(_, tpt: ByNameTypeTree, _) <- params do
-                syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
-              in.nextToken()
-              return TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], typ())
+              token = ARROW
+          else if ctx.settings.Ycc.value then
+            // `=>` means impure function under -Ycc whereas `->` is a regular function.
+            imods |= Impure
 
-          if in.token == CTXARROW then
+          if token == CTXARROW then
             in.nextToken()
             imods |= Given
+          else if token == ARROW || token == TLARROW then
+            in.nextToken()
           else
             accept(ARROW)
-          val t = typ()
 
-          if imods.isOneOf(Given | Erased) then
+          val resultType = typ()
+          if token == TLARROW then
+            for case ValDef(_, tpt, _) <- params do
+              if isByNameType(tpt) then
+                syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
+            TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], resultType)
+          else if imods.isOneOf(Given | Erased | Impure) then
             if imods.is(Given) && params.isEmpty then
               syntaxError("context function types require at least one parameter", paramSpan)
-            new FunctionWithMods(params, t, imods)
+            FunctionWithMods(params, resultType, imods)
           else if !ctx.settings.YkindProjector.isDefault then
-            val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t): @unchecked
-
-            lambdaAbstract(tparams, Function(newParams, newT))
+            val (newParams :+ newResultType, tparams) = replaceKindProjectorPlaceholders(params :+ resultType): @unchecked
+            lambdaAbstract(tparams, Function(newParams, newResultType))
           else
-            Function(params, t)
+            Function(params, resultType)
         }
 
       var isValParamList = false
@@ -1475,18 +1526,16 @@ object Parsers {
                   commaSeparatedRest(t, funArgType)
             }
             accept(RPAREN)
-            if isValParamList || in.isArrow then
+            if isValParamList || in.isArrow || isPureArrow then
               functionRest(ts)
             else {
-              val ts1 =
-                for (t <- ts) yield
-                  t match {
-                    case t@ByNameTypeTree(t1) =>
-                      syntaxError(ByNameParameterNotSupported(t), t.span)
-                      t1
-                    case _ =>
-                      t
-                  }
+              val ts1 = ts.mapConserve { t =>
+                if isByNameType(t) then
+                  syntaxError(ByNameParameterNotSupported(t), t.span)
+                  stripByNameType(t)
+                else
+                  t
+              }
               val tuple = atSpan(start) { makeTupleOrParens(ts1) }
               infixTypeRest(
                 refinedTypeRest(
@@ -1501,7 +1550,7 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == TLARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
-          else if (in.token == ARROW) {
+          else if (in.token == ARROW || isPureArrow(nme.PUREARROW)) {
             val arrowOffset = in.skipToken()
             val body = toplevelTyp()
             atSpan(start, arrowOffset) {
@@ -1515,19 +1564,23 @@ object Parsers {
           }
           else { accept(TLARROW); typ() }
         }
+        else if in.token == LBRACE && followingIsCaptureSet() then
+          CapturingTypeTree(captureSet(), typ())
         else if (in.token == INDENT) enclosed(INDENT, typ())
         else infixType()
 
-      in.token match {
+      in.token match
         case ARROW | CTXARROW => functionRest(t :: Nil)
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
-            syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
-          t
-      }
-    }
+          if isPureArrow then
+            functionRest(t :: Nil)
+          else
+            if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
+              syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
+            t
+    end typ
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
       val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
@@ -1583,8 +1636,8 @@ object Parsers {
     def infixType(): Tree = infixTypeRest(refinedType())
 
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
-        isOperator = !followingIsVararg())
+      infixOps(t, canStartInfixTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
+        isOperator = !followingIsVararg() && !isPureArrow)
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
      */
@@ -1822,17 +1875,48 @@ object Parsers {
       else commaSeparated(() => argType())
     }
 
-    /** FunArgType ::=  Type | `=>' Type
-     */
-    val funArgType: () => Tree = () =>
-      if (in.token == ARROW) atSpan(in.skipToken()) { ByNameTypeTree(typ()) }
-      else typ()
+    def paramTypeOf(core: () => Tree): Tree =
+      if in.token == ARROW || isPureArrow(nme.PUREARROW) then
+        val isImpure = in.token == ARROW
+        val tp = atSpan(in.skipToken()) { ByNameTypeTree(core()) }
+        if isImpure && ctx.settings.Ycc.value then ImpureByNameTypeTree(tp) else tp
+      else if in.token == LBRACE && followingIsCaptureSet() then
+        val start = in.offset
+        val cs = captureSet()
+        val endCsOffset = in.lastOffset
+        val startTpOffset = in.offset
+        val tp = paramTypeOf(core)
+        val tp1 = tp match
+          case ImpureByNameTypeTree(tp1) =>
+            syntaxError("explicit captureSet is superfluous for impure call-by-name type", start)
+            tp1
+          case CapturingTypeTree(_, tp1: ByNameTypeTree) =>
+            syntaxError("only one captureSet is allowed here", start)
+            tp1
+          case _: ByNameTypeTree if startTpOffset > endCsOffset =>
+            report.warning(
+              i"""Style: by-name `->` should immediately follow closing `}` of capture set
+                 |to avoid confusion with function type.
+                 |That is, `{c}-> T` instead of `{c} -> T`.""",
+              source.atSpan(Span(startTpOffset, startTpOffset)))
+            tp
+          case _ =>
+            tp
+        CapturingTypeTree(cs, tp1)
+      else
+        core()
 
-    /** ParamType ::= [`=>'] ParamValueType
+    /** FunArgType ::=  Type
+     *               |  `=>' Type
+     *               |  [CaptureSet] `->' Type
      */
-    def paramType(): Tree =
-      if (in.token == ARROW) atSpan(in.skipToken()) { ByNameTypeTree(paramValueType()) }
-      else paramValueType()
+    val funArgType: () => Tree = () => paramTypeOf(typ)
+
+    /** ParamType  ::=  ParamValueType
+     *               |  `=>' ParamValueType
+     *               |  [CaptureSet] `->' ParamValueType
+     */
+    def paramType(): Tree = paramTypeOf(paramValueType)
 
     /** ParamValueType ::= Type [`*']
      */
@@ -1898,6 +1982,8 @@ object Parsers {
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
       else if location.inPattern then rejectWildcardType(refinedType())
+      else if in.token == LBRACE && followingIsCaptureSet() then
+        CapturingTypeTree(captureSet(), infixType())
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -1969,7 +2055,7 @@ object Parsers {
      *                      |  ‘inline’ InfixExpr MatchClause
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      *  Binding           ::=  (id | `_') [`:' Type]
-     *  Ascription        ::=  `:' InfixType
+     *  Ascription        ::=  `:' [CaptureSet] InfixType
      *                      |  `:' Annotation {Annotation}
      *                      |  `:' `_' `*'
      *  Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
@@ -3099,6 +3185,7 @@ object Parsers {
           acceptColon()
           if (in.token == ARROW && ofClass && !mods.is(Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
+              // needed?, it's checked later anyway
           val tpt = paramType()
           val default =
             if (in.token == EQUALS) { in.nextToken(); subExpr() }
@@ -3256,7 +3343,7 @@ object Parsers {
         ImportSelector(
           atSpan(in.skipToken()) { Ident(nme.EMPTY) },
           bound =
-            if canStartTypeTokens.contains(in.token) then rejectWildcardType(infixType())
+            if canStartInfixTypeTokens.contains(in.token) then rejectWildcardType(infixType())
             else EmptyTree)
 
       /** id [‘as’ (id | ‘_’) */
@@ -3952,8 +4039,8 @@ object Parsers {
       stats.toList
     }
 
-    /** SelfType ::=  id [‘:’ InfixType] ‘=>’
-     *            |  ‘this’ ‘:’ InfixType ‘=>’
+    /** SelfType ::=  id [‘:’ [CaptureSet] InfixType] ‘=>’
+     *            |  ‘this’ ‘:’ [CaptureSet] InfixType ‘=>’
      */
     def selfType(): ValDef =
       if (in.isIdent || in.token == THIS)
@@ -3969,7 +4056,10 @@ object Parsers {
           val selfTpt =
             if in.isColon then
               in.nextToken()
-              infixType()
+              if in.token == LBRACE && followingIsCaptureSet() then
+                CapturingTypeTree(captureSet(), infixType())
+              else
+                infixType()
             else
               if selfName == nme.WILDCARD then accept(COLONfollow)
               TypeTree()

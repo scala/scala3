@@ -17,6 +17,7 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def map[B <: AnyRef](f: Elem => B): SimpleIdentitySet[B]
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
   def toList: List[Elem]
+  def iterator: Iterator[Elem]
 
   final def isEmpty: Boolean = size == 0
 
@@ -37,6 +38,10 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
       ((SimpleIdentitySet.empty: SimpleIdentitySet[E]) /: this) { (s, x) =>
         if (that.contains(x)) s else s + x
       }
+
+  def == [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): Boolean =
+    this.size == that.size && forall(that.contains)
+
   override def toString: String = toList.mkString("{", ", ", "}")
 }
 
@@ -61,6 +66,7 @@ object SimpleIdentitySet {
     def map[B <: AnyRef](f: Nothing => B): SimpleIdentitySet[B] = empty
     def /: [A, E <: AnyRef](z: A)(f: (A, E) => A): A = z
     def toList = Nil
+    def iterator = Iterator.empty
   }
 
   private class Set1[+Elem <: AnyRef](x0: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -78,6 +84,7 @@ object SimpleIdentitySet {
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(z, x0.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: Nil
+    def iterator = Iterator.single(x0.asInstanceOf[Elem])
   }
 
   private class Set2[+Elem <: AnyRef](x0: AnyRef, x1: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -97,6 +104,10 @@ object SimpleIdentitySet {
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: Nil
+    def iterator = Iterator.tabulate(2) {
+      case 0 => x0.asInstanceOf[Elem]
+      case 1 => x1.asInstanceOf[Elem]
+    }
   }
 
   private class Set3[+Elem <: AnyRef](x0: AnyRef, x1: AnyRef, x2: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -127,6 +138,11 @@ object SimpleIdentitySet {
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E]), x2.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: x2.asInstanceOf[Elem] :: Nil
+    def iterator = Iterator.tabulate(3) {
+      case 0 => x0.asInstanceOf[Elem]
+      case 1 => x1.asInstanceOf[Elem]
+      case 2 => x2.asInstanceOf[Elem]
+    }
   }
 
   private class SetN[+Elem <: AnyRef](val xs: Array[AnyRef]) extends SimpleIdentitySet[Elem] {
@@ -175,6 +191,7 @@ object SimpleIdentitySet {
       foreach(buf += _)
       buf.toList
     }
+    def iterator = xs.iterator.asInstanceOf[Iterator[Elem]]
     override def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {
         case that: SetN[?] =>
