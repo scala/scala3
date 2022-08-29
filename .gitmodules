@@ -225,3 +225,4 @@
 [submodule "community-build/community-projects/json-scala-values"]
 	path = community-build/community-projects/json-scala-values
 	url = https://github.com/imrafaelmerino/json-scala-values.git
+	branch = community-build
