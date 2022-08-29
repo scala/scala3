@@ -13,7 +13,7 @@ import scala.util.chaining._
 
 import java.net.URI
 
-class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
+class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val initialChunkSize = 5
   val resultsChunkSize = 20
   extension (p: PageEntry)
@@ -171,9 +171,9 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       clearResults()
       handleRecentQueries(query)
       parser.parse(query) match {
-        case EngineMatchersQuery(matchers) =>
+        case NameAndKindQuery(matchers) =>
             handleNewFluffQuery(matchers)
-        case BySignature(signature) =>
+        case SignatureQuery(signature) =>
             val loading = createLoadingAnimation
             val kindSeparator = createKindSeparator("inkuire")
             resultsDiv.appendChild(loading)

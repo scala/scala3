@@ -29,6 +29,6 @@ class QueryParser:
   }
 
   def parse(query: String): EngineQuery = query match {
-    case signatureRegex(signature) => BySignature(signature)
-    case other => EngineMatchersQuery(parseMatchers(other))
+    case signatureRegex(signature) => SignatureQuery(signature)
+    case other => NameAndKindQuery(parseMatchers(other))
   }
