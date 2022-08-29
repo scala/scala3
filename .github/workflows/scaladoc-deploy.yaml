@@ -1,0 +1,67 @@
+name: scaladoc
+
+on:
+  push:
+    branches:
+      - 'scaladoc-fixes'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - name: Locally publish self
+        run: ./project/scripts/sbt scaladoc/publishLocal
+
+      - name: Generate self documentation
+        run: ./project/scripts/sbt scaladoc/generateSelfDocumentation
+
+      - name: Generate testcases documentation
+        run: ./project/scripts/sbt scaladoc/generateTestcasesDocumentation
+
+      - name: Generate reference documentation
+        run: ./project/scripts/sbt scaladoc/generateReferenceDocumentation
+
+      - name: Generate Scala 3 documentation
+        run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
+
+      - name: Generate documentation for example project using dotty-sbt
+        run: ./project/scripts/sbt "sbt-test/scripted sbt-dotty/scaladoc"
+
+      - name: Generate index file
+        run: scaladoc/scripts/mk-index.sh scaladoc/output > scaladoc/output/index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v2
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          # Upload scaladoc content
+          path: 'scaladoc/output'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
