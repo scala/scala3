@@ -485,20 +485,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
 
-        // If LHS is a hard union, constrain any type variables of the RHS with it as lower bound
-        // before splitting the LHS into its constituents. That way, the RHS variables are
-        // constrained by the hard union and can be instantiated to it. If we just split and add
-        // the two parts of the LHS separately to the constraint, the lower bound would become
-        // a soft union.
-        def constrainRHSVars(tp2: Type): Boolean = tp2.dealiasKeepRefiningAnnots match
-          case tp2: TypeParamRef if constraint contains tp2 => compareTypeParamRef(tp2)
-          case AndType(tp21, tp22) => constrainRHSVars(tp21) && constrainRHSVars(tp22)
-          case _ => true
-
         /** Mark toplevel type vars in `tp2` as hard in the current constraint */
         def hardenTypeVars(tp2: Type): Unit = tp2.dealiasKeepRefiningAnnots match
           case tvar: TypeVar if constraint.contains(tvar.origin) =>
-            state.hardenTypeVar(tvar)
             constraint = constraint.withHard(tvar)
           case tp2: TypeParamRef if constraint.contains(tp2) =>
             hardenTypeVars(constraint.typeVarOfParam(tp2))
@@ -507,9 +496,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             hardenTypeVars(tp2.tp2)
           case _ =>
 
-        val res = widenOK
-          || joinOK
-          || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
+        val res = widenOK || joinOK
+          || recur(tp11, tp2) && recur(tp12, tp2)
           || containsAnd(tp1)
               && !joined
               && {
@@ -525,7 +513,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               // recursively, so we do it only once. See i14870.scala as a test case, which would
               // loop for a very long time without the recursion brake.
 
-        if res && !tp1.isSoft  && state.isCommittable then
+        if res && !tp1.isSoft && state.isCommittable then
           // We use a heuristic here where every toplevel type variable on the right hand side
           // is marked so that it converts all soft unions in its lower bound to hard unions
           // before it is instantiated. The reason is that the variable's instance type will

@@ -25,20 +25,19 @@ object TyperState {
 
   type LevelMap = SimpleIdentityMap[TypeVar, Integer]
 
-  opaque type Snapshot = (Constraint, TypeVars, TypeVars, LevelMap)
+  opaque type Snapshot = (Constraint, TypeVars, LevelMap)
 
   extension (ts: TyperState)
     def snapshot()(using Context): Snapshot =
-      (ts.constraint, ts.ownedVars, ts.hardVars, ts.upLevels)
+      (ts.constraint, ts.ownedVars, ts.upLevels)
 
     def resetTo(state: Snapshot)(using Context): Unit =
-      val (constraint, ownedVars, hardVars, upLevels) = state
+      val (constraint, ownedVars, upLevels) = state
       for tv <- ownedVars do
         if !ts.ownedVars.contains(tv) then // tv has been instantiated
           tv.resetInst(ts)
       ts.constraint = constraint
       ts.ownedVars = ownedVars
-      ts.hardVars = hardVars
       ts.upLevels = upLevels
 }
 
@@ -92,12 +91,6 @@ class TyperState() {
   def ownedVars: TypeVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
 
-  /** The set of type variables `tv` such that, if `tv` is instantiated to
-   *  its lower bound, top-level soft unions in the instance type are converted
-   *  to hard unions instead of being widened in `widenOr`.
-   */
-  private var hardVars: TypeVars = _
-
   private var upLevels: LevelMap = _
 
   /** Initializes all fields except reporter, isCommittable, which need to be
@@ -110,7 +103,6 @@ class TyperState() {
     this.myConstraint = constraint
     this.previousConstraint = constraint
     this.myOwnedVars = SimpleIdentitySet.empty
-    this.hardVars = SimpleIdentitySet.empty
     this.upLevels = SimpleIdentityMap.empty
     this.isCommitted = false
     this
@@ -122,18 +114,11 @@ class TyperState() {
     val ts = TyperState().init(this, this.constraint)
       .setReporter(reporter)
       .setCommittable(committable)
-    ts.hardVars = this.hardVars
     ts.upLevels = upLevels
     ts
 
   /** The uninstantiated variables */
   def uninstVars: collection.Seq[TypeVar] = constraint.uninstVars
-
-  /** Register type variable `tv` as hard. */
-  def hardenTypeVar(tv: TypeVar): Unit = hardVars += tv
-
-  /** Is type variable `tv` registered as hard? */
-  def isHard(tv: TypeVar): Boolean = hardVars.contains(tv)
 
   /** The nestingLevel of `tv` in this typer state */
   def nestingLevel(tv: TypeVar): Int =
@@ -195,11 +180,9 @@ class TyperState() {
       constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
       if targetState.constraint eq previousConstraint then
         targetState.constraint = constraint
-        targetState.hardVars = hardVars
         if !ownedVars.isEmpty then ownedVars.foreach(targetState.includeVar)
       else
         targetState.mergeConstraintWith(this)
-        for tv <- hardVars do targetState.hardVars += tv
 
     upLevels.foreachBinding { (tv, level) =>
       if level < targetState.nestingLevel(tv) then
@@ -247,7 +230,9 @@ class TyperState() {
           val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
           if this.isCommittable then
             tvars.foreach(tvar =>
-              if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
+              if !tvar.inst.exists then
+                if !isOwnedAnywhere(this, tvar) then includeVar(tvar)
+                if constraint.isHard(tvar) then constraint = constraint.withHard(tvar))
           typeComparer.addToConstraint(tl, tvars)
         }) &&
         // Integrate the additional constraints on type variables from `other`
