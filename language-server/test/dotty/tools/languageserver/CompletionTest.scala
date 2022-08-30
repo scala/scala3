@@ -643,7 +643,7 @@ class CompletionTest {
     code"""object Foo
           |extension (foo: Foo.type) def xxxx[A]: Int = 1
           |object Main { Foo.xx${m1} }"""
-      .completion(("xxxx", Method, "[A] => Int"))
+      .completion(("xxxx", Method, "[A]: Int"))
   }
 
   @Test def completeExtensionMethodWithParameterAndTypeParameter: Unit = {
@@ -762,7 +762,7 @@ class CompletionTest {
           |given Baz with {}
           |extension [A](using bar: Bar)(a: A)(using baz: Baz) def xxxx[B]: Either[A, B] = Left(a)
           |object Main { 123.xx${m1} }"""
-      .completion(("xxxx", Method, "(using baz: Baz): [B] => Either[Int, B]"))
+      .completion(("xxxx", Method, "(using baz: Baz)[B]: Either[Int, B]"))
   }
 
   @Test def completeExtensionMethodWithTypeBounds: Unit = {
@@ -772,7 +772,7 @@ class CompletionTest {
           |extension [A >: Bar](a: A) def xxxx[B <: a.type]: Either[A, B] = Left(a)
           |val foo = new Foo {}
           |object Main { foo.xx${m1} }"""
-      .completion(("xxxx", Method, "[B <: (foo : Foo)] => Either[Foo, B]"))
+          .completion(("xxxx", Method, "[B <: (foo : Foo)]: Either[Foo, B]"))
   }
 
   @Test def completeInheritedExtensionMethod: Unit = {
@@ -1034,7 +1034,7 @@ class CompletionTest {
         ("→", Method, "[B](y: B): (A, B)"),
         ("!=", Method, "(x$0: Any): Boolean"),
         ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
-        ("asInstanceOf", Method, "[X0] => X0"),
+        ("asInstanceOf", Method, "[X0]: X0"),
         ("->", Method, "[B](y: B): (A, B)"),
         ("wait", Method, "(x$0: Long, x$1: Int): Unit"),
         ("`back-tick`", Field, "Foo.Bar"),
@@ -1042,7 +1042,7 @@ class CompletionTest {
         ("formatted", Method, "(fmtstr: String): String"),
         ("ensuring", Method, "(cond: A => Boolean, msg: => Any): A"),
         ("wait", Method, "(): Unit"),
-        ("isInstanceOf", Method, "[X0] => Boolean"),
+        ("isInstanceOf", Method, "[X0]: Boolean"),
         ("`match`", Field, "Foo.Bar"),
         ("toString", Method, "(): String"),
         ("ensuring", Method, "(cond: A => Boolean): A"),
