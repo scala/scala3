@@ -482,13 +482,8 @@ trait ConstraintHandling {
      *  and computes on the side sets of nested type variables that need
      *  to be instantiated.
      */
-    class NeedsLeveling extends TypeAccumulator[Boolean]:
+    def needsLeveling = new TypeAccumulator[Boolean]:
       if !fromBelow then variance = -1
-
-      /** Nested type variables that should be instiated to theor lower (respoctively
-       *  upper) bounds.
-       */
-      var nestedVarsLo, nestedVarsHi: SimpleIdentitySet[TypeVar] = SimpleIdentitySet.empty
 
       def apply(need: Boolean, tp: Type) =
         need || tp.match
@@ -499,39 +494,30 @@ trait ConstraintHandling {
             val inst = tp.instanceOpt
             if inst.exists then apply(need, inst)
             else if tp.nestingLevel > maxLevel then
-              if variance > 0 then nestedVarsLo += tp
-              else if variance < 0 then nestedVarsHi += tp
-              else
-                // For invariant type variables, we use a different strategy.
-                // Rather than instantiating to a bound and then propagating in an
-                // AvoidMap, change the nesting level of an invariant type
-                // variable to `maxLevel`. This means that the type variable will be
-                // instantiated later to a less nested type. If there are other references
-                // to the same type variable that do not come from the type undergoing
-                // `fixLevels`, this could lead to coarser types. But it has the potential
-                // to give a better approximation for the current type, since it avoids forming
-                // a Range in invariant position, which can lead to very coarse types further out.
-                constr.println(i"widening nesting level of type variable $tp from ${tp.nestingLevel} to $maxLevel")
-                ctx.typerState.setNestingLevel(tp, maxLevel)
+              // Change the nesting level of inner type variable to `maxLevel`.
+              // This means that the type variable will be instantiated later to a
+              // less nested type. If there are other references to the same type variable
+              // that do not come from the type undergoing `fixLevels`, this could lead
+              // to coarser types than intended. An alternative is to instantiate the
+              // type variable right away, but this also loses information. See
+              // i15934.scala for a test where the current strategey works but an early instantiation
+              // of `tp` would fail.
+              constr.println(i"widening nesting level of type variable $tp from ${tp.nestingLevel} to $maxLevel")
+              ctx.typerState.setNestingLevel(tp, maxLevel)
               true
             else false
           case _ =>
             foldOver(need, tp)
-    end NeedsLeveling
+    end needsLeveling
 
-    class LevelAvoidMap extends TypeOps.AvoidMap:
+    def levelAvoid = new TypeOps.AvoidMap:
       if !fromBelow then variance = -1
       def toAvoid(tp: NamedType) = needsFix(tp)
 
-    if !Config.checkLevelsOnInstantiation || ctx.isAfterTyper then tp
-    else
-      val needsLeveling = NeedsLeveling()
-      if needsLeveling(false, tp) then
-        typr.println(i"instance $tp for $param needs leveling to $maxLevel, nested = ${needsLeveling.nestedVarsLo.toList} | ${needsLeveling.nestedVarsHi.toList}")
-        needsLeveling.nestedVarsLo.foreach(_.instantiate(fromBelow = true))
-        needsLeveling.nestedVarsHi.foreach(_.instantiate(fromBelow = false))
-        LevelAvoidMap()(tp)
-      else tp
+    if Config.checkLevelsOnInstantiation && !ctx.isAfterTyper && needsLeveling(false, tp) then
+      typr.println(i"instance $tp for $param needs leveling to $maxLevel")
+      levelAvoid(tp)
+    else tp
   end fixLevels
 
   /** Solve constraint set for given type parameter `param`.
