@@ -6,7 +6,7 @@ import Decorators._
 import Contexts._
 import Types._
 import Symbols._
-import util.SimpleIdentityMap
+import util.{SimpleIdentitySet, SimpleIdentityMap}
 import collection.mutable
 import printing._
 
@@ -68,7 +68,7 @@ final class ProperGadtConstraint private(
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
   def this() = this(
-    myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty),
+    myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentitySet.empty),
     mapping = SimpleIdentityMap.empty,
     reverseMapping = SimpleIdentityMap.empty,
     wasConstrained = false

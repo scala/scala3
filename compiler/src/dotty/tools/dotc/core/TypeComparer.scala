@@ -495,10 +495,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case AndType(tp21, tp22) => constrainRHSVars(tp21) && constrainRHSVars(tp22)
           case _ => true
 
-        /** Mark toplevel type vars in `tp2` as hard in the current typerState */
+        /** Mark toplevel type vars in `tp2` as hard in the current constraint */
         def hardenTypeVars(tp2: Type): Unit = tp2.dealiasKeepRefiningAnnots match
           case tvar: TypeVar if constraint.contains(tvar.origin) =>
             state.hardenTypeVar(tvar)
+            constraint = constraint.withHard(tvar)
           case tp2: TypeParamRef if constraint.contains(tp2) =>
             hardenTypeVars(constraint.typeVarOfParam(tp2))
           case tp2: AndOrType =>
@@ -524,14 +525,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               // recursively, so we do it only once. See i14870.scala as a test case, which would
               // loop for a very long time without the recursion brake.
 
-        if res && !tp1.isSoft then
+        if res && !tp1.isSoft  && state.isCommittable then
           // We use a heuristic here where every toplevel type variable on the right hand side
           // is marked so that it converts all soft unions in its lower bound to hard unions
-          // before it is instantiated. The reason is that the union might have come from
-          // (decomposed and reconstituted) `tp1`. But of course there might be false positives
-          // where we also treat unions that come from elsewhere as hard unions. Or the constraint
-          // that created the union is ultimately thrown away, but the type variable will
-          // stay marked. So it is a coarse measure to take. But it works in the obvious cases.
+          // before it is instantiated. The reason is that the variable's instance type will
+          // be a supertype of (decomposed and reconstituted) `tp1`.
           hardenTypeVars(tp2)
 
         res
