@@ -30,6 +30,9 @@ class NavigationTest extends BaseHtmlTest:
 
     val apiNav = Seq(
       NavMenuTestEntry("tests.site", "site.html", Seq(
+        NavMenuTestEntry("some.other", "site/some/other.html", Seq(
+          NavMenuTestEntry("SomeOtherPackage", "site/some/other/SomeOtherPackage.html", Nil),
+        )),
         NavMenuTestEntry("BrokenLink", "site/BrokenLink.html", Nil),
         NavMenuTestEntry("BrokenLinkWiki", "site/BrokenLinkWiki.html", Nil),
         NavMenuTestEntry("OtherPackageLink", "site/OtherPackageLink.html", Nil),
@@ -38,9 +41,6 @@ class NavigationTest extends BaseHtmlTest:
         NavMenuTestEntry("SamePackageLinkWiki", "site/SamePackageLinkWiki.html", Nil),
         NavMenuTestEntry("SomeClass", "site/SomeClass.html", Nil)
       )),
-      NavMenuTestEntry("tests.site.some.other", "site/some/other.html", Seq(
-        NavMenuTestEntry("SomeOtherPackage", "site/some/other/SomeOtherPackage.html", Nil),
-      ))
     )
 
     testNavMenu("docs/Adoc.html", docsNav)
