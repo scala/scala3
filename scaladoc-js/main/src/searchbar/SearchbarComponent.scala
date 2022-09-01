@@ -91,9 +91,8 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       span(cls := s"micon ${kind.take(2)} $customClass"),
       span(kind)
     )
-
-  def handleNewFluffQuery(matchers: List[Matchers]) =
-    val result: List[(PageEntry, Set[Int])] = engine.query(matchers)
+  def handleNewFluffQuery(query: NameAndKindQuery) =
+    val result: List[MatchResult] = engine.query(query)
     val fragment = document.createDocumentFragment()
     def createLoadMoreElement =
       div(cls := "scaladoc-searchbar-row mono-small-inline", "loadmore" := "")(
@@ -103,11 +102,19 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       ).tap { loadMoreElement => loadMoreElement
         .addEventListener("mouseover", _ => handleHover(loadMoreElement))
       }
+    val groupedResults = result.groupBy(_.pageEntry.kind)
+    val groupedResultsSortedByScore = groupedResults.map {
+      case (kind, results) => (kind, results.maxByOption(_.score).map(_.score), results)
+    }.toList.sortBy {
+      case (kind, topScore, results) => -topScore.getOrElse(0)
+    }.map {
+      case (kind, topScore, results) => (kind, results)
+    }
 
-    result.groupBy(_._1.kind).map {
-      case (kind, entries) =>
+    groupedResultsSortedByScore.map {
+      case (kind, results) =>
         val kindSeparator = createKindSeparator(kind)
-        val htmlEntries = entries.map((p, set) => p.toHTML(set))
+        val htmlEntries = results.map(result => result.pageEntry.toHTML(result.indices))
         val loadMoreElement = createLoadMoreElement
         def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
           loadMoreElement.onclick = (event: Event) => {
@@ -171,8 +178,8 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       clearResults()
       handleRecentQueries(query)
       parser.parse(query) match {
-        case NameAndKindQuery(matchers) =>
-            handleNewFluffQuery(matchers)
+        case query: NameAndKindQuery =>
+            handleNewFluffQuery(query)
         case SignatureQuery(signature) =>
             val loading = createLoadingAnimation
             val kindSeparator = createKindSeparator("inkuire")

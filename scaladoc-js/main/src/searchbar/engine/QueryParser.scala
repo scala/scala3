@@ -21,14 +21,14 @@ class QueryParser:
   val escapedRegex = raw"`(.*)`".r
   val signatureRegex = raw"(.*=>.*)".r
 
-  def parseMatchers(query: String): List[Matchers] = query match {
-    case escapedRegex(rest) => List(ByName(rest))
-    case kindRegex(kind, rest) => List(ByKind(kind)) ++ parseMatchers(rest)
-    case restRegex(name) => List(ByName(name))
-    case _ => List()
+  def parseMatchers(query: String): EngineQuery = query match {
+    case escapedRegex(rest) => NameAndKindQuery(Some(rest), None)
+    case kindRegex(kind, rest) => NameAndKindQuery(Some(kind), Some(rest))
+    case restRegex(name) => NameAndKindQuery(Some(name), None)
+    case _ => NameAndKindQuery(None, None)
   }
 
   def parse(query: String): EngineQuery = query match {
     case signatureRegex(signature) => SignatureQuery(signature)
-    case other => NameAndKindQuery(parseMatchers(other))
+    case other => parseMatchers(other)
   }
