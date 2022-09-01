@@ -229,11 +229,14 @@ class TyperState() {
         constraint.contains(tl) || other.isRemovable(tl) || {
           val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
           if this.isCommittable then
-            tvars.foreach(tvar => if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
+            tvars.foreach(tvar =>
+              if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
           typeComparer.addToConstraint(tl, tvars)
         }) &&
         // Integrate the additional constraints on type variables from `other`
+        // and merge hardness markers
         constraint.uninstVars.forall(tv =>
+          if other.isHard(tv) then constraint = constraint.withHard(tv)
           val p = tv.origin
           val otherLos = other.lower(p)
           val otherHis = other.upper(p)

@@ -537,7 +537,9 @@ object TypeOps:
       override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(
-            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
+            tp.origin,
+            fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound,
+            widenUnions = tp.widenUnions)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
         case _ =>

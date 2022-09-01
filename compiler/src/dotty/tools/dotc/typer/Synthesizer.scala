@@ -514,7 +514,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   val tparams = poly.paramRefs
                   val variances = childClass.typeParams.map(_.paramVarianceSign)
                   val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
-                    TypeComparer.instanceType(tparam, fromBelow = variance < 0)
+                    TypeComparer.instanceType(tparam, fromBelow = variance < 0, widenUnions = true)
                   )
                   val instanceType = resType.substParams(poly, instanceTypes)
                   // this is broken in tests/run/i13332intersection.scala,

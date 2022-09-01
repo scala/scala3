@@ -4714,11 +4714,14 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      val tp = TypeComparer.instanceType(origin, fromBelow, nestingLevel)
+      val tp = TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
       if myInst.exists then // The line above might have triggered instantiation of the current type variable
         myInst
       else
         instantiateWith(tp)
+
+    /** Widen unions when instantiating this variable in the current context? */
+    def widenUnions(using Context): Boolean = !ctx.typerState.constraint.isHard(this)
 
     /** For uninstantiated type variables: the entry in the constraint (either bounds or
      *  provisional instance value)
