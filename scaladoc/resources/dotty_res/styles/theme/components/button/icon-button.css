@@ -8,6 +8,10 @@
   width: 16px;
 }
 
+.icon-button:hover {
+  cursor: pointer;
+}
+
 .icon-button::after {
   width: calc(2 * var(--base-spacing));
   height: calc(2 * var(--base-spacing));

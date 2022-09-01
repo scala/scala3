@@ -130,6 +130,7 @@ td,
 th {
   border: 1px solid var(--border-medium);
   padding: 0.5rem;
+  color: var(--text-primary);
 }
 th {
   border-bottom: 2px solid var(--border-medium);

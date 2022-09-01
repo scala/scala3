@@ -10,9 +10,6 @@
   color: var(--text-primary);
 }
 
-#content > div:first-child {
-  overflow: hidden;
-}
 
 #content.sidebar-shown {
   -webkit-transition: width 0.3s ease-in-out;
@@ -166,6 +163,12 @@
   color: var(--text-primary);
 }
 
+/* content table */
+#content table {
+  color: var(--text-primary);
+}
+
+
 /* content link */
 #content a {
   color: var(--text-primary);
@@ -184,6 +187,12 @@
 #content :not(pre) > code {
   color: var(--code-props-content);
   font-family: "FiraCode-Regular";
+  border: 1px solid var(--code-props-border);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background-color: var(--code-props-background);
+  line-height: 24px;
+  font-size: 13px;
 }
 
 .breadcrumbs {
@@ -331,7 +340,7 @@
 }
 
 .cover-header .icon {
-  width: 72px;
+  max-width: 72px;
 }
 
 .fqname {
@@ -366,6 +375,10 @@
 
 #content > div > * {
   margin-bottom: calc(3 * var(--base-spacing));
+}
+
+#content > div > .main-signature {
+  margin-bottom: 0;
 }
 
 .tab {

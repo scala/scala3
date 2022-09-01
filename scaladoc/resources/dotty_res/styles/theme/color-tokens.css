@@ -47,8 +47,9 @@
   --semantic-background-red: var(--red3);
 
   /* code */
-  --code-props-content: var(--crimson11);
-  --code-props-background: var(--red3);
+  --code-props-content: var(--grey12);
+  --code-props-background: var(--grey3);
+  --code-props-border: var(--grey5);
 
   --code-syntax-highlighting-comment: var(--grey11);
   --code-syntax-highlighting-quote: var(--grey11);
@@ -134,8 +135,9 @@
   --action-primary-border-default: var(--grey6);
 
   /* code */
-  --code-props-content: var(--crimson11);
-  --code-props-background: var(--red3);
+  --code-props-content: var(--grey12);
+  --code-props-background: var(--grey2);
+  --code-props-border: var(--grey6);
 
   --code-syntax-highlighting-comment: var(--grey11);
   --code-syntax-highlighting-quote: var(--grey11);

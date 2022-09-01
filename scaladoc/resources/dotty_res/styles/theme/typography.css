@@ -1,3 +1,7 @@
+* {
+  text-rendering: geometricPrecision;
+}
+
 @font-face {
   font-family: "Inter-Bold";
   src: url("../../fonts/Inter-Bold.ttf") format("truetype");

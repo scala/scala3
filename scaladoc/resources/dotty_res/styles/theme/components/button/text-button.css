@@ -23,6 +23,7 @@ a:active {
 
 .text-button:hover {
   color: var(--action-primary-content-hover) !important;
+  cursor: pointer;
 }
 
 .text-button:active {

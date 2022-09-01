@@ -12,6 +12,12 @@
   cursor: pointer;
 }
 
+@media (max-width: 768px) {
+  .pill {
+    display: none;
+  }
+}
+
 .pill::after {
   content: url(../../../images/icon-buttons/arrow-down/light/default.svg);
   margin-left: calc(1.5 * var(--base-spacing));

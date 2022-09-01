@@ -3,8 +3,11 @@
   flex-wrap: wrap;
   z-index: 1;
   row-gap: calc(2 * var(--base-spacing));
-  position: relative;
-  margin-bottom: calc(6 * var(--base-spacing));
+  position: sticky;
+  top: var(--header-height);
+  padding: calc(2 * var(--base-spacing)) 0;
+  margin-bottom: calc(3 * var(--base-spacing));
+  background-color: var(--background-default);
 }
 
 .filtersContainer {

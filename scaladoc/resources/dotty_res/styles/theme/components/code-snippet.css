@@ -10,15 +10,11 @@
   overflow-x: scroll;
   margin-bottom: calc(3 * var(--base-spacing));
   margin-top: calc(3 * var(--base-spacing));
+  border-radius: 4px;
 }
 
 .snippet pre {
   margin: 0;
-}
-
-.snippet:hover {
-  background-color: var(--action-primary-background-hover);
-  border: 1px solid var(--border-default);
 }
 
 .snippet .hidden {
@@ -55,7 +51,10 @@
   content: attr(line-number);
   color: var(--code-syntax-highlighting-line-number);
   margin-right: calc(2 * var(--base-spacing));
-  margin-left: calc(2 * var(--base-spacing));
+  margin-left: calc(var(--base-spacing));
+  display: inline-block;
+  text-align: right;
+  min-width: calc(3 * var(--base-spacing));
 }
 
 .snippet-showhide-container {
@@ -256,7 +255,8 @@
 
 .snippet::-webkit-scrollbar-thumb {
   background-color: var(--code-syntax-highlighting-scrollbar);
-  border-radius: 3px;
+  opacity: 0.75;
+  border-radius: 100px;
 }
 
 .snippet::-webkit-scrollbar-thumb:hover {

@@ -93,8 +93,6 @@
   border-radius: 4px;
   margin-top: calc(1.5 * var(--base-spacing));
   border: 1px solid var(--border-default);
-  max-height: calc(100% - calc(24 * var(--base-spacing)));
-  overflow: scroll;
 }
 
 .searchbar-hints {
@@ -103,7 +101,8 @@
   flex-flow: column;
   align-items: center;
   justify-content: center;
-  height: calc(108.5 * var(--base-spacing));
+  height: 80%;
+  overflow: scroll;
 }
 
 .searchbar-hints h1 {
