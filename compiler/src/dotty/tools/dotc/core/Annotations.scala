@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Symbols._, Types._, Contexts._, Constants._
@@ -58,7 +59,7 @@ object Annotations {
             if tm.isRange(x) then x
             else
               val tp1 = tm(tree.tpe)
-              foldOver(if tp1 =:= tree.tpe then x else tp1, tree)
+              foldOver(if tp1 frozen_=:= tree.tpe then x else tp1, tree)
         val diff = findDiff(NoType, args)
         if tm.isRange(diff) then EmptyAnnotation
         else if diff.exists then derivedAnnotation(tm.mapOver(tree))
@@ -69,7 +70,7 @@ object Annotations {
       val args = arguments
       if args.isEmpty then false
       else tree.existsSubTree {
-        case id: Ident => id.tpe match
+        case id: Ident => id.tpe.stripped match
           case TermParamRef(tl1, _) => tl eq tl1
           case _ => false
         case _ => false
