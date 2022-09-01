@@ -171,11 +171,13 @@ subsection:
       - page: contributing/debugging.md
       - title: IDEs and Tools
         directory: tools
+        index: contributing/tools/index.md
         subsection:
           - page: contributing/tools/ide.md
           - page: contributing/tools/mill.md
           - page: contributing/tools/scalafix.md
       - title: Procedures
+        index: contributing/procedures/index.md
         subsection:
           - page: contributing/procedures/release.md
           - page: contributing/procedures/vulpix.md
