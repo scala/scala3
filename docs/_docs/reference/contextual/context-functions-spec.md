@@ -74,6 +74,6 @@ See the section on Expressiveness from [Simplicitly: foundations and
 applications of implicit function
 types](https://dl.acm.org/citation.cfm?id=3158130).
 
-### Type Checking
+## Type Checking
 
 After desugaring no additional typing rules are required for context function types.

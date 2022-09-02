@@ -59,7 +59,7 @@ val s = summon[Test.Codec[Option[Int]]](
 
 No local given instance was generated because the synthesized argument is not recursive.
 
-### Reference
+## Reference
 
 For more information, see [Issue #1998](https://github.com/lampepfl/dotty/issues/1998)
 and the associated [Scala SIP](https://docs.scala-lang.org/sips/byname-implicits.html).

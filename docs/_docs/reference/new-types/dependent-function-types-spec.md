@@ -120,6 +120,6 @@ def composeFn[A, B, C]:
   assert(composeFn(i2s)(s2i)(22) == 2)
 ```
 
-### Type Checking
+## Type Checking
 
 After desugaring no additional typing rules are required for dependent function types.

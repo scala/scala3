@@ -30,7 +30,7 @@ BCodeIdiomatic     ---------------->        utilities for code generation, e.g. 
 
 The `BTypes.scala` class contains the `BType` class and predefined BTypes
 
-### Data Flow ###
+## Data Flow ##
 Compiler creates a `GenBCode` `Phase`, calls `runOn(compilationUnits)`,
 which calls `run(context)`. This:
 
@@ -51,12 +51,12 @@ which calls `run(context)`. This:
   - `GenBCodePipeline.drainQ3` writes byte arrays to disk
 
 
-### Architecture ###
+## Architecture ##
 The architecture of `GenBCode` is the same as in Scalac. It can be partitioned
 into weakly coupled components (called "subsystems" below):
 
 
-#### (a) The queue subsystem ####
+### (a) The queue subsystem ###
 Queues mediate between processors, queues don't know what each processor does.
 
 The first queue contains AST trees for compilation units, the second queue
@@ -70,7 +70,7 @@ serialization to disk.
 
 This subsystem is described in detail in `GenBCode.scala`
 
-#### (b) Bytecode-level types, BType ####
+### (b) Bytecode-level types, BType ###
 The previous bytecode emitter goes to great lengths to reason about
 bytecode-level types in terms of Symbols.
 
@@ -89,7 +89,7 @@ spec (that's why they aren't documented in `GenBCode`, just read the [JVM 8 spec
 
 All things `BType` can be found in `BCodeGlue.scala`
 
-#### (c) Utilities offering a more "high-level" API to bytecode emission ####
+### (c) Utilities offering a more "high-level" API to bytecode emission ###
 Bytecode can be emitted one opcode at a time, but there are recurring patterns
 that call for a simpler API.
 
@@ -100,7 +100,7 @@ of two strategies.
 All these utilities are encapsulated in file `BCodeIdiomatic.scala`. They know
 nothing about the type checker (because, just between us, they don't need to).
 
-#### (d) Mapping between type-checker types and BTypes ####
+### (d) Mapping between type-checker types and BTypes ###
 So that (c) can remain oblivious to what AST trees contain, some bookkeepers
 are needed:
 
@@ -115,7 +115,7 @@ final def exemplar(csym0: Symbol): Tracked = { ... }
 
 Details in `BTypes.scala`
 
-#### (e) More "high-level" utilities for bytecode emission ####
+### (e) More "high-level" utilities for bytecode emission ###
 In the spirit of `BCodeIdiomatic`, utilities are added in `BCodeHelpers` for
 emitting:
 
@@ -125,5 +125,5 @@ emitting:
 - annotations
 
 
-#### (f) Building an ASM ClassNode given an AST TypeDef ####
+### (f) Building an ASM ClassNode given an AST TypeDef ###
 It's done by `PlainClassBuilder`(see `GenBCode.scala`).

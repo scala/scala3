@@ -16,7 +16,7 @@ The `Context` contains the state of the compiler, for example
   * `typerState` (for example undetermined type variables)
   * ...
 
-### Contexts in the typer ###
+## Contexts in the typer ##
 The type checker passes contexts through all methods and adapts fields where
 necessary, e.g.
 
@@ -26,7 +26,7 @@ case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(ctx.fresh.withNewS
 
 A number of fields in the context are typer-specific (`mode`, `typerState`).
 
-### In other phases ###
+## In other phases ##
 Other phases need a context for many things, for example to access the
 denotation of a symbols (depends on the period). However they typically don't
 need to modify / extend the context while traversing the AST. For these phases
@@ -36,7 +36,7 @@ all members.
 **Careful**: beware of memory leaks. Don't hold on to contexts in long lived
 objects.
 
-### Using contexts ###
+## Using contexts ##
 Nested contexts should be named `ctx` to enable implicit shadowing:
 
 ```scala

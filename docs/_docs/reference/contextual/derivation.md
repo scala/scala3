@@ -26,7 +26,7 @@ given [T: Show]     : Show[Tree[T]]     = Show.derived
 
 We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Show` instances are _derived instances_.
 
-### Types supporting `derives` clauses
+## Types supporting `derives` clauses
 
 All data types can have a `derives` clause. This document focuses primarily on data types which also have a given instance
 of the `Mirror` type class available.
@@ -158,7 +158,7 @@ Note the following properties of `Mirror` types,
 + The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
   which is obtained from `MirroredType` by wildcarding its type parameters.
 
-### Type classes supporting automatic deriving
+## Type classes supporting automatic deriving
 
 A trait or class can appear in a `derives` clause if its companion object defines a method named `derived`. The
 signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary but it is typically of the
@@ -186,7 +186,7 @@ authors would normally implement a `derived` method in this way, however this wa
 authors of the higher level derivation libraries that we expect typical type class authors will use (for a fully
 worked out example of such a library, see [Shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
 
-#### How to write a type class `derived` method using low level mechanisms
+## How to write a type class `derived` method using low level mechanisms
 
 The low-level method we will use to implement a type class `derived` method in this example exploits three new
 type-level constructs in Scala 3: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`. Given this definition of the
@@ -360,7 +360,7 @@ The framework described here enables all three of these approaches without manda
 For a brief discussion on how to use macros to write a type class `derived`
 method please read more at [How to write a type class `derived` method using macros](./derivation-macro.md).
 
-### Deriving instances elsewhere
+## Deriving instances elsewhere
 
 Sometimes one would like to derive a type class instance for an ADT after the ADT is defined, without being able to
 change the code of the ADT itself.  To do this, simply define an instance using the `derived` method of the type class
@@ -374,7 +374,7 @@ Assuming the `Ordering.derived` method has a context parameter of type `Mirror[T
 compiler generated `Mirror` instance for `Option` and the derivation of the instance will be expanded on the right
 hand side of this definition in the same way as an instance defined in ADT companion objects.
 
-### Syntax
+## Syntax
 
 ```
 Template          ::=  InheritClauses [TemplateBody]
@@ -397,7 +397,7 @@ It is equivalent to the old form
 class A extends B with C { ... }
 ```
 
-### Discussion
+## Discussion
 
 This type class derivation framework is intentionally very small and low-level. There are essentially two pieces of
 infrastructure in compiler-generated `Mirror` instances,

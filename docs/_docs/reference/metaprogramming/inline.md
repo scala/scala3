@@ -224,7 +224,7 @@ If a `inline` modifier is given for parameters, corresponding arguments must be
 pure expressions of constant type.
 -->
 
-#### The definition of constant expression
+### The definition of constant expression
 
 Right-hand sides of inline values and of arguments for inline parameters must be
 constant expressions in the sense defined by the [SLS §6.24](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#constant-expressions),
@@ -384,6 +384,6 @@ val intTwo: 2 = natTwo
 
 `natTwo` is inferred to have the singleton type 2.
 
-### Reference
+## Reference
 
 For more information about the semantics of `inline`, see the [Scala 2020: Semantics-preserving inlining for metaprogramming](https://dl.acm.org/doi/10.1145/3426426.3428486) paper.

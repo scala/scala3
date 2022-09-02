@@ -59,7 +59,7 @@ l * 2                   // error: found: Int(2), required: Logarithm
 l / l2                  // error: `/` is not a member of Logarithm
 ```
 
-### Bounds For Opaque Type Aliases
+## Bounds For Opaque Type Aliases
 
 Opaque type aliases can also come with bounds. Example:
 
@@ -147,7 +147,7 @@ On the other hand, the call `roItem.rights.isOneOf(ReadWrite)` would give a type
 `Permissions` and `PermissionChoice` are different, unrelated types outside `Access`.
 
 
-### Opaque Type Members on Classes
+## Opaque Type Members on Classes
 While typically, opaque types are used together with objects to hide implementation details of a module, they can also be used with classes.
 
 For example, we can redefine the above example of Logarithms as a class.
