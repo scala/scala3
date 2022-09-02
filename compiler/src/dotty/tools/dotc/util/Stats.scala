@@ -55,7 +55,7 @@ import collection.mutable
   }
 
   def maybeMonitored[T](op: => T)(using Context): T =
-    if (ctx.settings.YdetailedStats.value) {
+    if (ctx.settings.YdetailedStats.value && hits.nonEmpty) {
       monitored = true
       try op
       finally {
