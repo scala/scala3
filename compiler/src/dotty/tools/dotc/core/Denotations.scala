@@ -1120,7 +1120,12 @@ object Denotations {
       then this
       else if symbol.isAllOf(ClassTypeParam) then
         val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
-        if arg.exists then derivedSingleDenotation(symbol, symbol.info.bounds & arg.bounds, pre)
+        if arg.exists then
+          val newBounds =
+            if symbol.isCompleted && !symbol.info.containsLazyRefs
+            then symbol.info.bounds & arg.bounds
+            else arg.bounds
+          derivedSingleDenotation(symbol, newBounds, pre)
         else derived(symbol.info)
       else derived(symbol.info)
     }
