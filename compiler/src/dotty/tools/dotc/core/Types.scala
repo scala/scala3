@@ -442,6 +442,14 @@ object Types {
     final def containsWildcardTypes(using Context) =
       existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false)
 
+    /** Does this type contain LazyRef types? */
+    final def containsLazyRefs(using Context) =
+      val acc = new TypeAccumulator[Boolean]:
+        def apply(x: Boolean, tp: Type): Boolean = tp match
+          case _: LazyRef => true
+          case _ => x || foldOver(x, tp)
+      acc(false, this)
+
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
