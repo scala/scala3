@@ -5819,15 +5819,11 @@ object Types {
       tp.argForParam(pre) match {
         case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
           arg.info match {
-            case argInfo: TypeBounds =>
-              expandBounds(argInfo)
-            case argInfo =>
-              useAlternate(arg)
+            case argInfo: TypeBounds => expandBounds(argInfo)
+            case argInfo => useAlternate(arg)
           }
-        case arg: TypeBounds =>
-          expandBounds(arg)
-        case arg =>
-          useAlternate(arg)
+        case arg: TypeBounds => expandBounds(arg)
+        case arg => useAlternate(arg)
       }
 
     /** Derived selection.
