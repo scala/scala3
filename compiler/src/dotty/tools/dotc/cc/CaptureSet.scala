@@ -523,7 +523,7 @@ object CaptureSet:
 
     private def mapIsIdempotent = tm.isInstanceOf[IdempotentCaptRefMap]
 
-    assert(ccAllowUnsoundMaps || mapIsIdempotent)
+    assert(ccAllowUnsoundMaps || mapIsIdempotent, tm.getClass)
 
     private def whereCreated(using Context): String =
       if stack == null then ""
