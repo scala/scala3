@@ -3007,11 +3007,18 @@ object TypeComparer {
 }
 
 object TrackingTypeComparer:
-  enum MatchResult:
+  import printing.*, Texts.*
+  enum MatchResult extends Showable:
     case Reduced(tp: Type)
     case Disjoint
     case Stuck
     case NoInstance(fails: List[(Name, TypeBounds)])
+
+    def toText(p: Printer): Text = this match
+      case Reduced(tp)       => "Reduced(" ~ p.toText(tp) ~ ")"
+      case Disjoint          => "Disjoint"
+      case Stuck             => "Stuck"
+      case NoInstance(fails) => "NoInstance(" ~ Text(fails.map(p.toText(_) ~ p.toText(_)), ", ") ~ ")"
 
 class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   import TrackingTypeComparer.*
@@ -3076,7 +3083,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
     /** Match a single case. */
-    def matchCase(cas: Type): MatchResult = trace(i"match case $cas vs $scrut", matchTypes) {
+    def matchCase(cas: Type): MatchResult = trace(i"$scrut match ${MatchTypeTrace.caseText(cas)}", matchTypes, show = true) {
       val cas1 = cas match {
         case cas: HKTypeLambda =>
           caseLambda = constrained(cas)
