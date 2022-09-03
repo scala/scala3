@@ -385,7 +385,7 @@ class TreeChecker extends Phase with SymTransformer {
 
       val sym = tree.symbol
       val symIsFixed = tpe match {
-        case tpe: TermRef => ctx.erasedTypes || !tpe.isMemberRef
+        case tpe: TermRef => ctx.erasedTypes || !tpe.isPrefixDependentMemberRef
         case _ => false
       }
       if (sym.exists && !sym.is(Private) &&
