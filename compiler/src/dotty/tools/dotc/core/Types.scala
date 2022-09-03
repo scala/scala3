@@ -5766,6 +5766,13 @@ object Types {
 
     private var expandingBounds: Boolean = false
 
+    /** Use an alterate type `tp` that replaces a range. This can happen if the
+     *  prefix of a Select is a range and the selected symbol is an alias type
+     *  or a value with a singleton type. In both cases we can forget the prefix
+     *  and use the symbol's type.
+     */
+    protected def useAlternate(tp: Type): Type = reapply(tp)
+
     /** Whether it is currently expanding bounds
      *
      *  It is used to avoid following LazyRef in F-Bounds
@@ -5789,7 +5796,7 @@ object Types {
           case TypeAlias(alias) =>
             // if H#T = U, then for any x in L..H, x.T =:= U,
             // hence we can replace with U under all variances
-            reapply(alias.rewrapAnnots(tp1))
+            useAlternate(alias.rewrapAnnots(tp1))
           case bounds: TypeBounds =>
             // If H#T = ? >: S <: U, then for any x in L..H, S <: x.T <: U,
             // hence we can replace with S..U under all variances
@@ -5797,7 +5804,7 @@ object Types {
           case info: SingletonType =>
             // if H#x: y.type, then for any x in L..H, x.type =:= y.type,
             // hence we can replace with y.type under all variances
-            reapply(info)
+            useAlternate(info)
           case _ =>
             NoType
         }
@@ -5812,11 +5819,15 @@ object Types {
       tp.argForParam(pre) match {
         case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
           arg.info match {
-            case argInfo: TypeBounds => expandBounds(argInfo)
-            case argInfo => reapply(arg)
+            case argInfo: TypeBounds =>
+              expandBounds(argInfo)
+            case argInfo =>
+              useAlternate(arg)
           }
-        case arg: TypeBounds => expandBounds(arg)
-        case arg => reapply(arg)
+        case arg: TypeBounds =>
+          expandBounds(arg)
+        case arg =>
+          useAlternate(arg)
       }
 
     /** Derived selection.
