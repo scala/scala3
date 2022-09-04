@@ -989,7 +989,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
         def canAssign(sym: Symbol) =
           sym.is(Mutable, butNot = Accessor) ||
-          ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.owner == ctx.owner.owner ||
+          ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.maybeOwner == ctx.owner.owner ||
             // allow assignments from the primary constructor to class fields
           ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
 
