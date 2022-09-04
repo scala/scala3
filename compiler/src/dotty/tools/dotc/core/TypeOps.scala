@@ -45,7 +45,7 @@ object TypeOps:
         val widenedAsf = new AsSeenFromMap(pre.info, cls)
         val ret = widenedAsf.apply(tp)
 
-        if (!widenedAsf.approximated)
+        if widenedAsf.approxCount == 0 then
           return ret
 
         Stats.record("asSeenFrom skolem prefix required")
@@ -57,8 +57,14 @@ object TypeOps:
 
   /** The TypeMap handling the asSeenFrom */
   class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap, IdempotentCaptRefMap {
-    /** Set to true when the result of `apply` was approximated to avoid an unstable prefix. */
-    var approximated: Boolean = false
+
+    /** The number of range approximations in invariant or contravariant positions
+     *  performed by this TypeMap.
+     *   - Incremented each time we produce a range.
+     *   - Decremented each time we drop a prefix range by forwarding to a type alias
+     *     or singleton type.
+     */
+    private[TypeOps] var approxCount: Int = 0
 
     def apply(tp: Type): Type = {
 
@@ -76,17 +82,8 @@ object TypeOps:
           case _ =>
             if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
               if (variance <= 0 && !isLegalPrefix(pre))
-                if (variance < 0) {
-                  approximated = true
-                  defn.NothingType
-                }
-                else
-                  // Don't set the `approximated` flag yet: if this is a prefix
-                  // of a path, we might be able to dealias the path instead
-                  // (this is handled in `ApproximatingTypeMap`). If dealiasing
-                  // is not possible, then `expandBounds` will end up being
-                  // called which we override to set the `approximated` flag.
-                  range(defn.NothingType, pre)
+                approxCount += 1
+                range(defn.NothingType, pre)
               else pre
             else if (pre.termSymbol.is(Package) && !thiscls.is(Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
@@ -119,10 +116,10 @@ object TypeOps:
       // derived infos have already been subjected to asSeenFrom, hence to need to apply the map again.
       tp
 
-    override protected def expandBounds(tp: TypeBounds): Type = {
-      approximated = true
-      super.expandBounds(tp)
-    }
+    override protected def useAlternate(tp: Type): Type =
+      assert(approxCount > 0)
+      approxCount -= 1
+      tp
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
