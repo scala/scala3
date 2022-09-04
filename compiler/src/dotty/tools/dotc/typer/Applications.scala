@@ -1935,11 +1935,19 @@ trait Applications extends Compatibility {
             val ptypes = tp.paramInfos
             val numParams = ptypes.length
             def isVarArgs = ptypes.nonEmpty && ptypes.last.isRepeatedParam
-            def hasDefault = alt.symbol.hasDefaultParams
-            if (numParams == numArgs) true
-            else if (numParams < numArgs) isVarArgs
-            else if (numParams > numArgs + 1) hasDefault
-            else isVarArgs || hasDefault
+            def numDefaultParams =
+              if alt.symbol.hasDefaultParams then
+                trimParamss(tp, alt.symbol.rawParamss) match
+                  case params :: _ => params.count(_.is(HasDefault))
+                  case _ => 0
+              else 0
+            if numParams < numArgs then isVarArgs
+            else if numParams == numArgs then true
+            else
+              val numNecessaryArgs = numParams - numDefaultParams
+              if numNecessaryArgs <= numArgs then true
+              else if numNecessaryArgs == numArgs + 1 then isVarArgs
+              else false
           case _ =>
             numArgs == 0
         }
@@ -2080,6 +2088,14 @@ trait Applications extends Compatibility {
     }
   end resolveOverloaded1
 
+  /** The largest suffix of `paramss` that has the same first parameter name as `t` */
+  def trimParamss(t: Type, paramss: List[List[Symbol]])(using Context): List[List[Symbol]] = t match
+    case MethodType(Nil) => trimParamss(t.resultType, paramss)
+    case t: MethodOrPoly =>
+      val firstParamName = t.paramNames.head
+      paramss.dropWhile(_.head.name != firstParamName)
+    case _ => Nil
+
   /** Resolve overloading by mapping to a different problem where each alternative's
    *  type is mapped with `f`, alternatives with non-existing types are dropped, and the
    *  expected type is `pt`. Map the results back to the original alternatives.
@@ -2089,13 +2105,7 @@ trait Applications extends Compatibility {
       val t = f(alt)
       if t.exists then
         val mappedSym = alt.symbol.asTerm.copy(info = t)
-        mappedSym.rawParamss = alt.symbol.rawParamss
-          // we need rawParamss to find parameters with default arguments,
-          // but we do not need to be precise right now, since this is just a pre-test before
-          // we look up default getters. If at some point we extract default arguments from the
-          // parameter symbols themselves, we have to find the right parameter by name, not position.
-          // That means it's OK to copy parameters wholesale rather than tailoring them to always
-          // correspond to the type transformation.
+        mappedSym.rawParamss = trimParamss(t, alt.symbol.rawParamss)
         Some((TermRef(NoPrefix, mappedSym), alt))
       else
         None
