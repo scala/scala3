@@ -852,7 +852,7 @@ object TypeOps:
 
     val getAbstractSymbols = new TypeAccumulator[List[Symbol]]:
       def apply(xs: List[Symbol], tp: Type) = tp.dealias match
-        case tp: TypeRef if !tp.symbol.isClass => foldOver(tp.symbol :: xs, tp)
+        case tp: TypeRef if tp.symbol.exists && !tp.symbol.isClass => foldOver(tp.symbol :: xs, tp)
         case tp                                => foldOver(xs, tp)
     val syms2 = getAbstractSymbols(Nil, tp2).reverse
     if syms2.nonEmpty then ctx.gadt.addToConstraint(syms2)
