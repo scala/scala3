@@ -105,7 +105,7 @@ object Typer {
    */
   private[typer] def isSyntheticApply(tree: tpd.Tree): Boolean = tree match {
     case tree: tpd.Select => tree.hasAttachment(InsertedApply)
-    case TypeApply(fn, targs) if targs.forall(_.isInstanceOf[tpd.InferredTypeTree]) => isSyntheticApply(fn)
+    case TypeApply(fn, targs) => isSyntheticApply(fn) && targs.forall(_.isInstanceOf[tpd.InferredTypeTree])
     case _ => false
   }
 
