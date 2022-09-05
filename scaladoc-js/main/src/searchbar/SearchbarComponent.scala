@@ -189,7 +189,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
     resultsDiv.scrollTop = 0
     resultsDiv.onscroll = (event: Event) => { }
     val fragment = document.createDocumentFragment()
-    timeoutHandle = setTimeout(600.millisecond) {
+    timeoutHandle = setTimeout(300.millisecond) {
       clearResults()
       handleRecentQueries(query)
       parser.parse(query) match {

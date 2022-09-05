@@ -20,7 +20,6 @@ import scala.annotation.tailrec
 class PageSearchEngine(pages: List[PageEntry]):
 
   def query(query: NameAndKindQuery): Future[List[MatchResult]] = Future {
-    val time = System.currentTimeMillis()
     matchPages(query)
       .filter {
         case MatchResult(score, _, _) => score >= 0
@@ -41,7 +40,8 @@ class PageSearchEngine(pages: List[PageEntry]):
   private val positionScores = List(8,4,2,1).orElse(PartialFunction.fromFunction(_ => 0))
 
   private def matchCompletnessBonus(nameCharacters: Int, matchCharacters: Int): Int =
-    (matchCharacters * 3) / nameCharacters
+    (matchCharacters * 6) / nameCharacters +
+      (if nameCharacters == matchCharacters then 2 else 0)
 
   private def matchPages(query: NameAndKindQuery): List[MatchResult] = query match
     case NameAndKindQuery(None, None) => List.empty
