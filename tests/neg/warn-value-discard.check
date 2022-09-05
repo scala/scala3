@@ -1,0 +1,8 @@
+-- [E171] Potential Issue Error: tests/neg/warn-value-discard.scala:14:35 ----------------------------------------------
+14 |  firstThing().map(_ => secondThing()) // error
+   |                        ^^^^^^^^^^^^^
+   |                        discarded non-Unit value of type Either[Failed, Unit]
+-- [E171] Potential Issue Error: tests/neg/warn-value-discard.scala:17:35 ----------------------------------------------
+17 |  firstThing().map(_ => secondThing()) // error
+   |                        ^^^^^^^^^^^^^
+   |                        discarded non-Unit value of type Either[Failed, Unit]
