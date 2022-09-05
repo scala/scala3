@@ -2535,3 +2535,9 @@ import cc.CaptureSet.IdentityCaptRefMap
   extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
     def msg = ex"$tp is not a class type"
     def explain = ""
+
+  class ValueDiscarding(tp: Type)(using Context)
+  extends Message(ValueDiscardingID):
+    def kind = MessageKind.PotentialIssue
+    def msg = em"discarded non-Unit value of type $tp"
+    def explain = ""
