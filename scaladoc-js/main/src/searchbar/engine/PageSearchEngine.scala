@@ -1,5 +1,7 @@
 package dotty.tools.scaladoc
 
+import scala.concurrent.{ Future, ExecutionContext }
+import concurrent.ExecutionContext.Implicits.global
 import math.Ordering.Implicits.seqOrdering
 import org.scalajs.dom.Node
 
@@ -16,8 +18,9 @@ import scala.annotation.tailrec
  * - Optimize.
  */
 class PageSearchEngine(pages: List[PageEntry]):
-  def query(query: NameAndKindQuery): List[MatchResult] =
-    println("QUERYING: " + query)
+
+  def query(query: NameAndKindQuery): Future[List[MatchResult]] = Future {
+    val time = System.currentTimeMillis()
     matchPages(query)
       .filter {
         case MatchResult(score, _, _) => score >= 0
@@ -25,14 +28,17 @@ class PageSearchEngine(pages: List[PageEntry]):
       .sortBy {
         case MatchResult(score, _, _) => -score
       }
+  }
 
   private def kindScoreBonus(kind: String): Int = kind match {
     case "class"                          => 5
-    case "object" | "enu,"                => 4
+    case "object" | "enum"                => 4
     case "trait"                          => 3
     case "def" | "val" | "given" | "type" => 1
     case _                                => 0
   }
+
+  private val positionScores = List(8,4,2,1).orElse(PartialFunction.fromFunction(_ => 0))
 
   private def matchCompletnessBonus(nameCharacters: Int, matchCharacters: Int): Int =
     (matchCharacters * 3) / nameCharacters
@@ -47,18 +53,15 @@ class PageSearchEngine(pages: List[PageEntry]):
         .map(MatchResult(1, _, Set.empty))
     case NameAndKindQuery(Some(nameSearch), kind) =>
       val kindFiltered = kind.fold(pages)(filterKind(pages, _))
-      println("PREMATCHING: " + nameSearch)
       val prematchedPages = prematchPages(kindFiltered, nameSearch)
-      println("PREMATCHED " + prematchedPages.length)
-      var totalMatched = 0
 
-      if nameSearch.length > 2 then
-        prematchedPages.map(prematched =>
+      if nameSearch.length > 1 then
+        prematchedPages.map { prematched =>
           val finalMatch = matchPage(prematched, nameSearch)
           val bonusScore = kindScoreBonus(prematched.pageEntry.kind)
             + matchCompletnessBonus(prematched.pageEntry.shortName.length, nameSearch.length)
           finalMatch.copy(score = finalMatch.score + bonusScore)
-        )
+        }
       else prematchedPages
 
 
@@ -66,34 +69,29 @@ class PageSearchEngine(pages: List[PageEntry]):
     pages.filter(_.kind == kind)
 
   def prematchPages(pages: List[PageEntry], search: String): List[MatchResult] =
-    pages.map(page => MatchResult(1, page, getIndicesOfSearchLetters(page.shortName, search)))
-      .filter(_.indices.nonEmpty)
+    pages.map(prematchPage(_, search)).filter(_.indices.nonEmpty)
 
-  val debuggedTypes = Set("list", "lazylist", "classmanifest")
-
-  private def getIndicesOfSearchLetters(pageName: String, search: String): Set[Int] =
-    if debuggedTypes.contains(pageName) then println("Prematching List!")
+  private def prematchPage(page: PageEntry, search: String): MatchResult =
+    val pageName = page.shortName
     @tailrec
-    def getIndicesAcc(nameIndex: Int, searchIndex: Int, acc: Set[Int]): Set[Int] =
+    def prematchPageAcc(nameIndex: Int, searchIndex: Int, acc: Set[Int], scoreAcc: Int, consecutiveMatches: Int): MatchResult =
       if searchIndex >= search.length then
-        if debuggedTypes.contains(pageName) then println("Matched!")
-        acc
+        MatchResult(scoreAcc, page, acc)
       else if nameIndex >= pageName.length then
-        if debuggedTypes.contains(pageName) then println("Not matched :(")
-        Set.empty
+        MatchResult(0, page, Set.empty)
       else if pageName(nameIndex).toLower == search(searchIndex).toLower then
-        if debuggedTypes.contains(pageName) then println("Matched name:" + nameIndex + "(" + pageName(nameIndex) +  ") with search:" + searchIndex + "(" + search(searchIndex) + ")")
-        getIndicesAcc(nameIndex + 1, searchIndex + 1, acc + nameIndex)
+        val score = (if consecutiveMatches > 0 then 1 else 0) + positionScores(nameIndex)
+        prematchPageAcc(nameIndex + 1, searchIndex + 1, acc + nameIndex, scoreAcc + score, consecutiveMatches + 1)
       else
-        if debuggedTypes.contains(pageName) then println("Not matched: " + nameIndex + "(" + pageName(nameIndex) +  ") with search:" + searchIndex + "(" + search(searchIndex) + ")")
-        getIndicesAcc(nameIndex + 1, searchIndex, acc)
-    getIndicesAcc(0, 0, Set.empty)
+        prematchPageAcc(nameIndex + 1, searchIndex, acc, scoreAcc, 0)
+
+    val result = prematchPageAcc(0, 0, Set.empty, 0, 0)
+    result.copy(score = result.score + kindScoreBonus(page.kind))
 
   private def matchPage(prematched: MatchResult, nameSearch: String): MatchResult =
     val searchTokens: List[List[Char]] = StringUtils.createCamelCaseTokens(nameSearch).map(_.toList) //todo extract
     val pageTokens: List[List[Char]] = prematched.pageEntry.tokens.map(_.toList)
     val pageName = prematched.pageEntry.shortName
-    if debuggedTypes.contains(pageName) then println("Found " + pageName + "!")
     val searchTokensLifted = searchTokens.lift
     val pageTokensLifted = pageTokens.lift
 
@@ -105,7 +103,7 @@ class PageSearchEngine(pages: List[PageEntry]):
           if searchHead == pageHead then
             matchTokens(searchTokenIndex + 1, pageTokenIndex + 1, acc + ((searchTokenIndex, pageTokenIndex)))
           else
-            matchTokens(searchTokenIndex + 1, pageTokenIndex + 1, acc)
+            matchTokens(searchTokenIndex, pageTokenIndex + 1, acc)
         // empty tokens edge cases
         case (Some(_), Some(_ :: _)) => matchTokens(searchTokenIndex + 1, pageTokenIndex, acc)
         case (Some(_ :: _), Some(_)) => matchTokens(searchTokenIndex, pageTokenIndex + 1, acc)
@@ -115,11 +113,6 @@ class PageSearchEngine(pages: List[PageEntry]):
     val matchedTokens = matchTokens(0, 0, Set.empty)
     val searchTokenPositions = searchTokens.map(_.length).scanLeft(0)(_ + _)
     val pageTokensPositions = pageTokens.map(_.length).scanLeft(0)(_ + _)
-    if debuggedTypes.contains(pageName) then
-      println("List tokens: " + matchedTokens)
-      println("Search: " + searchTokenPositions)
-      println("Page: " + pageTokensPositions)
-
 
     @tailrec
     def findHighScoreMatch(
@@ -132,39 +125,30 @@ class PageSearchEngine(pages: List[PageEntry]):
         consecutiveMatches: Int
       ): Option[MatchResult] =
       if searchPosition >= nameSearch.length then
-          if debuggedTypes.contains(pageName) then println("Matched " + pageName + " with score " + scoreAcc)
           Some(MatchResult(scoreAcc, prematched.pageEntry, positionAcc))
       else if pagePosition >= pageName.length then
-        if debuggedTypes.contains(pageName) then println("Failed to match " + pageName + " :(")
         None
       else
-        if debuggedTypes.contains(pageName) then
-          println("At page: " + pageTokenIndex + "/" + pagePosition + "(" + pageName(pagePosition) + ")" + "; search: " + searchTokenIndex + "/" + searchPosition + "(" + nameSearch(searchPosition) + ")")
         val currentSearchTokenStart = searchTokenPositions(searchTokenIndex)
-        val currentPageTokenStart = pageTokensPositions(pageTokenIndex)
-        val atSearchTokenBeggining = searchPosition == currentSearchTokenStart
-        val matchingPageToken = matchedTokens.find(_._1 == currentSearchTokenStart).map(_._2)
+        val matchingPageToken = matchedTokens.find(_._1 == searchTokenIndex).map(_._2)
         val searchChar = nameSearch.charAt(searchPosition).toLower
         val pageChar = pageName.charAt(pagePosition).toLower
 
-        def recalculateTokenIndex(tokenPositions: Seq[Int], lastIndex: Int, position: Int): Int =
-          if tokenPositions.length <= lastIndex + 1 || tokenPositions(lastIndex + 1) > position then
-            lastIndex
+        def recalculateTokenIndex(tokenPositions: Seq[Int], previousIndex: Int, position: Int): Int =
+          if tokenPositions.length <= previousIndex + 1 || tokenPositions(previousIndex + 1) > position then
+            previousIndex
           else
-            lastIndex + 1
+            previousIndex + 1
 
-        val positionScores = List(8,4,2,1).orElse(PartialFunction.fromFunction(_ => 0))
         def getMatchScore(matchedPagePosition: Int, matchedPageTokenStart: Int): Int =
           val consecutiveMatchesScore = if consecutiveMatches > 0 then 1 else 0
           val matchPositionScore = positionScores(matchedPagePosition - matchedPageTokenStart)
           val firstTokenScore = if matchPositionScore > 0 && matchedPageTokenStart == 0 then 3 else 0
-          if debuggedTypes.contains(pageName) then println("[" + pageName + "] + score " + (consecutiveMatchesScore + matchPositionScore))
           consecutiveMatchesScore + matchPositionScore + firstTokenScore
 
         matchingPageToken match
           case Some(matchingToken) if searchPosition == currentSearchTokenStart =>
             val matchedTokenPosition = pageTokensPositions(matchingToken)
-            if debuggedTypes.contains(pageName) then println("Matched tokens! " + matchingToken + " at " + matchedTokenPosition)
             findHighScoreMatch(
               recalculateTokenIndex(searchTokenPositions, searchTokenIndex, searchPosition + 1),
               searchPosition + 1,
@@ -175,7 +159,6 @@ class PageSearchEngine(pages: List[PageEntry]):
               consecutiveMatches + 1
             )
           case _  if searchChar == pageChar =>
-            if debuggedTypes.contains(pageName) then println("Matched char! " + searchChar + " at " + pagePosition)
             val matchedTokenPosition = matchingPageToken.map(pageTokensPositions).getOrElse(0)
             findHighScoreMatch(
               recalculateTokenIndex(searchTokenPositions, searchTokenIndex, searchPosition + 1),

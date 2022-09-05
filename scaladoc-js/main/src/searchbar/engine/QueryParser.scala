@@ -17,14 +17,14 @@ class QueryParser:
     "type"
   )
   val kindRegex = ("(?i)" + kinds.mkString("(","|",")") + " (.*)").r
-  val restRegex = raw"(.*)".r
+  val nameRegex = raw"(.*)".r
   val escapedRegex = raw"`(.*)`".r
   val signatureRegex = raw"(.*=>.*)".r
 
   def parseMatchers(query: String): EngineQuery = query match {
     case escapedRegex(rest) => NameAndKindQuery(Some(rest), None)
-    case kindRegex(kind, rest) => NameAndKindQuery(Some(kind), Some(rest))
-    case restRegex(name) => NameAndKindQuery(Some(name), None)
+    case kindRegex(kind, rest) => NameAndKindQuery(Some(rest), Some(kind))
+    case nameRegex(name) => NameAndKindQuery(Some(name), None)
     case _ => NameAndKindQuery(None, None)
   }
 

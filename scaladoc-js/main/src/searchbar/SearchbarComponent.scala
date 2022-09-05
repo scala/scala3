@@ -1,5 +1,7 @@
 package dotty.tools.scaladoc
 
+import scala.concurrent.{ Future, ExecutionContext }
+import concurrent.ExecutionContext.Implicits.global
 import utils.HTML._
 
 import scala.scalajs.js.Date
@@ -92,54 +94,67 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       span(kind)
     )
   def handleNewFluffQuery(query: NameAndKindQuery) =
-    val result: List[MatchResult] = engine.query(query)
-    val fragment = document.createDocumentFragment()
-    def createLoadMoreElement =
-      div(cls := "scaladoc-searchbar-row mono-small-inline", "loadmore" := "")(
-        a(
-          span("Load more")
-        )
-      ).tap { loadMoreElement => loadMoreElement
-        .addEventListener("mouseover", _ => handleHover(loadMoreElement))
+    val searchTask: Future[List[MatchResult]] = engine.query(query)
+    searchTask.map { result =>
+      val resultWithDocBonus = result
+        .map(entry =>
+        // add bonus score for static pages when in documentation section
+        if entry.pageEntry.kind == "static" && !window.location.href.contains("api") then
+          entry.copy(score = entry.score + 7)
+        else entry
+      )
+      val fragment = document.createDocumentFragment()
+
+      def createLoadMoreElement =
+        div(cls := "scaladoc-searchbar-row mono-small-inline", "loadmore" := "")(
+          a(
+            span("Load more")
+          )
+        ).tap { loadMoreElement =>
+          loadMoreElement
+            .addEventListener("mouseover", _ => handleHover(loadMoreElement))
+        }
+
+      val groupedResults = resultWithDocBonus.groupBy(_.pageEntry.kind)
+      val groupedResultsSortedByScore = groupedResults.map {
+        case (kind, results) => (kind, results.maxByOption(_.score).map(_.score), results)
+      }.toList.sortBy {
+        case (_, topScore, _) => -topScore.getOrElse(0)
+      }.map {
+        case (kind, _, results) => (kind, results.take(40)) // limit to 40 results per category
       }
-    val groupedResults = result.groupBy(_.pageEntry.kind)
-    val groupedResultsSortedByScore = groupedResults.map {
-      case (kind, results) => (kind, results.maxByOption(_.score).map(_.score), results)
-    }.toList.sortBy {
-      case (kind, topScore, results) => -topScore.getOrElse(0)
-    }.map {
-      case (kind, topScore, results) => (kind, results)
-    }
 
-    groupedResultsSortedByScore.map {
-      case (kind, results) =>
-        val kindSeparator = createKindSeparator(kind)
-        val htmlEntries = results.map(result => result.pageEntry.toHTML(result.indices))
-        val loadMoreElement = createLoadMoreElement
-        def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
-          loadMoreElement.onclick = (event: Event) => {
-            entries.take(resultsChunkSize).foreach(_.classList.remove("hidden"))
-            val nextElems = entries.drop(resultsChunkSize)
-            if nextElems.nonEmpty then loadMoreResults(nextElems) else loadMoreElement.classList.add("hidden")
+      groupedResultsSortedByScore.map {
+        case (kind, results) =>
+          val kindSeparator = createKindSeparator(kind)
+          val htmlEntries = results.map(result => result.pageEntry.toHTML(result.indices))
+          val loadMoreElement = createLoadMoreElement
+
+          def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
+            loadMoreElement.onclick = (event: Event) => {
+              entries.take(resultsChunkSize).foreach(_.classList.remove("hidden"))
+              val nextElems = entries.drop(resultsChunkSize)
+              if nextElems.nonEmpty then loadMoreResults(nextElems) else loadMoreElement.classList.add("hidden")
+            }
           }
-        }
 
-        fragment.appendChild(kindSeparator)
-        htmlEntries.foreach(fragment.appendChild)
-        fragment.appendChild(loadMoreElement)
+          fragment.appendChild(kindSeparator)
+          htmlEntries.foreach(fragment.appendChild)
+          fragment.appendChild(loadMoreElement)
 
-        val nextElems = htmlEntries.drop(initialChunkSize)
-        if nextElems.nonEmpty then {
-          nextElems.foreach(_.classList.add("hidden"))
-          loadMoreResults(nextElems)
-        } else {
-          loadMoreElement.classList.add("hidden")
-        }
+          val nextElems = htmlEntries.drop(initialChunkSize)
+          if nextElems.nonEmpty then {
+            nextElems.foreach(_.classList.add("hidden"))
+            loadMoreResults(nextElems)
+          } else {
+            loadMoreElement.classList.add("hidden")
+          }
 
+      }
+
+      resultsDiv.scrollTop = 0
+      resultsDiv.appendChild(fragment)
     }
-
-    resultsDiv.scrollTop = 0
-    resultsDiv.appendChild(fragment)
 
   def handleRecentQueries(query: String) = {
     val recentQueries = RecentQueryStorage.getData
