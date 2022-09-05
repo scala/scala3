@@ -64,7 +64,6 @@ class PageSearchEngine(pages: List[PageEntry]):
         }
       else prematchedPages
 
-
   private def filterKind(pages: List[PageEntry], kind: String): List[PageEntry] =
     pages.filter(_.kind == kind)
 
@@ -182,9 +181,3 @@ class PageSearchEngine(pages: List[PageEntry]):
 
     val highScoreMatch = findHighScoreMatch(0, 0, 0, 0, Set.empty, 0, 0)
     highScoreMatch.getOrElse(prematched)
-
-
-
-
-
-

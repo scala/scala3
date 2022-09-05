@@ -32,3 +32,4 @@ class QueryParser:
     case signatureRegex(signature) => SignatureQuery(signature)
     case other => parseMatchers(other)
   }
+  
