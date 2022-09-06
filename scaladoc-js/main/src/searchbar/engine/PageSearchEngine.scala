@@ -19,7 +19,7 @@ import scala.annotation.tailrec
  */
 class PageSearchEngine(pages: List[PageEntry]):
 
-  def query(query: NameAndKindQuery): Future[List[MatchResult]] = Future {
+  def query(query: NameAndKindQuery): List[MatchResult] = {
     matchPages(query)
       .filter {
         case MatchResult(score, _, _) => score >= 0

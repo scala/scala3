@@ -3,7 +3,7 @@ package dotty.tools.scaladoc
 import org.junit.{Test, Assert}
 import org.junit.Assert._
 
-class QueryParserTest
+class QueryParserTest:
   val queryParser = QueryParser()
   val kinds = Seq(
     "class",
@@ -28,8 +28,8 @@ class QueryParserTest
 
   @Test
   def queryParserTests() = {
-    kinds.foreach(k => testCase(s"$k ", NameAndKindQuery(List(ByKind(k), ByName("")))))
-    testCase("trait", NameAndKindQuery(None, Some("trait")))
+    kinds.foreach(k => testCase(s"$k ", NameAndKindQuery(Some(""), Some(k))))
+    testCase("trait", NameAndKindQuery(Some("trait"), None))
     testCase("trait A", NameAndKindQuery(Some("A"), Some("trait")))
     testCase("`trait A`", NameAndKindQuery(Some("trait A"), None))
   }

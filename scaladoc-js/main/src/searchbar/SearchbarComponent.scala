@@ -94,7 +94,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       span(kind)
     )
   def handleNewFluffQuery(query: NameAndKindQuery) =
-    val searchTask: Future[List[MatchResult]] = engine.query(query)
+    val searchTask: Future[List[MatchResult]] = Future(engine.query(query))
     searchTask.map { result =>
       val resultWithDocBonus = result
         .map(entry =>
