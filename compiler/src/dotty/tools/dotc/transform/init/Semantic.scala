@@ -1674,7 +1674,7 @@ object Semantic:
         // The failing case is tests/init/pos/i12544.scala due to promotion failure.
         if vdef.symbol.name == nme.DOLLAR_VALUES
            && vdef.symbol.is(Flags.Synthetic)
-           && vdef.symbol.owner.companionClass.isAllOf(Flags.Enum)
+           && vdef.symbol.owner.companionClass.is(Flags.Enum)
         then
           thisV.updateField(vdef.symbol, Hot)
         else
