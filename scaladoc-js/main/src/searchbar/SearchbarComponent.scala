@@ -32,20 +32,20 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
         " extension on " + p.extensionTarget
       }
 
-      div(cls := "scaladoc-searchbar-row mono-small-inline", "result" := "")(
-        a(href := location)(
-          p.fullName.zipWithIndex.map((c, i) => if boldChars.contains(i) then b(c.toString) else c.toString),
-          span(i(extensionTargetMessage)),
-          span(cls := "pull-right scaladoc-searchbar-location")(p.description)
-        ).tap { _.onclick = (event: Event) =>
-          if (document.body.contains(rootDiv)) {
-            document.body.removeChild(rootDiv)
-          }
+      a(cls := "scaladoc-searchbar-row mono-small-inline", href := location)(
+        p.fullName.zipWithIndex.map((c, i) => if boldChars.contains(i) then b(c.toString) else c.toString),
+        span(i(extensionTargetMessage)),
+        span(cls := "pull-right scaladoc-searchbar-location")(p.description)
+      ).tap { _.onclick = (event: Event) =>
+        if (document.body.contains(rootDiv)) {
+          document.body.removeChild(rootDiv)
         }
-      ).tap { wrapper => wrapper.addEventListener("mouseover", {
+      }.tap { wrapper =>
+        wrapper.addEventListener("mouseover", {
           case e: MouseEvent => handleHover(wrapper)
         })
       }
+
 
   extension (m: InkuireMatch)
     def toHTML =
