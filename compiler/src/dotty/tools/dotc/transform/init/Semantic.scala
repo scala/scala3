@@ -12,7 +12,7 @@ import NameKinds.SuperAccessorName
 
 import ast.tpd.*
 import config.Printers.init as printer
-import reporting.trace as log
+import reporting.trace.force as log
 
 import Errors.*
 
@@ -664,7 +664,7 @@ object Semantic:
           Hot
 
         case Cold =>
-          val error = AccessCold(field, trace.toVector)
+          val error = AccessCold(field)(trace.toVector)
           reporter.report(error)
           Hot
 
@@ -689,11 +689,11 @@ object Semantic:
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, ref, target.owner.asClass, cacheResult = true)
               else
-                val error = CallUnknown(field, trace.toVector)
+                val error = CallUnknown(field)(trace.toVector)
                 reporter.report(error)
                 Hot
             else
-              val error = AccessNonInit(target, trace.toVector)
+              val error = AccessNonInit(target)(trace.toVector)
               reporter.report(error)
               Hot
           else
@@ -779,7 +779,7 @@ object Semantic:
 
         case Cold =>
           promoteArgs()
-          val error = CallCold(meth, trace.toVector)
+          val error = CallCold(meth)(trace.toVector)
           reporter.report(error)
           Hot
 
@@ -820,7 +820,7 @@ object Semantic:
               // try promoting the receiver as last resort
               val hasErrors = Reporter.hasErrors { ref.promote("try promote value to hot") }
               if hasErrors then
-                val error = CallUnknown(target, trace.toVector)
+                val error = CallUnknown(target)(trace.toVector)
                 reporter.report(error)
               Hot
           else if target.exists then
@@ -899,7 +899,7 @@ object Semantic:
             Hot
           else
             // no source code available
-            val error = CallUnknown(ctor, trace.toVector)
+            val error = CallUnknown(ctor)(trace.toVector)
             reporter.report(error)
             Hot
       }
@@ -922,7 +922,7 @@ object Semantic:
             yield
               i + 1
 
-          val error = UnsafeLeaking(trace.toVector, errors.head, nonHotOuterClass, indices)
+          val error = UnsafeLeaking(errors.head, nonHotOuterClass, indices)(trace.toVector)
           reporter.report(error)
           Hot
         else
@@ -947,7 +947,7 @@ object Semantic:
             tryLeak(warm, NoSymbol, args2)
 
         case Cold =>
-          val error = CallCold(ctor, trace.toVector)
+          val error = CallCold(ctor)(trace.toVector)
           reporter.report(error)
           Hot
 
@@ -1078,7 +1078,7 @@ object Semantic:
         case Hot   =>
 
         case Cold  =>
-          reporter.report(PromoteError(msg, trace.toVector))
+          reporter.report(PromoteError(msg)(trace.toVector))
 
         case thisRef: ThisRef =>
           val emptyFields = thisRef.nonInitFields()
@@ -1086,7 +1086,7 @@ object Semantic:
             promoted.promoteCurrent(thisRef)
           else
             val fields = "Non initialized field(s): " + emptyFields.map(_.show).mkString(", ") + "."
-            reporter.report(PromoteError(msg + "\n" + fields, trace.toVector))
+            reporter.report(PromoteError(msg + "\n" + fields)(trace.toVector))
 
         case warm: Warm =>
           if !promoted.contains(warm) then
@@ -1106,7 +1106,7 @@ object Semantic:
               res.promote("The function return value is not hot. Found = " + res.show + ".")
             }
             if errors.nonEmpty then
-              reporter.report(UnsafePromotion(msg, trace.toVector, errors.head))
+              reporter.report(UnsafePromotion(msg, errors.head)(trace.toVector))
             else
               promoted.add(fun)
 
@@ -1156,7 +1156,7 @@ object Semantic:
         if !isHotSegment then
           for member <- klass.info.decls do
             if member.isClass then
-              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".", Vector.empty)
+              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".")(Vector.empty)
               reporter.report(error)
             else if !member.isType && !member.isConstructor  && !member.is(Flags.Deferred) then
               given Trace = Trace.empty
@@ -1189,7 +1189,7 @@ object Semantic:
       }
 
       if errors.isEmpty then Nil
-      else UnsafePromotion(msg, trace.toVector, errors.head) :: Nil
+      else UnsafePromotion(msg, errors.head)(trace.toVector) :: Nil
     }
 
   end extension
@@ -1516,6 +1516,8 @@ object Semantic:
         val cls = tmref.widenSingleton.classSymbol.asClass
         if cls.isStaticOwner && !cls.isContainedIn(promoted.entryClass) then
           Hot
+        else if cls.isStaticOwner && klass.isContainedIn(cls) then
+          resolveThis(cls, thisV, klass)
         else
           cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
 
