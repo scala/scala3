@@ -156,7 +156,7 @@ object Semantic:
     def hasField(f: Symbol) = fields.contains(f)
 
   object Promoted:
-    class PromotionInfo:
+    class PromotionInfo(val entryClass: ClassSymbol):
       var isCurrentObjectPromoted: Boolean = false
       val values = mutable.Set.empty[Value]
       override def toString(): String = values.toString()
@@ -165,7 +165,7 @@ object Semantic:
     opaque type Promoted = PromotionInfo
 
     /** Note: don't use `val` to avoid incorrect sharing */
-    def empty: Promoted = new PromotionInfo
+    def empty(entryClass: ClassSymbol): Promoted = new PromotionInfo(entryClass)
 
     extension (promoted: Promoted)
       def isCurrentObjectPromoted: Boolean = promoted.isCurrentObjectPromoted
@@ -173,6 +173,7 @@ object Semantic:
       def contains(value: Value): Boolean = promoted.values.contains(value)
       def add(value: Value): Unit = promoted.values += value
       def remove(value: Value): Unit = promoted.values -= value
+      def entryClass: ClassSymbol = promoted.entryClass
     end extension
   end Promoted
   type Promoted = Promoted.Promoted
@@ -658,7 +659,7 @@ object Semantic:
 
     def select(field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show) {
       if promoted.isCurrentObjectPromoted then Hot
-      else value match {
+      else value match
         case Hot  =>
           Hot
 
@@ -710,7 +711,6 @@ object Semantic:
 
         case RefSet(refs) =>
           refs.map(_.select(field, receiver)).join
-      }
     }
 
     def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
@@ -1230,7 +1230,7 @@ object Semantic:
 
       @tailrec
       def iterate(): Unit = {
-        given Promoted = Promoted.empty
+        given Promoted = Promoted.empty(thisRef.klass)
         given Trace = Trace.empty.add(thisRef.klass.defTree)
         given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
 
@@ -1513,7 +1513,11 @@ object Semantic:
         thisV.accessLocal(tmref, klass)
 
       case tmref: TermRef =>
-        cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
+        val cls = tmref.widenSingleton.classSymbol.asClass
+        if cls.isStaticOwner && !cls.isContainedIn(promoted.entryClass) then
+          Hot
+        else
+          cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
 
       case tp @ ThisType(tref) =>
         val cls = tref.classSymbol.asClass
@@ -1521,8 +1525,7 @@ object Semantic:
           // O.this outside the body of the object O
           Hot
         else
-          val value = resolveThis(cls, thisV, klass)
-          value
+          resolveThis(cls, thisV, klass)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
