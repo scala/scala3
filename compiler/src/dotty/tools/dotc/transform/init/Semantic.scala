@@ -1513,11 +1513,14 @@ object Semantic:
         thisV.accessLocal(tmref, klass)
 
       case tmref: TermRef =>
-        val cls = tmref.widenSingleton.classSymbol.asClass
-        if cls.isStaticOwner && !cls.isContainedIn(promoted.entryClass) then
-          Hot
-        else if cls.isStaticOwner && klass.isContainedIn(cls) then
-          resolveThis(cls, thisV, klass)
+        val cls = tmref.widenSingleton.classSymbol
+        if cls.exists && cls.isStaticOwner then
+          if klass.isContainedIn(cls) then
+            resolveThis(cls.asClass, thisV, klass)
+          else if cls.isContainedIn(promoted.entryClass) then
+            cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
+          else
+            Hot
         else
           cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
 
