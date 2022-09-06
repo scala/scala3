@@ -122,7 +122,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Option.when(bodyContents.nonEmpty || attributes.nonEmpty)(
         div(cls := "cover")(
           div(cls := "doc")(bodyContents),
-          h2(cls := "h500")("Attributes"),
           dl(cls := "attributes")(attributes*)
         )
       )
