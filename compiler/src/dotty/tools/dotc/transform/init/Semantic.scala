@@ -12,7 +12,7 @@ import NameKinds.SuperAccessorName
 
 import ast.tpd.*
 import config.Printers.init as printer
-import reporting.trace.force as log
+import reporting.trace as log
 
 import Errors.*
 
@@ -1669,7 +1669,16 @@ object Semantic:
     if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val res = eval(vdef.rhs, thisV, klass)
-        thisV.updateField(vdef.symbol, res)
+        // TODO: Improve promotion to avoid handling enum initialization specially
+        //
+        // The failing case is tests/init/pos/i12544.scala due to promotion failure.
+        if vdef.symbol.name == nme.DOLLAR_VALUES
+           && vdef.symbol.is(Flags.Synthetic)
+           && vdef.symbol.owner.companionClass.isAllOf(Flags.Enum)
+        then
+          thisV.updateField(vdef.symbol, Hot)
+        else
+          thisV.updateField(vdef.symbol, res)
         fieldsChanged = true
 
       case _: MemberDef =>

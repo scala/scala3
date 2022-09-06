@@ -11,7 +11,7 @@
   |        -> if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
   |                             ^^^^^^^^^^^^^^^
   |
-  |        Promoting the value to hot failed due to the following problem:
+  |        Promoting the value to hot (transitively initialized) failed due to the following problem:
   |        Cannot prove that the field value a is hot. Found = Cold. Promotion trace:
   |        -> class B(a: A) {	[ inherit-non-hot.scala:10 ]
   |                   ^^^^
