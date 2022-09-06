@@ -441,13 +441,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   }
 
   def fullMember(m: Member): PageContent =
+    val wideClass = m.companion.map(_ => "cover-header-wide").getOrElse("")
     val intro = m.kind match
       case Kind.RootPackage =>Seq(h1(summon[DocContext].args.name))
       case _ =>
         Seq(
           div(cls := "cover-header")(
             memberIcon(m),
-            h1(cls := "h600")(m.name)
+            h1(cls := s"h600 $wideClass")(m.name)
           ),
           div(cls := "fqname body-large")(
             span(m.fullName)
