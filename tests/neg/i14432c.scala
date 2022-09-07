@@ -9,7 +9,7 @@ package example {
 
 }
 
-class Bar extends example.Foo(23) { // error // error: cant access private[example] ctor
+class Bar extends example.Foo(23) { // error: cant access private[example] ctor
 
   // however we can not provide an anonymous mirror
   // at this call site because the constructor is not accessible.
