@@ -184,9 +184,11 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val annots = annotations(member)
 
     div(topLevelAttr:_*)(
-      Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button show-content")).toList,
-      annots.map(div(_)).toList,
-      div(cls := "header monospace")(memberSignature(member)),
+      div(cls := "documentableElement-expander")(
+        Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button show-content")).toList,
+        annots.map(div(_)).toList,
+        div(cls := "header monospace")(memberSignature(member)),
+      ),
       Option.when(originInf.nonEmpty || memberInf.nonEmpty)(
         div(cls := "docs")(
           span(cls := "modifiers"), // just to have padding on left

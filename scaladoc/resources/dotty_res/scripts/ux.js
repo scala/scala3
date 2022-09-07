@@ -10,10 +10,11 @@ window.addEventListener("DOMContentLoaded", () => {
   var elements = document.getElementsByClassName("documentableElement")
   if (elements) {
     for (i = 0; i < elements.length; i++) {
-      if (elements[i].querySelector(".show-content") !== null) {
-        elements[i].onclick = function (e) {
+      var expanderChild = elements[i].querySelector(".documentableElement-expander")
+      if (elements[i].querySelector(".show-content") !== null && expanderChild !== null) {
+        expanderChild.onclick = function (e) {
           if (!$(e.target).is("a") && e.fromSnippet !== true) {
-            this.classList.toggle("expand")
+            this.parentElement.classList.toggle("expand")
             this.querySelector(".show-content").classList.toggle("expand")
           }
         }
