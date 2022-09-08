@@ -324,7 +324,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       }.toSeq
 
     div(cls := "membersList expand")(
-    h2(cls := "h500")("Members list"),
     div(cls := "body-small", id := "concise-view-switch")(
       span("Concise view"),
       label(cls := "switch")(
@@ -466,6 +465,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       div(
         intro,
         memberInfo(m, withBrief = false),
+        h2(cls := "h500")("Members list"),
         buildDocumentableFilter,
         buildMembers(m)
       ),
