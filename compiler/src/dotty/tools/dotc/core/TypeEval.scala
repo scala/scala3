@@ -13,6 +13,8 @@ object TypeEval:
     case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
       extension (tp: Type) def fixForEvaluation: Type =
         tp.normalized.dealias match
+          // deeper evaluation required
+          case tp : AppliedType => tryCompiletimeConstantFold(tp)
           // enable operations for constant singleton terms. E.g.:
           // ```
           // final val one = 1
