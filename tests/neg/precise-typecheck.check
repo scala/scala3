@@ -1,0 +1,18 @@
+-- Error: tests/neg/precise-typecheck.scala:391:16 ---------------------------------------------------------------------
+391 |  val x = id(2L) // error
+    |                ^
+    |                Cannot prove that (2L : Long) =:= (1L : Long).
+-- [E007] Type Mismatch Error: tests/neg/precise-typecheck.scala:460:45 ------------------------------------------------
+460 |  val id1Check: Id1 = [T] => (t: T) => Box(t) // error
+    |                                             ^
+    |                                             Found:    [T] => (t: T) => Box[T]
+    |                                             Required: precisePolymorphicTypesAndValues.Id1
+    |
+    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/precise-typecheck.scala:463:54 ------------------------------------------------
+463 |  val id2Check: Id2 = [@precise T] => (t: T) => Box(t) // error
+    |                                                      ^
+    |                                                      Found:    [@precise T] => (t: T) => Box[T]
+    |                                                      Required: precisePolymorphicTypesAndValues.Id2
+    |
+    | longer explanation available when compiling with `-explain`

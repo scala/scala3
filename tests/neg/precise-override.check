@@ -1,0 +1,24 @@
+-- [E163] Declaration Error: tests/neg/precise-override.scala:14:10 ----------------------------------------------------
+14 |      def id[@precise T](t: T): T = ??? // error
+   |          ^
+   |          error overriding method id in class Foo of type [T](t: T): T;
+   |            method id of type [@precise T](t: T): T has incompatible type
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E163] Declaration Error: tests/neg/precise-override.scala:20:10 ----------------------------------------------------
+20 |      def id[T](t: T): T = ??? // error
+   |          ^
+   |          error overriding method id in class Foo of type [@precise T](t: T): T;
+   |            method id of type [T](t: T): T has incompatible type
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E164] Declaration Error: tests/neg/precise-override.scala:34:12 ----------------------------------------------------
+34 |      class Box[T] // error
+   |            ^
+   |            error overriding type Box in trait Foo with bounds[T];
+   |              class Box has different precise type parameter annotations
+-- [E164] Declaration Error: tests/neg/precise-override.scala:40:12 ----------------------------------------------------
+40 |      class Box[@precise T] // error
+   |            ^
+   |            error overriding type Box in trait Foo with bounds[T];
+   |              class Box has different precise type parameter annotations
