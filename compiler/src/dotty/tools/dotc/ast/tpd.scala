@@ -286,6 +286,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     end recur
 
     val (rtp, paramss) = recur(sym.info, sym.rawParamss)
+    val typeParamsSyms = paramss.view.flatten.filter(_.isType).toList
+    @tailrec def allPrecises(tp: Type, precises: List[Boolean]): List[Boolean] =
+      tp match
+        case pt : PolyType => allPrecises(pt.resType, precises ++ pt.paramPrecises)
+        case mt : MethodType => allPrecises(mt.resType, precises)
+        case _ => precises
+    val paramPrecises = allPrecises(sym.info, Nil)
+    paramPrecises.lazyZip(typeParamsSyms).foreach {
+      case (true, p) => p.addAnnotation(defn.PreciseAnnot)
+      case _ =>
+    }
     DefDef(sym, paramss, rtp, rhsFn(paramss.nestedMap(ref)))
   end DefDef
 

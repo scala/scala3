@@ -474,7 +474,8 @@ object desugar {
     // Annotations on class _type_ parameters are set on the derived parameters
     // but not on the constructor parameters. The reverse is true for
     // annotations on class _value_ parameters.
-    val constrTparams = impliedTparams.map(toDefParam(_, keepAnnotations = false))
+    val keepAnnotations = cdef.mods.flags.is(Flags.Implicit)
+    val constrTparams = impliedTparams.map(toDefParam(_, keepAnnotations = keepAnnotations))
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass)
