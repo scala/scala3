@@ -19,11 +19,18 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
   extends Renderer(rootPackage, members, extension = "html"):
 
   override def pageContent(page: Page, parents: Vector[Link]): AppliedTag =
+    val PageContent(content, toc) = renderContent(page)
+    val contentStr =
+      content.toString.stripPrefix("\n").stripPrefix("<div>").stripSuffix("\n").stripSuffix("</div>")
+    val document = Jsoup.parse(contentStr)
+    val docHead = raw(document.head().html())
+    val docBody = raw(document.body().html())
+
     html(
-      mkHead(page),
+      head((mkHead(page) :+ docHead):_*),
       body(
-        if !page.hasFrame then renderContent(page).content
-        else mkFrame(page.link, parents, renderContent(page))
+        if !page.hasFrame then docBody
+        else mkFrame(page.link, parents, docBody, toc)
       )
     )
 
@@ -56,7 +63,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     val resources = staticSiteResources ++ allResources(allPages) ++ onlyRenderedResources
     resources.flatMap(renderResource)
 
-  def mkHead(page: Page): AppliedTag =
+  def mkHead(page: Page): Seq[TagArg] =
     val resources = page.content match
       case t: ResolvedTemplate =>
         t.resolved.resources ++ (if t.hasFrame then commonResourcesPaths ++ staticSiteOnlyResourcesPaths else Nil)
@@ -67,7 +74,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       case t: ResolvedTemplate => if t.hasFrame then earlyCommonResourcePaths else Nil
       case _ => earlyCommonResourcePaths
 
-    head(
+    Seq(
       meta(charset := "utf-8"),
       meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1, maximum-scale=1"),
       title(page.link.name),
@@ -183,7 +190,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     renderTocRec(1, toc).headOption.map(toc => nav(cls := "toc-nav")(ul(cls := "toc-list")(toc)))
 
 
-  private def mkFrame(link: Link, parents: Vector[Link], content: => PageContent): AppliedTag =
+  private def mkFrame(link: Link, parents: Vector[Link], content: AppliedTag, toc: Seq[TocEntry]): AppliedTag =
     val projectLogoElem =
       projectLogo.flatMap {
         case Resource.File(path, _) =>
@@ -295,8 +302,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       div(id := "main")(
         parentsHtml,
         div(id := "content", cls := "body-medium")(
-          content.content,
-          renderTableOfContents(content.toc).fold(Nil) { toc =>
+          div(content),
+          renderTableOfContents(toc).fold(Nil) { toc =>
             div(id := "toc", cls:="body-small")(
             div(id := "toc-container") (
               span(cls := "toc-title h200")("In this article"),
