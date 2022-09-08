@@ -264,7 +264,7 @@ class ImplicitSearchError(
       }
     case ambi @ TooUnspecific(target) =>
       ex"""No implicit search was attempted${location("for")}
-          |since the expected type $target is too unspecific"""
+          |since the expected type $target is not specific enough"""
     case _ =>
       val shortMessage = userDefinedImplicitNotFoundParamMessage
         .orElse(userDefinedImplicitNotFoundTypeMessage)
