@@ -1013,6 +1013,7 @@ trait Implicits:
         // would cause a cyclic reference error (if the import is named) or cause a
         // spurious import skip (if the import is a wildcard import). See i12802 for a test case.
         var searchCtx = ctx
+        while searchCtx.outer.owner.isImport do searchCtx = searchCtx.outer
         if ctx.owner.isImport then
           while
             searchCtx = searchCtx.outer

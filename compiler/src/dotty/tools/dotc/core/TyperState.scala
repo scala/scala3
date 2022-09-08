@@ -12,6 +12,7 @@ import collection.mutable
 import java.lang.ref.WeakReference
 import util.{Stats, SimpleIdentityMap}
 import Decorators._
+import ast.tpd.Tree
 
 import scala.annotation.internal.sharable
 
@@ -24,21 +25,23 @@ object TyperState {
       .setCommittable(true)
 
   type LevelMap = SimpleIdentityMap[TypeVar, Integer]
+  type PreciseConversionStack = List[Set[Tree]]
 
-  opaque type Snapshot = (Constraint, TypeVars, LevelMap)
+  opaque type Snapshot = (Constraint, TypeVars, LevelMap, PreciseConversionStack)
 
   extension (ts: TyperState)
     def snapshot()(using Context): Snapshot =
-      (ts.constraint, ts.ownedVars, ts.upLevels)
+      (ts.constraint, ts.ownedVars, ts.upLevels, ts.myPreciseConvStack)
 
     def resetTo(state: Snapshot)(using Context): Unit =
-      val (constraint, ownedVars, upLevels) = state
+      val (constraint, ownedVars, upLevels, myPreciseConvStack) = state
       for tv <- ownedVars do
         if !ts.ownedVars.contains(tv) then // tv has been instantiated
           tv.resetInst(ts)
       ts.constraint = constraint
       ts.ownedVars = ownedVars
       ts.upLevels = upLevels
+      ts.myPreciseConvStack = myPreciseConvStack
 }
 
 class TyperState() {
@@ -93,6 +96,23 @@ class TyperState() {
 
   private var upLevels: LevelMap = _
 
+  // Stack can be empty and precise conversion occur in `val x : Foo = from`
+  // where `from` is implicitly and precisely converted into `Foo`. We don't
+  // care about these conversions.
+  private var myPreciseConvStack: List[Set[Tree]] = _
+  def hasPreciseConversion(tree: Tree): Boolean =
+    myPreciseConvStack match
+      case head :: _ => head.contains(tree)
+      case _ => false
+  def addPreciseConversion(tree: Tree): Unit =
+    myPreciseConvStack = myPreciseConvStack match
+      case head :: tail => (head + tree) :: tail
+      case _ => myPreciseConvStack
+  def pushPreciseConversionStack(): Unit  =
+    myPreciseConvStack = Set.empty[Tree] :: myPreciseConvStack
+  def popPreciseConversionStack(): Unit =
+    myPreciseConvStack = myPreciseConvStack.drop(1)
+
   /** Initializes all fields except reporter, isCommittable, which need to be
    *  set separately.
    */
@@ -105,6 +125,7 @@ class TyperState() {
     this.myOwnedVars = SimpleIdentitySet.empty
     this.upLevels = SimpleIdentityMap.empty
     this.isCommitted = false
+    this.myPreciseConvStack = Nil
     this
 
   /** A fresh typer state with the same constraint as this one. */
@@ -115,6 +136,7 @@ class TyperState() {
       .setReporter(reporter)
       .setCommittable(committable)
     ts.upLevels = upLevels
+    ts.myPreciseConvStack = myPreciseConvStack
     ts
 
   /** The uninstantiated variables */
@@ -161,6 +183,8 @@ class TyperState() {
     assert(isCommittable, s"$this is not committable")
     assert(!isCommitted, s"$this is already committed")
     val targetState = ctx.typerState
+
+    targetState.myPreciseConvStack = myPreciseConvStack
 
     val nothingToCommit = (constraint eq targetState.constraint) && !reporter.hasUnreportedMessages
     assert(!targetState.isCommitted || nothingToCommit ||

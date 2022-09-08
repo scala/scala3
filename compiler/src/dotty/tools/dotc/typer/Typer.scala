@@ -4019,6 +4019,29 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case SearchSuccess(found, _, _, isExtension) =>
               if isExtension then found
               else
+                object Extract:
+                  @tailrec def unapply(tree: Tree): Option[Tree] =
+                    tree match
+                      case Apply(tree, _) => unapply(tree)
+                      case Select(tree, _) => unapply(tree)
+                      case Inlined(tree, _, _) => unapply(tree)
+                      case ta: TypeApply => Some(ta.fun)
+                      case _ => None
+                found match
+                  case Extract(fun) =>
+                    fun.tpe.widen match
+                      case pt: PolyType => pt.resType match
+                        case mt: MethodType => mt.paramInfos.headOption.foreach {
+                          case v if v.isPrecise =>
+                            ctx.typerState.addPreciseConversion(found)
+                          case _ =>
+                        }
+                        case AppliedType(tycon, from :: _)
+                          if tycon.derivesFrom(defn.ConversionClass) && from.isPrecise =>
+                          ctx.typerState.addPreciseConversion(found)
+                        case _ =>
+                      case _ =>
+                  case _ =>
                 checkImplicitConversionUseOK(found)
                 withoutMode(Mode.ImplicitsEnabled)(readapt(found))
             case failure: SearchFailure =>

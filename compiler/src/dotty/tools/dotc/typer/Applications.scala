@@ -891,7 +891,7 @@ trait Applications extends Compatibility {
    */
   def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = {
 
-    def realApply(using Context): Tree = {
+    def realApply(argsPrecises: List[Boolean] = Nil)(using Context): Tree = {
       val resultProto = tree.fun match
         case Select(New(tpt), _) if pt.isInstanceOf[ValueType] =>
           if tpt.isType && typedAheadType(tpt).tpe.typeSymbol.typeParams.isEmpty then
@@ -905,7 +905,7 @@ trait Applications extends Compatibility {
           // Do ignore other expected result types, since there might be an implicit conversion
           // on the result. We could drop this if we disallow unrestricted implicit conversions.
       val originalProto =
-        new FunProto(tree.args, resultProto)(this, tree.applyKind)(using argCtx(tree))
+        new FunProto(tree.args, resultProto)(this, tree.applyKind, argsPrecises = argsPrecises)(using argCtx(tree))
       record("typedApply")
       val fun1 = typedExpr(tree.fun, originalProto)
 
@@ -1015,6 +1015,41 @@ trait Applications extends Compatibility {
       }
     }
 
+    /** Attempts to run `realApply`, and if implicit conversions should be
+     *  precise, then re-run `realApply` with the precise enforcement.
+     */
+    def realApplyWithRetry(using Context): Tree = {
+      ctx.typerState.pushPreciseConversionStack()
+      val firstAttemptCtx = ctx.fresh.setNewTyperState()
+      // tuple application for tuple return type gets special treatment when arguments are precise
+      val argsPrecises = (tree.fun, pt.dealias) match
+        case (untpd.TypedSplice(fun), AppliedType(_, args))
+          if defn.isTupleClass(fun.tpe.classSymbol.companionClass) && defn.isTupleNType(pt) =>
+          args.map(_.isPrecise)
+        case _ => Nil
+      val app = realApply(argsPrecises)(using firstAttemptCtx)
+      val retTree = app match
+        // If we are already in precise mode, then the arguments are already typed precisely,
+        // so there is no need for any additional logic.
+        case Apply(_, args) if !ctx.mode.is(Mode.Precise) =>
+          val convArgsPrecises = args.map(firstAttemptCtx.typerState.hasPreciseConversion)
+          if (convArgsPrecises.contains(true))
+            val preciseCtx = ctx.fresh.setNewTyperState()
+            val updatedPrecises =
+              if (argsPrecises.nonEmpty) convArgsPrecises.lazyZip(argsPrecises).map(_ || _)
+              else convArgsPrecises
+            val app = realApply(updatedPrecises)(using preciseCtx)
+            preciseCtx.typerState.commit()
+            app
+          else
+            firstAttemptCtx.typerState.commit()
+            app
+        case _ =>
+          firstAttemptCtx.typerState.commit()
+          app
+      ctx.typerState.popPreciseConversionStack()
+      retTree
+    }
     /** Convert expression like
      *
      *     e += (args)
@@ -1037,7 +1072,7 @@ trait Applications extends Compatibility {
     val app1 =
       if (untpd.isOpAssign(tree))
         tryEither {
-          realApply
+          realApplyWithRetry
         } { (failedVal, failedState) =>
           tryEither {
             typedOpAssign
@@ -1049,7 +1084,7 @@ trait Applications extends Compatibility {
       else {
         val app = tree.fun match
           case _: untpd.Splice if ctx.mode.is(Mode.QuotedPattern) => typedAppliedSplice(tree, pt)
-          case _ => realApply
+          case _ => realApplyWithRetry
         app match {
           case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
             val op = fn.symbol
