@@ -10,7 +10,7 @@ object Mu {
   implicit def mu: Mu[Int] = new Mu[Int] {}
 }
 
-object App extends App {
-  def constrain(a: Mu[Long]): Unit = println(a)
+object Test extends App {
+  def constrain(a: Mu[Long]): Unit = ()
   constrain(Xa.convertMu)  // error
 }
