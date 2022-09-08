@@ -647,7 +647,8 @@ trait ConstraintHandling {
       case _ => isSubTypeWhenFrozen(tp, defn.SingletonType)
 
     val wideInst =
-      if isSingleton(bound) then inst
+      //keeping the precise type if the bound is Singleton or precise or the mode is precise
+      if isSingleton(bound) || ctx.mode.is(Mode.Precise) || bound.isPrecise then inst
       else dropTransparentTraits(widenIrreducible(widenOr(widenSingle(inst))), bound)
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
