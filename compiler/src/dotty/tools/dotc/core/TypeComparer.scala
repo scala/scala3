@@ -1091,7 +1091,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val otherArgs = other.args
 
       val d = otherArgs.length - args.length
-      d >= 0 && {
+      d >= 0 && !other.isMatchAlias && {
         val tparams = tycon.typeParams
         val remainingTparams = otherTycon.typeParams.drop(d)
         variancesConform(remainingTparams, tparams) && {
