@@ -111,8 +111,12 @@ class ReplDriver(settings: Array[String],
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
         .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
+      
     compiler = new ReplCompiler
-    rendering = new Rendering(classLoader)
+    rendering = new Rendering(
+      classLoader, 
+      maxPrintElements = rootCtx.settings.XreplMaxPrintElements.valueIn(rootCtx.settingsState)
+    )
   }
 
   private var rootCtx: Context = _
