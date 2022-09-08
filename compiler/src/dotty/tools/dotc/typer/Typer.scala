@@ -3520,7 +3520,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def methodStr = err.refStr(methPart(tree).tpe)
 
     def readapt(tree: Tree)(using Context) = adapt(tree, pt, locked)
-    def readaptSimplified(tree: Tree)(using Context) = readapt(simplify(tree, pt, locked))
+    def readaptSimplified(tree: Tree)(using Context) = readapt(
+      // also locking precise type variables to prevent their widening to bounds in implicits
+      simplify(tree, pt, locked ++ ctx.typerState.ownedVars.filter(_.isPrecise))
+    )
 
     def missingArgs(mt: MethodType) =
       ErrorReporting.missingArgs(tree, mt)
