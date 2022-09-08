@@ -125,25 +125,25 @@ object ErrorReporting {
     def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailureType = NoMatchingImplicits): Tree = {
       val normTp = normalize(tree.tpe, pt)
       val normPt = normalize(pt, pt)
-      
+
       def contextFunctionCount(tp: Type): Int = tp.stripped match
         case defn.ContextFunctionType(_, restp, _) => 1 + contextFunctionCount(restp)
         case _ => 0
       def strippedTpCount = contextFunctionCount(tree.tpe) - contextFunctionCount(normTp)
       def strippedPtCount = contextFunctionCount(pt) - contextFunctionCount(normPt)
-      
+
       val (treeTp, expectedTp) =
         if normTp <:< normPt || strippedTpCount != strippedPtCount
         then (tree.tpe, pt)
         else (normTp, normPt)
         // use normalized types if that also shows an error, and both sides stripped
         // the same number of context functions. Use original types otherwise.
-        
+
       def missingElse = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
           "\nMaybe you are missing an else part for the conditional?"
         case _ => ""
-        
+
       errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), implicitFailure.whyNoConversion, missingElse))
     }
 
@@ -262,6 +262,9 @@ class ImplicitSearchError(
         case _ =>
           defaultAmbiguousImplicitMsg(ambi)
       }
+    case ambi @ TooUnspecific(target) =>
+      ex"""No implicit search was attempted${location("for")}
+          |since the expected type $target is too unspecific"""
     case _ =>
       val shortMessage = userDefinedImplicitNotFoundParamMessage
         .orElse(userDefinedImplicitNotFoundTypeMessage)
