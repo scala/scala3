@@ -646,9 +646,45 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
     record("typedSelect")
 
-    def typeSelectOnTerm(using Context): Tree =
-      val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
+    def typeSelectOnTerm(precise: Boolean)(using Context): Tree =
+      val preciseMode = if (precise) Mode.Precise else Mode.None
+      val qual = withMode(preciseMode){ typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this)) }
       typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
+
+    /** Attempts to do the type select, but if this is an extension method or implicit class
+     *  and the qualifier is an argument that needs to be precise, then we need to rerun the
+     *  type select with precise enforcement on.
+     */
+    def typeSelectOnTermWithPreciseRetry(using Context): Tree =
+      val firstAttemptCtx = ctx.fresh.setNewTyperState()
+      val selected = typeSelectOnTerm(precise = false)(using firstAttemptCtx)
+      object Extract:
+        @tailrec def unapply(tree: Tree): Option[Apply] =
+          tree match
+            // extension method with arguments
+            case TypeApply(fun: Apply, _) => Some(fun)
+            // extension method with no arguments
+            case apply : Apply => Some(apply)
+            // deeper nesting or a result of implicit classes
+            case Select(tree, _) => unapply(tree)
+            case _ => None
+      selected match
+        // `fun` may not be typed due to errors like ambiguity in typing, so we check for that.
+        // If we are already in precise mode, then the qualifier is already typed precisely,
+        // so there is no need for any additional logic.
+        case Extract(Apply(TypeApply(fun, _), _)) if fun.hasType && !ctx.mode.is(Mode.Precise) =>
+          fun.tpe.widen match
+            case pt: PolyType if pt.paramPrecises.headOption.contains(true) =>
+              val preciseCtx = ctx.fresh.setNewTyperState()
+              val selected = typeSelectOnTerm(precise = true)(using preciseCtx)
+              preciseCtx.typerState.commit()
+              selected
+            case _ =>
+              firstAttemptCtx.typerState.commit()
+              selected
+        case _ =>
+          firstAttemptCtx.typerState.commit()
+          selected
 
     def javaSelectOnType(qual: Tree)(using Context) =
       // semantic name conversion for `O$` in java code
@@ -674,7 +710,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     def selectWithFallback(fallBack: Context ?=> Tree) =
-      tryAlternatively(typeSelectOnTerm)(fallBack)
+      tryAlternatively(typeSelectOnTermWithPreciseRetry)(fallBack)
 
     if (tree.qualifier.isType) {
       val qual1 = typedType(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
@@ -685,7 +721,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       // value A and from the type A. We have to try both.
       selectWithFallback(tryJavaSelectOnType) // !!! possibly exponential bcs of qualifier retyping
     else
-      typeSelectOnTerm
+      typeSelectOnTermWithPreciseRetry
   }
 
   def typedThis(tree: untpd.This)(using Context): Tree = {
