@@ -767,7 +767,7 @@ object ProtoTypes {
            || ctx.mode.is(Mode.TypevarsMissContext)
            || !ref.underlying.widenExpr.isValueTypeOrWildcard
         then
-          WildcardType(ref.underlying.substParams(mt, mt.paramRefs.map(_ => WildcardType)).toBounds)
+          WildcardType(ref.underlying.substParams(mt, mt.paramRefs.map(_ => WildcardType)).toBounds, ref.isPrecise)
         else
           newDepTypeVar(ref)
       mt.resultType.substParams(mt, mt.paramRefs.map(replacement))
@@ -825,7 +825,7 @@ object ProtoTypes {
   private def wildApprox(tp: Type, theMap: WildApproxMap | Null, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type = tp match {
     case tp: NamedType => // default case, inlined for speed
       val isPatternBoundTypeRef = tp.isInstanceOf[TypeRef] && tp.symbol.isPatternBound
-      if (isPatternBoundTypeRef) WildcardType(tp.underlying.bounds)
+      if (isPatternBoundTypeRef) WildcardType(tp.underlying.bounds, tp.isPrecise)
       else if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen, internal))
     case tp @ AppliedType(tycon, args) =>
@@ -849,7 +849,7 @@ object ProtoTypes {
     case tp @ TypeParamRef(poly, pnum) =>
       def wildApproxBounds(bounds: TypeBounds) =
         if (seen.contains(tp)) WildcardType
-        else WildcardType(wildApprox(bounds, theMap, seen + tp, internal).bounds)
+        else WildcardType(wildApprox(bounds, theMap, seen + tp, internal).bounds, tp.isPrecise)
       def unconstrainedApprox = wildApproxBounds(poly.paramInfos(pnum))
       def approxPoly =
         if (ctx.mode.is(Mode.TypevarsMissContext)) unconstrainedApprox
@@ -860,8 +860,8 @@ object ProtoTypes {
             case inst               => wildApprox(inst, theMap, seen, internal)
           }
       approxPoly
-    case TermParamRef(mt, pnum) =>
-      WildcardType(TypeBounds.upper(wildApprox(mt.paramInfos(pnum), theMap, seen, internal)))
+    case tp@TermParamRef(mt, pnum) =>
+      WildcardType(TypeBounds.upper(wildApprox(mt.paramInfos(pnum), theMap, seen, internal)), tp.isPrecise)
     case tp: TypeVar =>
       wildApprox(tp.underlying, theMap, seen, internal)
     case tp: AndType =>
@@ -871,7 +871,7 @@ object ProtoTypes {
         def wildBounds(tp: Type) =
           if (tp.isInstanceOf[WildcardType]) tp.bounds else TypeBounds.upper(tp)
         if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
-          WildcardType(wildBounds(tp1a) & wildBounds(tp2a))
+          WildcardType(wildBounds(tp1a) & wildBounds(tp2a), false)
         else
           tp.derivedAndType(tp1a, tp2a)
       }
@@ -881,7 +881,7 @@ object ProtoTypes {
         val tp1a = wildApprox(tp.tp1, theMap, seen, internal)
         val tp2a = wildApprox(tp.tp2, theMap, seen, internal)
         if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
-          WildcardType(tp1a.bounds | tp2a.bounds)
+          WildcardType(tp1a.bounds | tp2a.bounds, false)
         else
           tp.derivedOrType(tp1a, tp2a)
       }

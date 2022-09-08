@@ -1197,7 +1197,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
     def interpolateWildcards = new TypeMap {
       def apply(t: Type): Type = t match
-        case WildcardType(bounds: TypeBounds) =>
+        case WildcardType(bounds: TypeBounds, _) =>
           newTypeVar(apply(bounds.orElse(TypeBounds.empty)).bounds)
         case _ => mapOver(t)
     }
@@ -1886,7 +1886,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
     val elemProto = pt.stripNull.elemType match {
       case NoType => WildcardType
-      case bounds: TypeBounds => WildcardType(bounds)
+      case bounds: TypeBounds => WildcardType(bounds, pt.isPrecise)
       case elemtp => elemtp
     }
 

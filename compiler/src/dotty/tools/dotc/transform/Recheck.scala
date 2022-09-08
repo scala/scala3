@@ -301,7 +301,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckSeqLiteral(tree: SeqLiteral, pt: Type)(using Context): Type =
       val elemProto = pt.stripNull.elemType match
         case NoType => WildcardType
-        case bounds: TypeBounds => WildcardType(bounds)
+        case bounds: TypeBounds => WildcardType(bounds, pt.isPrecise)
         case elemtp => elemtp
       val declaredElemType = recheck(tree.elemtpt)
       val elemTypes = tree.elems.map(recheck(_, elemProto))

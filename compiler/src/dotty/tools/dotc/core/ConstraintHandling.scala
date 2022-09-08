@@ -643,7 +643,7 @@ trait ConstraintHandling {
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
 
     def isSingleton(tp: Type): Boolean = tp match
-      case WildcardType(optBounds) => optBounds.exists && isSingleton(optBounds.bounds.hi)
+      case WildcardType(optBounds, _) => optBounds.exists && isSingleton(optBounds.bounds.hi)
       case _ => isSubTypeWhenFrozen(tp, defn.SingletonType)
 
     val wideInst =

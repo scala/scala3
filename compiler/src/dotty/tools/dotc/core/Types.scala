@@ -365,7 +365,7 @@ object Types {
       case TypeBounds(lo, hi) => lo.unusableForInference || hi.unusableForInference
       case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
       case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
-      case WildcardType(optBounds) => optBounds.unusableForInference
+      case WildcardType(optBounds, _) => optBounds.unusableForInference
       case CapturingType(parent, refs) => parent.unusableForInference || refs.elems.exists(_.unusableForInference)
       case _: ErrorType => true
       case _ => false
@@ -5361,7 +5361,7 @@ object Types {
   object TryDynamicCallType extends FlexType
 
   /** Wildcard type, possibly with bounds */
-  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
+  abstract case class WildcardType(optBounds: Type, precise: Boolean) extends CachedGroundType with TermType {
 
     def effectiveBounds(using Context): TypeBounds = optBounds match
       case bounds: TypeBounds => bounds
@@ -5370,11 +5370,11 @@ object Types {
     def derivedWildcardType(optBounds: Type)(using Context): WildcardType =
       if (optBounds eq this.optBounds) this
       else if (!optBounds.exists) WildcardType
-      else WildcardType(optBounds.asInstanceOf[TypeBounds])
+      else WildcardType(optBounds.asInstanceOf[TypeBounds], precise)
 
-    override def computeHash(bs: Binders): Int = doHash(bs, optBounds)
+    override def computeHash(bs: Binders): Int = doHash(bs, precise, optBounds)
     override def hashIsStable: Boolean = optBounds.hashIsStable
-
+    override def isPrecise(using Context): Boolean = precise
     override def eql(that: Type): Boolean = that match {
       case that: WildcardType => optBounds.eq(that.optBounds)
       case _ => false
@@ -5388,18 +5388,18 @@ object Types {
     }
   }
 
-  final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)
+  final class CachedWildcardType(optBounds: Type, precise: Boolean) extends WildcardType(optBounds, precise)
 
-  @sharable object WildcardType extends WildcardType(NoType) {
-    def apply(bounds: TypeBounds)(using Context): WildcardType =
+  @sharable object WildcardType extends WildcardType(NoType, false) {
+    def apply(bounds: TypeBounds, precise: Boolean)(using Context): WildcardType =
       if bounds eq TypeBounds.empty then
         val result = ctx.base.emptyWildcardBounds
         if result == null then
-          ctx.base.emptyWildcardBounds = unique(CachedWildcardType(bounds))
-          apply(bounds)
+          ctx.base.emptyWildcardBounds = unique(CachedWildcardType(bounds, precise))
+          apply(bounds, precise)
         else
           result
-      else unique(CachedWildcardType(bounds))
+      else unique(CachedWildcardType(bounds, precise))
   }
 
   /** An extractor for single abstract method types.
@@ -6095,7 +6095,11 @@ object Types {
       val bounds = t.effectiveBounds
       range(atVariance(-variance)(apply(bounds.lo)), apply(bounds.hi))
     def apply(t: Type): Type = t match
-      case t: WildcardType => mapWild(t)
+      case t: WildcardType => mapWild(t) match
+        case tv: TypeVar =>
+          tv.origin.setPreciseSubstitute(t.isPrecise)
+          tv
+        case t => t
       case _ => mapOver(t)
 
   // ----- TypeAccumulators ----------------------------------------------------

@@ -12,7 +12,7 @@ object Patterns {
     }
   }
   d match {
-    case WildcardType(bounds: TypeBounds) => bounds.lo
+    case WildcardType(bounds: TypeBounds, _) => bounds.lo
     case a @ Assign(Ident(id), rhs) => id
     case a: Object => a
   }
