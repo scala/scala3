@@ -988,6 +988,7 @@ class Definitions {
   @tu lazy val NowarnAnnot: ClassSymbol = requiredClass("scala.annotation.nowarn")
   @tu lazy val TransparentTraitAnnot: ClassSymbol = requiredClass("scala.annotation.transparentTrait")
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
+  @tu lazy val PreciseAnnot: ClassSymbol = requiredClass("scala.annotation.precise")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
   @tu lazy val SourceFileAnnot: ClassSymbol = requiredClass("scala.annotation.internal.SourceFile")
   @tu lazy val ScalaSignatureAnnot: ClassSymbol = requiredClass("scala.reflect.ScalaSignature")
