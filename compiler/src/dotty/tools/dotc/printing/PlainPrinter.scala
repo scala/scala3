@@ -287,9 +287,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
     "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
 
   protected def paramsText(lam: LambdaType): Text = {
-    def paramText(name: Name, tp: Type) =
-      toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
-    Text(lam.paramNames.lazyZip(lam.paramInfos).map(paramText), ", ")
+    def paramText(name: Name, tp: Type, precise: Boolean) =
+      (if precise then "@precise " else "") ~ toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
+    val precises = lam match
+      case pt: TypeLambda => pt.paramPrecises
+      case _ => lam.paramNames.map(_ => false)
+    Text(lam.paramNames.lazyZip(lam.paramInfos).lazyZip(precises).toList.map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)

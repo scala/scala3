@@ -438,6 +438,9 @@ object Types {
     /** Is this a higher-kinded type lambda with given parameter variances? */
     def isDeclaredVarianceLambda: Boolean = false
 
+    /** Is this a precise-enforced type? */
+    def isPrecise(using Context): Boolean = false
+
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
       existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false)
@@ -3514,7 +3517,7 @@ object Types {
   extends CachedProxyType with MethodicType {
     override def resultType(using Context): Type = resType
     override def underlying(using Context): Type = resType
-
+    override def isPrecise(using Context): Boolean = resType.isPrecise
     override def signature(using Context): Signature = Signature.NotAMethod
 
     def derivedExprType(resType: Type)(using Context): ExprType =
@@ -4342,6 +4345,8 @@ object Types {
 
     override def underlying(using Context): Type = tycon
 
+    override def isPrecise(using Context): Boolean = defn.isFunctionType(this) && args.last.isPrecise
+
     override def superType(using Context): Type =
       if ctx.period != validSuper then
         validSuper = if (tycon.isProvisional) Nowhere else ctx.period
@@ -4526,6 +4531,37 @@ object Types {
     type BT = TypeLambda
     def kindString: String = "Type"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
+    private var preciseSubstitute: Boolean = false
+    private var cachedPrecise: Option[Boolean] = None
+    final protected[Types] def setPreciseSubstitute(p: Boolean): Unit = preciseSubstitute = p
+    private def isPreciseRecur(tp: Type, boringPrecise: Boolean)(using Context): Option[Boolean] = tp match
+      case p: TypeParamRef if p == this => Some(boringPrecise)
+      case at@AppliedType(_, args) =>
+        args
+          .lazyZip(at.tyconTypeParams.view.map(p => p.paramPrecise || boringPrecise)).view
+          .map(isPreciseRecur).collectFirst {
+            case Some(res) => res
+          }
+      case _ => None
+
+    override def isPrecise(using Context): Boolean =
+      // the param is substituting a precise type or...
+      preciseSubstitute || cachedPrecise.getOrElse {
+        val precise =
+          // the param itself is annotated as precise or the param is first introduced
+          // in a precise position of an applied type argument
+          binder.paramPrecises(paramNum) ||
+            (binder.resType.dealiasKeepOpaques match
+              //givens just return an applied type which we use
+              case at: AppliedType => isPreciseRecur(at, false)
+              //for method types we go over the arguments
+              case rt => rt.paramInfoss.view.flatten.flatMap(isPreciseRecur(_, false)).headOption
+            ).getOrElse(false)
+        cachedPrecise = Some(precise)
+        precise
+      } ||
+      //the param upper-bounded by a precise type
+      ctx.typerState.constraint.minUpper(this).filter(_.paramName != this.paramName).exists(_.isPrecise)
 
     /** Optimized version of occursIn, avoid quadratic blowup when solving
      *  constraints over large ground types.
@@ -4649,12 +4685,18 @@ object Types {
      */
     def setOrigin(p: TypeParamRef) = currentOrigin = p
 
+    override def isPrecise(using Context): Boolean = currentOrigin.isPrecise
     /** The permanent instance type of the variable, or NoType is none is given yet */
     private var myInst: Type = NoType
 
     private[core] def inst: Type = myInst
-    private[core] def setInst(tp: Type): Unit =
+    private[core] def setInst(tp: Type)(using Context): Unit =
       myInst = tp
+      //propagating precise indicator to the instance type parameter
+      tp match
+        case v : TypeVar if tp.exists =>
+          v.origin.setPreciseSubstitute(origin.isPrecise)
+        case _ =>
       if tp.exists && owningState != null then
         val owningState1 = owningState.uncheckedNN.get
         if owningState1 != null then
@@ -5217,6 +5259,8 @@ object Types {
     override def stripAnnots(using Context): Type = parent.stripAnnots
 
     override def stripped(using Context): Type = parent.stripped
+
+    override def isPrecise(using Context): Boolean = parent.isPrecise
 
     private var isRefiningKnown = false
     private var isRefiningCache: Boolean = _
