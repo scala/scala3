@@ -546,7 +546,7 @@ object Denotations {
              && tp1.isErasedMethod == tp2.isErasedMethod =>
             val resType = infoMeet(tp1.resType, tp2.resType.subst(tp2, tp1), safeIntersection)
             if resType.exists then
-              tp1.derivedLambdaType(mergeParamNames(tp1, tp2), tp1.paramInfos, resType)
+              tp1.derivedLambdaType(mergeParamNames(tp1, tp2), Nil, tp1.paramInfos, resType)
             else NoType
           case _ => NoType
       case tp1: PolyType =>
@@ -556,6 +556,7 @@ object Denotations {
             if resType.exists then
               tp1.derivedLambdaType(
                 mergeParamNames(tp1, tp2),
+                Nil,
                 tp1.paramInfos.zipWithConserve(tp2.paramInfos)( _ & _ ),
                 resType)
             else NoType

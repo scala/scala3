@@ -169,7 +169,7 @@ trait Deriving {
             else {
               val derivedParamTypes = derivedParams.map(_.typeRef)
 
-              HKTypeLambda(typeClassParamInfos.map(_.paramName))(
+              HKTypeLambda(typeClassParamInfos.map(_.paramName), typeClassParamInfos.map(_.paramPrecise))(
                 tl => typeClassParamInfos.map(_.paramInfo.bounds),
                 tl => clsType.appliedTo(derivedParamTypes ++ tl.paramRefs.takeRight(clsArity)))
             }

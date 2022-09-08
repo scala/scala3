@@ -21,7 +21,7 @@ object ElimErasedValueType {
     case tp: MethodType =>
       val paramTypes = tp.paramInfos.mapConserve(elimEVT)
       val retType = elimEVT(tp.resultType)
-      tp.derivedLambdaType(tp.paramNames, paramTypes, retType)
+      tp.derivedLambdaType(tp.paramNames, Nil, paramTypes, retType)
     case _ =>
       tp
   }

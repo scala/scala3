@@ -88,7 +88,7 @@ abstract class AbstractStringFormatterTest extends DottyTest:
   def mkCstrd =
     val names = List(typeName("Foo"), typeName("Bar"))
     val infos = List(TypeBounds.upper(defn.IntType), TypeBounds.upper(defn.StringType))
-    val tl = PolyType(names)(_ => infos, _ => defn.AnyType)
+    val tl = PolyType(names, Nil)(_ => infos, _ => defn.AnyType)
     TypeComparer.addToConstraint(tl, Nil)
     tl.paramRefs
 

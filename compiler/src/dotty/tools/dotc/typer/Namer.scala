@@ -1193,6 +1193,7 @@ class Namer { typer: Typer =>
                           paramNames = info.paramNames.mapConserve {
                             pname => if defines(pathType, pname) then pname.freshened else pname
                           },
+                          paramPrecises = info.paramPrecises,
                           resType = avoidNameClashes(info.resType))
                       case info =>
                         info

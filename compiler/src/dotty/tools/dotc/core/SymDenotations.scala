@@ -1491,6 +1491,11 @@ object SymDenotations {
       else if is(Contravariant) then Contravariant
       else EmptyFlags
 
+    /** The precise enforcement indicator of this type parameter or type member
+     */
+    final def precise(using Context): Boolean =
+      hasAnnotation(defn.PreciseAnnot)
+
     /** The flags to be used for a type parameter owned by this symbol.
      *  Overridden by ClassDenotation.
      */

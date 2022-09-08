@@ -167,7 +167,7 @@ object PrepareInlineable {
 
           // Add qualifier type as leading method argument to argument `tp`
           def addQualType(tp: Type): Type = tp match {
-            case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
+            case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramPrecises, tp.paramInfos, addQualType(tp.resultType))
             case tp: ExprType => addQualType(tp.resultType)
             case tp => MethodType(qualType.simplified :: Nil, tp)
           }

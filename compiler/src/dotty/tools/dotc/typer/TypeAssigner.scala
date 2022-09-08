@@ -314,6 +314,7 @@ trait TypeAssigner {
       case pt: TypeLambda =>
         tree.withType {
           val paramNames = pt.paramNames
+          val paramPrecises = pt.paramPrecises
           if (hasNamedArg(args)) {
             val paramBoundsByName = paramNames.zip(pt.paramInfos).toMap
 
@@ -353,6 +354,7 @@ trait TypeAssigner {
               val gaps = gapBuf.toList
               pt.derivedLambdaType(
                 gaps.map(paramNames),
+                gaps.map(paramPrecises),
                 gaps.map(idx => transform(pt.paramInfos(idx)).bounds),
                 resultType1)
             }
@@ -366,7 +368,7 @@ trait TypeAssigner {
             // See pos/i6682a.scala for a test case where the defensive copying matters.
             val ensureFresh = new TypeMap with CaptureSet.IdempotentCaptRefMap:
               def apply(tp: Type) = mapOver(
-                if tp eq pt then pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
+                if tp eq pt then pt.newLikeThis(pt.paramNames, pt.paramPrecises, pt.paramInfos, pt.resType)
                 else tp)
             val argTypes = args.tpes.mapConserve(ensureFresh)
             if (argTypes.hasSameLengthAs(paramNames)) pt.instantiate(argTypes)

@@ -378,7 +378,7 @@ object ExplicitOuter {
       if (needsOuterParam(cls)) {
         val mt @ MethodTpe(pnames, ptypes, restpe) = tp: @unchecked
         mt.derivedLambdaType(
-          nme.OUTER :: pnames, outerClass(cls).typeRef :: ptypes, restpe)
+          nme.OUTER :: pnames, Nil, outerClass(cls).typeRef :: ptypes, restpe)
       }
       else tp
 

@@ -133,7 +133,7 @@ class Definitions {
           val underlyingName = name.asSimpleName.drop(6)
           val underlyingClass = ScalaPackageVal.requiredClass(underlyingName)
           denot.info = TypeAlias(
-            HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
+            HKTypeLambda(argParamNames :+ "R".toTypeName, Nil, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
               tl => CapturingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
                 CaptureSet.universal)
@@ -187,7 +187,7 @@ class Definitions {
                     useCompleter: Boolean = false) = {
     val tparamNames = PolyType.syntheticParamNames(typeParamCount)
     val tparamInfos = tparamNames map (_ => bounds)
-    def ptype = PolyType(tparamNames)(_ => tparamInfos, resultTypeFn)
+    def ptype = PolyType(tparamNames, Nil)(_ => tparamInfos, resultTypeFn)
     val info =
       if (useCompleter)
         new LazyType {
@@ -719,7 +719,7 @@ class Definitions {
                   case meth: MethodType =>
                     info.derivedLambdaType(
                       resType = meth.derivedLambdaType(
-                      paramNames = Nil, paramInfos = Nil))
+                      paramNames = Nil, paramPrecises = Nil, paramInfos = Nil))
                 }
             }
             val argConstr = constr.copy().entered

@@ -96,6 +96,7 @@ trait FullParameterization {
     }
     val ctparams = if (abstractOverClass) clazz.typeParams else Nil
     val ctnames = ctparams.map(_.name)
+    val ctprecises = ctparams.map(_.paramPrecise)
 
     /** The method result type */
     def resultType(mapClassParams: Type => Type) = {
@@ -118,14 +119,14 @@ trait FullParameterization {
 
     info match {
       case info: PolyType =>
-        PolyType(info.paramNames ++ ctnames)(
+        PolyType(info.paramNames ++ ctnames, info.paramPrecises ++ ctprecises)(
           pt =>
             (info.paramInfos.map(mapClassParams(_, pt).bounds) ++
              mappedClassBounds(pt)).mapConserve(_.subst(info, pt).bounds),
           pt => resultType(mapClassParams(_, pt)).subst(info, pt))
       case _ =>
         if (ctparams.isEmpty) resultType(identity)
-        else PolyType(ctnames)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
+        else PolyType(ctnames, ctprecises)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
     }
   }
 
@@ -263,7 +264,7 @@ object FullParameterization {
     case MethodTpe(nme.SELF :: Nil, _, restpe) =>
       restpe.ensureMethodic.signature
     case info @ MethodTpe(nme.SELF :: otherNames, thisType :: otherTypes, restpe) =>
-      info.derivedLambdaType(otherNames, otherTypes, restpe).signature
+      info.derivedLambdaType(otherNames, Nil, otherTypes, restpe).signature
     case _ =>
       Signature.NotAMethod
   }

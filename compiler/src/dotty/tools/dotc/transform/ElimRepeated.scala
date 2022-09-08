@@ -117,9 +117,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
             paramTypes.updated(lastIdx, last.translateFromRepeated(toArray = isJava))
           else paramTypes
         else paramTypes
-      tp.derivedLambdaType(paramNames, paramTypes1, resultType1)
+      tp.derivedLambdaType(paramNames, Nil, paramTypes1, resultType1)
     case tp: PolyType =>
-      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType, isJava))
+      tp.derivedLambdaType(tp.paramNames, tp.paramPrecises, tp.paramInfos, elimRepeated(tp.resultType, isJava))
     case tp =>
       tp
 
@@ -270,15 +270,15 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   /** Convert type from Scala to Java varargs method */
   private def toJavaVarArgs(tp: Type)(using Context): Type = tp match
     case tp: PolyType =>
-      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
+      tp.derivedLambdaType(tp.paramNames, tp.paramPrecises, tp.paramInfos, toJavaVarArgs(tp.resultType))
     case tp: MethodType =>
       tp.resultType match
         case m: MethodType => // multiple param lists
-          tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(m))
+          tp.derivedLambdaType(tp.paramNames, Nil, tp.paramInfos, toJavaVarArgs(m))
         case _ =>
           val init :+ last = tp.paramInfos: @unchecked
           val vararg = varargArrayType(last)
-          tp.derivedLambdaType(tp.paramNames, init :+ vararg, tp.resultType)
+          tp.derivedLambdaType(tp.paramNames, Nil, init :+ vararg, tp.resultType)
 
   /** Translate a repeated type T* to an `Array[? <: Upper]`
    *  such that it is compatible with java varargs.

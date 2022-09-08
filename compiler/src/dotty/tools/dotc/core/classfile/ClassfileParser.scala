@@ -291,7 +291,7 @@ class ClassfileParser(
             normalizedParamNames = paramNames.dropRight(1)
             normalizedParamTypes = paramTypes.dropRight(1)
           }
-          denot.info = mt.derivedLambdaType(normalizedParamNames, normalizedParamTypes, resultType)
+          denot.info = mt.derivedLambdaType(normalizedParamNames, Nil, normalizedParamTypes, resultType)
         case _ =>
       }
 
@@ -302,8 +302,8 @@ class ClassfileParser(
         val rt = classRoot.typeRef appliedTo (classRoot.typeParams map (_.typeRef))
 
         def resultType(tpe: Type): Type = tpe match {
-          case mt @ MethodType(paramNames) => mt.derivedLambdaType(paramNames, mt.paramInfos, rt)
-          case pt : PolyType => pt.derivedLambdaType(pt.paramNames, pt.paramInfos, resultType(pt.resType))
+          case mt @ MethodType(paramNames) => mt.derivedLambdaType(paramNames, Nil, mt.paramInfos, rt)
+          case pt : PolyType => pt.derivedLambdaType(pt.paramNames, pt.paramPrecises, pt.paramInfos, resultType(pt.resType))
         }
 
         denot.info = resultType(denot.info)
@@ -714,7 +714,7 @@ class ClassfileParser(
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
           mt.derivedLambdaType(List.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
         case pt: PolyType if namedParams.nonEmpty =>
-          pt.derivedLambdaType(pt.paramNames, pt.paramInfos, fillInParamNames(pt.resultType))
+          pt.derivedLambdaType(pt.paramNames, pt.paramPrecises, pt.paramInfos, fillInParamNames(pt.resultType))
         case _ => t
 
       cook.apply(fillInParamNames(newType))

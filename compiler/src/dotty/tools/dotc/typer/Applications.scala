@@ -1478,7 +1478,7 @@ trait Applications extends Compatibility {
     case mt: MethodType if mt.isImplicitMethod =>
       stripImplicit(resultTypeApprox(mt))
     case pt: PolyType =>
-      pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType)).asInstanceOf[PolyType].flatten
+      pt.derivedLambdaType(pt.paramNames, pt.paramPrecises, pt.paramInfos, stripImplicit(pt.resultType)).asInstanceOf[PolyType].flatten
     case _ =>
       tp
   }
@@ -1588,7 +1588,7 @@ trait Applications extends Compatibility {
             // contain uninstantiated TypeVars, this could lead to cycles in
             // `isSubType` as a TypeVar might get constrained by a TypeRef it's
             // part of.
-            val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
+            val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramPrecises, tp1.paramInfos, defn.AnyType)
             fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.srcPos)
 
             val tparams = newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
@@ -1677,9 +1677,9 @@ trait Applications extends Compatibility {
      */
     def widenGiven(tp: Type, alt: TermRef): Type = tp match {
       case mt: MethodType if mt.isImplicitMethod =>
-        mt.derivedLambdaType(mt.paramNames, mt.paramInfos, widenGiven(mt.resultType, alt))
+        mt.derivedLambdaType(mt.paramNames, Nil, mt.paramInfos, widenGiven(mt.resultType, alt))
       case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenGiven(pt.resultType, alt))
+        pt.derivedLambdaType(pt.paramNames, pt.paramPrecises, pt.paramInfos, widenGiven(pt.resultType, alt))
       case rt =>
         if alt.symbol.isCoDefinedGiven(rt.typeSymbol) then tp.widenToParents
         else tp
@@ -2298,11 +2298,11 @@ trait Applications extends Compatibility {
     // The return type after truncation is not important
     def truncateExtension(tp: Type)(using Context): Type = tp match
       case poly: PolyType =>
-        poly.newLikeThis(poly.paramNames, poly.paramInfos, truncateExtension(poly.resType))
+        poly.newLikeThis(poly.paramNames, poly.paramPrecises, poly.paramInfos, truncateExtension(poly.resType))
       case meth: MethodType if meth.isContextualMethod =>
-        meth.newLikeThis(meth.paramNames, meth.paramInfos, truncateExtension(meth.resType))
+        meth.newLikeThis(meth.paramNames, meth.paramPrecises, meth.paramInfos, truncateExtension(meth.resType))
       case meth: MethodType =>
-        meth.newLikeThis(meth.paramNames, meth.paramInfos, defn.AnyType)
+        meth.newLikeThis(meth.paramNames, meth.paramPrecises, meth.paramInfos, defn.AnyType)
 
     def replaceCallee(inTree: Tree, replacement: Tree)(using Context): Tree = inTree match
       case Apply(fun, args) => Apply(replaceCallee(fun, replacement), args)

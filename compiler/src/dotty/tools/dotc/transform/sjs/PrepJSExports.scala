@@ -442,7 +442,7 @@ object PrepJSExports {
     case _: ExprType =>
       ExprType(defn.AnyType)
     case tpe: PolyType =>
-      PolyType(tpe.paramNames)(
+      PolyType(tpe.paramNames, tpe.paramPrecises)(
           x => tpe.paramInfos.mapConserve(_.subst(tpe, x).bounds),
           x => finalResultTypeToAny(tpe.resultType.subst(tpe, x)))
     case _ =>

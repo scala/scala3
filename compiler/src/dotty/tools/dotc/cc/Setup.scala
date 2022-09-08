@@ -405,7 +405,7 @@ extends tpd.TreeTraverser:
           info match
             case mt: MethodOrPoly =>
               val psyms = psymss.head
-              mt.companion(mt.paramNames)(
+              mt.companion(mt.paramNames, mt.paramPrecises)(
                 mt1 =>
                   if !psyms.exists(_.isUpdatedAfter(preRecheckPhase)) && !mt.isParamDependent && prevLambdas.isEmpty then
                     mt.paramInfos

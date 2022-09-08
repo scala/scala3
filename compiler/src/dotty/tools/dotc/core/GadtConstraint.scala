@@ -91,7 +91,7 @@ final class ProperGadtConstraint private(
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = {
     import NameKinds.DepParamName
 
-    val poly1 = PolyType(params.map { sym => DepParamName.fresh(sym.name.toTypeName) })(
+    val poly1 = PolyType(params.map { sym => DepParamName.fresh(sym.name.toTypeName) }, params.map(_.paramPrecise))(
       pt => params.map { param =>
         // In bound type `tp`, replace the symbols in dependent positions with their internal TypeParamRefs.
         // The replaced symbols will be later picked up in `ConstraintHandling#addToConstraint`

@@ -733,7 +733,7 @@ object ProtoTypes {
   def newTypeVar(using Context)(
       bounds: TypeBounds, name: TypeName = DepParamName.fresh().toTypeName,
       nestingLevel: Int = ctx.nestingLevel, represents: Type = NoType): TypeVar =
-    val poly = PolyType(name :: Nil)(
+    val poly = PolyType(name :: Nil, Nil)(
         pt => bounds :: Nil,
         pt => represents.orElse(defn.AnyType))
     constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true, nestingLevel)
@@ -804,7 +804,7 @@ object ProtoTypes {
               tp
             case pt: ApplyingProto =>
               if (rt eq mt.resultType) tp
-              else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
+              else mt.derivedLambdaType(mt.paramNames, Nil, mt.paramInfos, rt)
             case _ =>
               val ft = defn.FunctionOf(mt.paramInfos, rt)
               if mt.paramInfos.nonEmpty || (ft frozen_<:< pt) then ft else rt

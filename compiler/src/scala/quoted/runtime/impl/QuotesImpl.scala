@@ -20,6 +20,7 @@ import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes}
 
 import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
 import scala.quoted.runtime.impl.printers._
+import scala.annotation.experimental
 
 import scala.reflect.TypeTest
 
@@ -2147,7 +2148,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object PolyType extends PolyTypeModule:
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType =
-        Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
+        Types.PolyType(paramNames.map(_.toTypeName), Nil)(paramBoundsExp, resultTypeExp)
+      @experimental //TODO: when ending the experimental period of @precise, the apply methods should be combined with `paramPrecises = Nil` default
+      def apply(paramNames: List[String], paramPrecises: List[Boolean])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType =
+        Types.PolyType(paramNames.map(_.toTypeName), paramPrecises)(paramBoundsExp, resultTypeExp)
       def unapply(x: PolyType): (List[String], List[TypeBounds], TypeRepr) =
         (x.paramNames.map(_.toString), x.paramBounds, x.resType)
     end PolyType
@@ -2169,7 +2173,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeLambda extends TypeLambdaModule:
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda =
-        Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
+        Types.HKTypeLambda(paramNames.map(_.toTypeName), Nil)(boundsFn, bodyFn)
+      @experimental //TODO: when ending the experimental period of @precise, the apply methods should be combined with `paramPrecises = Nil` default
+      def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr, paramPrecises: List[Boolean]): TypeLambda =
+        Types.HKTypeLambda(paramNames.map(_.toTypeName), paramPrecises)(boundsFn, bodyFn)
       def unapply(x: TypeLambda): (List[String], List[TypeBounds], TypeRepr) =
         (x.paramNames.map(_.toString), x.paramBounds, x.resType)
     end TypeLambda

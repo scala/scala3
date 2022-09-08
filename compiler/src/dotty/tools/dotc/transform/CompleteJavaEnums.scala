@@ -59,6 +59,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         case _ =>
           tp.derivedLambdaType(
             paramNames = tp.paramNames ++ List(nameParamName, ordinalParamName),
+            paramPrecises = Nil,
             paramInfos = tp.paramInfos ++ List(defn.StringType, defn.IntType))
       }
   }

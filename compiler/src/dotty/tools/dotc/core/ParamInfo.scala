@@ -38,6 +38,9 @@ trait ParamInfo {
   /** The variance of the type parameter */
   def paramVariance(using Context): Variance
 
+  /** The precise enforcement indicator of the type parameter */
+  def paramPrecise(using Context): Boolean
+
   /** The variance of the type parameter, as a number -1, 0, +1.
    *  Bivariant is mapped to 1, i.e. it is treated like Covariant.
    */

@@ -346,6 +346,12 @@ object Symbols {
     def paramInfoAsSeenFrom(pre: Type)(using Context): Type = pre.memberInfo(this)
     def paramInfoOrCompleter(using Context): Type = denot.infoOrCompleter
     def paramVariance(using Context): Variance = denot.variance
+    def paramPrecise(using Context): Boolean =
+      val owner = denot.owner
+      if (owner.isConstructor)
+        owner.owner.typeParams.exists(p => p.name == name && p.paramPrecise)
+      else
+        denot.precise
     def paramRef(using Context): TypeRef = denot.typeRef
 
 // -------- Printing --------------------------------------------------------

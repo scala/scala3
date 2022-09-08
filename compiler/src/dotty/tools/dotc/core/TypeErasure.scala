@@ -234,7 +234,7 @@ object TypeErasure {
 
     def eraseParamBounds(tp: PolyType): Type =
       tp.derivedLambdaType(
-        tp.paramNames, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
+        tp.paramNames, tp.paramPrecises, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
@@ -642,14 +642,14 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
-          tp.derivedLambdaType(names ++ rt.paramNames, formals ++ rt.paramInfos, rt.resultType)
+          tp.derivedLambdaType(names ++ rt.paramNames, Nil, formals ++ rt.paramInfos, rt.resultType)
         case NoType =>
           // Can happen if we smuggle in a Nothing in the qualifier. Normally we prevent that
           // in Checking.checkMembersOK, but compiler-generated code can bypass this test.
           // See i15377.scala for a test case.
           NoType
         case rt =>
-          tp.derivedLambdaType(names, formals, rt)
+          tp.derivedLambdaType(names, Nil, formals, rt)
       }
     case tp: PolyType =>
       this(tp.resultType)

@@ -540,7 +540,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos: @unchecked
         paramInfos = TypeBounds(lo, LazyRef.of(hi)) :: pinfos1
       }
-      ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))
+      ensureFresh(tl.newLikeThis(tl.paramNames, tl.paramPrecises, paramInfos, tl.resultType))
     }
     else tl
 
