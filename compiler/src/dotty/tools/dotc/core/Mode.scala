@@ -11,7 +11,7 @@ case class Mode(val bits: Int) extends AnyVal {
   def isExpr: Boolean = (this & PatternOrTypeBits) == None
 
   override def toString: String =
-    (0 until 31).filter(i => (bits & (1 << i)) != 0).map(modeName).mkString("Mode(", ",", ")")
+    (0 until 32).filter(i => (bits & (1 << i)) != 0).map(modeName).mkString("Mode(", ",", ")")
 
   def ==(that: Mode): Boolean = this.bits == that.bits
   def !=(that: Mode): Boolean = this.bits != that.bits
@@ -129,4 +129,9 @@ object Mode {
    *  Type `Null` becomes a subtype of non-primitive value types in TypeComparer.
    */
   val RelaxedOverriding: Mode = newMode(30, "RelaxedOverriding")
+
+  /**
+   * Indication that argument widening should not take place.
+   */
+  val Precise: Mode = newMode(31, "Precise")
 }
