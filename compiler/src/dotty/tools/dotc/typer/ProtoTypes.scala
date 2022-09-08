@@ -328,8 +328,10 @@ object ProtoTypes {
   case class FunProto(args: List[untpd.Tree], resType: Type)(
     typer: Typer,
     override val applyKind: ApplyKind,
-    state: FunProtoState = new FunProtoState,
-    val constrainResultDeep: Boolean = false)(using protoCtx: Context)
+    private var state: FunProtoState = new FunProtoState,
+    val constrainResultDeep: Boolean = false,
+    val argsPrecises: List[Boolean] = Nil
+  )(using protoCtx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(using Context): Type = resType
 
@@ -341,17 +343,23 @@ object ProtoTypes {
       typer.isApplicableType(tp, args, resultType, keepConstraint && !args.exists(isPoly))
     }
 
+    def snapshot: FunProtoState = state
+    def resetTo(prevState: FunProtoState): Unit = state = prevState
+
     def derivedFunProto(
         args: List[untpd.Tree] = this.args,
         resultType: Type = this.resultType,
         typer: Typer = this.typer,
-        constrainResultDeep: Boolean = this.constrainResultDeep): FunProto =
+        constrainResultDeep: Boolean = this.constrainResultDeep,
+        argsPrecises: List[Boolean] = this.argsPrecises
+    ): FunProto =
       if (args eq this.args)
           && (resultType eq this.resultType)
           && (typer eq this.typer)
           && constrainResultDeep == this.constrainResultDeep
+          && argsPrecises == this.argsPrecises
       then this
-      else new FunProto(args, resultType)(typer, applyKind, constrainResultDeep = constrainResultDeep)
+      else new FunProto(args, resultType)(typer, applyKind, constrainResultDeep = constrainResultDeep, argsPrecises)
 
     /** @return True if all arguments have types.
      */
@@ -434,7 +442,9 @@ object ProtoTypes {
           val protoTyperState = ctx.typerState
           val oldConstraint = protoTyperState.constraint
           val args1 = args.mapWithIndexConserve((arg, idx) =>
-            cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
+            val precise = if (argsPrecises.nonEmpty && argsPrecises(idx)) Mode.Precise else Mode.None
+            withMode(precise){cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false)}
+          )
           val newConstraint = protoTyperState.constraint
 
           if !args1.exists(arg => isUndefined(arg.tpe)) then state.typedArgs = args1
@@ -474,15 +484,21 @@ object ProtoTypes {
      *  used to avoid repeated typings of trees when backtracking.
      */
     def typedArg(arg: untpd.Tree, formal: Type)(using Context): Tree = {
-      val wideFormal = formal.widenExpr
-      val argCtx =
-        if wideFormal eq formal then ctx
-        else ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
-      val locked = ctx.typerState.ownedVars
-      val targ = cacheTypedArg(arg,
-        typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
-        force = true)
-      typer.adapt(targ, wideFormal, locked)
+      val precise = formal match
+        case v if v.isPrecise => Mode.Precise
+        case _ if argsPrecises.nonEmpty && argsPrecises(args.indexOf(arg)) => Mode.Precise
+        case _ => Mode.None
+      withMode(precise) {
+        val wideFormal = formal.widenExpr
+        val argCtx =
+          if wideFormal eq formal then ctx
+          else ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
+        val locked = ctx.typerState.ownedVars
+        val targ = cacheTypedArg(arg,
+          typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
+          force = true)
+        typer.adapt(targ, wideFormal, locked)
+      }
     }
 
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before

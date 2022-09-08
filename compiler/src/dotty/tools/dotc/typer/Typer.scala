@@ -1061,7 +1061,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree = {
     val (stats1, exprCtx) = withoutMode(Mode.Pattern) {
-      typedBlockStats(tree.stats)
+      // in all cases except a closure block, we disable precise type enforcement
+      tree.expr match
+        case _ : untpd.Closure => typedBlockStats(tree.stats)
+        case _ => withoutMode(Mode.Precise){ typedBlockStats(tree.stats) }
     }
     var expr1 = typedExpr(tree.expr, pt.dropIfProto)(using exprCtx)
 
@@ -1913,7 +1916,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree = {
-    val (bindings1, exprCtx) = typedBlockStats(tree.bindings)
+    val (bindings1, exprCtx) = withoutMode(Mode.Precise){ typedBlockStats(tree.bindings) }
     val expansion1 = typed(tree.expansion, pt)(using inlineContext(tree.call)(using exprCtx))
     assignType(cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1),
         bindings1, expansion1)
@@ -2686,7 +2689,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           pkg.moduleClass.info.decls.lookup(topLevelClassName).ensureCompleted()
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
           if (!ctx.isAfterTyper)
-            stats1 = stats1 ++ typedBlockStats(MainProxies.proxies(stats1))._1
+            stats1 = stats1 ++ withoutMode(Mode.Precise){ typedBlockStats(MainProxies.proxies(stats1))._1 }
           cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
         }
       case _ =>
@@ -3047,7 +3050,48 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typed(tree, pt, locked)(using ctx.withSource(tree.source))
       else if ctx.run.nn.isCancelled then
         tree.withType(WildcardType)
-      else adapt(typedUnadapted(tree, pt, locked), pt, locked)
+      else
+        val tu = typedUnadapted(tree, pt, locked)
+        pt match
+          // If we are already in precise mode, then the arguments are already typed precisely,
+          // so there is no need for any additional logic.
+          case pt : FunProto if !ctx.mode.is(Mode.Precise) =>
+            extension (tpe: Type) def getArgsPrecises: List[Boolean] = tpe.widen match
+              case mt: MethodType => mt.paramInfos.map(_.isPrecise)
+              case pt: PolyType => pt.resType.getArgsPrecises
+              case _ => Nil
+            val argsPrecises = tu.tpe.getArgsPrecises
+            // if the function arguments are known to be precise, then we update the
+            // proto with this information and later propagate its state back to the
+            // original proto.
+            if (argsPrecises.contains(true))
+              val ptPrecises = pt.derivedFunProto(argsPrecises = argsPrecises)
+              val adapted = adapt(tu, ptPrecises, locked)
+              pt.resetTo(ptPrecises.snapshot)
+              adapted
+            // otherwise, we need to check for overloaded function, because in that
+            // case we may not know if the final adapted function will be precise.
+            else tu.tpe match
+              // the function is overloaded, so we preserve the typer and proto state,
+              // adapt the tree, and then check if the arguments should be considered as
+              // precise. if so, then we need to recover the typer state and proto
+              // state, and re-adapt the tree with the precise enforcement.
+              case v: TermRef if v.isOverloaded =>
+                val savedTyperState = ctx.typerState.snapshot()
+                val savedProtoState = pt.snapshot
+                val adaptedMaybePrecise = adapt(tu, pt, locked)
+                val argsPrecises = adaptedMaybePrecise.tpe.getArgsPrecises
+                if (argsPrecises.contains(true))
+                  val ptPrecises = pt.derivedFunProto(argsPrecises = argsPrecises)
+                  ctx.typerState.resetTo(savedTyperState)
+                  pt.resetTo(savedProtoState)
+                  val adapted = adapt(tu, ptPrecises, locked)
+                  pt.resetTo(ptPrecises.snapshot)
+                  adapted
+                else adaptedMaybePrecise
+              // the function is not overloaded or has precise arguments
+              case _ => adapt(tu, pt, locked)
+          case _ => adapt(tu, pt, locked)
     }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
