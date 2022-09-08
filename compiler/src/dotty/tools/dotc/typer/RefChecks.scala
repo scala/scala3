@@ -409,6 +409,14 @@ object RefChecks {
         !(syms1 exists (set2 contains _))
       }
 
+      def samePrecises(memberTp: Type, otherTp: Type): Boolean =
+        (memberTp, otherTp) match
+          case (mpt: PolyType, otp: PolyType) =>
+            mpt.paramPrecises == otp.paramPrecises
+          case (TypeBounds(_, mptHi: TypeLambda), TypeBounds(_, otpHi: TypeLambda)) =>
+            mptHi.paramPrecises == otpHi.paramPrecises
+          case _ => true
+
       // o: public | protected        | package-protected  (aka java's default access)
       // ^-may be overridden by member with access privileges-v
       // m: public | public/protected | public/protected/package-protected-in-same-package-as-o
@@ -509,6 +517,8 @@ object RefChecks {
       else if (!compatTypes(memberTp(self), otherTp(self)) &&
                  !compatTypes(memberTp(upwardsSelf), otherTp(upwardsSelf)))
         overrideError("has incompatible type", compareTypes = true)
+      else if (!samePrecises(memberTp(self), otherTp(self)))
+        overrideError("has different precise type parameter annotations")
       else if (member.targetName != other.targetName)
         if (other.targetName != other.name)
           overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")

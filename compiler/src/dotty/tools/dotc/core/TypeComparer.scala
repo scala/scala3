@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
-import annotation.constructorOnly
+import annotation.{constructorOnly, tailrec}
 import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam}
 
 /** Provides methods to compare types.
@@ -2103,7 +2103,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  to override `tp2` ? This is the case if they're pairwise >:>.
    */
   def matchingPolyParams(tp1: PolyType, tp2: PolyType): Boolean = {
-    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
+    @tailrec def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
       case formal1 :: rest1 =>
         formals2 match {
           case formal2 :: rest2 =>
@@ -2116,7 +2116,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case nil =>
         formals2.isEmpty
     }
-    loop(tp1.paramInfos, tp2.paramInfos)
+    tp1.paramPrecises == tp2.paramPrecises && loop(tp1.paramInfos, tp2.paramInfos)
   }
 
   // Type equality =:=

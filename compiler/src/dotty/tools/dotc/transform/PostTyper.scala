@@ -6,7 +6,7 @@ import scala.collection.mutable
 import core._
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.inlines.Inlines
-import dotty.tools.dotc.typer.VarianceChecker
+import dotty.tools.dotc.typer.{VarianceChecker, PreciseChecker}
 import typer.ErrorReporting.errorTree
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
@@ -388,6 +388,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             annotateExperimental(sym)
             tree.rhs match
               case impl: Template =>
+                if (!sym.is(Flags.Given)) // skipping over given classes that are generated from `given ... with {}`
+                  PreciseChecker.checkClass(impl)
                 for parent <- impl.parents do
                   Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
             // Add SourceFile annotation to top-level classes
@@ -403,6 +405,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               Checking.checkGoodBounds(tree.symbol)
             (tree.rhs, sym.info) match
               case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
+                PreciseChecker.checkLambda(rhs, sym.isOpaqueAlias)
                 VarianceChecker.checkLambda(rhs, bounds)
                 if sym.isOpaqueAlias then
                   VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
