@@ -98,7 +98,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     tableRow("Deprecated", content*)
   }
 
-  def memberInfo(m: Member, withBrief: Boolean = false): Seq[AppliedTag] =
+  def memberInfo(m: Member, withBrief: Boolean = false, withAttributes: Boolean = false): Seq[AppliedTag] =
     val comment = m.docs
     val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
@@ -122,6 +122,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Option.when(bodyContents.nonEmpty || attributes.nonEmpty)(
         div(cls := "cover")(
           div(cls := "doc")(bodyContents),
+          Option.when(withAttributes)(h2(cls := "h500")("Attributes")).toList,
           dl(cls := "attributes")(attributes*)
         )
       )
@@ -464,7 +465,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     PageContent(
       div(
         intro,
-        memberInfo(m, withBrief = false),
+        memberInfo(m, withAttributes = true),
         h2(cls := "h500")("Members list"),
         buildDocumentableFilter,
         buildMembers(m)
