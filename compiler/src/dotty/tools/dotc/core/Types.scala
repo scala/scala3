@@ -1315,7 +1315,7 @@ object Types {
      *  and going to the operands of & and |.
      *  Overridden and cached in OrType.
      */
-    def widenSingletons(using Context): Type = dealias match {
+    def widenSingletons(using Context): Type = dealiasKeepOpaques match {
       case tp: SingletonType =>
         tp.widen
       case tp: OrType =>
