@@ -1855,19 +1855,18 @@ class Namer { typer: Typer =>
         case _ =>
           approxTp
 
-    var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
-    if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
-    if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
-    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
-    if (typeParams.nonEmpty) {
-      // we'll be typing an expression from a polymorphic definition's body,
-      // so we must allow constraining its type parameters
-      // compare with typedDefDef, see tests/pos/gadt-inference.scala
-      rhsCtx.setFreshGADTBounds
-      rhsCtx.gadt.addToConstraint(typeParams)
-    }
-
-    def typedAheadRhs(pt: Type) =
+    def typedAheadRhs(pt: Type)(using Context) =
+      var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
+      if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+      if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
+      val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
+      if (typeParams.nonEmpty) {
+        // we'll be typing an expression from a polymorphic definition's body,
+        // so we must allow constraining its type parameters
+        // compare with typedDefDef, see tests/pos/gadt-inference.scala
+        rhsCtx.setFreshGADTBounds
+        rhsCtx.gadt.addToConstraint(typeParams)
+      }
       PrepareInlineable.dropInlineIfError(sym,
         typedAheadExpr(mdef.rhs, pt)(using rhsCtx))
 
@@ -1877,7 +1876,8 @@ class Namer { typer: Typer =>
       // parameters like in `def mkList[T](value: T = 1): List[T]`.
       val defaultTp = defaultParamType
       val pt = inherited.orElse(expectedDefaultArgType).orElse(fallbackProto).widenExpr
-      val tp = typedAheadRhs(pt).tpe
+      val preciseMode = if (defaultTp.isPrecise) Mode.Precise else Mode.None
+      val tp = withMode(preciseMode){ typedAheadRhs(pt) }.tpe
       if (defaultTp eq pt) && (tp frozen_<:< defaultTp) then
         // When possible, widen to the default getter parameter type to permit a
         // larger choice of overrides (see `default-getter.scala`).
