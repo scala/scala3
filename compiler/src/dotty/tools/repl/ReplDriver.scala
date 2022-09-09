@@ -118,7 +118,7 @@ class ReplDriver(settings: Array[String],
   private var rootCtx: Context = _
   private var shouldStart: Boolean = _
   private var compiler: ReplCompiler = _
-  private var rendering: Rendering = _
+  protected var rendering: Rendering = _
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
