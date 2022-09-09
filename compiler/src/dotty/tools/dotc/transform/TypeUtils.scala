@@ -107,6 +107,11 @@ object TypeUtils {
         self.superType.mirrorCompanionRef
     }
 
+    /** Is this type a methodic type that takes at least one parameter? */
+    def takesParams(using Context): Boolean = self.stripPoly match
+      case mt: MethodType => mt.paramNames.nonEmpty || mt.resType.takesParams
+      case _ => false
+
     /** Is this type a methodic type that takes implicit parameters (both old and new) at some point? */
     def takesImplicitParams(using Context): Boolean = self.stripPoly match
       case mt: MethodType => mt.isImplicitMethod || mt.resType.takesImplicitParams
