@@ -1473,7 +1473,17 @@ trait Applications extends Compatibility {
     }
   }
 
-  /** Drop any implicit parameter section */
+  /** Drop any leading type or implicit parameter sections */
+  def stripInferrable(tp: Type)(using Context): Type = tp match {
+    case mt: MethodType if mt.isImplicitMethod =>
+      stripInferrable(resultTypeApprox(mt))
+    case pt: PolyType =>
+      stripInferrable(pt.resType)
+    case _ =>
+      tp
+  }
+
+  /** Drop any leading implicit parameter sections */
   def stripImplicit(tp: Type)(using Context): Type = tp match {
     case mt: MethodType if mt.isImplicitMethod =>
       stripImplicit(resultTypeApprox(mt))
@@ -2042,7 +2052,7 @@ trait Applications extends Compatibility {
       skip(alt.widen)
 
     def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
-      case tp: MethodType => stripImplicit(tp.resultType).isInstanceOf[MethodType]
+      case tp: MethodType => stripInferrable(tp.resultType).isInstanceOf[MethodType]
       case _ => false
 
     record("resolveOverloaded.narrowedApplicable", candidates.length)
