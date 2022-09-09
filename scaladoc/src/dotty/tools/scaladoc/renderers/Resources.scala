@@ -175,19 +175,22 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
           def processMember(member: Member, fqName: List[String]): Seq[(JSON, Seq[String])] =
             val signature: MemberSignature = signatureProvider.rawSignature(member)()
             val sig = Signature(Plain(member.name)) ++ signature.suffix
-            val descr = fqName.mkString(".")
+            val descr = if member.kind == Kind.Package then "" else fqName.mkString(".")
             val entry = mkEntry(member.dri, member.name, flattenToText(sig), extensionTarget(member), descr, member.kind.name)
             val children = member
                 .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])
                 .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.fold(true)(_.isSourceSuperclassHidden))
-            val updatedFqName = fqName :+ member.name
+            val updatedFqName = if member.kind == Kind.Package then List(member.name) else fqName :+ member.name
             Seq((entry, updatedFqName)) ++ children.flatMap(processMember(_, updatedFqName))
 
           (processMember(m, pageFQName), m.name)
         case _ =>
           (Seq((mkEntry(page.link.dri, page.link.name, page.link.name, "", "", "static"), pageFQName)), "")
 
-      val updatedFqName = if !pageName.isEmpty then pageFQName :+ pageName else pageFQName
+      val updatedFqName = page.content match
+        case m: Member if m.kind == Kind.Package => List(m.name)
+        case _ if pageName.isEmpty => pageFQName
+        case _ => pageFQName :+ pageName
       res ++ page.children.flatMap(processPage(_, updatedFqName))
 
     val entries = pages.flatMap(processPage(_, Nil))
