@@ -833,8 +833,9 @@ object ProtoTypes {
       def wildArgs = args.mapConserve(arg => wildApprox(arg, theMap, seen, internal))
       wildApprox(tycon, theMap, seen, internal) match {
         case WildcardType(TypeBounds(lo, hi)) if hi.typeParams.hasSameLengthAs(args) =>
-          val lo1 = if lo.typeParams.hasSameLengthAs(args) then lo.appliedTo(wildArgs) else lo
-          WildcardType(TypeBounds(lo1, hi.appliedTo(wildArgs)))
+          val args1 = wildArgs
+          val lo1 = if lo.typeParams.hasSameLengthAs(args) then lo.appliedTo(args1) else lo
+          WildcardType(TypeBounds(lo1, hi.appliedTo(args1)))
         case WildcardType(_) =>
           WildcardType
         case tycon1 => tp.derivedAppliedType(tycon1, wildArgs)
