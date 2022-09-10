@@ -79,7 +79,7 @@ object Errors:
   override def toString() = this.getClass.getName.nn
 
   /** Access non-initialized field */
-  case class AccessNonInit(field: Symbol, trace: Seq[Tree]) extends Error:
+  case class AccessNonInit(field: Symbol)(val trace: Seq[Tree]) extends Error:
     def source: Tree = trace.last
     def show(using Context): String =
       "Access non-initialized " + field.show + "." + stacktrace
@@ -87,27 +87,27 @@ object Errors:
     override def pos(using Context): SourcePosition = field.sourcePos
 
   /** Promote a value under initialization to fully-initialized */
-  case class PromoteError(msg: String, trace: Seq[Tree]) extends Error:
+  case class PromoteError(msg: String)(val trace: Seq[Tree]) extends Error:
     def show(using Context): String = msg + stacktrace
 
-  case class AccessCold(field: Symbol, trace: Seq[Tree]) extends Error:
+  case class AccessCold(field: Symbol)(val trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       "Access field " + field.show +  " on a cold object." + stacktrace
 
-  case class CallCold(meth: Symbol, trace: Seq[Tree]) extends Error:
+  case class CallCold(meth: Symbol)(val trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       "Call method " + meth.show + " on a cold object." + stacktrace
 
-  case class CallUnknown(meth: Symbol, trace: Seq[Tree]) extends Error:
+  case class CallUnknown(meth: Symbol)(val trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       val prefix = if meth.is(Flags.Method) then "Calling the external method " else "Accessing the external field"
       prefix + meth.show + " may cause initialization errors." + stacktrace
 
   /** Promote a value under initialization to fully-initialized */
-  case class UnsafePromotion(msg: String, trace: Seq[Tree], error: Error) extends Error:
+  case class UnsafePromotion(msg: String, error: Error)(val trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       msg + stacktrace + "\n" +
-        "Promoting the value to hot failed due to the following problem:\n" + {
+        "Promoting the value to hot (transitively initialized) failed due to the following problem:\n" + {
           val ctx2 = ctx.withProperty(IsFromPromotion, Some(true))
           error.show(using ctx2)
         }
@@ -116,7 +116,7 @@ object Errors:
    *
    *  Invariant: argsIndices.nonEmpty
    */
-  case class UnsafeLeaking(trace: Seq[Tree], error: Error, nonHotOuterClass: Symbol, argsIndices: List[Int]) extends Error:
+  case class UnsafeLeaking(error: Error, nonHotOuterClass: Symbol, argsIndices: List[Int])(val trace: Seq[Tree]) extends Error:
     def show(using Context): String =
       "Problematic object instantiation: " + argumentInfo() + stacktrace + "\n" +
         "It leads to the following error during object initialization:\n" +
@@ -141,5 +141,5 @@ object Errors:
           acc + text2
         }
       val verb = if multiple then " are " else " is "
-      val adjective = "not hot."
+      val adjective = "not hot (transitively initialized)."
       subject + verb + adjective

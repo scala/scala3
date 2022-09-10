@@ -156,7 +156,7 @@ object Semantic:
     def hasField(f: Symbol) = fields.contains(f)
 
   object Promoted:
-    class PromotionInfo:
+    class PromotionInfo(val entryClass: ClassSymbol):
       var isCurrentObjectPromoted: Boolean = false
       val values = mutable.Set.empty[Value]
       override def toString(): String = values.toString()
@@ -165,7 +165,7 @@ object Semantic:
     opaque type Promoted = PromotionInfo
 
     /** Note: don't use `val` to avoid incorrect sharing */
-    def empty: Promoted = new PromotionInfo
+    def empty(entryClass: ClassSymbol): Promoted = new PromotionInfo(entryClass)
 
     extension (promoted: Promoted)
       def isCurrentObjectPromoted: Boolean = promoted.isCurrentObjectPromoted
@@ -173,6 +173,7 @@ object Semantic:
       def contains(value: Value): Boolean = promoted.values.contains(value)
       def add(value: Value): Unit = promoted.values += value
       def remove(value: Value): Unit = promoted.values -= value
+      def entryClass: ClassSymbol = promoted.entryClass
     end extension
   end Promoted
   type Promoted = Promoted.Promoted
@@ -658,12 +659,12 @@ object Semantic:
 
     def select(field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show) {
       if promoted.isCurrentObjectPromoted then Hot
-      else value match {
+      else value match
         case Hot  =>
           Hot
 
         case Cold =>
-          val error = AccessCold(field, trace.toVector)
+          val error = AccessCold(field)(trace.toVector)
           reporter.report(error)
           Hot
 
@@ -688,11 +689,11 @@ object Semantic:
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, ref, target.owner.asClass, cacheResult = true)
               else
-                val error = CallUnknown(field, trace.toVector)
+                val error = CallUnknown(field)(trace.toVector)
                 reporter.report(error)
                 Hot
             else
-              val error = AccessNonInit(target, trace.toVector)
+              val error = AccessNonInit(target)(trace.toVector)
               reporter.report(error)
               Hot
           else
@@ -710,7 +711,6 @@ object Semantic:
 
         case RefSet(refs) =>
           refs.map(_.select(field, receiver)).join
-      }
     }
 
     def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
@@ -779,7 +779,7 @@ object Semantic:
 
         case Cold =>
           promoteArgs()
-          val error = CallCold(meth, trace.toVector)
+          val error = CallCold(meth)(trace.toVector)
           reporter.report(error)
           Hot
 
@@ -820,7 +820,7 @@ object Semantic:
               // try promoting the receiver as last resort
               val hasErrors = Reporter.hasErrors { ref.promote("try promote value to hot") }
               if hasErrors then
-                val error = CallUnknown(target, trace.toVector)
+                val error = CallUnknown(target)(trace.toVector)
                 reporter.report(error)
               Hot
           else if target.exists then
@@ -899,7 +899,7 @@ object Semantic:
             Hot
           else
             // no source code available
-            val error = CallUnknown(ctor, trace.toVector)
+            val error = CallUnknown(ctor)(trace.toVector)
             reporter.report(error)
             Hot
       }
@@ -922,7 +922,7 @@ object Semantic:
             yield
               i + 1
 
-          val error = UnsafeLeaking(trace.toVector, errors.head, nonHotOuterClass, indices)
+          val error = UnsafeLeaking(errors.head, nonHotOuterClass, indices)(trace.toVector)
           reporter.report(error)
           Hot
         else
@@ -947,7 +947,7 @@ object Semantic:
             tryLeak(warm, NoSymbol, args2)
 
         case Cold =>
-          val error = CallCold(ctor, trace.toVector)
+          val error = CallCold(ctor)(trace.toVector)
           reporter.report(error)
           Hot
 
@@ -1078,7 +1078,7 @@ object Semantic:
         case Hot   =>
 
         case Cold  =>
-          reporter.report(PromoteError(msg, trace.toVector))
+          reporter.report(PromoteError(msg)(trace.toVector))
 
         case thisRef: ThisRef =>
           val emptyFields = thisRef.nonInitFields()
@@ -1086,7 +1086,7 @@ object Semantic:
             promoted.promoteCurrent(thisRef)
           else
             val fields = "Non initialized field(s): " + emptyFields.map(_.show).mkString(", ") + "."
-            reporter.report(PromoteError(msg + "\n" + fields, trace.toVector))
+            reporter.report(PromoteError(msg + "\n" + fields)(trace.toVector))
 
         case warm: Warm =>
           if !promoted.contains(warm) then
@@ -1106,7 +1106,7 @@ object Semantic:
               res.promote("The function return value is not hot. Found = " + res.show + ".")
             }
             if errors.nonEmpty then
-              reporter.report(UnsafePromotion(msg, trace.toVector, errors.head))
+              reporter.report(UnsafePromotion(msg, errors.head)(trace.toVector))
             else
               promoted.add(fun)
 
@@ -1156,7 +1156,7 @@ object Semantic:
         if !isHotSegment then
           for member <- klass.info.decls do
             if member.isClass then
-              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".", Vector.empty)
+              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".")(Vector.empty)
               reporter.report(error)
             else if !member.isType && !member.isConstructor  && !member.is(Flags.Deferred) then
               given Trace = Trace.empty
@@ -1189,7 +1189,7 @@ object Semantic:
       }
 
       if errors.isEmpty then Nil
-      else UnsafePromotion(msg, trace.toVector, errors.head) :: Nil
+      else UnsafePromotion(msg, errors.head)(trace.toVector) :: Nil
     }
 
   end extension
@@ -1230,7 +1230,7 @@ object Semantic:
 
       @tailrec
       def iterate(): Unit = {
-        given Promoted = Promoted.empty
+        given Promoted = Promoted.empty(thisRef.klass)
         given Trace = Trace.empty.add(thisRef.klass.defTree)
         given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
 
@@ -1513,7 +1513,16 @@ object Semantic:
         thisV.accessLocal(tmref, klass)
 
       case tmref: TermRef =>
-        cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
+        val cls = tmref.widenSingleton.classSymbol
+        if cls.exists && cls.isStaticOwner then
+          if klass.isContainedIn(cls) then
+            resolveThis(cls.asClass, thisV, klass)
+          else if cls.isContainedIn(promoted.entryClass) then
+            cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
+          else
+            Hot
+        else
+          cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
 
       case tp @ ThisType(tref) =>
         val cls = tref.classSymbol.asClass
@@ -1521,8 +1530,7 @@ object Semantic:
           // O.this outside the body of the object O
           Hot
         else
-          val value = resolveThis(cls, thisV, klass)
-          value
+          resolveThis(cls, thisV, klass)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
@@ -1664,7 +1672,16 @@ object Semantic:
     if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val res = eval(vdef.rhs, thisV, klass)
-        thisV.updateField(vdef.symbol, res)
+        // TODO: Improve promotion to avoid handling enum initialization specially
+        //
+        // The failing case is tests/init/pos/i12544.scala due to promotion failure.
+        if vdef.symbol.name == nme.DOLLAR_VALUES
+           && vdef.symbol.is(Flags.Synthetic)
+           && vdef.symbol.owner.companionClass.is(Flags.Enum)
+        then
+          thisV.updateField(vdef.symbol, Hot)
+        else
+          thisV.updateField(vdef.symbol, res)
         fieldsChanged = true
 
       case _: MemberDef =>
