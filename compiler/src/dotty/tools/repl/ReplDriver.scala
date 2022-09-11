@@ -115,7 +115,7 @@ class ReplDriver(settings: Array[String],
     compiler = new ReplCompiler
     rendering = new Rendering(
       classLoader, 
-      maxPrintElements = rootCtx.settings.XreplMaxPrintElements.valueIn(rootCtx.settingsState)
+      maxPrintElements = rootCtx.settings.VreplMaxPrintElements.valueIn(rootCtx.settingsState)
     )
   }
 
