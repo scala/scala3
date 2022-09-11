@@ -24,8 +24,9 @@ import dotc.transform.ValueClasses
  *       `ReplDriver#resetToInitial` is called, the accompanying instance of
  *       `Rendering` is no longer valid.
  */
-private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None,
-                              maxPrintElements: Int = 1000):
+private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
+  // val maxPrintElements: Int = 1000
+      // rootCtx.settings.VreplMaxPrintElements.valueIn(rootCtx.settingsState)
 
   import Rendering._
 
@@ -34,7 +35,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None,
   private var myReplStringOf: Object => String = _
 
   /** Class loader used to load compiled code */
-  private[repl] def classLoader()(using Context) =
+  private[repl] def classLoader()(using ctx: Context) =
     if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
     else {
       val parent = Option(myClassLoader).orElse(parentClassLoader).getOrElse {
@@ -50,6 +51,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None,
       }
 
       myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
+      val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
       myReplStringOf = {
         // We need to use the ScalaRunTime class coming from the scala-library
         // on the user classpath, and not the one available in the current
@@ -79,7 +81,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None,
    * then this bug will surface, so perhaps better not?
    * https://github.com/scala/bug/issues/12337
    */
-  private[repl] def truncate(str: String): String =
+  private[repl] def truncate(str: String)(using ctx: Context): String =
+    val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
     val showTruncated = " ... large output truncated, print value to show all"
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
     if ncp <= maxPrintElements then str
