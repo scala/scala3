@@ -25,8 +25,6 @@ import dotc.transform.ValueClasses
  *       `Rendering` is no longer valid.
  */
 private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
-  // val maxPrintElements: Int = 1000
-      // rootCtx.settings.VreplMaxPrintElements.valueIn(rootCtx.settingsState)
 
   import Rendering._
 
