@@ -589,6 +589,7 @@ trait Applications extends Compatibility {
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
             val sym = methRef.symbol
+            val testOnly = this.isInstanceOf[TestApplication[?]]
 
             val defaultArg =
               if (isJavaAnnotConstr(sym)) {
@@ -604,12 +605,14 @@ trait Applications extends Compatibility {
                 else
                   EmptyTree
               }
-              else defaultArgument(normalizedFun, n, this.isInstanceOf[TestApplication[?]])
+              else defaultArgument(normalizedFun, n, testOnly)
 
             def implicitArg = implicitArgTree(formal, appPos.span)
 
             if !defaultArg.isEmpty then
-              matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
+              defaultArg.tpe.widen match
+                case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
+                case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
             else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
               matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
