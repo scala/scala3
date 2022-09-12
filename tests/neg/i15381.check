@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i15381.scala:5:13 -------------------------------------------------------------
+5 |def g: Int = $        // error
+  |             ^
+  |             Found:    $.type
+  |             Required: Int
+  |
+  | longer explanation available when compiling with `-explain`

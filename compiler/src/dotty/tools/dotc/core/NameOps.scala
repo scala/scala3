@@ -124,10 +124,9 @@ object NameOps {
      *  it is also called from the backend.
      */
     def stripModuleClassSuffix: N = likeSpacedN {
-      val semName = name.toTermName match {
-        case name: SimpleName if name.endsWith("$") => name.unmangleClassName
+      val semName = name.toTermName match
+        case name: SimpleName if name.endsWith(str.MODULE_SUFFIX) && name.lastPart != MODULE_SUFFIX => name.unmangleClassName
         case _ => name
-      }
       semName.exclude(ModuleClassName)
     }
 
