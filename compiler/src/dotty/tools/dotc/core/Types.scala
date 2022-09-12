@@ -2504,8 +2504,10 @@ object Types {
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
       || prefix.isInstanceOf[Types.ThisType] && symd.is(Opaque) // see pos/i11277.scala for a test where this matters
 
-    /** Is this a reference to a class or object member? */
-    def isMemberRef(using Context): Boolean = designator match {
+    /** Is this a reference to a class or object member with an info that might depend
+     *  on the prefix?
+     */
+    def isPrefixDependentMemberRef(using Context): Boolean = designator match {
       case sym: Symbol => infoDependsOnPrefix(sym, prefix)
       case _ => true
     }
