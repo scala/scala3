@@ -10,7 +10,7 @@ class A:
     .groupMapReduce: (k, v) =>
       (k + 3) % 3
     .apply: (k, v) =>
-      v.toDouble
+      v * 2
     .apply: (x, y) =>
       x + y
   println(res)
