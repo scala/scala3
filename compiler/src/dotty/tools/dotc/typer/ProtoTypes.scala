@@ -131,9 +131,17 @@ object ProtoTypes {
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
   abstract case class IgnoredProto(ignored: Type) extends CachedGroundType with MatchAlways:
+    private var myWasDeepened = false
     override def revealIgnored = ignored
-    override def deepenProto(using Context): Type = ignored
+    override def deepenProto(using Context): Type =
+      myWasDeepened = true
+      ignored
     override def deepenProtoTrans(using Context): Type = ignored.deepenProtoTrans
+
+    /** Did someone look inside via deepenProto? Used for error deagniostics
+     *  to give a more extensive expected type.
+     */
+    def wasDeepened: Boolean = myWasDeepened
 
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, ignored)
 

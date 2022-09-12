@@ -21,4 +21,4 @@
    |        Ambiguous overload. The overloaded alternatives of method apply in object ExtensionMethodReproduction with types
    |         (c: ExtensionMethodReproduction.C)(x: Int, y: Int): String
    |         (c: ExtensionMethodReproduction.C)(x: Int, y: String): String
-   |        both match arguments (ExtensionMethodReproduction.c.type)
+   |        both match arguments (ExtensionMethodReproduction.c.type)((ExtensionMethodReproduction.x : Int), <error Not found: barY>)
