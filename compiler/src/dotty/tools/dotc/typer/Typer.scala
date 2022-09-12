@@ -614,6 +614,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if selName.isTypeName then checkStable(qual.tpe, qual.srcPos, "type prefix")
       checkLegalValue(select, pt)
       ConstFold(select)
+    else if selName == nme.apply && qual.tpe.widen.isInstanceOf[MethodType] then
+      // Simplify `m.apply(...)` to `m(...)`
+      qual
     else if couldInstantiateTypeVar(qual.tpe.widen) then
        // there's a simply visible type variable in the result; try again with a more defined qualifier type
        // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
@@ -3699,6 +3702,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         || Feature.warnOnMigration(MissingEmptyArgumentList(sym.show), tree.srcPos, version = `3.0`)
            && { patch(tree.span.endPos, "()"); true }
 
+      /** If this is a selection prototype of the form `.apply(...): R`, return the nested
+       *  function prototype `(...)R`. Otherwise `pt`.
+       */
+      def ptWithoutRedundantApply: Type = pt.revealIgnored match
+        case SelectionProto(nme.apply, mpt, _, _) =>
+          mpt.revealIgnored match
+            case fpt: FunProto => fpt
+            case _ => pt
+        case _ => pt
+
       // Reasons NOT to eta expand:
       //  - we reference a constructor
       //  - we reference a typelevel method
@@ -3710,13 +3723,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
          && !ctx.mode.is(Mode.Pattern)
          && !(isSyntheticApply(tree) && !functionExpected)
       then
-        if (!defn.isFunctionType(pt))
-          pt match {
-            case SAMType(_) if !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
-              report.warning(ex"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.srcPos)
-            case _ =>
-          }
-        simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
+        val pt1 = ptWithoutRedundantApply
+        if pt1 ne pt then
+          // Ignore `.apply` in `m.apply(...)`; it will later be simplified in typedSelect to `m(...)`
+          adapt1(tree, pt1, locked)
+        else
+          if (!defn.isFunctionType(pt))
+            pt match {
+              case SAMType(_) if !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
+                report.warning(ex"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.srcPos)
+              case _ =>
+            }
+          simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
       else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)
@@ -3825,11 +3843,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
       def functionExpected = defn.isFunctionType(ptNorm)
-      def needsEta = pt match {
-        case _: SingletonType => false
-        case IgnoredProto(_: FunOrPolyProto) => false
+      def needsEta = pt.revealIgnored match
+        case _: SingletonType | _: FunOrPolyProto => false
         case _ => true
-      }
       var resMatch: Boolean = false
       wtp match {
         case wtp: ExprType =>
@@ -3846,17 +3862,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case wtp: MethodType if needsEta =>
           val funExpected = functionExpected
           val arity =
-            if (funExpected)
-              if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
+            if funExpected then
+              if !isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none) then
                 // if method type is fully defined, but expected type is not,
                 // prioritize method parameter types as parameter types of the eta-expanded closure
                 0
               else defn.functionArity(ptNorm)
-            else {
+            else
               val nparams = wtp.paramInfos.length
-              if (nparams > 0 || pt.eq(AnyFunctionProto)) nparams
+              if nparams > 0 || pt.eq(AnyFunctionProto) then nparams
               else -1 // no eta expansion in this case
-            }
           adaptNoArgsUnappliedMethod(wtp, funExpected, arity)
         case _ =>
           adaptNoArgsOther(wtp, functionExpected)
