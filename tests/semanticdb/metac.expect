@@ -50,7 +50,7 @@ Text => empty
 Language => Scala
 Symbols => 60 entries
 Occurrences => 132 entries
-Synthetics => 7 entries
+Synthetics => 3 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
@@ -249,13 +249,9 @@ Occurrences:
 [53:39..53:47): toString -> scala/Tuple2#toString().
 
 Synthetics:
-[27:12..27:18):s.s1.x => *[Int]
 [27:12..27:16):s.s1 => reflectiveSelectable(*)
-[29:12..29:18):s.s2.x => *[Int]
 [29:12..29:16):s.s2 => reflectiveSelectable(*)
-[31:12..31:22):s.s3.m(??? => *[Int]
 [31:12..31:16):s.s3 => reflectiveSelectable(*)
-[47:19..47:24):foo.a => *[foo.A]
 
 expect/Annotations.scala
 ------------------------
@@ -267,7 +263,6 @@ Text => empty
 Language => Scala
 Symbols => 23 entries
 Occurrences => 52 entries
-Synthetics => 2 entries
 
 Symbols:
 annot/Alias. => final object Alias extends Object { self: Alias.type => +2 decls }
@@ -347,10 +342,6 @@ Occurrences:
 [39:7..39:8): A <- annot/Alias.A#
 [39:11..39:26): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
 [39:28..39:33): param -> scala/annotation/meta/param#
-
-Synthetics:
-[25:2..25:20):@throws[Exception] => *[Exception]
-[25:2..25:20):@throws[Exception] => *[Exception]
 
 expect/Anonymous.scala
 ----------------------
@@ -899,7 +890,7 @@ Text => empty
 Language => Scala
 Symbols => 181 entries
 Occurrences => 148 entries
-Synthetics => 8 entries
+Synthetics => 6 entries
 
 Symbols:
 _empty_/Enums. => final object Enums extends Object { self: Enums.type => +30 decls }
@@ -1235,8 +1226,6 @@ Occurrences:
 [68:25..68:31): Planet -> _empty_/Enums.Planet#
 
 Synthetics:
-[42:24..42:32):Tag[Int] => *[Int]
-[43:28..43:40):Tag[Boolean] => *[Boolean]
 [52:9..52:13):Refl => *.unapply[Option[B]]
 [52:31..52:50):identity[Option[B]] => *[Function1[A, Option[B]]]
 [54:14..54:18):Some => *.apply[Some[Int]]
@@ -1288,7 +1277,6 @@ Text => empty
 Language => Scala
 Symbols => 5 entries
 Occurrences => 23 entries
-Synthetics => 2 entries
 
 Symbols:
 example/Example. => final object Example extends Object { self: Example.type => +3 decls }
@@ -1321,10 +1309,6 @@ Occurrences:
 [9:16..9:23): reflect -> scala/reflect/
 [9:24..9:32): classTag -> scala/reflect/package.classTag().
 [9:33..9:36): Int -> scala/Int#
-
-Synthetics:
-[5:6..5:41):scala.collection.mutable.Stack[Int] => *[Int]
-[5:6..5:41):scala.collection.mutable.Stack[Int] => *[Int]
 
 expect/Extension.scala
 ----------------------
@@ -2228,7 +2212,7 @@ Text => empty
 Language => Scala
 Symbols => 3 entries
 Occurrences => 80 entries
-Synthetics => 5 entries
+Synthetics => 2 entries
 
 Symbols:
 example/MethodUsages# => class MethodUsages extends Object { self: MethodUsages => +2 decls }
@@ -2318,11 +2302,8 @@ Occurrences:
 [34:8..34:9): m -> example/Methods#m17.m().
 
 Synthetics:
-[3:14..3:26):Methods[Int] => *[Int]
-[11:11..11:22):m.List[Int] => *[Int]
 [13:2..13:6):m.m7 => *[Int]
 [13:2..13:26):m.m7(m, new m.List[Int]) => *(Int)
-[13:14..13:25):m.List[Int] => *[Int]
 
 expect/Methods.scala
 --------------------
@@ -4215,7 +4196,7 @@ Text => empty
 Language => Scala
 Symbols => 17 entries
 Occurrences => 29 entries
-Synthetics => 2 entries
+Synthetics => 1 entries
 
 Symbols:
 _empty_/Concrete# => class Concrete extends NullaryTest[Int, List] { self: Concrete => +3 decls }
@@ -4268,7 +4249,6 @@ Occurrences:
 [18:17..18:25): nullary3 -> _empty_/Concrete#nullary3().
 
 Synthetics:
-[11:23..11:45):NullaryTest[Int, List] => *[Int, List]
 [13:17..13:21):List => *.apply[Int]
 
 expect/recursion.scala
