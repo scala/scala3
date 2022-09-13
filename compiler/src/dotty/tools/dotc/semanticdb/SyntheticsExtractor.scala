@@ -26,7 +26,7 @@ class SyntheticsExtractor:
       tree match
         case tree: TypeApply
           if tree.span.isSynthetic &&
-            tree.args.forall(arg => !arg.symbol.is(Scala2x)) &&
+            tree.args.forall(arg => !arg.symbol.isDefinedInSource) &&
             !tree.span.isZeroExtent =>
           visited.add(tree)
           val fnTree = tree.fun match
