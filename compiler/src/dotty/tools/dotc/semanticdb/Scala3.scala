@@ -222,6 +222,12 @@ object Scala3:
           case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
           case _                                       => false
         }
+
+      def isDynamic(using Context): Boolean =
+        name == nme.applyDynamic ||
+        name == nme.selectDynamic ||
+        name == nme.updateDynamic ||
+        name == nme.applyDynamicNamed
   end NameOps
 
   given SymbolOps: AnyRef with
