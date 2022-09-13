@@ -43,7 +43,6 @@ object Scala3:
         if content.lift(span.end - 1).exists(_ == '`') then
           (span.start + 1, span.end - 1)
         else (span.start, span.end)
-      // println(s"${start}, $end")
       val nameInSource = content.slice(start, end).mkString
       // for secondary constructors `this`
       desig match
