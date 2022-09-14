@@ -93,89 +93,91 @@ object ConstFold:
   end foldUnop
 
   private def foldBinop(op: Name, x: Constant, y: Constant)(using Context): Constant | Null =
-    def foldBooleanOp(op: Name, x: Constant, y: Constant): Constant | Null = op match
-      case nme.ZOR  => Constant(x.booleanValue | y.booleanValue)
-      case nme.OR   => Constant(x.booleanValue | y.booleanValue)
-      case nme.XOR  => Constant(x.booleanValue ^ y.booleanValue)
-      case nme.ZAND => Constant(x.booleanValue & y.booleanValue)
-      case nme.AND  => Constant(x.booleanValue & y.booleanValue)
-      case nme.EQ   => Constant(x.booleanValue == y.booleanValue)
-      case nme.NE   => Constant(x.booleanValue != y.booleanValue)
+    val nme = StdNames.nme
+    import nme.{Constant as _, *}
+    inline def foldBooleanOp: Constant | Null = op match
+      case ZOR  => Constant(x.booleanValue | y.booleanValue)
+      case OR   => Constant(x.booleanValue | y.booleanValue)
+      case XOR  => Constant(x.booleanValue ^ y.booleanValue)
+      case ZAND => Constant(x.booleanValue & y.booleanValue)
+      case AND  => Constant(x.booleanValue & y.booleanValue)
+      case EQ   => Constant(x.booleanValue == y.booleanValue)
+      case NE   => Constant(x.booleanValue != y.booleanValue)
       case _ => null
-    def foldSubrangeOp(op: Name, x: Constant, y: Constant): Constant | Null = op match
-      case nme.OR  => Constant(x.intValue | y.intValue)
-      case nme.XOR => Constant(x.intValue ^ y.intValue)
-      case nme.AND => Constant(x.intValue & y.intValue)
-      case nme.LSL => Constant(x.intValue << y.intValue)
-      case nme.LSR => Constant(x.intValue >>> y.intValue)
-      case nme.ASR => Constant(x.intValue >> y.intValue)
-      case nme.EQ  => Constant(x.intValue == y.intValue)
-      case nme.NE  => Constant(x.intValue != y.intValue)
-      case nme.LT  => Constant(x.intValue < y.intValue)
-      case nme.GT  => Constant(x.intValue > y.intValue)
-      case nme.LE  => Constant(x.intValue <= y.intValue)
-      case nme.GE  => Constant(x.intValue >= y.intValue)
-      case nme.ADD => Constant(x.intValue + y.intValue)
-      case nme.SUB => Constant(x.intValue - y.intValue)
-      case nme.MUL => Constant(x.intValue * y.intValue)
-      case nme.DIV => Constant(x.intValue / y.intValue)
-      case nme.MOD => Constant(x.intValue % y.intValue)
+    inline def foldSubrangeOp: Constant | Null = op match
+      case OR  => Constant(x.intValue | y.intValue)
+      case XOR => Constant(x.intValue ^ y.intValue)
+      case AND => Constant(x.intValue & y.intValue)
+      case LSL => Constant(x.intValue << y.intValue)
+      case LSR => Constant(x.intValue >>> y.intValue)
+      case ASR => Constant(x.intValue >> y.intValue)
+      case EQ  => Constant(x.intValue == y.intValue)
+      case NE  => Constant(x.intValue != y.intValue)
+      case LT  => Constant(x.intValue < y.intValue)
+      case GT  => Constant(x.intValue > y.intValue)
+      case LE  => Constant(x.intValue <= y.intValue)
+      case GE  => Constant(x.intValue >= y.intValue)
+      case ADD => Constant(x.intValue + y.intValue)
+      case SUB => Constant(x.intValue - y.intValue)
+      case MUL => Constant(x.intValue * y.intValue)
+      case DIV => Constant(x.intValue / y.intValue)
+      case MOD => Constant(x.intValue % y.intValue)
       case _ => null
-    def foldLongOp(op: Name, x: Constant, y: Constant): Constant | Null = op match
-      case nme.OR  => Constant(x.longValue | y.longValue)
-      case nme.XOR => Constant(x.longValue ^ y.longValue)
-      case nme.AND => Constant(x.longValue & y.longValue)
-      case nme.LSL => if (x.tag <= IntTag) Constant(x.intValue << y.longValue.toInt) else Constant(x.longValue << y.longValue)
-      case nme.LSR => if (x.tag <= IntTag) Constant(x.intValue >>> y.longValue.toInt) else Constant(x.longValue >>> y.longValue)
-      case nme.ASR => if (x.tag <= IntTag) Constant(x.intValue >> y.longValue.toInt) else Constant(x.longValue >> y.longValue)
-      case nme.EQ  => Constant(x.longValue == y.longValue)
-      case nme.NE  => Constant(x.longValue != y.longValue)
-      case nme.LT  => Constant(x.longValue < y.longValue)
-      case nme.GT  => Constant(x.longValue > y.longValue)
-      case nme.LE  => Constant(x.longValue <= y.longValue)
-      case nme.GE  => Constant(x.longValue >= y.longValue)
-      case nme.ADD => Constant(x.longValue + y.longValue)
-      case nme.SUB => Constant(x.longValue - y.longValue)
-      case nme.MUL => Constant(x.longValue * y.longValue)
-      case nme.DIV => Constant(x.longValue / y.longValue)
-      case nme.MOD => Constant(x.longValue % y.longValue)
+    inline def foldLongOp: Constant | Null = op match
+      case OR  => Constant(x.longValue | y.longValue)
+      case XOR => Constant(x.longValue ^ y.longValue)
+      case AND => Constant(x.longValue & y.longValue)
+      case LSL => if (x.tag <= IntTag) Constant(x.intValue << y.longValue.toInt) else Constant(x.longValue << y.longValue)
+      case LSR => if (x.tag <= IntTag) Constant(x.intValue >>> y.longValue.toInt) else Constant(x.longValue >>> y.longValue)
+      case ASR => if (x.tag <= IntTag) Constant(x.intValue >> y.longValue.toInt) else Constant(x.longValue >> y.longValue)
+      case EQ  => Constant(x.longValue == y.longValue)
+      case NE  => Constant(x.longValue != y.longValue)
+      case LT  => Constant(x.longValue < y.longValue)
+      case GT  => Constant(x.longValue > y.longValue)
+      case LE  => Constant(x.longValue <= y.longValue)
+      case GE  => Constant(x.longValue >= y.longValue)
+      case ADD => Constant(x.longValue + y.longValue)
+      case SUB => Constant(x.longValue - y.longValue)
+      case MUL => Constant(x.longValue * y.longValue)
+      case DIV => Constant(x.longValue / y.longValue)
+      case MOD => Constant(x.longValue % y.longValue)
       case _ => null
-    def foldFloatOp(op: Name, x: Constant, y: Constant): Constant | Null = op match
-      case nme.EQ  => Constant(x.floatValue == y.floatValue)
-      case nme.NE  => Constant(x.floatValue != y.floatValue)
-      case nme.LT  => Constant(x.floatValue < y.floatValue)
-      case nme.GT  => Constant(x.floatValue > y.floatValue)
-      case nme.LE  => Constant(x.floatValue <= y.floatValue)
-      case nme.GE  => Constant(x.floatValue >= y.floatValue)
-      case nme.ADD => Constant(x.floatValue + y.floatValue)
-      case nme.SUB => Constant(x.floatValue - y.floatValue)
-      case nme.MUL => Constant(x.floatValue * y.floatValue)
-      case nme.DIV => Constant(x.floatValue / y.floatValue)
-      case nme.MOD => Constant(x.floatValue % y.floatValue)
+    inline def foldFloatOp: Constant | Null = op match
+      case EQ  => Constant(x.floatValue == y.floatValue)
+      case NE  => Constant(x.floatValue != y.floatValue)
+      case LT  => Constant(x.floatValue < y.floatValue)
+      case GT  => Constant(x.floatValue > y.floatValue)
+      case LE  => Constant(x.floatValue <= y.floatValue)
+      case GE  => Constant(x.floatValue >= y.floatValue)
+      case ADD => Constant(x.floatValue + y.floatValue)
+      case SUB => Constant(x.floatValue - y.floatValue)
+      case MUL => Constant(x.floatValue * y.floatValue)
+      case DIV => Constant(x.floatValue / y.floatValue)
+      case MOD => Constant(x.floatValue % y.floatValue)
       case _ => null
-    def foldDoubleOp(op: Name, x: Constant, y: Constant): Constant | Null = op match
-      case nme.EQ  => Constant(x.doubleValue == y.doubleValue)
-      case nme.NE  => Constant(x.doubleValue != y.doubleValue)
-      case nme.LT  => Constant(x.doubleValue < y.doubleValue)
-      case nme.GT  => Constant(x.doubleValue > y.doubleValue)
-      case nme.LE  => Constant(x.doubleValue <= y.doubleValue)
-      case nme.GE  => Constant(x.doubleValue >= y.doubleValue)
-      case nme.ADD => Constant(x.doubleValue + y.doubleValue)
-      case nme.SUB => Constant(x.doubleValue - y.doubleValue)
-      case nme.MUL => Constant(x.doubleValue * y.doubleValue)
-      case nme.DIV => Constant(x.doubleValue / y.doubleValue)
-      case nme.MOD => Constant(x.doubleValue % y.doubleValue)
+    inline def foldDoubleOp: Constant | Null = op match
+      case EQ  => Constant(x.doubleValue == y.doubleValue)
+      case NE  => Constant(x.doubleValue != y.doubleValue)
+      case LT  => Constant(x.doubleValue < y.doubleValue)
+      case GT  => Constant(x.doubleValue > y.doubleValue)
+      case LE  => Constant(x.doubleValue <= y.doubleValue)
+      case GE  => Constant(x.doubleValue >= y.doubleValue)
+      case ADD => Constant(x.doubleValue + y.doubleValue)
+      case SUB => Constant(x.doubleValue - y.doubleValue)
+      case MUL => Constant(x.doubleValue * y.doubleValue)
+      case DIV => Constant(x.doubleValue / y.doubleValue)
+      case MOD => Constant(x.doubleValue % y.doubleValue)
       case _ => null
-    def foldStringOp(op: Name, x: Constant, y: Constant): Constant | Null = op match
-      case nme.ADD => Constant(x.stringValue + y.stringValue)
-      case nme.EQ  => Constant(x.stringValue == y.stringValue)
-      case nme.NE  => Constant(x.stringValue != y.stringValue)
+    inline def foldStringOp: Constant | Null = op match
+      case ADD => Constant(x.stringValue + y.stringValue)
+      case EQ  => Constant(x.stringValue == y.stringValue)
+      case NE  => Constant(x.stringValue != y.stringValue)
       case _ => null
-    def foldNullOp(op: Name, x: Constant, y: Constant): Constant | Null =
+    inline def foldNullOp: Constant | Null =
       assert(x.tag == NullTag || y.tag == NullTag)
       op match
-        case nme.EQ => Constant(x.tag == y.tag)
-        case nme.NE => Constant(x.tag != y.tag)
+        case EQ => Constant(x.tag == y.tag)
+        case NE => Constant(x.tag != y.tag)
         case _ => null
 
     // begin foldBinop
@@ -186,13 +188,13 @@ object ConstFold:
       else NoTag
 
     try optag match
-      case BooleanTag                            => foldBooleanOp(op, x, y)
-      case ByteTag | ShortTag | CharTag | IntTag => foldSubrangeOp(op, x, y)
-      case LongTag                               => foldLongOp(op, x, y)
-      case FloatTag                              => foldFloatOp(op, x, y)
-      case DoubleTag                             => foldDoubleOp(op, x, y)
-      case StringTag                             => foldStringOp(op, x, y)
-      case NullTag                               => foldNullOp(op, x, y)
+      case BooleanTag                            => foldBooleanOp
+      case ByteTag | ShortTag | CharTag | IntTag => foldSubrangeOp
+      case LongTag                               => foldLongOp
+      case FloatTag                              => foldFloatOp
+      case DoubleTag                             => foldDoubleOp
+      case StringTag                             => foldStringOp
+      case NullTag                               => foldNullOp
       case _                                     => null
     catch case ex: ArithmeticException => null // the code will crash at runtime,
                                                // but that is better than the
