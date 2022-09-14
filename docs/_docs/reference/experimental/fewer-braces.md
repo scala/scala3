@@ -52,11 +52,11 @@ val firstLine = files.get(fileName).fold:
 
 Braces can also be omitted around multiple line function value arguments:
 ```scala
-val xs = elems.map x =>
+val xs = List.range(1, 10).map: x =>
   val y = x - 1
   y * y
-xs.foldLeft (x, y) =>
-  x + y
+xs.foldLeft(0): (x, y) =>
+  x + y * 8
 ```
 Braces can be omitted if the lambda starts with a parameter list and `=>` or `=>?` at the end of one line and it has an indented body on the following lines.
 
