@@ -593,7 +593,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareSingletonGADT: Boolean =
           (tp1, tp2) match {
             case (tp1: TermRef, tp2: TermRef) =>
-              ctx.gadt.isEquivalent(tp1, tp2) && { GADTused = true; true }
+              ctx.gadt.isAliasingPath(tp1, tp2) && { GADTused = true; true }
             case _ => false
           }
 
@@ -2360,19 +2360,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case Atoms.Range(lo2, hi2) =>
                 if hi1.subsetOf(lo2) then return tp2
                 if hi2.subsetOf(lo1) then return tp1
-
-                def getReprSet(ps: Set[Type]): Set[Type] =
-                  ps.map { x =>
-                    x match
-                      case p: PathType =>
-                        val rep = ctx.gadt.reprOf(p)
-                        if rep == null then p else rep
-                      case t => t
-                  }
-                val (repLo1, repHi1, repLo2, repHi2) = (getReprSet(lo1), getReprSet(hi1), getReprSet(lo2), getReprSet(hi2))
-                if repHi2.subsetOf(repLo1) then return tp1
-                if repHi1.subsetOf(repLo2) then return tp2
-
                 if (hi1 & hi2).isEmpty then return orType(tp1, tp2)
               case none =>
           case none =>

@@ -59,14 +59,11 @@ sealed abstract class GadtConstraint extends Showable {
   /** Further constrain a path-dependent type already present in the constraint. */
   def addBound(p: PathType, sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
-  /** Record the equality between two singleton types. */
-  def addEquality(p: PathType, q: PathType)(using Context): Unit
+  /** Record the aliasing relationship between two singleton types. */
+  def recordPathAliasing(p: PathType, q: PathType)(using Context): Unit
 
-  /** Check whether two singleton types are equivalent. */
-  def isEquivalent(p: PathType, q: PathType): Boolean
-
-  /** Query the representative member of a singleton type. */
-  def reprOf(p: PathType): PathType | Null
+  /** Check whether two paths are equivalent via path aliasing. */
+  def isAliasingPath(p: PathType, q: PathType): Boolean
 
   /** Scrutinee path of the current pattern matching. */
   def scrutineePath: TermRef | Null
@@ -124,7 +121,7 @@ final class ProperGadtConstraint private(
   private var pathDepReverseMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
   private var wasConstrained: Boolean,
   private var myScrutineePath: TermRef | Null,
-  private var myUnionFind: SimpleIdentityMap[PathType, PathType],
+  private var pathAliasingMapping: SimpleIdentityMap[PathType, PathType],
   private var myPatternSkolem: SkolemType | Null,
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
@@ -137,7 +134,7 @@ final class ProperGadtConstraint private(
     pathDepReverseMapping = SimpleIdentityMap.empty,
     wasConstrained = false,
     myScrutineePath = null,
-    myUnionFind = SimpleIdentityMap.empty,
+    pathAliasingMapping = SimpleIdentityMap.empty,
     myPatternSkolem = null,
   )
 
@@ -392,9 +389,6 @@ final class ProperGadtConstraint private(
     buf ++= "}"
     buf.result
 
-  /** Get the representative member of the path in the union find. */
-  override def reprOf(p: PathType): PathType | Null = lookupPath(p)
-
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = {
     import NameKinds.DepParamName
 
@@ -512,7 +506,7 @@ final class ProperGadtConstraint private(
   }
 
   private def lookupPath(p: PathType): PathType | Null =
-    def recur(p: PathType): PathType | Null = myUnionFind(p) match
+    def recur(p: PathType): PathType | Null = pathAliasingMapping(p) match
       case null => null
       case q: PathType if q eq p => q
       case q: PathType =>
@@ -520,7 +514,7 @@ final class ProperGadtConstraint private(
 
     recur(p)
 
-  override def addEquality(p: PathType, q: PathType)(using Context): Unit =
+  override def recordPathAliasing(p: PathType, q: PathType)(using Context): Unit =
     val pRep: PathType | Null = lookupPath(p)
     val qRep: PathType | Null = lookupPath(q)
 
@@ -529,13 +523,13 @@ final class ProperGadtConstraint private(
       case (null, r: PathType) => r
       case (r: PathType, null) => r
       case (r1: PathType, r2: PathType) =>
-        myUnionFind = myUnionFind.updated(r2, r1)
+        pathAliasingMapping = pathAliasingMapping.updated(r2, r1)
         r1
 
-    myUnionFind = myUnionFind.updated(p, newRep)
-    myUnionFind = myUnionFind.updated(q, newRep)
+    pathAliasingMapping = pathAliasingMapping.updated(p, newRep)
+    pathAliasingMapping = pathAliasingMapping.updated(q, newRep)
 
-  override def isEquivalent(p: PathType, q: PathType): Boolean =
+  override def isAliasingPath(p: PathType, q: PathType): Boolean =
     lookupPath(p) match
       case null => false
       case p0: PathType => lookupPath(q) match
@@ -637,7 +631,7 @@ final class ProperGadtConstraint private(
     pathDepReverseMapping,
     wasConstrained,
     myScrutineePath,
-    myUnionFind,
+    pathAliasingMapping,
     myPatternSkolem,
   )
 
@@ -650,7 +644,7 @@ final class ProperGadtConstraint private(
       this.pathDepReverseMapping = other.pathDepReverseMapping
       this.wasConstrained = other.wasConstrained
       this.myScrutineePath = other.myScrutineePath
-      this.myUnionFind = other.myUnionFind
+      this.pathAliasingMapping = other.pathAliasingMapping
       this.myPatternSkolem = other.myPatternSkolem
     case _ => ;
   }
@@ -675,10 +669,10 @@ final class ProperGadtConstraint private(
         }
 
       def updateUnionFind() =
-        myUnionFind(myPatternSkolem.nn) match {
+        pathAliasingMapping(myPatternSkolem.nn) match {
           case null =>
           case repr: PathType =>
-            myUnionFind = myUnionFind.updated(path, repr)
+            pathAliasingMapping = pathAliasingMapping.updated(path, repr)
         }
 
       updateMappings()
@@ -784,7 +778,7 @@ final class ProperGadtConstraint private(
       }
     }
     sb ++= "\nSingleton equalities:\n"
-    myUnionFind foreachBinding { case (path, _) =>
+    pathAliasingMapping foreachBinding { case (path, _) =>
       val repr = lookupPath(path)
       repr match
         case repr: PathType if repr ne path =>
@@ -804,8 +798,6 @@ final class ProperGadtConstraint private(
   override def fullBounds(p: PathType, sym: Symbol)(using Context): TypeBounds | Null = null
   override def bounds(tp: TypeRef)(using Context): TypeBounds | Null = null
   override def fullBounds(tp: TypeRef)(using Context): TypeBounds | Null = null
-
-  override def reprOf(p: PathType): PathType | Null = null
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
   override def isLess(tp1: NamedType, tp2: NamedType)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
@@ -827,9 +819,9 @@ final class ProperGadtConstraint private(
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
   override def addBound(path: PathType, sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
-  override def addEquality(p: PathType, q: PathType)(using Context) = ()
+  override def recordPathAliasing(p: PathType, q: PathType)(using Context) = ()
 
-  override def isEquivalent(p: PathType, q: PathType) = false
+  override def isAliasingPath(p: PathType, q: PathType) = false
 
   override def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
 

@@ -230,7 +230,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       /** Reconstruct subtype from the cohabitation between the scrutinee and the
         pattern. */
       def constrainPattern: Boolean = {
-        ctx.gadt.addEquality(scrutineePath, patternPath)
+        ctx.gadt.recordPathAliasing(scrutineePath, patternPath)
 
         (!registerPattern || reconstructSubTypeFor(patternPath, scrutineePath))
         && (!registerScrutinee || reconstructSubTypeFor(scrutineePath, patternPath))
@@ -253,7 +253,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
             (!registerPtPath || reconstructSubTypeFor(ptPath, scrutineePath))
             && (!registerScrutinee || reconstructSubTypeFor(scrutineePath, ptPath))
 
-          ctx.gadt.addEquality(scrutineePath, ptPath)
+          ctx.gadt.recordPathAliasing(scrutineePath, ptPath)
 
           result
         case _ =>
