@@ -1460,12 +1460,12 @@ trait Checking {
             |CanThrow capabilities can only be generated $req.""",
         pat.srcPos)
 
-  /** Check that tree does not define a context fucntion type */
+  /** Check that tree does not define a context function type */
   def checkNoContextFunctionType(tree: Tree)(using Context): Unit =
     def recur(tp: Type): Unit = tp.dealias match
       case tp: HKTypeLambda => recur(tp.resType)
       case tp if defn.isContextFunctionType(tp) =>
-        report.error(em"context functon type cannot have opaque aliases", tree.srcPos)
+        report.error(em"context function type cannot have opaque aliases", tree.srcPos)
       case _ =>
     recur(tree.tpe)
 
