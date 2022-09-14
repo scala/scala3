@@ -2417,6 +2417,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case rhs =>
         typedType(rhs)
     checkFullyAppliedType(rhs1)
+    if sym.isOpaqueAlias then checkNoContextFunctionType(rhs1)
     assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
   }
 
