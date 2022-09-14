@@ -35,7 +35,9 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       a(cls := "scaladoc-searchbar-row mono-small-inline", href := location)(
         p.fullName.zipWithIndex.map((c, i) => if boldChars.contains(i) then b(c.toString) else c.toString),
         span(i(extensionTargetMessage)),
-        span(cls := "pull-right scaladoc-searchbar-location")(p.description)
+        span(cls := "pull-right scaladoc-searchbar-location")(p.description),
+        if p.extraDescription == "" then ""
+        else div(cls := "scaladoc-searchbar-extra-info")(p.extraDescription)
       ).tap { _.onclick = (event: Event) =>
         if (document.body.contains(rootDiv)) {
           document.body.removeChild(rootDiv)
