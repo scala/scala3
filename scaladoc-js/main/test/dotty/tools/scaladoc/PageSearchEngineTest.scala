@@ -13,6 +13,7 @@ class PageSearchEngineTest {
       "",
       "",
       "",
+      "",
       false,
       s"$name",
       kind,

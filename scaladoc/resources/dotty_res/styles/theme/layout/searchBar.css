@@ -182,6 +182,7 @@
 
 .scaladoc-searchbar-row {
   display: flex;
+  flex-wrap: wrap;
   color: var(--text-secondary);
   padding: calc(1.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
 }
@@ -225,6 +226,19 @@
 }
 
 .scaladoc-searchbar-row:hover .scaladoc-searchbar-location {
+  display: block;
+}
+
+.scaladoc-searchbar-extra-info {
+  display: none;
+  width: 100%;
+  padding-top: 1em;
+  white-space: nowrap;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+}
+
+.scaladoc-searchbar-row:hover .scaladoc-searchbar-extra-info {
   display: block;
 }
 
@@ -287,6 +301,10 @@
   }
 
   .scaladoc-searchbar-row:hover .scaladoc-searchbar-location {
+    display: none;
+  }
+
+  .scaladoc-searchbar-row:hover .scaladoc-searchbar-extra-info {
     display: none;
   }
 

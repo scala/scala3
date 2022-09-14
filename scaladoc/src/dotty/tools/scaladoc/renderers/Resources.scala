@@ -154,19 +154,56 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     val signatureProvider = ScalaSignatureProvider()
     def flattenToText(signature: Signature): String = signature.getName
 
-    def mkEntry(dri: DRI, name: String, text: String, extensionTarget: String, descr: String, kind: String) = jsonObject(
+    def mkEntry(
+      dri: DRI,
+      name: String,
+      text: String,
+      extensionTarget: String,
+      descr: String,
+      extraDescr: String,
+      kind: String,
+    ) = jsonObject(
         "l" -> jsonString(relativeInternalOrAbsoluteExternalPath(dri)),
         "e" -> (if dri.externalLink.isDefined then rawJSON("true") else rawJSON("false")),
         "i" -> jsonString(extensionTarget),
         "n" -> jsonString(name),
         "t" -> jsonString(text),
         "d" -> jsonString(descr),
-        "k" -> jsonString(kind)
+        "k" -> jsonString(kind),
+        "x" -> jsonString(extraDescr),
       )
 
     def extensionTarget(member: Member): String =
       member.kind match
         case Kind.Extension(on, _) => flattenToText(on.signature)
+        case _ => ""
+
+    def docPartRenderPlain(d: DocPart): String =
+      import dotty.tools.scaladoc.tasty.comments.wiki._
+      import com.vladsch.flexmark.util.ast.{Node => MdNode}
+      def renderPlain(wd: WikiDocElement): String =
+        wd match
+          case Paragraph(text) => renderPlain(text)
+          case Chain(items) => items.map(renderPlain).mkString("")
+          case Italic(text) => renderPlain(text)
+          case Bold(text) => renderPlain(text)
+          case Underline(text) => renderPlain(text)
+          case Superscript(text) => renderPlain(text)
+          case Subscript(text) => renderPlain(text)
+          case Link(link, title) => title.map(renderPlain).getOrElse(
+            link match
+              case DocLink.ToURL(url) => url
+              case DocLink.ToDRI(_, name) => name
+              case _ => ""
+          )
+          case Monospace(text) => renderPlain(text)
+          case Text(text) => text
+          case Summary(text) => renderPlain(text)
+          case _ => ""
+      d match
+        case s: Seq[WikiDocElement @unchecked] =>
+          if s.length == 0 then ""
+          else renderPlain(s.head)
         case _ => ""
 
     def processPage(page: Page, pageFQName: List[String]): Seq[(JSON, Seq[String])] =
@@ -176,7 +213,16 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
             val signature: MemberSignature = signatureProvider.rawSignature(member)()
             val sig = Signature(Plain(member.name)) ++ signature.suffix
             val descr = if member.kind == Kind.Package then "" else fqName.mkString(".")
-            val entry = mkEntry(member.dri, member.name, flattenToText(sig), extensionTarget(member), descr, member.kind.name)
+            val extraDescr = member.docs.map(d => docPartRenderPlain(d.body)).getOrElse("")
+            val entry = mkEntry(
+              member.dri,
+              member.name,
+              flattenToText(sig),
+              extensionTarget(member),
+              descr,
+              extraDescr,
+              member.kind.name,
+            )
             val children = member
                 .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])
                 .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.fold(true)(_.isSourceSuperclassHidden))
@@ -185,7 +231,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
           (processMember(m, pageFQName), m.name)
         case _ =>
-          (Seq((mkEntry(page.link.dri, page.link.name, page.link.name, "", "", "static"), pageFQName)), "")
+          (Seq((mkEntry(page.link.dri, page.link.name, page.link.name, "", "", "", "static"), pageFQName)), "")
 
       val updatedFqName = page.content match
         case m: Member if m.kind == Kind.Package => List(m.name)
