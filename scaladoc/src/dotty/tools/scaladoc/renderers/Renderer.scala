@@ -45,10 +45,10 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
         // Below code is for walking in order the tree and modifing its nodes basing on its neighbours
 
         // We add dummy guards
-        val allTemplates: Seq[Option[LoadedTemplate]] = None +: siteContext.allTemplates.map(Some(_)) :+ None
+        val notHidden: Seq[Option[LoadedTemplate]] = None +: siteContext.allTemplates.filterNot(_.hidden).map(Some(_)) :+ None
 
         // Let's gather the list of maps for each template with its in-order neighbours
-        val newSettings: List[Map[String, Object]] = allTemplates.sliding(size = 3, step = 1).map {
+        val newSettings: List[Map[String, Object]] = notHidden.sliding(size = 3, step = 1).map {
           case None :: None :: Nil =>
             Map.empty
           case prev :: mid :: next :: Nil =>
@@ -81,10 +81,13 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
             ).flatten.toMap
         }.toList
 
+
         def updateSettings(templates: Seq[LoadedTemplate], additionalSettings: ListBuffer[Map[String, Object]]): List[LoadedTemplate] =
           val updatedTemplates = List.newBuilder[LoadedTemplate]
           for template <- templates do
-            val head: Map[String, Object] = additionalSettings.remove(0)
+            val head: Map[String, Object] =
+              if template.hidden then Map.empty
+              else additionalSettings.remove(0)
             val current: Map[String, Object] = template.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]]
             val updatedTemplateFile = template.templateFile.copy(settings = template.templateFile.settings.updated("page", head ++ current))
             updatedTemplates += template.copy(
