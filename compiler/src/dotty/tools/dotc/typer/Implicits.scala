@@ -411,14 +411,14 @@ object Implicits:
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
-    final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits]
+    final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
     final def reason: SearchFailureType = tree.tpe.asInstanceOf[SearchFailureType]
   }
 
   object SearchFailure {
     def apply(tpe: SearchFailureType, span: Span)(using Context): SearchFailure = {
       val id = tpe match
-        case tpe: AmbiguousImplicits =>
+        case tpe: (AmbiguousImplicits | TooUnspecific) =>
           untpd.SearchFailureIdent(nme.AMBIGUOUS, s"/* ambiguous: ${tpe.explanation} */")
         case _ =>
           untpd.SearchFailureIdent(nme.MISSING, "/* missing */")
@@ -504,11 +504,14 @@ object Implicits:
     SearchFailure(ImplicitSearchTooLarge, NoSpan)(using NoContext)
 
   /** A failure value indicating that an implicit search for a conversion was not tried */
-  class TooUnspecific(target: Type) extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty):
+  case class TooUnspecific(target: Type) extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty):
     override def whyNoConversion(using Context): String =
       i"""
          |Note that implicit conversions were not tried because the result of an implicit conversion
          |must be more specific than $target"""
+    override def explanation(using Context) =
+      i"""${super.explanation}.
+         |The expected type $target is not specific enough, so no search was attempted"""
     override def toString = s"TooUnspecific"
 
   /** An ambiguous implicits failure */
@@ -1484,7 +1487,7 @@ trait Implicits:
 
     private def searchImplicit(contextual: Boolean): SearchResult =
       if isUnderspecified(wildProto) then
-        NoMatchingImplicitsFailure
+        SearchFailure(TooUnspecific(pt), span)
       else
         val eligible =
           if contextual then
