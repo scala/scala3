@@ -10,7 +10,6 @@ import org.scalajs.dom.ext._
 import org.scalajs.dom.html.Input
 import scala.scalajs.js.timers._
 import scala.concurrent.duration.{span => dspan, _}
-
 import scala.util.chaining._
 
 import java.net.URI
@@ -33,7 +32,10 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       }
 
       a(cls := "scaladoc-searchbar-row mono-small-inline", href := location)(
-        p.fullName.zipWithIndex.map((c, i) => if boldChars.contains(i) then b(c.toString) else c.toString),
+        p.fullName.zipWithIndex.map((c, i) =>
+          if c == ' ' then aRaw("&nbsp;")
+          else if boldChars.contains(i) then b(c.toString)
+          else c.toString),
         span(i(extensionTargetMessage)),
         span(cls := "pull-right scaladoc-searchbar-location")(p.description),
         if p.extraDescription == "" then ""

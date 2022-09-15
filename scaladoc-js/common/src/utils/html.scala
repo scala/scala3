@@ -2,7 +2,7 @@ package dotty.tools.scaladoc
 package utils
 
 import scala.scalajs.js
-import org.scalajs.dom.{html => domhtml, _}
+import org.scalajs.dom.{html as domhtml, *}
 
 object HTML {
   type TagArg = domhtml.Element | Seq[domhtml.Element | String] | String
@@ -49,6 +49,11 @@ object HTML {
 
   extension (key: String) def :=(value: String): AppliedAttr =
     (key, value)
+
+  def aRaw(content: String): domhtml.Element =
+    val x = document.createElement("a").asInstanceOf[domhtml.Element]
+    x.innerHTML = content
+    x
 
   opaque type AppliedAttr = (String, String)
 
