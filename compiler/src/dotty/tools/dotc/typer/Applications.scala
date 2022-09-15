@@ -994,7 +994,7 @@ trait Applications extends Compatibility {
                   case CaseDef(pat, _, _) =>
                     report.error(UnexpectedPatternForSummonFrom(pat), pat.srcPos)
                 }
-                typed(untpd.InlineMatch(EmptyTree, cases).withSpan(arg.span), pt)
+                typed(untpd.InlineMatch(EmptyTree, cases).withSpan(tree.span), pt)
               case _ =>
                 errorTree(tree, em"argument to summonFrom must be a pattern matching closure")
             }
