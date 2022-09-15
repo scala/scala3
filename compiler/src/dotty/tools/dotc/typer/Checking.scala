@@ -1460,6 +1460,15 @@ trait Checking {
             |CanThrow capabilities can only be generated $req.""",
         pat.srcPos)
 
+  /** Check that tree does not define a context function type */
+  def checkNoContextFunctionType(tree: Tree)(using Context): Unit =
+    def recur(tp: Type): Unit = tp.dealias match
+      case tp: HKTypeLambda => recur(tp.resType)
+      case tp if defn.isContextFunctionType(tp) =>
+        report.error(em"context function type cannot have opaque aliases", tree.srcPos)
+      case _ =>
+    recur(tree.tpe)
+
   /** (1) Check that every named import selector refers to a type or value member of the
    *  qualifier type.
    *  (2) Check that no import selector is renamed more than once.
@@ -1495,6 +1504,7 @@ trait ReChecking extends Checking {
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
   override def checkCanThrow(tp: Type, span: Span)(using Context): Tree = EmptyTree
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
+  override def checkNoContextFunctionType(tree: Tree)(using Context): Unit = ()
   override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }
 

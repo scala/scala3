@@ -386,7 +386,7 @@ object Erasure {
       case _: FunProto | AnyFunctionProto => tree
       case _ => tree.tpe.widen match
         case mt: MethodType if tree.isTerm =>
-          assert(mt.paramInfos.isEmpty)//, i"bad adapt for $tree: $mt")
+          assert(mt.paramInfos.isEmpty, i"bad adapt for $tree: $mt")
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
           if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
