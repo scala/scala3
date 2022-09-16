@@ -172,11 +172,11 @@
 /* content link */
 #content a {
   color: var(--text-primary);
-  border-bottom: 1px solid var(--grey8);
+  text-decoration: underline var(--grey8) solid 1px;
 }
 
 #content a:hover {
-  border-bottom: 1px solid var(--text-secondary);
+  text-decoration: underline var(--text-secondary) solid 1px;
 }
 
 #content .cover-header a,
@@ -193,6 +193,10 @@
   background-color: var(--code-props-background);
   line-height: 24px;
   font-size: 13px;
+}
+
+#content .body-large code {
+  font-size: 16px;
 }
 
 .breadcrumbs {

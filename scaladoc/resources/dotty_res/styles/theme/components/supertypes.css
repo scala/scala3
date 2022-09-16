@@ -4,6 +4,7 @@
   padding-bottom: calc(1.5 * var(--base-spacing));
   overflow-x: scroll;
   position: relative;
+  border-radius: 4px;
 }
 
 .supertypes > span {

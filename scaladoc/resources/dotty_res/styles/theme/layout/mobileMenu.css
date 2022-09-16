@@ -31,7 +31,7 @@
   margin-left: calc(2 * var(--base-spacing));
 }
 
-@media (min-width: 768px) {
+@media (min-width: 769px) {
   #mobile-menu {
     display: none;
   }
