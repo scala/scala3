@@ -68,13 +68,14 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  width: calc(9 * var(--base-spacing));
+}
+
+.single {
+  padding-left: 16px;
 }
 
 @media (max-width: 950px) {
-  .projectVersion {
-    width: calc(6 * var(--base-spacing));
-  }
-
   .header-container-right .text-button {
     margin-left: calc(2 * var(--base-spacing));
   }
@@ -84,10 +85,6 @@
   #mobile-menu-toggle {
     margin-left: calc(3 * var(--base-spacing));
     display: block;
-  }
-
-  .projectVersion {
-    width: auto;
   }
 
   .header-container-right .text-button {
@@ -100,11 +97,5 @@
 
   #search-toggle {
     display: none;
-  }
-}
-
-@media (max-width: 500px) {
-  .projectVersion {
-    width: calc(6 * var(--base-spacing));
   }
 }

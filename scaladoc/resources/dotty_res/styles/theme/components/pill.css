@@ -54,6 +54,11 @@
   display: block;
 }
 
+.pill-container {
+  display: flex;
+  align-items: center;
+}
+
 .pill-container ul {
   display: none;
   background-color: var(--action-primary-background-default-solid);

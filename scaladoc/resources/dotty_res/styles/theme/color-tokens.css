@@ -48,7 +48,7 @@
 
   /* code */
   --code-props-content: var(--grey12);
-  --code-props-background: var(--grey3);
+  --code-props-background: var(--grey2);
   --code-props-border: var(--grey5);
 
   --code-syntax-highlighting-comment: var(--grey11);
@@ -136,7 +136,7 @@
 
   /* code */
   --code-props-content: var(--grey12);
-  --code-props-background: var(--grey2);
+  --code-props-background: var(--grey3);
   --code-props-border: var(--grey6);
 
   --code-syntax-highlighting-comment: var(--grey11);

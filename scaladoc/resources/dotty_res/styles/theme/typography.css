@@ -39,6 +39,10 @@
   font-family: "Inter-SemiBold";
 }
 
+.h600 .single {
+  padding-left: 16px;
+}
+
 .h500 {
   font-size: 28px;
   line-height: 32px;
@@ -77,7 +81,7 @@
 
 .body-large {
   font-size: 20px;
-  line-height: 24px;
+  line-height: 32px;
   font-family: "Inter-Regular";
 }
 

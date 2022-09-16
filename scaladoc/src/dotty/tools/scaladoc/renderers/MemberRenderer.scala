@@ -443,7 +443,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   }
 
   def fullMember(m: Member): PageContent =
-    val wideClass = m.companion.map(_ => "cover-header-wide").getOrElse("")
+    val wideClass = m.companion.map(_ => "multi").getOrElse("single")
     val intro = m.kind match
       case Kind.RootPackage =>Seq(h1(summon[DocContext].args.name))
       case _ =>

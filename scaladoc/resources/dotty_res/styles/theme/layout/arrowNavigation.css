@@ -13,3 +13,7 @@
   margin-bottom: calc(1 * var(--base-spacing));
   color: var(--text-secondary);
 }
+
+.arrow-navigation--next {
+  text-align: right;
+}
