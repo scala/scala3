@@ -1207,31 +1207,23 @@ object Semantic:
       cls == defn.ObjectClass
 
 // ----- Work list ---------------------------------------------------
-  case class Task(value: ThisRef)
-
-  class WorkList private[Semantic]():
-    private val pendingTasks: mutable.ArrayBuffer[Task] = new mutable.ArrayBuffer
-
-    def addTask(task: Task): Unit =
-      if !pendingTasks.contains(task) then pendingTasks.append(task)
-
+  class WorkList private[Semantic](tasks: List[ClassSymbol]):
     /** Process the worklist until done */
     final def work()(using Cache, Context): Unit =
-      for task <- pendingTasks
-      do doTask(task)
+      for task <- tasks do doTask(task)
 
     /** Check an individual class
      *
      *  This method should only be called from the work list scheduler.
      */
-    private def doTask(task: Task)(using Cache, Context): Unit =
-      val thisRef = task.value
-      val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+    private def doTask(classSym: ClassSymbol)(using Cache, Context): Unit =
+      val thisRef = ThisRef(classSym)
+      val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
       @tailrec
       def iterate(): Unit = {
-        given Promoted = Promoted.empty(thisRef.klass)
-        given Trace = Trace.empty.add(thisRef.klass.defTree)
+        given Promoted = Promoted.empty(classSym)
+        given Trace = Trace.empty.add(classSym.defTree)
         given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
 
         thisRef.ensureFresh()
@@ -1240,7 +1232,7 @@ object Semantic:
         for param <- tpl.constr.termParamss.flatten do
           thisRef.updateField(param.symbol, Hot)
 
-        log("checking " + task) { eval(tpl, thisRef, thisRef.klass) }
+        log("checking " + classSym) { eval(tpl, thisRef, classSym) }
         reporter.errors.foreach(_.issue)
 
         if cache.hasChanged && reporter.errors.isEmpty then
@@ -1254,23 +1246,15 @@ object Semantic:
       iterate()
     end doTask
   end WorkList
-  inline def workList(using wl: WorkList): WorkList = wl
 
 // ----- API --------------------------------
 
-  /** Add a checking task to the work list */
-  def addTask(thisRef: ThisRef)(using WorkList) = workList.addTask(Task(thisRef))
-
-  /** Check the specified tasks
-   *
-   *      Semantic.checkTasks {
-   *         Semantic.addTask(...)
-   *      }
+  /**
+   * Check the specified concrete classes
    */
-  def checkTasks(using Context)(taskBuilder: WorkList ?=> Unit): Unit =
-    val workList = new WorkList
+  def checkClasses(concreteClasses: List[ClassSymbol])(using Context): Unit =
+    val workList = new WorkList(concreteClasses)
     val cache = new Cache
-    taskBuilder(using workList)
     workList.work()(using cache, ctx)
 
 // ----- Semantic definition --------------------------------

@@ -15,6 +15,7 @@ import StdNames._
 import dotty.tools.dotc.transform._
 import Phases._
 
+import scala.collection.mutable
 
 import Semantic._
 
@@ -31,17 +32,22 @@ class Checker extends Phase {
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val checkCtx = ctx.fresh.setPhase(this.start)
-    Semantic.checkTasks(using checkCtx) {
-      val traverser = new InitTreeTraverser()
-      units.foreach { unit => traverser.traverse(unit.tpdTree) }
-    }
+    val traverser = new InitTreeTraverser()
+    units.foreach { unit => traverser.traverse(unit.tpdTree) }
+    val classes = traverser.getConcreteClasses()
+
+    Semantic.checkClasses(classes)(using checkCtx)
     units
 
-  def run(using Context): Unit = {
+  def run(using Context): Unit =
     // ignore, we already called `Semantic.check()` in `runOn`
-  }
+    ()
 
-  class InitTreeTraverser(using WorkList) extends TreeTraverser {
+  class InitTreeTraverser extends TreeTraverser {
+    private val concreteClasses: mutable.ArrayBuffer[ClassSymbol] = new mutable.ArrayBuffer
+
+    def getConcreteClasses(): List[ClassSymbol] = concreteClasses.toList
+
     override def traverse(tree: Tree)(using Context): Unit =
       traverseChildren(tree)
       tree match {
@@ -53,15 +59,14 @@ class Checker extends Phase {
           mdef match
           case tdef: TypeDef if tdef.isClassDef =>
             val cls = tdef.symbol.asClass
-            val thisRef = ThisRef(cls)
-            if shouldCheckClass(cls) then Semantic.addTask(thisRef)
+            if isConcreteClass(cls) then concreteClasses.append(cls)
           case _ =>
 
         case _ =>
       }
   }
 
-  private def shouldCheckClass(cls: ClassSymbol)(using Context) = {
+  private def isConcreteClass(cls: ClassSymbol)(using Context) = {
     val instantiable: Boolean =
       cls.is(Flags.Module) ||
       !cls.isOneOf(Flags.AbstractOrTrait) && {
