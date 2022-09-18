@@ -19,7 +19,7 @@ import scala.collection.mutable
 
 import Semantic._
 
-class Checker extends Phase {
+class Checker extends Phase:
 
   override def phaseName: String = Checker.name
 
@@ -34,19 +34,20 @@ class Checker extends Phase {
     val checkCtx = ctx.fresh.setPhase(this.start)
     val traverser = new InitTreeTraverser()
     units.foreach { unit => traverser.traverse(unit.tpdTree) }
-    val classes = traverser.getConcreteClasses()
+    val classes = traverser.getClasses()
 
     Semantic.checkClasses(classes)(using checkCtx)
+
     units
 
   def run(using Context): Unit =
     // ignore, we already called `Semantic.check()` in `runOn`
     ()
 
-  class InitTreeTraverser extends TreeTraverser {
-    private val concreteClasses: mutable.ArrayBuffer[ClassSymbol] = new mutable.ArrayBuffer
+  class InitTreeTraverser extends TreeTraverser:
+    private val classes: mutable.ArrayBuffer[ClassSymbol] = new mutable.ArrayBuffer
 
-    def getConcreteClasses(): List[ClassSymbol] = concreteClasses.toList
+    def getClasses(): List[ClassSymbol] = classes.toList
 
     override def traverse(tree: Tree)(using Context): Unit =
       traverseChildren(tree)
@@ -59,28 +60,12 @@ class Checker extends Phase {
           mdef match
           case tdef: TypeDef if tdef.isClassDef =>
             val cls = tdef.symbol.asClass
-            if isConcreteClass(cls) then concreteClasses.append(cls)
+            classes.append(cls)
           case _ =>
 
         case _ =>
       }
-  }
-
-  private def isConcreteClass(cls: ClassSymbol)(using Context) = {
-    val instantiable: Boolean =
-      cls.is(Flags.Module) ||
-      !cls.isOneOf(Flags.AbstractOrTrait) && {
-        // see `Checking.checkInstantiable` in typer
-        val tp = cls.appliedRef
-        val stp = SkolemType(tp)
-        val selfType = cls.givenSelfType.asSeenFrom(stp, cls)
-        !selfType.exists || stp <:< selfType
-      }
-
-    // A concrete class may not be instantiated if the self type is not satisfied
-    instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass
-  }
-}
+  end InitTreeTraverser
 
 object Checker:
   val name: String = "initChecker"

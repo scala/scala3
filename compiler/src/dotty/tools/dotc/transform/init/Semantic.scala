@@ -1206,56 +1206,49 @@ object Semantic:
       cls == defn.AnyValClass ||
       cls == defn.ObjectClass
 
-// ----- Work list ---------------------------------------------------
-  class WorkList private[Semantic](tasks: List[ClassSymbol]):
-    /** Process the worklist until done */
-    final def work()(using Cache, Context): Unit =
-      for task <- tasks do doTask(task)
-
-    /** Check an individual class
-     *
-     *  This method should only be called from the work list scheduler.
-     */
-    private def doTask(classSym: ClassSymbol)(using Cache, Context): Unit =
-      val thisRef = ThisRef(classSym)
-      val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-
-      @tailrec
-      def iterate(): Unit = {
-        given Promoted = Promoted.empty(classSym)
-        given Trace = Trace.empty.add(classSym.defTree)
-        given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
-
-        thisRef.ensureFresh()
-
-        // set up constructor parameters
-        for param <- tpl.constr.termParamss.flatten do
-          thisRef.updateField(param.symbol, Hot)
-
-        log("checking " + classSym) { eval(tpl, thisRef, classSym) }
-        reporter.errors.foreach(_.issue)
-
-        if cache.hasChanged && reporter.errors.isEmpty then
-          // code to prepare cache and heap for next iteration
-          cache.prepareForNextIteration()
-          iterate()
-        else
-          cache.prepareForNextClass()
-      }
-
-      iterate()
-    end doTask
-  end WorkList
-
 // ----- API --------------------------------
+
+  /** Check an individual class
+   *
+   *  The class to be checked must be an instantiable concrete class.
+   */
+  private def checkClass(classSym: ClassSymbol)(using Cache, Context): Unit =
+    val thisRef = ThisRef(classSym)
+    val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+
+    @tailrec
+    def iterate(): Unit = {
+      given Promoted = Promoted.empty(classSym)
+      given Trace = Trace.empty.add(classSym.defTree)
+      given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
+
+      thisRef.ensureFresh()
+
+      // set up constructor parameters
+      for param <- tpl.constr.termParamss.flatten do
+        thisRef.updateField(param.symbol, Hot)
+
+      log("checking " + classSym) { eval(tpl, thisRef, classSym) }
+      reporter.errors.foreach(_.issue)
+
+      if cache.hasChanged && reporter.errors.isEmpty then
+        // code to prepare cache and heap for next iteration
+        cache.prepareForNextIteration()
+        iterate()
+      else
+        cache.prepareForNextClass()
+    }
+
+    iterate()
+  end checkClass
 
   /**
    * Check the specified concrete classes
    */
-  def checkClasses(concreteClasses: List[ClassSymbol])(using Context): Unit =
-    val workList = new WorkList(concreteClasses)
-    val cache = new Cache
-    workList.work()(using cache, ctx)
+  def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
+    given Cache()
+    for classSym <- classes if isConcreteClass(classSym) do
+      checkClass(classSym)
 
 // ----- Semantic definition --------------------------------
 
@@ -1765,4 +1758,19 @@ object Semantic:
   def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show) {
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.appliedRef)
+  }
+
+  private def isConcreteClass(cls: ClassSymbol)(using Context) = {
+    val instantiable: Boolean =
+      cls.is(Flags.Module) ||
+      !cls.isOneOf(Flags.AbstractOrTrait) && {
+        // see `Checking.checkInstantiable` in typer
+        val tp = cls.appliedRef
+        val stp = SkolemType(tp)
+        val selfType = cls.givenSelfType.asSeenFrom(stp, cls)
+        !selfType.exists || stp <:< selfType
+      }
+
+    // A concrete class may not be instantiated if the self type is not satisfied
+    instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass
   }
