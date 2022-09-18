@@ -1398,6 +1398,8 @@ object Parsers {
         case _: Match => in.token == MATCH
         case _: New => in.token == NEW
         case _: (ForYield | ForDo) => in.token == FOR
+        case InfixOp(_, Ident(opname), _) => opname == in.name
+        case Apply(Select(_, opname), _) => opname == in.name
         case _ => false
 
       def endName = if in.token == IDENTIFIER then in.name.toString else tokenString(in.token)
