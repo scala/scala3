@@ -595,14 +595,17 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         adjustDeps(newEntry, entry, pref)
         newEntry
 
+      for lo <- lower(param) do
+        current = upperLens.map(this, current, lo, removeParam)
+      for hi <- upper(param) do
+        current = lowerLens.map(this, current, hi, removeParam)
+
       current.foreachParam { (p, i) =>
         current = boundsLens.map(this, current, p, i,
           entry =>
             val newEntry = replaceParam(entry, p, i)
             adjustDeps(newEntry, entry, p.paramRefs(i))
             newEntry)
-        current = lowerLens.map(this, current, p, i, removeParam)
-        current = upperLens.map(this, current, p, i, removeParam)
       }
       current.dropDeps(param)
       current.checkWellFormed()
