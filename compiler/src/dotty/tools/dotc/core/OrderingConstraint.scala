@@ -245,6 +245,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   private class Adjuster(srcParam: TypeParamRef)(using Context) extends TypeTraverser:
     var add: Boolean = compiletime.uninitialized
+    val seen = util.HashSet[LazyRef]()
 
     def update(deps: ReverseDeps, referenced: TypeParamRef): ReverseDeps =
       val prev = deps.at(referenced)
@@ -255,7 +256,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         if contains(param) then
           if variance >= 0 then coDeps = update(coDeps, param)
           if variance <= 0 then contraDeps = update(contraDeps, param)
-      case tp: LazyRef if !tp.completed =>
+      case tp: LazyRef =>
+        if !seen.contains(tp) then
+          seen += tp
+          traverse(tp.ref)
       case _ => traverseChildren(t)
   end Adjuster
 
