@@ -226,6 +226,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   var coDeps, contraDeps: ReverseDeps = SimpleIdentityMap.empty
 
+  extension (deps: ReverseDeps) def at (param: TypeParamRef): SimpleIdentitySet[TypeParamRef] =
+    val result = deps(param)
+    if null == result then SimpleIdentitySet.empty else result
+
   def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean =
     def origin(tv: TypeVar) =
       assert(!tv.isInstantiated)
@@ -234,8 +238,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     val excluded = except.map(origin)
     val qualifies: TypeParamRef => Boolean = !excluded.contains(_)
     def test(deps: ReverseDeps, lens: ConstraintLens[List[TypeParamRef]]) =
-      val depending = deps(param)
-      null != depending && depending.exists(qualifies)
+      deps.at(param).exists(qualifies)
       || lens(this, tv.origin.binder, tv.origin.paramNum).exists(qualifies)
         //.showing(i"outer depends on $tv with ${tvdeps.toList}%, % = $result")
     if co then test(coDeps, upperLens) else test(contraDeps, lowerLens)
@@ -244,10 +247,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     var add: Boolean = compiletime.uninitialized
 
     def update(deps: ReverseDeps, referenced: TypeParamRef): ReverseDeps =
-      val entry = deps(referenced)
-      val prev = if null == entry then SimpleIdentitySet.empty else entry
-      val now = if add then prev + srcParam else prev - srcParam
-      deps.updated(referenced, now)
+      val prev = deps.at(referenced)
+      deps.updated(referenced, if add then prev + srcParam else prev - srcParam)
 
     def traverse(t: Type) = t match
       case param: TypeParamRef =>
@@ -335,9 +336,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   /** A string representing the two depenecy maps */
   def depsToString(using Context): String =
     def depsStr(deps: ReverseDeps): String =
-      def depStr(param: TypeParamRef) = i"$param --> ${deps(param).nn.toList}%, %"
-      if deps.isEmpty then "" else i"\n  ${deps.toList.map((k, v) => depStr(k))}%\n  %"
-    i"co-deps:${depsStr(coDeps)}\ncontra-deps:${depsStr(contraDeps)}\n"
+      def depStr(param: TypeParamRef) = i"$param --> ${deps.at(param).toList}%, %"
+      if deps.isEmpty then "" else i"\n     ${deps.toList.map((k, v) => depStr(k))}%\n     %"
+    i" co-deps:${depsStr(coDeps)}\n contra-deps:${depsStr(contraDeps)}\n"
 
 // ---------- Adding TypeLambdas --------------------------------------------------
 
@@ -550,11 +551,14 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case _ =>
       Nil
 
-  private def updateEntry(current: This, param: TypeParamRef, tp: Type)(using Context): This = {
-    if Config.checkNoWildcardsInConstraint then assert(!tp.containsWildcardTypes)
-    var current1 = boundsLens.update(this, current, param, tp)
-    current1.adjustDeps(tp, current.entry(param), param)
-    tp match {
+  private def updateEntryNoOrdering(current: This, param: TypeParamRef, newEntry: Type, oldEntry: Type)(using Context): This =
+    boundsLens.update(this, current, param, newEntry).adjustDeps(newEntry, oldEntry, param)
+
+  private def updateEntry(current: This, param: TypeParamRef, newEntry: Type)(using Context): This = {
+    //println(i"update $param to $tp in $current")
+    if Config.checkNoWildcardsInConstraint then assert(!newEntry.containsWildcardTypes)
+    var current1 = updateEntryNoOrdering(current, param, newEntry, current.entry(param))
+    newEntry match {
       case TypeBounds(lo, hi) =>
         for p <- dependentParams(lo, isUpper = false) do
           current1 = order(current1, p, param)
@@ -758,6 +762,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       checkDeps(coDeps)
       checkDeps(contraDeps)
     this
+  end checkWellFormed
 
   def occursAtToplevel(param: TypeParamRef, inst: Type)(using Context): Boolean =
 

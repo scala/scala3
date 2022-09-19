@@ -22,7 +22,7 @@ object Config {
    */
   inline val checkConstraintsNonCyclic = false
 
-  inline val checkConstraintDeps = false
+  inline val checkConstraintDeps = true
 
   /** Check that each constraint resulting from a subtype test
    *  is satisfiable. Also check that a type variable instantiation
