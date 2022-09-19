@@ -241,7 +241,6 @@ private sealed trait XSettings:
   val XcheckMacros: Setting[Boolean] = BooleanSetting("-Xcheck-macros", "Check some invariants of macro generated code while expanding macros", aliases = List("--Xcheck-macros"))
   val XmainClass: Setting[String] = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XimplicitSearchLimit: Setting[Int] = IntSetting("-Ximplicit-search-limit", "Maximal number of expressions to be generated in an implicit search", 50000)
-  val XlegacyLazyVals: Setting[Boolean] = BooleanSetting("-Xlegacy-lazy-values", "Use legacy lazy vals implementations")
 
   val XmixinForceForwarders = ChoiceSetting(
     name    = "-Xmixin-force-forwarders",
@@ -331,6 +330,7 @@ private sealed trait YSettings:
   val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only)")
   val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references")
   val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with captureChecking language import, suppress type abbreviations")
+  val YlightweightLazyVals: Setting[Boolean] = BooleanSetting("-Ylightweight-lazy-vals", "Use experimental lightweight implementation of lazy vals")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

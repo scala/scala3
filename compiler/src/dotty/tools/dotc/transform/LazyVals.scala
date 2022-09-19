@@ -2,21 +2,22 @@ package dotty.tools.dotc
 package transform
 
 import java.util.IdentityHashMap
-
 import ast.tpd
 import core.Annotations.Annotation
 import core.Constants.Constant
-import core.Contexts._
-import core.Decorators._
+import core.Contexts.*
+import core.Decorators.*
 import core.DenotTransformers.IdentityDenotTransformer
-import core.Flags._
-import core.NameKinds.{LazyBitMapName, LazyLocalInitName, LazyLocalName, ExpandedName}
+import core.Flags.*
+import core.NameKinds.{ExpandedName, LazyBitMapName, LazyLocalInitName, LazyLocalName}
 import core.StdNames.nme
-import core.Symbols._
-import core.Types._
+import core.Symbols.*
+import core.Types.*
 import core.{Names, StdNames}
+import dotty.tools.dotc.config.Feature
 import transform.MegaPhase.MiniPhase
-import transform.SymUtils._
+import transform.SymUtils.*
+
 import scala.collection.mutable
 
 class LazyVals extends MiniPhase with IdentityDenotTransformer {
@@ -58,9 +59,6 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     if (nullables == null) Nil
     else nullables.toList
   }
-
-  private inline def isLegacyLazyVals(using ctx: Context): Boolean =
-    ctx.settings.XlegacyLazyVals.value
 
   private def needsBoxing(tp: Type)(using Context): Boolean = tp != NoType && tp != defn.UnitType && tp.classSymbol.isPrimitiveValueClass
     
@@ -120,7 +118,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
    */
   override def transformTemplate(template: Template)(using Context): Tree = {
     val cls = ctx.owner.asClass
-    (if isLegacyLazyVals then oldAppendOffsetDefs else appendOffsetDefs).get(cls) match {
+    (if !ctx.settings.YlightweightLazyVals.value then oldAppendOffsetDefs else appendOffsetDefs).get(cls) match {
       case None => template
       case Some(data) =>
         data.defs.foreach(_.symbol.addAnnotation(Annotation(defn.ScalaStaticAnnot)))
@@ -338,10 +336,15 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
    *     val current: AnyRef = _x
    *     if current == null then
    *       if CAS(_x, null, Evaluating) then
+   *         var resultNullable: AnyRef = null
    *         var result: AnyRef = null
    *         try
+   *           resultNullable = rhs
    *           nullable = null
-   *           if result == null then result = NullValue
+   *           if resultNullable == null then
+   *             result = NullValue
+   *           else
+   *             result = resultNullable
    *           return result
    *         finally
    *            if !CAS(_x, Evaluating, result) then
@@ -417,6 +420,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     // if observed a null (uninitialized) value
     val initialize = {
       // var result: AnyRef
+      val resSymbNullable = newSymbol(lazyInitMethodSymbol, lazyNme.resultNullable, Synthetic | Mutable, defn.ObjectType)
       val resSymb = newSymbol(lazyInitMethodSymbol, lazyNme.result, Synthetic | Mutable, defn.ObjectType)
       // releasing block in finally
       val lockRel = {
@@ -430,26 +434,26 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
           objCasFlag.appliedTo(thiz, offset, evaluating, ref(resSymb)).select(nme.UNARY_!).appliedToNone,
           lockRel,
           unitLiteral
-        ) :: Nil, Return(ref(resSymb), lazyInitMethodSymbol)).withType(defn.UnitType)
+        ) :: Nil, unitLiteral).withType(defn.UnitType)
       // entire try block
       val evaluate = Try(
 
         Block(
-          (Assign(ref(resSymb), if needsBoxing(tp) && rhsMappedOwner != EmptyTree then rhsMappedOwner.ensureConforms(boxIfCan(tp)) else rhsMappedOwner) // try result = rhs
+          (Assign(ref(resSymbNullable), if needsBoxing(tp) && rhsMappedOwner != EmptyTree then rhsMappedOwner.ensureConforms(boxIfCan(tp)) else rhsMappedOwner) // try result = rhs
           :: If(
-              ref(resSymb).select(defn.Any_==).appliedTo(nullLiteral),
+              ref(resSymbNullable).select(defn.Any_==).appliedTo(nullLiteral),
               Assign(ref(resSymb), nullValue),
-              unitLiteral
+              Assign(ref(resSymb), ref(resSymbNullable))
           ) :: Nil)
           ::: nullOut(nullableFor(accessorMethodSymbol)),
-          unitLiteral),
+          Return(ref(resSymbNullable), lazyInitMethodSymbol)),
         Nil,
         fin
       )
       // if CAS(_, null, Evaluating)
       If(
         objCasFlag.appliedTo(thiz, offset, nullLiteral, evaluating),
-        Block(ValDef(resSymb, nullLiteral) :: Nil, // var result: AnyRef = null
+        Block(ValDef(resSymb, nullLiteral) :: ValDef(resSymbNullable, nullLiteral) :: Nil, // var result: AnyRef = null
           evaluate), // try ... finally ...
         unitLiteral
       ).withType(defn.UnitType)
@@ -490,10 +494,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   def transformMemberDefThreadSafe(x: ValOrDefDef)(using Context): Thicket = {
     assert(!(x.symbol is Mutable))
-    if isLegacyLazyVals then
-      transformMemberDefThreadSafeLegacy(x)
-    else
+    if ctx.settings.YlightweightLazyVals.value then
       transformMemberDefThreadSafeNew(x)
+    else
+      transformMemberDefThreadSafeLegacy(x)
   }
 
   def transformMemberDefThreadSafeNew(x: ValOrDefDef)(using Context): Thicket = {
@@ -741,6 +745,7 @@ object LazyVals {
     val flag: TermName        = "flag".toTermName
     val state: TermName       = "state".toTermName
     val result: TermName      = "result".toTermName
+    val resultNullable: TermName      = "resultNullable".toTermName
     val value: TermName       = "value".toTermName
     val initialized: TermName = "initialized".toTermName
     val initialize: TermName  = "initialize".toTermName

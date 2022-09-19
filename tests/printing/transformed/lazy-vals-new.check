@@ -24,6 +24,14 @@ package <empty> {
       new scala.runtime.ModuleSerializationProxy(classOf[A])
     @volatile lazy <static> var x$lzy1: Object = null
     lazy def x(): Int = 
+      {
+        var result: Object = A#x$lzy1
+        if result.isInstanceOf[Int] then return scala.Int.unbox(result) else 
+          if result.==(scala.runtime.LazyVals.NullValue) then 
+            return scala.Int.unbox(null)
+           else return scala.Int.unbox(A.x$lzyINIT1())
+      }
+    private def x$lzyINIT1(): Object = 
       while <empty> do 
         {
           val current: Object = A#x$lzy1
@@ -35,40 +43,50 @@ package <empty> {
              then 
               {
                 var result: Object = null
+                var resultNullable: Object = null
                 try 
                   {
-                    result = scala.Int.box(2)
-                    if result.==(null) then 
+                    resultNullable = scala.Int.box(2)
+                    if resultNullable.==(null) then 
                       result = scala.runtime.LazyVals.NullValue
+                     else result = resultNullable
+                    return resultNullable
                   }
                  finally 
-                  if 
-                    scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
-                      scala.runtime.LazyVals.Evaluating
-                    , result).unary_!()
-                   then 
-                    {
-                      val lock: scala.runtime.LazyVals.LazyVals$Waiting = 
-                        A#x$lzy1.asInstanceOf[
-                          scala.runtime.LazyVals.LazyVals$Waiting
-                        ]
+                  {
+                    if 
                       scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
-                        lock
-                      , result)
-                      lock.countDown()
-                    }
+                        scala.runtime.LazyVals.Evaluating
+                      , result).unary_!()
+                     then 
+                      {
+                        val lock: scala.runtime.LazyVals.LazyVals$Waiting = 
+                          A#x$lzy1.asInstanceOf[
+                            scala.runtime.LazyVals.LazyVals$Waiting
+                          ]
+                        scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0
+                          , 
+                        lock, result)
+                        lock.countDown()
+                      }
+                     else ()
+                    ()
+                  }
               }
+             else ()
            else 
-            if current.isInstanceOf[scala.runtime.LazyVals.Evaluating] then 
-              {
-                scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
-                  scala.runtime.LazyVals.Evaluating
-                , new scala.runtime.LazyVals.LazyVals$Waiting())
-                ()
-              }
-             else 
-              if current.isInstanceOf[scala.runtime.LazyVals.NullValue] then 
-                return 0
+            if 
+              current.isInstanceOf[
+                scala.runtime.LazyVals.LazyVals$LazyValControlState
+              ]
+             then 
+              if current.==(scala.runtime.LazyVals.Evaluating) then 
+                {
+                  scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
+                    scala.runtime.LazyVals.Evaluating
+                  , new scala.runtime.LazyVals.LazyVals$Waiting())
+                  ()
+                }
                else 
                 if current.isInstanceOf[scala.runtime.LazyVals.LazyVals$Waiting]
                    then
@@ -76,8 +94,13 @@ package <empty> {
                   current.asInstanceOf[scala.runtime.LazyVals.LazyVals$Waiting].
                     await
                   ()
-                 else return scala.Int.unbox(current)
+                 else 
+                  if current.==(scala.runtime.LazyVals.NullValue) then 
+                    return null
+                   else ()
+             else return current
         }
   }
   final lazy module val A: A = new A()
-} 
+}
+
