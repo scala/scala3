@@ -33,7 +33,7 @@ class Scaladoc2ExternalLocationProviderIntegrationTest extends ExternalLocationP
     "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
     "https://www.scala-lang.org/api/current/scala/Predef$.html#String",
     "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html",
-    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):StringBuilder",
+    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):b.type",
     "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String",
     "https://external.stubs/api/tests/externalStubs/$div$bslash$.html",
     "https://external.stubs/api/tests/externalStubs/$bslash$div$.html"
@@ -67,7 +67,7 @@ class Scaladoc2LegacyExternalLocationProviderIntegrationTest extends LegacyExter
     "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
     "https://www.scala-lang.org/api/current/scala/Predef$.html#String",
     "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html",
-    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):StringBuilder",
+    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):b.type",
     "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String"
   )
 )
