@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main # default branch of the project
+permissions:
+  contents: read # to fetch code (actions/checkout)
 jobs:
   dependency-graph:
     name: Update Dependency Graph
