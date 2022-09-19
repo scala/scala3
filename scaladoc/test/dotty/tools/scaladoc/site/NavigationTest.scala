@@ -25,11 +25,11 @@ class NavigationTest extends BaseHtmlTest:
       NavMenuTestEntry("A directory", "dir/index.html", Seq(
         NavMenuTestEntry("Nested in a directory", "dir/nested.html", Nil)
       )),
-      NavMenuTestEntry("Adoc", "Adoc.html", Seq())
+      NavMenuTestEntry("Adoc", "#", Seq())
     )
 
     val apiNav = Seq(
-      NavMenuTestEntry("tests.site", "site.html", Seq(
+      NavMenuTestEntry("tests.site", "#", Seq(
         NavMenuTestEntry("some.other", "site/some/other.html", Seq(
           NavMenuTestEntry("SomeOtherPackage", "site/some/other/SomeOtherPackage.html", Nil),
         )),

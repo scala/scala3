@@ -44,10 +44,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  $(".side-menu span").on('click', function () {
-    $(this).parent().toggleClass("expanded")
-  });
-
   $(".ar").on('click', function (e) {
     $(this).parent().parent().toggleClass("expanded")
     $(this).toggleClass("expanded")
@@ -55,9 +51,12 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
-    el.lastChild.click()
-    el.first.addClass("expanded")
-    el.parent.addClass("expanded")
+    if (el.lastChild.href.replace("#", "") === window.location.href.replace("#", "")) {
+      el.parentElement.classList.toggle("expanded")
+      el.firstChild.classList.toggle("expanded")
+    } else {
+      el.lastChild.click()
+    }
   }))
 
   document.querySelectorAll(".supertypes").forEach(el => el.firstChild.addEventListener('click', () => {
@@ -69,12 +68,6 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".subtypes").forEach(el => el.firstChild.addEventListener('click', () => {
     el.classList.toggle("collapsed");
     el.firstChild.classList.toggle("expand");
-  }))
-
-  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
-    el.lastChild.click()
-    el.first.addClass("expanded")
-    el.parent.addClass("expanded")
   }))
 
   const observer = new IntersectionObserver(entries => {
@@ -91,8 +84,6 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll('#content section[id]').forEach((section) => {
     observer.observe(section);
   });
-
-  document.querySelectorAll(".side-menu a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
   if (location.hash) {
     var target = location.hash.substring(1);
