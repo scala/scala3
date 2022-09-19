@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package transform
 
-import ast.Trees._, ast.tpd, core._
-import Contexts._, Types._, Decorators._, Symbols._, DenotTransformers._
-import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
+import core.*
+import Contexts.*, Types.*, Symbols.*, DenotTransformers.*
+import StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
 
 import scala.collection.mutable

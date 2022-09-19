@@ -9,7 +9,7 @@ import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition, Chars}
-import config.Feature.{sourceVersion, migrateTo3, enabled}
+import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion._
 import collection.mutable.ListBuffer
 import reporting._

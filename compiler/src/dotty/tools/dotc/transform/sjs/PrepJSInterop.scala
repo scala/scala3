@@ -14,7 +14,7 @@ import Contexts._
 import Decorators._
 import DenotTransformers._
 import Flags._
-import NameKinds.{DefaultGetterName, ModuleClassName}
+import NameKinds.DefaultGetterName
 import NameOps._
 import StdNames._
 import Symbols._

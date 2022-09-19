@@ -8,7 +8,6 @@ import Symbols._
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
 
-import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 

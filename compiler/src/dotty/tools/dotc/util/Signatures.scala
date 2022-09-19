@@ -11,8 +11,6 @@ import core.NameOps.isUnapplyName
 import core.Names._
 import core.NameKinds
 import core.Types._
-import core.Symbols.NoSymbol
-import interactive.Interactive
 import util.Spans.Span
 import reporting._
 

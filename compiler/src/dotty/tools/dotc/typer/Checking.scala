@@ -26,7 +26,7 @@ import inlines.Inlines
 import transform.SymUtils._
 import transform.ValueClasses._
 import Decorators._
-import ErrorReporting.{err, errorType}
+import ErrorReporting.errorType
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import NameOps._

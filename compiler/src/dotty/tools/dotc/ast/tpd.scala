@@ -7,7 +7,6 @@ import typer.ProtoTypes
 import transform.SymUtils._
 import transform.TypeUtils._
 import core._
-import Scopes.newScope
 import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._

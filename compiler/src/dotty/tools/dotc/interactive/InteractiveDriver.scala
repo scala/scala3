@@ -8,17 +8,15 @@ import java.net.URI
 import java.io._
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.charset.StandardCharsets
 import java.util.zip._
 
 import scala.collection._
-import scala.io.Codec
 
 import dotty.tools.io.AbstractFile
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
-import Contexts._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Contexts.*, Names.*, NameOps.*, Symbols.*, SymDenotations.*, Types.*
 import Denotations.staticRef
 import classpath._
 import reporting._

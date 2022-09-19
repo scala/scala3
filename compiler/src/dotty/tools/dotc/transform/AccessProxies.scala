@@ -11,7 +11,6 @@ import NameOps._
 import Decorators._
 import TypeUtils._
 import Types._
-import util.Spans.Span
 import config.Printers.transforms
 
 /** A utility class for generating access proxies. Currently used for

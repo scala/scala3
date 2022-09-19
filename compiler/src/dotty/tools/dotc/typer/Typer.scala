@@ -50,7 +50,6 @@ import reporting._
 import Nullables._
 import NullOpsDecorator._
 import cc.CheckCaptures
-import config.Config
 
 import scala.annotation.constructorOnly
 

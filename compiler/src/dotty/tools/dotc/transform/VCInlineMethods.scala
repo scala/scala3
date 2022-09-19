@@ -4,7 +4,7 @@ package transform
 
 import ast.{Trees, tpd}
 import core._
-import Contexts._, Trees._, Types._
+import Contexts.*, Types.*
 import DenotTransformers._, MegaPhase._
 import ExtensionMethods._, ValueClasses._
 

@@ -14,7 +14,6 @@ import ast.untpd
 import transform.SymUtils._
 import transform.TypeUtils._
 import transform.SyntheticMembers._
-import util.Property
 import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
 import ast.tpd._

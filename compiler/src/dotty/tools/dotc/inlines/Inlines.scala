@@ -4,7 +4,6 @@ package inlines
 
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
-import StdNames.tpnme
 import transform.SymUtils._
 import typer.*
 import NameKinds.BodyRetainerName
@@ -16,7 +15,6 @@ import parsing.Parsers.Parser
 import transform.{PostTyper, Inlining, CrossVersionChecks}
 
 import collection.mutable
-import reporting.trace
 import util.Spans.Span
 
 /** Support for querying inlineable methods and for inlining calls to such methods */

@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core._
-import Contexts._, Symbols._, Decorators._
+import Contexts.*
 import MegaPhase._
 
 /** Rewrite `{ stats; expr}.f(args)` to `{ stats; expr.f(args) }` and

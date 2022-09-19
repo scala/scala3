@@ -12,7 +12,6 @@ import util.{Stats, SimpleIdentityMap, SrcPos}
 import Decorators._
 import config.Printers.{gadts, typr}
 import annotation.tailrec
-import reporting._
 import collection.mutable
 
 import scala.annotation.internal.sharable

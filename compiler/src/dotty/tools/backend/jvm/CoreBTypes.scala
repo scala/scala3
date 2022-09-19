@@ -6,7 +6,6 @@ package jvm
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.Erasure
 import scala.tools.asm.{Handle, Opcodes}
-import dotty.tools.dotc.core.StdNames
 
 /**
  * Core BTypes and some other definitions. The initialization of these definitions requies access

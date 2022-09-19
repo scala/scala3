@@ -6,7 +6,7 @@ import core._
 import ast._
 import ast.Trees._
 import StdNames._
-import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
+import Contexts.*, Symbols.*, Types.*, Names.*, Flags.*, Decorators.*
 import ProtoTypes._, ContextOps._
 import util.Spans._
 import util.SrcPos

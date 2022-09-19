@@ -9,7 +9,7 @@ import scala.collection.mutable
 import core._
 import Decorators._
 import Flags.Mutable
-import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
+import Names.*, StdNames.*, ast.{tpd, untpd}
 import Symbols._, Contexts._
 import util.Spans._
 import Parsers.Parser

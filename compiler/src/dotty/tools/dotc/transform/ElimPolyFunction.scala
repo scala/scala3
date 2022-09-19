@@ -3,10 +3,9 @@ package transform
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
-import MegaPhase._, Phases.Phase
-import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
-import TypeErasure.ErasedValueType, ValueClasses._
+import MegaPhase.*
+import Types.*, Contexts.*, DenotTransformers.*
+import SymDenotations.*, Symbols.*, StdNames.*, Denotations.*
 
 /** This phase rewrite PolyFunction subclasses to FunctionN subclasses
  *

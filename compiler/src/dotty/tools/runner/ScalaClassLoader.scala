@@ -4,7 +4,6 @@ package runner
 import scala.language.unsafeNulls
 
 import java.lang.ClassLoader
-import java.lang.invoke.{MethodHandles, MethodType}
 import java.lang.reflect.Modifier
 import java.net.{ URL, URLClassLoader }
 import java.lang.reflect.{ InvocationTargetException, UndeclaredThrowableException }

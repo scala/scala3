@@ -13,7 +13,7 @@ import Scopes._
 import Uniques._
 import ast.Trees._
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
+import util.{NoSource, SimpleIdentityMap, SourceFile, ReusableInstance}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
 import Nullables._
@@ -37,7 +37,6 @@ import util.Property.Key
 import util.Store
 import xsbti.AnalysisCallback
 import plugins._
-import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 
 object Contexts {

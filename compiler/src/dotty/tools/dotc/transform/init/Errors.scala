@@ -8,7 +8,7 @@ import core._
 import util.SourcePosition
 import util.Property
 import Decorators._, printing.SyntaxHighlighting
-import Types._, Symbols._, Contexts._
+import Symbols.*, Contexts.*
 
 import scala.collection.mutable
 

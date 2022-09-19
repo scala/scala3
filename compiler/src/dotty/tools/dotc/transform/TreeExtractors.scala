@@ -3,7 +3,7 @@ package transform
 
 import ast.{Trees, tpd}
 import core._
-import Contexts._, Trees._, Types._, StdNames._, Symbols._
+import Contexts.*, Types.*, StdNames.*, Symbols.*
 import ValueClasses._
 
 object TreeExtractors {

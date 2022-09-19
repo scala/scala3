@@ -21,7 +21,7 @@ import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.{AbstractFile, ZipArchive}
+import io.AbstractFile
 import scala.util.control.NonFatal
 
 object ClassfileParser {

@@ -2,8 +2,6 @@ package dotty.tools.dotc
 package typer
 
 import dotty.tools.dotc.ast._
-import dotty.tools.dotc.config.Feature._
-import dotty.tools.dotc.config.SourceVersion._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Contexts._

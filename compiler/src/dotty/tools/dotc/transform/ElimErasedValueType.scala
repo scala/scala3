@@ -3,10 +3,10 @@ package dotc
 package transform
 
 import ast.{Trees, tpd}
-import core._, core.Decorators._
+import core.*
 import MegaPhase._
 import Types._, Contexts._, Flags._, DenotTransformers._, Phases._
-import Symbols._, StdNames._, Trees._
+import Symbols.*, StdNames.*
 import TypeErasure.ErasedValueType, ValueClasses._
 import reporting._
 import NameKinds.SuperAccessorName

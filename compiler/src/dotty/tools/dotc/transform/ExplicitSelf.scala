@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts._, Types._, MegaPhase._, ast.Trees._, Symbols._, Decorators._, Flags._
+import Contexts.*, Types.*, MegaPhase.*, Symbols.*, Decorators.*, Flags.*
 import SymUtils.*
 
 /** Transform references of the form

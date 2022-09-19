@@ -18,7 +18,7 @@ import collection.mutable
 class InlineReducer(inliner: Inliner)(using Context):
   import tpd.*
   import Inliner.{isElideableExpr, DefBuffer}
-  import inliner.{call, newSym, tryInlineArg, paramBindingDef}
+  import inliner.{call, newSym, paramBindingDef}
 
   extension (tp: Type)
     /** same as widenTermRefExpr, but preserves modules and singleton enum values */

@@ -12,7 +12,6 @@ import MegaPhase.MiniPhase
 import ast.tpd
 import SymUtils._
 import config.Feature
-import Decorators.*
 
 /** This phase makes all erased term members of classes private so that they cannot
  *  conflict with non-erased members. This is needed so that subsequent phases like

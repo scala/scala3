@@ -16,7 +16,7 @@ import Denotations._
 import SymDenotations._
 import StdNames.{nme, tpnme}
 import ast.{Trees, tpd, untpd}
-import typer.{Implicits, Namer, Applications}
+import typer.{Implicits, Namer}
 import typer.ProtoTypes._
 import Trees._
 import TypeApplications._
@@ -28,7 +28,7 @@ import config.Config
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, toCaptureSet, IllegalCaptureRef}
+import cc.{toCaptureSet, IllegalCaptureRef}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 

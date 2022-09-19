@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
+import Types.*, Contexts.*, Symbols.*, Flags.*, Names.*, Denotations.*
 import Decorators._
 import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
-import util.{Stats, NoSourcePosition, EqHashMap}
+import util.{Stats, NoSourcePosition}
 import config.Config
 import config.Feature.migrateTo3
 import config.Printers.{subtyping, gadts, matchTypes, noPrinter}

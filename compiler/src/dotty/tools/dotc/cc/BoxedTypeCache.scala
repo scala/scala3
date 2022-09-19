@@ -3,7 +3,7 @@ package dotc
 package cc
 
 import core.*
-import Types.*, Symbols.*, Contexts.*
+import Types.*, Contexts.*
 
 /** A one-element cache for the boxed version of an unboxed capturing type */
 class BoxedTypeCache:

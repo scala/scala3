@@ -10,7 +10,6 @@ import Symbols._, Contexts._, Types._, StdNames._, NameOps._
 import util.Spans._
 import typer.Applications.*
 import SymUtils._
-import TypeUtils.*
 import Flags._, Constants._
 import Decorators._
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}

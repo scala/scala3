@@ -22,7 +22,6 @@ import StdNames._
 import ProtoTypes._
 import ErrorReporting._
 import Inferencing.{fullyDefinedType, isFullyDefined}
-import Scopes.newScope
 import transform.TypeUtils._
 import Hashable._
 import util.{EqHashMap, Stats}

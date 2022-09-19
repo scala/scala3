@@ -8,21 +8,15 @@ import Types._
 import Contexts._
 import Symbols._
 import Constants._
-import ast.Trees._
-import ast.TreeTypeMap
 import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.config.ScalaRelease.*
 
-import scala.collection.mutable
-import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.inlines.Inlines
 
-import scala.annotation.constructorOnly
 
 /** Translates quoted terms and types to `unpickleExprV2` or `unpickleType` method calls.
  *
@@ -73,7 +67,6 @@ import scala.annotation.constructorOnly
  *
  */
 class PickleQuotes extends MacroTransform {
-  import PickleQuotes._
   import tpd._
 
   override def phaseName: String = PickleQuotes.name

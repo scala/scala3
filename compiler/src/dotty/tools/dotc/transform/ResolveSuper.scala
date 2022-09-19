@@ -12,7 +12,6 @@ import DenotTransformers._
 import Names._
 import NameOps._
 import NameKinds._
-import NullOpsDecorator._
 import ResolveSuper._
 import reporting.IllegalSuperAccessor
 

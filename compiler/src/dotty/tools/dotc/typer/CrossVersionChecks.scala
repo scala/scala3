@@ -5,7 +5,7 @@ package transform
 import core.*
 import Symbols.*, Types.*, Contexts.*, Flags.*, SymUtils.*, Decorators.*, reporting.*
 import util.SrcPos
-import config.{ScalaVersion, NoScalaVersion, Feature, ScalaRelease}
+import config.{ScalaVersion, NoScalaVersion, Feature}
 import MegaPhase.MiniPhase
 import scala.util.{Failure, Success}
 import ast.tpd

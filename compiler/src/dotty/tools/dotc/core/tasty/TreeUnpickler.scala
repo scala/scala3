@@ -31,7 +31,6 @@ import util.{SourceFile, Property}
 import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
-import transform.SymUtils._
 import cc.adaptFunctionTypeUnderCC
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}

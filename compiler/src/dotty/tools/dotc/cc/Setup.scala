@@ -3,13 +3,12 @@ package dotc
 package cc
 
 import core._
-import Phases.*, DenotTransformers.*, SymDenotations.*
-import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
+import DenotTransformers.*, SymDenotations.*
+import Contexts.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*
 import config.Printers.capt
 import ast.tpd
 import transform.Recheck.*
-import CaptureSet.IdentityCaptRefMap
 import Synthetics.isExcluded
 
 /** A tree traverser that prepares a compilation unit to be capture checked.

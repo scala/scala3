@@ -8,7 +8,7 @@ import scala.collection._
 
 import ast.{NavigateAST, Trees, tpd, untpd}
 import core._
-import Decorators._, ContextOps._
+import ContextOps.*
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
 import transform.SymUtils._
 import util.Spans._, util.SourceFile, util.SourcePosition

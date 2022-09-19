@@ -1,6 +1,5 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.config.Printers._
 import dotty.tools.dotc.core.Contexts._

@@ -6,7 +6,6 @@
 
 package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.internal._
-import scala.annotation.internal.sharable
 
 sealed abstract class Schema(val value: _root_.scala.Int)  extends SemanticdbGeneratedEnum  derives CanEqual {
   type EnumType = Schema

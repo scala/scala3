@@ -2,10 +2,10 @@ package dotty.tools.dotc
 package transform
 
 import ast.{Trees, tpd}
-import core._, core.Decorators._
+import core.*
 import MegaPhase._
-import Types._, Contexts._, Flags._, DenotTransformers._
-import Symbols._, StdNames._, Trees._
+import Contexts.*
+import Symbols.*
 
 object PureStats {
   val name: String = "pureStats"

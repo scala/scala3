@@ -3,17 +3,14 @@ package dotc
 package cc
 
 import core.*
-import Types.*, Symbols.*, Flags.*, Contexts.*, Decorators.*
+import Types.*, Symbols.*, Contexts.*, Decorators.*
 import config.Printers.capt
 import Annotations.Annotation
-import annotation.threadUnsafe
 import annotation.constructorOnly
 import annotation.internal.sharable
-import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, Property}
-import util.common.alwaysTrue
 import scala.collection.mutable
 import config.Config.ccAllowUnsoundMaps
 

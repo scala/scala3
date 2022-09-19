@@ -8,7 +8,6 @@ import scala.io.Codec
 import Int.MaxValue
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import util.Chars.{isOperatorPart, digit2int}
-import Decorators.*
 import Definitions._
 import nme._
 

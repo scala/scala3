@@ -3,22 +3,19 @@ package dotc
 package cc
 
 import core.*
-import Phases.*, DenotTransformers.*, SymDenotations.*
+import DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
-import Types.*, StdNames.*
-import config.Printers.{capt, recheckr}
-import config.Config
-import ast.{tpd, untpd, Trees}
-import Trees.*
+import Types.*
+import config.Printers.capt
+import ast.{tpd, Trees}
 import typer.RefChecks.{checkAllOverrides, checkParents}
-import util.{SimpleIdentitySet, EqHashMap, SrcPos}
+import util.{EqHashMap, SrcPos}
 import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
 import Recheck.*
 import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap}
 import StdNames.nme
-import reporting.trace
 
 /** The capture checker */
 object CheckCaptures:

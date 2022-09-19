@@ -1,6 +1,5 @@
 package scala.util
 import scala.math.{BigInt}
-import quoted._
 import annotation.internal.sharable
 
 

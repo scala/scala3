@@ -9,7 +9,7 @@ import SymDenotations.LazyType
 import Decorators._
 import util.Stats._
 import Names._
-import Flags.{Module, Provisional}
+import Flags.Module
 import dotty.tools.dotc.config.Config
 import cc.boxedUnlessFun
 

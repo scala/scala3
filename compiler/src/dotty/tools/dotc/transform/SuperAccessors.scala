@@ -6,7 +6,7 @@ import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.mutable
 import ValueClasses.isMethodWithExtension
 import core._
-import Contexts._, Flags._, Symbols._, Names._, StdNames._, NameOps._, Trees._
+import Contexts.*, Flags.*, Symbols.*, Names.*, StdNames.*, NameOps.*
 import TypeUtils._, SymUtils._
 import DenotTransformers.DenotTransformer
 import Symbols._

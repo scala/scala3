@@ -10,10 +10,10 @@ import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
-import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._, Phases._
+import StdNames.*, Denotations.*, NameOps.*, Flags.*, Constants.*, Annotations.*
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import util.Spans._
-import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
+import dotty.tools.dotc.ast.untpd, ast.tpd.*
 import ast.untpd.Modifiers
 import backend.sjs.JSDefinitions
 import printing.Texts._

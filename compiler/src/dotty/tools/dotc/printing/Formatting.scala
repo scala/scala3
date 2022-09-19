@@ -11,7 +11,6 @@ import Texts._, Types._, Flags._, Symbols._, Contexts._
 import Decorators._
 import reporting.Message
 import util.DiffUtil
-import Highlighting._
 
 object Formatting {
 

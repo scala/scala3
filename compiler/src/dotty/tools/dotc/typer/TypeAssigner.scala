@@ -10,7 +10,7 @@ import util.SrcPos
 import NameOps._
 import collection.mutable
 import reporting._
-import Checking.{checkNoPrivateLeaks, checkNoWildcard}
+import Checking.checkNoPrivateLeaks
 import cc.CaptureSet
 
 trait TypeAssigner {

@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core._
-import Contexts._, Types._, Symbols._, Flags._, TypeUtils._, DenotTransformers._, StdNames._
+import Contexts.*, Symbols.*, Flags.*, TypeUtils.*, DenotTransformers.*, StdNames.*
 import Decorators._
 import MegaPhase._
 import NameKinds.ParamAccessorName

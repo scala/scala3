@@ -20,17 +20,13 @@ import reporting.Diagnostic
 import reporting.Diagnostic.Warning
 import rewrites.Rewrites
 import profile.Profiler
-import printing.XprintMode
 import typer.ImplicitRunInfo
 import config.Feature
 import StdNames.nme
 
-import java.io.{BufferedWriter, OutputStreamWriter}
-import java.nio.charset.StandardCharsets
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
-import scala.io.Codec
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {

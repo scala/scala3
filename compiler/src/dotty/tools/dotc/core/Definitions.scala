@@ -8,13 +8,12 @@ import Flags._, Scopes._, Decorators._, NameOps._, Periods._, NullOpsDecorator._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
-import Denotations.{SingleDenotation, staticRef}
+import Denotations.staticRef
 import util.{SimpleIdentityMap, SourceFile, NoSource}
 import typer.ImportInfo.RootRef
 import Comments.CommentsContext
 import Comments.Comment
 import util.Spans.NoSpan
-import Symbols.requiredModuleRef
 import cc.{CapturingType, CaptureSet, EventuallyCapturingType}
 
 import scala.annotation.tailrec

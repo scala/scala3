@@ -5,7 +5,6 @@ package tasty
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.NameRef
 
-import Contexts._, Decorators._
 import Names.TermName
 import StdNames.nme
 import TastyUnpickler._

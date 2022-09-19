@@ -15,7 +15,6 @@ import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
 import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
-import dotty.tools.dotc.core.Names.Designator
 
 class TypeOps:
   import SymbolScopeOps._

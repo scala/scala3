@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package util
 
-import language.implicitConversions
 
 /** The offsets part of a full position, consisting of 2 or 3 entries:
  *    - start:  the start offset of the span, in characters from start of file

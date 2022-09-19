@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core._
-import Contexts._, Phases._, Symbols._, Decorators._
+import Contexts.*, Phases.*, Symbols.*
 import Flags.PackageVal
 
 /** A MegaPhase combines a number of mini-phases which are all executed in

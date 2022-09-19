@@ -2,10 +2,8 @@ package dotty.tools.dotc
 package ast
 
 import core._
-import Symbols._, Types._, Contexts._, Decorators._, util.Spans._, Flags._, Constants._
-import StdNames.{nme, tpnme}
-import ast.Trees._
-import Names.Name
+import Symbols.*, Types.*, Contexts.*, Flags.*, Constants.*
+import StdNames.nme
 import Comments.Comment
 import NameKinds.DefaultGetterName
 import Annotations.Annotation

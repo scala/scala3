@@ -5,7 +5,7 @@ package core
 import Symbols._
 import Flags._
 import Names._
-import StdNames._, NameOps._
+import StdNames.*
 import NullOpsDecorator._
 import NameKinds.SkolemName
 import Scopes._
@@ -36,8 +36,8 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun}
-import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, EventuallyCapturingType, boxedUnlessFun}
+import CaptureSet.{IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
