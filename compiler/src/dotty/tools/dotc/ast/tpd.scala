@@ -260,12 +260,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
           if isParamDependent then mutable.ListBuffer[TermRef]() else (null: ListBuffer[TermRef] | Null).uncheckedNN
 
-        def valueParam(name: TermName, origInfo: Type): TermSymbol =
+        def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
             if tp.isContextualMethod then Given
             else if tp.isImplicitMethod then Implicit
             else EmptyFlags
-          val maybeErased = if tp.isErasedMethod then Erased else EmptyFlags
+          val maybeErased = if isErased then Erased else EmptyFlags
 
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
@@ -283,7 +283,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
               (vparams.asInstanceOf[List[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).map(valueParam), Nil)
+              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.erasedParams).map(valueParam), Nil)
         val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>
@@ -1140,10 +1140,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
-        case defn.ContextFunctionType(argTypes, resType, isErased) =>
+        case defn.ContextFunctionType(argTypes, resType, _) =>
           val anonFun = newAnonFun(
             ctx.owner,
-            MethodType.companion(isContextual = true, isErased = isErased)(argTypes, resType),
+            MethodType.companion(isContextual = true)(argTypes, resType),
             coord = ctx.owner.coord)
           def lambdaBody(refss: List[List[Tree]]) =
             expand(target.select(nme.apply).appliedToArgss(refss), resType)(

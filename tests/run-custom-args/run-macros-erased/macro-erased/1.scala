@@ -13,8 +13,8 @@ object Macro {
   def case1(erased i: Expr[Int])(using Quotes): Expr[Int] = '{ 0 }
   def case2 (i: Int)(erased j: Expr[Int])(using Quotes): Expr[Int] = '{ 0 }
   def case3(erased i: Expr[Int]) (j: Int)(using Quotes): Expr[Int] = '{ 0 }
-  def case4 (h: Int)(erased i: Expr[Int], j: Expr[Int])(using Quotes): Expr[Int] = '{ 0 }
-  def case5(erased i: Expr[Int], j: Expr[Int]) (h: Int)(using Quotes): Expr[Int] = '{ 0 }
+  def case4 (h: Int)(erased i: Expr[Int], erased j: Expr[Int])(using Quotes): Expr[Int] = '{ 0 }
+  def case5(erased i: Expr[Int], erased j: Expr[Int]) (h: Int)(using Quotes): Expr[Int] = '{ 0 }
   def case6 (h: Int)(erased i: Expr[Int])(erased j: Expr[Int])(using Quotes): Expr[Int] = '{ 0 }
   def case7(erased i: Expr[Int]) (h: Int)(erased j: Expr[Int])(using Quotes): Expr[Int] = '{ 0 }
   def case8(erased i: Expr[Int])(erased j: Expr[Int]) (h: Int)(using Quotes): Expr[Int] = '{ 0 }

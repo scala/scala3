@@ -1,5 +1,6 @@
 import scala.quoted.*
 import scala.tasty.inspector.*
+import scala.language.experimental.erasedDefinitions
 
 val experimentalDefinitionInLibrary = Set(
 
@@ -80,6 +81,21 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
   "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
   "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
+  // Quotes for functions with erased parameters.
+  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.erasedParams",
+  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
+  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
+  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
+  "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass",
+
+  // New feature: functions with erased parameters.
+  // Need erasedDefinitions enabled.
+  "scala.runtime.ErasedFunction",
+  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.erasedParams",
+  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
+  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
+  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
+  "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass"
 )
 
 

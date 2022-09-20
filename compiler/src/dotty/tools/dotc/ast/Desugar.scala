@@ -1498,10 +1498,10 @@ object desugar {
       case vd: ValDef => vd
     }
 
-  def makeContextualFunction(formals: List[Tree], body: Tree, isErased: Boolean)(using Context): Function = {
-    val mods = if (isErased) Given | Erased else Given
+  def makeContextualFunction(formals: List[Tree], body: Tree, erasedParams: List[Boolean])(using Context): Function = {
+    val mods = Given
     val params = makeImplicitParameters(formals, mods)
-    FunctionWithMods(params, body, Modifiers(mods))
+    FunctionWithMods(params, body, Modifiers(mods), erasedParams)
   }
 
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) = {
@@ -1834,6 +1834,7 @@ object desugar {
             cpy.ByNameTypeTree(parent)(annotate(tpnme.retainsByName, restpt))
           case _ =>
             annotate(tpnme.retains, parent)
+      case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
     }
     desugared.withSpan(tree.span)
   }
@@ -1907,6 +1908,28 @@ object desugar {
       else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
     val impl = Template(emptyConstructor, classParents, Nil, self, refinements)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
+  }
+
+  /** Ensure the given function tree use only ValDefs for parameters.
+   *  For example,
+   *      FunctionWithMods(List(TypeTree(A), TypeTree(B)), body, mods, erasedParams)
+   *  gets converted to
+   *      FunctionWithMods(List(ValDef(x$1, A), ValDef(x$2, B)), body, mods, erasedParams)
+   */
+  def makeFunctionWithValDefs(tree: Function, pt: Type)(using Context): Function = {
+    val Function(args, result) = tree
+    args match {
+      case (_ : ValDef) :: _ => tree // ValDef case can be easily handled
+      case _ if !ctx.mode.is(Mode.Type) => tree
+      case _ =>
+        val applyVParams = args.zipWithIndex.map {
+          case (p, n) => makeSyntheticParameter(n + 1, p)
+        }
+        tree match
+          case tree: FunctionWithMods =>
+            untpd.FunctionWithMods(applyVParams, tree.body, tree.mods, tree.erasedParams)
+          case _ => untpd.Function(applyVParams, result)
+    }
   }
 
   /** Returns list of all pattern variables, possibly with their types,

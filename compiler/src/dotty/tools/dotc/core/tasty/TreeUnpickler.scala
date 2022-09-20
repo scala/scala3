@@ -249,7 +249,6 @@ class TreeUnpickler(reader: TastyReader,
       while currentAddr != end do // avoid boxing the mods
         readByte() match
           case IMPLICIT => mods |= Implicit
-          case ERASED   => mods |= Erased
           case GIVEN    => mods |= Given
       (names, mods)
 
@@ -406,9 +405,7 @@ class TreeUnpickler(reader: TastyReader,
             case METHODtype =>
               def methodTypeCompanion(mods: FlagSet): MethodTypeCompanion =
                 if mods.is(Implicit) then ImplicitMethodType
-                else if mods.isAllOf(Erased | Given) then ErasedContextualMethodType
                 else if mods.is(Given) then ContextualMethodType
-                else if mods.is(Erased) then ErasedMethodType
                 else MethodType
               readMethodic(methodTypeCompanion, _.toTermName)
             case TYPELAMBDAtype =>

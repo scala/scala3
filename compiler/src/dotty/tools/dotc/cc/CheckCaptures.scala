@@ -336,8 +336,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
         mapArgUsing {
-          case defn.FunctionOf(paramtpe :: Nil, restpe, isContectual, isErased) =>
-            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContectual, isErased)
+          case defn.FunctionOf(paramtpe :: Nil, restpe, isContectual) =>
+            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContectual)
         }
       else
         super.recheckApply(tree, pt) match
@@ -430,7 +430,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       block match
         case closureDef(mdef) =>
           pt.dealias match
-            case defn.FunctionOf(ptformals, _, _, _)
+            case defn.FunctionOf(ptformals, _, _)
             if ptformals.nonEmpty && ptformals.forall(_.captureSet.isAlwaysEmpty) =>
               // Redo setup of the anonymous function so that formal parameters don't
               // get capture sets. This is important to avoid false widenings to `*`
@@ -598,8 +598,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       //println(i"check conforms $actual1 <<< $expected1")
       super.checkConformsExpr(actual1, expected1, tree)
 
-    private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean, isErased: Boolean)(using Context): Type =
-      MethodType.companion(isContextual = isContextual, isErased = isErased)(args, resultType)
+    private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean)(using Context): Type =
+      MethodType.companion(isContextual = isContextual)(args, resultType)
         .toFunctionType(isJava = false, alwaysDependent = true)
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
@@ -607,9 +607,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       def recur(expected: Type): Type = expected.dealias match
         case expected @ CapturingType(eparent, refs) =>
           CapturingType(recur(eparent), refs, boxed = expected.isBoxed)
-        case expected @ defn.FunctionOf(args, resultType, isContextual, isErased)
+        case expected @ defn.FunctionOf(args, resultType, isContextual)
           if defn.isNonRefinedFunction(expected) && defn.isFunctionType(actual) && !defn.isNonRefinedFunction(actual) =>
-          val expected1 = toDepFun(args, resultType, isContextual, isErased)
+          val expected1 = toDepFun(args, resultType, isContextual)
           expected1
         case _ =>
           expected
@@ -675,7 +675,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         try
           val (eargs, eres) = expected.dealias.stripCapturing match
-            case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
+            case defn.FunctionOf(eargs, eres, _) => (eargs, eres)
             case expected: MethodType => (expected.paramInfos, expected.resType)
             case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(expected) => (rinfo.paramInfos, rinfo.resType)
             case _ => (aargs.map(_ => WildcardType), WildcardType)
@@ -739,7 +739,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
               adaptFun(actual, args.init, args.last, expected, covariant, insertBox,
                   (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
-            case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
+            case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionOrPolyType(actual) =>
               // TODO Find a way to combine handling of generic and dependent function types (here and elsewhere)
               adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>
@@ -962,7 +962,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case CapturingType(parent, refs) =>
               healCaptureSet(refs)
               traverse(parent)
-            case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
+            case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionOrPolyType(tp) =>
               traverse(rinfo)
             case tp: TermLambda =>
               val saved = allowed

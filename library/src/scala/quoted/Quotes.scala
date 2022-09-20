@@ -2374,7 +2374,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isGiven: Boolean
         /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
+        // TODO:deprecate in 3.4 and stabilize `erasedArgs` and `hasErasedArgs`.
+        // @deprecated("Use `hasErasedArgs`","3.4")
         def isErased: Boolean
+
+        /** List of `erased` flags for each parameter of the clause */
+        @experimental
+        def erasedArgs: List[Boolean]
+        /** Whether the clause has any erased parameters */
+        @experimental
+        def hasErasedArgs: Boolean
     end TermParamClauseMethods
 
     /** A type parameter clause `[X1, ..., Xn]` */
@@ -2650,7 +2659,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         */
         def isContextFunctionType: Boolean
 
-        /** Is this type an erased function type?
+        /** Is this type a function type with erased parameters?
         *
         *  @see `isFunctionType`
         */
@@ -3145,7 +3154,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: MethodType)
         /** Is this the type of using parameter clause `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
+        /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
+        // TODO:deprecate in 3.4 and stabilize `erasedParams` and `hasErasedParams`.
+        // @deprecated("Use `hasErasedParams`","3.4")
         def isErased: Boolean
+
+        /** List of `erased` flags for each parameters of the clause */
+        @experimental
+        def erasedParams: List[Boolean]
+        /** Whether the clause has any erased parameters */
+        @experimental
+        def hasErasedParams: Boolean
         def param(idx: Int): TypeRepr
       end extension
     end MethodTypeMethods
@@ -4274,6 +4293,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       @experimental
       def FunctionClass(arity: Int, isContextual: Boolean): Symbol
+
+      /** The `scala.runtime.ErasedFunction` built-in trait. */
+      @experimental
+      def ErasedFunctionClass: Symbol
 
       /** Function-like object that maps arity to symbols for classes `scala.TupleX`.
       *   -  0th element is `NoSymbol`
