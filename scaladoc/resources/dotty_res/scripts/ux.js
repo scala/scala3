@@ -1,5 +1,4 @@
-window.addEventListener("DOMContentLoaded", () => {
-
+function attachAllListeners() {
   var toggler = document.getElementById("leftToggler");
   if (toggler) {
     toggler.onclick = function () {
@@ -25,7 +24,7 @@ window.addEventListener("DOMContentLoaded", () => {
   var documentableLists = document.getElementsByClassName("documentableList")
   if (documentableLists) {
     for (i = 0; i < documentableLists.length; i++) {
-      documentableLists[i].children[0].onclick = function(e) {
+      documentableLists[i].children[0].onclick = function (e) {
         this.classList.toggle("expand");
         this.parentElement.classList.toggle("expand");
       }
@@ -36,13 +35,41 @@ window.addEventListener("DOMContentLoaded", () => {
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {
       if ($(memberLists[i].children[0]).is("button")) {
-        memberLists[i].children[0].onclick = function(e) {
+        memberLists[i].children[0].onclick = function (e) {
           this.classList.toggle("expand");
           this.parentElement.classList.toggle("expand");
         }
       }
     }
   }
+
+  document.querySelectorAll('a').forEach(el => {
+    const href = el.href
+    if (href === "") { return }
+    const url = new URL(href)
+    el.addEventListener('click', e => {
+      if (url.href.replace("#", "") === window.location.href.replace("#", "")) { return }
+      if (url.origin !== window.location.origin) { return }
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return }
+      e.preventDefault()
+      e.stopPropagation()
+      $.get(href, function (data) {
+        const html = $.parseHTML(data)
+        const title = html.find(node => node.nodeName === "TITLE").innerText
+        const divHtml = html.find(node => node.nodeName === "DIV").innerHTML
+        if (window.history.state === null) {
+          window.history.replaceState({
+            html: document.body.firstChild.innerHTML,
+            title: window.title,
+          }, '')
+        }
+        window.title = title
+        window.history.pushState({ html: divHtml, title }, '', href)
+        document.body.firstChild.innerHTML = divHtml
+        attachAllListeners()
+      })
+    })
+  })
 
   $(".ar").on('click', function (e) {
     $(this).parent().parent().toggleClass("expanded")
@@ -134,31 +161,42 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   })
 
- // show/hide side menu on mobile view
- const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
- sideMenuToggler.addEventListener('click', _e => {
-   document.getElementById("leftColumn").classList.toggle("show")
-   document.getElementById("content").classList.toggle("sidebar-shown")
-   const toc = document.getElementById("toc");
-   if(toc) {
-     toc.classList.toggle("sidebar-shown")
-   }
-   sideMenuToggler.classList.toggle("menu-shown")
- })
+  // show/hide side menu on mobile view
+  const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
+  sideMenuToggler.addEventListener('click', _e => {
+    document.getElementById("leftColumn").classList.toggle("show")
+    document.getElementById("content").classList.toggle("sidebar-shown")
+    const toc = document.getElementById("toc");
+    if (toc) {
+      toc.classList.toggle("sidebar-shown")
+    }
+    sideMenuToggler.classList.toggle("menu-shown")
+  })
 
-    // show/hide mobile menu on mobile view
-    const mobileMenuOpenIcon = document.getElementById("mobile-menu-toggle");
-    const mobileMenuCloseIcon = document.getElementById("mobile-menu-close");
-    mobileMenuOpenIcon.addEventListener('click', _e => {
-      document.getElementById("mobile-menu").classList.add("show")
-    })
-    mobileMenuCloseIcon.addEventListener('click', _e => {
-      document.getElementById("mobile-menu").classList.remove("show")
-    })
+  // show/hide mobile menu on mobile view
+  const mobileMenuOpenIcon = document.getElementById("mobile-menu-toggle");
+  const mobileMenuCloseIcon = document.getElementById("mobile-menu-close");
+  mobileMenuOpenIcon.addEventListener('click', _e => {
+    document.getElementById("mobile-menu").classList.add("show")
+  })
+  mobileMenuCloseIcon.addEventListener('click', _e => {
+    document.getElementById("mobile-menu").classList.remove("show")
+  })
 
 
   // when document is loaded graph needs to be shown
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  attachAllListeners()
 });
+
+window.addEventListener('popstate', e => {
+  const { html, title } = e.state
+  window.title = title
+  document.body.firstChild.innerHTML = html
+  attachAllListeners()
+})
 
 var zoom;
 var transform;
