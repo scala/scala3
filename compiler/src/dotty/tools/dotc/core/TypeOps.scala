@@ -770,20 +770,15 @@ object TypeOps:
           tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          def lo = LazyRef.of(apply(tp.underlying.loBound))
-          def hi = LazyRef.of(apply(tp.underlying.hiBound))
           val lookup = boundTypeParams.lookup(tp)
           if lookup != null then lookup
           else
-            val tv = newTypeVar(TypeBounds(lo, hi))
+            val TypeBounds(lo, hi) = tp.underlying.bounds
+            val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
             boundTypeParams(tp) = tv
-            // Force lazy ref eagerly using current context
-            // Otherwise, the lazy ref will be forced with a unknown context,
-            // which causes a problem in tests/patmat/i3645e.scala
-            lo.ref
-            hi.ref
+            assert(tv <:< apply(hi))
+            apply(lo) <:< tv //  no assert, since bounds might conflict
             tv
-          end if
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
 
