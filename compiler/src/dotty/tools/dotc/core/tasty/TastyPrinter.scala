@@ -136,7 +136,15 @@ class TastyPrinter(bytes: Array[Byte]) {
             case METHODtype | POLYtype | TYPELAMBDAtype =>
               printTree()
               while (currentAddr.index < end.index && !isModifierTag(nextByte)) { printTree(); printName(); }
-              printTrees()
+              // read tags
+              until(end) {
+                val tag = readByte()
+                newLine()
+                sb.append(" ").append(astTagToString(tag))
+                if tag == ERASED then // ERASED comes with erased parameter flags
+                  val erasedParams = readBits().map(b => if b then "erased _" else "_")
+                  sb.append(s"(${erasedParams.mkString(", ")})")
+              }
             case PARAMtype =>
               printNat(); printNat()
             case _ =>

@@ -2140,7 +2140,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given MethodTypeMethods: MethodTypeMethods with
       extension (self: MethodType)
-        def isErased: Boolean = self.isErasedMethod
+        def isErased: Boolean = self.hasErasedParams
         def isImplicit: Boolean = self.isImplicitMethod
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
       end extension
@@ -2768,7 +2768,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def SomeModule: Symbol = dotc.core.Symbols.defn.SomeClass.companionModule
       def ProductClass: Symbol = dotc.core.Symbols.defn.ProductClass
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
-        dotc.core.Symbols.defn.FunctionSymbol(arity, isImplicit, isErased)
+        if isErased
+        then dotc.core.Symbols.defn.ErasedFunctionClass
+        else dotc.core.Symbols.defn.FunctionSymbol(arity, isImplicit)
       def TupleClass(arity: Int): Symbol =
         dotc.core.Symbols.defn.TupleType(arity).nn.classSymbol.asClass
       def isTupleClass(sym: Symbol): Boolean =

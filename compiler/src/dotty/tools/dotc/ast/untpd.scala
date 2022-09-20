@@ -77,8 +77,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** A function type or closure with `implicit`, `erased`, or `given` modifiers */
-  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @constructorOnly src: SourceFile)
-    extends Function(args, body)
+  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers, val erasedParams: List[Boolean])(implicit @constructorOnly src: SourceFile)
+    extends Function(args, body) {
+      assert(args.length == erasedParams.length)
+    }
 
   /** A polymorphic function type */
   case class PolyFunction(targs: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends Tree {

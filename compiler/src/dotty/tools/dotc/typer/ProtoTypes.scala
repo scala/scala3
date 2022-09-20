@@ -824,7 +824,7 @@ object ProtoTypes {
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asContextFunctionType(wtp)
-        if iftp.exists && followIFT then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
+        if iftp.exists && followIFT then normalize(iftp.functionArgInfos.last, pt)
         else tp
     }
   }

@@ -233,21 +233,24 @@ class TreeUnpickler(reader: TastyReader,
 // ------ Reading types -----------------------------------------------------
 
     /** Read names in an interleaved sequence of types/bounds and (parameter) names,
-     *  possibly followed by a sequence of modifiers.
+     *  possibly followed by a sequence of modifiers and a list of erased parameter flags.
      */
-    def readParamNamesAndMods(end: Addr): (List[Name], FlagSet) =
+    def readParamNamesAndMods(end: Addr): (List[Name], FlagSet, List[Boolean]) =
       val names =
         collectWhile(currentAddr != end && !isModifierTag(nextByte)) {
           skipTree()
           readName()
         }
       var mods = EmptyFlags
+      var erasedParams: List[Boolean] = Nil
       while currentAddr != end do // avoid boxing the mods
         readByte() match
           case IMPLICIT => mods |= Implicit
-          case ERASED   => mods |= Erased
+          case ERASED   =>
+            mods |= Erased
+            erasedParams = readBits()
           case GIVEN    => mods |= Given
-      (names, mods)
+      (names, mods, erasedParams)
 
     /** Read `n` parameter types or bounds which are interleaved with names */
     def readParamTypes[T <: Type](n: Int)(using Context): List[T] =
@@ -323,13 +326,13 @@ class TreeUnpickler(reader: TastyReader,
         val end = readEnd()
 
         def readMethodic[N <: Name, PInfo <: Type, LT <: LambdaType]
-            (companionOp: FlagSet => LambdaTypeCompanion[N, PInfo, LT], nameMap: Name => N): LT = {
+            (companionOp: (FlagSet, List[Boolean]) => LambdaTypeCompanion[N, PInfo, LT], nameMap: Name => N): LT = {
           val result = typeAtAddr.getOrElse(start, {
               val nameReader = fork
               nameReader.skipTree() // skip result
               val paramReader = nameReader.fork
-              val (paramNames, mods) = nameReader.readParamNamesAndMods(end)
-              companionOp(mods)(paramNames.map(nameMap))(
+              val (paramNames, mods, erasedParams) = nameReader.readParamNamesAndMods(end)
+              companionOp(mods, erasedParams)(paramNames.map(nameMap))(
                 pt => registeringType(pt, paramReader.readParamTypes[PInfo](paramNames.length)),
                 pt => readType())
             })
@@ -398,17 +401,19 @@ class TreeUnpickler(reader: TastyReader,
             case MATCHCASEtype =>
               defn.MatchCaseClass.typeRef.appliedTo(readType(), readType())
             case POLYtype =>
-              readMethodic(_ => PolyType, _.toTypeName)
+              readMethodic((_, _) => PolyType, _.toTypeName)
             case METHODtype =>
-              def methodTypeCompanion(mods: FlagSet): MethodTypeCompanion =
-                if mods.is(Implicit) then ImplicitMethodType
-                else if mods.isAllOf(Erased | Given) then ErasedContextualMethodType
+              def methodTypeCompanion(mods: FlagSet, erasedParams: List[Boolean]): MethodTypeCompanion =
+                if mods.is(Erased) then
+                  if mods.is(Implicit) then ErasedImplicitMethodType(erasedParams)
+                  else if mods.is(Given) then ErasedContextualMethodType(erasedParams)
+                  else ErasedMethodType(erasedParams)
+                else if mods.is(Implicit) then ImplicitMethodType
                 else if mods.is(Given) then ContextualMethodType
-                else if mods.is(Erased) then ErasedMethodType
                 else MethodType
               readMethodic(methodTypeCompanion, _.toTermName)
             case TYPELAMBDAtype =>
-              readMethodic(_ => HKTypeLambda, _.toTypeName)
+              readMethodic((_, _) => HKTypeLambda, _.toTypeName)
             case PARAMtype =>
               readTypeRef() match {
                 case binder: LambdaType => binder.paramRefs(readNat())

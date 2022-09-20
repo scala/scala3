@@ -42,10 +42,10 @@ object NamerOps:
       case Nil =>
         resultType
       case TermSymbols(params) :: paramss1 =>
-        val (isContextual, isImplicit, isErased) =
-          if params.isEmpty then (false, false, false)
-          else (params.head.is(Given), params.head.is(Implicit), params.head.is(Erased))
-        val make = MethodType.companion(isContextual = isContextual, isImplicit = isImplicit, isErased = isErased)
+        val (isContextual, isImplicit, erasedParams) =
+          if params.isEmpty then (false, false, List())
+          else (params.head.is(Given), params.head.is(Implicit), params.map(_.is(Erased)))
+        val make = MethodType.companion(isContextual = isContextual, isImplicit = isImplicit, erasedParams = erasedParams)
         if isJava then
           for param <- params do
             if param.info.isDirectRef(defn.ObjectClass) then param.info = defn.AnyType

@@ -146,7 +146,6 @@ extension (tp: Type)
       defn.FunctionType(
         fname.functionArity,
         isContextual = fname.isContextFunction,
-        isErased = fname.isErasedFunction,
         isImpure = true).appliedTo(args)
     case _ =>
       tp

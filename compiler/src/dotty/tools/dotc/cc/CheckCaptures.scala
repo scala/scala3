@@ -336,8 +336,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
         mapArgUsing {
-          case defn.FunctionOf(paramtpe :: Nil, restpe, isContectual, isErased) =>
-            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContectual, isErased)
+          case defn.FunctionOf(paramtpe :: Nil, restpe, isContectual, erasedParams) =>
+            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContectual, erasedParams)
         }
       else
         super.recheckApply(tree, pt) match
@@ -598,8 +598,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       //println(i"check conforms $actual1 <<< $expected1")
       super.checkConformsExpr(actual1, expected1, tree)
 
-    private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean, isErased: Boolean)(using Context): Type =
-      MethodType.companion(isContextual = isContextual, isErased = isErased)(args, resultType)
+    private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean, erasedParams: List[Boolean])(using Context): Type =
+      MethodType.companion(isContextual = isContextual, erasedParams = erasedParams)(args, resultType)
         .toFunctionType(isJava = false, alwaysDependent = true)
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
@@ -607,9 +607,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       def recur(expected: Type): Type = expected.dealias match
         case expected @ CapturingType(eparent, refs) =>
           CapturingType(recur(eparent), refs, boxed = expected.isBoxed)
-        case expected @ defn.FunctionOf(args, resultType, isContextual, isErased)
+        case expected @ defn.FunctionOf(args, resultType, isContextual, erasedParams)
           if defn.isNonRefinedFunction(expected) && defn.isFunctionType(actual) && !defn.isNonRefinedFunction(actual) =>
-          val expected1 = toDepFun(args, resultType, isContextual, isErased)
+          val expected1 = toDepFun(args, resultType, isContextual, erasedParams)
           expected1
         case _ =>
           expected

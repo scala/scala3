@@ -57,6 +57,15 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     result
   }
 
+  /** Read a list of packed booleans, prefixed by the length. */
+  def readBits(): List[Boolean] = {
+    val length = readInt()
+    val lengthBytes = (length + 7) / 8 // number of bytes followed, this is ceil(length / 8)
+    List.fill(lengthBytes) { readByte() }
+      .flatMap(byte => List.tabulate(8) { i => (byte & (1 << i)) > 0 })
+      .take(length) // we got lengthBytes * 8 bits here, with some extra bits, just cut them off.
+  }
+
   /** Read a natural number fitting in an Int in big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */

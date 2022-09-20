@@ -1,5 +1,6 @@
 import scala.quoted.*
 import scala.tasty.inspector.*
+import scala.language.experimental.erasedDefinitions
 
 val experimentalDefinitionInLibrary = Set(
 
@@ -78,6 +79,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
   "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
   "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
+
+  // New feature: functions with erased parameters.
+  // Need erasedDefinitions enabled.
+  "scala.runtime.ErasedFunction"
 )
 
 

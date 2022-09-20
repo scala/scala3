@@ -43,6 +43,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.TypeUtils.isErasedClass
 
 object Types {
 
@@ -426,7 +427,7 @@ object Types {
     def isContextualMethod: Boolean = false
 
     /** Is this a MethodType for which the parameters will not be used? */
-    def isErasedMethod: Boolean = false
+    def hasErasedParams: Boolean = false
 
     /** Is this a match type or a higher-kinded abstraction of one?
      */
@@ -1471,7 +1472,7 @@ object Types {
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
     final def dropDependentRefinement(using Context): Type = dealias match {
-      case RefinedType(parent, nme.apply, _) => parent
+      case RefinedType(parent, nme.apply, mt) if !defn.isErasedFunctionType(parent) => parent
       case tp => tp
     }
 
@@ -1713,6 +1714,8 @@ object Types {
         else NoType
       case t if defn.isNonRefinedFunction(t) =>
         t
+      case t if defn.isErasedFunctionType(t) =>
+        t
       case t @ SAMType(_) =>
         t
       case _ =>
@@ -1840,15 +1843,16 @@ object Types {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isContextual = mt.isContextualMethod && !ctx.erasedTypes
-        val isErased = mt.isErasedMethod && !ctx.erasedTypes
+        val erasedParams = (if !ctx.erasedTypes then mt.erasedParams else List.fill(mt.paramInfos.size) { false }).dropRight(dropLast)
         val result1 = mt.nonDependentResultApprox match {
           case res: MethodType => res.toFunctionType(isJava)
           case res => res
         }
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
-          result1, isContextual, isErased)
-        if alwaysDependent || mt.isResultDependent then RefinedType(funType, nme.apply, mt)
+          result1, isContextual, erasedParams)
+        if alwaysDependent || mt.isResultDependent then
+          RefinedType(funType, nme.apply, mt)
         else funType
     }
 
@@ -3616,6 +3620,8 @@ object Types {
 
     def companion: LambdaTypeCompanion[ThisName, PInfo, This]
 
+    def erasedParams = List.fill(paramInfos.size)(false)
+
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
      *
@@ -3693,7 +3699,11 @@ object Types {
             else Signature(tp, sourceLanguage)
         this match
           case tp: MethodType =>
-            val params = if (isErasedMethod) Nil else tp.paramInfos
+            val params = if (hasErasedParams)
+              tp.paramInfos
+                .zip(tp.erasedParams)
+                .flatMap((p, e) => if e then None else Some(p))
+            else tp.paramInfos
             resultSignature.prependTermParams(params, sourceLanguage)
           case tp: PolyType =>
             resultSignature.prependTypeParams(tp.paramNames.length)
@@ -3901,15 +3911,37 @@ object Types {
 
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) ||
-      companion.eq(ErasedImplicitMethodType) ||
+      companion.isInstanceOf[ErasedImplicitMethodType] ||
       isContextualMethod
-    final override def isErasedMethod: Boolean =
-      companion.eq(ErasedMethodType) ||
-      companion.eq(ErasedImplicitMethodType) ||
-      companion.eq(ErasedContextualMethodType)
+    final override def hasErasedParams: Boolean =
+      companion.isInstanceOf[ErasedMethodCompanion]
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType) ||
-      companion.eq(ErasedContextualMethodType)
+      companion.isInstanceOf[ErasedContextualMethodType]
+
+    override def erasedParams: List[Boolean] = companion match
+      case c: ErasedMethodCompanion => c.erasedParams
+      case _ => super.erasedParams
+
+    // Mark erased classes as erased parameters as well.
+    def markErasedClasses(using Context): MethodType =
+      val isErasedClass = paramInfos.map(_.isErasedClass)
+      if isErasedClass.contains(true) then companion match
+        case c: ErasedMethodCompanion =>
+          val erasedParams = c.erasedParams.zipWithConserve(isErasedClass) { (a, b) => a || b }
+          if erasedParams == c.erasedParams then this
+          else MethodType.companion(
+              isContextual = isContextualMethod,
+              isImplicit = isImplicitMethod,
+              erasedParams = erasedParams
+            )(paramNames)(paramInfosExp, resultTypeExp)
+        case _ =>
+          MethodType.companion(
+              isContextual = isContextualMethod,
+              isImplicit = isImplicitMethod,
+              erasedParams = isErasedClass
+            )(paramNames)(paramInfosExp, resultTypeExp)
+      else this
 
     protected def prefixString: String = companion.prefixString
   }
@@ -4021,19 +4053,25 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion =
+    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, erasedParams: List[Boolean] = List()): MethodTypeCompanion =
+      val hasErased = erasedParams.contains(true)
       if (isContextual)
-        if (isErased) ErasedContextualMethodType else ContextualMethodType
+        if (hasErased) ErasedContextualMethodType(erasedParams) else ContextualMethodType
       else if (isImplicit)
-        if (isErased) ErasedImplicitMethodType else ImplicitMethodType
+        if (hasErased) ErasedImplicitMethodType(erasedParams) else ImplicitMethodType
       else
-        if (isErased) ErasedMethodType else MethodType
+        if (hasErased) ErasedMethodType(erasedParams) else MethodType
   }
-  object ErasedMethodType extends MethodTypeCompanion("ErasedMethodType")
+  private def erasedMt(t: String, erasedParams: List[Boolean]) =
+    s"Erased${t}(${erasedParams.map(if _ then "erased _" else "_").mkString(", ")})"
+  sealed abstract class ErasedMethodCompanion(prefixString: String, val erasedParams: List[Boolean])
+    extends MethodTypeCompanion(erasedMt(prefixString, erasedParams))
+
+  class ErasedMethodType(erasedParams: List[Boolean]) extends ErasedMethodCompanion("MethodType", erasedParams)
   object ContextualMethodType extends MethodTypeCompanion("ContextualMethodType")
-  object ErasedContextualMethodType extends MethodTypeCompanion("ErasedContextualMethodType")
+  class ErasedContextualMethodType(erasedParams: List[Boolean]) extends ErasedMethodCompanion("ContextualMethodType", erasedParams)
   object ImplicitMethodType extends MethodTypeCompanion("ImplicitMethodType")
-  object ErasedImplicitMethodType extends MethodTypeCompanion("ErasedImplicitMethodType")
+  class ErasedImplicitMethodType(erasedParams: List[Boolean]) extends ErasedMethodCompanion("ImplicitMethodType", erasedParams)
 
   /** A ternary extractor for MethodType */
   object MethodTpe {

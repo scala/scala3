@@ -214,7 +214,7 @@ object NameOps {
             if str == mustHave then found = true
             idx + str.length
           else idx
-        skip(skip(skip(0, "Impure"), "Erased"), "Context") == suffixStart
+        skip(skip(0, "Impure"), "Context") == suffixStart
         && found
       }
 
@@ -228,7 +228,9 @@ object NameOps {
     /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN, ErasedFunctionN, ErasedContextFunctionN for N >= 0
      */
     def isFunction(using Context): Boolean =
-      (name eq tpnme.FunctionXXL) || checkedFunArity(functionSuffixStart) >= 0
+      (name eq tpnme.FunctionXXL)
+      || (name eq tpnme.ErasedFunction)
+      || checkedFunArity(functionSuffixStart) >= 0
 
     /** Is a function name
      *    - FunctionN for N >= 0
@@ -241,7 +243,6 @@ object NameOps {
       isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= 0
 
     def isContextFunction(using Context): Boolean = isSpecificFunction("Context")
-    def isErasedFunction(using Context): Boolean = isSpecificFunction("Erased")
     def isImpureFunction(using Context): Boolean = isSpecificFunction("Impure")
 
     /** Is a synthetic function name, i.e. one of

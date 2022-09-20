@@ -952,7 +952,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       && tree.isTerm
       && {
         val qualType = tree.qualifier.tpe
-        hasRefinement(qualType) && !qualType.derivesFrom(defn.PolyFunctionClass)
+        hasRefinement(qualType) &&
+          !qualType.derivesFrom(defn.PolyFunctionClass) &&
+          !defn.isErasedFunctionType(qualType)
       }
     def loop(tree: Tree): Boolean = tree match
       case TypeApply(fun, _) =>

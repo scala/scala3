@@ -19,6 +19,7 @@ import config.Config
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
+import dotty.tools.dotc.transform.TypeUtils.isErasedClass
 
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
@@ -288,7 +289,7 @@ class TreePickler(pickler: TastyPickler) {
       var mods = EmptyFlags
       if tpe.isContextualMethod then mods |= Given
       else if tpe.isImplicitMethod then mods |= Implicit
-      if tpe.isErasedMethod then mods |= Erased
+      if tpe.hasErasedParams then mods |= Erased
       pickleMethodic(METHODtype, tpe, mods)
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
@@ -303,7 +304,10 @@ class TreePickler(pickler: TastyPickler) {
       tpe.paramNames.lazyZip(tpe.paramInfos).foreach { (name, tpe) =>
         pickleType(tpe); pickleName(name)
       }
-      if (mods != EmptyFlags) pickleFlags(mods, tpe.isTermLambda)
+      if (mods != EmptyFlags) pickleFlags(mods &~ Flags.Erased, tpe.isTermLambda)
+      if mods.is(Erased) then
+        writeByte(ERASED)
+        writeBits(tpe.erasedParams)
     }
   }
 

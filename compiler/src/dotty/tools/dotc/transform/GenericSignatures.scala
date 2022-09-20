@@ -311,7 +311,10 @@ object GenericSignatures {
         case mtpe: MethodType =>
           // erased method parameters do not make it to the bytecode.
           def effectiveParamInfoss(t: Type)(using Context): List[List[Type]] = t match {
-            case t: MethodType if t.isErasedMethod => effectiveParamInfoss(t.resType)
+            case t: MethodType if t.hasErasedParams =>
+              t.paramInfos.zip(t.erasedParams)
+                .flatMap((i, e) => if e then None else Some(i))
+                :: effectiveParamInfoss(t.resType)
             case t: MethodType => t.paramInfos :: effectiveParamInfoss(t.resType)
             case _ => Nil
           }

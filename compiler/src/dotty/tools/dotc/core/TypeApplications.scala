@@ -9,9 +9,11 @@ import SymDenotations.LazyType
 import Decorators._
 import util.Stats._
 import Names._
+import StdNames.nme
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
 import cc.boxedUnlessFun
+import dotty.tools.dotc.transform.TypeUtils.isErasedValueType
 
 object TypeApplications {
 
@@ -502,6 +504,14 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def argInfos(using Context): List[Type] = self.stripped match
     case AppliedType(tycon, args) => args.boxedUnlessFun(tycon)
     case _ => Nil
+
+  /** If this is an encoding of a function type, return its arguments, otherwise return Nil.
+   *  Handles `ErasedFunction`s and poly functions gracefully.
+   */
+  final def functionArgInfos(using Context): List[Type] = self.dealias match
+    case RefinedType(parent, nme.apply, mt: MethodType) if defn.isErasedFunctionType(parent) => (mt.paramInfos :+ mt.resultType)
+    case RefinedType(parent, nme.apply, mt: MethodType) if parent.typeSymbol eq defn.PolyFunctionClass => (mt.paramInfos :+ mt.resultType)
+    case _ => self.dropDependentRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
   def argTypes(using Context): List[Type] = argInfos mapConserve noBounds
