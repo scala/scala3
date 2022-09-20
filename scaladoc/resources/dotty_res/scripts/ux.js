@@ -56,16 +56,21 @@ function attachAllListeners() {
       $.get(href, function (data) {
         const html = $.parseHTML(data)
         const title = html.find(node => node.nodeName === "TITLE").innerText
-        const divHtml = html.find(node => node.nodeName === "DIV").innerHTML
+        const bodyDiv = html.find(node => node.nodeName === "DIV")
+        const { children } = document.body.firstChild
         if (window.history.state === null) {
           window.history.replaceState({
-            html: document.body.firstChild.innerHTML,
+            leftColumn: children[3].innerHTML,
+            mainDiv: children[6].innerHTML,
             title: window.title,
           }, '')
         }
         window.title = title
-        window.history.pushState({ html: divHtml, title }, '', href)
-        document.body.firstChild.innerHTML = divHtml
+        const leftColumn = bodyDiv.children[3].innerHTML
+        const mainDiv = bodyDiv.children[6].innerHTML
+        window.history.pushState({ leftColumn, mainDiv, title }, '', href)
+        children[3].innerHTML = leftColumn
+        children[6].innerHTML = mainDiv
         attachAllListeners()
       })
     })
@@ -192,9 +197,11 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 window.addEventListener('popstate', e => {
-  const { html, title } = e.state
+  const { leftColumn, mainDiv, title } = e.state
   window.title = title
-  document.body.firstChild.innerHTML = html
+  const { children } = document.body.firstChild
+  children[3].innerHTML = leftColumn
+  children[6].innerHTML = mainDiv
   attachAllListeners()
 })
 
