@@ -38,20 +38,24 @@ object TypeTestsCasts {
    *
    *  Then check:
    *
-   *  1. if `X <:< P`, TRUE
-   *  2. if `P` is a singleton type, TRUE
-   *  3. if `P` refers to an abstract type member or type parameter, FALSE
+   *  1. if `X <:< P`, ""
+   *  2. if `P` is a singleton type, ""
+   *  3. if `P` refers to an abstract type member or type parameter, "it refers to an abstract type member or type parameter"
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
    *     (b) constrain `Xs` with `pre.F[Xs] <:< X`
-   *     (c) maximize `pre.F[Xs]` and check `pre.F[Xs] <:< P`
+   *     (c) maximize `pre.F[Xs]`
+   *     (d) if !`pre.F[Xs] <:< P`, "its type arguments can't be determined from $X"
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
-   *  7. if `P` is a refinement type, FALSE
-   *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, FALSE
-   *  9. otherwise, TRUE
+   *  7. if `P` is a refinement type, "it's a refinement type"
+   *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, "it's a local class"
+   *  9. otherwise, ""
    */
-  def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = atPhase(Phases.refchecksPhase.next) {
+  def checkable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
+    extension (inline s1: String) inline def &&(inline s2: String): String = if s1 == "" then s2 else s1
+    extension (inline b: Boolean) inline def |||(inline s: String): String = if b then "" else s
+
     // Run just before ElimOpaque transform (which follows RefChecks)
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
 
@@ -124,10 +128,10 @@ object TypeTestsCasts {
 
     }
 
-    def recur(X: Type, P: Type): Boolean = (X <:< P) || (P.dealias match {
-      case _: SingletonType     => true
+    def recur(X: Type, P: Type): String = (X <:< P) ||| (P.dealias match {
+      case _: SingletonType     => ""
       case _: TypeProxy
-      if isAbstract(P)          => false
+      if isAbstract(P)          => i"it refers to an abstract type member or type parameter"
       case defn.ArrayOf(tpT)    =>
         X match {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
@@ -147,21 +151,23 @@ object TypeTestsCasts {
             X.classSymbol.exists && P.classSymbol.exists &&
               !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass)
             || typeArgsTrivial(X, tpe)
+            ||| i"its type arguments can't be determined from $X"
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, _)  => recur(X, t)
-      case tp2: RefinedType     => recur(X, tp2.parent) && TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2)
+      case tp2: RefinedType     => recur(X, tp2.parent)
+        && (TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2) ||| i"it's a refinement type")
       case tp2: RecType         => recur(X, tp2.parent)
       case _
       if P.classSymbol.isLocal && foundClasses(X).exists(P.classSymbol.isInaccessibleChildOf) => // 8
-        false
-      case _                    => true
+        i"it's a local class"
+      case _                    => ""
     })
 
-    val res = X.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot) || recur(X.widen, replaceP(P))
+    val res = recur(X.widen, replaceP(P))
 
-    debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
+    debug.println(i"checking  $X isInstanceOf $P = $res")
 
     res
   }
@@ -348,9 +354,11 @@ object TypeTestsCasts {
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
-          if (!isTrusted && !checkable(expr.tpe, argType, tree.span))
-            report.uncheckedWarning(i"the type test for $argType cannot be checked at runtime", expr.srcPos)
-          transformTypeTest(expr, tree.args.head.tpe,
+          val unchecked = expr.tpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
+          val uncheckable = if isTrusted || unchecked then "" else checkable(expr.tpe, argType, tree.span)
+          if (uncheckable != "")
+            report.uncheckedWarning(i"the type test for $argType cannot be checked at runtime because $uncheckable", expr.srcPos)
+          transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }
         else if (sym.isTypeCast)
