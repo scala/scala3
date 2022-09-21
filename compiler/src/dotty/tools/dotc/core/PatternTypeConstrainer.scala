@@ -144,7 +144,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
               ctx.gadt.bounds(scrut.symbol) match {
                 case tb: TypeBounds =>
                   val hi = tb.hi
-                  constrainPatternType(pat, hi)
+                  constrainPatternType(pat, hi, typeMembersTouched = true)
                 case null => true
               }
             case _ => true
