@@ -142,6 +142,8 @@ object Substituters:
         else tp.derivedSelect(substParam(tp.prefix, from, to, theMap))
       case _: ThisType =>
         tp
+      case tp: TypeVar if tp.underlying == from =>
+        to
       case _ =>
         (if (theMap != null) theMap else new SubstParamMap(from, to))
           .mapOver(tp)
@@ -158,6 +160,8 @@ object Substituters:
         tp
       case tp: AppliedType =>
         tp.map(substParams(_, from, to, theMap))
+      case tp: TypeVar if !tp.isInstantiated && tp.origin.binder == from =>
+        to(tp.origin.paramNum)
       case _ =>
         (if (theMap != null) theMap else new SubstParamsMap(from, to))
           .mapOver(tp)
