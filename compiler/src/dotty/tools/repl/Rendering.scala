@@ -33,7 +33,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   private var myReplStringOf: Object => String = _
 
   /** Class loader used to load compiled code */
-  private[repl] def classLoader()(using ctx: Context) =
+  private[repl] def classLoader()(using Context) =
     if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
     else {
       val parent = Option(myClassLoader).orElse(parentClassLoader).getOrElse {
