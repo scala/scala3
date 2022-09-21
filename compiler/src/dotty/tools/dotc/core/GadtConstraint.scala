@@ -25,6 +25,8 @@ sealed abstract class GadtConstraint extends Showable {
   /** Immediate bounds of a path-dependent type.
     * This variant of bounds will ONLY try to retrieve path-dependent GADT bounds. */
   def bounds(path: PathType, sym: Symbol)(using Context): TypeBounds | Null
+
+  /** Immediate bounds of path-dependent type tp. */
   def bounds(tp: TypeRef)(using Context): TypeBounds | Null
 
   /** Full bounds of `sym`, including TypeRefs to other lower/upper symbols.
@@ -34,7 +36,10 @@ sealed abstract class GadtConstraint extends Showable {
    */
   def fullBounds(sym: Symbol)(using Context): TypeBounds | Null
 
+  /** Full bounds of path dependent type path.sym. */
   def fullBounds(path: PathType, sym: Symbol)(using Context): TypeBounds | Null
+
+  /** Full bounds of path-dependent type tp. */
   def fullBounds(tp: TypeRef)(using Context): TypeBounds | Null
 
   /** Is `sym1` ordered to be less than `sym2`? */
@@ -65,7 +70,10 @@ sealed abstract class GadtConstraint extends Showable {
   /** Check whether two paths are equivalent via path aliasing. */
   def isAliasingPath(p: PathType, q: PathType): Boolean
 
-  /** Scrutinee path of the current pattern matching. */
+  /** Scrutinee path of the current pattern matching that is being typed.
+    *
+    * See `constrainTypeMembers` in `PatternTypeConstrainer`.
+    */
   def scrutineePath: TermRef | Null
 
   /** Reset scrutinee path to null. */
@@ -74,10 +82,16 @@ sealed abstract class GadtConstraint extends Showable {
   /** Set the scrutinee path. */
   def withScrutineePath[T](path: TermRef | Null)(op: => T): T
 
-  /** Supply the real pattern path. */
+  /** Supply the real pattern path.
+    *
+    * See `constrainTypeMembers` in `PatternTypeConstrainer`.
+    */
   def supplyPatternPath(path: TermRef)(using Context): Unit
 
-  /** Create a skolem type for pattern. */
+  /** Create a skolem type for pattern and save it in the constraint handler.
+    *
+    * See `constrainTypeMembers` in `PatternTypeConstrainer`.
+    */
   def createPatternSkolem(pat: Type): SkolemType
 
   /** Is the symbol registered in the constraint?
@@ -95,6 +109,7 @@ sealed abstract class GadtConstraint extends Showable {
   /** Checks whether a given path-dependent type is constrainable. */
   def isConstrainablePDT(path: PathType, sym: Symbol)(using Context): Boolean
 
+  /** Get all type members registered in the constraint handler for this path. */
   def registeredTypeMembers(path: PathType): List[Symbol]
 
   /** GADT constraint narrows bounds of at least one variable */

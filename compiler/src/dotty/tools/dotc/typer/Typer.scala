@@ -1755,6 +1755,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case p: TermRef =>
           tree.pat match {
             case _: (Trees.Typed[_] | Trees.Ident[_] | Trees.Apply[_] | Trees.Bind[_]) =>
+              // We only record scrutinee path in the above cases, b/c recording
+              // it in all cases may lead to unsoundness.
+              //
+              // For example:
+              //
+              //  def foo(e: (Expr, Expr)) = e match
+              //    case (e1: Expr, e2: Expr) =>
+              //
+              // Here the pattern is a tuple. `constrainPatternType` will be called
+              // on the two elements of the tuple directly, without constraining
+              // `e` and the whole tuple first.
+              // Therefore, recording the scrutinee path in this case can give
+              // us constraints like `e1.type == e.type`, which is not true.
               p
             case _ =>
               null
@@ -1762,11 +1775,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ => null
       }
 
+    // Save the scrutinee path and then type the pattern.
+    // The scrutinee path will be used in SR reasoning for path-dependent types.
+    // See `constrainTypeMembers` in `PatternTypeConstrainer`.
     val pat1 = gadtCtx.gadt.withScrutineePath(scrutineePath) {
       typedPattern(tree.pat, wideSelType)(using gadtCtx)
     }
 
     if scrutineePath.ne(null) && pat1.symbol.isPatternBound then
+      // Subtitute the place holder with real pattern path in GADT constraints.
+      // See `constrainTypeMembers` in `PatternTypeConstrainer`.
       gadtCtx.gadt.supplyPatternPath(pat1.symbol.termRef)
 
     caseRest(pat1)(

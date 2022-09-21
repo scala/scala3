@@ -201,6 +201,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       *
       * To inference SR constraints for the type members from the scrutinee `p` and the pattern `q`,
       * we first find all the abstract type members of `p`: A₁, A₂, ⋯, Aₖ.
+      * If these path-dependent types are not registered in the handler, we will register them.
       *
       * Then, for each Aᵢ, if `q` also has a type member labaled `Aᵢ`, we inference SR constraints by calling
       * TypeComparer on the relation `p.Aᵢ <:< q.Aᵢ`.
@@ -209,12 +210,12 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       * Specially, if for some `Aᵢ`, `p.Aᵢ` is abstract while `q.Aᵢ` is not, we will extract constraints
       * for both directions of the subtype relations (i.e. both `p.Aᵢ <:< q.Aᵢ` and `q.Aᵢ <:< p.Aᵢ`).
       *
-      * How we find out and handle the path (`TermRef`) of the scrutinee and pattern.
+      * How we find out and handle the path (`TermRef`) of the scrutinee and pattern:
       *
-      * - The path of scrutinee is not directly available in `constrainPatternType`, since the scrutinee type
-      *   passed to this function is widened.
-      *   To make the path available during GADT reasoning, we save the scrutinee path in `Typer.typedCase`. The scrutinee path will be saved in `ctx.gadt.scrutineePath`.
-      *   Note that we have to clear the saved scrutinee path after using by calling `ctx.gadt.resetScrutineePath()`.
+      * - The path of scrutinee is not directly available in `constrainPatternType`, since the scrutinee type passed to this function is widened.
+      *   To have access to the scrutinee path here, we save the scrutinee path in `Typer.typedCase` with `GadtConstraint.withScrutineePath`,
+      *   and the scrutinee path will be accessible as `ctx.gadt.scrutineePath`.
+      *   Note that we have to reset the saved scrutinee path to `null` after using by calling `ctx.gadt.resetScrutineePath()`.
       *   This is because `constrainPatternType` may be called multiple times for one nested pattern. For example:
       *
       *     e match
@@ -230,7 +231,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       import NameKinds.DepParamName
       val realScrutineePath = ctx.gadt.scrutineePath
 
-      /* We reset scrutinee path so that the path will only be used at top level. */
+      // We reset scrutinee path so that the path will only be used at top level.
       ctx.gadt.resetScrutineePath()
 
       val saved = state.nn.constraint
@@ -242,8 +243,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       val patternPath: SkolemType = ctx.gadt.createPatternSkolem(pat)
 
       val registerScrutinee = ctx.gadt.contains(scrutineePath) || ctx.gadt.addToConstraint(scrutineePath)
-      val registerPattern = ctx.gadt.addToConstraint(patternPath)   // Pattern path is a freshly-created skolem,
-                                                                    // so it will always be un-registered at this point
+      // Pattern path is a freshly-created skolem,
+      // so it will always be un-registered at this point
+      val registerPattern = ctx.gadt.addToConstraint(patternPath)
 
       /** Reconstruct subtype constraints for a path `p`, given that `p` and `q`
         are cohabitated.
@@ -260,7 +262,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
         (3) q.T is unregistered. We will do SR on p.T <:< q.T and q.T <:< p.T.
       */
-      def reconstructSubTypeFor(p: PathType, q: PathType) =
+      def reconstructSubType(p: PathType, q: PathType) =
         def processMember(sym: Symbol): Boolean =
           q.member(sym.name).isInstanceOf[NoDenotation.type] || {
             val pType = TypeRef(p, sym)
@@ -281,8 +283,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       def constrainPattern: Boolean = {
         ctx.gadt.recordPathAliasing(scrutineePath, patternPath)
 
-        (!registerPattern || reconstructSubTypeFor(patternPath, scrutineePath))
-        && (!registerScrutinee || reconstructSubTypeFor(scrutineePath, patternPath))
+        (!registerPattern || reconstructSubType(patternPath, scrutineePath))
+        && (!registerScrutinee || reconstructSubType(scrutineePath, patternPath))
       }
 
       /** Reconstruct subtype when the pattern is an alias to another path.
@@ -299,8 +301,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val registerPtPath = ctx.gadt.contains(ptPath) || ctx.gadt.addToConstraint(ptPath)
 
           val result =
-            (!registerPtPath || reconstructSubTypeFor(ptPath, scrutineePath))
-            && (!registerScrutinee || reconstructSubTypeFor(scrutineePath, ptPath))
+            (!registerPtPath || reconstructSubType(ptPath, scrutineePath))
+            && (!registerScrutinee || reconstructSubType(scrutineePath, ptPath))
 
           ctx.gadt.recordPathAliasing(scrutineePath, ptPath)
 
