@@ -1754,10 +1754,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       sel.tpe match {
         case p: TermRef =>
           tree.pat match {
-            case _: Trees.Typed[_] => p
-            case _: Trees.Ident[_] => p
-            case _: Trees.Apply[_] => p
-            case _ => null
+            case _: (Trees.Typed[_] | Trees.Ident[_] | Trees.Apply[_] | Trees.Bind[_]) =>
+              p
+            case _ =>
+              null
           }
         case _ => null
       }

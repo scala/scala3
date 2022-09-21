@@ -677,11 +677,15 @@ final class ProperGadtConstraint private(
 
       updateMappings()
       updateUnionFind()
+      myPatternSkolem = null
   end supplyPatternPath
 
   override def createPatternSkolem(pat: Type): SkolemType =
-    myPatternSkolem = SkolemType(pat)
-    myPatternSkolem.nn
+    if myPatternSkolem ne null then
+      SkolemType(pat)
+    else
+      myPatternSkolem = SkolemType(pat)
+      myPatternSkolem.nn
   end createPatternSkolem
 
   override def withScrutineePath[T](path: TermRef | Null)(op: => T): T =
