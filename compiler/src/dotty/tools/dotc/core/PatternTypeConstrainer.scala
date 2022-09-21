@@ -197,7 +197,35 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       }
     }
 
-    /** Reconstruct subtype constraints for type members of the scrutinee and the pattern. */
+    /** Reconstruct subtype constraints for type members of the scrutinee and the pattern.
+      *
+      * To inference SR constraints for the type members from the scrutinee `p` and the pattern `q`,
+      * we first find all the abstract type members of `p`: A₁, A₂, ⋯, Aₖ.
+      *
+      * Then, for each Aᵢ, if `q` also has a type member labaled `Aᵢ`, we inference SR constraints by calling
+      * TypeComparer on the relation `p.Aᵢ <:< q.Aᵢ`.
+      * We derive SR constraints for type members of the pattern path `q` similarly.
+      *
+      * Specially, if for some `Aᵢ`, `p.Aᵢ` is abstract while `q.Aᵢ` is not, we will extract constraints
+      * for both directions of the subtype relations (i.e. both `p.Aᵢ <:< q.Aᵢ` and `q.Aᵢ <:< p.Aᵢ`).
+      *
+      * How we find out and handle the path (`TermRef`) of the scrutinee and pattern.
+      *
+      * - The path of scrutinee is not directly available in `constrainPatternType`, since the scrutinee type
+      *   passed to this function is widened.
+      *   To make the path available during GADT reasoning, we save the scrutinee path in `Typer.typedCase`. The scrutinee path will be saved in `ctx.gadt.scrutineePath`.
+      *   Note that we have to clear the saved scrutinee path after using by calling `ctx.gadt.resetScrutineePath()`.
+      *   This is because `constrainPatternType` may be called multiple times for one nested pattern. For example:
+      *
+      *     e match
+      *       case A(B(a), C(b)) => // ...
+      *
+      *    We have to reset the scrutinee path after constraining `e` against the top level pattern `A(...)`.
+      *
+      * - The path of pattern is not available when calling the function, and the symbol of the pattern will only be created after GADT reasoning.
+      *   Therefore, we will create `SkolemType` acting as a placeholder for the pattern path, and substitute it with the real pattern path
+      *   when it is available later in the typer. We call `ctx.gadt.supplyPatternPath` to do the substitution.
+      */
     def constrainTypeMembers = trace(i"constrainTypeMembers(${scrutRepr(scrut)}, $pat)", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       import NameKinds.DepParamName
       val realScrutineePath = ctx.gadt.scrutineePath
