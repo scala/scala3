@@ -170,8 +170,29 @@
 /* content table */
 #content table {
   color: var(--text-primary);
+  border-collapse: collapse;
 }
 
+#content table tbody {
+  text-align: right;
+}
+
+#content table tr td:last-child,
+#content table th:last-child {
+  text-align: left;
+}
+
+#content table * {
+  padding: calc(2 * var(--base-spacing)) var(--base-spacing) 17px;
+}
+
+#content table tr {
+  border-bottom: 1px solid var(--border-default);
+}
+
+#content table tr:last-child {
+  border-bottom: none;
+}
 
 /* content link */
 #content a {
