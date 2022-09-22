@@ -146,35 +146,32 @@ function attachAllListeners() {
     }
   })
 
-  // show/hide side menu on mobile view
-  const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
-  sideMenuToggler.addEventListener('click', _e => {
-    document.getElementById("leftColumn").classList.toggle("show")
-    document.getElementById("content").classList.toggle("sidebar-shown")
-    const toc = document.getElementById("toc");
-    if (toc) {
-      toc.classList.toggle("sidebar-shown")
-    }
-    sideMenuToggler.classList.toggle("menu-shown")
-  })
-
-  // show/hide mobile menu on mobile view
-  const mobileMenuOpenIcon = document.getElementById("mobile-menu-toggle");
-  const mobileMenuCloseIcon = document.getElementById("mobile-menu-close");
-  mobileMenuOpenIcon.addEventListener('click', _e => {
-    document.getElementById("mobile-menu").classList.add("show")
-  })
-  mobileMenuCloseIcon.addEventListener('click', _e => {
-    document.getElementById("mobile-menu").classList.remove("show")
-  })
-
-
   // when document is loaded graph needs to be shown
 }
 
 window.addEventListener("DOMContentLoaded", () => {
   attachAllListeners()
 });
+
+// show/hide side menu on mobile view
+const sideMenuToggler = document.getElementById("mobile-sidebar-toggle")
+sideMenuToggler.addEventListener('click', _e => {
+  document.getElementById("leftColumn").classList.toggle("show")
+  document.getElementById("content").classList.toggle("sidebar-shown")
+  const toc = document.getElementById("toc");
+  if (toc) {
+    toc.classList.toggle("sidebar-shown")
+  }
+  sideMenuToggler.classList.toggle("menu-shown")
+})
+
+// show/hide mobile menu on mobile view
+document.getElementById("mobile-menu-toggle").addEventListener('click', _e => {
+  document.getElementById("mobile-menu").classList.add("show")
+})
+document.getElementById("mobile-menu-close").addEventListener('click', _e => {
+  document.getElementById("mobile-menu").classList.remove("show")
+})
 
 window.addEventListener('popstate', e => {
   const { leftColumn, mainDiv, title } = e.state
