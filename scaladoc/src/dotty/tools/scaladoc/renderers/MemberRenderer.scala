@@ -466,9 +466,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       div(
         intro,
         memberInfo(m, withAttributes = true),
-        h2(cls := "h500")("Members list"),
-        buildDocumentableFilter,
-        buildMembers(m)
+        if m.members.length > 0 then
+          Seq(
+            h2(cls := "h500")("Members list"),
+            buildDocumentableFilter,
+            buildMembers(m)
+          )
+        else Nil
       ),
       Seq.empty // For now, we don't support table of contents in members
     )
