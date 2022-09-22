@@ -1,10 +1,4 @@
 function attachAllListeners() {
-  var toggler = document.getElementById("leftToggler");
-  if (toggler) {
-    toggler.onclick = function () {
-      document.getElementById("leftColumn").classList.toggle("open");
-    };
-  }
 
   var elements = document.getElementsByClassName("documentableElement")
   if (elements) {
@@ -135,18 +129,6 @@ function attachAllListeners() {
       window.location = pathToRoot; // global variable pathToRoot is created by the html renderer
     };
   }
-
-  document.querySelectorAll('.documentableAnchor').forEach(elem => {
-    elem.addEventListener('click', event => {
-      var $temp = $("<input>")
-      $("body").append($temp)
-      var a = document.createElement('a')
-      a.href = $(elem).attr("link")
-      $temp.val(a.href).select();
-      document.execCommand("copy")
-      $temp.remove();
-    })
-  })
 
   hljs.registerLanguage("scala", highlightDotty);
   hljs.registerAliases(["dotty", "scala3"], "scala");
