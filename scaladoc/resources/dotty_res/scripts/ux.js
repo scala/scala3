@@ -1,4 +1,9 @@
+let observer = null;
+
 function attachAllListeners() {
+  if (observer) {
+    observer.disconnect()
+  }
 
   var elements = document.getElementsByClassName("documentableElement")
   if (elements) {
@@ -96,7 +101,7 @@ function attachAllListeners() {
     el.firstChild.classList.toggle("expand");
   }))
 
-  const observer = new IntersectionObserver(entries => {
+  observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       const id = entry.target.getAttribute('id');
       if (entry.intersectionRatio > 0) {
