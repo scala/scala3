@@ -1,10 +1,8 @@
-window.addEventListener("DOMContentLoaded", () => {
+let observer = null;
 
-  var toggler = document.getElementById("leftToggler");
-  if (toggler) {
-    toggler.onclick = function () {
-      document.getElementById("leftColumn").classList.toggle("open");
-    };
+function attachAllListeners() {
+  if (observer) {
+    observer.disconnect()
   }
 
   var elements = document.getElementsByClassName("documentableElement")
@@ -25,7 +23,7 @@ window.addEventListener("DOMContentLoaded", () => {
   var documentableLists = document.getElementsByClassName("documentableList")
   if (documentableLists) {
     for (i = 0; i < documentableLists.length; i++) {
-      documentableLists[i].children[0].onclick = function(e) {
+      documentableLists[i].children[0].onclick = function (e) {
         this.classList.toggle("expand");
         this.parentElement.classList.toggle("expand");
       }
@@ -36,13 +34,46 @@ window.addEventListener("DOMContentLoaded", () => {
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {
       if ($(memberLists[i].children[0]).is("button")) {
-        memberLists[i].children[0].onclick = function(e) {
+        memberLists[i].children[0].onclick = function (e) {
           this.classList.toggle("expand");
           this.parentElement.classList.toggle("expand");
         }
       }
     }
   }
+
+  document.querySelectorAll('a').forEach(el => {
+    const href = el.href
+    if (href === "") { return }
+    const url = new URL(href)
+    el.addEventListener('click', e => {
+      if (url.href.replace("#", "") === window.location.href.replace("#", "")) { return }
+      if (url.origin !== window.location.origin) { return }
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return }
+      e.preventDefault()
+      e.stopPropagation()
+      $.get(href, function (data) {
+        const html = $.parseHTML(data)
+        const title = html.find(node => node.nodeName === "TITLE").innerText
+        const bodyDiv = html.find(node => node.nodeName === "DIV")
+        const { children } = document.body.firstChild
+        if (window.history.state === null) {
+          window.history.replaceState({
+            leftColumn: children[3].innerHTML,
+            mainDiv: children[6].innerHTML,
+            title: document.title,
+          }, '')
+        }
+        document.title = title
+        const leftColumn = bodyDiv.children[3].innerHTML
+        const mainDiv = bodyDiv.children[6].innerHTML
+        window.history.pushState({ leftColumn, mainDiv, title }, '', href)
+        children[3].innerHTML = leftColumn
+        children[6].innerHTML = mainDiv
+        attachAllListeners()
+      })
+    })
+  })
 
   $(".ar").on('click', function (e) {
     $(this).parent().parent().toggleClass("expanded")
@@ -70,7 +101,7 @@ window.addEventListener("DOMContentLoaded", () => {
     el.firstChild.classList.toggle("expand");
   }))
 
-  const observer = new IntersectionObserver(entries => {
+  observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       const id = entry.target.getAttribute('id');
       if (entry.intersectionRatio > 0) {
@@ -97,28 +128,9 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  var logo = document.getElementById("logo");
-  if (logo) {
-    logo.onclick = function () {
-      window.location = pathToRoot; // global variable pathToRoot is created by the html renderer
-    };
-  }
-
-  document.querySelectorAll('.documentableAnchor').forEach(elem => {
-    elem.addEventListener('click', event => {
-      var $temp = $("<input>")
-      $("body").append($temp)
-      var a = document.createElement('a')
-      a.href = $(elem).attr("link")
-      $temp.val(a.href).select();
-      document.execCommand("copy")
-      $temp.remove();
-    })
-  })
-
-  hljs.registerLanguage("scala", highlightDotty);
-  hljs.registerAliases(["dotty", "scala3"], "scala");
-  hljs.initHighlighting();
+  document.querySelectorAll('pre code').forEach(el => {
+    hljs.highlightBlock(el);
+  });
 
   /* listen for the `F` key to be pressed, to focus on the member filter input (if it's present) */
   document.body.addEventListener('keydown', e => {
@@ -134,31 +146,43 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   })
 
- // show/hide side menu on mobile view
- const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
- sideMenuToggler.addEventListener('click', _e => {
-   document.getElementById("leftColumn").classList.toggle("show")
-   document.getElementById("content").classList.toggle("sidebar-shown")
-   const toc = document.getElementById("toc");
-   if(toc && toc.childElementCount > 0) {
-     toc.classList.toggle("sidebar-shown")
-   }
-   sideMenuToggler.classList.toggle("menu-shown")
- })
-
-    // show/hide mobile menu on mobile view
-    const mobileMenuOpenIcon = document.getElementById("mobile-menu-toggle");
-    const mobileMenuCloseIcon = document.getElementById("mobile-menu-close");
-    mobileMenuOpenIcon.addEventListener('click', _e => {
-      document.getElementById("mobile-menu").classList.add("show")
-    })
-    mobileMenuCloseIcon.addEventListener('click', _e => {
-      document.getElementById("mobile-menu").classList.remove("show")
-    })
-
-
   // when document is loaded graph needs to be shown
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  hljs.registerLanguage("scala", highlightDotty);
+  hljs.registerAliases(["dotty", "scala3"], "scala");
+  attachAllListeners()
 });
+
+// show/hide side menu on mobile view
+const sideMenuToggler = document.getElementById("mobile-sidebar-toggle")
+sideMenuToggler.addEventListener('click', _e => {
+  document.getElementById("leftColumn").classList.toggle("show")
+  document.getElementById("content").classList.toggle("sidebar-shown")
+  const toc = document.getElementById("toc");
+  if (toc && toc.childElementCount > 0) {
+    toc.classList.toggle("sidebar-shown")
+  }
+  sideMenuToggler.classList.toggle("menu-shown")
+})
+
+// show/hide mobile menu on mobile view
+document.getElementById("mobile-menu-toggle").addEventListener('click', _e => {
+  document.getElementById("mobile-menu").classList.add("show")
+})
+document.getElementById("mobile-menu-close").addEventListener('click', _e => {
+  document.getElementById("mobile-menu").classList.remove("show")
+})
+
+window.addEventListener('popstate', e => {
+  const { leftColumn, mainDiv, title } = e.state
+  document.title = title
+  const { children } = document.body.firstChild
+  children[3].innerHTML = leftColumn
+  children[6].innerHTML = mainDiv
+  attachAllListeners()
+})
 
 var zoom;
 var transform;
