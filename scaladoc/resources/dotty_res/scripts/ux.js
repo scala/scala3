@@ -128,9 +128,9 @@ function attachAllListeners() {
     }
   }
 
-  hljs.registerLanguage("scala", highlightDotty);
-  hljs.registerAliases(["dotty", "scala3"], "scala");
-  hljs.initHighlighting();
+  document.querySelectorAll('pre code').forEach(el => {
+    hljs.highlightBlock(el);
+  });
 
   /* listen for the `F` key to be pressed, to focus on the member filter input (if it's present) */
   document.body.addEventListener('keydown', e => {
@@ -150,6 +150,8 @@ function attachAllListeners() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+  hljs.registerLanguage("scala", highlightDotty);
+  hljs.registerAliases(["dotty", "scala3"], "scala");
   attachAllListeners()
 });
 
