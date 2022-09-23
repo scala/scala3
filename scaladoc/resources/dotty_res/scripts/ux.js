@@ -61,10 +61,10 @@ function attachAllListeners() {
           window.history.replaceState({
             leftColumn: children[3].innerHTML,
             mainDiv: children[6].innerHTML,
-            title: window.title,
+            title: document.title,
           }, '')
         }
-        window.title = title
+        document.title = title
         const leftColumn = bodyDiv.children[3].innerHTML
         const mainDiv = bodyDiv.children[6].innerHTML
         window.history.pushState({ leftColumn, mainDiv, title }, '', href)
@@ -175,7 +175,7 @@ document.getElementById("mobile-menu-close").addEventListener('click', _e => {
 
 window.addEventListener('popstate', e => {
   const { leftColumn, mainDiv, title } = e.state
-  window.title = title
+  document.title = title
   const { children } = document.body.firstChild
   children[3].innerHTML = leftColumn
   children[6].innerHTML = mainDiv
