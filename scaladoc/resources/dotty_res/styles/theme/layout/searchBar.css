@@ -93,6 +93,8 @@
   border-radius: 4px;
   margin-top: calc(1.5 * var(--base-spacing));
   border: 1px solid var(--border-default);
+  max-height: calc(100vh - calc(19.5 * var(--base-spacing)));
+  overflow: scroll;
 }
 
 .searchbar-hints {
@@ -215,10 +217,8 @@
 }
 
 .scaladoc-searchbar-row .micon {
-  margin: calc(0.5 * var(--base-spacing)) calc(1 * var(--base-spacing)) 0px 0px;
+  margin-right: calc(1 * var(--base-spacing));
   color: var(--text-secondary);
-  position: relative;
-  top: -2px;
 }
 
 .scaladoc-searchbar-location {

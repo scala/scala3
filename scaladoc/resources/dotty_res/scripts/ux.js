@@ -161,7 +161,7 @@ sideMenuToggler.addEventListener('click', _e => {
   document.getElementById("leftColumn").classList.toggle("show")
   document.getElementById("content").classList.toggle("sidebar-shown")
   const toc = document.getElementById("toc");
-  if (toc) {
+  if (toc && toc.childElementCount > 0) {
     toc.classList.toggle("sidebar-shown")
   }
   sideMenuToggler.classList.toggle("menu-shown")

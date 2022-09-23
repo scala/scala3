@@ -77,6 +77,15 @@
   max-width: calc(19 * var(--base-spacing));
 }
 
+.n5 > .nh > .ar {
+  left: calc(16.5 * var(--base-spacing));
+}
+
+.n5 > .nh > a {
+  left: calc(19.5 * var(--base-spacing));
+  max-width: calc(16 * var(--base-spacing));
+}
+
 .nh:hover {
   background: var(--action-primary-background-hover);
   cursor: pointer;
