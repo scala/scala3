@@ -166,6 +166,12 @@ abstract class Constraint extends Showable {
    */
   def hasConflictingTypeVarsFor(tl: TypeLambda, that: Constraint): Boolean
 
+  /** Does `param` occur at the toplevel in `tp` ?
+   *  Toplevel means: the type itself or a factor in some
+   *  combination of `&` or `|` types.
+   */
+  def occursAtToplevel(param: TypeParamRef, tp: Type)(using Context): Boolean
+
   /** A map that associates type parameters of this constraint with all other type
    *  parameters that refer to them in their bounds covariantly, such that, if the
    *  type parameter is instantiated to a larger type, the constraint would be narrowed.
@@ -190,12 +196,6 @@ abstract class Constraint extends Showable {
 
   /** Check that no constrained parameter contains itself as a bound */
   def checkWellFormed()(using Context): this.type
-
-  /** Does `param` occur at the toplevel in `tp` ?
-   *  Toplevel means: the type itself or a factor in some
-   *  combination of `&` or `|` types.
-   */
-  def occursAtToplevel(param: TypeParamRef, tp: Type)(using Context): Boolean
 
   /** Check that constraint only refers to TypeParamRefs bound by itself */
   def checkClosed()(using Context): Unit

@@ -18,6 +18,11 @@ import cc.{CapturingType, derivedCapturingType}
 
 object OrderingConstraint {
 
+  @sharable private var id = 0
+  private def nextId =
+    id += 1
+    id
+
   type ArrayValuedMap[T] = SimpleIdentityMap[TypeLambda, Array[T]]
 
   /** The type of `OrderingConstraint#boundsMap` */
@@ -140,6 +145,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   type This = OrderingConstraint
 
+  var id = nextId
+  //if id == 118 then
+  //  new Error(s"at $id").printStackTrace()
+
   /** A new constraint with given maps and given set of hard typevars */
   def newConstraint( // !!! Dotty problem: Making newConstraint `private` causes -Ytest-pickler failure.
     boundsMap: ParamBounds = this.boundsMap,
@@ -245,8 +254,40 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         //.showing(i"outer depends on $tv with ${tvdeps.toList}%, % = $result")
     if co then test(coDeps, upperLens) else test(contraDeps, lowerLens)
 
+  /** Modify traversals in two respects:
+   *   - when encountering an application C[Ts], where C is a type variable or parameter
+   *     that has an instantiation in this constraint, assume the type parameters of
+   *     the instantiation instead of the type parameters of C when traversing the
+   *     arguments Ts. That can make a difference for the variance in which an argument
+   *     is traversed. Example constraint:
+   *
+   *         constrainded types: C[X], A
+   *         A >: C[B]
+   *         C := Option
+   *
+   *     Here, B is traversed with variance +1 instead of 0. Test case: pos/t3152.scala
+   *
+   *   - When typing a prefx, don't avoid negative variances. This matters only for the
+   *     corner case where a parameter is instantiated to Nothing (see comment in
+   *     TypeAccumulator#applyToPrefix). When determining instantiation directions
+   *     (which is what dependency variances are for), it can be ignored.
+   */
+  private trait ConstraintAwareTraversal[T] extends TypeAccumulator[T]:
+    override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
+      def tparams(tycon: Type): List[ParamInfo] = tycon match
+        case tycon: TypeVar if !tycon.isInstantiated => tparams(tycon.origin)
+        case tycon: TypeParamRef =>
+          entry(tycon) match
+            case _: TypeBounds => tp.tyconTypeParams
+            case tycon1 if tycon1.typeParams.nonEmpty => tycon1.typeParams
+            case _ => tp.tyconTypeParams
+        case _ => tp.tyconTypeParams
+      tparams(tp.tycon)
+    override def applyToPrefix(x: T, tp: NamedType): T =
+      this(x, tp.prefix)
+
   private class Adjuster(srcParam: TypeParamRef)(using Context)
-  extends TypeTraverser, ConstraintAwareTraversal:
+  extends TypeTraverser, ConstraintAwareTraversal[Unit]:
 
     var add: Boolean = compiletime.uninitialized
     val seen = util.HashSet[LazyRef]()
@@ -257,9 +298,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
     def traverse(t: Type) = t match
       case param: TypeParamRef =>
-        if contains(param) then
-          if variance >= 0 then coDeps = update(coDeps, param)
-          if variance <= 0 then contraDeps = update(contraDeps, param)
+        entry(param) match
+          case _: TypeBounds =>
+            if variance >= 0 then coDeps = update(coDeps, param)
+            if variance <= 0 then contraDeps = update(contraDeps, param)
+          case tp =>
+            traverse(tp)
       case tp: LazyRef =>
         if !seen.contains(tp) then
           seen += tp
@@ -287,39 +331,40 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
      *  and/or prefix of `bound`, just add the new parts of `bound`.
      *  @param  isLower `bound` and `prevBound` are lower bounds
      */
-    def adjustDelta(bound: Type, prevBound: Type, isLower: Boolean): Boolean =
-      if bound eq prevBound then true
+    def adjustDelta(bound: Type, prevBound: Type, isLower: Boolean, baseCase: => Boolean): Boolean =
+      if bound eq prevBound then
+        baseCase
       else bound match
         case bound: AndOrType =>
-          adjustDelta(bound.tp1, prevBound, isLower) && {
+          adjustDelta(bound.tp1, prevBound, isLower, baseCase) && {
             adjustReferenced(bound.tp2, isLower, add = true)
             true
           }
         case _ => false
 
-    /** Adjust dependencies to account for the delta of previous bound `prevBound`
-     *  and new bound `bound`.
-     *  @param  isLower `bound` and `prevBound` are lower bounds
+    /** Adjust dependencies to account for the delta of previous bounds `prevBounds`
+     *  and new bounds `bounds`.
+     *  @param add     true if the bounds are added, false if they are removed
      */
-    def adjustBounds(bound: Type, prevBound: Type, isLower: Boolean) =
-      if !adjustDelta(bound, prevBound, isLower) then
-        adjustReferenced(prevBound, isLower, add = false)
-        adjustReferenced(bound, isLower, add = true)
+    def adjustBounds(bounds: TypeBounds, add: Boolean) =
+      adjustReferenced(bounds.lo, isLower = true, add)
+      adjustReferenced(bounds.hi, isLower = false, add)
 
     entry match
-      case TypeBounds(lo, hi) =>
+      case entry @ TypeBounds(lo, hi) =>
         prevEntry match
-          case TypeBounds(plo, phi) =>
-            adjustBounds(lo, plo, isLower = true)
-            adjustBounds(hi, phi, isLower = false)
+          case prevEntry @ TypeBounds(plo, phi) =>
+            if !adjustDelta(lo, plo, isLower = true,
+                  adjustDelta(hi, phi, isLower = false, true))
+            then
+              adjustBounds(prevEntry, add = false)
+              adjustBounds(entry, add = true)
           case _ =>
-            adjustReferenced(lo, isLower = true, add = true)
-            adjustReferenced(hi, isLower = false, add = true)
+            adjustBounds(entry, add = true)
       case _ =>
         prevEntry match
-          case TypeBounds(plo, phi) =>
-            adjustReferenced(plo, isLower = true, add = false)
-            adjustReferenced(phi, isLower = false, add = false)
+          case prevEntry: TypeBounds =>
+            adjustBounds(prevEntry, add = false)
           case _ =>
         dropDeps(srcParam)
     this
@@ -408,6 +453,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   }
 
   def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This = {
+    checkWellFormed() // TODO: drop
     assert(!contains(poly))
     val nparams = poly.paramNames.length
     val entries1 = new Array[Type](nparams * 2)
@@ -563,7 +609,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     boundsLens.update(this, current, param, newEntry).adjustDeps(newEntry, oldEntry, param)
 
   private def updateEntry(current: This, param: TypeParamRef, newEntry: Type)(using Context): This = {
-    //println(i"update $param to $tp in $current")
+    //println(i"update $param to $newEntry in $current")
     if Config.checkNoWildcardsInConstraint then assert(!newEntry.containsWildcardTypes)
     var current1 = updateEntryNoOrdering(current, param, newEntry, current.entry(param))
     newEntry match {
@@ -596,12 +642,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     else
       assert(replacement.isValueTypeOrLambda)
 
-      val droppedTypeVar = typeVarOfParam(param)
+      val replacedTypeVar = typeVarOfParam(param)
+      //println(i"replace $param, $replacedTypeVar with $replacement in $this")
 
-      //println(i"replace $param, $droppedTypeVar with $replacement in $this")
-      val dropTypeVar = new TypeMap:
+      def mapReplacedTypeVarTo(to: Type) = new TypeMap:
         override def apply(t: Type): Type =
-          if t.exists && (t eq droppedTypeVar) then param else mapOver(t)
+          if (t eq replacedTypeVar) && t.exists then to else mapOver(t)
 
       var current = this
 
@@ -616,7 +662,29 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         if other != param then
           val oldEntry = current.entry(other)
           val newEntry = current.ensureNonCyclic(other, oldEntry.substParam(param, replacement))
-          current = updateEntryNoOrdering(current, other, newEntry, dropTypeVar(oldEntry))
+          current = boundsLens.update(this, current, other, newEntry)
+          var oldDepEntry = oldEntry
+          var newDepEntry = newEntry
+          replacedTypeVar match
+            case tvar: TypeVar =>
+              if tvar.isInstantiated
+              then
+                // replace is called from TypeVar's instantiateWith,
+                // forget about instantiation for old dependencies
+                oldDepEntry = mapReplacedTypeVarTo(param)(oldDepEntry)
+              else
+                // replace is called from unify,
+                // assume parameter has been replaced for new dependencies
+                // (the actual replacement is done below)
+                newDepEntry = mapReplacedTypeVarTo(replacement)(newDepEntry)
+            case _ =>
+          if oldDepEntry ne newDepEntry then
+            if current eq this then
+              // We can end up here if oldEntry eq newEntry, so posssibly no new constraint
+              // was created, but oldDepEntry ne newDepEntry. In that case we must make
+              // sure we have a new constraint before updating dependencies.
+              current = newConstraint()
+            current.adjustDeps(newDepEntry, oldDepEntry, other)
       }
 
       current =
@@ -703,6 +771,26 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           assert(tvar.origin == param, i"mismatch $tvar, $param")
         case _ =>
 
+  def occursAtToplevel(param: TypeParamRef, inst: Type)(using Context): Boolean =
+    def occurs(tp: Type)(using Context): Boolean = tp match
+      case tp: AndOrType =>
+        occurs(tp.tp1) || occurs(tp.tp2)
+      case tp: TypeParamRef =>
+        (tp eq param) || entry(tp).match
+          case NoType => false
+          case TypeBounds(lo, hi) => (lo eq hi) && occurs(lo)
+          case inst => occurs(inst)
+      case tp: TypeVar =>
+        occurs(tp.underlying)
+      case TypeBounds(lo, hi) =>
+        occurs(lo) || occurs(hi)
+      case _ =>
+        val tp1 = tp.dealias
+        (tp1 ne tp) && occurs(tp1)
+
+    occurs(inst)
+  end occursAtToplevel
+
 // ---------- Exploration --------------------------------------------------------
 
   def domainLambdas: List[TypeLambda] = boundsMap.keys
@@ -755,7 +843,60 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ---------- Checking -----------------------------------------------
 
+  /** Depending on Config settngs, check that there are no cycles and that
+   *  reverse depenecies are correct.
+   */
   def checkWellFormed()(using Context): this.type =
+
+    /** Check that each dependency A -> B in coDeps and contraDeps corresponds to
+     *  a reference to A at the right variance in the entry of B.
+     */
+    def checkBackward(deps: ReverseDeps, depsName: String, v: Int)(using Context): Unit =
+      deps.foreachBinding { (param, params) =>
+        for srcParam <- params do
+          assert(contains(srcParam) && occursAtVariance(param, v, in = entry(srcParam)),
+            i"wrong $depsName backwards reference $param -> $srcParam in $thisConstraint")
+      }
+
+    /** A type traverser that checks that all references bound in the constraint
+     *  are accounted for in coDeps and/or contraDeps.
+     */
+    def checkForward(srcParam: TypeParamRef)(using Context) =
+      new TypeTraverser with ConstraintAwareTraversal[Unit]:
+        val seen = util.HashSet[LazyRef]()
+        def traverse(t: Type): Unit = t match
+          case param: TypeParamRef if param ne srcParam =>
+            def check(deps: ReverseDeps, directDeps: List[TypeParamRef], depsName: String) =
+              assert(deps.at(param).contains(srcParam) || directDeps.contains(srcParam),
+                i"missing $depsName backwards reference $param -> $srcParam in $thisConstraint")
+            entry(param) match
+              case _: TypeBounds =>
+                if variance >= 0 then check(contraDeps, upper(param), "contra")
+                if variance <= 0 then check(coDeps, lower(param), "co")
+              case tp =>
+                traverse(tp)
+          case tp: LazyRef =>
+            if !seen.contains(tp) then
+              seen += tp
+              traverse(tp.ref)
+          case _ => traverseChildren(t)
+
+    /** Does `param` occur at variance `v` or else at variance 0 in entry `in`? */
+    def occursAtVariance(param: TypeParamRef, v: Int, in: Type)(using Context): Boolean =
+      val test = new TypeAccumulator[Boolean] with ConstraintAwareTraversal[Boolean]:
+        def apply(x: Boolean, t: Type): Boolean =
+          if x then true
+          else t match
+            case t: TypeParamRef =>
+              entry(t) match
+                case _: TypeBounds =>
+                  t == param && (variance == 0 || variance == v)
+                case e =>
+                  apply(x, e)
+            case _ =>
+              foldOver(x, t)
+      test(false, in)
+
     if Config.checkConstraintsNonCyclic then
       domainParams.foreach { param =>
         val inst = entry(param)
@@ -764,37 +905,13 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         assert(!occursAtToplevel(param, inst),
           s"cyclic bound for $param: ${inst.show} in ${this.show}")
       }
-    if Config.checkConstraintDeps then
-      def checkDeps(deps: ReverseDeps) = ()/*
-        deps.foreachBinding { (tv, tvs) =>
-          for tv1 <- tvs do
-            assert(!tv1.instanceOpt.exists, i"$this")
-        }*/
-      checkDeps(coDeps)
-      checkDeps(contraDeps)
+    if Config.checkConstraintDeps || ctx.settings.YcheckConstraintDeps.value then
+      checkBackward(coDeps, "co", -1)
+      checkBackward(contraDeps, "contra", +1)
+      domainParams.foreach(p => if contains(p) then checkForward(p).traverse(entry(p)))
+
     this
   end checkWellFormed
-
-  def occursAtToplevel(param: TypeParamRef, inst: Type)(using Context): Boolean =
-
-    def occurs(tp: Type)(using Context): Boolean = tp match
-      case tp: AndOrType =>
-        occurs(tp.tp1) || occurs(tp.tp2)
-      case tp: TypeParamRef =>
-        (tp eq param) || entry(tp).match
-          case NoType => false
-          case TypeBounds(lo, hi) => (lo eq hi) && occurs(lo)
-          case inst => occurs(inst)
-      case tp: TypeVar =>
-        occurs(tp.underlying)
-      case TypeBounds(lo, hi) =>
-        occurs(lo) || occurs(hi)
-      case _ =>
-        val tp1 = tp.dealias
-        (tp1 ne tp) && occurs(tp1)
-
-    occurs(inst)
-  end occursAtToplevel
 
   override def checkClosed()(using Context): Unit =
 

@@ -5502,16 +5502,6 @@ object Types {
       tp.tyconTypeParams
   end VariantTraversal
 
-  trait ConstraintAwareTraversal extends VariantTraversal:
-    override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
-      tp.tycon match
-        case tycon: TypeParamRef =>
-          ctx.typerState.constraint.entry(tycon) match
-            case _: TypeBounds =>
-            case tp1 => if tp1.typeParams.nonEmpty then return tp1.typeParams
-        case _ =>
-      tp.tyconTypeParams
-
   /** A supertrait for some typemaps that are bijections. Used for capture checking.
    *  BiTypeMaps should map capture references to capture references.
    */
@@ -5617,13 +5607,7 @@ object Types {
         case tp: NamedType =>
           if stopBecauseStaticOrLocal(tp) then tp
           else
-            val prefix1 = atVariance(variance max 0)(this(tp.prefix))
-              // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
-              // context, we cannot assume contravariance for `p` because `p`'s lower
-              // bound might not have a binding for `A` (e.g. the lower bound could be `Nothing`).
-              // By contrast, covariance does translate to the prefix, since we have that
-              // if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
-              // of `p`'s upper bound.
+            val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
             derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
@@ -6076,7 +6060,16 @@ object Types {
 
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
-    protected final def applyToPrefix(x: T, tp: NamedType): T =
+    /** A prefix is never contravariant. Even if say `p.A` is used in a contravariant
+     *  context, we cannot assume contravariance for `p` because `p`'s lower
+     *  bound might not have a binding for `A`, since the lower bound could be `Nothing`.
+     *  By contrast, covariance does translate to the prefix, since we have that
+     *  if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
+     *  of `p`'s upper bound.
+     *  Overridden in traversers that compute or check reverse dependencies in OrderingConstraint,
+     *  where we use a more relaxed scheme.
+     */
+    protected def applyToPrefix(x: T, tp: NamedType): T =
       atVariance(variance max 0)(this(x, tp.prefix)) // see remark on NamedType case in TypeMap
 
     def foldOver(x: T, tp: Type): T = {
