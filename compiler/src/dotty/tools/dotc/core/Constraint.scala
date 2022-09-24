@@ -4,6 +4,7 @@ package core
 
 import Types._, Contexts._
 import printing.Showable
+import util.SimpleIdentityMap
 
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:
@@ -128,7 +129,7 @@ abstract class Constraint extends Showable {
 
   /** Is `tv` marked as hard in the constraint? */
   def isHard(tv: TypeVar): Boolean
-  
+
   /** The same as this constraint, but with `tv` marked as hard. */
   def withHard(tv: TypeVar)(using Context): This
 
@@ -165,6 +166,28 @@ abstract class Constraint extends Showable {
    */
   def hasConflictingTypeVarsFor(tl: TypeLambda, that: Constraint): Boolean
 
+  /** A map that associates type variables with all other type variables that
+   *  refer to them in their bounds covariantly, such that, if the type variable
+   *  is isntantiated to a larger type, the constraint would be narrowed.
+   */
+  def coDeps: Constraint.TypeVarDeps
+
+  /** A map that associates type variables with all other type variables that
+   *  refer to them in their bounds covariantly, such that, if the type variable
+   *  is isntantiated to a smaller type, the constraint would be narrowed.
+   */
+  def contraDeps: Constraint.TypeVarDeps
+
+  /** A string showing the `coDeps` and `contraDeps` maps */
+  def depsToString(using Context): String
+
+  /** Does the constraint restricted to variables outside `except` depend on `tv`
+   *  in the given direction `co`?
+   *  @param `co`  If true, test whether the constraint would change if the variable is made larger
+   *               otherwise, test whether the constraint would change if the variable is made smaller.
+   */
+  def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean
+
   /** Check that no constrained parameter contains itself as a bound */
   def checkNonCyclic()(using Context): this.type
 
@@ -182,6 +205,10 @@ abstract class Constraint extends Showable {
    */
   def checkConsistentVars()(using Context): Unit
 }
+
+object Constraint:
+  type TypeVarDeps = SimpleIdentityMap[TypeVar, TypeVars]
+
 
 /** When calling `Constraint#addLess(p1, p2, ...)`, the caller might end up
  *  unifying one parameter with the other, this enum lets `addLess` know which

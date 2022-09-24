@@ -6,15 +6,14 @@ import core._
 import ast._
 import Contexts._, Types._, Flags._, Symbols._
 import ProtoTypes._
-import NameKinds.{AvoidNameKind, UniqueName}
+import NameKinds.UniqueName
 import util.Spans._
-import util.{Stats, SimpleIdentityMap, SrcPos}
+import util.{Stats, SimpleIdentityMap, SimpleIdentitySet, SrcPos}
 import Decorators._
 import config.Printers.{gadts, typr}
 import annotation.tailrec
 import reporting._
 import collection.mutable
-
 import scala.annotation.internal.sharable
 
 object Inferencing {
@@ -619,7 +618,7 @@ trait Inferencing { this: Typer =>
         if state.reporter.hasUnreportedErrors then return tree
 
         def constraint = state.constraint
-        type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
+        type InstantiateQueue = mutable.ListBuffer[(TypeVar, Int)]
         val toInstantiate = new InstantiateQueue
         for tvar <- qualifying do
           if !tvar.isInstantiated && constraint.contains(tvar) && tvar.nestingLevel >= ctx.nestingLevel then
@@ -628,24 +627,9 @@ trait Inferencing { this: Typer =>
             // instantiated `tvar` through unification.
             val v = vs(tvar)
             if v == null then
-              // Even though `tvar` is non-occurring in `v`, the specific
-              // instantiation we pick still matters because `tvar` might appear
-              // in the bounds of a non-`qualifying` type variable in the
-              // constraint.
-              // In particular, if `tvar` was created as the upper or lower
-              // bound of an existing variable by `LevelAvoidMap`, we
-              // instantiate it in the direction corresponding to the
-              // original variable which might be further constrained later.
-              // Otherwise, we simply rely on `hasLowerBound`.
-              val name = tvar.origin.paramName
-              val fromBelow =
-                name.is(AvoidNameKind.UpperBound) ||
-                !name.is(AvoidNameKind.LowerBound) && tvar.hasLowerBound
-              typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
-              toInstantiate += ((tvar, fromBelow))
+              toInstantiate += ((tvar, 0))
             else if v.intValue != 0 then
-              typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
-              toInstantiate += ((tvar, v.intValue == 1))
+              toInstantiate += ((tvar, v.intValue))
             else comparing(cmp =>
               if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
                 // Invariant: The type of a tree whose enclosing scope is level
@@ -686,10 +670,23 @@ trait Inferencing { this: Typer =>
          *      V2 := V3, O2 := O3
          */
         def doInstantiate(buf: InstantiateQueue): Unit =
+          val varsToInstantiate = buf.foldLeft(SimpleIdentitySet.empty: TypeVars) {
+            case (tvs, (tv, _)) => tvs + tv
+          }
           if buf.nonEmpty then
             val suspended = new InstantiateQueue
             while buf.nonEmpty do
-              val first @ (tvar, fromBelow) = buf.head
+              val first @ (tvar, v) = buf.head
+              val fromBelow =
+                if v == 0 then
+                  val aboveOK = !constraint.dependsOn(tvar, varsToInstantiate, co = true)
+                  val belowOK = !constraint.dependsOn(tvar, varsToInstantiate, co = false)
+                  if aboveOK == belowOK then tvar.hasLowerBound
+                  else belowOK
+                else
+                  v == 1
+              typr.println(
+                i"interpolate${if v == 0 then "non-occurring" else ""} $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
               buf.dropInPlace(1)
               if !tvar.isInstantiated then
                 val suspend = buf.exists{ (following, _) =>

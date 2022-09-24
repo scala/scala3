@@ -184,6 +184,9 @@ object Config {
   /** If set, prints a trace of all symbol completions */
   inline val showCompletions = false
 
+  /** If set, show variable/variable reverse dependencoes when printing constraints. */
+  inline val showConstraintDeps = true
+
   /** If set, method results that are context functions are flattened by adding
    *  the parameters of the context function results to the methods themselves.
    *  This is an optimization that reduces closure allocations.
