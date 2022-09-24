@@ -10,8 +10,7 @@ import printing.Texts._
 import config.Config
 import config.Printers.constr
 import reflect.ClassTag
-import Constraint.TypeVarDeps
-import NameKinds.DepParamName
+import Constraint.ReverseDeps
 import annotation.tailrec
 import annotation.internal.sharable
 import cc.{CapturingType, derivedCapturingType}
@@ -223,124 +222,120 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       if tvar == null then NoType
       else tvar
 
-// ------------- TypeVar dependencies -----------------------------------
+// ------------- Type parameter dependencies ----------------------------------------
 
-  var coDeps, contraDeps: TypeVarDeps = SimpleIdentityMap.empty
+  var coDeps, contraDeps: ReverseDeps = SimpleIdentityMap.empty
 
   def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean =
-    def test(deps: TypeVarDeps, lens: ConstraintLens[List[TypeParamRef]]) =
-      val tvdeps = deps(tv)
-      null != tvdeps && tvdeps.exists(!except.contains(_))
-      || lens(this, tv.origin.binder, tv.origin.paramNum).exists(
-            p => !except.contains(typeVarOfParam(p)))
+    def origin(tv: TypeVar) =
+      assert(!tv.isInstantiated)
+      tv.origin
+    val param = origin(tv)
+    val excluded = except.map(origin)
+    val qualifies: TypeParamRef => Boolean = !excluded.contains(_)
+    def test(deps: ReverseDeps, lens: ConstraintLens[List[TypeParamRef]]) =
+      val depending = deps(param)
+      null != depending && depending.exists(qualifies)
+      || lens(this, tv.origin.binder, tv.origin.paramNum).exists(qualifies)
         //.showing(i"outer depends on $tv with ${tvdeps.toList}%, % = $result")
     if co then test(coDeps, upperLens) else test(contraDeps, lowerLens)
 
-  private class Adjuster(tvar: TypeVar)(using Context) extends TypeTraverser:
+  private class Adjuster(srcParam: TypeParamRef)(using Context) extends TypeTraverser:
     var add: Boolean = compiletime.uninitialized
 
-    def update(deps: TypeVarDeps, referenced: TypeVar): TypeVarDeps =
+    def update(deps: ReverseDeps, referenced: TypeParamRef): ReverseDeps =
       val entry = deps(referenced)
       val prev = if null == entry then SimpleIdentitySet.empty else entry
-      val now = if add then prev + tvar else prev - tvar
+      val now = if add then prev + srcParam else prev - srcParam
       deps.updated(referenced, now)
 
     def traverse(t: Type) = t match
-      case tv: TypeVar =>
-        val inst = tv.instanceOpt
-        if inst.exists then traverse(inst)
-        else
-          if variance >= 0 then coDeps = update(coDeps, tv)
-          if variance <= 0 then contraDeps = update(contraDeps, tv)
       case param: TypeParamRef =>
-        traverse(typeVarOfParam(param))
+        if contains(param) then
+          if variance >= 0 then coDeps = update(coDeps, param)
+          if variance <= 0 then contraDeps = update(contraDeps, param)
       case tp: LazyRef if !tp.completed =>
-      case _ =>
-        traverseChildren(t)
+      case _ => traverseChildren(t)
+  end Adjuster
 
   /** Adjust dependencies to account for the delta of previous entry `prevEntry`
-   *  and new bound `entry` for the type variable `tvar`.
+   *  and new bound `entry` for the type parameter `srcParam`.
    */
-  def adjustDeps(entry: Type | Null, prevEntry: Type | Null, tvar: Type | Null)(using Context): this.type =
-    tvar match
-      case tvar: TypeVar =>
-        val adjuster = new Adjuster(tvar)
+  def adjustDeps(entry: Type | Null, prevEntry: Type | Null, srcParam: TypeParamRef)(using Context): this.type =
+    val adjuster = new Adjuster(srcParam)
 
-        /** Adjust reverse depemdencies of all type variables referenced by `bound`
-         *  @param  isLower `bound` is a lower bound
-         *  @param  add     if true, add referenced variables to dependencoes, otherwise drop them.
-         */
-        def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
-          adjuster.variance = if isLower then 1 else -1
-          adjuster.add = add
-          adjuster.traverse(bound)
+    /** Adjust reverse dependencies of all type parameters referenced by `bound`
+     *  @param  isLower `bound` is a lower bound
+     *  @param  add     if true, add referenced variables to dependencoes, otherwise drop them.
+     */
+    def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
+      adjuster.variance = if isLower then 1 else -1
+      adjuster.add = add
+      adjuster.traverse(bound)
 
-        /** Use an optimized strategy to adjust dependencies to account for the delta
-         *  of previous bound `prevBound` and new bound `bound`: If `prevBound` is some
-         *  and/or prefix of `bound`, just add the new parts of `bound`.
-         *  @param  isLower `bound` and `prevBound` are lower bounds
-         */
-        def adjustDelta(bound: Type, prevBound: Type, isLower: Boolean): Boolean =
-          if bound eq prevBound then true
-          else bound match
-            case bound: AndOrType =>
-              adjustDelta(bound.tp1, prevBound, isLower) && {
-                adjustReferenced(bound.tp2, isLower, add = true)
-                true
-              }
-            case _ => false
+    /** Use an optimized strategy to adjust dependencies to account for the delta
+     *  of previous bound `prevBound` and new bound `bound`: If `prevBound` is some
+     *  and/or prefix of `bound`, just add the new parts of `bound`.
+     *  @param  isLower `bound` and `prevBound` are lower bounds
+     */
+    def adjustDelta(bound: Type, prevBound: Type, isLower: Boolean): Boolean =
+      if bound eq prevBound then true
+      else bound match
+        case bound: AndOrType =>
+          adjustDelta(bound.tp1, prevBound, isLower) && {
+            adjustReferenced(bound.tp2, isLower, add = true)
+            true
+          }
+        case _ => false
 
-        /** Adjust dependencies to account for the delta of previous bound `prevBound`
-         *  and new bound `bound`.
-         *  @param  isLower `bound` and `prevBound` are lower bounds
-         */
-        def adjustBounds(bound: Type, prevBound: Type, isLower: Boolean) =
-          if !adjustDelta(bound, prevBound, isLower) then
-            adjustReferenced(prevBound, isLower, add = false)
-            adjustReferenced(bound, isLower, add = true)
+    /** Adjust dependencies to account for the delta of previous bound `prevBound`
+     *  and new bound `bound`.
+     *  @param  isLower `bound` and `prevBound` are lower bounds
+     */
+    def adjustBounds(bound: Type, prevBound: Type, isLower: Boolean) =
+      if !adjustDelta(bound, prevBound, isLower) then
+        adjustReferenced(prevBound, isLower, add = false)
+        adjustReferenced(bound, isLower, add = true)
 
-        entry match
-          case TypeBounds(lo, hi) =>
-            prevEntry match
-              case TypeBounds(plo, phi) =>
-                adjustBounds(lo, plo, isLower = true)
-                adjustBounds(hi, phi, isLower = false)
-              case _ =>
-                adjustReferenced(lo, isLower = true, add = true)
-                adjustReferenced(hi, isLower = false, add = true)
+    entry match
+      case TypeBounds(lo, hi) =>
+        prevEntry match
+          case TypeBounds(plo, phi) =>
+            adjustBounds(lo, plo, isLower = true)
+            adjustBounds(hi, phi, isLower = false)
           case _ =>
-            prevEntry match
-              case TypeBounds(plo, phi) =>
-                adjustReferenced(plo, isLower = true, add = false)
-                adjustReferenced(phi, isLower = false, add = false)
-              case _ =>
-            dropDeps(tvar)
+            adjustReferenced(lo, isLower = true, add = true)
+            adjustReferenced(hi, isLower = false, add = true)
       case _ =>
+        prevEntry match
+          case TypeBounds(plo, phi) =>
+            adjustReferenced(plo, isLower = true, add = false)
+            adjustReferenced(phi, isLower = false, add = false)
+          case _ =>
+        dropDeps(srcParam)
     this
   end adjustDeps
 
-  /** Adjust dependencies to account for adding or dropping `entries` to the
-   *  constraint.
+  /** Adjust dependencies to account for adding or dropping all `entries` associated
+   *  with `poly`.
    *  @param add   if true, entries is added, otherwise it is dropped
    */
-  def adjustDeps(entries: Array[Type], add: Boolean)(using Context): this.type =
+  def adjustDeps(poly: TypeLambda, entries: Array[Type], add: Boolean)(using Context): this.type =
     for n <- 0 until paramCount(entries) do
       if add
-      then adjustDeps(entries(n), NoType, typeVar(entries, n))
-      else adjustDeps(NoType, entries(n), typeVar(entries, n))
+      then adjustDeps(entries(n), NoType, poly.paramRefs(n))
+      else adjustDeps(NoType, entries(n), poly.paramRefs(n))
     this
 
-  /** If `tp` is a type variable, remove all its reverse dependencies */
-  def dropDeps(tp: Type)(using Context): Unit = tp match
-    case tv: TypeVar =>
-      coDeps = coDeps.remove(tv)
-      contraDeps = contraDeps.remove(tv)
-    case _ =>
+  /** Remove all reverse dependencies of `param` */
+  def dropDeps(param: TypeParamRef)(using Context): Unit =
+    coDeps = coDeps.remove(param)
+    contraDeps = contraDeps.remove(param)
 
   /** A string representing the two depenecy maps */
   def depsToString(using Context): String =
-    def depsStr(deps: SimpleIdentityMap[TypeVar, TypeVars]): String =
-      def depStr(tv: TypeVar) = i"$tv --> ${deps(tv).nn.toList}%, %"
+    def depsStr(deps: ReverseDeps): String =
+      def depStr(param: TypeParamRef) = i"$param --> ${deps(param).nn.toList}%, %"
       if deps.isEmpty then "" else i"\n  ${deps.toList.map((k, v) => depStr(k))}%\n  %"
     i"co-deps:${depsStr(coDeps)}\ncontra-deps:${depsStr(contraDeps)}\n"
 
@@ -411,7 +406,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     tvars.copyToArray(entries1, nparams)
     newConstraint(boundsMap = this.boundsMap.updated(poly, entries1))
       .init(poly)
-      .adjustDeps(entries1, add = true)
+      .adjustDeps(poly, entries1, add = true)
   }
 
   /** Split dependent parameters off the bounds for parameters in `poly`.
@@ -558,7 +553,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private def updateEntry(current: This, param: TypeParamRef, tp: Type)(using Context): This = {
     if Config.checkNoWildcardsInConstraint then assert(!tp.containsWildcardTypes)
     var current1 = boundsLens.update(this, current, param, tp)
-    current1.adjustDeps(tp, current.entry(param), typeVarOfParam(param))
+    current1.adjustDeps(tp, current.entry(param), param)
     tp match {
       case TypeBounds(lo, hi) =>
         for p <- dependentParams(lo, isUpper = false) do
@@ -594,19 +589,22 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
       def removeParam(ps: List[TypeParamRef]) = ps.filterConserve(param ne _)
 
-      def replaceParam(tp: Type, atPoly: TypeLambda, atIdx: Int): Type =
-        current.ensureNonCyclic(atPoly.paramRefs(atIdx), tp.substParam(param, replacement))
+      def replaceParam(entry: Type, atPoly: TypeLambda, atIdx: Int): Type =
+        val pref = atPoly.paramRefs(atIdx)
+        val newEntry = current.ensureNonCyclic(pref, entry.substParam(param, replacement))
+        adjustDeps(newEntry, entry, pref)
+        newEntry
 
       current.foreachParam { (p, i) =>
         current = boundsLens.map(this, current, p, i,
           entry =>
             val newEntry = replaceParam(entry, p, i)
-            adjustDeps(newEntry, entry, typeVar(this.boundsMap(p).nn, i))
+            adjustDeps(newEntry, entry, p.paramRefs(i))
             newEntry)
         current = lowerLens.map(this, current, p, i, removeParam)
         current = upperLens.map(this, current, p, i, removeParam)
       }
-      current.dropDeps(typeVarOfParam(param))
+      current.dropDeps(param)
       current.checkWellFormed()
   end replace
 
@@ -620,7 +618,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     }
     val hardVars1 = pt.paramRefs.foldLeft(hardVars)((hvs, param) => hvs - typeVarOfParam(param))
     newConstraint(boundsMap.remove(pt), removeFromOrdering(lowerMap), removeFromOrdering(upperMap), hardVars1)
-      .adjustDeps(boundsMap(pt).nn, add = false)
+      .adjustDeps(pt, boundsMap(pt).nn, add = false)
       .checkWellFormed()
   }
 
@@ -749,11 +747,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           s"cyclic bound for $param: ${inst.show} in ${this.show}")
       }
     if Config.checkConstraintDeps then
-      def checkDeps(deps: TypeVarDeps) =
+      def checkDeps(deps: ReverseDeps) = ()/*
         deps.foreachBinding { (tv, tvs) =>
           for tv1 <- tvs do
             assert(!tv1.instanceOpt.exists, i"$this")
-        }
+        }*/
       checkDeps(coDeps)
       checkDeps(contraDeps)
     this

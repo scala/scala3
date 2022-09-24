@@ -623,24 +623,25 @@ trait Inferencing { this: Typer =>
         for tvar <- qualifying do
           if !tvar.isInstantiated && constraint.contains(tvar) && tvar.nestingLevel >= ctx.nestingLevel then
             constrainIfDependentParamRef(tvar, tree)
-            // Needs to be checked again, since previous interpolations could already have
-            // instantiated `tvar` through unification.
-            val v = vs(tvar)
-            if v == null then
-              toInstantiate += ((tvar, 0))
-            else if v.intValue != 0 then
-              toInstantiate += ((tvar, v.intValue))
-            else comparing(cmp =>
-              if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
-                // Invariant: The type of a tree whose enclosing scope is level
-                // N only contains type variables of level <= N.
-                typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
-                cmp.atLevel(ctx.nestingLevel, tvar.origin)
-              else
-                typr.println(i"no interpolation for nonvariant $tvar in $state")
-            )
+            if !tvar.isInstantiated then
+              // Needs to be checked again, since previous interpolations could already have
+              // instantiated `tvar` through unification.
+              val v = vs(tvar)
+              if v == null then
+                toInstantiate += ((tvar, 0))
+              else if v.intValue != 0 then
+                toInstantiate += ((tvar, v.intValue))
+              else comparing(cmp =>
+                if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
+                  // Invariant: The type of a tree whose enclosing scope is level
+                  // N only contains type variables of level <= N.
+                  typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
+                  cmp.atLevel(ctx.nestingLevel, tvar.origin)
+                else
+                  typr.println(i"no interpolation for nonvariant $tvar in $state")
+              )
 
-        def typeVarsIn(xs: collection.Seq[(TypeVar, Int)]): TypeVars =
+        def typeVarsIn(xs: List[(TypeVar, Int)]): TypeVars =
           xs.foldLeft(SimpleIdentitySet.empty: TypeVars)((tvs, tvi) => tvs + tvi._1)
 
         def filterByDeps(tvs0: List[(TypeVar, Int)]): List[(TypeVar, Int)] = {
@@ -654,7 +655,7 @@ trait Inferencing { this: Typer =>
               else if v == 0 && !belowOK then
                 step((tvar, -1) :: tvs1)
               else if v == -1 && !aboveOK || v == 1 && !belowOK then
-                println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toList}, tvs0 = ${tvs0.toList}%, %, excluded = ${excluded.toList}, $constraint")
+                typr.println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toList}, tvs0 = ${tvs0.toList}%, %, excluded = ${excluded.toList}, $constraint")
                 step(tvs1)
               else
                 tvs.derivedCons(hd, step(tvs1))

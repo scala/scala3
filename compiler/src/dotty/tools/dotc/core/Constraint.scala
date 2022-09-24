@@ -4,7 +4,7 @@ package core
 
 import Types._, Contexts._
 import printing.Showable
-import util.SimpleIdentityMap
+import util.{SimpleIdentitySet, SimpleIdentityMap}
 
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:
@@ -166,17 +166,17 @@ abstract class Constraint extends Showable {
    */
   def hasConflictingTypeVarsFor(tl: TypeLambda, that: Constraint): Boolean
 
-  /** A map that associates type variables with all other type variables that
-   *  refer to them in their bounds covariantly, such that, if the type variable
-   *  is isntantiated to a larger type, the constraint would be narrowed.
+  /** A map that associates type parameters of this constraint with all other type
+   *  parameters that refer to them in their bounds covariantly, such that, if the
+   *  type parameter is instantiated to a larger type, the constraint would be narrowed.
    */
-  def coDeps: Constraint.TypeVarDeps
+  def coDeps: Constraint.ReverseDeps
 
-  /** A map that associates type variables with all other type variables that
-   *  refer to them in their bounds covariantly, such that, if the type variable
-   *  is isntantiated to a smaller type, the constraint would be narrowed.
+  /** A map that associates type parameters of this constraint with all other type
+   *  parameters that refer to them in their bounds covariantly, such that, if the
+   *  type parameter is instantiated to a smaller type, the constraint would be narrowed.
    */
-  def contraDeps: Constraint.TypeVarDeps
+  def contraDeps: Constraint.ReverseDeps
 
   /** A string showing the `coDeps` and `contraDeps` maps */
   def depsToString(using Context): String
@@ -207,8 +207,7 @@ abstract class Constraint extends Showable {
 }
 
 object Constraint:
-  type TypeVarDeps = SimpleIdentityMap[TypeVar, TypeVars]
-
+  type ReverseDeps = SimpleIdentityMap[TypeParamRef, SimpleIdentitySet[TypeParamRef]]
 
 /** When calling `Constraint#addLess(p1, p2, ...)`, the caller might end up
  *  unifying one parameter with the other, this enum lets `addLess` know which
