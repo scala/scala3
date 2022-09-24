@@ -5497,7 +5497,20 @@ object Types {
         stop == StopAt.Static && tp.currentSymbol.isStatic && isStaticPrefix(tp.prefix)
         || stop == StopAt.Package && tp.currentSymbol.is(Package)
       }
+
+    protected def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
+      tp.tyconTypeParams
   end VariantTraversal
+
+  trait ConstraintAwareTraversal extends VariantTraversal:
+    override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
+      tp.tycon match
+        case tycon: TypeParamRef =>
+          ctx.typerState.constraint.entry(tycon) match
+            case _: TypeBounds =>
+            case tp1 => if tp1.typeParams.nonEmpty then return tp1.typeParams
+        case _ =>
+      tp.tyconTypeParams
 
   /** A supertrait for some typemaps that are bijections. Used for capture checking.
    *  BiTypeMaps should map capture references to capture references.
@@ -5614,7 +5627,7 @@ object Types {
             derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.tyconTypeParams))
+          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
 
         case tp: LambdaType =>
           mapOverLambda(tp)
@@ -5941,7 +5954,7 @@ object Types {
               case nil =>
                 true
             }
-            if (distributeArgs(args, tp.tyconTypeParams))
+            if (distributeArgs(args, tyconTypeParams(tp)))
               range(tp.derivedAppliedType(tycon, loBuf.toList),
                     tp.derivedAppliedType(tycon, hiBuf.toList))
             else if tycon.isLambdaSub || args.exists(isRangeOfNonTermTypes) then
@@ -6087,7 +6100,7 @@ object Types {
             }
             foldArgs(acc, tparams.tail, args.tail)
           }
-        foldArgs(this(x, tycon), tp.tyconTypeParams, args)
+        foldArgs(this(x, tycon), tyconTypeParams(tp), args)
 
       case _: BoundType | _: ThisType => x
 
