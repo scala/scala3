@@ -433,7 +433,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         todos.dropInPlace(1)
       i += 1
     }
-    current.checkNonCyclic()
+    current.checkWellFormed()
   }
 
 // ---------- Updates ------------------------------------------------------------
@@ -572,10 +572,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   /** The public version of `updateEntry`. Guarantees that there are no cycles */
   def updateEntry(param: TypeParamRef, tp: Type)(using Context): This =
-    updateEntry(this, param, ensureNonCyclic(param, tp)).checkNonCyclic()
+    updateEntry(this, param, ensureNonCyclic(param, tp)).checkWellFormed()
 
   def addLess(param1: TypeParamRef, param2: TypeParamRef, direction: UnificationDirection)(using Context): This =
-    order(this, param1, param2, direction).checkNonCyclic()
+    order(this, param1, param2, direction).checkWellFormed()
 
 // ---------- Replacements and Removals -------------------------------------
 
@@ -585,7 +585,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    */
   def replace(param: TypeParamRef, tp: Type)(using Context): OrderingConstraint =
     val replacement = tp.dealiasKeepAnnots.stripTypeVar
-    if param == replacement then this.checkNonCyclic()
+    if param == replacement then this.checkWellFormed()
     else
       assert(replacement.isValueTypeOrLambda)
       var current =
@@ -607,7 +607,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         current = upperLens.map(this, current, p, i, removeParam)
       }
       current.dropDeps(typeVarOfParam(param))
-      current.checkNonCyclic()
+      current.checkWellFormed()
   end replace
 
   def remove(pt: TypeLambda)(using Context): This = {
@@ -620,8 +620,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     }
     val hardVars1 = pt.paramRefs.foldLeft(hardVars)((hvs, param) => hvs - typeVarOfParam(param))
     newConstraint(boundsMap.remove(pt), removeFromOrdering(lowerMap), removeFromOrdering(upperMap), hardVars1)
-      .checkNonCyclic()
       .adjustDeps(boundsMap(pt).nn, add = false)
+      .checkWellFormed()
   }
 
   def isRemovable(pt: TypeLambda): Boolean = {
@@ -655,7 +655,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       current = upperLens.map(this, current, p, i, _.map(subst))
     }
     constr.println(i"renamed $this to $current")
-    current.checkNonCyclic()
+    current.checkWellFormed()
 
   def isHard(tv: TypeVar) = hardVars.contains(tv)
 
@@ -739,7 +739,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ---------- Checking -----------------------------------------------
 
-  def checkNonCyclic()(using Context): this.type =
+  def checkWellFormed()(using Context): this.type =
     if Config.checkConstraintsNonCyclic then
       domainParams.foreach { param =>
         val inst = entry(param)
@@ -748,6 +748,14 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         assert(!occursAtToplevel(param, inst),
           s"cyclic bound for $param: ${inst.show} in ${this.show}")
       }
+    if Config.checkConstraintDeps then
+      def checkDeps(deps: TypeVarDeps) =
+        deps.foreachBinding { (tv, tvs) =>
+          for tv1 <- tvs do
+            assert(!tv1.instanceOpt.exists, i"$this")
+        }
+      checkDeps(coDeps)
+      checkDeps(contraDeps)
     this
 
   def occursAtToplevel(param: TypeParamRef, inst: Type)(using Context): Boolean =

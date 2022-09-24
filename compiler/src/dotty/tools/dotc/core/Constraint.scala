@@ -189,7 +189,7 @@ abstract class Constraint extends Showable {
   def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean
 
   /** Check that no constrained parameter contains itself as a bound */
-  def checkNonCyclic()(using Context): this.type
+  def checkWellFormed()(using Context): this.type
 
   /** Does `param` occur at the toplevel in `tp` ?
    *  Toplevel means: the type itself or a factor in some

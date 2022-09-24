@@ -640,6 +640,31 @@ trait Inferencing { this: Typer =>
                 typr.println(i"no interpolation for nonvariant $tvar in $state")
             )
 
+        def typeVarsIn(xs: collection.Seq[(TypeVar, Int)]): TypeVars =
+          xs.foldLeft(SimpleIdentitySet.empty: TypeVars)((tvs, tvi) => tvs + tvi._1)
+
+        def filterByDeps(tvs0: List[(TypeVar, Int)]): List[(TypeVar, Int)] = {
+          val excluded = typeVarsIn(tvs0)
+          def step(tvs: List[(TypeVar, Int)]): List[(TypeVar, Int)] = tvs match
+            case tvs @ (hd @ (tvar, v)) :: tvs1 =>
+              def aboveOK = !constraint.dependsOn(tvar, excluded, co = true)
+              def belowOK = !constraint.dependsOn(tvar, excluded, co = false)
+              if v == 0 && !aboveOK then
+                step((tvar, 1) :: tvs1)
+              else if v == 0 && !belowOK then
+                step((tvar, -1) :: tvs1)
+              else if v == -1 && !aboveOK || v == 1 && !belowOK then
+                println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toList}, tvs0 = ${tvs0.toList}%, %, excluded = ${excluded.toList}, $constraint")
+                step(tvs1)
+              else
+                tvs.derivedCons(hd, step(tvs1))
+            case Nil =>
+              Nil
+          val tvs1 = step(tvs0)
+          if tvs1 eq tvs0 then tvs1 else filterByDeps(tvs1)
+        }//.showing(i"filter $tvs0 in $constraint = $result")
+        end filterByDeps
+
         /** Instantiate all type variables in `buf` in the indicated directions.
          *  If a type variable A is instantiated from below, and there is another
          *  type variable B in `buf` that is known to be smaller than A, wait and
@@ -669,38 +694,45 @@ trait Inferencing { this: Typer =>
          *
          *      V2 := V3, O2 := O3
          */
-        def doInstantiate(buf: InstantiateQueue): Unit =
-          val varsToInstantiate = buf.foldLeft(SimpleIdentitySet.empty: TypeVars) {
-            case (tvs, (tv, _)) => tvs + tv
-          }
-          if buf.nonEmpty then
-            val suspended = new InstantiateQueue
-            while buf.nonEmpty do
-              val first @ (tvar, v) = buf.head
+        def doInstantiate(tvs: List[(TypeVar, Int)]): Unit =
+          def excluded = typeVarsIn(tvs)
+          def tryInstantiate(tvs: List[(TypeVar, Int)]): List[(TypeVar, Int)] = tvs match
+            case (hd @ (tvar, v)) :: tvs1 =>
               val fromBelow =
                 if v == 0 then
-                  val aboveOK = !constraint.dependsOn(tvar, varsToInstantiate, co = true)
-                  val belowOK = !constraint.dependsOn(tvar, varsToInstantiate, co = false)
+                  val aboveOK = true // !constraint.dependsOn(tvar, excluded, co = true, track = true)
+                  val belowOK = true // !constraint.dependsOn(tvar, excluded, co = false, track = true)
+                  assert(aboveOK, i"$tvar, excluded = ${excluded.toList}, $constraint")
+                  assert(belowOK, i"$tvar, excluded = ${excluded.toList}, $constraint")
                   if aboveOK == belowOK then tvar.hasLowerBound
                   else belowOK
                 else
                   v == 1
               typr.println(
-                i"interpolate${if v == 0 then "non-occurring" else ""} $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
-              buf.dropInPlace(1)
-              if !tvar.isInstantiated then
-                val suspend = buf.exists{ (following, _) =>
-                  if fromBelow then
-                    constraint.isLess(following.origin, tvar.origin)
-                  else
-                    constraint.isLess(tvar.origin, following.origin)
+                i"interpolate${if v == 0 then " non-occurring" else ""} $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
+              if tvar.isInstantiated then
+                tryInstantiate(tvs1)
+              else
+                val suspend = tvs1.exists{ (following, _) =>
+                  if fromBelow
+                  then constraint.isLess(following.origin, tvar.origin)
+                  else constraint.isLess(tvar.origin, following.origin)
                 }
-                if suspend then suspended += first else tvar.instantiate(fromBelow)
-              end if
-            end while
-            doInstantiate(suspended)
+                if suspend then
+                  typr.println(i"suspended: $hd")
+                  hd :: tryInstantiate(tvs1)
+                else
+                  tvar.instantiate(fromBelow)
+                  tryInstantiate(tvs1)
+            case Nil => Nil
+          if tvs.nonEmpty then doInstantiate(tryInstantiate(tvs))
         end doInstantiate
-        doInstantiate(toInstantiate)
+        val toInst = toInstantiate.toList
+        if toInst.nonEmpty then
+          typr.println(i"interpolating $toInst for $tp/$pt in $constraint")
+          val filtered = filterByDeps(toInst)
+          typr.println(i"filtered $filtered")
+          doInstantiate(filtered)
       }
     }
     tree
