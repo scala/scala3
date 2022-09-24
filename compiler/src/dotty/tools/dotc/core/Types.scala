@@ -5498,6 +5498,11 @@ object Types {
         || stop == StopAt.Package && tp.currentSymbol.is(Package)
       }
 
+    /** The type parameters of the constructor of this applied type.
+     *  Overridden in OrderingConstraint's ConstraintAwareTraversal to take account
+     *  of instantiations in the constraint that are not yet propagated to the
+     *  instance types of type variables.
+     */
     protected def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
       tp.tyconTypeParams
   end VariantTraversal
@@ -6066,11 +6071,11 @@ object Types {
      *  By contrast, covariance does translate to the prefix, since we have that
      *  if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
      *  of `p`'s upper bound.
-     *  Overridden in traversers that compute or check reverse dependencies in OrderingConstraint,
-     *  where we use a more relaxed scheme.
+     *  Overridden in OrderingConstraint's ConstraintAwareTraversal, where a
+     *  more relaxed scheme is used.
      */
     protected def applyToPrefix(x: T, tp: NamedType): T =
-      atVariance(variance max 0)(this(x, tp.prefix)) // see remark on NamedType case in TypeMap
+      atVariance(variance max 0)(this(x, tp.prefix))
 
     def foldOver(x: T, tp: Type): T = {
       record(s"foldOver $getClass")

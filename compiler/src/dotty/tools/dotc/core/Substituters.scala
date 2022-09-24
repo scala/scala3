@@ -193,7 +193,7 @@ object Substituters:
     def apply(tp: Type): Type = substRecThis(tp, from, to, this)(using mapCtx)
   }
 
-  class SubstParamMap(from: ParamRef, to: Type)(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
+  final class SubstParamMap(from: ParamRef, to: Type)(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
     def apply(tp: Type): Type = substParam(tp, from, to, this)(using mapCtx)
   }
 

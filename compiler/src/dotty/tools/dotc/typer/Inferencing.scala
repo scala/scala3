@@ -573,7 +573,7 @@ trait Inferencing { this: Typer =>
    *  Then `Y` also occurs co-variantly in `T` because it needs to be minimized in order to constrain
    *  `T` the least. See `variances` for more detail.
    */
-  def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type = {
+  def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
     val state = ctx.typerState
 
     // Note that some variables in `locked` might not be in `state.ownedVars`
@@ -582,7 +582,7 @@ trait Inferencing { this: Typer =>
     // `qualifying`.
 
     val ownedVars = state.ownedVars
-    if ((ownedVars ne locked) && !ownedVars.isEmpty) {
+    if (ownedVars ne locked) && !ownedVars.isEmpty then
       val qualifying = ownedVars -- locked
       if (!qualifying.isEmpty) {
         typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, pt = $pt, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
@@ -618,35 +618,46 @@ trait Inferencing { this: Typer =>
         if state.reporter.hasUnreportedErrors then return tree
 
         def constraint = state.constraint
-        type InstantiateQueue = mutable.ListBuffer[(TypeVar, Int)]
-        val toInstantiate = new InstantiateQueue
-        for tvar <- qualifying do
-          if !tvar.isInstantiated && constraint.contains(tvar) && tvar.nestingLevel >= ctx.nestingLevel then
-            constrainIfDependentParamRef(tvar, tree)
-            if !tvar.isInstantiated then
-              // Needs to be checked again, since previous interpolations could already have
-              // instantiated `tvar` through unification.
-              val v = vs(tvar)
-              if v == null then
-                toInstantiate += ((tvar, 0))
-              else if v.intValue != 0 then
-                toInstantiate += ((tvar, v.intValue))
-              else comparing(cmp =>
-                if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
-                  // Invariant: The type of a tree whose enclosing scope is level
-                  // N only contains type variables of level <= N.
-                  typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
-                  cmp.atLevel(ctx.nestingLevel, tvar.origin)
-                else
-                  typr.println(i"no interpolation for nonvariant $tvar in $state")
-              )
 
-        def typeVarsIn(xs: List[(TypeVar, Int)]): TypeVars =
+        /** Values of this type report type variables to instantiate with variance indication:
+         *    +1  variable appears covariantly, can be instantiated from lower bound
+         *    -1  variable appears contravariantly, can be instantiated from upper bound
+         *     0  variable does not appear at all, can be instantiated from either bound
+         */
+        type ToInstantiate = List[(TypeVar, Int)]
+
+        val toInstantiate: ToInstantiate =
+          val buf = new mutable.ListBuffer[(TypeVar, Int)]
+          for tvar <- qualifying do
+            if !tvar.isInstantiated && constraint.contains(tvar) && tvar.nestingLevel >= ctx.nestingLevel then
+              constrainIfDependentParamRef(tvar, tree)
+              if !tvar.isInstantiated then
+                // isInstantiated needs to be checked again, since previous interpolations could already have
+                // instantiated `tvar` through unification.
+                val v = vs(tvar)
+                if v == null then buf += ((tvar, 0))
+                else if v.intValue != 0 then buf += ((tvar, v.intValue))
+                else comparing(cmp =>
+                  if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
+                    // Invariant: The type of a tree whose enclosing scope is level
+                    // N only contains type variables of level <= N.
+                    typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
+                    cmp.atLevel(ctx.nestingLevel, tvar.origin)
+                  else
+                    typr.println(i"no interpolation for nonvariant $tvar in $state")
+                )
+          buf.toList
+
+        def typeVarsIn(xs: ToInstantiate): TypeVars =
           xs.foldLeft(SimpleIdentitySet.empty: TypeVars)((tvs, tvi) => tvs + tvi._1)
 
-        def filterByDeps(tvs0: List[(TypeVar, Int)]): List[(TypeVar, Int)] = {
-          val excluded = typeVarsIn(tvs0)
-          def step(tvs: List[(TypeVar, Int)]): List[(TypeVar, Int)] = tvs match
+        /** Filter list of proposed instantiations so that they don't constrain further
+         *  the current constraint.
+         */
+        def filterByDeps(tvs0: ToInstantiate): ToInstantiate =
+          val excluded =  // ignore dependencies from other variables that are being instantiated
+            typeVarsIn(tvs0)
+          def step(tvs: ToInstantiate): ToInstantiate = tvs match
             case tvs @ (hd @ (tvar, v)) :: tvs1 =>
               def aboveOK = !constraint.dependsOn(tvar, excluded, co = true)
               def belowOK = !constraint.dependsOn(tvar, excluded, co = false)
@@ -657,16 +668,17 @@ trait Inferencing { this: Typer =>
               else if v == -1 && !aboveOK || v == 1 && !belowOK then
                 typr.println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toList}, tvs0 = ${tvs0.toList}%, %, excluded = ${excluded.toList}, $constraint")
                 step(tvs1)
-              else
+              else // no conflict, keep the instantiation proposal
                 tvs.derivedCons(hd, step(tvs1))
             case Nil =>
               Nil
           val tvs1 = step(tvs0)
-          if tvs1 eq tvs0 then tvs1 else filterByDeps(tvs1)
-        }//.showing(i"filter $tvs0 in $constraint = $result")
+          if tvs1 eq tvs0 then tvs1
+          else filterByDeps(tvs1) // filter again with smaller excluded set
         end filterByDeps
 
-        /** Instantiate all type variables in `buf` in the indicated directions.
+        /** Instantiate all type variables in `tvs` in the indicated directions,
+         *  as described in the doc comment of `ToInstantiate`.
          *  If a type variable A is instantiated from below, and there is another
          *  type variable B in `buf` that is known to be smaller than A, wait and
          *  instantiate all other type variables before trying to instantiate A again.
@@ -695,20 +707,12 @@ trait Inferencing { this: Typer =>
          *
          *      V2 := V3, O2 := O3
          */
-        def doInstantiate(tvs: List[(TypeVar, Int)]): Unit =
-          def excluded = typeVarsIn(tvs)
-          def tryInstantiate(tvs: List[(TypeVar, Int)]): List[(TypeVar, Int)] = tvs match
+        def doInstantiate(tvs: ToInstantiate): Unit =
+
+          /** Try to instantiate `tvs`, return any suspended type variables */
+          def tryInstantiate(tvs: ToInstantiate): ToInstantiate = tvs match
             case (hd @ (tvar, v)) :: tvs1 =>
-              val fromBelow =
-                if v == 0 then
-                  val aboveOK = true // !constraint.dependsOn(tvar, excluded, co = true, track = true)
-                  val belowOK = true // !constraint.dependsOn(tvar, excluded, co = false, track = true)
-                  assert(aboveOK, i"$tvar, excluded = ${excluded.toList}, $constraint")
-                  assert(belowOK, i"$tvar, excluded = ${excluded.toList}, $constraint")
-                  if aboveOK == belowOK then tvar.hasLowerBound
-                  else belowOK
-                else
-                  v == 1
+              val fromBelow = v == 1 || (v == 0 && tvar.hasLowerBound)
               typr.println(
                 i"interpolate${if v == 0 then " non-occurring" else ""} $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
               if tvar.isInstantiated then
@@ -728,16 +732,12 @@ trait Inferencing { this: Typer =>
             case Nil => Nil
           if tvs.nonEmpty then doInstantiate(tryInstantiate(tvs))
         end doInstantiate
-        val toInst = toInstantiate.toList
-        if toInst.nonEmpty then
-          typr.println(i"interpolating $toInst for $tp/$pt in $constraint")
-          val filtered = filterByDeps(toInst)
-          typr.println(i"filtered $filtered")
-          doInstantiate(filtered)
+
+        doInstantiate(filterByDeps(toInstantiate))
       }
-    }
+    end if
     tree
-  }
+  end interpolateTypeVars
 
   /** If `tvar` represents a parameter of a dependent method type in the current `call`
    *  approximate it from below with the type of the actual argument. Skolemize that

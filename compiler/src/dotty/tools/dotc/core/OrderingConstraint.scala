@@ -10,8 +10,6 @@ import printing.Texts._
 import config.Config
 import config.Printers.constr
 import reflect.ClassTag
-import Constraint.ReverseDeps
-import Substituters.SubstParamMap
 import annotation.tailrec
 import annotation.internal.sharable
 import cc.{CapturingType, derivedCapturingType}
@@ -25,20 +23,27 @@ object OrderingConstraint {
    *  same P is added as a bound variable to the constraint, a backwards link would
    *  then become necessary at this point but is missing. This causes two CB projects
    *  to fail when reverse dependencies are checked (parboiled2 and perspective).
-   *  In these rare cases `replace` would behave differently when optimized.
+   *  In these rare cases `replace` could behave differently when optimized. However,
+   *  no deviation was found in the two projects. It is not clear what the "right"
+   *  behavior of `replace` should be in these cases. Normally, PolyTypes added
+   *  to constraints are supposed to be fresh, so that would mean that the behavior
+   *  with optimizeReplace = true would be correct. But the previous behavior without
+   *  reverse dependency checking corresponds to `optimizeReplace = false`. This behavior
+   *  makes sense if we assume that the added polytype was simply added too late, so we
+   *  want to establish the link between newly bound variable and pre-existing reference.
    */
-  final val optimizeReplace = true
+  private final val optimizeReplace = true
 
-  type ArrayValuedMap[T] = SimpleIdentityMap[TypeLambda, Array[T]]
+  private type ArrayValuedMap[T] = SimpleIdentityMap[TypeLambda, Array[T]]
 
   /** The type of `OrderingConstraint#boundsMap` */
-  type ParamBounds = ArrayValuedMap[Type]
+  private type ParamBounds = ArrayValuedMap[Type]
 
   /** The type of `OrderingConstraint#lowerMap`, `OrderingConstraint#upperMap` */
-  type ParamOrdering = ArrayValuedMap[List[TypeParamRef]]
+  private type ParamOrdering = ArrayValuedMap[List[TypeParamRef]]
 
   /** A lens for updating a single entry array in one of the three constraint maps */
-  abstract class ConstraintLens[T <: AnyRef: ClassTag] {
+  private abstract class ConstraintLens[T <: AnyRef: ClassTag] {
     def entries(c: OrderingConstraint, poly: TypeLambda): Array[T] | Null
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[T])(using Context): OrderingConstraint
     def initial: T
@@ -91,7 +96,7 @@ object OrderingConstraint {
       map(prev, current, param.binder, param.paramNum, f)
   }
 
-  val boundsLens: ConstraintLens[Type] = new ConstraintLens[Type] {
+  private val boundsLens: ConstraintLens[Type] = new ConstraintLens[Type] {
     def entries(c: OrderingConstraint, poly: TypeLambda): Array[Type] | Null =
       c.boundsMap(poly)
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[Type])(using Context): OrderingConstraint =
@@ -99,7 +104,7 @@ object OrderingConstraint {
     def initial = NoType
   }
 
-  val lowerLens: ConstraintLens[List[TypeParamRef]] = new ConstraintLens[List[TypeParamRef]] {
+  private val lowerLens: ConstraintLens[List[TypeParamRef]] = new ConstraintLens[List[TypeParamRef]] {
     def entries(c: OrderingConstraint, poly: TypeLambda): Array[List[TypeParamRef]] | Null =
       c.lowerMap(poly)
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[List[TypeParamRef]])(using Context): OrderingConstraint =
@@ -107,7 +112,7 @@ object OrderingConstraint {
     def initial = Nil
   }
 
-  val upperLens: ConstraintLens[List[TypeParamRef]] = new ConstraintLens[List[TypeParamRef]] {
+  private val upperLens: ConstraintLens[List[TypeParamRef]] = new ConstraintLens[List[TypeParamRef]] {
     def entries(c: OrderingConstraint, poly: TypeLambda): Array[List[TypeParamRef]] | Null =
       c.upperMap(poly)
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[List[TypeParamRef]])(using Context): OrderingConstraint =
@@ -237,13 +242,30 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ------------- Type parameter dependencies ----------------------------------------
 
-  var coDeps, contraDeps: ReverseDeps = SimpleIdentityMap.empty
+  private type ReverseDeps = SimpleIdentityMap[TypeParamRef, SimpleIdentitySet[TypeParamRef]]
 
-  extension (deps: ReverseDeps) def at (param: TypeParamRef): SimpleIdentitySet[TypeParamRef] =
+  /** A map that associates type parameters of this constraint with all other type
+   *  parameters that refer to them in their bounds covariantly, such that, if the
+   *  type parameter is instantiated to a larger type, the constraint would be narrowed
+   *  (i.e. solution set changes other than simply being made larger).
+   */
+  private var coDeps: ReverseDeps = SimpleIdentityMap.empty
+
+  /** A map that associates type parameters of this constraint with all other type
+   *  parameters that refer to them in their bounds covariantly, such that, if the
+   *  type parameter is instantiated to a smaller type, the constraint would be narrowed.
+   *  (i.e. solution set changes other than simply being made larger).
+   */
+  private var contraDeps: ReverseDeps = SimpleIdentityMap.empty
+
+  /** Null-safe indexing */
+  extension (deps: ReverseDeps) def at(param: TypeParamRef): SimpleIdentitySet[TypeParamRef] =
     val result = deps(param)
-    if null == result then SimpleIdentitySet.empty else result
+    if null == result  // swapped operand order important since `==` is overloaded in `SimpleIdentitySet`
+    then SimpleIdentitySet.empty
+    else result
 
-  def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean =
+  override def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean =
     def origin(tv: TypeVar) =
       assert(!tv.isInstantiated)
       tv.origin
@@ -253,7 +275,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     def test(deps: ReverseDeps, lens: ConstraintLens[List[TypeParamRef]]) =
       deps.at(param).exists(qualifies)
       || lens(this, tv.origin.binder, tv.origin.paramNum).exists(qualifies)
-        //.showing(i"outer depends on $tv with ${tvdeps.toList}%, % = $result")
     if co then test(coDeps, upperLens) else test(contraDeps, lowerLens)
 
   /** Modify traversals in two respects:
@@ -271,10 +292,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *
    *   - When typing a prefx, don't avoid negative variances. This matters only for the
    *     corner case where a parameter is instantiated to Nothing (see comment in
-   *     TypeAccumulator#applyToPrefix). When determining instantiation directions
-   *     (which is what dependency variances are for), it can be ignored.
+   *     TypeAccumulator#applyToPrefix). When determining instantiation directions in
+   *     interpolations (which is what dependency variances are for), it can be ignored.
    */
   private trait ConstraintAwareTraversal[T] extends TypeAccumulator[T]:
+
     override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
       def tparams(tycon: Type): List[ParamInfo] = tycon match
         case tycon: TypeVar if !tycon.isInstantiated => tparams(tycon.origin)
@@ -285,14 +307,16 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
             case _ => tp.tyconTypeParams
         case _ => tp.tyconTypeParams
       tparams(tp.tycon)
+
     override def applyToPrefix(x: T, tp: NamedType): T =
       this(x, tp.prefix)
+  end ConstraintAwareTraversal
 
   private class Adjuster(srcParam: TypeParamRef)(using Context)
   extends TypeTraverser, ConstraintAwareTraversal[Unit]:
 
     var add: Boolean = compiletime.uninitialized
-    val seen = util.HashSet[LazyRef]()
+    private val seen = util.HashSet[LazyRef]()
 
     def update(deps: ReverseDeps, referenced: TypeParamRef): ReverseDeps =
       val prev = deps.at(referenced)
@@ -316,7 +340,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   end Adjuster
 
   /** Adjust dependencies to account for the delta of previous entry `prevEntry`
-   *  and new bound `entry` for the type parameter `srcParam`.
+   *  and the new bound `entry` for the type parameter `srcParam`.
    */
   def adjustDeps(entry: Type | Null, prevEntry: Type | Null, srcParam: TypeParamRef)(using Context): this.type =
     val adjuster = new Adjuster(srcParam)
@@ -332,8 +356,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
     /** Use an optimized strategy to adjust dependencies to account for the delta
      *  of previous bound `prevBound` and new bound `bound`: If `prevBound` is some
-     *  and/or prefix of `bound`, just add the new parts of `bound`.
+     *  and/or prefix of `bound`, and `baseCase` is true, just add the new parts of `bound`.
      *  @param  isLower `bound` and `prevBound` are lower bounds
+     *  @return true iff the delta strategy succeeded, false if it failed in which case
+     *          the constraint is left unchanged.
      */
     def adjustDelta(bound: Type, prevBound: Type, isLower: Boolean, baseCase: => Boolean): Boolean =
       if bound eq prevBound then
@@ -346,9 +372,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           }
         case _ => false
 
-    /** Adjust dependencies to account for the delta of previous bounds `prevBounds`
-     *  and new bounds `bounds`.
-     *  @param add     true if the bounds are added, false if they are removed
+    /** Add or remove depenencies referenced in `bounds`.
+     *  @param add   if true, dependecies are added, otherwise they are removed
      */
     def adjustBounds(bounds: TypeBounds, add: Boolean) =
       adjustReferenced(bounds.lo, isLower = true, add)
@@ -370,7 +395,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           case prevEntry: TypeBounds =>
             adjustBounds(prevEntry, add = false)
           case _ =>
-        dropDeps(srcParam)
+        dropDeps(srcParam) // srcParam is instantiated, so its dependencies can be dropped
     this
   end adjustDeps
 
@@ -390,7 +415,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     coDeps = coDeps.remove(param)
     contraDeps = contraDeps.remove(param)
 
-  /** A string representing the two depenecy maps */
+  /** A string representing the two dependency maps */
   def depsToString(using Context): String =
     def depsStr(deps: ReverseDeps): String =
       def depStr(param: TypeParamRef) = i"$param --> ${deps.at(param).toList}%, %"
@@ -457,7 +482,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   }
 
   def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This = {
-    checkWellFormed() // TODO: drop
     assert(!contains(poly))
     val nparams = poly.paramNames.length
     val entries1 = new Array[Type](nparams * 2)
@@ -609,13 +633,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case _ =>
       Nil
 
-  private def updateEntryNoOrdering(current: This, param: TypeParamRef, newEntry: Type, oldEntry: Type)(using Context): This =
-    boundsLens.update(this, current, param, newEntry).adjustDeps(newEntry, oldEntry, param)
-
   private def updateEntry(current: This, param: TypeParamRef, newEntry: Type)(using Context): This = {
-    //println(i"update $param to $newEntry in $current")
     if Config.checkNoWildcardsInConstraint then assert(!newEntry.containsWildcardTypes)
-    var current1 = updateEntryNoOrdering(current, param, newEntry, current.entry(param))
+    val oldEntry = current.entry(param)
+    var current1 = boundsLens.update(this, current, param, newEntry)
+      .adjustDeps(newEntry, oldEntry, param)
     newEntry match {
       case TypeBounds(lo, hi) =>
         for p <- dependentParams(lo, isUpper = false) do
@@ -647,7 +669,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       assert(replacement.isValueTypeOrLambda)
 
       val replacedTypeVar = typeVarOfParam(param)
-      //println(i"replace $param, $replacedTypeVar with $replacement in $this")
+      //println(i"replace $param with $replacement in $this")
 
       def mapReplacedTypeVarTo(to: Type) = new TypeMap:
         override def apply(t: Type): Type =
@@ -673,13 +695,13 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           case tvar: TypeVar =>
             if tvar.isInstantiated
             then
-              // replace is called from TypeVar's instantiateWith,
-              // forget about instantiation for old dependencies
+              // That's the case if replace is called from TypeVar's instantiateWith.
+              // Forget about instantiation for old dependencies.
               oldDepEntry = mapReplacedTypeVarTo(param)(oldDepEntry)
             else
-              // replace is called from unify,
-              // assume parameter has been replaced for new dependencies
-              // (the actual replacement is done below)
+              // That's the case if replace is called from unify.
+              // Assume parameter has been replaced for new dependencies
+              // (the actual replacement is done below).
               newDepEntry = mapReplacedTypeVarTo(replacement)(newDepEntry)
           case _ =>
         if oldDepEntry ne newDepEntry then
@@ -864,9 +886,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ---------- Checking -----------------------------------------------
 
-  /** Depending on Config settngs, check that there are no cycles and that
-   *  reverse depenecies are correct.
-   */
   def checkWellFormed()(using Context): this.type =
 
     /** Check that each dependency A -> B in coDeps and contraDeps corresponds to

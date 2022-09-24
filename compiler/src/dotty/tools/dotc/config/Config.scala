@@ -189,7 +189,7 @@ object Config {
   /** If set, prints a trace of all symbol completions */
   inline val showCompletions = false
 
-  /** If set, show variable/variable reverse dependencoes when printing constraints. */
+  /** If set, show variable/variable reverse dependencies when printing constraints. */
   inline val showConstraintDeps = true
 
   /** If set, method results that are context functions are flattened by adding

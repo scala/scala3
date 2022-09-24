@@ -172,19 +172,9 @@ abstract class Constraint extends Showable {
    */
   def occursAtToplevel(param: TypeParamRef, tp: Type)(using Context): Boolean
 
-  /** A map that associates type parameters of this constraint with all other type
-   *  parameters that refer to them in their bounds covariantly, such that, if the
-   *  type parameter is instantiated to a larger type, the constraint would be narrowed.
+  /** A string that shows the reverse dependencies maintained by this constraint
+   *  (coDeps and contraDeps for OrderingConstraints).
    */
-  def coDeps: Constraint.ReverseDeps
-
-  /** A map that associates type parameters of this constraint with all other type
-   *  parameters that refer to them in their bounds covariantly, such that, if the
-   *  type parameter is instantiated to a smaller type, the constraint would be narrowed.
-   */
-  def contraDeps: Constraint.ReverseDeps
-
-  /** A string showing the `coDeps` and `contraDeps` maps */
   def depsToString(using Context): String
 
   /** Does the constraint restricted to variables outside `except` depend on `tv`
@@ -194,7 +184,12 @@ abstract class Constraint extends Showable {
    */
   def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean
 
-  /** Check that no constrained parameter contains itself as a bound */
+  /** Depending on Config settngs:
+   *   - Under `checkConstraintsNonCyclic`, check that no constrained
+   *     parameter contains itself as a bound.
+   *   - Under `checkConstraintDeps`, check hat reverse dependencies in
+   *     constraints are correct and complete.
+   */
   def checkWellFormed()(using Context): this.type
 
   /** Check that constraint only refers to TypeParamRefs bound by itself */
@@ -205,9 +200,6 @@ abstract class Constraint extends Showable {
    */
   def checkConsistentVars()(using Context): Unit
 }
-
-object Constraint:
-  type ReverseDeps = SimpleIdentityMap[TypeParamRef, SimpleIdentitySet[TypeParamRef]]
 
 /** When calling `Constraint#addLess(p1, p2, ...)`, the caller might end up
  *  unifying one parameter with the other, this enum lets `addLess` know which
