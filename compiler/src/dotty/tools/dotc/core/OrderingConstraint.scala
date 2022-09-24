@@ -18,10 +18,16 @@ import cc.{CapturingType, derivedCapturingType}
 
 object OrderingConstraint {
 
-  @sharable private var id = 0
-  private def nextId =
-    id += 1
-    id
+  /** If true, use reverse dependencies in `replace` to avoid checking the bounds
+   *  of all parameters in the constraint. This can speed things up, but there are some
+   *  rare corner cases where reverse dependencies miss a parameter. Specifically,
+   *  if a constraint contains a free reference to TypeParam P and afterwards the
+   *  same P is added as a bound variable to the constraint, a backwards link would
+   *  then become necessary at this point but is missing. This causes two CB projects
+   *  to fail when reverse dependencies are checked (parboiled2 and perspective).
+   *  In these rare cases `replace` would behave differently when optimized.
+   */
+  final val optimizeReplace = true
 
   type ArrayValuedMap[T] = SimpleIdentityMap[TypeLambda, Array[T]]
 
@@ -144,10 +150,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   import UnificationDirection.*
 
   type This = OrderingConstraint
-
-  var id = nextId
-  //if id == 118 then
-  //  new Error(s"at $id").printStackTrace()
 
   /** A new constraint with given maps and given set of hard typevars */
   def newConstraint( // !!! Dotty problem: Making newConstraint `private` causes -Ytest-pickler failure.
@@ -294,7 +296,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
     def update(deps: ReverseDeps, referenced: TypeParamRef): ReverseDeps =
       val prev = deps.at(referenced)
-      deps.updated(referenced, if add then prev + srcParam else prev - srcParam)
+      val newSet = if add then prev + srcParam else prev - srcParam
+      if newSet.isEmpty then deps.remove(referenced)
+      else deps.updated(referenced, newSet)
 
     def traverse(t: Type) = t match
       case param: TypeParamRef =>
@@ -651,41 +655,58 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
       var current = this
 
-      def removeParam(ps: List[TypeParamRef]) = ps.filterConserve(param ne _)
-      for lo <- lower(param) do
-        current = upperLens.map(this, current, lo, removeParam)
-      for hi <- upper(param) do
-        current = lowerLens.map(this, current, hi, removeParam)
+      def removeParamFrom(ps: List[TypeParamRef]) =
+        ps.filterConserve(param ne _)
 
-      current.foreachParam { (p, i) =>
-        val other = p.paramRefs(i)
-        if other != param then
-          val oldEntry = current.entry(other)
-          val newEntry = current.ensureNonCyclic(other, oldEntry.substParam(param, replacement))
-          current = boundsLens.update(this, current, other, newEntry)
-          var oldDepEntry = oldEntry
-          var newDepEntry = newEntry
-          replacedTypeVar match
-            case tvar: TypeVar =>
-              if tvar.isInstantiated
-              then
-                // replace is called from TypeVar's instantiateWith,
-                // forget about instantiation for old dependencies
-                oldDepEntry = mapReplacedTypeVarTo(param)(oldDepEntry)
-              else
-                // replace is called from unify,
-                // assume parameter has been replaced for new dependencies
-                // (the actual replacement is done below)
-                newDepEntry = mapReplacedTypeVarTo(replacement)(newDepEntry)
-            case _ =>
-          if oldDepEntry ne newDepEntry then
-            if current eq this then
-              // We can end up here if oldEntry eq newEntry, so posssibly no new constraint
-              // was created, but oldDepEntry ne newDepEntry. In that case we must make
-              // sure we have a new constraint before updating dependencies.
-              current = newConstraint()
-            current.adjustDeps(newDepEntry, oldDepEntry, other)
-      }
+      for lo <- lower(param) do
+        current = upperLens.map(this, current, lo, removeParamFrom)
+      for hi <- upper(param) do
+        current = lowerLens.map(this, current, hi, removeParamFrom)
+
+      def replaceParamIn(other: TypeParamRef) =
+        val oldEntry = current.entry(other)
+        val newEntry = current.ensureNonCyclic(other, oldEntry.substParam(param, replacement))
+        current = boundsLens.update(this, current, other, newEntry)
+        var oldDepEntry = oldEntry
+        var newDepEntry = newEntry
+        replacedTypeVar match
+          case tvar: TypeVar =>
+            if tvar.isInstantiated
+            then
+              // replace is called from TypeVar's instantiateWith,
+              // forget about instantiation for old dependencies
+              oldDepEntry = mapReplacedTypeVarTo(param)(oldDepEntry)
+            else
+              // replace is called from unify,
+              // assume parameter has been replaced for new dependencies
+              // (the actual replacement is done below)
+              newDepEntry = mapReplacedTypeVarTo(replacement)(newDepEntry)
+          case _ =>
+        if oldDepEntry ne newDepEntry then
+          if current eq this then
+            // We can end up here if oldEntry eq newEntry, so posssibly no new constraint
+            // was created, but oldDepEntry ne newDepEntry. In that case we must make
+            // sure we have a new constraint before updating dependencies.
+            current = newConstraint()
+          current.adjustDeps(newDepEntry, oldDepEntry, other)
+      end replaceParamIn
+
+      if optimizeReplace then
+        val co = current.coDeps.at(param)
+        val contra = current.contraDeps.at(param)
+        current.foreachParam { (p, i) =>
+          val other = p.paramRefs(i)
+          entry(other) match
+            case _: TypeBounds =>
+              if co.contains(other) || contra.contains(other) then
+                replaceParamIn(other)
+            case _ => replaceParamIn(other)
+        }
+      else
+        current.foreachParam { (p, i) =>
+          val other = p.paramRefs(i)
+          if other != param then replaceParamIn(other)
+        }
 
       current =
         if isRemovable(param.binder) then current.remove(param.binder)

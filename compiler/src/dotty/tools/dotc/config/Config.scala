@@ -22,6 +22,9 @@ object Config {
    */
   inline val checkConstraintsNonCyclic = false
 
+  /** Check that reverse dependencies in constraints are correct and complete.
+   *  Can also be enabled using -Ycheck-constraint-deps.
+   */
   inline val checkConstraintDeps = false
 
   /** Check that each constraint resulting from a subtype test
