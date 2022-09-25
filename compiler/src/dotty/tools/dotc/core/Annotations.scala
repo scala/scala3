@@ -20,6 +20,8 @@ object Annotations {
 
     def symbol(using Context): Symbol = annotClass(tree)
 
+    def hasSymbol(sym: Symbol)(using Context) = symbol == sym
+
     def matches(cls: Symbol)(using Context): Boolean = symbol.derivesFrom(cls)
 
     def appliesToModule: Boolean = true // for now; see remark in SymDenotations
@@ -127,6 +129,11 @@ object Annotations {
     override def isEvaluated: Boolean = myTree.isInstanceOf[Tree @unchecked]
   }
 
+  class DeferredSymAndTree(symFn: Context ?=> Symbol, treeFn: Context ?=> Tree)
+  extends LazyAnnotation:
+    protected var mySym: Symbol | (Context ?=> Symbol) | Null = ctx ?=> symFn(using ctx)
+    protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
+
   /** An annotation indicating the body of a right-hand side,
    *  typically of an inline method. Treated specially in
    *  pickling/unpickling and TypeTreeMaps
@@ -193,18 +200,15 @@ object Annotations {
       apply(New(atp, args))
 
     /** Create an annotation where the tree is computed lazily. */
-    def deferred(sym: Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
+    def deferred(sym: Symbol)(treeFn: Context ?=> Tree): Annotation =
       new LazyAnnotation {
         protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
         protected var mySym: Symbol | (Context ?=> Symbol) | Null = sym
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
-    def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
-      new LazyAnnotation {
-        protected var mySym: Symbol | (Context ?=> Symbol) | Null = ctx ?=> symFn(using ctx)
-        protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
-      }
+    def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree): Annotation =
+      DeferredSymAndTree(symFn, treeFn)
 
     /** Extractor for child annotations */
     object Child {
