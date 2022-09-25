@@ -7,7 +7,7 @@ class Z(val x: X, val t: x.T) {
   def process(): Unit = x.process(t)
 }
 class Evil(x1: X, x2: X, t: x1.T) extends Z(x1, t) {
-  val x: X = x2 // error breaks connection between x and t
+  override val x: X = x2 // error breaks connection between x and t
 }
 // alarm bells should be ringing by now
 

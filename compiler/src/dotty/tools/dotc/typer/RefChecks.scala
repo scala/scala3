@@ -15,8 +15,8 @@ import config.Printers.{checks, noPrinter}
 import Decorators._
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting._
-import config.Feature.{warnOnMigration, migrateTo3}
-import config.SourceVersion.`3.0`
+import config.Feature.{warnOnMigration, migrateTo3, sourceVersion}
+import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
 import reporting._
 import Constants.Constant
@@ -264,8 +264,8 @@ object RefChecks {
    *    1.10.  If O is inline (and deferred, otherwise O would be final), M must be inline
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
    *    1.12.  If O is non-experimental, M must be non-experimental.
-   *    1.13   If O is a val parameter, M must be a val parameter that passes on its
-   *           value to O.
+   *    1.13   Under -source future, if O is a val parameter, M must be a val parameter
+   *           that passes its on to O.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
@@ -448,10 +448,6 @@ object RefChecks {
         overrideError("cannot be used here - classes can only override abstract types")
       else if other.isEffectivelyFinal then // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
-      else if other.is(ParamAccessor) &&
-          !(member.is(ParamAccessor) && ParamForwarding.inheritedAccessor(member) == other)
-      then // (1.13)
-        overrideError(i"cannot override val parameter ${other.showLocated}")
       else if (member.is(ExtensionMethod) && !other.is(ExtensionMethod)) // (1.3)
         overrideError("is an extension method, cannot override a normal method")
       else if (other.is(ExtensionMethod) && !member.is(ExtensionMethod)) // (1.3)
@@ -520,6 +516,15 @@ object RefChecks {
           overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
+      else if other.is(ParamAccessor)
+          && !(member.is(ParamAccessor) && ParamForwarding.inheritedAccessor(member) == other)
+      then // (1.13)
+        if sourceVersion.isAtLeast(`future`) then
+          overrideError(i"cannot override val parameter ${other.showLocated}")
+        else
+          report.deprecationWarning(
+            i"overriding val parameter ${other.showLocated} is deprecated, will be illegal in a future version",
+            member.srcPos)
       else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.12)
         overrideError("may not override non-experimental member")
       else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
