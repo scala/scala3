@@ -16,8 +16,7 @@ class B(override val theValue: Int) extends A(42) {
 
 // Bz contains a field Bz.theValue$$local accessible using the getter
 // Bz.theValue() which overrides A.theValue()
-class Bz extends A(42) {
-  override val theValue: Int = 10
+class Bz(override val theValue: Int = 10) extends A(42) {
   val theValueInBz = theValue
 }
 

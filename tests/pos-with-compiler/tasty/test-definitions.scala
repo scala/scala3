@@ -163,9 +163,9 @@ object definitions {
       }
     }
 
-    abstract class LambdaType[ParamInfo, This <: LambdaType[ParamInfo, This]](
+    abstract class LambdaType[ParamInfo, This <: LambdaType[ParamInfo, This]]
+    extends Type {
       val companion: LambdaTypeCompanion[ParamInfo, This]
-    ) extends Type {
       private[Type] var _pinfos: List[ParamInfo]
       private[Type] var _restpe: Type
 
@@ -186,16 +186,21 @@ object definitions {
     }
 
     case class MethodType(paramNames: List[String], private[Type] var _pinfos: List[Type], private[Type] var _restpe: Type)
-    extends LambdaType[Type, MethodType](MethodType) {
+    extends LambdaType[Type, MethodType] {
+      override val companion = MethodType
       def isImplicit = (companion `eq` ImplicitMethodType) || (companion `eq` ErasedImplicitMethodType)
       def isErased = (companion `eq` ErasedMethodType) || (companion `eq` ErasedImplicitMethodType)
     }
 
     case class PolyType(paramNames: List[String], private[Type] var _pinfos: List[TypeBounds], private[Type] var _restpe: Type)
-    extends LambdaType[TypeBounds, PolyType](PolyType)
+    extends LambdaType[TypeBounds, PolyType] {
+      override val companion = PolyType
+    }
 
     case class TypeLambda(paramNames: List[String], private[Type] var _pinfos: List[TypeBounds], private[Type] var _restpe: Type)
-    extends LambdaType[TypeBounds, TypeLambda](TypeLambda)
+    extends LambdaType[TypeBounds, TypeLambda] {
+      override val companion = TypeLambda
+    }
 
     object TypeLambda extends LambdaTypeCompanion[TypeBounds, TypeLambda]
     object PolyType   extends LambdaTypeCompanion[TypeBounds, PolyType]

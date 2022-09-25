@@ -264,6 +264,8 @@ object RefChecks {
    *    1.10.  If O is inline (and deferred, otherwise O would be final), M must be inline
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
    *    1.12.  If O is non-experimental, M must be non-experimental.
+   *    1.13   If O is a val parameter, M must be a val parameter that passes on its
+   *           value to O.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
@@ -446,6 +448,10 @@ object RefChecks {
         overrideError("cannot be used here - classes can only override abstract types")
       else if other.isEffectivelyFinal then // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
+      else if other.is(ParamAccessor) &&
+          !(member.is(ParamAccessor) && ParamForwarding.inheritedAccessor(member) == other)
+      then // (1.13)
+        overrideError(i"cannot override val parameter ${other.showLocated}")
       else if (member.is(ExtensionMethod) && !other.is(ExtensionMethod)) // (1.3)
         overrideError("is an extension method, cannot override a normal method")
       else if (other.is(ExtensionMethod) && !member.is(ExtensionMethod)) // (1.3)
