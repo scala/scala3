@@ -96,6 +96,10 @@
   border: 1px solid var(--border-default);
 }
 
+.snippet:hover::-webkit-scrollbar-thumb {
+  border: 3px solid var(--action-primary-background-hover);
+}
+
 .snippet .copy-button {
   position: absolute;
   top: calc(3 * var(--base-spacing));
