@@ -53,10 +53,41 @@ function attachAllListeners() {
       }
     }
   }
-
-  $(".side-menu span").on("click", function () {
-    $(this).parent().toggleClass("expanded");
-  });
+ $(".side-menu span").on("click", function () {
+   $(this).parent().toggleClass("expanded");
+ });
+  document.querySelectorAll('a').forEach(el => {
+    const href = el.href
+    if (href === "") { return }
+    const url = new URL(href)
+    el.addEventListener('click', e => {
+      if (url.href.replace("#", "") === window.location.href.replace("#", "")) { return }
+      if (url.origin !== window.location.origin) { return }
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return }
+      e.preventDefault()
+      e.stopPropagation()
+      $.get(href, function (data) {
+        const html = $.parseHTML(data)
+        const title = html.find(node => node.nodeName === "TITLE").innerText
+        const bodyDiv = html.find(node => node.nodeName === "DIV")
+        const { children } = document.body.firstChild
+        if (window.history.state === null) {
+          window.history.replaceState({
+            leftColumn: children[3].innerHTML,
+            mainDiv: children[6].innerHTML,
+            title: document.title,
+          }, '')
+        }
+        document.title = title
+        const leftColumn = bodyDiv.children[3].innerHTML
+        const mainDiv = bodyDiv.children[6].innerHTML
+        window.history.pushState({ leftColumn, mainDiv, title }, '', href)
+        children[3].innerHTML = leftColumn
+        children[6].innerHTML = mainDiv
+        attachAllListeners()
+      })
+    })
+  })
 
   document.querySelectorAll('a').forEach(el => {
     const href = el.href
