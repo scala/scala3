@@ -20,7 +20,6 @@
 
 #toc li > ul {
   margin-top: calc(2.5 * var(--base-spacing));
-  margin-left: calc(1.5 * var(--base-spacing));
 }
 
 @media (min-width: 1920px) {
