@@ -24,6 +24,7 @@
 @media (max-width: 1024px) {
   #leftColumn {
     left: calc(-39 * var(--base-spacing));
+    transition: right 0.2s linear;
   }
 
   #leftColumn.show {

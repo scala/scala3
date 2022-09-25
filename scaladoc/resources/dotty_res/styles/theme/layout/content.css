@@ -8,7 +8,12 @@
   display: flex;
   flex-flow: row;
   color: var(--text-primary);
+  -webkit-transition: width 0.3s ease-in-out;
+  -moz-transition: width 0.3s ease-in-out;
+  -o-transition: width 0.3s ease-in-out;
+  transition: width 0.3s ease-in-out;
 }
+
 
 #content > div:first-child {
   overflow: clip;
@@ -44,7 +49,7 @@
   }
 }
 
-@media (max-width: 1436px) {
+@media (max-width: 1467px) {
   #content {
     margin-left: 0;
     width: calc(100% - calc(56 * var(--base-spacing)));
