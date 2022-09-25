@@ -4013,6 +4013,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Select(qual)(pre, name.toTypeName)
         case qual: This if qual.symbol.is(ModuleClass) =>
           cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
+        case _ =>
+          errorTree(tree, em"cannot convert to $tree to an instance creation expression")
       val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
       typed(
         untpd.Select(
