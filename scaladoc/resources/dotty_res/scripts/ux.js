@@ -1,8 +1,9 @@
-let observer = null;
-
-function attachAllListeners() {
-  if (observer) {
-    observer.disconnect()
+window.addEventListener("DOMContentLoaded", () => {
+  var toggler = document.getElementById("leftToggler");
+  if (toggler) {
+    toggler.onclick = function () {
+      document.getElementById("leftColumn").classList.toggle("open");
+    };
   }
 
   var scrollPosition = sessionStorage.getItem("scroll_value");
@@ -53,74 +54,10 @@ function attachAllListeners() {
       }
     }
   }
- $(".side-menu span").on("click", function () {
-   $(this).parent().toggleClass("expanded");
- });
-  document.querySelectorAll('a').forEach(el => {
-    const href = el.href
-    if (href === "") { return }
-    const url = new URL(href)
-    el.addEventListener('click', e => {
-      if (url.href.replace("#", "") === window.location.href.replace("#", "")) { return }
-      if (url.origin !== window.location.origin) { return }
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return }
-      e.preventDefault()
-      e.stopPropagation()
-      $.get(href, function (data) {
-        const html = $.parseHTML(data)
-        const title = html.find(node => node.nodeName === "TITLE").innerText
-        const bodyDiv = html.find(node => node.nodeName === "DIV")
-        const { children } = document.body.firstChild
-        if (window.history.state === null) {
-          window.history.replaceState({
-            leftColumn: children[3].innerHTML,
-            mainDiv: children[6].innerHTML,
-            title: document.title,
-          }, '')
-        }
-        document.title = title
-        const leftColumn = bodyDiv.children[3].innerHTML
-        const mainDiv = bodyDiv.children[6].innerHTML
-        window.history.pushState({ leftColumn, mainDiv, title }, '', href)
-        children[3].innerHTML = leftColumn
-        children[6].innerHTML = mainDiv
-        attachAllListeners()
-      })
-    })
-  })
 
-  document.querySelectorAll('a').forEach(el => {
-    const href = el.href
-    if (href === "") { return }
-    const url = new URL(href)
-    el.addEventListener('click', e => {
-      if (url.href.replace("#", "") === window.location.href.replace("#", "")) { return }
-      if (url.origin !== window.location.origin) { return }
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return }
-      e.preventDefault()
-      e.stopPropagation()
-      $.get(href, function (data) {
-        const html = $.parseHTML(data)
-        const title = html.find(node => node.nodeName === "TITLE").innerText
-        const bodyDiv = html.find(node => node.nodeName === "DIV")
-        const { children } = document.body.firstChild
-        if (window.history.state === null) {
-          window.history.replaceState({
-            leftColumn: children[3].innerHTML,
-            mainDiv: children[6].innerHTML,
-            title: document.title,
-          }, '')
-        }
-        document.title = title
-        const leftColumn = bodyDiv.children[3].innerHTML
-        const mainDiv = bodyDiv.children[6].innerHTML
-        window.history.pushState({ leftColumn, mainDiv, title }, '', href)
-        children[3].innerHTML = leftColumn
-        children[6].innerHTML = mainDiv
-        attachAllListeners()
-      })
-    })
-  })
+  $(".side-menu span").on("click", function () {
+    $(this).parent().toggleClass("expanded");
+  });
 
   $(".ar").on("click", function (e) {
     $(this).parent().parent().toggleClass("expanded");
@@ -128,14 +65,13 @@ function attachAllListeners() {
     e.stopPropagation();
   });
 
-  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
-    if (el.lastChild.href.replace("#", "") === window.location.href.replace("#", "")) {
-      el.parentElement.classList.toggle("expanded")
-      el.firstChild.classList.toggle("expanded")
-    } else {
-      el.lastChild.click()
-    }
-  }))
+  document.querySelectorAll(".nh").forEach((el) =>
+    el.addEventListener("click", () => {
+      el.lastChild.click();
+      el.first.addClass("expanded");
+      el.parent.addClass("expanded");
+    }),
+  );
 
   document.querySelectorAll(".supertypes").forEach((el) =>
     el.firstChild.addEventListener("click", () => {
@@ -168,26 +104,36 @@ function attachAllListeners() {
     }),
   );
 
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      const id = entry.target.getAttribute('id');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const id = entry.target.getAttribute("id");
       if (entry.intersectionRatio > 0) {
-        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.add('active');
+        document
+          .querySelector(`#toc li a[href="#${id}"]`)
+          .parentElement.classList.add("active");
       } else {
-        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.remove('active');
+        document
+          .querySelector(`#toc li a[href="#${id}"]`)
+          .parentElement.classList.remove("active");
       }
     });
   });
 
-  document.querySelectorAll('#content section[id]').forEach((section) => {
+  document.querySelectorAll("#content section[id]").forEach((section) => {
     observer.observe(section);
   });
+
+  document
+    .querySelectorAll(".side-menu a")
+    .forEach((elem) =>
+      elem.addEventListener("click", (e) => e.stopPropagation()),
+    );
 
   if (location.hash) {
     var target = location.hash.substring(1);
     // setting the 'expand' class on the top-level container causes undesireable styles
     // to apply to the top-level docs, so we avoid this logic for that element.
-    if (target != 'container') {
+    if (target != "container") {
       var selected = document.getElementById(location.hash.substring(1));
       if (selected) {
         selected.classList.toggle("expand");
@@ -195,88 +141,104 @@ function attachAllListeners() {
     }
   }
 
-  document.querySelectorAll('pre code').forEach(el => {
-    hljs.highlightBlock(el);
+  var logo = document.getElementById("logo");
+  if (logo) {
+    logo.onclick = function () {
+      window.location = pathToRoot; // global variable pathToRoot is created by the html renderer
+    };
+  }
+
+  document.querySelectorAll(".documentableAnchor").forEach((elem) => {
+    elem.addEventListener("click", (event) => {
+      var $temp = $("<input>");
+      $("body").append($temp);
+      var a = document.createElement("a");
+      a.href = $(elem).attr("link");
+      $temp.val(a.href).select();
+      document.execCommand("copy");
+      $temp.remove();
+    });
   });
 
+  hljs.registerLanguage("scala", highlightDotty);
+  hljs.registerAliases(["dotty", "scala3"], "scala");
+  hljs.initHighlighting();
+
   /* listen for the `F` key to be pressed, to focus on the member filter input (if it's present) */
-  document.body.addEventListener('keydown', e => {
+  document.body.addEventListener("keydown", (e) => {
     if (e.key == "f") {
       const tag = e.target.tagName;
       if (tag != "INPUT" && tag != "TEXTAREA") {
-        const filterInput = findRef('.documentableFilter input.filterableInput');
+        const filterInput = findRef(
+          ".documentableFilter input.filterableInput",
+        );
         if (filterInput != null) {
           // if we focus during this event handler, the `f` key gets typed into the input
           setTimeout(() => filterInput.focus(), 1);
         }
       }
     }
-  })
+  });
+
+  // show/hide side menu on mobile view
+  const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
+  sideMenuToggler.addEventListener("click", (_e) => {
+    document.getElementById("leftColumn").classList.toggle("show");
+    document.getElementById("content").classList.toggle("sidebar-shown");
+    const toc = document.getElementById("toc");
+    if (toc) {
+      toc.classList.toggle("sidebar-shown");
+    }
+    sideMenuToggler.classList.toggle("menu-shown");
+  });
+
+  // show/hide mobile menu on mobile view
+  const mobileMenuOpenIcon = document.getElementById("mobile-menu-toggle");
+  const mobileMenuCloseIcon = document.getElementById("mobile-menu-close");
+  mobileMenuOpenIcon.addEventListener("click", (_e) => {
+    document.getElementById("mobile-menu").classList.add("show");
+  });
+  mobileMenuCloseIcon.addEventListener("click", (_e) => {
+    document.getElementById("mobile-menu").classList.remove("show");
+  });
 
   // when document is loaded graph needs to be shown
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  hljs.registerLanguage("scala", highlightDotty);
-  hljs.registerAliases(["dotty", "scala3"], "scala");
-  attachAllListeners()
 });
-
-// show/hide side menu on mobile view
-const sideMenuToggler = document.getElementById("mobile-sidebar-toggle")
-sideMenuToggler.addEventListener('click', _e => {
-  document.getElementById("leftColumn").classList.toggle("show")
-  document.getElementById("content").classList.toggle("sidebar-shown")
-  const toc = document.getElementById("toc");
-  if (toc && toc.childElementCount > 0) {
-    toc.classList.toggle("sidebar-shown")
-  }
-  sideMenuToggler.classList.toggle("menu-shown")
-})
-
-// show/hide mobile menu on mobile view
-document.getElementById("mobile-menu-toggle").addEventListener('click', _e => {
-  document.getElementById("mobile-menu").classList.add("show")
-})
-document.getElementById("mobile-menu-close").addEventListener('click', _e => {
-  document.getElementById("mobile-menu").classList.remove("show")
-})
-
-window.addEventListener('popstate', e => {
-  const { leftColumn, mainDiv, title } = e.state
-  document.title = title
-  const { children } = document.body.firstChild
-  children[3].innerHTML = leftColumn
-  children[6].innerHTML = mainDiv
-  attachAllListeners()
-})
 
 var zoom;
 var transform;
 
 function showGraph() {
-  document.getElementById("inheritance-diagram").classList.add("shown")
+  document.getElementById("inheritance-diagram").classList.add("shown");
   if ($("svg#graph").children().length == 0) {
-    var dotNode = document.querySelector("#dot")
+    var dotNode = document.querySelector("#dot");
 
     if (dotNode) {
       var svg = d3.select("#graph");
-      var radialGradient = svg.append("defs").append("radialGradient").attr("id", "Gradient");
-      radialGradient.append("stop").attr("stop-color", "var(--yellow9)").attr("offset", "30%");
-      radialGradient.append("stop").attr("stop-color", "var(--background-default)").attr("offset", "100%");
+      var radialGradient = svg
+        .append("defs")
+        .append("radialGradient")
+        .attr("id", "Gradient");
+      radialGradient
+        .append("stop")
+        .attr("stop-color", "var(--yellow9)")
+        .attr("offset", "30%");
+      radialGradient
+        .append("stop")
+        .attr("stop-color", "var(--background-default)")
+        .attr("offset", "100%");
 
       var inner = svg.append("g");
 
       // Set up zoom support
-      zoom = d3.zoom()
-        .on("zoom", function ({ transform }) {
-          inner.attr("transform", transform);
-        });
+      zoom = d3.zoom().on("zoom", function ({ transform }) {
+        inner.attr("transform", transform);
+      });
       svg.call(zoom);
 
       var render = new dagreD3.render();
       var g = graphlibDot.read(dotNode.text);
-      g.graph().rankDir = 'BT';
+      g.graph().rankDir = "BT";
       g.nodes().forEach(function (v) {
         g.setNode(v, {
           labelType: "html",
@@ -284,12 +246,12 @@ function showGraph() {
           class: g.node(v).class,
           id: g.node(v).id,
           rx: "4px",
-          ry: "4px"
+          ry: "4px",
         });
       });
       g.setNode("node0Cluster", {
         style: "fill: url(#Gradient);",
-        id: "node0Cluster"
+        id: "node0Cluster",
       });
       g.setParent("node0", "node0Cluster");
 
@@ -300,7 +262,8 @@ function showGraph() {
       });
 
       render.arrows().hollowPoint = function normal(parent, id, edge, type) {
-        var marker = parent.append("marker")
+        var marker = parent
+          .append("marker")
           .attr("id", id)
           .attr("viewBox", "0 0 10 10")
           .attr("refX", 9)
@@ -310,7 +273,8 @@ function showGraph() {
           .attr("markerHeight", 12)
           .attr("orient", "auto");
 
-        var path = marker.append("path")
+        var path = marker
+          .append("path")
           .attr("d", "M 0 0 L 10 5 L 0 10 z")
           .style("stroke-width", 1)
           .style("stroke-dasharray", "1,0")
@@ -332,7 +296,10 @@ function showGraph() {
         midY = bounds.y + height / 2;
       if (width == 0 || height == 0) return; // nothing to fit
       var scale = Math.min(fullWidth / width, fullHeight / height) * 0.99; // 0.99 to make a little padding
-      var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+      var translate = [
+        fullWidth / 2 - scale * midX,
+        fullHeight / 2 - scale * midY,
+      ];
 
       transform = d3.zoomIdentity
         .translate(translate[0], translate[1])
@@ -346,8 +313,14 @@ function showGraph() {
       var node0Cluster = d3.select("g#node0Cluster")._groups[0][0];
       var node0ClusterRect = node0Cluster.children[0];
       node0Cluster.setAttribute("transform", node0.getAttribute("transform"));
-      node0ClusterRect.setAttribute("width", +node0Rect.getAttribute("width") + 80);
-      node0ClusterRect.setAttribute("height", +node0Rect.getAttribute("height") + 80);
+      node0ClusterRect.setAttribute(
+        "width",
+        +node0Rect.getAttribute("width") + 80,
+      );
+      node0ClusterRect.setAttribute(
+        "height",
+        +node0Rect.getAttribute("height") + 80,
+      );
       node0ClusterRect.setAttribute("x", node0Rect.getAttribute("x") - 40);
       node0ClusterRect.setAttribute("y", node0Rect.getAttribute("y") - 40);
     }
@@ -355,13 +328,10 @@ function showGraph() {
 }
 
 function hideGraph() {
-  document.getElementById("inheritance-diagram").classList.remove("shown")
+  document.getElementById("inheritance-diagram").classList.remove("shown");
 }
 
 function zoomOut() {
   var svg = d3.select("#graph");
-  svg
-    .transition()
-    .duration(2000)
-    .call(zoom.transform, transform);
+  svg.transition().duration(2000).call(zoom.transform, transform);
 }
