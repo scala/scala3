@@ -6,88 +6,47 @@ function attachAllListeners() {
   }
 
   var scrollPosition = sessionStorage.getItem("scroll_value");
-  console.log(scrollPosition);
   if (scrollPosition) {
     var sideMenu = document.querySelector(".side-menu");
     sideMenu.scrollTo(0, scrollPosition);
   }
 
-  var elements = document.getElementsByClassName("documentableElement");
+  var elements = document.getElementsByClassName("documentableElement")
   if (elements) {
     for (i = 0; i < elements.length; i++) {
-      var expanderChild = elements[i].querySelector(
-        ".documentableElement-expander",
-      );
-      if (
-        elements[i].querySelector(".show-content") !== null &&
-        expanderChild !== null
-      ) {
+      var expanderChild = elements[i].querySelector(".documentableElement-expander")
+      if (elements[i].querySelector(".show-content") !== null && expanderChild !== null) {
         expanderChild.onclick = function (e) {
           if (!$(e.target).is("a") && e.fromSnippet !== true) {
-            this.parentElement.classList.toggle("expand");
-            this.querySelector(".show-content").classList.toggle("expand");
+            this.parentElement.classList.toggle("expand")
+            this.querySelector(".show-content").classList.toggle("expand")
           }
-        };
+        }
       }
     }
   }
 
-  var documentableLists = document.getElementsByClassName("documentableList");
+  var documentableLists = document.getElementsByClassName("documentableList")
   if (documentableLists) {
     for (i = 0; i < documentableLists.length; i++) {
       documentableLists[i].children[0].onclick = function (e) {
         this.classList.toggle("expand");
         this.parentElement.classList.toggle("expand");
-      };
+      }
     }
   }
 
-  var memberLists = document.getElementsByClassName("tab");
+  var memberLists = document.getElementsByClassName("tab")
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {
       if ($(memberLists[i].children[0]).is("button")) {
         memberLists[i].children[0].onclick = function (e) {
           this.classList.toggle("expand");
           this.parentElement.classList.toggle("expand");
-        };
+        }
       }
     }
   }
- $(".side-menu span").on("click", function () {
-   $(this).parent().toggleClass("expanded");
- });
-  document.querySelectorAll('a').forEach(el => {
-    const href = el.href
-    if (href === "") { return }
-    const url = new URL(href)
-    el.addEventListener('click', e => {
-      if (url.href.replace("#", "") === window.location.href.replace("#", "")) { return }
-      if (url.origin !== window.location.origin) { return }
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return }
-      e.preventDefault()
-      e.stopPropagation()
-      $.get(href, function (data) {
-        const html = $.parseHTML(data)
-        const title = html.find(node => node.nodeName === "TITLE").innerText
-        const bodyDiv = html.find(node => node.nodeName === "DIV")
-        const { children } = document.body.firstChild
-        if (window.history.state === null) {
-          window.history.replaceState({
-            leftColumn: children[3].innerHTML,
-            mainDiv: children[6].innerHTML,
-            title: document.title,
-          }, '')
-        }
-        document.title = title
-        const leftColumn = bodyDiv.children[3].innerHTML
-        const mainDiv = bodyDiv.children[6].innerHTML
-        window.history.pushState({ leftColumn, mainDiv, title }, '', href)
-        children[3].innerHTML = leftColumn
-        children[6].innerHTML = mainDiv
-        attachAllListeners()
-      })
-    })
-  })
 
   document.querySelectorAll('a').forEach(el => {
     const href = el.href
@@ -122,10 +81,10 @@ function attachAllListeners() {
     })
   })
 
-  $(".ar").on("click", function (e) {
-    $(this).parent().parent().toggleClass("expanded");
-    $(this).toggleClass("expanded");
-    e.stopPropagation();
+  $(".ar").on('click', function (e) {
+    $(this).parent().parent().toggleClass("expanded")
+    $(this).toggleClass("expanded")
+    e.stopPropagation()
   });
 
   document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
@@ -137,38 +96,24 @@ function attachAllListeners() {
     }
   }))
 
-  document.querySelectorAll(".supertypes").forEach((el) =>
-    el.firstChild.addEventListener("click", () => {
-      el.classList.toggle("collapsed");
-      el.firstChild.classList.toggle("expand");
-    }),
-  );
+  document.querySelectorAll(".supertypes").forEach(el => el.firstChild.addEventListener('click', () => {
+    el.classList.toggle("collapsed");
+    el.firstChild.classList.toggle("expand");
+  }))
 
-  document.querySelectorAll(".subtypes").forEach((el) =>
-    el.firstChild.addEventListener("click", () => {
-      el.classList.toggle("collapsed");
-      el.firstChild.classList.toggle("expand");
-    }),
-  );
 
-  document.querySelectorAll(".nh").forEach((el) =>
-    el.addEventListener("click", () => {
-      el.lastChild.click();
-      el.first.addClass("expanded");
-      el.parent.addClass("expanded");
-    }),
-  );
+  document.querySelectorAll(".subtypes").forEach(el => el.firstChild.addEventListener('click', () => {
+    el.classList.toggle("collapsed");
+    el.firstChild.classList.toggle("expand");
+  }))
 
-  document.querySelectorAll(".ni").forEach((link) =>
-    link.addEventListener("mouseenter", (e) => {
-      sessionStorage.setItem(
-        "scroll_value",
-        link.offsetTop - window.innerHeight / 2,
-      );
-    }),
-  );
+  document.querySelectorAll(".ni").forEach(link =>
+    link.addEventListener("mouseenter", _e => {
+      sessionStorage.setItem("scroll_value", link.offsetTop - window.innerHeight / 2)
+    })
+  )
 
-  const observer = new IntersectionObserver(entries => {
+  observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       const id = entry.target.getAttribute('id');
       if (entry.intersectionRatio > 0) {
