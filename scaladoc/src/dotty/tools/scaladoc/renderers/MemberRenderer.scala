@@ -2,14 +2,16 @@ package dotty.tools.scaladoc
 package renderers
 
 import scala.collection.immutable.SortedMap
-import scala.util.chaining._
-import util.HTML._
-import scala.jdk.CollectionConverters._
+import scala.util.chaining.*
+import util.HTML.*
+
+import scala.jdk.CollectionConverters.*
 import dotty.tools.scaladoc.translators.FilterAttributes
 import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
-import com.vladsch.flexmark.util.ast.{Node => MdNode}
+import com.vladsch.flexmark.util.ast.Node as MdNode
 import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
-import translators._
+import org.jsoup.Jsoup
+import translators.*
 
 class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) extends DocRender(signatureRenderer):
   import signatureRenderer._
@@ -122,8 +124,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Option.when(bodyContents.nonEmpty || attributes.nonEmpty)(
         div(cls := "cover")(
           div(cls := "doc")(bodyContents),
-          Option.when(withAttributes)(h2(cls := "h500")("Attributes")).toList,
-          dl(cls := "attributes")(attributes*)
+          Option.when(withAttributes)(
+            section(id := "attributes")(
+              h2(cls := "h500")("Attributes"),
+              dl(cls := "attributes")(attributes*)
+            )
+          ).getOrElse(
+            dl(cls := "attributes")(attributes*)
+          )
         )
       )
     ).flatten
@@ -206,20 +214,22 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
     if members.isEmpty then Nil else
     div(cls := "documentableList expand")(
-      button(cls := "icon-button show-content expand"),
-      h3(cls := "groupHeader h200")(name),
-      members.sortBy {
-        case m: Member => m.name
-        case MGroup(_, _, name) => name
-      }.map {
-        case element: Member =>
-          member(element)
-        case MGroup(header, members, _) =>
-          div(
-            header,
-            members.map(member)
-          )
-      }
+      section(id := name.replace(' ', '-'))(
+        button(cls := "icon-button show-content expand"),
+        h3(cls := "groupHeader h200")(name),
+        members.sortBy {
+          case m: Member => m.name
+          case MGroup(_, _, name) => name
+        }.map {
+          case element: Member =>
+            member(element)
+          case MGroup(header, members, _) =>
+            div(
+              header,
+              members.map(member)
+            )
+        }
+      )
     ) :: Nil
 
   private def isDeprecated(m: Member | MGroup): Boolean = m match
@@ -371,7 +381,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       if tabs.isEmpty then Nil else
         Seq(div(cls := (if singleSelection then "tabs single" else "tabs"))(
             div(cls := "contents")(tabs.map(t =>
-              div(tabAttr(t.id), cls := s"tab ${t.cls}")(t.content)
+              section(id := t.name.replace(' ', '-'))(
+                div(tabAttr(t.id), cls := s"tab ${t.cls}")(t.content)
+              )
             ))
         ))
 
@@ -462,13 +474,28 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             memberSignature(m)
           )
         )
-    PageContent(
-      div(
-        intro,
-        memberInfo(m, withAttributes = true),
+
+    val memberContent = div(
+      intro,
+      memberInfo(m, withAttributes = true),
+      section(id := "members-list")(
         h2(cls := "h500")("Members list"),
         buildDocumentableFilter,
         buildMembers(m)
-      ),
-      Seq.empty // For now, we don't support table of contents in members
+      )
+    )
+
+    val memberDocument = Jsoup.parse(memberContent.toString)
+
+    val toc = memberDocument.select("section[id]").asScala.toSeq
+      .flatMap { elem =>
+        val header = elem.selectFirst("h1, h2, h3, h4, h5, h6")
+        Option(header).map { h =>
+          TocEntry(h.tag().getName, h.text(), s"#${elem.id()}")
+        }
+      }
+
+    PageContent(
+      memberContent,
+      toc
     )
