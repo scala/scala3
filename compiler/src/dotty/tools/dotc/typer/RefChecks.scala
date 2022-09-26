@@ -517,7 +517,7 @@ object RefChecks {
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
       else if other.is(ParamAccessor) && !isInheritedAccessor(member, other) then // (1.13)
-        if true || sourceVersion.isAtLeast(`future`) then
+        if sourceVersion.isAtLeast(`future`) then
           overrideError(i"cannot override val parameter ${other.showLocated}")
         else
           report.deprecationWarning(
