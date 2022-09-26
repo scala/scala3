@@ -516,9 +516,7 @@ object RefChecks {
           overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
-      else if other.is(ParamAccessor)
-          && !(member.is(ParamAccessor) && ParamForwarding.inheritedAccessor(member) == other)
-      then // (1.13)
+      else if other.is(ParamAccessor) && !isInheritedAccessor(member, other) then // (1.13)
         if sourceVersion.isAtLeast(`future`) then
           overrideError(i"cannot override val parameter ${other.showLocated}")
         else
@@ -530,6 +528,13 @@ object RefChecks {
       else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
         overrideDeprecation("", member, other, "removed or renamed")
     end checkOverride
+
+    def isInheritedAccessor(mbr: Symbol, other: Symbol): Boolean =
+      mbr.is(ParamAccessor)
+      && {
+        val next = ParamForwarding.inheritedAccessor(mbr)
+        next == other || isInheritedAccessor(next, other)
+      }
 
     OverridingPairsChecker(clazz, self).checkAll(checkOverride)
     printMixinOverrideErrors()
