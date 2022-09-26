@@ -53,7 +53,7 @@ function attachAllListeners() {
     if (href === "") { return }
     const url = new URL(href)
     el.addEventListener('click', e => {
-      if (url.href.replace("#", "") === window.location.href.replace("#", "")) { return }
+      if (url.href.replace(/#.*/, "") === window.location.href.replace(/#.*/, "")) { return }
       if (url.origin !== window.location.origin) { return }
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return }
       e.preventDefault()
@@ -188,6 +188,7 @@ document.getElementById("mobile-menu-close").addEventListener('click', _e => {
 })
 
 window.addEventListener('popstate', e => {
+  if (e.state === null) { return }
   const { leftColumn, mainDiv, title } = e.state
   document.title = title
   const { children } = document.body.firstChild
