@@ -265,7 +265,7 @@ object RefChecks {
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
    *    1.12.  If O is non-experimental, M must be non-experimental.
    *    1.13   Under -source future, if O is a val parameter, M must be a val parameter
-   *           that passes its on to O.
+   *           that passes its value on to O.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
