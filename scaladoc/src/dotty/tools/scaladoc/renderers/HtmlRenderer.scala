@@ -213,9 +213,6 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       div(cls := "breadcrumbs container")(innerTags:_*)
 
     val (apiNavOpt, docsNavOpt): (Option[(Boolean, Seq[AppliedTag])], Option[(Boolean, Seq[AppliedTag])]) = buildNavigation(link)
-    val isDocs = docsNavOpt match
-      case Some(true, _) => true
-      case _ => false
 
     def textFooter: String | AppliedTag =
       args.projectFooter.fold("") { f =>
@@ -306,16 +303,14 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         parentsHtml,
         div(id := "content", cls := "body-medium")(
           div(content),
-          if isDocs then
-            div(id := "toc", cls:="body-small")(
-              renderTableOfContents(toc).fold(Nil) { toc =>
-                div(id := "toc-container")(
-                  span(cls := "toc-title h200")("In this article"),
-                  toc,
-                )
-              },
-            )
-          else Nil
+          div(id := "toc", cls:="body-small")(
+            renderTableOfContents(toc).fold(Nil) { toc =>
+              div(id := "toc-container")(
+                span(cls := "toc-title h200")("In this article"),
+                toc,
+              )
+            },
+          ),
         ),
         div(id := "footer", cls := "body-small mobile-footer")(
           div(cls := "left-container")(
