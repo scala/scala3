@@ -1076,6 +1076,7 @@ object Denotations {
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T = f(this)
 
     type AsSeenFromResult = SingleDenotation
+
     protected def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = {
       val symbol = this.symbol
       val owner = this match {
@@ -1120,19 +1121,31 @@ object Denotations {
       then this
       else if symbol.isAllOf(ClassTypeParam) then
         val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
-        if arg.exists then
-          // take the argument bounds, but intersect with the symbols bounds if
-          // this forces nothing and gives a non-empty type.
-          val newBounds =
-            if symbol.isCompleted && !symbol.info.containsLazyRefs then
-              val combined @ TypeBounds(lo, hi) = symbol.info.bounds & arg.bounds
-              if lo frozen_<:< hi then combined
-              else arg.bounds
-            else arg.bounds
-          derivedSingleDenotation(symbol, newBounds, pre)
+        if arg.exists
+        then derivedSingleDenotation(symbol, normalizedArgBounds(arg.bounds), pre)
         else derived(symbol.info)
       else derived(symbol.info)
     }
+
+    /** The argument bounds, possibly intersected with the parameter's info TypeBounds,
+     *  if the latter is not F-bounded and does not refer to other type parameters
+     *  of the same class, and the intersection is provably nonempty.
+     */
+    private def normalizedArgBounds(argBounds: TypeBounds)(using Context): TypeBounds =
+      if symbol.isCompleted && !hasBoundsDependingOnParamsOf(symbol.owner) then
+        val combined @ TypeBounds(lo, hi) = symbol.info.bounds & argBounds
+        if (lo frozen_<:< hi) then combined
+        else argBounds
+      else argBounds
+
+    private def hasBoundsDependingOnParamsOf(cls: Symbol)(using Context): Boolean =
+      val acc = new TypeAccumulator[Boolean]:
+        def apply(x: Boolean, tp: Type): Boolean = tp match
+          case _: LazyRef => true
+          case tp: TypeRef
+          if tp.symbol.isAllOf(ClassTypeParam) && tp.symbol.owner == cls => true
+          case _ => foldOver(x, tp)
+      acc(false, symbol.info)
   }
 
   abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type) extends SingleDenotation(symbol, initInfo) {
