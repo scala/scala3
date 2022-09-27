@@ -93,23 +93,6 @@ Test$
 Object
 <empty>.Test$
 main
-285
-296
-11
-f1
-Apply
-false
-0
-false
-f1(0)(1)(2)
-
-5
-currying/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-main
 277
 297
 11
@@ -120,6 +103,23 @@ false
 false
 println(f1(0)(1)(2))
 
+5
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+285
+296
+11
+f1
+Apply
+false
+0
+false
+f1(0)(1)(2)
+
 6
 currying/test.scala
 <empty>
@@ -127,15 +127,15 @@ Test$
 Object
 <empty>.Test$
 main
-310
-312
+302
+322
 12
-f2
-Ident
+println
+Apply
 false
 0
 false
-f2
+println(f2(0)(1)(2))
 
 7
 currying/test.scala
@@ -145,14 +145,14 @@ Object
 <empty>.Test$
 main
 310
-315
+321
 12
 apply
 Apply
 false
 0
 false
-f2(0)
+f2(0)(1)(2)
 
 8
 currying/test.scala
@@ -179,14 +179,14 @@ Object
 <empty>.Test$
 main
 310
-321
+315
 12
 apply
 Apply
 false
 0
 false
-f2(0)(1)(2)
+f2(0)
 
 10
 currying/test.scala
@@ -195,15 +195,15 @@ Test$
 Object
 <empty>.Test$
 main
-302
-322
+310
+312
 12
-println
-Apply
+f2
+Ident
 false
 0
 false
-println(f2(0)(1)(2))
+f2
 
 11
 currying/test.scala
@@ -212,15 +212,15 @@ Test$
 Object
 <empty>.Test$
 main
-335
-337
+327
+365
 13
-g1
-Ident
+println
+Apply
 false
 0
 false
-g1
+println(g1(using 0)(using 1)(using 2))
 
 12
 currying/test.scala
@@ -246,15 +246,15 @@ Test$
 Object
 <empty>.Test$
 main
-327
-365
-13
+370
+408
+14
 println
 Apply
 false
 0
 false
-println(g1(using 0)(using 1)(using 2))
+println(g2(using 0)(using 1)(using 2))
 
 14
 currying/test.scala
@@ -274,23 +274,6 @@ false
 g2(using 0)(using 1)(using 2)
 
 15
-currying/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-main
-370
-408
-14
-println
-Apply
-false
-0
-false
-println(g2(using 0)(using 1)(using 2))
-
-16
 currying/test.scala
 <empty>
 Test$

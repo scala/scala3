@@ -60,14 +60,14 @@ Object
 covtest.PolyMeth$
 <init>
 147
-158
+170
 6
-<init>
+f
 Apply
 false
 0
 false
-C[String]()
+C[String]().f("str", 0)
 
 3
 PolymorphicMethods.scala
@@ -77,14 +77,14 @@ Object
 covtest.PolyMeth$
 <init>
 147
-170
+158
 6
-f
+<init>
 Apply
 false
 0
 false
-C[String]().f("str", 0)
+C[String]()
 
 4
 PolymorphicMethods.scala

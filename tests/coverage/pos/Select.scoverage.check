@@ -110,23 +110,6 @@ B
 Class
 covtest.B
 print
-192
-205
-12
-instance
-Select
-false
-0
-false
-this.instance
-
-6
-Select.scala
-covtest
-B
-Class
-covtest.B
-print
 184
 206
 12
@@ -136,6 +119,23 @@ false
 0
 false
 println(this.instance)
+
+6
+Select.scala
+covtest
+B
+Class
+covtest.B
+print
+192
+205
+12
+instance
+Select
+false
+0
+false
+this.instance
 
 7
 Select.scala
@@ -196,14 +196,14 @@ Object
 covtest.Select$package$
 test
 263
-273
+281
 18
-instance
-Select
+print
+Apply
 false
 0
 false
-a.instance
+a.instance.print()
 
 11
 Select.scala
@@ -213,14 +213,14 @@ Object
 covtest.Select$package$
 test
 263
-281
+273
 18
-print
-Apply
+instance
+Select
 false
 0
 false
-a.instance.print()
+a.instance
 
 12
 Select.scala

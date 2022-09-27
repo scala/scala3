@@ -212,23 +212,6 @@ EnumTypes$
 Object
 covtest.EnumTypes$
 test
-1051
-1076
-30
-+
-Apply
-false
-0
-false
-"Example 1: \n"+emptyList
-
-12
-Enum.scala
-covtest
-EnumTypes$
-Object
-covtest.EnumTypes$
-test
 1043
 1077
 30
@@ -239,24 +222,24 @@ false
 false
 println("Example 1: \n"+emptyList)
 
-13
+12
 Enum.scala
 covtest
 EnumTypes$
 Object
 covtest.EnumTypes$
 test
-1090
-1102
-31
-s
+1051
+1076
+30
++
 Apply
 false
 0
 false
-s"${list}\n"
+"Example 1: \n"+emptyList
 
-14
+13
 Enum.scala
 covtest
 EnumTypes$
@@ -272,6 +255,23 @@ false
 0
 false
 println(s"${list}\n")
+
+14
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+1090
+1102
+31
+s
+Apply
+false
+0
+false
+s"${list}\n"
 
 15
 Enum.scala
@@ -297,6 +297,24 @@ EnumTypes$
 Object
 covtest.EnumTypes$
 calculateEarthWeightOnPlanets
+1229
+1320
+35
+foreach
+Apply
+false
+0
+false
+for p <- Planet.values do
+        println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+
+17
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+calculateEarthWeightOnPlanets
 1238
 1251
 35
@@ -307,41 +325,7 @@ false
 false
 Planet.values
 
-17
-Enum.scala
-covtest
-EnumTypes$
-Object
-covtest.EnumTypes$
-$anonfun
-1296
-1317
-36
-surfaceWeight
-Apply
-false
-0
-false
-p.surfaceWeight(mass)
-
 18
-Enum.scala
-covtest
-EnumTypes$
-Object
-covtest.EnumTypes$
-$anonfun
-1271
-1319
-36
-s
-Apply
-false
-0
-false
-s"Your weight on $p is ${p.surfaceWeight(mass)}"
-
-19
 Enum.scala
 covtest
 EnumTypes$
@@ -358,23 +342,39 @@ false
 false
 println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
+19
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+$anonfun
+1271
+1319
+36
+s
+Apply
+false
+0
+false
+s"Your weight on $p is ${p.surfaceWeight(mass)}"
+
 20
 Enum.scala
 covtest
 EnumTypes$
 Object
 covtest.EnumTypes$
-calculateEarthWeightOnPlanets
-1229
-1320
-35
-foreach
+$anonfun
+1296
+1317
+36
+surfaceWeight
 Apply
 false
 0
 false
-for p <- Planet.values do
-        println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+p.surfaceWeight(mass)
 
 21
 Enum.scala

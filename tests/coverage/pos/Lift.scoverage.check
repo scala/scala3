@@ -19,14 +19,14 @@
 # '' sign
 # ------------------------------------------
 0
-Constructor.scala
+Lift.scala
 covtest
-C
+SomeFunctions
 Class
-covtest.C
+covtest.SomeFunctions
 f
-28
-33
+40
+45
 3
 f
 DefDef
@@ -36,66 +36,15 @@ false
 def f
 
 1
-Constructor.scala
+Lift.scala
 covtest
-C
+SomeFunctions
 Class
-covtest.C
-x
-48
-53
-4
-x
-DefDef
-false
-0
-false
-def x
-
-2
-Constructor.scala
-covtest
-C
-Class
-covtest.C
-<init>
-60
-64
-5
-f
-Apply
-false
-0
-false
-f(x)
-
-3
-Constructor.scala
-covtest
-C
-Class
-covtest.C
-<init>
-62
-63
-5
-x
-Select
-false
-0
-false
-x
-
-4
-Constructor.scala
-covtest
-O$
-Object
-covtest.O$
+covtest.SomeFunctions
 g
-78
-83
-8
+61
+66
+4
 g
 DefDef
 false
@@ -103,54 +52,105 @@ false
 false
 def g
 
-5
-Constructor.scala
+2
+Lift.scala
 covtest
-O$
-Object
-covtest.O$
-y
+SomeFunctions
+Class
+covtest.SomeFunctions
+c
+83
 98
-103
-9
-y
+5
+<init>
+Apply
+false
+0
+false
+SomeFunctions()
+
+3
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+c
+75
+80
+5
+c
 DefDef
 false
 0
 false
-def y
+def c
+
+4
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+test
+113
+121
+7
+f
+Apply
+false
+0
+false
+c.f(g())
+
+5
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+test
+113
+114
+7
+c
+Select
+false
+0
+false
+c
 
 6
-Constructor.scala
+Lift.scala
 covtest
-O$
-Object
-covtest.O$
-<init>
-110
-114
-10
+SomeFunctions
+Class
+covtest.SomeFunctions
+test
+117
+120
+7
 g
 Apply
 false
 0
 false
-g(y)
+g()
 
 7
-Constructor.scala
+Lift.scala
 covtest
-O$
-Object
-covtest.O$
-<init>
-112
-113
-10
-y
-Ident
+SomeFunctions
+Class
+covtest.SomeFunctions
+test
+102
+110
+7
+test
+DefDef
 false
 0
 false
-y
+def test
 
