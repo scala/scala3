@@ -350,6 +350,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+          if fn.symbol eq defn.Compiletime_erasedValue then
+            // Check the instantiated type of erasedValue for realizibility
+            for arg <- args do
+                Checking.checkRealizable(arg.tpe, arg.srcPos, "type application of erasedValue")
+
           fn match {
             case sel: Select =>
               val args1 = transform(args)
@@ -484,6 +489,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private def checkErasedDef(tree: ValOrDefDef)(using Context): Unit =
       if tree.symbol.is(Erased, butNot = Macro) then
         val tpe = tree.rhs.tpe
+        if !tree.symbol.isOneOf(TermParamOrAccessor) && !tree.symbol.eq(defn.Compiletime_erasedValue) then // Only need to check non-parameters, since parameters have their own path checks.
+            // We want all erased definitions to have a realizable type
+            Checking.checkRealizable(tree.tpt.tpe, tree.srcPos, "erased type")
         if tpe.derivesFrom(defn.NothingClass) then
           report.error("`erased` definition cannot be implemented with en expression of type Nothing", tree.srcPos)
         else if tpe.derivesFrom(defn.NullClass) then
