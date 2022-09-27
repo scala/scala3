@@ -1121,9 +1121,13 @@ object Denotations {
       else if symbol.isAllOf(ClassTypeParam) then
         val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
         if arg.exists then
+          // take the argument bounds, but intersect with the symbols bounds if
+          // this forces nothing and gives a non-empty type.
           val newBounds =
-            if symbol.isCompleted && !symbol.info.containsLazyRefs
-            then symbol.info.bounds & arg.bounds
+            if symbol.isCompleted && !symbol.info.containsLazyRefs then
+              val combined @ TypeBounds(lo, hi) = symbol.info.bounds & arg.bounds
+              if lo frozen_<:< hi then combined
+              else arg.bounds
             else arg.bounds
           derivedSingleDenotation(symbol, newBounds, pre)
         else derived(symbol.info)
