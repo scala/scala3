@@ -603,7 +603,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         curEnv = Env(curEnv.owner, CaptureSet.Var(), isBoxed = false, if boxed then null else curEnv)
 
         try
-          val (eargs, eres) = trace(i"trying to dealias expected $expected", show = true) {expected.dealias} match
+          val (eargs, eres) = expected.dealias match
             case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
             case _ => (aargs.map(_ => WildcardType), WildcardType)
           val aargs1 = aargs.zipWithConserve(eargs){ (aarg, earg) => adapt(aarg, earg, !covariant) }
