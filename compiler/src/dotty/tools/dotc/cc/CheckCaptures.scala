@@ -618,11 +618,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         finally
           curEnv = saved
 
-      // def adaptInfo(actual: Type, expected: Type, covariant: Boolean): String =
-      //   val (l, r) = if covariant then (actual, expected) else (expected, actual)
-      //   i"adapting $l ~~> $r"
+      def adaptInfo(actual: Type, expected: Type, covariant: Boolean): String =
+        val arrow = if covariant then "~~>" else "<~~"
+        i"adapting $actual $arrow $expected"
 
-      def adapt(actual: Type, expected: Type, covariant: Boolean): Type =
+      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true) {
         val actualTp = actual match
           case actual @ CapturingType(parent, cs) =>
             (parent, cs, actual.isBoxed)
@@ -632,8 +632,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         val (parent1, cs1, isBoxed1) = adaptCapturingType(actualTp, expected, covariant)
 
         CapturingType(parent1, cs1, isBoxed1)
+      }
 
-      def adaptCapturingType(actual: (Type, CaptureSet, Boolean), expected: Type, covariant: Boolean): (Type, CaptureSet, Boolean) =
+      def adaptCapturingType(actual: (Type, CaptureSet, Boolean),
+                             expected: Type,
+                             covariant: Boolean): (Type, CaptureSet, Boolean) =
         val (parent, cs, actualIsBoxed) = actual
 
         val needsAdaptation = actualIsBoxed != expected.isBoxedCapturing
@@ -660,13 +663,13 @@ class CheckCaptures extends Recheck, SymTransformer:
             // We can't box/unbox the universal capability. Leave `actual` as it is
             // so we get an error in checkConforms. This tends to give better error
             // messages than disallowing the root capability in `criticalSet`.
-            capt.println(i"cannot box/unbox $actual vs $expected")
+            capt.println(i"cannot box/unbox $cs $parent vs $expected")
             actual
           else
             // Disallow future addition of `*` to `criticalSet`.
             criticalSet.disallowRootCapability { () =>
               report.error(
-                em"""$actual cannot be box-converted to $expected
+                em"""$cs $parent cannot be box-converted to $expected
                     |since one of their capture sets contains the root capability `*`""",
               pos)
             }
