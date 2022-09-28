@@ -596,51 +596,84 @@ class CheckCaptures extends Recheck, SymTransformer:
        *   @param reconstruct  how to rebuild the adapted function type
        */
       def adaptFun(actual: Type, aargs: List[Type], ares: Type, expected: Type,
-          covariant: Boolean,
-          reconstruct: (List[Type], Type) => Type): Type =
-        val (eargs, eres) = expected.dealias match
-          case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
-          case _ => (aargs.map(_ => WildcardType), WildcardType)
-        val aargs1 = aargs.zipWithConserve(eargs)(adapt(_, _, !covariant))
-        val ares1 = adapt(ares, eres, covariant)
-        if (ares1 eq ares) && (aargs1 eq aargs) then actual
-        else reconstruct(aargs1, ares1)
+          covariant: Boolean, boxed: Boolean,
+          reconstruct: (List[Type], Type) => Type): (Type, Some[CaptureSet]) =
+        val saved = curEnv
+        curEnv = Env(curEnv.owner, CaptureSet.Var(), isBoxed = false, if boxed then null else curEnv)
 
-      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = actual.dealias match
-        case actual @ CapturingType(parent, refs) =>
-          val parent1 = adapt(parent, expected, covariant)
-          if actual.isBoxed != expected.isBoxedCapturing then
-            val criticalSet =          // the set which is not allowed to have `*`
-              if covariant then refs   // can't box with `*`
-              else expected.captureSet // can't unbox with `*`
-            if criticalSet.isUniversal then
-              // We can't box/unbox the universal capability. Leave `actual` as it is
-              // so we get an error in checkConforms. This tends to give better error
-              // messages than disallowing the root capability in `criticalSet`.
-              capt.println(i"cannot box/unbox $actual vs $expected")
-              actual
+        try
+          val (eargs, eres) = expected.dealias match
+            case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
+            case _ => (aargs.map(_ => WildcardType), WildcardType)
+          val aargs1 = aargs.zipWithConserve(eargs){ (aarg, earg) => adapt(aarg, earg, !covariant, boxed = false) }
+          val ares1 = adapt(ares, eres, covariant, boxed = false)
+
+          val resTp =
+            if (ares1 eq ares) && (aargs1 eq aargs) then actual
+            else reconstruct(aargs1, ares1)
+
+          curEnv.captured.asVar.markSolved()
+          (resTp, Some(curEnv.captured))
+        finally
+          curEnv = saved
+
+      // def adaptInfo(actual: Type, expected: Type, covariant: Boolean): String =
+      //   val (l, r) = if covariant then (actual, expected) else (expected, actual)
+      //   i"adapting $l ~~> $r"
+
+      def adapt(actual: Type, expected: Type, covariant: Boolean, boxed: Boolean): Type =
+        val (actual1, cs1) = adapt1(actual, expected, covariant, boxed)
+        cs1 map { cs1 =>
+          actual1 match
+            case CapturingType(parent, cs0) =>
+              parent.derivedCapturingType(parent, cs0 ++ cs1.asConst)
+            case _ =>
+              CapturingType(actual1, cs1.asConst)
+        } getOrElse actual1
+
+      def adapt1(actual: Type, expected: Type, covariant: Boolean, boxed: Boolean): (Type, Option[CaptureSet]) =
+        actual.dealias match
+          case actual @ CapturingType(parent, refs) =>
+            if actual.isBoxed != expected.isBoxedCapturing then
+              val isUnbox = covariant == actual.isBoxed
+              val (parent1, cs1) = adapt1(parent, expected, covariant, boxed = !isUnbox)
+
+              val criticalSet =          // the set which is not allowed to have `*`
+                if covariant then refs   // can't box with `*`
+                else expected.captureSet // can't unbox with `*`
+              if criticalSet.isUniversal then
+                // We can't box/unbox the universal capability. Leave `actual` as it is
+                // so we get an error in checkConforms. This tends to give better error
+                // messages than disallowing the root capability in `criticalSet`.
+                capt.println(i"cannot box/unbox $actual vs $expected")
+                (actual, None)
+              else
+                // Disallow future addition of `*` to `criticalSet`.
+                criticalSet.disallowRootCapability { () =>
+                  report.error(
+                    em"""$actual cannot be box-converted to $expected
+                        |since one of their capture sets contains the root capability `*`""",
+                  pos)
+                }
+                if isUnbox then markFree(refs, pos)
+                val tp1 = CapturingType(parent1, cs1 map { refs ++ _ } getOrElse refs, boxed = !actual.isBoxed)
+                (tp1, None)
             else
-              // Disallow future addition of `*` to `criticalSet`.
-              criticalSet.disallowRootCapability { () =>
-                report.error(
-                  em"""$actual cannot be box-converted to $expected
-                      |since one of their capture sets contains the root capability `*`""",
-                pos)
-              }
-              if covariant == actual.isBoxed then markFree(refs, pos)
-              CapturingType(parent1, refs, boxed = !actual.isBoxed)
-          else
-            actual.derivedCapturingType(parent1, refs)
-        case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
-          adaptFun(actual, args.init, args.last, expected, covariant,
-              (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
-        case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
-          // TODO Find a way to combine handling of generic and dependent function types (here and elsewhere)
-          adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant,
-            (aargs1, ares1) =>
-              rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
-                .toFunctionType(isJava = false, alwaysDependent = true))
-        case _ => actual
+              val (parent1, cs1) = adapt1(parent, expected, covariant, boxed = false)
+              val refs1 = cs1.map(refs ++ _.asConst).getOrElse(refs)
+              val tp1 = actual.derivedCapturingType(parent1, refs1)
+              (tp1, None)
+          case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
+            adaptFun(actual, args.init, args.last, expected, covariant, boxed,
+                (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
+          case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
+            // TODO Find a way to combine handling of generic and dependent function types (here and elsewhere)
+            adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant, boxed,
+              (aargs1, ares1) =>
+                rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
+                  .toFunctionType(isJava = false, alwaysDependent = true))
+          case _ => (actual, None)
+
 
       var actualw = actual.widenDealias
       actual match
@@ -651,7 +684,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // given `a: C T`, improve `C T` to `{a} T`
             case _ =>
         case _ =>
-      val adapted = adapt(actualw, expected, covariant = true)
+      val adapted = adapt(actualw, expected, covariant = true, boxed = false)
       if adapted ne actualw then
         capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
         adapted
