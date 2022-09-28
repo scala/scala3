@@ -606,7 +606,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val (eargs, eres) = expected.dealias match
             case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
             case _ => (aargs.map(_ => WildcardType), WildcardType)
-          val aargs1 = aargs.zipWithConserve(eargs){ (aarg, earg) => adapt(aarg, earg, !covariant) }
+          val aargs1 = aargs.zipWithConserve(eargs) { (aarg, earg) => adapt(aarg, earg, !covariant) }
           val ares1 = adapt(ares, eres, covariant)
 
           val resTp =
@@ -623,9 +623,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         i"adapting $actual $arrow $expected"
 
       def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true) {
-        def destructCapturingType(tp: Type, reconstruct: Type => Type): ((Type, CaptureSet, Boolean), Type => Type) = tp match
+        def destructCapturingType(tp: Type, reconstruct: Type => Type): ((Type, CaptureSet, Boolean), Type => Type) = tp.dealias match
           case tp @ CapturingType(parent, cs) =>
-            if parent.isCapturingType then
+            if parent.dealias.isCapturingType then
               destructCapturingType(parent, res => reconstruct(tp.derivedCapturingType(res, cs)))
             else
               ((parent, cs, tp.isBoxed), reconstruct)
