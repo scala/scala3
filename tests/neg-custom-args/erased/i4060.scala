@@ -7,7 +7,7 @@ object App {
   def upcast(erased a: A)(x: Any): a.L = x
   //lazy val p: A { type L <: Nothing } = p
   erased val p: A { type L <: Nothing } = p // error
-  def coerce(x: Any): Int = upcast(p)(x)
+  def coerce(x: Any): Int = upcast(p)(x) // error
 
   def coerceInline(x: Any): Int = upcast(compiletime.erasedValue[A {type L <: Nothing}])(x) // error
 
