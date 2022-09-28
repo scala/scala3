@@ -81,7 +81,8 @@ following conditions are met:
 3. The match expression and the match type have the same number of cases
 4. The match expression patterns are all [Typed Patterns](https://scala-lang.org/files/archive/spec/2.13/08-pattern-matching.html#typed-patterns),
    and these types are `=:=` to their corresponding type patterns in the match
-   type
+   type,
+5. The body of a potentially existing dependently typed method's match expression value level counterpart may not refer to the match type as it is not reduced until that body is compiled.
 
 ## Representation of Match Types
 
