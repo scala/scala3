@@ -623,15 +623,19 @@ class CheckCaptures extends Recheck, SymTransformer:
         i"adapting $actual $arrow $expected"
 
       def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true) {
-        val actualTp = actual match
-          case actual @ CapturingType(parent, cs) =>
-            (parent, cs, actual.isBoxed)
+        def destructCapturingType(tp: Type, reconstruct: Type => Type): ((Type, CaptureSet, Boolean), Type => Type) = tp match
+          case tp @ CapturingType(parent, cs) =>
+            if parent.isCapturingType then
+              destructCapturingType(parent, res => reconstruct(tp.derivedCapturingType(res, cs)))
+            else
+              ((parent, cs, tp.isBoxed), reconstruct)
           case actual =>
-            (actual, CaptureSet(), false)
+            ((actual, CaptureSet(), false), reconstruct)
 
+        val (actualTp, recon) = destructCapturingType(actual, x => x)
         val (parent1, cs1, isBoxed1) = adaptCapturingType(actualTp, expected, covariant)
 
-        CapturingType(parent1, cs1, isBoxed1)
+        recon(CapturingType(parent1, cs1, isBoxed1))
       }
 
       def adaptCapturingType(actual: (Type, CaptureSet, Boolean),
@@ -652,7 +656,8 @@ class CheckCaptures extends Recheck, SymTransformer:
               (aargs1, ares1) =>
                 rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
                   .toFunctionType(isJava = false, alwaysDependent = true))
-          case _ => (parent, cs)
+          case _ =>
+            (parent, cs)
         }
 
         if needsAdaptation then
