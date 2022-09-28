@@ -11,7 +11,7 @@ import util.Stats._
 import Names._
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
-import cc.boxedUnlessFun
+import cc.{boxedUnlessFun, boxed}
 
 object TypeApplications {
 
@@ -346,7 +346,7 @@ class TypeApplications(val self: Type) extends AnyVal {
             }
             if ((dealiased eq stripped) || followAlias)
               try
-                val instantiated = dealiased.instantiate(args.mapConserve(_.boxedUnlessFun(self)))
+                val instantiated = dealiased.instantiate(args.mapConserve(_.boxed))
                 if (followAlias) instantiated.normalized else instantiated
               catch
                 case ex: IndexOutOfBoundsException =>
