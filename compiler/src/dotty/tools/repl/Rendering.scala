@@ -32,7 +32,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   private var myClassLoader: AbstractFileClassLoader = _
 
-  private var myReplStringOf: Object => String = _
+  /** (value, maxElements) => String */
+  private var myReplStringOf: (Object, Int) => String = _
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
@@ -64,12 +65,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
           val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
           val truly = java.lang.Boolean.TRUE
 
-          (value: Object) => meth.invoke(null, value, Integer.valueOf(maxPrintElements), truly).asInstanceOf[String]
+          (value: Object, maxElements: Int) => meth.invoke(null, value, maxElements, truly).asInstanceOf[String]
         } catch {
           case _: NoSuchMethodException =>
             val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
 
-            (value: Object) => meth.invoke(null, value, Integer.valueOf(maxPrintElements)).asInstanceOf[String]
+            (value: Object, maxElements: Int) => meth.invoke(null, value, maxElements).asInstanceOf[String]
         }
       }
       myClassLoader
@@ -91,7 +92,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   private[repl] def replStringOf(value: Object)(using Context): String =
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
-    val res = myReplStringOf(value)
+    val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
+    val res = myReplStringOf(value, maxPrintElements)
     if res == null then "null // non-null reference has null-valued toString" else truncate(res)
 
   /** Load the value of the symbol using reflection.
