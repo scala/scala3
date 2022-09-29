@@ -83,6 +83,12 @@ following conditions are met:
    and these types are `=:=` to their corresponding type patterns in the match
    type
 
+So you know, while the case body will be expected to have the type on the right-hand
+side of the corresponding match type case, that doesn't imply the match type argument
+is constrained.  Using the example, the last case body must conform to X, but that
+doesn't constrain X to be AnyVal, and therefore a LeafElem[X] inside the body wouldn't
+reduce; it would remain stuck, and as such just an abstract type. 
+
 ## Representation of Match Types
 
 The internal representation of a match type
