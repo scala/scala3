@@ -75,7 +75,16 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
           }
         }
 
-        stringOfMaybeTruncated
+        (value: Object, maxElements: Int) => {
+          // `ScalaRuntime.stringOf` may truncate the output, in which case we want to indicate that fact to the user
+          // In order to figure out if it did get truncated, we invoke it twice - once with the `maxElements` that we
+          // want to print, and once without a limit. If the first is shorter, truncation did occur.
+          val maybeTruncated = stringOfMaybeTruncated(value, maxElements)
+          val notTruncated = stringOfMaybeTruncated(value, Int.MaxValue)
+          if (maybeTruncated.length == notTruncated.length) maybeTruncated
+          else maybeTruncated + infoOutputGotTruncated
+        }
+
       }
       myClassLoader
     }
