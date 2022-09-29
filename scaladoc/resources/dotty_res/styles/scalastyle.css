@@ -136,13 +136,6 @@ th {
   border-bottom: 2px solid var(--border-medium);
 }
 
-/* Left bar toggler, only on small screens */
-#leftToggler {
-  display: none;
-  color: var(--icon-color);
-  cursor: pointer;
-}
-
 /* Left bar */
 #paneSearch {
   display: none;
@@ -732,30 +725,6 @@ footer .mode {
   display: flex;
 } */
 
-.documentableAnchor:before {
-  content: "\e901"; /* arrow down */
-  font-family: "dotty-icons" !important;
-  transform: rotate(-45deg);
-  font-size: 20px;
-  color: var(--link-fg);
-  display: none;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  top: 6px;
-  left: -32px;
-}
-
-.documentableAnchor:hover:before {
-  color: var(--link-hover-fg);
-}
-
-.documentableAnchor:active:before {
-  color: var(--link-hover-fg);
-  top: 8px;
-}
-
 .memberDocumentation {
   font-size: 15px;
   line-height: 1.5;
@@ -1063,20 +1032,6 @@ footer .socials {
     display: none;
   }
 
-  #leftToggler {
-    display: unset;
-    position: absolute;
-    top: 5px;
-    left: 12px;
-    z-index: 5;
-    font-size: 30px;
-  }
-  #leftColumn.open ~ #main #leftToggler {
-    position: fixed;
-    left: unset;
-    right: 16vw;
-    color: var(--leftbar-fg);
-  }
   .icon-toggler::before {
     content: "\e90a"; /* menu icon */
   }

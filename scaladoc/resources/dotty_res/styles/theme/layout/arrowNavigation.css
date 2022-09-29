@@ -4,16 +4,21 @@
   margin-top: calc(6 * var(--base-spacing));
 }
 
+.arrow-navigation > div {
+  width: 50%;
+}
+
+.arrow-navigation > div:first-child {
+  padding-right: 12px;
+}
+
 .arrow-navigation > div:last-child {
-  margin-left: auto;
+  text-align: right;
+  padding-left: 12px;
 }
 
 .arrow-navigation > div > span {
   display: block;
   margin-bottom: calc(1 * var(--base-spacing));
   color: var(--text-secondary);
-}
-
-.arrow-navigation--next {
-  text-align: right;
 }
