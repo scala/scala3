@@ -32,8 +32,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   private var myClassLoader: AbstractFileClassLoader = _
 
-  private var myReplStringOf: Object => String = _
+  /** (value, maxElements) => String */
+  private var myReplStringOf: (Object, Int) => String = _
 
+  /** info to add if output got truncated */
+  private val infoOutputGotTruncated = " ... large output truncated, print value to show all"
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
@@ -60,17 +63,28 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         // For old API, try to clean up extraneous newlines by stripping suffix and maybe prefix newline.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
         val renderer = "stringOf"  // was: replStringOf
-        try {
-          val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
-          val truly = java.lang.Boolean.TRUE
-
-          (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements), truly).asInstanceOf[String]
-        } catch {
-          case _: NoSuchMethodException =>
-            val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
-
-            (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
+        def stringOfMaybeTruncated(value: Object, maxElements: Int): String = {
+          try {
+            val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
+            val truly = java.lang.Boolean.TRUE
+            meth.invoke(null, value, maxElements, truly).asInstanceOf[String]
+          } catch {
+            case _: NoSuchMethodException =>
+              val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
+              meth.invoke(null, value, maxElements).asInstanceOf[String]
+          }
         }
+
+        (value: Object, maxElements: Int) => {
+          // `ScalaRuntime.stringOf` may truncate the output, in which case we want to indicate that fact to the user
+          // In order to figure out if it did get truncated, we invoke it twice - once with the `maxElements` that we
+          // want to print, and once without a limit. If the first is shorter, truncation did occur.
+          val maybeTruncated = stringOfMaybeTruncated(value, maxElements)
+          val notTruncated = stringOfMaybeTruncated(value, Int.MaxValue)
+          if (maybeTruncated.length == notTruncated.length) maybeTruncated
+          else maybeTruncated + infoOutputGotTruncated
+        }
+
       }
       myClassLoader
     }
@@ -82,16 +96,16 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    * https://github.com/scala/bug/issues/12337
    */
   private[repl] def truncate(str: String): String =
-    val showTruncated = " ... large output truncated, print value to show all"
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
     if ncp <= MaxStringElements then str
-    else str.substring(0, str.offsetByCodePoints(0, MaxStringElements - 1)) + showTruncated
+    else str.substring(0, str.offsetByCodePoints(0, MaxStringElements - 1)) + infoOutputGotTruncated
 
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object)(using Context): String =
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
-    val res = myReplStringOf(value)
+    val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
+    val res = myReplStringOf(value, maxPrintElements)
     if res == null then "null // non-null reference has null-valued toString" else truncate(res)
 
   /** Load the value of the symbol using reflection.

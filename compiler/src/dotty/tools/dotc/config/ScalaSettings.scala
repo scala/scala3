@@ -149,6 +149,7 @@ private sealed trait VerboseSettings:
   val Vprofile: Setting[Boolean] = BooleanSetting("-Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting("-Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
   val VprofileDetails = IntSetting("-Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
+  val VreplMaxPrintElements: Setting[Int] = IntSetting("-Vrepl-max-print-elements", "Number of elements to be printed before output is truncated.", 1000)
 
 /** -W "Warnings" settings
  */
