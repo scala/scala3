@@ -478,11 +478,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val memberContent = div(
       intro,
       memberInfo(m, withAttributes = true),
-      section(id := "members-list")(
-        h2(cls := "h500")("Members list"),
-        buildDocumentableFilter,
-        buildMembers(m)
-      )
+      if m.members.length > 0 then
+        Seq(section(id := "members-list")(
+          h2(cls := "h500")("Members list"),
+          buildDocumentableFilter,
+          buildMembers(m)
+        ))
+      else Nil
     )
 
     val memberDocument = Jsoup.parse(memberContent.toString)
