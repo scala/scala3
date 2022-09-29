@@ -17,12 +17,13 @@ import java.net.URI
 class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val initialChunkSize = 5
   val resultsChunkSize = 20
+  def pathToRoot() = window.document.documentElement.getAttribute("data-pathToRoot")
   extension (p: PageEntry)
     def toHTML(boldChars: Set[Int]) =
       val location = if (p.isLocationExternal) {
         p.location
       } else {
-        Globals.pathToRoot + p.location
+        pathToRoot() + p.location
       }
 
       val extensionTargetMessage = if (p.extensionTarget.isEmpty()) {
@@ -56,7 +57,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       val location = if (m.pageLocation(0) == 'e') {
           m.pageLocation.substring(1)
         } else {
-          Globals.pathToRoot + m.pageLocation.substring(1)
+          pathToRoot() + m.pageLocation.substring(1)
         }
 
       div(cls := "scaladoc-searchbar-row mono-small-inline", "result" := "", "inkuire-result" := "", "mq" := m.mq.toString)(
