@@ -6,6 +6,7 @@ import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._, ContextOps._
 import Decorators._, transform.SymUtils._
+import Annotations.Annotation
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition, Chars}
@@ -165,32 +166,41 @@ object desugar {
    *
    *  Generate setter where needed
    */
-  def valDef(vdef0: ValDef)(using Context): Tree = {
+  def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
-    val mods = vdef.mods
-
     val valName = normalizeName(vdef, tpt).asTermName
-    val vdef1 = cpy.ValDef(vdef)(name = valName)
+    var mods1 = vdef.mods
 
-    if (isSetterNeeded(vdef)) {
-      // TODO: copy of vdef as getter needed?
-      // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
-      // right now vdef maps via expandedTree to a thicket which concerns itself.
-      // I don't see a problem with that but if there is one we can avoid it by making a copy here.
+    def dropInto(tpt: Tree): Tree = tpt match
+      case Into(tpt1) =>
+        mods1 = vdef.mods.withAddedAnnotation(
+          TypedSplice(
+            Annotation(defn.AllowConversionsAnnot).tree.withSpan(tpt.span.startPos)))
+        tpt1
+      case ByNameTypeTree(tpt1) =>
+        cpy.ByNameTypeTree(tpt)(dropInto(tpt1))
+      case PostfixOp(tpt1, op) if op.name == tpnme.raw.STAR =>
+        cpy.PostfixOp(tpt)(dropInto(tpt1), op)
+      case _ =>
+        tpt
+
+    val vdef1 = cpy.ValDef(vdef)(name = valName, tpt = dropInto(tpt))
+      .withMods(mods1)
+
+    if isSetterNeeded(vdef) then
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef)(
-        name    = valName.setterName,
-        paramss = (setterParam :: Nil) :: Nil,
-        tpt     = TypeTree(defn.UnitType),
-        rhs     = setterRhs
-      ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
-       .dropEndMarker() // the end marker should only appear on the getter definition
+          name    = valName.setterName,
+          paramss = (setterParam :: Nil) :: Nil,
+          tpt     = TypeTree(defn.UnitType),
+          rhs     = setterRhs
+        ).withMods((vdef.mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
+        .dropEndMarker() // the end marker should only appear on the getter definition
       Thicket(vdef1, setter)
-    }
     else vdef1
-  }
+  end valDef
 
   def makeImplicitParameters(tpts: List[Tree], implicitFlag: FlagSet, forPrimaryConstructor: Boolean = false)(using Context): List[ValDef] =
     for (tpt <- tpts) yield {

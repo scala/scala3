@@ -55,6 +55,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps",
   "scala.caps$",
 
+  //// New festure: into
+  "scala.annotation.allowConversions",
+
   //// New APIs: Mirror
   // Can be stabilized in 3.3.0 or later.
   "scala.deriving.Mirror$.fromProductTyped", // This API is a bit convoluted. We may need some more feedback before we can stabilize it.

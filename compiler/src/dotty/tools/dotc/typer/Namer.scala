@@ -1618,12 +1618,14 @@ class Namer { typer: Typer =>
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
     typedAhead(tree, typer.typedExpr(_, pt))
 
-  def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match {
+  def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match
     case Apply(fn, _) => typedAheadAnnotationClass(fn)
     case TypeApply(fn, _) => typedAheadAnnotationClass(fn)
     case Select(qual, nme.CONSTRUCTOR) => typedAheadAnnotationClass(qual)
     case New(tpt) => typedAheadType(tpt).tpe.classSymbol
-  }
+    case TypedSplice(_) =>
+      val sym = tree.symbol
+      if sym.isConstructor then sym.owner else sym
 
   /** Enter and typecheck parameter list */
   def completeParams(params: List[MemberDef])(using Context): Unit = {

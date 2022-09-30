@@ -644,6 +644,8 @@ class Definitions {
 
   @tu lazy val RepeatedParamClass: ClassSymbol = enterSpecialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
 
+  @tu lazy val IntoType: TypeSymbol = enterAliasType(tpnme.INTO, HKTypeLambda(TypeBounds.empty :: Nil)(_.paramRefs(0)))
+
   // fundamental classes
   @tu lazy val StringClass: ClassSymbol = requiredClass("java.lang.String")
   def StringType: Type = StringClass.typeRef
@@ -973,6 +975,7 @@ class Definitions {
   @tu lazy val RefiningAnnotationClass: ClassSymbol = requiredClass("scala.annotation.RefiningAnnotation")
 
   // Annotation classes
+  @tu lazy val AllowConversionsAnnot: ClassSymbol = requiredClass("scala.annotation.allowConversions")
   @tu lazy val AnnotationDefaultAnnot: ClassSymbol = requiredClass("scala.annotation.internal.AnnotationDefault")
   @tu lazy val BeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BeanProperty")
   @tu lazy val BooleanBeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BooleanBeanProperty")
@@ -2005,6 +2008,7 @@ class Definitions {
       orType,
       RepeatedParamClass,
       ByNameParamClass2x,
+      IntoType,
       AnyValClass,
       NullClass,
       NothingClass,
