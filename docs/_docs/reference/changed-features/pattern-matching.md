@@ -13,20 +13,29 @@ Scala 3 supports a superset of Scala 2 [extractors](https://www.scala-lang.org/f
 Extractors are objects that expose a method `unapply` or `unapplySeq`:
 
 ```scala
-def unapply[A](x: T)(implicit x: B): U
-def unapplySeq[A](x: T)(implicit x: B): U
+def unapply[A](a: A): U
+def unapplySeq[A](a: A): U
 ```
 
 Extractors that expose the method `unapply` are called fixed-arity extractors, which
 work with patterns of fixed arity. Extractors that expose the method `unapplySeq` are
 called variadic extractors, which enables variadic patterns.
 
+The type `A` corresponds to the type of the matched value. The result type `U` determines the type of extractor as explained in subsequent sections.
+
+It is also possible to have using-parameters if needed in the implementation of the extractor body:
+
+```scala
+def unapply[A](a: A)(using b: B): U
+def unapplySeq[A](a: A)(using b: B): U
+```
+
 ### Fixed-Arity Extractors
 
 Fixed-arity extractors expose the following signature:
 
 ```scala
-def unapply[A](x: T)(implicit x: B): U
+def unapply[A](a: A): U
 ```
 
 The type `U` conforms to one of the following matches:
@@ -63,7 +72,7 @@ A usage of a fixed-arity extractor is irrefutable if one of the following condit
 Variadic extractors expose the following signature:
 
 ```scala
-def unapplySeq[A](x: T)(implicit x: B): U
+def unapplySeq[A](a: A): U
 ```
 
 The type `U` conforms to one of the following matches:
