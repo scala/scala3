@@ -3945,10 +3945,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             else tree
           else if tree.tpe.derivesFrom(defn.PairClass) && !defn.isTupleNType(tree.tpe.widenDealias) then
             // If this is a generic tuple we need to cast it to make the TupleN/ members accessible.
-            // This only works for generic tuples of know size up to 22.
-            defn.tupleTypes(tree.tpe.widenTermRefExpr, Definitions.MaxTupleArity) match
-              case Some(elems) => tree.cast(defn.tupleType(elems))
-              case None => tree
+            // This works only for generic tuples of known size up to 22.
+            defn.tupleTypes(tree.tpe.widenTermRefExpr) match
+              case Some(elems) if elems.length <= Definitions.MaxTupleArity =>
+                tree.cast(defn.tupleType(elems))
+              case _ => tree
           else tree // other adaptations for selections are handled in typedSelect
         case _ if ctx.mode.is(Mode.ImplicitsEnabled) && tree.tpe.isValueType =>
           if pt.isRef(defn.AnyValClass, skipRefined = false)
