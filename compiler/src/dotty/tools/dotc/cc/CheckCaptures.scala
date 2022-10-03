@@ -516,9 +516,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
           false
 
-      private def isIdent: Boolean = tree match
-        case Ident(_) => true
-        case _        => false
+      private def isRefTree: Boolean = tree match
+        case _: RefTree => true
+        case _          => false
 
     /** If expected type `pt` is boxed, don't propagate free variables.
      *  Otherwise, if the result type is boxed, simulate an unboxing by
@@ -527,7 +527,8 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       if tree.isTerm && pt.isBoxedCapturing then
         val saved = curEnv
-        if tree.isIdent || tree.isFunctionLiteral then
+        if tree.isRefTree || tree.isFunctionLiteral then
+          curEnv = Env(curEnv.owner, CaptureSet.Var(), isBoxed = true, curEnv)
           curEnv = Env(curEnv.owner, nestedInOwner = false, CaptureSet.Var(), isBoxed = true, curEnv)
         try super.recheck(tree, pt)
         finally curEnv = saved
