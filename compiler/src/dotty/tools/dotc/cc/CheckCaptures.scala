@@ -605,7 +605,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         try
           val (eargs, eres) = expected.dealias match
             case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
-            case _ => (aargs.map(_ => WildcardType), WildcardType)
+            case expected => expected.stripped match
+              case expected: MethodType => (expected.paramInfos, expected.resType)
+              case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(expected) => (rinfo.paramInfos, rinfo.resType)
+              case _ =>
+                (aargs.map(_ => WildcardType), WildcardType)
           val aargs1 = aargs.zipWithConserve(eargs) { (aarg, earg) => adapt(aarg, earg, !covariant) }
           val ares1 = adapt(ares, eres, covariant)
 
@@ -617,6 +621,31 @@ class CheckCaptures extends Recheck, SymTransformer:
           (resTp, curEnv.captured ++ cs0)
         finally
           curEnv = saved
+
+      def adaptTypeFun(
+          actualTp: (Type, CaptureSet), ares: Type, expected: Type,
+          covariant: Boolean, boxed: Boolean,
+          reconstruct: Type => Type): (Type, CaptureSet) =
+        val (actual, cs0) = actualTp
+        val saved = curEnv
+        curEnv = Env(curEnv.owner, CaptureSet.Var(), isBoxed = false, if boxed then null else curEnv)
+
+        try
+          val eres = expected.dealias.stripCapturing match
+            case RefinedType(_, _, rinfo: PolyType) => rinfo.resType
+            case _ => WildcardType
+
+          val ares1 = adapt(ares, eres, covariant)
+
+          val resTp =
+            if ares1 eq ares then actual
+            else reconstruct(ares1)
+
+          curEnv.captured.asVar.markSolved()
+          (resTp, curEnv.captured ++ cs0)
+        finally
+          curEnv = saved
+      end adaptTypeFun
 
       def adaptInfo(actual: Type, expected: Type, covariant: Boolean): String =
         val arrow = if covariant then "~~>" else "<~~"
@@ -632,15 +661,19 @@ class CheckCaptures extends Recheck, SymTransformer:
           case actual =>
             ((actual, CaptureSet(), false), reconstruct)
 
-        val (actualTp, recon) = destructCapturingType(actual, x => x)
-        val (parent1, cs1, isBoxed1) = adaptCapturingType(actualTp, expected, covariant)
-
-        recon(CapturingType(parent1, cs1, isBoxed1))
+        if expected.isInstanceOf[WildcardType] then
+          actual
+        else
+          val (actualTp, recon) = destructCapturingType(actual, x => x)
+          val (parent1, cs1, isBoxed1) = adaptCapturingType(actualTp, expected, covariant)
+          recon(CapturingType(parent1, cs1, isBoxed1))
       }
 
-      def adaptCapturingType(actual: (Type, CaptureSet, Boolean),
-                             expected: Type,
-                             covariant: Boolean): (Type, CaptureSet, Boolean) =
+      def adaptCapturingType(
+        actual: (Type, CaptureSet, Boolean),
+        expected: Type,
+        covariant: Boolean
+      ): (Type, CaptureSet, Boolean) =
         val (parent, cs, actualIsBoxed) = actual
 
         val needsAdaptation = actualIsBoxed != expected.isBoxedCapturing
@@ -656,6 +689,17 @@ class CheckCaptures extends Recheck, SymTransformer:
               (aargs1, ares1) =>
                 rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
                   .toFunctionType(isJava = false, alwaysDependent = true))
+          case actual: MethodType =>
+            adaptFun((parent, cs), actual.paramInfos, actual.resType, expected, covariant, insertBox,
+              (aargs1, ares1) =>
+                actual.derivedLambdaType(paramInfos = aargs1, resType = ares1))
+          case actual @ RefinedType(p, nme, rinfo: PolyType) if defn.isFunctionOrPolyType(actual) =>
+            adaptTypeFun((parent, cs), rinfo.resType, expected, covariant, insertBox,
+              ares1 =>
+                val rinfo1 = rinfo.derivedLambdaType(rinfo.paramNames, rinfo.paramInfos, ares1)
+                val actual1 = actual.derivedRefinedType(p, nme, rinfo1)
+                actual1
+            )
           case _ =>
             (parent, cs)
         }
@@ -674,7 +718,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             // Disallow future addition of `*` to `criticalSet`.
             criticalSet.disallowRootCapability { () =>
               report.error(
-                em"""$cs $parent cannot be box-converted to $expected
+                em"""$actualIsBoxed $cs $parent cannot be box-converted to $expected
                     |since one of their capture sets contains the root capability `*`""",
               pos)
             }
