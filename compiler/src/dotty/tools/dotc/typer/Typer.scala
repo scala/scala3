@@ -1609,6 +1609,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             }
 
         val result = pt match {
+          case mt: MatchType if isMatchTypeShaped(mt) =>
+            typedDependentMatchFinish(tree, sel1, selType, tree.cases, mt)
           case MatchType.InDisguise(mt) if isMatchTypeShaped(mt) =>
             typedDependentMatchFinish(tree, sel1, selType, tree.cases, mt)
           case _ =>
