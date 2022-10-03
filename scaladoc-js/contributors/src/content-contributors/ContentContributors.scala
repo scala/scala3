@@ -89,13 +89,8 @@ class ContentContributors:
     }
   }
   window.addEventListener("dynamicPageLoad", (e: Event) => {
-    println("Hello!")
-    println(githubContributorsUrl())
-    println(githubContributorsFilename())
-    println("Goodbye!")
-    if js.typeOf(githubContributorsUrl()) == "string" &&
-      js.typeOf(githubContributorsFilename()) == "string"
-    then {
+    val ghUrl = githubContributorsUrl()
+    if js.typeOf(ghUrl) == "string" && ghUrl != "null" then {
       getAuthorsForFilename(githubContributorsFilename().stripPrefix("/")).onComplete {
         case Success(authors) =>
           val maybeDiv = Option(document.getElementById("documentation-contributors"))

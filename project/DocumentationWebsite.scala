@@ -14,7 +14,7 @@ object DocumentationWebsite {
 
 
     val contributorsTestcasesDestinationFile = Paths.get("scaladoc-testcases", "docs", "_assets", "js", "contributors.js").toFile
-    val contributorsDestinationFile = Paths.get("docs", "_assets", "js", "contributors.js").toFile
+    val contributorsDestinationFile = baseDest / "dotty_res" / "scripts" / "contributors.js"
     sbt.IO.copyFile(contributorsFile, contributorsTestcasesDestinationFile)
     sbt.IO.copyFile(contributorsFile, contributorsDestinationFile)
 
@@ -25,8 +25,8 @@ object DocumentationWebsite {
     val cssCodeSnippetsSourceFile = cssSourceFileBase / "code-snippets.css"
     sbt.IO.copyFile(cssCodeSnippetsSourceFile, cssCodeSnippetsDesitnationFile)
 
-    val cssContentContributorsTestcasesDesitnationFile = Paths.get("docs", "_assets", "css", "content-contributors.css").toFile
-    val cssContentContributorsDesitnationFile = Paths.get("scaladoc-testcases", "docs", "_assets", "css", "content-contributors.css").toFile
+    val cssContentContributorsTestcasesDesitnationFile = Paths.get("scaladoc-testcases", "docs", "_assets", "css", "content-contributors.css").toFile
+    val cssContentContributorsDesitnationFile = baseDest / "dotty_res" / "styles" / "content-contributors.css"
     val cssContentContributorsSourceFile = cssContentContributorsSourceBaseFile / "content-contributors.css"
     sbt.IO.copyFile(cssContentContributorsSourceFile, cssContentContributorsTestcasesDesitnationFile)
     sbt.IO.copyFile(cssContentContributorsSourceFile, cssContentContributorsDesitnationFile)
