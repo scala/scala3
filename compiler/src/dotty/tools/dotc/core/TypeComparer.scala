@@ -1954,12 +1954,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val info1 = m.info.widenExpr
         isSubInfo(info1, tp2.refinedInfo.widenExpr, m.symbol.info.orElse(info1))
         || matchAbstractTypeMember(m.info)
+        || (tp1.isStable && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
 
-      def memberQualifies = tp1.member(name) match // inlined hasAltWith for performance
+      tp1.member(name) match // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)
         case mbr => mbr hasAltWith qualifies
-
-      memberQualifies || (tp1.isStable && isSub(TermRef(tp1, name), tp2.refinedInfo))
     }
 
   final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
