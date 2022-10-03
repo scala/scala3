@@ -163,6 +163,9 @@ abstract class Printer {
   /** Textual representation of a constraint */
   def toText(c: OrderingConstraint): Text
 
+  /** Textual representation of a GADT constraint */
+  def toText(c: GadtConstraint): Text
+
   /** Render element within highest precedence */
   def toTextLocal(elem: Showable): Text =
     atPrec(DotPrec) { elem.toText(this) }
