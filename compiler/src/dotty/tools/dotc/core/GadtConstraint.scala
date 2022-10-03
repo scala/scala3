@@ -55,6 +55,9 @@ sealed abstract class GadtConstraint extends Showable {
 
   /** Restore the state from other [[GadtConstraint]], probably copied using [[fresh]] */
   def restore(other: GadtConstraint): Unit
+
+  /** Provides more information than toText, by showing the underlying Constraint details. */
+  def debugBoundsDescription(using Context): String
 }
 
 final class ProperGadtConstraint private(
@@ -290,6 +293,8 @@ final class ProperGadtConstraint private(
   override def constr = gadtsConstr
 
   override def toText(printer: Printer): Texts.Text = printer.toText(this)
+
+  override def debugBoundsDescription(using Context): String = i"$this\n$constraint"
 }
 
 @sharable object EmptyGadtConstraint extends GadtConstraint {
@@ -314,4 +319,5 @@ final class ProperGadtConstraint private(
     assert(!other.isNarrowing, "cannot restore a non-empty GADTMap")
 
   override def toText(printer: Printer): Texts.Text = printer.toText(this)
+  override def debugBoundsDescription(using Context): String = i"$this"
 }
