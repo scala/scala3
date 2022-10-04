@@ -520,7 +520,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _: RefTree => true
         case _          => false
 
-    /** If expected type `pt` is boxed, don't propagate free variables.
+    /** If expected type `pt` is boxed and the tree is a function or a reference,
+     *  don't propagate free variables.
      *  Otherwise, if the result type is boxed, simulate an unboxing by
      *  adding all references in the boxed capture set to the current environment.
      */
@@ -528,7 +529,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.isTerm && pt.isBoxedCapturing then
         val saved = curEnv
         if tree.isRefTree || tree.isFunctionLiteral then
-          curEnv = Env(curEnv.owner, CaptureSet.Var(), isBoxed = true, curEnv)
           curEnv = Env(curEnv.owner, nestedInOwner = false, CaptureSet.Var(), isBoxed = true, curEnv)
         try super.recheck(tree, pt)
         finally curEnv = saved
