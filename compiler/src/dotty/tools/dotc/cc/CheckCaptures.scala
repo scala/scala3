@@ -605,6 +605,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       /** Adapt function type `actual`, which is `aargs -> ares` (possibly with dependencies)
        *  to `expected` type.
+       *  It returns the adapted type along with the additionally captured variable
+       *  during adaptation.
        *   @param reconstruct  how to rebuild the adapted function type
        */
       def adaptFun(actual: Type, aargs: List[Type], ares: Type, expected: Type,
@@ -633,6 +635,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         finally
           curEnv = saved
 
+      /** Adapt type function type `actual` to the expected type.
+       *  @see [[adaptFun]]
+       */
       def adaptTypeFun(
           actual: Type, ares: Type, expected: Type,
           covariant: Boolean, boxed: Boolean,
@@ -661,6 +666,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         val arrow = if covariant then "~~>" else "<~~"
         i"adapting $actual $arrow $expected"
 
+      /** Destruct a capturing type `tp` to a tuple (cs, tp0, boxed),
+       *  where `tp0` is not a capturing type.
+       * 
+       *  If `tp` is a nested capturing type, the return tuple always represents
+       *  the innermost capturing type. The outer capture annotations can be
+       *  reconstructed with the returned function.
+       */
       def destructCapturingType(tp: Type, reconstruct: Type => Type = x => x): ((Type, CaptureSet, Boolean), Type => Type) =
         tp.dealias match
           case tp @ CapturingType(parent, cs) =>
