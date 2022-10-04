@@ -32,8 +32,7 @@ abstract class CompiletimeOpsComparer[N <: Matchable]:
         Some((tycon.symbol.name, args))
       case _ => None
 
-  // Initialization bug when using a val?
-  def minusOneProd = Product(Nil, minusOne)
+  val minusOneProd = Product(Nil, minusOne)
 
   def negate(sum: Sum)(using Context) = Sum(sum.terms.map(_ * minusOneProd))
 
