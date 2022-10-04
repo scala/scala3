@@ -1328,21 +1328,29 @@ class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec
   }
 
   def msg(using Context) =
-    i"""|Reference to $name is ambiguous,
-        |it is both ${bindingString(newPrec, ctx)}
+    i"""|Reference to $name is ambiguous.
+        |It is both ${bindingString(newPrec, ctx)}
         |and ${bindingString(prevPrec, prevCtx, " subsequently")}"""
 
   def explain(using Context) =
-    i"""|The compiler can't decide which of the possible choices you
-        |are referencing with $name: A definition of lower precedence
-        |in an inner scope, or a definition with higher precedence in
-        |an outer scope.
-        |Note:
-        | - Definitions in an enclosing scope take precedence over inherited definitions
-        | - Definitions take precedence over imports
+    val precedent =
+      if newPrec == prevPrec then                 """two bindings of equal precedence
+        |were introduced in the same scope.""".stripMargin
+      else                                        """a binding of lower precedence
+        |in an inner scope cannot shadow a binding with higher precedence in
+        |an outer scope.""".stripMargin
+
+    i"""|The identifier $name is ambiguous because $precedent
+        |
+        |The precedence of the different kinds of bindings, from highest to lowest, is:
+        | - Definitions in an enclosing scope
+        | - Inherited definitions and top-level definitions in packages
+        | - Names introduced by imports
         | - Named imports take precedence over wildcard imports
-        | - You may replace a name when imported using
-        |   ${hl("import")} scala.{ $name => ${name.show + "Tick"} }
+        | - Definitions from packages in other files
+        |Note:
+        | - When importing, you can avoid naming conflicts by renaming:
+        |   ${hl("import")} scala.{$name => ${name.show}Tick}
         |"""
 }
 
