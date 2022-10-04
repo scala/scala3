@@ -3,16 +3,17 @@ package dotty.tools.dotc.core
 import Types.*, Contexts.*, Symbols.*, Constants.*, Definitions.*,
 Denotations.*, Decorators.*, Names.*, StdNames.*, Periods.*
 
-trait CompiletimeOpsComparer[N]:
+abstract class CompiletimeOpsComparer[N <: Matchable]:
   def moduleClass(using Context): Symbol
   def addType(using Context): Type
   def multiplyType(using Context): Type
-  val zero: N
-  val one: N
-  val minusOne: N
-  val add: (N, N) => N
-  val multiply: (N, N) => N
-  val valueOf: PartialFunction[Any, N]
+  def zero: N
+  def one: N
+  def minusOne: N
+  def add(x: N, y: N): N
+  def multiply(x: N, y: N): N
+  def isN(x: Any): Boolean
+  def toN(x: Any): N
 
   def equiv(a: Type, b: Type)(using Context) =
     if isSingletonOp(a) && isSingletonOp(b) then
@@ -36,12 +37,13 @@ trait CompiletimeOpsComparer[N]:
 
   def negate(sum: Sum)(using Context) = Sum(sum.terms.map(_ * minusOneProd))
 
-  val sumFromTypeNormalizedCached = cachedTypeOp(tp => sumFromType(tp).normalized)
+  val sumFromTypeNormalizedCached =
+    cachedTypeOp(tp => sumFromType(tp).normalized)
 
   def sumFromType(tp: Type)(using Context): Sum =
     underlyingSingletonDeep(tp.dealias) match
-      case ConstantType(Constant(c)) if valueOf.isDefinedAt(c) =>
-        Sum(List(Product(Nil, valueOf(c))))
+      case ConstantType(Constant(c)) if isN(c) =>
+        Sum(List(Product(Nil, toN(c))))
       case Op(tpnme.Negate, List(x)) =>
         negate(sumFromType(x))
       case Op(tpnme.Plus, List(x, y)) =>
@@ -55,8 +57,8 @@ trait CompiletimeOpsComparer[N]:
 
   def productFromType(tp: Type)(using Context): Product =
     underlyingSingletonDeep(tp.dealias) match
-      case ConstantType(Constant(c)) if valueOf.isDefinedAt(c) =>
-        Product(Nil, valueOf(c))
+      case ConstantType(Constant(c)) if isN(c) =>
+        Product(Nil, toN(c))
       case Op(tpnme.Times, List(x, y)) =>
         productFromType(x) * productFromType(y)
       case Op(tpnme.Negate | tpnme.Plus | tpnme.Minus, _) =>
@@ -74,8 +76,8 @@ trait CompiletimeOpsComparer[N]:
           .groupMapReduce(_.facts)(_.c)(add)
           .toList
           .filter({
-            case (_, `zero`) => false
-            case _           => true
+            case (_, c) if c == zero => false
+            case _                   => true
           })
           .map(Product.apply)
           .sortBy(_.hashCode())
@@ -112,23 +114,25 @@ object IntOpsComparer extends CompiletimeOpsComparer[Int]:
   def moduleClass(using Context) = defn.CompiletimeOpsIntModuleClass
   def addType(using Context) = defn.CompiletimeOpsInt_Add
   def multiplyType(using Context) = defn.CompiletimeOpsInt_Multiply
-  val zero = 0
-  val one = 1
-  val minusOne = -1
-  val add = _ + _
-  val multiply = _ * _
-  val valueOf = { case n: Int => n }
+  def zero = 0
+  def one = 1
+  def minusOne = -1
+  def add(x: Int, y: Int) = x + y
+  def multiply(x: Int, y: Int) = x * y
+  def isN(x: Any) = x.isInstanceOf[Int]
+  def toN(x: Any) = x.asInstanceOf[Int]
 
 object LongOpsComparer extends CompiletimeOpsComparer[Long]:
   def moduleClass(using Context) = defn.CompiletimeOpsLongModuleClass
   def addType(using Context) = defn.CompiletimeOpsLong_Add
   def multiplyType(using Context) = defn.CompiletimeOpsLong_Multiply
-  val zero = 0L
-  val one = 1L
-  val minusOne = -1L
-  val add = _ + _
-  val multiply = _ * _
-  val valueOf = { case n: Long => n }
+  def zero = 0L
+  def one = 1L
+  def minusOne = -1L
+  def add(x: Long, y: Long) = x + y
+  def multiply(x: Long, y: Long) = x * y
+  def isN(x: Any) = x.isInstanceOf[Long]
+  def toN(x: Any) = x.asInstanceOf[Long]
 
 def cachedTypeOp[T](f: Type => Context ?=> T): Type => Context ?=> T =
   val cache = collection.mutable.Map.empty[Type, (Period, T)]
