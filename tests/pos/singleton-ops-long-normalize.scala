@@ -57,3 +57,14 @@ object Test:
   summon[b.type =:= 9L]
   val d: Singleton & Long = ???
   summon[(10L/2L) + d.type =:= d.type + 5L]
+
+  // Non-singleton types are also sorted.
+  type Pos <: Long
+  type Neg <: Long
+  summon[Pos + Neg =:= Neg + Pos]
+  // (But not grouped; see tests/neg/singleton-ops-int-normalize.scala)
+
+  // Non-singleton terms do not prevent singleton ones from being grouped.
+  def g1[T <: Long](x: T): 1L + T - 1L = x
+  def g2[T <: Long](x: T): x.type + T - x.type = x
+  def g3[T <: Long](x: T): T - 0L = x

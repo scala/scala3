@@ -58,3 +58,14 @@ object Test:
   summon[b.type =:= 9]
   val d: Singleton & Int = ???
   summon[(10/2) + d.type =:= d.type + 5]
+
+  // Non-singleton types are also sorted.
+  type Pos <: Int
+  type Neg <: Int
+  summon[Pos + Neg =:= Neg + Pos]
+  // (But not grouped; see tests/neg/singleton-ops-int-normalize.scala)
+
+  // Non-singleton terms do not prevent singleton ones from being grouped.
+  def g1[T <: Int](x: T): 1 + T - 1 = x
+  def g2[T <: Int](x: T): x.type + T - x.type = x
+  def g3[T <: Int](x: T): T - 0 = x

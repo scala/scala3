@@ -1,7 +1,9 @@
 import scala.compiletime.ops.int.*
 
 object Test:
-  type ToInt[X] <: Singleton & Int
+  type Pos <: Int
+  type Neg <: Int
 
-  // Insertion order is preserved for non-singleton types.
-  summon[ToInt[{val a: 2}] + ToInt[{val b: 2}] =:= ToInt[{val b: 2}] + ToInt[{val a: 2}]] // error
+  // Non-singleton types are not grouped.
+  summon[Pos - Pos + Neg =:= Neg] // error
+  summon[Pos + Pos =:= 2 * Pos] // error

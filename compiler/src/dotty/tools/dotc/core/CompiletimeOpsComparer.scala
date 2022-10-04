@@ -15,10 +15,10 @@ abstract class CompiletimeOpsComparer[N <: Matchable]:
   def isN(x: Any): Boolean
   def toN(x: Any): N
 
-  def equiv(a: Type, b: Type)(using Context) =
-    if isSingletonOp(a) && isSingletonOp(b) then
+  def equiv(a: Type, b: Type)(using Context) = (a, b) match
+    case (_, Op(_, _)) | (Op(_, _), _) =>
       sumFromTypeNormalizedCached(a) == sumFromTypeNormalizedCached(b)
-    else false
+    case _ => false
 
   def isSingletonOp(tp: Type)(using Context): Boolean = tp match
     case Op(_, args)                      => args.forall(isSingletonOp)
@@ -69,9 +69,12 @@ abstract class CompiletimeOpsComparer[N <: Matchable]:
     infix def +(that: Sum) =
       Sum(terms ++ that.terms)
     def normalized(using Context): Sum =
-      val normalizedTerms =
+      val (singletonTerms, nonSingletonTerms) =
         terms
           .map(_.normalized)
+          .partition(_.isSingleton)
+      val normalizedTerms =
+        singletonTerms
           .groupMapReduce(_.facts)(_.c)(add)
           .toList
           .filter({
@@ -79,8 +82,11 @@ abstract class CompiletimeOpsComparer[N <: Matchable]:
             case _                   => true
           })
           .map(Product.apply)
+          .concat(nonSingletonTerms)
           .sortBy(_.hashCode())
       Sum(normalizedTerms)
+    def isSingleton(using Context): Boolean =
+      terms.forall(_.isSingleton)
     def show(using Context): String =
       terms.map(_.show).mkString(" +! ")
 
@@ -88,19 +94,27 @@ abstract class CompiletimeOpsComparer[N <: Matchable]:
     infix def *(that: Product)(using Context) =
       Product(facts ++ that.facts, multiply(c, that.c))
     def normalized(using Context): Product =
-      val normalizedFacts = facts
-        .map[Sum | Type]({
-          case s: Sum   => s.normalized
-          case tp: Type => tp
-        })
-        .sortBy(_.hashCode())
+      val normalizedFacts =
+        facts
+          .map[Sum | Type]({
+            case s: Sum   => s.normalized
+            case tp: Type => tp
+          })
+          .sortBy(_.hashCode())
       Product(normalizedFacts, c)
-    def show(using Context): String = facts
-      .map({
-        case p: Sum   => p.show
-        case tp: Type => tp.show
-      })
-      .mkString(" *! ") + " *! " + c
+    def isSingleton(using Context): Boolean =
+      facts
+        .forall({
+          case p: Sum   => p.isSingleton
+          case tp: Type => tp.isStable
+        })
+    def show(using Context): String =
+      facts
+        .map({
+          case p: Sum   => p.show
+          case tp: Type => tp.show
+        })
+        .mkString(" *! ") + " *! " + c
 
   def underlyingSingletonDeep(tp: Type)(using Context): Type = tp match
     case tp: SingletonType if tp.underlying.isStable =>
