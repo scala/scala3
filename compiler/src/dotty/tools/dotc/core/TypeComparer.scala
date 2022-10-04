@@ -1387,7 +1387,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       if (defn.isCompiletime_S(tp.tycon.typeSymbol)) compareS(tp, other, fromBelow)
       else {
         val folded = tp.tryCompiletimeConstantFold
-        if (fromBelow) recur(other, folded) else recur(folded, other)
+        def compareFolded = if (fromBelow) recur(other, folded) else recur(folded, other)
+        compareFolded || IntOpsComparer.equiv(tp, other) || LongOpsComparer.equiv(tp, other)
       }
     }
 

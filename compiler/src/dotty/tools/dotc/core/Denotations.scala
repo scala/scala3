@@ -345,6 +345,9 @@ object Denotations {
       info.member(name).requiredSymbol("type", name, this)(_.isType).asType
     }
 
+    def requiredTypeRef(pname: PreName)(using Context): TypeRef =
+      requiredType(pname).typeRef
+
     /** The alternative of this denotation that has a type matching `targetType` when seen
      *  as a member of type `site` and that has a target name matching `targetName`, or
      *  `NoDenotation` if none exists.
