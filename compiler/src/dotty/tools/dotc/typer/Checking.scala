@@ -1110,6 +1110,8 @@ trait Checking {
   def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit =
     if (!ctx.isAfterTyper) {
       val called = call.tpe.classSymbol
+      if (called.derivesFrom(defn.JavaAnnotationClass))
+        report.error(i"${called.name} must appear without any argument to be a valid class parent because it is a Java annotation", call.srcPos)
       if (caller.is(Trait))
         report.error(i"$caller may not call constructor of $called", call.srcPos)
       else if (called.is(Trait) && !caller.mixins.contains(called))
