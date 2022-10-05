@@ -858,10 +858,9 @@ object JavaParsers {
       }
       (statics.toList, members.toList)
     }
-    def annotationParents: List[Select] = List(
-      scalaAnnotationDot(tpnme.Annotation),
-      Select(javaLangDot(nme.annotation), tpnme.Annotation),
-      scalaAnnotationDot(tpnme.ClassfileAnnotation)
+    def annotationParents: List[Tree] = List(
+      javaLangObject(),
+      Select(javaLangDot(nme.annotation), tpnme.Annotation)
     )
     def annotationDecl(start: Offset, mods: Modifiers): List[Tree] = {
       accept(AT)

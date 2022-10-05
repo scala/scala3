@@ -167,7 +167,7 @@ class ClassfileParser(
       val superType =
         if (isAnnotation) {
           in.nextChar
-          defn.AnnotationClass.typeRef
+          defn.ObjectType
         }
         else if (classRoot.symbol == defn.ComparableClass ||
                  classRoot.symbol == defn.JavaCloneableClass ||
@@ -186,7 +186,6 @@ class ClassfileParser(
         // Consequently, no best implicit for the "Integral" evidence parameter of "range"
         // is found. Previously, this worked because of weak conformance, which has been dropped.
 
-      if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeRef :: ifaces
       superType :: ifaces
     }
 

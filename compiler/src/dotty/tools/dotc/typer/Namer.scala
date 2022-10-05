@@ -1619,7 +1619,7 @@ class Namer { typer: Typer =>
     typedAhead(tree, typer.typedExpr(_, pt))
 
   def typedAheadAnnotation(tree: Tree)(using Context): tpd.Tree =
-    typedAheadExpr(tree, defn.AnnotationClass.typeRef)
+    typedAheadExpr(tree, defn.AnnotationClass.typeRef | defn.JavaAnnotationClass.typeRef)
 
   def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match {
     case Apply(fn, _) => typedAheadAnnotationClass(fn)

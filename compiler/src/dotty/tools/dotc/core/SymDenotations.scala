@@ -808,7 +808,7 @@ object SymDenotations {
 
     /** Is this a Scala or Java annotation ? */
     def isAnnotation(using Context): Boolean =
-      isClass && derivesFrom(defn.AnnotationClass)
+      isClass && (derivesFrom(defn.AnnotationClass) || derivesFrom(defn.JavaAnnotationClass))
 
     /** Is this symbol a class that extends `java.io.Serializable` ? */
     def isSerializable(using Context): Boolean =
