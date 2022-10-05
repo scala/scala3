@@ -43,7 +43,7 @@
 .pill .filter-name {
   color: var(--text-secondary);
   margin-right: calc(0.5 * var(--base-spacing));
-  padding-bottom: 1px;
+  padding-bottom: 2px;
 }
 
 .pill > .close {

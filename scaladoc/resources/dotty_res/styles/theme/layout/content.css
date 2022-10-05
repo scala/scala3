@@ -172,6 +172,10 @@
   color: var(--text-primary);
 }
 
+#content li > ul {
+  padding-left: 32px;
+}
+
 /* content table */
 #content table {
   color: var(--text-primary);
