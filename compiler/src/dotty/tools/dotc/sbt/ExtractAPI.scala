@@ -463,11 +463,24 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     typeCache.getOrElseUpdate(tp, computeType(tp))
   }
 
+  private var alreadyComputing: List[LazyRef] = Nil
+
   private def computeType(tp: Type): api.Type = {
     // TODO: Never dealias. We currently have to dealias because
     // sbt main class discovery relies on the signature of the main
     // method being fully dealiased. See https://github.com/sbt/zinc/issues/102
-    val tp2 = if (!tp.isLambdaSub) tp.dealiasKeepAnnots else tp
+    val tp2 = if (!tp.isLambdaSub)
+      tp match
+        case tp: LazyRef =>
+          if alreadyComputing.contains(tp) then return Constants.emptyType
+          else
+            val saved = alreadyComputing
+            try
+              alreadyComputing ::= tp
+              return computeType(tp.ref)
+            finally alreadyComputing = saved
+        case _ => tp.dealiasKeepAnnots
+    else tp
     tp2 match {
       case NoPrefix | NoType =>
         Constants.emptyType

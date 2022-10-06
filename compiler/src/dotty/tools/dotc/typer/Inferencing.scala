@@ -170,9 +170,18 @@ object Inferencing {
     }
 
     private var toMaximize: List[TypeVar] = Nil
+    private var alreadyChecking: List[LazyRef] = Nil
 
     def apply(x: Boolean, tp: Type): Boolean =
-      try tp.dealias match
+      try tp match
+        case tp: LazyRef =>
+          if alreadyChecking.contains(tp) then x
+          else
+            val saved = alreadyChecking
+            try
+              alreadyChecking ::= tp
+              apply(x, tp.ref)
+            finally alreadyChecking = saved
         case _: WildcardType | _: ProtoType =>
           false
         case tvar: TypeVar if !tvar.isInstantiated =>
@@ -198,7 +207,8 @@ object Inferencing {
           }
         case tp =>
           reporting.trace(s"IFT $tp") {
-            foldOver(x, tp)
+            val tpd = tp.dealias
+            if tp eq tpd then foldOver(x, tp) else apply(x, tpd)
           }
       catch case ex: Throwable =>
         handleRecursive("check fully defined", tp.show, ex)

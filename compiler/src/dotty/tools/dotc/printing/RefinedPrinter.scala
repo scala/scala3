@@ -771,8 +771,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           // any alias in these types to make -Ytest-pickler work (the list of
           // types in the isInstanceOf check above is conservative and might
           // need to be expanded).
+          var alreadyDealiasing: List[LazyRef] = Nil
           val dealiasMap = new TypeMap {
-            def apply(tp: Type) = mapOver(tp.dealias)
+            def apply(tp: Type) = tp match
+              case tp: LazyRef =>
+                if alreadyDealiasing.contains(tp) then tp
+                else
+                  val saved = alreadyDealiasing
+                  try
+                    alreadyDealiasing ::= tp
+                    apply(tp.ref)
+                  finally alreadyDealiasing = saved
+              case _ => mapOver(tp.dealias)
           }
           dealiasMap(tp2)
         }

@@ -40,6 +40,7 @@ object GenericSignatures {
   private final def javaSig0(sym0: Symbol, info: Type)(using Context): Option[String] = {
     val builder = new StringBuilder(64)
     val isTraitSignature = sym0.enclosingClass.is(Trait)
+    var alreadySigning: List[LazyRef] = Nil
 
     def superSig(cls: Symbol, parents: List[Type]): Unit = {
       def isInterfaceOrTrait(sym: Symbol) = sym.is(PureInterface) || sym.is(Trait)
@@ -188,6 +189,14 @@ object GenericSignatures {
             argSig(tp)
           case _: HKTypeLambda =>
             builder.append('*')
+          case tp: LazyRef      =>
+            if alreadySigning.contains(tp) then builder.append('*')
+            else
+              val saved = alreadySigning
+              try
+                alreadySigning ::= tp
+                boxedSig(tp.widenDealias.widenNullaryMethod)
+              finally alreadySigning = saved
           case _ =>
             boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
