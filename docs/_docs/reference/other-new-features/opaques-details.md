@@ -64,7 +64,7 @@ opaque type G = [T] =>> List[T]
 but the following are not:
 ```scala
 opaque type BadF[T] = [U] =>> (T, U)
-opaque type BadG = [T] =>> [U] => (T, U)
+opaque type BadG = [T] =>> [U] =>> (T, U)
 ```
 
 ## Translation of Equality

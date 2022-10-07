@@ -177,7 +177,7 @@ def f(x: {c}-> Int): Int
 ```
 Here, the actual argument to `f` is allowed to use the `c` capability but no others.
 
-**Note**: It is strongly recommended to write the capability set and the arrow `->` without intervening spaces,
+**Note:** It is strongly recommended to write the capability set and the arrow `->` without intervening spaces,
 as otherwise the notation would look confusingly like a function type.
 
 ## Subtyping and Subcapturing

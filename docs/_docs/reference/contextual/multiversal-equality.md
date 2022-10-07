@@ -33,6 +33,7 @@ that derives `CanEqual`, e.g.
 ```scala
 class T derives CanEqual
 ```
+> Normally a [derives clause](./derivation.md) accepts only type classes with one parameter, however there is a special case for `CanEqual`.
 
 Alternatively, one can also provide a `CanEqual` given instance directly, like this:
 
@@ -82,7 +83,7 @@ def canEqualAny[L, R]: CanEqual[L, R] = CanEqual.derived
 ```
 
 Even though `canEqualAny` is not declared as `given`, the compiler will still
-construct an `canEqualAny` instance as answer to an implicit search for the
+construct a `canEqualAny` instance as answer to an implicit search for the
 type `CanEqual[L, R]`, unless `L` or `R` have `CanEqual` instances
 defined on them, or the language feature `strictEquality` is enabled.
 
@@ -156,10 +157,10 @@ Instances are defined so that every one of these types has a _reflexive_ `CanEqu
  - Primitive numeric types can be compared with subtypes of `java.lang.Number` (and _vice versa_).
  - `Boolean` can be compared with `java.lang.Boolean` (and _vice versa_).
  - `Char` can be compared with `java.lang.Character` (and _vice versa_).
- - Two sequences (of arbitrary subtypes of `scala.collection.Seq`) can be compared
+ - Two sequences (arbitrary subtypes of `scala.collection.Seq`) can be compared
    with each other if their element types can be compared. The two sequence types
    need not be the same.
- - Two sets (of arbitrary subtypes of `scala.collection.Set`) can be compared
+ - Two sets (arbitrary subtypes of `scala.collection.Set`) can be compared
    with each other if their element types can be compared. The two set types
    need not be the same.
  - Any subtype of `AnyRef` can be compared with `Null` (and _vice versa_).

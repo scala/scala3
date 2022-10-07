@@ -57,12 +57,13 @@ The function value must be explicitly tupled, rather than the parameters untuple
 xs.map(combiner.tupled)
 ```
 
-A conversion may be provided in user code:
+Though strongly discouraged, to have the same effect, an implicit conversion may be provided in user code:
 
 ```scala
 import scala.language.implicitConversions
-transparent inline implicit def `fallback untupling`(f: (Int, Int) => Int): ((Int, Int)) => Int =
-  p => f(p._1, p._2)     // use specialized apply instead of unspecialized `tupled`
+
+transparent inline given `fallback untupling`: Conversion[(Int, Int) => Int, ((Int, Int)) => Int] = _.tupled
+
 xs.map(combiner)
 ```
 
