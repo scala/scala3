@@ -1287,11 +1287,14 @@ object Types {
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
     def widenUnion(using Context): Type = widen match
-      case tp @ OrNull(tp1) =>
-        // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-        val tp1Widen = tp1.widenUnionWithoutNull
-        if (tp1Widen.isRef(defn.AnyClass)) tp1Widen
-        else tp.derivedOrType(tp1Widen, defn.NullType)
+      case tp: OrType => tp match
+        case OrNull(tp1) =>
+          // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+          val tp1Widen = tp1.widenUnionWithoutNull
+          if (tp1Widen.isRef(defn.AnyClass)) tp1Widen
+          else tp.derivedOrType(tp1Widen, defn.NullType)
+        case _ =>
+          tp.widenUnionWithoutNull
       case tp =>
         tp.widenUnionWithoutNull
 
@@ -3497,31 +3500,10 @@ object Types {
    */
   object OrNull {
     def apply(tp: Type)(using Context) =
-      OrType(tp, defn.NullType, soft = false)
-    def unapply(tp: OrType)(using Context): Option[Type] =
-      if (ctx.explicitNulls) {
-        val tp1 = tp.stripNull()
-        if tp1 ne tp then Some(tp1) else None
-      }
-      else None
-  }
-
-  /** An extractor object to pattern match against a Java-nullable union.
-   *  e.g.
-   *
-   *  (tp: Type) match
-   *    case OrUncheckedNull(tp1) => // tp had the form `tp1 | UncheckedNull`
-   *    case _ => // tp was not a Java-nullable union
-   */
-  object OrUncheckedNull {
-    def apply(tp: Type)(using Context) =
-      OrType(tp, defn.UncheckedNullAliasType, soft = false)
+      if tp.isNullType then tp else OrType(tp, defn.NullType, soft = false)
     def unapply(tp: Type)(using Context): Option[Type] =
-      if (ctx.explicitNulls) {
-        val tp1 = tp.stripUncheckedNull
-        if tp1 ne tp then Some(tp1) else None
-      }
-      else None
+      val tp1 = tp.stripNull
+      if tp1 ne tp then Some(tp1) else None
   }
 
   // ----- ExprType and LambdaTypes -----------------------------------
