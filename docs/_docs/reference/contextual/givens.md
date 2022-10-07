@@ -10,8 +10,9 @@ that serve for synthesizing arguments to [context parameters](./using-clauses.md
 ```scala
 trait Ord[T]:
   def compare(x: T, y: T): Int
-  extension (x: T) def < (y: T) = compare(x, y) < 0
-  extension (x: T) def > (y: T) = compare(x, y) > 0
+  extension (x: T) 
+    def < (y: T) = compare(x, y) < 0
+    def > (y: T) = compare(x, y) > 0
 
 given intOrd: Ord[Int] with
   def compare(x: Int, y: Int) =
@@ -51,7 +52,7 @@ given [T](using Ord[T]): Ord[List[T]] with
 If the name of a given is missing, the compiler will synthesize a name from
 the implemented type(s).
 
-**Note** The name synthesized by the compiler is chosen to be readable and reasonably concise. For instance, the two instances above would get the names:
+**Note:** The name synthesized by the compiler is chosen to be readable and reasonably concise. For instance, the two instances above would get the names:
 
 ```scala
 given_Ord_Int
@@ -62,7 +63,7 @@ The precise rules for synthesizing names are found [here](./relationship-implici
 given instances of types that are "too similar". To avoid conflicts one can
 use named instances.
 
-**Note** To ensure robust binary compatibility, publicly available libraries should prefer named instances.
+**Note:** To ensure robust binary compatibility, publicly available libraries should prefer named instances.
 
 ## Alias Givens
 

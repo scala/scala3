@@ -82,7 +82,7 @@ given Functor[List] with
     x.map(f) // List already has a `map` method
 ```
 
-With this `given` instance in scope, everywhere a `Functor` is expected, the compiler will accept a `List` to be used.
+With this `given` instance in scope, everywhere a type with a `Functor` context bound is expected, the compiler will accept a `List` to be used.
 
 For instance, we may write such a testing method:
 
@@ -214,7 +214,7 @@ instead of
 show(compute(i)(config))(config)
 ```
 
-Let's define this m then. First, we are going to define a type named `ConfigDependent` representing a function that when passed a `Config` produces a `Result`.
+Let's define this `flatMap` then. First, we are going to define a type named `ConfigDependent` representing a function that when passed a `Config` produces a `Result`.
 
 ```scala
 type ConfigDependent[Result] = Config => Result

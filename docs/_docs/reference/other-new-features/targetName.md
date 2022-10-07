@@ -93,7 +93,7 @@ The relevant overriding rules can be summarized as follows:
 - If two members override, then both their erased names and their types must be the same.
 
 As usual, any overriding relationship in the generated code must also
-be present in the original code. So the following example would also be in error:
+be present in the original code. So the following example would also be an error:
 
 ```scala
 import annotation.targetName
