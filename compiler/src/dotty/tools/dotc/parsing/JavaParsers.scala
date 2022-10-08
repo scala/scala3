@@ -822,7 +822,7 @@ object JavaParsers {
       val iface = atSpan(start, nameOffset) {
         TypeDef(
           name,
-          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.Trait | Flags.JavaInterface | Flags.Abstract)
+          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.JavaInterface)
       }
       addCompanionObject(statics, iface)
     }
