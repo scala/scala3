@@ -1273,7 +1273,10 @@ object Semantic:
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    *
-   *  The parameter `cacheResult` is used to reduce the size of the cache.
+   * @param expr        The expression to be evaluated.
+   * @param thisV       The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass       The enclosing class where the expression is located.
+   * @param cacheResult It is used to reduce the size of the cache.
    */
   def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
     cache.get(thisV, expr) match
@@ -1303,6 +1306,10 @@ object Semantic:
   /** Handles the evaluation of different expressions
    *
    *  Note: Recursive call should go to `eval` instead of `cases`.
+   *
+   * @param expr   The expression to be evaluated.
+   * @param thisV  The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass  The enclosing class where the expression `expr` is located.
    */
   def cases(expr: Tree, thisV: Ref, klass: ClassSymbol): Contextual[Value] =
     val trace2 = trace.add(expr)
@@ -1480,7 +1487,14 @@ object Semantic:
         report.error("[Internal error] unexpected tree" + Trace.show, expr)
         Hot
 
-  /** Handle semantics of leaf nodes */
+  /** Handle semantics of leaf nodes
+   *
+   * For leaf nodes, their semantics is determined by their types.
+   *
+   * @param tp      The type to be evaluated.
+   * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass   The enclosing class where the type `tp` is located.
+   */
   def cases(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
     tp match
       case _: ConstantType =>
@@ -1518,7 +1532,12 @@ object Semantic:
         Hot
   }
 
-  /** Resolve C.this that appear in `klass` */
+  /** Resolve C.this that appear in `klass`
+   *
+   * @param target  The class symbol for `C` for which `C.this` is to be resolved.
+   * @param thisV   The value for `D.this` where `D` is represented by the parameter `klass`.
+   * @param klass   The enclosing class where the type `C.this` is located.
+   */
   def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
     if target == klass then thisV
     else if target.is(Flags.Package) then Hot
@@ -1543,7 +1562,12 @@ object Semantic:
 
   }
 
-  /** Compute the outer value that correspond to `tref.prefix` */
+  /** Compute the outer value that correspond to `tref.prefix`
+   *
+   * @param tref    The type whose prefix is to be evaluated.
+   * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass   The enclosing class where the type `tref` is located.
+   */
   def outerValue(tref: TypeRef, thisV: Ref, klass: ClassSymbol): Contextual[Value] =
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
@@ -1554,7 +1578,12 @@ object Semantic:
       if cls.isAllOf(Flags.JavaInterface) then Hot
       else cases(tref.prefix, thisV, klass)
 
-  /** Initialize part of an abstract object in `klass` of the inheritance chain */
+  /** Initialize part of an abstract object in `klass` of the inheritance chain
+   *
+   * @param tpl       The class body to be evaluated.
+   * @param thisV     The value of the current object to be initialized.
+   * @param klass     The class to which the template belongs.
+   */
   def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show) {
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> thisV.objekt.field(vdef.symbol)
