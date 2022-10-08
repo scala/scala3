@@ -13,6 +13,7 @@ import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.ast.untpd
+
 /**
  * A compiler phase that checks for unused imports or definitions
  *
@@ -33,7 +34,7 @@ class CheckUnused extends Phase {
     val data = UnusedData()
     val fresh = ctx.fresh.setProperty(_key, data)
     traverser.traverse(tree)(using fresh)
-    reportUnusedImport(data.notFound)
+    reportUnusedImport(data.getUnused)
 
   /**
    * This traverse is the **main** component of this phase
@@ -48,7 +49,6 @@ class CheckUnused extends Phase {
       case imp@Import(_, sels) => sels.foreach { s =>
           ctx.property(_key).foreach(_.registerImport(imp))
         }
-
       case ident: Ident =>
         val id = ident.symbol.id
         ctx.property(_key).foreach(_.registerUsed(id))
@@ -57,11 +57,15 @@ class CheckUnused extends Phase {
         val id = sel.symbol.id
         ctx.property(_key).foreach(_.registerUsed(id))
         traverseChildren(tree)
+      case tpd.Block(_,_) | tpd.Template(_,_,_,_) =>
+        ctx.property(_key).foreach(_.pushScope())
+        traverseChildren(tree)
+        ctx.property(_key).foreach(_.popScope())
       case _ => traverseChildren(tree)
 
   }
 
-  private def reportUnusedImport(sels: Set[ImportSelector])(using Context) =
+  private def reportUnusedImport(sels: List[ImportSelector])(using Context) =
     if ctx.settings.WunusedHas.imports then
       sels.foreach { s =>
         report.warning(i"unused import", s.srcPos)
@@ -78,40 +82,61 @@ object CheckUnused:
    * - definitions
    * - usage
    */
-  private class UnusedData:
-    import collection.mutable.{Set => MutSet}
+  private class UnusedData: // TODO : handle block nesting
+    import collection.mutable.{Set => MutSet, Map => MutMap, Stack, ListBuffer}
 
-    private val used: MutSet[Int] = MutSet()
-    private val imported: MutSet[tpd.Import] = MutSet()
+    private val used = Stack(MutSet[Int]())
+    private val impInScope = Stack(MutMap[Int, ListBuffer[ImportSelector]]())
+    private val unused = ListBuffer[ImportSelector]()
 
     private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
       case ident@untpd.Ident(name) => name == StdNames.nme.WILDCARD
       case _ => false
 
-    private def isUsedImportSelector(imp: tpd.Import, sel: ImportSelector)(using Context): Boolean =
-      if sel.isGiven then
-        true // TODO : handle this case
-      else if sel.isWildcard then // NOT GIVEN
-        imp.expr.tpe.allMembers.exists { m =>
-          used(m.symbol.id)
-        }
-      else
-        if isImportExclusion(sel) then
-          true
-        else
-          used(imp.expr.tpe.member(sel.name).symbol.id)
-
-    def notFound(using Context): Set[ImportSelector] =
-      for {
-        imp <- imported.toSet
-        sel <- imp.selectors if !isUsedImportSelector(imp,sel)
-      } yield sel
-
     /** Register the id of a found (used) symbol */
-    def registerUsed(id: Int): Unit = used += id
+    def registerUsed(id: Int): Unit =
+        used.top += id
 
     /** Register an import */
-    def registerImport(imp: tpd.Import): Unit = imported += imp
+    def registerImport(imp: tpd.Import)(using Context): Unit =
+      val tpd.Import(tree, sels) = imp
+      val map = impInScope.top
+      val entries = sels.flatMap{ s =>
+        if s.isGiven then
+          Nil
+        else if s.isWildcard then // TODO : handle givens
+          //Nil
+          tree.tpe.allMembers.map(_.symbol.id -> s)
+        else
+          val id = tree.tpe.member(s.name).symbol.id
+          List(id -> s)
+      }
+      entries.foreach{(id, sel) =>
+        map.get(id) match
+          case None => map.put(id, ListBuffer(sel))
+          case Some(value) => value += sel
+      }
+
+    /** enter a new scope */
+    def pushScope(): Unit =
+
+      used.push(MutSet())
+      impInScope.push(MutMap())
+
+    /** leave the current scope */
+    def popScope(): Unit =
+      val popedImp = impInScope.pop()
+      val notDefined = used.pop().filter{id =>
+        popedImp.remove(id).isEmpty
+      }
+      if used.size > 0 then
+        used.top.addAll(notDefined)
+      unused.addAll(popedImp.values.flatten)
+
+    /** leave the scope and return unused `ImportSelector`s*/
+    def getUnused: List[ImportSelector] =
+      popScope()
+      unused.toList
 
   end UnusedData
 
