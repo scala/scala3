@@ -1,14 +1,13 @@
 .documentableElement {
-  background-color: var(--action-primary-background-default-solid);
-  padding: calc(3 * var(--base-spacing));
-  border-radius: 4px;
-  margin-bottom: calc(3 * var(--base-spacing));
+  padding: 13px 0 12px;
   color: var(--text-primary);
   position: relative;
+  border-top: 1px solid var(--border-default);
 }
 
 .documentableElement:last-child {
   margin-bottom: 0;
+  border-top: 1px solid var(--border-default);
 }
 
 .documentableElement .signature {
@@ -24,6 +23,10 @@
   color: var(--text-secondary);
 }
 
+.documentableElement .documentableBrief > p {
+  margin: 4px 0 0;
+}
+
 .documentableElement .annotations {
   display: none;
 }
@@ -32,8 +35,17 @@
   display: none;
 }
 
+.documentableElement.expand {
+color: var(--text-secondary);
+}
+
 .documentableElement.expand > div .cover {
   display: block;
+
+}
+
+.documentableElement.expand > div .cover dd {
+  color: var(--text-primary);
 }
 
 .documentableElement.expand .annotations {
@@ -46,13 +58,16 @@
 
 .documentableElement .icon-button {
   position: absolute;
-  top: calc(3 * var(--base-spacing));
   right: calc(3 * var(--base-spacing));
   display: none;
 }
 
 .documentableElement:hover .icon-button {
   display: block;
+}
+
+.documentableElement .attributes {
+  margin-bottom: 0;
 }
 
 [t="k"] {
