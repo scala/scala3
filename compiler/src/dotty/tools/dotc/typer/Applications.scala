@@ -30,6 +30,7 @@ import config.Feature
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
+import Annotations.Annotation
 
 import Constants.{Constant, IntTag}
 import Denotations.SingleDenotation
@@ -210,63 +211,81 @@ object Applications {
   def wrapDefs(defs: mutable.ListBuffer[Tree] | Null, tree: Tree)(using Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
+  /** Optionally, if `sym` is a symbol created by `resolveMapped`, i.e. representing
+   *  a mapped alternative, the original prefix of the alternative and the number of
+   *  skipped term parameters.
+   */
+  private def mappedAltInfo(sym: Symbol)(using Context): Option[(Type, Int)] =
+    for ann <- sym.getAnnotation(defn.MappedAlternativeAnnot) yield
+      val AppliedType(_, pre :: ConstantType(c) :: Nil) = ann.tree.tpe: @unchecked
+      (pre, c.intValue)
+
   /** Find reference to default parameter getter for parameter #n in current
-    *  parameter list, or NoType if none was found
-    */
+   *  parameter list, or EmptyTree if none was found.
+   *  @param fn       the tree referring to the function part of this call
+   *  @param n        the index of the parameter in the parameter list of the call
+   *  @param testOnly true iff we just to find out whether a getter exists
+   */
   def findDefaultGetter(fn: Tree, n: Int, testOnly: Boolean)(using Context): Tree =
-    if fn.symbol.isTerm then
+    def reifyPrefix(pre: Type): Tree = pre match
+      case pre: SingletonType => singleton(pre, needLoad = !testOnly)
+      case pre if testOnly =>
+        // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
+        ref(pre.narrow)
+      case _ => EmptyTree
+
+    if fn.symbol.hasDefaultParams then
       val meth = fn.symbol.asTerm
-      val receiver: Tree = methPart(fn) match {
-        case Select(receiver, _) => receiver
-        case mr => mr.tpe.normalizedPrefix match {
-          case mr: TermRef => ref(mr)
-          case mr: ThisType => singleton(mr)
-          case mr =>
-            if testOnly then
-              // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
-              ref(mr.narrow)
-            else
-              EmptyTree
-        }
-      }
-      val getterPrefix =
-        if (meth.is(Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
-      def getterName = DefaultGetterName(getterPrefix, n + numArgs(fn))
-      if !meth.hasDefaultParams then
-        EmptyTree
-      else if (receiver.isEmpty) {
-        def findGetter(cx: Context): Tree =
-          if (cx eq NoContext) EmptyTree
-          else if (cx.scope != cx.outer.scope &&
-            cx.denotNamed(meth.name).hasAltWith(_.symbol == meth)) {
-            val denot = cx.denotNamed(getterName)
-            if (denot.exists) ref(TermRef(cx.owner.thisType, getterName, denot))
-            else findGetter(cx.outer)
-          }
-          else findGetter(cx.outer)
-        findGetter(ctx)
-      }
-      else {
-        def selectGetter(qual: Tree): Tree = {
-          val getterDenot = qual.tpe.member(getterName)
-          if (getterDenot.exists) qual.select(TermRef(qual.tpe, getterName, getterDenot))
-          else EmptyTree
-        }
-        if (!meth.isClassConstructor)
-          selectGetter(receiver)
-        else {
-          // default getters for class constructors are found in the companion object
-          val cls = meth.owner
-          val companion = cls.companionModule
-          if (companion.isTerm) {
-            val prefix = receiver.tpe.baseType(cls).normalizedPrefix
-            if (prefix.exists) selectGetter(ref(TermRef(prefix, companion.asTerm)))
-            else EmptyTree
-          }
-          else EmptyTree
-        }
-      }
+      val idx = n + numArgs(fn)
+      methPart(fn) match
+        case Select(receiver, _) =>
+          findDefaultGetter(meth, receiver, idx)
+        case mr => mappedAltInfo(meth) match
+          case Some((pre, skipped)) =>
+            findDefaultGetter(meth, reifyPrefix(pre), idx + skipped)
+          case None =>
+            findDefaultGetter(meth, reifyPrefix(mr.tpe.normalizedPrefix), idx)
     else EmptyTree // structural applies don't have symbols or defaults
+  end findDefaultGetter
+
+  /** Find reference to default parameter getter for method `meth` numbered `idx`
+   *  selected from given `receiver`, or EmptyTree if none was found.
+   *  @param meth     the called method (can be mapped by resolveMapped)
+   *  @param receiver the receiver of the original method call, which determines
+   *                  where default getters are found
+   *  @param idx      the index of the searched for default getter, as encoded in its name
+   */
+  def findDefaultGetter(meth: TermSymbol, receiver: Tree, idx: Int)(using Context): Tree =
+    val getterPrefix =
+      if (meth.is(Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
+    val getterName = DefaultGetterName(getterPrefix, idx)
+
+    if receiver.isEmpty then
+      def findGetter(cx: Context): Tree =
+        if cx eq NoContext then EmptyTree
+        else if cx.scope != cx.outer.scope
+            && cx.denotNamed(meth.name).hasAltWith(_.symbol == meth) then
+          val denot = cx.denotNamed(getterName)
+          if denot.exists then ref(TermRef(cx.owner.thisType, getterName, denot))
+          else findGetter(cx.outer)
+        else findGetter(cx.outer)
+      findGetter(ctx)
+    else
+      def selectGetter(qual: Tree): Tree =
+        val getterDenot = qual.tpe.member(getterName)
+        if (getterDenot.exists) qual.select(TermRef(qual.tpe, getterName, getterDenot))
+        else EmptyTree
+      if !meth.isClassConstructor then
+        selectGetter(receiver)
+      else
+        // default getters for class constructors are found in the companion object
+        val cls = meth.owner
+        val companion = cls.companionModule
+        if companion.isTerm then
+          val prefix = receiver.tpe.baseType(cls).normalizedPrefix
+          if prefix.exists then selectGetter(ref(TermRef(prefix, companion.asTerm)))
+          else EmptyTree
+        else EmptyTree
   end findDefaultGetter
 
   /** Splice new method reference `meth` into existing application `app` */
@@ -570,6 +589,7 @@ trait Applications extends Compatibility {
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
             val sym = methRef.symbol
+            val testOnly = this.isInstanceOf[TestApplication[?]]
 
             val defaultArg =
               if (isJavaAnnotConstr(sym)) {
@@ -585,12 +605,14 @@ trait Applications extends Compatibility {
                 else
                   EmptyTree
               }
-              else defaultArgument(normalizedFun, n, this.isInstanceOf[TestApplication[?]])
+              else defaultArgument(normalizedFun, n, testOnly)
 
             def implicitArg = implicitArgTree(formal, appPos.span)
 
             if !defaultArg.isEmpty then
-              matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
+              defaultArg.tpe.widen match
+                case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
+                case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
             else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
               matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
@@ -1947,9 +1969,8 @@ trait Applications extends Compatibility {
             def isVarArgs = ptypes.nonEmpty && ptypes.last.isRepeatedParam
             def numDefaultParams =
               if alt.symbol.hasDefaultParams then
-                trimParamss(tp, alt.symbol.rawParamss) match
-                  case params :: _ => params.count(_.is(HasDefault))
-                  case _ => 0
+                val fn = ref(alt, needLoad = false)
+                ptypes.indices.count(n => !findDefaultGetter(fn, n, testOnly = true).isEmpty)
               else 0
             if numParams < numArgs then isVarArgs
             else if numParams == numArgs then true
@@ -2098,13 +2119,22 @@ trait Applications extends Compatibility {
     }
   end resolveOverloaded1
 
-  /** The largest suffix of `paramss` that has the same first parameter name as `t` */
-  def trimParamss(t: Type, paramss: List[List[Symbol]])(using Context): List[List[Symbol]] = t match
+  /** The largest suffix of `paramss` that has the same first parameter name as `t`,
+   *  plus the number of term parameters in `paramss` that come before that suffix.
+   */
+  def trimParamss(t: Type, paramss: List[List[Symbol]])(using Context): (List[List[Symbol]], Int) = t match
     case MethodType(Nil) => trimParamss(t.resultType, paramss)
     case t: MethodOrPoly =>
       val firstParamName = t.paramNames.head
-      paramss.dropWhile(_.head.name != firstParamName)
-    case _ => Nil
+      def recur(pss: List[List[Symbol]], skipped: Int): (List[List[Symbol]], Int) =
+        (pss: @unchecked) match
+          case (ps @ (p :: _)) :: pss1 =>
+            if p.name == firstParamName then (pss, skipped)
+            else recur(pss1, if p.name.isTermName then skipped + ps.length else skipped)
+          case Nil =>
+            (pss, skipped)
+      recur(paramss, 0)
+    case _ => (Nil, 0)
 
   /** Resolve overloading by mapping to a different problem where each alternative's
    *  type is mapped with `f`, alternatives with non-existing types are dropped, and the
@@ -2114,8 +2144,19 @@ trait Applications extends Compatibility {
     val reverseMapping = alts.flatMap { alt =>
       val t = f(alt)
       if t.exists then
+        val (trimmed, skipped) = trimParamss(t, alt.symbol.rawParamss)
         val mappedSym = alt.symbol.asTerm.copy(info = t)
-        mappedSym.rawParamss = trimParamss(t, alt.symbol.rawParamss)
+        mappedSym.rawParamss = trimmed
+        val (pre, totalSkipped) = mappedAltInfo(alt.symbol) match
+          case Some((pre, prevSkipped)) =>
+            mappedSym.removeAnnotation(defn.MappedAlternativeAnnot)
+            (pre, skipped + prevSkipped)
+          case None =>
+            (alt.prefix, skipped)
+        mappedSym.addAnnotation(
+          Annotation(TypeTree(
+            defn.MappedAlternativeAnnot.typeRef.appliedTo(
+              pre, ConstantType(Constant(totalSkipped))))))
         Some((TermRef(NoPrefix, mappedSym), alt))
       else
         None
