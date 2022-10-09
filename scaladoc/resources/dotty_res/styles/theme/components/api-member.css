@@ -1,14 +1,14 @@
 .documentableElement {
-  background-color: var(--action-primary-background-default-solid);
-  padding: calc(3 * var(--base-spacing));
-  border-radius: 4px;
-  margin-bottom: calc(3 * var(--base-spacing));
+  padding: 12px 0;
+
   color: var(--text-primary);
   position: relative;
+  border-top: 1px solid var(--border-default);
 }
 
 .documentableElement:last-child {
   margin-bottom: 0;
+  border-top: 1px solid var(--border-default);
 }
 
 .documentableElement .signature {
@@ -53,6 +53,10 @@
 
 .documentableElement:hover .icon-button {
   display: block;
+}
+
+.documentableElement .attributes {
+  margin-bottom: 0;
 }
 
 [t="k"] {
