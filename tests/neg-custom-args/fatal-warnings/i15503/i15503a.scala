@@ -17,7 +17,7 @@ object Foo:
   val baz = MutMap() // OK
 
 object FooWildcard:
-  import collection.mutable._ // error
+  import collection.mutable._ // OK
 
   val bar = Set() // OK
 
@@ -30,4 +30,20 @@ object FooNested:
   import collection.mutable.Set // OK
   object Nested:
     def hello = Set()
+
+object FooGivenUnused:
+  import SomeGivenImports.given // error
+
+object FooGiven:
+  import SomeGivenImports.given // OK
+  import SomeGivenImports._ // error
+
+  val foo = summon[Int]
+
+/**
+  * Some given values for the test
+  */
+object SomeGivenImports:
+  given Int = 0
+  given String = "foo"
 

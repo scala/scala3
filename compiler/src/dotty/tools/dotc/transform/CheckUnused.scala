@@ -2,17 +2,18 @@ package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeTraverser
+import dotty.tools.dotc.ast.untpd
+import dotty.tools.dotc.ast.untpd.ImportSelector
+import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators.i
+import dotty.tools.dotc.core.Flags.Given
 import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.dotc.ast.untpd.ImportSelector
-import dotty.tools.dotc.core.StdNames
-import dotty.tools.dotc.ast.untpd
 
 /**
  * A compiler phase that checks for unused imports or definitions
@@ -20,7 +21,7 @@ import dotty.tools.dotc.ast.untpd
  * Basically, it gathers definition/imports and their usage. If a
  * definition/imports does not have any usage, then it is reported.
  */
-class CheckUnused extends Phase {
+class CheckUnused extends Phase:
   import CheckUnused.UnusedData
 
   private val _key = Property.Key[UnusedData]
@@ -70,7 +71,7 @@ class CheckUnused extends Phase {
       sels.foreach { s =>
         report.warning(i"unused import", s.srcPos)
       }
-}
+end CheckUnused
 
 object CheckUnused:
   val phaseName: String = "check unused"
@@ -82,7 +83,7 @@ object CheckUnused:
    * - definitions
    * - usage
    */
-  private class UnusedData: // TODO : handle block nesting
+  private class UnusedData:
     import collection.mutable.{Set => MutSet, Map => MutMap, Stack, ListBuffer}
 
     private val used = Stack(MutSet[Int]())
@@ -102,11 +103,10 @@ object CheckUnused:
       val tpd.Import(tree, sels) = imp
       val map = impInScope.top
       val entries = sels.flatMap{ s =>
-        if s.isGiven then
-          Nil
-        else if s.isWildcard then // TODO : handle givens
-          //Nil
-          tree.tpe.allMembers.map(_.symbol.id -> s)
+        if s.isWildcard then
+          tree.tpe.allMembers
+            .filter(m => m.symbol.is(Given) == s.isGiven) // given imports
+            .map(_.symbol.id -> s)
         else
           val id = tree.tpe.member(s.name).symbol.id
           List(id -> s)
@@ -119,19 +119,28 @@ object CheckUnused:
 
     /** enter a new scope */
     def pushScope(): Unit =
-
       used.push(MutSet())
       impInScope.push(MutMap())
 
     /** leave the current scope */
     def popScope(): Unit =
+      val usedImp = MutSet[ImportSelector]()
       val popedImp = impInScope.pop()
       val notDefined = used.pop().filter{id =>
-        popedImp.remove(id).isEmpty
+        popedImp.remove(id) match
+          case None => true
+          case Some(value) =>
+            usedImp.addAll(value)
+            false
       }
       if used.size > 0 then
         used.top.addAll(notDefined)
-      unused.addAll(popedImp.values.flatten)
+      popedImp.values.flatten.foreach{ sel =>
+        // If **any** of the entities used by the import is used,
+        // do not add to the `unused` Set
+        if !usedImp(sel) then
+          unused += sel
+      }
 
     /** leave the scope and return unused `ImportSelector`s*/
     def getUnused: List[ImportSelector] =
@@ -139,5 +148,5 @@ object CheckUnused:
       unused.toList
 
   end UnusedData
-
+end CheckUnused
 
