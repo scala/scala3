@@ -1954,6 +1954,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val info1 = m.info.widenExpr
         isSubInfo(info1, tp2.refinedInfo.widenExpr, m.symbol.info.orElse(info1))
         || matchAbstractTypeMember(m.info)
+        || (tp1.isStable && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
 
       tp1.member(name) match // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)
@@ -3226,7 +3227,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean =
-    traceIndented(s"add GADT constraint ${show(sym)} ${if isUpper then "<:" else ">:"} ${show(b)} $frozenNotice, GADT constraint = ${show(ctx.gadt.debugBoundsDescription)}") {
+    traceIndented(s"add GADT constraint ${show(sym)} ${if isUpper then "<:" else ">:"} ${show(b)} $frozenNotice, GADT constraint = ${show(ctx.gadt)}") {
       super.gadtAddBound(sym, b, isUpper)
     }
 

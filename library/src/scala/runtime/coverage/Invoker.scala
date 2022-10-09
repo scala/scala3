@@ -1,11 +1,11 @@
 package scala.runtime.coverage
 
-import scala.collection.mutable.{BitSet, AnyRefMap}
-import scala.collection.concurrent.TrieMap
-import java.nio.file.Files
-import java.io.FileWriter
-import java.io.File
 import scala.annotation.internal.sharable
+import scala.annotation.nowarn
+import scala.collection.concurrent.TrieMap
+import scala.collection.mutable.{BitSet, AnyRefMap}
+import java.io.{File, FileWriter}
+import java.nio.file.Files
 
 @sharable // avoids false positive by -Ycheck-reentrant
 object Invoker {
@@ -48,6 +48,7 @@ object Invoker {
         writer.write('\n')
         writer.flush()
 
+  @nowarn("cat=deprecation")
   def measurementFile(dataDir: String): File = new File(
     dataDir,
     MeasurementsPrefix + runtimeUUID + "." + Thread.currentThread.nn.getId

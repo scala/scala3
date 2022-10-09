@@ -56,6 +56,7 @@ sealed abstract class GadtConstraint extends Showable {
   /** Restore the state from other [[GadtConstraint]], probably copied using [[fresh]] */
   def restore(other: GadtConstraint): Unit
 
+  /** Provides more information than toText, by showing the underlying Constraint details. */
   def debugBoundsDescription(using Context): String
 }
 
@@ -134,7 +135,7 @@ final class ProperGadtConstraint private(
 
     // The replaced symbols are picked up here.
     addToConstraint(poly1, tvars)
-      .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
+      .showing(i"added to constraint: [$poly1] $params%, % gadt = $this", gadts)
   }
 
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
@@ -291,17 +292,9 @@ final class ProperGadtConstraint private(
 
   override def constr = gadtsConstr
 
-  override def toText(printer: Printer): Texts.Text = constraint.toText(printer)
+  override def toText(printer: Printer): Texts.Text = printer.toText(this)
 
-  override def debugBoundsDescription(using Context): String = {
-    val sb = new mutable.StringBuilder
-    sb ++= constraint.show
-    sb += '\n'
-    mapping.foreachBinding { case (sym, _) =>
-      sb ++= i"$sym: ${fullBounds(sym)}\n"
-    }
-    sb.result
-  }
+  override def debugBoundsDescription(using Context): String = i"$this\n$constraint"
 }
 
 @sharable object EmptyGadtConstraint extends GadtConstraint {
@@ -325,7 +318,6 @@ final class ProperGadtConstraint private(
   override def restore(other: GadtConstraint): Unit =
     assert(!other.isNarrowing, "cannot restore a non-empty GADTMap")
 
-  override def debugBoundsDescription(using Context): String = "EmptyGadtConstraint"
-
-  override def toText(printer: Printer): Texts.Text = "EmptyGadtConstraint"
+  override def toText(printer: Printer): Texts.Text = printer.toText(this)
+  override def debugBoundsDescription(using Context): String = i"$this"
 }
