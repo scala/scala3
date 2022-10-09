@@ -1,6 +1,5 @@
 .documentableElement {
-  padding: 12px 0;
-
+  padding: 13px 0 12px;
   color: var(--text-primary);
   position: relative;
   border-top: 1px solid var(--border-default);
@@ -24,6 +23,10 @@
   color: var(--text-secondary);
 }
 
+.documentableElement .documentableBrief > p {
+  margin: 4px 0 0;
+}
+
 .documentableElement .annotations {
   display: none;
 }
@@ -32,8 +35,17 @@
   display: none;
 }
 
+.documentableElement.expand {
+color: var(--text-secondary);
+}
+
 .documentableElement.expand > div .cover {
   display: block;
+
+}
+
+.documentableElement.expand > div .cover dd {
+  color: var(--text-primary);
 }
 
 .documentableElement.expand .annotations {
@@ -46,7 +58,6 @@
 
 .documentableElement .icon-button {
   position: absolute;
-  top: calc(3 * var(--base-spacing));
   right: calc(3 * var(--base-spacing));
   display: none;
 }
