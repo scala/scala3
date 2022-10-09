@@ -316,7 +316,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   extends TypeTraverser, ConstraintAwareTraversal[Unit]:
 
     var add: Boolean = compiletime.uninitialized
-    private val seen = util.HashSet[LazyRef]()
+    val seen = util.HashSet[LazyRef]()
 
     def update(deps: ReverseDeps, referenced: TypeParamRef): ReverseDeps =
       val prev = deps.at(referenced)
@@ -352,6 +352,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
       adjuster.variance = if isLower then 1 else -1
       adjuster.add = add
+      adjuster.seen.clear()
       adjuster.traverse(bound)
 
     /** Use an optimized strategy to adjust dependencies to account for the delta
@@ -695,13 +696,17 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           case tvar: TypeVar =>
             if tvar.isInstantiated
             then
-              // That's the case if replace is called from TypeVar's instantiateWith.
-              // Forget about instantiation for old dependencies.
+              // If the type variuable has been instantiated, we need to forget about
+              // the instantiation for old dependencies.
+              // I.e. to find out what the old entry was, we should not follow
+              // the newly instantiated type variable but assume the type variable's origin `param`.
+              // An example where this happens is if `replace` is called from TypeVar's `instantiateWith`.
               oldDepEntry = mapReplacedTypeVarTo(param)(oldDepEntry)
             else
-              // That's the case if replace is called from unify.
-              // Assume parameter has been replaced for new dependencies
-              // (the actual replacement is done below).
+              // If the type variuable has not been instantiated, we need to replace references to it
+              // in the new entry by `replacement`. Otherwise we would get stuck in an uninstantiated
+              // type variable.
+              // An example where this happens is if `replace` is called from unify.
               newDepEntry = mapReplacedTypeVarTo(replacement)(newDepEntry)
           case _ =>
         if oldDepEntry ne newDepEntry then
