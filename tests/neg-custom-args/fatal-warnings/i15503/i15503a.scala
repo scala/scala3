@@ -41,6 +41,44 @@ object FooGiven:
   val foo = summon[Int]
 
 /**
+ * Import used as type name are considered
+ * as used.
+ *
+ * Import here are only used as types, not as
+ * Term
+ */
+object FooTypeName:
+  import collection.mutable.Set // OK
+  import collection.mutable.Map // OK
+  import collection.mutable.Seq // OK
+  import collection.mutable.ArrayBuilder // OK
+  import collection.mutable.ListBuffer // error
+
+  def checkImplicit[A](using Set[A]) = ()
+  def checkParamType[B](a: Map[B,B]): Seq[B] = ???
+  def checkTypeParam[A] = ()
+
+  checkTypeParam[ArrayBuilder[Int]]
+
+
+object InlineChecks:
+  object InlineFoo:
+    import collection.mutable.Set // OK
+    import collection.mutable.Map // error
+    inline def getSet = Set(1)
+
+  object InlinedBar:
+    import collection.mutable.Set // error
+    import collection.mutable.Map // error
+    val a = InlineFoo.getSet
+
+object MacroChecks:
+  object StringInterpol:
+    import collection.mutable.Set // OK
+    import collection.mutable.Map // OK
+    println(s"This is a mutableSet : ${Set[Map[Int,Int]]()}")
+
+/**
   * Some given values for the test
   */
 object SomeGivenImports:

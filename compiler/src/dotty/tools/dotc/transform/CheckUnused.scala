@@ -32,10 +32,12 @@ class CheckUnused extends Phase:
 
   override def run(using Context): Unit =
     val tree = ctx.compilationUnit.tpdTree
-    val data = UnusedData()
-    val fresh = ctx.fresh.setProperty(_key, data)
-    traverser.traverse(tree)(using fresh)
-    reportUnusedImport(data.getUnused)
+    val data = UnusedData(ctx)
+    if data.neededChecks.nonEmpty then
+      // Execute checks if there exists at lease one config
+      val fresh = ctx.fresh.setProperty(_key, data)
+      traverser.traverse(tree)(using fresh)
+      reportUnusedImport(data.getUnused)
 
   /**
    * This traverse is the **main** component of this phase
@@ -78,13 +80,28 @@ object CheckUnused:
   val description: String = "check for unused elements"
 
   /**
+    * Various supported configuration chosen by -Wunused:<config>
+    */
+  private enum UnusedConfig:
+    case UnusedImports
+    // TODO : handle other cases like unused local def
+
+  /**
    * A stateful class gathering the infos on :
    * - imports
    * - definitions
    * - usage
    */
-  private class UnusedData:
+  private class UnusedData(initctx: Context):
     import collection.mutable.{Set => MutSet, Map => MutMap, Stack, ListBuffer}
+
+    val neededChecks =
+      import UnusedConfig._
+      val hasConfig = initctx.settings.WunusedHas
+      val mut = MutSet[UnusedConfig]()
+      if hasConfig.imports(using initctx) then
+        mut += UnusedImports
+      mut.toSet
 
     private val used = Stack(MutSet[Int]())
     private val impInScope = Stack(MutMap[Int, ListBuffer[ImportSelector]]())
@@ -108,8 +125,9 @@ object CheckUnused:
             .filter(m => m.symbol.is(Given) == s.isGiven) // given imports
             .map(_.symbol.id -> s)
         else
-          val id = tree.tpe.member(s.name).symbol.id
-          List(id -> s)
+          val id = tree.tpe.member(s.name.toTermName).symbol.id
+          val typeId = tree.tpe.member(s.name.toTypeName).symbol.id
+          List(id -> s, typeId -> s)
       }
       entries.foreach{(id, sel) =>
         map.get(id) match
@@ -125,9 +143,9 @@ object CheckUnused:
     /** leave the current scope */
     def popScope(): Unit =
       val usedImp = MutSet[ImportSelector]()
-      val popedImp = impInScope.pop()
+      val poppedImp = impInScope.pop()
       val notDefined = used.pop().filter{id =>
-        popedImp.remove(id) match
+        poppedImp.remove(id) match
           case None => true
           case Some(value) =>
             usedImp.addAll(value)
@@ -135,17 +153,24 @@ object CheckUnused:
       }
       if used.size > 0 then
         used.top.addAll(notDefined)
-      popedImp.values.flatten.foreach{ sel =>
+      poppedImp.values.flatten.foreach{ sel =>
         // If **any** of the entities used by the import is used,
         // do not add to the `unused` Set
         if !usedImp(sel) then
           unused += sel
       }
 
-    /** leave the scope and return unused `ImportSelector`s*/
-    def getUnused: List[ImportSelector] =
+    /**
+     * Leave the scope and return a `List` of unused `ImportSelector`s
+     *
+     * The given `List` is sorted by line and then column of the position
+     */
+    def getUnused(using Context): List[ImportSelector] =
       popScope()
-      unused.toList
+      unused.toList.sortBy{ sel =>
+        val pos = sel.srcPos.sourcePos
+        (pos.line, pos.column)
+      }
 
   end UnusedData
 end CheckUnused
