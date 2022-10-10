@@ -89,4 +89,6 @@
   }
 }
 
-init(() => new FilterBar());
+window.addEventListener("dynamicPageLoad", () => {
+  new FilterBar()
+})

@@ -18,6 +18,10 @@
   line-height: 20px;
 }
 
+dd .snippet {
+  margin: 0;
+}
+
 .snippet .hidden {
   display: none;
 }

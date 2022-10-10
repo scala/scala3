@@ -49,7 +49,10 @@ trait FileChange extends js.Object:
 
 class ContentContributors:
   val indenticonsUrl = "https://github.com/identicons"
-  def linkForFilename(filename: String) = Globals.githubContributorsUrl + s"/commits?path=$filename"
+  val htmlElement = window.document.documentElement
+  def githubContributorsUrl() = htmlElement.getAttribute("data-githubContributorsUrl")
+  def githubContributorsFilename() = htmlElement.getAttribute("data-githubContributorsFilename")
+  def linkForFilename(filename: String) = githubContributorsUrl() + s"/commits?path=$filename"
   def getAuthorsForFilename(filename: String): Future[List[FullAuthor]] = {
     val link = linkForFilename(filename)
     Ajax.get(link).map(_.responseText).flatMap { json =>
@@ -85,11 +88,10 @@ class ContentContributors:
           .map(_.previous_filename)
     }
   }
-  document.addEventListener("DOMContentLoaded", (e: Event) => {
-    if js.typeOf(Globals.githubContributorsUrl) != "undefined" &&
-      js.typeOf(Globals.githubContributorsFilename) != "undefined"
-    then {
-      getAuthorsForFilename(Globals.githubContributorsFilename.stripPrefix("/")).onComplete {
+  window.addEventListener("dynamicPageLoad", (e: Event) => {
+    val ghUrl = githubContributorsUrl()
+    if js.typeOf(ghUrl) == "string" && ghUrl != "null" then {
+      getAuthorsForFilename(githubContributorsFilename().stripPrefix("/")).onComplete {
         case Success(authors) =>
           val maybeDiv = Option(document.getElementById("documentation-contributors"))
           maybeDiv.foreach { mdiv =>

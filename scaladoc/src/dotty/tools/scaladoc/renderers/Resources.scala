@@ -108,6 +108,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/searchbar.css",
       "styles/social-links.css",
       "styles/versions-dropdown.css",
+      "styles/content-contributors.css",
       "styles/fontawesome.css",
       "hljs/highlight.pack.js",
       "hljs/LICENSE",
@@ -120,7 +121,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/components/Input.js",
       "scripts/components/FilterGroup.js",
       "scripts/components/Filter.js",
-      "scripts/scaladoc-scalajs.js"
+      "scripts/scaladoc-scalajs.js",
+      "scripts/contributors.js",
     ).map(dottyRes)
 
     val urls = List(

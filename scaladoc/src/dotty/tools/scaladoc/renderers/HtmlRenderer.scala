@@ -26,7 +26,22 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     val docHead = raw(document.head().html())
     val docBody = raw(document.body().html())
 
-    html(
+    val attrs: List[AppliedAttr] = page.content match
+      case ResolvedTemplate(loadedTemplate, _) =>
+        val path = loadedTemplate.templateFile.file.toPath
+        ctx.sourceLinks.repoSummary(path) match
+          case Some(DefinedRepoSummary("github", org, repo)) =>
+            ctx.sourceLinks.fullPath(relativePath(path)).fold(Nil) { contributorsFilename =>
+              List[AppliedAttr](
+                Attr("data-githubContributorsUrl") := s"https://api.github.com/repos/$org/$repo",
+                Attr("data-githubContributorsFilename") := s"$contributorsFilename",
+              )
+            }
+          case _ => Nil
+      case _ => Nil
+      :+ (Attr("data-pathToRoot") := pathToRoot(page.link.dri))
+
+    html(attrs: _*)(
       head((mkHead(page) :+ docHead):_*),
       body(
         if !page.hasFrame then docBody
@@ -87,20 +102,6 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       linkResources(page.link.dri, earlyResources, deferJs = false).toList,
       linkResources(page.link.dri, resources, deferJs = true).toList,
       script(raw(s"""var pathToRoot = "${pathToRoot(page.link.dri)}";""")),
-      (page.content match
-        case ResolvedTemplate(loadedTemplate, _) =>
-          val path = loadedTemplate.templateFile.file.toPath
-          ctx.sourceLinks.repoSummary(path) match
-            case Some(DefinedRepoSummary("github", org, repo)) =>
-              val tag: TagArg = ctx.sourceLinks.fullPath(relativePath(path)).fold("") { githubContributors =>
-                Seq(
-                  script(raw(s"""var githubContributorsUrl = "https://api.github.com/repos/$org/$repo";""")),
-                  script(raw(s"""var githubContributorsFilename = "$githubContributors";"""))
-                )
-              }
-              tag // for some reason inference fails so had to state the type explicitly
-            case _ => ""
-        case _ => ""),
       ctx.args.versionsDictionaryUrl match
         case Some(url) => script(raw(s"""var versionsDictionaryUrl = "$url";"""))
         case None => ""

@@ -1,5 +1,49 @@
 let observer = null;
 
+const attrsToCopy = [
+  "data-githubContributorsUrl",
+  "data-githubContributorsFilename",
+  "data-pathToRoot",
+]
+
+/**
+ * @typedef {Object} SavedPageState
+ * @property {Strign} mainDiv
+ * @property {String} leftColumn
+ * @property {String} title
+ * @property {Record<string, string>} attrs
+ */
+
+/**
+ * @param {Document} doc
+ * @returns {SavedPageState}
+ */
+function savePageState(doc) {
+  const attrs = {}
+  for (const attr of attrsToCopy) {
+    attrs[attr] = doc.documentElement.getAttribute(attr)
+  }
+  return {
+    mainDiv: doc.querySelector("#main").innerHTML,
+    leftColumn: doc.querySelector("#leftColumn").innerHTML,
+    title: doc.title,
+    attrs,
+  }
+}
+
+/**
+ * @param {Document} doc
+ * @param {SavedPageState} saved
+ */
+function loadPageState(doc, saved) {
+  doc.title = saved.title
+  doc.querySelector("#main").innerHTML = saved.mainDiv
+  doc.querySelector("#leftColumn").innerHTML = saved.leftColumn
+  for (const attr of attrsToCopy) {
+    doc.documentElement.setAttribute(attr, saved.attrs[attr])
+  }
+}
+
 function attachAllListeners() {
   if (observer) {
     observer.disconnect();
@@ -84,29 +128,23 @@ function attachAllListeners() {
       e.preventDefault();
       e.stopPropagation();
       $.get(href, function (data) {
-        const html = $.parseHTML(data);
-        const title = html.find((node) => node.nodeName === "TITLE").innerText;
-        const bodyDiv = html.find((node) => node.nodeName === "DIV");
-        const { children } = document.body.firstChild;
         if (window.history.state === null) {
-          window.history.replaceState(
-            {
-              leftColumn: children[3].innerHTML,
-              mainDiv: children[6].innerHTML,
-              title: document.title,
-            },
-            "",
-          );
+          window.history.replaceState(savePageState(document), '')
         }
-        document.title = title;
-        const leftColumn = bodyDiv.children[3].innerHTML;
-        const mainDiv = bodyDiv.children[6].innerHTML;
-        window.history.pushState({ leftColumn, mainDiv, title }, "", href);
-        children[3].innerHTML = leftColumn;
-        children[6].innerHTML = mainDiv;
-        attachAllListeners();
-      });
-    });
+        const parser = new DOMParser()
+        const parsedDocument = parser.parseFromString(data, "text/html")
+        const state = savePageState(parsedDocument)
+        window.history.pushState(state, '', href)
+        loadPageState(document, state)
+        window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD))
+      })
+    })
+  })
+
+  $(".ar").on('click', function (e) {
+    $(this).parent().parent().toggleClass("expanded")
+    $(this).toggleClass("expanded")
+    e.stopPropagation()
   });
 
   $(".ar").on("click", function (e) {
@@ -248,11 +286,16 @@ function attachAllListeners() {
   // when document is loaded graph needs to be shown
 }
 
+const DYNAMIC_PAGE_LOAD = "dynamicPageLoad"
+window.addEventListener(DYNAMIC_PAGE_LOAD, () => {
+  attachAllListeners()
+})
+
 window.addEventListener("DOMContentLoaded", () => {
   hljs.registerLanguage("scala", highlightDotty);
   hljs.registerAliases(["dotty", "scala3"], "scala");
-  attachAllListeners();
-});
+  window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD))
+})
 
 // show/hide side menu on mobile view
 const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
@@ -267,26 +310,18 @@ sideMenuToggler.addEventListener("click", (_e) => {
 });
 
 // show/hide mobile menu on mobile view
-document
-  .getElementById("mobile-menu-toggle")
-  .addEventListener("click", (_e) => {
-    document.getElementById("mobile-menu").classList.add("show");
-  });
-document.getElementById("mobile-menu-close").addEventListener("click", (_e) => {
-  document.getElementById("mobile-menu").classList.remove("show");
-});
+document.getElementById("mobile-menu-toggle").addEventListener('click', _e => {
+  document.getElementById("mobile-menu").classList.add("show")
+})
+document.getElementById("mobile-menu-close").addEventListener('click', _e => {
+  document.getElementById("mobile-menu").classList.remove("show")
+})
 
-window.addEventListener("popstate", (e) => {
-  if (e.state === null) {
-    return;
-  }
-  const { leftColumn, mainDiv, title } = e.state;
-  document.title = title;
-  const { children } = document.body.firstChild;
-  children[3].innerHTML = leftColumn;
-  children[6].innerHTML = mainDiv;
-  attachAllListeners();
-});
+window.addEventListener('popstate', e => {
+  if (e.state === null) { return }
+  loadPageState(document, e.state)
+  window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD))
+})
 
 var zoom;
 var transform;
