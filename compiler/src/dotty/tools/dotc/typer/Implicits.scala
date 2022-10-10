@@ -627,6 +627,9 @@ trait ImplicitRunInfo:
               traverse(t.underlying)
             case t: TermParamRef =>
               traverse(t.underlying)
+            case t: TypeLambda =>
+              for p <- t.paramRefs do partSeen += p
+              traverseChildren(t)
             case t =>
               traverseChildren(t)
 
