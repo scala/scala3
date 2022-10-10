@@ -29,9 +29,12 @@
 
 @media (min-width: 1920px) {
   #content {
-    width: calc(90 * var(--base-spacing));
     padding-left: calc(36.75 * var(--base-spacing));
     padding-top: calc(18 * var(--base-spacing));
+  }
+
+  #content > div:first-child {
+    width: calc(90 * var(--base-spacing));
   }
 }
 
@@ -170,6 +173,10 @@
 /* content list */
 #content li {
   color: var(--text-primary);
+}
+
+#content li > ul {
+  padding-left: 32px;
 }
 
 /* content table */
@@ -415,6 +422,11 @@
   margin-bottom: 0;
 }
 
+#attributes > h2 {
+  margin-bottom: calc(3*var(--base-spacing));
+}
+
+
 .tab {
   position: relative;
 }
@@ -461,6 +473,8 @@
 .documentableList.expand .documentableElement {
   display: block;
 }
+
+
 
 #content section {
   margin-top: calc(6 * var(--base-spacing));

@@ -15,6 +15,11 @@
 
 .snippet pre {
   margin: 0;
+  line-height: 20px;
+}
+
+dd .snippet {
+  margin: 0;
 }
 
 .snippet .hidden {

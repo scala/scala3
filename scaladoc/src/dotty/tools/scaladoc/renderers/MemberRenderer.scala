@@ -156,7 +156,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val signature: MemberSignature = signatureProvider.rawSignature(member)()
     Seq(
-      div(cls := "signature mono-small-inline")(
+      div(cls := "signature mono-medium")(
         span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
         span(cls := "kind")(signature.kind.map(renderElement(_))),
         signature.name.map(renderElement(_, nameClasses*)),
@@ -404,7 +404,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
       def signatureList(list: Seq[LinkToType], className: String = "", expandable: Boolean): Seq[AppliedTag] =
         if list.isEmpty then Nil
-         else Seq(div(cls := s"mono-small-inline $className")(
+         else Seq(div(cls := s"mono-medium $className")(
           if(expandable) then span(cls := "icon-button show-content") else span(),
          list.map(link =>
           div(link.kind.name," ", link.signature.map(renderElement(_)))
@@ -469,7 +469,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           )
         ) ++ companionBadge(m) ++
         Seq(
-          div(cls := "main-signature mono-medium")(
+          div(cls := "main-signature mono-small-block")(
             annotations(m).getOrElse(Nil),
             memberSignature(m)
           )
@@ -478,11 +478,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val memberContent = div(
       intro,
       memberInfo(m, withAttributes = true),
-      section(id := "members-list")(
-        h2(cls := "h500")("Members list"),
-        buildDocumentableFilter,
-        buildMembers(m)
-      )
+      if m.members.length > 0 then
+        Seq(section(id := "members-list")(
+          h2(cls := "h500")("Members list"),
+          buildDocumentableFilter,
+          buildMembers(m)
+        ))
+      else Nil
     )
 
     val memberDocument = Jsoup.parse(memberContent.toString)

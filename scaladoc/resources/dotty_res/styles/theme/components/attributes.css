@@ -3,7 +3,6 @@
   overflow: hidden;
   padding: 0;
   margin: 0;
-  border-bottom: 1px solid var(--border-default);
   margin-bottom: calc(6 * var(--base-spacing));
 }
 
@@ -18,11 +17,8 @@
 .attributes > dt {
   float: left;
   width: 20%;
-  padding: 0;
-  margin: 0;
+  padding: 20px 0;
   border-top: 1px solid var(--border-default);
-  padding-top: calc(2.5 * var(--base-spacing));
-  padding-bottom: calc(2.5 * var(--base-spacing));
   text-align: right;
   color: var(--text-secondary);
 }
@@ -35,6 +31,11 @@
   border-top: 1px solid var(--border-default);
   padding-top: calc(2.5 * var(--base-spacing));
   padding-bottom: calc(2.5 * var(--base-spacing));
+}
+
+.attributes > dt:first-child,
+.attributes > dd:first-of-type {
+  border-top: none;
 }
 
 .attributes > dd > .attributes > dt {
@@ -51,6 +52,4 @@
   width: 80%;
 }
 
-.documentableElement .attributes {
-  margin-bottom: 0;
-}
+

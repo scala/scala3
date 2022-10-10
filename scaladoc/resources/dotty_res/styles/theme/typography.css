@@ -1,5 +1,6 @@
 * {
   text-rendering: geometricPrecision;
+  font-weight: initial;
 }
 
 @font-face {
