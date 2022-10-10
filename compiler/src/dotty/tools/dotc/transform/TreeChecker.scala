@@ -498,6 +498,7 @@ class TreeChecker extends Phase with SymTransformer {
       def isAllowed(sym: Symbol): Boolean = sym.is(ConstructorProxy)
 
       val symbolsNotDefined = (decls -- defined - constr.symbol).filterNot(isAllowed)
+
       assert(symbolsNotDefined.isEmpty,
         i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
         i"expected: ${decls.toList}%, %\n" +

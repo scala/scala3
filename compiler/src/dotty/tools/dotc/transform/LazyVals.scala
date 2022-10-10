@@ -27,14 +27,9 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   /**
    * The map contains the list of the offset trees.
    */
-  class OffsetInfo(var defs: List[Tree])
-  /** 
-   * This map contains mutable state of transformation: OffsetDefs to be appended 
-   * to companion object definitions, and number of bits currently used. 
-   */
-  class LegacyOffsetInfo(defs: List[Tree], var ord: Int) extends OffsetInfo(defs)
+  class OffsetInfo(var defs: List[Tree], var ord: Int = 0)
+
   private val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
-  private val oldAppendOffsetDefs = mutable.Map.empty[Symbol, LegacyOffsetInfo]
 
   override def phaseName: String = LazyVals.name
 
@@ -60,11 +55,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     else nullables.toList
   }
 
-  private def needsBoxing(tp: Type)(using Context): Boolean = tp != NoType && tp != defn.UnitType && tp.classSymbol.isPrimitiveValueClass
-    
-  private def boxIfCan(tp: Type)(using Context): Type =
-    assert(needsBoxing(tp))
-    defn.boxedType(tp)
+  private def needsBoxing(tp: Type)(using Context): Boolean = tp.classSymbol.isPrimitiveValueClass
 
   override def prepareForUnit(tree: Tree)(using Context): Context = {
     if (lazyValNullables == null)
@@ -113,12 +104,12 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     }
   }
 
-  /** 
-   * Append offset fields to companion objects.
+
+  /** Append offset fields to companion objects
    */
   override def transformTemplate(template: Template)(using Context): Tree = {
     val cls = ctx.owner.asClass
-    (if !ctx.settings.YlightweightLazyVals.value then oldAppendOffsetDefs else appendOffsetDefs).get(cls) match {
+    appendOffsetDefs.get(cls) match {
       case None => template
       case Some(data) =>
         data.defs.foreach(_.symbol.addAnnotation(Annotation(defn.ScalaStaticAnnot)))
@@ -131,10 +122,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     case _ => prefix ::: stats
   }
 
-  /** 
-   * Make an eager val that would implement synthetic module.
-   * Eager val ensures thread safety and has less code generated.
-   */
+  /** Make an eager val that would implement synthetic module.
+    * Eager val ensures thread safety and has less code generated.
+    *
+    */
   def transformSyntheticModule(tree: ValOrDefDef)(using Context): Thicket = {
     val sym = tree.symbol
     val holderSymbol = newSymbol(sym.owner, LazyLocalName.fresh(sym.asTerm.name),
@@ -144,8 +135,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     Thicket(field, getter)
   }
 
-  /** 
-   * Desugar a local `lazy val x: Int = <RHS>` into:
+  /** Desugar a local `lazy val x: Int = <RHS>` into:
    *
    *  ```
    *  val x$lzy = new scala.runtime.LazyInt()
@@ -285,132 +275,99 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
   /**
-   * Create a threadsafe lazy accessor equivalent to the following code:
+   * Create a threadsafe lazy accessor and function that computes the field's value. `Evaluating` and
+   * `NullValue` are represented by `object`s and `Waiting` by a class that allows awaiting the completion
+   * of the evaluation. Note that since tail-recursive functions are transformed *before* lazy-vals,
+   * this implementation does involve explicit while loop. `PatternMatcher` is coming before `LazyVals`,
+   * therefore the pattern matching is implemented using if-s.
+   *
    * ```
    * private @volatile var _x: AnyRef = null
-   * @tailrec def x: A =
-   *   _x match
-   *   case current: A => 
-   *     current
-   *   case NullValue => null
-   *   case null =>
-   *     if CAS(_x, null, Evaluating) then
-   *       var result: AnyRef = null // here, we need `AnyRef` to possibly assign `NullValue`
-   *       try
-   *         result = rhs
-   *         nullable = null // if the field is nullable; see `CollectNullableFields`
-   *       finally
-   *         if result == null then result = NullValue // drop if A is non-nullable
-   *         if !CAS(_x, Evaluating, result) then
-   *           val lock = _x.asInstanceOf[Waiting]
-   *           CAS(_x, lock, result)
-   *           lock.release()
-   *     x
-   *   case Evaluating =>
-   *     CAS(_x, Evaluating, new Waiting)
-   *     x
-   *   case current: Waiting =>
-   *     current.awaitRelease()
-   *     x
-   * ```
-   * Where `Evaluating` and `NullValue` are represented by `object`s and `Waiting` by a class that
-   * allows awaiting the completion of the evaluation. Note that since tail-recursive
-   * functions are transformed *before* lazy-vals, this implementation directly implements
-   * the resulting loop. `PatternMatcher` coming before `LazyVals`, the pattern matching block
-   * is implemented using if-s. Additionally, the code can be optimized to be better inlined by 
-   * introducing separate function for computing the lazy value and awaiting it. That is:
-   * 
-   * ```
-   * private var _x: AnyRef = null
    * 
    * def x: A =
-   *   if !(_x == null || _x.isInstanceOf[LazyValControlState]) then
-   *     return _x.asInstanceOf[A]
-   *   else if _x == NullValue then
-   *     return null
-   *   else 
-   *     return x_compute()
+   *   val result = _x
+   *   if result.isInstanceOf[A] then
+   *     result // possible unboxing applied here
+   *   else if result.eq(NullValue) then
+   *     null // possible unboxing applied here
+   *   else
+   *     x_compute() // possible unboxing applied here
    * 
-   * private def x_compute() = 
+   * private def x_compute(): AnyRef =
    *   while <EmptyTree> do
    *     val current: AnyRef = _x
-   *     if current == null then
+   *     if current.eq(null) then
    *       if CAS(_x, null, Evaluating) then
    *         var resultNullable: AnyRef = null
    *         var result: AnyRef = null
    *         try
    *           resultNullable = rhs
-   *           nullable = null
-   *           if resultNullable == null then
+   *           nullable = null // nulls out the nullable fields used only in initialization
+   *           if resultNullable.eq(null) then
    *             result = NullValue
    *           else
    *             result = resultNullable
-   *           return result
    *         finally
    *            if !CAS(_x, Evaluating, result) then
    *              val lock = _x.asInstanceOf[Waiting]
    *              CAS(_x, lock, result)
    *              lock.release()
+   *         return resultNullable
    *     else
    *       if current.isInstanceOf[LazyValControlState] then
-   *         if current.isInstanceOf[Evaluating] then // To avoid creating Waiting instance
-   *           CAS(current, Evaluating, new Waiting)
-   *         else if current.isInstanceOf[NullValue] then
-   *           return null
+   *         if current.eq(Evaluating) then // To avoid creating Waiting instance
+   *           CAS(current, current, new Waiting)
    *         else if current.isInstanceOf[Waiting] then
    *           current.asInstanceOf[Waiting].await()
+   *         else return null
    *       else
-   *         return current.asInstanceOf[A]
+   *         return current
    *   end while
    *  * ```
-   * 
+   *
    * @param memberDef     the transformed lazy field member definition
    * @param claz          the class containing this lazy val field
    * @param target        the target synthetic field
    * @param offset        the offset of the field in the storage allocation of the class
    * @param thiz          a reference to the transformed class
-   * @param helperModule  the symbol of the runtime LazyVals helper module
-   * @param runtimeModule the runtime LazyVals module path
-
    */
   def mkThreadSafeDef(memberDef: ValOrDefDef,
                       claz: ClassSymbol,
                       target: Symbol,
                       offset: Tree,
-                      thiz: Tree,
-                      helperModule: TermSymbol,
-                      runtimeModule: String)(using Context): (DefDef, DefDef) = {
-    val tp = memberDef.tpe.widen.resultType.widen
-    val waiting = ref(requiredClass(s"$runtimeModule.${lazyNme.RLazyVals.waiting}"))
-    val controlState = ref(requiredClass(s"$runtimeModule.${lazyNme.RLazyVals.controlState}"))
-    val evaluating = Select(ref(helperModule), lazyNme.RLazyVals.evaluating)
-    val nullValue = Select(ref(helperModule), lazyNme.RLazyVals.nullValue)
-    val objCasFlag = Select(ref(helperModule), lazyNme.RLazyVals.objCas)
+                      thiz: Tree)(using Context): (DefDef, DefDef) = {
+    val tp = memberDef.tpe.widenDealias.resultType.widenDealias
+    val waiting = ref(defn.LazyValsWaitingState)
+    val controlState = ref(defn.LazyValsControlState)
+    val evaluating = Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.evaluating)
+    val nullValue = Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.nullValue)
+    val objCasFlag = Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.objCas)
     val accessorMethodSymbol = memberDef.symbol.asTerm
     val lazyInitMethodName = LazyLocalInitName.fresh(memberDef.name.asTermName)
     val lazyInitMethodSymbol = newSymbol(claz, lazyInitMethodName, Synthetic | Method | Private, MethodType(Nil)(_ => Nil, _ => defn.ObjectType))
 
     val rhs = memberDef.rhs
     val rhsMappedOwner = rhs.changeOwnerAfter(memberDef.symbol, lazyInitMethodSymbol, this)
-    val valueSymbol = newSymbol(accessorMethodSymbol, lazyNme.result, Synthetic | Mutable, defn.ObjectType)
+    val valueSymbol = newSymbol(accessorMethodSymbol, lazyNme.result, Synthetic, defn.ObjectType)
 
     val immediateValueCondition =
-      if (controlState.tpe <:< tp) then
-        ref(valueSymbol).select(defn.Any_!=).appliedTo(nullLiteral).select(nme.And).appliedTo(ref(valueSymbol).select(defn.Any_isInstanceOf).appliedToTypeTree(controlState)
+      if (defn.LazyValsControlState.isSubClass(tp.classSymbol)) then
+        ref(valueSymbol).select(defn.Any_!=).appliedTo(nullLiteral).select(nme.And).appliedTo(ref(valueSymbol)
+          .select(defn.Any_isInstanceOf).appliedToType(defn.LazyValsControlState.typeRef)
           .select(nme.UNARY_!).appliedToNone)
       else
-        ref(valueSymbol).select(defn.Any_isInstanceOf).appliedToTypeTree(TypeTree(tp))
+        ref(valueSymbol).select(defn.Any_isInstanceOf).appliedToType(tp)
 
     val accessorBody =
       Block(
         ValDef(valueSymbol, ref(target)) :: Nil,
         If( // if _x != null && !_x.isInstanceOf[LazyValControlState] then
           immediateValueCondition,
-            Return(ref(valueSymbol).ensureConforms(tp), accessorMethodSymbol), // then return _x.asInstanceOf[A]
+            ref(valueSymbol).ensureConforms(tp), // then return _x.asInstanceOf[A]
             If(
-              ref(valueSymbol).select(defn.Any_==).appliedTo(nullValue),
-              Return(nullLiteral.ensureConforms(tp), accessorMethodSymbol),
-              Return(ref(lazyInitMethodSymbol).ensureApplied.ensureConforms(tp), accessorMethodSymbol) // else return x_compute()
+              ref(valueSymbol).select(defn.Object_eq).appliedTo(nullValue),
+              nullLiteral.ensureConforms(tp),
+              ref(lazyInitMethodSymbol).ensureApplied.ensureConforms(tp) // else return x_compute()
             )
         )
       )
@@ -430,31 +387,31 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
           ref(lockSymb).select(lazyNme.RLazyVals.waitingRelease).ensureApplied)
       }
       // finally block
-      val fin = Block(If(
+      val fin = If(
           objCasFlag.appliedTo(thiz, offset, evaluating, ref(resSymb)).select(nme.UNARY_!).appliedToNone,
           lockRel,
           unitLiteral
-        ) :: Nil, unitLiteral).withType(defn.UnitType)
+        )
       // entire try block
       val evaluate = Try(
 
         Block(
-          (Assign(ref(resSymbNullable), if needsBoxing(tp) && rhsMappedOwner != EmptyTree then rhsMappedOwner.ensureConforms(boxIfCan(tp)) else rhsMappedOwner) // try result = rhs
+          (Assign(ref(resSymbNullable), if needsBoxing(tp) && rhsMappedOwner != EmptyTree then rhsMappedOwner.ensureConforms(defn.boxedType(tp)) else rhsMappedOwner) // try result = rhs
           :: If(
-              ref(resSymbNullable).select(defn.Any_==).appliedTo(nullLiteral),
+              ref(resSymbNullable).select(defn.Object_eq).appliedTo(nullLiteral),
               Assign(ref(resSymb), nullValue),
               Assign(ref(resSymb), ref(resSymbNullable))
           ) :: Nil)
           ::: nullOut(nullableFor(accessorMethodSymbol)),
-          Return(ref(resSymbNullable), lazyInitMethodSymbol)),
+          unitLiteral),
         Nil,
         fin
       )
       // if CAS(_, null, Evaluating)
       If(
         objCasFlag.appliedTo(thiz, offset, nullLiteral, evaluating),
-        Block(ValDef(resSymb, nullLiteral) :: ValDef(resSymbNullable, nullLiteral) :: Nil, // var result: AnyRef = null
-          evaluate), // try ... finally ...
+        Block(ValDef(resSymb, nullLiteral) :: ValDef(resSymbNullable, nullLiteral) :: evaluate :: Nil, // var result: AnyRef = null
+          Return(ref(resSymbNullable), lazyInitMethodSymbol)),
         unitLiteral
       ).withType(defn.UnitType)
     }
@@ -465,10 +422,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         ref(current).select(defn.Any_isInstanceOf).appliedToTypeTree(controlState),
           // if a control state
           If(
-            ref(current).select(defn.Any_==).appliedTo(evaluating),
+            ref(current).select(defn.Object_eq).appliedTo(evaluating),
             // if is Evaluating then CAS(_, Evaluating, new Waiting)
             Block(
-              objCasFlag.appliedTo(thiz, offset, evaluating, Select(New(waiting), StdNames.nme.CONSTRUCTOR).ensureApplied) :: Nil,
+              objCasFlag.appliedTo(thiz, offset, ref(current), Select(New(waiting), StdNames.nme.CONSTRUCTOR).ensureApplied) :: Nil,
               unitLiteral
             ),
             // if not Evaluating
@@ -476,17 +433,14 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
               ref(current).select(defn.Any_isInstanceOf).appliedToTypeTree(waiting),
               // if is waiting
               ref(current).select(defn.Any_asInstanceOf).appliedToTypeTree(waiting).select(lazyNme.RLazyVals.waitingAwaitRelease, _.info.paramInfoss.exists(_.size == 0)).ensureApplied,
-              If(ref(current).select(defn.Any_==).appliedTo(nullValue),
-                Return(nullLiteral, lazyInitMethodSymbol),
-                unitLiteral
-              )
+              Return(nullLiteral, lazyInitMethodSymbol)
             )
           ),
         // if not a control state
         Return(ref(current), lazyInitMethodSymbol)
       )
 
-    val initBody = Block(ValDef(current, ref(target)) :: Nil, If(ref(current).equal(nullLiteral), initialize, ifNotUninitialized).withType(defn.UnitType))
+    val initBody = Block(ValDef(current, ref(target)) :: Nil, If(ref(current).select(defn.Object_eq).appliedTo(nullLiteral), initialize, ifNotUninitialized).withType(defn.UnitType))
     val initMainLoop = WhileDo(EmptyTree, initBody) // becomes: while (true) do { body }
     val initMethodDef = DefDef(lazyInitMethodSymbol, initMainLoop)
     (accessorDef, initMethodDef)
@@ -504,15 +458,12 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     import dotty.tools.dotc.core.Types._
     import dotty.tools.dotc.core.Flags._
 
-    val runtimeModule = "scala.runtime.LazyVals"
     val claz = x.symbol.owner.asClass
     val thizClass = Literal(Constant(claz.info))
-    val helperModule = requiredModule(runtimeModule)
-    var offsetSymbol: TermSymbol | Null = null
 
     def offsetName(id: Int) = s"${StdNames.nme.LAZY_FIELD_OFFSET}${if (x.symbol.owner.is(Module)) "_m_" else ""}$id".toTermName
     val containerName = LazyLocalName.fresh(x.name.asTermName)
-    val containerSymbol = newSymbol(claz, containerName, containerFlags, defn.ObjectType).enteredAfter(this)
+    val containerSymbol = newSymbol(claz, containerName, x.symbol.flags &~ containerFlagsMask | containerFlags | Private, defn.ObjectType, coord = x.symbol.coord).enteredAfter(this)
     containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot)) // private @volatile var _x: AnyRef
     containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
     val stat = x.symbol.isStatic
@@ -520,26 +471,22 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       containerSymbol.setFlag(JavaStatic)
     val getOffset =
       if stat then
-        Select(ref(helperModule), lazyNme.RLazyVals.getStaticFieldOffset)
+        Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getStaticFieldOffset)
       else
-        Select(ref(helperModule), lazyNme.RLazyVals.getOffsetStatic)
+        Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getOffsetStatic)
     val containerTree = ValDef(containerSymbol, nullLiteral)
 
     // create an offset for this lazy val
-    appendOffsetDefs.get(claz) match
+    val offsetSymbol: TermSymbol = appendOffsetDefs.get(claz) match
       case Some(info) =>
-        offsetSymbol = newSymbol(claz, offsetName(info.defs.size), Synthetic, defn.LongType).enteredAfter(this)
-        offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-        val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(containerName.mangledString)))
-        val offsetTree = ValDef(offsetSymbol.nn, getOffset.appliedTo(fieldTree))
-        info.defs = offsetTree :: info.defs
+        newSymbol(claz, offsetName(info.defs.size), Synthetic, defn.LongType).enteredAfter(this)
       case None =>
-        offsetSymbol = newSymbol(claz, offsetName(0), Synthetic, defn.LongType).enteredAfter(this)
-        offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-        val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(containerName.mangledString)))
-        val offsetTree = ValDef(offsetSymbol.nn, getOffset.appliedTo(fieldTree))
-        appendOffsetDefs += (claz -> new OffsetInfo(List(offsetTree)))
-    
+        newSymbol(claz, offsetName(0), Synthetic, defn.LongType).enteredAfter(this)
+    offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot))
+    val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(containerName.mangledString)))
+    val offsetTree = ValDef(offsetSymbol.nn, getOffset.appliedTo(fieldTree))
+    val offsetInfo = appendOffsetDefs.getOrElseUpdate(claz, new OffsetInfo(Nil))
+    offsetInfo.defs = offsetTree :: offsetInfo.defs
     val offset = ref(offsetSymbol.nn)
 
     val swapOver =
@@ -548,7 +495,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       else
         This(claz)
 
-    val (accessorDef, initMethodDef) = mkThreadSafeDef(x, claz, containerSymbol, offset, swapOver, helperModule, runtimeModule)
+    val (accessorDef, initMethodDef) = mkThreadSafeDef(x, claz, containerSymbol, offset, swapOver)
     Thicket(containerTree, accessorDef, initMethodDef)
   }
 
@@ -656,9 +603,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val tpe = x.tpe.widen.resultType.widen
     val claz = x.symbol.owner.asClass
     val thizClass = Literal(Constant(claz.info))
-    val helperModule = requiredModule("scala.runtime.LazyVals")
-    val getOffset = Select(ref(helperModule), lazyNme.RLazyVals.getOffset)
-    val getOffsetStatic = Select(ref(helperModule), lazyNme.RLazyVals.getOffsetStatic)
+    val getOffset = Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getOffset)
+    val getOffsetStatic = Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getOffsetStatic)
     var offsetSymbol: TermSymbol | Null = null
     var flag: Tree = EmptyTree
     var ord = 0
@@ -666,7 +612,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     def offsetName(id: Int) = s"${StdNames.nme.LAZY_FIELD_OFFSET}${if (x.symbol.owner.is(Module)) "_m_" else ""}$id".toTermName
 
     // compute or create appropriate offsetSymbol, bitmap and bits used by current ValDef
-    oldAppendOffsetDefs.get(claz) match {
+    appendOffsetDefs.get(claz) match {
       case Some(info) =>
         val flagsPerLong = (64 / scala.runtime.LazyVals.BITS_PER_LAZY_VAL).toInt
         info.ord += 1
@@ -696,20 +642,19 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         flag = ValDef(flagSymbol, Literal(Constant(0L)))
         val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(flagName.toString)))
         val offsetTree = ValDef(offsetSymbol.nn, getOffsetStatic.appliedTo(fieldTree))
-        oldAppendOffsetDefs += (claz -> new LegacyOffsetInfo(List(offsetTree), ord))
+        appendOffsetDefs += (claz -> new OffsetInfo(List(offsetTree), ord))
     }
 
     val containerName = LazyLocalName.fresh(x.name.asTermName)
     val containerSymbol = newSymbol(claz, containerName, x.symbol.flags &~ containerFlagsMask | containerFlags, tpe, coord = x.symbol.coord).enteredAfter(this)
-
     val containerTree = ValDef(containerSymbol, defaultValue(tpe))
 
     val offset =  ref(offsetSymbol.nn)
-    val getFlag = Select(ref(helperModule), lazyNme.RLazyVals.get)
-    val setFlag = Select(ref(helperModule), lazyNme.RLazyVals.setFlag)
-    val wait =    Select(ref(helperModule), lazyNme.RLazyVals.wait4Notification)
-    val state =   Select(ref(helperModule), lazyNme.RLazyVals.state)
-    val cas =     Select(ref(helperModule), lazyNme.RLazyVals.cas)
+    val getFlag = Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.get)
+    val setFlag = Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.setFlag)
+    val wait =    Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.wait4Notification)
+    val state =   Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.state)
+    val cas =     Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.cas)
 
     val accessor = mkThreadSafeDefLegacy(x.symbol.asTerm, claz, ord, containerSymbol, x.rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
     if (flag eq EmptyTree)
@@ -725,22 +670,20 @@ object LazyVals {
     import Names.TermName
     object RLazyVals {
       import scala.runtime.LazyVals.{Names => N}
-      val waiting: TermName                = N.waiting.toTermName
-      val waitingAwaitRelease: TermName    = N.waitingAwaitRelease.toTermName
-      val waitingRelease: TermName         = N.waitingRelease.toTermName
-      val evaluating: TermName             = N.evaluating.toTermName
-      val controlState: TermName           = N.controlState.toTermName
-      val nullValue: TermName             = N.nullValue.toTermName
-      val objCas: TermName                 = N.objCas.toTermName
-      val getStaticFieldOffset: TermName   = N.getStaticFieldOffset.toTermName
-      val get: TermName               = N.get.toTermName
-      val setFlag: TermName           = N.setFlag.toTermName
-      val wait4Notification: TermName = N.wait4Notification.toTermName
-      val state: TermName             = N.state.toTermName
-      val cas: TermName               = N.cas.toTermName
-      val getOffset: TermName         = N.getOffset.toTermName
-      val getOffsetStatic: TermName   = N.getOffsetStatic.toTermName
-      val getDeclaredField: TermName  = "getDeclaredField".toTermName
+      val waitingAwaitRelease: TermName    = "await".toTermName
+      val waitingRelease: TermName         = "countDown".toTermName
+      val evaluating: TermName             = "Evaluating".toTermName
+      val nullValue: TermName              = "NullValue".toTermName
+      val objCas: TermName                 = "objCAS".toTermName
+      val get: TermName                    = N.get.toTermName
+      val setFlag: TermName                = N.setFlag.toTermName
+      val wait4Notification: TermName       = N.wait4Notification.toTermName
+      val state: TermName                  = N.state.toTermName
+      val cas: TermName                    = N.cas.toTermName
+      val getOffset: TermName              = N.getOffset.toTermName
+      val getOffsetStatic: TermName        = "getOffsetStatic".toTermName
+      val getStaticFieldOffset: TermName   = "getStaticFieldOffset".toTermName
+      val getDeclaredField: TermName       = "getDeclaredField".toTermName
     }
     val flag: TermName        = "flag".toTermName
     val state: TermName       = "state".toTermName

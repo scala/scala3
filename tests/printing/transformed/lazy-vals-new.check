@@ -22,20 +22,20 @@ package <empty> {
       )
     private def writeReplace(): Object = 
       new scala.runtime.ModuleSerializationProxy(classOf[A])
-    @volatile lazy <static> var x$lzy1: Object = null
+    @volatile private lazy <static> var x$lzy1: Object = null
     lazy def x(): Int = 
       {
-        var result: Object = A#x$lzy1
-        if result.isInstanceOf[Int] then return scala.Int.unbox(result) else 
-          if result.==(scala.runtime.LazyVals.NullValue) then 
-            return scala.Int.unbox(null)
-           else return scala.Int.unbox(A.x$lzyINIT1())
+        val result: Object = A#x$lzy1
+        if result.isInstanceOf[Int] then scala.Int.unbox(result) else 
+          if result.eq(scala.runtime.LazyVals.NullValue) then 
+            scala.Int.unbox(null)
+           else scala.Int.unbox(A.x$lzyINIT1())
       }
     private def x$lzyINIT1(): Object = 
       while <empty> do 
         {
           val current: Object = A#x$lzy1
-          if current.==(null) then 
+          if current.eq(null) then 
             if 
               scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, null, 
                 scala.runtime.LazyVals.Evaluating
@@ -47,31 +47,29 @@ package <empty> {
                 try 
                   {
                     resultNullable = scala.Int.box(2)
-                    if resultNullable.==(null) then 
+                    if resultNullable.eq(null) then 
                       result = scala.runtime.LazyVals.NullValue
                      else result = resultNullable
-                    return resultNullable
-                  }
-                 finally 
-                  {
-                    if 
-                      scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
-                        scala.runtime.LazyVals.Evaluating
-                      , result).unary_!()
-                     then 
-                      {
-                        val lock: scala.runtime.LazyVals.LazyVals$Waiting = 
-                          A#x$lzy1.asInstanceOf[
-                            scala.runtime.LazyVals.LazyVals$Waiting
-                          ]
-                        scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0
-                          , 
-                        lock, result)
-                        lock.countDown()
-                      }
-                     else ()
                     ()
                   }
+                 finally 
+                  if 
+                    scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
+                      scala.runtime.LazyVals.Evaluating
+                    , result).unary_!()
+                   then 
+                    {
+                      val lock: scala.runtime.LazyVals.LazyVals$Waiting = 
+                        A#x$lzy1.asInstanceOf[
+                          scala.runtime.LazyVals.LazyVals$Waiting
+                        ]
+                      scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
+                        lock
+                      , result)
+                      lock.countDown()
+                    }
+                   else ()
+                return resultNullable
               }
              else ()
            else 
@@ -80,10 +78,10 @@ package <empty> {
                 scala.runtime.LazyVals.LazyVals$LazyValControlState
               ]
              then 
-              if current.==(scala.runtime.LazyVals.Evaluating) then 
+              if current.eq(scala.runtime.LazyVals.Evaluating) then 
                 {
                   scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, 
-                    scala.runtime.LazyVals.Evaluating
+                    current
                   , new scala.runtime.LazyVals.LazyVals$Waiting())
                   ()
                 }
@@ -94,10 +92,7 @@ package <empty> {
                   current.asInstanceOf[scala.runtime.LazyVals.LazyVals$Waiting].
                     await
                   ()
-                 else 
-                  if current.==(scala.runtime.LazyVals.NullValue) then 
-                    return null
-                   else ()
+                 else return null
              else return current
         }
   }

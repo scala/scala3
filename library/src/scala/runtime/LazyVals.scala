@@ -163,20 +163,11 @@ object LazyVals {
 
 
   object Names {
-    final val controlState = "LazyValControlState"
-    final val waiting = "Waiting"
-    final val evaluating = "Evaluating"
-    final val nullValue = "NullValue"
-    final val waitingAwaitRelease = "await"
-    final val waitingRelease = "countDown"
     final val state = "STATE"
     final val cas = "CAS"
-    final val objCas = "objCAS"
     final val setFlag = "setFlag"
     final val wait4Notification = "wait4Notification"
     final val get = "get"
     final val getOffset = "getOffset"
-    final val getOffsetStatic = "getOffsetStatic"
-    final val getStaticFieldOffset = "getStaticFieldOffset"
   }
 }
