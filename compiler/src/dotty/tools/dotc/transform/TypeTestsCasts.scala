@@ -31,7 +31,8 @@ object TypeTestsCasts {
   import typer.Inferencing.maximizeType
   import typer.ProtoTypes.constrained
 
-  /** Whether `(x: X).isInstanceOf[P]` can be checked at runtime?
+  /** Tests whether `(x: X).isInstanceOf[P]` is uncheckable at runtime, returning the reason,
+   *  or the empty string if it is checkable.
    *
    *  First do the following substitution:
    *  (a) replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType
@@ -52,7 +53,7 @@ object TypeTestsCasts {
    *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, "it's a local class"
    *  9. otherwise, ""
    */
-  def checkable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
+  def whyUncheckable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
     extension (inline s1: String) inline def &&(inline s2: String): String = if s1 == "" then s2 else s1
     extension (inline b: Boolean) inline def |||(inline s: String): String = if b then "" else s
 
@@ -354,10 +355,11 @@ object TypeTestsCasts {
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
-          val unchecked = expr.tpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
-          val uncheckable = if isTrusted || unchecked then "" else checkable(expr.tpe, argType, tree.span)
-          if (uncheckable != "")
-            report.uncheckedWarning(i"the type test for $argType cannot be checked at runtime because $uncheckable", expr.srcPos)
+          val isUnchecked = expr.tpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
+          if !isTrusted && !isUnchecked then
+            val whyNot = whyUncheckable(expr.tpe, argType, tree.span)
+            if whyNot.nonEmpty then
+              report.uncheckedWarning(i"the type test for $argType cannot be checked at runtime because $whyNot", expr.srcPos)
           transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }
