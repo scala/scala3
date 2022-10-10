@@ -580,12 +580,8 @@ trait Applications extends Compatibility {
             else
               formals1
 
-          def missingArg(n: Int): Unit = {
-            val pname = methodType.paramNames(n)
-            fail(
-              if (pname.firstPart contains '$') s"not enough arguments for $methString"
-              else s"missing argument for parameter $pname of $methString")
-          }
+          def missingArg(n: Int): Unit =
+            fail(MissingArgument(methodType.paramNames(n), methString))
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
             val sym = methRef.symbol
