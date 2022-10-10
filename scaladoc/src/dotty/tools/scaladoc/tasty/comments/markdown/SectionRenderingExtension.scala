@@ -1,17 +1,19 @@
 package dotty.tools.scaladoc
 package tasty.comments.markdown
 
-import com.vladsch.flexmark.html._
-import com.vladsch.flexmark.html.renderer._
-import com.vladsch.flexmark.parser._
-import com.vladsch.flexmark.ext.wikilink._
+import com.vladsch.flexmark.html.*
+import com.vladsch.flexmark.html.renderer.*
+import com.vladsch.flexmark.parser.*
+import com.vladsch.flexmark.ext.wikilink.*
 import com.vladsch.flexmark.ext.wikilink.internal.WikiLinkLinkRefProcessor
-import com.vladsch.flexmark.util.ast._
-import com.vladsch.flexmark.util.options._
+import com.vladsch.flexmark.util.ast.*
+import com.vladsch.flexmark.util.options.*
 import com.vladsch.flexmark.util.sequence.BasedSequence
-import com.vladsch.flexmark.util.html.{ AttributeImpl, Attributes }
-import com.vladsch.flexmark._
+import com.vladsch.flexmark.util.html.{AttributeImpl, Attributes}
+import com.vladsch.flexmark.*
 import com.vladsch.flexmark.ast.FencedCodeBlock
+
+import scala.collection.mutable
 
 
 object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
@@ -19,10 +21,14 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
 
   case class AnchorLink(link: String) extends BlankLine(BasedSequence.EmptyBasedSequence())
   object SectionHandler extends CustomNodeRenderer[Section]:
+    val repeatedIds: mutable.Map[(NodeRendererContext, BasedSequence), Int] = mutable.Map()
     val idGenerator = new HeaderIdGenerator.Factory().create()
     override def render(node: Section, c: NodeRendererContext, html: HtmlWriter): Unit =
       val Section(header, body) = node
-      val id = idGenerator.getId(header.getText)
+      val idSuffix = repeatedIds.getOrElseUpdate((c, header.getText), 0)
+      val ifSuffixStr = if(idSuffix == 0) then "" else idSuffix.toString
+      repeatedIds.update((c, header.getText), repeatedIds((c, header.getText)) + 1)
+      val id = idGenerator.getId(header.getText.append(ifSuffixStr))
       val anchor = AnchorLink(s"#$id")
       val attributes = Attributes()
       val headerClass: String = header.getLevel match
