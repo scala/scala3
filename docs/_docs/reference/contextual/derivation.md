@@ -7,7 +7,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/derivation.ht
 Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple
 conditions. A type class in this sense is any trait or class with a type parameter determining the type being operated
 on. Common examples are `Eq`, `Ordering`, or `Show`. For example, given the following `Tree` algebraic data type
-(ADT),
+(ADT):
 
 ```scala
 enum Tree[T] derives Eq, Ordering, Show:
@@ -16,7 +16,7 @@ enum Tree[T] derives Eq, Ordering, Show:
 ```
 
 The `derives` clause generates the following given instances for the `Eq`, `Ordering` and `Show` type classes in the
-companion object of `Tree`,
+companion object of `Tree`:
 
 ```scala
 given [T: Eq]       : Eq[Tree[T]]       = Eq.derived
@@ -26,10 +26,20 @@ given [T: Show]     : Show[Tree[T]]     = Show.derived
 
 We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Show` instances are _derived instances_.
 
-## Types supporting `derives` clauses
+**Note:** The access to `derived` above is a normal access, therefore if there are multiple definitions of `derived` in the type class, overloading resolution applies.
+
+**Note:** `derived` can be used manually, this is useful when you do not have control over the definition. For example we can implement an `Ordering` for `Option`s like so:
+
+```scala
+given [T: Ordering]: Ordering[Option[T]] = Ordering.derived
+```
+
+It is discouraged to directly refer to the `derived` member if you can use a `derives` clause instead.
 
 All data types can have a `derives` clause. This document focuses primarily on data types which also have a given instance
 of the `Mirror` type class available.
+
+## `Mirror`
 
 `Mirror` type class instances provide information at the type level about the components and labelling of the type.
 They also provide minimal term level infrastructure to allow higher level libraries to provide comprehensive
@@ -158,15 +168,11 @@ Note the following properties of `Mirror` types,
 + The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
   which is obtained from `MirroredType` by wildcarding its type parameters.
 
-## Type classes supporting automatic deriving
+### Implementing `derived` with `Mirror`
 
-A trait or class can appear in a `derives` clause if its companion object defines a method named `derived`. The
-signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary but it is typically of the
-following form,
+As seen before, the signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary, but we expect it to typically be of the following form:
 
 ```scala
-import scala.deriving.Mirror
-
 inline def derived[T](using Mirror.Of[T]): TC[T] = ...
 ```
 
@@ -360,21 +366,7 @@ The framework described here enables all three of these approaches without manda
 For a brief discussion on how to use macros to write a type class `derived`
 method please read more at [How to write a type class `derived` method using macros](./derivation-macro.md).
 
-## Deriving instances elsewhere
-
-Sometimes one would like to derive a type class instance for an ADT after the ADT is defined, without being able to
-change the code of the ADT itself.  To do this, simply define an instance using the `derived` method of the type class
-as right-hand side. E.g, to implement `Ordering` for `Option` define,
-
-```scala
-given [T: Ordering]: Ordering[Option[T]] = Ordering.derived
-```
-
-Assuming the `Ordering.derived` method has a context parameter of type `Mirror[T]` it will be satisfied by the
-compiler generated `Mirror` instance for `Option` and the derivation of the instance will be expanded on the right
-hand side of this definition in the same way as an instance defined in ADT companion objects.
-
-## Syntax
+### Syntax
 
 ```
 Template          ::=  InheritClauses [TemplateBody]
