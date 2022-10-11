@@ -30,14 +30,15 @@ class CheckUnused extends Phase:
 
   override def description: String = CheckUnused.description
 
+  override def isRunnable(using Context): Boolean =
+    ctx.settings.WunusedHas.imports
+
   override def run(using Context): Unit =
     val tree = ctx.compilationUnit.tpdTree
     val data = UnusedData(ctx)
-    if data.neededChecks.nonEmpty then
-      // Execute checks if there exists at lease one config
-      val fresh = ctx.fresh.setProperty(_key, data)
-      traverser.traverse(tree)(using fresh)
-      reportUnusedImport(data.getUnused)
+    val fresh = ctx.fresh.setProperty(_key, data)
+    traverser.traverse(tree)(using fresh)
+    reportUnusedImport(data.getUnused)
 
   /**
    * This traverse is the **main** component of this phase
@@ -80,13 +81,6 @@ object CheckUnused:
   val description: String = "check for unused elements"
 
   /**
-    * Various supported configuration chosen by -Wunused:<config>
-    */
-  private enum UnusedConfig:
-    case UnusedImports
-    // TODO : handle other cases like unused local def
-
-  /**
    * A stateful class gathering the infos on :
    * - imports
    * - definitions
@@ -95,13 +89,6 @@ object CheckUnused:
   private class UnusedData(initctx: Context):
     import collection.mutable.{Set => MutSet, Map => MutMap, Stack, ListBuffer}
 
-    val neededChecks =
-      import UnusedConfig._
-      val hasConfig = initctx.settings.WunusedHas
-      val mut = MutSet[UnusedConfig]()
-      if hasConfig.imports(using initctx) then
-        mut += UnusedImports
-      mut.toSet
 
     private val used = Stack(MutSet[Int]())
     private val impInScope = Stack(MutMap[Int, ListBuffer[ImportSelector]]())
@@ -112,8 +99,7 @@ object CheckUnused:
       case _ => false
 
     /** Register the id of a found (used) symbol */
-    def registerUsed(id: Int): Unit =
-        used.top += id
+    def registerUsed(id: Int): Unit = used.top += id
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
