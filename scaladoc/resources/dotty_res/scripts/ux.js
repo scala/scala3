@@ -95,6 +95,7 @@ function attachAllListeners() {
     }
   }
 
+  //TODO tu nie dziala Kamil
   var memberLists = document.getElementsByClassName("tab");
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {

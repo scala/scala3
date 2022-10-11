@@ -194,7 +194,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     div(topLevelAttr:_*)(
       div(cls := "documentableElement-expander")(
-        Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button show-content")).toList,
+        Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button ar show-content")).toList,
         annots.map(div(_)).toList,
         div(cls := "header monospace")(memberSignature(member)),
       ),
@@ -213,10 +213,12 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
     if members.isEmpty then Nil else
-    div(cls := "documentableList expand")(
-      section(id := name.replace(' ', '-'))(
-        button(cls := "icon-button show-content expand"),
-        h3(cls := "groupHeader h200")(name),
+    section(id := name.replace(' ', '-'))(
+      div(cls := "documentableList expand")(
+        div(cls := "documentableList-expander")(
+          button(cls := "icon-button show-content expand"),
+          h3(cls := "groupHeader h200")(name)
+        ),
         members.sortBy {
           case m: Member => m.name
           case MGroup(_, _, name) => name
@@ -273,8 +275,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       name,
       name,
       Seq(
-        button(cls := "icon-button show-content expand"),
-        h2(tabAttr(name), cls := "h300")(name)
+        div(cls := "member-group-header")(
+          button(cls := "icon-button show-content expand"),
+          h2(tabAttr(name), cls := "h300")(name)
+        )
       ) ++ children,
       "expand"
     )
@@ -335,13 +339,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       }.toSeq
 
     div(cls := "membersList expand")(
-    div(cls := "body-small", id := "concise-view-switch")(
-      span("Concise view"),
-      label(cls := "switch")(
-        input(Attr("type") := "checkbox")(),
-        span(cls := "slider")()
-      )
-    ),
     renderTabs(
       singleSelection = false,
       buildGroup("Packages", Seq(
