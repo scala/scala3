@@ -13,11 +13,13 @@
 
   /* border */
   --border-default: var(--grey5);
-  --border-background-color: var(--grey1);
+  --border-strong: var(--grey7)
+  --border-background-color: var(--muave1);
 
   /* background */
   --background-default: var(--grey1);
-  --background-neutral: var(--grey2);
+  --background-subtle: var(--grey2);
+  --background-neutral: var(--grey3);
 
   /* action */
   --action-primary-content-default: var(--grey11);
@@ -26,10 +28,10 @@
   --action-primary-content-selected: var(--grey12);
 
   --action-primary-background-default-ghost: transparent;
-  --action-primary-background-default-solid: var(--grey2);
-  --action-primary-background-hover: var(--grey3);
-  --action-primary-background-active: var(--grey3);
-  --action-primary-background-selected: var(--grey4);
+  --action-primary-background-default-solid: var(--grey3);
+  --action-primary-background-hover: var(--grey4);
+  --action-primary-background-active: var(--grey4);
+  --action-primary-background-selected: var(--grey5);
 
   --action-primary-border-default: var(--grey5);
 
@@ -114,11 +116,13 @@
   --icon-hover: var(--grey12);
 
   /* border */
-  --border-default: var(--grey6);
+  --border-default: var(--grey5);
+  --border-strong: var(--grey7);
   --border-background-color: var(--grey1);
 
   /* background */
   --background-default: var(--grey1);
+  --background-subtle: var(--grey2);
   --background-neutral: var(--grey3);
 
   /* action */
@@ -132,7 +136,8 @@
   --action-primary-background-hover: var(--grey4);
   --action-primary-background-active: var(--grey4);
   --action-primary-background-selected: var(--grey5);
-  --action-primary-border-default: var(--grey6);
+
+  --action-primary-border-default: var(--grey5);
 
   /* code */
   --code-props-content: var(--grey12);
