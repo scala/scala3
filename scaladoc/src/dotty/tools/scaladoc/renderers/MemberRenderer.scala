@@ -231,13 +231,15 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   private case class MGroup(header: AppliedTag, members: Seq[Member], groupName: String)
 
-  private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
+  private def makeSubgroupHeader(name: String): AppliedTag =
+    h4(cls := "groupHeader h300")(name)
+
+  private def actualGroup(name: String, members: Seq[Member | MGroup], headerConstructor: String => AppliedTag = makeSubgroupHeader, wrapInSection: Boolean = true): Seq[AppliedTag] =
     if members.isEmpty then Nil else
-    section(id := name.replace(' ', '-'))(
-      div(cls := "documentableList expand")(
+      val groupBody = div(cls := "documentableList expand")(
         div(cls := "documentableList-expander")(
           button(cls := "icon-button show-content expand"),
-          h3(cls := "groupHeader h200")(name)
+          headerConstructor(name)
         ),
         members.sortBy {
           case m: Member => m.name
@@ -252,7 +254,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             )
         }
       )
-    ) :: Nil
+      if wrapInSection then
+        section(id := name.replace(' ', '-'))(
+          groupBody
+        ) :: Nil
+      else
+        groupBody :: Nil
+
 
   private def isDeprecated(m: Member | MGroup): Boolean = m match
     case m: Member => m.deprecated.nonEmpty
@@ -297,7 +305,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Seq(
         div(cls := "member-group-header")(
           button(cls := "icon-button show-content expand"),
-          h2(tabAttr(name), cls := "h300")(name)
+          h3(tabAttr(name), cls := "h400")(name)
         )
       ) ++ children,
       "expand"
@@ -361,9 +369,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     div(cls := "membersList expand")(
     renderTabs(
       singleSelection = false,
-      buildGroup("Packages", Seq(
-        ("", rest.filter(m => m.kind == Kind.Package)),
-      )),
+      Tab("Packages", "packages",
+        actualGroup("Packages", rest.filter(m => m.kind == Kind.Package), name => h3(cls := "groupHeader h400")(name), false),
+        "expand"),
       grouppedMember(s, membersInGroups),
       buildGroup("Type members", Seq(
         ("Classlikes", rest.filter(m => m.kind.isInstanceOf[Classlike])),
