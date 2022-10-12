@@ -167,17 +167,25 @@ function attachAllListeners() {
     }),
   );
 
+  const toggleShowAllElem = (element) => {
+    if(element.textContent == "Show all") {
+      element.textContent = "Collapse"
+    } else {
+      element.textContent = "Show all"
+    }
+  }
+
   document.querySelectorAll(".supertypes").forEach((el) =>
-    el.firstChild.addEventListener("click", () => {
+    el.lastElementChild.addEventListener("click", () => {
       el.classList.toggle("collapsed");
-      el.firstChild.classList.toggle("expand");
+      toggleShowAllElem(el.lastElementChild);
     }),
   );
 
   document.querySelectorAll(".subtypes").forEach((el) =>
-    el.firstChild.addEventListener("click", () => {
+    el.lastElementChild.addEventListener("click", () => {
       el.classList.toggle("collapsed");
-      el.firstChild.classList.toggle("expand");
+      toggleShowAllElem(el.lastElementChild);
     }),
   );
 

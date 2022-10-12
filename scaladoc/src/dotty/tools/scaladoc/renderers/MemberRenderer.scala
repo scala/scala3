@@ -430,10 +430,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       def signatureList(list: Seq[LinkToType], className: String = "", expandable: Boolean): Seq[AppliedTag] =
         if list.isEmpty then Nil
          else Seq(div(cls := s"mono-small-block $className")(
-          if(expandable) then span(cls := "icon-button show-content") else span(),
          list.map(link =>
-          div(link.kind.name," ", link.signature.map(renderElement(_)))
-        )))
+          div(link.kind.name," ", link.signature.map(renderElement(_)))),
+          if(expandable) then span(cls := "show-all-code show-content")("Show all") else span()
+        ))
 
       def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
         if list.isEmpty then Nil

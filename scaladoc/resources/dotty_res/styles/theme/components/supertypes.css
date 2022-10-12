@@ -8,9 +8,7 @@
 }
 
 .supertypes > span {
-  position: absolute;
-  top: calc(1 * var(--base-spacing));
-  right: calc(1 * var(--base-spacing));
+  display: block;
 }
 
 .supertypes > div {
