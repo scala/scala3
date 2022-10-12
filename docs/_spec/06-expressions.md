@@ -59,6 +59,7 @@ When we write "expression ´e´ is expected to conform to type ´T´", we mean:
 The following skolemization rule is applied universally for every expression:
 If the type of an expression would be an existential type ´T´, then the type of the expression is assumed instead to be a [skolemization](03-types.html#existential-types) of ´T´.
 
+<!-- TODO: Replace by description of Scala 3 skolemization -->
 Skolemization is reversed by type packing.
 Assume an expression ´e´ of type ´T´ and let ´t_1[\mathit{tps}\_1] >: L_1 <: U_1, ..., t_n[\mathit{tps}\_n] >: L_n <: U_n´ be all the type variables created by skolemization of some part of ´e´ which are free in ´T´.
 Then the _packed type_ of ´e´ is
@@ -454,6 +455,7 @@ The final expression can be omitted, in which case the unit value `()` is assume
 The expected type of the final expression ´e´ is the expected type of the block.
 The expected type of all preceding statements is undefined.
 
+<!-- TODO: Rewrite when type avoidance section is done -->
 The type of a block `´s_1´; ...; ´s_n´; ´e´` is `´T´ forSome {´\,Q\,´}`, where ´T´ is the type of ´e´ and ´Q´ contains [existential clauses](03-types.html#existential-types) for every value or type name which is free in ´T´ and which is defined locally in one of the statements ´s_1, ..., s_n´.
 We say the existential clause _binds_ the occurrence of the value or type name.
 Specifically,
@@ -467,23 +469,7 @@ It is an error if ´c´ carries type parameters.
 
 Evaluation of the block entails evaluation of its statement sequence, followed by an evaluation of the final expression ´e´, which defines the result of the block.
 
-A block expression `{´c_1´; ...; ´c_n´}` where ´s_1, ..., s_n´ are case clauses forms a [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions).
-
-###### Example
-Assuming a class `Ref[T](x: T)`, the block
-
-```scala
-{ class C extends B {´\ldots´} ; new Ref(new C) }
-```
-
-has the type `Ref[_1] forSome { type _1 <: B }`.
-The block
-
-```scala
-{ class C extends B {´\ldots´} ; new C }
-```
-
-simply has type `B`, because with the rules [here](03-types.html#simplification-rules) the existentially quantified type `_1 forSome { type _1 <: B }` can be simplified to `B`.
+A block expression `{´c_1´; ...; ´c_n´}` where ´c_1, ..., c_n´ are case clauses forms a [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions).
 
 ## Prefix, Infix, and Postfix Operations
 
@@ -1190,6 +1176,7 @@ question: given
 - A parameterized method ´m´ of type `(´p_1:T_1, ..., p_n:T_n´)´U´` is _as specific as_ some other member ´m'´ of type ´S´ if ´m'´ is [applicable](#method-applications) to arguments `(´p_1, ..., p_n´)` of types ´T_1, ..., T_n´.
 - A polymorphic method of type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is as specific as some other member of type ´S´ if ´T´ is as specific as ´S´ under the assumption that for ´i = 1, ..., n´ each ´a_i´ is an abstract type name bounded from below by ´L_i´ and from above by ´U_i´.
 - A member of any other type is always as specific as a parameterized method or a polymorphic method.
+<!-- TODO: check the following, as it reduces to "the member of type ´T´ is as specific as the member of type ´U´ if the ´T´ conforms to ´U´." -->
 - Given two members of types ´T´ and ´U´ which are neither parameterized nor polymorphic method types, the member of type ´T´ is as specific as the member of type ´U´ if the existential dual of ´T´ conforms to the existential dual of ´U´.
 Here, the existential dual of a polymorphic type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is `´T´ forSome { type ´a_1´ >: ´L_1´ <: ´U_1´, ..., type ´a_n´ >: ´L_n´ <: ´U_n´}`.
 The existential dual of every other type is the type itself.

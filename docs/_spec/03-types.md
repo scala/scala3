@@ -349,50 +349,12 @@ trait Function´_n´[-´T_1´, ..., -´T_n´, +´U´] {
 
 Hence, function types are [covariant](04-basic-declarations-and-definitions.html#variance-annotations) in their result type and contravariant in their argument types.
 
-### Existential Types
-
-```ebnf
-Type               ::= InfixType ExistentialClauses
-ExistentialClauses ::= ‘forSome’ ‘{’ ExistentialDcl
-                       {semi ExistentialDcl} ‘}’
-ExistentialDcl     ::= ‘type’ TypeDcl
-                    |  ‘val’ ValDcl
-```
-
-An _existential type_ has the form `´T´ forSome { ´Q´ }` where ´Q´ is a sequence of [type declarations](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases).
-
-Let ´t_1[\mathit{tps}\_1] >: L_1 <: U_1 , \ldots , t_n[\mathit{tps}\_n] >: L_n <: U_n´ be the types declared in ´Q´ (any of the type parameter sections `[ ´\mathit{tps}_i´ ]` might be missing).
-The scope of each type ´t_i´ includes the type ´T´ and the existential clause ´Q´.
-The type variables ´t_i´ are said to be _bound_ in the type `´T´ forSome { ´Q´ }`.
-Type variables which occur in a type ´T´ but which are not bound in ´T´ are said to be _free_ in ´T´.
-
-A _type instance_ of `´T´ forSome { ´Q´ }` is a type ´\sigma T´ where ´\sigma´ is a substitution over ´t_1 , \ldots , t_n´ such that, for each ´i´, ´\sigma L_i <: \sigma t_i <: \sigma U_i´.
-The set of values denoted by the existential type `´T´ forSome {´\,Q\,´}` is the union of the set of values of all its type instances.
-
-A _skolemization_ of `´T´ forSome { ´Q´ }` is a type instance ´\sigma T´, where ´\sigma´ is the substitution ´[t_1'/t_1 , \ldots , t_n'/t_n]´ and each ´t_i'´ is a fresh abstract type with lower bound ´\sigma L_i´ and upper bound ´\sigma U_i´.
-
-#### Simplification Rules
-
-Existential types obey the following four equivalences:
-
-1. Multiple for-clauses in an existential type can be merged. E.g., `´T´ forSome { ´Q´ } forSome { ´Q'´ }` is equivalent to `´T´ forSome { ´Q´ ; ´Q'´}`.
-1. Unused quantifications can be dropped. 
-E.g., `´T´ forSome { ´Q´ ; ´Q'´}` where none of the types defined in ´Q'´ are referred to by ´T´ or ´Q´, is equivalent to `´T´ forSome {´ Q ´}`.
-1. An empty quantification can be dropped. E.g., `´T´ forSome { }` is equivalent to ´T´.
-1. An existential type `´T´ forSome { ´Q´ }` where ´Q´ contains a clause `type ´t[\mathit{tps}] >: L <: U´` is equivalent to the type `´T'´ forSome { ´Q´ }` where ´T'´ results from ´T´ by replacing every [covariant occurrence](04-basic-declarations-and-definitions.html#variance-annotations) of ´t´ in ´T´ by ´U´ and by replacing every contravariant occurrence of ´t´ in ´T´ by ´L´.
-
-#### Existential Quantification over Values
-
-As a syntactic convenience, the bindings clause in an existential type may also contain value declarations `val ´x´: ´T´`.
-An existential type `´T´ forSome { ´Q´; val ´x´: ´S\,´;´\,Q'´ }` is treated as a shorthand for the type `´T'´ forSome { ´Q´; type ´t´ <: ´S´ with Singleton; ´Q'´ }`, where ´t´ is a fresh type name and ´T'´ results from ´T´ by replacing every occurrence of `´x´.type` with ´t´.
-
-#### Placeholder Syntax for Existential Types
+#### Wildcard Types
 
 ```ebnf
 WildcardType   ::=  ‘_’ TypeBounds
 ```
-
-Scala supports a placeholder syntax for existential types.
+<!-- TODO: Update this to use new mechanism -->
 A _wildcard type_ is of the form `_´\;´>:´\,L\,´<:´\,U´`.
 Both bound clauses may be omitted.
 If a lower bound clause `>:´\,L´` is missing, `>:´\,´scala.Nothing` is assumed.
@@ -410,60 +372,6 @@ Then ´T´ is equivalent to the existential type
 where ´t´ is some fresh type variable.
 Wildcard types may also appear as parts of [infix types](#infix-types), [function types](#function-types), or [tuple types](#tuple-types).
 Their expansion is then the expansion in the equivalent parameterized type.
-
-###### Example
-
-Assume the class definitions
-
-```scala
-class Ref[T]
-abstract class Outer { type T }
-```
-
-Here are some examples of existential types:
-
-```scala
-Ref[T] forSome { type T <: java.lang.Number }
-Ref[x.T] forSome { val x: Outer }
-Ref[x_type # T] forSome { type x_type <: Outer with Singleton }
-```
-
-The last two types in this list are equivalent.
-An alternative formulation of the first type above using wildcard syntax is:
-
-```scala
-Ref[_ <: java.lang.Number]
-```
-
-###### Example
-
-The type `List[List[_]]` is equivalent to the existential type
-
-```scala
-List[List[t] forSome { type t }]
-```
-
-###### Example
-
-Assume a covariant type
-
-```scala
-class List[+T]
-```
-
-The type
-
-```scala
-List[T] forSome { type T <: java.lang.Number }
-```
-
-is equivalent (by simplification rule 4 above) to
-
-```scala
-List[java.lang.Number] forSome { type T <: java.lang.Number }
-```
-
-which is in turn equivalent (by simplification rules 2 and 3 above) to `List[java.lang.Number]`.
 
 ## Non-Value Types
 
@@ -599,18 +507,15 @@ These notions are defined mutually recursively as follows.
   If ´T´ is an alias or abstract type, the previous clauses apply.
   Otherwise, ´T´ must be a (possibly parameterized) class type, which is defined in some class ´B´.
   Then the base types of `´S´#´T´` are the base types of ´T´ in ´B´ seen from the prefix type ´S´.
-  - The base types of an existential type `´T´ forSome { ´Q´ }` are all types `´S´ forSome { ´Q´ }` where ´S´ is a base type of ´T´.
 
 1. The notion of a type ´T´ _in class ´C´ seen from some prefix type ´S´_ makes sense only if the prefix type ´S´ has a type instance of class ´C´ as a base type, say `´S'´#´C´[´T_1, ..., T_n´]`.
 Then we define as follows.
   - If `´S´ = ´\epsilon´.type`, then ´T´ in ´C´ seen from ´S´ is ´T´ itself.
-  - Otherwise, if ´S´ is an existential type `´S'´ forSome { ´Q´ }`, and ´T´ in ´C´ seen from ´S'´ is ´T'´, then ´T´ in ´C´ seen from ´S´ is `´T'´ forSome {´\,Q\,´}`.
   - Otherwise, if ´T´ is the ´i´'th type parameter of some class ´D´, then
     - If ´S´ has a base type `´D´[´U_1, ..., U_n´]`, for some type parameters `[´U_1, ..., U_n´]`, then ´T´ in ´C´ seen from ´S´ is ´U_i´.
     - Otherwise, if ´C´ is defined in a class ´C'´, then ´T´ in ´C´ seen from ´S´ is the same as ´T´ in ´C'´ seen from ´S'´.
     - Otherwise, if ´C´ is not defined in another class, then ´T´ in ´C´ seen from ´S´ is ´T´ itself.
-  - Otherwise, if ´T´ is the singleton type `´D´.this.type` for some class ´D´
-    then
+  - Otherwise, if ´T´ is the singleton type `´D´.this.type` for some class ´D´ then
     - If ´D´ is a subclass of ´C´ and ´S´ has a type instance of class ´D´ among its base types, then ´T´ in ´C´ seen from ´S´ is ´S´.
     - Otherwise, if ´C´ is defined in a class ´C'´, then ´T´ in ´C´ seen from ´S´ is the same as ´T´ in ´C'´ seen from ´S'´.
     - Otherwise, if ´C´ is not defined in another class, then ´T´ in ´C´ seen from ´S´ is ´T´ itself.
@@ -676,11 +581,10 @@ The conformance relation ´(<:)´ is the smallest transitive relation that satis
   1. If the ´i´'th type parameter of ´T´ is declared neither covariant nor contravariant, then ´U_i \equiv T_i´.
 - A compound type `´T_1´ with ... with ´T_n´ {´R\,´}` conforms to each of its component types ´T_i´.
 - If ´T <: U_i´ for ´i \in \{ 1, ..., n \}´ and for every binding ´d´ of a type or value ´x´ in ´R´ there exists a member binding of ´x´ in ´T´ which subsumes ´d´, then ´T´ conforms to the compound type `´U_1´ with ... with ´U_n´ {´R\,´}`.
-- The existential type `´T´ forSome {´\,Q\,´}` conforms to ´U´ if its [skolemization](#existential-types) conforms to ´U´.
-- The type ´T´ conforms to the existential type `´U´ forSome {´\,Q\,´}` if ´T´ conforms to one of the [type instances](#existential-types) of `´U´ forSome {´\,Q\,´}`.
 - If ´T_i \equiv T_i'´ for ´i \in \{ 1, ..., n\}´ and ´U´ conforms to ´U'´ then the method type ´(p_1:T_1, ..., p_n:T_n) U´ conforms to ´(p_1':T_1', ..., p_n':T_n') U'´.
 - The polymorphic type ´[a_1 >: L_1 <: U_1, ..., a_n >: L_n <: U_n] T´ conforms to the polymorphic type ´[a_1 >: L_1' <: U_1', ..., a_n >: L_n' <: U_n'] T'´ if, assuming ´L_1' <: a_1 <: U_1', ..., L_n' <: a_n <: U_n'´ one has ´T <: T'´ and ´L_i <: L_i'´ and ´U_i' <: U_i´ for ´i \in \{ 1, ..., n \}´.
-- Type constructors ´T´ and ´T'´ follow a similar discipline. We characterize ´T´ and ´T'´ by their type parameter clauses ´[a_1, ..., a_n]´ and ´[a_1', ..., a_n']´, where an ´a_i´ or ´a_i'´ may include a variance annotation, a higher-order type parameter clause, and bounds.
+- Type constructors ´T´ and ´T'´ follow a similar discipline.
+We characterize ´T´ and ´T'´ by their type parameter clauses ´[a_1, ..., a_n]´ and ´[a_1', ..., a_n']´, where an ´a_i´ or ´a_i'´ may include a variance annotation, a higher-order type parameter clause, and bounds.
 Then, ´T´ conforms to ´T'´ if any list ´[t_1, ..., t_n]´ -- with declared variances, bounds and higher-order type parameter clauses -- of valid type arguments for ´T'´ is also a valid list of type arguments for ´T´ and ´T[t_1, ..., t_n] <: T'[t_1, ..., t_n]´.
 Note that this entails that:
   - The bounds on ´a_i´ must be weaker than the corresponding bounds declared for ´a'_i´.
@@ -790,8 +694,6 @@ A type designator is volatile if it is an alias of a volatile type, or if it des
 
 A singleton type `´p´.type` is volatile, if the underlying type of path ´p´ is volatile.
 
-An existential type `´T´ forSome {´\,Q\,´}` is volatile if ´T´ is volatile.
-
 ## Type Erasure
 
 A type is called _generic_ if it contains type arguments or type variables.
@@ -806,7 +708,6 @@ The erasure mapping is defined as follows.
 - The erasure of a singleton type `´p´.type` is the erasure of the type of ´p´.
 - The erasure of a type projection `´T´#´x´` is `|´T´|#´x´`.
 - The erasure of a compound type `´T_1´ with ... with ´T_n´ {´R\,´}` is the erasure of the intersection dominator of ´T_1, ..., T_n´.
-- The erasure of an existential type `´T´ forSome {´\,Q\,´}` is ´|T|´.
 
 The _intersection dominator_ of a list of types ´T_1, ..., T_n´ is computed as follows.
 Let ´T_{i_1}, ..., T_{i_m}´ be the subsequence of types ´T_i´ which are not supertypes of some other type ´T_j´.
