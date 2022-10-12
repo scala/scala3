@@ -295,57 +295,6 @@ It is a static error if the inheritance closure of a class type consists of an i
 
 [^kennedy]: Kennedy, Pierce. [On Decidability of Nominal Subtyping with Variance.]( https://research.microsoft.com/pubs/64041/fool2007.pdf) in FOOL 2007
 
-### Early Definitions
-
-```ebnf
-EarlyDefs         ::= ‘{’ [EarlyDef {semi EarlyDef}] ‘}’ ‘with’
-EarlyDef          ::=  {Annotation} {Modifier} PatVarDef
-```
-
-A template may start with an _early field definition_ clause, which serves to define certain field values before the supertype constructor is called.
-In a template
-
-```scala
-{ val ´p_1´: ´T_1´ = ´e_1´
-  ...
-  val ´p_n´: ´T_n´ = ´e_n´
-} with ´sc´ with ´mt_1´ with ´mt_n´ { ´\mathit{stats}´ }
-```
-
-The initial pattern definitions of ´p_1 , \ldots , p_n´ are called _early definitions_.
-They define fields which form part of the template.
-Every early definition must define at least one variable.
-
-An early definition is type-checked and evaluated in the scope which is in effect just before the template being defined, augmented by any type parameters of the enclosing class and by any early definitions preceding the one being defined.
-In particular, any reference to `this` in an early definition refers to the identity of `this` just outside the template.
-Consequently, it is impossible for an early definition to refer to the object being constructed by the template, or to refer to one of its fields and methods, except for any other preceding early definition in the same section.
-Furthermore, references to preceding early definitions always refer to the value that's defined there and do not take into account overriding definitions.
-In other words, a block of early definitions is evaluated exactly as if it were a local block containing a number of value definitions.
-
-Early definitions are evaluated before the superclass constructor of the template is called, in the order they are defined.
-
-###### Example
-Early definitions are particularly useful for traits, which do not have normal constructor parameters.
-Example:
-
-```scala
-trait Greeting {
-  val name: String
-  val msg = "How are you, "+name
-}
-class C extends {
-  val name = "Bob"
-} with Greeting {
-  println(msg)
-}
-```
-
-In the code above, the field `name` is initialized before the constructor of `Greeting` is called.
-Therefore, field `msg` in class `Greeting` is properly initialized to `"How are you, Bob"`.
-
-If `name` had been initialized instead in `C`'s normal class body, it would be initialized after the constructor of `Greeting`.
-In that case, `msg` would be initialized to `"How are you, <null>"`.
-
 ## Modifiers
 
 ```ebnf
@@ -592,7 +541,7 @@ A constructor expression is either a self constructor invocation `this(´\mathit
 The self constructor invocation must construct a generic instance of the class. 
 I.e. if the class in question has name ´C´ and type parameters `[´\mathit{tps}\,´]`, then a self constructor invocation must generate an instance of `´C´[´\mathit{tps}\,´]`; it is not permitted to instantiate formal type parameters.
 
-The signature and the self constructor invocation of a constructor definition are type-checked and evaluated in the scope which is in effect at the point of the enclosing class definition, augmented by any type parameters of the enclosing class and by any [early definitions](#early-definitions) of the enclosing template.
+The signature and the self constructor invocation of a constructor definition are type-checked and evaluated in the scope which is in effect at the point of the enclosing class definition, augmented by any type parameters of the enclosing class.
 The rest of the constructor expression is type-checked and evaluated as a method body in the current class.
 
 If there are auxiliary constructors of a class ´C´, they form together with ´C´'s primary [constructor](#class-definitions) an overloaded constructor definition.
