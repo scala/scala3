@@ -88,28 +88,3 @@ class ContentContributors:
           .map(_.previous_filename)
     }
   }
-  window.addEventListener("dynamicPageLoad", (e: Event) => {
-    val ghUrl = githubContributorsUrl()
-    if js.typeOf(ghUrl) == "string" && ghUrl != "null" then {
-      getAuthorsForFilename(githubContributorsFilename().stripPrefix("/")).onComplete {
-        case Success(authors) =>
-          val maybeDiv = Option(document.getElementById("documentation-contributors"))
-          maybeDiv.foreach { mdiv =>
-            authors.foreach { case FullAuthor(name, url, imgUrl) =>
-              val inner = div(
-                img(src := imgUrl)(),
-                a(href := url)(name)
-              )
-              mdiv.appendChild(inner)
-            }
-
-            if authors.nonEmpty then
-              mdiv.asInstanceOf[html.Div].parentElement.classList.toggle("hidden")
-        }
-        case Failure(err) =>
-          println(s"Couldn't fetch contributors. $err")
-          None
-      }
-    }
-  })
-

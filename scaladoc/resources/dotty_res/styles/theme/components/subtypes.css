@@ -15,7 +15,6 @@
 
 .subtypes > div {
   display: none;
-  margin-bottom: 6px;
 }
 
 .subtypes > div:nth-child(2),

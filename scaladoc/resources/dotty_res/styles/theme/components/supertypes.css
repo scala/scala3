@@ -15,7 +15,6 @@
 
 .supertypes > div {
   display: none;
-  margin-bottom: 6px;
 }
 
 .supertypes > div:nth-child(2),
