@@ -39,10 +39,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       tableRow("Inherited from:", signatureRenderer.renderLink(name + hiddenNameSuffix, dri))
     case _ => Nil
 
-  def docAttributes(m: Member): Seq[AppliedTag] =
+  def flattenedDocPart(on: SortedMap[String, DocPart]): Seq[AppliedTag] =
+    on.flatMap { case (name, value) => tableRow(name, renderDocPart(value)) }.toSeq
 
-    def flattened(on: SortedMap[String, DocPart]): Seq[AppliedTag] =
-      on.flatMap { case (name, value) => tableRow(name, renderDocPart(value))}.toSeq
+  def docAttributes(m: Member): Seq[AppliedTag] =
 
     def list(name: String, on: List[DocPart]): Seq[AppliedTag] =
       if on.isEmpty then Nil else tableRow(name, div(on.map(e => div(renderDocPart(e)))))
@@ -53,8 +53,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors:", authors) else Nil
 
     m.docs.fold(Nil)(d =>
-      flattened(d.typeParams) ++
-      flattened(d.valueParams) ++
       opt("Returns:", d.result) ++
       list("Throws:", d.throws) ++
       opt("Constructor:", d.constructor) ++
@@ -100,12 +98,17 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     tableRow("Deprecated", content*)
   }
 
-  def memberInfo(m: Member, withBrief: Boolean = false, withAttributes: Boolean = false): Seq[AppliedTag] =
+  def typeParams(m: Member): Seq[AppliedTag] = m.docs.fold(Nil)(d => flattenedDocPart(d.typeParams))
+  def valueParams(m: Member): Seq[AppliedTag] = m.docs.fold(Nil)(d => flattenedDocPart(d.valueParams))
+
+  def memberInfo(m: Member, withBrief: Boolean = false, full: Boolean = false): Seq[AppliedTag] =
     val comment = m.docs
     val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
     val classLikeInfo: TagArg = classLikeParts(m)
 
+    val memberTypeParams = typeParams(m)
+    val memberValueParams = valueParams(m)
     val attributes = Seq(
       docAttributes(m),
       companion(m),
@@ -124,13 +127,30 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Option.when(bodyContents.nonEmpty || attributes.nonEmpty)(
         div(cls := "cover")(
           div(cls := "doc")(bodyContents),
-          Option.when(withAttributes)(
+          Option.when(full)(
             section(id := "attributes")(
+              Option.when(memberTypeParams.nonEmpty)(Seq(
+                h2(cls := "h500")("Type parameters"),
+                dl(cls := "attributes")(memberTypeParams*)
+              )).toSeq.flatten,
+              Option.when(memberValueParams.nonEmpty)(Seq(
+                h2(cls := "h500")("Value parameters"),
+                dl(cls := "attributes")(memberValueParams*)
+              )).toSeq.flatten,
               h2(cls := "h500")("Attributes"),
               dl(cls := "attributes")(attributes*)
             )
           ).getOrElse(
-            dl(cls := "attributes")(attributes*)
+            Option.when(memberTypeParams.nonEmpty)(Seq(
+              h2(cls := "h200")("Type parameters"),
+              dl(cls := "attributes attributes-small")(memberTypeParams *)
+            )).toSeq.flatten ++
+            Option.when(memberValueParams.nonEmpty)(Seq(
+              h2(cls := "h200")("Value parameters"),
+              dl(cls := "attributes attributes-small")(memberValueParams *)
+            )).toSeq.flatten :+
+            h2(cls := "h200")("Attributes") :+
+            dl(cls := "attributes attributes-small")(attributes *)
           )
         )
       )
@@ -474,7 +494,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val memberContent = div(
       intro,
-      memberInfo(m, withAttributes = true),
+      memberInfo(m, full = true),
       if m.members.length > 0 then
         Seq(section(id := "members-list")(
           h2(cls := "h500")("Members list"),
