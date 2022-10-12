@@ -95,14 +95,13 @@ function attachAllListeners() {
     }
   }
 
-  //TODO tu nie dziala Kamil
   var memberLists = document.getElementsByClassName("tab");
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {
-      if ($(memberLists[i].children[0]).is("button")) {
-        memberLists[i].children[0].onclick = function (e) {
-          this.classList.toggle("expand");
+      if ($(memberLists[i].children[0].children[0]).is("button")) {
+        memberLists[i].children[0].children[0].onclick = function (e) {
           this.parentElement.classList.toggle("expand");
+          this.parentElement.parentElement.classList.toggle("expand");
         };
       }
     }

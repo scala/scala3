@@ -56,6 +56,10 @@ color: var(--text-secondary);
   display: none;
 }
 
+.documentableElement.expand .signature {
+  color: var(--text-primary);
+}
+
 .documentableElement .icon-button {
   position: absolute;
   right: calc(3 * var(--base-spacing));
