@@ -29,5 +29,3 @@ The issue is that the two `Ops` classes _look_ like one overrides the
 other, but classes in Scala 2 cannot be overridden. To keep things clean
 (and its internal operations consistent) the Scala 3 compiler forces you
 to rename the inner classes so that their names are different.
-
-[More details](./class-shadowing-spec.md)
