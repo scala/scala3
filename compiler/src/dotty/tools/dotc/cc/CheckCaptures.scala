@@ -693,29 +693,29 @@ class CheckCaptures extends Recheck, SymTransformer:
 
           val (parent1, cs1) = parent match {
             case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
-              val (parent1, cs1) = adaptFun(parent, args.init, args.last, expected, covariant, insertBox,
+              val (parent1, leaked) = adaptFun(parent, args.init, args.last, expected, covariant, insertBox,
                   (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
-              (parent1, cs1 ++ cs)
+              (parent1, leaked ++ cs)
             case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
               // TODO Find a way to combine handling of generic and dependent function types (here and elsewhere)
-              val (parent1, cs1) = adaptFun(parent, rinfo.paramInfos, rinfo.resType, expected, covariant, insertBox,
+              val (parent1, leaked) = adaptFun(parent, rinfo.paramInfos, rinfo.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>
                   rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
                     .toFunctionType(isJava = false, alwaysDependent = true))
-              (parent1, cs1 ++ cs)
+              (parent1, leaked ++ cs)
             case actual: MethodType =>
-              val (parent1, cs1) = adaptFun(parent, actual.paramInfos, actual.resType, expected, covariant, insertBox,
+              val (parent1, leaked) = adaptFun(parent, actual.paramInfos, actual.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>
                   actual.derivedLambdaType(paramInfos = aargs1, resType = ares1))
-              (parent1, cs1 ++ cs)
+              (parent1, leaked ++ cs)
             case actual @ RefinedType(p, nme, rinfo: PolyType) if defn.isFunctionOrPolyType(actual) =>
-              val (parent1, cs1) = adaptTypeFun(parent, rinfo.resType, expected, covariant, insertBox,
+              val (parent1, leaked) = adaptTypeFun(parent, rinfo.resType, expected, covariant, insertBox,
                 ares1 =>
                   val rinfo1 = rinfo.derivedLambdaType(rinfo.paramNames, rinfo.paramInfos, ares1)
                   val actual1 = actual.derivedRefinedType(p, nme, rinfo1)
                   actual1
               )
-              (parent1, cs1 ++ cs)
+              (parent1, leaked ++ cs)
             case _ =>
               (parent, cs)
           }
