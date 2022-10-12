@@ -183,7 +183,7 @@ VarDef         ::=  PatDef
                  |  ids ‘:’ Type ‘=’ ‘_’
 ```
 
-A variable declaration `var ´x´: ´T´` is equivalent to the declarations of both a _getter function_ ´x´ *and* a _setter function_ `´x´_=`:
+A variable declaration `var ´x´: ´T´` is equivalent to the declarations of both a _getter method_ ´x´ *and* a _setter method_ `´x´_=`:
 
 ```scala
 def ´x´: ´T´
@@ -215,9 +215,9 @@ The default value depends on the type ´T´ as follows:
 |`()`      | `Unit`                             |
 |`null`    | all other types                    |
 
-When they occur as members of a template, both forms of variable definition also introduce a getter function ´x´ which returns the value currently assigned to the variable, as well as a setter function `´x´_=` which changes the value currently assigned to the variable.
-The functions have the same signatures as for a variable declaration.
-The template then has these getter and setter functions as members, whereas the original variable cannot be accessed directly as a template member.
+When they occur as members of a template, both forms of variable definition also introduce a getter method ´x´ which returns the value currently assigned to the variable, as well as a setter method `´x´_=` which changes the value currently assigned to the variable.
+The methods have the same signatures as for a variable declaration.
+The template then has these getter and setter methods as members, whereas the original variable cannot be accessed directly as a template member.
 
 ###### Example
 
@@ -287,7 +287,7 @@ A _type alias_ `type ´t´ = ´T´` defines ´t´ to be an alias name for the ty
 The left hand side of a type alias may have a type parameter clause, e.g. `type ´t´[´\mathit{tps}\,´] = ´T´`.
 The scope of a type parameter extends over the right hand side ´T´ and the type parameter clause ´\mathit{tps}´ itself.
 
-The scope rules for [definitions](#basic-declarations-and-definitions) and [type parameters](#function-declarations-and-definitions) make it possible that a type name appears in its own bound or in its right-hand side.
+The scope rules for [definitions](#basic-declarations-and-definitions) and [type parameters](#method-declarations-and-definitions) make it possible that a type name appears in its own bound or in its right-hand side.
 However, it is a static error if a type alias refers recursively to the defined type constructor itself.
 That is, the type ´T´ in a type alias `type ´t´[´\mathit{tps}\,´] = ´T´` may not refer directly or indirectly to the name ´t´.
 It is also an error if an abstract type is directly or indirectly its own upper or lower bound.
@@ -346,7 +346,7 @@ VariantTypeParam ::= {Annotation} [‘+’ | ‘-’] TypeParam
 TypeParam        ::= (id | ‘_’) [TypeParamClause] [‘>:’ Type] [‘<:’ Type] [‘:’ Type]
 ```
 
-Type parameters appear in type definitions, class definitions, and function definitions.
+Type parameters appear in type definitions, class definitions, and method definitions.
 In this section we consider only type parameter definitions with lower bounds `>: ´L´` and upper bounds `<: ´U´` whereas a discussion of context bounds `: ´U´` and view bounds `<% ´U´` is deferred to [here](07-implicits.html#context-bounds-and-view-bounds).
 
 The most general form of a proper type parameter is 
@@ -497,7 +497,7 @@ abstract class OutputChannel[-A] {
 With that annotation, we have that `OutputChannel[AnyRef]` conforms to `OutputChannel[String]`.
 That is, a channel on which one can write any object can substitute for a channel on which one can write only strings.
 
-## Function Declarations and Definitions
+## Method Declarations and Definitions
 
 ```ebnf
 Dcl                ::=  ‘def’ FunDcl
@@ -515,23 +515,23 @@ ParamType          ::=  Type
                      |  Type ‘*’
 ```
 
-A _function declaration_ has the form `def ´f\,\mathit{psig}´: ´T´`, where ´f´ is the function's name, ´\mathit{psig}´ is its parameter signature and ´T´ is its result type.
-A _function definition_ `def ´f\,\mathit{psig}´: ´T´ = ´e´` also includes a _function body_ ´e´, i.e. an expression which defines the function's result.
+A _method declaration_ has the form `def ´f\,\mathit{psig}´: ´T´`, where ´f´ is the method's name, ´\mathit{psig}´ is its parameter signature and ´T´ is its result type.
+A _method definition_ `def ´f\,\mathit{psig}´: ´T´ = ´e´` also includes a _method body_ ´e´, i.e. an expression which defines the method's result.
 A parameter signature consists of an optional type parameter clause `[´\mathit{tps}\,´]`, followed by zero or more value parameter clauses `(´\mathit{ps}_1´)...(´\mathit{ps}_n´)`.
 Such a declaration or definition introduces a value with a (possibly polymorphic) method type whose parameter types and result type are as given.
 
-The type of the function body is expected to [conform](06-expressions.html#expression-typing) to the function's declared result type, if one is given.
-If the function definition is not recursive, the result type may be omitted, in which case it is determined from the packed type of the function body.
+The type of the method body is expected to [conform](06-expressions.html#expression-typing) to the method's declared result type, if one is given.
+If the method definition is not recursive, the result type may be omitted, in which case it is determined from the packed type of the method body.
 
 A _type parameter clause_ ´\mathit{tps}´ consists of one or more [type declarations](#type-declarations-and-type-aliases), which introduce type parameters, possibly with bounds.
-The scope of a type parameter includes the whole signature, including any of the type parameter bounds as well as the function body, if it is present.
+The scope of a type parameter includes the whole signature, including any of the type parameter bounds as well as the method body, if it is present.
 
 A _value parameter clause_ ´\mathit{ps}´ consists of zero or more formal parameter bindings such as `´x´: ´T´` or `´x: T = e´`, which bind value parameters and associate them with their types.
 
 ### Default Arguments
 
 Each value parameter declaration may optionally define a default argument.
-The default argument expression ´e´ is type-checked with an expected type ´T'´ obtained by replacing all occurrences of the function's type parameters in ´T´ by the undefined type.
+The default argument expression ´e´ is type-checked with an expected type ´T'´ obtained by replacing all occurrences of the method's type parameters in ´T´ by the undefined type.
 
 For every parameter ´p_{i,j}´ with a default argument a method named `´f\$´default´\$´n` is generated which computes the default argument expression.
 Here, ´n´ denotes the parameter's position in the method declaration.
@@ -555,7 +555,7 @@ def compare´\$´default´\$´1[T]: Int = 0
 def compare´\$´default´\$´2[T](a: T): T = a
 ```
 
-The scope of a formal value parameter name ´x´ comprises all subsequent parameter clauses, as well as the method return type and the function body, if they are given.
+The scope of a formal value parameter name ´x´ comprises all subsequent parameter clauses, as well as the method return type and the method body, if they are given.
 Both type parameter names and value parameter names must be pairwise distinct.
 
 A default value which depends on earlier parameters uses the actual arguments if they are provided, not the default arguments.
@@ -582,7 +582,7 @@ ParamType          ::=  ‘=>’ Type
 
 The type of a value parameter may be prefixed by `=>`, e.g. `´x´: => ´T´`.
 The type of such a parameter is then the parameterless method type `=> ´T´`.
-This indicates that the corresponding argument is not evaluated at the point of function application, but instead is evaluated at each use within the function.
+This indicates that the corresponding argument is not evaluated at the point of method application, but instead is evaluated at each use within the method.
 That is, the argument is evaluated using _call-by-name_.
 
 The by-name modifier is disallowed for parameters of classes that carry a `val` or `var` prefix, including parameters of case classes for which a `val` prefix is implicitly generated.
@@ -654,11 +654,11 @@ FunDcl   ::=  FunSig
 FunDef   ::=  FunSig [nl] ‘{’ Block ‘}’
 ```
 
-Special syntax exists for procedures, i.e. functions that return the `Unit` value `()`.
-A _procedure declaration_ is a function declaration where the result type is omitted.
+Special syntax exists for procedures, i.e. methods that return the `Unit` value `()`.
+A _procedure declaration_ is a method declaration where the result type is omitted.
 The result type is then implicitly completed to the `Unit` type. E.g., `def ´f´(´\mathit{ps}´)` is equivalent to `def ´f´(´\mathit{ps}´): Unit`.
 
-A _procedure definition_ is a function definition where the result type and the equals sign are omitted; its defining expression must be a block.
+A _procedure definition_ is a method definition where the result type and the equals sign are omitted; its defining expression must be a block.
 E.g., `def ´f´(´\mathit{ps}´) {´\mathit{stats}´}` is equivalent to `def ´f´(´\mathit{ps}´): Unit = {´\mathit{stats}´}`.
 
 ###### Example
@@ -686,8 +686,8 @@ object Terminal extends Writer {
 
 ### Method Return Type Inference
 
-A class member definition ´m´ that overrides some other function ´m'´ in a base class of ´C´ may leave out the return type, even if it is recursive.
-In this case, the return type ´R'´ of the overridden function ´m'´, seen as a member of ´C´, is taken as the return type of ´m´ for each recursive invocation of ´m´.
+A class member definition ´m´ that overrides some other method ´m'´ in a base class of ´C´ may leave out the return type, even if it is recursive.
+In this case, the return type ´R'´ of the overridden method ´m'´, seen as a member of ´C´, is taken as the return type of ´m´ for each recursive invocation of ´m´.
 That way, a type ´R´ for the right-hand side of ´m´ can be determined, which is then taken as the return type of ´m´.
 Note that ´R´ may be different from ´R'´, as long as ´R´ conforms to ´R'´.
 
@@ -709,7 +709,7 @@ Here, it is OK to leave out the result type of `factorial` in `C`, even though t
 \label{sec:overloaded-defs}
 \todo{change}
 
-An overloaded definition is a set of ´n > 1´ value or function
+An overloaded definition is a set of ´n > 1´ value or method
 definitions in the same statement sequence that define the same name,
 binding it to types `´T_1 \commadots T_n´`, respectively.
 The individual definitions are called _alternatives_.  Overloaded

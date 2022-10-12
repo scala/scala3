@@ -603,7 +603,7 @@ The self constructor invocation must construct a generic instance of the class.
 I.e. if the class in question has name ´C´ and type parameters `[´\mathit{tps}\,´]`, then a self constructor invocation must generate an instance of `´C´[´\mathit{tps}\,´]`; it is not permitted to instantiate formal type parameters.
 
 The signature and the self constructor invocation of a constructor definition are type-checked and evaluated in the scope which is in effect at the point of the enclosing class definition, augmented by any type parameters of the enclosing class and by any [early definitions](#early-definitions) of the enclosing template.
-The rest of the constructor expression is type-checked and evaluated as a function body in the current class.
+The rest of the constructor expression is type-checked and evaluated as a method body in the current class.
 
 If there are auxiliary constructors of a class ´C´, they form together with ´C´'s primary [constructor](#class-definitions) an overloaded constructor definition.
 The usual rules for [overloading resolution](06-expressions.html#overloading-resolution) apply for constructor invocations of ´C´, including for the self constructor invocations in the constructor expressions themselves.

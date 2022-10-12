@@ -234,7 +234,7 @@ A single new line token is accepted
 >         (y: Int) = x + y
 > ```
 >
-> With an additional newline character, the same code is interpreted as an abstract function definition and a syntactically illegal statement:
+> With an additional newline character, the same code is interpreted as an abstract method definition and a syntactically illegal statement:
 >
 > ```scala
 > def func(x: Int)

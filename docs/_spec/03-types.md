@@ -335,7 +335,7 @@ An argument type of the form ´\Rightarrow T´ represents a [call-by-name parame
 
 Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow U´ is the same as ´S \Rightarrow (T \Rightarrow U)´.
 
-Function types are shorthands for class types that define `apply` functions.
+Function types are shorthands for class types that define an `apply` method.
 Specifically, the ´n´-ary function type ´(T_1 , \ldots , T_n) \Rightarrow U´ is a shorthand for the class type `Function´_n´[´T_1´ , … , ´T_n´, ´U´]`.
 Such class types are defined in the Scala library for ´n´ between 0 and 22 as follows.
 

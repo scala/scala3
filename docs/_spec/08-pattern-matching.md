@@ -474,7 +474,7 @@ The expected type of the pattern `y: Number` is `Term[B]`.
 The type `Number` does not conform to `Term[B]`; hence Case 2 of the rules above applies.
 This means that `B` is treated as another type variable for which subtype constraints are inferred.
 In our case the applicable constraint is `Number <: Term[B]`, which entails `B = Int`.  Hence, `B` is treated in the case clause as an abstract type with lower and upper bound `Int`.
-Therefore, the right hand side of the case clause, `y.n`, of type `Int`, is found to conform to the function's declared result type, `Number`.
+Therefore, the right hand side of the case clause, `y.n`, of type `Int`, is found to conform to the method's declared result type, `Number`.
 
 ## Pattern Matching Expressions
 

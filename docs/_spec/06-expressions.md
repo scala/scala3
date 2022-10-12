@@ -190,7 +190,7 @@ Then we have:
 
 Note that the `superB` method returns different results depending on whether `B` is mixed in with class `Root` or `A`.
 
-## Function Applications
+## Method Applications
 
 ```ebnf
 SimpleExpr    ::=  SimpleExpr1 ArgumentExprs
@@ -201,8 +201,8 @@ ArgumentExprs ::=  ‘(’ [Exprs] ‘)’
 Exprs         ::=  Expr {‘,’ Expr}
 ```
 
-An application `´f(e_1, ..., e_m)´` applies the function `´f´` to the argument expressions `´e_1, ..., e_m´`.
-For this expression to be well-typed, the function must be *applicable* to its arguments, which is defined next by case analysis on ´f´'s type.
+An application `´f(e_1, ..., e_m)´` applies the expression `´f´` to the argument expressions `´e_1, ..., e_m´`.
+For the overal expression to be well-typed, ´f´ must be *applicable* to its arguments, which is defined next by case analysis on ´f´'s type.
 
 If ´f´ has a method type `(´p_1´:´T_1, ..., p_n´:´T_n´)´U´`, each argument expression ´e_i´ is typed with the corresponding parameter type ´T_i´ as expected type.
 Let ´S_i´ be the type of argument ´e_i´ ´(i = 1, ..., m)´.
@@ -223,8 +223,8 @@ The value `´f´` is applicable to the given arguments if `´f´.apply` is appli
 
 The application `´f´(´e_1, ..., e_n´)` evaluates ´f´ and then each argument ´e_1, ..., e_n´ from left to right, except for arguments that correspond to a by-name parameter (see below).
 Each argument expression is converted to the type of its corresponding formal parameter.
-After that, the application is rewritten to the function's right hand side, with actual arguments substituted for formal parameters.
-The result of evaluating the rewritten right-hand side is finally converted to the function's declared result type, if one is given.
+After that, the application is rewritten to the method's right hand side, with actual arguments substituted for formal parameters.
+The result of evaluating the rewritten right-hand side is finally converted to the method's declared result type, if one is given.
 
 The case of a formal parameter with a parameterless method type `=> ´T´` is treated specially.
 In this case, the corresponding actual argument expression ´e´ is not evaluated before the application.
@@ -232,7 +232,7 @@ Instead, every use of the formal parameter on the right-hand side of the rewrite
 In other words, the evaluation order for `=>`-parameters is _call-by-name_ whereas the evaluation order for normal parameters is _call-by-value_.
 Furthermore, it is required that ´e´'s [packed type](#expression-typing) conforms to the parameter type ´T´.
 The behavior of by-name parameters is preserved if the application is transformed into a block due to named or default arguments.
-In this case, the local value for that parameter has the form `val ´y_i´ = () => ´e´` and the argument passed to the function is `´y_i´()`.
+In this case, the local value for that parameter has the form `val ´y_i´ = () => ´e´` and the argument passed to the method is `´y_i´()`.
 
 The last argument in an application may be marked as a sequence argument, e.g. `´e´: _*`.
 Such an argument must correspond to a [repeated parameter](04-basic-declarations-and-definitions.html#repeated-parameters) of type `´S´*` and it must be the only argument matching this parameter (i.e. the number of formal parameters and actual arguments must be the same).
@@ -243,7 +243,7 @@ When the application uses named arguments, the vararg parameter has to be specif
 If only a single argument is supplied, it may be supplied as a block expression and parentheses can be omitted, in the form `´f´ { block }`.
 This is valid when `f` has a single formal parameter or when all other formal parameters have default values.
 
-A function application usually allocates a new frame on the program's run-time stack.
+A method application usually allocates a new frame on the program's run-time stack.
 However, if a local method or a final method calls itself as its last action, the call is executed using the stack-frame of the caller.
 
 ###### Example
@@ -304,7 +304,7 @@ The result of transforming ´f´ is a block of the form
 
 where every argument in ´(\mathit{args}\_1), ..., (\mathit{args}\_l)´ is a reference to one of the values ´x_1, ..., x_k´.
 To integrate the current application into the block, first a value definition using a fresh name ´y_i´ is created for every argument in ´e_1, ..., e_m´, which is initialised to ´e_i´ for positional arguments and to ´e'_i´ for named arguments of the form `´x_i=e'_i´`.
-Then, for every parameter which is not specified by the argument list, a value definition using a fresh name ´z_i´ is created, which is initialized using the method computing the [default argument](04-basic-declarations-and-definitions.html#function-declarations-and-definitions) of this parameter.
+Then, for every parameter which is not specified by the argument list, a value definition using a fresh name ´z_i´ is created, which is initialized using the method computing the [default argument](04-basic-declarations-and-definitions.html#method-declarations-and-definitions) of this parameter.
 
 Let ´\mathit{args}´ be a permutation of the generated names ´y_i´ and ´z_i´ such such that the position of each name matches the position of its corresponding parameter in the method type `(´p_1:T_1, ..., p_n:T_n´)´U´`.
 The final result of the transformation is a block of the form
@@ -366,13 +366,13 @@ Note that a space is necessary between a method name and the trailing underscore
 SimpleExpr    ::=  SimpleExpr TypeArgs
 ```
 
-A _type application_ `´e´[´T_1, ..., T_n´]` instantiates a polymorphic value ´e´ of type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´S´` with argument types `´T_1, ..., T_n´`.
+A _type application_ `´e´[´T_1, ..., T_n´]` instantiates a polymorphic method ´e´ of type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´S´` with argument types `´T_1, ..., T_n´`.
 Every argument type ´T_i´ must obey the corresponding bounds ´L_i´ and ´U_i´.
 That is, for each ´i = 1, ..., n´, we must have ´\sigma L_i <: T_i <: \sigma U_i´, where ´\sigma´ is the substitution ´[a_1 := T_1, ..., a_n
 := T_n]´.
 The type of the application is ´\sigma S´.
 
-If the function part ´e´ is of some value type, the type application is taken to be equivalent to `´e´.apply[´T_1 , ...,´ T´_n´]`, i.e. the application of an `apply` method defined by ´e´.
+If ´e´ is not a method, and is instead of some value type, the type application is taken to be equivalent to `´e´.apply[´T_1 , ...,´ T´_n´]`, i.e. the application of an `apply` method defined by ´e´.
 
 Type applications can be omitted if [local type inference](#local-type-inference) can infer best type parameters for a polymorphic method from the types of the actual method arguments and the expected result type.
 
@@ -1146,12 +1146,12 @@ Otherwise, if ´e´ has method type ´()T´, it is implicitly applied to the emp
 ### Overloading Resolution
 
 If an identifier or selection ´e´ references several members of a class, the context of the reference is used to identify a unique member.
-The way this is done depends on whether or not ´e´ is used as a function.
+The way this is done depends on whether or not ´e´ is used as a method.
 Let ´\mathscr{A}´ be the set of members referenced by ´e´.
 
 Assume first that ´e´ appears as a function in an application, as in `´e´(´e_1´, ..., ´e_m´)`.
 
-One first determines the set of functions that is potentially [applicable](#function-applications) based on the _shape_ of the arguments.
+One first determines the set of methods that are potentially [applicable](#method-applications) based on the _shape_ of the arguments.
 
 The *shape* of an argument expression ´e´, written  ´\mathit{shape}(e)´, is a type that is defined as follows:
   - For a function expression `(´p_1´: ´T_1, ..., p_n´: ´T_n´) => ´b´: (Any, ..., Any) => ´\mathit{shape}(b)´`, where `Any` occurs ´n´ times in the argument type.
@@ -1159,7 +1159,7 @@ The *shape* of an argument expression ´e´, written  ´\mathit{shape}(e)´, is 
   - For a named argument `´n´ = ´e´`: ´\mathit{shape}(e)´.
   - For all other expressions: `Nothing`.
 
-Let ´\mathscr{B}´ be the set of alternatives in ´\mathscr{A}´ that are [_applicable_](#function-applications) to expressions ´(e_1, ..., e_n)´ of types ´(\mathit{shape}(e_1), ..., \mathit{shape}(e_n))´.
+Let ´\mathscr{B}´ be the set of alternatives in ´\mathscr{A}´ that are [_applicable_](#method-applications) to expressions ´(e_1, ..., e_n)´ of types ´(\mathit{shape}(e_1), ..., \mathit{shape}(e_n))´.
 If there is precisely one alternative in ´\mathscr{B}´, that alternative is chosen.
 
 Otherwise, let ´S_1, ..., S_m´ be the list of types obtained by typing each argument as follows.
@@ -1197,7 +1197,7 @@ question: given
  so the method is not more specific than the value.
 -->
 
-- A parameterized method ´m´ of type `(´p_1:T_1, ..., p_n:T_n´)´U´` is _as specific as_ some other member ´m'´ of type ´S´ if ´m'´ is [applicable](#function-applications) to arguments `(´p_1, ..., p_n´)` of types ´T_1, ..., T_n´.
+- A parameterized method ´m´ of type `(´p_1:T_1, ..., p_n:T_n´)´U´` is _as specific as_ some other member ´m'´ of type ´S´ if ´m'´ is [applicable](#method-applications) to arguments `(´p_1, ..., p_n´)` of types ´T_1, ..., T_n´.
 - A polymorphic method of type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is as specific as some other member of type ´S´ if ´T´ is as specific as ´S´ under the assumption that for ´i = 1, ..., n´ each ´a_i´ is an abstract type name bounded from below by ´L_i´ and from above by ´U_i´.
 - A member of any other type is always as specific as a parameterized method or a polymorphic method.
 - Given two members of types ´T´ and ´U´ which are neither parameterized nor polymorphic method types, the member of type ´T´ is as specific as the member of type ´U´ if the existential dual of ´T´ conforms to the existential dual of ´U´.
@@ -1220,12 +1220,12 @@ An alternative ´A´ is _more specific_ than an alternative ´B´ if the relativ
 
 It is an error if there is no alternative in ´\mathscr{CC}´ which is more specific than all other alternatives in ´\mathscr{CC}´.
 
-Assume next that ´e´ appears as a function in a type application, as in `´e´[´\mathit{targs}\,´]`.
+Assume next that ´e´ appears as a method in a type application, as in `´e´[´\mathit{targs}\,´]`.
 Then all alternatives in ´\mathscr{A}´ which take the same number of type parameters as there are type arguments in ´\mathit{targs}´ are chosen.
 It is an error if no such alternative exists.
 If there are several such alternatives, overloading resolution is applied again to the whole expression `´e´[´\mathit{targs}\,´]`.
 
-Assume finally that ´e´ does not appear as a function in either an application or a type application.
+Assume finally that ´e´ does not appear as a method in either an application or a type application.
 If an expected type is given, let ´\mathscr{B}´ be the set of those alternatives in ´\mathscr{A}´ which are [compatible](03-types.html#compatibility) to it.
 Otherwise, let ´\mathscr{B}´ be the same as ´\mathscr{A}´.
 In this last case we choose the most specific alternative among all alternatives in ´\mathscr{B}´.
