@@ -40,53 +40,15 @@ by commas. These are expanded according to the following scheme:
 \VAL;x, y: T = e && \VAL; x: T = e \\
                  && \VAL; y: T = x \\[0.5em]
 
-\LET;x, y: T = e && \LET; x: T = e \\
-                 && \VAL; y: T = x \\[0.5em]
-
-\DEF;x, y (ps): T = e &\tab\mbox{expands to}\tab& \DEF; x(ps): T = e \\
-                      && \DEF; y(ps): T = x(ps)\\[0.5em]
-
 \VAR;x, y: T := e && \VAR;x: T := e\\
                   && \VAR;y: T := x\\[0.5em]
-
-\TYPE;t,u = T && \TYPE; t = T\\
-              && \TYPE; u = t\\[0.5em]
 \eda
 
-All definitions have a ``repeated form`` where the initial
-definition keyword is followed by several constituent definitions
-which are separated by commas.  A repeated definition is
-always interpreted as a sequence formed from the
-constituent definitions. E.g. the function definition
-`def f(x) = x, g(y) = y` expands to
-`def f(x) = x; def g(y) = y` and
-the type definition
-`type T, U <: B` expands to
-`type T; type U <: B`.
-}
-\comment{
-If an element in such a sequence introduces only the defined name,
-possibly with some type or value parameters, but leaves out any
-additional parts in the definition, then those parts are implicitly
-copied from the next subsequent sequence element which consists of
-more than just a defined name and parameters. Examples:
-
-- []
 The variable declaration `var x, y: Int`
 expands to `var x: Int; var y: Int`.
-- []
+
 The value definition `val x, y: Int = 1`
 expands to `val x: Int = 1; val y: Int = 1`.
-- []
-The class definition `case class X(), Y(n: Int) extends Z` expands to
-`case class X extends Z; case class Y(n: Int) extends Z`.
-- The object definition `case object Red, Green, Blue extends Color`~
-expands to
-```scala
-case object Red extends Color
-case object Green extends Color
-case object Blue extends Color
-```
 -->
 
 ## Value Declarations and Definitions

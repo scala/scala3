@@ -63,7 +63,7 @@ StableId        ::=  id
                   |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
 ClassQualifier  ::= ‘[’ id ‘]’
 ```
-
+<!-- TODO: Clarify paragraph -->
 Paths are not types themselves, but they can be a part of named types and in that function form a central role in Scala's type system.
 
 A path is one of the following.
@@ -388,6 +388,7 @@ Method types associate to the right: ´(\mathit{Ps}\_1)(\mathit{Ps}\_2)U´ is tr
 A special case are types of methods without any parameters.
 They are written here `=> T`. Parameterless methods name expressions that are re-evaluated each time the parameterless method name is referenced.
 
+<!-- TODO: replace by reference to eta-expansion instead -->
 Method types do not exist as types of values.
 If a method name is used as a value, its type is [implicitly converted](06-expressions.html#implicit-conversions) to a corresponding function type.
 
@@ -642,20 +643,9 @@ A _weak least upper bound_ is a least upper bound with respect to weak conforman
 A type ´T´ is _compatible_ to a type ´U´ if ´T´ (or its corresponding function type) [weakly conforms](#weak-conformance) to ´U´ after applying [eta-expansion](06-expressions.html#eta-expansion).
 If ´T´ is a method type, it's converted to the corresponding function type.
 If the types do not weakly conform, the following alternatives are checked in order:
-- [view application](07-implicits.html#views): there's an implicit view from ´T´ to ´U´;
 - dropping by-name modifiers: if ´U´ is of the shape `´=> U'´` (and ´T´ is not), `´T <:_w U'´`;
 - SAM conversion: if ´T´ corresponds to a function type, and ´U´ declares a single abstract method whose type [corresponds](06-expressions.html#sam-conversion) to the function type ´U'´, `´T <:_w U'´`.
-
-<!--- TODO: include other implicit conversions in addition to view application?
-
-  trait Proc { def go(x: Any): Unit }
-
-  def foo(x: Any => Unit): Unit = ???
-  def foo(x: Proc): Unit = ???
-
-  foo((x: Any) => 1) // works when you drop either foo overload since value discarding is applied
-
--->
+- [implicit conversion](07-implicits.html#views): there's an implicit conversion from ´T´ to ´U´ in scope;
 
 #### Examples
 
