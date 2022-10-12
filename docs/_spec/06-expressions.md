@@ -12,7 +12,6 @@ Expr         ::=  (Bindings | id | ‘_’) ‘=>’ Expr
 Expr1        ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]
                |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr
                |  ‘try’ Expr [‘catch’ Expr] [‘finally’ Expr]
-               |  ‘do’ Expr [semi] ‘while’ ‘(’ Expr ‘)’
                |  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘yield’] Expr
                |  ‘throw’ Expr
                |  ‘return’ [Expr]
@@ -716,15 +715,6 @@ The _while loop expression_ `while (´e_1´) ´e_2´` is typed and evaluated as 
 def whileLoop(cond: => Boolean)(body: => Unit): Unit  =
   if (cond) { body ; whileLoop(cond)(body) } else {}
 ```
-
-## Do Loop Expressions
-
-```ebnf
-Expr1          ::=  ‘do’ Expr [semi] ‘while’ ‘(’ Expr ‘)’
-```
-
-The _do loop expression_ `do ´e_1´ while (´e_2´)` is typed and evaluated as if it was the expression `(´e_1´ ; while (´e_2´) ´e_1´)`.
-A semicolon preceding the `while` symbol of a do loop expression is ignored.
 
 ## For Comprehensions and For Loops
 
