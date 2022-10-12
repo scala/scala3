@@ -96,16 +96,6 @@ If this is not a template of a trait, then its _evaluation_ consists of the foll
 Mixin-evaluation happens in reverse order of occurrence in the linearization.
 - Finally, the statement sequence ´\mathit{stats}\,´ is evaluated.
 
-###### Delayed Initialization
-This statement sequence constitutes the initialization code for an object or class after the superclass constructor invocation and the mixin-evaluation of the template's base classes as described above.
-Normally, this code is passed to a special hook, inaccessible to user code, which simply executes it.
-
-However, in objects and classes (but not traits) which extend `scala.DelayedInit`, the initialization code is passed to a `delayedInit` method which can be overridden to implement arbitrary semantics.
-
-```scala
-def delayedInit(body: => Unit): Unit
-```
-
 ### Constructor Invocations
 
 ```ebnf
