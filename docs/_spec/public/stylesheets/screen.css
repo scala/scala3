@@ -1,0 +1,521 @@
+/* from https://gist.github.com/andyferra/2554919 */
+
+body {
+  font-family:Heuristica,Georgia,serif;
+  color: #222222;
+  line-height: 1.6;
+
+  padding-bottom: 10px;
+  background-color: white;
+  padding-left: 30px;
+}
+
+#content-container > *:first-child {
+  margin-top: 0 !important;
+}
+#content-container > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+a {
+  color: #08C;
+  text-decoration: none;
+}
+a:hover, a:focus {
+
+}
+a.absent {
+  color: #cc0000;
+}
+a.anchor {
+  display: block;
+  margin-left: -35px;
+  padding-left: 10px;
+  cursor: pointer;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  color: black;
+  width: 35px; height: 100%;
+}
+
+a.anchor span {
+  vertical-align: middle;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 30px 0 0px;
+  padding: 0;
+  /* Fix anchor position due to header */
+  padding-top: 32px;
+  margin-top: -32px;
+  font-weight: bold;
+  -webkit-font-smoothing: antialiased;
+  cursor: text;
+  position: relative;
+  pointer-events: none;
+}
+
+h1, h2 {
+  font-weight: normal;
+}
+
+h1:hover a.anchor, h2:hover a.anchor, h3:hover a.anchor, h4:hover a.anchor, h5:hover a.anchor, h6:hover a.anchor {
+  text-decoration: none;
+}
+
+h1:hover a.anchor span, h2:hover a.anchor span, h3:hover a.anchor span, h4:hover a.anchor span, h5:hover a.anchor span, h6:hover a.anchor span {
+  display: inline-block;
+}
+
+h1 a.anchor span, h2 a.anchor span, h3 a.anchor span, h4 a.anchor span, h5 a.anchor span, h6 a.anchor span {
+  display: none;
+}
+
+h1 a.anchor:hover span, h2 a.anchor:hover span, h3 a.anchor:hover span, h4 a.anchor:hover span, h5 a.anchor:hover span, h6 a.anchor:hover span {
+  display: inline-block;
+}
+
+h1 tt, h1 code {
+  font-size: inherit;
+}
+
+h2 tt, h2 code {
+  font-size: inherit;
+}
+
+h3 tt, h3 code {
+  font-size: inherit;
+}
+
+h4 tt, h4 code {
+  font-size: inherit;
+}
+
+h5 tt, h5 code {
+  font-size: inherit;
+}
+
+h6 tt, h6 code {
+  font-size: inherit;
+}
+
+h1 {
+  font-size: 28px;
+  color: black;
+}
+
+h2 {
+  font-size: 24px;
+  color: black;
+}
+
+h3 {
+  font-size: 18px;
+}
+
+h4 {
+  font-size: 16px;
+}
+
+h5 {
+  font-size: 14px;
+}
+
+h6 {
+  color: #777777;
+  font-size: 14px;
+}
+
+p, blockquote, ul, ol, dl, li, table, pre {
+  margin: 5px 0 15px;
+  -moz-font-feature-settings: "onum";
+  -ms-font-feature-settings: "onum";
+  -webkit-font-feature-settings: "onum";
+  font-feature-settings: "onum";
+}
+
+hr {
+  background: transparent repeat-x 0 0;
+  border: 0 none;
+  color: #cccccc;
+  height: 4px;
+  padding: 0;
+}
+
+body > h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+body > h1:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+body > h1:first-child + h2 {
+  margin-top: 0;
+  padding-top: 0;
+}
+body > h3:first-child, body > h4:first-child, body > h5:first-child, body > h6:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+a:first-child h1, a:first-child h2, a:first-child h3, a:first-child h4, a:first-child h5, a:first-child h6 {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+h1 p, h2 p, h3 p, h4 p, h5 p, h6 p {
+  margin-top: 0;
+}
+
+li p.first {
+  display: inline-block;
+}
+
+ul, ol {
+  padding-left: 30px;
+}
+
+ul :first-child, ol :first-child {
+  margin-top: 0;
+}
+
+ul :last-child, ol :last-child {
+  margin-bottom: 0;
+}
+
+dl {
+  padding: 0;
+}
+dl dt {
+  font-size: 14px;
+  font-weight: bold;
+  font-style: italic;
+  padding: 0;
+  margin: 15px 0 5px;
+}
+dl dt:first-child {
+  padding: 0;
+}
+dl dt > :first-child {
+  margin-top: 0;
+}
+dl dt > :last-child {
+  margin-bottom: 0;
+}
+dl dd {
+  margin: 0 0 15px;
+  padding: 0 15px;
+}
+dl dd > :first-child {
+  margin-top: 0;
+}
+dl dd > :last-child {
+  margin-bottom: 0;
+}
+
+blockquote {
+  border-left: 4px solid #dddddd;
+  padding: 0 15px;
+  color: #222222;
+}
+blockquote > :first-child {
+  margin-top: 0;
+}
+blockquote > :last-child {
+  margin-bottom: 0;
+}
+blockquote:before {
+    content: "Example";
+    color: #777777;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+table {
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-collapse: collapse;
+}
+table tr {
+  background-color: white;
+}
+table tr:nth-child(2n) {
+  background-color: #f8f8f8;
+}
+table tr th {
+  background-color: #EAEAEA;
+  font-weight: bold;
+  text-align: left;
+  padding: 5px 13px;
+}
+table tr td {
+  text-align: left;
+  padding: 5px 13px;
+}
+table tr th :first-child, table tr td :first-child {
+  margin-top: 0;
+}
+table tr th :last-child, table tr td :last-child {
+  margin-bottom: 0;
+}
+
+img {
+  max-width: 100%;
+}
+
+span.frame {
+  display: block;
+  overflow: hidden;
+}
+span.frame > span {
+  border: 1px solid #dddddd;
+  display: block;
+  float: left;
+  overflow: hidden;
+  margin: 13px 0 0;
+  padding: 7px;
+  width: auto;
+}
+span.frame span img {
+  display: block;
+  float: left;
+}
+span.frame span span {
+  clear: both;
+  color: #333333;
+  display: block;
+  padding: 5px 0 0;
+}
+span.align-center {
+  display: block;
+  overflow: hidden;
+  clear: both;
+}
+span.align-center > span {
+  display: block;
+  overflow: hidden;
+  margin: 13px auto 0;
+  text-align: center;
+}
+span.align-center span img {
+  margin: 0 auto;
+  text-align: center;
+}
+span.align-right {
+  display: block;
+  overflow: hidden;
+  clear: both;
+}
+span.align-right > span {
+  display: block;
+  overflow: hidden;
+  margin: 13px 0 0;
+  text-align: right;
+}
+span.align-right span img {
+  margin: 0;
+  text-align: right;
+}
+span.float-left {
+  display: block;
+  margin-right: 13px;
+  overflow: hidden;
+  float: left;
+}
+span.float-left span {
+  margin: 13px 0 0;
+}
+span.float-right {
+  display: block;
+  margin-left: 13px;
+  overflow: hidden;
+  float: right;
+}
+span.float-right > span {
+  display: block;
+  overflow: hidden;
+  margin: 13px auto 0;
+  text-align: right;
+}
+
+pre, code, tt {
+  font:14px "Luxi Mono", 'andale mono', 'lucida console', monospace;
+  line-height:1.5;
+}
+
+.highlight pre {
+  background-color: #F8F8F8;
+  border-radius: 3px;
+  overflow: auto;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+code {
+  background-color: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+  white-space: pre;
+}
+
+aside.left {
+    height: 100%;
+    position: fixed;
+    direction: rtl;
+    overflow: auto;
+    left: 0px;
+    width: 320px;
+    bottom: -32px;
+    font-family: "Luxi Sans", serif;
+    background-color: #073642;
+}
+
+aside.left > nav {
+    direction: ltr;
+    top: 32px;
+    padding-bottom: 32px;
+}
+
+article, aside, details, figcaption, figure, footer, header, hgroup, main, nav, section, summary {
+    display: block;
+}
+
+audio, canvas, img, svg, video {
+    vertical-align: middle;
+}
+
+audio, canvas, progress, video {
+    display: inline-block;
+    vertical-align: baseline;
+}
+
+main {
+    position: relative;
+    top: 32px;
+    margin: 0 0 0 320px;
+    padding: 0px 32px;
+    max-width: 800px;
+    min-width: 800px;
+    min-height: 580px;
+    background-color: #FFF;
+}
+
+header {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    height: 32px;
+    width: 100%;
+    background-color: #002B36;
+    margin: 0px 0px;
+    padding: 0px 0px;
+    font-family: "Luxi Sans", serif;
+    font-weight: bold;
+    z-index: 10;
+    overflow: hidden;
+    text-shadow: 1px 1px 0px rgba(0, 43, 54, 0.15);
+}
+
+#chapters a {
+    color: #FFFFFF;
+    text-decoration: none;
+    font-size: 0.63vw;
+    padding: 100% 5px;
+}
+
+#chapters a:hover, #chapters a:focus, #github:hover, #github:focus {
+  background: #DC322F;
+  -webkit-transition: background .2s ease-in;
+  -moz-transition: background .2s ease-in;
+  -ms-transition: background .2s ease-in;
+  -o-transition: background .2s ease-in;
+  transition: background .2s ease-in;
+}
+
+#chapters a.chapter-active {
+    background: #72D0EB;
+}
+
+
+#toc ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#toc li {
+    margin: 0;
+    padding: 0;
+}
+
+#toc a {
+    color: #FFFFFF; /*#073642;*/
+    font-weight: bold;
+    font-size: 12px;
+    display: block;
+    text-shadow: 1px 1px 0px rgba(0, 43, 54, 0.15);
+}
+
+#toc a:hover, #toc a:focus {
+  background: #DC322F;
+  text-decoration: none;
+  -webkit-transition: background .2s ease-in;
+  -moz-transition: background .2s ease-in;
+  -ms-transition: background .2s ease-in;
+  -o-transition: background .2s ease-in;
+  transition: background .2s ease-in;
+}
+
+#toc .toc-h1 {
+    display: none;
+}
+
+#toc .toc-h2 a {
+    padding-left: 10px;
+}
+
+#toc .toc-h3 a {
+    padding-left: 30px;
+}
+
+#toc .toc-active {
+    background: #72D0EB;
+}
+
+#toc .toc-active a {
+    color: #FFFFFF;
+}
+
+#chapters > #github {
+  padding: 0px;
+  float: right;
+}
+
+.hljs{
+        background: #f8f8f8;
+}
+/* proper rendering of MathJax into highlighted code blocks */
+.fixws { white-space: pre; }
+.fixws .math { white-space: nowrap; }
+
+.version-notice {
+    background-color: #C93A3A;
+    color: #f2f2f2;
+    border:1px solid #ccc;
+    padding: 1em;
+    margin-bottom: 1em;
+}
+.version-notice a {
+    color: #f2f2f2;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.print-only {
+  display: none;
+}
