@@ -11,6 +11,11 @@
   display: block;
 }
 
+.subtypes > div {
+  display: none;
+}
+
+
 .subtypes > div:nth-child(1),
 .subtypes > div:nth-child(2),
 .subtypes > div:nth-child(3),
