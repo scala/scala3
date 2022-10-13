@@ -16,11 +16,22 @@ We aim to track the configuration GitHub Pages uses but differences may arise as
 
 ## Building
 
+<!-- TODO: change url to correct one -->
 Travis CI builds the spec automatically after every merged pull release and publishes to https://www.scala-lang.org/files/archive/spec/2.13/.
 
+<!-- TODO: Check nothing else is needed -->
+To preview locally, run the following commands in the docs/_spec subfolder:
+
+```
+env UID="$(id -u)" GID="$(id -g)" docker-compose up
+```
+
+and open http://0.0.0.0:4000/files/archive/spec/2.13/ to view the spec. Jekyll will rebuild as you edit the markdown, but make sure to restart it when you change `_config.yml`.
+<!-- 
 To preview locally, run the following commands in the root of your checkout scala/scala:
 `bundle install` to install Jekyll and `bundle exec jekyll serve -d build/spec/ -s spec/ -w --baseurl=""` to start it,
 and open http://0.0.0.0:4000/ to view the spec. Jekyll will rebuild as you edit the markdown, but make sure to restart it when you change `_config.yml`.
+-->
 
 ## General Advice for editors
 
