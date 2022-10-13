@@ -97,7 +97,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case AnonymousFunctionMissingParamTypeID // errorNumber: 81
   case SuperCallsNotAllowedInlineableID // errorNumber: 82
   case NotAPathID // errorNumber: 83
-  case WildcardOnTypeArgumentNotAllowedOnNewID // errorNumber: 84
+  case WildcardTypeArgumentNotAllowedID // errorNumber: 84
   case FunctionTypeNeedsNonEmptyParameterListID // errorNumber: 85
   case WrongNumberOfParametersID // errorNumber: 86
   case DuplicatePrivateProtectedQualifierID // errorNumber: 87

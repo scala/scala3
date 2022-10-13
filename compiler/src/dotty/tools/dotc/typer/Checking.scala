@@ -153,8 +153,8 @@ object Checking {
         traverseChildren(tp)
     checker.traverse(tpt.tpe)
 
-  def checkNoWildcard(tree: Tree)(using Context): Tree = tree.tpe match {
-    case tpe: TypeBounds => errorTree(tree, "no wildcard type allowed here")
+  def checkNoWildcard(tree: Tree)(using Context): Tree = tree.typeOpt match {
+    case tpe: TypeBounds => errorTree(tree, WildcardTypeArgumentNotAllowed())
     case _ => tree
   }
 
@@ -169,9 +169,10 @@ object Checking {
    *  A NoType paramBounds is used as a sign that checking should be suppressed.
    */
   def preCheckKind(arg: Tree, paramBounds: Type)(using Context): Tree =
-    if (arg.tpe.widen.isRef(defn.NothingClass) ||
-        !paramBounds.exists ||
-        arg.tpe.hasSameKindAs(paramBounds.bounds.hi)) arg
+    if arg.tpe.widen.isRef(defn.NothingClass)
+      || !paramBounds.exists
+      || arg.tpe.hasSameKindAs(paramBounds.bounds.hi)
+    then arg
     else errorTree(arg, em"Type argument ${arg.tpe} does not have the same kind as its bound $paramBounds")
 
   def preCheckKinds(args: List[Tree], paramBoundss: List[Type])(using Context): List[Tree] = {

@@ -1788,7 +1788,7 @@ object Parsers {
       case HASH => simpleTypeRest(typeProjection(t))
       case LBRACKET => simpleTypeRest(atSpan(startOffset(t)) {
         val applied = rejectWildcardType(t)
-        val args = typeArgs(namedOK = false, wildOK = true)
+        val args = typeArgs(wildOK = true)
 
         if (!ctx.settings.YkindProjector.isDefault) {
           def fail(): Tree = {
@@ -1856,18 +1856,27 @@ object Parsers {
         if (wildOK) t else rejectWildcardType(t)
       }
 
-      def namedTypeArg() = {
-        val name = ident()
-        accept(EQUALS)
-        NamedArg(name.toTypeName, argType())
-      }
+      def namedTypeArg() =
+        atSpan(in.offset) {
+          NamedArg(ident().toTypeName,
+            if in.token == EQUALS then
+              in.nextToken()
+              argType()
+            else
+              syntaxError("`=` expected")
+              scalaAny
+          )
+        }
 
       if (namedOK && in.token == IDENTIFIER)
         in.currentRegion.withCommasExpected {
+          val start = in.offset
           argType() match {
             case Ident(name) if in.token == EQUALS =>
               in.nextToken()
-              commaSeparatedRest(NamedArg(name, argType()), () => namedTypeArg())
+              commaSeparatedRest(
+                atSpan(start)(NamedArg(name, argType())),
+                () => namedTypeArg())
             case firstArg =>
               commaSeparatedRest(firstArg, () => argType())
           }
@@ -1932,7 +1941,8 @@ object Parsers {
     /** TypeArgs      ::= `[' Type {`,' Type} `]'
      *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
      */
-    def typeArgs(namedOK: Boolean, wildOK: Boolean): List[Tree] = inBrackets(argTypes(namedOK, wildOK))
+    def typeArgs(wildOK: Boolean): List[Tree] =
+      inBrackets(argTypes(namedOK = true, wildOK = wildOK))
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
@@ -2468,7 +2478,7 @@ object Parsers {
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), location, canApply = true)
         case LBRACKET =>
-          val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
+          val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(wildOK = false)) }
           simpleExprRest(tapp, location, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
@@ -2910,7 +2920,7 @@ object Parsers {
       else
         var p = t
         if (in.token == LBRACKET)
-          p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
+          p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(wildOK = false)) }
         if (in.token == LPAREN)
           p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
         p
