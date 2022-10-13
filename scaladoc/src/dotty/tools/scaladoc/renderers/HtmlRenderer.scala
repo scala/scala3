@@ -26,7 +26,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     val docHead = raw(document.head().html())
     val docBody = raw(document.body().html())
 
-    val attrs: List[AppliedAttr] = page.content match
+    val attrs: List[AppliedAttr] = (page.content match
       case ResolvedTemplate(loadedTemplate, _) =>
         val path = loadedTemplate.templateFile.file.toPath
         ctx.sourceLinks.repoSummary(path) match
@@ -38,7 +38,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
               )
             }
           case _ => Nil
-      case _ => Nil
+      case _ => Nil)
       :+ (Attr("data-pathToRoot") := pathToRoot(page.link.dri))
 
     html(attrs: _*)(
