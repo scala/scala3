@@ -39,6 +39,35 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.Using
 
+import org.scalajs.jsenv._
+import org.scalajs.jsenv.nodejs.NodeJSEnv
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.io.File
+import scala.concurrent._
+import concurrent.duration._
+
+class AskableJSComRun(jsEnv: JSEnv, runConfig: RunConfig, input: Seq[Input]):
+
+  private var nextPromise: Promise[String] = Promise[String]()
+  nextPromise.success(("Initial promise"))
+  
+  private val run = jsEnv.startWithCom(input, runConfig, onMessage = { (msg: String) =>
+    println(s"Received message: $msg")
+    nextPromise.success((msg))
+  })
+
+  def sendAndAck(msg: String): Future[String] =
+    Await.result(nextPromise.future, Duration.Inf)
+    nextPromise = Promise[String]()
+    run.send(msg)
+    nextPromise.future
+
+  def sendAndWaitForAck(msg: String): String =
+    Await.result(sendAndAck(msg), Duration.Inf)
+
+end AskableJSComRun
+
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
  *
@@ -58,14 +87,19 @@ import scala.util.Using
  *  @param imports     a map from object index to the list of user defined imports
  *  @param invalidObjectIndexes the set of object indexes that failed to initialize
  *  @param context     the latest compiler context
+ *  @param jsComRun    the JSComRun instance
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
                  invalidObjectIndexes: Set[Int],
-                 context: Context):
+                 context: Context,
+                 askableRun: AskableJSComRun):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
-
+  
+val hardcoded = "/Users/bill641/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-js/scalajs-library_2.13/1.10.1/scalajs-library_2.13-1.10.1.jar:/Users/bill641/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.8/scala-library-2.13.8.jar:/Users/bill641/sp/dotty/out/bootstrap/scala3-library-bootstrappedJS/scala-3.2.2-RC1-bin-SNAPSHOT-nonbootstrapped/scala3-library_sjs1_3-3.2.2-RC1-bin-SNAPSHOT.jar:/Users/bill641/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-js/scalajs-javalib/1.11.0/scalajs-javalib-1.11.0.jar"
+val sjsirDir = "/Users/bill641/sp"
+val jsToRun = "/Users/bill641/sp/repl-interpreter/target/scala-2.13/repl-interpreter-fastopt/main.js"
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
                  out: PrintStream = Console.out,
@@ -75,13 +109,15 @@ class ReplDriver(settings: Array[String],
    *  commandline
    */
   override def sourcesRequired: Boolean = false
-
+  
   /** Create a fresh and initialized context with IDE mode enabled */
   private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     rootCtx.setSetting(rootCtx.settings.YreadComments, true)
-    setupRootCtx(this.settings ++ settings, rootCtx)
+    rootCtx.setSetting(rootCtx.settings.scalajs, true) // The line that enables Scala.js and outputs sjsir files
+    val classPathToAdd = List("-classpath",hardcoded)
+    setupRootCtx(this.settings ++ classPathToAdd, rootCtx)
   }
 
   private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
@@ -98,7 +134,20 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState: State = State(0, 0, Map.empty, Set.empty, rootCtx)
+  final def initialState: State = {
+    // Delete the sjsir files from the previous run
+    val sjsirDirPath = Paths.get(sjsirDir)
+    val sjsirFiles = sjsirDirPath.toFile.listFiles.filter(_.getName.endsWith(".sjsir"))
+    sjsirFiles.foreach(_.delete)
+    
+    val jsEnv: JSEnv = new NodeJSEnv()
+    val path = Paths.get(jsToRun)
+    val script = Input.Script(path)
+    val input = Seq(script)
+    val config = RunConfig()
+    val askableRun = new AskableJSComRun(jsEnv, config, input)      
+    State(0, 0, Map.empty, Set.empty, rootCtx, askableRun)
+  }
 
   /** Reset state of repl to the initial state
    *
@@ -110,7 +159,8 @@ class ReplDriver(settings: Array[String],
     rootCtx = initialCtx(settings)
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
-        .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
+        .setSetting(rootCtx.settings.outputDir, 
+        AbstractFile.getDirectory(Directory(sjsirDir))) // used to be new VirtualDirectory("<REPL compilation output>")
     compiler = new ReplCompiler
     rendering = new Rendering(classLoader)
   }
@@ -168,7 +218,9 @@ class ReplDriver(settings: Array[String],
       else loop(using interpret(res))()
     }
 
-    try runBody { loop() }
+    try 
+      initialState.askableRun.sendAndWaitForAck("classpath:" + hardcoded)
+      runBody { loop() }
     finally terminal.close()
   }
 
@@ -324,6 +376,17 @@ class ReplDriver(settings: Array[String],
       )
   }
 
+  private def getListOfFiles(dir: String): List[File] = {
+    val d = new File(dir)
+    if (d.exists && d.isDirectory) {
+        d.listFiles.filter(_.isFile).toList
+    } else {
+        List[File]()
+    }
+  }
+
+  var loaded: Set[File] = Set.empty
+
   private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(using state: State): (State, Seq[Diagnostic]) = {
     given Context = state.context
 
@@ -355,6 +418,12 @@ class ReplDriver(settings: Array[String],
 
       val typeAliases =
         info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
+      
+      // Send msg to load sjsir files (only the new files)
+      val sjsirFiles = getListOfFiles(sjsirDir)
+      state.askableRun.sendAndWaitForAck("irfiles:" + sjsirFiles.filterNot(loaded.contains(_)).
+        map(_.getAbsolutePath()).filter(_.endsWith(".sjsir")).mkString(","))
+      loaded ++= sjsirFiles
 
       // The wrapper object may fail to initialize if the rhs of a ValDef throws.
       // In that case, don't attempt to render any subsequent vals, and mark this
@@ -362,7 +431,7 @@ class ReplDriver(settings: Array[String],
       var failedInit = false
       val renderedVals =
         val buf = mutable.ListBuffer[Diagnostic]()
-        for d <- vals do if !failedInit then rendering.renderVal(d) match
+        for d <- vals do if !failedInit then rendering.renderVal(d, state) match
           case Right(Some(v)) =>
             buf += v
           case Left(e) =>
@@ -381,7 +450,9 @@ class ReplDriver(settings: Array[String],
           typeAliases.map(rendering.renderTypeAlias)
           ++ defs.map(rendering.renderMethod)
           ++ renderedVals
-        val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
+        val diagnostics = 
+          if formattedMembers.isEmpty then rendering.forceModule(symbol, state) 
+          else formattedMembers
         (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
     }
     else (state, Seq.empty)

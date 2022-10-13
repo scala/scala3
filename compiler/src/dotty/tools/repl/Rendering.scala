@@ -15,6 +15,8 @@ import dotc.core.StdNames.{nme, str}
 import dotc.printing.ReplPrinter
 import dotc.reporting.Diagnostic
 import dotc.transform.ValueClasses
+import scala.concurrent._
+import concurrent.duration.DurationInt
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a
@@ -98,18 +100,18 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol)(using Context): Option[String] =
+  private def valueOf(sym: Symbol, state: State)(using Context): Option[String] =
+    // val initialization and method calls
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
-    val resObj: Class[?] = Class.forName(objectName, true, classLoader())
-    val symValue = resObj
-      .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
-      .flatMap(result => rewrapValueClass(sym.info.classSymbol, result.invoke(null)))
-    val valueString = symValue.map(replStringOf)
+    val methodName = sym.name.encode.toString
 
+    val valueString = state.askableRun.sendAndWaitForAck(
+      "objectNameAndMethodName:" + objectName + ':' + methodName)
+    
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
     else
-      valueString.map { s =>
+      Option(valueString).map(_.toString).map { s =>
         if (s.startsWith(REPL_WRAPPER_NAME_PREFIX))
           s.drop(REPL_WRAPPER_NAME_PREFIX.length).dropWhile(c => c.isDigit || c == '$')
         else
@@ -140,23 +142,25 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     infoDiagnostic(d.symbol.showUser, d)
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(using Context): Either[InvocationTargetException, Option[Diagnostic]] =
+  def renderVal(d: Denotation, state: State)(using Context): 
+    Either[InvocationTargetException, Option[Diagnostic]] =
     val dcl = d.symbol.showUser
     def msg(s: String) = infoDiagnostic(s, d)
     try
       Right(
         if d.symbol.is(Flags.Lazy) then Some(msg(dcl))
-        else valueOf(d.symbol).map(value => msg(s"$dcl = $value"))
+        else valueOf(d.symbol, state).map(value => msg(s"$dcl = $value"))
       )
     catch case e: InvocationTargetException => Left(e)
   end renderVal
 
   /** Force module initialization in the absence of members. */
-  def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
+  def forceModule(sym: Symbol, state: State)(using Context): Seq[Diagnostic] =
     import scala.util.control.NonFatal
     def load() =
       val objectName = sym.fullName.encode.toString
-      Class.forName(objectName, true, classLoader())
+      // Send a msg to the interpreter to load the module
+      state.askableRun.sendAndWaitForAck("objectName:" + objectName)
       Nil
     try load()
     catch

@@ -551,6 +551,7 @@ object Build {
         "org.jline" % "jline-terminal" % "3.19.0",
         "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+        ("org.scala-js" %% "scalajs-env-nodejs" % "1.4.0")cross(CrossVersion.for3Use2_13),
       ),
 
       // For convenience, change the baseDirectory when running the compiler
@@ -753,7 +754,8 @@ object Build {
     "-classpath" :: classpath :: beforeCp ::: fromCp.drop(2)
   }
 
-  lazy val nonBootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
+   lazy val nonBootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
+   libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0" cross CrossVersion.for3Use2_13,
     // packageAll packages all and then returns a map with the abs location
     packageAll := Def.taskDyn { // Use a dynamic task to avoid loops when loading the settings
       Def.task {
