@@ -1043,7 +1043,7 @@ object Parsers {
           newLineOptWhenFollowing(canStartOperand)
           if isColonLambda then
             in.nextToken()
-            recur(expr(Location.InColonArg))
+            recur(exprIn(Location.InColonArg))
           else if maybePostfix && !canStartOperand(in.token) then
             val topInfo = opStack.head
             opStack = opStack.tail
@@ -2060,13 +2060,13 @@ object Parsers {
      *                      |  `:' `_' `*'
      *  Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
      */
-    val exprInParens: () => Tree = () => expr(Location.InParens)
+    val exprInParens: () => Tree = () => exprIn(Location.InParens)
 
-    val expr: () => Tree = () => expr(Location.ElseWhere)
+    val expr: () => Tree = () => exprIn(Location.ElseWhere)
 
     def subExpr() = subPart(expr)
 
-    def expr(location: Location): Tree = {
+    def exprIn(location: Location): Tree = {
       val start = in.offset
       def isSpecialClosureStart = in.lookahead.isIdent(nme.erased) && in.erasedEnabled
       in.token match
@@ -2078,7 +2078,7 @@ object Parsers {
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
           val arrowOffset = accept(ARROW)
-          val body = expr(location)
+          val body = exprIn(location)
           atSpan(start, arrowOffset) {
             if (isFunction(body))
               PolyFunction(tparams, body)
@@ -2106,7 +2106,7 @@ object Parsers {
           else wrapPlaceholders(t)
     }
 
-    def expr1(location: Location = Location.ElseWhere): Tree = in.token match
+    def expr1(location: Location): Tree = in.token match
       case IF =>
         ifExpr(in.offset, If)
       case WHILE =>
@@ -2197,7 +2197,7 @@ object Parsers {
             case IF =>
               ifExpr(start, InlineIf)
             case _ =>
-              postfixExpr() match
+              postfixExpr(Location.ElseWhere) match
                 case t @ Match(scrut, cases) =>
                   InlineMatch(scrut, cases).withSpan(t.span)
                 case t =>
@@ -2212,7 +2212,7 @@ object Parsers {
           case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) =>
             atSpan(startOffset(t), in.skipToken()) {
               val loc = if location.inArgs then location else Location.ElseWhere
-              Assign(t, subPart(() => expr(loc)))
+              Assign(t, subPart(() => exprIn(loc)))
             }
           case _ =>
             t
@@ -2360,7 +2360,7 @@ object Parsers {
      *                  | InfixExpr id `:` IndentedExpr
      *                  | InfixExpr MatchClause
      */
-    def postfixExpr(location: Location = Location.ElseWhere): Tree =
+    def postfixExpr(location: Location): Tree =
       val t = postfixExprRest(prefixExpr(location), location)
       if location.inArgs && followingIsVararg() then
         Typed(t, atSpan(in.skipToken()) { Ident(tpnme.WILDCARD_STAR) })
@@ -2488,7 +2488,7 @@ object Parsers {
               case _ => t
           else if isColonLambda then
             val app = atSpan(startOffset(t), in.skipToken()) {
-              Apply(t, expr(Location.InColonArg) :: Nil)
+              Apply(t, exprIn(Location.InColonArg) :: Nil)
             }
             simpleExprRest(app, location, canApply = true)
           else t
@@ -2552,7 +2552,7 @@ object Parsers {
       if args._2 then res.setApplyKind(ApplyKind.Using)
       res
 
-    val argumentExpr: () => Tree = () => expr(Location.InArgs) match
+    val argumentExpr: () => Tree = () => exprIn(Location.InArgs) match
       case arg @ Assign(Ident(id), rhs) => cpy.NamedArg(arg)(id, rhs)
       case arg => arg
 
@@ -2644,7 +2644,7 @@ object Parsers {
       if (in.token == IF) guard()
       else if (in.token == CASE) generator()
       else {
-        val pat = pattern1()
+        val pat = pattern1(Location.InPattern)
         if (in.token == EQUALS) atSpan(startOffset(pat), in.skipToken()) { GenAlias(pat, subExpr()) }
         else generatorRest(pat, casePat = false)
       }
@@ -2653,7 +2653,7 @@ object Parsers {
      */
     def generator(): Tree = {
       val casePat = if (in.token == CASE) { in.nextToken(); true } else false
-      generatorRest(pattern1(), casePat)
+      generatorRest(pattern1(Location.InPattern), casePat)
     }
 
     def generatorRest(pat: Tree, casePat: Boolean): GenFrom =
@@ -2683,7 +2683,7 @@ object Parsers {
               if (leading == LBRACE || in.token == CASE)
                 enumerators()
               else {
-                val pats = patternsOpt()
+                val pats = patternsOpt(Location.InPattern)
                 val pat =
                   if (in.token == RPAREN || pats.length > 1) {
                     wrappedEnums = false
@@ -2799,7 +2799,9 @@ object Parsers {
 
     /**  Pattern           ::=  Pattern1 { `|' Pattern1 }
      */
-    def pattern(location: Location = Location.InPattern): Tree =
+    def pattern(): Tree = subPattern(Location.InPattern)
+
+    def subPattern(location: Location): Tree =
       val pat = pattern1(location)
       if (isIdent(nme.raw.BAR))
         atSpan(startOffset(pat)) { Alternative(pat :: patternAlts(location)) }
@@ -2811,7 +2813,7 @@ object Parsers {
 
     /**  Pattern1     ::= Pattern2 [Ascription]
      */
-    def pattern1(location: Location = Location.InPattern): Tree =
+    def pattern1(location: Location): Tree =
       val p = pattern2()
       if in.isColon then
         in.nextToken()
@@ -2881,7 +2883,7 @@ object Parsers {
       case USCORE =>
         wildcardIdent()
       case LPAREN =>
-        atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
+        atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt(Location.InPattern))) }
       case QUOTE =>
         simpleExpr(Location.InPattern)
       case XMLSTART =>
@@ -2917,10 +2919,10 @@ object Parsers {
 
     /** Patterns          ::=  Pattern [`,' Pattern]
      */
-    def patterns(location: Location = Location.InPattern): List[Tree] =
-      commaSeparated(() => pattern(location))
+    def patterns(location: Location): List[Tree] =
+      commaSeparated(() => subPattern(location))
 
-    def patternsOpt(location: Location = Location.InPattern): List[Tree] =
+    def patternsOpt(location: Location): List[Tree] =
       if (in.token == RPAREN) Nil else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
@@ -4097,7 +4099,7 @@ object Parsers {
         else if (isDefIntro(modifierTokensOrCase))
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (isExprIntro)
-          stats += expr1()
+          stats += expr1(Location.ElseWhere)
         else
           empty = true
         statSepOrEnd(stats, noPrevStat = empty)
@@ -4169,7 +4171,7 @@ object Parsers {
         if (in.token == IMPORT)
           stats ++= importClause()
         else if (isExprIntro)
-          stats += expr(Location.InBlock)
+          stats += exprIn(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then
           stats += closure(in.offset, Location.InBlock, modifiers(BitSet(IMPLICIT)))
         else if isIdent(nme.extension) && followingIsExtension() then
