@@ -41,13 +41,13 @@
    |                    ^^^^^^^^^^
    |                    Type parameter C is undefined. Expected one of Key, Value.
 -- [E084] Syntax Error: tests/neg/named-typeargs.scala:24:26 -----------------------------------------------------------
-24 |def test3 = new Map[Key = _, Value = Int]("a" -> 1) // error // error
+24 |def test3 = new Map[Key = ?, Value = Int]("a" -> 1) // error // error
    |                          ^
    |                          Type argument must be fully defined
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/named-typeargs.scala:24:42 ----------------------------------------------------
-24 |def test3 = new Map[Key = _, Value = Int]("a" -> 1) // error // error
+24 |def test3 = new Map[Key = ?, Value = Int]("a" -> 1) // error // error
    |                                          ^^^^^^^^
    |                                          Found:    (String, Int)
    |                                          Required: (Nothing, Int)

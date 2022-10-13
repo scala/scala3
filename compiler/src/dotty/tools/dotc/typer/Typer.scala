@@ -2015,8 +2015,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else {
       var args = tree.args
       if isNamedArgs(args) then
-        args = untpd.reorderArgs(tparams.map(_.paramName), tree.args,
-            untpd.TypedSplice(placeholderTypeParam))
+        args = untpd.reorderArgs(tparams.map(_.paramName), tree.args, placeholderTypeParam)
       val args1 = {
         if (args.length != tparams.length) {
           wrongNumberOfTypeArgs(tpt1.tpe, tparams, args, tree.srcPos)
@@ -2076,7 +2075,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // wildcard identifiers `_` instead.
                 TypeTree(tparamBounds).withSpan(arg.span)
               case _ =>
-                typedType(desugaredArg, argPt, mapPatternBounds = true)
+                if isPlaceHolderTypeParam(arg) then arg.withType(NoType)
+                else typedType(desugaredArg, argPt, mapPatternBounds = true)
             }
           else desugaredArg.withType(UnspecifiedErrorType)
         }

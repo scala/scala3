@@ -1,0 +1,16 @@
+-- [E056] Syntax Error: tests/neg/placeholder-typeargs.scala:5:8 -------------------------------------------------------
+5 |val m1: Map[Int, _] = ???   // error
+  |        ^^^^^^^^^^^
+  |        Missing type parameter for [Value] =>> Map[Int, Value]
+-- [E056] Syntax Error: tests/neg/placeholder-typeargs.scala:6:8 -------------------------------------------------------
+6 |val m2: Map[_, String] = ??? // error
+  |        ^^^^^^^^^^^^^^
+  |        Missing type parameter for [Key] =>> Map[Key, String]
+-- [E023] Syntax Error: tests/neg/placeholder-typeargs.scala:7:8 -------------------------------------------------------
+7 |val m4: Map[Int, _, String] = ??? // error
+  |        ^^^^^^^^^^^^^^^^^^^
+  |        Too many type arguments for Map[Key, Value]
+  |        expected: [Key, Value]
+  |        actual:   [Int, _, String]
+  |
+  | longer explanation available when compiling with `-explain`

@@ -21,6 +21,6 @@ val m4: Map[K = Int, Key = String, Value = Int] = ??? // error
 
 def test = new Map("a" -> 1)
 def test2 = new Map[C = String, Value = Int]("a" -> 1) // error
-def test3 = new Map[Key = _, Value = Int]("a" -> 1) // error // error
+def test3 = new Map[Key = ?, Value = Int]("a" -> 1) // error // error
 def test4 = new Map[Value = Int, Key = Int]("a" -> 1) // error
 
