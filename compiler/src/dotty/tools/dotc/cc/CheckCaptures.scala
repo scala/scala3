@@ -630,7 +630,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             if (ares1 eq ares) && (aargs1 eq aargs) then actual
             else reconstruct(aargs1, ares1)
 
-          curEnv.captured.asVar.markSolved()
           (resTp, curEnv.captured)
         finally
           curEnv = saved
@@ -656,7 +655,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             if ares1 eq ares then actual
             else reconstruct(ares1)
 
-          curEnv.captured.asVar.markSolved()
           (resTp, curEnv.captured)
         finally
           curEnv = saved

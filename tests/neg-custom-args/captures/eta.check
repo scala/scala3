@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/eta.scala:4:9 --------------------------------------------
 4 |         g  // error
   |         ^
-  |         Found:    (g : () -> A)
+  |         Found:    ? () -> A
   |         Required: () -> {f} Proc
   |
   | longer explanation available when compiling with `-explain`
