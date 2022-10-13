@@ -284,7 +284,11 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       inputContainer,
       resultsDiv
     ).tap { elem =>
-      elem.addEventListener("mousedown", (e: Event) => e.stopPropagation())
+      elem.addEventListener("mousedown", (e: Event) =>
+        val evTargetId = e.target.asInstanceOf[html.Element].id
+
+        if evTargetId != "scaladoc-searchbar" then
+          e.stopPropagation())
       elem.addEventListener("keydown", {
         case e: KeyboardEvent =>
           if e.keyCode == 40 then handleArrowDown()
