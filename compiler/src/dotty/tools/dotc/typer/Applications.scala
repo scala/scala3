@@ -1101,24 +1101,18 @@ trait Applications extends Compatibility {
     else
       throw Error(i"unexpected type.\n  fun = $fun,\n  methPart(fun) = ${methPart(fun)},\n  methPart(fun).tpe = ${methPart(fun).tpe},\n  tpe = ${fun.tpe}")
 
-  def typedNamedArgs(args: List[untpd.Tree])(using Context): List[NamedArg] =
-    for (case arg @ NamedArg(id, argtpt) <- args) yield {
-      if !Feature.namedTypeArgsEnabled then
-        report.error(
-          i"""Named type arguments are experimental,
-             |they must be enabled with a `experimental.namedTypeArguments` language import or setting""",
-          arg.srcPos)
-      val argtpt1 = typedType(argtpt)
-      cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
-    }
-
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
+    record("typedTypeApply")
     if (ctx.mode.is(Mode.Pattern))
       return errorTree(tree, "invalid pattern")
 
-    val isNamed = isNamedArgs(tree.args)
-    val typedArgs = if isNamed then typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
-    record("typedTypeApply")
+    val typedArgs = tree.args.mapconserve {
+      case arg @ NamedArg(id, arg0) =>
+        val arg1 = typedType(arg0)
+        cpy.NamedArg(arg)(id, arg1).withType(arg1.tpe)
+      case arg =>
+        typedType(arg)
+    }
     typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
       case _: TypeApply if !ctx.isAfterTyper =>
         errorTree(tree, "illegal repeated type application")
@@ -1133,7 +1127,7 @@ trait Applications extends Compatibility {
           if !arg.symbol.is(Module) then // Allow `classOf[Foo.type]` if `Foo` is an object
             checkClassType(arg.tpe, arg.srcPos, traitReq = false, stablePrefixReq = false)
         val normArgs = typedFn.tpe.widen match
-          case tl: PolyType if isNamed =>
+          case tl: PolyType if isNamedArgs(typedArgs) =>
             reorderArgs(tl.paramNames, typedArgs, placeholderTypeParam)
           case _ => typedArgs
         assignType(cpy.TypeApply(tree)(typedFn, normArgs), typedFn, normArgs)

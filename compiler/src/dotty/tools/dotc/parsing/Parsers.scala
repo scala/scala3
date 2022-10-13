@@ -1868,7 +1868,7 @@ object Parsers {
           )
         }
 
-      if (namedOK && in.token == IDENTIFIER)
+      if (namedOK && in.featureEnabled(Feature.namedTypeArguments) && in.token == IDENTIFIER)
         in.currentRegion.withCommasExpected {
           val start = in.offset
           argType() match {
