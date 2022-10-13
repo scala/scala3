@@ -188,7 +188,10 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           li(ul(renderTocRec(level + 1, prefix))) +: renderTocRec(level, suffix)
       }
 
-    renderTocRec(1, toc).headOption.map(toc => nav(cls := "toc-nav")(ul(cls := "toc-list")(toc)))
+    if toc.nonEmpty then
+      val minLevel = toc.minBy(_.level).level
+      Some(nav(cls := "toc-nav")(ul(cls := "toc-list")(renderTocRec(minLevel, toc))))
+    else None
 
 
   private def mkFrame(link: Link, parents: Vector[Link], content: AppliedTag, toc: Seq[TocEntry]): AppliedTag =

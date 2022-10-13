@@ -301,8 +301,8 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
     val searchbarFooter = div(id := "searchbar-footer", cls := "body-small")(
       span(cls := "searchbar-footer-left-container")(
         span("Smart search:"),
-        span(b("CC "), "to find CamcelCase phrases"),
-        span(b("A=>B "), "to find CamcelCase signatures"),
+        span(b("CC "), "to find CamelCase phrases"),
+        span(b("A=>B "), "to find CamelCase signatures"),
       ),
       span(cls := "searchbar-footer-right-container")(
         span(b("Esc "), "to close"),
