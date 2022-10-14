@@ -45,7 +45,7 @@ object Monoids {
 ## Implicit Parameters
 
 An _implicit parameter list_
-`(implicit ´p_1´,´\ldots´,´p_n´)` of a method marks the parameters ´p_1 , \ldots , p_n´ as
+`(implicit ´p_1´,...,´p_n´)` of a method marks the parameters ´p_1, ..., p_n´ as
 implicit. A method or constructor can have only one implicit parameter
 list, and it must be the last parameter list given.
 
@@ -71,18 +71,18 @@ Here, we say a class ´C´ is _associated_ with a type ´T´ if it is a [base cl
 
 The _parts_ of a type ´T´ are:
 
-- if ´T´ is a compound type `´T_1´ with ´\ldots´ with ´T_n´`,
-  the union of the parts of ´T_1 , \ldots , T_n´, as well as ´T´ itself;
-- if ´T´ is a parameterized type `´S´[´T_1 , \ldots , T_n´]`,
-  the union of the parts of ´S´ and ´T_1 , \ldots , T_n´;
+- if ´T´ is a compound type `´T_1´ with ... with ´T_n´`,
+  the union of the parts of ´T_1, ..., T_n´, as well as ´T´ itself;
+- if ´T´ is a parameterized type `´S´[´T_1, ..., T_n´]`,
+  the union of the parts of ´S´ and ´T_1, ..., T_n´;
 - if ´T´ is a singleton type `´p´.type`,
   the parts of the type of ´p´;
 - if ´T´ is a type projection `´S´#´U´`,
   the parts of ´S´ as well as ´T´ itself;
 - if ´T´ is a type alias, the parts of its expansion;
 - if ´T´ is an abstract type, the parts of its upper bound;
-- if ´T´ denotes an implicit conversion to a type with a method with argument types ´T_1 , \ldots , T_n´ and result type ´U´,
-  the union of the parts of ´T_1 , \ldots , T_n´ and ´U´;
+- if ´T´ denotes an implicit conversion to a type with a method with argument types ´T_1, ..., T_n´ and result type ´U´,
+  the union of the parts of ´T_1, ..., T_n´ and ´U´;
 - the parts of quantified (existential or universal) and annotated types are defined as the parts of the underlying types (e.g., the parts of `T forSome { ... }` are the parts of `T`);
 - in all other cases, just ´T´ itself.
 
@@ -268,7 +268,7 @@ the type:
 - For a type designator,  ´\mathit{ttcs}(p.c) ~=~ \{c\}´;
 - For a parameterized type,  ´\mathit{ttcs}(p.c[\mathit{targs}]) ~=~ \{c\}´;
 - For a singleton type,  ´\mathit{ttcs}(p.type) ~=~ \mathit{ttcs}(T)´, provided ´p´ has type ´T´;
-- For a compound type, `´\mathit{ttcs}(T_1´ with ´\ldots´ with ´T_n)´` ´~=~ \mathit{ttcs}(T_1) \cup \ldots \cup \mathit{ttcs}(T_n)´.
+- For a compound type, `´\mathit{ttcs}(T_1´ with ... with ´T_n)´` ´~=~ \mathit{ttcs}(T_1) \cup ... \cup \mathit{ttcs}(T_n)´.
 
 The _complexity_ ´\operatorname{complexity}(T)´ of a core type is an integer which also depends on the form of
 the type:
@@ -277,7 +277,7 @@ the type:
 - For a parameterized type, ´\operatorname{complexity}(p.c[\mathit{targs}]) ~=~ 1 + \Sigma \operatorname{complexity}(\mathit{targs})´
 - For a singleton type denoting a package ´p´, ´\operatorname{complexity}(p.type) ~=~ 0´
 - For any other singleton type, ´\operatorname{complexity}(p.type) ~=~ 1 + \operatorname{complexity}(T)´, provided ´p´ has type ´T´;
-- For a compound type, `´\operatorname{complexity}(T_1´ with ´\ldots´ with ´T_n)´` ´= \Sigma\operatorname{complexity}(T_i)´
+- For a compound type, `´\operatorname{complexity}(T_1´ with ... with ´T_n)´` ´= \Sigma\operatorname{complexity}(T_i)´
 
 The _covering set_ ´\mathit{cs}(T)´ of a type ´T´ is the set of type designators mentioned in a type.
 For example, given the following,
@@ -495,31 +495,31 @@ Then the following rules apply.
 1.  If ´T´ is an instance of `Array[´S´]`, a manifest is generated
     with the invocation `´\mathit{Mobj}´.arrayType[S](m)`, where ´m´ is the manifest
     determined for ´M[S]´.
-1.  If ´T´ is some other class type ´S´#´C[U_1, \ldots, U_n]´ where the prefix
+1.  If ´T´ is some other class type ´S´#´C[U_1, ..., U_n]´ where the prefix
     type ´S´ cannot be statically determined from the class ´C´,
     a manifest is generated with the invocation `´\mathit{Mobj}´.classType[T](´m_0´, classOf[T], ´ms´)`
     where ´m_0´ is the manifest determined for ´M'[S]´ and ´ms´ are the
-    manifests determined for ´M'[U_1], \ldots, M'[U_n]´.
-1.  If ´T´ is some other class type with type arguments ´U_1 , \ldots , U_n´,
+    manifests determined for ´M'[U_1], ..., M'[U_n]´.
+1.  If ´T´ is some other class type with type arguments ´U_1, ..., U_n´,
     a manifest is generated
     with the invocation `´\mathit{Mobj}´.classType[T](classOf[T], ´ms´)`
     where ´ms´ are the
-    manifests determined for ´M'[U_1] , \ldots , M'[U_n]´.
+    manifests determined for ´M'[U_1], ..., M'[U_n]´.
 1.  If ´T´ is a singleton type `´p´.type`, a manifest is generated with
     the invocation `´\mathit{Mobj}´.singleType[T](´p´)`
 1.  If ´T´ is a refined type ´T' \{ R \}´, a manifest is generated for ´T'´.
     (That is, refinements are never reflected in manifests).
 1.  If ´T´ is an intersection type
-    `´T_1´ with ´, \ldots ,´ with ´T_n´`
+    `´T_1´ with ... with ´T_n´`
     where ´n > 1´, the result depends on whether a full manifest is
     to be determined or not.
     If ´M´ is trait `Manifest`, then
     a manifest is generated with the invocation
     `Manifest.intersectionType[T](´ms´)` where ´ms´ are the manifests
-    determined for ´M[T_1] , \ldots , M[T_n]´.
+    determined for ´M[T_1], ..., M[T_n]´.
     Otherwise, if ´M´ is trait `ClassManifest`,
     then a manifest is generated for the [intersection dominator](03-types.html#type-erasure)
-    of the types ´T_1 , \ldots , T_n´.
+    of the types ´T_1, ..., T_n´.
 1.  If ´T´ is some other type, then if ´M´ is trait `OptManifest`,
     a manifest is generated from the designator `scala.reflect.NoManifest`.
     If ´M´ is a type different from `OptManifest`, a static error results.

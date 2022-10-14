@@ -194,20 +194,20 @@ one is a variable pattern.
 SimplePattern   ::=  StableId ‘(’ [Patterns] ‘)’
 ```
 
-A _constructor pattern_ is of the form ´c(p_1 , \ldots , p_n)´ where ´n
+A _constructor pattern_ is of the form ´c(p_1, ..., p_n)´ where ´n
 \geq 0´. It consists of a stable identifier ´c´, followed by element
-patterns ´p_1 , \ldots , p_n´. The constructor ´c´ is a simple or
+patterns ´p_1, ..., p_n´. The constructor ´c´ is a simple or
 qualified name which denotes a [case class](05-classes-and-objects.html#case-classes).
 If the case class is monomorphic, then it
 must conform to the expected type of the pattern, and the formal
 parameter types of ´x´'s [primary constructor](05-classes-and-objects.html#class-definitions)
-are taken as the expected types of the element patterns ´p_1, \ldots ,
+are taken as the expected types of the element patterns ´p_1, ...,
 p_n´.  If the case class is polymorphic, then its type parameters are
 instantiated so that the instantiation of ´c´ conforms to the expected
 type of the pattern. The instantiated formal parameter types of ´c´'s
 primary constructor are then taken as the expected types of the
-component patterns ´p_1, \ldots , p_n´.  The pattern matches all
-objects created from constructor invocations ´c(v_1 , \ldots , v_n)´
+component patterns ´p_1, ..., p_n´.  The pattern matches all
+objects created from constructor invocations ´c(v_1, ..., v_n)´
 where each element pattern ´p_i´ matches the corresponding value
 ´v_i´.
 
@@ -220,8 +220,8 @@ repeated parameter. This is further discussed [here](#pattern-sequences).
   SimplePattern   ::=  ‘(’ [Patterns] ‘)’
 ```
 
-A _tuple pattern_ `(´p_1 , \ldots , p_n´)` is an alias
-for the constructor pattern `scala.Tuple´n´(´p_1 , \ldots , p_n´)`,
+A _tuple pattern_ `(´p_1´, ..., ´p_n´)` is an alias
+for the constructor pattern `scala.Tuple´n´(´p_1´, ..., ´p_n´)`,
 where ´n \geq 2´. The empty tuple
 `()` is the unique value of type `scala.Unit`.
 
@@ -231,7 +231,7 @@ where ´n \geq 2´. The empty tuple
   SimplePattern   ::=  StableId ‘(’ [Patterns] ‘)’
 ```
 
-An _extractor pattern_ ´x(p_1 , \ldots , p_n)´ where ´n \geq 0´ is of
+An _extractor pattern_ ´x(p_1, ..., p_n)´ where ´n \geq 0´ is of
 the same syntactic form as a constructor pattern. However, instead of
 a case class, the stable identifier ´x´ denotes an object which has a
 member method named `unapply` or `unapplySeq` that matches
@@ -245,7 +245,7 @@ method `get` with return type `T`, and a method `isEmpty` with a return type
 that conforms to `Boolean`. `Option[T]` is an extractor type for type `T`.
 
 An `unapply` method in an object ´x´ _matches_ the pattern
-´x(p_1 , \ldots , p_n)´ if it has a single parameter (and, optionally, an
+´x(p_1, ..., p_n)´ if it has a single parameter (and, optionally, an
 implicit parameter list) and one of the following applies:
 
 * ´n=0´ and `unapply`'s result type conforms to `Boolean`. In this case
@@ -257,18 +257,18 @@ implicit parameter list) and one of the following applies:
   values ´v´ for which `´x´.unapply(´v´)` yields a value ´u´ for which `´u´.isEmpty` yields
   `false`, `´u´.get` yields a value ´v_1´, and ´p_1´ matches ´v_1´.
 * ´n>1´ and `unapply`'s result type is
-  an extractor type for some type ´T´ with members ´\_1 , \ldots , \_n´ returning
-  types ´T_1 , \ldots , T_n´.  In this case, the argument patterns ´p_1
-  , \ldots , p_n´ are typed in turn with expected types ´T_1 , \ldots ,
+  an extractor type for some type ´T´ with members ´\_1, ..., \_n´ returning
+  types ´T_1, ..., T_n´.  In this case, the argument patterns ´p_1
+ , ..., p_n´ are typed in turn with expected types ´T_1 , ...,
   T_n´.  The extractor pattern matches then all values ´v´ for which
   `´x´.unapply(´v´)` yields a value ´u´ for which
   `´u´.isEmpty` yields `false`, `´u´.get` yields some value ´t´, and each pattern
   ´p_i´ matches the corresponding value ´t._1´ from
-  ´t._1 , \ldots , t._n´.
+  ´t._1, ..., t._n´.
 
 An `unapplySeq` method in an object ´x´ matches the pattern
-´x(q_1 , \ldots , q_m, p_1 , \ldots , p_n)´ if it takes exactly one argument
-and its result type is of the form `Option[(´T_1 , \ldots , T_m´, Seq[S])]` (if `m = 0`, the type `Option[Seq[S]]` is also accepted).
+´x(q_1, ..., q_m, p_1, ..., p_n)´ if it takes exactly one argument
+and its result type is of the form `Option[(´T_1, ..., T_m´, Seq[S])]` (if `m = 0`, the type `Option[Seq[S]]` is also accepted).
 This case is further discussed [below](#pattern-sequences).
 
 ###### Example 1
@@ -330,9 +330,9 @@ object Extractor {
 SimplePattern ::= StableId ‘(’ [Patterns ‘,’] [varid ‘@’] ‘_’ ‘*’ ‘)’
 ```
 
-A _pattern sequence_ ´p_1 , \ldots , p_n´ appears in two contexts.
-First, in a constructor pattern ´c(q_1 , \ldots , q_m, p_1 , \ldots , p_n)´, where ´c´ is a case class which has ´m+1´ primary constructor parameters,  ending in a [repeated parameter](04-basic-declarations-and-definitions.html#repeated-parameters) of type `S*`.
-Second, in an extractor pattern ´x(q_1 , \ldots , q_m, p_1 , \ldots , p_n)´ if the extractor object ´x´ does not have an `unapply` method,
+A _pattern sequence_ ´p_1, ..., p_n´ appears in two contexts.
+First, in a constructor pattern ´c(q_1, ..., q_m, p_1, ..., p_n)´, where ´c´ is a case class which has ´m+1´ primary constructor parameters,  ending in a [repeated parameter](04-basic-declarations-and-definitions.html#repeated-parameters) of type `S*`.
+Second, in an extractor pattern ´x(q_1, ..., q_m, p_1, ..., p_n)´ if the extractor object ´x´ does not have an `unapply` method,
 but it does define an `unapplySeq` method with a result type that is an extractor type for type `(T_1, ... , T_m, Seq[S])` (if `m = 0`, an extractor type for the type `Seq[S]` is also accepted). The expected type for the patterns ´p_i´ is ´S´.
 
 The last pattern in a pattern sequence may be a _sequence wildcard_ `_*`.
@@ -340,9 +340,9 @@ Each element pattern ´p_i´ is type-checked with
 ´S´ as expected type, unless it is a sequence wildcard. If a final
 sequence wildcard is present, the pattern matches all values ´v´ that
 are sequences which start with elements matching patterns
-´p_1 , \ldots , p_{n-1}´.  If no final sequence wildcard is given, the
+´p_1, ..., p_{n-1}´.  If no final sequence wildcard is given, the
 pattern matches all values ´v´ that are sequences of
-length ´n´ which consist of elements matching patterns ´p_1 , \ldots ,
+length ´n´ which consist of elements matching patterns ´p_1 , ...,
 p_n´.
 
 ### Infix Operation Patterns
@@ -356,9 +356,9 @@ constructor or extractor pattern ´\mathit{op}(p, q)´.  The precedence and
 associativity of operators in patterns is the same as in
 [expressions](06-expressions.html#prefix,-infix,-and-postfix-operations).
 
-An infix operation pattern ´p;\mathit{op};(q_1 , \ldots , q_n)´ is a
+An infix operation pattern ´p;\mathit{op};(q_1, ..., q_n)´ is a
 shorthand for the constructor or extractor pattern ´\mathit{op}(p, q_1
-, \ldots , q_n)´.
+, ..., q_n)´.
 
 ### Pattern Alternatives
 
@@ -366,7 +366,7 @@ shorthand for the constructor or extractor pattern ´\mathit{op}(p, q_1
   Pattern   ::=  Pattern1 { ‘|’ Pattern1 }
 ```
 
-A _pattern alternative_ `´p_1´ | ´\ldots´ | ´p_n´`
+A _pattern alternative_ `´p_1´ | ... | ´p_n´`
 consists of a number of alternative patterns ´p_i´. All alternative
 patterns are type checked with the expected type of the pattern. They
 may not bind variables other than wildcards. The alternative pattern
@@ -398,9 +398,9 @@ A pattern ´p´ is _irrefutable_ for a type ´T´, if one of the following appli
 
 1.  ´p´ is a variable pattern,
 1.  ´p´ is a typed pattern ´x: T'´, and ´T <: T'´,
-1.  ´p´ is a constructor pattern ´c(p_1 , \ldots , p_n)´, the type ´T´
+1.  ´p´ is a constructor pattern ´c(p_1, ..., p_n)´, the type ´T´
     is an instance of class ´c´, the [primary constructor](05-classes-and-objects.html#class-definitions)
-    of type ´T´ has argument types ´T_1 , \ldots , T_n´, and each ´p_i´ is
+    of type ´T´ has argument types ´T_1, ..., T_n´, and each ´p_i´ is
     irrefutable for ´T_i´.
 1.  ´p´ is an extractor pattern for which the extractor type is `Some[´T´]` for
     some type ´T´
@@ -438,11 +438,11 @@ A type pattern ´T´ is of one of the following  forms:
   denoted by the literal ´lit´ (the `==` method is used to compare the matched
   value to ´lit´).
 
-* A compound type pattern `´T_1´ with ´\ldots´ with ´T_n´` where each ´T_i´ is a
+* A compound type pattern `´T_1´ with ... with ´T_n´` where each ´T_i´ is a
   type pattern. This type pattern matches all values that are matched by each of
   the type patterns ´T_i´.
 
-* A parameterized type pattern ´T[a_1 , \ldots , a_n]´, where the ´a_i´
+* A parameterized type pattern ´T[a_1, ..., a_n]´, where the ´a_i´
   are type variable patterns or wildcards `_`.
   This type pattern matches all values which match ´T´ for
   some arbitrary instantiation of the type variables and wildcards. The
@@ -472,46 +472,46 @@ pattern.
 ### Type parameter inference for typed patterns
 
 Assume a typed pattern ´p: T'´. Let ´T´ result from ´T'´ where all wildcards in
-´T'´ are renamed to fresh variable names. Let ´a_1 , \ldots , a_n´ be
+´T'´ are renamed to fresh variable names. Let ´a_1, ..., a_n´ be
 the type variables in ´T´. These type variables are considered bound
 in the pattern. Let the expected type of the pattern be ´\mathit{pt}´.
 
 Type parameter inference constructs first a set of subtype constraints over
 the type variables ´a_i´. The initial constraints set ´\mathcal{C}\_0´ reflects
 just the bounds of these type variables. That is, assuming ´T´ has
-bound type variables ´a_1 , \ldots , a_n´ which correspond to class
-type parameters ´a_1' , \ldots , a_n'´ with lower bounds ´L_1, \ldots , L_n´
-and upper bounds ´U_1 , \ldots , U_n´, ´\mathcal{C}_0´ contains the constraints
+bound type variables ´a_1, ..., a_n´ which correspond to class
+type parameters ´a_1', ..., a_n'´ with lower bounds ´L_1, ..., L_n´
+and upper bounds ´U_1, ..., U_n´, ´\mathcal{C}_0´ contains the constraints
 
 $$
 \begin{cases}
-a_i &<: \sigma U_i & \quad (i = 1, \ldots , n) \\\\
-\sigma L_i &<: a_i & \quad (i = 1, \ldots , n)
+a_i &<: \sigma U_i & \quad (i = 1, ..., n) \\\\
+\sigma L_i &<: a_i & \quad (i = 1, ..., n)
 \end{cases}
 $$
 
-where ´\sigma´ is the substitution ´[a_1' := a_1 , \ldots , a_n' :=a_n]´.
+where ´\sigma´ is the substitution ´[a_1' := a_1, ..., a_n' :=a_n]´.
 
 The set ´\mathcal{C}_0´ is then augmented by further subtype constraints. There are two
 cases.
 
 ###### Case 1
-If there exists a substitution ´\sigma´ over the type variables ´a_i , \ldots , a_n´ such that ´\sigma T´ conforms to ´\mathit{pt}´, one determines the weakest subtype constraints
-´\mathcal{C}\_1´ over the type variables ´a_1, \ldots , a_n´ such that ´\mathcal{C}\_0 \wedge \mathcal{C}_1´ implies that ´T´ conforms to ´\mathit{pt}´.
+If there exists a substitution ´\sigma´ over the type variables ´a_i, ..., a_n´ such that ´\sigma T´ conforms to ´\mathit{pt}´, one determines the weakest subtype constraints
+´\mathcal{C}\_1´ over the type variables ´a_1, ..., a_n´ such that ´\mathcal{C}\_0 \wedge \mathcal{C}_1´ implies that ´T´ conforms to ´\mathit{pt}´.
 
 ###### Case 2
 Otherwise, if ´T´ can not be made to conform to ´\mathit{pt}´ by
 instantiating its type variables, one determines all type variables in
 ´\mathit{pt}´ which are defined as type parameters of a method enclosing
-the pattern. Let the set of such type parameters be ´b_1 , \ldots ,
+the pattern. Let the set of such type parameters be ´b_1 , ...,
 b_m´. Let ´\mathcal{C}\_0'´ be the subtype constraints reflecting the bounds of the
 type variables ´b_i´.  If ´T´ denotes an instance type of a final
 class, let ´\mathcal{C}\_2´ be the weakest set of subtype constraints over the type
-variables ´a_1 , \ldots , a_n´ and ´b_1 , \ldots , b_m´ such that
+variables ´a_1, ..., a_n´ and ´b_1, ..., b_m´ such that
 ´\mathcal{C}\_0 \wedge \mathcal{C}\_0' \wedge \mathcal{C}\_2´ implies that ´T´ conforms to
 ´\mathit{pt}´.  If ´T´ does not denote an instance type of a final class,
 let ´\mathcal{C}\_2´ be the weakest set of subtype constraints over the type variables
-´a_1 , \ldots , a_n´ and ´b_1 , \ldots , b_m´ such that ´\mathcal{C}\_0 \wedge
+´a_1, ..., a_n´ and ´b_1, ..., b_m´ such that ´\mathcal{C}\_0 \wedge
 \mathcal{C}\_0' \wedge \mathcal{C}\_2´ implies that it is possible to construct a type
 ´T'´ which conforms to both ´T´ and ´\mathit{pt}´. It is a static error if
 there is no satisfiable set of constraints ´\mathcal{C}\_2´ with this property.
@@ -521,13 +521,13 @@ variables which imply the established constraint system. The process
 is different for the two cases above.
 
 ###### Case 1
-We take ´a_i >: L_i <: U_i´ where each ´L_i´ is minimal and each ´U_i´ is maximal wrt ´<:´ such that ´a_i >: L_i <: U_i´ for ´i = 1, \ldots, n´ implies ´\mathcal{C}\_0 \wedge \mathcal{C}\_1´.
+We take ´a_i >: L_i <: U_i´ where each ´L_i´ is minimal and each ´U_i´ is maximal wrt ´<:´ such that ´a_i >: L_i <: U_i´ for ´i = 1, ..., n´ implies ´\mathcal{C}\_0 \wedge \mathcal{C}\_1´.
 
 ###### Case 2
 We take ´a_i >: L_i <: U_i´ and ´b\_i >: L_i' <: U_i' ´ where each ´L_i´
 and ´L_j'´ is minimal and each ´U_i´ and ´U_j'´ is maximal such that
-´a_i >: L_i <: U_i´ for ´i = 1 , \ldots , n´ and
-´b_j >: L_j' <: U_j'´ for ´j = 1 , \ldots , m´
+´a_i >: L_i <: U_i´ for ´i = 1, ..., n´ and
+´b_j >: L_j' <: U_j'´ for ´j = 1, ..., m´
 implies ´\mathcal{C}\_0 \wedge \mathcal{C}\_0' \wedge \mathcal{C}_2´.
 
 In both cases, local type inference is permitted to limit the
@@ -536,10 +536,10 @@ to be understood relative to the set of types of acceptable
 complexity.
 
 ### Type parameter inference for constructor patterns
-Assume a constructor pattern ´C(p_1 , \ldots , p_n)´ where class ´C´
-has type parameters ´a_1 , \ldots , a_n´.  These type parameters
+Assume a constructor pattern ´C(p_1, ..., p_n)´ where class ´C´
+has type parameters ´a_1, ..., a_n´.  These type parameters
 are inferred in the same way as for the typed pattern
-`(_: ´C[a_1 , \ldots , a_n]´)`.
+`(_: ´C[a_1, ..., a_n]´)`.
 
 ###### Example
 Consider the program fragment:
@@ -625,7 +625,7 @@ function's declared result type, `Number`.
 A _pattern matching expression_
 
 ```scala
-e match { case ´p_1´ => ´b_1´ ´\ldots´ case ´p_n´ => ´b_n´ }
+e match { case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´ }
 ```
 
 consists of a selector expression ´e´ and a number ´n > 0´ of
@@ -636,9 +636,9 @@ The scope of the pattern
 variables in ´p_i´ comprises the pattern's guard and the corresponding block ´b_i´.
 
 Let ´T´ be the type of the selector expression ´e´ and let ´a_1
-, \ldots , a_m´ be the type parameters of all methods enclosing
+, ..., a_m´ be the type parameters of all methods enclosing
 the pattern matching expression.  For every ´a_i´, let ´L_i´ be its
-lower bound and ´U_i´ be its higher bound.  Every pattern ´p \in \{p_1, , \ldots , p_n\}´
+lower bound and ´U_i´ be its higher bound.  Every pattern ´p \in \{p_1,, ..., p_n\}´
 can be typed in two ways. First, it is attempted
 to type ´p´ with ´T´ as its expected type. If this fails, ´p´ is
 instead typed with a modified expected type ´T'´ which results from
@@ -646,12 +646,12 @@ instead typed with a modified expected type ´T'´ which results from
 *undefined*.  If this second step fails also, a compile-time
 error results. If the second step succeeds, let ´T_p´ be the type of
 pattern ´p´ seen as an expression. One then determines minimal bounds
-´L_11 , \ldots , L_m'´ and maximal bounds ´U_1' , \ldots , U_m'´ such
+´L_11, ..., L_m'´ and maximal bounds ´U_1', ..., U_m'´ such
 that for all ´i´, ´L_i <: L_i'´ and ´U_i' <: U_i´ and the following
 constraint system is satisfied:
 
 $$
-L_1 <: a_1 <: U_1\;\wedge\;\ldots\;\wedge\;L_m <: a_m <: U_m \ \Rightarrow\ T_p <: T
+L_1 <: a_1 <: U_1\;\wedge\;...\;\wedge\;L_m <: a_m <: U_m \ \Rightarrow\ T_p <: T
 $$
 
 If no such bounds can be found, a compile time error results.  If such
@@ -742,23 +742,23 @@ conforms to its expected type, `T`.
 An anonymous function can be defined by a sequence of cases
 
 ```scala
-{ case ´p_1´ => ´b_1´ ´\ldots´ case ´p_n´ => ´b_n´ }
+{ case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´ }
 ```
 
 which appear as an expression without a prior `match`.  The
 expected type of such an expression must in part be defined. It must
-be either `scala.Function´k´[´S_1 , \ldots , S_k´, ´R´]` for some ´k > 0´,
+be either `scala.Function´k´[´S_1, ..., S_k´, ´R´]` for some ´k > 0´,
 or `scala.PartialFunction[´S_1´, ´R´]`, where the
-argument type(s) ´S_1 , \ldots , S_k´ must be fully determined, but the result type
+argument type(s) ´S_1, ..., S_k´ must be fully determined, but the result type
 ´R´ may be undetermined.
 
 If the expected type is [SAM-convertible](06-expressions.html#sam-conversion)
-to `scala.Function´k´[´S_1 , \ldots , S_k´, ´R´]`,
+to `scala.Function´k´[´S_1, ..., S_k´, ´R´]`,
 the expression is taken to be equivalent to the anonymous function:
 
 ```scala
-(´x_1: S_1 , \ldots , x_k: S_k´) => (´x_1 , \ldots , x_k´) match {
-  case ´p_1´ => ´b_1´ ´\ldots´ case ´p_n´ => ´b_n´
+(´x_1: S_1, ..., x_k: S_k´) => (´x_1, ..., x_k´) match {
+  case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´
 }
 ```
 
@@ -768,9 +768,9 @@ equivalent to the following instance creation expression, where
  ´T´ is the weak least upper bound of the types of all ´b_i´.
 
 ```scala
-new scala.Function´k´[´S_1 , \ldots , S_k´, ´T´] {
-  def apply(´x_1: S_1 , \ldots , x_k: S_k´): ´T´ = (´x_1 , \ldots , x_k´) match {
-    case ´p_1´ => ´b_1´ ´\ldots´ case ´p_n´ => ´b_n´
+new scala.Function´k´[´S_1, ..., S_k´, ´T´] {
+  def apply(´x_1: S_1, ..., x_k: S_k´): ´T´ = (´x_1, ..., x_k´) match {
+    case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´
   }
 }
 ```
@@ -781,10 +781,10 @@ the expression is taken to be equivalent to the following instance creation expr
 ```scala
 new scala.PartialFunction[´S´, ´T´] {
   def apply(´x´: ´S´): ´T´ = x match {
-    case ´p_1´ => ´b_1´ ´\ldots´ case ´p_n´ => ´b_n´
+    case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´
   }
   def isDefinedAt(´x´: ´S´): Boolean = {
-    case ´p_1´ => true ´\ldots´ case ´p_n´ => true
+    case ´p_1´ => true ... case ´p_n´ => true
     case _ => false
   }
 }
@@ -792,7 +792,7 @@ new scala.PartialFunction[´S´, ´T´] {
 
 Here, ´x´ is a fresh name and ´T´ is the weak least upper bound of the
 types of all ´b_i´. The final default case in the `isDefinedAt`
-method is omitted if one of the patterns ´p_1 , \ldots , p_n´ is
+method is omitted if one of the patterns ´p_1, ..., p_n´ is
 already a variable or wildcard pattern.
 
 ###### Example

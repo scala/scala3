@@ -62,12 +62,12 @@ expression: If the type of an expression would be an existential type
 [skolemization](03-types.html#existential-types) of ´T´.
 
 Skolemization is reversed by type packing. Assume an expression ´e´ of
-type ´T´ and let ´t_1[\mathit{tps}\_1] >: L_1 <: U_1 , \ldots , t_n[\mathit{tps}\_n] >: L_n <: U_n´ be
+type ´T´ and let ´t_1[\mathit{tps}\_1] >: L_1 <: U_1, ..., t_n[\mathit{tps}\_n] >: L_n <: U_n´ be
 all the type variables created by skolemization of some part of ´e´ which are free in ´T´.
 Then the _packed type_ of ´e´ is
 
 ```scala
-´T´ forSome { type ´t_1[\mathit{tps}\_1] >: L_1 <: U_1´; ´\ldots´; type ´t_n[\mathit{tps}\_n] >: L_n <: U_n´ }.
+´T´ forSome { type ´t_1[\mathit{tps}\_1] >: L_1 <: U_1´; ...; type ´t_n[\mathit{tps}\_n] >: L_n <: U_n´ }.
 ```
 
 ## Literals
@@ -246,9 +246,9 @@ ArgumentExprs ::=  ‘(’ [Exprs] ‘)’
 Exprs         ::=  Expr {‘,’ Expr}
 ```
 
-An application `´f(e_1 , \ldots , e_m)´` applies the function `´f´` to the argument expressions `´e_1, \ldots , e_m´`. For this expression to be well-typed, the function must be *applicable* to its arguments, which is defined next by case analysis on ´f´'s type.
+An application `´f(e_1, ..., e_m)´` applies the function `´f´` to the argument expressions `´e_1, ..., e_m´`. For this expression to be well-typed, the function must be *applicable* to its arguments, which is defined next by case analysis on ´f´'s type.
 
-If ´f´ has a method type `(´p_1´:´T_1 , \ldots , p_n´:´T_n´)´U´`, each argument expression ´e_i´ is typed with the corresponding parameter type ´T_i´ as expected type. Let ´S_i´ be the type of argument ´e_i´ ´(i = 1 , \ldots , m)´. The method ´f´ must be _applicable_ to its arguments ´e_1, \ldots , e_n´ of types ´S_1 , \ldots , S_n´. We say that an argument expression ´e_i´ is a _named_ argument if it has the form `´x_i=e'_i´` and `´x_i´` is one of the parameter names `´p_1, \ldots, p_n´`.
+If ´f´ has a method type `(´p_1´:´T_1, ..., p_n´:´T_n´)´U´`, each argument expression ´e_i´ is typed with the corresponding parameter type ´T_i´ as expected type. Let ´S_i´ be the type of argument ´e_i´ ´(i = 1, ..., m)´. The method ´f´ must be _applicable_ to its arguments ´e_1, ..., e_n´ of types ´S_1, ..., S_n´. We say that an argument expression ´e_i´ is a _named_ argument if it has the form `´x_i=e'_i´` and `´x_i´` is one of the parameter names `´p_1, ..., p_n´`.
 
 Once the types ´S_i´ have been determined, the method ´f´ of the above method type is said to be applicable if all of the following conditions hold:
   - for every named argument ´p_j=e_i'´ the type ´S_i´ is [compatible](03-types.html#compatibility) with the parameter type ´T_j´;
@@ -258,12 +258,12 @@ Once the types ´S_i´ have been determined, the method ´f´ of the above metho
 If ´f´ is a polymorphic method, [local type inference](#local-type-inference) is used to instantiate ´f´'s type parameters.
 The polymorphic method is applicable if type inference can determine type arguments so that the instantiated method is applicable.
 
-If ´f´ has some value type, the application is taken to be equivalent to `´f´.apply(´e_1 , \ldots , e_m´)`,
+If ´f´ has some value type, the application is taken to be equivalent to `´f´.apply(´e_1, ..., e_m´)`,
 i.e. the application of an `apply` method defined by ´f´. The value `´f´` is applicable to the given arguments if `´f´.apply` is applicable.
 
 
-The application `´f´(´e_1 , \ldots , e_n´)` evaluates ´f´ and then each argument
-´e_1 , \ldots , e_n´ from left to right, except for arguments that correspond to
+The application `´f´(´e_1, ..., e_n´)` evaluates ´f´ and then each argument
+´e_1, ..., e_n´ from left to right, except for arguments that correspond to
 a by-name parameter (see below).  Each argument expression is converted to the
 type of its corresponding formal parameter.  After that, the application is
 rewritten to the function's right hand side, with actual arguments substituted
@@ -338,7 +338,7 @@ If an application is to use named arguments ´p = e´ or default
 arguments, the following conditions must hold.
 
 - For every named argument ´p_i = e_i´ which appears left of a positional argument
-  in the argument list ´e_1 \ldots e_m´, the argument position ´i´ coincides with
+  in the argument list ´e_1 ... e_m´, the argument position ´i´ coincides with
   the position of parameter ´p_i´ in the parameter list of the applied method.
 - The names ´x_i´ of all named arguments are pairwise distinct and no named
   argument defines a parameter which is already specified by a
@@ -367,16 +367,16 @@ the form
 ```scala
 { val q = ´p´
   val ´x_1´ = expr´_1´
-  ´\ldots´
+  ...
   val ´x_k´ = expr´_k´
-  q.´m´[´\mathit{targs}´](´\mathit{args}_1´)´, \ldots ,´(´\mathit{args}_l´)
+  q.´m´[´\mathit{targs}´](´\mathit{args}_1´), ...,(´\mathit{args}_l´)
 }
 ```
 
-where every argument in ´(\mathit{args}\_1) , \ldots , (\mathit{args}\_l)´ is a reference to
-one of the values ´x_1 , \ldots , x_k´. To integrate the current application
+where every argument in ´(\mathit{args}\_1), ..., (\mathit{args}\_l)´ is a reference to
+one of the values ´x_1, ..., x_k´. To integrate the current application
 into the block, first a value definition using a fresh name ´y_i´ is created
-for every argument in ´e_1 , \ldots , e_m´, which is initialised to ´e_i´ for
+for every argument in ´e_1, ..., e_m´, which is initialised to ´e_i´ for
 positional arguments and to ´e'_i´ for named arguments of the form
 `´x_i=e'_i´`. Then, for every parameter which is not specified
 by the argument list, a value definition using a fresh name ´z_i´ is created,
@@ -386,33 +386,33 @@ this parameter.
 
 Let ´\mathit{args}´ be a permutation of the generated names ´y_i´ and ´z_i´ such such
 that the position of each name matches the position of its corresponding
-parameter in the method type `(´p_1:T_1 , \ldots , p_n:T_n´)´U´`.
+parameter in the method type `(´p_1:T_1, ..., p_n:T_n´)´U´`.
 The final result of the transformation is a block of the form
 
 ```scala
 { val q = ´p´
   val ´x_1´ = expr´_1´
-  ´\ldots´
+  ...
   val ´x_l´ = expr´_k´
   val ´y_1´ = ´e_1´
-  ´\ldots´
+  ...
   val ´y_m´ = ´e_m´
-  val ´z_1´ = ´q.m\$default\$i[\mathit{targs}](\mathit{args}_1), \ldots ,(\mathit{args}_l)´
-  ´\ldots´
-  val ´z_d´ = ´q.m\$default\$j[\mathit{targs}](\mathit{args}_1), \ldots ,(\mathit{args}_l)´
-  q.´m´[´\mathit{targs}´](´\mathit{args}_1´)´, \ldots ,´(´\mathit{args}_l´)(´\mathit{args}´)
+  val ´z_1´ = ´q.m\$default\$i[\mathit{targs}](\mathit{args}_1), ..., (\mathit{args}_l)´
+  ...
+  val ´z_d´ = ´q.m\$default\$j[\mathit{targs}](\mathit{args}_1), ..., (\mathit{args}_l)´
+  q.´m´[´\mathit{targs}´](´\mathit{args}_1´), ..., (´\mathit{args}_l´)(´\mathit{args}´)
 }
 ```
 
 ### Signature Polymorphic Methods
 
-For invocations of signature polymorphic methods of the target platform `´f´(´e_1 , \ldots , e_m´)`,
-the invoked method has a different method type `(´p_1´:´T_1 , \ldots , p_n´:´T_n´)´U´` at each call
-site. The parameter types `´T_ , \ldots , T_n´` are the types of the argument expressions
-`´e_1 , \ldots , e_m´`. If the declared return type `´R´` of the signature polymorphic method is
+For invocations of signature polymorphic methods of the target platform `´f´(´e_1, ..., e_m´)`,
+the invoked method has a different method type `(´p_1´:´T_1, ..., p_n´:´T_n´)´U´` at each call
+site. The parameter types `´T_, ..., T_n´` are the types of the argument expressions
+`´e_1, ..., e_m´`. If the declared return type `´R´` of the signature polymorphic method is
 any type other than `scala.AnyRef`, then the return type `´U´` is `´R´`.
 Otherwise, `´U´` is the expected type at the call site. If the expected type is undefined then
-`´U´` is `scala.AnyRef`. The parameter names `´p_1 , \ldots , p_n´` are fresh.
+`´U´` is `scala.AnyRef`. The parameter names `´p_1, ..., p_n´` are fresh.
 
 ###### Note
 
@@ -456,19 +456,19 @@ because otherwise the underscore would be considered part of the name.
 SimpleExpr    ::=  SimpleExpr TypeArgs
 ```
 
-A _type application_ `´e´[´T_1 , \ldots , T_n´]` instantiates
+A _type application_ `´e´[´T_1, ..., T_n´]` instantiates
 a polymorphic value ´e´ of type
-`[´a_1´ >: ´L_1´ <: ´U_1, \ldots , a_n´ >: ´L_n´ <: ´U_n´]´S´`
+`[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´S´`
 with argument types
-`´T_1 , \ldots , T_n´`.  Every argument type ´T_i´ must obey
+`´T_1, ..., T_n´`.  Every argument type ´T_i´ must obey
 the corresponding bounds ´L_i´ and ´U_i´.  That is, for each ´i = 1
-, \ldots , n´, we must have ´\sigma L_i <: T_i <: \sigma
-U_i´, where ´\sigma´ is the substitution ´[a_1 := T_1 , \ldots , a_n
+, ..., n´, we must have ´\sigma L_i <: T_i <: \sigma
+U_i´, where ´\sigma´ is the substitution ´[a_1 := T_1, ..., a_n
 := T_n]´.  The type of the application is ´\sigma S´.
 
 If the function part ´e´ is of some value type, the type application
 is taken to be equivalent to
-`´e´.apply[´T_1 , \ldots ,´ T´_n´]`, i.e. the application of an `apply` method defined by
+`´e´.apply[´T_1 , ...,´ T´_n´]`, i.e. the application of an `apply` method defined by
 ´e´.
 
 Type applications can be omitted if
@@ -482,9 +482,9 @@ and the expected result type.
 SimpleExpr   ::=  ‘(’ [Exprs] ‘)’
 ```
 
-A _tuple expression_ `(´e_1 , \ldots , e_n´)` is an alias
+A _tuple expression_ `(´e_1´, ..., ´e_n´)` is an alias
 for the class instance creation
-`scala.Tuple´n´(´e_1 , \ldots , e_n´)`, where ´n \geq 2´.
+`scala.Tuple´n´(´e_1´, ..., ´e_n´)`, where ´n \geq 2´.
 The empty tuple
 `()` is the unique value of type `scala.Unit`.
 
@@ -562,8 +562,8 @@ BlockExpr  ::=  ‘{’ CaseClauses ‘}’
 Block      ::=  BlockStat {semi BlockStat} [ResultExpr]
 ```
 
-A _block expression_ `{´s_1´; ´\ldots´; ´s_n´; ´e\,´}` is
-constructed from a sequence of block statements ´s_1 , \ldots , s_n´
+A _block expression_ `{´s_1´; ...; ´s_n´; ´e\,´}` is
+constructed from a sequence of block statements ´s_1, ..., s_n´
 and a final expression ´e´.  The statement sequence may not contain
 two definitions or declarations that bind the same name in the same
 namespace.  The final expression can be omitted, in which
@@ -573,11 +573,11 @@ The expected type of the final expression ´e´ is the expected
 type of the block. The expected type of all preceding statements is
 undefined.
 
-The type of a block `´s_1´; ´\ldots´; ´s_n´; ´e´` is
+The type of a block `´s_1´; ...; ´s_n´; ´e´` is
 `´T´ forSome {´\,Q\,´}`, where ´T´ is the type of ´e´ and ´Q´
 contains [existential clauses](03-types.html#existential-types)
 for every value or type name which is free in ´T´
-and which is defined locally in one of the statements ´s_1 , \ldots , s_n´.
+and which is defined locally in one of the statements ´s_1, ..., s_n´.
 We say the existential clause _binds_ the occurrence of the value or type name.
 Specifically,
 
@@ -599,7 +599,7 @@ Evaluation of the block entails evaluation of its
 statement sequence, followed by an evaluation of the final expression
 ´e´, which defines the result of the block.
 
-A block expression `{´c_1´; ´\ldots´; ´c_n´}` where ´s_1 , \ldots , s_n´ are
+A block expression `{´c_1´; ...; ´c_n´}` where ´s_1, ..., s_n´ are
 case clauses forms a [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions).
 
 ###### Example
@@ -696,22 +696,22 @@ parts of an expression as follows.
   expression, then operators with higher precedence bind more closely
   than operators with lower precedence.
 - If there are consecutive infix
-  operations ´e_0; \mathit{op}\_1; e_1; \mathit{op}\_2 \ldots \mathit{op}\_n; e_n´
-  with operators ´\mathit{op}\_1 , \ldots , \mathit{op}\_n´ of the same precedence,
+  operations ´e_0; \mathit{op}\_1; e_1; \mathit{op}\_2 ... \mathit{op}\_n; e_n´
+  with operators ´\mathit{op}\_1, ..., \mathit{op}\_n´ of the same precedence,
   then all these operators must
   have the same associativity. If all operators are left-associative,
   the sequence is interpreted as
-  ´(\ldots(e_0;\mathit{op}\_1;e_1);\mathit{op}\_2\ldots);\mathit{op}\_n;e_n´.
+  ´(...(e_0;\mathit{op}\_1;e_1);\mathit{op}\_2...);\mathit{op}\_n;e_n´.
   Otherwise, if all operators are right-associative, the
   sequence is interpreted as
-  ´e_0;\mathit{op}\_1;(e_1;\mathit{op}\_2;(\ldots \mathit{op}\_n;e_n)\ldots)´.
+  ´e_0;\mathit{op}\_1;(e_1;\mathit{op}\_2;(... \mathit{op}\_n;e_n)...)´.
 - Postfix operators always have lower precedence than infix
   operators. E.g. ´e_1;\mathit{op}\_1;e_2;\mathit{op}\_2´ is always equivalent to
   ´(e_1;\mathit{op}\_1;e_2);\mathit{op}\_2´.
 
 The right-hand operand of a left-associative operator may consist of
-several arguments enclosed in parentheses, e.g. ´e;\mathit{op};(e_1,\ldots,e_n)´.
-This expression is then interpreted as ´e.\mathit{op}(e_1,\ldots,e_n)´.
+several arguments enclosed in parentheses, e.g. ´e;\mathit{op};(e_1,...,e_n)´.
+This expression is then interpreted as ´e.\mathit{op}(e_1,...,e_n)´.
 
 A left-associative binary
 operation ´e_1;\mathit{op};e_2´ is interpreted as ´e_1.\mathit{op}(e_2)´. If ´\mathit{op}´ is
@@ -778,8 +778,8 @@ Here are examples of well-typed and ill-typed expressions.
 Expr1              ::=  PostfixExpr ‘:’ Annotation {Annotation}
 ```
 
-An _annotated expression_ `´e´: @´a_1´ ´\ldots´ @´a_n´`
-attaches [annotations](11-annotations.html#user-defined-annotations) ´a_1 , \ldots , a_n´ to the
+An _annotated expression_ `´e´: @´a_1´ ... @´a_n´`
+attaches [annotations](11-annotations.html#user-defined-annotations) ´a_1, ..., a_n´ to the
 expression ´e´.
 
 ## Assignments
@@ -977,35 +977,35 @@ comprehensions have been eliminated.
   - A for comprehension
 
     ```scala
-    for (´p´ <- ´e´; ´p'´ <- ´e'; \ldots´) yield ´e''´
+    for (´p´ <- ´e´; ´p'´ <- ´e'; ...´) yield ´e''´
     ```
 
-    where `´\ldots´` is a (possibly empty)
+    where `...` is a (possibly empty)
     sequence of generators, definitions, or guards,
     is translated to
 
     ```scala
-    ´e´.flatMap { case ´p´ => for (´p'´ <- ´e'; \ldots´) yield ´e''´ }
+    ´e´.flatMap { case ´p´ => for (´p'´ <- ´e'; ...´) yield ´e''´ }
     ```
 
   - A for loop
 
     ```scala
-    for (´p´ <- ´e´; ´p'´ <- ´e'; \ldots´) ´e''´
+    for (´p´ <- ´e´; ´p'´ <- ´e'; ...´) ´e''´
     ```
 
-    where `´\ldots´` is a (possibly empty)
+    where `...` is a (possibly empty)
     sequence of generators, definitions, or guards,
     is translated to
 
     ```scala
-    ´e´.foreach { case ´p´ => for (´p'´ <- ´e'; \ldots´) ´e''´ }
+    ´e´.foreach { case ´p´ => for (´p'´ <- ´e'; ...´) ´e''´ }
     ```
 
   - A generator `´p´ <- ´e´` followed by a guard
     `if ´g´` is translated to a single generator
-    `´p´ <- ´e´.withFilter((´x_1 , \ldots , x_n´) => ´g\,´)` where
-    ´x_1 , \ldots , x_n´ are the free variables of ´p´.
+    `´p´ <- ´e´.withFilter((´x_1, ..., x_n´) => ´g\,´)` where
+    ´x_1, ..., x_n´ are the free variables of ´p´.
 
   - A generator `´p´ <- ´e´` followed by a value definition
     `´p'´ = ´e'´` is translated to the following generator of pairs of values, where
@@ -1137,7 +1137,7 @@ where the handler ´h´ is usually a
 [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions)
 
 ```scala
-{ case ´p_1´ => ´b_1´ ´\ldots´ case ´p_n´ => ´b_n´ }
+{ case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´ }
 ```
 
 This expression is evaluated by evaluating the block
@@ -1187,7 +1187,7 @@ Bindings        ::=  ‘(’ Binding {‘,’ Binding} ‘)’
 Binding         ::=  (id | ‘_’) [‘:’ Type]
 ```
 
-The anonymous function of arity ´n´, `(´x_1´: ´T_1 , \ldots , x_n´: ´T_n´) => e` maps parameters ´x_i´ of types ´T_i´ to a result given by expression ´e´. The scope of each formal parameter ´x_i´ is ´e´. Formal parameters must have pairwise distinct names.
+The anonymous function of arity ´n´, `(´x_1´: ´T_1, ..., x_n´: ´T_n´) => e` maps parameters ´x_i´ of types ´T_i´ to a result given by expression ´e´. The scope of each formal parameter ´x_i´ is ´e´. Formal parameters must have pairwise distinct names.
 
 In the case of a single untyped formal parameter, `(´x\,´) => ´e´` can be abbreviated to `´x´ => ´e´`. If an anonymous function `(´x´: ´T\,´) => ´e´` with a single typed parameter appears as the result expression of a block, it can be abbreviated to `´x´: ´T´ => e`.
 
@@ -1196,12 +1196,12 @@ A formal parameter may also be a wildcard represented by an underscore `_`. In t
 A named parameter of an anonymous function may be optionally preceded by an `implicit` modifier. In that case the parameter is labeled [`implicit`](07-implicits.html#implicit-parameters-and-views); however the parameter section itself does not count as an [implicit parameter section](07-implicits.html#implicit-parameters). Hence, arguments to anonymous functions always have to be given explicitly.
 
 ### Translation
-If the expected type of the anonymous function is of the shape `scala.Function´n´[´S_1 , \ldots , S_n´, ´R\,´]`, or can be [SAM-converted](#sam-conversion) to such a function type, the type `´T_i´` of a parameter `´x_i´` can be omitted, as far as `´S_i´` is defined in the expected type, and `´T_i´ = ´S_i´` is assumed. Furthermore, the expected type when type checking ´e´ is ´R´.
+If the expected type of the anonymous function is of the shape `scala.Function´n´[´S_1´, ..., ´S_n´, ´R\,´]`, or can be [SAM-converted](#sam-conversion) to such a function type, the type `´T_i´` of a parameter `´x_i´` can be omitted, as far as `´S_i´` is defined in the expected type, and `´T_i´ = ´S_i´` is assumed. Furthermore, the expected type when type checking ´e´ is ´R´.
 
-If there is no expected type for the function literal, all formal parameter types `´T_i´` must be specified explicitly, and the expected type of ´e´ is undefined. The type of the anonymous function is `scala.Function´n´[´T_1 , \ldots , T_n´, ´R\,´]`, where ´R´ is the [packed type](#expression-typing) of ´e´. ´R´ must be equivalent to a type which does not refer to any of the formal parameters ´x_i´.
+If there is no expected type for the function literal, all formal parameter types `´T_i´` must be specified explicitly, and the expected type of ´e´ is undefined. The type of the anonymous function is `scala.Function´n´[´T_1´, ..., ´T_n´, ´R\,´]`, where ´R´ is the [packed type](#expression-typing) of ´e´. ´R´ must be equivalent to a type which does not refer to any of the formal parameters ´x_i´.
 
 The eventual run-time value of an anonymous function is determined by the expected type:
-  - a subclass of one of the builtin function types, `scala.Function´n´[´S_1 , \ldots , S_n´, ´R\,´]` (with ´S_i´ and ´R´ fully defined),
+  - a subclass of one of the builtin function types, `scala.Function´n´[´S_1, ..., S_n´, ´R\,´]` (with ´S_i´ and ´R´ fully defined),
   - a [single-abstract-method (SAM) type](#sam-conversion);
   - `PartialFunction[´T´, ´U´]`
   - some other type.
@@ -1209,8 +1209,8 @@ The eventual run-time value of an anonymous function is determined by the expect
 The standard anonymous function evaluates in the same way as the following instance creation expression:
 
 ```scala
-new scala.Function´n´[´T_1 , \ldots , T_n´, ´T´] {
-  def apply(´x_1´: ´T_1 , \ldots , x_n´: ´T_n´): ´T´ = ´e´
+new scala.Function´n´[´T_1, ..., T_n´, ´T´] {
+  def apply(´x_1´: ´T_1, ..., x_n´: ´T_n´): ´T´ = ´e´
 }
 ```
 
@@ -1220,7 +1220,7 @@ The underlying platform may provide more efficient ways of constructing these in
 
 When a `PartialFunction` is required, an additional member `isDefinedAt`
 is synthesized, which simply returns `true`.
-However, if the function literal has the shape `x => x match { $\ldots$ }`,
+However, if the function literal has the shape `x => x match { $...$ }`,
 then `isDefinedAt` is derived from the pattern match in the following way:
 each case from the match expression evaluates to `true`,
 and if there is no default case,
@@ -1268,7 +1268,7 @@ An expression ´e´ of syntactic category `Expr` _binds_ an underscore section
 (2) there is no other expression of syntactic category `Expr`
 which is properly contained in ´e´ and which itself properly contains ´u´.
 
-If an expression ´e´ binds underscore sections ´u_1 , \ldots , u_n´, in this order, it is equivalent to
+If an expression ´e´ binds underscore sections ´u_1, ..., u_n´, in this order, it is equivalent to
 the anonymous function `(´u'_1´, ... ´u'_n´) => ´e'´`
 where each ´u_i'´ results from ´u_i´ by replacing the underscore with a fresh identifier and
 ´e'´ results from ´e´ by replacing each underscore section ´u_i´ by ´u_i'´.
@@ -1296,7 +1296,7 @@ include at least the expressions of the following forms:
 - A string literal
 - A class constructed with [`Predef.classOf`](12-the-scala-standard-library.html#the-predef-object)
 - An element of an enumeration from the underlying platform
-- A literal array, of the form `Array´(c_1 , \ldots , c_n)´`,
+- A literal array, of the form `Array´(c_1, ..., c_n)´`,
   where all of the ´c_i´'s are themselves constant expressions
 - An identifier defined by a [constant value definition](04-basic-declarations-and-definitions.html#value-declarations-and-definitions).
 
@@ -1354,16 +1354,16 @@ is applied to pick a unique member.
 An expression ´e´ of polymorphic type
 
 ```scala
-[´a_1´ >: ´L_1´ <: ´U_1 , \ldots , a_n´ >: ´L_n´ <: ´U_n´]´T´
+[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´
 ```
 
 which does not appear as the function part of
 a type application is converted to a type instance of ´T´
 by determining with [local type inference](#local-type-inference)
-instance types `´T_1 , \ldots , T_n´`
-for the type variables `´a_1 , \ldots , a_n´` and
+instance types `´T_1, ..., T_n´`
+for the type variables `´a_1, ..., a_n´` and
 implicitly embedding ´e´ in the [type application](#type-applications)
-`´e´[´T_1 , \ldots , T_n´]`.
+`´e´[´T_1, ..., T_n´]`.
 
 ###### Numeric Widening
 If ´e´ has a primitive number type which [weakly conforms](03-types.html#weak-conformance)
@@ -1456,24 +1456,24 @@ member.  The way this is done depends on whether or not ´e´ is used as
 a function. Let ´\mathscr{A}´ be the set of members referenced by ´e´.
 
 Assume first that ´e´ appears as a function in an application, as in
-`´e´(´e_1 , \ldots , e_m´)`.
+`´e´(´e_1´, ..., ´e_m´)`.
 
 One first determines the set of functions that is potentially [applicable](#function-applications)
 based on the _shape_ of the arguments.
 
 The *shape* of an argument expression ´e´, written  ´\mathit{shape}(e)´, is
 a type that is defined as follows:
-  - For a function expression `(´p_1´: ´T_1 , \ldots , p_n´: ´T_n´) => ´b´: (Any ´, \ldots ,´ Any) => ´\mathit{shape}(b)´`,
+  - For a function expression `(´p_1´: ´T_1, ..., p_n´: ´T_n´) => ´b´: (Any, ..., Any) => ´\mathit{shape}(b)´`,
     where `Any` occurs ´n´ times in the argument type.
   - For a pattern-matching anonymous function definition `{ case ... }`: `PartialFunction[Any, Nothing]`.
   - For a named argument `´n´ = ´e´`: ´\mathit{shape}(e)´.
   - For all other expressions: `Nothing`.
 
 Let ´\mathscr{B}´ be the set of alternatives in ´\mathscr{A}´ that are [_applicable_](#function-applications)
-to expressions ´(e_1 , \ldots , e_n)´ of types ´(\mathit{shape}(e_1) , \ldots , \mathit{shape}(e_n))´.
+to expressions ´(e_1, ..., e_n)´ of types ´(\mathit{shape}(e_1), ..., \mathit{shape}(e_n))´.
 If there is precisely one alternative in ´\mathscr{B}´, that alternative is chosen.
 
-Otherwise, let ´S_1 , \ldots , S_m´ be the list of types obtained by typing each argument as follows.
+Otherwise, let ´S_1, ..., S_m´ be the list of types obtained by typing each argument as follows.
 
 Normally, an argument is typed without an expected type, except when
 all alternatives explicitly specify the same parameter type for this argument (a missing parameter type,
@@ -1501,12 +1501,12 @@ given `´k´`. Then, the expected type for `´e_i´` is derived as follows:
      (and a potentially varying result type), the expected type encodes these argument types and the SAM class.
 
 For every member ´m´ in ´\mathscr{B}´ one determines whether it is applicable
-to expressions (´e_1 , \ldots , e_m´) of types ´S_1, \ldots , S_m´.
+to expressions (´e_1, ..., e_m´) of types ´S_1, ..., S_m´.
 
 It is an error if none of the members in ´\mathscr{B}´ is applicable. If there is one
 single applicable alternative, that alternative is chosen. Otherwise, let ´\mathscr{CC}´
 be the set of applicable alternatives which don't employ any default argument
-in the application to ´e_1 , \ldots , e_m´.
+in the application to ´e_1, ..., e_m´.
 
 It is again an error if ´\mathscr{CC}´ is empty.
 Otherwise, one chooses the _most specific_ alternative among the alternatives
@@ -1524,20 +1524,20 @@ question: given
  so the method is not more specific than the value.
 -->
 
-- A parameterized method ´m´ of type `(´p_1:T_1, \ldots , p_n:T_n´)´U´` is
+- A parameterized method ´m´ of type `(´p_1:T_1, ..., p_n:T_n´)´U´` is
   _as specific as_ some other member ´m'´ of type ´S´ if ´m'´ is [applicable](#function-applications)
-  to arguments `(´p_1 , \ldots , p_n´)` of types ´T_1 , \ldots , T_n´.
-- A polymorphic method of type `[´a_1´ >: ´L_1´ <: ´U_1 , \ldots , a_n´ >: ´L_n´ <: ´U_n´]´T´` is
+  to arguments `(´p_1, ..., p_n´)` of types ´T_1, ..., T_n´.
+- A polymorphic method of type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is
   as specific as some other member of type ´S´ if ´T´ is as specific as ´S´
-  under the assumption that for ´i = 1 , \ldots , n´ each ´a_i´ is an abstract type name
+  under the assumption that for ´i = 1, ..., n´ each ´a_i´ is an abstract type name
   bounded from below by ´L_i´ and from above by ´U_i´.
 - A member of any other type is always as specific as a parameterized method or a polymorphic method.
 - Given two members of types ´T´ and ´U´ which are neither parameterized nor polymorphic method types,
   the member of type ´T´ is as specific as the member of type ´U´ if
   the existential dual of ´T´ conforms to the existential dual of ´U´.
   Here, the existential dual of a polymorphic type
-  `[´a_1´ >: ´L_1´ <: ´U_1 , \ldots , a_n´ >: ´L_n´ <: ´U_n´]´T´` is
-  `´T´ forSome { type ´a_1´ >: ´L_1´ <: ´U_1´ ´, \ldots ,´ type ´a_n´ >: ´L_n´ <: ´U_n´}`.
+  `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is
+  `´T´ forSome { type ´a_1´ >: ´L_1´ <: ´U_1´, ..., type ´a_n´ >: ´L_n´ <: ´U_n´}`.
   The existential dual of every other type is the type itself.
 
 The _relative weight_ of an alternative ´A´ over an alternative ´B´ is a
@@ -1580,8 +1580,8 @@ Consider the following definitions:
 
 ```scala
 class A extends B {}
-def f(x: B, y: B) = ´\ldots´
-def f(x: A, y: B) = ´\ldots´
+def f(x: B, y: B) = ...
+def f(x: A, y: B) = ...
 val a: A
 val b: B
 ```
@@ -1591,7 +1591,7 @@ definition of ´f´ whereas the application `f(a, a)`
 refers to the second.  Assume now we add a third overloaded definition
 
 ```scala
-def f(x: B, y: A) = ´\ldots´
+def f(x: B, y: A) = ...
 ```
 
 Then the application `f(a, a)` is rejected for being ambiguous, since
@@ -1600,12 +1600,12 @@ no most specific applicable signature exists.
 ### Local Type Inference
 
 Local type inference infers type arguments to be passed to expressions
-of polymorphic type. Say ´e´ is of type [´a_1´ >: ´L_1´ <: ´U_1, \ldots , a_n´ >: ´L_n´ <: ´U_n´]´T´
+of polymorphic type. Say ´e´ is of type [´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´
 and no explicit type parameters are given.
 
 Local type inference converts this expression to a type
-application `´e´[´T_1 , \ldots , T_n´]`. The choice of the
-type arguments ´T_1 , \ldots , T_n´ depends on the context in which
+application `´e´[´T_1, ..., T_n´]`. The choice of the
+type arguments ´T_1, ..., T_n´ depends on the context in which
 the expression appears and on the expected type ´\mathit{pt}´.
 There are three cases.
 
@@ -1613,9 +1613,9 @@ There are three cases.
 If the expression appears as the prefix of a selection with a name
 ´x´, then type inference is _deferred_ to the whole expression
 ´e.x´. That is, if ´e.x´ has type ´S´, it is now treated as having
-type [´a_1´ >: ´L_1´ <: ´U_1 , \ldots , a_n´ >: ´L_n´ <: ´U_n´]´S´,
+type [´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´S´,
 and local type inference is applied in turn to infer type arguments
-for ´a_1 , \ldots , a_n´, using the context in which ´e.x´ appears.
+for ´a_1, ..., a_n´, using the context in which ´e.x´ appears.
 
 ###### Case 2: Values
 If the expression ´e´ appears as a value without being applied to
@@ -1631,7 +1631,7 @@ parameters ´a_i´ such that
   unless it is a singleton type corresponding to an object or a constant value
   definition or the corresponding bound ´U_i´ is a subtype of `scala.Singleton`.
 - All type parameter bounds are respected, i.e.
-  ´\sigma L_i <: \sigma a_i´ and ´\sigma a_i <: \sigma U_i´ for ´i = 1 , \ldots , n´.
+  ´\sigma L_i <: \sigma a_i´ and ´\sigma a_i <: \sigma U_i´ for ´i = 1, ..., n´.
 - The expression's type conforms to the expected type, i.e.
   ´\sigma T <: \sigma \mathit{pt}´.
 
@@ -1647,21 +1647,21 @@ an _optimal solution_ of the given constraint system for the type ´T´.
 
 ###### Case 3: Methods
 The last case applies if the expression
-´e´ appears in an application ´e(d_1 , \ldots , d_m)´. In that case
-´T´ is a method type ´(p_1:R_1 , \ldots , p_m:R_m)T'´. Without loss of
+´e´ appears in an application ´e(d_1, ..., d_m)´. In that case
+´T´ is a method type ´(p_1:R_1, ..., p_m:R_m)T'´. Without loss of
 generality we can assume that the result type ´T'´ is a value type; if
 it is a method type we apply [eta-expansion](#eta-expansion-section) to
 convert it to a function type.  One computes first the types ´S_j´ of
 the argument expressions ´d_j´, using two alternative schemes.  Each
 argument expression ´d_j´ is typed first with the expected type ´R_j´,
-in which the type parameters ´a_1 , \ldots , a_n´ are taken as type
+in which the type parameters ´a_1, ..., a_n´ are taken as type
 constants.  If this fails, the argument ´d_j´ is typed instead with an
 expected type ´R_j'´ which results from ´R_j´ by replacing every type
-parameter in ´a_1 , \ldots , a_n´ with _undefined_.
+parameter in ´a_1, ..., a_n´ with _undefined_.
 
 In a second step, type arguments are inferred by solving a constraint
 system which relates the method's type with the expected type
-´\mathit{pt}´ and the argument types ´S_1 , \ldots , S_m´. Solving the
+´\mathit{pt}´ and the argument types ´S_1, ..., S_m´. Solving the
 constraint system means
 finding a substitution ´\sigma´ of types ´T_i´ for the type parameters
 ´a_i´ such that
@@ -1670,11 +1670,11 @@ finding a substitution ´\sigma´ of types ´T_i´ for the type parameters
   unless it is a singleton type corresponding to an object or a constant value
   definition or the corresponding bound ´U_i´ is a subtype of `scala.Singleton`.
 - All type parameter bounds are respected, i.e. ´\sigma L_i <: \sigma a_i´ and
-  ´\sigma a_i <: \sigma U_i´ for ´i = 1 , \ldots , n´.
+  ´\sigma a_i <: \sigma U_i´ for ´i = 1, ..., n´.
 - The method's result type ´T'´ conforms to the expected type, i.e. ´\sigma T' <: \sigma \mathit{pt}´.
 - Each argument type [weakly conforms](03-types.html#weak-conformance)
   to the corresponding formal parameter
-  type, i.e. ´\sigma S_j <:_w \sigma R_j´ for ´j = 1 , \ldots , m´.
+  type, i.e. ´\sigma S_j <:_w \sigma R_j´ for ´j = 1, ..., m´.
 
 It is a compile time error if no such substitution exists.  If several
 solutions exist, an optimal one for the type ´T'´ is chosen.
@@ -1788,18 +1788,18 @@ _Eta-expansion_ converts an expression of method type to an
 equivalent expression of function type. It proceeds in two steps.
 
 First, one identifies the maximal sub-expressions of ´e´; let's
-say these are ´e_1 , \ldots , e_m´. For each of these, one creates a
+say these are ´e_1, ..., e_m´. For each of these, one creates a
 fresh name ´x_i´. Let ´e'´ be the expression resulting from
 replacing every maximal subexpression ´e_i´ in ´e´ by the
 corresponding fresh name ´x_i´. Second, one creates a fresh name ´y_i´
-for every argument type ´T_i´ of the method (´i = 1 , \ldots ,
+for every argument type ´T_i´ of the method (´i = 1 , ...,
 n´). The result of eta-conversion is then:
 
 ```scala
 { val ´x_1´ = ´e_1´;
-  ´\ldots´
+  ...
   val ´x_m´ = ´e_m´;
-  (´y_1: T_1 , \ldots , y_n: T_n´) => ´e'´(´y_1 , \ldots , y_n´)
+  (´y_1: T_1, ..., y_n: T_n´) => ´e'´(´y_1, ..., y_n´)
 }
 ```
 

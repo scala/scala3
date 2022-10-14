@@ -27,7 +27,7 @@ A _compilation unit_
 
 ```scala
 package ´p_1´;
-´\ldots´
+...
 package ´p_n´;
 ´\mathit{stats}´
 ```
@@ -37,10 +37,10 @@ clauses is equivalent to a compilation unit consisting of the
 packaging
 
 ```scala
-package ´p_1´ { ´\ldots´
+package ´p_1´ { ...
   package ´p_n´ {
     ´\mathit{stats}´
-  } ´\ldots´
+  } ...
 }
 ```
 

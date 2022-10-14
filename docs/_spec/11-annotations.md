@@ -14,7 +14,7 @@ chapter: 11
 ## Definition
 
 Annotations associate meta-information with definitions.
-A simple annotation has the form `@´c´` or `@´c(a_1 , \ldots , a_n)´`.
+A simple annotation has the form `@´c´` or `@´c(a_1, ..., a_n)´`.
 Here, ´c´ is a constructor of a class ´C´, which must conform
 to the class `scala.Annotation`.
 

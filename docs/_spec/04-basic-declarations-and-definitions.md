@@ -32,7 +32,7 @@ associate term names with types.
 The scope of a name introduced by a declaration or definition is the
 whole statement sequence containing the binding.  However, there is a
 restriction on forward references in blocks: In a statement sequence
-´s_1 \ldots s_n´ making up a block, if a simple name in ´s_i´ refers
+´s_1 ... s_n´ making up a block, if a simple name in ´s_i´ refers
 to an entity defined by ´s_j´ where ´j \geq i´, then for all ´s_k´
 between and including ´s_i´ and ´s_j´,
 
@@ -138,12 +138,12 @@ as left-hand side.  If ´p´ is some pattern other
 than a simple name or a name followed by a colon and a type, then the
 value definition `val ´p´ = ´e´` is expanded as follows:
 
-1. If the pattern ´p´ has bound variables ´x_1 , \ldots , x_n´, where ´n > 1´:
+1. If the pattern ´p´ has bound variables ´x_1, ..., x_n´, where ´n > 1´:
 
 ```scala
-val ´\$x´ = ´e´ match {case ´p´ => (´x_1 , \ldots , x_n´)}
+val ´\$x´ = ´e´ match {case ´p´ => (´x_1, ..., x_n´)}
 val ´x_1´ = ´\$x´._1
-´\ldots´
+...
 val ´x_n´ = ´\$x´._n
 ```
 
@@ -184,11 +184,11 @@ val xs = x´\$´._2
 
 The name of any declared or defined value may not end in `_=`.
 
-A value declaration `val ´x_1 , \ldots , x_n´: ´T´` is a shorthand for the
+A value declaration `val ´x_1, ..., x_n´: ´T´` is a shorthand for the
 sequence of value declarations `val ´x_1´: ´T´; ...; val ´x_n´: ´T´`.
-A value definition `val ´p_1 , \ldots , p_n´ = ´e´` is a shorthand for the
+A value definition `val ´p_1, ..., p_n´ = ´e´` is a shorthand for the
 sequence of value definitions `val ´p_1´ = ´e´; ...; val ´p_n´ = ´e´`.
-A value definition `val ´p_1 , \ldots , p_n: T´ = ´e´` is a shorthand for the
+A value definition `val ´p_1, ..., p_n: T´ = ´e´` is a shorthand for the
 sequence of value definitions `val ´p_1: T´ = ´e´; ...; val ´p_n: T´ = ´e´`.
 
 ## Variable Declarations and Definitions
@@ -283,11 +283,11 @@ d.hours = 8; d.minutes = 30; d.seconds = 0
 d.hours = 25                  // throws a DateError exception
 ```
 
-A variable declaration `var ´x_1 , \ldots , x_n´: ´T´` is a shorthand for the
+A variable declaration `var ´x_1, ..., x_n´: ´T´` is a shorthand for the
 sequence of variable declarations `var ´x_1´: ´T´; ...; var ´x_n´: ´T´`.
-A variable definition `var ´x_1 , \ldots , x_n´ = ´e´` is a shorthand for the
+A variable definition `var ´x_1, ..., x_n´ = ´e´` is a shorthand for the
 sequence of variable definitions `var ´x_1´ = ´e´; ...; var ´x_n´ = ´e´`.
-A variable definition `var ´x_1 , \ldots , x_n: T´ = ´e´` is a shorthand for
+A variable definition `var ´x_1, ..., x_n: T´ = ´e´` is a shorthand for
 the sequence of variable definitions
 `var ´x_1: T´ = ´e´; ...; var ´x_n: T´ = ´e´`.
 
@@ -407,7 +407,7 @@ definitions with lower bounds `>: ´L´` and upper bounds
 is deferred to [here](07-implicits.html#context-bounds-and-view-bounds).
 
 The most general form of a proper type parameter is
-`´@a_1 \ldots @a_n´ ´\pm´ ´t´ >: ´L´ <: ´U´`.
+`´@a_1 ... @a_n´ ´\pm´ ´t´ >: ´L´ <: ´U´`.
 Here, ´L´, and ´U´ are lower and upper bounds that
 constrain possible type arguments for the parameter.  It is a
 compile-time error if ´L´ does not conform to ´U´. ´\pm´ is a _variance_, i.e. an optional prefix of either `+`, or
@@ -426,7 +426,7 @@ TODO: this is a pretty awkward description of scoping and distinctness of binder
 
 The names of all type parameters must be pairwise different in their enclosing type parameter clause.  The scope of a type parameter includes in each case the whole type parameter clause. Therefore it is possible that a type parameter appears as part of its own bounds or the bounds of other type parameters in the same clause.  However, a type parameter may not be bounded directly or indirectly by itself.
 
-A type constructor parameter adds a nested type parameter clause to the type parameter. The most general form of a type constructor parameter is `´@a_1 \ldots @a_n \pm t[\mathit{tps}\,]´ >: ´L´ <: ´U´`.
+A type constructor parameter adds a nested type parameter clause to the type parameter. The most general form of a type constructor parameter is `´@a_1 ... @a_n \pm t[\mathit{tps}\,]´ >: ´L´ <: ´U´`.
 
 The above scoping restrictions are generalized to the case of nested type parameter clauses, which declare higher-order type parameters. Higher-order type parameters (the type parameters of a type parameter ´t´) are only visible in their immediately surrounding parameter clause (possibly including clauses at a deeper nesting level) and in the bounds of ´t´. Therefore, their names must only be pairwise different from the names of other visible parameters. Since the names of higher-order type parameters are thus often irrelevant, they may be denoted with a `‘_’`, which is nowhere visible.
 
@@ -491,11 +491,11 @@ changes at the following constructs.
 - The type of a mutable variable is always in invariant position.
 - The right-hand side of a type alias is always in invariant position.
 - The prefix ´S´ of a type selection `´S´#´T´` is always in invariant position.
-- For a type argument ´T´ of a type `´S´[´\ldots T \ldots´ ]`: If the
+- For a type argument ´T´ of a type `´S´[´... T ...´ ]`: If the
   corresponding type parameter is invariant, then ´T´ is in
   invariant position.  If the corresponding type parameter is
   contravariant, the variance position of ´T´ is the opposite of
-  the variance position of the enclosing type `´S´[´\ldots T \ldots´ ]`.
+  the variance position of the enclosing type `´S´[´... T ...´ ]`.
 
 <!-- TODO: handle type aliases -->
 
@@ -602,7 +602,7 @@ signature and ´T´ is its result type. A _function definition_
 i.e. an expression which defines the function's result.  A parameter
 signature consists of an optional type parameter clause `[´\mathit{tps}\,´]`,
 followed by zero or more value parameter clauses
-`(´\mathit{ps}_1´)´\ldots´(´\mathit{ps}_n´)`.  Such a declaration or definition
+`(´\mathit{ps}_1´)...(´\mathit{ps}_n´)`.  Such a declaration or definition
 introduces a value with a (possibly polymorphic) method type whose
 parameter types and result type are as given.
 
@@ -635,7 +635,7 @@ For every parameter ´p_{i,j}´ with a default argument a method named
 expression. Here, ´n´ denotes the parameter's position in the method
 declaration. These methods are parametrized by the type parameter clause
 `[´\mathit{tps}\,´]` and all value parameter clauses
-`(´\mathit{ps}_1´)´\ldots´(´\mathit{ps}_{i-1}´)` preceding ´p_{i,j}´.
+`(´\mathit{ps}_1´)...(´\mathit{ps}_{i-1}´)` preceding ´p_{i,j}´.
 The `´f\$´default´\$´n` methods are inaccessible for user programs.
 
 ###### Example
@@ -717,17 +717,17 @@ _repeated_ parameter inside the method is then the sequence type
 `scala.Seq[´T´]`.  Methods with repeated parameters
 `´T´*` take a variable number of arguments of type ´T´.
 That is, if a method ´m´ with type
-`(´p_1:T_1 , \ldots , p_n:T_n, p_s:S´*)´U´` is applied to arguments
-´(e_1 , \ldots , e_k)´ where ´k \geq n´, then ´m´ is taken in that application
-to have type ´(p_1:T_1 , \ldots , p_n:T_n, p_s:S , \ldots , p_{s'}:S)U´, with
+`(´p_1:T_1, ..., p_n:T_n, p_s:S´*)´U´` is applied to arguments
+´(e_1, ..., e_k)´ where ´k \geq n´, then ´m´ is taken in that application
+to have type ´(p_1:T_1, ..., p_n:T_n, p_s:S, ..., p_{s'}:S)U´, with
 ´k - n´ occurrences of type
 ´S´ where any parameter names beyond ´p_s´ are fresh. The only exception to
 this rule is if the last argument is
 marked to be a _sequence argument_ via a `_*` type
 annotation. If ´m´ above is applied to arguments
-`(´e_1 , \ldots , e_n, e'´: _*)`, then the type of ´m´ in
+`(´e_1, ..., e_n, e'´: _*)`, then the type of ´m´ in
 that application is taken to be
-`(´p_1:T_1, \ldots , p_n:T_n,p_{s}:´scala.Seq[´S´])`.
+`(´p_1:T_1, ... , p_n:T_n,p_{s}:´scala.Seq[´S´])`.
 
 It is not allowed to define any default arguments in a parameter section
 with a repeated parameter.
@@ -875,7 +875,7 @@ _importable_ if it is [accessible](05-classes-and-objects.html#modifiers).
 The most general form of an import expression is a list of _import selectors_
 
 ```scala
-{ ´x_1´ => ´y_1 , \ldots , x_n´ => ´y_n´, _ }
+{ ´x_1´ => ´y_1, ..., x_n´ => ´y_n´, _ }
 ```
 
 for ´n \geq 0´, where the final wildcard `‘_’` may be absent.  It
@@ -883,7 +883,7 @@ makes available each importable member `´p´.´x_i´` under the unqualified nam
 ´y_i´. I.e. every import selector `´x_i´ => ´y_i´` renames
 `´p´.´x_i´` to
 ´y_i´.  If a final wildcard is present, all importable members ´z´ of
-´p´ other than `´x_1 , \ldots , x_n,y_1 , \ldots , y_n´` are also made available
+´p´ other than `´x_1, ..., x_n,y_1, ..., y_n´` are also made available
 under their own unqualified names.
 
 Import selectors work in the same way for type and term members. For
@@ -918,9 +918,9 @@ i.e. it makes available without qualification all members of ´p´
 (this is analogous to `import ´p´.*` in Java).
 
 An import clause with multiple import expressions
-`import ´p_1´.´I_1 , \ldots , p_n´.´I_n´` is interpreted as a
+`import ´p_1´.´I_1, ..., p_n´.´I_n´` is interpreted as a
 sequence of import clauses
-`import ´p_1´.´I_1´; ´\ldots´; import ´p_n´.´I_n´`.
+`import ´p_1´.´I_1´; ...; import ´p_n´.´I_n´`.
 
 ###### Example
 Consider the object definition:

@@ -56,10 +56,10 @@ abstract class Any {
   final def != (that: Any): Boolean  =  !(this == that)
 
   /** Hash code; abstract here */
-  def hashCode: Int = ´\ldots´
+  def hashCode: Int = ...
 
   /** Textual representation; abstract here */
-  def toString: String = ´\ldots´
+  def toString: String = ...
 
   /** Type test; needs to be inlined to work as given */
   def isInstanceOf[a]: Boolean
@@ -78,11 +78,11 @@ final class AnyVal extends Any
 /** The root class of all reference types */
 class AnyRef extends Any {
   def equals(that: Any): Boolean      = this eq that
-  final def eq(that: AnyRef): Boolean = ´\ldots´ // reference equality
+  final def eq(that: AnyRef): Boolean = ... // reference equality
   final def ne(that: AnyRef): Boolean = !(this eq that)
 
-  def hashCode: Int = ´\ldots´     // hashCode computed from allocation address
-  def toString: String  = ´\ldots´ // toString computed from hashCode and class name
+  def hashCode: Int = ...     // hashCode computed from allocation address
+  def toString: String  = ... // toString computed from hashCode and class name
 
   def synchronized[T](body: => T): T // execute `body` in while locking `this`.
 }
@@ -353,13 +353,13 @@ right operand.
 
 ### The `Tuple` classes
 
-Scala defines tuple classes `Tuple´n´` for ´n = 2 , \ldots , 22´.
+Scala defines tuple classes `Tuple´n´` for ´n = 2, ..., 22´.
 These are defined as follows.
 
 ```scala
 package scala
 case class Tuple´n´[+T_1, ..., +T_n](_1: T_1, ..., _´n´: T_´n´) {
-  def toString = "(" ++ _1 ++ "," ++ ´\ldots´ ++ "," ++ _´n´ ++ ")"
+  def toString = "(" ++ _1 ++ "," ++ ... ++ "," ++ _´n´ ++ ")"
 }
 ```
 
@@ -397,10 +397,10 @@ informational purposes only:
 ```scala
 final class Array[T](_length: Int)
 extends java.io.Serializable with java.lang.Cloneable {
-  def length: Int = ´\ldots´
-  def apply(i: Int): T = ´\ldots´
-  def update(i: Int, x: T): Unit = ´\ldots´
-  override def clone(): Array[T] = ´\ldots´
+  def length: Int = ...
+  def apply(i: Int): T = ...
+  def update(i: Int, x: T): Unit = ...
+  override def clone(): Array[T] = ...
 }
 ```
 
@@ -502,46 +502,46 @@ package scala
 object Array {
   /** copies array elements from `src` to `dest`. */
   def copy(src: AnyRef, srcPos: Int,
-           dest: AnyRef, destPos: Int, length: Int): Unit = ´\ldots´
+           dest: AnyRef, destPos: Int, length: Int): Unit = ...
 
   /** Returns an array of length 0 */
   def empty[T: ClassTag]: Array[T] =
 
   /** Create an array with given elements. */
-  def apply[T: ClassTag](xs: T*): Array[T] = ´\ldots´
+  def apply[T: ClassTag](xs: T*): Array[T] = ...
 
   /** Creates array with given dimensions */
-  def ofDim[T: ClassTag](n1: Int): Array[T] = ´\ldots´
+  def ofDim[T: ClassTag](n1: Int): Array[T] = ...
   /** Creates a 2-dimensional array */
-  def ofDim[T: ClassTag](n1: Int, n2: Int): Array[Array[T]] = ´\ldots´
-  ´\ldots´
+  def ofDim[T: ClassTag](n1: Int, n2: Int): Array[Array[T]] = ...
+  ...
 
   /** Concatenate all argument arrays into a single array. */
-  def concat[T: ClassTag](xss: Array[T]*): Array[T] = ´\ldots´
+  def concat[T: ClassTag](xss: Array[T]*): Array[T] = ...
 
   /** Returns an array that contains the results of some element computation a number
     * of times. */
-  def fill[T: ClassTag](n: Int)(elem: => T): Array[T] = ´\ldots´
+  def fill[T: ClassTag](n: Int)(elem: => T): Array[T] = ...
   /** Returns a two-dimensional array that contains the results of some element
     * computation a number of times. */
-  def fill[T: ClassTag](n1: Int, n2: Int)(elem: => T): Array[Array[T]] = ´\ldots´
-  ´\ldots´
+  def fill[T: ClassTag](n1: Int, n2: Int)(elem: => T): Array[Array[T]] = ...
+  ...
 
   /** Returns an array containing values of a given function over a range of integer
     * values starting from 0. */
-  def tabulate[T: ClassTag](n: Int)(f: Int => T): Array[T] = ´\ldots´
+  def tabulate[T: ClassTag](n: Int)(f: Int => T): Array[T] = ...
   /** Returns a two-dimensional array containing values of a given function
     * over ranges of integer values starting from `0`. */
-  def tabulate[T: ClassTag](n1: Int, n2: Int)(f: (Int, Int) => T): Array[Array[T]] = ´\ldots´
-  ´\ldots´
+  def tabulate[T: ClassTag](n1: Int, n2: Int)(f: (Int, Int) => T): Array[Array[T]] = ...
+  ...
 
   /** Returns an array containing a sequence of increasing integers in a range. */
-  def range(start: Int, end: Int): Array[Int] = ´\ldots´
+  def range(start: Int, end: Int): Array[Int] = ...
   /** Returns an array containing equally spaced values in some integer interval. */
-  def range(start: Int, end: Int, step: Int): Array[Int] = ´\ldots´
+  def range(start: Int, end: Int, step: Int): Array[Int] = ...
 
   /** Returns an array containing repeated applications of a function to a start value. */
-  def iterate[T: ClassTag](start: T, len: Int)(f: T => T): Array[T] = ´\ldots´
+  def iterate[T: ClassTag](start: T, len: Int)(f: T => T): Array[T] = ...
 
   /** Enables pattern matching over arrays */
   def unapplySeq[A](x: Array[A]): Option[IndexedSeq[A]] = Some(x)

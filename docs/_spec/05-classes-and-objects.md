@@ -31,10 +31,10 @@ A _template_ defines the type signature, behavior and initial state of a
 trait or class of objects or of a single object. Templates form part of
 instance creation expressions, class definitions, and object
 definitions.  A template
-`´sc´ with ´mt_1´ with ´\ldots´ with ´mt_n´ { ´\mathit{stats}´ }`
+`´sc´ with ´mt_1´ with ... with ´mt_n´ { ´\mathit{stats}´ }`
 consists of a constructor invocation ´sc´
 which defines the template's _superclass_, trait references
-`´mt_1 , \ldots , mt_n´` ´(n \geq 0)´, which define the
+`´mt_1, ..., mt_n´` ´(n \geq 0)´, which define the
 template's _traits_, and a statement sequence ´\mathit{stats}´ which
 contains initialization code and additional member definitions for the
 template.
@@ -43,7 +43,7 @@ Each trait reference ´mt_i´ must denote a [trait](#traits).
 By contrast, the superclass constructor ´sc´ normally refers to a
 class which is not a trait. It is possible to write a list of
 parents that starts with a trait reference, e.g.
-`´mt_1´ with ´\ldots´ with ´mt_n´`. In that case the list
+`´mt_1´ with ... with ´mt_n´`. In that case the list
 of parents is implicitly extended to include the supertype of ´mt_1´
 as the first parent type. The new supertype must have at least one
 constructor that does not take parameters.  In the following, we will
@@ -53,7 +53,7 @@ constructor, not a trait reference.
 
 The list of parents of a template must be well-formed. This means that
 the class denoted by the superclass constructor ´sc´ must be a
-subclass of the superclasses of all the traits ´mt_1 , \ldots , mt_n´.
+subclass of the superclasses of all the traits ´mt_1, ..., mt_n´.
 In other words, the non-trait classes inherited by a template form a
 chain in the inheritance hierarchy which starts with the template's
 superclass.
@@ -155,12 +155,12 @@ Constr  ::=  AnnotType {‘(’ [Exprs] ‘)’}
 Constructor invocations define the type, members, and initial state of
 objects created by an instance creation expression, or of parts of an
 object's definition which are inherited by a class or object
-definition. A constructor invocation is a function application
-`´x´.´c´[´\mathit{targs}´](´\mathit{args}_1´)´\ldots´(´\mathit{args}_n´)`, where ´x´ is a
+definition. A constructor invocation is a method application
+`´x´.´c´[´\mathit{targs}´](´\mathit{args}_1´)...(´\mathit{args}_n´)`, where ´x´ is a
 [stable identifier](03-types.html#paths), ´c´ is a type name which either designates a
 class or defines an alias type for one, ´\mathit{targs}´ is a type argument
-list, ´\mathit{args}_1 , \ldots , \mathit{args}_n´ are argument lists, and there is a
-constructor of that class which is [applicable](06-expressions.html#function-applications)
+list, ´\mathit{args}_1, ..., \mathit{args}_n´ are argument lists, and there is a
+constructor of that class which is [applicable](06-expressions.html#method-applications)
 to the given arguments. If the constructor invocation uses named or
 default arguments, it is transformed into a block expression using the
 same transformation as described [here](sec:named-default).
@@ -172,11 +172,11 @@ using [local type inference](06-expressions.html#local-type-inference). If no ex
 arguments are given, an empty list `()` is implicitly supplied.
 
 An evaluation of a constructor invocation
-`´x´.´c´[´\mathit{targs}´](´\mathit{args}_1´)´\ldots´(´\mathit{args}_n´)`
+`´x´.´c´[´\mathit{targs}´](´\mathit{args}_1´)...(´\mathit{args}_n´)`
 consists of the following steps:
 
 - First, the prefix ´x´ is evaluated.
-- Then, the arguments ´\mathit{args}_1 , \ldots , \mathit{args}_n´ are evaluated from
+- Then, the arguments ´\mathit{args}_1, ..., \mathit{args}_n´ are evaluated from
   left to right.
 - Finally, the class being constructed is initialized by evaluating the
   template of the class referred to by ´c´.
@@ -193,7 +193,7 @@ Let ´C´ be a class with template
 ´C_1´ with ... with ´C_n´ { ´\mathit{stats}´ }`.
 The _linearization_ of ´C´, ´\mathcal{L}(C)´ is defined as follows:
 $$
-\mathcal{L}(C) = C, \mathcal{L}(C_n) \; \vec{+} \; \ldots \; \vec{+} \; \mathcal{L}(C_1)
+\mathcal{L}(C) = C, \mathcal{L}(C_n) \; \vec{+} \; ... \; \vec{+} \; \mathcal{L}(C_1)
 $$
 
 Here ´\vec{+}´ denotes concatenation where elements of the right operand
@@ -246,7 +246,7 @@ which is not a suffix of the linearization of `Iter`.
 
 ### Class Members
 
-A class ´C´ defined by a template `´C_1´ with ´\ldots´ with ´C_n´ { ´\mathit{stats}´ }`
+A class ´C´ defined by a template `´C_1´ with ... with ´C_n´ { ´\mathit{stats}´ }`
 can define members in its statement sequence
 ´\mathit{stats}´ and can inherit members from all parent classes.  Scala
 adopts Java and C\#'s conventions for static overloading of
@@ -694,7 +694,7 @@ ClassTemplateOpt  ::=  ‘extends’ ClassTemplate | [[‘extends’] TemplateBo
 The most general form of class definition is
 
 ```scala
-class ´c´[´\mathit{tps}\,´] ´as´ ´m´(´\mathit{ps}_1´)´\ldots´(´\mathit{ps}_n´) extends ´t´    ´\quad(n \geq 0)´.
+class ´c´[´\mathit{tps}\,´] ´as´ ´m´(´\mathit{ps}_1´)...(´\mathit{ps}_n´) extends ´t´    ´\quad(n \geq 0)´.
 ```
 
 Here,
@@ -714,7 +714,7 @@ Here,
   - ´m´ is an [access modifier](#modifiers) such as
     `private` or `protected`, possibly with a qualification.
     If such an access modifier is given it applies to the primary constructor of the class.
-  - ´(\mathit{ps}\_1)\ldots(\mathit{ps}\_n)´ are formal value parameter clauses for
+  - ´(\mathit{ps}\_1)...(\mathit{ps}\_n)´ are formal value parameter clauses for
     the _primary constructor_ of the class. The scope of a formal value parameter includes
     all subsequent parameter sections and the template ´t´. However, a formal
     value parameter may not form part of the types of any of the parent classes or members of the class template ´t´.
@@ -737,12 +737,12 @@ Here,
   - ´t´ is a [template](#templates) of the form
 
     ```scala
-    ´sc´ with ´mt_1´ with ´\ldots´ with ´mt_m´ { ´\mathit{stats}´ } // ´m \geq 0´
+    ´sc´ with ´mt_1´ with ... with ´mt_m´ { ´\mathit{stats}´ } // ´m \geq 0´
     ```
 
     which defines the base classes, behavior and initial state of objects of
     the class. The extends clause
-    `extends ´sc´ with ´mt_1´ with ´\ldots´ with ´mt_m´`
+    `extends ´sc´ with ´mt_1´ with ... with ´mt_m´`
     can be omitted, in which case
     `extends scala.AnyRef` is assumed.  The class body
     `{ ´\mathit{stats}´ }` may also be omitted, in which case the empty body
@@ -789,14 +789,14 @@ SelfInvocation ::= ‘this’ ArgumentExprs {ArgumentExprs}
 
 A class may have additional constructors besides the primary
 constructor.  These are defined by constructor definitions of the form
-`def this(´\mathit{ps}_1´)´\ldots´(´\mathit{ps}_n´) = ´e´`.  Such a
+`def this(´\mathit{ps}_1´)...(´\mathit{ps}_n´) = ´e´`.  Such a
 definition introduces an additional constructor for the enclosing
 class, with parameters as given in the formal parameter lists ´\mathit{ps}_1
-, \ldots , \mathit{ps}_n´, and whose evaluation is defined by the constructor
+, ..., \mathit{ps}_n´, and whose evaluation is defined by the constructor
 expression ´e´.  The scope of each formal parameter is the subsequent
 parameter sections and the constructor
 expression ´e´.  A constructor expression is either a self constructor
-invocation `this(´\mathit{args}_1´)´\ldots´(´\mathit{args}_n´)` or a block
+invocation `this(´\mathit{args}_1´)...(´\mathit{args}_n´)` or a block
 which begins with a self constructor invocation. The self constructor
 invocation must construct a generic instance of the class. I.e. if the
 class in question has name ´C´ and type parameters
@@ -861,16 +861,16 @@ implicitly added to such a parameter, unless the parameter already carries
 a `val` or `var` modifier. Hence, an accessor
 definition for the parameter is [generated](#class-definitions).
 
-A case class definition of `´c´[´\mathit{tps}\,´](´\mathit{ps}_1\,´)´\ldots´(´\mathit{ps}_n´)` with type
+A case class definition of `´c´[´\mathit{tps}\,´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)` with type
 parameters ´\mathit{tps}´ and value parameters ´\mathit{ps}´ implies
 the definition of a companion object, which serves as an [extractor object](08-pattern-matching.html#extractor-patterns). It has the following shape:
 
 ```scala
 object ´c´ {
-  def apply[´\mathit{tps}\,´](´\mathit{ps}_1\,´)´\ldots´(´\mathit{ps}_n´): ´c´[´\mathit{tps}\,´] = new ´c´[´\mathit{Ts}\,´](´\mathit{xs}_1\,´)´\ldots´(´\mathit{xs}_n´)
+  def apply[´\mathit{tps}\,´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´): ´c´[´\mathit{tps}\,´] = new ´c´[´\mathit{Ts}\,´](´\mathit{xs}_1\,´)...(´\mathit{xs}_n´)
   def unapply[´\mathit{tps}\,´](´x´: ´c´[´\mathit{tps}\,´]) =
     if (x eq null) scala.None
-    else scala.Some(´x.\mathit{xs}_{11}, \ldots , x.\mathit{xs}_{1k}´)
+    else scala.Some(´x.\mathit{xs}_{11}, ... , x.\mathit{xs}_{1k}´)
 }
 ```
 
@@ -878,7 +878,7 @@ Here, ´\mathit{Ts}´ stands for the vector of types defined in the type
 parameter section ´\mathit{tps}´,
 each ´\mathit{xs}\_i´ denotes the parameter names of the parameter
 section ´\mathit{ps}\_i´, and
-´\mathit{xs}\_{11}, \ldots , \mathit{xs}\_{1k}´ denote the names of all parameters
+´\mathit{xs}\_{11}, ... , \mathit{xs}\_{1k}´ denote the names of all parameters
 in the first parameter section ´\mathit{xs}\_1´.
 If a type parameter section is missing in the class, it is also missing in the `apply` and `unapply` methods.
 
@@ -905,7 +905,7 @@ class already has a member (directly defined or inherited) with that name, or th
 class has a repeated parameter. The method is defined as follows:
 
 ```scala
-def copy[´\mathit{tps}\,´](´\mathit{ps}'_1\,´)´\ldots´(´\mathit{ps}'_n´): ´c´[´\mathit{tps}\,´] = new ´c´[´\mathit{Ts}\,´](´\mathit{xs}_1\,´)´\ldots´(´\mathit{xs}_n´)
+def copy[´\mathit{tps}\,´](´\mathit{ps}'_1\,´)...(´\mathit{ps}'_n´): ´c´[´\mathit{tps}\,´] = new ´c´[´\mathit{Ts}\,´](´\mathit{xs}_1\,´)...(´\mathit{xs}_n´)
 ```
 
 Again, `´\mathit{Ts}´` stands for the vector of types defined in the type parameter section `´\mathit{tps}´`
@@ -1090,11 +1090,11 @@ most general form is
 ´t´ is a [template](#templates) of the form
 
 ```scala
-´sc´ with ´mt_1´ with ´\ldots´ with ´mt_n´ { ´\mathit{stats}´ }
+´sc´ with ´mt_1´ with ... with ´mt_n´ { ´\mathit{stats}´ }
 ```
 
 which defines the base classes, behavior and initial state of ´m´.
-The extends clause `extends ´sc´ with ´mt_1´ with ´\ldots´ with ´mt_n´`
+The extends clause `extends ´sc´ with ´mt_1´ with ... with ´mt_n´`
 can be omitted, in which case
 `extends scala.AnyRef` is assumed.  The class body
 `{ ´\mathit{stats}´ }` may also be omitted, in which case the empty body
@@ -1105,7 +1105,7 @@ conforming to the template ´t´.  It is roughly equivalent to the
 following definition of a lazy value:
 
 ```scala
-lazy val ´m´ = new ´sc´ with ´mt_1´ with ´\ldots´ with ´mt_n´ { this: ´m.type´ => ´\mathit{stats}´ }
+lazy val ´m´ = new ´sc´ with ´mt_1´ with ... with ´mt_n´ { this: ´m.type´ => ´\mathit{stats}´ }
 ```
 
 Note that the value defined by an object definition is instantiated

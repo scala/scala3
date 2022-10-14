@@ -191,16 +191,16 @@ SimpleType      ::=  SimpleType TypeArgs
 TypeArgs        ::=  ‘[’ Types ‘]’
 ```
 
-A _parameterized type_ ´T[ T_1 , \ldots , T_n ]´ consists of a type
-designator ´T´ and type parameters ´T_1 , \ldots , T_n´ where
+A _parameterized type_ ´T[ T_1, ..., T_n ]´ consists of a type
+designator ´T´ and type parameters ´T_1, ..., T_n´ where
 ´n \geq 1´. ´T´ must refer to a type constructor which takes ´n´ type
-parameters ´a_1 , \ldots , a_n´.
+parameters ´a_1, ..., a_n´.
 
-Say the type parameters have lower bounds ´L_1 , \ldots , L_n´ and
-upper bounds ´U_1, \ldots, U_n´.  The parameterized type is
+Say the type parameters have lower bounds ´L_1, ..., L_n´ and
+upper bounds ´U_1, ..., U_n´.  The parameterized type is
 well-formed if each actual type parameter
 _conforms to its bounds_, i.e. ´\sigma L_i <: T_i <: \sigma U_i´ where ´\sigma´ is the
-substitution ´[ a_1 := T_1 , \ldots , a_n := T_n ]´.
+substitution ´[ a_1 := T_1, ..., a_n := T_n ]´.
 
 ###### Example Parameterized Types
 
@@ -251,8 +251,8 @@ G[S, Int]             // illegal: S constrains its parameter to
 SimpleType    ::=   ‘(’ Types ‘)’
 ```
 
-A _tuple type_ ´(T_1 , \ldots , T_n)´ is an alias for the
-class `scala.Tuple´n´[´T_1´, … , ´T_n´]`, where ´n \geq 2´.
+A _tuple type_ ´(T_1 , ... , T_n)´ is an alias for the
+class `scala.Tuple´n´[´T_1´, ... , ´T_n´]`, where ´n \geq 2´.
 
 Tuple classes are case classes whose fields can be accessed using
 selectors `_1`, ..., `_n`. Their functionality is
@@ -279,9 +279,9 @@ trait Product´_n´[+´T_1´, ..., +´T_n´] {
 AnnotType  ::=  SimpleType {Annotation}
 ```
 
-An _annotated type_ ´T´ ´a_1, \ldots, a_n´
+An _annotated type_ ´T´ ´a_1, ..., a_n´
 attaches [annotations](11-annotations.html#user-defined-annotations)
-´a_1 , \ldots , a_n´ to the type ´T´.
+´a_1, ..., a_n´ to the type ´T´.
 
 ###### Example
 
@@ -304,10 +304,10 @@ RefineStat      ::=  Dcl
 
 A _compound type_ ´T_1´ `with` ... `with` ´T_n \\{ R \\}´
 represents objects with members as given in the component types
-´T_1 , \ldots , T_n´ and the refinement ´\\{ R \\}´. A refinement
+´T_1, ..., T_n´ and the refinement ´\\{ R \\}´. A refinement
 ´\\{ R \\}´ contains declarations and type definitions.
 If a declaration or definition overrides a declaration or definition in
-one of the component types ´T_1 , \ldots , T_n´, the usual rules for
+one of the component types ´T_1, ..., T_n´, the usual rules for
 [overriding](05-classes-and-objects.html#overriding) apply; otherwise the declaration
 or definition is said to be “structural” [^2].
 
@@ -380,13 +380,13 @@ ending in a colon ‘:’ are right-associative; all other
 operators are left-associative.
 
 In a sequence of consecutive type infix operations
-´t_0 \, \mathit{op} \, t_1 \, \mathit{op_2} \, \ldots \, \mathit{op_n} \, t_n´,
-all operators ´\mathit{op}\_1 , \ldots , \mathit{op}\_n´ must have the same
+´t_0 \, \mathit{op} \, t_1 \, \mathit{op_2} \, ... \, \mathit{op_n} \, t_n´,
+all operators ´\mathit{op}\_1, ..., \mathit{op}\_n´ must have the same
 associativity. If they are all left-associative, the sequence is
 interpreted as
-´(\ldots (t_0 \mathit{op_1} t_1) \mathit{op_2} \ldots) \mathit{op_n} t_n´,
+´(... (t_0 \mathit{op_1} t_1) \mathit{op_2} ...) \mathit{op_n} t_n´,
 otherwise it is interpreted as
-´t_0 \mathit{op_1} (t_1 \mathit{op_2} ( \ldots \mathit{op_n} t_n) \ldots)´.
+´t_0 \mathit{op_1} (t_1 \mathit{op_2} ( ... \mathit{op_n} t_n) ...)´.
 
 ### Function Types
 
@@ -396,8 +396,8 @@ FunctionArgs      ::=  InfixType
                     |  ‘(’ [ ParamType {‘,’ ParamType } ] ‘)’
 ```
 
-The type ´(T_1 , \ldots , T_n) \Rightarrow U´ represents the set of function
-values that take arguments of types ´T_1 , \ldots , Tn´ and yield
+The type ´(T_1, ..., T_n) \Rightarrow U´ represents the set of function
+values that take arguments of types ´T_1, ..., Tn´ and yield
 results of type ´U´.  In the case of exactly one argument type
 ´T \Rightarrow U´ is a shorthand for ´(T) \Rightarrow U´.
 An argument type of the form ´\Rightarrow T´
@@ -589,10 +589,10 @@ report as the internal types of defined identifiers.
 ### Method Types
 
 A _method type_ is denoted internally as ´(\mathit{Ps})U´, where ´(\mathit{Ps})´
-is a sequence of parameter names and types ´(p_1:T_1 , \ldots , p_n:T_n)´
+is a sequence of parameter names and types ´(p_1:T_1, ..., p_n:T_n)´
 for some ´n \geq 0´ and ´U´ is a (value or method) type.  This type
-represents named methods that take arguments named ´p_1 , \ldots , p_n´
-of types ´T_1 , \ldots , T_n´
+represents named methods that take arguments named ´p_1, ..., p_n´
+of types ´T_1, ..., T_n´
 and that return a result of type ´U´.
 
 Method types associate to the right: ´(\mathit{Ps}\_1)(\mathit{Ps}\_2)U´ is
@@ -629,13 +629,13 @@ c: (Int) (String, String) String
 
 A polymorphic method type is denoted internally as `[´\mathit{tps}\,´]´T´` where
 `[´\mathit{tps}\,´]` is a type parameter section
-`[´a_1´ >: ´L_1´ <: ´U_1 , \ldots , a_n´ >: ´L_n´ <: ´U_n´]`
+`[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]`
 for some ´n \geq 0´ and ´T´ is a
 (value or method) type.  This type represents named methods that
-take type arguments `´S_1 , \ldots , S_n´` which
+take type arguments `´S_1, ..., S_n´` which
 [conform](#parameterized-types) to the lower bounds
-`´L_1 , \ldots , L_n´` and the upper bounds
-`´U_1 , \ldots , U_n´` and that yield results of type ´T´.
+`´L_1, ..., L_n´` and the upper bounds
+`´U_1, ..., U_n´` and that yield results of type ´T´.
 
 ###### Example
 
@@ -656,7 +656,7 @@ union : [A >: Nothing <: Comparable[A]] (x: Set[A], xs: Set[A]) Set[A]
 ### Type Constructors
 
 A _type constructor_ is represented internally much like a polymorphic method type.
-`[´\pm´ ´a_1´ >: ´L_1´ <: ´U_1 , \ldots , \pm a_n´ >: ´L_n´ <: ´U_n´] ´T´`
+`[´\pm´ ´a_1´ >: ´L_1´ <: ´U_1, ..., \pm a_n´ >: ´L_n´ <: ´U_n´] ´T´`
 represents a type that is expected by a
 [type constructor parameter](04-basic-declarations-and-definitions.html#type-parameters) or an
 [abstract type constructor binding](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases) with
@@ -681,15 +681,15 @@ anonymous type `[+X] Iterable[X]`, which may be passed to the
 More than one values or methods are defined in the same scope with the
 same name, we model
 
-An overloaded type consisting of type alternatives ´T_1 \commadots T_n (n \geq 2)´ is denoted internally ´T_1 \overload \ldots \overload T_n´.
+An overloaded type consisting of type alternatives ´T_1 \commadots T_n (n \geq 2)´ is denoted internally ´T_1 \overload ... \overload T_n´.
 
 ###### Example
 ```scala
 def println(): Unit
-def println(s: String): Unit = ´\ldots´
-def println(x: Float): Unit = ´\ldots´
-def println(x: Float, width: Int): Unit = ´\ldots´
-def println[A](x: A)(tostring: A => String): Unit = ´\ldots´
+def println(s: String): Unit = ...
+def println(x: Float): Unit = ...
+def println(x: Float, width: Int): Unit = ...
+def println[A](x: A)(tostring: A => String): Unit = ...
 ```
 define a single function `println` which has an overloaded
 type.
@@ -703,7 +703,7 @@ println:  () Unit ´\overload´
 
 ###### Example
 ```scala
-def f(x: T): T = ´\ldots´
+def f(x: T): T = ...
 val f = 0
 ```
 define a function `f} which has type `(x: T)T ´\overload´ Int`.
@@ -722,25 +722,25 @@ These notions are defined mutually recursively as follows.
 
 1. The set of _base types_ of a type is a set of class types,
    given as follows.
-  - The base types of a class type ´C´ with parents ´T_1 , \ldots , T_n´ are
+  - The base types of a class type ´C´ with parents ´T_1, ..., T_n´ are
     ´C´ itself, as well as the base types of the compound type
     `´T_1´ with ... with ´T_n´ { ´R´ }`.
   - The base types of an aliased type are the base types of its alias.
   - The base types of an abstract type are the base types of its upper bound.
   - The base types of a parameterized type
-    `´C´[´T_1 , \ldots , T_n´]` are the base types
+    `´C´[´T_1, ..., T_n´]` are the base types
     of type ´C´, where every occurrence of a type parameter ´a_i´
     of ´C´ has been replaced by the corresponding parameter type ´T_i´.
   - The base types of a singleton type `´p´.type` are the base types of
     the type of ´p´.
   - The base types of a compound type
-    `´T_1´ with ´\ldots´ with ´T_n´ { ´R´ }`
+    `´T_1´ with ... with ´T_n´ { ´R´ }`
     are the _reduced union_ of the base
     classes of all ´T_i´'s. This means:
     Let the multi-set ´\mathscr{S}´ be the multi-set-union of the
     base types of all ´T_i´'s.
     If ´\mathscr{S}´ contains several type instances of the same class, say
-    `´S^i´#´C´[´T^i_1 , \ldots , T^i_n´]` ´(i \in I)´, then
+    `´S^i´#´C´[´T^i_1, ..., T^i_n´]` ´(i \in I)´, then
     all those instances
     are replaced by one of them which conforms to all
     others. It is an error if no such instance exists. It follows that the
@@ -759,15 +759,15 @@ These notions are defined mutually recursively as follows.
 1. The notion of a type ´T´ _in class ´C´ seen from some prefix type ´S´_
    makes sense only if the prefix type ´S´
    has a type instance of class ´C´ as a base type, say
-   `´S'´#´C´[´T_1 , \ldots , T_n´]`. Then we define as follows.
+   `´S'´#´C´[´T_1, ..., T_n´]`. Then we define as follows.
     - If `´S´ = ´\epsilon´.type`, then ´T´ in ´C´ seen from ´S´ is
       ´T´ itself.
     - Otherwise, if ´S´ is an existential type `´S'´ forSome { ´Q´ }`, and
       ´T´ in ´C´ seen from ´S'´ is ´T'´,
       then ´T´ in ´C´ seen from ´S´ is `´T'´ forSome {´\,Q\,´}`.
     - Otherwise, if ´T´ is the ´i´'th type parameter of some class ´D´, then
-        - If ´S´ has a base type `´D´[´U_1 , \ldots , U_n´]`, for some type
-          parameters `[´U_1 , \ldots , U_n´]`, then ´T´ in ´C´ seen from ´S´
+        - If ´S´ has a base type `´D´[´U_1, ..., U_n´]`, for some type
+          parameters `[´U_1, ..., U_n´]`, then ´T´ in ´C´ seen from ´S´
           is ´U_i´.
         - Otherwise, if ´C´ is defined in a class ´C'´, then
           ´T´ in ´C´ seen from ´S´ is the same as ´T´ in ´C'´ seen from ´S'´.
@@ -863,19 +863,19 @@ The conformance relation ´(<:)´ is the smallest transitive relation that satis
 - A type projection `´T´#´t´` conforms to `´U´#´t´` if ´T´ conforms to ´U´.
 - A parameterized type `´T´[´T_1´, ..., ´T_n´]` conforms to
   `´T´[´U_1´, ..., ´U_n´]` if
-  the following three conditions hold for ´i \in \{ 1 , \ldots , n \}´:
+  the following three conditions hold for ´i \in \{ 1, ..., n \}´:
  1. If the ´i´'th type parameter of ´T´ is declared covariant, then
        ´T_i <: U_i´.
  1. If the ´i´'th type parameter of ´T´ is declared contravariant, then
        ´U_i <: T_i´.
  1. If the ´i´'th type parameter of ´T´ is declared neither covariant
        nor contravariant, then ´U_i \equiv T_i´.
-- A compound type `´T_1´ with ´\ldots´ with ´T_n´ {´R\,´}` conforms to
+- A compound type `´T_1´ with ... with ´T_n´ {´R\,´}` conforms to
   each of its component types ´T_i´.
-- If ´T <: U_i´ for ´i \in \{ 1 , \ldots , n \}´ and for every
+- If ´T <: U_i´ for ´i \in \{ 1, ..., n \}´ and for every
   binding ´d´ of a type or value ´x´ in ´R´ there exists a member
   binding of ´x´ in ´T´ which subsumes ´d´, then ´T´ conforms to the
-  compound type `´U_1´ with ´\ldots´ with ´U_n´ {´R\,´}`.
+  compound type `´U_1´ with ... with ´U_n´ {´R\,´}`.
 - The existential type `´T´ forSome {´\,Q\,´}` conforms to
   ´U´ if its [skolemization](#existential-types)
   conforms to ´U´.
@@ -883,25 +883,25 @@ The conformance relation ´(<:)´ is the smallest transitive relation that satis
   if ´T´ conforms to one of the [type instances](#existential-types)
   of `´U´ forSome {´\,Q\,´}`.
 - If
-  ´T_i \equiv T_i'´ for ´i \in \{ 1 , \ldots , n\}´ and ´U´ conforms to ´U'´
-  then the method type ´(p_1:T_1 , \ldots , p_n:T_n) U´ conforms to
-  ´(p_1':T_1' , \ldots , p_n':T_n') U'´.
+  ´T_i \equiv T_i'´ for ´i \in \{ 1, ..., n\}´ and ´U´ conforms to ´U'´
+  then the method type ´(p_1:T_1, ..., p_n:T_n) U´ conforms to
+  ´(p_1':T_1', ..., p_n':T_n') U'´.
 - The polymorphic type
-  ´[a_1 >: L_1 <: U_1 , \ldots , a_n >: L_n <: U_n] T´ conforms to the
+  ´[a_1 >: L_1 <: U_1, ..., a_n >: L_n <: U_n] T´ conforms to the
   polymorphic type
-  ´[a_1 >: L_1' <: U_1' , \ldots , a_n >: L_n' <: U_n'] T'´ if, assuming
-  ´L_1' <: a_1 <: U_1' , \ldots , L_n' <: a_n <: U_n'´
+  ´[a_1 >: L_1' <: U_1', ..., a_n >: L_n' <: U_n'] T'´ if, assuming
+  ´L_1' <: a_1 <: U_1', ..., L_n' <: a_n <: U_n'´
   one has ´T <: T'´ and ´L_i <: L_i'´ and ´U_i' <: U_i´
-  for ´i \in \{ 1 , \ldots , n \}´.
+  for ´i \in \{ 1, ..., n \}´.
 - Type constructors ´T´ and ´T'´ follow a similar discipline. We characterize
   ´T´ and ´T'´ by their type parameter clauses
-  ´[a_1 , \ldots , a_n]´ and
-  ´[a_1' , \ldots , a_n']´, where an ´a_i´ or ´a_i'´ may include a variance
+  ´[a_1, ..., a_n]´ and
+  ´[a_1', ..., a_n']´, where an ´a_i´ or ´a_i'´ may include a variance
   annotation, a higher-order type parameter clause, and bounds. Then, ´T´
-  conforms to ´T'´ if any list ´[t_1 , \ldots , t_n]´ -- with declared
+  conforms to ´T'´ if any list ´[t_1, ..., t_n]´ -- with declared
   variances, bounds and higher-order type parameter clauses -- of valid type
   arguments for ´T'´ is also a valid list of type arguments for ´T´ and
-  ´T[t_1 , \ldots , t_n] <: T'[t_1 , \ldots , t_n]´. Note that this entails
+  ´T[t_1, ..., t_n] <: T'[t_1, ..., t_n]´. Note that this entails
   that:
     - The bounds on ´a_i´ must be weaker than the corresponding bounds declared
       for ´a'_i´.
@@ -1027,11 +1027,11 @@ A type is _volatile_ if it falls into one of four categories:
 A compound type `´T_1´ with ... with ´T_n´ {´R\,´}`
 is volatile if one of the following three conditions hold.
 
-1. One of ´T_2 , \ldots , T_n´ is a type parameter or abstract type, or
+1. One of ´T_2, ..., T_n´ is a type parameter or abstract type, or
 1. ´T_1´ is an abstract type and either the refinement ´R´
    or a type ´T_j´ for ´j > 1´ contributes an abstract member
    to the compound type, or
-1. one of ´T_1 , \ldots , T_n´ is a singleton type.
+1. one of ´T_1, ..., T_n´ is a singleton type.
 
 Here, a type ´S´ _contributes an abstract member_ to a type ´T´ if
 ´S´ contains an abstract member that is also a member of ´T´.
@@ -1059,18 +1059,18 @@ The erasure mapping is defined as follows.
 - The erasure of an abstract type is the erasure of its upper bound.
 - The erasure of the parameterized type `scala.Array´[T_1]´` is
  `scala.Array´[|T_1|]´`.
-- The erasure of every other parameterized type ´T[T_1 , \ldots , T_n]´ is ´|T|´.
+- The erasure of every other parameterized type ´T[T_1, ..., T_n]´ is ´|T|´.
 - The erasure of a singleton type `´p´.type` is the
   erasure of the type of ´p´.
 - The erasure of a type projection `´T´#´x´` is `|´T´|#´x´`.
 - The erasure of a compound type
-  `´T_1´ with ´\ldots´ with ´T_n´ {´R\,´}` is the erasure of the intersection
-  dominator of ´T_1 , \ldots , T_n´.
+  `´T_1´ with ... with ´T_n´ {´R\,´}` is the erasure of the intersection
+  dominator of ´T_1, ..., T_n´.
 - The erasure of an existential type `´T´ forSome {´\,Q\,´}` is ´|T|´.
 
-The _intersection dominator_ of a list of types ´T_1 , \ldots , T_n´ is computed
+The _intersection dominator_ of a list of types ´T_1, ..., T_n´ is computed
 as follows.
-Let ´T_{i_1} , \ldots , T_{i_m}´ be the subsequence of types ´T_i´
+Let ´T_{i_1}, ..., T_{i_m}´ be the subsequence of types ´T_i´
 which are not supertypes of some other type ´T_j´.
 If this subsequence contains a type designator ´T_c´ that refers to a class
 which is not a trait,
