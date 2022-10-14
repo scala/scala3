@@ -967,7 +967,7 @@ x => x                             // The identity function
 
 f => g => x => f(g(x))             // Curried function composition
 
-(x: Int,y: Int) => x + y           // A summation function
+(x: Int, y: Int) => x + y          // A summation function
 
 () => { count += 1; count }        // The function which takes an
                                    // empty parameter list ´()´,

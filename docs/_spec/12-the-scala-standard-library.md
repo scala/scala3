@@ -621,7 +621,7 @@ object Predef {
 
   def assume(assumption: Boolean, message: => Any) {
     if (!assumption)
-      throw new IllegalArgumentException(message.toString)
+      throw new IllegalArgumentException("assumption failed: " + message.toString)
   }
 
   def require(requirement: Boolean) {
