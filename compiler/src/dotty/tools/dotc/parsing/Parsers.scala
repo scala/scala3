@@ -1734,19 +1734,17 @@ object Parsers {
       if isSimpleLiteral then
         SingletonTypeTree(simpleLiteral())
       else if in.token == USCORE then
-        val start = in.skipToken()
-        /*if location == Location.InPatternArgs then
-          typeBounds().withSpan(Span(start, in.lastOffset, start))
-        else */
         if (in.featureEnabled(Feature.namedTypeArguments)
            || ctx.settings.YkindProjector.value == "underscores"
            ) && !inTypePattern
         then
+          val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
-          if sourceVersion.isAtLeast(future) then
+          if !inTypePattern && sourceVersion.isAtLeast(future) then
             deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
             patch(source, Span(in.offset, in.offset + 1), "?")
+          val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
       // While these signify variant type parameters in Scala 2 + kind-projector, we ignore their variance markers since variance is inferred.
