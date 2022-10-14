@@ -207,13 +207,13 @@ substitution ´[ a_1 := T_1 , \ldots , a_n := T_n ]´.
 Given the partial type definitions:
 
 ```scala
-class TreeMap[A <: Comparable[A], B] { … }
-class List[A] { … }
-class I extends Comparable[I] { … }
+class TreeMap[A <: Comparable[A], B] { ... }
+class List[A] { ... }
+class I extends Comparable[I] { ... }
 
-class F[M[_], X] { … }
-class S[K <: String] { … }
-class G[M[ Z <: I ], I] { … }
+class F[M[_], X] { ... }
+class S[K <: String] { ... }
+class G[M[ Z <: I ], I] { ... }
 ```
 
 the following parameterized types are well-formed:
@@ -255,20 +255,20 @@ A _tuple type_ ´(T_1 , \ldots , T_n)´ is an alias for the
 class `scala.Tuple´n´[´T_1´, … , ´T_n´]`, where ´n \geq 2´.
 
 Tuple classes are case classes whose fields can be accessed using
-selectors `_1` , … , `_n`. Their functionality is
+selectors `_1`, ..., `_n`. Their functionality is
 abstracted in a corresponding `Product` trait. The _n_-ary tuple
 class and product trait are defined at least as follows in the
 standard Scala library (they might also add other methods and
 implement other traits).
 
 ```scala
-case class Tuple´_n´[+´T_1´, … , +´T_n´](_1: ´T_1´, … , _n: ´T_n´)
-extends Product´_n´[´T_1´, … , ´T_n´]
+case class Tuple´_n´[+´T_1´, ..., +´T_n´](_1: ´T_1´, ..., _n: ´T_n´)
+extends Product´_n´[´T_1´, ..., ´T_n´]
 
-trait Product´_n´[+´T_1´, … , +´T_n´] {
+trait Product´_n´[+´T_1´, ..., +´T_n´] {
   override def productArity = ´n´
   def _1: ´T_1´
-  …
+  ...
   def _n: ´T_n´
 }
 ```
@@ -302,7 +302,7 @@ RefineStat      ::=  Dcl
                   |
 ```
 
-A _compound type_ ´T_1´ `with` … `with` ´T_n \\{ R \\}´
+A _compound type_ ´T_1´ `with` ... `with` ´T_n \\{ R \\}´
 represents objects with members as given in the component types
 ´T_1 , \ldots , T_n´ and the refinement ´\\{ R \\}´. A refinement
 ´\\{ R \\}´ contains declarations and type definitions.
@@ -323,7 +323,7 @@ definition within the refinement. This restriction does not apply to
 the method's result type.
 
 If no refinement is given, the empty refinement is implicitly added,
-i.e. ´T_1´ `with` … `with` ´T_n´ is a shorthand for ´T_1´ `with` … `with` ´T_n \\{\\}´.
+i.e. ´T_1´ `with` ... `with` ´T_n´ is a shorthand for ´T_1´ `with` ... `with` ´T_n \\{\\}´.
 
 A compound type may also consist of just a refinement
 ´\\{ R \\}´ with no preceding component types. Such a type is
@@ -336,12 +336,12 @@ a parameter type that contains a refinement with structural declarations.
 
 ```scala
 case class Bird (val name: String) extends Object {
-        def fly(height: Int) = …
-…
+        def fly(height: Int) = ...
+...
 }
 case class Plane (val callsign: String) extends Object {
-        def fly(height: Int) = …
-…
+        def fly(height: Int) = ...
+...
 }
 def takeoff(
             runway: Int,
@@ -415,8 +415,8 @@ types are defined in the Scala library for ´n´ between 0 and 22 as follows.
 
 ```scala
 package scala
-trait Function´_n´[-´T_1´ , … , -´T_n´, +´U´] {
-  def apply(´x_1´: ´T_1´ , … , ´x_n´: ´T_n´): ´U´
+trait Function´_n´[-´T_1´, ..., -´T_n´, +´U´] {
+  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´U´
   override def toString = "<function>"
 }
 ```
@@ -724,7 +724,7 @@ These notions are defined mutually recursively as follows.
    given as follows.
   - The base types of a class type ´C´ with parents ´T_1 , \ldots , T_n´ are
     ´C´ itself, as well as the base types of the compound type
-    `´T_1´ with … with ´T_n´ { ´R´ }`.
+    `´T_1´ with ... with ´T_n´ { ´R´ }`.
   - The base types of an aliased type are the base types of its alias.
   - The base types of an abstract type are the base types of its upper bound.
   - The base types of a parameterized type
@@ -861,8 +861,8 @@ The conformance relation ´(<:)´ is the smallest transitive relation that satis
 - A singleton type `´p´.type` conforms to the type of the path ´p´.
 - A singleton type `´p´.type` conforms to the type `scala.Singleton`.
 - A type projection `´T´#´t´` conforms to `´U´#´t´` if ´T´ conforms to ´U´.
-- A parameterized type `´T´[´T_1´ , … , ´T_n´]` conforms to
-  `´T´[´U_1´ , … , ´U_n´]` if
+- A parameterized type `´T´[´T_1´, ..., ´T_n´]` conforms to
+  `´T´[´U_1´, ..., ´U_n´]` if
   the following three conditions hold for ´i \in \{ 1 , \ldots , n \}´:
  1. If the ´i´'th type parameter of ´T´ is declared covariant, then
        ´T_i <: U_i´.
@@ -922,13 +922,13 @@ type ´C'´, if one of the following holds.
   subsumes a method declaration that defines ´x´ with type ´T'´, provided
   ´T <: T'´.
 - A type alias
-  `type ´t´[´T_1´ , … , ´T_n´] = ´T´` subsumes a type alias
-  `type ´t´[´T_1´ , … , ´T_n´] = ´T'´` if ´T \equiv T'´.
-- A type declaration `type ´t´[´T_1´ , … , ´T_n´] >: ´L´ <: ´U´` subsumes
-  a type declaration `type ´t´[´T_1´ , … , ´T_n´] >: ´L'´ <: ´U'´` if
+  `type ´t´[´T_1´, ..., ´T_n´] = ´T´` subsumes a type alias
+  `type ´t´[´T_1´, ..., ´T_n´] = ´T'´` if ´T \equiv T'´.
+- A type declaration `type ´t´[´T_1´, ..., ´T_n´] >: ´L´ <: ´U´` subsumes
+  a type declaration `type ´t´[´T_1´, ..., ´T_n´] >: ´L'´ <: ´U'´` if
   ´L' <: L´ and ´U <: U'´.
 - A type or class definition that binds a type name ´t´ subsumes an abstract
-  type declaration `type t[´T_1´ , … , ´T_n´] >: L <: U` if
+  type declaration `type t[´T_1´, ..., ´T_n´] >: L <: U` if
   ´L <: t <: U´.
 
 
@@ -1024,7 +1024,7 @@ A value member of a volatile type cannot appear in a [path](#paths).
 
 A type is _volatile_ if it falls into one of four categories:
 
-A compound type `´T_1´ with … with ´T_n´ {´R\,´}`
+A compound type `´T_1´ with ... with ´T_n´ {´R\,´}`
 is volatile if one of the following three conditions hold.
 
 1. One of ´T_2 , \ldots , T_n´ is a type parameter or abstract type, or

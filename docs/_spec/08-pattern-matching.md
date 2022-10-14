@@ -114,12 +114,12 @@ The expansion of interpolated string literals in patterns is the same as
 in expressions. If it occurs in a pattern, a interpolated string literal 
 of either of the forms
 ```
-id"text0{ pat1 }text1 … { patn }textn"
-id"""text0{ pat1 }text1 … { patn }textn"""
+id"text0{ pat1 }text1 ... { patn }textn"
+id"""text0{ pat1 }text1 ... { patn }textn"""
 ```
 is equivalent to:
 ```
-StringContext("""text0""", …, """textn""").id(pat1, …, patn)
+StringContext("""text0""", ..., """textn""").id(pat1, ..., patn)
 ```
 You could define your own `StringContext` to shadow the default one that's 
 in the `scala` package.

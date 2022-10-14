@@ -26,7 +26,7 @@ hexadecimal code:
 
 ```
 UnicodeEscape ::= ‘\’ ‘u’ {‘u’} hexDigit hexDigit hexDigit hexDigit
-hexDigit      ::= ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | … | ‘f’
+hexDigit      ::= ‘0’ | ... | ‘9’ | ‘A’ | ... | ‘F’ | ‘a’ | ... | ‘f’
 ```
 
 Informal descriptions are typeset as `“some comment”`.
@@ -38,15 +38,15 @@ form.
 
 ```
 whiteSpace       ::=  ‘\u0020’ | ‘\u0009’ | ‘\u000D’ | ‘\u000A’
-upper            ::=  ‘A’ | … | ‘Z’ | ‘\$’ | ‘_’  “… and Unicode category Lu”
-lower            ::=  ‘a’ | … | ‘z’ “… and Unicode category Ll”
-letter           ::=  upper | lower “… and Unicode categories Lo, Lt, Nl”
-digit            ::=  ‘0’ | … | ‘9’
+upper            ::=  ‘A’ | ... | ‘Z’ | ‘\$’ | ‘_’  “... and Unicode category Lu”
+lower            ::=  ‘a’ | ... | ‘z’ “... and Unicode category Ll”
+letter           ::=  upper | lower “... and Unicode categories Lo, Lt, Nl”
+digit            ::=  ‘0’ | ... | ‘9’
 paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’
 delim            ::=  ‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’
 opchar           ::=  ‘!’ | ‘#’ | ‘%’ | ‘&’ | ‘*’ | ‘+’ | ‘-’ | ‘/’ | ‘:’ |
                       ‘<’ | ‘=’ | ‘>’ | ‘?’ | ‘@’ | ‘\’ | ‘^’ | ‘|’ | ‘~’
-                      “… and Unicode categories Sm, So”
+                      “... and Unicode categories Sm, So”
 printableChar    ::=  “all characters in [\u0020, \u007E] inclusive”
 charEscapeSeq    ::=  ‘\’ (‘b’ | ‘t’ | ‘n’ | ‘f’ | ‘r’ | ‘"’ | ‘'’ | ‘\’)
 
@@ -65,7 +65,7 @@ spliceId         ::=  ‘$’ alphaid ;
 integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | nonZeroDigit [{digit | ‘_’} digit]
 hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit [{hexDigit | ‘_’} hexDigit]
-nonZeroDigit     ::=  ‘1’ | … | ‘9’
+nonZeroDigit     ::=  ‘1’ | ... | ‘9’
 
 floatingPointLiteral
                  ::=  [decimalNumeral] ‘.’ digit [{digit | ‘_’} digit] [exponentPart] [floatType]

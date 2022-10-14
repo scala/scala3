@@ -66,11 +66,11 @@ as follows:
 
 Replace the sentence
 
-> Otherwise, let `S1,…,Sm` be the vector of types obtained by typing each argument with an undefined expected type.
+> Otherwise, let `S1,...,Sm` be the vector of types obtained by typing each argument with an undefined expected type.
 
 with the following paragraph:
 
-> Otherwise, let `S1,…,Sm` be the vector of known types of all argument types, where the _known type_ of an argument `E`
+> Otherwise, let `S1,...,Sm` be the vector of known types of all argument types, where the _known type_ of an argument `E`
 is determined as followed:
 
  - If `E` is a function value `(p_1, ..., p_n) => B` that misses some parameter types, the known type

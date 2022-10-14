@@ -19,7 +19,7 @@ classes (Unicode general category given in parentheses):
 1. Letters, which include lower case letters (`Ll`), upper case letters (`Lu`),
    title case letters (`Lt`), other letters (`Lo`), modifier letters (`Lm`), 
    letter numerals (`Nl`) and the two characters `\u0024 ‘$’` and `\u005F ‘_’`.
-1. Digits `‘0’ | … | ‘9’`.
+1. Digits `‘0’ | ... | ‘9’`.
 1. Parentheses `‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’ `.
 1. Delimiter characters ``‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’ ``.
 1. Operator characters. These consist of all printable ASCII characters
@@ -41,7 +41,7 @@ id       ::=  plainid
 idrest   ::=  {letter | digit} [‘_’ op]
 escapeSeq     ::= UnicodeEscape | charEscapeSeq
 UnicodeEscape ::= ‘\’ ‘u’ {‘u’} hexDigit hexDigit hexDigit hexDigit
-hexDigit      ::= ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | … | ‘f’
+hexDigit      ::= ‘0’ | ... | ‘9’ | ‘A’ | ... | ‘F’ | ‘a’ | ... | ‘f’
 ```
 
 There are three ways to form an identifier. First, an identifier can

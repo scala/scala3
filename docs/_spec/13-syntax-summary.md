@@ -14,14 +14,14 @@ The lexical syntax of Scala is given by the following grammar in EBNF form:
 
 ```ebnf
 whiteSpace       ::=  ‘\u0020’ | ‘\u0009’ | ‘\u000D’ | ‘\u000A’
-upper            ::=  ‘A’ | … | ‘Z’ | ‘$’ and any character in Unicode categories Lu, Lt or Nl,
+upper            ::=  ‘A’ | ... | ‘Z’ | ‘$’ and any character in Unicode categories Lu, Lt or Nl,
                       and any character in Unicode categories Lo and Lm that doesn't have
                       contributory property Other_Lowercase
-lower            ::=  ‘a’ | … | ‘z’ | ‘_’ and any character in Unicode category Ll,
+lower            ::=  ‘a’ | ... | ‘z’ | ‘_’ and any character in Unicode category Ll,
                       and any character in Unicode categories Lo or Lm that has contributory
                       property Other_Lowercase
 letter           ::=  upper | lower
-digit            ::=  ‘0’ | … | ‘9’
+digit            ::=  ‘0’ | ... | ‘9’
 paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’
 delim            ::=  ‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’
 opchar           ::=  ‘!’ | ‘#’ | ‘%’ | ‘&’ | ‘*’ | ‘+’ | ‘-’ | ‘/’ | ‘:’ |
@@ -29,7 +29,7 @@ opchar           ::=  ‘!’ | ‘#’ | ‘%’ | ‘&’ | ‘*’ | ‘+’ 
                       and any character in Unicode categories Sm or So
 printableChar    ::=  all characters in [\u0020, \u007E] inclusive
 UnicodeEscape    ::=  ‘\’ ‘u’ {‘u’} hexDigit hexDigit hexDigit hexDigit
-hexDigit         ::=  ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | … | ‘f’
+hexDigit         ::=  ‘0’ | ... | ‘9’ | ‘A’ | ... | ‘F’ | ‘a’ | ... | ‘f’
 charEscapeSeq    ::=  ‘\’ (‘b’ | ‘t’ | ‘n’ | ‘f’ | ‘r’ | ‘"’ | ‘'’ | ‘\’)
 escapeSeq        ::=  UnicodeEscape | charEscapeSeq
 op               ::=  opchar {opchar}
