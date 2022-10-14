@@ -124,7 +124,14 @@ object Checking {
        && tycon.symbol != defn.TypeBoxClass // TypeBox types are generated for capture
                                             // conversion, may contain AnyKind as arguments
     then
-      checkBounds(args, bounds, instantiate, tree.tpe, tpt)
+      val normedArgs = tree.tpe match
+        case tl: TypeLambda =>
+          val filler = tl.paramRefs.iterator
+          args.map { arg =>
+            if isPlaceHolderTypeParam(arg) then arg.withType(filler.next) else arg
+          }
+        case _ => args
+      checkBounds(normedArgs, bounds, instantiate, tree.tpe, tpt)
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
@@ -1255,7 +1262,10 @@ trait Checking {
     case _ =>
       if tree.tpe.typeParams.nonEmpty then
         val what = if tree.symbol.exists then tree.symbol.show else i"type $tree"
-        report.error(em"$what takes type parameters", tree.srcPos)
+        val more = tree match
+          case _: AppliedTypeTree => " more"
+          case _ => ""
+        report.error(em"$what takes$more type parameters", tree.srcPos)
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit =

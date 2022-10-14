@@ -24,3 +24,5 @@ def test2 = new Map[C = String, Value = Int]("a" -> 1) // error
 def test3 = new Map[Key = ?, Value = Int]("a" -> 1) // error // error
 def test4 = new Map[Value = Int, Key = Int]("a" -> 1) // error
 
+trait Foo[F[_]]
+type T = Foo[(T1 = Int)] // error // error

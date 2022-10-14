@@ -2075,7 +2075,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // wildcard identifiers `_` instead.
                 TypeTree(tparamBounds).withSpan(arg.span)
               case _ =>
-                if isPlaceHolderTypeParam(arg) then arg.withType(NoType)
+                if isPlaceHolderTypeParam(arg) then arg.withType(defn.NothingType)
                 else typedType(desugaredArg, argPt, mapPatternBounds = true)
             }
           else desugaredArg.withType(UnspecifiedErrorType)

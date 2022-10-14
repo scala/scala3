@@ -29,3 +29,15 @@ object constrs:
     new C[_, Int](1)
 
   class E extends C[_, Int]("A")
+
+trait Foo[F[_]]
+trait Qux[F[_, _]]
+trait Baz[F[_], A, B]
+
+class Bar1 extends Foo[Either[Int, _]]
+class Bar2 extends Foo[Either[_, Int]]
+class Bar3 extends Foo[_ => Int]
+class Bar4 extends Foo[Int => _]
+class Bar5 extends Foo[(Int, _, Int)]
+class Bar8 extends Foo[Baz[Int => _, _, Int]]
+

@@ -1111,7 +1111,7 @@ trait Applications extends Compatibility {
         val arg1 = typedType(arg0)
         cpy.NamedArg(arg)(id, arg1).withType(arg1.tpe)
       case arg if isPlaceHolderTypeParam(arg) =>
-        arg.withType(NoType)
+        arg.withType(defn.NothingType)
       case arg =>
         typedType(arg)
     }

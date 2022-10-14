@@ -41,3 +41,12 @@ object constrs:
 
   class E extends C[B = Int]("A")
   class F extends C[B = Int, A = String]("A")
+
+trait Foo[F[_]]
+trait Qux[F[_, _]]
+trait Baz[F[_], A, B]
+
+class Bar1 extends Foo[Map[Key = Int]]
+class Bar2 extends Foo[Map[Value = Int]]
+class Bar5 extends Foo[Tuple3[T1 = Int, T3 = Int]]
+class Bar8 extends Foo[Baz[F = Int => _, B = Int]]
