@@ -67,7 +67,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case AmbiguousOverloadID // errorNumber: 51
   case ReassignmentToValID // errorNumber: 52
   case TypeDoesNotTakeParametersID // errorNumber: 53
-  case ParameterizedTypeLacksArgumentsID // errorNumber: 54
+  case ParameterizedTypeLacksArgumentsID extends ErrorMessageID(isActive = false) // errorNumber: 54
   case VarValParametersMayNotBeCallByNameID // errorNumber: 55
   case MissingTypeParameterForID // errorNumber: 56
   case DoesNotConformToBoundID // errorNumber: 57
@@ -184,7 +184,8 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case ImplicitSearchTooLargeID // errorNumber: 168
   case TargetNameOnTopLevelClassID // errorNumber: 169
   case NotClassTypeID // errorNumber 170
-  
+  case MissingArgumentID // errorNumer 171
+
   def errorNumber = ordinal - 1
 
 object ErrorMessageID:
