@@ -616,13 +616,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         curEnv = Env(curEnv.owner, nestedInOwner = true, CaptureSet.Var(), isBoxed = false, if boxed then null else curEnv)
 
         try
-          val (eargs, eres) = expected.dealias match
+          val (eargs, eres) = expected.dealias.stripCapturing match
             case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
-            case expected => expected.stripped match
-              case expected: MethodType => (expected.paramInfos, expected.resType)
-              case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(expected) => (rinfo.paramInfos, rinfo.resType)
-              case _ =>
-                (aargs.map(_ => WildcardType), WildcardType)
+            case expected: MethodType => (expected.paramInfos, expected.resType)
+            case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(expected) => (rinfo.paramInfos, rinfo.resType)
+            case _ => (aargs.map(_ => WildcardType), WildcardType)
           val aargs1 = aargs.zipWithConserve(eargs) { (aarg, earg) => adapt(aarg, earg, !covariant) }
           val ares1 = adapt(ares, eres, covariant)
 
@@ -647,6 +645,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         try
           val eres = expected.dealias.stripCapturing match
             case RefinedType(_, _, rinfo: PolyType) => rinfo.resType
+            case expected: PolyType => expected.resType
             case _ => WildcardType
 
           val ares1 = adapt(ares, eres, covariant)
