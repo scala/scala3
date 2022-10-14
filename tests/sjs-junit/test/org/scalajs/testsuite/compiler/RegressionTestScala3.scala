@@ -78,6 +78,18 @@ class RegressionTestScala3 {
     val f3 = { () => i += 1 }
     assertSame(f3, Thunk.asFunction0(f3()))
   }
+
+  @Test def literalTypeJSNativeIssue16173(): Unit = {
+    js.eval("""
+      var RegressionTestScala3_Issue16173_foo = "constant";
+      var RegressionTestScala3_Issue16173_bar = function() { return 5; };
+    """)
+
+    assertEquals("constant", Issue16173.foo1)
+    assertEquals("constant", Issue16173.foo2)
+
+    assertEquals(5, Issue16173.bar1())
+  }
 }
 
 object RegressionTestScala3 {
@@ -147,6 +159,20 @@ object RegressionTestScala3 {
 
     val entries = js.Object.entries(obj)
     val js.Tuple2(k, v) = entries(0): @unchecked
+  }
+
+  object Issue16173 {
+    @js.native
+    @JSGlobal("RegressionTestScala3_Issue16173_foo")
+    val foo1: "constant" = js.native
+
+    @js.native
+    @JSGlobal("RegressionTestScala3_Issue16173_foo")
+    def foo2: "constant" = js.native
+
+    @js.native
+    @JSGlobal("RegressionTestScala3_Issue16173_bar")
+    def bar1(): 5 = js.native
   }
 }
 
