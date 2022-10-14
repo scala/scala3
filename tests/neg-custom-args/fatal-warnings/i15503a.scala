@@ -78,6 +78,20 @@ object MacroChecks:
     import collection.mutable.Map // OK
     println(s"This is a mutableSet : ${Set[Map[Int,Int]]()}")
 
+
+object InnerMostCheck:
+  import collection.mutable.* // error
+  def check =
+    import collection.mutable.* //OK
+    val a = Set(1)
+
+object IgnoreExclusion:
+  import collection.mutable.{Set => _} // OK
+  import collection.mutable.{Map => _} // OK
+  import collection.mutable.{ListBuffer} // error
+  def check =
+    val a = Set(1)
+    val b = Map(1 -> 2)
 /**
   * Some given values for the test
   */

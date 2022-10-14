@@ -106,10 +106,13 @@ object CheckUnused:
       val tpd.Import(tree, sels) = imp
       val map = impInScope.top
       val entries = sels.flatMap{ s =>
-        if s.isWildcard then
+        if isImportExclusion(s) then
+          Nil // ignore exclusion import
+        else if s.isWildcard then
           tree.tpe.allMembers
             .filter(m => m.symbol.is(Given) == s.isGiven) // given imports
             .map(_.symbol.id -> s)
+
         else
           val id = tree.tpe.member(s.name.toTermName).symbol.id
           val typeId = tree.tpe.member(s.name.toTypeName).symbol.id
