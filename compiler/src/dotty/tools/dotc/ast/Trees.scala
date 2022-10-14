@@ -1524,6 +1524,8 @@ object Trees {
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(using Context): X
 
+      protected def includeAllNodes: Boolean = false
+
       def apply(x: X, trees: List[Tree])(using Context): X =
         def fold(x: X, trees: List[Tree]): X = trees match
           case tree :: rest => fold(apply(x, tree), rest)
@@ -1578,6 +1580,8 @@ object Trees {
               this(this(this(x, block), handler), finalizer)
             case SeqLiteral(elems, elemtpt) =>
               this(this(x, elems), elemtpt)
+            case Inlined(call, bindings, expansion) if includeAllNodes =>
+              this(this(this(x, call), bindings), expansion)(using inlineContext(call))
             case Inlined(call, bindings, expansion) =>
               this(this(x, bindings), expansion)(using inlineContext(call))
             case TypeTree() =>
@@ -1659,7 +1663,7 @@ object Trees {
     }
 
     /** Fold `f` over all tree nodes, in depth-first, prefix order */
-    class DeepFolder[X](f: (X, Tree) => X) extends TreeAccumulator[X] {
+    class DeepFolder[X](f: (X, Tree) => X, override val includeAllNodes: Boolean = false) extends TreeAccumulator[X] {
       def apply(x: X, tree: Tree)(using Context): X = foldOver(f(x, tree), tree)
     }
 
