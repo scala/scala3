@@ -423,6 +423,13 @@ object Parsers {
       finally staged = saved
     }
 
+    private var inTypePattern = false
+    def withinTypePattern[T](op: => T): T =
+      val saved = inTypePattern
+      inTypePattern = true
+      try op
+      finally inTypePattern = saved
+
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
 
     /** Convert tree to formal parameter list
@@ -1731,8 +1738,9 @@ object Parsers {
         /*if location == Location.InPatternArgs then
           typeBounds().withSpan(Span(start, in.lastOffset, start))
         else */
-        if in.featureEnabled(Feature.namedTypeArguments)
+        if (in.featureEnabled(Feature.namedTypeArguments)
            || ctx.settings.YkindProjector.value == "underscores"
+           ) && !inTypePattern
         then
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
@@ -1995,7 +2003,7 @@ object Parsers {
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
-      else if location.inPattern then rejectWildcardType(refinedType())
+      else if location.inPattern then withinTypePattern(rejectWildcardType(refinedType()))
       else if in.token == LBRACE && followingIsCaptureSet() then
         CapturingTypeTree(captureSet(), infixType())
       else infixType()
