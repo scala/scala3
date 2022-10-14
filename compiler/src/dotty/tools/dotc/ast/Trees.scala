@@ -1579,7 +1579,7 @@ object Trees {
             case SeqLiteral(elems, elemtpt) =>
               this(this(x, elems), elemtpt)
             case Inlined(call, bindings, expansion) =>
-              this(this(x, bindings), expansion)(using inlineContext(call))
+              this(this(this(x, call), bindings), expansion)(using inlineContext(call))
             case TypeTree() =>
               x
             case SingletonTypeTree(ref) =>
