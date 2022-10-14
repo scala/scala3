@@ -270,6 +270,7 @@ Throwable => Ordered[Throwable],
 
 Since the second type in the sequence is equal to the first, the compiler will issue an error signalling a divergent implicit expansion.
 
+<!-- TODO: Update as Implicit Conversion -->
 ## Views
 
 Implicit parameters and methods can also define implicit conversions called views.
