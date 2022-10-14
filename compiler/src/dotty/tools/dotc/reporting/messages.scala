@@ -1443,6 +1443,11 @@ import cc.CaptureSet.IdentityCaptRefMap
       else s"missing argument for parameter $pname of $methString"
     def explain = ""
 
+  class MissingTypeArgument(pname: Name, tpe: Type)(using Context)
+    extends TypeMsg(MissingTypeArgumentID):
+    def msg = em"missing type argument for parameter $pname of type $tpe"
+    def explain = ""
+
   class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
     extends TypeMismatchMsg(
       if which == "lower" then bound else tpe,

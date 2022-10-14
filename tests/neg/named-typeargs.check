@@ -6,8 +6,8 @@
 13 |  val xs4 = construct[List, Elem = Int]() // error // error
    |                                 ^
    |                                 ']' expected, but '=' found
--- [E040] Syntax Error: tests/neg/named-typeargs.scala:28:17 -----------------------------------------------------------
-28 |type T = Foo[(T1 = Int)] // error // error
+-- [E040] Syntax Error: tests/neg/named-typeargs.scala:29:17 -----------------------------------------------------------
+29 |type T = Foo[(T1 = Int)] // error // error
    |                 ^
    |                 ')' expected, but '=' found
 -- [E101] Syntax Error: tests/neg/named-typeargs.scala:7:35 ------------------------------------------------------------
@@ -64,8 +64,8 @@
    |                                            Required: (Int, Int)
    |
    | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/neg/named-typeargs.scala:28:14 --------------------------------------------------------
-28 |type T = Foo[(T1 = Int)] // error // error
+-- [E006] Not Found Error: tests/neg/named-typeargs.scala:29:14 --------------------------------------------------------
+29 |type T = Foo[(T1 = Int)] // error // error
    |              ^^
    |              Not found: type T1
    |

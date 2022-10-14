@@ -128,7 +128,17 @@ object Checking {
         case tl: TypeLambda =>
           val filler = tl.paramRefs.iterator
           args.map { arg =>
-            if isPlaceHolderTypeParam(arg) then arg.withType(filler.next) else arg
+            if isPlaceHolderTypeParam(arg) then
+              val pref = filler.next
+              if hasNamedArg(args) then
+                // We check for missing arguments here instead of at Typer
+                // since an AppliedTypeTree might be decomposed into constructor
+                // arguments, and the latter do admit missing parameters,
+                // which are then inferred.
+                report.error(MissingTypeArgument(pref.paramName, tycon.tpe),
+                  tree.source.atSpan(Span(tree.span.end - 1)))
+              arg.withType(pref)
+            else arg
           }
         case _ => args
       checkBounds(normedArgs, bounds, instantiate, tree.tpe, tpt)
