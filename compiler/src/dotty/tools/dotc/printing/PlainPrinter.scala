@@ -693,13 +693,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
     finally
       ctx.typerState.constraint = savedConstraint
 
-  def toText(g: GadtConstraint): Text = g match
-    case EmptyGadtConstraint     => "EmptyGadtConstraint"
-    case g: ProperGadtConstraint =>
-      val deps = for sym <- g.symbols yield
-        val bound = g.fullBounds(sym).nn
-        (typeText(toText(sym.typeRef)) ~ toText(bound)).close
-      ("GadtConstraint(" ~ Text(deps, ", ") ~ ")").close
+  def toText(g: GadtConstraint): Text =
+    val deps = for sym <- g.symbols yield
+      val bound = g.fullBounds(sym).nn
+      (typeText(toText(sym.typeRef)) ~ toText(bound)).close
+    ("GadtConstraint(" ~ Text(deps, ", ") ~ ")").close
 
   def plain: PlainPrinter = this
 
