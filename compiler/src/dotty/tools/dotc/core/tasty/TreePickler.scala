@@ -451,6 +451,7 @@ class TreePickler(pickler: TastyPickler) {
           withLength {
             pickleTree(qual);
             if (!mix.isEmpty) {
+              // mixinType being a TypeRef when mix is non-empty is enforced by TreeChecker#checkSuper              
               val SuperType(_, mixinType: TypeRef) = tree.tpe: @unchecked
               pickleTree(mix.withType(mixinType))
             }
