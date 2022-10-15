@@ -1,3 +1,4 @@
+// This does not need deep-sub-type. It was placed here to avoid being run from JS tests.
 class Context
 
 def foo =
