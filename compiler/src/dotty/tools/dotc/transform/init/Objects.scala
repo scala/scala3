@@ -52,20 +52,22 @@ import scala.annotation.tailrec
  *
  *     However, a class type is only added to the list when it leaks:
  *
- *     - A value of the class is used as method argument.
- *     - A value of the class is alised to a field or variable.
- *     - A value of the class is returned from a method.
+ *     - A value of OfClass is used as method argument.
+ *     - A value of OfClass is alised to a field.
  *
+ *     When a value of OfClass is aliased to a local variable, the RHS will be
+ *     re-evaluated when it is accessed (caching is used for optimization).
  */
 object Objects:
   sealed abstract class Value
+    def show: String = toString
 
   /**
-   * Rerepsents values that are instances of the given class
+   * Rerepsents values that are instances of the specified class
    *
-   * The parameter `klass` should be the concrete class of the value at runtime.
+   * The `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass(klass: ClassSymbol) extends Value
+  case class OfClass(tp: Type) extends Value
 
   /**
    * Rerepsents values that are of the given type
@@ -94,7 +96,74 @@ object Objects:
       val concreteClasses = classes.filter(Semantic.isConcreteClass).toSet
       new Data(concreteClasses)
 
-  type Contextual[T] = (Context, State.Rep) ?=> T
+  type Contextual[T] = (Context, State.Rep, State.Cache) ?=> T
+
+  object Cache:
+    /** Cache for expressions
+     *
+     *  OfClass -> Tree -> Value
+     *
+     *  The first key is the value of `this` for the expression.
+     */
+    opaque type ExprValueCache = Map[OfClass, Map[TreeWrapper, Value]]
+
+    /** A wrapper for trees for storage in maps based on referential equality of trees. */
+    private abstract class TreeWrapper:
+      def tree: Tree
+
+      override final def equals(other: Any): Boolean =
+        other match
+        case that: TreeWrapper => this.tree eq that.tree
+        case _ => false
+
+      override final def hashCode = tree.hashCode
+
+    /** The immutable wrapper is intended to be stored as key in the heap. */
+    private class ImmutableTreeWrapper(val tree: Tree) extends TreeWrapper
+
+    /** For queries on the heap, reuse the same wrapper to avoid unnecessary allocation.
+     *
+     *  A `MutableTreeWrapper` is only ever used temporarily for querying a map,
+     *  and is never inserted to the map.
+     */
+    private class MutableTreeWrapper extends TreeWrapper:
+      var queryTree: Tree | Null = null
+      def tree: Tree = queryTree match
+        case tree: Tree => tree
+        case null => ???
+
+    /** Used to avoid allocation, its state does not matter */
+    private given MutableTreeWrapper = new MutableTreeWrapper
+
+    def get(value: OfClass, expr: Tree)(using cache: ExprValueCache): Option[Value] =
+      cache.get(value, expr) match
+      case None => cache.get(value, expr)
+      case res => res
+
+    def cache(value: OfClass, expr: Tree, result: Value)(using cache: ExprValueCache): Option[Value] =
+      cache.updatedNested(value, expr, result)
+    extension (cache: ExprValueCache)
+      private def get(value: OfClass, expr: Tree)(using queryWrapper: MutableTreeWrapper): Option[Value] =
+        queryWrapper.queryTree = expr
+        cache.get(value).flatMap(_.get(queryWrapper))
+
+      private def removed(value: OfClass, expr: Tree)(using queryWrapper: MutableTreeWrapper) =
+        queryWrapper.queryTree = expr
+        val innerMap2 = cache(value).removed(queryWrapper)
+        cache.updated(value, innerMap2)
+
+      private def updatedNested(value: OfClass, expr: Tree, result: Value): ExprValueCache =
+        val wrapper = new ImmutableTreeWrapper(expr)
+        updatedNestedWrapper(value, wrapper, result)
+
+      private def updatedNestedWrapper(value: OfClass, wrapper: ImmutableTreeWrapper, result: Value): ExprValueCache =
+        val innerMap = cache.getOrElse(value, Map.empty[TreeWrapper, Value])
+        val innerMap2 = innerMap.updated(wrapper, result)
+        cache.updated(value, innerMap2)
+    end extension
+  end Cache
+
+  // ---------------------------------------
 
   /** Check an individual class
    *
@@ -113,6 +182,9 @@ object Objects:
     do
       checkObject(classSym)
 
+  /** Evaluate a list of expressions */
+  def evalExprs(exprs: List[Tree], thisV: Value, klass: ClassSymbol): Contextual[List[Value]] =
+    exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Handles the evaluation of different expressions
    *
@@ -122,8 +194,170 @@ object Objects:
    * @param thisV  The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass  The enclosing class where the expression `expr` is located.
    */
-  def eval(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Value] = ???
+  def cases(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Value] =
+    expr match
+      case Ident(nme.WILDCARD) =>
+        // TODO:  disallow `var x: T = _`
+        OfType(defn.NothingType)
 
+      case id @ Ident(name) if !id.symbol.is(Flags.Method)  =>
+        assert(name.isTermName, "type trees should not reach here")
+        cases(expr.tpe, thisV, klass)
+
+      case NewExpr(tref, New(tpt), ctor, argss) =>
+        // check args
+        val args = evalArgs(argss.flatten, thisV, klass)
+
+        val cls = tref.classSymbol.asClass
+        val outer = outerValue(tref, thisV, klass)
+        outer.instantiate(cls, ctor, args)
+
+      case Call(ref, argss) =>
+        // check args
+        val args = evalArgs(argss.flatten, thisV, klass)
+
+        ref match
+        case Select(supert: Super, _) =>
+          val SuperType(thisTp, superTp) = supert.tpe: @unchecked
+          val thisValue2 = extendTrace(ref) { resolveThis(thisTp.classSymbol.asClass, thisV, klass) }
+          thisValue2.call(ref.symbol, args, thisTp, superTp)
+
+        case Select(qual, _) =>
+          val receiver = eval(qual, thisV, klass)
+          if ref.symbol.isConstructor then
+            receiver.callConstructor(ref.symbol, args)
+          else
+            receiver.call(ref.symbol, args, receiver = qual.tpe, superType = NoType)
+
+        case id: Ident =>
+          id.tpe match
+          case TermRef(NoPrefix, _) =>
+            // resolve this for the local method
+            val enclosingClass = id.symbol.owner.enclosingClass.asClass
+            val thisValue2 = extendTrace(ref) { resolveThis(enclosingClass, thisV, klass) }
+            // local methods are not a member, but we can reuse the method `call`
+            thisValue2.call(id.symbol, args, receiver = NoType, superType = NoType, needResolve = false)
+          case TermRef(prefix, _) =>
+            val receiver = cases(prefix, thisV, klass)
+            if id.symbol.isConstructor then
+              receiver.callConstructor(id.symbol, args)
+            else
+              receiver.call(id.symbol, args, receiver = prefix, superType = NoType)
+
+      case Select(qualifier, name) =>
+        val qual = eval(qualifier, thisV, klass)
+
+        name match
+          case OuterSelectName(_, _) =>
+            val current = qualifier.tpe.classSymbol
+            val target = expr.tpe.widenSingleton.classSymbol.asClass
+            resolveThis(target, qual, current.asClass)
+          case _ =>
+            qual.select(expr.symbol, receiver = qualifier.tpe)
+
+      case _: This =>
+        cases(expr.tpe, thisV, klass)
+
+      case Literal(_) =>
+        OfType(defn.NothingType)
+
+      case Typed(expr, tpt) =>
+        if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot))
+          OfType(defn.NothingType)
+        else
+          eval(expr, thisV, klass)
+
+      case NamedArg(name, arg) =>
+        eval(arg, thisV, klass)
+
+      case Assign(lhs, rhs) =>
+        lhs match
+        case Select(qual, _) =>
+          eval(qual, thisV, klass)
+          eval(rhs, thisV, klass)
+        case id: Ident =>
+          eval(rhs, thisV, klass)
+
+      case closureDef(ddef) =>
+        Fun(ddef.rhs, thisV, klass)
+
+      case PolyFun(body) =>
+        Fun(body, thisV, klass)
+
+      case Block(stats, expr) =>
+        eval(stats, thisV, klass)
+        eval(expr, thisV, klass)
+
+      case If(cond, thenp, elsep) =>
+        eval(cond :: thenp :: elsep :: Nil, thisV, klass).join
+
+      case Annotated(arg, annot) =>
+        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) OfType(defn.NothingType)
+        else eval(arg, thisV, klass)
+
+      case Match(selector, cases) =>
+        eval(selector, thisV, klass)
+        eval(cases.map(_.body), thisV, klass).join
+
+      case Return(expr, from) =>
+        eval(expr, thisV, klass)
+
+      case WhileDo(cond, body) =>
+        eval(cond :: body :: Nil, thisV, klass)
+        OfType(defn.NothingType)
+
+      case Labeled(_, expr) =>
+        eval(expr, thisV, klass)
+
+      case Try(block, cases, finalizer) =>
+        eval(block, thisV, klass)
+        if !finalizer.isEmpty then
+          eval(finalizer, thisV, klass)
+        evalExprs(cases.map(_.body), thisV, klass).join
+
+      case SeqLiteral(elems, elemtpt) =>
+        evalExprs(elems, thisV, klass).join
+
+      case Inlined(call, bindings, expansion) =>
+        evalExprs(bindings, thisV, klass)
+        eval(expansion, thisV, klass)
+
+      case Thicket(List()) =>
+        // possible in try/catch/finally, see tests/crash/i6914.scala
+        OfType(defn.NothingType)
+
+      case vdef : ValDef =>
+        // local val definition
+        eval(vdef.rhs, thisV, klass)
+
+      case ddef : DefDef =>
+        // local method
+        OfType(defn.NothingType)
+
+      case tdef: TypeDef =>
+        // local type definition
+        OfType(defn.NothingType)
+
+      case _: Import | _: Export =>
+        OfType(defn.NothingType)
+
+      case _ =>
+        report.error("[Internal error] unexpected tree" + Trace.show, expr)
+        OfType(expr.tpe)
+
+  /** Handle semantics of leaf nodes
+   *
+   * For leaf nodes, their semantics is determined by their types.
+   *
+   * @param tp      The type to be evaluated.
+   * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass   The enclosing class where the type `tp` is located.
+   */
+  def evalType(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
+    ???
+  }
+
+  /** Evaluate arguments of methods */
   def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol): Contextual[List[Value]] =
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
     args.foreach { arg =>
