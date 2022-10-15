@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:11:24 -----------------------------------------
 11 |  val z2c: () -> Unit = z2  // error
    |                        ^^
-   |                        Found:    (z2 : {x, cap1} () -> Unit)
+   |                        Found:    {z2} () -> Unit
    |                        Required: () -> Unit
    |
    | longer explanation available when compiling with `-explain`

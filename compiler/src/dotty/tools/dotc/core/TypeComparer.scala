@@ -633,6 +633,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case (info1: MethodType, info2: MethodType) =>
                 matchingMethodParams(info1, info2, precise = false)
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+              case (info1 @ CapturingType(parent1, refs1), info2: Type) =>
+                subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
+                  && isSubInfo(parent1, info2)
+              case (info1: Type, CapturingType(parent2, refs2)) =>
+                val refs1 = info1.captureSet
+                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2, frozenConstraint).isOK) && sameBoxed(info1, info2, refs1)
+                  && isSubInfo(info1, parent2)
               case _ =>
                 isSubType(info1, info2)
 
