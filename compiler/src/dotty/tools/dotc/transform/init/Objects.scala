@@ -38,18 +38,24 @@ import scala.annotation.tailrec
  *  2. It is modular with respect to separate compilation, even incremental
  *     compilation.
  *
- *  3. It is receiver-sensitive but not heap-sensitive -- fields are always
- *     abstracted by types.
+ *     When a value leaks the boundary of analysis, we approximate by calling
+ *     all public methods of the type at the definition site.
+ *
+ *  3. It is receiver-sensitive but not heap-sensitive nor parameter-sensitive.
+ *
+ *     Fields and parameters are always abstracted by their types.
  *
  *  4. If the target of a virtual method call cannot be determined by its
  *     receiver, the target is approximated by all methods of classes currently
- *     being compiled and are instantiated. This is to some extent similar to
- *     RTA (rapid type analysis).
+ *     being compiled and are instantiated. This is similar to RTA (rapid type
+ *     analysis).
  *
  *     However, a class type is only added to the list when it leaks:
  *
  *     - A value of the class is used as method argument.
  *     - A value of the class is alised to a field or variable.
+ *     - A value of the class is returned from a method.
+ *
  */
 object Objects:
   sealed abstract class Value
@@ -66,16 +72,21 @@ object Objects:
    */
   case class OfType(tp: Type) extends Value
 
+  /**
+   * Represents a lambda expression
+   */
+  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value
+
   object State:
     /**
-     * Records the instantiated types during instantiation of a static object.
-     *
-     * Functions and by-name closures are called when they leak, therefore they
-     * are not part of the instantiated types.
+     * Remembers the instantiated types during instantiation of a static object.
      */
     class Data(allConcreteClasses: Set[ClassSymbol]):
       // object -> (class, types of the class)
       val instantiatedTypes = mutable.Map.empty[ClassSymbol, Map[ClassSymbol, List[Type]]]
+
+      // object -> (fun type, fun values)
+      val instantiatedFuncs = mutable.Map.empty[ClassSymbol, Map[Type, List[Fun]]]
 
     opaque type Rep = Data
 
