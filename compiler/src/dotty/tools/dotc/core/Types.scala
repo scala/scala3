@@ -1872,7 +1872,10 @@ object Types {
     def dropRepeatedAnnot(using Context): Type = dropAnnot(defn.RepeatedAnnot)
 
     def annotatedToRepeated(using Context): Type = this match {
-      case tp @ ExprType(tp1) => tp.derivedExprType(tp1.annotatedToRepeated)
+      case tp @ ExprType(tp1) =>
+        tp.derivedExprType(tp1.annotatedToRepeated)
+      case self @ AnnotatedType(tp, annot) if annot matches defn.RetainsByNameAnnot =>
+        self.derivedAnnotatedType(tp.annotatedToRepeated, annot)
       case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
         val typeSym = tp.typeSymbol.asClass
         assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
