@@ -1,7 +1,7 @@
 import scala.annotation.experimental
 
 @experimental
-inline def g() = ()
+transparent inline def g() = ()
 
 def test: Unit =
   g() // error
