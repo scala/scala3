@@ -53,7 +53,7 @@ class UncacheGivenAliases extends MiniPhase with IdentityDenotTransformer:
    */
   override def transformValDef(tree: ValDef)(using Context): Tree =
     val sym = tree.symbol
-    if sym.isAllOf(Given, Lazy) && !needsCache(sym, tree.rhs) then
+    if sym.isAllOf(LazyGiven) && !needsCache(sym, tree.rhs) then
       sym.copySymDenotation(
         initFlags = sym.flags &~ Lazy | Method,
         info = ExprType(sym.info))

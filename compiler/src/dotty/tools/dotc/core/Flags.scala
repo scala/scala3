@@ -571,6 +571,7 @@ object Flags {
   val GivenOrImplicit: FlagSet               = Given | Implicit
   val GivenOrImplicitVal: FlagSet            = GivenOrImplicit.toTermFlags
   val GivenMethod: FlagSet                   = Given | Method
+  val LazyGiven: FlagSet                     = Given | Lazy
   val InlineOrProxy: FlagSet                 = Inline | InlineProxy                           // An inline method or inline argument proxy */
   val InlineMethod: FlagSet                  = Inline | Method
   val InlineParam: FlagSet                   = Inline | Param
