@@ -90,10 +90,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   /** Used to elide long output in replStringOf via `-Vrepl-max-print-characters` */
   private[repl] def truncate(str: String)(using ctx: Context): String =
     val maxPrintCharacters = ctx.settings.VreplMaxPrintCharacters.valueIn(ctx.settingsState)
-    val showTruncated = " ... large output truncated, print value to show all"
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
     if ncp <= maxPrintCharacters then str
-    else str.substring(0, str.offsetByCodePoints(0, maxPrintCharacters - 1)) + showTruncated
+    else str.substring(0, str.offsetByCodePoints(0, maxPrintCharacters - 1)) + infoOutputGotTruncated
 
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object)(using Context): String =
