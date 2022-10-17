@@ -2810,7 +2810,8 @@ object Parsers {
       else Nil
 
     /**  Pattern1     ::= PatVar Ascription
-     *                  | SimpleLiteral Ascription
+     *                  | [‘-’] integerLiteral Ascription
+     *                  | [‘-’] floatingPointLiteral Ascription
      *                  | Pattern2
      */
     def pattern1(location: Location = Location.InPattern): Tree =
