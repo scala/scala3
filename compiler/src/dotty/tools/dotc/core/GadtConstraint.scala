@@ -13,24 +13,19 @@ import printing._
 import scala.annotation.internal.sharable
 
 object GadtConstraint:
-  @sharable val empty =
-    new GadtConstraint(OrderingConstraint.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty, false)
+  @sharable val empty: GadtConstraint =
+    new ProperGadtConstraint(OrderingConstraint.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty, false)
 
 /** Represents GADT constraints currently in scope */
-final class GadtConstraint private(
+sealed trait GadtConstraint (
   private var myConstraint: Constraint,
   private var mapping: SimpleIdentityMap[Symbol, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
   private var wasConstrained: Boolean
-) extends ConstraintHandling with Showable {
-  import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
+) extends Showable {
+  this: ConstraintHandling =>
 
-  def this() = this(
-    myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentitySet.empty),
-    mapping = SimpleIdentityMap.empty,
-    reverseMapping = SimpleIdentityMap.empty,
-    wasConstrained = false
-  )
+  import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
   /** Exposes ConstraintHandling.subsumes */
   def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
@@ -195,7 +190,7 @@ final class GadtConstraint private(
 
   def symbols: List[Symbol] = mapping.keys
 
-  def fresh: GadtConstraint = new GadtConstraint(myConstraint, mapping, reverseMapping, wasConstrained)
+  def fresh: GadtConstraint = new ProperGadtConstraint(myConstraint, mapping, reverseMapping, wasConstrained)
 
   /** Restore the state from other [[GadtConstraint]], probably copied using [[fresh]] */
   def restore(other: GadtConstraint): Unit =
@@ -263,3 +258,10 @@ final class GadtConstraint private(
   /** Provides more information than toText, by showing the underlying Constraint details. */
   def debugBoundsDescription(using Context): String = i"$this\n$constraint"
 }
+
+private class ProperGadtConstraint (
+    myConstraint: Constraint,
+    mapping: SimpleIdentityMap[Symbol, TypeVar],
+    reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
+    wasConstrained: Boolean,
+) extends ConstraintHandling with GadtConstraint(myConstraint, mapping, reverseMapping, wasConstrained)
