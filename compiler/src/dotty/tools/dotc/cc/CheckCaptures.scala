@@ -5,7 +5,7 @@ package cc
 import core.*
 import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
-import Types.*, StdNames.*
+import Types.*, StdNames.*, Denotations.*
 import config.Printers.{capt, recheckr}
 import config.Config
 import ast.{tpd, untpd, Trees}
@@ -289,7 +289,21 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  and Cr otherwise.
      */
     override def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) = {
-      val selType = super.recheckSelection(tree, qualType, name)
+      def disambiguate(denot: Denotation): Denotation = denot match
+        case MultiDenotation(denot1, denot2) =>
+          // This case can arise when we try to merge multiple types that have different
+          // capture sets on some part. For instance an asSeenFrom might produce
+          // a bi-mapped capture set arising from a substition. Applying the same substitution
+          // to the same type twice will nevertheless produce different capture setsw which can
+          // lead to a failure in disambiguation since neither alternative is better than the
+          // other in a frozen constraint. An example test case is disambiguate-select.scala.
+          // We address the problem by disambiguating while ignoring all capture sets as a fallback.
+          withMode(Mode.IgnoreCaptures) {
+            disambiguate(denot1).meet(disambiguate(denot2), qualType)
+          }
+        case _ => denot
+
+      val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selCs = selType.widen.captureSet
       if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
         selType
@@ -762,6 +776,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       Setup(preRecheckPhase, thisPhase, recheckDef)
         .traverse(ctx.compilationUnit.tpdTree)
+      //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
       withCaptureSetsExplained {
         super.checkUnit(unit)
         checkSelfTypes(unit.tpdTree)

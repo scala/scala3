@@ -41,7 +41,10 @@ object CapturingType:
    *  returned separately by CaptureOps.isBoxed.
    */
   def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet)] =
-    if ctx.phase == Phases.checkCapturesPhase && tp.annot.symbol == defn.RetainsAnnot then
+    if ctx.phase == Phases.checkCapturesPhase
+      && tp.annot.symbol == defn.RetainsAnnot
+      && !ctx.mode.is(Mode.IgnoreCaptures)
+    then
       EventuallyCapturingType.unapply(tp)
     else None
 
