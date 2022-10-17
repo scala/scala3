@@ -28,15 +28,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   import Rendering._
 
-  private val MaxStringElements: Int = 1000  // no need to mkString billions of elements
-
   private var myClassLoader: AbstractFileClassLoader = _
 
-  /** (value, maxElements) => String */
-  private var myReplStringOf: (Object, Int) => String = _
-
-  /** info to add if output got truncated */
-  private val infoOutputGotTruncated = " ... large output truncated, print value to show all"
+  /** (value, maxElements, maxCharacters) => String */
+  private var myReplStringOf: (Object, Int, Int) => String = _
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
@@ -62,7 +57,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         // `ScalaRunTime.replStringOf`. Probe for new API without extraneous newlines.
         // For old API, try to clean up extraneous newlines by stripping suffix and maybe prefix newline.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
-        val renderer = "stringOf"  // was: replStringOf
+        val renderer = "stringOf"
         def stringOfMaybeTruncated(value: Object, maxElements: Int): String = {
           try {
             val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
@@ -75,38 +70,37 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
           }
         }
 
-        (value: Object, maxElements: Int) => {
+        (value: Object, maxElements: Int, maxCharacters: Int) => {
           // `ScalaRuntime.stringOf` may truncate the output, in which case we want to indicate that fact to the user
           // In order to figure out if it did get truncated, we invoke it twice - once with the `maxElements` that we
           // want to print, and once without a limit. If the first is shorter, truncation did occur.
-          val maybeTruncated = stringOfMaybeTruncated(value, maxElements)
           val notTruncated = stringOfMaybeTruncated(value, Int.MaxValue)
-          if (maybeTruncated.length == notTruncated.length) maybeTruncated
-          else maybeTruncated + infoOutputGotTruncated
+          val maybeTruncatedByElementCount = stringOfMaybeTruncated(value, maxElements)
+          val maybeTruncated = truncate(maybeTruncatedByElementCount, maxCharacters)
+
+          // our string representation may have been truncated by element and/or character count
+          // if so, append an info string - but only once
+          if (notTruncated.length == maybeTruncated.length) maybeTruncated
+          else s"$maybeTruncated ... large output truncated, print value to show all"
         }
 
       }
       myClassLoader
     }
 
-  /** Used to elide long output in replStringOf.
-   *
-   * TODO: Perhaps implement setting scala.repl.maxprintstring as in Scala 2, but
-   * then this bug will surface, so perhaps better not?
-   * https://github.com/scala/bug/issues/12337
-   */
-  private[repl] def truncate(str: String): String =
+  private[repl] def truncate(str: String, maxPrintCharacters: Int)(using ctx: Context): String =
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
-    if ncp <= MaxStringElements then str
-    else str.substring(0, str.offsetByCodePoints(0, MaxStringElements - 1)) + infoOutputGotTruncated
+    if ncp <= maxPrintCharacters then str
+    else str.substring(0, str.offsetByCodePoints(0, maxPrintCharacters - 1))
 
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object)(using Context): String =
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
     val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
-    val res = myReplStringOf(value, maxPrintElements)
-    if res == null then "null // non-null reference has null-valued toString" else truncate(res)
+    val maxPrintCharacters = ctx.settings.VreplMaxPrintCharacters.valueIn(ctx.settingsState)
+    val res = myReplStringOf(value, maxPrintElements, maxPrintCharacters)
+    if res == null then "null // non-null reference has null-valued toString" else res
 
   /** Load the value of the symbol using reflection.
    *
