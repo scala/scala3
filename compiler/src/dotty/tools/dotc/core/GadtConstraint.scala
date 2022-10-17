@@ -10,10 +10,9 @@ import util.{SimpleIdentitySet, SimpleIdentityMap}
 import collection.mutable
 import printing._
 
-import scala.annotation.internal.sharable
-
 object GadtConstraint:
-  @sharable val empty: GadtConstraint =
+  def apply(): GadtConstraint = empty
+  def empty: GadtConstraint =
     new ProperGadtConstraint(OrderingConstraint.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty, false)
 
 /** Represents GADT constraints currently in scope */
