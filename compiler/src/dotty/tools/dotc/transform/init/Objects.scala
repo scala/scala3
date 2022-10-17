@@ -16,6 +16,10 @@ import reporting.trace as log
 
 import Errors.*
 
+import Semantic.{ NewExpr, Call, ArgInfo, Trace, PolyFun, Arg, ByNameArg }
+
+import Semantic.{ typeRefOf, hasSource, extendTrace, withTrace }
+
 import scala.collection.mutable
 import scala.annotation.tailrec
 
@@ -39,7 +43,10 @@ import scala.annotation.tailrec
  *     compilation.
  *
  *     When a value leaks the boundary of analysis, we approximate by calling
- *     all public methods of the type at the definition site.
+ *     all methods of the value that overridding a method outside of the
+ *     boundary.
+ *
+ *     Reflection will break soundness, thus is discouraged in programming.
  *
  *  3. It is receiver-sensitive but not heap-sensitive nor parameter-sensitive.
  *
@@ -59,31 +66,51 @@ import scala.annotation.tailrec
  *     re-evaluated when it is accessed (caching is used for optimization).
  */
 object Objects:
-  sealed abstract class Value
-    def show: String = toString
+
+  // ----------------------------- abstract domain -----------------------------
+
+  sealed abstract class Value:
+    def show(using Context): String
 
   /**
    * Rerepsents values that are instances of the specified class
    *
-   * The `tp.classSymbol` should be the concrete class of the value at runtime.
+   * `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass(tp: Type) extends Value
+  case class OfClass(tp: Type, numInstantiations: Int) extends Value:
+    def show(using Context) = "OfClass(" + tp.show + ", " + numInstantiations + ")"
 
   /**
    * Rerepsents values that are of the given type
+   *
+   * `OfType` is just a short-cut referring to currently instantiated sub-types.
+   *
+   * Note: this value should never be an index in the cache.
    */
-  case class OfType(tp: Type) extends Value
+  case class OfType(tp: Type) extends Value:
+    def show(using Context) = "OfType(" + tp.show + ")"
 
   /**
    * Represents a lambda expression
    */
-  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value
+  case class Fun(expr: Tree, thisV: OfClass, klass: ClassSymbol) extends Value:
+    def show(using Context) = "Fun(" + expr.show + ", " + thisV.show + ", " + klass.show + ")"
+
+  /** A value which represents a set of addresses
+   *
+   * It comes from `if` expressions.
+   */
+  case class RefSet(refs: List[Fun | OfClass]) extends Value:
+    def show(using Context) = refs.map(_.show).mkString("[", ",", "]")
 
   object State:
     /**
      * Remembers the instantiated types during instantiation of a static object.
      */
     class Data(allConcreteClasses: Set[ClassSymbol]):
+      // objects under check
+      val checkingObjects = new mutable.ArrayBuffer[ClassSymbol]
+
       // object -> (class, types of the class)
       val instantiatedTypes = mutable.Map.empty[ClassSymbol, Map[ClassSymbol, List[Type]]]
 
@@ -92,78 +119,41 @@ object Objects:
 
     opaque type Rep = Data
 
+    def currentObject(using rep: Rep): ClassSymbol = rep.checkingObjects.last
+
+    def instantiatedCount(using rep: Rep): Int =
+      val obj = currentObject
+      rep.instantiatedTypes(obj).size + rep.instantiatedFuncs(obj).size
+
     def init(classes: List[ClassSymbol])(using Context): Rep =
       val concreteClasses = classes.filter(Semantic.isConcreteClass).toSet
       new Data(concreteClasses)
 
-  type Contextual[T] = (Context, State.Rep, State.Cache) ?=> T
+  type Contextual[T] = (Context, State.Rep, Cache.Cache, Trace) ?=> T
 
   object Cache:
-    /** Cache for expressions
+    /** Cache for method calls and lazy values
      *
-     *  OfClass -> Tree -> Value
-     *
-     *  The first key is the value of `this` for the expression.
+     *  Method -> ThisValue -> ReturnValue
      */
-    opaque type ExprValueCache = Map[OfClass, Map[TreeWrapper, Value]]
+    opaque type Cache = Map[Symbol, Map[OfClass, Value]]
 
-    /** A wrapper for trees for storage in maps based on referential equality of trees. */
-    private abstract class TreeWrapper:
-      def tree: Tree
+    def get(thisV: OfClass, sym: Symbol)(fun: => Value)(using cache: Cache): Value =
+      cache.get(sym).flatMap(_.get(thisV)) match
+      case None =>
+        val res = fun
+        store(thisV, sym, res)
+        res
+      case Some(value) =>
+        value
 
-      override final def equals(other: Any): Boolean =
-        other match
-        case that: TreeWrapper => this.tree eq that.tree
-        case _ => false
+    private def store(thisV: OfClass, sym: Symbol, result: Value)(using cache: Cache): Unit =
+      cache.updated(sym, cache.getOrElse(sym, Map.empty).updated(thisV, result))
 
-      override final def hashCode = tree.hashCode
-
-    /** The immutable wrapper is intended to be stored as key in the heap. */
-    private class ImmutableTreeWrapper(val tree: Tree) extends TreeWrapper
-
-    /** For queries on the heap, reuse the same wrapper to avoid unnecessary allocation.
-     *
-     *  A `MutableTreeWrapper` is only ever used temporarily for querying a map,
-     *  and is never inserted to the map.
-     */
-    private class MutableTreeWrapper extends TreeWrapper:
-      var queryTree: Tree | Null = null
-      def tree: Tree = queryTree match
-        case tree: Tree => tree
-        case null => ???
-
-    /** Used to avoid allocation, its state does not matter */
-    private given MutableTreeWrapper = new MutableTreeWrapper
-
-    def get(value: OfClass, expr: Tree)(using cache: ExprValueCache): Option[Value] =
-      cache.get(value, expr) match
-      case None => cache.get(value, expr)
-      case res => res
-
-    def cache(value: OfClass, expr: Tree, result: Value)(using cache: ExprValueCache): Option[Value] =
-      cache.updatedNested(value, expr, result)
-    extension (cache: ExprValueCache)
-      private def get(value: OfClass, expr: Tree)(using queryWrapper: MutableTreeWrapper): Option[Value] =
-        queryWrapper.queryTree = expr
-        cache.get(value).flatMap(_.get(queryWrapper))
-
-      private def removed(value: OfClass, expr: Tree)(using queryWrapper: MutableTreeWrapper) =
-        queryWrapper.queryTree = expr
-        val innerMap2 = cache(value).removed(queryWrapper)
-        cache.updated(value, innerMap2)
-
-      private def updatedNested(value: OfClass, expr: Tree, result: Value): ExprValueCache =
-        val wrapper = new ImmutableTreeWrapper(expr)
-        updatedNestedWrapper(value, wrapper, result)
-
-      private def updatedNestedWrapper(value: OfClass, wrapper: ImmutableTreeWrapper, result: Value): ExprValueCache =
-        val innerMap = cache.getOrElse(value, Map.empty[TreeWrapper, Value])
-        val innerMap2 = innerMap.updated(wrapper, result)
-        cache.updated(value, innerMap2)
-    end extension
+    def fresh(): Cache = Map.empty
   end Cache
 
-  // ---------------------------------------
+  // -------------------------------- algorithm --------------------------------
 
   /** Check an individual class
    *
@@ -171,10 +161,12 @@ object Objects:
    */
   private def checkObject(classSym: ClassSymbol): Contextual[Unit] =
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-    init(tpl, OfClass(classSym), classSym)
+    init(tpl, OfClass(classSym.typeRef, State.instantiatedCount), classSym)
 
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given State.Rep = State.init(classes)
+    given Cache.Cache = Cache.fresh()
+    given Trace = Trace.empty
 
     for
       classSym <- classes
@@ -183,18 +175,16 @@ object Objects:
       checkObject(classSym)
 
   /** Evaluate a list of expressions */
-  def evalExprs(exprs: List[Tree], thisV: Value, klass: ClassSymbol): Contextual[List[Value]] =
+  def evalExprs(exprs: List[Tree], thisV: OfClass, klass: ClassSymbol): Contextual[List[Value]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Handles the evaluation of different expressions
-   *
-   *  Note: Recursive call should go to `eval` instead of `cases`.
    *
    * @param expr   The expression to be evaluated.
    * @param thisV  The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass  The enclosing class where the expression `expr` is located.
    */
-  def cases(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Value] =
+  def eval(expr: Tree, thisV: OfClass, klass: ClassSymbol): Contextual[Value] =
     expr match
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -202,7 +192,7 @@ object Objects:
 
       case id @ Ident(name) if !id.symbol.is(Flags.Method)  =>
         assert(name.isTermName, "type trees should not reach here")
-        cases(expr.tpe, thisV, klass)
+        evalType(expr.tpe, thisV, klass)
 
       case NewExpr(tref, New(tpt), ctor, argss) =>
         // check args
@@ -238,7 +228,7 @@ object Objects:
             // local methods are not a member, but we can reuse the method `call`
             thisValue2.call(id.symbol, args, receiver = NoType, superType = NoType, needResolve = false)
           case TermRef(prefix, _) =>
-            val receiver = cases(prefix, thisV, klass)
+            val receiver = evalType(prefix, thisV, klass)
             if id.symbol.isConstructor then
               receiver.callConstructor(id.symbol, args)
             else
@@ -256,7 +246,7 @@ object Objects:
             qual.select(expr.symbol, receiver = qualifier.tpe)
 
       case _: This =>
-        cases(expr.tpe, thisV, klass)
+        evalType(expr.tpe, thisV, klass)
 
       case Literal(_) =>
         OfType(defn.NothingType)
@@ -285,11 +275,11 @@ object Objects:
         Fun(body, thisV, klass)
 
       case Block(stats, expr) =>
-        eval(stats, thisV, klass)
+        evalExprs(stats, thisV, klass)
         eval(expr, thisV, klass)
 
       case If(cond, thenp, elsep) =>
-        eval(cond :: thenp :: elsep :: Nil, thisV, klass).join
+        evalExprs(cond :: thenp :: elsep :: Nil, thisV, klass).join
 
       case Annotated(arg, annot) =>
         if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) OfType(defn.NothingType)
@@ -297,13 +287,13 @@ object Objects:
 
       case Match(selector, cases) =>
         eval(selector, thisV, klass)
-        eval(cases.map(_.body), thisV, klass).join
+        evalExprs(cases.map(_.body), thisV, klass).join
 
       case Return(expr, from) =>
         eval(expr, thisV, klass)
 
       case WhileDo(cond, body) =>
-        eval(cond :: body :: Nil, thisV, klass)
+        evalExprs(cond :: body :: Nil, thisV, klass)
         OfType(defn.NothingType)
 
       case Labeled(_, expr) =>
@@ -353,13 +343,13 @@ object Objects:
    * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass   The enclosing class where the type `tp` is located.
    */
-  def evalType(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
+  def evalType(tp: Type, thisV: OfClass, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
     ???
   }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol): Contextual[List[Value]] =
-    val argInfos = new mutable.ArrayBuffer[ArgInfo]
+  def evalArgs(args: List[Arg], thisV: OfClass, klass: ClassSymbol): Contextual[List[Value]] =
+    val argInfos = new mutable.ArrayBuffer[Value]
     args.foreach { arg =>
       val res =
         if arg.isByName then
@@ -382,7 +372,7 @@ object Objects:
     def initParent(parent: Tree) =
       parent match
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
-        eval(stats, thisV, klass)
+        evalExprs(stats, thisV, klass)
         val args = evalArgs(argss.flatten, thisV, klass)
         superCall(tref, ctor, args)
 
