@@ -60,7 +60,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         // `ScalaRunTime.replStringOf`. Probe for new API without extraneous newlines.
         // For old API, try to clean up extraneous newlines by stripping suffix and maybe prefix newline.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
-        val renderer = "stringOf"  // was: replStringOf
+        val renderer = "stringOf"
         def stringOfMaybeTruncated(value: Object, maxElements: Int): String = {
           try {
             val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
