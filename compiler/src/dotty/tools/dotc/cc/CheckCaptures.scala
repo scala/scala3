@@ -288,7 +288,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  outcome of a `mightSubcapture` test. It picks `{f}` if this might subcapture Cr
      *  and Cr otherwise.
      */
-    override def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) = {
+    override def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context) = {
       def disambiguate(denot: Denotation): Denotation = denot match
         case MultiDenotation(denot1, denot2) =>
           // This case can arise when we try to merge multiple types that have different
@@ -310,8 +310,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         val qualCs = qualType.captureSet
         capt.println(i"intersect $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
-        if qualCs.mightSubcapture(selCs) then
+        if qualCs.mightSubcapture(selCs)
+            && !selCs.mightSubcapture(qualCs)
+            && !pt.stripCapturing.isInstanceOf[SingletonType]
+        then
           selType.widen.stripCapturing.capturing(qualCs)
+            .showing(i"alternate type for select $tree: $selType --> $result, $qualCs / $selCs", capt)
         else
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
