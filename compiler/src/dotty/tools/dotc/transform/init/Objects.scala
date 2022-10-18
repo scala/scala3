@@ -16,9 +16,9 @@ import reporting.trace as log
 
 import Errors.*
 
-import Semantic.{ NewExpr, Call, ArgInfo, Trace, PolyFun, Arg, ByNameArg }
+import Semantic.{ NewExpr, Call, TraceValue, Trace, PolyFun, Arg, ByNameArg }
 
-import Semantic.{ typeRefOf, hasSource, extendTrace, withTrace }
+import Semantic.{ typeRefOf, hasSource, extendTrace, withTrace, trace }
 
 import scala.collection.mutable
 import scala.annotation.tailrec
@@ -134,7 +134,7 @@ object Objects:
   object Cache:
     /** Cache for method calls and lazy values
      *
-     *  Method -> ThisValue -> ReturnValue
+     *  Symbol -> ThisValue -> ReturnValue
      */
     opaque type Cache = Map[Symbol, Map[OfClass, Value]]
 
@@ -152,6 +152,24 @@ object Objects:
 
     def fresh(): Cache = Map.empty
   end Cache
+
+  // --------------------------- domain operations -----------------------------
+
+  type ArgInfo = TraceValue[Value]
+
+  extension (a: Value)
+    def join(b: Value): Value = ???
+
+  extension (values: Seq[Value])
+    def join: Value = ???
+
+  def call(thisV: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = ???
+
+  def callConstructor(thisV: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = ???
+
+  def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = ???
+
+  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = ???
 
   // -------------------------------- algorithm --------------------------------
 
@@ -200,7 +218,7 @@ object Objects:
 
         val cls = tref.classSymbol.asClass
         val outer = outerValue(tref, thisV, klass)
-        outer.instantiate(cls, ctor, args)
+        instantiate(outer, cls, ctor, args)
 
       case Call(ref, argss) =>
         // check args
@@ -210,14 +228,14 @@ object Objects:
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe: @unchecked
           val thisValue2 = extendTrace(ref) { resolveThis(thisTp.classSymbol.asClass, thisV, klass) }
-          thisValue2.call(ref.symbol, args, thisTp, superTp)
+          call(thisValue2, ref.symbol, args, thisTp, superTp)
 
         case Select(qual, _) =>
           val receiver = eval(qual, thisV, klass)
           if ref.symbol.isConstructor then
-            receiver.callConstructor(ref.symbol, args)
+            callConstructor(receiver, ref.symbol, args)
           else
-            receiver.call(ref.symbol, args, receiver = qual.tpe, superType = NoType)
+            call(receiver, ref.symbol, args, receiver = qual.tpe, superType = NoType)
 
         case id: Ident =>
           id.tpe match
@@ -226,13 +244,13 @@ object Objects:
             val enclosingClass = id.symbol.owner.enclosingClass.asClass
             val thisValue2 = extendTrace(ref) { resolveThis(enclosingClass, thisV, klass) }
             // local methods are not a member, but we can reuse the method `call`
-            thisValue2.call(id.symbol, args, receiver = NoType, superType = NoType, needResolve = false)
+            call(thisValue2, id.symbol, args, receiver = NoType, superType = NoType, needResolve = false)
           case TermRef(prefix, _) =>
             val receiver = evalType(prefix, thisV, klass)
             if id.symbol.isConstructor then
-              receiver.callConstructor(id.symbol, args)
+              callConstructor(receiver, id.symbol, args)
             else
-              receiver.call(id.symbol, args, receiver = prefix, superType = NoType)
+              call(receiver, id.symbol, args, receiver = prefix, superType = NoType)
 
       case Select(qualifier, name) =>
         val qual = eval(qualifier, thisV, klass)
@@ -243,7 +261,7 @@ object Objects:
             val target = expr.tpe.widenSingleton.classSymbol.asClass
             resolveThis(target, qual, current.asClass)
           case _ =>
-            qual.select(expr.symbol, receiver = qualifier.tpe)
+            select(qual, expr.symbol, receiver = qualifier.tpe)
 
       case _: This =>
         evalType(expr.tpe, thisV, klass)
@@ -348,8 +366,8 @@ object Objects:
   }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: OfClass, klass: ClassSymbol): Contextual[List[Value]] =
-    val argInfos = new mutable.ArrayBuffer[Value]
+  def evalArgs(args: List[Arg], thisV: OfClass, klass: ClassSymbol): Contextual[List[ArgInfo]] =
+    val argInfos = new mutable.ArrayBuffer[ArgInfo]
     args.foreach { arg =>
       val res =
         if arg.isByName then
@@ -357,16 +375,16 @@ object Objects:
         else
           eval(arg.tree, thisV, klass)
 
-      argInfos += res
+      argInfos += TraceValue(res, trace.add(arg.tree))
     }
     argInfos.toList
 
   def init(tpl: Template, thisV: OfClass, klass: ClassSymbol): Contextual[Unit] =
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[Value]): Unit =
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo]): Unit =
       val cls = tref.classSymbol.asClass
 
       // follow constructor
-      if cls.hasSource then thisV.callConstructor(ctor, args)
+      if cls.hasSource then callConstructor(thisV, ctor, args)
 
     // parents
     def initParent(parent: Tree) =
@@ -426,3 +444,40 @@ object Objects:
       case tree =>
         eval(tree, thisV, klass)
     }
+
+  /** Resolve C.this that appear in `klass`
+   *
+   * @param target  The class symbol for `C` for which `C.this` is to be resolved.
+   * @param thisV   The value for `D.this` where `D` is represented by the parameter `klass`.
+   * @param klass   The enclosing class where the type `C.this` is located.
+   */
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] =
+    thisV match
+    case OfClass(tp, _) =>
+      ???
+
+    case OfType(tp) =>
+      ???
+
+    case RefSet(refs) =>
+      ???
+
+    case _ =>
+      report.error("[Internal error] unexpected this value " + thisV + Trace.show, Trace.position)
+      OfType(defn.NothingType)
+
+  /** Compute the outer value that correspond to `tref.prefix`
+   *
+   * @param tref    The type whose prefix is to be evaluated.
+   * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass   The enclosing class where the type `tref` is located.
+   */
+  def outerValue(tref: TypeRef, thisV: OfClass, klass: ClassSymbol): Contextual[Value] =
+    val cls = tref.classSymbol.asClass
+    if tref.prefix == NoPrefix then
+      val enclosing = cls.owner.lexicallyEnclosingClass.asClass
+      val outerV = resolveThis(enclosing, thisV, klass)
+      outerV
+    else
+      if cls.isAllOf(Flags.JavaInterface) then OfType(defn.NothingType)
+      else evalType(tref.prefix, thisV, klass)
