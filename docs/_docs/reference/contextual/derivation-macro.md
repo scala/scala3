@@ -31,12 +31,12 @@ given derived[T: Type](using Quotes): Expr[Eq[T]]
 and for comparison reasons we give the same signature we had with `inline`:
 
 ```scala
-inline given derived[T]: (m: Mirror.Of[T]) => Eq[T] = ???
+inline given derived[T](using Mirror.Of[T]): Eq[T] = ???
 ```
 
 Note, that since a type is used in a subsequent stage it will need to be lifted
-to a `Type` by using the corresponding context bound. Also, not that we can
-summon the quoted `Mirror` inside the body of the `derived` this we can omit it
+to a `Type` by using the corresponding context bound. Also, note that we can
+summon the quoted `Mirror` inside the body of the `derived` thus we can omit it
 from the signature. The body of the `derived` method is shown below:
 
 
@@ -49,15 +49,16 @@ given derived[T: Type](using Quotes): Expr[Eq[T]] =
   ev match
     case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
       val elemInstances = summonAll[elementTypes]
-      val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) =>
-        elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
-          case (acc, (elem, index)) =>
-            val e1 = '{$x.asInstanceOf[Product].productElement(${Expr(index)})}
-            val e2 = '{$y.asInstanceOf[Product].productElement(${Expr(index)})}
-            '{ $acc && $elem.asInstanceOf[Eq[Any]].eqv($e1, $e2) }
-        }
-
-      '{ eqProduct((x: T, y: T) => ${eqProductBody('x, 'y)}) }
+      def eqProductBody(x: Expr[Product], y: Expr[Product])(using Quotes): Expr[Boolean] = {
+        elemInstances.zipWithIndex.foldLeft(Expr(true)) {
+          case (acc, ('{ $elem: Eq[t] }, index)) =>
+            val indexExpr = Expr(index)
+            val e1 = '{ $x.productElement($indexExpr).asInstanceOf[t] }
+            val e2 = '{ $y.productElement($indexExpr).asInstanceOf[t] }
+            '{ $acc && $elem.eqv($e1, $e2) }
+         }
+      }
+      '{ eqProduct((x: T, y: T) => ${eqProductBody('x.asExprOf[Product], 'y.asExprOf[Product])}) }
 
   // case for Mirror.ProductOf[T]
   // ...

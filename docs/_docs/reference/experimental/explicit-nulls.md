@@ -480,7 +480,7 @@ The program in [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/runtime/stdL
 For example, the following code cannot be compiled even using unsafe nulls. Because of the
 Java interoperation, the type of the get method becomes `T | Null`.
 
-```Scala
+```scala
 def head[T](xs: java.util.List[T]): T = xs.get(0) // error
 ```
 

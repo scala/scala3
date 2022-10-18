@@ -38,7 +38,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
 
    <details>
    <summary>Example 2</summary>
-   
+
    ```scala
    import scala.annotation.experimental
 
@@ -72,7 +72,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
 
    <details>
    <summary>Example 3</summary>
-   
+
    ```scala
    import scala.annotation.experimental
 
@@ -85,7 +85,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
 
    <details>
    <summary>Example 4</summary>
-   
+
    ```scala
    import scala.annotation.experimental
 
@@ -106,7 +106,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
 
    <details>
    <summary>Example 5</summary>
-   
+
    ```scala
    @experimental
    trait ExpSAM {
