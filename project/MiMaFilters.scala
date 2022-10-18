@@ -6,5 +6,6 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.MappedAlternative"),
     ProblemFilters.exclude[MissingClassProblem]("scala.caps"),
     ProblemFilters.exclude[MissingClassProblem]("scala.caps$"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.retains"),
   )
 }
