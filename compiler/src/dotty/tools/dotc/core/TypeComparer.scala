@@ -3134,10 +3134,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           case _ =>
             MatchResult.Reduced(body)
 
-      if caseLambda.exists && matches(canWidenAbstract = false) then
+      if matches(canWidenAbstract = false) then
         redux(canApprox = true)
-      else if matches(canWidenAbstract = true) then
-        redux(canApprox = false)
       else if (provablyDisjoint(scrut, pat))
         // We found a proof that `scrut` and `pat` are incompatible.
         // The search continues.

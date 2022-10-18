@@ -24,8 +24,8 @@ type ContravToList[X] = X match
 class C
 
 def f[X <: Box[C], Y <: Cov[C], Z <: Contrav[C]] =
-  def a: BoxElem[X] = ???  // OK
-  val _: C = a
+  def a: BoxElem[X] = ???
+  val _: C = a // error
 
   def a1: CovElem[Y] = ???
   val _: C = a1  // error
@@ -33,8 +33,8 @@ def f[X <: Box[C], Y <: Cov[C], Z <: Contrav[C]] =
   def a2: ContravElem[Z] = ???
   val _: C = a2  // error
 
-  def b: BoxToList[X] = ???  // OK
-  val _: List[C] = b
+  def b: BoxToList[X] = ???
+  val _: List[C] = b // error
 
   def b1: CovToList[Y] = ???
   val _: List[C] = b1  // error
