@@ -6,39 +6,28 @@ chapter: 12
 
 # The Scala Standard Library
 
-The Scala standard library consists of the package `scala` with a
-number of classes and modules. Some of these classes are described in
-the following.
+The Scala standard library consists of the package `scala` with a number of classes and modules.
+Some of these classes are described in the following.
 
 ![Class hierarchy of Scala](public/images/classhierarchy.png)
 
 ## Root Classes
 
 The root of this hierarchy is formed by class `Any`.
-Every class in a Scala execution environment inherits directly or
-indirectly from this class.  Class `Any` has two direct
-subclasses: `AnyRef` and `AnyVal`.
+Every class in a Scala execution environment inherits directly or indirectly from this class.
+Class `Any` has two direct subclasses: `AnyRef` and `AnyVal`.
 
-The subclass `AnyRef` represents all values which are represented
-as objects in the underlying host system. Classes written in other languages
-inherit from `scala.AnyRef`.
+The subclass `AnyRef` represents all values which are represented as objects in the underlying host system.
+Classes written in other languages inherit from `scala.AnyRef`.
 
-The predefined subclasses of class `AnyVal` describe
-values which are not implemented as objects in the underlying host
-system.
+The predefined subclasses of class `AnyVal` describe values which are not implemented as objects in the underlying host system.
 
-User-defined Scala classes which do not explicitly inherit from
-`AnyVal` inherit directly or indirectly from `AnyRef`. They cannot
-inherit from both `AnyRef` and `AnyVal`.
+User-defined Scala classes which do not explicitly inherit from `AnyVal` inherit directly or indirectly from `AnyRef`.
+They cannot inherit from both `AnyRef` and `AnyVal`.
 
-Classes `AnyRef` and `AnyVal` are required to provide only
-the members declared in class `Any`, but implementations may add
-host-specific methods to these classes (for instance, an
-implementation may identify class `AnyRef` with its own root
-class for objects).
+Classes `AnyRef` and `AnyVal` are required to provide only the members declared in class `Any`, but implementations may add host-specific methods to these classes (for instance, an implementation may identify class `AnyRef` with its own root class for objects).
 
-The signatures of these root classes are described by the following
-definitions.
+The signatures of these root classes are described by the following definitions.
 
 ```scala
 package scala
@@ -88,8 +77,7 @@ class AnyRef extends Any {
 }
 ```
 
-The type test `´x´.isInstanceOf[´T´]` is equivalent to a typed
-pattern match
+The type test `´x´.isInstanceOf[´T´]` is equivalent to a typed pattern match
 
 ```scala
 ´x´ match {
@@ -98,33 +86,25 @@ pattern match
 }
 ```
 
-where the type ´T'´ is the same as ´T´ except if ´T´ is
-of the form ´D´ or ´D[\mathit{tps}]´ where ´D´ is a type member of some outer class ´C´.
+where the type ´T'´ is the same as ´T´ except if ´T´ is of the form ´D´ or ´D[\mathit{tps}]´ where ´D´ is a type member of some outer class ´C´.
 In this case ´T'´ is `´C´#´D´` (or `´C´#´D[tps]´`, respectively), whereas ´T´ itself would expand to `´C´.this.´D[tps]´`.
 In other words, an `isInstanceOf` test does not check that types have the same enclosing instance.
 
-The test `´x´.asInstanceOf[´T´]` is treated specially if ´T´ is a
-[numeric value type](#value-classes). In this case the cast will
-be translated to an application of a [conversion method](#numeric-value-types)
-`x.to´T´`. For non-numeric values ´x´ the operation will raise a
-`ClassCastException`.
+The test `´x´.asInstanceOf[´T´]` is treated specially if ´T´ is a [numeric value type](#value-classes).
+In this case the cast will be translated to an application of a [conversion method](#numeric-value-types) `x.to´T´`.
+For non-numeric values ´x´ the operation will raise a `ClassCastException`.
 
 ## Value Classes
 
-Value classes are classes whose instances are not represented as
-objects by the underlying host system.  All value classes inherit from
-class `AnyVal`. Scala implementations need to provide the
-value classes `Unit`, `Boolean`, `Double`, `Float`,
-`Long`, `Int`, `Char`, `Short`, and `Byte`
-(but are free to provide others as well).
+Value classes are classes whose instances are not represented as objects by the underlying host system.
+All value classes inherit from class `AnyVal`.
+Scala implementations need to provide the value classes `Unit`, `Boolean`, `Double`, `Float`, `Long`, `Int`, `Char`, `Short`, and `Byte` (but are free to provide others as well).
 The signatures of these classes are defined in the following.
 
 ### Numeric Value Types
 
-Classes `Double`, `Float`,
-`Long`, `Int`, `Char`, `Short`, and `Byte`
-are together called _numeric value types_. Classes `Byte`,
-`Short`, or `Char` are called _subrange types_.
+Classes `Double`, `Float`, `Long`, `Int`, `Char`, `Short`, and `Byte` are together called _numeric value types_.
+Classes `Byte`, `Short`, or `Char` are called _subrange types_.
 Subrange types, as well as `Int` and `Long` are called _integer types_, whereas `Float` and `Double` are called _floating point types_.
 
 Numeric value types are ranked in the following partial order:
@@ -137,81 +117,52 @@ Byte - Short
         Char
 ```
 
-`Byte` and `Short` are the lowest-ranked types in this order,
-whereas `Double` is the highest-ranked.  Ranking does _not_
-imply a [conformance relationship](03-types.html#conformance); for
-instance `Int` is not a subtype of `Long`.  However, object
-[`Predef`](#the-predef-object) defines [views](07-implicits.html#views)
-from every numeric value type to all higher-ranked numeric value types.
-Therefore, lower-ranked types are implicitly converted to higher-ranked types
-when required by the [context](06-expressions.html#implicit-conversions).
+`Byte` and `Short` are the lowest-ranked types in this order, whereas `Double` is the highest-ranked.
+Ranking does _not_
+imply a [conformance relationship](03-types.html#conformance); for instance `Int` is not a subtype of `Long`.
+However, object [`Predef`](#the-predef-object) defines [views](07-implicits.html#views) from every numeric value type to all higher-ranked numeric value types.
+Therefore, lower-ranked types are implicitly converted to higher-ranked types when required by the [context](06-expressions.html#implicit-conversions).
 
-Given two numeric value types ´S´ and ´T´, the _operation type_ of
-´S´ and ´T´ is defined as follows: If both ´S´ and ´T´ are subrange
-types then the operation type of ´S´ and ´T´ is `Int`.  Otherwise
-the operation type of ´S´ and ´T´ is the larger of the two types wrt
-ranking. Given two numeric values ´v´ and ´w´ the operation type of
-´v´ and ´w´ is the operation type of their run-time types.
+Given two numeric value types ´S´ and ´T´, the _operation type_ of ´S´ and ´T´ is defined as follows: If both ´S´ and ´T´ are subrange types then the operation type of ´S´ and ´T´ is `Int`.
+Otherwise the operation type of ´S´ and ´T´ is the larger of the two types wrt
+ranking.
+Given two numeric values ´v´ and ´w´ the operation type of ´v´ and ´w´ is the operation type of their run-time types.
 
 Any numeric value type ´T´ supports the following methods.
 
-  * Comparison methods for equals (`==`), not-equals (`!=`),
-    less-than (`<`), greater-than (`>`), less-than-or-equals
-    (`<=`), greater-than-or-equals (`>=`), which each exist in 7
-    overloaded alternatives. Each alternative takes a parameter of some
-    numeric value type. Its result type is type `Boolean`. The
-    operation is evaluated by converting the receiver and its argument to
-    their operation type and performing the given comparison operation of
-    that type.
-  * Arithmetic methods addition (`+`), subtraction (`-`),
-    multiplication (`*`), division (`/`), and remainder
-    (`%`), which each exist in 7 overloaded alternatives. Each
-    alternative takes a parameter of some numeric value type ´U´.  Its
-    result type is the operation type of ´T´ and ´U´. The operation is
-    evaluated by converting the receiver and its argument to their
-    operation type and performing the given arithmetic operation of that
-    type.
-  * Parameterless arithmetic methods identity (`+`) and negation
-    (`-`), with result type ´T´.  The first of these returns the
-    receiver unchanged, whereas the second returns its negation.
-  * Conversion methods `toByte`, `toShort`, `toChar`,
-    `toInt`, `toLong`, `toFloat`, `toDouble` which
-    convert the receiver object to the target type, using the rules of
-    Java's numeric type cast operation. The conversion might truncate the
-    numeric value (as when going from `Long` to `Int` or from
-    `Int` to `Byte`) or it might lose precision (as when going
-    from `Double` to `Float` or when converting between
-    `Long` and `Float`).
+* Comparison methods for equals (`==`), not-equals (`!=`), less-than (`<`), greater-than (`>`), less-than-or-equals (`<=`), greater-than-or-equals (`>=`), which each exist in 7 overloaded alternatives.
+Each alternative takes a parameter of some numeric value type.
+Its result type is type `Boolean`.
+The operation is evaluated by converting the receiver and its argument to their operation type and performing the given comparison operation of that type.
+* Arithmetic methods addition (`+`), subtraction (`-`), multiplication (`*`), division (`/`), and remainder (`%`), which each exist in 7 overloaded alternatives.
+Each alternative takes a parameter of some numeric value type ´U´.
+Its result type is the operation type of ´T´ and ´U´.
+The operation is evaluated by converting the receiver and its argument to their operation type and performing the given arithmetic operation of that type.
+* Parameterless arithmetic methods identity (`+`) and negation (`-`), with result type ´T´.
+The first of these returns the receiver unchanged, whereas the second returns its negation.
+* Conversion methods `toByte`, `toShort`, `toChar`, `toInt`, `toLong`, `toFloat`, `toDouble` which convert the receiver object to the target type, using the rules of Java's numeric type cast operation.
+The conversion might truncate the numeric value (as when going from `Long` to `Int` or from `Int` to `Byte`) or it might lose precision (as when going from `Double` to `Float` or when converting between `Long` and `Float`).
 
 Integer numeric value types support in addition the following operations:
 
-  * Bit manipulation methods bitwise-and (`&`), bitwise-or
-    {`|`}, and bitwise-exclusive-or (`^`), which each exist in 5
-    overloaded alternatives. Each alternative takes a parameter of some
-    integer numeric value type. Its result type is the operation type of
-    ´T´ and ´U´. The operation is evaluated by converting the receiver and
-    its argument to their operation type and performing the given bitwise
-    operation of that type.
+* Bit manipulation methods bitwise-and (`&`), bitwise-or {`|`}, and bitwise-exclusive-or (`^`), which each exist in 5 overloaded alternatives.
+Each alternative takes a parameter of some integer numeric value type.
+Its result type is the operation type of ´T´ and ´U´.
+The operation is evaluated by converting the receiver and its argument to their operation type and performing the given bitwise operation of that type.
 
-  * A parameterless bit-negation method (`~`). Its result type is
-    the receiver type ´T´ or `Int`, whichever is larger.
-    The operation is evaluated by converting the receiver to the result
-    type and negating every bit in its value.
-  * Bit-shift methods left-shift (`<<`), arithmetic right-shift
-    (`>>`), and unsigned right-shift (`>>>`). Each of these
-    methods has two overloaded alternatives, which take a parameter ´n´
-    of type `Int`, respectively `Long`. The result type of the
-    operation is the receiver type ´T´, or `Int`, whichever is larger.
-    The operation is evaluated by converting the receiver to the result
-    type and performing the specified shift by ´n´ bits.
+* A parameterless bit-negation method (`~`).
+Its result type is the receiver type ´T´ or `Int`, whichever is larger.
+The operation is evaluated by converting the receiver to the result type and negating every bit in its value.
+* Bit-shift methods left-shift (`<<`), arithmetic right-shift (`>>`), and unsigned right-shift (`>>>`).
+Each of these methods has two overloaded alternatives, which take a parameter ´n´ of type `Int`, respectively `Long`.
+The result type of the operation is the receiver type ´T´, or `Int`, whichever is larger.
+The operation is evaluated by converting the receiver to the result type and performing the specified shift by ´n´ bits.
 
-Numeric value types also implement operations `equals`,
-`hashCode`, and `toString` from class `Any`.
+Numeric value types also implement operations `equals`, `hashCode`, and `toString` from class `Any`.
 
-The `equals` method tests whether the argument is a numeric value
-type. If this is true, it will perform the `==` operation which
-is appropriate for that type. That is, the `equals` method of a
-numeric value type can be thought of being defined as follows:
+The `equals` method tests whether the argument is a numeric value type.
+If this is true, it will perform the `==` operation which is appropriate for that type.
+That is, the `equals` method of a numeric value type can be thought of being defined as follows:
 
 ```scala
 def equals(other: Any): Boolean = other match {
@@ -226,12 +177,10 @@ def equals(other: Any): Boolean = other match {
 }
 ```
 
-The `hashCode` method returns an integer hashcode that maps equal
-numeric values to equal results. It is guaranteed to be the identity
-for type `Int` and for all subrange types.
+The `hashCode` method returns an integer hashcode that maps equal numeric values to equal results.
+It is guaranteed to be the identity for type `Int` and for all subrange types.
 
-The `toString` method displays its receiver as an integer or
-floating point number.
+The `toString` method displays its receiver as an integer or floating point number.
 
 ###### Example
 
@@ -285,9 +234,8 @@ abstract sealed class Int extends AnyVal {
 
 ### Class `Boolean`
 
-Class `Boolean` has only two values: `true` and
-`false`. It implements operations as given in the following
-class definition.
+Class `Boolean` has only two values: `true` and `false`.
+It implements operations as given in the following class definition.
 
 ```scala
 package scala
@@ -309,47 +257,36 @@ abstract sealed class Boolean extends AnyVal {
 }
 ```
 
-The class also implements operations `equals`, `hashCode`,
-and `toString` from class `Any`.
+The class also implements operations `equals`, `hashCode`, and `toString` from class `Any`.
 
-The `equals` method returns `true` if the argument is the
-same boolean value as the receiver, `false` otherwise.  The
-`hashCode` method returns a fixed, implementation-specific hash-code when invoked on `true`,
-and a different, fixed, implementation-specific hash-code when invoked on `false`. The `toString` method
-returns the receiver converted to a string, i.e. either `"true"` or `"false"`.
+The `equals` method returns `true` if the argument is the same boolean value as the receiver, `false` otherwise.
+The `hashCode` method returns a fixed, implementation-specific hash-code when invoked on `true`, and a different, fixed, implementation-specific hash-code when invoked on `false`.
+The `toString` method returns the receiver converted to a string, i.e. either `"true"` or `"false"`.
 
 ### Class `Unit`
 
-Class `Unit` has only one value: `()`. It implements only
-the three methods `equals`, `hashCode`, and `toString`
-from class `Any`.
+Class `Unit` has only one value: `()`.
+It implements only the three methods `equals`, `hashCode`, and `toString` from class `Any`.
 
-The `equals` method returns `true` if the argument is the
-unit value `()`, `false` otherwise.  The
-`hashCode` method returns a fixed, implementation-specific hash-code,
+The `equals` method returns `true` if the argument is the unit value `()`, `false` otherwise.
+The `hashCode` method returns a fixed, implementation-specific hash-code.
 The `toString` method returns `"()"`.
 
 ## Standard Reference Classes
 
-This section presents some standard Scala reference classes which are
-treated in a special way by the Scala compiler – either Scala provides
-syntactic sugar for them, or the Scala compiler generates special code
-for their operations. Other classes in the standard Scala library are
-documented in the Scala library documentation by HTML pages.
+This section presents some standard Scala reference classes which are treated in a special way by the Scala compiler – either Scala provides syntactic sugar for them, or the Scala compiler generates special code for their operations.
+Other classes in the standard Scala library are documented in the Scala library documentation by HTML pages.
 
 ### Class `String`
 
-Scala's `String` class is usually derived from the standard String
-class of the underlying host system (and may be identified with
-it). For Scala clients the class is taken to support in each case a
-method
+Scala's `String` class is usually derived from the standard String class of the underlying host system (and may be identified with it).
+For Scala clients the class is taken to support in each case a method
 
 ```scala
 def + (that: Any): String
 ```
 
-which concatenates its left operand with the textual representation of its
-right operand.
+which concatenates its left operand with the textual representation of its right operand.
 
 ### The `Tuple` classes
 
@@ -385,14 +322,12 @@ class PartialFunction[-A, +B] extends Function1[A, B] {
 }
 ```
 
-The implicitly imported [`Predef`](#the-predef-object) object defines the name
-`Function` as an alias of `Function1`.
+The implicitly imported [`Predef`](#the-predef-object) object defines the name `Function` as an alias of `Function1`.
 
 ### Class `Array`
 
-All operations on arrays desugar to the corresponding operations of the
-underlying platform. Therefore, the following class definition is given for
-informational purposes only:
+All operations on arrays desugar to the corresponding operations of the underlying platform.
+Therefore, the following class definition is given for informational purposes only:
 
 ```scala
 final class Array[T](_length: Int)
@@ -404,20 +339,14 @@ extends java.io.Serializable with java.lang.Cloneable {
 }
 ```
 
-If ´T´ is not a type parameter or abstract type, the type `Array[T]`
-is represented as the array type `|T|[]` in the
-underlying host system, where `|T|` is the erasure of `T`.
-If ´T´ is a type parameter or abstract type, a different representation might be
-used (it is `Object` on the Java platform).
+If ´T´ is not a type parameter or abstract type, the type `Array[T]` is represented as the array type `|T|[]` in the underlying host system, where `|T|` is the erasure of `T`.
+If ´T´ is a type parameter or abstract type, a different representation might be used (it is `Object` on the Java platform).
 
 #### Operations
 
-`length` returns the length of the array, `apply` means subscripting,
-and `update` means element update.
+`length` returns the length of the array, `apply` means subscripting, and `update` means element update.
 
-Because of the syntactic sugar for `apply` and `update` operations,
-we have the following correspondences between Scala and Java code for
-operations on an array `xs`:
+Because of the syntactic sugar for `apply` and `update` operations, we have the following correspondences between Scala and Java code for operations on an array `xs`:
 
 |_Scala_           |_Java_      |
 |------------------|------------|
@@ -425,35 +354,22 @@ operations on an array `xs`:
 |`xs(i)`           |`xs[i]`     |
 |`xs(i) = e`       |`xs[i] = e` |
 
-Two implicit conversions exist in `Predef` that are frequently applied to arrays:
-a conversion to `scala.collection.mutable.ArrayOps` and a conversion to
-`scala.collection.mutable.ArraySeq` (a subtype of `scala.collection.Seq`).
+Two implicit conversions exist in `Predef` that are frequently applied to arrays: a conversion to `scala.collection.mutable.ArrayOps` and a conversion to `scala.collection.mutable.ArraySeq` (a subtype of `scala.collection.Seq`).
 
-Both types make many of the standard operations found in the Scala
-collections API available. The conversion to `ArrayOps` is temporary, as all operations
-defined on `ArrayOps` return a value of type `Array`, while the conversion to `ArraySeq`
-is permanent as all operations return a value of type `ArraySeq`.
+Both types make many of the standard operations found in the Scala collections API available.
+The conversion to `ArrayOps` is temporary, as all operations defined on `ArrayOps` return a value of type `Array`, while the conversion to `ArraySeq` is permanent as all operations return a value of type `ArraySeq`.
 The conversion to `ArrayOps` takes priority over the conversion to `ArraySeq`.
 
-Because of the tension between parametrized types in Scala and the ad-hoc
-implementation of arrays in the host-languages, some subtle points
-need to be taken into account when dealing with arrays. These are
-explained in the following.
+Because of the tension between parametrized types in Scala and the ad-hoc implementation of arrays in the host-languages, some subtle points need to be taken into account when dealing with arrays.
+These are explained in the following.
 
 #### Variance
 
-Unlike arrays in Java, arrays in Scala are _not_
-co-variant; That is, ´S <: T´ does not imply
-`Array[´S´] ´<:´ Array[´T´]` in Scala.
-However, it is possible to cast an array
-of ´S´ to an array of ´T´ if such a cast is permitted in the host
-environment.
+Unlike arrays in Java, arrays in Scala are _not_ co-variant; That is, ´S <: T´ does not imply `Array[´S´] ´<:´ Array[´T´]` in Scala.
+However, it is possible to cast an array of ´S´ to an array of ´T´ if such a cast is permitted in the host environment.
 
-For instance `Array[String]` does not conform to
-`Array[Object]`, even though `String` conforms to `Object`.
-However, it is possible to cast an expression of type
-`Array[String]` to `Array[Object]`, and this
-cast will succeed without raising a `ClassCastException`. Example:
+For instance `Array[String]` does not conform to `Array[Object]`, even though `String` conforms to `Object`.
+However, it is possible to cast an expression of type `Array[String]` to `Array[Object]`, and this cast will succeed without raising a `ClassCastException`. Example:
 
 ```scala
 val xs = new Array[String](2)
@@ -461,14 +377,9 @@ val xs = new Array[String](2)
 val ys: Array[Object] = xs.asInstanceOf[Array[Object]] // OK
 ```
 
-The instantiation of an array with a polymorphic element type ´T´ requires
-information about type ´T´ at runtime.
-This information is synthesized by adding a [context bound](07-implicits.html#context-bounds-and-view-bounds)
-of `scala.reflect.ClassTag` to type ´T´.
-An example is the
-following implementation of method `mkArray`, which creates
-an array of an arbitrary type ´T´, given a sequence of ´T´`s which
-defines its elements:
+The instantiation of an array with a polymorphic element type ´T´ requires information about type ´T´ at runtime.
+This information is synthesized by adding a [context bound](07-implicits.html#context-bounds-and-view-bounds) of `scala.reflect.ClassTag` to type ´T´.
+An example is the following implementation of method `mkArray`, which creates an array of an arbitrary type ´T´, given a sequence of ´T´`s which defines its elements:
 
 ```scala
 import reflect.ClassTag
@@ -483,19 +394,14 @@ def mkArray[T : ClassTag](elems: Seq[T]): Array[T] = {
 }
 ```
 
-If type ´T´ is a type for which the host platform offers a specialized array
-representation, this representation is used.
+If type ´T´ is a type for which the host platform offers a specialized array representation, this representation is used.
 
 ###### Example
-On the Java Virtual Machine, an invocation of `mkArray(List(1,2,3))`
-will return a primitive array of `int`s, written as `int[]` in Java.
+On the Java Virtual Machine, an invocation of `mkArray(List(1,2,3))` will return a primitive array of `int`s, written as `int[]` in Java.
 
 #### Companion object
 
-`Array`'s companion object provides various factory methods for the
-instantiation of single- and multi-dimensional arrays, an extractor method
-[`unapplySeq`](08-pattern-matching.html#extractor-patterns) which enables pattern matching
-over arrays and additional utility methods:
+`Array`'s companion object provides various factory methods for the instantiation of single- and multi-dimensional arrays, an extractor method [`unapplySeq`](08-pattern-matching.html#extractor-patterns) which enables pattern matching over arrays and additional utility methods:
 
 ```scala
 package scala
@@ -623,10 +529,8 @@ trait Node {
 
 ## The `Predef` Object
 
-The `Predef` object defines standard functions and type aliases
-for Scala programs. It is implicitly imported, as described in
-[the chapter on name binding](02-identifiers-names-and-scopes.html),
-so that all its defined members are available without qualification.
+The `Predef` object defines standard functions and type aliases for Scala programs.
+It is implicitly imported, as described in [the chapter on name binding](02-identifiers-names-and-scopes.html), so that all its defined members are available without qualification.
 Its definition for the JVM environment conforms to the following signature:
 
 ```scala
@@ -728,89 +632,70 @@ object Predef {
 ### Predefined Implicit Definitions
 
 The `Predef` object also contains a number of implicit definitions, which are available by default (because `Predef` is implicitly imported).
-Implicit definitions come in two priorities. High-priority implicits are defined in the `Predef` class itself whereas low priority implicits are defined in a class inherited by `Predef`. The rules of
-static [overloading resolution](06-expressions.html#overloading-resolution)
-stipulate that, all other things being equal, implicit resolution
-prefers high-priority implicits over low-priority ones.
+Implicit definitions come in two priorities.
+High-priority implicits are defined in the `Predef` class itself whereas low priority implicits are defined in a class inherited by `Predef`.
+The rules of static [overloading resolution](06-expressions.html#overloading-resolution) stipulate that, all other things being equal, implicit resolution prefers high-priority implicits over low-priority ones.
 
 The available low-priority implicits include definitions falling into the following categories.
 
-1.  For every primitive type, a wrapper that takes values of that type
-    to instances of a `runtime.Rich*` class. For instance, values of type `Int`
-    can be implicitly converted to instances of class `runtime.RichInt`.
+1.  For every primitive type, a wrapper that takes values of that type to instances of a `runtime.Rich*` class.
+For instance, values of type `Int` can be implicitly converted to instances of class `runtime.RichInt`.
 
-1.  For every array type with elements of primitive type, a wrapper that
-    takes the arrays of that type to instances of a `ArraySeq` class. For instance, values of type `Array[Float]` can be implicitly converted to instances of class `ArraySeq[Float]`.
-    There are also generic array wrappers that take elements
-    of type `Array[T]` for arbitrary `T` to `ArraySeq`s.
+1.  For every array type with elements of primitive type, a wrapper that takes the arrays of that type to instances of a `ArraySeq` class.
+For instance, values of type `Array[Float]` can be implicitly converted to instances of class `ArraySeq[Float]`.
+There are also generic array wrappers that take elements of type `Array[T]` for arbitrary `T` to `ArraySeq`s.
 
 1.  An implicit conversion from `String` to `WrappedString`.
 
 The available high-priority implicits include definitions falling into the following categories.
 
-  * An implicit wrapper that adds `ensuring` methods
-    with the following overloaded variants to type `Any`.
+* An implicit wrapper that adds `ensuring` methods with the following overloaded variants to type `Any`.
+```scala
+def ensuring(cond: Boolean): A = { assert(cond); x }
+def ensuring(cond: Boolean, msg: Any): A = { assert(cond, msg); x }
+def ensuring(cond: A => Boolean): A = { assert(cond(x)); x }
+def ensuring(cond: A => Boolean, msg: Any): A = { assert(cond(x), msg); x }
+```
 
-    ```scala
-    def ensuring(cond: Boolean): A = { assert(cond); x }
-    def ensuring(cond: Boolean, msg: Any): A = { assert(cond, msg); x }
-    def ensuring(cond: A => Boolean): A = { assert(cond(x)); x }
-    def ensuring(cond: A => Boolean, msg: Any): A = { assert(cond(x), msg); x }
-    ```
+* An implicit wrapper that adds a `->` method with the following implementation to type `Any`.
+```scala
+def -> [B](y: B): (A, B) = (x, y)
+```
 
-  * An implicit wrapper that adds a `->` method with the following implementation
-    to type `Any`.
+* For every array type with elements of primitive type, a wrapper that takes the arrays of that type to instances of a `runtime.ArrayOps` class.
+For instance, values of type `Array[Float]` can be implicitly converted to instances of class `runtime.ArrayOps[Float]`.
+There are also generic array wrappers that take elements of type `Array[T]` for arbitrary `T` to `ArrayOps`s.
 
-    ```scala
-    def -> [B](y: B): (A, B) = (x, y)
-    ```
+* An implicit wrapper that adds `+` and `formatted` method with the following implementations to type `Any`.
+```scala
+def +(other: String) = String.valueOf(self) + other
+def formatted(fmtstr: String): String = fmtstr format self
+```
 
-  * For every array type with elements of primitive type, a wrapper that
-    takes the arrays of that type to instances of a `runtime.ArrayOps`
-    class. For instance, values of type `Array[Float]` can be implicitly
-    converted to instances of class `runtime.ArrayOps[Float]`.  There are
-    also generic array wrappers that take elements of type `Array[T]` for
-    arbitrary `T` to `ArrayOps`s.
+* Numeric primitive conversions that implement the transitive closure of the following mappings:
+```
+Byte  -> Short
+Short -> Int
+Char  -> Int
+Int   -> Long
+Long  -> Float
+Float -> Double
+```
 
-  * An implicit wrapper that adds `+` and `formatted` method with the following
-    implementations to type `Any`.
+* Boxing and unboxing conversions between primitive types and their boxed versions:
+```
+Byte    <-> java.lang.Byte
+Short   <-> java.lang.Short
+Char    <-> java.lang.Character
+Int     <-> java.lang.Integer
+Long    <-> java.lang.Long
+Float   <-> java.lang.Float
+Double  <-> java.lang.Double
+Boolean <-> java.lang.Boolean
+```
 
-    ```scala
-    def +(other: String) = String.valueOf(self) + other
-    def formatted(fmtstr: String): String = fmtstr format self
-    ```
-
-  * Numeric primitive conversions that implement the transitive closure of the
-    following mappings:
-
-    ```
-    Byte  -> Short
-    Short -> Int
-    Char  -> Int
-    Int   -> Long
-    Long  -> Float
-    Float -> Double
-    ```
-
-  * Boxing and unboxing conversions between primitive types and their boxed
-    versions:
-
-    ```
-    Byte    <-> java.lang.Byte
-    Short   <-> java.lang.Short
-    Char    <-> java.lang.Character
-    Int     <-> java.lang.Integer
-    Long    <-> java.lang.Long
-    Float   <-> java.lang.Float
-    Double  <-> java.lang.Double
-    Boolean <-> java.lang.Boolean
-    ```
-
-  * An implicit definition that generates instances of type `T <:< T`, for
-    any type `T`. Here, `<:<` is a class defined as follows.
-
-    ```scala
-    sealed abstract class <:<[-From, +To] extends (From => To)
-    ```
-
-    Implicit parameters of `<:<` types are typically used to implement type constraints.
+* An implicit definition that generates instances of type `T <:< T`, for any type `T`. Here, `<:<` is a class defined as follows.
+```scala
+sealed abstract class <:<[-From, +To] extends (From => To)
+```
+Implicit parameters of `<:<` types are typically used to implement type constraints.

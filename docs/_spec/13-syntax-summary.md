@@ -88,8 +88,7 @@ semi             ::=  ‘;’ |  nl {nl}
 
 ## Context-free Syntax
 
-The context-free syntax of Scala is given by the following EBNF
-grammar:
+The context-free syntax of Scala is given by the following EBNF grammar:
 
 ```ebnf
   Literal           ::=  [‘-’] integerLiteral

@@ -39,6 +39,10 @@ and open http://0.0.0.0:4000/ to view the spec. Jekyll will rebuild as you edit 
 - Use of the appropriate unicode characters instead of the latex modifiers for accents, etc. is necessary. For example, é instead of `\'e`.
 - MathJAX errors  will appear within the  rendered DOM as span  elements with class `mtext` and style attribute `color: red` applied. It is  possible to search for this combination in the development  tools of the browser of your choice. In chrome, CTRL+F / CMD+F within the inspect element panel allows you to do this.
 
+- This document follows the "one sentence <=> one line" convention, with the following exceptions below.
+- - A multiline code bloc is part of the sentence
+- - An enumeration of links is long enough
+
 ### Macro replacements:
 
 - While  MathJAX just  support LaTeX style  command definition,  it is recommended  to not use  this as  it will likely cause issues with preparing the document for PDF or ebook distribution.
