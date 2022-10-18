@@ -690,7 +690,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       /** Destruct a capturing type `tp` to a tuple (cs, tp0, boxed),
        *  where `tp0` is not a capturing type.
-       * 
+       *
        *  If `tp` is a nested capturing type, the return tuple always represents
        *  the innermost capturing type. The outer capture annotations can be
        *  reconstructed with the returned function.

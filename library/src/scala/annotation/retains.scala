@@ -14,3 +14,5 @@ package scala.annotation
 // @experimental // suppressed so we can use in compiler
 class retains(xs: Any*) extends annotation.StaticAnnotation
 
+// @experimental // suppressed so we can use in compiler
+class retainsUniversal extends annotation.StaticAnnotation
