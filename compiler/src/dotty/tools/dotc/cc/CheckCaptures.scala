@@ -333,22 +333,29 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       includeCallCaptures(tree.symbol, tree.srcPos)
-      super.recheckApply(tree, pt) match
-        case appType @ CapturingType(appType1, refs) =>
-          tree.fun match
-            case Select(qual, _)
-            if !tree.fun.symbol.isConstructor
-                && !qual.tpe.isBoxedCapturing
-                && !tree.args.exists(_.tpe.isBoxedCapturing)
-                && qual.tpe.captureSet.mightSubcapture(refs)
-                && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
-            =>
-              val callCaptures = tree.args.foldLeft(qual.tpe.captureSet)((cs, arg) =>
-                cs ++ arg.tpe.captureSet)
-              appType.derivedCapturingType(appType1, callCaptures)
-                .showing(i"narrow $tree: $appType, refs = $refs, qual = ${qual.tpe.captureSet} --> $result", capt)
-            case _ => appType
-        case appType => appType
+      tree match
+        case Apply(fn, arg :: Nil) if fn.symbol == defn.Caps_unsafeUnbox =>
+          val argType0 = recheckStart(arg, pt).unbox
+          val argType = super.recheckFinish(argType0, arg, pt)
+          super.recheckFinish(argType, tree, pt)
+        case _ =>
+          super.recheckApply(tree, pt) match
+            case appType @ CapturingType(appType1, refs) =>
+              tree.fun match
+                case Select(qual, _)
+                if !tree.fun.symbol.isConstructor
+                    && !qual.tpe.isBoxedCapturing
+                    && !tree.args.exists(_.tpe.isBoxedCapturing)
+                    && qual.tpe.captureSet.mightSubcapture(refs)
+                    && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
+                =>
+                  val callCaptures = tree.args.foldLeft(qual.tpe.captureSet)((cs, arg) =>
+                    cs ++ arg.tpe.captureSet)
+                  appType.derivedCapturingType(appType1, callCaptures)
+                    .showing(i"narrow $tree: $appType, refs = $refs, qual = ${qual.tpe.captureSet} --> $result", capt)
+                case _ => appType
+            case appType => appType
+    end recheckApply
 
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
      *  This means:

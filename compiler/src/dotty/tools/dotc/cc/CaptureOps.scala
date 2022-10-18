@@ -96,6 +96,13 @@ extension (tp: Type)
   /** Is the boxedCaptureSet of this type nonempty? */
   def isBoxedCapturing(using Context) = !tp.boxedCaptureSet.isAlwaysEmpty
 
+  /** If this type is a boxed capturing type, its unboxed version */
+  def unbox(using Context): Type = tp match
+    case tp @ CapturingType(parent, refs) if tp.isBoxed =>
+      CapturingType(parent, refs, boxed = false)
+    case _ =>
+      tp
+
   /** Map capturing type to their parents. Capturing types accessible
    *  via dealising are also stripped.
    */
@@ -155,6 +162,7 @@ extension (sym: Symbol)
       case _ => false
     containsEnclTypeParam(sym.info.finalResultType)
     && !sym.allowsRootCapture
+    && sym != defn.Caps_unsafeUnbox
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
