@@ -19,9 +19,9 @@ The `derives` clause generates the following given instances for the `Eq`, `Orde
 companion object of `Tree`,
 
 ```scala
-given [T: Eq]       : Eq[Tree[T]]    = Eq.derived
-given [T: Ordering] : Ordering[Tree] = Ordering.derived
-given [T: Show]     : Show[Tree]     = Show.derived
+given [T: Eq]       : Eq[Tree[T]]       = Eq.derived
+given [T: Ordering] : Ordering[Tree[T]] = Ordering.derived
+given [T: Show]     : Show[Tree[T]]     = Show.derived
 ```
 
 We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Show` instances are _derived instances_.
@@ -29,16 +29,27 @@ We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Sho
 ### Types supporting `derives` clauses
 
 All data types can have a `derives` clause. This document focuses primarily on data types which also have a given instance
-of the `Mirror` type class available. Instances of the `Mirror` type class are generated automatically by the compiler
-for,
-
-+ enums and enum cases
-+ case classes and case objects
-+ sealed classes or traits that have only case classes and case objects as children
+of the `Mirror` type class available.
 
 `Mirror` type class instances provide information at the type level about the components and labelling of the type.
 They also provide minimal term level infrastructure to allow higher level libraries to provide comprehensive
 derivation support.
+
+Instances of the `Mirror` type class are generated automatically by the compiler
+unconditionally for:
+- enums and enum cases,
+- case objects.
+
+Instances for `Mirror` are also generated conditionally for:
+- case classes where the constructor is visible at the callsite (always true if the companion is not a case object)
+- sealed classes and sealed traits where:
+  - there exists at least one child case,
+  - each child case is reachable from the parent's definition,
+  - if the sealed trait/class has no companion, then each child case is reachable from the callsite through the prefix of the type being mirrored,
+  - and where the compiler can generate a `Mirror` type class instance for each child case.
+
+
+The `Mirror` type class definition is as follows:
 
 ```scala
 sealed trait Mirror:
@@ -119,10 +130,21 @@ new Mirror.Product:
     new Leaf(...)
 ```
 
+If a Mirror cannot be generated automatically for a given type, an error will appear explaining why it is neither a supported
+sum type nor a product type. For example, if `A` is a trait that is not sealed,
+
+```
+No given instance of type deriving.Mirror.Of[A] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[A]:
+     * trait A is not a generic product because it is not a case class
+     * trait A is not a generic sum because it is not a sealed trait
+```
+
+
 Note the following properties of `Mirror` types,
 
 + Properties are encoded using types rather than terms. This means that they have no runtime footprint unless used and
   also that they are a compile time feature for use with Scala 3's metaprogramming facilities.
++ There is no restriction against the mirrored type being a local or inner class.
 + The kinds of `MirroredType` and `MirroredElemTypes` match the kind of the data type the mirror is an instance for.
   This allows `Mirror`s to support ADTs of all kinds.
 + There is no distinct representation type for sums or products (ie. there is no `HList` or `Coproduct` type as in
@@ -145,7 +167,7 @@ following form,
 ```scala
 import scala.deriving.Mirror
 
-def derived[T](using Mirror.Of[T]): TC[T] = ...
+inline def derived[T](using Mirror.Of[T]): TC[T] = ...
 ```
 
 That is, the `derived` method takes a context parameter of (some subtype of) type `Mirror` which defines the shape of
