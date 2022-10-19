@@ -16,6 +16,12 @@
 .snippet pre {
   margin: 0;
   line-height: 20px;
+  font-family: "FiraCode-Regular";
+}
+
+.snippet pre code {
+  padding-right: calc(2* var(--base-spacing));
+  font-family: "FiraCode-Regular";
 }
 
 dd .snippet {
@@ -54,12 +60,12 @@ dd .snippet {
 
 .snippet > pre > code > span::before {
   margin-left: 0;
-  /* content: attr(line-number);
+  content: attr(line-number);
   color: var(--code-syntax-highlighting-line-number);
   margin-right: calc(2 * var(--base-spacing));
   display: inline-block;
   text-align: right;
-  min-width: calc(3 * var(--base-spacing)); */
+  min-width: calc(3 * var(--base-spacing));
 }
 
 .snippet-showhide-container {

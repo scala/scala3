@@ -220,10 +220,11 @@
     color: var(--text-primary);
     text-decoration: underline solid 1px;
     text-underline-offset: 2px;
+    transition: text-decoration-color .2s ease-in-out;
 }
 
 #content a:hover {
-  text-decoration: underline solid 1.5px;
+  text-decoration-color: transparent;
 }
 
 #content .cover-header {
@@ -239,15 +240,18 @@
   color: var(--code-props-content);
   font-family: "FiraCode-Regular";
   border: 1px solid var(--code-props-border);
-  padding: 2px 5px;
+  padding: 3px 5px 1px 5px;
   border-radius: 4px;
   background-color: var(--code-props-background);
-  line-height: 24px;
+  display: inline-block;
+  line-height: 16px;
   font-size: 13px;
+  word-break: break-word;
 }
 
 #content .body-large code {
   font-size: 16px;
+  line-height: 24px;
 }
 
 .breadcrumbs {
