@@ -50,29 +50,36 @@ Generally, context parameters may be defined either as a full parameter list `(p
 
 ## Class Context Parameters
 
-If a class context parameter is made a member by adding a `val` or `var` modifier,
-then that member is available as a given instance.
-
-Compare the following examples, where the attempt to supply an explicit `given` member induces an ambiguity:
-
+To make a class context parameter visible from outside the class body, it can be made into a member by adding a `val` or `var` modifier.
 ```scala
-class GivenIntBox(using val givenInt: Int):
-  def n = summon[Int]
+class GivenIntBox(using val usingParameter: Int):
+  def myInt = summon[Int]
 
-class GivenIntBox2(using givenInt: Int):
-  given Int = givenInt
-  //def n = summon[Int]     // ambiguous
+val b = GivenIntBox(using 23)
+import b.usingParameter
+summon[Int]  // 23
 ```
 
-The `given` member is importable as explained in the section on [importing `given`s](./given-imports.md):
+This is preferable to creating an explicit `given` member, as the latter creates ambiguity inside the class body:
+```scala
+class GivenIntBox2(using usingParameter: Int):
+  given givenMember: Int = usingParameter
+  def n = summon[Int]  // ambiguous given instances: both usingParameter and givenMember match type Int
+```
+
+From the outside of `GivenIntBox`, `usingParameter` appears as if it were defined in the class as `given usingParameter: Int`, in particular it must be imported as described in the section on [importing `given`s](./given-imports.md).
 
 ```scala
 val b = GivenIntBox(using 23)
+// Works:
 import b.given
 summon[Int]  // 23
+usingParameter  // 23
 
+// Fails:
 import b.*
-//givenInt   // Not found
+summon[Int]      // No given instance found
+usingParameter   // Not found
 ```
 
 ## Inferring Complex Arguments

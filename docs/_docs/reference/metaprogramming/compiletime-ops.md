@@ -11,7 +11,7 @@ The [`scala.compiletime`](https://scala-lang.org/api/3.x/scala/compiletime.html)
 ### `constValue` and `constValueOpt`
 
 `constValue` is a function that produces the constant value represented by a
-type.
+type, or a compile time error if the type is not a constant type.
 
 ```scala
 import scala.compiletime.constValue
@@ -29,6 +29,8 @@ inline val ctwo = toIntC[2]
 enabling us to handle situations where a value is not present. Note that `S` is
 the type of the successor of some singleton type. For example the type `S[1]` is
 the singleton type `2`.
+
+Since tuples are not constant types, even if their constituants are, there is `constValueTuple`, which given a tuple type `(X1, ..., Xn)`, returns a tuple value `(constValue[X1], ..., constValue[Xn])`.
 
 ### `erasedValue`
 
@@ -170,42 +172,9 @@ val concat: "a" + "b" = "ab"
 val addition: 1 + 1 = 2
 ```
 
-## Summoning Implicits Selectively
+## Summoning Givens Selectively
 
-It is foreseen that many areas of typelevel programming can be done with rewrite
-methods instead of implicits. But sometimes implicits are unavoidable. The
-problem so far was that the Prolog-like programming style of implicit search
-becomes viral: Once some construct depends on implicit search it has to be
-written as a logic program itself. Consider for instance the problem of creating
-a `TreeSet[T]` or a `HashSet[T]` depending on whether `T` has an `Ordering` or
-not. We can create a set of implicit definitions like this:
-
-```scala
-trait SetFor[T, S <: Set[T]]
-
-class LowPriority:
-  implicit def hashSetFor[T]: SetFor[T, HashSet[T]] = ...
-
-object SetsFor extends LowPriority:
-  implicit def treeSetFor[T: Ordering]: SetFor[T, TreeSet[T]] = ...
-```
-
-Clearly, this is not pretty. Besides all the usual indirection of implicit
-search, we face the problem of rule prioritization where we have to ensure that
-`treeSetFor` takes priority over `hashSetFor` if the element type has an
-ordering. This is solved (clumsily) by putting `hashSetFor` in a superclass
-`LowPriority` of the object `SetsFor` where `treeSetFor` is defined. Maybe the
-boilerplate would still be acceptable if the crufty code could be contained.
-However, this is not the case. Every user of the abstraction has to be
-parameterized itself with a `SetFor` implicit. Considering the simple task _"I
-want a `TreeSet[T]` if `T` has an ordering and a `HashSet[T]` otherwise"_, this
-seems like a lot of ceremony.
-
-There are some proposals to improve the situation in specific areas, for
-instance by allowing more elaborate schemes to specify priorities. But they all
-keep the viral nature of implicit search programs based on logic programming.
-
-By contrast, the new `summonFrom` construct makes implicit search available
+The new `summonFrom` construct makes implicit search available
 in a functional context. To solve the problem of creating the right set, one
 would use it as follows:
 
@@ -221,7 +190,7 @@ inline def setFor[T]: Set[T] = summonFrom {
 A `summonFrom` call takes a pattern matching closure as argument. All patterns
 in the closure are type ascriptions of the form `identifier : Type`.
 
-Patterns are tried in sequence. The first case with a pattern `x: T` such that an implicit value of type `T` can be summoned is chosen.
+Patterns are tried in sequence. The first case with a pattern `x: T` such that a contextual value of type `T` can be summoned is chosen.
 
 Alternatively, one can also use a pattern-bound given instance, which avoids the explicit using clause. For instance, `setFor` could also be formulated as follows:
 
@@ -236,18 +205,18 @@ inline def setFor[T]: Set[T] = summonFrom {
 
 `summonFrom` applications must be reduced at compile time.
 
-Consequently, if we summon an `Ordering[String]` the code above will return a
-new instance of `TreeSet[String]`.
+Consequently, if a given instance of `Ordering[String]` is in the implicit scope, the code above will return a
+new instance of `TreeSet[String]`. Such an instance is defined in `Ordering`'s companion object, so there will always be one.
 
 ```scala
-summon[Ordering[String]]
+summon[Ordering[String]] // Proves that an Ordering[String] is in scope
 
 println(setFor[String].getClass) // prints class scala.collection.immutable.TreeSet
 ```
 
-**Note** `summonFrom` applications can raise ambiguity errors. Consider the following
+**Note:** `summonFrom` applications can raise ambiguity errors. Consider the following
 code with two givens in scope of type `A`. The pattern match in `f` will raise
-an ambiguity error of `f` is applied.
+an ambiguity error if `f` is applied.
 
 ```scala
 class A

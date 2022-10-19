@@ -72,7 +72,7 @@ final class happyBirthday:
       case error: CLP.ParseError => CLP.showError(error)
 ```
 
-**Note**: The `<static>` modifier above expresses that the `main` method is generated
+**Note:** The `<static>` modifier above expresses that the `main` method is generated
 as a static method of class `happyBirthday`. It is not available for user programs in Scala. Regular "static" members are generated in Scala using objects instead.
 
 [`@main`](https://scala-lang.org/api/3.x/scala/main.html) methods are the recommended scheme to generate programs that can be invoked from the command line in Scala 3. They replace the previous scheme to write program as objects with a special `App` parent class. In Scala 2, `happyBirthday` could be written also like this:

@@ -98,10 +98,11 @@ def macroImpl()(quotes: Quotes): Expr[Unit] =
 `quotes.reflect` contains three facilities for tree traversal and
 transformation.
 
-`TreeAccumulator` ties the knot of a traversal. By calling `foldOver(x, tree)(owner)`
-we can dive into the `tree` node and start accumulating values of type `X` (e.g.,
-of type `List[Symbol]` if we want to collect symbols). The code below, for
-example, collects the `val` definitions in the tree.
+`TreeAccumulator[X]` allows you to traverse the tree and aggregate data of type `X` along the way, by overriding its method `foldTree(x: X, tree: Tree)(owner: Symbol): X`.
+
+`foldOverTree(x: X, tree: Tree)(owner: Symbol): X` calls `foldTree` on each children of `tree` (using `fold` to give each call the value of the previous one).
+
+The code below, for example, collects the `val` definitions in the tree.
 
 ```scala
 def collectPatternVariables(tree: Tree)(using ctx: Context): List[Symbol] =
@@ -115,12 +116,15 @@ def collectPatternVariables(tree: Tree)(using ctx: Context): List[Symbol] =
   acc(Nil, tree)
 ```
 
-A `TreeTraverser` extends a `TreeAccumulator` and performs the same traversal
-but without returning any value. Finally, a `TreeMap` performs a transformation.
+A `TreeTraverser` extends a `TreeAccumulator[Unit]` and performs the same traversal
+but without returning any value. 
+
+`TreeMap` transforms trees along the traversal, through overloading its methods it is possible to transform only trees of specific types, for example `transformStatement` only transforms `Statement`s.
+
 
 #### ValDef.let
 
-`quotes.reflect.ValDef` also offers a method `let` that allows us to bind the `rhs` (right-hand side) to a `val` and use it in `body`.
+The object `quotes.reflect.ValDef` also offers a method `let` that allows us to bind the `rhs` (right-hand side) to a `val` and use it in `body`.
 Additionally, `lets` binds the given `terms` to names and allows to use them in the `body`.
 Their type definitions are shown below:
 

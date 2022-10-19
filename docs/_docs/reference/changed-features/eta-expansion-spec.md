@@ -51,7 +51,7 @@ implicit val bla: Double = 1.0
 val bar = foo // val bar: Int => Float = ...
 ```
 
-## Automatic Eta-Expansion and query types
+## Automatic Eta-Expansion and context types
 
 A method with context parameters can be expanded to a value of a context type by writing the expected context type explicitly.
 
@@ -66,7 +66,7 @@ val bar: Double ?=> Float = foo(3)
 - If `m` is has an empty argument list (i.e. has type `()R`):
     1. If the expected type is of the form `() => T`, we eta expand.
     2. If m is defined by Java, or overrides a Java defined method, we insert `()`.
-    3. Otherwise we issue an error of the form:
+    3. Otherwise we issue an error of the form: `method must be called with () argument`
 
 Thus, an unapplied method with an empty argument list is only converted to a function when a function type is expected. It is considered best practice to either explicitly apply the method to `()`, or convert it to a function with `() => m()`.
 

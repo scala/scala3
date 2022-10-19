@@ -40,4 +40,4 @@ class C { ... }
 
 Language imports supersede command-line settings in the source files where they are specified. Only one language import specifying a source version is allowed in a source file, and it must come before any definitions in that file.
 
-**Note**: The [Scala 3 Migration Guide](https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html) gives further information to help the Scala programmer moving from Scala 2.13 to Scala 3.
+**Note:** The [Scala 3 Migration Guide](https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html) gives further information to help the Scala programmer moving from Scala 2.13 to Scala 3.
