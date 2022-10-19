@@ -53,13 +53,13 @@ dd .snippet {
 }
 
 .snippet > pre > code > span::before {
-  content: attr(line-number);
+  margin-left: 0;
+  /* content: attr(line-number);
   color: var(--code-syntax-highlighting-line-number);
   margin-right: calc(2 * var(--base-spacing));
-  margin-left: calc(var(--base-spacing));
   display: inline-block;
   text-align: right;
-  min-width: calc(3 * var(--base-spacing));
+  min-width: calc(3 * var(--base-spacing)); */
 }
 
 .snippet-showhide-container {

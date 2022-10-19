@@ -33,15 +33,19 @@ input {
   min-height: 100%;
 }
 #leftColumn {
-  position: fixed;
-  width: var(--side-width);
-  height: 100%;
-  border-right: none;
-  background: var(--body-bg);
-  display: flex;
-  flex-direction: column;
-  z-index: 5;
-  border-right: solid 1px var(--leftbar-border);
+      display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: absolute;
+    width: calc(39 * var(--base-spacing));
+    height: calc(100% - (8 * var(--base-spacing)) - (6 * var(--base-spacing)));
+    left: 0px;
+    top: calc(8 * var(--base-spacing));
+    background: var(--background-default);
+    border: 1px solid var(--border-default);
+    border-top: none;
+    border-left: none;
+    transition: left 0.2s linear;
 }
 #main-content {
   min-height: calc(100vh - var(--footer-height) - 24px);
