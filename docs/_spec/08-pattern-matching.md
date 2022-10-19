@@ -185,7 +185,15 @@ This is further discussed [here](#pattern-sequences).
   SimplePattern   ::=  ‘(’ [Patterns] ‘)’
 ```
 
-A _tuple pattern_ `(´p_1´, ..., ´p_n´)` is an alias for the constructor pattern `scala.Tuple´n´(´p_1´, ..., ´p_n´)`, where ´n \geq 2´. The empty tuple `()` is the unique value of type `scala.Unit`.
+A _tuple pattern_ `(´p_1´, ..., ´p_n´)` where ´n \geq 2´ is equivalent to `´p_1´ *: ... *: ´p_n´ *: scala.EmptyTuple`.
+
+Note:
+`()` is equivalent to `_: scala.Unit`, and not `scala.EmptyTuple`.
+`(´pat´)` is a pattern matching ´pat´, and not `´pat´ *: scala.EmptyTuple`.
+
+Note:
+As such patterns with `*:` are slow, a more efficient translation is free to be implemented.
+For example, `(´p_1´, ´p_2´)` could be translated to `scala.Tuple2(´p_1´, ´p_2´)`, which is indeed equivalent to `´p_1´ *: ´p_2´ *: scala.EmptyTuple`.
 
 ### Extractor Patterns
 

@@ -217,22 +217,27 @@ G[S, Int]             // illegal: S constrains its parameter to
 SimpleType    ::=   ‘(’ Types ‘)’
 ```
 
-A _tuple type_ ´(T_1 , ... , T_n)´ is an alias for the class `scala.Tuple´n´[´T_1´, ... , ´T_n´]`, where ´n \geq 2´.
+A _tuple type_ ´(T_1, ..., T_n)´ where ´n \geq 2´ is an alias for the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`.
+
+Note:
+`(´T´)` is just the type ´T´, and not `´T´ *: scala.EmptyTuple`.
+`()` is not a valid type, and not `scala.EmptyTuple`.
+
+If ´n \leq 22´, the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple` is both a subtype and a supertype of tuple class `scala.Tuple´_n´[´T_1´, ..., ´T_n´]`.
 
 Tuple classes are case classes whose fields can be accessed using selectors `_1`, ..., `_n`.
-Their functionality is abstracted in a corresponding `Product` trait.
+Their functionality is abstracted in the corresponding `scala.Product_´n´` trait.
 The _n_-ary tuple class and product trait are defined at least as follows in the standard Scala library (they might also add other methods and implement other traits).
 
 ```scala
 case class Tuple´_n´[+´T_1´, ..., +´T_n´](_1: ´T_1´, ..., _n: ´T_n´)
 extends Product´_n´[´T_1´, ..., ´T_n´]
 
-trait Product´_n´[+´T_1´, ..., +´T_n´] {
+trait Product´_n´[+´T_1´, ..., +´T_n´] extends Product:
   override def productArity = ´n´
   def _1: ´T_1´
   ...
   def _n: ´T_n´
-}
 ```
 
 ### Annotated Types
@@ -329,25 +334,26 @@ FunctionArgs      ::=  InfixType
                     |  ‘(’ [ ParamType {‘,’ ParamType } ] ‘)’
 ```
 
-The type ´(T_1, ..., T_n) \Rightarrow U´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´U´.
-In the case of exactly one argument type ´T \Rightarrow U´ is a shorthand for ´(T) \Rightarrow U´.
-An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.html#by-name-parameters) of type ´T´.
+The type ´(T_1, ..., T_n) \Rightarrow R´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´R´.
+The case of exactly one argument type ´T \Rightarrow R´ is a shorthand for ´(T) \Rightarrow R´.
+An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.md#by-name-parameters) of type ´T´.
 
-Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow U´ is the same as ´S \Rightarrow (T \Rightarrow U)´.
+Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is the same as ´S \Rightarrow (T \Rightarrow R)´.
+
+Function types are [covariant](04-basic-declarations-and-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-declarations-and-definitions.md#variance-annotations) in their argument types.
 
 Function types are shorthands for class types that define an `apply` method.
-Specifically, the ´n´-ary function type ´(T_1 , \ldots , T_n) \Rightarrow U´ is a shorthand for the class type `Function´_n´[´T_1´ , … , ´T_n´, ´U´]`.
-Such class types are defined in the Scala library for ´n´ between 0 and 22 as follows.
+Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ is a shorthand for the class type `Function´_n´[´T_1´, ..., ´T_n´, ´R´]`. 
+In particular ´() \Rightarrow R´ is a shorthand for class type `Function´_0´[´R´]`.
+
+Such class types behave as if they were instances of the following trait:
 
 ```scala
-package scala
-trait Function´_n´[-´T_1´, ..., -´T_n´, +´U´] {
-  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´U´
-  override def toString = "<function>"
-}
+trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
+  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
 ```
 
-Hence, function types are [covariant](04-basic-declarations-and-definitions.html#variance-annotations) in their result type and contravariant in their argument types.
+Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.md#the-function-classes) of the standard library page in this document.
 
 #### Wildcard Types
 

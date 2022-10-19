@@ -381,9 +381,15 @@ Type applications can be omitted if [local type inference](#local-type-inference
 ```ebnf
 SimpleExpr   ::=  ‘(’ [Exprs] ‘)’
 ```
+A _tuple expression_ `(´e_1´, ..., ´e_n´)` where ´n \geq 2´ is equivalent to the expression `´e_1´ *: ... *: ´e_n´ *: scala.EmptyTuple`.
 
-A _tuple expression_ `(´e_1´, ..., ´e_n´)` is an alias for the class instance creation `scala.Tuple´n´(´e_1´, ..., ´e_n´)`, where ´n \geq 2´.
-The empty tuple `()` is the unique value of type `scala.Unit`.
+Note:
+As calls to `*:` are slow, a more efficient translation is free to be implemented.
+For example, `(´e_1´, ´e_2´)` could be translated to `scala.Tuple2(´e_1´, ´e_2´)`, which is indeed equivalent to `´e_1´ *: ´e_2´ *: scala.EmptyTuple`.
+
+Note:
+The expression `(´e_1´)` is not equivalent to `´e_1´ *: scala.EmptyTuple`, but instead a regular parenthesized expression.
+The expression `()` is not an alias for `scala.EmptyTuple`, but instead the unique value of type `scala.Unit`.
 
 ## Instance Creation Expressions
 
@@ -909,6 +915,9 @@ Binding         ::=  (id | ‘_’) [‘:’ Type]
 The anonymous function of arity ´n´, `(´x_1´: ´T_1, ..., x_n´: ´T_n´) => e` maps parameters ´x_i´ of types ´T_i´ to a result given by expression ´e´.
 The scope of each formal parameter ´x_i´ is ´e´.
 Formal parameters must have pairwise distinct names.
+Type bindings can be omitted, in which case the compiler will attempt to infer valid bindings.
+
+Note: `() => ´e´` defines a nullary function (´n´ = 0), and not for example `(_: Unit) => ´e´`.
 
 In the case of a single untyped formal parameter, `(´x\,´) => ´e´` can be abbreviated to `´x´ => ´e´`.
 If an anonymous function `(´x´: ´T\,´) => ´e´` with a single typed parameter appears as the result expression of a block, it can be abbreviated to `´x´: ´T´ => e`.
