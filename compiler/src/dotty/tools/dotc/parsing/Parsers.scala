@@ -142,13 +142,21 @@ object Parsers {
         val length = if offset == in.offset && in.name != null then in.name.show.length else 0
         syntaxError(msg, Span(offset, offset + length))
         lastErrorOffset = in.offset
-      end if
+
+    def syntaxError(msg: => String, offset: Int): Unit =
+      syntaxError(msg.toMessage, offset)
+
+    def syntaxError(msg: => String): Unit =
+      syntaxError(msg, in.offset)
 
     /** Unconditionally issue an error at given span, without
      *  updating lastErrorOffset.
      */
     def syntaxError(msg: Message, span: Span): Unit =
       report.error(msg, source.atSpan(span))
+
+    def syntaxError(msg: => String, span: Span): Unit =
+      syntaxError(msg.toMessage, span)
 
     def unimplementedExpr(using Context): Select =
       Select(Select(rootDot(nme.scala), nme.Predef), nme.???)
@@ -259,9 +267,6 @@ object Parsers {
       in.skip()
       lastErrorOffset = in.offset
 
-    def warning(msg: Message, sourcePos: SourcePosition): Unit =
-      report.warning(msg, sourcePos)
-
     def warning(msg: Message, offset: Int = in.offset): Unit =
       report.warning(msg, source.atSpan(Span(offset)))
 
@@ -282,6 +287,9 @@ object Parsers {
       else
         syntaxError(msg, offset)
         skip()
+
+    def syntaxErrorOrIncomplete(msg: => String): Unit =
+      syntaxErrorOrIncomplete(msg.toMessage, in.offset)
 
     def syntaxErrorOrIncomplete(msg: Message, span: Span): Unit =
       if in.token == EOF then
@@ -350,7 +358,7 @@ object Parsers {
           val statFollows = mustStartStatTokens.contains(found)
           syntaxError(
             if noPrevStat then IllegalStartOfStatement(what, isModifier, statFollows)
-            else i"end of $what expected but ${showToken(found)} found")
+            else i"end of $what expected but ${showToken(found)} found".toMessage)
           if mustStartStatTokens.contains(found) then
             false // it's a statement that might be legal in an outer context
           else
@@ -610,11 +618,11 @@ object Parsers {
           if in.isNewLine && !(nextIndentWidth < startIndentWidth) then
             warning(
               if startIndentWidth <= nextIndentWidth then
-                i"""Line is indented too far to the right, or a `{` is missing before:
+                  i"""Line is indented too far to the right, or a `{` is missing before:
                    |
-                   |${t.tryToShow}"""
+                   |${t.tryToShow}""".toMessage
               else
-                in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth),
+                in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth).toMessage,
               in.next.offset
             )
           t
@@ -627,7 +635,7 @@ object Parsers {
       if in.isNewLine then
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if in.currentRegion.indentWidth < nextIndentWidth then
-          warning(i"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
+          warning(i"Line is indented too far to the right, or a `{` or `:` is missing".toMessage, in.next.offset)
 
 /* -------- REWRITES ----------------------------------------------------------- */
 
@@ -1732,7 +1740,7 @@ object Parsers {
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
           if sourceVersion.isAtLeast(future) then
-            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
+            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead".toMessage)
             patch(source, Span(in.offset, in.offset + 1), "?")
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
@@ -2171,10 +2179,11 @@ object Parsers {
               else Literal(Constant(())) // finally without an expression
             }
             else {
-              if (handler.isEmpty) warning(
-                EmptyCatchAndFinallyBlock(body),
-                source.atSpan(Span(tryOffset, endOffset(body)))
-              )
+              if handler.isEmpty then
+                report.warning(
+                  EmptyCatchAndFinallyBlock(body),
+                  source.atSpan(Span(tryOffset, endOffset(body)))
+                )
               EmptyTree
             }
           ParsedTry(body, handler, finalizer)
@@ -2768,7 +2777,7 @@ object Parsers {
             warning(i"""Misleading indentation: this expression forms part of the preceding catch case.
                        |If this is intended, it should be indented for clarity.
                        |Otherwise, if the handler is intended to be empty, use a multi-line catch with
-                       |an indented case.""")
+                       |an indented case.""".toMessage)
           expr()
         else block()
       })
@@ -2989,7 +2998,8 @@ object Parsers {
         inBrackets {
           if in.token == THIS then
             if sourceVersion.isAtLeast(future) then
-              deprecationWarning("The [this] qualifier will be deprecated in the future; it should be dropped.")
+              deprecationWarning(
+                "The [this] qualifier will be deprecated in the future; it should be dropped.".toMessage)
             in.nextToken()
             mods | Local
           else mods.withPrivateWithin(ident().toTypeName)
@@ -3471,7 +3481,8 @@ object Parsers {
               if sourceVersion.isAtLeast(future) then
                 deprecationWarning(
                   em"""`= _` has been deprecated; use `= uninitialized` instead.
-                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""", rhsOffset)
+                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""".toMessage,
+                  rhsOffset)
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }
             case rhs0 => rhs0

@@ -88,7 +88,7 @@ abstract class AbstractStringFormatterTest extends DottyTest:
   override def initializeCtx(fc: FreshContext) = super.initializeCtx(fc.setSetting(fc.settings.color, "never"))
 
   def Foo = newSymbol(defn.RootClass, typeName("Foo"), EmptyFlags, TypeBounds.empty).typeRef
-  def Err = newErrorSymbol(defn.RootClass, typeName("Err"), "")
+  def Err = newErrorSymbol(defn.RootClass, typeName("Err"), "".toMessage)
   def Big = (1 to 120).foldLeft(defn.StringType)((tp, i) => RefinedType(tp, typeName("A" * 69 + i), TypeAlias(defn.IntType)))
 
   def mkCstrd =
