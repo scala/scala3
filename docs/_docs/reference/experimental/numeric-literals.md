@@ -4,7 +4,7 @@ title: "Numeric Literals"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/numeric-literals.html
 ---
 
-**Note**: This feature is not yet part of the Scala 3 language definition. It can be made available by a language import:
+This feature is not yet part of the Scala 3 language definition. It can be made available by a language import:
 
 ```scala
 import scala.language.experimental.genericNumberLiterals
