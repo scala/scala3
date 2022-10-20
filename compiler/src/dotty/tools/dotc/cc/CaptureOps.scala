@@ -96,10 +96,16 @@ extension (tp: Type)
   /** Is the boxedCaptureSet of this type nonempty? */
   def isBoxedCapturing(using Context) = !tp.boxedCaptureSet.isAlwaysEmpty
 
-  /** If this type is a boxed capturing type, its unboxed version */
-  def unbox(using Context): Type = tp match
+  /** If this type is a boxed capturing type, its unboxed version
+   *  If it is a TermRef of boxed capturing type, an unboxed capturing
+   *  type capturing the TermRef.
+   */
+  def unbox(using Context): Type = tp.widenDealias match
     case tp @ CapturingType(parent, refs) if tp.isBoxed =>
-      CapturingType(parent, refs, boxed = false)
+      val refs1 = tp match
+        case ref: CaptureRef if ref.isTracked => ref.singletonCaptureSet
+        case _ => refs
+      CapturingType(parent, refs1, boxed = false)
     case _ =>
       tp
 
