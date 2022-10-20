@@ -68,6 +68,8 @@ class CompilationTests {
       compileFile("tests/pos-custom-args/i10383.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/pos-custom-args/i13044.scala", defaultOptions.and("-Xmax-inlines:33")),
       compileFile("tests/pos-custom-args/jdk-8-app.scala", defaultOptions.and("-release:8")),
+      compileFile("tests/pos-custom-args/single-additional-import.scala", defaultOptions.and("-Yimports:scala,java.lang,scala.annotation")),
+      compileFile("tests/pos-custom-args/multiple-additional-imports.scala", defaultOptions.and("-Yimports:scala,java.lang,scala.Predef,scala.annotation,scala.util.matching")),
     ).checkCompile()
   }
 
@@ -154,6 +156,8 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")),
       compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")),
       compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")),
+      compileFile("tests/neg-custom-args/noimports-additional.scala", defaultOptions.and("-Yimports:scala.annotation,scala.util.matching")),
+      compileFile("tests/neg-custom-args/nopredef-additional.scala", defaultOptions.and("-Yimports:java.lang,scala.annotation,scala.util.matching")),
       compileFile("tests/neg-custom-args/i1650.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes),

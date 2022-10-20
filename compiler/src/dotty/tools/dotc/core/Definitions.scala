@@ -1558,12 +1558,18 @@ class Definitions {
   private val PredefImportFns: RootRef =
     RootRef(() => ScalaPredefModule.termRef, isPredef=true)
 
+  @tu private lazy val YimportsImportFns: List[RootRef] = ctx.settings.Yimports.value.map { imp =>
+    RootRef(() => requiredPackageRef(imp), isPredef = false)
+  }
+
   @tu private lazy val JavaRootImportFns: List[RootRef] =
-    if ctx.settings.YnoImports.value then Nil
+    if !ctx.settings.Yimports.isDefault then YimportsImportFns
+    else if ctx.settings.YnoImports.value then Nil
     else JavaImportFns
 
   @tu private lazy val ScalaRootImportFns: List[RootRef] =
-    if ctx.settings.YnoImports.value then Nil
+    if !ctx.settings.Yimports.isDefault then YimportsImportFns
+    else if ctx.settings.YnoImports.value then Nil
     else if ctx.settings.YnoPredef.value then ScalaImportFns
     else ScalaImportFns :+ PredefImportFns
 
