@@ -17,3 +17,5 @@ def test: Unit =
   val y = f(C()) // ok
   val y2 = f2(C()) // ok
   ()
+  var x11 = f
+  val x12: {x11} Any = x11

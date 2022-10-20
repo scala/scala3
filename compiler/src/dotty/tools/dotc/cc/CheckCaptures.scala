@@ -89,7 +89,7 @@ object CheckCaptures:
       elem.tpe match
         case ref: CaptureRef =>
           if !ref.canBeTracked then
-            report.error(em"$elem cannot be tracked since it is not a parameter or a local variable", elem.srcPos)
+            report.error(em"$elem cannot be tracked since it is not a parameter or local value", elem.srcPos)
         case tpe =>
           report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
 
@@ -560,8 +560,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           tpe
         case _: Try =>
           tpe
-        case _: ValDef if tree.symbol.is(Mutable) =>
-          tree.symbol.info
         case _ =>
           NoType
       def checkNotUniversal(tp: Type): Unit = tp.widenDealias match
@@ -746,7 +744,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val criticalSet =          // the set which is not allowed to have `*`
               if covariant then cs1    // can't box with `*`
               else expected.captureSet // can't unbox with `*`
-            if criticalSet.isUniversal then
+            if criticalSet.isUniversal && expected.isValueType then
               // We can't box/unbox the universal capability. Leave `actual` as it is
               // so we get an error in checkConforms. This tends to give better error
               // messages than disallowing the root capability in `criticalSet`.
