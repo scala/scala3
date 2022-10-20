@@ -583,7 +583,7 @@
 
 /* show-content button */
 
-.icon-button.show-content::after {
+/* .icon-button.show-content::after {
   content: url("../../../../images/icon-buttons/plus/light/default.svg");
 }
 
@@ -677,7 +677,7 @@
 
 .theme-dark .icon-button.show-content.expand.selected::after {
   content: url("../../../../images/icon-buttons/minus/dark/selected.svg");
-}
+} */
 
 .icon-button.close:disabled {
   opacity: 0.5;

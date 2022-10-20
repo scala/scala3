@@ -62,8 +62,7 @@ color: var(--text-secondary);
 
 .documentableElement .icon-button {
   position: absolute;
-  right: calc(3 * var(--base-spacing));
-  display: none;
+  left: -28px
 }
 
 .documentableElement:hover .icon-button {
