@@ -11,6 +11,7 @@ Some of these classes are described in the following.
 
 ![Class hierarchy of Scala](public/images/classhierarchy.png)
 
+<!-- TODO: Briefly mention scala.deprecated somewhere, and link to [deprecated page](./A%3F-deprecated.md) -->
 ## Root Classes
 
 The root of this hierarchy is formed by class `Any`.
