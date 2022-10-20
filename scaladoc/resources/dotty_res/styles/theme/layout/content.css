@@ -184,7 +184,7 @@
 }
 
 #content li > ul {
-  padding-left: 32px;
+  padding-left: calc(4 * var(--base-spacing));
 }
 
 /* content table */
@@ -218,6 +218,8 @@
 #content a {
     color: var(--text-primary);
     text-decoration: underline solid 1px;
+    -webkit-text-decoration-line: underline; /* Safari */
+    text-decoration-line: underline;
     text-underline-offset: 2px;
     transition: text-decoration-color .2s ease-in-out;
 }
@@ -227,7 +229,7 @@
 }
 
 #content .cover-header {
-  margin-block-end: calc(2*var(--base-spacing));
+  margin-block-end: calc(2 * var(--base-spacing));
 }
 
 #content .cover-header a,
@@ -252,6 +254,57 @@
   font-size: 16px;
   line-height: 24px;
 }
+
+#content a code,
+#content .body-large a code,
+#content :is(h1, h2, h3, h4, h5, h6) code {
+  font-family: inherit;
+  font-size: inherit;
+  background: none;
+  display: inline;
+  border: none;
+  padding: 0;
+}
+
+#content a code:before,
+#content .body-large a code:before,
+#content :is(h1, h2, h3, h4, h5, h6) code:before {
+  content: '"';
+}
+
+#content a code:after,
+#content .body-large a code:after,
+#content :is(h1, h2, h3, h4, h5, h6) code:after {
+  content: '"';
+}
+
+#content main :is(ul, ol) {
+  margin-block-start: calc(2 * var(--base-spacing));
+  margin-block-end: calc(3 * var(--base-spacing));
+  padding: 0 0 0 24px;
+}
+
+#content main :is(ul, ol) li {
+  margin-block-start: calc(2 * var(--base-spacing));
+}
+
+#content main :is(ul, ol) li p {
+  margin: 0;
+}
+
+main ul li::marker {
+  content: '•  ';
+}
+
+main ol li::marker {
+  content: counters(list-item,'.') ')  ';
+}
+
+main :is(ul, ol) li .snippet {
+  margin-block-start: calc(2 * var(--base-spacing));
+  margin-block-end: calc(2 * var(--base-spacing));
+}
+
 
 .breadcrumbs {
   display: none;
