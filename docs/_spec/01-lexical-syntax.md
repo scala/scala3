@@ -259,7 +259,7 @@ A single new line token is accepted
 
 ## Literals
 
-There are literals for integer numbers, floating point numbers, characters, booleans, symbols, strings.
+There are literals for integer numbers, floating point numbers, characters, booleans, strings.
 The syntax of these literals is in each case as in Java.
 
 <!-- TODO
@@ -274,7 +274,6 @@ Literal  ::=  [‘-’] integerLiteral
            |  characterLiteral
            |  stringLiteral
            |  interpolatedString
-           |  symbolLiteral
            |  ‘null’
 ```
 
@@ -489,16 +488,6 @@ The following character escape sequences are recognized in character and string 
 In addition, Unicode escape sequences of the form `\uxxxx`, where each `x` is a hex digit are recognized in character and string literals.
 
 It is a compile time error if a backslash character in a character or string literal does not start a valid escape sequence.
-
-### Symbol literals
-
-```ebnf
-symbolLiteral  ::=  ‘'’ plainid
-```
-
-A symbol literal `'x` is deprecated shorthand for the expression `scala.Symbol("x")`.
-
-The `apply` method of `Symbol`'s companion object caches weak references to `Symbol`s, thus ensuring that identical symbol literals are equivalent with respect to reference equality.
 
 ## Whitespace and Comments
 
