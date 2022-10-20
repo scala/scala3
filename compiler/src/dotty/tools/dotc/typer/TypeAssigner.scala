@@ -167,7 +167,7 @@ trait TypeAssigner {
       case _ => false
     def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
     val msg: Message =
-      if tree.name == nme.CONSTRUCTOR then ex"$qualType does not have a constructor"
+      if tree.name == nme.CONSTRUCTOR then ex"$qualType does not have a constructor".toMessage
       else NotAMember(qualType, tree.name, kind, addendum)
     errorType(msg, tree.srcPos)
 

@@ -479,7 +479,7 @@ trait Applications extends Compatibility {
         matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
         if (methType.isError) ok = false
-        else fail(s"$methString does not take parameters")
+        else fail(s"$methString does not take parameters".toMessage)
     }
 
     /** The application was successful */
@@ -522,7 +522,7 @@ trait Applications extends Compatibility {
                     s"parameter $aname of $methString is already instantiated"
                   else
                     s"$methString does not have a parameter $aname"
-                fail(msg, arg.asInstanceOf[Arg])
+                fail(msg.toMessage, arg.asInstanceOf[Arg])
                 arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop)
               }
             case arg :: args1 =>
@@ -564,7 +564,7 @@ trait Applications extends Compatibility {
                   i"it is not the only argument to be passed to the corresponding repeated parameter $formal"
                 else
                   i"the corresponding parameter has type $formal which is not a repeated parameter type"
-              fail(em"Sequence argument type annotation `*` cannot be used here:\n$addendum", arg)
+              fail(em"Sequence argument type annotation `*` cannot be used here:\n$addendum".toMessage, arg)
 
           /** Add result of typing argument `arg` against parameter type `formal`.
            *  @return  The remaining formal parameter types. If the method is parameter-dependent
@@ -651,7 +651,7 @@ trait Applications extends Compatibility {
                   i"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
                 case _ =>
                   i"too many arguments for $methString"
-              fail(msg, arg)
+              fail(msg.toMessage, arg)
             case nil =>
           }
       }

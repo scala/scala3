@@ -6,6 +6,7 @@ import Settings._
 
 import org.junit.Test
 import org.junit.Assert._
+import core.Decorators.toMessage
 
 class ScalaSettingsTests:
 
@@ -72,14 +73,14 @@ class ScalaSettingsTests:
     val proc = sets.processArguments(sumy, processAll = true, skipped = Nil)
     val conf = sets.Wconf.valueIn(proc.sstate)
     val sut  = reporting.WConf.fromSettings(conf).getOrElse(???)
-    val msg  = NoExplanation("There was a problem!")
+    val msg  = "There was a problem!".toMessage
     val depr = new Diagnostic.DeprecationWarning(msg, util.NoSourcePosition)
     assertEquals(Action.Silent, sut.action(depr))
     val feat = new Diagnostic.FeatureWarning(msg, util.NoSourcePosition)
     assertEquals(Action.Error, sut.action(feat))
     val warn = new Diagnostic.Warning(msg, util.NoSourcePosition)
     assertEquals(Action.Warning, sut.action(warn))
-    val nowr = new Diagnostic.Warning(NoExplanation("This is a problem."), util.NoSourcePosition)
+    val nowr = new Diagnostic.Warning("This is a problem.".toMessage, util.NoSourcePosition)
     assertEquals(Action.Silent, sut.action(nowr))
 
 end ScalaSettingsTests

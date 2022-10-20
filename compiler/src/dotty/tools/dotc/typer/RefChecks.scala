@@ -464,7 +464,7 @@ object RefChecks {
         if (autoOverride(member) ||
             other.owner.isAllOf(JavaInterface) &&
             warnOnMigration(
-              "`override` modifier required when a Java 8 default method is re-implemented",
+              "`override` modifier required when a Java 8 default method is re-implemented".toMessage,
               member.srcPos, version = `3.0`))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))

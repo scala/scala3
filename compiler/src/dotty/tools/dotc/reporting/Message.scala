@@ -13,12 +13,6 @@ object Message {
   val nonSensicalStartTag: String = "<nonsensical>"
   val nonSensicalEndTag: String = "</nonsensical>"
 
-  /** This implicit conversion provides a fallback for error messages that have
-    * not yet been ported to the new scheme. Comment out this `implicit def` to
-    * see where old errors still exist
-    */
-  implicit def toNoExplanation(str: => String): Message = NoExplanation(str)
-
   def rewriteNotice(what: String, version: SourceVersion | Null = null, options: String = "")(using Context): String =
     if !ctx.mode.is(Mode.Interactive) then
       val sourceStr = if version != null then i"-source $version" else ""
