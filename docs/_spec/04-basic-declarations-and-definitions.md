@@ -612,9 +612,7 @@ sum(xs: _*)
 ### Method Return Type Inference
 
 A class member definition ´m´ that overrides some other method ´m'´ in a base class of ´C´ may leave out the return type, even if it is recursive.
-In this case, the return type ´R'´ of the overridden method ´m'´, seen as a member of ´C´, is taken as the return type of ´m´ for each recursive invocation of ´m´.
-That way, a type ´R´ for the right-hand side of ´m´ can be determined, which is then taken as the return type of ´m´.
-Note that ´R´ may be different from ´R'´, as long as ´R´ conforms to ´R'´.
+In this case, whether or not `m` is recursive, its return type will be the return type of ´m'´.
 
 ###### Example
 Assume the following definitions:
