@@ -7,5 +7,6 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.caps"),
     ProblemFilters.exclude[MissingClassProblem]("scala.caps$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.retains"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.retainsUniversal"),
   )
 }
