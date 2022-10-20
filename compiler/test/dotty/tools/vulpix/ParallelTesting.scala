@@ -474,15 +474,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           if more == "+" then isJavaAtLeast(n) else javaSpecVersion == n
         case Some(args) => throw new IllegalStateException(args.mkString("unknown test option: ", ", ", ""))
         case None => true
-      val minRelease = toolArgs.get(ToolName.Test) match
-        case Some("-jvm" :: spec(n, more) :: Nil) =>
-          if more == "+" then javaSpecVersion else n
-        case _ => "8"
 
-      def scalacOptions =
-        toolArgs.get(ToolName.Scalac)
-          .map(args => if args.exists(_.startsWith("-release")) then args else "-release" :: minRelease :: args)
-          .getOrElse(Nil)
+      def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Nil)
 
       val flags = flags0
         .and(scalacOptions: _*)
