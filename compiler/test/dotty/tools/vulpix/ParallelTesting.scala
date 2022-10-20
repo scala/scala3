@@ -281,10 +281,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private final def onComplete(testSource: TestSource, reportersOrCrash: Try[Seq[TestReporter]], logger: LoggedRunnable): Unit =
       reportersOrCrash match {
         case TryFailure(exn) => onFailure(testSource, Nil, logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
-        case TrySuccess(reporters) => maybeFailureMessage(testSource, reporters) match {
-          case Some(msg) => onFailure(testSource, reporters, logger, Option(msg).filter(_.nonEmpty))
-          case None => onSuccess(testSource, reporters, logger)
-        }
+        case TrySuccess(reporters) if !reporters.exists(_.skipped) =>
+          maybeFailureMessage(testSource, reporters) match {
+            case Some(msg) => onFailure(testSource, reporters, logger, Option(msg).filter(_.nonEmpty))
+            case None => onSuccess(testSource, reporters, logger)
+          }
+        case _ =>
       }
 
     /**
@@ -392,9 +394,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def failureCount: Int = _failureCount
 
     private var _skipCount = 0
-    protected final def skip(): Unit = synchronized { _skipCount += 1 }
+    protected final def registerSkip(): Unit = synchronized { _skipCount += 1 }
     def skipCount: Int = _skipCount
-    def skipped: Boolean = skipCount > 0
 
     protected def logBuildInstructions(testSource: TestSource, reporters: Seq[TestReporter]) = {
       val (errCount, warnCount) = countErrorsAndWarnings(reporters)
@@ -529,7 +530,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           fail(failure = JavaCompilationFailure(javaErrors.get))
         }
       else
-        skip()
+        registerSkip()
+        reporter.setSkip()
       end if
 
       reporter
@@ -731,8 +733,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
-      if skipped then ()
-      else if Properties.testsNoRun then addNoRunWarning()
+      if Properties.testsNoRun then addNoRunWarning()
       else runMain(testSource.runClassPath, testSource.allToolArgs) match {
         case Success(output) => checkFile match {
           case Some(file) if file.exists => diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
@@ -756,7 +757,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     override def suppressErrors = true
 
-    override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] = if skipped then None else
+    override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
       def compilerCrashed = reporters.exists(_.compilerCrashed)
       lazy val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
@@ -997,7 +998,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       if (!shouldFail && test.didFail) {
         fail(s"Expected no errors when compiling, failed for the following reason(s):\n${reasonsForFailure(test)}\n")
       }
-      else if (shouldFail && !test.didFail) {
+      else if (shouldFail && !test.didFail && test.skipCount == 0) {
         fail("Pos test should have failed, but didn't")
       }
 
@@ -1013,12 +1014,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       cleanup()
 
-      if !test.skipped then
-        if shouldFail && !test.didFail then
-          fail(s"Neg test shouldn't have failed, but did. Reasons:\n${ reasonsForFailure(test) }")
-        else if !shouldFail && test.didFail then
-          fail("Neg test should have failed, but did not")
-      end if
+      if shouldFail && !test.didFail && test.skipCount == 0 then
+        fail(s"Neg test shouldn't have failed, but did. Reasons:\n${ reasonsForFailure(test) }")
+      else if !shouldFail && test.didFail then
+        fail("Neg test should have failed, but did not")
 
       this
     end checkExpectedErrors
@@ -1046,12 +1045,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       cleanup()
 
-      if !test.skipped then
-        if !shouldFail && test.didFail then
-          fail(s"Run test failed, but should not, reasons:\n${ reasonsForFailure(test) }")
-        else if shouldFail && !test.didFail then
-          fail("Run test should have failed, but did not")
-      end if
+      if !shouldFail && test.didFail then
+        fail(s"Run test failed, but should not, reasons:\n${ reasonsForFailure(test) }")
+      else if shouldFail && !test.didFail && test.skipCount == 0 then
+        fail("Run test should have failed, but did not")
 
       this
     }
