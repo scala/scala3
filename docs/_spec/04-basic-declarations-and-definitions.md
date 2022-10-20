@@ -609,43 +609,6 @@ By contrast, the following application is well formed and yields again the resul
 sum(xs: _*)
 ```
 
-### Procedures
-
-```ebnf
-FunDcl   ::=  FunSig
-FunDef   ::=  FunSig [nl] ‘{’ Block ‘}’
-```
-
-Special syntax exists for procedures, i.e. methods that return the `Unit` value `()`.
-A _procedure declaration_ is a method declaration where the result type is omitted.
-The result type is then implicitly completed to the `Unit` type. E.g., `def ´f´(´\mathit{ps}´)` is equivalent to `def ´f´(´\mathit{ps}´): Unit`.
-
-A _procedure definition_ is a method definition where the result type and the equals sign are omitted; its defining expression must be a block.
-E.g., `def ´f´(´\mathit{ps}´) {´\mathit{stats}´}` is equivalent to `def ´f´(´\mathit{ps}´): Unit = {´\mathit{stats}´}`.
-
-###### Example
-Here is a declaration and a definition of a procedure named `write`:
-
-```scala
-trait Writer {
-  def write(str: String)
-}
-object Terminal extends Writer {
-  def write(str: String) { System.out.println(str) }
-}
-```
-
-The code above is implicitly completed to the following code:
-
-```scala
-trait Writer {
-  def write(str: String): Unit
-}
-object Terminal extends Writer {
-  def write(str: String): Unit = { System.out.println(str) }
-}
-```
-
 ### Method Return Type Inference
 
 A class member definition ´m´ that overrides some other method ´m'´ in a base class of ´C´ may leave out the return type, even if it is recursive.
