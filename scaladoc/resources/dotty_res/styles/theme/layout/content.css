@@ -14,7 +14,6 @@
   transition: width 0.3s ease-in-out;
 }
 
-
 #content > div:first-child {
   overflow: clip;
 }
@@ -172,7 +171,7 @@
 
 /* content first paragraph */
 .first-p {
-    margin-block-start: 0;
+    margin-block-start: calc(2* var(--base-spacing));
 }
 
 #content .first-p {

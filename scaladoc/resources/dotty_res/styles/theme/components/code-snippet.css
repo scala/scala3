@@ -16,12 +16,14 @@
 .snippet pre {
   margin: 0;
   line-height: 20px;
-  font-family: "FiraCode-Regular";
 }
 
 .snippet pre code {
-  padding-right: calc(2* var(--base-spacing));
   font-family: "FiraCode-Regular";
+}
+
+.snippet pre code > span {
+  padding-right: calc(2* var(--base-spacing));
 }
 
 dd .snippet {

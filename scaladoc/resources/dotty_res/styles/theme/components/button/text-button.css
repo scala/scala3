@@ -44,7 +44,8 @@ a:active {
 }
 
 .text-button::after {
-  margin-left: calc(1 * var(--base-spacing));
+  margin-left: calc(.5 * var(--base-spacing));
+  vertical-align: bottom;
 }
 
 /* button with arrow */

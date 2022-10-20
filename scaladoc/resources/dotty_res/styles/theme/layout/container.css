@@ -6,6 +6,11 @@ body {
   overflow: hidden;
 }
 
+p {
+  margin-block-start: calc(3 * var(--base-spacing));
+  margin-block-end: calc(3 * var(--base-spacing));
+}
+
 [id] {
   scroll-margin-top: calc(10 * var(--base-spacing));
 }

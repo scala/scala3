@@ -8,7 +8,13 @@
 #toc-container {
   width: 232px;
   position: sticky;
-  top: calc(18 * var(--base-spacing))
+  top: calc(18 * var(--base-spacing));
+  padding: var(--base-spacing);
+}
+
+.toc-list {
+  margin-block-start: calc(2 * var(--base-spacing));
+  margin-block-end: 0;;
 }
 
 #toc ul {
@@ -20,8 +26,9 @@
   margin-bottom: calc(2.5 * var(--base-spacing));
 }
 
-#toc li > ul {
+#toc .toc-list li > ul {
   margin-top: calc(2.5 * var(--base-spacing));
+  padding-left: calc(3 * var(--base-spacing));
 }
 
 @media (min-width: 1920px) {
