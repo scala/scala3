@@ -170,6 +170,22 @@
     margin-block-end: calc(3* var(--base-spacing));
 }
 
+#content .cover > h2 {
+  color: var(--text-secondary);
+  margin: 8px 0 0;
+  padding: 12px var(--base-spacing);
+}
+
+#content .cover > h2 {
+  color: var(--text-secondary);
+  margin: 0;
+  padding: 12px var(--base-spacing);
+}
+
+#content .cover > h2:first-of-type {
+  margin: 8px 0 0;
+}
+
 /* content first paragraph */
 .first-p {
     margin-block-start: calc(2* var(--base-spacing));

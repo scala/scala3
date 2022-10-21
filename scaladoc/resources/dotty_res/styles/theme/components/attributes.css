@@ -16,7 +16,7 @@
 }
 
 .attributes > dt {
-  padding: calc(2.5 * var(--base-spacing)) calc(6 * var(--base-spacing)) calc(2.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
+ padding: calc(2.5 * var(--base-spacing)) calc(6 * var(--base-spacing)) calc(2.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
   border-top: 1px solid var(--border-default);
   text-align: right;
   color: var(--text-secondary);
@@ -29,6 +29,22 @@
   border-top: 1px solid var(--border-default);
   overflow: hidden;
   padding: calc(2 * var(--base-spacing)) 0;
+}
+
+.attributes .memberList dt {
+ padding: calc(1.5 * var(--base-spacing)) calc(6 * var(--base-spacing)) calc(1.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
+  border-top: 1px solid var(--border-default);
+  text-align: right;
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+
+.attributes .memberList dd {
+  padding-left: 10%;
+  margin: 0;
+  border-top: 1px solid var(--border-default);
+  overflow: hidden;
+  padding: var(--base-spacing) 0;
 }
 
 .attributes > dt:first-child,
