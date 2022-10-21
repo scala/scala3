@@ -30,7 +30,8 @@ import NameKinds.ParamAccessorName
  *  The aim of this transformation is to avoid redundant parameter accessor fields.
  */
 class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
-  import ast.tpd._
+  import ast.tpd.*
+  import ParamForwarding.inheritedAccessor
 
   private def thisPhase: ParamForwarding = this
 
@@ -39,20 +40,6 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
   override def description: String = ParamForwarding.description
 
   def transformIfParamAlias(mdef: ValOrDefDef)(using Context): Tree =
-
-    def inheritedAccessor(sym: Symbol)(using Context): Symbol =
-      val candidate = sym.owner.asClass.superClass
-        .info.decl(sym.name).suchThat(_.is(ParamAccessor, butNot = Mutable))
-        .symbol
-      if !candidate.is(Private)  // candidate might be private and accessible if it is in an outer class
-         && candidate.isAccessibleFrom(currentClass.thisType, superAccess = true)
-      then
-        candidate
-      else if candidate.is(SuperParamAlias) then
-        inheritedAccessor(candidate)
-      else
-        NoSymbol
-
     val sym = mdef.symbol.asTerm
     if sym.is(SuperParamAlias) then
       assert(sym.is(ParamAccessor, butNot = Mutable))
@@ -84,3 +71,17 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
 object ParamForwarding:
   val name: String = "paramForwarding"
   val description: String = "add forwarders for aliases of superclass parameters"
+
+  def inheritedAccessor(sym: Symbol)(using Context): Symbol =
+    val candidate = sym.owner.asClass.superClass
+      .info.decl(sym.name).suchThat(_.is(ParamAccessor, butNot = Mutable))
+      .symbol
+    if !candidate.is(Private)  // candidate might be private and accessible if it is in an outer class
+        && candidate.isAccessibleFrom(currentClass.thisType, superAccess = true)
+    then
+      candidate
+    else if candidate.is(SuperParamAlias) then
+      inheritedAccessor(candidate)
+    else
+      NoSymbol
+end ParamForwarding

@@ -6,7 +6,7 @@ import Decorators._
 import Contexts._
 import Types._
 import Symbols._
-import util.SimpleIdentityMap
+import util.{SimpleIdentitySet, SimpleIdentityMap}
 import collection.mutable
 import printing._
 
@@ -47,7 +47,7 @@ sealed abstract class GadtConstraint extends Showable {
   def isNarrowing: Boolean
 
   /** See [[ConstraintHandling.approximation]] */
-  def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type
+  def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type
 
   def symbols: List[Symbol]
 
@@ -56,6 +56,7 @@ sealed abstract class GadtConstraint extends Showable {
   /** Restore the state from other [[GadtConstraint]], probably copied using [[fresh]] */
   def restore(other: GadtConstraint): Unit
 
+  /** Provides more information than toText, by showing the underlying Constraint details. */
   def debugBoundsDescription(using Context): String
 }
 
@@ -68,7 +69,7 @@ final class ProperGadtConstraint private(
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
   def this() = this(
-    myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty),
+    myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentitySet.empty),
     mapping = SimpleIdentityMap.empty,
     reverseMapping = SimpleIdentityMap.empty,
     wasConstrained = false
@@ -134,7 +135,7 @@ final class ProperGadtConstraint private(
 
     // The replaced symbols are picked up here.
     addToConstraint(poly1, tvars)
-      .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
+      .showing(i"added to constraint: [$poly1] $params%, % gadt = $this", gadts)
   }
 
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
@@ -205,9 +206,9 @@ final class ProperGadtConstraint private(
 
   def isNarrowing: Boolean = wasConstrained
 
-  override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = {
+  override def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int)(using Context): Type = {
     val res =
-      approximation(tvarOrError(sym).origin, fromBelow = fromBelow) match
+      approximation(tvarOrError(sym).origin, fromBelow, maxLevel) match
         case tpr: TypeParamRef =>
           // Here we do externalization when the returned type is a TypeParamRef,
           //  b/c ConstraintHandling.approximation may return internal types when
@@ -291,17 +292,9 @@ final class ProperGadtConstraint private(
 
   override def constr = gadtsConstr
 
-  override def toText(printer: Printer): Texts.Text = constraint.toText(printer)
+  override def toText(printer: Printer): Texts.Text = printer.toText(this)
 
-  override def debugBoundsDescription(using Context): String = {
-    val sb = new mutable.StringBuilder
-    sb ++= constraint.show
-    sb += '\n'
-    mapping.foreachBinding { case (sym, _) =>
-      sb ++= i"$sym: ${fullBounds(sym)}\n"
-    }
-    sb.result
-  }
+  override def debugBoundsDescription(using Context): String = i"$this\n$constraint"
 }
 
 @sharable object EmptyGadtConstraint extends GadtConstraint {
@@ -317,7 +310,7 @@ final class ProperGadtConstraint private(
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
-  override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
+  override def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
 
   override def symbols: List[Symbol] = Nil
 
@@ -325,7 +318,6 @@ final class ProperGadtConstraint private(
   override def restore(other: GadtConstraint): Unit =
     assert(!other.isNarrowing, "cannot restore a non-empty GADTMap")
 
-  override def debugBoundsDescription(using Context): String = "EmptyGadtConstraint"
-
-  override def toText(printer: Printer): Texts.Text = "EmptyGadtConstraint"
+  override def toText(printer: Printer): Texts.Text = printer.toText(this)
+  override def debugBoundsDescription(using Context): String = i"$this"
 }

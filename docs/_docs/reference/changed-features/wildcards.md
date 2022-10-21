@@ -10,7 +10,7 @@ List[?]
 Map[? <: AnyRef, ? >: Null]
 ```
 
-### Motivation
+## Motivation
 
 We would like to use the underscore syntax `_` to stand for an anonymous type parameter, aligning it with its meaning in
 value parameter lists. So, just as `f(_)` is a shorthand for the lambda `x => f(x)`, in the future `C[_]` will be a shorthand
@@ -21,7 +21,7 @@ In the future, `F[_]` will mean the same thing, no matter where it is used.
 We pick `?` as a replacement syntax for wildcard types, since it aligns with
 [Java's syntax](https://docs.oracle.com/javase/tutorial/java/generics/wildcardGuidelines.html).
 
-### Migration Strategy
+## Migration Strategy
 
 The migration to the new scheme is complicated, in particular since the [kind projector](https://github.com/typelevel/kind-projector)
 compiler plugin still uses the reverse convention, with `?` meaning parameter placeholder instead of wildcard. Fortunately, kind projector has added `*` as an alternative syntax for `?`.

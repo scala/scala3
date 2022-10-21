@@ -80,9 +80,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.2.0-RC4"
+  val referenceVersion = "3.2.1-RC4"
 
-  val baseVersion = "3.2.1-RC1"
+  val baseVersion = "3.2.2-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -98,7 +98,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.1.3"
+  val previousDottyVersion = "3.2.0"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -120,8 +120,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.8"
-    case Bootstrapped => "2.13.8"
+    case NonBootstrapped => "2.13.10"
+    case Bootstrapped => "2.13.10"
   }
 
   val dottyOrganization = "org.scala-lang"
@@ -1498,7 +1498,7 @@ object Build {
             .add(OutputDir("scaladoc/output/reference"))
             .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
             .add(ProjectName("Scala 3 Reference"))
-            .add(ProjectVersion("3.1.3")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
+            .add(ProjectVersion("3.2.0")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
               s"${temp.getAbsolutePath}=github://lampepfl/dotty/language-reference-stable"

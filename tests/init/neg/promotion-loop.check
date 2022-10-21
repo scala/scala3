@@ -8,7 +8,7 @@
    |          -> println(b)      // error	[ promotion-loop.scala:16 ]
    |                     ^
    |
-   |          Promoting the value to hot failed due to the following problem:
+   |          Promoting the value to hot (transitively initialized) failed due to the following problem:
    |          Cannot prove that the field value outer is hot. Found = ThisRef[class Test].
    |          Non initialized field(s): value n. Promotion trace:
    |          -> val outer = test	[ promotion-loop.scala:12 ]

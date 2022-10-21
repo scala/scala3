@@ -20,6 +20,7 @@ import printing.Texts._
 import printing.Printer
 import io.AbstractFile
 import util.common._
+import util.NoSourcePosition
 import typer.Checking.checkNonCyclic
 import typer.Nullables._
 import transform.SymUtils._
@@ -32,6 +33,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 import reporting._
+import cc.adaptFunctionTypeUnderCC
 
 object Scala2Unpickler {
 
@@ -743,7 +745,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       val anyTypes = boundSyms map (_ => defn.AnyType)
       val boundBounds = boundSyms map (_.info.bounds.hi)
       val tp2 = tp1.subst(boundSyms, boundBounds).subst(boundSyms, anyTypes)
-      report.warning(FailureToEliminateExistential(tp, tp1, tp2, boundSyms, classRoot.symbol))
+      report.warning(FailureToEliminateExistential(tp, tp1, tp2, boundSyms, classRoot.symbol), NoSourcePosition)
       tp2
     }
     else tp1
@@ -822,7 +824,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           // special-case in erasure, see TypeErasure#eraseInfo.
           OrType(args(0), args(1), soft = false)
         }
-        else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
+        else if args.nonEmpty then
+          tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
+            .adaptFunctionTypeUnderCC
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>

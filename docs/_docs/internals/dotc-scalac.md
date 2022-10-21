@@ -6,7 +6,7 @@ title: "Differences between Scalac and Dotty"
 Overview explanation how symbols, named types and denotations hang together:
 [Denotations1]
 
-### Denotation ###
+## Denotation ##
 Comment with a few details: [Denotations2]
 
 A `Denotation` is the result of a name lookup during a given period
@@ -21,7 +21,7 @@ A `Denotation` is the result of a name lookup during a given period
 Denotations of methods have a signature ([Signature1]), which
 uniquely identifies overloaded methods.
 
-#### Denotation vs. SymDenotation ####
+### Denotation vs. SymDenotation ###
 A `SymDenotation` is an extended denotation that has symbol-specific properties
 (that may change over phases)
 * `flags`
@@ -31,7 +31,7 @@ A `SymDenotation` is an extended denotation that has symbol-specific properties
 `SymDenotation` implements lazy types (similar to scalac). The type completer
 assigns the denotation's `info`.
 
-#### Implicit Conversion ####
+### Implicit Conversion ###
 There is an implicit conversion:
 ```scala
 core.Symbols.toDenot(sym: Symbol)(implicit ctx: Context): SymDenotation
@@ -42,7 +42,7 @@ implicit conversion does **not** need to be imported, it is part of the
 implicit scope of the type `Symbol` (check the Scala spec). However, it can
 only be applied if an implicit `Context` is in scope.
 
-### Symbol ###
+## Symbol ##
 * `Symbol` instances have a `SymDenotation`
 * Most symbol properties in the Scala 2 compiler are now in the denotation (in the Scala 3 compiler).
 
@@ -57,7 +57,7 @@ if (sym is Flags.PackageClass)  // Scala 3 (*)
 `(*)` Symbols are implicitly converted to their denotation, see above. Each
 `SymDenotation` has flags that can be queried using the `is` method.
 
-### Flags ###
+## Flags ##
 * Flags are instances of the value class `FlagSet`, which encapsulates a
   `Long`
 * Each flag is either valid for types, terms, or both
@@ -74,7 +74,7 @@ if (sym is Flags.PackageClass)  // Scala 3 (*)
   `ModuleVal` / `ModuleClass` for either of the two.
 * `flags.is(Method | Param)`: true if `flags` has either of the two
 
-### Tree ###
+## Tree ##
 * Trees don't have symbols
   - `tree.symbol` is `tree.denot.symbol`
   - `tree.denot` is `tree.tpe.denot` where the `tpe` is a `NamdedType` (see
@@ -87,7 +87,7 @@ if (sym is Flags.PackageClass)  // Scala 3 (*)
     using `prefix.member(name)`.
 
 
-### Type ###
+## Type ##
  * `MethodType(paramSyms, resultType)` from scalac =>
     `mt @ MethodType(paramNames, paramTypes)`. Result type is `mt.resultType`
 

@@ -103,6 +103,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
 
   private val mainThread = Thread.currentThread()
 
+  @nowarn("cat=deprecation")
   private[profile] def snapThread(idleTimeNanos: Long): ProfileSnap = {
     import RealProfiler._
     val current = Thread.currentThread()
@@ -245,6 +246,7 @@ class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
     reportCommon(EventType.BACKGROUND, profiler, threadRange)
   override def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
     reportCommon(EventType.MAIN, profiler, threadRange)
+  @nowarn("cat=deprecation")
   private def reportCommon(tpe:EventType, profiler: RealProfiler, threadRange: ProfileRange): Unit =
     out.println(s"$tpe,${threadRange.start.snapTimeNanos},${threadRange.end.snapTimeNanos},${profiler.id},${threadRange.phase.id},${threadRange.phase.phaseName.replace(',', ' ')},${threadRange.purpose},${threadRange.taskCount},${threadRange.thread.getId},${threadRange.thread.getName},${threadRange.runNs},${threadRange.idleNs},${threadRange.cpuNs},${threadRange.userNs},${threadRange.allocatedBytes},${threadRange.end.heapBytes} ")
 

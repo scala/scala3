@@ -9,6 +9,7 @@ import scala.util.control.NonFatal
 import Contexts._, Names._, Phases._, Symbols._
 import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
 import transform.MegaPhase
+import reporting.{Message, NoExplanation}
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -56,6 +57,9 @@ object Decorators {
       val padding = " " * width
       padding + s.replace("\n", "\n" + padding)
   end extension
+
+  extension (str: => String)
+    def toMessage: Message = reporting.NoExplanation(str)
 
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.
@@ -293,13 +297,13 @@ object Decorators {
      *  error messages after the first one if some of their arguments are "non-sensical".
      */
     def em(args: Shown*)(using Context): String =
-      new ErrorMessageFormatter(sc).assemble(args)
+      forErrorMessages(new StringFormatter(sc).assemble(args))
 
     /** Formatting with added explanations: Like `em`, but add explanations to
      *  give more info about type variables and to disambiguate where needed.
      */
     def ex(args: Shown*)(using Context): String =
-      explained(em(args: _*))
+      explained(new StringFormatter(sc).assemble(args))
 
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)

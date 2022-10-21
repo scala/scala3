@@ -216,6 +216,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
 
    <details>
    <summary>Example 1</summary>
+   
    ```scala
    import scala.annotation.experimental
 
@@ -241,6 +242,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
      }
    }
    ```
+   
    </details>
 
 5. Annotations of an experimental definition are in experimental scopes. Examples:

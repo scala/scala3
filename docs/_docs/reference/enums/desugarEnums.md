@@ -159,7 +159,7 @@ map into `case class`es or `val`s.
    as long as that type is still compatible with the expected type at the point of application.
    A call `t.copy(ts)` of `C`'s `copy` method is treated in the same way.
 
-### Translation of Enums with Singleton Cases
+## Translation of Enums with Singleton Cases
 
 An enum `E` (possibly generic) that defines one or more singleton cases
 will define the following additional synthetic members in its companion object (where `E'` denotes `E` with
@@ -189,7 +189,7 @@ The `ordinal` method is only generated if the enum does not extend from `java.la
 `java.lang.Enum` defines it. Similarly there is no need to override `toString` as that is defined in terms of `name` in
 `java.lang.Enum`. Finally, `productPrefix` will call `this.name` when `E` extends `java.lang.Enum`.
 
-### Scopes for Enum Cases
+## Scopes for Enum Cases
 
 A case in an `enum` is treated similarly to a secondary constructor. It can access neither the enclosing `enum` using `this`, nor its value parameters or instance members using simple
 identifiers.
@@ -197,7 +197,7 @@ identifiers.
 Even though translated enum cases are located in the enum's companion object, referencing
 this object or its members via `this` or a simple identifier is also illegal. The compiler typechecks enum cases in the scope of the enclosing companion object but flags any such illegal accesses as errors.
 
-### Translation of Java-compatible enums
+## Translation of Java-compatible enums
 
 A Java-compatible enum is an enum that extends `java.lang.Enum`. The translation rules are the same as above, with the reservations defined in this section.
 
@@ -205,7 +205,7 @@ It is a compile-time error for a Java-compatible enum to have class cases.
 
 Cases such as `case C` expand to a `@static val` as opposed to a `val`. This allows them to be generated as static fields of the enum type, thus ensuring they are represented the same way as Java enums.
 
-### Other Rules
+## Other Rules
 
 - A normal case class which is not produced from an enum case is not allowed to extend
   `scala.reflect.Enum`. This ensures that the only cases of an enum are the ones that are

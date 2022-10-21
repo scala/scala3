@@ -14,13 +14,16 @@ import Variances.varianceSign
 import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
+import config.Config
+import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
 
 class PlainPrinter(_ctx: Context) extends Printer {
+
   /** The context of all public methods in Printer and subclasses.
    *  Overridden in RefinedPrinter.
    */
-  protected def curCtx: Context = _ctx.addMode(Mode.Printing)
-  protected given [DummyToEnforceDef]: Context = curCtx
+  def printerContext: Context = _ctx.addMode(Mode.Printing)
+  protected given [DummyToEnforceDef]: Context = printerContext
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
@@ -140,6 +143,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     + defn.ObjectClass
     + defn.FromJavaObjectSymbol
 
+  def toText(cs: CaptureSet): Text =
+    "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
       case tp: TypeType =>
@@ -194,6 +200,21 @@ class PlainPrinter(_ctx: Context) extends Printer {
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
+      case tp @ EventuallyCapturingType(parent, refs) =>
+        def box =
+          Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
+        def printRegular(refsText: Text) =
+          changePrec(GlobalPrec)(box ~ refsText ~ " " ~ toText(parent))
+        if printDebug && !refs.isConst then
+          printRegular(refs.toString)
+        else if ctx.settings.YccDebug.value then
+          printRegular(refs.show)
+        else if !refs.isConst && refs.elems.isEmpty then
+          printRegular("?")
+        else if Config.printCaptureSetsAsPrefix then
+          printRegular(toText(refs))
+        else
+          changePrec(InfixPrec)(box ~ toText(parent) ~ " @retains(" ~ toText(refs.elems.toList, ",") ~ ")")
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
@@ -211,11 +232,18 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ keywordText("erased ").provided(tp.isErasedMethod)
           ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
           ~ paramsText(tp)
-          ~ (if tp.resultType.isInstanceOf[MethodType] then ")" else "): ")
+          ~ ")"
+          ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
           ~ toText(tp.resultType)
         }
-      case tp: ExprType =>
-        changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
+      case ExprType(ct @ EventuallyCapturingType(parent, refs))
+      if ct.annot.symbol == defn.RetainsByNameAnnot =>
+        if refs.isUniversal then changePrec(GlobalPrec) { "=> " ~ toText(parent) }
+        else toText(CapturingType(ExprType(parent), refs))
+      case ExprType(restp) =>
+        changePrec(GlobalPrec) {
+          (if ctx.settings.Ycc.value then "-> " else "=> ") ~ toText(restp)
+        }
       case tp: HKTypeLambda =>
         changePrec(GlobalPrec) {
           "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~ Str(" =>> ") ~ toTextGlobal(tp.resultType)
@@ -223,7 +251,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: PolyType =>
         changePrec(GlobalPrec) {
           "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~
-          (Str(" => ") provided !tp.resultType.isInstanceOf[MethodType]) ~
+          (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly]) ~
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
@@ -346,6 +374,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }
 
+  def toTextCaptureRef(tp: Type): Text =
+    homogenize(tp) match
+      case tp: SingletonType => toTextRef(tp)
+      case _ => toText(tp)
+
   protected def isOmittablePrefix(sym: Symbol): Boolean =
     defn.unqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)
 
@@ -392,8 +425,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           case tp: AliasingBounds =>
             " = " ~ toText(tp.alias)
           case TypeBounds(lo, hi) =>
-            (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo))
-            ~ (if hi.isAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
+            (if lo.isExactlyNothing then Text() else " >: " ~ toText(lo))
+            ~ (if hi.isExactlyAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
         tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
@@ -418,7 +451,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (if (isParameter) ": => " else ": ") ~ toTextGlobal(tp.widenExpr)
       case tp: PolyType =>
         "[" ~ paramsText(tp) ~ "]"
-        ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodType])
+        ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
         ~ toTextGlobal(tp.resultType)
       case tp =>
         ": " ~ toTextGlobal(tp)
@@ -659,6 +692,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
       Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
     finally
       ctx.typerState.constraint = savedConstraint
+
+  def toText(g: GadtConstraint): Text = g match
+    case EmptyGadtConstraint     => "EmptyGadtConstraint"
+    case g: ProperGadtConstraint =>
+      val deps = for sym <- g.symbols yield
+        val bound = g.fullBounds(sym).nn
+        (typeText(toText(sym.typeRef)) ~ toText(bound)).close
+      ("GadtConstraint(" ~ Text(deps, ", ") ~ ")").close
 
   def plain: PlainPrinter = this
 

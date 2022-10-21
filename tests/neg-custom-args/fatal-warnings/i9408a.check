@@ -9,7 +9,7 @@
 -- Error: tests/neg-custom-args/fatal-warnings/i9408a.scala:26:20 ------------------------------------------------------
 26 |  val length: Int = "qwerty" // error
    |                    ^^^^^^^^
-   |The conversion (Test5.implicitLength : [A] => String => Int) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.
+   |The conversion (Test5.implicitLength : [A]: String => Int) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.
 -- Error: tests/neg-custom-args/fatal-warnings/i9408a.scala:31:20 ------------------------------------------------------
 31 |  val length: Int = "qwerty" // error
    |                    ^^^^^^^^
@@ -21,4 +21,4 @@
 -- Error: tests/neg-custom-args/fatal-warnings/i9408a.scala:59:2 -------------------------------------------------------
 59 |  123.foo // error
    |  ^^^
-   |The conversion (Test11.a2foo : [A] => A => Test11.Foo) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.
+   |The conversion (Test11.a2foo : [A]: A => Test11.Foo) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.

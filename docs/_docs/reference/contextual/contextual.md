@@ -4,7 +4,7 @@ title: "Contextual Abstractions"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual.html
 ---
 
-### Critique of the Status Quo
+## Critique of the Status Quo
 
 Scala's implicits are its most distinguished feature. They are _the_ fundamental way to abstract over context. They represent a unified paradigm with a great variety of use cases, among them: implementing type classes, establishing context, dependency injection, expressing capabilities, computing new types and proving relationships between them.
 
@@ -46,7 +46,7 @@ Historically, many of these shortcomings come from the way implicits were gradua
 
 Existing Scala programmers by and large have gotten used to the status quo and see little need for change. But for newcomers this status quo presents a big hurdle. I believe if we want to overcome that hurdle, we should take a step back and allow ourselves to consider a radically new design.
 
-### The New Design
+## The New Design
 
 The following pages introduce a redesign of contextual abstractions in Scala. They introduce four fundamental changes:
 

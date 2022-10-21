@@ -25,6 +25,7 @@ import ast.Trees._
 import ast.untpd
 import ast.tpd
 import transform.SymUtils._
+import cc.CaptureSet.IdentityCaptRefMap
 
 /**  Messages
   *  ========
@@ -250,7 +251,7 @@ import transform.SymUtils._
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
     // these are usually easier to analyze. We exclude F-bounds since these would
     // lead to a recursive infinite expansion.
-    object reported extends TypeMap:
+    object reported extends TypeMap, IdentityCaptRefMap:
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
       var fbounded = false
@@ -294,7 +295,6 @@ import transform.SymUtils._
     override def explain =
       val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
       treeStr + "\n" + super.explain
-
 
   end TypeMismatch
 
@@ -674,7 +674,7 @@ import transform.SymUtils._
     }
   }
 
-  class ByNameParameterNotSupported(tpe: untpd.TypTree)(using Context)
+  class ByNameParameterNotSupported(tpe: untpd.Tree)(using Context)
   extends SyntaxMsg(ByNameParameterNotSupportedID) {
     def msg = em"By-name parameter type ${tpe} not allowed here."
 
@@ -1406,15 +1406,6 @@ import transform.SymUtils._
          |"""
   }
 
-  class ParameterizedTypeLacksArguments(psym: Symbol)(using Context)
-    extends TypeMsg(ParameterizedTypeLacksArgumentsID) {
-    def msg = em"Parameterized $psym lacks argument list"
-    def explain =
-      em"""The $psym is declared with non-implicit parameters, you may not leave
-          |out the parameter list when extending it.
-          |"""
-  }
-
   class VarValParametersMayNotBeCallByName(name: TermName, mutable: Boolean)(using Context)
     extends SyntaxMsg(VarValParametersMayNotBeCallByNameID) {
     def varOrVal = if (mutable) em"${hl("var")}" else em"${hl("val")}"
@@ -1444,6 +1435,13 @@ import transform.SymUtils._
     def msg = em"Missing type $parameters for $tpe"
     def explain = em"A fully applied type is expected but $tpe takes $numParams $parameters"
   }
+
+  class MissingArgument(pname: Name, methString: String)(using Context)
+    extends TypeMsg(MissingArgumentID):
+    def msg =
+      if pname.firstPart contains '$' then s"not enough arguments for $methString"
+      else s"missing argument for parameter $pname of $methString"
+    def explain = ""
 
   class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
     extends TypeMismatchMsg(
@@ -2535,3 +2533,4 @@ import transform.SymUtils._
   extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
     def msg = ex"$tp is not a class type"
     def explain = ""
+

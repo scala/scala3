@@ -53,13 +53,13 @@ In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
 val s = summon[Test.Codec[Option[Int]]](
-  optionCodec[Int](using intCodec)
+  using optionCodec[Int](using intCodec)
 )
 ```
 
 No local given instance was generated because the synthesized argument is not recursive.
 
-### Reference
+## Reference
 
 For more information, see [Issue #1998](https://github.com/lampepfl/dotty/issues/1998)
 and the associated [Scala SIP](https://docs.scala-lang.org/sips/byname-implicits.html).

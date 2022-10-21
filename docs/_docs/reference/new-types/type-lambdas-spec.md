@@ -13,7 +13,7 @@ TypeParam       ::=  {Annotation} (id [HkTypeParamClause] | ‘_’) TypeBounds
 TypeBounds      ::=  [‘>:’ Type] [‘<:’ Type]
 ```
 
-### Type Checking
+## Type Checking
 
 A type lambda such as `[X] =>> F[X]` defines a function from types to types. The parameter(s) may carry bounds.
 If a parameter is bounded, as in `[X >: L <: U] =>> F[X]` it is checked that arguments to the parameters conform to the bounds `L` and `U`.
@@ -103,9 +103,9 @@ type O2[X] = List[X]
 ```
 would be treated as covariant, `X` is used covariantly on its right-hand side.
 
-**Note**: The decision to treat `Nothing` as universal bottom type is provisional, and might be changed after further discussion.
+**Note:** The decision to treat `Nothing` as universal bottom type is provisional, and might be changed after further discussion.
 
-**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](../other-new-features/kind-polymorphism.md)
+**Note:** Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](../other-new-features/kind-polymorphism.md)
 
 ## Curried Type Parameters
 

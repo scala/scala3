@@ -49,8 +49,8 @@ Uri => Advanced.scala
 Text => empty
 Language => Scala
 Symbols => 60 entries
-Occurrences => 132 entries
-Synthetics => 4 entries
+Occurrences => 134 entries
+Synthetics => 3 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
@@ -139,6 +139,7 @@ Occurrences:
 [13:6..13:8): s2 <- advanced/Structural#s2().
 [13:16..13:17): x <- local1
 [13:19..13:22): Int -> scala/Int#
+[13:27..13:27): <- local3
 [13:37..13:38): x <- local2
 [13:40..13:43): Int -> scala/Int#
 [13:46..13:49): ??? -> scala/Predef.`???`().
@@ -147,6 +148,7 @@ Occurrences:
 [14:18..14:19): x <- local5
 [14:21..14:24): Int -> scala/Int#
 [14:27..14:30): Int -> scala/Int#
+[14:35..14:35): <- local9
 [14:45..14:46): m <- local8
 [14:47..14:48): x <- local7
 [14:50..14:53): Int -> scala/Int#
@@ -252,7 +254,6 @@ Synthetics:
 [27:12..27:16):s.s1 => reflectiveSelectable(*)
 [29:12..29:16):s.s2 => reflectiveSelectable(*)
 [31:12..31:16):s.s3 => reflectiveSelectable(*)
-[47:19..47:24):foo.a => *[foo.A]
 
 expect/Annotations.scala
 ------------------------
@@ -264,7 +265,6 @@ Text => empty
 Language => Scala
 Symbols => 23 entries
 Occurrences => 52 entries
-Synthetics => 2 entries
 
 Symbols:
 annot/Alias. => final object Alias extends Object { self: Alias.type => +2 decls }
@@ -345,10 +345,6 @@ Occurrences:
 [39:11..39:26): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
 [39:28..39:33): param -> scala/annotation/meta/param#
 
-Synthetics:
-[25:2..25:20):@throws[Exception] => *[Exception]
-[25:2..25:20):@throws[Exception] => *[Exception]
-
 expect/Anonymous.scala
 ----------------------
 
@@ -357,15 +353,20 @@ Schema => SemanticDB v4
 Uri => Anonymous.scala
 Text => empty
 Language => Scala
-Symbols => 14 entries
-Occurrences => 30 entries
+Symbols => 23 entries
+Occurrences => 47 entries
 Synthetics => 2 entries
 
 Symbols:
-example/Anonymous# => class Anonymous extends Object { self: Anonymous & Anonymous => +6 decls }
+example/Anonymous# => class Anonymous extends Object { self: Anonymous & Anonymous => +9 decls }
+example/Anonymous#Bar# => trait Bar extends Object { self: Bar => +2 decls }
+example/Anonymous#Bar#`<init>`(). => primary ctor <init> (): Bar
+example/Anonymous#Bar#bar(). => abstract method bar => String
 example/Anonymous#Foo# => trait Foo extends Object { self: Foo => +1 decls }
 example/Anonymous#Foo#`<init>`(). => primary ctor <init> (): Foo
 example/Anonymous#`<init>`(). => primary ctor <init> (): Anonymous
+example/Anonymous#bar1. => val method bar1 Bar
+example/Anonymous#bar2. => val method bar2 Bar
 example/Anonymous#foo. => val method foo Foo
 example/Anonymous#locally(). => method locally [typeparam A ](param x: A): A
 example/Anonymous#locally().(x) => param x: A
@@ -376,6 +377,10 @@ example/Anonymous#m1().[T][_] => type _
 example/Anonymous#m2(). => method m2 => Map[_, List[_] forSome { type _  }] forSome { type _  }
 local0 => val local x: Function1[Int, Int]
 local1 => final class $anon extends Object with Foo { self: $anon => +1 decls }
+local3 => method bar => String <: example/Anonymous#Bar#bar().
+local4 => final class $anon extends Object with Bar { self: $anon => +2 decls }
+local6 => method bar => String <: example/Anonymous#Bar#bar().
+local7 => final class $anon extends Object with Bar { self: $anon => +2 decls }
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -407,7 +412,24 @@ Occurrences:
 [14:29..14:32): ??? -> scala/Predef.`???`().
 [17:8..17:11): Foo <- example/Anonymous#Foo#
 [18:6..18:9): foo <- example/Anonymous#foo.
+[18:12..18:12): <- local1
 [18:16..18:19): Foo -> example/Anonymous#Foo#
+[20:8..20:11): Bar <- example/Anonymous#Bar#
+[21:8..21:11): bar <- example/Anonymous#Bar#bar().
+[21:13..21:19): String -> scala/Predef.String#
+[22:6..22:10): bar1 <- example/Anonymous#bar1.
+[22:12..22:15): Bar -> example/Anonymous#Bar#
+[22:18..22:18): <- local4
+[22:22..22:25): Bar -> example/Anonymous#Bar#
+[22:32..22:35): bar <- local3
+[22:37..22:43): String -> scala/Predef.String#
+[22:46..22:49): ??? -> scala/Predef.`???`().
+[23:6..23:10): bar2 <- example/Anonymous#bar2.
+[23:12..23:15): Bar -> example/Anonymous#Bar#
+[23:18..23:18): <- local7
+[23:28..23:31): bar <- local6
+[23:33..23:39): String -> scala/Predef.String#
+[23:42..23:45): ??? -> scala/Predef.`???`().
 
 Synthetics:
 [10:2..10:9):locally => *[Unit]
@@ -446,7 +468,7 @@ Uri => Classes.scala
 Text => empty
 Language => Scala
 Symbols => 109 entries
-Occurrences => 113 entries
+Occurrences => 114 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -664,6 +686,7 @@ Occurrences:
 [43:101..43:104): ??? -> scala/Predef.`???`().
 [47:7..47:8): N <- classes/N.
 [48:6..48:15): anonClass <- classes/N.anonClass.
+[48:18..48:18): <- local1
 [48:22..48:24): C7 -> classes/C7#
 [49:8..49:13): local <- local0
 [49:16..49:19): ??? -> scala/Predef.`???`().
@@ -896,7 +919,7 @@ Text => empty
 Language => Scala
 Symbols => 181 entries
 Occurrences => 148 entries
-Synthetics => 10 entries
+Synthetics => 6 entries
 
 Symbols:
 _empty_/Enums. => final object Enums extends Object { self: Enums.type => +30 decls }
@@ -1232,16 +1255,12 @@ Occurrences:
 [68:25..68:31): Planet -> _empty_/Enums.Planet#
 
 Synthetics:
-[46:28..46:35):C <:< C => *[C, C]
-[49:27..49:31):Refl => *.apply[T]
 [52:9..52:13):Refl => *.unapply[Option[B]]
-[52:19..52:30):opt.flatMap => *[B]
 [52:31..52:50):identity[Option[B]] => *[Function1[A, Option[B]]]
 [54:14..54:18):Some => *.apply[Some[Int]]
 [54:14..54:34):Some(Some(1)).unwrap => *(given_<:<_T_T[Option[Int]])
 [54:19..54:23):Some => *.apply[Int]
 [54:28..54:34):unwrap => *[Some[Int], Int]
-[56:52..56:64):Enum[Planet] => *[Planet]
 
 expect/EtaExpansion.scala
 -------------------------
@@ -3165,7 +3184,7 @@ Text => empty
 Language => Scala
 Symbols => 52 entries
 Occurrences => 132 entries
-Synthetics => 36 entries
+Synthetics => 39 entries
 
 Symbols:
 example/Synthetic# => class Synthetic extends Object { self: Synthetic => +23 decls }
@@ -3361,12 +3380,15 @@ Synthetics:
 [6:2..6:18):Array.empty[Int] => intArrayOps(*)
 [7:2..7:8):"fooo" => augmentString(*)
 [10:13..10:24):"name:(.*)" => augmentString(*)
+[11:8..11:11):#:: => *.unapply[Int]
 [11:17..11:25):LazyList => *.apply[Int]
 [13:4..13:28):#:: 2 #:: LazyList.empty => *[Int]
 [13:8..13:28):2 #:: LazyList.empty => toDeferrer[Int](*)
 [13:10..13:28):#:: LazyList.empty => *[Int]
 [13:14..13:28):LazyList.empty => toDeferrer[Nothing](*)
 [13:14..13:28):LazyList.empty => *[Nothing]
+[15:9..15:12):#:: => *.unapply[Int]
+[15:16..15:19):#:: => *.unapply[Int]
 [15:25..15:33):LazyList => *.apply[Int]
 [17:14..17:38):#:: 2 #:: LazyList.empty => *[Int]
 [17:18..17:38):2 #:: LazyList.empty => toDeferrer[Int](*)
@@ -3430,7 +3452,7 @@ Uri => Traits.scala
 Text => empty
 Language => Scala
 Symbols => 13 entries
-Occurrences => 12 entries
+Occurrences => 13 entries
 
 Symbols:
 local0 => final class $anon extends Object with U { self: $anon => +1 decls }
@@ -3455,6 +3477,7 @@ Occurrences:
 [7:7..7:8): U <- traits/U.
 [8:6..8:7): u <- traits/U.u().
 [8:9..8:10): U -> traits/U#
+[8:13..8:13): <- local0
 [8:17..8:18): U -> traits/U#
 [11:6..11:7): C <- traits/C#
 [12:6..12:7): V <- traits/V#
@@ -3471,7 +3494,7 @@ Text => empty
 Language => Scala
 Symbols => 22 entries
 Occurrences => 46 entries
-Synthetics => 7 entries
+Synthetics => 11 entries
 
 Symbols:
 example/ValPattern# => class ValPattern extends Object { self: ValPattern => +14 decls }
@@ -3546,12 +3569,16 @@ Occurrences:
 [40:10..40:18): rightVar -> local4
 
 Synthetics:
+[5:6..5:10):Some => *.unapply[Int]
 [6:4..6:8):Some => *.apply[Int]
 [8:6..8:10):List => *.unapplySeq[Nothing]
 [8:11..8:15):Some => *.unapply[Nothing]
+[11:6..11:10):Some => *.unapply[Int]
 [12:4..12:8):Some => *.apply[Int]
 [25:4..25:11):locally => *[Unit]
+[27:10..27:14):Some => *.unapply[Int]
 [28:8..28:12):Some => *.apply[Int]
+[31:10..31:14):Some => *.unapply[Int]
 [32:8..32:12):Some => *.apply[Int]
 
 expect/Vals.scala
@@ -4264,7 +4291,6 @@ Text => empty
 Language => Scala
 Symbols => 36 entries
 Occurrences => 46 entries
-Synthetics => 3 entries
 
 Symbols:
 local0 => type N$1  <: Nat
@@ -4351,11 +4377,6 @@ Occurrences:
 [23:33..23:34): + -> recursion/Nats.Nat#`+`().
 [23:35..23:39): Zero -> recursion/Nats.Zero.
 [23:40..23:42): ++ -> recursion/Nats.Nat#`++`().
-
-Synthetics:
-[5:50..5:54):Succ => *.apply[Nat.this.type]
-[10:13..10:17):Succ => *.unapply[N$1]
-[20:11..20:15):Succ => *.unapply[N$2]
 
 expect/semanticdb-Definitions.scala
 -----------------------------------
@@ -4541,7 +4562,7 @@ Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
 Symbols => 144 entries
-Occurrences => 225 entries
+Occurrences => 228 entries
 Synthetics => 1 entries
 
 Symbols:
@@ -4799,13 +4820,16 @@ Occurrences:
 [63:41..63:44): Int -> scala/Int#
 [63:49..63:52): ??? -> scala/Predef.`???`().
 [64:8..64:21): compoundType4 <- types/Test.C#compoundType4.
+[64:24..64:24): <- local3
 [64:34..64:35): k <- local2
 [64:37..64:40): Int -> scala/Int#
 [64:43..64:46): ??? -> scala/Predef.`???`().
 [65:8..65:21): compoundType5 <- types/Test.C#compoundType5.
+[65:24..65:24): <- local5
 [65:28..65:29): M -> types/Test.M#
 [65:35..65:36): N -> types/Test.N#
 [66:8..66:21): compoundType6 <- types/Test.C#compoundType6.
+[66:24..66:24): <- local8
 [66:28..66:29): M -> types/Test.M#
 [66:35..66:36): N -> types/Test.N#
 [66:43..66:44): k <- local7

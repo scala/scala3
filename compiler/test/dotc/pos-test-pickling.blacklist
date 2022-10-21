@@ -2,7 +2,6 @@ i94-nada.scala
 i1812.scala
 i1867.scala
 i3067.scala
-t247.scala
 t2712-5.scala
 t284-pos.scala
 t3249
@@ -19,6 +18,7 @@ i6507b.scala
 i12299a.scala
 i13871.scala
 i15181.scala
+i15922.scala
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
@@ -85,6 +85,3 @@ i4176-gadt.scala
 i13974a.scala
 
 java-inherited-type1
-
-# avoidance bug
-i15174.scala

@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/secondary-ctor4.scala:54:14 -------------------------------------------------------------------
 54 |      val c = new C(b, 5)   // error
    |              ^^^^^^^^^^^
-   |              Problematic object instantiation: arg 1 is not hot. Calling trace:
+   |              Problematic object instantiation: arg 1 is not hot (transitively initialized). Calling trace:
    |              -> class D {	[ secondary-ctor4.scala:52 ]
    |                 ^
    |              -> val c = new C(b, 5)   // error	[ secondary-ctor4.scala:54 ]
@@ -24,21 +24,21 @@
 -- Error: tests/init/neg/secondary-ctor4.scala:42:4 --------------------------------------------------------------------
 42 |    new A(new B(new D))  // error
    |    ^^^^^^^^^^^^^^^^^^^
-   |    Problematic object instantiation: the outer M.this and arg 1 are not hot. Calling trace:
-   |    -> class N(d: D) extends M(d) {	[ secondary-ctor4.scala:59 ]
-   |       ^
-   |    -> def this(d: D) = {	[ secondary-ctor4.scala:7 ]
-   |       ^
-   |    -> new A(new B(new D))  // error	[ secondary-ctor4.scala:42 ]
-   |       ^^^^^^^^^^^^^^^^^^^
+   |Problematic object instantiation: the outer M.this and arg 1 are not hot (transitively initialized). Calling trace:
+   |-> class N(d: D) extends M(d) {	[ secondary-ctor4.scala:59 ]
+   |   ^
+   |-> def this(d: D) = {	[ secondary-ctor4.scala:7 ]
+   |   ^
+   |-> new A(new B(new D))  // error	[ secondary-ctor4.scala:42 ]
+   |   ^^^^^^^^^^^^^^^^^^^
    |
-   |    It leads to the following error during object initialization:
-   |    Access field value n on a cold object. Calling trace:
-   |    -> def this(b: B) = {	[ secondary-ctor4.scala:17 ]
-   |       ^
-   |    -> Inner().foo()	[ secondary-ctor4.scala:26 ]
-   |       ^^^^^^^
-   |    -> class Inner() {	[ secondary-ctor4.scala:21 ]
-   |       ^
-   |    -> println(b.n)	[ secondary-ctor4.scala:23 ]
-   |               ^^^
+   |It leads to the following error during object initialization:
+   |Access field value n on a cold object. Calling trace:
+   |-> def this(b: B) = {	[ secondary-ctor4.scala:17 ]
+   |   ^
+   |-> Inner().foo()	[ secondary-ctor4.scala:26 ]
+   |   ^^^^^^^
+   |-> class Inner() {	[ secondary-ctor4.scala:21 ]
+   |   ^
+   |-> println(b.n)	[ secondary-ctor4.scala:23 ]
+   |           ^^^

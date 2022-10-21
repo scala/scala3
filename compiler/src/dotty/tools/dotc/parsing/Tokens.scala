@@ -228,7 +228,7 @@ object Tokens extends TokensCommon {
 
   final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
-  final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
+  final val canStartInfixTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, LBRACE, AT)
 
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
@@ -247,7 +247,7 @@ object Tokens extends TokensCommon {
 
   final val modifierTokensOrCase: TokenSet = modifierTokens | BitSet(CASE)
 
-  final val modifierFollowers = modifierTokensOrCase | defIntroTokens
+  final val modifierFollowers = modifierTokens | defIntroTokens
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)

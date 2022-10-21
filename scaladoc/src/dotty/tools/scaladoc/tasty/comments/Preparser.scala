@@ -58,7 +58,7 @@ object Preparser {
       case CodeBlockEndRegex(before, marker, after) :: ls =>
         if (!before.trim.isEmpty && !after.trim.isEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = true)
-        if (!before.trim.isEmpty)
+        else if (!before.trim.isEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: ls, inCodeBlock = true)
         else if (!after.trim.isEmpty)
           go(docBody, tags, lastTagKey, marker :: after :: ls, inCodeBlock = false)

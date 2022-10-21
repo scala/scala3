@@ -23,6 +23,8 @@ import scala.util.control.NonFatal
 import config.Config
 import reporting._
 import collection.mutable
+import transform.TypeUtils._
+import cc.{CapturingType, derivedCapturingType}
 
 import scala.annotation.internal.sharable
 
@@ -227,6 +229,11 @@ object SymDenotations {
     final def annotations(using Context): List[Annotation] = {
       ensureCompleted(); myAnnotations
     }
+
+    /** The annotations without ensuring that the symbol is completed.
+     *  Used for diagnostics where we don't want to force symbols.
+     */
+    final def annotationsUNSAFE(using Context): List[Annotation] = myAnnotations
 
     /** Update the annotations of this denotation */
     final def annotations_=(annots: List[Annotation]): Unit =
@@ -761,7 +768,7 @@ object SymDenotations {
 
     /** Is this a getter? */
     final def isGetter(using Context): Boolean =
-      this.is(Accessor) && !originalName.isSetterName && !originalName.isScala2LocalSuffix
+      this.is(Accessor) && !originalName.isSetterName && !(originalName.isScala2LocalSuffix && symbol.owner.is(Scala2x))
 
     /** Is this a setter? */
     final def isSetter(using Context): Boolean =
@@ -1045,6 +1052,7 @@ object SymDenotations {
               case tp: TermRef => tp.symbol
               case tp: Symbol => sourceOfSelf(tp.info)
               case tp: RefinedType => sourceOfSelf(tp.parent)
+              case tp: AnnotatedType => sourceOfSelf(tp.parent)
             }
             sourceOfSelf(selfType)
           case info: LazyType =>
@@ -1513,8 +1521,7 @@ object SymDenotations {
       case tp: ExprType => hasSkolems(tp.resType)
       case tp: AppliedType => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
-      case tp: AndType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
-      case tp: OrType  => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
+      case tp: AndOrType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
       case tp: AnnotatedType => hasSkolems(tp.parent)
       case _ => false
     }
@@ -2169,6 +2176,9 @@ object SymDenotations {
 
           case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
             recur(TypeComparer.bounds(tp).hi)
+
+          case CapturingType(parent, refs) =>
+            tp.derivedCapturingType(recur(parent), refs)
 
           case tp: TypeProxy =>
             def computeTypeProxy = {

@@ -16,6 +16,10 @@ import config.Feature
 import typer.ProtoTypes._
 import typer.ForceDegree
 import typer.Inferencing._
+import typer.IfBottom
+import reporting.TestingReporter
+import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing}
+import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -41,7 +45,7 @@ object TypeOps:
         val widenedAsf = new AsSeenFromMap(pre.info, cls)
         val ret = widenedAsf.apply(tp)
 
-        if (!widenedAsf.approximated)
+        if widenedAsf.approxCount == 0 then
           return ret
 
         Stats.record("asSeenFrom skolem prefix required")
@@ -52,9 +56,15 @@ object TypeOps:
   }
 
   /** The TypeMap handling the asSeenFrom */
-  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap {
-    /** Set to true when the result of `apply` was approximated to avoid an unstable prefix. */
-    var approximated: Boolean = false
+  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap, IdempotentCaptRefMap {
+
+    /** The number of range approximations in invariant or contravariant positions
+     *  performed by this TypeMap.
+     *   - Incremented each time we produce a range.
+     *   - Decremented each time we drop a prefix range by forwarding to a type alias
+     *     or singleton type.
+     */
+    private[TypeOps] var approxCount: Int = 0
 
     def apply(tp: Type): Type = {
 
@@ -72,17 +82,8 @@ object TypeOps:
           case _ =>
             if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
               if (variance <= 0 && !isLegalPrefix(pre))
-                if (variance < 0) {
-                  approximated = true
-                  defn.NothingType
-                }
-                else
-                  // Don't set the `approximated` flag yet: if this is a prefix
-                  // of a path, we might be able to dealias the path instead
-                  // (this is handled in `ApproximatingTypeMap`). If dealiasing
-                  // is not possible, then `expandBounds` will end up being
-                  // called which we override to set the `approximated` flag.
-                  range(defn.NothingType, pre)
+                approxCount += 1
+                range(defn.NothingType, pre)
               else pre
             else if (pre.termSymbol.is(Package) && !thiscls.is(Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
@@ -115,10 +116,10 @@ object TypeOps:
       // derived infos have already been subjected to asSeenFrom, hence to need to apply the map again.
       tp
 
-    override protected def expandBounds(tp: TypeBounds): Type = {
-      approximated = true
-      super.expandBounds(tp)
-    }
+    override protected def useAlternate(tp: Type): Type =
+      assert(approxCount > 0)
+      approxCount -= 1
+      tp
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
@@ -164,6 +165,15 @@ object TypeOps:
         // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
+      case tp @ CapturingType(parent, refs) =>
+        if !ctx.mode.is(Mode.Type)
+            && refs.subCaptures(parent.captureSet, frozen = true).isOK
+            && (tp.isBoxed || !parent.isBoxedCapturing)
+              // fuse types with same boxed status and outer boxed with any type
+        then
+          simplify(parent, theMap)
+        else
+          mapOver
       case tp @ AnnotatedType(parent, annot) =>
         val parent1 = simplify(parent, theMap)
         if annot.symbol == defn.UncheckedVarianceAnnot
@@ -191,7 +201,7 @@ object TypeOps:
     }
   }
 
-  class SimplifyMap(using Context) extends TypeMap {
+  class SimplifyMap(using Context) extends IdentityCaptRefMap {
     def apply(tp: Type): Type = simplify(tp, this)
   }
 
@@ -279,15 +289,23 @@ object TypeOps:
         case _ => false
       }
 
-      // Step 1: Get RecTypes and ErrorTypes out of the way,
+      // Step 1: Get RecTypes and ErrorTypes and CapturingTypes out of the way,
       tp1 match {
-        case tp1: RecType => return tp1.rebind(approximateOr(tp1.parent, tp2))
-        case err: ErrorType => return err
+        case tp1: RecType =>
+          return tp1.rebind(approximateOr(tp1.parent, tp2))
+        case CapturingType(parent1, refs1) =>
+          return tp1.derivedCapturingType(approximateOr(parent1, tp2), refs1)
+        case err: ErrorType =>
+          return err
         case _ =>
       }
       tp2 match {
-        case tp2: RecType => return tp2.rebind(approximateOr(tp1, tp2.parent))
-        case err: ErrorType => return err
+        case tp2: RecType =>
+          return tp2.rebind(approximateOr(tp1, tp2.parent))
+        case CapturingType(parent2, refs2) =>
+          return tp2.derivedCapturingType(approximateOr(tp1, parent2), refs2)
+        case err: ErrorType =>
+          return err
         case _ =>
       }
 
@@ -417,7 +435,7 @@ object TypeOps:
   }
 
   /** An approximating map that drops NamedTypes matching `toAvoid` and wildcard types. */
-  abstract class AvoidMap(using Context) extends AvoidWildcardsMap:
+  abstract class AvoidMap(using Context) extends AvoidWildcardsMap, IdempotentCaptRefMap:
     @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
 
     def toAvoid(tp: NamedType): Boolean
@@ -516,7 +534,9 @@ object TypeOps:
       override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(
-            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
+            tp.origin,
+            fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound,
+            widenUnions = tp.widenUnions)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
         case _ =>
@@ -750,20 +770,15 @@ object TypeOps:
           tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          def lo = LazyRef.of(apply(tp.underlying.loBound))
-          def hi = LazyRef.of(apply(tp.underlying.hiBound))
           val lookup = boundTypeParams.lookup(tp)
           if lookup != null then lookup
           else
-            val tv = newTypeVar(TypeBounds(lo, hi))
+            val TypeBounds(lo, hi) = tp.underlying.bounds
+            val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
             boundTypeParams(tp) = tv
-            // Force lazy ref eagerly using current context
-            // Otherwise, the lazy ref will be forced with a unknown context,
-            // which causes a problem in tests/patmat/i3645e.scala
-            lo.ref
-            hi.ref
+            assert(tv <:< apply(hi))
+            apply(lo) <:< tv //  no assert, since bounds might conflict
             tv
-          end if
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
 
@@ -831,7 +846,7 @@ object TypeOps:
 
     val getAbstractSymbols = new TypeAccumulator[List[Symbol]]:
       def apply(xs: List[Symbol], tp: Type) = tp.dealias match
-        case tp: TypeRef if !tp.symbol.isClass => foldOver(tp.symbol :: xs, tp)
+        case tp: TypeRef if tp.symbol.exists && !tp.symbol.isClass => foldOver(tp.symbol :: xs, tp)
         case tp                                => foldOver(xs, tp)
     val syms2 = getAbstractSymbols(Nil, tp2).reverse
     if syms2.nonEmpty then ctx.gadt.addToConstraint(syms2)

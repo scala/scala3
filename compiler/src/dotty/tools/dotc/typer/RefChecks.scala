@@ -15,8 +15,8 @@ import config.Printers.{checks, noPrinter}
 import Decorators._
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting._
-import config.Feature.{warnOnMigration, migrateTo3}
-import config.SourceVersion.`3.0`
+import config.Feature.{warnOnMigration, migrateTo3, sourceVersion}
+import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
 import reporting._
 import Constants.Constant
@@ -95,7 +95,7 @@ object RefChecks {
    *  and required classes. Also check that only `enum` constructs extend
    *  `java.lang.Enum` and no user-written class extends ContextFunctionN.
    */
-  private def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
+  def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
@@ -106,8 +106,9 @@ object RefChecks {
       val psyms = cls.asClass.parentSyms
       for (psym <- psyms)
         checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
-      for (reqd <- cinfo.cls.givenSelfType.classSymbols)
-        checkSelfConforms(reqd, "missing requirement", "required")
+      for reqd <- cinfo.cls.givenSelfType.classSymbols do
+        if reqd != cls then
+          checkSelfConforms(reqd, "missing requirement", "required")
 
       def isClassExtendingJavaEnum =
         !cls.isOneOf(Enum | Trait) && psyms.contains(defn.JavaEnumClass)
@@ -263,6 +264,8 @@ object RefChecks {
    *    1.10.  If O is inline (and deferred, otherwise O would be final), M must be inline
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
    *    1.12.  If O is non-experimental, M must be non-experimental.
+   *    1.13   Under -source future, if O is a val parameter, M must be a val parameter
+   *           that passes its value on to O.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
@@ -272,7 +275,7 @@ object RefChecks {
    *  TODO This still needs to be cleaned up; the current version is a straight port of what was there
    *       before, but it looks too complicated and method bodies are far too large.
    */
-  private def checkAllOverrides(clazz: ClassSymbol)(using Context): Unit = {
+  def checkAllOverrides(clazz: ClassSymbol)(using Context): Unit = {
     val self = clazz.thisType
     val upwardsSelf = upwardsThisType(clazz)
     var hasErrors = false
@@ -461,7 +464,7 @@ object RefChecks {
         if (autoOverride(member) ||
             other.owner.isAllOf(JavaInterface) &&
             warnOnMigration(
-              "`override` modifier required when a Java 8 default method is re-implemented",
+              "`override` modifier required when a Java 8 default method is re-implemented".toMessage,
               member.srcPos, version = `3.0`))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
@@ -513,11 +516,25 @@ object RefChecks {
           overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
+      else if other.is(ParamAccessor) && !isInheritedAccessor(member, other) then // (1.13)
+        if sourceVersion.isAtLeast(`future`) then
+          overrideError(i"cannot override val parameter ${other.showLocated}")
+        else
+          report.deprecationWarning(
+            i"overriding val parameter ${other.showLocated} is deprecated, will be illegal in a future version",
+            member.srcPos)
       else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.12)
         overrideError("may not override non-experimental member")
       else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
         overrideDeprecation("", member, other, "removed or renamed")
     end checkOverride
+
+    def isInheritedAccessor(mbr: Symbol, other: Symbol): Boolean =
+      mbr.is(ParamAccessor)
+      && {
+        val next = ParamForwarding.inheritedAccessor(mbr)
+        next == other || isInheritedAccessor(next, other)
+      }
 
     OverridingPairsChecker(clazz, self).checkAll(checkOverride)
     printMixinOverrideErrors()

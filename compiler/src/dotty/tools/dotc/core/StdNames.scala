@@ -282,6 +282,7 @@ object StdNames {
 // ----- Term names -----------------------------------------
 
     // Compiler-internal
+    val CAPTURE_ROOT: N             = "*"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val EVT2U: N                    = "evt2u$"
@@ -425,7 +426,6 @@ object StdNames {
     val canEqual_ : N           = "canEqual"
     val canEqualAny : N         = "canEqualAny"
     val checkInitialized: N     = "checkInitialized"
-    val ClassManifestFactory: N = "ClassManifestFactory"
     val classOf: N              = "classOf"
     val classType: N            = "classType"
     val clone_ : N              = "clone"
@@ -563,6 +563,8 @@ object StdNames {
     val reflectiveSelectable: N = "reflectiveSelectable"
     val reify : N               = "reify"
     val releaseFence : N        = "releaseFence"
+    val retains: N              = "retains"
+    val retainsByName: N        = "retainsByName"
     val rootMirror : N          = "rootMirror"
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
@@ -723,6 +725,8 @@ object StdNames {
     val XOR      : N = "^"
     val ZAND     : N = "&&"
     val ZOR      : N = "||"
+    val PUREARROW: N = "->"
+    val PURECTXARROW: N = "?->"
 
     // unary operators
     val UNARY_PREFIX: N = "unary_"

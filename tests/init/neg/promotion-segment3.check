@@ -8,5 +8,5 @@
   |      -> bar(new B)  // error	[ promotion-segment3.scala:9 ]
   |             ^^^^^
   |
-  |      Promoting the value to hot failed due to the following problem:
+  |      Promoting the value to hot (transitively initialized) failed due to the following problem:
   |      Promotion cancelled as the value contains inner class C.
