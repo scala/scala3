@@ -6,7 +6,9 @@
   position: sticky;
   top: var(--header-height);
   padding: calc(2 * var(--base-spacing)) 0;
+  padding-left: 28px;
   margin-bottom: calc(3 * var(--base-spacing));
+  margin-left: -28px;
   background-color: var(--background-subtle);
 }
 

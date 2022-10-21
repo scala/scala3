@@ -16,6 +16,7 @@
 
 #content > div:first-child {
   overflow: clip;
+  padding-left: 28px;
 }
 
 
@@ -40,7 +41,7 @@
 @media (max-width: 1920px) {
   #content {
     margin-left: 0;
-    width: calc(100% - calc(39 * var(--base-spacing)));
+    width: calc(100% - calc(39 * var(--base-spacing)) + 28px);
     padding-top: calc(18 * var(--base-spacing));
     padding-bottom: calc(10 * var(--base-spacing));
     justify-content: center;
@@ -54,7 +55,7 @@
 @media (max-width: 1467px) {
   #content {
     margin-left: 0;
-    width: calc(100% - calc(56 * var(--base-spacing)));
+    width: calc(100% - calc(56 * var(--base-spacing)) + 28px);
     padding-top: calc(18 * var(--base-spacing));
     padding-bottom: calc(10 * var(--base-spacing));
     margin-right: calc(8.5 * var(--base-spacing));
@@ -69,7 +70,7 @@
 @media (max-width: 1376px) {
   #content {
     margin-left: 0;
-    width: calc(100% - calc(51 * var(--base-spacing)));
+    width: calc(100% - calc(51 * var(--base-spacing)) + 28px);
     padding-top: calc(18 * var(--base-spacing));
     padding-bottom: calc(10 * var(--base-spacing));
     margin-right: calc(6 * var(--base-spacing));
@@ -83,7 +84,7 @@
 
 @media (max-width: 1024px) {
   #content {
-    width: calc(100% - calc(12 * var(--base-spacing)));
+    width: calc(100% - calc(12 * var(--base-spacing)) + 28px);
     margin-right: calc(6 * var(--base-spacing));
     margin-left: calc(6 * var(--base-spacing));
     padding-right: 0;
@@ -108,7 +109,7 @@
     margin-right: calc(6 * var(--base-spacing));
     margin-left: calc(6 * var(--base-spacing));
     padding-right: 0;
-    width: calc(100% - calc(12 * var(--base-spacing)));
+    width: calc(100% - calc(12 * var(--base-spacing)) + 28px);
   }
 
   #content > div:first-child {
@@ -130,7 +131,7 @@
     margin-right: calc(4 * var(--base-spacing));
     margin-left: calc(4 * var(--base-spacing));
     padding-right: 0;
-    width: calc(100% - calc(8 * var(--base-spacing)));
+    width: calc(100% - calc(8 * var(--base-spacing)) + 28px);
   }
 
   #content > div:first-child {
@@ -167,6 +168,22 @@
    color: var(--text-primary);
     margin-block-start: calc(6* var(--base-spacing));
     margin-block-end: calc(3* var(--base-spacing));
+}
+
+#content .cover > h2 {
+  color: var(--text-secondary);
+  margin: 8px 0 0;
+  padding: 12px var(--base-spacing);
+}
+
+#content .cover > h2 {
+  color: var(--text-secondary);
+  margin: 0;
+  padding: 12px var(--base-spacing);
+}
+
+#content .cover > h2:first-of-type {
+  margin: 8px 0 0;
 }
 
 /* content first paragraph */
