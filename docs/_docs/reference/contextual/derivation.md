@@ -154,7 +154,7 @@ of the `Mirror` type class available.
 
 ## `Mirror`
 
-`Mirror` type class instances provide information at the type level about the components and labelling of the type.
+`scala.deriving.Mirror` type class instances provide information at the type level about the components and labelling of the type.
 They also provide minimal term level infrastructure to allow higher level libraries to provide comprehensive
 derivation support.
 
@@ -172,7 +172,7 @@ Instances for `Mirror` are also generated conditionally for:
   - and where the compiler can generate a `Mirror` type class instance for each child case.
 
 
-The `Mirror` type class definition is as follows:
+The `scala.deriving.Mirror` type class definition is as follows:
 
 ```scala
 sealed trait Mirror:
