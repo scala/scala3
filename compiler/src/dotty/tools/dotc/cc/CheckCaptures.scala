@@ -332,29 +332,31 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  and Cr otherwise.
      */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      includeCallCaptures(tree.symbol, tree.srcPos)
-      tree match
-        case Apply(fn, arg :: Nil) if fn.symbol == defn.Caps_unsafeUnbox =>
-          val argType0 = recheckStart(arg, pt).unbox
-          val argType = super.recheckFinish(argType0, arg, pt)
-          super.recheckFinish(argType, tree, pt)
-        case _ =>
-          super.recheckApply(tree, pt) match
-            case appType @ CapturingType(appType1, refs) =>
-              tree.fun match
-                case Select(qual, _)
-                if !tree.fun.symbol.isConstructor
-                    && !qual.tpe.isBoxedCapturing
-                    && !tree.args.exists(_.tpe.isBoxedCapturing)
-                    && qual.tpe.captureSet.mightSubcapture(refs)
-                    && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
-                =>
-                  val callCaptures = tree.args.foldLeft(qual.tpe.captureSet)((cs, arg) =>
-                    cs ++ arg.tpe.captureSet)
-                  appType.derivedCapturingType(appType1, callCaptures)
-                    .showing(i"narrow $tree: $appType, refs = $refs, qual = ${qual.tpe.captureSet} --> $result", capt)
-                case _ => appType
-            case appType => appType
+      val meth = tree.fun.symbol
+      includeCallCaptures(meth, tree.srcPos)
+      if meth == defn.Caps_unsafeBox || meth == defn.Caps_unsafeUnbox then
+        val arg :: Nil = tree.args: @unchecked
+        val argType0 = recheckStart(arg, pt)
+          .forceBoxStatus(boxed = meth == defn.Caps_unsafeBox)
+        val argType = super.recheckFinish(argType0, arg, pt)
+        super.recheckFinish(argType, tree, pt)
+      else
+        super.recheckApply(tree, pt) match
+          case appType @ CapturingType(appType1, refs) =>
+            tree.fun match
+              case Select(qual, _)
+              if !tree.fun.symbol.isConstructor
+                  && !qual.tpe.isBoxedCapturing
+                  && !tree.args.exists(_.tpe.isBoxedCapturing)
+                  && qual.tpe.captureSet.mightSubcapture(refs)
+                  && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
+              =>
+                val callCaptures = tree.args.foldLeft(qual.tpe.captureSet)((cs, arg) =>
+                  cs ++ arg.tpe.captureSet)
+                appType.derivedCapturingType(appType1, callCaptures)
+                  .showing(i"narrow $tree: $appType, refs = $refs, qual = ${qual.tpe.captureSet} --> $result", capt)
+              case _ => appType
+          case appType => appType
     end recheckApply
 
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
@@ -460,10 +462,25 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       super.recheckBlock(block, pt)
 
+    /** If `rhsProto` has `*` as its capture set, wrap `rhs` in a `unsafeBox`.
+     *  Used to infer `unsafeBox` for expressions that get assigned to variables
+     *  that have universal capture set.
+     */
+    def maybeBox(rhs: Tree, rhsProto: Type)(using Context): Tree =
+      if rhsProto.captureSet.isUniversal then
+        ref(defn.Caps_unsafeBox).appliedToType(rhsProto).appliedTo(rhs)
+      else rhs
+
+    override def recheckAssign(tree: Assign)(using Context): Type =
+      val rhsProto = recheck(tree.lhs).widen
+      recheck(maybeBox(tree.rhs, rhsProto), rhsProto)
+      defn.UnitType
+
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
       try
         if !sym.is(Module) then // Modules are checked by checking the module class
-          super.recheckValDef(tree, sym)
+          if sym.is(Mutable) then recheck(maybeBox(tree.rhs, sym.info), sym.info)
+          else super.recheckValDef(tree, sym)
       finally
         if !sym.is(Param) then
           // Parameters with inferred types belong to anonymous methods. We need to wait
@@ -764,7 +781,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           else
             recon(CapturingType(parent1, cs1, actualIsBoxed))
       }
-
 
       var actualw = actual.widenDealias
       actual match

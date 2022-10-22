@@ -961,6 +961,7 @@ class Definitions {
   def RuntimeTupleFunctionsModule(using Context): Symbol = requiredModule("scala.runtime.TupledFunctions")
 
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
+    @tu lazy val Caps_unsafeBox: Symbol = CapsModule.requiredMethod("unsafeBox")
     @tu lazy val Caps_unsafeUnbox: Symbol = CapsModule.requiredMethod("unsafeUnbox")
 
   // Annotation base classes
