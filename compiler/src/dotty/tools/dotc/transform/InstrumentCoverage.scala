@@ -5,7 +5,6 @@ import java.io.File
 
 import ast.tpd.*
 import collection.mutable
-import core.Decorators.i
 import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
@@ -18,18 +17,17 @@ import typer.LiftCoverage
 import util.SourcePosition
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
-import scala.util.chaining.*
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
   * The result can then be consumed by the Scoverage tool.
   */
 class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
-  import InstrumentCoverage.{name, description, InstrumentedParts}
+  import InstrumentCoverage.{InstrumentedParts, ExcludeMethodFlags}
 
-  override def phaseName = name
+  override def phaseName = InstrumentCoverage.name
 
-  override def description = description
+  override def description = InstrumentCoverage.description
 
   // Enabled by argument "-coverage-out OUTPUT_DIR"
   override def isEnabled(using ctx: Context) =
@@ -412,7 +410,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     /** Check if an Apply can be instrumented. Prevents this phase from generating incorrect code. */
     private def canInstrumentApply(tree: Apply)(using Context): Boolean =
       val sym = tree.symbol
-      !sym.isOneOf(Synthetic | Artifact)
+      !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
       && (tree.typeOpt match
         case AppliedType(tycon: NamedType, _) =>
@@ -446,7 +444,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * in post-erasure checking.
       */
     private def canInstrumentParameterless(sym: Symbol)(using Context): Boolean =
-      sym.is(Method, butNot = Synthetic | Artifact)
+      sym.is(Method, butNot = ExcludeMethodFlags)
       && sym.info.isParameterless
       && !isCompilerIntrinsicMethod(sym)
       && !sym.info.typeSymbol.name.isContextFunction // exclude context functions like in canInstrumentApply
@@ -466,6 +464,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 object InstrumentCoverage:
   val name: String = "instrumentCoverage"
   val description: String = "instrument code for coverage checking"
+  val ExcludeMethodFlags: FlagSet = Synthetic | Artifact | Erased
 
   /**
    * An instrumented Tree, in 3 parts.

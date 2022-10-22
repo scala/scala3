@@ -1,3 +1,4 @@
 foo(a)(b)
+foo(a)(b)
 identity(idem)
 foo(a)(idem)
