@@ -279,6 +279,18 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             // to the enclosing method, not a tree to instrument.
             cpy.Return(tree)(expr = transform(tree.expr), from = tree.from)
 
+          case tree: Template =>
+            // only transform:
+            // - the arguments of the `Apply` trees in the parents
+            // - the template body
+            cpy.Template(tree)(
+              transformSub(tree.constr),
+              transformTemplateParents(tree.parents)(using ctx.superCallContext),
+              tree.derived,
+              tree.self,
+              transformStats(tree.body, tree.symbol)
+            )
+
           // For everything else just recurse and transform
           case _ =>
             super.transform(tree)
@@ -331,6 +343,21 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       val instrumentedBody = InstrumentedParts.singleExprTree(coverageCall, transformedBody)
 
       cpy.CaseDef(tree)(pat, transformedGuard, instrumentedBody)
+
+    /** Transforms the parents of a Template. */
+    private def transformTemplateParents(parents: List[Tree])(using Context): List[Tree] =
+      def transformParent(parent: Tree): Tree = parent match
+        case tree: Apply =>
+          // only instrument the args, not the constructor call
+          cpy.Apply(tree)(tree.fun, tree.args.mapConserve(transform))
+        case tree: TypeApply =>
+          // args are types, instrument the fun with transformParent
+          cpy.TypeApply(tree)(transformParent(tree.fun), tree.args)
+        case other =>
+          // should always be a TypeTree, nothing to instrument
+          other
+
+      parents.mapConserve(transformParent)
 
     /** Instruments the body of a DefDef. Handles corner cases.
      * Given a DefDef f like this:
