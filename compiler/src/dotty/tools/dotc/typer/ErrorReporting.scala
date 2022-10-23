@@ -26,6 +26,9 @@ object ErrorReporting {
   def errorTree(tree: untpd.Tree, msg: Message)(using Context): tpd.Tree =
     errorTree(tree, msg, tree.srcPos)
 
+  def errorTree(tree: untpd.Tree, msg: => String)(using Context): tpd.Tree =
+    errorTree(tree, msg.toMessage)
+
   def errorTree(tree: untpd.Tree, msg: TypeError, pos: SrcPos)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
 
@@ -33,6 +36,9 @@ object ErrorReporting {
     report.error(msg, pos)
     ErrorType(msg)
   }
+
+  def errorType(msg: => String, pos: SrcPos)(using Context): ErrorType =
+    errorType(msg.toMessage, pos)
 
   def errorType(ex: TypeError, pos: SrcPos)(using Context): ErrorType = {
     report.error(ex, pos)

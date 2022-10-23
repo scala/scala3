@@ -80,7 +80,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.2.1-RC2"
+  val referenceVersion = "3.2.1-RC4"
 
   val baseVersion = "3.2.2-RC1"
 
@@ -120,8 +120,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.8"
-    case Bootstrapped => "2.13.8"
+    case NonBootstrapped => "2.13.10"
+    case Bootstrapped => "2.13.10"
   }
 
   val dottyOrganization = "org.scala-lang"
@@ -1901,12 +1901,12 @@ object ScaladocConfigs {
       Groups(true),
       QuickLinks(
         List(
-          "Download::https://www.scala-lang.org/download/",
-          "Documentation::https://docs.scala-lang.org/",
-          "Libraries::https://index.scala-lang.org",
-          "Contribute::https://www.scala-lang.org/contribute/",
+          "Learn::https://docs.scala-lang.org/",
+          "Install::https://www.scala-lang.org/download/",
+          "Playground::https://scastie.scala-lang.org",
+          "Find\u00A0A\u00A0Library::https://index.scala-lang.org",
+          "Community::https://www.scala-lang.org/community/",
           "Blog::https://www.scala-lang.org/blog/",
-          "Community::https://www.scala-lang.org/community/"
         )
       )
     )

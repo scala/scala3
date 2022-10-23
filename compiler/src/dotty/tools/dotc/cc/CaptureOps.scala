@@ -121,6 +121,11 @@ extension (tp: Type)
     case _ =>
       tp
 
+  def isCapturingType(using Context): Boolean =
+    tp match
+      case CapturingType(_, _) => true
+      case _ => false
+
 extension (sym: Symbol)
 
   /** Does this symbol allow results carrying the universal capability?

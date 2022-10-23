@@ -447,7 +447,7 @@ object Implicits:
     /** An explanation of the cause of the failure as a string */
     def explanation(using Context): String
 
-    def msg(using Context): Message = explanation
+    def msg(using Context): Message = explanation.toMessage
 
     /** If search was for an implicit conversion, a note describing the failure
      *  in more detail - this is either empty or starts with a '\n'

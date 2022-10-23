@@ -13,6 +13,7 @@ import Parsers._
 import util.Spans._
 import core._
 import Constants._
+import Decorators.toMessage
 import util.SourceFile
 import Utility._
 
@@ -379,7 +380,7 @@ object MarkupParsers {
           ts(0)
         }
       },
-      msg => parser.incompleteInputError(msg)
+      msg => parser.incompleteInputError(msg.toMessage)
     )
 
     /** @see xmlPattern. resynchronizes after successful parse

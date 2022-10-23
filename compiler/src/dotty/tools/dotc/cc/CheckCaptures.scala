@@ -42,12 +42,20 @@ object CheckCaptures:
   end Pre
 
   /** A class describing environments.
-   *  @param owner    the current owner
-   *  @param captured the caputure set containing all references to tracked free variables outside of boxes
-   *  @param isBoxed  true if the environment is inside a box (in which case references are not counted)
-   *  @param outer0   the next enclosing environment
+   *  @param owner         the current owner
+   *  @param nestedInOwner true if the environment is a temporary one nested in the owner's environment,
+   *                       and does not have a different actual owner symbol (this happens when doing box adaptation).
+   *  @param captured      the caputure set containing all references to tracked free variables outside of boxes
+   *  @param isBoxed       true if the environment is inside a box (in which case references are not counted)
+   *  @param outer0        the next enclosing environment
    */
-  case class Env(owner: Symbol, captured: CaptureSet, isBoxed: Boolean, outer0: Env | Null):
+  case class Env(
+    owner: Symbol,
+    nestedInOwner: Boolean,
+    captured: CaptureSet,
+    isBoxed: Boolean,
+    outer0: Env | Null
+  ):
     def outer = outer0.nn
 
     def isOutermost = outer0 == null
@@ -204,7 +212,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         report.error(i"$header included in allowed capture set ${res.blocking}", pos)
 
     /** The current environment */
-    private var curEnv: Env = Env(NoSymbol, CaptureSet.empty, isBoxed = false, null)
+    private var curEnv: Env = Env(NoSymbol, nestedInOwner = false, CaptureSet.empty, isBoxed = false, null)
 
     private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
 
@@ -249,8 +257,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !cs.isAlwaysEmpty then
         forallOuterEnvsUpTo(ctx.owner.topLevelClass) { env =>
           val included = cs.filter {
-            case ref: TermRef => env.owner.isProperlyContainedIn(ref.symbol.owner)
-            case ref: ThisType => env.owner.isProperlyContainedIn(ref.cls)
+            case ref: TermRef =>
+              (env.nestedInOwner || env.owner != ref.symbol.owner)
+                && env.owner.isContainedIn(ref.symbol.owner)
+            case ref: ThisType =>
+              (env.nestedInOwner || env.owner != ref.cls)
+                && env.owner.isContainedIn(ref.cls)
             case _ => false
           }
           capt.println(i"Include call capture $included in ${env.owner}")
@@ -439,7 +451,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !Synthetics.isExcluded(sym) then
         val saved = curEnv
         val localSet = capturedVars(sym)
-        if !localSet.isAlwaysEmpty then curEnv = Env(sym, localSet, isBoxed = false, curEnv)
+        if !localSet.isAlwaysEmpty then curEnv = Env(sym, nestedInOwner = false, localSet, isBoxed = false, curEnv)
         try super.recheckDefDef(tree, sym)
         finally
           interpolateVarsIn(tree.tpt)
@@ -455,7 +467,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val localSet = capturedVars(cls)
       for parent <- impl.parents do // (1)
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos)
-      if !localSet.isAlwaysEmpty then curEnv = Env(cls, localSet, isBoxed = false, curEnv)
+      if !localSet.isAlwaysEmpty then curEnv = Env(cls, nestedInOwner = false, localSet, isBoxed = false, curEnv)
       try
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
         checkSubset(localSet, thisSet, tree.srcPos) // (2)
@@ -495,14 +507,20 @@ class CheckCaptures extends Recheck, SymTransformer:
       recheckFinish(result, arg, pt)
     */
 
-    /** If expected type `pt` is boxed, don't propagate free variables.
+    /** If expected type `pt` is boxed and the tree is a function or a reference,
+     *  don't propagate free variables.
      *  Otherwise, if the result type is boxed, simulate an unboxing by
      *  adding all references in the boxed capture set to the current environment.
      */
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       if tree.isTerm && pt.isBoxedCapturing then
         val saved = curEnv
-        curEnv = Env(curEnv.owner, CaptureSet.Var(), isBoxed = true, curEnv)
+
+        tree match
+          case _: RefTree | closureDef(_) =>
+            curEnv = Env(curEnv.owner, nestedInOwner = false, CaptureSet.Var(), isBoxed = true, curEnv)
+          case _ =>
+
         try super.recheck(tree, pt)
         finally curEnv = saved
       else
@@ -593,25 +611,121 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       /** Adapt function type `actual`, which is `aargs -> ares` (possibly with dependencies)
        *  to `expected` type.
+       *  It returns the adapted type along with the additionally captured variable
+       *  during adaptation.
        *   @param reconstruct  how to rebuild the adapted function type
        */
       def adaptFun(actual: Type, aargs: List[Type], ares: Type, expected: Type,
-          covariant: Boolean,
-          reconstruct: (List[Type], Type) => Type): Type =
-        val (eargs, eres) = expected.dealias match
-          case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
-          case _ => (aargs.map(_ => WildcardType), WildcardType)
-        val aargs1 = aargs.zipWithConserve(eargs)(adapt(_, _, !covariant))
-        val ares1 = adapt(ares, eres, covariant)
-        if (ares1 eq ares) && (aargs1 eq aargs) then actual
-        else reconstruct(aargs1, ares1)
+          covariant: Boolean, boxed: Boolean,
+          reconstruct: (List[Type], Type) => Type): (Type, CaptureSet) =
+        val saved = curEnv
+        curEnv = Env(curEnv.owner, nestedInOwner = true, CaptureSet.Var(), isBoxed = false, if boxed then null else curEnv)
 
-      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = actual.dealias match
-        case actual @ CapturingType(parent, refs) =>
-          val parent1 = adapt(parent, expected, covariant)
-          if actual.isBoxed != expected.isBoxedCapturing then
+        try
+          val (eargs, eres) = expected.dealias.stripCapturing match
+            case defn.FunctionOf(eargs, eres, _, _) => (eargs, eres)
+            case expected: MethodType => (expected.paramInfos, expected.resType)
+            case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(expected) => (rinfo.paramInfos, rinfo.resType)
+            case _ => (aargs.map(_ => WildcardType), WildcardType)
+          val aargs1 = aargs.zipWithConserve(eargs) { (aarg, earg) => adapt(aarg, earg, !covariant) }
+          val ares1 = adapt(ares, eres, covariant)
+
+          val resTp =
+            if (ares1 eq ares) && (aargs1 eq aargs) then actual
+            else reconstruct(aargs1, ares1)
+
+          (resTp, curEnv.captured)
+        finally
+          curEnv = saved
+
+      /** Adapt type function type `actual` to the expected type.
+       *  @see [[adaptFun]]
+       */
+      def adaptTypeFun(
+          actual: Type, ares: Type, expected: Type,
+          covariant: Boolean, boxed: Boolean,
+          reconstruct: Type => Type): (Type, CaptureSet) =
+        val saved = curEnv
+        curEnv = Env(curEnv.owner, nestedInOwner = true, CaptureSet.Var(), isBoxed = false, if boxed then null else curEnv)
+
+        try
+          val eres = expected.dealias.stripCapturing match
+            case RefinedType(_, _, rinfo: PolyType) => rinfo.resType
+            case expected: PolyType => expected.resType
+            case _ => WildcardType
+
+          val ares1 = adapt(ares, eres, covariant)
+
+          val resTp =
+            if ares1 eq ares then actual
+            else reconstruct(ares1)
+
+          (resTp, curEnv.captured)
+        finally
+          curEnv = saved
+      end adaptTypeFun
+
+      def adaptInfo(actual: Type, expected: Type, covariant: Boolean): String =
+        val arrow = if covariant then "~~>" else "<~~"
+        i"adapting $actual $arrow $expected"
+
+      /** Destruct a capturing type `tp` to a tuple (cs, tp0, boxed),
+       *  where `tp0` is not a capturing type.
+       * 
+       *  If `tp` is a nested capturing type, the return tuple always represents
+       *  the innermost capturing type. The outer capture annotations can be
+       *  reconstructed with the returned function.
+       */
+      def destructCapturingType(tp: Type, reconstruct: Type => Type = x => x): ((Type, CaptureSet, Boolean), Type => Type) =
+        tp.dealias match
+          case tp @ CapturingType(parent, cs) =>
+            if parent.dealias.isCapturingType then
+              destructCapturingType(parent, res => reconstruct(tp.derivedCapturingType(res, cs)))
+            else
+              ((parent, cs, tp.isBoxed), reconstruct)
+          case actual =>
+            ((actual, CaptureSet(), false), reconstruct)
+
+      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true) {
+        if expected.isInstanceOf[WildcardType] then actual
+        else
+          val ((parent, cs, actualIsBoxed), recon) = destructCapturingType(actual)
+
+          val needsAdaptation = actualIsBoxed != expected.isBoxedCapturing
+          val insertBox = needsAdaptation && covariant != actualIsBoxed
+
+          val (parent1, cs1) = parent match {
+            case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
+              val (parent1, leaked) = adaptFun(parent, args.init, args.last, expected, covariant, insertBox,
+                  (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
+              (parent1, leaked ++ cs)
+            case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
+              // TODO Find a way to combine handling of generic and dependent function types (here and elsewhere)
+              val (parent1, leaked) = adaptFun(parent, rinfo.paramInfos, rinfo.resType, expected, covariant, insertBox,
+                (aargs1, ares1) =>
+                  rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
+                    .toFunctionType(isJava = false, alwaysDependent = true))
+              (parent1, leaked ++ cs)
+            case actual: MethodType =>
+              val (parent1, leaked) = adaptFun(parent, actual.paramInfos, actual.resType, expected, covariant, insertBox,
+                (aargs1, ares1) =>
+                  actual.derivedLambdaType(paramInfos = aargs1, resType = ares1))
+              (parent1, leaked ++ cs)
+            case actual @ RefinedType(p, nme, rinfo: PolyType) if defn.isFunctionOrPolyType(actual) =>
+              val (parent1, leaked) = adaptTypeFun(parent, rinfo.resType, expected, covariant, insertBox,
+                ares1 =>
+                  val rinfo1 = rinfo.derivedLambdaType(rinfo.paramNames, rinfo.paramInfos, ares1)
+                  val actual1 = actual.derivedRefinedType(p, nme, rinfo1)
+                  actual1
+              )
+              (parent1, leaked ++ cs)
+            case _ =>
+              (parent, cs)
+          }
+
+          if needsAdaptation then
             val criticalSet =          // the set which is not allowed to have `*`
-              if covariant then refs   // can't box with `*`
+              if covariant then cs1    // can't box with `*`
               else expected.captureSet // can't unbox with `*`
             if criticalSet.isUniversal then
               // We can't box/unbox the universal capability. Leave `actual` as it is
@@ -627,20 +741,13 @@ class CheckCaptures extends Recheck, SymTransformer:
                       |since one of their capture sets contains the root capability `*`""",
                 pos)
               }
-              if covariant == actual.isBoxed then markFree(refs, pos)
-              CapturingType(parent1, refs, boxed = !actual.isBoxed)
+              if !insertBox then  // unboxing
+                markFree(criticalSet, pos)
+              recon(CapturingType(parent1, cs1, !actualIsBoxed))
           else
-            actual.derivedCapturingType(parent1, refs)
-        case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
-          adaptFun(actual, args.init, args.last, expected, covariant,
-              (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
-        case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
-          // TODO Find a way to combine handling of generic and dependent function types (here and elsewhere)
-          adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant,
-            (aargs1, ares1) =>
-              rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
-                .toFunctionType(isJava = false, alwaysDependent = true))
-        case _ => actual
+            recon(CapturingType(parent1, cs1, actualIsBoxed))
+      }
+
 
       var actualw = actual.widenDealias
       actual match

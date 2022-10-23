@@ -1,0 +1,46 @@
+trait Cap { def use(): Int; def close(): Unit }
+def mkCap(): {*} Cap = ???
+
+def expect[T](x: T): x.type = x
+
+def withCap[T](op: ({*} Cap) => T): T = {
+  val cap: {*} Cap = mkCap()
+  val result = op(cap)
+  cap.close()
+  result
+}
+
+def main(fs: {*} Cap): Unit = {
+  def badOp(io: {*} Cap): {} Unit -> Unit = {
+    val op1: {io} Unit -> Unit = (x: Unit) =>  // error // limitation
+      expect[{*} Cap] {
+        io.use()
+        fs
+      }
+
+    val op2: {fs} Unit -> Unit = (x: Unit) =>  // error // limitation
+      expect[{*} Cap] {
+        fs.use()
+        io
+      }
+
+    val op3: {io} Unit -> Unit = (x: Unit) =>  // ok
+      expect[{*} Cap] {
+        io.use()
+        io
+      }
+
+    val op4: {} Unit -> Unit = (x: Unit) =>  // ok
+      expect[{*} Cap](io)
+
+    val op: {} Unit -> Unit = (x: Unit) =>  // error
+      expect[{*} Cap] {
+        io.use()
+        io
+      }
+    op
+  }
+
+  val leaked: {} Unit -> Unit = withCap(badOp)
+  leaked(())
+}

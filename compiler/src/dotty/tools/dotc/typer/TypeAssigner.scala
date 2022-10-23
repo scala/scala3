@@ -167,7 +167,7 @@ trait TypeAssigner {
       case _ => false
     def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
     val msg: Message =
-      if tree.name == nme.CONSTRUCTOR then ex"$qualType does not have a constructor"
+      if tree.name == nme.CONSTRUCTOR then ex"$qualType does not have a constructor".toMessage
       else NotAMember(qualType, tree.name, kind, addendum)
     errorType(msg, tree.srcPos)
 
@@ -255,7 +255,7 @@ trait TypeAssigner {
             errorType("ambiguous parent class qualifier", pos)
         }
         val owntype =
-          if (mixinClass.exists) mixinClass.appliedRef
+          if (mixinClass.exists) mixinClass.typeRef
           else if (!mix.isEmpty) findMixinSuper(cls.info)
           else if (ctx.erasedTypes) cls.info.firstParent.typeConstructor
           else {

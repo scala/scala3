@@ -633,6 +633,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case (info1: MethodType, info2: MethodType) =>
                 matchingMethodParams(info1, info2, precise = false)
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+              case (info1 @ CapturingType(parent1, refs1), info2: Type) =>
+                subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
+                  && isSubInfo(parent1, info2)
+              case (info1: Type, CapturingType(parent2, refs2)) =>
+                val refs1 = info1.captureSet
+                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2, frozenConstraint).isOK) && sameBoxed(info1, info2, refs1)
+                  && isSubInfo(info1, parent2)
               case _ =>
                 isSubType(info1, info2)
 
@@ -1066,12 +1073,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *
      *  - k := args.length
      *  - d := otherArgs.length - k
+     *  - T_0, ..., T_k-1 fresh type parameters
+     *  - bodyArgs := otherArgs.take(d), T_0, ..., T_k-1
      *
-     *  `adaptedTycon` will be:
+     *  Then,
      *
-     *    [T_0, ..., T_k-1] =>> otherTycon[otherArgs(0), ..., otherArgs(d-1), T_0, ..., T_k-1]
+     *    adaptedTycon := [T_0, ..., T_k-1] =>> otherTycon[bodyArgs]
      *
-     *  where `T_n` has the same bounds as `otherTycon.typeParams(d+n)`
+     *  where the bounds of `T_i` are set based on the bounds of `otherTycon.typeParams(d+i)`
+     *  after substituting type parameter references by the corresponding argument
+     *  in `bodyArgs` (see `adaptedBounds` in the implementation).
      *
      *  Historical note: this strategy is known in Scala as "partial unification"
      *  (even though the type constructor variable isn't actually unified but only
@@ -1096,11 +1107,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         variancesConform(remainingTparams, tparams) && {
           val adaptedTycon =
             if d > 0 then
+              val initialArgs = otherArgs.take(d)
+              /** The arguments passed to `otherTycon` in the body of `tl` */
+              def bodyArgs(tl: HKTypeLambda) = initialArgs ++ tl.paramRefs
+              /** The bounds of the type parameters of `tl` */
+              def adaptedBounds(tl: HKTypeLambda) =
+                val bodyArgsComputed = bodyArgs(tl)
+                remainingTparams.map(_.paramInfo)
+                  .mapconserve(_.substTypeParams(otherTycon, bodyArgsComputed).bounds)
+
               HKTypeLambda(remainingTparams.map(_.paramName))(
-                tl => remainingTparams.map(remainingTparam =>
-                  tl.integrate(remainingTparams, remainingTparam.paramInfo).bounds),
-                tl => otherTycon.appliedTo(
-                  otherArgs.take(d) ++ tl.paramRefs))
+                adaptedBounds,
+                tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
               otherTycon
           (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon)) &&

@@ -534,16 +534,15 @@ class SpaceEngine(using Context) extends SpaceLogic {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
-        inContext(ctx.fresh.setExploreTyperState()) {
           val tvars = pt.paramInfos.map(newTypeVar(_))
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
           scrutineeTp <:< mt.paramInfos(0)
           // force type inference to infer a narrower type: could be singleton
           // see tests/patmat/i4227.scala
           mt.paramInfos(0) <:< scrutineeTp
+          instantiateSelected(mt, tvars)
           isFullyDefined(mt, ForceDegree.all)
           mt
-        }
     }
 
     // Case unapply:
