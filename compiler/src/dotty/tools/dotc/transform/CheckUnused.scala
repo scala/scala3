@@ -14,6 +14,7 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Property
+import dotty.tools.dotc.transform.CheckUnused.UnusedData.UnusedResult
 
 /**
  * A compiler phase that checks for unused imports or definitions
@@ -31,14 +32,15 @@ class CheckUnused extends Phase:
   override def description: String = CheckUnused.description
 
   override def isRunnable(using Context): Boolean =
-    ctx.settings.WunusedHas.imports
+    ctx.settings.WunusedHas.imports ||
+    ctx.settings.WunusedHas.locals
 
   override def run(using Context): Unit =
     val tree = ctx.compilationUnit.tpdTree
     val data = UnusedData(ctx)
     val fresh = ctx.fresh.setProperty(_key, data)
     traverser.traverse(tree)(using fresh)
-    reportUnusedImport(data.getUnused)
+    reportUnused(data.getUnused)
 
   /**
    * This traverse is the **main** component of this phase
@@ -48,6 +50,7 @@ class CheckUnused extends Phase:
    */
   private def traverser = new TreeTraverser {
     import tpd._
+    import UnusedData.ScopeType
 
     override def traverse(tree: tpd.Tree)(using Context): Unit = tree match
       case imp@Import(_, sels) => sels.foreach { s =>
@@ -61,19 +64,53 @@ class CheckUnused extends Phase:
         val id = sel.symbol.id
         ctx.property(_key).foreach(_.registerUsed(id))
         traverseChildren(tree)
-      case tpd.Block(_,_) | tpd.Template(_,_,_,_) =>
-        ctx.property(_key).foreach(_.pushScope())
+      case tpd.Block(_,_) =>
+        var prev: ScopeType = ScopeType.Other
+        ctx.property(_key).foreach { ud =>
+          ud.pushScope()
+          prev = ud.currScope
+          ud.currScope = ScopeType.Local
+        }
         traverseChildren(tree)
-        ctx.property(_key).foreach(_.popScope())
+        ctx.property(_key).foreach { ud =>
+          ud.popScope()
+          ud.currScope = prev
+        }
+      case tpd.Template(_,_,_,_) =>
+        var prev: ScopeType = ScopeType.Other
+        ctx.property(_key).foreach { ud =>
+          ud.pushScope()
+          prev = ud.currScope
+          ud.currScope = ScopeType.Template
+        }
+        traverseChildren(tree)
+        ctx.property(_key).foreach { ud =>
+          ud.popScope()
+          ud.currScope = prev
+        }
+      case t:tpd.ValDef =>
+        ctx.property(_key).foreach(_.registerLocalDef(t))
+        traverseChildren(tree)
+      case t:tpd.DefDef =>
+        ctx.property(_key).foreach(_.registerLocalDef(t))
+        traverseChildren(tree)
       case _ => traverseChildren(tree)
 
   }
 
-  private def reportUnusedImport(sels: List[ImportSelector])(using Context) =
+  private def reportUnused(res: UnusedData.UnusedResult)(using Context) =
+    val UnusedData.UnusedResult(imports, locals) = res
+    /* IMPORTS */
     if ctx.settings.WunusedHas.imports then
-      sels.foreach { s =>
+      imports.foreach { s =>
         report.warning(i"unused import", s.srcPos)
       }
+    /* LOCAL VAL OR DEF */
+    if ctx.settings.WunusedHas.locals then
+      locals.foreach { s =>
+        report.warning(i"unused local definition", s.srcPos)
+      }
+
 end CheckUnused
 
 object CheckUnused:
@@ -88,18 +125,28 @@ object CheckUnused:
    */
   private class UnusedData(initctx: Context):
     import collection.mutable.{Set => MutSet, Map => MutMap, Stack, ListBuffer}
+    import UnusedData.ScopeType
 
+    var currScope: ScopeType = ScopeType.Other
 
-    private val used = Stack(MutSet[Int]())
+    /* IMPORTS */
     private val impInScope = Stack(MutMap[Int, ListBuffer[ImportSelector]]())
-    private val unused = ListBuffer[ImportSelector]()
+    private val unusedImport = ListBuffer[ImportSelector]()
+    private val usedImports = Stack(MutSet[Int]())
+
+    /* LOCAL DEF OR VAL */
+    private val localDefInScope = Stack(MutSet[tpd.ValOrDefDef]())
+    private val unusedLocalDef = ListBuffer[tpd.ValOrDefDef]()
+    private val usedLocal = MutSet[Int]()
 
     private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
       case ident@untpd.Ident(name) => name == StdNames.nme.WILDCARD
       case _ => false
 
     /** Register the id of a found (used) symbol */
-    def registerUsed(id: Int): Unit = used.top += id
+    def registerUsed(id: Int): Unit =
+      usedImports.top += id
+      usedLocal += id
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
@@ -124,43 +171,70 @@ object CheckUnused:
           case Some(value) => value += sel
       }
 
+    def registerLocalDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
+      if currScope == ScopeType.Local then
+        localDefInScope.top += valOrDef
+
     /** enter a new scope */
     def pushScope(): Unit =
-      used.push(MutSet())
+      usedImports.push(MutSet())
       impInScope.push(MutMap())
+      localDefInScope.push(MutSet())
 
     /** leave the current scope */
-    def popScope(): Unit =
+    def popScope()(using Context): Unit =
+      popScopeImport()
+      popScopeLocalDef()
+
+    def popScopeImport(): Unit =
       val usedImp = MutSet[ImportSelector]()
       val poppedImp = impInScope.pop()
-      val notDefined = used.pop().filter{id =>
+      val notDefined = usedImports.pop.filter{id =>
         poppedImp.remove(id) match
           case None => true
           case Some(value) =>
             usedImp.addAll(value)
             false
       }
-      if used.size > 0 then
-        used.top.addAll(notDefined)
+      if usedImports.size > 0 then
+        usedImports.top.addAll(notDefined)
+
       poppedImp.values.flatten.foreach{ sel =>
         // If **any** of the entities used by the import is used,
         // do not add to the `unused` Set
         if !usedImp(sel) then
-          unused += sel
+          unusedImport += sel
       }
+
+    def popScopeLocalDef()(using Context): Unit =
+      val unused = localDefInScope.pop().filterInPlace(d => !usedLocal(d.symbol.id))
+      unusedLocalDef ++= unused
 
     /**
      * Leave the scope and return a `List` of unused `ImportSelector`s
      *
      * The given `List` is sorted by line and then column of the position
      */
-    def getUnused(using Context): List[ImportSelector] =
+    def getUnused(using Context): UnusedResult =
       popScope()
-      unused.toList.sortBy{ sel =>
+      val sortedImp = unusedImport.toList.sortBy{ sel =>
         val pos = sel.srcPos.sourcePos
         (pos.line, pos.column)
       }
+      val sortedLocals = unusedLocalDef.toList.sortBy { sel =>
+        val pos = sel.srcPos.sourcePos
+        (pos.line, pos.column)
+      }
+      UnusedResult(sortedImp, sortedLocals)
 
   end UnusedData
+
+  object UnusedData:
+      enum ScopeType:
+        case Local
+        case Template
+        case Other
+
+      case class UnusedResult(imports: List[ImportSelector], locals: List[tpd.ValOrDefDef])
 end CheckUnused
 
