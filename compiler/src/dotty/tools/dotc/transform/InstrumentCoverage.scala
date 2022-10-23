@@ -14,9 +14,10 @@ import core.NameOps.isContextFunction
 import core.Types.*
 import coverage.*
 import typer.LiftCoverage
-import util.SourcePosition
+import util.{SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
+import inlines.Inlines
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -88,14 +89,15 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def recordStatement(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Int =
       val id = statementId
       statementId += 1
+
+      val sourceFile = pos.source
       val statement = Statement(
-        source = ctx.source.file.name,
-        location = Location(tree),
+        location = Location(tree, sourceFile),
         id = id,
         start = pos.start,
         end = pos.end,
         line = pos.line,
-        desc = tree.source.content.slice(pos.start, pos.end).mkString,
+        desc = sourceFile.content.slice(pos.start, pos.end).mkString,
         symbolName = tree.symbol.name.toSimpleName.toString,
         treeName = tree.getClass.getSimpleName.nn,
         branch
@@ -290,6 +292,15 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
               tree.self,
               transformStats(tree.body, tree.symbol)
             )
+
+          case tree: Inlined =>
+            // Ideally, tree.call would provide precise information about the inlined call,
+            // and we would use this information for the coverage report.
+            // But PostTyper simplifies tree.call, so we can't report the actual method that was inlined.
+            // In any case, the subtrees need to be repositioned right now, otherwise the
+            // coverage statement will point to a potentially unreachable source file.
+            val dropped = Inlines.dropInlined(tree) // drop and reposition
+            transform(dropped) // transform the content of the Inlined
 
           // For everything else just recurse and transform
           case _ =>

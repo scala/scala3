@@ -67,7 +67,7 @@ object Serializer:
                       |${stmt.location.className}
                       |${stmt.location.classType}
                       |${stmt.location.fullClassName}
-                      |${stmt.location.method}
+                      |${stmt.location.methodName}
                       |${stmt.start}
                       |${stmt.end}
                       |${stmt.line}
