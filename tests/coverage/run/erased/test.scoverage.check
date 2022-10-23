@@ -203,6 +203,5 @@ DefDef
 false
 0
 false
-@main
-def Test
+@main\ndef Test
 

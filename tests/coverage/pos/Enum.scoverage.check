@@ -84,7 +84,7 @@ Apply
 false
 0
 false
-println("Example 1: \n"+emptyList)
+println("Example 1: \\n"+emptyList)
 
 4
 Enum.scala
@@ -101,7 +101,7 @@ Apply
 false
 0
 false
-"Example 1: \n"+emptyList
+"Example 1: \\n"+emptyList
 
 5
 Enum.scala
@@ -118,7 +118,7 @@ Apply
 false
 0
 false
-println(s"${list}\n")
+println(s"${list}\\n")
 
 6
 Enum.scala
@@ -135,7 +135,7 @@ Apply
 false
 0
 false
-s"${list}\n"
+s"${list}\\n"
 
 7
 Enum.scala
@@ -169,8 +169,7 @@ Apply
 false
 0
 false
-for p <- Planet.values do
-        println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+for p <- Planet.values do\n        println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
 9
 Enum.scala

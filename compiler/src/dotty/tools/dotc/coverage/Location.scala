@@ -31,7 +31,7 @@ object Location:
 
     val ownerDenot = ctx.owner.denot
     val enclosingClass = ownerDenot.enclosingClass
-    val packageName = ownerDenot.enclosingPackageClass.name.toSimpleName.toString
+    val packageName = ownerDenot.enclosingPackageClass.fullName.toSimpleName.toString
     val className = enclosingClass.name.toSimpleName.toString
     val methodName = ownerDenot.enclosingMethod.name.toSimpleName.toString
 

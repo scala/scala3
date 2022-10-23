@@ -288,7 +288,7 @@ Apply
 false
 0
 false
-println(raw"a\nb")
+println(raw"a\\nb")
 
 16
 interpolation/test.scala
@@ -305,7 +305,7 @@ Apply
 false
 0
 false
-raw"a\nb"
+raw"a\\nb"
 
 17
 interpolation/test.scala

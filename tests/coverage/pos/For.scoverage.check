@@ -33,8 +33,7 @@ Apply
 false
 0
 false
-for i <- 1 to 10 do
-    println(i)
+for i <- 1 to 10 do\n    println(i)
 
 1
 For.scala
@@ -136,8 +135,7 @@ Apply
 false
 0
 false
-for j <- 1 to 10 if f(j) do
-    println(j)
+for j <- 1 to 10 if f(j) do\n    println(j)
 
 7
 For.scala
