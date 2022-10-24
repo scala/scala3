@@ -115,7 +115,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     if body.isTerm then
       // `quoted.runtime.Expr.quote[T](<body>)`  --> `quoted.runtime.Expr.quote[T2](<body2>)`
       val TypeApply(fun, targs) = quote.fun: @unchecked
-      val targs2 = targs.map(targ => TypeTree(healTypeOfTerm(quote.fun.srcPos)(targ.tpe)))
+      val targs2 = targs.map(targ => TypeTree(healType(quote.fun.srcPos)(targ.tpe)))
       cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), body2 :: Nil)
     else
       val quotes = quote.args.mapConserve(transform)
@@ -209,8 +209,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         case tp: ThisType if level != -1 && level != levelOf(tp.cls) =>
           levelError(tp.cls, tp, pos)
         case tp: AnnotatedType =>
-          val newAnnotTree = transform(tp.annot.tree)
-          derivedAnnotatedType(tp, apply(tp.parent), tp.annot.derivedAnnotation(newAnnotTree))
+          derivedAnnotatedType(tp, apply(tp.parent), tp.annot)
         case _ =>
           mapOver(tp)
   }
