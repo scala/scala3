@@ -7,7 +7,7 @@ import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators.i
-import dotty.tools.dotc.core.Flags.Given
+import dotty.tools.dotc.core.Flags.{Private, Given}
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
@@ -33,7 +33,8 @@ class CheckUnused extends Phase:
 
   override def isRunnable(using Context): Boolean =
     ctx.settings.WunusedHas.imports ||
-    ctx.settings.WunusedHas.locals
+    ctx.settings.WunusedHas.locals  ||
+    ctx.settings.WunusedHas.privates
 
   override def run(using Context): Unit =
     val tree = ctx.compilationUnit.tpdTree
@@ -89,17 +90,17 @@ class CheckUnused extends Phase:
           ud.currScope = prev
         }
       case t:tpd.ValDef =>
-        ctx.property(_key).foreach(_.registerLocalDef(t))
+        ctx.property(_key).foreach(_.registerDef(t))
         traverseChildren(tree)
       case t:tpd.DefDef =>
-        ctx.property(_key).foreach(_.registerLocalDef(t))
+        ctx.property(_key).foreach(_.registerDef(t))
         traverseChildren(tree)
       case _ => traverseChildren(tree)
 
   }
 
   private def reportUnused(res: UnusedData.UnusedResult)(using Context) =
-    val UnusedData.UnusedResult(imports, locals) = res
+    val UnusedData.UnusedResult(imports, locals, privates) = res
     /* IMPORTS */
     if ctx.settings.WunusedHas.imports then
       imports.foreach { s =>
@@ -109,6 +110,11 @@ class CheckUnused extends Phase:
     if ctx.settings.WunusedHas.locals then
       locals.foreach { s =>
         report.warning(i"unused local definition", s.srcPos)
+      }
+    /* PRIVATES VAL OR DEF */
+    if ctx.settings.WunusedHas.privates then
+      privates.foreach { s =>
+        report.warning(i"unused private member", s.srcPos)
       }
 
 end CheckUnused
@@ -134,10 +140,12 @@ object CheckUnused:
     private val unusedImport = ListBuffer[ImportSelector]()
     private val usedImports = Stack(MutSet[Int]())
 
-    /* LOCAL DEF OR VAL */
+    /* LOCAL DEF OR VAL / Private Def or Val*/
     private val localDefInScope = Stack(MutSet[tpd.ValOrDefDef]())
+    private val privateDefInScope = Stack(MutSet[tpd.ValOrDefDef]())
     private val unusedLocalDef = ListBuffer[tpd.ValOrDefDef]()
-    private val usedLocal = MutSet[Int]()
+    private val unusedPrivateDef = ListBuffer[tpd.ValOrDefDef]()
+    private val usedDef = MutSet[Int]()
 
     private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
       case ident@untpd.Ident(name) => name == StdNames.nme.WILDCARD
@@ -146,7 +154,7 @@ object CheckUnused:
     /** Register the id of a found (used) symbol */
     def registerUsed(id: Int): Unit =
       usedImports.top += id
-      usedLocal += id
+      usedDef += id
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
@@ -171,20 +179,26 @@ object CheckUnused:
           case Some(value) => value += sel
       }
 
-    def registerLocalDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
+    def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
       if currScope == ScopeType.Local then
         localDefInScope.top += valOrDef
+      else if currScope == ScopeType.Template && valOrDef.symbol.is(Private) then
+        privateDefInScope.top += valOrDef
 
     /** enter a new scope */
     def pushScope(): Unit =
+      // unused imports :
       usedImports.push(MutSet())
       impInScope.push(MutMap())
+      // local and private defs :
       localDefInScope.push(MutSet())
+      privateDefInScope.push(MutSet())
 
     /** leave the current scope */
     def popScope()(using Context): Unit =
       popScopeImport()
       popScopeLocalDef()
+      popScopePrivateDef()
 
     def popScopeImport(): Unit =
       val usedImp = MutSet[ImportSelector]()
@@ -207,8 +221,14 @@ object CheckUnused:
       }
 
     def popScopeLocalDef()(using Context): Unit =
-      val unused = localDefInScope.pop().filterInPlace(d => !usedLocal(d.symbol.id))
+      val unused = localDefInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
       unusedLocalDef ++= unused
+
+    def popScopePrivateDef()(using Context): Unit =
+      val unused = privateDefInScope.pop().filterInPlace{d =>
+        !usedDef(d.symbol.id)
+      }
+      unusedPrivateDef ++= unused
 
     /**
      * Leave the scope and return a `List` of unused `ImportSelector`s
@@ -221,11 +241,15 @@ object CheckUnused:
         val pos = sel.srcPos.sourcePos
         (pos.line, pos.column)
       }
-      val sortedLocals = unusedLocalDef.toList.sortBy { sel =>
+      val sortedLocalDefs = unusedLocalDef.toList.sortBy { sel =>
         val pos = sel.srcPos.sourcePos
         (pos.line, pos.column)
       }
-      UnusedResult(sortedImp, sortedLocals)
+      val sortedPrivateDefs = unusedPrivateDef.toList.sortBy { sel =>
+        val pos = sel.srcPos.sourcePos
+        (pos.line, pos.column)
+      }
+      UnusedResult(sortedImp, sortedLocalDefs, sortedPrivateDefs)
 
   end UnusedData
 
@@ -235,6 +259,10 @@ object CheckUnused:
         case Template
         case Other
 
-      case class UnusedResult(imports: List[ImportSelector], locals: List[tpd.ValOrDefDef])
+      case class UnusedResult(
+        imports: List[ImportSelector],
+        locals: List[tpd.ValOrDefDef],
+        privates: List[tpd.ValOrDefDef],
+      )
 end CheckUnused
 

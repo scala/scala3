@@ -163,7 +163,7 @@ private sealed trait WarningSettings:
     name = "-Wunused",
     helpArg = "warning",
     descr = "Enable or disable specific `unused` warnings",
-    choices = List("nowarn", "all", "imports", "locals"),
+    choices = List("nowarn", "all", "imports", "locals", "privates"),
     default = Nil
   )
   object WunusedHas:
@@ -171,6 +171,7 @@ private sealed trait WarningSettings:
     def nowarn(using Context) = allOr("nowarn")
     def imports(using Context) = allOr("imports")
     def locals(using Context) = allOr("locals")
+    def privates(using Context) = allOr("privates")
 
   val Wconf: Setting[List[String]] = MultiStringSetting(
     "-Wconf",
