@@ -24,7 +24,7 @@ import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
 import transform.TypeUtils._
 import transform.SymUtils._
-import config.Config
+import config.{Config, Feature}
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
@@ -221,7 +221,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
             else if defn.isFunctionSymbol(tsym) then
               toTextFunction(args, tsym.name.isContextFunction, tsym.name.isErasedFunction,
-                isPure = ctx.settings.Ycc.value && !tsym.name.isImpureFunction)
+                isPure = Feature.pureFunsEnabled && !tsym.name.isImpureFunction)
             else if isInfixType(tp) then
               val l :: r :: Nil = args: @unchecked
               val opName = tyconName(tycon)
@@ -248,7 +248,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(tycon)
       case tp: RefinedType if defn.isFunctionOrPolyType(tp) && !printDebug =>
         toTextMethodAsFunction(tp.refinedInfo,
-          isPure = ctx.settings.Ycc.value && !tp.typeSymbol.name.isImpureFunction)
+          isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction)
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !showUniqueIds)
           toText(tp.info)
@@ -556,7 +556,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           (" <: " ~ toText(bound) provided !bound.isEmpty)
         }
       case ByNameTypeTree(tpt) =>
-        (if ctx.settings.Ycc.value then "-> " else "=> ")
+        (if Feature.pureFunsEnabled then "-> " else "=> ")
         ~ toTextLocal(tpt)
       case TypeBoundsTree(lo, hi, alias) =>
         if (lo eq hi) && alias.isEmpty then optText(lo)(" = " ~ _)
@@ -618,7 +618,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           try changePrec(GlobalPrec)(toText(captureSet) ~ " " ~ toText(arg))
           catch case ex: IllegalCaptureRef => toTextAnnot
         if annot.symbol.maybeOwner == defn.RetainsAnnot
-            && ctx.settings.Ycc.value && Config.printCaptureSetsAsPrefix && !printDebug
+            && Feature.ccEnabled && Config.printCaptureSetsAsPrefix && !printDebug
         then toTextRetainsAnnot
         else toTextAnnot
       case EmptyTree =>
@@ -664,7 +664,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             ~ ")"
         }
         val isPure =
-          ctx.settings.Ycc.value
+          Feature.pureFunsEnabled
           && tree.match
             case tree: FunctionWithMods => !tree.mods.is(Impure)
             case _ => true

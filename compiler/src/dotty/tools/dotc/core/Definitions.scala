@@ -14,6 +14,7 @@ import typer.ImportInfo.RootRef
 import Comments.CommentsContext
 import Comments.Comment
 import util.Spans.NoSpan
+import config.Feature
 import Symbols.requiredModuleRef
 import cc.{CapturingType, CaptureSet, EventuallyCapturingType}
 
@@ -976,7 +977,6 @@ class Definitions {
   @tu lazy val BooleanBeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BooleanBeanProperty")
   @tu lazy val BodyAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Body")
   @tu lazy val CapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.capability")
-  @tu lazy val CaptureCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.CaptureChecked")
   @tu lazy val ChildAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Child")
   @tu lazy val ContextResultCountAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ContextResultCount")
   @tu lazy val ProvisionalSuperClassAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ProvisionalSuperClass")
@@ -1012,6 +1012,7 @@ class Definitions {
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
+  @tu lazy val WithPureFunsAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WithPureFuns")
   @tu lazy val FieldMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.field")
   @tu lazy val GetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.getter")
   @tu lazy val ParamMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.param")
@@ -1160,7 +1161,7 @@ class Definitions {
 
   /** Extractor for context function types representing by-name parameters, of the form
    *  `() ?=> T`.
-   *  Under -Ycc, this becomes `() ?-> T` or `{r1, ..., rN} () ?-> T`.
+   *  Under purefunctions, this becomes `() ?-> T` or `{r1, ..., rN} () ?-> T`.
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
@@ -1984,7 +1985,7 @@ class Definitions {
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
-        ++ (JavaEnumClass :: (if ctx.settings.Ycc.value then captureRoot :: Nil else Nil))
+        ++ (JavaEnumClass :: (if Feature.ccEnabled then captureRoot :: Nil else Nil))
 
       isInitialized = true
     }

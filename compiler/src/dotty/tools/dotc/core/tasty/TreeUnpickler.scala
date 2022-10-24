@@ -32,7 +32,7 @@ import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
 import transform.SymUtils._
-import cc.adaptFunctionTypeUnderCC
+import cc.adaptFunctionTypeUnderPureFuns
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
@@ -87,8 +87,8 @@ class TreeUnpickler(reader: TastyReader,
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = _
 
-  /** Was unpickled class compiled with -Ycc? */
-  private var wasCaptureChecked: Boolean = false
+  /** Was unpickled class compiled with pureFunctions? */
+  private var knowsPureFuns: Boolean = false
 
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
@@ -489,11 +489,11 @@ class TreeUnpickler(reader: TastyReader,
     def readTermRef()(using Context): TermRef =
       readType().asInstanceOf[TermRef]
 
-    /** Under -Ycc, map all function types to impure function types,
-     *  unless the unpickled class was also compiled with -Ycc.
+    /** Under pureFunctions, map all function types to impure function types,
+     *  unless the unpickled class was also compiled with pureFunctions.
      */
     private def postProcessFunction(tp: Type)(using Context): Type =
-      if wasCaptureChecked then tp else tp.adaptFunctionTypeUnderCC
+      if knowsPureFuns then tp else tp.adaptFunctionTypeUnderPureFuns
 
 // ------ Reading definitions -----------------------------------------------------
 
@@ -642,8 +642,8 @@ class TreeUnpickler(reader: TastyReader,
       }
       registerSym(start, sym)
       if (isClass) {
-        if sym.owner.is(Package) && annots.exists(_.hasSymbol(defn.CaptureCheckedAnnot)) then
-          wasCaptureChecked = true
+        if sym.owner.is(Package) && annots.exists(_.hasSymbol(defn.WithPureFunsAnnot)) then
+          knowsPureFuns = true
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(using localContext(sym))
       }

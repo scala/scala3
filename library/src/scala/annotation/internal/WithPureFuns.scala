@@ -3,7 +3,7 @@ package internal
 import annotation.experimental
 
 /** A marker annotation on a toplevel class that indicates
- *  that the class was checked under -Ycc
+ *  that the class was typed with the pureFunctions language import.
  */
-@experimental class CaptureChecked extends StaticAnnotation
+@experimental class WithPureFuns extends StaticAnnotation
 

@@ -8,6 +8,7 @@ import scala.io.Codec
 import Int.MaxValue
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import util.Chars.{isOperatorPart, digit2int}
+import config.Feature
 import Decorators.*
 import Definitions._
 import nme._
@@ -208,14 +209,14 @@ object NameOps {
             if str == mustHave then found = true
             idx + str.length
           else idx
-        val start = if ctx.settings.Ycc.value then skip(0, "Impure") else 0
+        val start = if Feature.pureFunsEnabled then skip(0, "Impure") else 0
         skip(skip(start, "Erased"), "Context") == suffixStart
         && found
       }
 
     /** Same as `funArity`, except that it returns -1 if the prefix
      *  is not one of a (possibly empty) concatenation of a subset of
-     *  "Impure" (only under -Ycc), "Erased" and "Context" (in that order).
+     *  "Impure" (only under pureFunctions), "Erased" and "Context" (in that order).
      */
     private def checkedFunArity(suffixStart: Int)(using Context): Int =
       if isFunctionPrefix(suffixStart) then funArity(suffixStart) else -1

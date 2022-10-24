@@ -196,7 +196,7 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
-    def isPureArrow(name: Name): Boolean = ctx.settings.Ycc.value && isIdent(name)
+    def isPureArrow(name: Name): Boolean = Feature.pureFunsEnabled && isIdent(name)
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
@@ -968,11 +968,11 @@ object Parsers {
         isArrowIndent()
       else false
 
-    /** Under -Ycc: is the following token sequuence a capture set `{ref1, ..., refN}`
-     *  followed by a token that can start a type?
+    /** Under captureChecking language import: is the following token sequence a
+     *  capture set `{ref1, ..., refN}` followed by a token that can start a type?
      */
     def followingIsCaptureSet(): Boolean =
-      ctx.settings.Ycc.value && {
+      Feature.ccEnabled && {
         val lookahead = in.LookaheadScanner()
         def followingIsTypeStart() =
           lookahead.nextToken()
@@ -1446,7 +1446,7 @@ object Parsers {
     def captureRef(): Tree =
       if in.token == THIS then simpleRef() else termIdent()
 
-    /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under -Ycc
+    /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
     def captureSet(): List[Tree] = inBraces {
       if in.token == RBRACE then Nil else commaSeparated(captureRef)
@@ -1457,12 +1457,12 @@ object Parsers {
      *                   |  FunParamClause ‘=>>’ Type
      *                   |  MatchType
      *                   |  InfixType
-     *                   |  CaptureSet Type                            -- under -Ycc
+     *                   |  CaptureSet Type                            -- under captureChecking
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
-     *                   |  (‘->’ | ‘?->’ ) Type                       -- under -Ycc
+     *                   |  (‘->’ | ‘?->’ ) Type                       -- under pureFunctions
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
-     *                   |  HKTypeParamClause ‘->’ Type                -- under -Ycc
+     *                   |  HKTypeParamClause ‘->’ Type                -- under pureFunctions
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
@@ -1482,8 +1482,9 @@ object Parsers {
             if !imods.flags.isEmpty || params.isEmpty then
               syntaxError(em"illegal parameter list for type lambda", start)
               token = ARROW
-          else if ctx.settings.Ycc.value then
-            // `=>` means impure function under -Ycc whereas `->` is a regular function.
+          else if Feature.pureFunsEnabled then
+            // `=>` means impure function under pureFunctions or captureChecking
+            // language imports, whereas `->` is then a regular function.
             imods |= Impure
 
           if token == CTXARROW then
@@ -1887,7 +1888,7 @@ object Parsers {
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
         val tp = atSpan(in.skipToken()) { ByNameTypeTree(core()) }
-        if isImpure && ctx.settings.Ycc.value then ImpureByNameTypeTree(tp) else tp
+        if isImpure && Feature.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
       else if in.token == LBRACE && followingIsCaptureSet() then
         val start = in.offset
         val cs = captureSet()

@@ -28,6 +28,8 @@ object Feature:
   val symbolLiterals = deprecated("symbolLiterals")
   val fewerBraces = experimental("fewerBraces")
   val saferExceptions = experimental("saferExceptions")
+  val pureFunctions = experimental("pureFunctions")
+  val captureChecking = experimental("captureChecking")
 
   /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
@@ -74,6 +76,11 @@ object Feature:
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
+
+  def pureFunsEnabled(using Context) =
+    enabled(pureFunctions) || ccEnabled
+
+  def ccEnabled(using Context) = enabled(captureChecking)
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)

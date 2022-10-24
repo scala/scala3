@@ -7,7 +7,7 @@ import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*, Denotations.*
 import config.Printers.{capt, recheckr}
-import config.Config
+import config.{Config, Feature}
 import ast.{tpd, untpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkParents}
@@ -26,7 +26,7 @@ object CheckCaptures:
 
   class Pre extends PreRecheck, SymTransformer:
 
-    override def isEnabled(using Context) = ctx.settings.Ycc.value
+    override def isEnabled(using Context) = Feature.ccEnabled
 
   	/** Reset `private` flags of parameter accessors so that we can refine them
      *  in Setup if they have non-empty capture sets. Special handling of some
@@ -133,7 +133,7 @@ class CheckCaptures extends Recheck, SymTransformer:
   import CheckCaptures.*
 
   def phaseName: String = "cc"
-  override def isEnabled(using Context) = ctx.settings.Ycc.value
+  override def isEnabled(using Context) = Feature.ccEnabled
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
@@ -148,7 +148,7 @@ class CheckCaptures extends Recheck, SymTransformer:
   /** Check overrides again, taking capture sets into account.
    *  TODO: Can we avoid doing overrides checks twice?
    *  We need to do them here since only at this phase CaptureTypes are relevant
-   *  But maybe we can then elide the check during the RefChecks phase if -Ycc is set?
+   *  But maybe we can then elide the check during the RefChecks phase under captureChecking?
    */
   def checkOverrides = new TreeTraverser:
     def traverse(t: Tree)(using Context) =
