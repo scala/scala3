@@ -29,5 +29,3 @@ This can cause problems if a program tries to access the missing private field v
       // [C] needed if `field` is to be accessed through reflection
     val retained = field * field
 ```
-
-
