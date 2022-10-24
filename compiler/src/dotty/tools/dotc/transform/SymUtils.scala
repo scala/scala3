@@ -363,6 +363,8 @@ object SymUtils:
       self.hasAnnotation(defn.ExperimentalAnnot)
       || isDefaultArgumentOfExperimentalMethod
       || (!self.is(Package) && self.owner.isInExperimentalScope)
+      || self.topLevelClass.ownersIterator.exists(p =>
+          p.is(Package) && p.owner.isRoot && p.name == tpnme.dotty)
 
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.

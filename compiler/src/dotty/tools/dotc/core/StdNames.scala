@@ -445,6 +445,7 @@ object StdNames {
     val derived: N              = "derived"
     val derives: N              = "derives"
     val doubleHash: N           = "doubleHash"
+    val dotty: N                = "dotty"
     val drop: N                 = "drop"
     val dynamics: N             = "dynamics"
     val elem: N                 = "elem"
