@@ -376,6 +376,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCaptureRef(tp: Type): Text =
     homogenize(tp) match
+      case tp: TermRef if tp.symbol == defn.captureRoot => Str("*")
       case tp: SingletonType => toTextRef(tp)
       case _ => toText(tp)
 

@@ -1,5 +1,5 @@
 import annotation.retains
-type Top = Any @retains(*)
+type Top = Any @retains(caps.*)
 
 type Box[+T <: Top] = ([K <: Top] -> (T => K) -> K)
 

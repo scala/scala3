@@ -408,10 +408,10 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 
     def apply(tp: ByNameTypeTree)(using Context): untpd.CapturingTypeTree =
       untpd.CapturingTypeTree(
-        Ident(nme.CAPTURE_ROOT).withSpan(tp.span.startPos) :: Nil, tp)
+        untpd.captureRoot.withSpan(tp.span.startPos) :: Nil, tp)
 
     def unapply(tp: Tree)(using Context): Option[ByNameTypeTree] = tp match
-      case untpd.CapturingTypeTree(id @ Ident(nme.CAPTURE_ROOT) :: Nil, bntp: ByNameTypeTree)
+      case untpd.CapturingTypeTree(id @ Select(_, nme.CAPTURE_ROOT) :: Nil, bntp: ByNameTypeTree)
       if id.span == bntp.span.startPos => Some(bntp)
       case _ => None
   end ImpureByNameTypeTree

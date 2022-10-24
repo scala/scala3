@@ -425,6 +425,7 @@ object StdNames {
     val bytes: N                = "bytes"
     val canEqual_ : N           = "canEqual"
     val canEqualAny : N         = "canEqualAny"
+    val caps: N                 = "caps"
     val checkInitialized: N     = "checkInitialized"
     val classOf: N              = "classOf"
     val classType: N            = "classType"

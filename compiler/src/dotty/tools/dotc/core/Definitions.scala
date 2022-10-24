@@ -470,7 +470,6 @@ class Definitions {
 
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
-  @tu lazy val captureRoot: TermSymbol = enterPermanentSymbol(nme.CAPTURE_ROOT, AnyType).asTerm
 
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
@@ -964,6 +963,7 @@ class Definitions {
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
     @tu lazy val Caps_unsafeBox: Symbol = CapsModule.requiredMethod("unsafeBox")
     @tu lazy val Caps_unsafeUnbox: Symbol = CapsModule.requiredMethod("unsafeUnbox")
+    @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("*")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
@@ -1984,9 +1984,8 @@ class Definitions {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
-        ++ (JavaEnumClass :: (if Feature.ccEnabled then captureRoot :: Nil else Nil))
-
+      val forced =
+        syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
       isInitialized = true
     }
     addSyntheticSymbolsComments

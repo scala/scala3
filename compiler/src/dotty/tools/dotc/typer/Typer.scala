@@ -2682,7 +2682,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       val cls = annot1.symbol.maybeOwner
-      if ctx.settings.Ycc.value
+      if Feature.ccEnabled
           && (cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot)
       then
         CheckCaptures.checkWellformed(annot1)

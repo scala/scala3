@@ -159,7 +159,7 @@ object Parsers {
       syntaxError(msg.toMessage, span)
 
     def unimplementedExpr(using Context): Select =
-      Select(Select(rootDot(nme.scala), nme.Predef), nme.???)
+      Select(scalaDot(nme.Predef), nme.???)
   }
 
   trait OutlineParserCommon extends ParserCommon {
@@ -1444,7 +1444,10 @@ object Parsers {
     /** CaptureRef  ::=  ident | `this`
      */
     def captureRef(): Tree =
-      if in.token == THIS then simpleRef() else termIdent()
+      if in.token == THIS then simpleRef()
+      else termIdent() match
+        case Ident(nme.CAPTURE_ROOT) => captureRoot
+        case id => id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
