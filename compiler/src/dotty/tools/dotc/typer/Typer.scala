@@ -2669,13 +2669,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
-    val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
-    if Annotations.annotClass(annot1) == defn.NowarnAnnot then
+    var annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
+    val annotCls = Annotations.annotClass(annot1)
+    if annotCls == defn.NowarnAnnot then
       registerNowarn(annot1, tree)
+    else if annotCls == defn.RetainsUniversalAnnot then
+      annot1 = typedExpr(
+        untpd.New(
+          untpd.TypeTree(defn.RetainsAnnot.typeRef),
+          (untpd.ref(defn.captureRoot) :: Nil) :: Nil).withSpan(tree.annot.span),
+        defn.AnnotationClass.typeRef)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       val cls = annot1.symbol.maybeOwner
-      if cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot then
+      if ctx.settings.Ycc.value
+          && (cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot)
+      then
         CheckCaptures.checkWellformed(annot1)
       if arg1.isType then
         assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)

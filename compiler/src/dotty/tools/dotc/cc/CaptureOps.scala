@@ -96,6 +96,19 @@ extension (tp: Type)
   /** Is the boxedCaptureSet of this type nonempty? */
   def isBoxedCapturing(using Context) = !tp.boxedCaptureSet.isAlwaysEmpty
 
+  /** If this type is a capturing type, the version with boxed statues as given by `boxed`.
+   *  If it is a TermRef of a capturing type, and the box status flips, widen to a capturing
+   *  type that captures the TermRef.
+   */
+  def forceBoxStatus(boxed: Boolean)(using Context): Type = tp.widenDealias match
+    case tp @ CapturingType(parent, refs) if tp.isBoxed != boxed =>
+      val refs1 = tp match
+        case ref: CaptureRef if ref.isTracked => ref.singletonCaptureSet
+        case _ => refs
+      CapturingType(parent, refs1, boxed)
+    case _ =>
+      tp
+
   /** Map capturing type to their parents. Capturing types accessible
    *  via dealising are also stripped.
    */
@@ -155,6 +168,8 @@ extension (sym: Symbol)
       case _ => false
     containsEnclTypeParam(sym.info.finalResultType)
     && !sym.allowsRootCapture
+    && sym != defn.Caps_unsafeBox
+    && sym != defn.Caps_unsafeUnbox
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

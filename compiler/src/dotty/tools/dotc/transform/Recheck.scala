@@ -4,7 +4,7 @@ package transform
 
 import core.*
 import Symbols.*, Contexts.*, Types.*, ContextOps.*, Decorators.*, SymDenotations.*
-import Flags.*, SymUtils.*, NameKinds.*
+import Flags.*, SymUtils.*, NameKinds.*, Denotations.Denotation
 import ast.*
 import Names.Name
 import Phases.Phase
@@ -21,9 +21,10 @@ import util.Property
 import StdNames.nme
 import reporting.trace
 import annotation.constructorOnly
+import cc.CaptureSet.IdempotentCaptRefMap
 
 object Recheck:
-  import tpd.Tree
+  import tpd.*
 
   /** A flag used to indicate that a ParamAccessor has been temporarily made not-private
    *  Only used at the start of the Recheck phase, reset at its end.
@@ -35,6 +36,13 @@ object Recheck:
 
   /** Attachment key for rechecked types of TypeTrees */
   val RecheckedType = Property.Key[Type]
+
+  val addRecheckedTypes = new TreeMap:
+    override def transform(tree: Tree)(using Context): Tree =
+      val tree1 = super.transform(tree)
+      tree.getAttachment(RecheckedType) match
+        case Some(tpe) => tree1.withType(tpe)
+        case None => tree1
 
   extension (sym: Symbol)
 
@@ -129,7 +137,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def keepType(tree: Tree): Boolean = keepAllTypes
 
     /** Constant-folded rechecked type `tp` of tree `tree` */
-    private def constFold(tree: Tree, tp: Type)(using Context): Type =
+    protected def constFold(tree: Tree, tp: Type)(using Context): Type =
       val tree1 = tree.withType(tp)
       val tree2 = ConstFold(tree1)
       if tree2 ne tree1 then tree2.tpe else tp
@@ -137,20 +145,26 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckIdent(tree: Ident)(using Context): Type =
       tree.tpe
 
-    def recheckSelect(tree: Select)(using Context): Type =
+    def recheckSelect(tree: Select, pt: Type)(using Context): Type =
       val Select(qual, name) = tree
-      recheckSelection(tree, recheck(qual).widenIfUnstable, name)
+      recheckSelection(tree, recheck(qual, AnySelectionProto).widenIfUnstable, name, pt)
 
-    /** Keep the symbol of the `select` but re-infer its type */
-    def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) =
+    def recheckSelection(tree: Select, qualType: Type, name: Name,
+        sharpen: Denotation => Denotation)(using Context): Type =
       if name.is(OuterSelectName) then tree.tpe
       else
         //val pre = ta.maybeSkolemizePrefix(qualType, name)
-        val mbr = qualType.findMember(name, qualType,
-            excluded = if tree.symbol.is(Private) then EmptyFlags else Private
-          ).suchThat(tree.symbol == _)
+        val mbr = sharpen(
+            qualType.findMember(name, qualType,
+              excluded = if tree.symbol.is(Private) then EmptyFlags else Private
+          )).suchThat(tree.symbol == _)
         constFold(tree, qualType.select(name, mbr))
           //.showing(i"recheck select $qualType . $name : ${mbr.info} = $result")
+
+
+    /** Keep the symbol of the `select` but re-infer its type */
+    def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context): Type =
+      recheckSelection(tree, qualType, name, sharpen = identity[Denotation])
 
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
@@ -187,7 +201,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *  to FromJavaObject since it got lost in ElimRepeated
      */
     private def mapJavaArgs(formals: List[Type])(using Context): List[Type] =
-      val tm = new TypeMap:
+      val tm = new TypeMap with IdempotentCaptRefMap:
         def apply(t: Type) = t match
           case t: TypeRef if t.symbol == defn.ObjectClass => defn.FromJavaObjectType
           case _ => mapOver(t)
@@ -344,7 +358,7 @@ abstract class Recheck extends Phase, SymTransformer:
         val sym = tree.symbol
         tree match
           case tree: Ident => recheckIdent(tree)
-          case tree: Select => recheckSelect(tree)
+          case tree: Select => recheckSelect(tree, pt)
           case tree: Bind => recheckBind(tree, pt)
           case tree: ValOrDefDef =>
             if tree.isEmpty then NoType
@@ -444,12 +458,6 @@ abstract class Recheck extends Phase, SymTransformer:
 
   /** Show tree with rechecked types instead of the types stored in the `.tpe` field */
   override def show(tree: untpd.Tree)(using Context): String =
-    val addRecheckedTypes = new TreeMap:
-      override def transform(tree: Tree)(using Context): Tree =
-        val tree1 = super.transform(tree)
-        tree.getAttachment(RecheckedType) match
-          case Some(tpe) => tree1.withType(tpe)
-          case None => tree1
     atPhase(thisPhase) {
       super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
     }

@@ -1872,7 +1872,10 @@ object Types {
     def dropRepeatedAnnot(using Context): Type = dropAnnot(defn.RepeatedAnnot)
 
     def annotatedToRepeated(using Context): Type = this match {
-      case tp @ ExprType(tp1) => tp.derivedExprType(tp1.annotatedToRepeated)
+      case tp @ ExprType(tp1) =>
+        tp.derivedExprType(tp1.annotatedToRepeated)
+      case self @ AnnotatedType(tp, annot) if annot matches defn.RetainsByNameAnnot =>
+        self.derivedAnnotatedType(tp.annotatedToRepeated, annot)
       case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
         val typeSym = tp.typeSymbol.asClass
         assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
@@ -2787,7 +2790,7 @@ object Types {
       ((prefix eq NoPrefix)
       || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
       || isRootCapability
-      ) && !symbol.is(Method)
+      ) && !symbol.isOneOf(UnstableValueFlags)
 
     override def isRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot

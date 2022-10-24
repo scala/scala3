@@ -331,11 +331,12 @@ extends tpd.TreeTraverser:
     else expandAbbreviations(tp1)
 
   /** Transform type of type tree, and remember the transformed type as the type the tree */
-  private def transformTT(tree: TypeTree, boxed: Boolean)(using Context): Unit =
-    tree.rememberType(
-      if tree.isInstanceOf[InferredTypeTree]
-      then transformInferredType(tree.tpe, boxed)
-      else transformExplicitType(tree.tpe, boxed))
+  private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean)(using Context): Unit =
+    if !tree.hasRememberedType then
+      tree.rememberType(
+        if tree.isInstanceOf[InferredTypeTree] && !exact
+        then transformInferredType(tree.tpe, boxed)
+        else transformExplicitType(tree.tpe, boxed))
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
    *  method or poly types `to`. We use a single BiTypeMap to do everything.
@@ -376,20 +377,34 @@ extends tpd.TreeTraverser:
 
   def traverse(tree: Tree)(using Context): Unit =
     tree match
-      case tree: DefDef if isExcluded(tree.symbol) =>
-        return
-      case tree @ ValDef(_, tpt: TypeTree, _) if tree.symbol.is(Mutable) =>
-        transformTT(tpt, boxed = true) // types of mutable variables are boxed
-        traverse(tree.rhs)
+      case tree: DefDef =>
+        if isExcluded(tree.symbol) then
+          return
+        tree.tpt match
+          case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
+            transformTT(tpt, boxed = false, exact = true)
+            //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
+          case _ =>
+        traverseChildren(tree)
+      case tree @ ValDef(_, tpt: TypeTree, _) =>
+        val isVar = tree.symbol.is(Mutable)
+        val overrides = tree.symbol.allOverriddenSymbols.hasNext
+        //if overrides then println(i"transforming overriding ${tree.symbol}")
+        if isVar || overrides then
+          transformTT(tpt,
+              boxed = isVar,    // types of mutable variables are boxed
+              exact = overrides // types of symbols that override a parent don't get a capture set
+            )
+        traverseChildren(tree)
       case tree @ TypeApply(fn, args) =>
         traverse(fn)
         for case arg: TypeTree <- args do
-          transformTT(arg, boxed = true) // type arguments in type applications are boxed
+          transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
       case _ =>
         traverseChildren(tree)
     tree match
       case tree: TypeTree =>
-        transformTT(tree, boxed = false) // other types are not boxed
+        transformTT(tree, boxed = false, exact = false) // other types are not boxed
       case tree: ValOrDefDef =>
         val sym = tree.symbol
 

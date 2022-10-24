@@ -10,8 +10,10 @@ def test(cap1: Cap, cap2: Cap) =
   val z2 = () => { x = identity }
   val z2c: () -> Unit = z2  // error
 
-  var a: String => String = f // error
+  var a: String => String = f // was error, now OK
   var b: List[String => String] = Nil // was error, now OK
+  val u = a  // error
+  a("")  // error
   b.head // error
 
   def scope =

@@ -11,5 +11,8 @@ package scala.annotation
  *  The annotation can also be written explicitly if one wants to avoid the
  *  non-standard capturing type syntax.
  */
-@experimental class retains(xs: Any*) extends annotation.StaticAnnotation
+// @experimental // suppressed so we can use in compiler
+class retains(xs: Any*) extends annotation.StaticAnnotation
 
+// @experimental // suppressed so we can use in compiler
+class retainsUniversal extends annotation.StaticAnnotation

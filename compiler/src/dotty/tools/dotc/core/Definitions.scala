@@ -943,22 +943,26 @@ class Definitions {
 
   @tu lazy val RuntimeTuplesModule: Symbol = requiredModule("scala.runtime.Tuples")
   @tu lazy val RuntimeTuplesModuleClass: Symbol = RuntimeTuplesModule.moduleClass
-    lazy val RuntimeTuples_consIterator: Symbol = RuntimeTuplesModule.requiredMethod("consIterator")
-    lazy val RuntimeTuples_concatIterator: Symbol = RuntimeTuplesModule.requiredMethod("concatIterator")
-    lazy val RuntimeTuples_apply: Symbol = RuntimeTuplesModule.requiredMethod("apply")
-    lazy val RuntimeTuples_cons: Symbol = RuntimeTuplesModule.requiredMethod("cons")
-    lazy val RuntimeTuples_size: Symbol = RuntimeTuplesModule.requiredMethod("size")
-    lazy val RuntimeTuples_tail: Symbol = RuntimeTuplesModule.requiredMethod("tail")
-    lazy val RuntimeTuples_concat: Symbol = RuntimeTuplesModule.requiredMethod("concat")
-    lazy val RuntimeTuples_toArray: Symbol = RuntimeTuplesModule.requiredMethod("toArray")
-    lazy val RuntimeTuples_productToArray: Symbol = RuntimeTuplesModule.requiredMethod("productToArray")
-    lazy val RuntimeTuples_isInstanceOfTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfTuple")
-    lazy val RuntimeTuples_isInstanceOfEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfEmptyTuple")
-    lazy val RuntimeTuples_isInstanceOfNonEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfNonEmptyTuple")
+    @tu lazy val RuntimeTuples_consIterator: Symbol = RuntimeTuplesModule.requiredMethod("consIterator")
+    @tu lazy val RuntimeTuples_concatIterator: Symbol = RuntimeTuplesModule.requiredMethod("concatIterator")
+    @tu lazy val RuntimeTuples_apply: Symbol = RuntimeTuplesModule.requiredMethod("apply")
+    @tu lazy val RuntimeTuples_cons: Symbol = RuntimeTuplesModule.requiredMethod("cons")
+    @tu lazy val RuntimeTuples_size: Symbol = RuntimeTuplesModule.requiredMethod("size")
+    @tu lazy val RuntimeTuples_tail: Symbol = RuntimeTuplesModule.requiredMethod("tail")
+    @tu lazy val RuntimeTuples_concat: Symbol = RuntimeTuplesModule.requiredMethod("concat")
+    @tu lazy val RuntimeTuples_toArray: Symbol = RuntimeTuplesModule.requiredMethod("toArray")
+    @tu lazy val RuntimeTuples_productToArray: Symbol = RuntimeTuplesModule.requiredMethod("productToArray")
+    @tu lazy val RuntimeTuples_isInstanceOfTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfTuple")
+    @tu lazy val RuntimeTuples_isInstanceOfEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfEmptyTuple")
+    @tu lazy val RuntimeTuples_isInstanceOfNonEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfNonEmptyTuple")
 
   @tu lazy val TupledFunctionTypeRef: TypeRef = requiredClassRef("scala.util.TupledFunction")
   def TupledFunctionClass(using Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
   def RuntimeTupleFunctionsModule(using Context): Symbol = requiredModule("scala.runtime.TupledFunctions")
+
+  @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
+    @tu lazy val Caps_unsafeBox: Symbol = CapsModule.requiredMethod("unsafeBox")
+    @tu lazy val Caps_unsafeUnbox: Symbol = CapsModule.requiredMethod("unsafeUnbox")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
@@ -1020,6 +1024,7 @@ class Definitions {
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
+  @tu lazy val RetainsUniversalAnnot: ClassSymbol = requiredClass("scala.annotation.retainsUniversal")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
