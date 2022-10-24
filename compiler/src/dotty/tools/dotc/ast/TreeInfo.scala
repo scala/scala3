@@ -512,7 +512,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       sym.owner.isPrimitiveValueClass
       || sym.owner == defn.StringClass
       || defn.pureMethods.contains(sym)
-    tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
+    tree.tpe.isInstanceOf[ConstantType] && tree.symbol != NoSymbol && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
     || fn.symbol.isStableMember && !fn.symbol.is(Lazy)  // constructors of no-inits classes are stable
 
   /** The purity level of this reference.
