@@ -25,23 +25,6 @@ Test$
 Object
 <empty>.Test$
 simple
-68
-76
-3
-length
-Apply
-false
-0
-false
-b.length
-
-1
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-simple
 60
 78
 3
@@ -51,6 +34,23 @@ false
 0
 false
 s"$a, ${b.length}"
+
+1
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+simple
+68
+76
+3
+length
+Apply
+false
+0
+false
+b.length
 
 2
 interpolation/test.scala
@@ -127,51 +127,17 @@ Test$
 Object
 <empty>.Test$
 main
-229
-244
-10
-zipWithIndex
-Select
+195
+199
+9
+List
+Ident
 false
 0
 false
-xs.zipWithIndex
+List
 
 7
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-$anonfun
-267
-276
-10
-s
-Apply
-false
-0
-false
-s"$i: $s"
-
-8
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-$anonfun
-259
-277
-10
-println
-Apply
-false
-0
-false
-println(s"$i: $s")
-
-9
 interpolation/test.scala
 <empty>
 Test$
@@ -188,22 +154,56 @@ false
 false
 xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
 
-10
+8
 interpolation/test.scala
 <empty>
 Test$
 Object
 <empty>.Test$
 main
-292
-308
-12
-simple
+229
+244
+10
+zipWithIndex
+Select
+false
+0
+false
+xs.zipWithIndex
+
+9
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+$anonfun
+259
+277
+10
+println
 Apply
 false
 0
 false
-simple(1, "abc")
+println(s"$i: $s")
+
+10
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+$anonfun
+267
+276
+10
+s
+Apply
+false
+0
+false
+s"$i: $s"
 
 11
 interpolation/test.scala
@@ -229,15 +229,15 @@ Test$
 Object
 <empty>.Test$
 main
-322
-331
-13
-hexa
+292
+308
+12
+simple
 Apply
 false
 0
 false
-hexa(127)
+simple(1, "abc")
 
 13
 interpolation/test.scala
@@ -263,15 +263,15 @@ Test$
 Object
 <empty>.Test$
 main
-345
-354
-14
-raw
+322
+331
+13
+hexa
 Apply
 false
 0
 false
-raw"a\nb"
+hexa(127)
 
 15
 interpolation/test.scala
@@ -288,9 +288,26 @@ Apply
 false
 0
 false
-println(raw"a\nb")
+println(raw"a\\nb")
 
 16
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+345
+354
+14
+raw
+Apply
+false
+0
+false
+raw"a\\nb"
+
+17
 interpolation/test.scala
 <empty>
 Test$

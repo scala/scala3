@@ -178,23 +178,6 @@ Givens
 Class
 covtest.Givens
 test2
-461
-476
-22
-getMessage
-Apply
-false
-0
-false
-getMessage(123)
-
-10
-Givens.scala
-covtest
-Givens
-Class
-covtest.Givens
-test2
 448
 477
 22
@@ -204,6 +187,23 @@ false
 0
 false
 printContext(getMessage(123))
+
+10
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
+test2
+461
+476
+22
+getMessage
+Apply
+false
+0
+false
+getMessage(123)
 
 11
 Givens.scala

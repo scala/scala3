@@ -13,7 +13,6 @@ class Coverage:
 
 /** A statement that can be invoked, and thus counted as "covered" by code coverage tools. */
 case class Statement(
-    source: String,
     location: Location,
     id: Int,
     start: Int,

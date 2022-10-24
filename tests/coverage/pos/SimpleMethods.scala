@@ -15,6 +15,9 @@ class C:
     if false then true
     else false
 
+  def partialCond: Unit =
+    if false then ()
+
   def new1: C = new {}
 
   def tryCatch: Unit =

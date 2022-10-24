@@ -24,23 +24,6 @@ covtest
 Record
 Class
 covtest.Record
-$anonfun
-159
-163
-5
-_1
-Select
-false
-0
-false
-_._1
-
-1
-StructuralTypes.scala
-covtest
-Record
-Class
-covtest.Record
 selectDynamic
 148
 172
@@ -51,6 +34,23 @@ false
 0
 false
 elems.find(_._1 == name)
+
+1
+StructuralTypes.scala
+covtest
+Record
+Class
+covtest.Record
+$anonfun
+159
+163
+5
+_1
+Select
+false
+0
+false
+_._1
 
 2
 StructuralTypes.scala

@@ -25,23 +25,6 @@ MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-151
-163
-7
-println
-Apply
-false
-0
-false
-println("a")
-
-1
-MatchCaseClasses.scala
-covtest
-MatchCaseClasses$
-Object
-covtest.MatchCaseClasses$
-f
 135
 147
 7
@@ -52,24 +35,24 @@ false
 false
 case Pat1(0)
 
-2
+1
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-184
-196
-8
+151
+163
+7
 println
 Apply
 false
 0
 false
-println("b")
+println("a")
 
-3
+2
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -86,24 +69,24 @@ false
 false
 case Pat1(_)
 
-4
+3
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-225
-237
-9
+184
+196
+8
 println
 Apply
 false
 0
 false
-println("c")
+println("b")
 
-5
+4
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -120,41 +103,24 @@ false
 false
 case p @ Pat2(1, -1)
 
+5
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+225
+237
+9
+println
+Apply
+false
+0
+false
+println("c")
+
 6
-MatchCaseClasses.scala
-covtest
-MatchCaseClasses$
-Object
-covtest.MatchCaseClasses$
-f
-275
-285
-11
-println
-Apply
-false
-0
-false
-println(y)
-
-7
-MatchCaseClasses.scala
-covtest
-MatchCaseClasses$
-Object
-covtest.MatchCaseClasses$
-f
-292
-304
-12
-println
-Apply
-false
-0
-false
-println("d")
-
-8
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -171,24 +137,41 @@ false
 false
 case Pat2(_, y: String)
 
-9
+7
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-325
-337
-13
+275
+285
+11
 println
 Apply
 false
 0
 false
-println("e")
+println(y)
 
-10
+8
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+292
+304
+12
+println
+Apply
+false
+0
+false
+println("d")
+
+9
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -205,24 +188,24 @@ false
 false
 case p: Pat2
 
-11
+10
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-352
-368
-14
+325
+337
+13
 println
 Apply
 false
 0
 false
-println("other")
+println("e")
 
-12
+11
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -238,6 +221,23 @@ false
 0
 false
 case _
+
+12
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+352
+368
+14
+println
+Apply
+false
+0
+false
+println("other")
 
 13
 MatchCaseClasses.scala
