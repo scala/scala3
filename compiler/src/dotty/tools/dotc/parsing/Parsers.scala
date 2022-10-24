@@ -15,7 +15,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
-import NameKinds.WildcardParamName
+import NameKinds.{WildcardParamName, QualifiedName}
 import NameOps._
 import ast.{Positioned, Trees}
 import ast.Trees._
@@ -30,7 +30,7 @@ import scala.annotation.tailrec
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
 import config.Feature
-import config.Feature.{sourceVersion, migrateTo3}
+import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -3307,23 +3307,25 @@ object Parsers {
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
           for
             case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
-            if allSourceVersionNames.contains(imported)
           do
-            if !outermost then
-              syntaxError(i"source version import is only allowed at the toplevel", id.span)
-            else if ctx.compilationUnit.sourceVersion.isDefined then
-              syntaxError(i"duplicate source version import", id.span)
-            else if illegalSourceVersionNames.contains(imported) then
-              val candidate =
-                val nonMigration = imported.toString.replace("-migration", "")
-                validSourceVersionNames.find(_.show == nonMigration)
-              val baseMsg = i"`$imported` is not a valid source version"
-              val msg = candidate match
-                case Some(member) => i"$baseMsg, did you mean language.`$member`?"
-                case _ => baseMsg
-              syntaxError(msg, id.span)
-            else
-              ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+            if globalOnlyImports.contains(QualifiedName(prefix, imported.asTermName)) && !outermost then
+              syntaxError(i"this language import is only allowed at the toplevel", id.span)
+            if allSourceVersionNames.contains(imported) && prefix.isEmpty then
+              if !outermost then
+                syntaxError(i"source version import is only allowed at the toplevel", id.span)
+              else if ctx.compilationUnit.sourceVersion.isDefined then
+                syntaxError(i"duplicate source version import", id.span)
+              else if illegalSourceVersionNames.contains(imported) then
+                val candidate =
+                  val nonMigration = imported.toString.replace("-migration", "")
+                  validSourceVersionNames.find(_.show == nonMigration)
+                val baseMsg = i"`$imported` is not a valid source version"
+                val msg = candidate match
+                  case Some(member) => i"$baseMsg, did you mean language.`$member`?"
+                  case _ => baseMsg
+                syntaxError(msg, id.span)
+              else
+                ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
         case None =>
       imp
 
