@@ -2,7 +2,7 @@ package scala
 
 import annotation.experimental
 
-// @experimental , suppress @experimental so we can use in compiler itself
+@experimental
 object caps:
 
   /** If argument is of type `cs T`, converts to type `box cs T`. This
