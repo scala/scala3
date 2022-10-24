@@ -78,6 +78,7 @@ function attachAllListeners() {
         expanderChild.onclick = function (e) {
           if (!$(e.target).is("a") && e.fromSnippet !== true) {
             this.parentElement.classList.toggle("expand");
+            this.children[0].classList.toggle("expanded");
             this.querySelector(".show-content").classList.toggle("expand");
           }
         };
@@ -85,27 +86,44 @@ function attachAllListeners() {
     }
   }
 
-  var documentableLists = document.getElementsByClassName("documentableList");
-  if (documentableLists) {
-    for (i = 0; i < documentableLists.length; i++) {
-      documentableLists[i].children[0].onclick = function (e) {
-        this.classList.toggle("expand");
-        this.parentElement.classList.toggle("expand");
-      };
-    }
-  }
+  const documentableLists = document.getElementsByClassName("documentableList");
+  [...documentableLists].forEach((list) => {
+    list.children[0].addEventListener("click", () => {
+      list.classList.toggle("expand");
+      list.children[0].children[0].classList.toggle("expand");
+    });
+  });
 
   var memberLists = document.getElementsByClassName("tab");
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {
       if ($(memberLists[i].children[0].children[0]).is("button")) {
-        memberLists[i].children[0].children[0].onclick = function (e) {
+        memberLists[i].children[0].onclick = function (e) {
+          this.classList.toggle("expand");
+          this.children[0].classList.toggle("expand");
           this.parentElement.classList.toggle("expand");
           this.parentElement.parentElement.classList.toggle("expand");
         };
       }
     }
   }
+
+  const documentableBriefs = document.querySelectorAll(".documentableBrief");
+  [...documentableBriefs].forEach((brief) => {
+    console.log(
+      brief.parentElement.parentElement.parentElement.previousElementSibling
+        .children[0],
+    );
+
+    brief.addEventListener("click", () => {
+      brief.parentElement.parentElement.parentElement.parentElement.classList.add(
+        "expand",
+      );
+      brief.parentElement.parentElement.parentElement.previousElementSibling.children[0].classList.add(
+        "expanded",
+      );
+    });
+  });
 
   document.querySelectorAll("a").forEach((el) => {
     const href = el.href;
@@ -129,28 +147,29 @@ function attachAllListeners() {
       e.stopPropagation();
       $.get(href, function (data) {
         if (window.history.state === null) {
-          window.history.replaceState(savePageState(document), '')
+          window.history.replaceState(savePageState(document), "");
         }
-        const parser = new DOMParser()
-        const parsedDocument = parser.parseFromString(data, "text/html")
-        const state = savePageState(parsedDocument)
-        window.history.pushState(state, '', href)
-        loadPageState(document, state)
-        window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD))
-      })
-    })
-  })
-
-  $(".ar").on('click', function (e) {
-    $(this).parent().parent().toggleClass("expanded")
-    $(this).toggleClass("expanded")
-    e.stopPropagation()
+        const parser = new DOMParser();
+        const parsedDocument = parser.parseFromString(data, "text/html");
+        const state = savePageState(parsedDocument);
+        window.history.pushState(state, "", href);
+        loadPageState(document, state);
+        window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD));
+      });
+    });
   });
 
   $(".ar").on("click", function (e) {
     $(this).parent().parent().toggleClass("expanded");
     $(this).toggleClass("expanded");
     e.stopPropagation();
+  });
+
+  document.querySelectorAll(".documentableList .ar").forEach((arrow) => {
+    arrow.addEventListener("click", () => {
+      arrow.parentElement.parentElement.classList.toggle("expand");
+      arrow.classList.toggle("expand");
+    });
   });
 
   document.querySelectorAll(".nh").forEach((el) =>
