@@ -33,11 +33,12 @@ class CoverageTests:
     checkCoverageIn(rootSrc.resolve("run"), true)
 
   def checkCoverageIn(dir: Path, run: Boolean)(using TestGroup): Unit =
-    /** Converts \ to / on windows, to make the tests pass without changing the serialization. */
+    /** Converts \\ (escaped \) to / on windows, to make the tests pass without changing the serialization. */
     def fixWindowsPaths(lines: Buffer[String]): Buffer[String] =
       val separator = java.io.File.separatorChar
-      if separator != '/' then
-        lines.map(_.replace(separator, '/'))
+      if separator == '\\' then
+        val escapedSep = "\\\\"
+        lines.map(_.replace(escapedSep, "/"))
       else
         lines
     end fixWindowsPaths
