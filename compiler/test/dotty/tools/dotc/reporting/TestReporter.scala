@@ -32,6 +32,10 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   private var _didCrash = false
   final def compilerCrashed: Boolean = _didCrash
 
+  private var _skip: Boolean = false
+  final def setSkip(): Unit = _skip = true
+  final def skipped: Boolean = _skip
+
   protected final def inlineInfo(pos: SourcePosition)(using Context): String =
     if (pos.exists) {
       if (pos.outer.exists)
