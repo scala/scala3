@@ -13,6 +13,3 @@ package scala.annotation
  */
 @experimental
 class retains(xs: Any*) extends annotation.StaticAnnotation
-
-@experimental
-class retainsUniversal extends annotation.StaticAnnotation

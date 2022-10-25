@@ -51,7 +51,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.internal.WithPureFuns",
   "scala.annotation.internal.requiresCapability",
   "scala.annotation.retains",
-  "scala.annotation.retainsUniversal",
   "scala.annotation.retainsByName",
   "scala.caps",
   "scala.caps$",
