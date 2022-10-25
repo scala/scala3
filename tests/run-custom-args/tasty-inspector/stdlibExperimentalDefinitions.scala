@@ -50,8 +50,11 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.capability",
   "scala.annotation.internal.CaptureChecked",
   "scala.annotation.internal.requiresCapability",
-  //"scala.annotation.retains",
+  "scala.annotation.retains",
+  "scala.annotation.retainsUniversal",
   "scala.annotation.retainsByName",
+  "scala.caps",
+  "scala.caps$",
 
   //// New APIs: Mirror
   // Can be stabilized in 3.3.0 or later.
