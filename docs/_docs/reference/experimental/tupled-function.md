@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Tupled Function"
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/tupled-function.html
 ---
 
 Tupled Function

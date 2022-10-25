@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "MainAnnotation"
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/main-annotation.html
 ---
 
 `MainAnnotation` provides a generic way to define main annotations such as `@main`.
