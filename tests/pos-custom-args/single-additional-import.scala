@@ -1,1 +1,0 @@
-class annotation extends Annotation
