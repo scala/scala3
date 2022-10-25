@@ -485,6 +485,9 @@ class Definitions {
   }
   def NullType: TypeRef = NullClass.typeRef
 
+  @tu lazy val VoidType: TypeRef = requiredClassRef("java.lang.Void")
+  def VoidClass(using Context) = VoidType.symbol.asClass
+
   @tu lazy val InvokerModule = requiredModule("scala.runtime.coverage.Invoker")
   @tu lazy val InvokedMethodRef = InvokerModule.requiredMethodRef("invoked")
 
@@ -731,6 +734,26 @@ class Definitions {
     }
   }
   def JavaEnumType = JavaEnumClass.typeRef
+
+
+  @tu lazy val MethodHandleClass: ClassSymbol        = requiredClass("java.lang.invoke.MethodHandle")
+  @tu lazy val MethodHandlesLookupClass: ClassSymbol = requiredClass("java.lang.invoke.MethodHandles.Lookup")
+  @tu lazy val VarHandleClass: ClassSymbol           = requiredClass("java.lang.invoke.VarHandle")
+
+  // from the Java language spec: https://docs.oracle.com/javase/specs/jls/se11/html/jls-15.html#jls-15.12.3
+  def isPolymorphicSignature(sym: Symbol) = sym.is(JavaDefined) && {
+    val owner = sym.maybeOwner
+    (owner == MethodHandleClass || owner == VarHandleClass)
+    && sym.hasAnnotation(NativeAnnot)
+    && sym.paramSymss.match
+      case List(List(p)) => p.info.isRepeatedParam
+      case _ => false
+  }
+
+  def wasPolymorphicSignature(sym: Symbol) =
+    val owner = sym.maybeOwner
+    (owner == MethodHandleClass || owner == VarHandleClass)
+    && isPolymorphicSignature(owner.info.member(sym.name).symbol)
 
   @tu lazy val StringBuilderClass: ClassSymbol = requiredClass("scala.collection.mutable.StringBuilder")
   @tu lazy val MatchErrorClass   : ClassSymbol = requiredClass("scala.MatchError")

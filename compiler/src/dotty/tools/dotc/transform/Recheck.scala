@@ -261,8 +261,13 @@ abstract class Recheck extends Phase, SymTransformer:
       mt.instantiate(argTypes)
 
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      val funtpe = recheck(tree.fun)
-      funtpe.widen match
+      val wasPolymorphicSignature = tree.fun.tpe match
+        case funRef: TermRef => defn.wasPolymorphicSignature(funRef.symbol)
+        case _ => false
+      if wasPolymorphicSignature then tree.fun.tpe.widenTermRefExpr.finalResultType
+      else
+       val funtpe = recheck(tree.fun)
+       funtpe.widen match
         case fntpe: MethodType =>
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
           val formals =

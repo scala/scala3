@@ -4726,7 +4726,7 @@ class JSCodeGen()(using genCtx: Context) {
     Set[Symbol](
         defn.BoxedUnitClass, defn.BoxedBooleanClass, defn.BoxedCharClass, defn.BoxedByteClass,
         defn.BoxedShortClass, defn.BoxedIntClass, defn.BoxedLongClass, defn.BoxedFloatClass,
-        defn.BoxedDoubleClass, defn.StringClass, jsdefn.JavaLangVoidClass
+        defn.BoxedDoubleClass, defn.StringClass, defn.VoidClass
     )
   }
 

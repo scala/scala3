@@ -90,7 +90,10 @@ class SemanticSymbolBuilder:
         case _ =>
       end find
       val sig = sym.signature
-      find(_.signature == sig)
+      // the polymorphic signature methods (invoke/invokeExact) are never overloaded
+      // we changed the signature at the call site, which means they won't match,
+      // but we still shouldn't add any overload index in this case.
+      find(_.signature == sig || defn.wasPolymorphicSignature(sym))
 
     def addDescriptor(sym: Symbol): Unit =
       if sym.is(ModuleClass) then

@@ -23,7 +23,7 @@ import Inferencing._
 import reporting._
 import transform.TypeUtils._
 import transform.SymUtils._
-import Nullables._
+import Nullables._, NullOpsDecorator.*
 import config.Feature
 
 import collection.mutable
@@ -937,11 +937,24 @@ trait Applications extends Compatibility {
       def simpleApply(fun1: Tree, proto: FunProto)(using Context): Tree =
         methPart(fun1).tpe match {
           case funRef: TermRef =>
-            val app = ApplyTo(tree, fun1, funRef, proto, pt)
-            convertNewGenericArray(
-              widenEnumCase(
-                postProcessByNameArgs(funRef, app).computeNullable(),
-                pt))
+            if defn.isPolymorphicSignature(funRef.symbol) then
+              val originalResultType = funRef.symbol.info.resultType.stripNull
+              val expectedResultType = AvoidWildcardsMap()(proto.deepenProto.resultType)
+              val resultType =
+                if !originalResultType.isRef(defn.ObjectClass) then originalResultType
+                else if isFullyDefined(expectedResultType, ForceDegree.all) then expectedResultType
+                else expectedResultType match
+                  case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _) => resTp
+                  case _ => defn.ObjectType
+              val info = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
+              val fun2 = fun1.withType(funRef.symbol.copy(info = info).termRef)
+              simpleApply(fun2, proto)
+            else
+              val app = ApplyTo(tree, fun1, funRef, proto, pt)
+              convertNewGenericArray(
+                widenEnumCase(
+                  postProcessByNameArgs(funRef, app).computeNullable(),
+                  pt))
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }

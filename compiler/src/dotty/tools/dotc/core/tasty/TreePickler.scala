@@ -413,6 +413,14 @@ class TreePickler(pickler: TastyPickler) {
                 writeByte(if name.isTypeName then SELECTtpt else SELECT)
                 pickleNameAndSig(name, sig, ename)
                 pickleTree(qual)
+              else if defn.wasPolymorphicSignature(tree.symbol) then
+                writeByte(SELECTinPoly)
+                withLength {
+                  pickleNameAndSig(name, tree.symbol.signature, ename)
+                  pickleTree(qual)
+                  pickleType(tree.symbol.owner.typeRef)
+                  pickleType(tree.tpe.widenSingleton, richTypes = true) // this widens to a MethodType, so need richTypes
+                }
               else // select from owner
                 writeByte(SELECTin)
                 withLength {

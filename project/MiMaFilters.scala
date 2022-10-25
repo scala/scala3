@@ -22,4 +22,7 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.caps$Pure"),
     ProblemFilters.exclude[MissingClassProblem]("scala.caps$unsafe$"),
   )
+  val TastyCore: Seq[ProblemFilter] = Seq(
+    ProblemFilters.exclude[MissingMethodProblem]("dotty.tools.tasty.TastyFormat.SELECTinPoly"),
+  )
 }

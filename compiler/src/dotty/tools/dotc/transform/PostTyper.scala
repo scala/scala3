@@ -204,7 +204,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             return transformSelect(cpy.Select(tree)(qual.select(pobj).withSpan(qual.span), tree.name), targs)
         case _ =>
       }
-      val tree1 = super.transform(tree)
+      val tree0 = super.transform(tree)
+      val tree1 = if defn.wasPolymorphicSignature(tree.symbol) then tree0.withType(tree.tpe) else tree0
       constToLiteral(tree1) match {
         case _: Literal => tree1
         case _ => superAcc.transformSelect(tree1, targs)
