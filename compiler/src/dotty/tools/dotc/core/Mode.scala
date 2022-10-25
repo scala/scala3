@@ -78,7 +78,7 @@ object Mode {
   /** Use Scala2 scheme for overloading and implicit resolution */
   val OldOverloadingResolution: Mode = newMode(15, "OldOverloadingResolution")
 
-  /** Treat CapturingTypes as plain AnnotatedTypes even in phase =Ycc.
+  /** Treat CapturingTypes as plain AnnotatedTypes even in phase CheckCaptures.
    *  Reuses the value of OldOverloadingResolution to save Mode bits.
    *  This is OK since OldOverloadingResolution only affects implicit search, which
    *  is done during phases Typer and Inlinig, and IgnoreCaptures only has an

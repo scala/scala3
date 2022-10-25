@@ -9,6 +9,7 @@ import Decorators.*, NameOps.*
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
+import config.Feature
 
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()
@@ -120,11 +121,11 @@ extension (tp: Type)
     case _ =>
       tp
 
-  /** Under -Ycc, map regular function type to impure function type
+  /** Under pureFunctions, map regular function type to impure function type
    */
-  def adaptFunctionTypeUnderCC(using Context): Type = tp match
+  def adaptFunctionTypeUnderPureFuns(using Context): Type = tp match
     case AppliedType(fn, args)
-    if ctx.settings.Ycc.value && defn.isFunctionClass(fn.typeSymbol) =>
+    if Feature.pureFunsEnabled && defn.isFunctionClass(fn.typeSymbol) =>
       val fname = fn.typeSymbol.name
       defn.FunctionType(
         fname.functionArity,

@@ -15,7 +15,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
-import NameKinds.WildcardParamName
+import NameKinds.{WildcardParamName, QualifiedName}
 import NameOps._
 import ast.{Positioned, Trees}
 import ast.Trees._
@@ -30,7 +30,7 @@ import scala.annotation.tailrec
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
 import config.Feature
-import config.Feature.{sourceVersion, migrateTo3}
+import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -159,7 +159,7 @@ object Parsers {
       syntaxError(msg.toMessage, span)
 
     def unimplementedExpr(using Context): Select =
-      Select(Select(rootDot(nme.scala), nme.Predef), nme.???)
+      Select(scalaDot(nme.Predef), nme.???)
   }
 
   trait OutlineParserCommon extends ParserCommon {
@@ -196,7 +196,7 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
-    def isPureArrow(name: Name): Boolean = ctx.settings.Ycc.value && isIdent(name)
+    def isPureArrow(name: Name): Boolean = in.pureFunsEnabled && isIdent(name)
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
@@ -968,11 +968,11 @@ object Parsers {
         isArrowIndent()
       else false
 
-    /** Under -Ycc: is the following token sequuence a capture set `{ref1, ..., refN}`
-     *  followed by a token that can start a type?
+    /** Under captureChecking language import: is the following token sequence a
+     *  capture set `{ref1, ..., refN}` followed by a token that can start a type?
      */
     def followingIsCaptureSet(): Boolean =
-      ctx.settings.Ycc.value && {
+      in.featureEnabled(Feature.captureChecking) && {
         val lookahead = in.LookaheadScanner()
         def followingIsTypeStart() =
           lookahead.nextToken()
@@ -1444,9 +1444,12 @@ object Parsers {
     /** CaptureRef  ::=  ident | `this`
      */
     def captureRef(): Tree =
-      if in.token == THIS then simpleRef() else termIdent()
+      if in.token == THIS then simpleRef()
+      else termIdent() match
+        case Ident(nme.CAPTURE_ROOT) => captureRoot
+        case id => id
 
-    /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under -Ycc
+    /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
     def captureSet(): List[Tree] = inBraces {
       if in.token == RBRACE then Nil else commaSeparated(captureRef)
@@ -1457,12 +1460,12 @@ object Parsers {
      *                   |  FunParamClause ‘=>>’ Type
      *                   |  MatchType
      *                   |  InfixType
-     *                   |  CaptureSet Type                            -- under -Ycc
+     *                   |  CaptureSet Type                            -- under captureChecking
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
-     *                   |  (‘->’ | ‘?->’ ) Type                       -- under -Ycc
+     *                   |  (‘->’ | ‘?->’ ) Type                       -- under pureFunctions
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
-     *                   |  HKTypeParamClause ‘->’ Type                -- under -Ycc
+     *                   |  HKTypeParamClause ‘->’ Type                -- under pureFunctions
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
@@ -1482,8 +1485,9 @@ object Parsers {
             if !imods.flags.isEmpty || params.isEmpty then
               syntaxError(em"illegal parameter list for type lambda", start)
               token = ARROW
-          else if ctx.settings.Ycc.value then
-            // `=>` means impure function under -Ycc whereas `->` is a regular function.
+          else if in.pureFunsEnabled then
+            // `=>` means impure function under pureFunctions or captureChecking
+            // language imports, whereas `->` is then a regular function.
             imods |= Impure
 
           if token == CTXARROW then
@@ -1887,7 +1891,7 @@ object Parsers {
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
         val tp = atSpan(in.skipToken()) { ByNameTypeTree(core()) }
-        if isImpure && ctx.settings.Ycc.value then ImpureByNameTypeTree(tp) else tp
+        if isImpure && in.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
       else if in.token == LBRACE && followingIsCaptureSet() then
         val start = in.offset
         val cs = captureSet()
@@ -3306,23 +3310,25 @@ object Parsers {
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
           for
             case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
-            if allSourceVersionNames.contains(imported)
           do
-            if !outermost then
-              syntaxError(i"source version import is only allowed at the toplevel", id.span)
-            else if ctx.compilationUnit.sourceVersion.isDefined then
-              syntaxError(i"duplicate source version import", id.span)
-            else if illegalSourceVersionNames.contains(imported) then
-              val candidate =
-                val nonMigration = imported.toString.replace("-migration", "")
-                validSourceVersionNames.find(_.show == nonMigration)
-              val baseMsg = i"`$imported` is not a valid source version"
-              val msg = candidate match
-                case Some(member) => i"$baseMsg, did you mean language.`$member`?"
-                case _ => baseMsg
-              syntaxError(msg, id.span)
-            else
-              ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+            if globalOnlyImports.contains(QualifiedName(prefix, imported.asTermName)) && !outermost then
+              syntaxError(i"this language import is only allowed at the toplevel", id.span)
+            if allSourceVersionNames.contains(imported) && prefix.isEmpty then
+              if !outermost then
+                syntaxError(i"source version import is only allowed at the toplevel", id.span)
+              else if ctx.compilationUnit.sourceVersion.isDefined then
+                syntaxError(i"duplicate source version import", id.span)
+              else if illegalSourceVersionNames.contains(imported) then
+                val candidate =
+                  val nonMigration = imported.toString.replace("-migration", "")
+                  validSourceVersionNames.find(_.show == nonMigration)
+                val baseMsg = i"`$imported` is not a valid source version"
+                val msg = candidate match
+                  case Some(member) => i"$baseMsg, did you mean language.`$member`?"
+                  case _ => baseMsg
+                syntaxError(msg, id.span)
+              else
+                ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
         case None =>
       imp
 

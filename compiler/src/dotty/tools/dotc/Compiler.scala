@@ -81,8 +81,8 @@ class Compiler {
          new PatternMatcher) ::      // Compile pattern matches
     List(new TestRecheck.Pre) ::     // Test only: run rechecker, enabled under -Yrecheck-test
     List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
-    List(new CheckCaptures.Pre) ::   // Preparations for check captures phase, enabled under -Ycc
-    List(new CheckCaptures) ::       // Check captures, enabled under -Ycc
+    List(new CheckCaptures.Pre) ::   // Preparations for check captures phase, enabled under captureChecking
+    List(new CheckCaptures) ::       // Check captures, enabled under captureChecking
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.

@@ -230,6 +230,15 @@ object Scanners {
         postfixOpsEnabledCtx = myLanguageImportContext
       postfixOpsEnabledCache
 
+    private var pureFunsEnabledCache = false
+    private var pureFunsEnabledCtx: Context = NoContext
+
+    def pureFunsEnabled =
+      if pureFunsEnabledCtx ne myLanguageImportContext then
+        pureFunsEnabledCache = featureEnabled(Feature.pureFunctions) || featureEnabled(Feature.captureChecking)
+        pureFunsEnabledCtx = myLanguageImportContext
+      pureFunsEnabledCache
+
     /** All doc comments kept by their end position in a `Map`.
       *
       * Note: the map is necessary since the comments are looked up after an

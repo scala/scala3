@@ -4238,7 +4238,7 @@ object Types {
     final val Unknown: DependencyStatus = 0      // not yet computed
     final val NoDeps: DependencyStatus = 1       // no dependent parameters found
     final val FalseDeps: DependencyStatus = 2    // all dependent parameters are prefixes of non-depended alias types
-    final val CaptureDeps: DependencyStatus = 3  // dependencies in capture sets under -Ycc, otherwise only false dependencoes
+    final val CaptureDeps: DependencyStatus = 3  // dependencies in capture sets under captureChecking, otherwise only false dependencoes
     final val TrueDeps: DependencyStatus = 4     // some truly dependent parameters exist
     final val StatusMask: DependencyStatus = 7   // the bits indicating actual dependency status
     final val Provisional: DependencyStatus = 8  // set if dependency status can still change due to type variable instantiations

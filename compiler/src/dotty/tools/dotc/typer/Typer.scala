@@ -1879,7 +1879,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val expr1 = typed(tree.expr, defn.ThrowableType)
     val cap = checkCanThrow(expr1.tpe.widen, tree.span)
     val res = Throw(expr1).withSpan(tree.span)
-    if ctx.settings.Ycc.value && !cap.isEmpty && !ctx.isAfterTyper then
+    if Feature.ccEnabled && !cap.isEmpty && !ctx.isAfterTyper then
       // Record access to the CanThrow capabulity recovered in `cap` by wrapping
       // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotatoon.
       Typed(res,
@@ -2669,20 +2669,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
-    var annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
+    val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
     val annotCls = Annotations.annotClass(annot1)
     if annotCls == defn.NowarnAnnot then
       registerNowarn(annot1, tree)
-    else if annotCls == defn.RetainsUniversalAnnot then
-      annot1 = typedExpr(
-        untpd.New(
-          untpd.TypeTree(defn.RetainsAnnot.typeRef),
-          (untpd.ref(defn.captureRoot) :: Nil) :: Nil).withSpan(tree.annot.span),
-        defn.AnnotationClass.typeRef)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       val cls = annot1.symbol.maybeOwner
-      if ctx.settings.Ycc.value
+      if Feature.ccEnabled
           && (cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot)
       then
         CheckCaptures.checkWellformed(annot1)

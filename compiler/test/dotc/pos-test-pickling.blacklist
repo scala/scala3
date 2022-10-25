@@ -78,6 +78,9 @@ i2797a
 # allows to simplify a type that was already computed
 i13842.scala
 
+# Position change under captureChecking
+boxmap-paper.scala
+
 # GADT cast applied to singleton type difference
 i4176-gadt.scala
 
