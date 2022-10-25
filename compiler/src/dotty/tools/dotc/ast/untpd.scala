@@ -145,7 +145,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case Floating
   }
 
-  /** {x1, ..., xN} T   (only relevant under -Ycc) */
+  /** {x1, ..., xN} T   (only relevant under captureChecking) */
   case class CapturingTypeTree(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
 
   /** Short-lived usage in typer, does not need copy/transform/fold infrastructure */

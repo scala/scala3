@@ -196,7 +196,7 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
-    def isPureArrow(name: Name): Boolean = Feature.pureFunsEnabled && isIdent(name)
+    def isPureArrow(name: Name): Boolean = in.pureFunsEnabled && isIdent(name)
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
@@ -972,7 +972,7 @@ object Parsers {
      *  capture set `{ref1, ..., refN}` followed by a token that can start a type?
      */
     def followingIsCaptureSet(): Boolean =
-      Feature.ccEnabled && {
+      in.featureEnabled(Feature.captureChecking) && {
         val lookahead = in.LookaheadScanner()
         def followingIsTypeStart() =
           lookahead.nextToken()
@@ -1485,7 +1485,7 @@ object Parsers {
             if !imods.flags.isEmpty || params.isEmpty then
               syntaxError(em"illegal parameter list for type lambda", start)
               token = ARROW
-          else if Feature.pureFunsEnabled then
+          else if in.pureFunsEnabled then
             // `=>` means impure function under pureFunctions or captureChecking
             // language imports, whereas `->` is then a regular function.
             imods |= Impure
@@ -1891,7 +1891,7 @@ object Parsers {
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
         val tp = atSpan(in.skipToken()) { ByNameTypeTree(core()) }
-        if isImpure && Feature.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
+        if isImpure && in.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
       else if in.token == LBRACE && followingIsCaptureSet() then
         val start = in.offset
         val cs = captureSet()

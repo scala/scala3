@@ -58,6 +58,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     try op finally myCtx = savedCtx
   }
 
+  inline def inContextBracket(inline op: Text): Text =
+    val savedCtx = myCtx
+    try op finally myCtx = savedCtx
+
   def withoutPos(op: => Text): Text = {
     val savedPrintPos = printPos
     printPos = false
@@ -308,7 +312,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     blockText(block.stats :+ block.expr)
 
   protected def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
-    ("{" ~ toText(trees, "\n") ~ "}").close
+    inContextBracket {
+      ("{" ~ toText(trees, "\n") ~ "}").close
+    }
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
     val funText = toTextLocal(tree.fun)
@@ -598,7 +604,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
         recur(rhs, "", true)
-      case Import(expr, selectors) =>
+      case tree @ Import(expr, selectors) =>
+        myCtx = myCtx.importContext(tree, tree.symbol)
         keywordText("import ") ~ importText(expr, selectors)
       case Export(expr, selectors) =>
         keywordText("export ") ~ importText(expr, selectors)
@@ -965,7 +972,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
     else impl.body
 
-    val bodyText = " {" ~~ selfText ~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
+    val bodyText = inContextBracket(
+      " {" ~~ selfText ~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}")
 
     prefix ~
     keywordText(" extends").provided(!ofNew && impl.parents.nonEmpty) ~~ parentsText ~
@@ -988,7 +996,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def packageDefText(tree: PackageDef): Text = {
     val statsText = tree.stats match {
       case (pdef: PackageDef) :: Nil => toText(pdef)
-      case _ => toTextGlobal(tree.stats, "\n")
+      case _ => inContextBracket(toTextGlobal(tree.stats, "\n"))
     }
     val bodyText =
       if (currentPrecedence == TopLevelPrec) "\n" ~ statsText else " {" ~ statsText ~ "}"

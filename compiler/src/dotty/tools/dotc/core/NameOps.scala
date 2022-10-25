@@ -209,8 +209,7 @@ object NameOps {
             if str == mustHave then found = true
             idx + str.length
           else idx
-        val start = if Feature.pureFunsEnabled then skip(0, "Impure") else 0
-        skip(skip(start, "Erased"), "Context") == suffixStart
+        skip(skip(skip(0, "Impure"), "Erased"), "Context") == suffixStart
         && found
       }
 
