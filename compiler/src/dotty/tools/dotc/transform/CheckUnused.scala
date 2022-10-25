@@ -120,7 +120,7 @@ class CheckUnused extends Phase:
 end CheckUnused
 
 object CheckUnused:
-  val phaseName: String = "check unused"
+  val phaseName: String = "checkUnused"
   val description: String = "check for unused elements"
 
   /**
