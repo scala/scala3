@@ -1848,11 +1848,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     val preGadt = ctx.gadt.fresh
 
     def allSubsumes(leftGadt: GadtConstraint, rightGadt: GadtConstraint, left: Constraint, right: Constraint): Boolean =
-      subsumes(left, right, preConstraint) && preGadt.match
-        case preGadt: ProperGadtConstraint =>
-          preGadt.subsumes(leftGadt, rightGadt, preGadt)
-        case _ =>
-          true
+      subsumes(left, right, preConstraint) && preGadt.subsumes(leftGadt, rightGadt, preGadt)
 
     if op1 then
       val op1Constraint = constraint

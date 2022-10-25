@@ -3777,7 +3777,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 adaptToSubType(wtp)
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
-             && !inContext(ctx.fresh.setGadt(EmptyGadtConstraint)) {
+             && !inContext(ctx.fresh.setGadt(GadtConstraint.empty)) {
                val res = (tree.tpe.widenExpr frozen_<:< pt)
                if res then
                  // we overshot; a cast is not needed, after all.

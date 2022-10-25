@@ -814,7 +814,7 @@ object Contexts {
       .updated(notNullInfosLoc, Nil)
       .updated(compilationUnitLoc, NoCompilationUnit)
     searchHistory = new SearchRoot
-    gadt = EmptyGadtConstraint
+    gadt = GadtConstraint.empty
   }
 
   @sharable object NoContext extends Context((null: ContextBase | Null).uncheckedNN) {
