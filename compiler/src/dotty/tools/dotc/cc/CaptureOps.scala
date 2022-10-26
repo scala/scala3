@@ -41,6 +41,22 @@ extension (tree: Tree)
         tree.putAttachment(Captures, refs)
         refs
 
+  /** Under pureFunctions, add a @retainsByName(*)` annotation to the argument of
+   *  a by name parameter type, turning the latter into an impure by name parameter type.
+   */
+  def adaptByNameArgUnderPureFuns(using Context): Tree =
+    if Feature.pureFunsEnabledSomewhere then
+      val rbn = defn.RetainsByNameAnnot
+      Annotated(tree,
+        New(rbn.typeRef).select(rbn.primaryConstructor).appliedTo(
+          Typed(
+            SeqLiteral(ref(defn.captureRoot) :: Nil, TypeTree(defn.AnyType)),
+            TypeTree(defn.RepeatedParamType.appliedTo(defn.AnyType))
+          )
+        )
+      )
+    else tree
+
 extension (tp: Type)
 
   /** @pre `tp` is a CapturingType */
@@ -125,7 +141,7 @@ extension (tp: Type)
    */
   def adaptFunctionTypeUnderPureFuns(using Context): Type = tp match
     case AppliedType(fn, args)
-    if Feature.pureFunsEnabled && defn.isFunctionClass(fn.typeSymbol) =>
+    if Feature.pureFunsEnabledSomewhere && defn.isFunctionClass(fn.typeSymbol) =>
       val fname = fn.typeSymbol.name
       defn.FunctionType(
         fname.functionArity,
@@ -133,6 +149,16 @@ extension (tp: Type)
         isErased = fname.isErasedFunction,
         isImpure = true).appliedTo(args)
     case _ =>
+      tp
+
+  /** Under pureFunctions, add a @retainsByName(*)` annotation to the argument of
+   *  a by name parameter type, turning the latter into an impure by name parameter type.
+   */
+  def adaptByNameArgUnderPureFuns(using Context): Type =
+    if Feature.pureFunsEnabledSomewhere then
+      AnnotatedType(tp,
+        CaptureAnnotation(CaptureSet.universal, boxed = false)(defn.RetainsByNameAnnot))
+    else
       tp
 
   def isCapturingType(using Context): Boolean =

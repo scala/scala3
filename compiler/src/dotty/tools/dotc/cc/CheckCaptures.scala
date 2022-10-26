@@ -26,7 +26,7 @@ object CheckCaptures:
 
   class Pre extends PreRecheck, SymTransformer:
 
-    override def isEnabled(using Context) = Feature.ccEnabled
+    override def isEnabled(using Context) = true
 
   	/** Reset `private` flags of parameter accessors so that we can refine them
      *  in Setup if they have non-empty capture sets. Special handling of some
@@ -133,13 +133,14 @@ class CheckCaptures extends Recheck, SymTransformer:
   import CheckCaptures.*
 
   def phaseName: String = "cc"
-  override def isEnabled(using Context) = Feature.ccEnabled
+  override def isEnabled(using Context) = true
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
   override def run(using Context): Unit =
-    checkOverrides.traverse(ctx.compilationUnit.tpdTree)
-    super.run
+    if Feature.ccEnabled then
+      checkOverrides.traverse(ctx.compilationUnit.tpdTree)
+      super.run
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if Synthetics.needsTransform(sym) then Synthetics.transformFromCC(sym)
