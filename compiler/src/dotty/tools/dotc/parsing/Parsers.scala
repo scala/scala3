@@ -196,7 +196,7 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
-    def isPureArrow(name: Name): Boolean = in.pureFunsEnabled && isIdent(name)
+    def isPureArrow(name: Name): Boolean = isIdent(name) && Feature.pureFunsEnabled
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
@@ -972,7 +972,7 @@ object Parsers {
      *  capture set `{ref1, ..., refN}` followed by a token that can start a type?
      */
     def followingIsCaptureSet(): Boolean =
-      in.featureEnabled(Feature.captureChecking) && {
+      Feature.ccEnabled && {
         val lookahead = in.LookaheadScanner()
         def followingIsTypeStart() =
           lookahead.nextToken()
@@ -1485,7 +1485,7 @@ object Parsers {
             if !imods.flags.isEmpty || params.isEmpty then
               syntaxError(em"illegal parameter list for type lambda", start)
               token = ARROW
-          else if in.pureFunsEnabled then
+          else if Feature.pureFunsEnabled then
             // `=>` means impure function under pureFunctions or captureChecking
             // language imports, whereas `->` is then a regular function.
             imods |= Impure
@@ -1891,7 +1891,7 @@ object Parsers {
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
         val tp = atSpan(in.skipToken()) { ByNameTypeTree(core()) }
-        if isImpure && in.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
+        if isImpure && Feature.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
       else if in.token == LBRACE && followingIsCaptureSet() then
         val start = in.offset
         val cs = captureSet()
@@ -3308,14 +3308,9 @@ object Parsers {
       languageImport(tree) match
         case Some(prefix) =>
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
-          for
-            case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
-          do
-            val fullFeatureName = QualifiedName(prefix, imported.asTermName)
-            if globalOnlyImports.contains(fullFeatureName) && !outermost then
+          for case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors do
+            if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost then
               syntaxError(i"this language import is only allowed at the toplevel", id.span)
-            if fullFeatureName == Feature.captureChecking then
-              ctx.compilationUnit.needsCaptureChecking = true
             if allSourceVersionNames.contains(imported) && prefix.isEmpty then
               if !outermost then
                 syntaxError(i"source version import is only allowed at the toplevel", id.span)

@@ -32,7 +32,7 @@ import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
 import transform.SymUtils._
-import cc.adaptFunctionTypeUnderPureFuns
+import cc.{adaptFunctionTypeUnderPureFuns, adaptByNameArgUnderPureFuns}
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
@@ -455,7 +455,8 @@ class TreeUnpickler(reader: TastyReader,
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
         case BYNAMEtype =>
-          ExprType(readType())
+          val arg = readType()
+          ExprType(if knowsPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
         case _ =>
           ConstantType(readConstant(tag))
       }
@@ -1178,7 +1179,8 @@ class TreeUnpickler(reader: TastyReader,
         case SINGLETONtpt =>
           SingletonTypeTree(readTerm())
         case BYNAMEtpt =>
-          ByNameTypeTree(readTpt())
+          val arg = readTpt()
+          ByNameTypeTree(if knowsPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
         case NAMEDARG =>
           NamedArg(readName(), readTerm())
         case _ =>

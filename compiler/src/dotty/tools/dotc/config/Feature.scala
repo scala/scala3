@@ -80,10 +80,18 @@ object Feature:
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
 
   def pureFunsEnabled(using Context) =
-    enabled(pureFunctions) || ccEnabled
+    enabledBySetting(pureFunctions)
+    || ctx.compilationUnit.knowsPureFuns
+    || ccEnabled
 
   def ccEnabled(using Context) =
-    enabledBySetting(captureChecking) || ctx.compilationUnit.needsCaptureChecking
+    enabledBySetting(captureChecking)
+    || ctx.compilationUnit.needsCaptureChecking
+
+  def pureFunsEnabledSomewhere(using Context) =
+    enabledBySetting(pureFunctions)
+    || enabledBySetting(captureChecking)
+    || ctx.run != null && ctx.run.nn.pureFunsImportEncountered
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
@@ -131,4 +139,16 @@ object Feature:
   def isExperimentalEnabled(using Context): Boolean =
     Properties.experimental && !ctx.settings.YnoExperimental.value
 
+  def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
+    val fullFeatureName = QualifiedName(prefix, imported.asTermName)
+    if fullFeatureName == pureFunctions then
+      ctx.compilationUnit.knowsPureFuns = true
+      if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
+      true
+    else if fullFeatureName == captureChecking then
+      ctx.compilationUnit.needsCaptureChecking = true
+      if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
+      true
+    else
+      false
 end Feature

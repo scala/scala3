@@ -9,11 +9,11 @@ import util.{FreshNameCreator, SourceFile, NoSource}
 import util.Spans.Span
 import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
-import ast.Trees.Import
+import ast.Trees.{Import, Ident}
 import typer.Nullables
 import transform.SymUtils._
 import core.Decorators._
-import config.SourceVersion
+import config.{SourceVersion, Feature}
 import StdNames.nme
 import scala.annotation.internal.sharable
 
@@ -55,6 +55,9 @@ class CompilationUnit protected (val source: SourceFile) {
 
   /** Will be set to true if the unit contains a captureChecking language import */
   var needsCaptureChecking: Boolean = false
+
+  /** Will be set to true if the unit contains a pureFunctions language import */
+  var knowsPureFuns: Boolean = false
 
   var suspended: Boolean = false
   var suspendedAtInliningPhase: Boolean = false
@@ -116,7 +119,6 @@ object CompilationUnit {
       force.traverse(unit1.tpdTree)
       unit1.needsStaging = force.containsQuote
       unit1.needsInlining = force.containsInline
-      unit1.needsCaptureChecking = force.containsCaptureChecking
     }
     unit1
   }
@@ -151,9 +153,12 @@ object CompilationUnit {
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
       tree match
-        case Import(qual, selectors)
-        if tpd.languageImport(qual).isDefined && selectors.contains(nme.captureChecking) =>
-          containsCaptureChecking = true
+        case Import(qual, selectors) =>
+          tpd.languageImport(qual) match
+            case Some(prefix) =>
+              for case untpd.ImportSelector(untpd.Ident(imported), untpd.EmptyTree, _) <- selectors do
+                Feature.handleGlobalLanguageImport(prefix, imported)
+            case _ =>
         case _ =>
       traverseChildren(tree)
     }
