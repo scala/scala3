@@ -1,0 +1,17 @@
+#no-results-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+#no-results-container .no-result-header {
+  margin-block-start: 27px;
+  margin-block-end: var(--base-spacing);
+}
+
+#no-results-container p {
+  margin-top: 0;
+  margin-bottom: 34px;
+}
