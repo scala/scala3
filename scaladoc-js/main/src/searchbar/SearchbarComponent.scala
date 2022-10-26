@@ -101,64 +101,74 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
   def handleNewFluffQuery(query: NameAndKindQuery) =
     val searchTask: Future[List[MatchResult]] = Future(engine.query(query))
     searchTask.map { result =>
-      val resultWithDocBonus = result
-        .map(entry =>
-        // add bonus score for static pages when in documentation section
-        if entry.pageEntry.kind == "static" && !window.location.href.contains("api") then
-          entry.copy(score = entry.score + 7)
-        else entry
-      )
-      val fragment = document.createDocumentFragment()
+      if result.isEmpty then
+        val noResultsDiv = div(id := "no-results-container")(
+          img(src := "./images/no-results.svg", alt := "Sick face"),
+          h2(cls := "h200 no-result-header")("No results match your filter"),
+          p("Try adjusting or clearing your filters", p("to display better result")),
+          button(cls := "clearButton label-only-button")("Clear all filters")
+        )
+        resultsDiv.scrollTop = 0
+        resultsDiv.appendChild(noResultsDiv)
+      else
+        val resultWithDocBonus = result
+          .map(entry =>
+          // add bonus score for static pages when in documentation section
+          if entry.pageEntry.kind == "static" && !window.location.href.contains("api") then
+            entry.copy(score = entry.score + 7)
+          else entry
+        )
+        val fragment = document.createDocumentFragment()
 
-      def createLoadMoreElement =
-        div(cls := "scaladoc-searchbar-row mono-small-inline", "loadmore" := "")(
-          a(
-            span("Load more")
-          )
-        ).tap { loadMoreElement =>
-          loadMoreElement
-            .addEventListener("mouseover", _ => handleHover(loadMoreElement))
+        def createLoadMoreElement =
+          div(cls := "scaladoc-searchbar-row mono-small-inline", "loadmore" := "")(
+            a(
+              span("Load more")
+            )
+          ).tap { loadMoreElement =>
+            loadMoreElement
+              .addEventListener("mouseover", _ => handleHover(loadMoreElement))
+          }
+
+        val groupedResults = resultWithDocBonus.groupBy(_.pageEntry.kind)
+        val groupedResultsSortedByScore = groupedResults.map {
+          case (kind, results) => (kind, results.maxByOption(_.score).map(_.score), results)
+        }.toList.sortBy {
+          case (_, topScore, _) => -topScore.getOrElse(0)
+        }.map {
+          case (kind, _, results) => (kind, results.take(40)) // limit to 40 results per category
         }
 
-      val groupedResults = resultWithDocBonus.groupBy(_.pageEntry.kind)
-      val groupedResultsSortedByScore = groupedResults.map {
-        case (kind, results) => (kind, results.maxByOption(_.score).map(_.score), results)
-      }.toList.sortBy {
-        case (_, topScore, _) => -topScore.getOrElse(0)
-      }.map {
-        case (kind, _, results) => (kind, results.take(40)) // limit to 40 results per category
-      }
+        groupedResultsSortedByScore.map {
+          case (kind, results) =>
+            val kindSeparator = createKindSeparator(kind)
+            val htmlEntries = results.map(result => result.pageEntry.toHTML(result.indices))
+            val loadMoreElement = createLoadMoreElement
 
-      groupedResultsSortedByScore.map {
-        case (kind, results) =>
-          val kindSeparator = createKindSeparator(kind)
-          val htmlEntries = results.map(result => result.pageEntry.toHTML(result.indices))
-          val loadMoreElement = createLoadMoreElement
-
-          def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
-            loadMoreElement.onclick = (event: Event) => {
-              entries.take(resultsChunkSize).foreach(_.classList.remove("hidden"))
-              val nextElems = entries.drop(resultsChunkSize)
-              if nextElems.nonEmpty then loadMoreResults(nextElems) else loadMoreElement.classList.add("hidden")
+            def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
+              loadMoreElement.onclick = (event: Event) => {
+                entries.take(resultsChunkSize).foreach(_.classList.remove("hidden"))
+                val nextElems = entries.drop(resultsChunkSize)
+                if nextElems.nonEmpty then loadMoreResults(nextElems) else loadMoreElement.classList.add("hidden")
+              }
             }
-          }
 
-          fragment.appendChild(kindSeparator)
-          htmlEntries.foreach(fragment.appendChild)
-          fragment.appendChild(loadMoreElement)
+            fragment.appendChild(kindSeparator)
+            htmlEntries.foreach(fragment.appendChild)
+            fragment.appendChild(loadMoreElement)
 
-          val nextElems = htmlEntries.drop(initialChunkSize)
-          if nextElems.nonEmpty then {
-            nextElems.foreach(_.classList.add("hidden"))
-            loadMoreResults(nextElems)
-          } else {
-            loadMoreElement.classList.add("hidden")
-          }
+            val nextElems = htmlEntries.drop(initialChunkSize)
+            if nextElems.nonEmpty then {
+              nextElems.foreach(_.classList.add("hidden"))
+              loadMoreResults(nextElems)
+            } else {
+              loadMoreElement.classList.add("hidden")
+            }
 
-      }
+        }
 
-      resultsDiv.scrollTop = 0
-      resultsDiv.appendChild(fragment)
+        resultsDiv.scrollTop = 0
+        resultsDiv.appendChild(fragment)
     }
 
   def handleRecentQueries(query: String) = {
