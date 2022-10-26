@@ -82,7 +82,8 @@ object Feature:
   def pureFunsEnabled(using Context) =
     enabled(pureFunctions) || ccEnabled
 
-  def ccEnabled(using Context) = enabled(captureChecking)
+  def ccEnabled(using Context) =
+    enabledBySetting(captureChecking) || ctx.compilationUnit.needsCaptureChecking
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)

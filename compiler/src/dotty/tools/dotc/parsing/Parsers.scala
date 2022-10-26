@@ -3311,8 +3311,11 @@ object Parsers {
           for
             case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
           do
-            if globalOnlyImports.contains(QualifiedName(prefix, imported.asTermName)) && !outermost then
+            val fullFeatureName = QualifiedName(prefix, imported.asTermName)
+            if globalOnlyImports.contains(fullFeatureName) && !outermost then
               syntaxError(i"this language import is only allowed at the toplevel", id.span)
+            if fullFeatureName == Feature.captureChecking then
+              ctx.compilationUnit.needsCaptureChecking = true
             if allSourceVersionNames.contains(imported) && prefix.isEmpty then
               if !outermost then
                 syntaxError(i"source version import is only allowed at the toplevel", id.span)
