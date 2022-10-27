@@ -1,57 +1,52 @@
 [[syntax trees at end of MegaPhase{dropOuterAccessors, checkNoSuperThis, flatten, transformWildcards, moveStatic, expandPrivate, restoreScopes, selectStatic, Collect entry points, collectSuperCalls, repeatableAnnotations}]] // tests/printing/transformed/lazy-vals-legacy.scala
 package <empty> {
-  @SourceFile("tests/printing/transformed/lazy-vals-legacy.scala") final module 
-    class
-   A extends Object {
-    def <init>(): Unit = 
+  @SourceFile("tests/printing/transformed/lazy-vals-legacy.scala") final module
+    class A extends Object {
+    def <init>(): Unit =
       {
         super()
         ()
       }
-    @static private def <clinit>(): Unit = 
+    @static private def <clinit>(): Unit =
       {
-        A.OFFSET$_m_0 = 
+        A.OFFSET$_m_0 =
           scala.runtime.LazyVals.getOffsetStatic(
-            classOf[Object {...}].getDeclaredField("0bitmap$1")
-          )
+            classOf[Object {...}].getDeclaredField("0bitmap$1"))
         ()
       }
-    @static @static val OFFSET$_m_0: Long = 
+    @static @static val OFFSET$_m_0: Long =
       scala.runtime.LazyVals.getOffsetStatic(
-        classOf[Object {...}].getDeclaredField("0bitmap$1")
-      )
+        classOf[Object {...}].getDeclaredField("0bitmap$1"))
     lazy var 0bitmap$1: Long = 0L
-    private def writeReplace(): Object = 
+    private def writeReplace(): Object =
       new scala.runtime.ModuleSerializationProxy(classOf[A])
     lazy var x$lzy1: Int = 0
-    lazy def x(): Int = 
-      while <empty> do 
+    lazy def x(): Int =
+      while <empty> do
         {
           val flag: Long = scala.runtime.LazyVals.get(this, A.OFFSET$_m_0)
           val state: Long = scala.runtime.LazyVals.STATE(flag, 0)
-          if state.==(3) then return A.x$lzy1 else 
-            if state.==(0) then 
+          if state.==(3) then return A.x$lzy1 else
+            if state.==(0) then
               if scala.runtime.LazyVals.CAS(this, A.OFFSET$_m_0, flag, 1, 0)
                  then
-               
-                try 
+                try
                   {
                     val result: Int = 2
                     A.x$lzy1 = result
                     scala.runtime.LazyVals.setFlag(this, A.OFFSET$_m_0, 3, 0)
                     return result
                   }
-                 catch 
+                 catch
                   {
-                    case ex @ ex => 
+                    case ex @ ex =>
                       scala.runtime.LazyVals.setFlag(this, A.OFFSET$_m_0, 0, 0)
                       throw ex
                   }
                else ()
-             else 
-              scala.runtime.LazyVals.wait4Notification(this, A.OFFSET$_m_0, flag
-                , 
-              0)
+             else
+              scala.runtime.LazyVals.wait4Notification(this, A.OFFSET$_m_0,
+                flag, 0)
         }
   }
   final lazy module val A: A = new A()
