@@ -12,7 +12,23 @@
 }
 
 .attributes p {
-  margin: 0;
+  margin-block: calc(3 * var(--base-spacing));
+}
+
+.attributes p:has(span:empty) {
+  display: none;
+}
+
+.membersList .attributes p {
+  margin-block: calc(1 * var(--base-spacing));
+}
+
+.attributes p:first-child {
+  margin-block-start: 0;
+}
+
+.attributes p:last-child {
+  margin-block-end: 0;
 }
 
 .attributes > dt {

@@ -53,26 +53,26 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors:", authors) else Nil
 
     m.docs.fold(Nil)(d =>
-      opt("Returns:", d.result) ++
-      list("Throws:", d.throws) ++
-      opt("Constructor:", d.constructor) ++
+      opt("Returns", d.result) ++
+      list("Throws", d.throws) ++
+      opt("Constructor", d.constructor) ++
       authors(d.authors) ++
-      list("See also:", d.see) ++
-      opt("Version:", d.version) ++
-      opt("Since:", d.since) ++
-      list("Todo:", d.todo) ++
-      list("Note:", d.note) ++
-      list("Example:", d.example)
+      list("See also", d.see) ++
+      opt("Version", d.version) ++
+      opt("Since", d.since) ++
+      list("Todo", d.todo) ++
+      list("Note", d.note) ++
+      list("Example", d.example)
     )
 
   def companion(m: Member): Seq[AppliedTag] = m.companion.fold(Nil){ (kind, dri) =>
     val kindName = kind.name
-    tableRow("Companion:", signatureRenderer.renderLink(kindName, dri))
+    tableRow("Companion", signatureRenderer.renderLink(kindName, dri))
   }
 
   def source(m: Member): Seq[AppliedTag] =
     summon[DocContext].sourceLinks.pathTo(m).fold(Nil){ link =>
-      tableRow("Source:", a(href := link)(m.sources.fold("(source)")(_.path.getFileName().toString())))
+      tableRow("Source", a(href := link)(m.sources.fold("(source)")(_.path.getFileName().toString())))
     }
 
   def deprecation(m: Member): Seq[AppliedTag] = m.deprecated.fold(Nil){ a =>
@@ -176,7 +176,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val signature: MemberSignature = signatureProvider.rawSignature(member)()
     Seq(
-      div(cls := "signature mono-small-block")(
+      div(cls := "signature")(
         span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
         span(cls := "kind")(signature.kind.map(renderElement(_))),
         signature.name.map(renderElement(_, nameClasses*)),
@@ -216,7 +216,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       div(cls := "documentableElement-expander")(
         Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button ar show-content")).toList,
         annots.map(div(_)).toList,
-        div(cls := "header monospace")(memberSignature(member)),
+        div(cls := "header monospace mono-medium")(memberSignature(member)),
       ),
       Option.when(originInf.nonEmpty || memberInf.nonEmpty)(
         div(cls := "docs")(
@@ -232,7 +232,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   private case class MGroup(header: AppliedTag, members: Seq[Member], groupName: String)
 
   private def makeSubgroupHeader(name: String): AppliedTag =
-    h4(cls := "groupHeader h300")(name)
+    h4(cls := "groupHeader h200")(name)
 
   private def actualGroup(name: String, members: Seq[Member | MGroup], headerConstructor: String => AppliedTag = makeSubgroupHeader, wrapInSection: Boolean = true): Seq[AppliedTag] =
     if members.isEmpty then Nil else

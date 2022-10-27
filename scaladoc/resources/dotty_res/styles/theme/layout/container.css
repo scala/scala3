@@ -7,8 +7,7 @@ body {
 }
 
 p {
-  margin-block-start: calc(3 * var(--base-spacing));
-  margin-block-end: calc(3 * var(--base-spacing));
+  margin-block: calc(3 * var(--base-spacing));
 }
 
 [id] {
