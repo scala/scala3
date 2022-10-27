@@ -11,7 +11,7 @@
   left: 0px;
   right: 0px;
   top: 0px;
-  background: var(--background-neutral);
+  background: var(--background-header);
   border-bottom: 1px solid var(--border-default);
   z-index: 2;
 }

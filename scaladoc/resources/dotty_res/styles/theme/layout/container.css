@@ -1,7 +1,7 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--background-subtle);
+  background-color: var(--background-main);
   height: 100%;
   overflow: hidden;
 }

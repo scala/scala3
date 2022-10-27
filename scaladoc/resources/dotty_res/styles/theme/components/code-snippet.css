@@ -105,12 +105,11 @@ dd .snippet {
 }
 
 .snippet:hover {
-  background-color: var(--action-primary-background-hover);
   border: 1px solid var(--border-default);
 }
 
 .snippet:hover::-webkit-scrollbar-thumb {
-  border: 3px solid var(--action-primary-background-hover);
+  border: 3px solid var(--action-primary-background-default-solid);
 }
 
 .snippet .copy-button {
@@ -279,7 +278,7 @@ dd .snippet {
 
 .snippet::-webkit-scrollbar-thumb:hover {
   background-color: var(--code-syntax-highlighting-scrollbar-hover);
-   border: 3px solid var(--action-primary-background-hover);;
+   border: 3px solid var(--action-primary-background-default-solid);;
 }
 
 .snippet::-webkit-scrollbar {

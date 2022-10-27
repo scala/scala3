@@ -9,7 +9,7 @@
   padding-left: 28px;
   margin-bottom: calc(3 * var(--base-spacing));
   margin-left: -28px;
-  background-color: var(--background-subtle);
+  background-color: var(--background-main);
 }
 
 .filtersContainer {
@@ -19,7 +19,7 @@
 }
 
 .filterableInput {
-  background-color: var(--background-subtle);
+  background-color: var(--background-main);
   color: var(--action-primary-content-active);
   background-image: url("../../../images/icon-buttons/search/dark/default.svg");
   background-repeat: no-repeat;

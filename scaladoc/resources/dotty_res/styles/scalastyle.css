@@ -41,7 +41,7 @@ input {
     height: calc(100% - (8 * var(--base-spacing)) - (6 * var(--base-spacing)));
     left: 0px;
     top: calc(8 * var(--base-spacing));
-    background: var(--background-default);
+    background: var(--background-nav);
     border: 1px solid var(--border-default);
     border-top: none;
     border-left: none;

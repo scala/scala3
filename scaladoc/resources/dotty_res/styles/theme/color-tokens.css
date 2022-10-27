@@ -21,6 +21,11 @@
   --background-subtle: var(--grey2);
   --background-neutral: var(--grey3);
 
+  /* layout backgrounds */
+  --background-header: var(--background-default);
+  --background-nav: var(--background-default);
+  --background-main: var(--background-default);
+
   /* action */
   --action-primary-content-default: var(--grey11);
   --action-primary-content-hover: var(--grey12);
@@ -28,12 +33,12 @@
   --action-primary-content-selected: var(--grey12);
 
   --action-primary-background-default-ghost: transparent;
-  --action-primary-background-default-solid: var(--grey3);
-  --action-primary-background-hover: var(--grey4);
-  --action-primary-background-active: var(--grey4);
-  --action-primary-background-selected: var(--grey5);
+  --action-primary-background-default-solid: var(--grey2);
+  --action-primary-background-hover: var(--grey3);
+  --action-primary-background-active: var(--grey3);
+  --action-primary-background-selected: var(--grey4);
 
-  --action-primary-border-default: var(--grey5);
+  --action-primary-border-default: var(--grey4);
 
   /* semantic */
   --semantic-content-grey: var(--grey11);
@@ -124,6 +129,11 @@
   --background-default: var(--grey1);
   --background-subtle: var(--grey2);
   --background-neutral: var(--grey3);
+
+  /* layout backgrounds */
+  --background-header: var(--background-neutral);
+  --background-nav: var(--background-default);
+  --background-main: var(--background-subtle);
 
   /* action */
   --action-primary-content-default: var(--grey11);
