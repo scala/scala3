@@ -538,6 +538,16 @@ main :is(ul, ol) li .snippet {
   display: block;
 }
 
+.member-group-header,
+.documentableList-expander  {
+  display: flex;
+  cursor: pointer;
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
 #content section:last-child {
   margin-bottom: calc(6 * var(--base-spacing));
 }
