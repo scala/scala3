@@ -946,6 +946,10 @@ trait Applications extends Compatibility {
                 else expectedResultType match
                   case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _) => resTp
                   case _ => defn.ObjectType
+              // synthesize a method type based on the types at the call site.
+              // one can imagine the original signature-polymorphic method as
+              // being infinitely overloaded, with each individual overload only
+              // being brought into existence as needed
               val info = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
               val fun2 = fun1.withType(funRef.symbol.copy(info = info).termRef)
               simpleApply(fun2, proto)

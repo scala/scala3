@@ -86,7 +86,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   IDENT                 NameRef Type                               -- Used when term ident’s type is not a TermRef
                   SELECT                possiblySigned_NameRef qual_Term           -- qual.name
                   SELECTin       Length possiblySigned_NameRef qual_Term owner_Type -- qual.name, referring to a symbol declared in owner that has the given signature (see note below)
-                  SELECTinPoly   Length possiblySigned_NameRef qual_Term owner_Type method_Type -- like SELECTin, but with the method_Type too
+                  SELECTinPoly   Length possiblySigned_NameRef qual_Term owner_Type method_Type -- like SELECTin, but with the method_Type too (because signature polymorphic)
                   QUALTHIS              typeIdent_Tree                             -- id.this, different from THIS in that it contains a qualifier ident with position.
                   NEW                   clsType_Term                               -- new cls
                   THROW                 throwableExpr_Term                         -- throw throwableExpr
