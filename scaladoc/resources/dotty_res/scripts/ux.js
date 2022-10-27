@@ -49,6 +49,17 @@ function attachAllListeners() {
     observer.disconnect();
   }
 
+  var anyNodeExpanded = document.querySelectorAll(".ni.n0.expanded").length > 0
+  var firstNavNode = document.querySelector(".ni.n0")
+  if(!anyNodeExpanded && firstNavNode != null) {
+    var firstNavNodeAddress = firstNavNode.querySelector("a")
+    firstNavNode.classList.add("expanded")
+    var button = firstNavNode.querySelector("button.ar")
+    if(button != null) {
+      button.classList.add("expanded")
+    }
+  }
+
   var scrollPosition = sessionStorage.getItem("scroll_value");
   if (scrollPosition) {
     var sideMenu = document.querySelector(".side-menu");

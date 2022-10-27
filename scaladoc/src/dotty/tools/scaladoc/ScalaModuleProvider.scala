@@ -32,7 +32,7 @@ object ScalaModuleProvider:
                   members = ms,
                 )
         }.toList.sortBy(_.name)
-      groupMembers(nonemptyPackages)
+      groupMembers(nonemptyPackages).reverse
 
     val packageMembers = groupedMembers ++ emptyPackages.flatMap(_.members)
 
