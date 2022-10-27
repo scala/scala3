@@ -350,8 +350,8 @@ object Flags {
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
   val (_, Synchronized @ _, _) = newFlags(36, "<synchronized>")
 
-  /** Symbol is a Java-style varargs method */
-  val (_, JavaVarargs @ _, _) = newFlags(37, "<varargs>")
+  /** Symbol is a Java-style varargs method / a Java annotation */
+  val (_, JavaVarargs @ _, JavaAnnotation @ _) = newFlags(37, "<varargs>", "<java-annotation>")
 
   /** Symbol is a Java default method */
   val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
@@ -477,7 +477,7 @@ object Flags {
    */
   val AfterLoadFlags: FlagSet = commonFlags(
     FromStartFlags, AccessFlags, Final, AccessorOrSealed,
-    Abstract, LazyOrTrait, SelfName, JavaDefined, Transparent)
+    Abstract, LazyOrTrait, SelfName, JavaDefined, JavaAnnotation, Transparent)
 
   /** A value that's unstable unless complemented with a Stable flag */
   val UnstableValueFlags: FlagSet = Mutable | Method

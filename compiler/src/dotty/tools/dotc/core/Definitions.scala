@@ -968,7 +968,6 @@ class Definitions {
     @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
 
   // Annotation base classes
-  @tu lazy val JavaAnnotationClass: ClassSymbol = requiredClass("java.lang.annotation.Annotation")
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
   @tu lazy val StaticAnnotationClass: ClassSymbol = requiredClass("scala.annotation.StaticAnnotation")
   @tu lazy val RefiningAnnotationClass: ClassSymbol = requiredClass("scala.annotation.RefiningAnnotation")

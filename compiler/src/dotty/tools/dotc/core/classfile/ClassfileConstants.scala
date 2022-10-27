@@ -346,6 +346,7 @@ object ClassfileConstants {
       case JAVA_ACC_ENUM       => Enum
       case JAVA_ACC_ABSTRACT   => if (isClass) Abstract else Deferred
       case JAVA_ACC_INTERFACE  => PureInterfaceCreationFlags | JavaDefined
+      case JAVA_ACC_ANNOTATION => JavaAnnotation
       case _                   => EmptyFlags
     }
 
@@ -362,6 +363,7 @@ object ClassfileConstants {
       res = addFlag(res, jflags & JAVA_ACC_ENUM)
       res = addFlag(res, jflags & JAVA_ACC_ABSTRACT)
       res = addFlag(res, jflags & JAVA_ACC_INTERFACE)
+      res = addFlag(res, jflags & JAVA_ACC_ANNOTATION)
       res
     }
 

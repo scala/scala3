@@ -2765,6 +2765,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def Invisible: Flags = dotc.core.Flags.Invisible
       def JavaDefined: Flags = dotc.core.Flags.JavaDefined
       def JavaStatic: Flags = dotc.core.Flags.JavaStatic
+      def JavaAnnotation: Flags = dotc.core.Flags.JavaAnnotation
       def Lazy: Flags = dotc.core.Flags.Lazy
       def Local: Flags = dotc.core.Flags.Local
       def Macro: Flags = dotc.core.Flags.Macro

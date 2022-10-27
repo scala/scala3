@@ -62,6 +62,7 @@ val experimentalDefinitionInLibrary = Set(
    //// New APIs: Quotes
   // Can be stabilized in 3.3.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
+  "scala.quoted.Quotes.reflectModule.FlagsModule.JavaAnnotation",
   // Cant be stabilized yet.
   // Need newClass variant that can add constructor parameters.
   // Need experimental annotation macros to check that design works.

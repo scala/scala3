@@ -547,7 +547,7 @@ trait Applications extends Compatibility {
 
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
-      sym.is(JavaDefined) && sym.isConstructor && sym.owner.derivesFrom(defn.JavaAnnotationClass)
+      sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
 
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.

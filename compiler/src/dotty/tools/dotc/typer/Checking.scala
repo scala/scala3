@@ -1110,7 +1110,7 @@ trait Checking {
   def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit =
     if (!ctx.isAfterTyper) {
       val called = call.tpe.classSymbol
-      if (called.derivesFrom(defn.JavaAnnotationClass))
+      if (called.is(JavaAnnotation))
         report.error(i"${called.name} must appear without any argument to be a valid class parent because it is a Java annotation", call.srcPos)
       if (caller.is(Trait))
         report.error(i"$caller may not call constructor of $called", call.srcPos)
@@ -1264,6 +1264,23 @@ trait Checking {
   def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit =
     if !Inlines.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
+
+  /** Check that the class corresponding to this tree is either a Scala or Java annotation.
+   *
+   *  @return The original tree or an error tree in case `tree` isn't a valid
+   *          annotation or already an error tree.
+   */
+  def checkAnnotClass(tree: Tree)(using Context): Tree =
+    if tree.tpe.isError then
+      return tree
+    val cls = Annotations.annotClass(tree)
+    if cls.is(JavaDefined) then
+      if !cls.is(JavaAnnotation) then
+        errorTree(tree, em"$cls is not a valid Java annotation: it was not declared with `@interface`")
+      else tree
+    else if !cls.derivesFrom(defn.AnnotationClass) then
+      errorTree(tree, em"$cls is not a valid Scala annotation: it does not extend `scala.annotation.Annotation`")
+    else tree
 
   /** Check arguments of compiler-defined annotations */
   def checkAnnotArgs(tree: Tree)(using Context): tree.type =
