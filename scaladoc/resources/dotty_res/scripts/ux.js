@@ -110,11 +110,6 @@ function attachAllListeners() {
 
   const documentableBriefs = document.querySelectorAll(".documentableBrief");
   [...documentableBriefs].forEach((brief) => {
-    console.log(
-      brief.parentElement.parentElement.parentElement.previousElementSibling
-        .children[0],
-    );
-
     brief.addEventListener("click", () => {
       brief.parentElement.parentElement.parentElement.parentElement.classList.add(
         "expand",
@@ -187,12 +182,12 @@ function attachAllListeners() {
   );
 
   const toggleShowAllElem = (element) => {
-    if(element.textContent == "Show all") {
-      element.textContent = "Collapse"
+    if (element.textContent == "Show all") {
+      element.textContent = "Collapse";
     } else {
-      element.textContent = "Show all"
+      element.textContent = "Show all";
     }
-  }
+  };
 
   document.querySelectorAll(".supertypes").forEach((el) =>
     el.lastElementChild.addEventListener("click", () => {
@@ -313,10 +308,22 @@ function attachAllListeners() {
   // when document is loaded graph needs to be shown
 }
 
-const DYNAMIC_PAGE_LOAD = "dynamicPageLoad"
+const DYNAMIC_PAGE_LOAD = "dynamicPageLoad";
 window.addEventListener(DYNAMIC_PAGE_LOAD, () => {
-  attachAllListeners()
-})
+  attachAllListeners();
+});
+
+window.addEventListener("dynamicPageLoad", () => {
+  const leftColumn = document.querySelector(".show");
+  if (leftColumn) leftColumn.classList.remove("show");
+
+  const mobileSidebarToggleButton = document.querySelector(".menu-shown");
+  if (mobileSidebarToggleButton)
+    mobileSidebarToggleButton.classList.remove("menu-shown");
+
+  const content = document.querySelector(".sidebar-shown");
+  if (content) content.classList.remove("sidebar-shown");
+});
 
 window.addEventListener("DOMContentLoaded", () => {
   hljs.registerLanguage("scala", highlightDotty);
