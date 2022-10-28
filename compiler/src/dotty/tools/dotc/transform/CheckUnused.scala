@@ -6,7 +6,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators.i
+import dotty.tools.dotc.core.Decorators.{i,em}
 import dotty.tools.dotc.core.Flags.{Private, Given}
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
@@ -15,6 +15,8 @@ import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.transform.CheckUnused.UnusedData.UnusedResult
+import dotty.tools.dotc.core.Mode
+
 
 /**
  * A compiler phase that checks for unused imports or definitions
@@ -100,28 +102,28 @@ class CheckUnused extends Phase:
   }
 
   private def reportUnused(res: UnusedData.UnusedResult)(using Context) =
-    val UnusedData.UnusedResult(imports, locals, privates) = res
-    /* IMPORTS */
-    if ctx.settings.WunusedHas.imports then
-      imports.foreach { s =>
-        report.warning(i"unused import", s.srcPos)
-      }
-    /* LOCAL VAL OR DEF */
-    if ctx.settings.WunusedHas.locals then
-      locals.foreach { s =>
-        report.warning(i"unused local definition", s.srcPos)
-      }
-    /* PRIVATES VAL OR DEF */
-    if ctx.settings.WunusedHas.privates then
-      privates.foreach { s =>
-        report.warning(i"unused private member", s.srcPos)
-      }
+    import CheckUnused.WarnTypes
+    res.foreach { s =>
+      s match
+        case (t, WarnTypes.Imports) =>
+          println("hey")
+          report.warning(s"unused import", t)
+        case (t, WarnTypes.LocalDefs) =>
+          report.warning(s"unused local definition", t.startPos)
+        case (t, WarnTypes.PrivateMembers) =>
+          report.warning(s"unused private member", t.startPos)
+    }
 
 end CheckUnused
 
 object CheckUnused:
   val phaseName: String = "checkUnused"
   val description: String = "check for unused elements"
+
+  enum WarnTypes:
+    case Imports
+    case LocalDefs
+    case PrivateMembers
 
   /**
    * A stateful class gathering the infos on :
@@ -137,7 +139,7 @@ object CheckUnused:
 
     /* IMPORTS */
     private val impInScope = Stack(MutMap[Int, ListBuffer[ImportSelector]]())
-    private val unusedImport = ListBuffer[ImportSelector]()
+    private val unusedImport = MutSet[ImportSelector]()
     private val usedImports = Stack(MutSet[Int]())
 
     /* LOCAL DEF OR VAL / Private Def or Val*/
@@ -237,19 +239,25 @@ object CheckUnused:
      */
     def getUnused(using Context): UnusedResult =
       popScope()
-      val sortedImp = unusedImport.toList.sortBy{ sel =>
-        val pos = sel.srcPos.sourcePos
+      val sortedImp =
+        if ctx.settings.WunusedHas.imports then
+          unusedImport.map(d => d.srcPos -> WarnTypes.Imports).toList
+        else
+          Nil
+      val sortedLocalDefs =
+        if ctx.settings.WunusedHas.locals then
+          unusedLocalDef.map(d => d.srcPos -> WarnTypes.LocalDefs).toList
+        else
+          Nil
+      val sortedPrivateDefs =
+        if ctx.settings.WunusedHas.privates then
+          unusedPrivateDef.map(d => d.srcPos -> WarnTypes.PrivateMembers).toList
+        else
+          Nil
+      List(sortedImp, sortedLocalDefs, sortedPrivateDefs).flatten.sortBy { s =>
+        val pos = s._1.sourcePos
         (pos.line, pos.column)
       }
-      val sortedLocalDefs = unusedLocalDef.toList.sortBy { sel =>
-        val pos = sel.srcPos.sourcePos
-        (pos.line, pos.column)
-      }
-      val sortedPrivateDefs = unusedPrivateDef.toList.sortBy { sel =>
-        val pos = sel.srcPos.sourcePos
-        (pos.line, pos.column)
-      }
-      UnusedResult(sortedImp, sortedLocalDefs, sortedPrivateDefs)
 
   end UnusedData
 
@@ -259,10 +267,6 @@ object CheckUnused:
         case Template
         case Other
 
-      case class UnusedResult(
-        imports: List[ImportSelector],
-        locals: List[tpd.ValOrDefDef],
-        privates: List[tpd.ValOrDefDef],
-      )
+      type UnusedResult = List[(dotty.tools.dotc.util.SrcPos, WarnTypes)]
 end CheckUnused
 
