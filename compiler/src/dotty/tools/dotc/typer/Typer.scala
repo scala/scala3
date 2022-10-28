@@ -1879,7 +1879,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val expr1 = typed(tree.expr, defn.ThrowableType)
     val cap = checkCanThrow(expr1.tpe.widen, tree.span)
     val res = Throw(expr1).withSpan(tree.span)
-    if ctx.settings.Ycc.value && !cap.isEmpty && !ctx.isAfterTyper then
+    if Feature.ccEnabled && !cap.isEmpty && !ctx.isAfterTyper then
       // Record access to the CanThrow capabulity recovered in `cap` by wrapping
       // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotatoon.
       Typed(res,
@@ -2670,12 +2670,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
     val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
-    if Annotations.annotClass(annot1) == defn.NowarnAnnot then
+    val annotCls = Annotations.annotClass(annot1)
+    if annotCls == defn.NowarnAnnot then
       registerNowarn(annot1, tree)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       val cls = annot1.symbol.maybeOwner
-      if cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot then
+      if Feature.ccEnabled
+          && (cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot)
+      then
         CheckCaptures.checkWellformed(annot1)
       if arg1.isType then
         assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
@@ -2815,7 +2818,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val tupleXXLobj = untpd.ref(defn.TupleXXLModule.termRef)
         val app = untpd.cpy.Apply(tree)(tupleXXLobj, elems.map(untpd.TypedSplice(_)))
           .withSpan(tree.span)
-        val app1 = typed(app, defn.TupleXXLClass.typeRef)
+        val app1 = typed(app, if ctx.mode.is(Mode.Pattern) then pt else defn.TupleXXLClass.typeRef)
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
           val elemTpes = elems.lazyZip(pts).map((elem, pt) =>
@@ -3774,7 +3777,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 adaptToSubType(wtp)
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
-             && !inContext(ctx.fresh.setGadt(EmptyGadtConstraint)) {
+             && !inContext(ctx.fresh.setGadt(GadtConstraint.empty)) {
                val res = (tree.tpe.widenExpr frozen_<:< pt)
                if res then
                  // we overshot; a cast is not needed, after all.

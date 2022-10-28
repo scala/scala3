@@ -163,6 +163,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Actions that need to be performed at the end of the current compilation run */
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
+  /** Will be set to true if any of the compiled compilation units contains
+   *  a pureFunctions or captureChecking language import.
+   */
+  var pureFunsImportEncountered = false
+
   def compile(files: List[AbstractFile]): Unit =
     try
       val sources = files.map(runContext.getSource(_))

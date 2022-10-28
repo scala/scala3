@@ -275,6 +275,9 @@ class ClassfileParser(
     def complete(denot: SymDenotation)(using Context): Unit = {
       val sym = denot.symbol
       val isEnum = (jflags & JAVA_ACC_ENUM) != 0
+      val isNative = (jflags & JAVA_ACC_NATIVE) != 0
+      val isTransient = (jflags & JAVA_ACC_TRANSIENT) != 0
+      val isVolatile = (jflags & JAVA_ACC_VOLATILE) != 0
       val isConstructor = name eq nme.CONSTRUCTOR
 
       /** Strip leading outer param from constructor and trailing access tag for
@@ -313,6 +316,12 @@ class ClassfileParser(
       val isVarargs = denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0
       denot.info = sigToType(sig, isVarargs = isVarargs)
       if (isConstructor) normalizeConstructorParams()
+      if isNative then
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.NativeAnnot)(New(defn.NativeAnnot.typeRef, Nil))
+      if isTransient then
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.TransientAnnot)(New(defn.TransientAnnot.typeRef, Nil))
+      if isVolatile then
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.VolatileAnnot)(New(defn.VolatileAnnot.typeRef, Nil))
       denot.info = translateTempPoly(attrCompleter.complete(denot.info, isVarargs))
       if (isConstructor) normalizeConstructorInfo()
 

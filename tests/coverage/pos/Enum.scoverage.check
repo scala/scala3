@@ -72,140 +72,21 @@ def surfaceWeight
 3
 Enum.scala
 covtest
-$anon
-Class
-covtest.$anon
-<init>
-485
-512
-17
-<init>
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+1043
+1077
+30
+println
 Apply
 false
 0
 false
-Planet(3.303e+23, 2.4397e6)
+println("Example 1: \\n"+emptyList)
 
 4
-Enum.scala
-covtest
-$anon
-Class
-covtest.$anon
-<init>
-538
-565
-18
-<init>
-Apply
-false
-0
-false
-Planet(4.869e+24, 6.0518e6)
-
-5
-Enum.scala
-covtest
-$anon
-Class
-covtest.$anon
-<init>
-591
-619
-19
-<init>
-Apply
-false
-0
-false
-Planet(5.976e+24, 6.37814e6)
-
-6
-Enum.scala
-covtest
-$anon
-Class
-covtest.$anon
-<init>
-645
-672
-20
-<init>
-Apply
-false
-0
-false
-Planet(6.421e+23, 3.3972e6)
-
-7
-Enum.scala
-covtest
-$anon
-Class
-covtest.$anon
-<init>
-698
-725
-21
-<init>
-Apply
-false
-0
-false
-Planet(1.9e+27,   7.1492e7)
-
-8
-Enum.scala
-covtest
-$anon
-Class
-covtest.$anon
-<init>
-751
-778
-22
-<init>
-Apply
-false
-0
-false
-Planet(5.688e+26, 6.0268e7)
-
-9
-Enum.scala
-covtest
-$anon
-Class
-covtest.$anon
-<init>
-804
-831
-23
-<init>
-Apply
-false
-0
-false
-Planet(8.686e+25, 2.5559e7)
-
-10
-Enum.scala
-covtest
-$anon
-Class
-covtest.$anon
-<init>
-857
-884
-24
-<init>
-Apply
-false
-0
-false
-Planet(1.024e+26, 2.4746e7)
-
-11
 Enum.scala
 covtest
 EnumTypes$
@@ -220,43 +101,9 @@ Apply
 false
 0
 false
-"Example 1: \n"+emptyList
+"Example 1: \\n"+emptyList
 
-12
-Enum.scala
-covtest
-EnumTypes$
-Object
-covtest.EnumTypes$
-test
-1043
-1077
-30
-println
-Apply
-false
-0
-false
-println("Example 1: \n"+emptyList)
-
-13
-Enum.scala
-covtest
-EnumTypes$
-Object
-covtest.EnumTypes$
-test
-1090
-1102
-31
-s
-Apply
-false
-0
-false
-s"${list}\n"
-
-14
+5
 Enum.scala
 covtest
 EnumTypes$
@@ -271,9 +118,26 @@ Apply
 false
 0
 false
-println(s"${list}\n")
+println(s"${list}\\n")
 
-15
+6
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+1090
+1102
+31
+s
+Apply
+false
+0
+false
+s"${list}\\n"
+
+7
 Enum.scala
 covtest
 EnumTypes$
@@ -290,7 +154,24 @@ false
 false
 Planet.Earth.surfaceGravity
 
-16
+8
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+calculateEarthWeightOnPlanets
+1229
+1320
+35
+foreach
+Apply
+false
+0
+false
+for p <- Planet.values do\n        println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+
+9
 Enum.scala
 covtest
 EnumTypes$
@@ -307,41 +188,7 @@ false
 false
 Planet.values
 
-17
-Enum.scala
-covtest
-EnumTypes$
-Object
-covtest.EnumTypes$
-$anonfun
-1296
-1317
-36
-surfaceWeight
-Apply
-false
-0
-false
-p.surfaceWeight(mass)
-
-18
-Enum.scala
-covtest
-EnumTypes$
-Object
-covtest.EnumTypes$
-$anonfun
-1271
-1319
-36
-s
-Apply
-false
-0
-false
-s"Your weight on $p is ${p.surfaceWeight(mass)}"
-
-19
+10
 Enum.scala
 covtest
 EnumTypes$
@@ -358,25 +205,41 @@ false
 false
 println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
-20
+11
 Enum.scala
 covtest
 EnumTypes$
 Object
 covtest.EnumTypes$
-calculateEarthWeightOnPlanets
-1229
-1320
-35
-foreach
+$anonfun
+1271
+1319
+36
+s
 Apply
 false
 0
 false
-for p <- Planet.values do
-        println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+s"Your weight on $p is ${p.surfaceWeight(mass)}"
 
-21
+12
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+$anonfun
+1296
+1317
+36
+surfaceWeight
+Apply
+false
+0
+false
+p.surfaceWeight(mass)
+
+13
 Enum.scala
 covtest
 EnumTypes$
@@ -393,7 +256,7 @@ false
 false
 def calculateEarthWeightOnPlanets
 
-22
+14
 Enum.scala
 covtest
 EnumTypes$
@@ -410,7 +273,7 @@ false
 false
 println("Example 2:")
 
-23
+15
 Enum.scala
 covtest
 EnumTypes$
@@ -427,7 +290,7 @@ false
 false
 calculateEarthWeightOnPlanets(80)
 
-24
+16
 Enum.scala
 covtest
 EnumTypes$

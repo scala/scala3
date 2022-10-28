@@ -8,11 +8,11 @@
    |  ^^^^^^^^
    |  The expression's type box {*} () -> Unit is not allowed to capture the root capability `*`.
    |  This usually means that a capability persists longer than its allowed lifetime.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:31:6 -------------------------------------------------------
-31 |  var later3: () => Unit = () => ()  // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  The mutable variable's type box {*} () -> Unit is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:33:2 -------------------------------------------------------
+33 |  later3() // error
+   |  ^^^^^^
+   |  box {*} () -> Unit cannot be box-converted to a type that can be selected or applied
+   |  since one of their capture sets contains the root capability `*`
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:37:9 -------------------------------------------------------
 37 |  later4.x() // error
    |  ^^^^^^^^

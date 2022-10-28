@@ -1,6 +1,6 @@
 import annotation.retains
 class C
-type Cap = C @retains(*)
+type Cap = C @retains(caps.*)
 
 def f(y: Cap, z: Cap) =
   def g(): C @retains(y, z) = ???

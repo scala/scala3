@@ -48,10 +48,12 @@ val experimentalDefinitionInLibrary = Set(
 
   //// New feature: capture checking
   "scala.annotation.capability",
-  "scala.annotation.internal.CaptureChecked",
+  "scala.annotation.internal.WithPureFuns",
   "scala.annotation.internal.requiresCapability",
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
+  "scala.caps",
+  "scala.caps$",
 
   //// New APIs: Mirror
   // Can be stabilized in 3.3.0 or later.

@@ -59,23 +59,6 @@ C
 Class
 covtest.C
 <init>
-62
-63
-5
-x
-Select
-false
-0
-false
-x
-
-3
-Constructor.scala
-covtest
-C
-Class
-covtest.C
-<init>
 60
 64
 5
@@ -85,6 +68,23 @@ false
 0
 false
 f(x)
+
+3
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+<init>
+62
+63
+5
+x
+Select
+false
+0
+false
+x
 
 4
 Constructor.scala
@@ -127,23 +127,6 @@ O$
 Object
 covtest.O$
 <init>
-112
-113
-10
-y
-Ident
-false
-0
-false
-y
-
-7
-Constructor.scala
-covtest
-O$
-Object
-covtest.O$
-<init>
 110
 114
 10
@@ -153,4 +136,21 @@ false
 0
 false
 g(y)
+
+7
+Constructor.scala
+covtest
+O$
+Object
+covtest.O$
+<init>
+112
+113
+10
+y
+Ident
+false
+0
+false
+y
 

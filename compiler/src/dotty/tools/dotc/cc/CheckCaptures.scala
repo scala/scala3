@@ -5,9 +5,9 @@ package cc
 import core.*
 import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
-import Types.*, StdNames.*
+import Types.*, StdNames.*, Denotations.*
 import config.Printers.{capt, recheckr}
-import config.Config
+import config.{Config, Feature}
 import ast.{tpd, untpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkParents}
@@ -26,7 +26,7 @@ object CheckCaptures:
 
   class Pre extends PreRecheck, SymTransformer:
 
-    override def isEnabled(using Context) = ctx.settings.Ycc.value
+    override def isEnabled(using Context) = true
 
   	/** Reset `private` flags of parameter accessors so that we can refine them
      *  in Setup if they have non-empty capture sets. Special handling of some
@@ -89,7 +89,7 @@ object CheckCaptures:
       elem.tpe match
         case ref: CaptureRef =>
           if !ref.canBeTracked then
-            report.error(em"$elem cannot be tracked since it is not a parameter or a local variable", elem.srcPos)
+            report.error(em"$elem cannot be tracked since it is not a parameter or local value", elem.srcPos)
         case tpe =>
           report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
 
@@ -133,13 +133,14 @@ class CheckCaptures extends Recheck, SymTransformer:
   import CheckCaptures.*
 
   def phaseName: String = "cc"
-  override def isEnabled(using Context) = ctx.settings.Ycc.value
+  override def isEnabled(using Context) = true
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
   override def run(using Context): Unit =
-    checkOverrides.traverse(ctx.compilationUnit.tpdTree)
-    super.run
+    if Feature.ccEnabled then
+      checkOverrides.traverse(ctx.compilationUnit.tpdTree)
+      super.run
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if Synthetics.needsTransform(sym) then Synthetics.transformFromCC(sym)
@@ -148,7 +149,7 @@ class CheckCaptures extends Recheck, SymTransformer:
   /** Check overrides again, taking capture sets into account.
    *  TODO: Can we avoid doing overrides checks twice?
    *  We need to do them here since only at this phase CaptureTypes are relevant
-   *  But maybe we can then elide the check during the RefChecks phase if -Ycc is set?
+   *  But maybe we can then elide the check during the RefChecks phase under captureChecking?
    */
   def checkOverrides = new TreeTraverser:
     def traverse(t: Tree)(using Context) =
@@ -288,16 +289,34 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  outcome of a `mightSubcapture` test. It picks `{f}` if this might subcapture Cr
      *  and Cr otherwise.
      */
-    override def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) = {
-      val selType = super.recheckSelection(tree, qualType, name)
+    override def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context) = {
+      def disambiguate(denot: Denotation): Denotation = denot match
+        case MultiDenotation(denot1, denot2) =>
+          // This case can arise when we try to merge multiple types that have different
+          // capture sets on some part. For instance an asSeenFrom might produce
+          // a bi-mapped capture set arising from a substition. Applying the same substitution
+          // to the same type twice will nevertheless produce different capture setsw which can
+          // lead to a failure in disambiguation since neither alternative is better than the
+          // other in a frozen constraint. An example test case is disambiguate-select.scala.
+          // We address the problem by disambiguating while ignoring all capture sets as a fallback.
+          withMode(Mode.IgnoreCaptures) {
+            disambiguate(denot1).meet(disambiguate(denot2), qualType)
+          }
+        case _ => denot
+
+      val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selCs = selType.widen.captureSet
       if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
         selType
       else
         val qualCs = qualType.captureSet
         capt.println(i"intersect $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
-        if qualCs.mightSubcapture(selCs) then
+        if qualCs.mightSubcapture(selCs)
+            && !selCs.mightSubcapture(qualCs)
+            && !pt.stripCapturing.isInstanceOf[SingletonType]
+        then
           selType.widen.stripCapturing.capturing(qualCs)
+            .showing(i"alternate type for select $tree: $selType --> $result, $qualCs / $selCs", capt)
         else
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
@@ -314,23 +333,32 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  and Cr otherwise.
      */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      includeCallCaptures(tree.symbol, tree.srcPos)
-      super.recheckApply(tree, pt) match
-        case appType @ CapturingType(appType1, refs) =>
-          tree.fun match
-            case Select(qual, _)
-            if !tree.fun.symbol.isConstructor
-                && !qual.tpe.isBoxedCapturing
-                && !tree.args.exists(_.tpe.isBoxedCapturing)
-                && qual.tpe.captureSet.mightSubcapture(refs)
-                && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
-            =>
-              val callCaptures = tree.args.foldLeft(qual.tpe.captureSet)((cs, arg) =>
-                cs ++ arg.tpe.captureSet)
-              appType.derivedCapturingType(appType1, callCaptures)
-                .showing(i"narrow $tree: $appType, refs = $refs, qual = ${qual.tpe.captureSet} --> $result", capt)
-            case _ => appType
-        case appType => appType
+      val meth = tree.fun.symbol
+      includeCallCaptures(meth, tree.srcPos)
+      if meth == defn.Caps_unsafeBox || meth == defn.Caps_unsafeUnbox then
+        val arg :: Nil = tree.args: @unchecked
+        val argType0 = recheckStart(arg, pt)
+          .forceBoxStatus(boxed = meth == defn.Caps_unsafeBox)
+        val argType = super.recheckFinish(argType0, arg, pt)
+        super.recheckFinish(argType, tree, pt)
+      else
+        super.recheckApply(tree, pt) match
+          case appType @ CapturingType(appType1, refs) =>
+            tree.fun match
+              case Select(qual, _)
+              if !tree.fun.symbol.isConstructor
+                  && !qual.tpe.isBoxedCapturing
+                  && !tree.args.exists(_.tpe.isBoxedCapturing)
+                  && qual.tpe.captureSet.mightSubcapture(refs)
+                  && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
+              =>
+                val callCaptures = tree.args.foldLeft(qual.tpe.captureSet)((cs, arg) =>
+                  cs ++ arg.tpe.captureSet)
+                appType.derivedCapturingType(appType1, callCaptures)
+                  .showing(i"narrow $tree: $appType, refs = $refs, qual = ${qual.tpe.captureSet} --> $result", capt)
+              case _ => appType
+          case appType => appType
+    end recheckApply
 
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
      *  This means:
@@ -435,10 +463,25 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       super.recheckBlock(block, pt)
 
+    /** If `rhsProto` has `*` as its capture set, wrap `rhs` in a `unsafeBox`.
+     *  Used to infer `unsafeBox` for expressions that get assigned to variables
+     *  that have universal capture set.
+     */
+    def maybeBox(rhs: Tree, rhsProto: Type)(using Context): Tree =
+      if rhsProto.captureSet.isUniversal then
+        ref(defn.Caps_unsafeBox).appliedToType(rhsProto).appliedTo(rhs)
+      else rhs
+
+    override def recheckAssign(tree: Assign)(using Context): Type =
+      val rhsProto = recheck(tree.lhs).widen
+      recheck(maybeBox(tree.rhs, rhsProto), rhsProto)
+      defn.UnitType
+
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
       try
         if !sym.is(Module) then // Modules are checked by checking the module class
-          super.recheckValDef(tree, sym)
+          if sym.is(Mutable) then recheck(maybeBox(tree.rhs, sym.info), sym.info)
+          else super.recheckValDef(tree, sym)
       finally
         if !sym.is(Param) then
           // Parameters with inferred types belong to anonymous methods. We need to wait
@@ -541,8 +584,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           tpe
         case _: Try =>
           tpe
-        case _: ValDef if tree.symbol.is(Mutable) =>
-          tree.symbol.info
         case _ =>
           NoType
       def checkNotUniversal(tp: Type): Unit = tp.widenDealias match
@@ -671,7 +712,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       /** Destruct a capturing type `tp` to a tuple (cs, tp0, boxed),
        *  where `tp0` is not a capturing type.
-       * 
+       *
        *  If `tp` is a nested capturing type, the return tuple always represents
        *  the innermost capturing type. The outer capture annotations can be
        *  reconstructed with the returned function.
@@ -727,7 +768,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val criticalSet =          // the set which is not allowed to have `*`
               if covariant then cs1    // can't box with `*`
               else expected.captureSet // can't unbox with `*`
-            if criticalSet.isUniversal then
+            if criticalSet.isUniversal && expected.isValueType then
               // We can't box/unbox the universal capability. Leave `actual` as it is
               // so we get an error in checkConforms. This tends to give better error
               // messages than disallowing the root capability in `criticalSet`.
@@ -748,7 +789,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             recon(CapturingType(parent1, cs1, actualIsBoxed))
       }
 
-
       var actualw = actual.widenDealias
       actual match
         case ref: CaptureRef if ref.isTracked =>
@@ -768,6 +808,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       Setup(preRecheckPhase, thisPhase, recheckDef)
         .traverse(ctx.compilationUnit.tpdTree)
+      //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
       withCaptureSetsExplained {
         super.checkUnit(unit)
         checkSelfTypes(unit.tpdTree)

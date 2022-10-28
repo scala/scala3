@@ -78,6 +78,13 @@ i2797a
 # allows to simplify a type that was already computed
 i13842.scala
 
+# Position change under captureChecking
+boxmap-paper.scala
+
+# Function types print differnt after unpickling since test mispredicts Feature.preFundsEnabled
+caps-universal.scala
+
+
 # GADT cast applied to singleton type difference
 i4176-gadt.scala
 

@@ -24,7 +24,7 @@ import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
 import transform.TypeUtils._
 import transform.SymUtils._
-import config.Config
+import config.{Config, Feature}
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
@@ -57,6 +57,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     myCtx = ctx.addMode(Mode.Pattern)
     try op finally myCtx = savedCtx
   }
+
+  inline def inContextBracket(inline op: Text): Text =
+    val savedCtx = myCtx
+    try op finally myCtx = savedCtx
 
   def withoutPos(op: => Text): Text = {
     val savedPrintPos = printPos
@@ -221,7 +225,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
             else if defn.isFunctionSymbol(tsym) then
               toTextFunction(args, tsym.name.isContextFunction, tsym.name.isErasedFunction,
-                isPure = ctx.settings.Ycc.value && !tsym.name.isImpureFunction)
+                isPure = Feature.pureFunsEnabled && !tsym.name.isImpureFunction)
             else if isInfixType(tp) then
               val l :: r :: Nil = args: @unchecked
               val opName = tyconName(tycon)
@@ -248,7 +252,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(tycon)
       case tp: RefinedType if defn.isFunctionOrPolyType(tp) && !printDebug =>
         toTextMethodAsFunction(tp.refinedInfo,
-          isPure = ctx.settings.Ycc.value && !tp.typeSymbol.name.isImpureFunction)
+          isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction)
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !showUniqueIds)
           toText(tp.info)
@@ -272,6 +276,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: LazyRef if !printDebug =>
         try toText(tp.ref)
         catch case ex: Throwable => "..."
+      case AnySelectionProto =>
+        "a type that can be selected or applied"
       case tp: SelectionProto =>
         "?{ " ~ toText(tp.name) ~
            (Str(" ") provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
@@ -306,7 +312,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     blockText(block.stats :+ block.expr)
 
   protected def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
-    ("{" ~ toText(trees, "\n") ~ "}").close
+    inContextBracket {
+      ("{" ~ toText(trees, "\n") ~ "}").close
+    }
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
     val funText = toTextLocal(tree.fun)
@@ -554,7 +562,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           (" <: " ~ toText(bound) provided !bound.isEmpty)
         }
       case ByNameTypeTree(tpt) =>
-        (if ctx.settings.Ycc.value then "-> " else "=> ")
+        (if Feature.pureFunsEnabled then "-> " else "=> ")
         ~ toTextLocal(tpt)
       case TypeBoundsTree(lo, hi, alias) =>
         if (lo eq hi) && alias.isEmpty then optText(lo)(" = " ~ _)
@@ -596,7 +604,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
         recur(rhs, "", true)
-      case Import(expr, selectors) =>
+      case tree @ Import(expr, selectors) =>
+        myCtx = myCtx.importContext(tree, tree.symbol)
         keywordText("import ") ~ importText(expr, selectors)
       case Export(expr, selectors) =>
         keywordText("export ") ~ importText(expr, selectors)
@@ -616,7 +625,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           try changePrec(GlobalPrec)(toText(captureSet) ~ " " ~ toText(arg))
           catch case ex: IllegalCaptureRef => toTextAnnot
         if annot.symbol.maybeOwner == defn.RetainsAnnot
-            && ctx.settings.Ycc.value && Config.printCaptureSetsAsPrefix && !printDebug
+            && Feature.ccEnabled && Config.printCaptureSetsAsPrefix && !printDebug
         then toTextRetainsAnnot
         else toTextAnnot
       case EmptyTree =>
@@ -662,7 +671,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             ~ ")"
         }
         val isPure =
-          ctx.settings.Ycc.value
+          Feature.pureFunsEnabled
           && tree.match
             case tree: FunctionWithMods => !tree.mods.is(Impure)
             case _ => true
@@ -963,7 +972,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
     else impl.body
 
-    val bodyText = " {" ~~ selfText ~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
+    val bodyText = inContextBracket(
+      " {" ~~ selfText ~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}")
 
     prefix ~
     keywordText(" extends").provided(!ofNew && impl.parents.nonEmpty) ~~ parentsText ~
@@ -986,7 +996,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def packageDefText(tree: PackageDef): Text = {
     val statsText = tree.stats match {
       case (pdef: PackageDef) :: Nil => toText(pdef)
-      case _ => toTextGlobal(tree.stats, "\n")
+      case _ => inContextBracket(toTextGlobal(tree.stats, "\n"))
     }
     val bodyText =
       if (currentPrecedence == TopLevelPrec) "\n" ~ statsText else " {" ~ statsText ~ "}"

@@ -17,6 +17,7 @@ import NameOps._
 import NameKinds.OuterSelectName
 import StdNames._
 import TypeUtils.isErasedValueType
+import config.Feature
 
 object FirstTransform {
   val name: String = "firstTransform"
@@ -102,7 +103,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   /** Eliminate self in Template
-   *  Under -Ycc, we keep the self type `S` around in a type definition
+   *  Under captureChecking, we keep the self type `S` around in a type definition
    *
    *     private[this] type $this = S
    *
@@ -110,7 +111,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
    */
   override def transformTemplate(impl: Template)(using Context): Tree =
     impl.self match
-      case self: ValDef if !self.tpt.isEmpty && ctx.settings.Ycc.value =>
+      case self: ValDef if !self.tpt.isEmpty && Feature.ccEnabled =>
         val tsym = newSymbol(ctx.owner, tpnme.SELF, PrivateLocal, TypeAlias(self.tpt.tpe))
         val tdef = untpd.cpy.TypeDef(self)(tpnme.SELF, self.tpt).withType(tsym.typeRef)
         cpy.Template(impl)(self = EmptyValDef, body = tdef :: impl.body)

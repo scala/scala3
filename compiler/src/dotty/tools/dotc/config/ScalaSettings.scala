@@ -331,9 +331,8 @@ private sealed trait YSettings:
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
   val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only)")
-  val Ycc: Setting[Boolean] = BooleanSetting("-Ycc", "Check captured references (warning: extremely experimental and unstable)")
-  val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with -Ycc, debug info for captured references")
-  val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with -Ycc, suppress type abbreviations")
+  val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references")
+  val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with captureChecking language import, suppress type abbreviations")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
