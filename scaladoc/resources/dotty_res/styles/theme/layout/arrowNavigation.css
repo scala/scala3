@@ -2,17 +2,21 @@
   display: flex;
   margin-bottom: calc(6 * var(--base-spacing));
   margin-top: calc(6 * var(--base-spacing));
+  gap: 24px;
 }
 
 .arrow-navigation > div {
   width: 100%;
-  padding-right: 12px;
 }
 
-.arrow-navigation > div:has(.arrow-navigation--next) {
+.arrow-navigation > div .arrow-navigation--next {
   text-align: right;
-  padding-right: 0;
-  padding-left: 12px;
+}
+
+.arrow-navigation > div .arrow-navigation--next ~ a {
+  display: inline-block;
+  width: 100%;
+  text-align: right;
 }
 
 .arrow-navigation > div > span {

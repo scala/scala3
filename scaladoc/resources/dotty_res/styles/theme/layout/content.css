@@ -1,151 +1,128 @@
 #main {
-  overflow: scroll;
+  width: calc(100vw - 313px);
   height: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  position: absolute;
+  right: 0;
+  scroll-behavior: smooth;
 }
 
 #content {
-  margin-left: calc(39 * var(--base-spacing));
   display: flex;
   flex-flow: row;
   color: var(--text-primary);
-  -webkit-transition: width 0.3s ease-in-out;
-  -moz-transition: width 0.3s ease-in-out;
-  -o-transition: width 0.3s ease-in-out;
-  transition: width 0.3s ease-in-out;
+
+  padding-top: calc(18 * var(--base-spacing));
+  padding-bottom: calc(10 * var(--base-spacing));
+  width: calc(100% - 68px * 2);
+  padding-inline: 68px;
+  gap: 68px;;
+  
+  -webkit-transition: margin-left 0.2s ease-in-out;
+  -moz-transition: margin-left 0.2s ease-in-out;
+  -o-transition: margin-left 0.2s ease-in-out;
+  transition: margin-left 0.2s ease-in-out;
 }
 
 #content > div:first-child {
-  overflow: clip;
-  padding-left: 28px;
+  width: calc(100vw - 232px - 313px - 68px * 3);
+  max-width: 720px;
 }
 
 
 #content.sidebar-shown {
-  -webkit-transition: width 0.3s ease-in-out;
-  -moz-transition: width 0.3s ease-in-out;
-  -o-transition: width 0.3s ease-in-out;
-  transition: width 0.3s ease-in-out;
+  -webkit-transition: margin-left 0.2s ease-in-out;
+  -moz-transition: margin-left 0.2s ease-in-out;
+  -o-transition: margin-left 0.2s ease-in-out;
+  transition: margin-left 0.2s ease-in-out;
 }
 
-@media (min-width: 1920px) {
-  #content {
-    padding-left: calc(36.75 * var(--base-spacing));
-    padding-top: calc(18 * var(--base-spacing));
-  }
+@media (min-width: 1921px) {
 
-  #content > div:first-child {
-    width: calc(90 * var(--base-spacing));
+  #content {
+    justify-content: left;
+    padding-left: 294px;
   }
 }
 
 @media (max-width: 1920px) {
+
   #content {
-    margin-left: 0;
-    width: calc(100% - calc(39 * var(--base-spacing)) + 28px);
-    padding-top: calc(18 * var(--base-spacing));
-    padding-bottom: calc(10 * var(--base-spacing));
     justify-content: center;
-    float: right;
   }
+
   #content > div:first-child {
-    width: calc(90 * var(--base-spacing));
+    padding: 0;
   }
 }
 
 @media (max-width: 1467px) {
-  #content {
-    margin-left: 0;
-    width: calc(100% - calc(56 * var(--base-spacing)) + 28px);
-    padding-top: calc(18 * var(--base-spacing));
-    padding-bottom: calc(10 * var(--base-spacing));
-    margin-right: calc(8.5 * var(--base-spacing));
-    margin-left: calc(8.5 * var(--base-spacing));
-    float: right;
-  }
-  #content > div:first-child {
-    width: auto;
-  }
-}
 
-@media (max-width: 1376px) {
   #content {
-    margin-left: 0;
-    width: calc(100% - calc(51 * var(--base-spacing)) + 28px);
-    padding-top: calc(18 * var(--base-spacing));
-    padding-bottom: calc(10 * var(--base-spacing));
-    margin-right: calc(6 * var(--base-spacing));
-    margin-left: calc(6 * var(--base-spacing));
-    float: right;
+    width: calc(100% - 48px * 2);
+    padding-inline: 48px;
+    gap: 48px;
   }
+
   #content > div:first-child {
-    width: auto;
+    width: calc(100vw - 232px - 313px - 48px * 3);
   }
 }
 
 @media (max-width: 1024px) {
-  #content {
-    width: calc(100% - calc(12 * var(--base-spacing)) + 28px);
-    margin-right: calc(6 * var(--base-spacing));
-    margin-left: calc(6 * var(--base-spacing));
-    padding-right: 0;
+
+  #main {
+    width: 100vw;
+    position: absolute;
+    left: 0;
   }
 
   #content > div:first-child {
-    width: calc(100% - calc(29 * var(--base-spacing)));
+    width: calc(100vw - 232px - 48px * 3);
   }
 
   #content.sidebar-shown {
-    width: calc(100% - calc(51 * var(--base-spacing)));
-    padding-right: 0;
+    margin-left: 313px;
   }
 
-  #content.sidebar-shown > div:first-child {
-    width: auto;
-  }
 }
 
 @media (max-width: 768px) {
+
   #content {
-    margin-right: calc(6 * var(--base-spacing));
-    margin-left: calc(6 * var(--base-spacing));
-    padding-right: 0;
-    width: calc(100% - calc(12 * var(--base-spacing)) + 28px);
+    padding-bottom: calc(6 * var(--base-spacing));
   }
 
   #content > div:first-child {
-    width: auto;
+    width: calc(100vw - 48px * 2);
   }
 
-  #content.sidebar-shown {
-    width: calc(100% - calc(51 * var(--base-spacing)));
-    padding-right: 0;
-  }
-
-  #content.sidebar-shown > div:first-child {
-    width: auto;
-  }
 }
 
 @media (max-width: 428px) {
+
   #content {
-    margin-right: calc(4 * var(--base-spacing));
-    margin-left: calc(4 * var(--base-spacing));
-    padding-right: 0;
-    width: calc(100% - calc(8 * var(--base-spacing)) + 28px);
+    padding-bottom: 0;
+  }
+
+}
+
+@media (max-width: 428px) {
+
+  #content {
+    width: calc(100% - 64px);
+    padding-inline: 32px;
   }
 
   #content > div:first-child {
-    width: auto;
+    width: calc(100vw - 32px * 2);
   }
 
   #content.sidebar-shown {
-    width: calc(100% - calc(51 * var(--base-spacing)));
-    padding-right: 0;
+    margin-left: 100%;
   }
 
-  #content.sidebar-shown > div:first-child {
-    width: auto;
-  }
 }
 
 #content::after {

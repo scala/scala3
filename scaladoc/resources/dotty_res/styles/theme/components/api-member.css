@@ -88,6 +88,14 @@ color: var(--text-secondary);
   top: calc(2 * var(--base-spacing));
 }
 
+@media (max-width: 480px) {
+
+  .documentableElement .icon-button {
+    left: calc(3 * var(--base-spacing) / -1);
+  }
+
+}
+
 .documentableElement:hover .icon-button {
   display: block;
 }
