@@ -468,46 +468,6 @@ object Test7 {
     println("Inner object is null")
 }
 
-// Verify that transient lazy vals don't get serialized
-class WithTransient extends Serializable {
-  @transient lazy val a1 = {
-    println("Calculating a1")
-    1
-  }
-  @transient private lazy val a2 = {
-    println("Calculating a2")
-    2
-  }
-  private lazy val a3 = {
-    println("Calculating a3")
-    3
-  }
-
-  @transient object B extends Serializable
-  @transient private object C extends Serializable
-
-  def test = {
-    println(a1)
-    println(a2)
-    println(a3)
-    if (B == null || C == null)
-     println("Transient nested object failed to serialize properly")
-  }
-}
-
-object Test8 {
-  val x = new WithTransient
-  x.test
-  try {
-    val y:WithTransient = read(write(x))
-    y.test
-  }
-  catch {
-  case e: Exception =>
-    println("Error in Test8: " + e)
-  }
-}
-
 //############################################################################
 // Test code
 
@@ -519,6 +479,5 @@ object Test {
     Test5
     Test6
     Test7
-    Test8
   }
 }
