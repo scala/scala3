@@ -39,6 +39,7 @@
   * @param value { string }
   */
   onFilterToggle(key, value) {
+    console.log(this.elementsRefs);
     return new Filter(
       this.value,
       this._withToggledFilter(key, value),

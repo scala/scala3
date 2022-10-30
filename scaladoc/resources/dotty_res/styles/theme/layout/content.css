@@ -18,7 +18,7 @@
   width: calc(100% - 68px * 2);
   padding-inline: 68px;
   gap: 68px;;
-  
+
   -webkit-transition: margin-left 0.2s ease-in-out;
   -moz-transition: margin-left 0.2s ease-in-out;
   -o-transition: margin-left 0.2s ease-in-out;
@@ -544,6 +544,7 @@ main :is(ul, ol) li .snippet {
 
 .membersList {
   position: relative;
+  min-height: 80vh;
 }
 
 #concise-view-switch {

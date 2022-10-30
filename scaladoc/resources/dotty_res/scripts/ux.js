@@ -342,6 +342,8 @@ window.addEventListener("DOMContentLoaded", () => {
   window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD))
 })
 
+const elements = document.querySelectorAll(".documentableElement");
+
 // show/hide side menu on mobile view
 const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
 sideMenuToggler.addEventListener("click", (_e) => {

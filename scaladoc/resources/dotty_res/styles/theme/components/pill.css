@@ -70,6 +70,7 @@
   border-radius: 4px;
   padding-top: calc(1 * var(--base-spacing));
   padding-bottom: calc(1 * var(--base-spacing));
+   top: 54px;
 }
 
 .pill-container ul li {

@@ -27,6 +27,7 @@
   }
 
   toggleDisplayStyles(condition, ref) {
+    console.log(ref);
     ref.style.display = condition ? null : 'none'
   }
 
@@ -55,7 +56,7 @@
           })
 
           this.toggleDisplayStyles(isListVisible, listRef);
-
+          console.log(isListVisible);
           return isListVisible;
         }).length;
 
