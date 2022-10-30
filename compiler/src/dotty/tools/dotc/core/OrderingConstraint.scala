@@ -299,7 +299,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
     override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
       def tparams(tycon: Type): List[ParamInfo] = tycon match
-        case tycon: TypeVar if !tycon.isInstantiated => tparams(tycon.origin)
+        case tycon: TypeVar if !tycon.inst.exists => tparams(tycon.origin)
         case tycon: TypeParamRef =>
           entry(tycon) match
             case _: TypeBounds => tp.tyconTypeParams
