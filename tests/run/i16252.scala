@@ -6,5 +6,5 @@ class Baz:
   private transparent inline def zero = 0
 
 @main
-def main =
+def Test =
   println(Baz().foo)
