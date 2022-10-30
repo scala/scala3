@@ -284,7 +284,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *     arguments Ts. That can make a difference for the variance in which an argument
    *     is traversed. Example constraint:
    *
-   *         constrainded types: C[X], A
+   *         constrained types: C[X], A
    *         A >: C[B]
    *         C := Option
    *
@@ -696,14 +696,14 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           case tvar: TypeVar =>
             if tvar.isInstantiated
             then
-              // If the type variuable has been instantiated, we need to forget about
+              // If the type variable has been instantiated, we need to forget about
               // the instantiation for old dependencies.
               // I.e. to find out what the old entry was, we should not follow
               // the newly instantiated type variable but assume the type variable's origin `param`.
               // An example where this happens is if `replace` is called from TypeVar's `instantiateWith`.
               oldDepEntry = mapReplacedTypeVarTo(param)(oldDepEntry)
             else
-              // If the type variuable has not been instantiated, we need to replace references to it
+              // If the type variable has not been instantiated, we need to replace references to it
               // in the new entry by `replacement`. Otherwise we would get stuck in an uninstantiated
               // type variable.
               // An example where this happens is if `replace` is called from unify.
