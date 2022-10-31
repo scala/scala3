@@ -13,6 +13,10 @@ object Properties {
     prop == null || prop == "TRUE"
   }
 
+  /** If property is unset or FALSE we consider it `false` */
+  private def propIsTrue(name: String): Boolean =
+    sys.props.getOrElse(name, "FALSE") == "TRUE"
+
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
   || sys.env.isDefinedAt("DRONE")  // TODO remove this when we drop Drone
@@ -30,9 +34,11 @@ object Properties {
    */
   val testsFilter: List[String] = sys.props.get("dotty.tests.filter").fold(Nil)(_.split(',').toList)
 
+  /** Run only failed tests */
+  val rerunFailed: Boolean = propIsTrue("dotty.tests.rerunFailed")
+
   /** Tests should override the checkfiles with the current output */
-  val testsUpdateCheckfile: Boolean =
-    sys.props.getOrElse("dotty.tests.updateCheckfiles", "FALSE") == "TRUE"
+  val testsUpdateCheckfile: Boolean = propIsTrue("dotty.tests.updateCheckfiles")
 
   /** When set, the run tests are only compiled - not run, a warning will be
    *  issued

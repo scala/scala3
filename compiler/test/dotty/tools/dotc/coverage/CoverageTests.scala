@@ -4,13 +4,13 @@ import org.junit.Test
 import org.junit.AfterClass
 import org.junit.Assert.*
 import org.junit.experimental.categories.Category
-
 import dotty.{BootstrappedOnlyTests, Properties}
 import dotty.tools.vulpix.*
 import dotty.tools.vulpix.TestConfiguration.*
 import dotty.tools.dotc.Main
+import dotty.tools.dotc.reporting.TestReporter
 
-import java.nio.file.{Files, FileSystems, Path, Paths, StandardCopyOption}
+import java.nio.file.{FileSystems, Files, Path, Paths, StandardCopyOption}
 import scala.jdk.CollectionConverters.*
 import scala.util.Properties.userDir
 import scala.language.unsafeNulls
@@ -85,6 +85,7 @@ object CoverageTests extends ParallelTesting:
   def testFilter = Properties.testsFilter
   def isInteractive = SummaryReport.isInteractive
   def updateCheckFiles = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   given summaryReport: SummaryReporting = SummaryReport()
   @AfterClass def tearDown(): Unit =

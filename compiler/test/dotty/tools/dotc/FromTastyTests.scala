@@ -5,6 +5,7 @@ package dotc
 import scala.language.unsafeNulls
 
 import org.junit.{AfterClass, Test}
+import reporting.TestReporter
 import vulpix._
 
 import java.io.{File => JFile}
@@ -48,6 +49,7 @@ object FromTastyTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {

@@ -108,6 +108,7 @@ object VulpixUnitTests extends ParallelTesting {
   def isInteractive = !sys.env.contains("DRONE")
   def testFilter = Nil
   def updateCheckFiles: Boolean = false
+  def failedTests = None
 
   @AfterClass
   def tearDown() = this.cleanup()
