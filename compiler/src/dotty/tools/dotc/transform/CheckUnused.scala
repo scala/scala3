@@ -106,12 +106,11 @@ class CheckUnused extends Phase:
     res.foreach { s =>
       s match
         case (t, WarnTypes.Imports) =>
-          println("hey")
           report.warning(s"unused import", t)
         case (t, WarnTypes.LocalDefs) =>
-          report.warning(s"unused local definition", t.startPos)
+          report.warning(s"unused local definition", t)
         case (t, WarnTypes.PrivateMembers) =>
-          report.warning(s"unused private member", t.startPos)
+          report.warning(s"unused private member", t)
     }
 
 end CheckUnused
@@ -246,12 +245,12 @@ object CheckUnused:
           Nil
       val sortedLocalDefs =
         if ctx.settings.WunusedHas.locals then
-          unusedLocalDef.map(d => d.srcPos -> WarnTypes.LocalDefs).toList
+          unusedLocalDef.map(d => d.withSpan(d.span.withEnd(d.tpt.startPos.start)) -> WarnTypes.LocalDefs).toList
         else
           Nil
       val sortedPrivateDefs =
         if ctx.settings.WunusedHas.privates then
-          unusedPrivateDef.map(d => d.srcPos -> WarnTypes.PrivateMembers).toList
+          unusedPrivateDef.map(d => d.withSpan(d.span.withEnd(d.tpt.startPos.start)) -> WarnTypes.PrivateMembers).toList
         else
           Nil
       List(sortedImp, sortedLocalDefs, sortedPrivateDefs).flatten.sortBy { s =>
