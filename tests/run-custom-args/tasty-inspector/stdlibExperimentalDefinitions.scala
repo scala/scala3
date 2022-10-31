@@ -67,6 +67,16 @@ val experimentalDefinitionInLibrary = Set(
   // Need experimental annotation macros to check that design works.
   "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
+
+  // New APIs: Lightweight lazy vals. Can be stabilized in 3.3.0
+  "scala.runtime.LazyVals$.Evaluating",
+  "scala.runtime.LazyVals$.Evaluating$",
+  "scala.runtime.LazyVals$.LazyValControlState",
+  "scala.runtime.LazyVals$.NullValue",
+  "scala.runtime.LazyVals$.NullValue$",
+  "scala.runtime.LazyVals$.Waiting",
+  "scala.runtime.LazyVals$.getStaticFieldOffset",
+  "scala.runtime.LazyVals$.objCAS"
 )
 
 

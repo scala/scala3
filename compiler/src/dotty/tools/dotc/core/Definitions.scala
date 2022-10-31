@@ -1990,6 +1990,12 @@ class Definitions {
     addSyntheticSymbolsComments
   }
 
+  /** Definitions used in Lazy Vals implementation */
+  val LazyValsModuleName = "scala.runtime.LazyVals"
+  @tu lazy val LazyValsModule = requiredModule(LazyValsModuleName)
+  @tu lazy val LazyValsWaitingState = requiredClass(s"$LazyValsModuleName.Waiting")
+  @tu lazy val LazyValsControlState = requiredClass(s"$LazyValsModuleName.LazyValControlState")
+
   def addSyntheticSymbolsComments(using Context): Unit =
     def add(sym: Symbol, doc: String) = ctx.docCtx.foreach(_.addDocstring(sym, Some(Comment(NoSpan, doc))))
 
