@@ -9,7 +9,7 @@ def map[A, B](ref: {*} LazyRef[A], f: A => B): {f, ref} LazyRef[B] =
   new LazyRef(() => f(ref.elem()))
 
 def mapc[A, B]: (ref: {*} LazyRef[A], f: A => B) => {f, ref} LazyRef[B] =
-  (ref1, f1) => map[A, B](ref1, f1)
+  (ref1, f1) => map[A, B](ref1, f1)  // error // limitation
 
 def test(cap1: Cap, cap2: Cap) =
   def f(x: Int) = if cap1 == cap1 then x else 0

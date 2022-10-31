@@ -1,3 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:13:2 ---------------------------------------
+13 |  (ref1, f1) => map[A, B](ref1, f1) // error // limitation
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Found:    ? (ref1: {*} LazyRef[? A]{elem: {*} () -> box ? A}, f1: {*} (x$0: ? A) -> ? B) -> 
+   |    {f1, ref1, *} LazyRef[? B]{elem: {*} () -> box ? B}
+   |  Required: (ref: {*} LazyRef[A], f: A => B) -> {f, ref} LazyRef[B]
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:19:28 --------------------------------------
 19 |  val ref1c: LazyRef[Int] = ref1 // error
    |                            ^^^^
