@@ -306,6 +306,7 @@ object SpaceEngine {
       val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition)
       isEmptyTp <:< ConstantType(Constant(false))
     }
+    || unappResult.derivesFrom(defn.NonEmptyTupleClass)
   }
 
   /** Is the unapply or unapplySeq irrefutable?
