@@ -37,6 +37,7 @@
      this.setState((prevState) => ({
        filter: prevState.filter.onInputValueChange(value),
      }));
+     this.onChangeDisplayedElements();
    };
 
    onGroupSelectChange = (key, isActive) => {
@@ -60,6 +61,7 @@
      this.setState((prevState) => ({
        filter: prevState.filter.onFilterToggle(key, value),
      }));
+     this.onChangeDisplayedElements();
    };
 
    onPillClick = (key) => {
@@ -74,6 +76,26 @@
        filter: prevState.filter,
        selectedPill: "",
      }));
+   };
+
+   onChangeDisplayedElements = () => {
+     const elementsDisplayed = this.refs.elements.filter(
+       (member) => member.style.display !== "none",
+     );
+     const noResultContainer = document.querySelector("#no-results-container");
+     if (elementsDisplayed.length === 0 && !noResultContainer) {
+       const emptySpace = document.querySelector("#Value-members");
+       emptySpace.insertAdjacentHTML(
+         // TODO ścieżka do poprawki
+         "beforeend",
+         `<div id='no-results-container'>
+          <img src="./images/no-results.svg" alt="Sick face" >
+          <h2 class='h200 no-result-header'>No results match your filter criteria</h2>
+          <p class='no-result-content'>Try adjusting or clearing your filters<br>to display better result</p>
+          <button class='clearButton label-only-button'>Clear all filters</button>
+        </div>`,
+       );
+     }
    };
 
    render() {
@@ -97,7 +119,8 @@
    new FilterBar();
  });
 
- const clearButton = document.querySelector(".clearButton");
- clearButton.addEventListener("click", () => {
-   new FilterBar().onClearFilters();
+ document.addEventListener("click", (e) => {
+   const isClearButton = e.target.classList.contains("clearButton");
+   if (isClearButton) new FilterBar().onClearFilters();
  });
+
