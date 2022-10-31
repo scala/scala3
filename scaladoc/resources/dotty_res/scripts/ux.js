@@ -339,8 +339,10 @@ window.addEventListener("dynamicPageLoad", () => {
 window.addEventListener("DOMContentLoaded", () => {
   hljs.registerLanguage("scala", highlightDotty);
   hljs.registerAliases(["dotty", "scala3"], "scala");
-  window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD))
-})
+  window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD));
+});
+
+
 
 // show/hide side menu on mobile view
 const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");

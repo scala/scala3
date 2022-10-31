@@ -32,6 +32,11 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   private def scaladocVersionFile = Resource.Text("scaladoc.version", BuildInfo.version)
 
+  lazy val noResultsIcon = {
+    val path = Paths.get("docs/_assets/images/no-results-icon.svg")
+    Resource.File("icons/no-results.svg", path)
+  }
+
   lazy val projectLogo = ctx.args.projectLogo.map { p =>
       val path = Paths.get(p)
       Resource.File(s"project-logo/${path.getFileName()}", path)
@@ -133,7 +138,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "https://scastie.scala-lang.org/embedded.js"
     ).map(Resource.URL.apply)
 
-    fromResources ++ urls ++ projectLogo ++ darkProjectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
+    fromResources ++ urls ++ projectLogo ++ darkProjectLogo ++ Seq(noResultsIcon, scaladocVersionFile, dynamicJsData)
   }
 
   val apiOnlyResources = List(
