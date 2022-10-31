@@ -6027,8 +6027,11 @@ object Types {
             tp.derivedLambdaType(tp.paramNames, formals, restpe)
       }
 
+    /** Overridden in TypeOps.avoid */
+    protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = true
+
     override def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
-      if v == 0 then
+      if v == 0 && needsRangeIfInvariant(refs) then
         range(mapCapturingType(tp, parent, refs, -1), mapCapturingType(tp, parent, refs, 1))
       else
         super.mapCapturingType(tp, parent, refs, v)
