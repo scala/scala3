@@ -267,7 +267,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   override def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean =
     def origin(tv: TypeVar) =
-      assert(!tv.isInstantiated)
+      assert(!instType(tv).exists)
       tv.origin
     val param = origin(tv)
     val excluded = except.map(origin)
@@ -694,7 +694,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         var newDepEntry = newEntry
         replacedTypeVar match
           case tvar: TypeVar =>
-            if tvar.isInstantiated
+            if tvar.inst.exists // `isInstantiated` would use ctx.typerState.constraint rather than the current constraint
             then
               // If the type variable has been instantiated, we need to forget about
               // the instantiation for old dependencies.
