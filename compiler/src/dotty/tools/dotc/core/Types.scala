@@ -5497,6 +5497,14 @@ object Types {
         stop == StopAt.Static && tp.currentSymbol.isStatic && isStaticPrefix(tp.prefix)
         || stop == StopAt.Package && tp.currentSymbol.is(Package)
       }
+
+    /** The type parameters of the constructor of this applied type.
+     *  Overridden in OrderingConstraint's ConstraintAwareTraversal to take account
+     *  of instantiations in the constraint that are not yet propagated to the
+     *  instance types of type variables.
+     */
+    protected def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
+      tp.tyconTypeParams
   end VariantTraversal
 
   /** A supertrait for some typemaps that are bijections. Used for capture checking.
@@ -5604,17 +5612,11 @@ object Types {
         case tp: NamedType =>
           if stopBecauseStaticOrLocal(tp) then tp
           else
-            val prefix1 = atVariance(variance max 0)(this(tp.prefix))
-              // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
-              // context, we cannot assume contravariance for `p` because `p`'s lower
-              // bound might not have a binding for `A` (e.g. the lower bound could be `Nothing`).
-              // By contrast, covariance does translate to the prefix, since we have that
-              // if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
-              // of `p`'s upper bound.
+            val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
             derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.tyconTypeParams))
+          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
 
         case tp: LambdaType =>
           mapOverLambda(tp)
@@ -5941,7 +5943,7 @@ object Types {
               case nil =>
                 true
             }
-            if (distributeArgs(args, tp.tyconTypeParams))
+            if (distributeArgs(args, tyconTypeParams(tp)))
               range(tp.derivedAppliedType(tycon, loBuf.toList),
                     tp.derivedAppliedType(tycon, hiBuf.toList))
             else if tycon.isLambdaSub || args.exists(isRangeOfNonTermTypes) then
@@ -6063,8 +6065,17 @@ object Types {
 
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
-    protected final def applyToPrefix(x: T, tp: NamedType): T =
-      atVariance(variance max 0)(this(x, tp.prefix)) // see remark on NamedType case in TypeMap
+    /** A prefix is never contravariant. Even if say `p.A` is used in a contravariant
+     *  context, we cannot assume contravariance for `p` because `p`'s lower
+     *  bound might not have a binding for `A`, since the lower bound could be `Nothing`.
+     *  By contrast, covariance does translate to the prefix, since we have that
+     *  if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
+     *  of `p`'s upper bound.
+     *  Overridden in OrderingConstraint's ConstraintAwareTraversal, where a
+     *  more relaxed scheme is used.
+     */
+    protected def applyToPrefix(x: T, tp: NamedType): T =
+      atVariance(variance max 0)(this(x, tp.prefix))
 
     def foldOver(x: T, tp: Type): T = {
       record(s"foldOver $getClass")
@@ -6087,7 +6098,7 @@ object Types {
             }
             foldArgs(acc, tparams.tail, args.tail)
           }
-        foldArgs(this(x, tycon), tp.tyconTypeParams, args)
+        foldArgs(this(x, tycon), tyconTypeParams(tp), args)
 
       case _: BoundType | _: ThisType => x
 

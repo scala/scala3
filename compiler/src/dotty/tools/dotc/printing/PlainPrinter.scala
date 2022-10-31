@@ -689,8 +689,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
                 Text(ups.map(toText), ", ")
           Text(deps, "\n")
         }
+      val depsText = if Config.showConstraintDeps then c.depsToString else ""
       //Printer.debugPrintUnique = false
-      Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
+      Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText, depsText))
     finally
       ctx.typerState.constraint = savedConstraint
 
