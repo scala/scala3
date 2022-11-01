@@ -344,6 +344,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
+const elements = document.querySelectorAll(".documentableElement");
+
 // show/hide side menu on mobile view
 const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
 sideMenuToggler.addEventListener("click", (_e) => {
@@ -500,3 +502,17 @@ function zoomOut() {
   var svg = d3.select("#graph");
   svg.transition().duration(2000).call(zoom.transform, transform);
 }
+
+
+const members = [...document.querySelectorAll("[id]")];
+members.forEach((member) => {
+  window.addEventListener("resize", () => {
+    const navbarHeight = document.querySelector("#header").clientHeight;
+    const filtersHeight = document.querySelector(
+      ".documentableFilter",
+    ).clientHeight;
+    member.style.scrollMarginTop = `${navbarHeight + filtersHeight}px`;
+    console.log(member.style.scrollMarginTop);
+  });
+  console.log(member.style.scrollMarginTop);
+});
