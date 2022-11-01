@@ -107,10 +107,12 @@ class FilterBar extends Component {
         Object.values(bigFilter).some((smallFilter) => smallFilter.selected),
     );
 
-    if (this.state.filter._value.length === 0 && !isPillFilterChecked) {
-      clearButton.style.display = "none";
-    } else {
-      clearButton.style.display = "block";
+    if (clearButton) {
+      if (this.state.filter._value.length === 0 && !isPillFilterChecked) {
+       clearButton.style.display = "none";
+     } else {
+       clearButton.style.display = "block";
+     }
     }
   };
 
