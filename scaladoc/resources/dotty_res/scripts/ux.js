@@ -512,7 +512,5 @@ members.forEach((member) => {
       ".documentableFilter",
     ).clientHeight;
     member.style.scrollMarginTop = `${navbarHeight + filtersHeight}px`;
-    console.log(member.style.scrollMarginTop);
   });
-  console.log(member.style.scrollMarginTop);
 });
