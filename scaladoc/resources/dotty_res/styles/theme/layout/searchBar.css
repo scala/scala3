@@ -10,7 +10,7 @@
 }
 
 #scaladoc-searchbar {
-  z-index: 5;
+  z-index: 104;
   width: calc(125 * var(--base-spacing));
   position: relative;
   top: calc(3 * var(--base-spacing));

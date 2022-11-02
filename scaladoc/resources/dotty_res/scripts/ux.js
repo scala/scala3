@@ -514,3 +514,13 @@ members.forEach((member) => {
     member.style.scrollMarginTop = `${navbarHeight + filtersHeight}px`;
   });
 });
+
+members.forEach((member) => {
+  window.addEventListener("DOMContentLoaded", () => {
+    const navbarHeight = document.querySelector("#header").clientHeight;
+    const filtersHeight = document.querySelector(
+      ".documentableFilter",
+    ).clientHeight;
+    member.style.scrollMarginTop = `${navbarHeight + filtersHeight}px`;
+  });
+});
