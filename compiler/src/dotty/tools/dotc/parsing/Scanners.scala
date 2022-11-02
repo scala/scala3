@@ -21,6 +21,8 @@ import config.Feature.{migrateTo3, fewerBracesEnabled}
 import config.SourceVersion.`3.0`
 import reporting.{NoProfile, Profile, Message}
 
+import java.util.Objects
+
 object Scanners {
 
   /** Offset into source character array */
@@ -777,19 +779,21 @@ object Scanners {
     private def isSupplementary(high: Char, test: Int => Boolean, strict: Boolean = true): Boolean =
       isHighSurrogate(high) && {
         var res = false
-        nextChar()
-        val low = ch
+        val low = lookaheadChar()
         if isLowSurrogate(low) then
-          nextChar()
           val codepoint = toCodePoint(high, low)
-          if isValidCodePoint(codepoint) && test(codepoint) then
-            putChar(high)
-            putChar(low)
-            res = true
+          if isValidCodePoint(codepoint) then
+            if test(codepoint) then
+              putChar(high)
+              putChar(low)
+              nextChar()
+              nextChar()
+              res = true
           else
             error(em"illegal character '${toUnicode(high)}${toUnicode(low)}'")
         else if !strict then
           putChar(high)
+          nextChar()
           res = true
         else
           error(em"illegal character '${toUnicode(high)}' missing low surrogate")
@@ -889,7 +893,6 @@ object Scanners {
               if (ch == '\"') {
                 if (lookaheadChar() == '\"') {
                   nextRawChar()
-                  //offset += 3   // first part is positioned at the quote
                   nextRawChar()
                   stringPart(multiLine = true)
                 }
@@ -900,7 +903,6 @@ object Scanners {
                 }
               }
               else {
-                //offset += 1   // first part is positioned at the quote
                 stringPart(multiLine = false)
               }
             }
@@ -985,10 +987,11 @@ object Scanners {
               nextChar(); token = LARROW
               report.deprecationWarning(em"The unicode arrow `←` is deprecated, use `<-` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
             }
-            else if (Character.isUnicodeIdentifierStart(ch)) {
+            else if (isUnicodeIdentifierStart(ch)) {
               putChar(ch)
               nextChar()
               getIdentRest()
+              if (ch == '"' && token == IDENTIFIER) token = INTERPOLATIONID
             }
             else if (isSpecial(ch)) {
               putChar(ch)
@@ -997,6 +1000,9 @@ object Scanners {
             }
             else if isSupplementary(ch, isUnicodeIdentifierStart) then
               getIdentRest()
+              if (ch == '"' && token == IDENTIFIER) token = INTERPOLATIONID
+            else if isSupplementary(ch, isSpecial) then
+              getOperatorRest()
             else {
               error(em"illegal character '${toUnicode(ch)}'")
               nextChar()
@@ -1115,7 +1121,7 @@ object Scanners {
       else error(em"unclosed quoted identifier")
     }
 
-    private def getIdentRest(): Unit = (ch: @switch) match {
+    @tailrec private def getIdentRest(): Unit = (ch: @switch) match {
       case 'A' | 'B' | 'C' | 'D' | 'E' |
            'F' | 'G' | 'H' | 'I' | 'J' |
            'K' | 'L' | 'M' | 'N' | 'O' |
@@ -1150,7 +1156,7 @@ object Scanners {
           finishNamed()
     }
 
-    private def getOperatorRest(): Unit = (ch: @switch) match {
+    @tailrec private def getOperatorRest(): Unit = (ch: @switch) match {
       case '~' | '!' | '@' | '#' | '%' |
            '^' | '*' | '+' | '-' | '<' |
            '>' | '?' | ':' | '=' | '&' |
@@ -1162,22 +1168,12 @@ object Scanners {
         else { putChar(ch); nextChar(); getOperatorRest() }
       case _ =>
         if (isSpecial(ch)) { putChar(ch); nextChar(); getOperatorRest() }
+        else if (isSupplementary(ch, isSpecial)) getOperatorRest()
         else finishNamed()
     }
 
     private def getIdentOrOperatorRest(): Unit =
-      if (isIdentifierPart(ch))
-        getIdentRest()
-      else ch match {
-        case '~' | '!' | '@' | '#' | '%' |
-             '^' | '*' | '+' | '-' | '<' |
-             '>' | '?' | ':' | '=' | '&' |
-             '|' | '\\' | '/' =>
-          getOperatorRest()
-        case _ =>
-          if (isSpecial(ch)) getOperatorRest()
-          else finishNamed()
-      }
+      if (isIdentifierPart(ch) || isSupplementary(ch, isIdentifierPart)) getIdentRest() else getOperatorRest()
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER
@@ -1500,7 +1496,7 @@ object Scanners {
       if (ch == '\'') finishCharLit()
       else {
         token = op
-        strVal = if (name != null) name.toString else null
+        strVal = Objects.toString(name)
         litBuf.clear()
       }
     }

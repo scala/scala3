@@ -86,11 +86,17 @@ object NameOps {
     def isVarPattern: Boolean =
       testSimple { n =>
         n.length > 0 && {
+          def isLowerLetterSupplementary: Boolean =
+            import Character.{isHighSurrogate, isLowSurrogate, isLetter, isLowerCase, isValidCodePoint, toCodePoint}
+            isHighSurrogate(n(0)) && n.length > 1 && isLowSurrogate(n(1)) && {
+              val codepoint = toCodePoint(n(0), n(1))
+              isValidCodePoint(codepoint) && isLetter(codepoint) && isLowerCase(codepoint)
+            }
           val first = n.head
-          (((first.isLower && first.isLetter) || first == '_')
-            && (n != false_)
-            && (n != true_)
-            && (n != null_))
+          ((first.isLower && first.isLetter || first == '_' || isLowerLetterSupplementary)
+            && n != false_
+            && n != true_
+            && n != null_)
         }
       } || name.is(PatMatGivenVarName)
 
