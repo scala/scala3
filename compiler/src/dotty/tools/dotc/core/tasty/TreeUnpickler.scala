@@ -1233,25 +1233,27 @@ class TreeUnpickler(reader: TastyReader,
               val fn = readTerm()
               val args = until(end)(readTerm())
               if fn.symbol.isConstructor then constructorApply(fn, args)
-              else if defn.isPolymorphicSignature(fn.symbol) then
-                val info = MethodType(args.map(_.tpe.widen), defn.ObjectType)
-                val fun2 = fn.withType(fn.symbol.copy(info = info).termRef)
-                tpd.Apply(fun2, args)
-              else
-                tpd.Apply(fn, args)
+              else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
             case TYPED =>
-              val expr = readTerm()
-              val tpt = readTpt()
-              expr match
-                case Apply(fun, args) if defn.wasPolymorphicSignature(fun.symbol) =>
+              val rdr = fork
+              val start = rdr.reader.currentAddr
+              if rdr.reader.readByte() == APPLY then
+                val end   = rdr.reader.readEnd()
+                val fn    = rdr.readTerm()
+                if defn.isPolymorphicSignature(fn.symbol) then
+                  skipTree() // expr
+                  skipTree() // tpt
+                  val args = rdr.reader.until(end)(rdr.readTerm())
+                  val tpt  = rdr.readTpt()
                   val info = MethodType(args.map(_.tpe.widen), tpt.tpe)
-                  val fun2 = fun.withType(fun.symbol.copy(info = info).termRef)
-                  val expr2 = tpd.cpy.Apply(expr)(fun2, args)
-                  Typed(expr2, tpt)
-                case _ =>
-                  Typed(expr, tpt)
+                  val fun2 = fn.withType(fn.symbol.copy(info = info).termRef)
+                  val app = Apply(fun2, args)
+                  rdr.setSpan(start, app)
+                  Typed(app, tpt)
+                else Typed(readTerm(), readTpt())
+              else Typed(readTerm(), readTpt())
             case ASSIGN =>
               Assign(readTerm(), readTerm())
             case BLOCK =>
