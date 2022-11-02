@@ -74,7 +74,9 @@ class SemanticSymbolBuilder:
     def addOwner(owner: Symbol): Unit =
       if !owner.isRoot then addSymName(b, owner)
 
-    def addOverloadIdx(sym: Symbol): Unit =
+    def addOverloadIdx(initSym: Symbol): Unit =
+      // revert from the compiler-generated overload of the signature polymorphic method
+      val sym = initSym.originalSignaturePolymorphic.symbol.orElse(initSym)
       val decls =
         val decls0 = sym.owner.info.decls.lookupAll(sym.name)
         if sym.owner.isAllOf(JavaModule) then
@@ -90,10 +92,7 @@ class SemanticSymbolBuilder:
         case _ =>
       end find
       val sig = sym.signature
-      // the polymorphic signature methods (invoke/invokeExact) are never overloaded
-      // we changed the signature at the call site, which means they won't match,
-      // but we still shouldn't add any overload index in this case.
-      find(_.signature == sig || defn.wasPolymorphicSignature(sym))
+      find(_.signature == sig)
 
     def addDescriptor(sym: Symbol): Unit =
       if sym.is(ModuleClass) then

@@ -1240,18 +1240,17 @@ class TreeUnpickler(reader: TastyReader,
               val rdr = fork
               val start = rdr.reader.currentAddr
               if rdr.reader.readByte() == APPLY then
-                val end   = rdr.reader.readEnd()
-                val fn    = rdr.readTerm()
-                if defn.isPolymorphicSignature(fn.symbol) then
-                  skipTree() // expr
-                  skipTree() // tpt
+                val end = rdr.reader.readEnd()
+                val fn  = rdr.readTerm()
+                if fn.symbol.isSignaturePolymorphic then
                   val args = rdr.reader.until(end)(rdr.readTerm())
-                  val tpt  = rdr.readTpt()
+                  skipTree() // expr
+                  val tpt  = readTpt()
                   val info = MethodType(args.map(_.tpe.widen), tpt.tpe)
-                  val fun2 = fn.withType(fn.symbol.copy(info = info).termRef)
-                  val app = Apply(fun2, args)
-                  rdr.setSpan(start, app)
-                  Typed(app, tpt)
+                  val sym2 = fn.symbol.copy(info = info) // still not entered (like simpleApply)
+                  val fun2 = fn.withType(sym2.termRef)
+                  val app  = Apply(fun2, args)
+                  Typed(setSpan(start, app), tpt)
                 else Typed(readTerm(), readTpt())
               else Typed(readTerm(), readTpt())
             case ASSIGN =>

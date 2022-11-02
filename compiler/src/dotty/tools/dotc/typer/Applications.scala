@@ -936,30 +936,30 @@ trait Applications extends Compatibility {
       /** Type application where arguments come from prototype, and no implicits are inserted */
       def simpleApply(fun1: Tree, proto: FunProto)(using Context): Tree =
         methPart(fun1).tpe match {
+          case funRef: TermRef if funRef.symbol.isSignaturePolymorphic =>
+            // synthesize a method type based on the types at the call site.
+            // one can imagine the original signature-polymorphic method as
+            // being infinitely overloaded, with each individual overload only
+            // being brought into existence as needed
+            val originalResultType = funRef.symbol.info.resultType.stripNull
+            val expectedResultType = AvoidWildcardsMap()(proto.deepenProto.resultType)
+            val resultType =
+              if !originalResultType.isRef(defn.ObjectClass) then originalResultType
+              else if isFullyDefined(expectedResultType, ForceDegree.all) then expectedResultType
+              else expectedResultType match
+                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _) => resTp
+                case _ => defn.ObjectType
+            val info = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
+            val sym2 = funRef.symbol.copy(info = info) // not entered, to avoid overload resolution problems
+            val fun2 = fun1.withType(sym2.termRef)
+            val app  = simpleApply(fun2, proto)
+            Typed(app, TypeTree(resultType))
           case funRef: TermRef =>
-            if defn.isPolymorphicSignature(funRef.symbol) then
-              val originalResultType = funRef.symbol.info.resultType.stripNull
-              val expectedResultType = AvoidWildcardsMap()(proto.deepenProto.resultType)
-              val resultType =
-                if !originalResultType.isRef(defn.ObjectClass) then originalResultType
-                else if isFullyDefined(expectedResultType, ForceDegree.all) then expectedResultType
-                else expectedResultType match
-                  case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _) => resTp
-                  case _ => defn.ObjectType
-              // synthesize a method type based on the types at the call site.
-              // one can imagine the original signature-polymorphic method as
-              // being infinitely overloaded, with each individual overload only
-              // being brought into existence as needed
-              val info = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
-              val fun2 = fun1.withType(funRef.symbol.copy(info = info).termRef)
-              val app  = simpleApply(fun2, proto)
-              Typed(app, TypeTree(resultType))
-            else
-              val app = ApplyTo(tree, fun1, funRef, proto, pt)
-              convertNewGenericArray(
-                widenEnumCase(
-                  postProcessByNameArgs(funRef, app).computeNullable(),
-                  pt))
+            val app = ApplyTo(tree, fun1, funRef, proto, pt)
+            convertNewGenericArray(
+              widenEnumCase(
+                postProcessByNameArgs(funRef, app).computeNullable(),
+                pt))
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
