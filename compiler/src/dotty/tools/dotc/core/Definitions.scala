@@ -485,9 +485,6 @@ class Definitions {
   }
   def NullType: TypeRef = NullClass.typeRef
 
-  @tu lazy val VoidType: TypeRef = requiredClassRef("java.lang.Void")
-  def VoidClass(using Context) = VoidType.symbol.asClass
-
   @tu lazy val InvokerModule = requiredModule("scala.runtime.coverage.Invoker")
   @tu lazy val InvokedMethodRef = InvokerModule.requiredMethodRef("invoked")
 
@@ -734,7 +731,6 @@ class Definitions {
     }
   }
   def JavaEnumType = JavaEnumClass.typeRef
-
 
   @tu lazy val MethodHandleClass: ClassSymbol        = requiredClass("java.lang.invoke.MethodHandle")
   @tu lazy val MethodHandlesLookupClass: ClassSymbol = requiredClass("java.lang.invoke.MethodHandles.Lookup")

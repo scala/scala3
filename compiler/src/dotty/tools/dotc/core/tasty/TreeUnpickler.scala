@@ -1131,6 +1131,7 @@ class TreeUnpickler(reader: TastyReader,
 
       def makeSelect(qual: Tree, name: Name, denot: Denotation): Select =
         var qualType = qual.tpe.widenIfUnstable
+        val owner = denot.symbol.maybeOwner
         val tpe0 = name match
           case name: TypeName => TypeRef(qualType, name, denot)
           case name: TermName => TermRef(qualType, name, denot)
@@ -1141,43 +1142,6 @@ class TreeUnpickler(reader: TastyReader,
         val qual = readTerm()
         val denot = accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
         makeSelect(qual, name, denot)
-
-      def readSelectIn(): Select =
-        var sname = readName()
-        val qual = readTerm()
-        val ownerTpe = readType()
-        val owner = ownerTpe.typeSymbol
-        val SignedName(name, sig, target) = sname: @unchecked // only methods with params use SELECTin
-        val qualType = qual.tpe.widenIfUnstable
-        val prefix = ctx.typeAssigner.maybeSkolemizePrefix(qualType, name)
-
-        /** Tasty should still be able to resolve a method from another root class,
-         *  even if it has been moved to a super type,
-         *  or an override has been removed.
-         *
-         *  This is tested in
-         *  - sbt-test/tasty-compat/remove-override
-         *  - sbt-test/tasty-compat/move-method
-         */
-        def lookupInSuper =
-          val cls = ownerTpe.classSymbol
-          if cls.exists then
-            cls.asClass.classDenot
-              .findMember(name, cls.thisType, EmptyFlags, excluded=Private)
-              .atSignature(sig, target)
-          else
-            NoDenotation
-
-        val denot =
-          val d = ownerTpe.decl(name).atSignature(sig, target)
-          (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
-
-        makeSelect(qual, name, denot)
-
-      def readSelectInPoly(): Select =
-        val tree = readSelectIn()
-        val info = readType()
-        tree.withType(tree.symbol.copy(info = info).termRef)
 
       def readQualId(): (untpd.Ident, TypeRef) =
         val qual = readTerm().asInstanceOf[untpd.Ident]
@@ -1269,13 +1233,25 @@ class TreeUnpickler(reader: TastyReader,
               val fn = readTerm()
               val args = until(end)(readTerm())
               if fn.symbol.isConstructor then constructorApply(fn, args)
-              else tpd.Apply(fn, args)
+              else if defn.isPolymorphicSignature(fn.symbol) then
+                val info = MethodType(args.map(_.tpe.widen), defn.ObjectType)
+                val fun2 = fn.withType(fn.symbol.copy(info = info).termRef)
+                tpd.Apply(fun2, args)
+              else
+                tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
             case TYPED =>
               val expr = readTerm()
               val tpt = readTpt()
-              Typed(expr, tpt)
+              expr match
+                case Apply(fun, args) if defn.wasPolymorphicSignature(fun.symbol) =>
+                  val info = MethodType(args.map(_.tpe.widen), tpt.tpe)
+                  val fun2 = fun.withType(fun.symbol.copy(info = info).termRef)
+                  val expr2 = tpd.cpy.Apply(expr)(fun2, args)
+                  Typed(expr2, tpt)
+                case _ =>
+                  Typed(expr, tpt)
             case ASSIGN =>
               Assign(readTerm(), readTerm())
             case BLOCK =>
@@ -1328,8 +1304,37 @@ class TreeUnpickler(reader: TastyReader,
             case SELECTouter =>
               val levels = readNat()
               readTerm().outerSelect(levels, SkolemType(readType()))
-            case SELECTin     => readSelectIn()
-            case SELECTinPoly => readSelectInPoly()
+            case SELECTin =>
+              var sname = readName()
+              val qual = readTerm()
+              val ownerTpe = readType()
+              val owner = ownerTpe.typeSymbol
+              val SignedName(name, sig, target) = sname: @unchecked // only methods with params use SELECTin
+              val qualType = qual.tpe.widenIfUnstable
+              val prefix = ctx.typeAssigner.maybeSkolemizePrefix(qualType, name)
+
+              /** Tasty should still be able to resolve a method from another root class,
+               *  even if it has been moved to a super type,
+               *  or an override has been removed.
+               *
+               *  This is tested in
+               *  - sbt-test/tasty-compat/remove-override
+               *  - sbt-test/tasty-compat/move-method
+               */
+              def lookupInSuper =
+                val cls = ownerTpe.classSymbol
+                if cls.exists then
+                  cls.asClass.classDenot
+                    .findMember(name, cls.thisType, EmptyFlags, excluded=Private)
+                    .atSignature(sig, target)
+                else
+                  NoDenotation
+
+              val denot =
+                val d = ownerTpe.decl(name).atSignature(sig, target)
+                (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
+
+              makeSelect(qual, name, denot)
             case REPEATED =>
               val elemtpt = readTpt()
               SeqLiteral(until(end)(readTerm()), elemtpt)

@@ -86,7 +86,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   IDENT                 NameRef Type                               -- Used when term ident’s type is not a TermRef
                   SELECT                possiblySigned_NameRef qual_Term           -- qual.name
                   SELECTin       Length possiblySigned_NameRef qual_Term owner_Type -- qual.name, referring to a symbol declared in owner that has the given signature (see note below)
-                  SELECTinPoly   Length possiblySigned_NameRef qual_Term owner_Type method_Type -- like SELECTin, but with the method_Type too (because signature polymorphic)
                   QUALTHIS              typeIdent_Tree                             -- id.this, different from THIS in that it contains a qualifier ident with position.
                   NEW                   clsType_Term                               -- new cls
                   THROW                 throwableExpr_Term                         -- throw throwableExpr
@@ -579,7 +578,6 @@ object TastyFormat {
   // final val ??? = 178
   // final val ??? = 179
   final val METHODtype = 180
-  final val SELECTinPoly = 181
 
   final val MATCHtype = 190
   final val MATCHtpt = 191
@@ -779,7 +777,6 @@ object TastyFormat {
     case TERMREFin => "TERMREFin"
     case TYPEREFin => "TYPEREFin"
     case SELECTin => "SELECTin"
-    case SELECTinPoly => "SELECTinPoly"
 
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
@@ -810,7 +807,7 @@ object TastyFormat {
    */
   def numRefs(tag: Int): Int = tag match {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
-         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | SELECTin | SELECTinPoly | HOLE => 1
+         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | SELECTin | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | TYPELAMBDAtype | METHODtype => -1
     case _ => 0

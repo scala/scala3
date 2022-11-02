@@ -952,7 +952,8 @@ trait Applications extends Compatibility {
               // being brought into existence as needed
               val info = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
               val fun2 = fun1.withType(funRef.symbol.copy(info = info).termRef)
-              simpleApply(fun2, proto)
+              val app  = simpleApply(fun2, proto)
+              Typed(app, TypeTree(resultType))
             else
               val app = ApplyTo(tree, fun1, funRef, proto, pt)
               convertNewGenericArray(
