@@ -104,7 +104,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       if result.isEmpty then
         val noResultsDiv = div(id := "no-results-container")(
           // TODO fix path to the element
-          img(src := "./icons/no-results.svg", alt := "Sick face"),
+          img(src := "../images/no-results-icon.svg", alt := "Sick face"),
           h2(cls := "h200 no-result-header")("No results match your filter criteria."),
           p(cls := "body-small no-result-content")("Try adjusting or clearing your filters", p("to display better result")),
           button(id := "searchbar-clear-button", cls := "clearButton label-only-button")("Clear all filters").tap(_.addEventListener("click", _ => {

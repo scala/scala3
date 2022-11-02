@@ -90,7 +90,7 @@ class FilterBar extends Component {
       emptySpace.insertAdjacentHTML(
         "beforeend",
         `<div id='no-results-container'>
-          <img src="./icons/no-results.svg" alt="Sick face" >
+          <img src="../images/no-results-icon.svg" alt="Sick face" >
           <h2 class='h200 no-result-header'>No results match your filter criteria</h2>
           <p class='no-result-content'>Try adjusting or clearing your filters<br>to display better result</p>
           <button class='clearButton label-only-button'>Clear all filters</button>
