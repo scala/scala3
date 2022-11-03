@@ -7,6 +7,15 @@
   margin: calc(10 * var(--base-spacing));
 }
 
+#no-results-container .no-result-icon {
+  height: 30px;
+  width: 30px;
+}
+
+#no-results-container .no-result-icon::before {
+  content: url('../../../images/no-results-icon.svg');
+}
+
 #no-results-container .no-result-header {
 margin-block-start: 27px;
   margin-block-end: var(--base-spacing);

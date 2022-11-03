@@ -432,7 +432,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
          else Seq(div(cls := s"mono-small-block $className")(
          list.map(link =>
           div(link.kind.name," ", link.signature.map(renderElement(_)))),
-          if(expandable) then span(cls := "show-all-code show-content")("Show all") else span()
+          if(expandable) then span(cls := "show-all-code show-content text-button h100")("Show all") else span()
         ))
 
       def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
