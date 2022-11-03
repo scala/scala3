@@ -44,8 +44,10 @@ class Foo {
   val testObj_val = { val any2 = mhObj.invokeExact(this, "any2"); assert("any2" == any2) }
   val testObj_def = { def any3 = mhObj.invokeExact(this, "any3"); assert("any3" == any3) }
 
-  val testCl1_pass = assert(null != (mhCL.invoke(): ClassLoader))
-  val testCl2_cast = assert(null != (mhCL.invoke().asInstanceOf[ClassLoader]: ClassLoader))
+  val testCl_pass  = assert(null != (mhCL.invoke(): ClassLoader))
+  val testCl_cast  = assert(null != (mhCL.invoke().asInstanceOf[ClassLoader]: ClassLoader))
+  val testCl_passX = assert(null != (mhCL.invokeExact(): ClassLoader))
+  val testCl_castX = assert(null != (mhCL.invokeExact().asInstanceOf[ClassLoader]: ClassLoader))
 
   val testNeg_inline_obj = expectWrongMethod(l
     .findVirtual(classOf[Foo], "neg", methodType(classOf[Int], classOf[Int]))

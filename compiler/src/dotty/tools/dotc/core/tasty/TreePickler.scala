@@ -426,6 +426,13 @@ class TreePickler(pickler: TastyPickler) {
             writeByte(THROW)
             pickleTree(args.head)
           }
+          else if fun.symbol.originalSignaturePolymorphic.exists then
+            writeByte(APPLYsigpoly)
+            withLength {
+              pickleTree(fun)
+              pickleType(fun.tpe.widenTermRefExpr, richTypes = true) // this widens to a MethodType, so need richTypes
+              args.foreach(pickleTree)
+            }
           else {
             writeByte(APPLY)
             withLength {

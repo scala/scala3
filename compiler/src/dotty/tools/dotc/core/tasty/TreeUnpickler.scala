@@ -1236,23 +1236,17 @@ class TreeUnpickler(reader: TastyReader,
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
+            case APPLYsigpoly =>
+              val fn = readTerm()
+              val methType = readType()
+              val args = until(end)(readTerm())
+              val sym2 = fn.symbol.copy(info = methType) // symbol not entered (same as in simpleApply)
+              val fun2 = fn.withType(sym2.termRef)
+              tpd.Apply(fun2, args)
             case TYPED =>
-              val rdr = fork
-              val start = rdr.reader.currentAddr
-              if rdr.reader.readByte() == APPLY then
-                val end = rdr.reader.readEnd()
-                val fn  = rdr.readTerm()
-                if fn.symbol.isSignaturePolymorphic then
-                  val args = rdr.reader.until(end)(rdr.readTerm())
-                  skipTree() // expr
-                  val tpt  = readTpt()
-                  val info = MethodType(args.map(_.tpe.widen), tpt.tpe)
-                  val sym2 = fn.symbol.copy(info = info) // still not entered (like simpleApply)
-                  val fun2 = fn.withType(sym2.termRef)
-                  val app  = Apply(fun2, args)
-                  Typed(setSpan(start, app), tpt)
-                else Typed(readTerm(), readTpt())
-              else Typed(readTerm(), readTpt())
+              val expr = readTerm()
+              val tpt = readTpt()
+              Typed(expr, tpt)
             case ASSIGN =>
               Assign(readTerm(), readTerm())
             case BLOCK =>

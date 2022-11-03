@@ -942,18 +942,16 @@ trait Applications extends Compatibility {
             // being infinitely overloaded, with each individual overload only
             // being brought into existence as needed
             val originalResultType = funRef.symbol.info.resultType.stripNull
-            val expectedResultType = AvoidWildcardsMap()(proto.deepenProto.resultType)
             val resultType =
               if !originalResultType.isRef(defn.ObjectClass) then originalResultType
-              else if isFullyDefined(expectedResultType, ForceDegree.all) then expectedResultType
-              else expectedResultType match
+              else AvoidWildcardsMap()(proto.resultType.deepenProtoTrans) match
                 case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _) => resTp
+                case resTp if isFullyDefined(resTp, ForceDegree.all) => resTp
                 case _ => defn.ObjectType
-            val info = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
-            val sym2 = funRef.symbol.copy(info = info) // not entered, to avoid overload resolution problems
+            val methType = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
+            val sym2 = funRef.symbol.copy(info = methType) // symbol not entered, to avoid overload resolution problems
             val fun2 = fun1.withType(sym2.termRef)
-            val app  = simpleApply(fun2, proto)
-            Typed(app, TypeTree(resultType))
+            simpleApply(fun2, proto)
           case funRef: TermRef =>
             val app = ApplyTo(tree, fun1, funRef, proto, pt)
             convertNewGenericArray(
