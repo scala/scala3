@@ -979,34 +979,29 @@ object Scanners {
           }
         case _ =>
           def fetchOther() =
-            if (ch == '\u21D2') {
+            if ch == '\u21D2' then
               nextChar(); token = ARROW
               report.deprecationWarning(em"The unicode arrow `⇒` is deprecated, use `=>` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
-            }
-            else if (ch == '\u2190') {
+            else if ch == '\u2190' then
               nextChar(); token = LARROW
               report.deprecationWarning(em"The unicode arrow `←` is deprecated, use `<-` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
-            }
-            else if (isUnicodeIdentifierStart(ch)) {
+            else if isUnicodeIdentifierStart(ch) then
               putChar(ch)
               nextChar()
               getIdentRest()
-              if (ch == '"' && token == IDENTIFIER) token = INTERPOLATIONID
-            }
-            else if (isSpecial(ch)) {
+              if ch == '"' && token == IDENTIFIER then token = INTERPOLATIONID
+            else if isSpecial(ch) then
               putChar(ch)
               nextChar()
               getOperatorRest()
-            }
             else if isSupplementary(ch, isUnicodeIdentifierStart) then
               getIdentRest()
-              if (ch == '"' && token == IDENTIFIER) token = INTERPOLATIONID
+              if ch == '"' && token == IDENTIFIER then token = INTERPOLATIONID
             else if isSupplementary(ch, isSpecial) then
               getOperatorRest()
-            else {
+            else
               error(em"illegal character '${toUnicode(ch)}'")
               nextChar()
-            }
           fetchOther()
       }
     }
@@ -1167,8 +1162,8 @@ object Scanners {
         if nxch == '/' || nxch == '*' then finishNamed()
         else { putChar(ch); nextChar(); getOperatorRest() }
       case _ =>
-        if (isSpecial(ch)) { putChar(ch); nextChar(); getOperatorRest() }
-        else if (isSupplementary(ch, isSpecial)) getOperatorRest()
+        if isSpecial(ch) then { putChar(ch); nextChar(); getOperatorRest() }
+        else if isSupplementary(ch, isSpecial) then getOperatorRest()
         else finishNamed()
     }
 

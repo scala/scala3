@@ -25,10 +25,8 @@ class Strings {
   implicit class Interps(sc: StringContext) {
     def 𝓅(parts: Any*) = "done"
   }
-  /*
   def 𝓅 = 42
   def interpolated = s"$𝓅"
   def e = "a 𝓅 b"
-  */
   def f = 𝓅"one"
 }
