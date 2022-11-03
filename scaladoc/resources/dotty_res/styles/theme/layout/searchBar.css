@@ -71,6 +71,7 @@
 @media (max-width: 768px) {
   .scaladoc-searchbar-cancel-button {
     display: inline;
+    min-width: 44px;
   }
 }
 

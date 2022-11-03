@@ -187,12 +187,7 @@
   border-collapse: collapse;
 }
 
-#content table tbody {
-  text-align: right;
-}
-
-#content table tr td:last-child,
-#content table th:last-child {
+#content table {
   text-align: left;
 }
 
@@ -206,6 +201,17 @@
 
 #content table tr:last-child {
   border-bottom: none;
+}
+
+
+/* contributors table  */
+#contributors table tr td:not(:last-child),
+#contributors table th:not(:last-child) {
+  text-align: right;
+}
+
+#contributors table td {
+  vertical-align: top;
 }
 
 /* content link */
@@ -582,4 +588,8 @@ main :is(ul, ol) li .snippet {
 
 .membersList.concise .documentableElement.expand .modifiers {
   display: unset;
+}
+
+.show-all-code {
+  margin-top: calc(2* var(--base-spacing));
 }
