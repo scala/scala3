@@ -3,7 +3,6 @@ package tools
 package vulpix
 
 import scala.language.unsafeNulls
-
 import scala.collection.mutable
 import dotc.reporting.TestReporter
 
@@ -23,7 +22,7 @@ trait SummaryReporting {
   def reportPassed(): Unit
 
   /** Add the name of the failed test */
-  def addFailedTest(msg: String): Unit
+  def addFailedTest(msg: FailedTestInfo): Unit
 
   /** Add instructions to reproduce the error */
   def addReproduceInstruction(instr: String): Unit
@@ -49,7 +48,7 @@ trait SummaryReporting {
 final class NoSummaryReport extends SummaryReporting {
   def reportFailed(): Unit = ()
   def reportPassed(): Unit = ()
-  def addFailedTest(msg: String): Unit = ()
+  def addFailedTest(msg: FailedTestInfo): Unit = ()
   def addReproduceInstruction(instr: String): Unit = ()
   def addStartingMessage(msg: String): Unit = ()
   def addCleanup(f: () => Unit): Unit = ()
@@ -66,7 +65,7 @@ final class SummaryReport extends SummaryReporting {
   import scala.jdk.CollectionConverters._
 
   private val startingMessages = new java.util.concurrent.ConcurrentLinkedDeque[String]
-  private val failedTests = new java.util.concurrent.ConcurrentLinkedDeque[String]
+  private val failedTests = new java.util.concurrent.ConcurrentLinkedDeque[FailedTestInfo]
   private val reproduceInstructions = new java.util.concurrent.ConcurrentLinkedDeque[String]
   private val cleanUps = new java.util.concurrent.ConcurrentLinkedDeque[() => Unit]
 
@@ -79,7 +78,7 @@ final class SummaryReport extends SummaryReporting {
   def reportPassed(): Unit =
     passed += 1
 
-  def addFailedTest(msg: String): Unit =
+  def addFailedTest(msg: FailedTestInfo): Unit =
     failedTests.add(msg)
 
   def addReproduceInstruction(instr: String): Unit =
@@ -108,7 +107,8 @@ final class SummaryReport extends SummaryReporting {
 
     startingMessages.asScala.foreach(rep.append)
 
-    failedTests.asScala.map(x => s"    $x\n").foreach(rep.append)
+    failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
+    TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
 
     // If we're compiling locally, we don't need instructions on how to
     // reproduce failures
