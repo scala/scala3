@@ -100,6 +100,13 @@ object Chars:
          '|' | '/' | '\\' => true
     case c => isSpecial(c)
   }
+  def isOperatorPart(c: CodePoint): Boolean = (c: @switch) match {
+    case '~' | '!' | '@' | '#' | '%' |
+         '^' | '*' | '+' | '-' | '<' |
+         '>' | '?' | ':' | '=' | '&' |
+         '|' | '/' | '\\' => true
+    case c => isSpecial(c)
+  }
 
   /** Would the character be encoded by `NameTransformer.encode`? */
   def willBeEncoded(c: Char): Boolean = !isJavaIdentifierPart(c)
