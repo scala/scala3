@@ -340,6 +340,12 @@ object Applications {
     val getter = findDefaultGetter(fn, n, testOnly)
     if getter.isEmpty then getter
     else spliceMeth(getter.withSpan(fn.span), fn)
+
+  def retypeSignaturePolymorphicFn(fun: Tree, methType: Type)(using Context): Tree =
+    val sym1 = fun.symbol
+    val flags2 = sym1.flags | NonMember // ensures Select typing doesn't let TermRef#withPrefix revert the type
+    val sym2 = sym1.copy(info = methType, flags = flags2) // symbol not entered, to avoid overload resolution problems
+    fun.withType(sym2.termRef)
 }
 
 trait Applications extends Compatibility {
@@ -949,8 +955,7 @@ trait Applications extends Compatibility {
                 case resTp if isFullyDefined(resTp, ForceDegree.all) => resTp
                 case _ => defn.ObjectType
             val methType = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
-            val sym2 = funRef.symbol.copy(info = methType) // symbol not entered, to avoid overload resolution problems
-            val fun2 = fun1.withType(sym2.termRef)
+            val fun2 = Applications.retypeSignaturePolymorphicFn(fun1, methType)
             simpleApply(fun2, proto)
           case funRef: TermRef =>
             val app = ApplyTo(tree, fun1, funRef, proto, pt)

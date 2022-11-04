@@ -1240,8 +1240,7 @@ class TreeUnpickler(reader: TastyReader,
               val fn = readTerm()
               val methType = readType()
               val args = until(end)(readTerm())
-              val sym2 = fn.symbol.copy(info = methType) // symbol not entered (same as in simpleApply)
-              val fun2 = fn.withType(sym2.termRef)
+              val fun2 = typer.Applications.retypeSignaturePolymorphicFn(fn, methType)
               tpd.Apply(fun2, args)
             case TYPED =>
               val expr = readTerm()
