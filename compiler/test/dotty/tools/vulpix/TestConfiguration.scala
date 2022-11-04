@@ -72,7 +72,7 @@ object TestConfiguration {
   lazy val withTastyInspectorOptions =
     defaultOptions.withClasspath(withTastyInspectorClasspath).withRunClasspath(withTastyInspectorClasspath)
   lazy val scalaJSOptions =
-    defaultOptions.and("-scalajs").withClasspath(scalaJSClasspath)
+    defaultOptions.and("-scalajs").withClasspath(scalaJSClasspath).withRunClasspath(scalaJSClasspath)
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
   val picklingOptions = defaultOptions and (
@@ -83,6 +83,7 @@ object TestConfiguration {
   )
   val picklingWithCompilerOptions =
     picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  val recheckOptions = defaultOptions.and("-Yrecheck-test")
   val scala2CompatMode = defaultOptions.and("-source", "3.0-migration")
   val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")

@@ -14,7 +14,7 @@ import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation, 
 import FileUtils._
 import PlainFile.toPlainFile
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.immutable.ArraySeq
 import scala.util.control.NonFatal
 

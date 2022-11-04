@@ -19,7 +19,7 @@ import core.Constants._
 import core.Definitions._
 import core.Annotations.BodyAnnotation
 import typer.NoChecking
-import typer.Inliner
+import inlines.Inlines
 import typer.ProtoTypes._
 import typer.ErrorReporting.errorTree
 import typer.Checking.checkValue
@@ -73,7 +73,7 @@ class Erasure extends Phase with DenotTransformer {
       assert(ctx.phase == this, s"transforming $ref at ${ctx.phase}")
       if (ref.symbol eq defn.ObjectClass) {
         // After erasure, all former Any members are now Object members
-        val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info
+        val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info: @unchecked
         val extendedScope = decls.cloneScope
         for decl <- defn.AnyClass.classInfo.decls do
           if !decl.isConstructor then extendedScope.enter(decl)
@@ -153,6 +153,7 @@ class Erasure extends Phase with DenotTransformer {
   override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     assertErased(tree)
     tree match {
+      case _: tpd.Import => assert(false, i"illegal tree: $tree")
       case res: tpd.This =>
         assert(!ExplicitOuter.referencesOuter(ctx.owner.lexicallyEnclosingClass, res),
           i"Reference to $res from ${ctx.owner.showLocated}")
@@ -385,7 +386,7 @@ object Erasure {
       case _: FunProto | AnyFunctionProto => tree
       case _ => tree.tpe.widen match
         case mt: MethodType if tree.isTerm =>
-          assert(mt.paramInfos.isEmpty)
+          assert(mt.paramInfos.isEmpty)//, i"bad adapt for $tree: $mt")
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
           if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
@@ -452,7 +453,7 @@ object Erasure {
       val implReturnsUnit = implResultType.classSymbol eq defn.UnitClass
       // The SAM that this closure should implement.
       // At this point it should be already guaranteed that there's only one method to implement
-      val Seq(sam: MethodType) = lambdaType.possibleSamMethods.map(_.info)
+      val Seq(sam: MethodType) = lambdaType.possibleSamMethods.map(_.info): @unchecked
       val samParamTypes = sam.paramInfos
       val samResultType = sam.resultType
 
@@ -695,7 +696,19 @@ object Erasure {
         return tree.asInstanceOf[Tree] // we are re-typing a primitive array op
 
       val owner = mapOwner(origSym)
-      val sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
+      var sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
+      if !sym.exists then
+        // We fail the sym.exists test for pos/i15158.scala, where we pass an infinitely
+        // recurring match type to an overloaded constructor. An equivalent test
+        // with regular apply methods succeeds. It's at present unclear whether
+        //  - the program should be rejected, or
+        //  - there is another fix.
+        // Therefore, we apply the fix to use the pre-erasure symbol, but only
+        // for constructors, in order not to mask other possible bugs that would
+        // trigger the assert(sym.exists, ...) below.
+        val prevSym = tree.symbol(using preErasureCtx)
+        if prevSym.isConstructor then sym = prevSym
+
       assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
 
       if owner == defn.ObjectClass then checkValue(qual1)
@@ -713,7 +726,7 @@ object Erasure {
 
       def adaptIfSuper(qual: Tree): Tree = qual match {
         case Super(thisQual, untpd.EmptyTypeIdent) =>
-          val SuperType(thisType, supType) = qual.tpe
+          val SuperType(thisType, supType) = qual.tpe: @unchecked
           if (sym.owner.is(Flags.Trait))
             cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
               .withType(SuperType(thisType, sym.owner.typeRef))
@@ -873,7 +886,7 @@ object Erasure {
 
     override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
       super.typedInlined(tree, pt) match {
-        case tree: Inlined => Inliner.dropInlined(tree)
+        case tree: Inlined => Inlines.dropInlined(tree)
       }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
@@ -1022,7 +1035,8 @@ object Erasure {
       typed(tree.arg, pt)
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
-      val stats0 = addRetainedInlineBodies(stats)(using preErasureCtx)
+      // discard Imports first, since Bridges will use tree's symbol
+      val stats0 = addRetainedInlineBodies(stats.filter(!_.isInstanceOf[untpd.Import]))(using preErasureCtx)
       val stats1 =
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats0)
         else stats0
@@ -1030,7 +1044,13 @@ object Erasure {
       (stats2.filterConserve(!_.isEmpty), finalCtx)
     }
 
-    override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =
+    /** Finally drops all (language-) imports in erasure.
+     *  Since some of the language imports change the subtyping,
+     *  we cannot check the trees before erasure.
+     */
+    override def typedImport(tree: untpd.Import)(using Context) = EmptyTree
+
+    override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
       trace(i"adapting ${tree.showSummary()}: ${tree.tpe} to $pt", show = true) {
         if ctx.phase != erasurePhase && ctx.phase != erasurePhase.next then
           // this can happen when reading annotations loaded during erasure,

@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Implementing Type classes"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/type-classes.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/type-classes.html
 ---
 
 A _type class_ is an abstract, parameterized type that lets you add new behavior to any closed data type without using sub-typing. This can be useful in multiple use-cases, for example:

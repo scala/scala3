@@ -94,6 +94,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
     sym.is(Method) || exprBecomesFunction(sym)
 
   def byNameClosure(arg: Tree, argType: Type)(using Context): Tree =
+    report.log(i"creating by name closure for $argType")
     val meth = newAnonFun(ctx.owner, MethodType(Nil, argType), coord = arg.span)
     Closure(meth,
         _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase),
@@ -137,16 +138,12 @@ class ElimByName extends MiniPhase, InfoTransformer:
             if isByNameRef(qual) && (isPureExpr(qual) || qual.symbol.isAllOf(InlineParam)) =>
               qual
             case _ =>
-              if isByNameRef(arg) || arg.symbol.name.is(SuperArgName)
-              then arg
-              else
-                var argType = arg.tpe.widenIfUnstable
-                if argType.isBottomType then argType = formalResult
-                byNameClosure(arg, argType)
+              if isByNameRef(arg) || arg.symbol.name.is(SuperArgName) then arg
+              else byNameClosure(arg, formalResult)
         case _ =>
           arg
 
-      val mt @ MethodType(_) = tree.fun.tpe.widen
+      val mt @ MethodType(_) = tree.fun.tpe.widen: @unchecked
       val args1 = tree.args.zipWithConserve(mt.paramInfos)(transformArg)
       cpy.Apply(tree)(tree.fun, args1)
     }

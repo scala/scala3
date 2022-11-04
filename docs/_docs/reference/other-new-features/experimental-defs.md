@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Experimental Definitions"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/experimental-defs.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/experimental-defs.html
 ---
 
 The [`@experimental`](https://scala-lang.org/api/3.x/scala/annotation/experimental.html) annotation allows the definition of an API that is not guaranteed backward binary or source compatibility.

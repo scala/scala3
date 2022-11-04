@@ -32,6 +32,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 import reporting._
+import cc.adaptFunctionTypeUnderCC
 
 object Scala2Unpickler {
 
@@ -81,7 +82,7 @@ object Scala2Unpickler {
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
       case cinfo => (Nil, cinfo)
-    }
+    }: @unchecked
     val ost =
       if (selfInfo eq NoType) && denot.is(ModuleClass) then
         val sourceModule = denot.sourceModule.orElse {
@@ -617,7 +618,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 // we need the checkNonCyclic call to insert LazyRefs for F-bounded cycles
               else if (!denot.is(Param)) tp1.translateFromRepeated(toArray = false)
               else tp1
-            if (denot.isConstructor) addConstructorTypeParams(denot)
+            if (denot.isConstructor)
+              denot.owner.setStableConstructor()
+              addConstructorTypeParams(denot)
             if (atEnd)
               assert(!denot.symbol.isSuperAccessor, denot)
             else {
@@ -820,7 +823,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           // special-case in erasure, see TypeErasure#eraseInfo.
           OrType(args(0), args(1), soft = false)
         }
-        else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
+        else if args.nonEmpty then
+          tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
+            .adaptFunctionTypeUnderCC
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>
@@ -1101,7 +1106,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val tparams = until(end, () => readTypeDefRef())
         val cls = symbol.asClass
         val ((constr: DefDef) :: Nil, stats) =
-          impl.body.partition(_.symbol == cls.primaryConstructor)
+          impl.body.partition(_.symbol == cls.primaryConstructor): @unchecked
         ClassDef(cls, constr, tparams ++ stats)
 
       case MODULEtree =>

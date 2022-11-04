@@ -5,6 +5,7 @@ import scala.language.unsafeNulls
 import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.core._
+import Names._
 import Types._
 import Contexts._
 import Symbols._
@@ -38,6 +39,8 @@ final class JSDefinitions()(using Context) {
     def JSPackage_native(using Context) = JSPackage_nativeR.symbol
     @threadUnsafe lazy val JSPackage_undefinedR = ScalaJSJSPackageClass.requiredMethodRef("undefined")
     def JSPackage_undefined(using Context) = JSPackage_undefinedR.symbol
+    @threadUnsafe lazy val JSPackage_dynamicImportR = ScalaJSJSPackageClass.requiredMethodRef("dynamicImport")
+    def JSPackage_dynamicImport(using Context) = JSPackage_dynamicImportR.symbol
 
   @threadUnsafe lazy val JSNativeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.native")
   def JSNativeAnnot(using Context) = JSNativeAnnotType.symbol.asClass
@@ -145,6 +148,11 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val JSConstructorTag_materializeR = JSConstructorTagModule.requiredMethodRef("materialize")
     def JSConstructorTag_materialize(using Context) = JSConstructorTag_materializeR.symbol
 
+  @threadUnsafe lazy val JSNewModuleRef = requiredModuleRef("scala.scalajs.js.new")
+  def JSNewModule(using Context) = JSNewModuleRef.symbol
+    @threadUnsafe lazy val JSNew_targetR = JSNewModule.requiredMethodRef("target")
+    def JSNew_target(using Context) = JSNew_targetR.symbol
+
   @threadUnsafe lazy val JSImportModuleRef = requiredModuleRef("scala.scalajs.js.import")
   def JSImportModule(using Context) = JSImportModuleRef.symbol
     @threadUnsafe lazy val JSImport_applyR = JSImportModule.requiredMethodRef(nme.apply)
@@ -176,6 +184,13 @@ final class JSDefinitions()(using Context) {
     def Runtime_withContextualJSClassValue(using Context) = Runtime_withContextualJSClassValueR.symbol
     @threadUnsafe lazy val Runtime_linkingInfoR = RuntimePackageClass.requiredMethodRef("linkingInfo")
     def Runtime_linkingInfo(using Context) = Runtime_linkingInfoR.symbol
+    @threadUnsafe lazy val Runtime_dynamicImportR = RuntimePackageClass.requiredMethodRef("dynamicImport")
+    def Runtime_dynamicImport(using Context) = Runtime_dynamicImportR.symbol
+
+  @threadUnsafe lazy val DynamicImportThunkType: TypeRef = requiredClassRef("scala.scalajs.runtime.DynamicImportThunk")
+  def DynamicImportThunkClass(using Context) = DynamicImportThunkType.symbol.asClass
+    @threadUnsafe lazy val DynamicImportThunkClass_applyR = DynamicImportThunkClass.requiredMethodRef(nme.apply)
+    def DynamicImportThunkClass_apply(using Context) = DynamicImportThunkClass_applyR.symbol
 
   @threadUnsafe lazy val SpecialPackageVal = requiredPackage("scala.scalajs.js.special")
   @threadUnsafe lazy val SpecialPackageClass = SpecialPackageVal.moduleClass.asClass
@@ -241,6 +256,45 @@ final class JSDefinitions()(using Context) {
       allRefClassesCache = fullNames.map(name => requiredClass(name)).toSet
     }
     allRefClassesCache
+  }
+
+  /** Definitions related to scala.Enumeration. */
+  object scalaEnumeration {
+    val nmeValue = termName("Value")
+    val nmeVal = termName("Val")
+    val hasNext = termName("hasNext")
+    val next = termName("next")
+
+    @threadUnsafe lazy val EnumerationClass = requiredClass("scala.Enumeration")
+      @threadUnsafe lazy val Enumeration_Value_NoArg = EnumerationClass.requiredValue(nmeValue)
+      @threadUnsafe lazy val Enumeration_Value_IntArg = EnumerationClass.requiredMethod(nmeValue, List(defn.IntType))
+      @threadUnsafe lazy val Enumeration_Value_StringArg = EnumerationClass.requiredMethod(nmeValue, List(defn.StringType))
+      @threadUnsafe lazy val Enumeration_Value_IntStringArg = EnumerationClass.requiredMethod(nmeValue, List(defn.IntType, defn.StringType))
+      @threadUnsafe lazy val Enumeration_nextName = EnumerationClass.requiredMethod(termName("nextName"))
+
+    @threadUnsafe lazy val EnumerationValClass = EnumerationClass.requiredClass("Val")
+      @threadUnsafe lazy val Enumeration_Val_NoArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, Nil)
+      @threadUnsafe lazy val Enumeration_Val_IntArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.IntType))
+      @threadUnsafe lazy val Enumeration_Val_StringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.StringType))
+      @threadUnsafe lazy val Enumeration_Val_IntStringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.IntType, defn.StringType))
+
+    def isValueMethod(sym: Symbol)(using Context): Boolean =
+      sym.name == nmeValue && sym.owner == EnumerationClass
+
+    def isValueMethodNoName(sym: Symbol)(using Context): Boolean =
+      isValueMethod(sym) && (sym == Enumeration_Value_NoArg || sym == Enumeration_Value_IntArg)
+
+    def isValueMethodName(sym: Symbol)(using Context): Boolean =
+      isValueMethod(sym) && (sym == Enumeration_Value_StringArg || sym == Enumeration_Value_IntStringArg)
+
+    def isValCtor(sym: Symbol)(using Context): Boolean =
+      sym.isClassConstructor && sym.owner == EnumerationValClass
+
+    def isValCtorNoName(sym: Symbol)(using Context): Boolean =
+      isValCtor(sym) && (sym == Enumeration_Val_NoArg || sym == Enumeration_Val_IntArg)
+
+    def isValCtorName(sym: Symbol)(using Context): Boolean =
+      isValCtor(sym) && (sym == Enumeration_Val_StringArg || sym == Enumeration_Val_IntStringArg)
   }
 
   /** Definitions related to the treatment of JUnit bootstrappers. */

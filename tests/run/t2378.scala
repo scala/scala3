@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 object Test
 {
   val f1 = -0.0

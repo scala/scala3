@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Scala 3 Syntax Summary"
-movedTo: https://docs.scala-lang.org/scala3/reference/syntax.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/syntax.html
 ---
 
 <!--
@@ -275,7 +275,8 @@ ExprSplice        ::= spliceId                                                  
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type
                     |  Expr
-ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’
+ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’
+                    |  ‘(’ ‘using’ ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’
 ArgumentExprs     ::=  ParArgumentExprs
                     |  BlockExpr

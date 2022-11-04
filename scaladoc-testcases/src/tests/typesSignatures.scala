@@ -53,3 +53,8 @@ class Operators
   import scala.compiletime.ops.boolean.*
   type Unary = ![true]
 }
+
+trait ThisTypeTest
+{
+  def foo: this.type //expected: def foo: ThisTypeTest.this.type
+}

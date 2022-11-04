@@ -96,15 +96,3 @@ object Test extends App {
   assert(!eq2.equals(yss, xss))
   assert(eq2.equals(yss, yss))
 }
-
-// -Ycheck failure minimized to:
-// import scala.compiletime.*
-// object Eq {
-//   inline def deriveForProduct[Elems <: Tuple](xs: Elems): Boolean = inline erasedValue[Elems] match {
-//     case _: (elem *: elems1) =>
-//       val xs1 = xs.asInstanceOf[elem *: elems1]
-//       deriveForProduct(xs1.tail)
-//     case _: EmptyTuple =>
-//       true
-//   }
-// }

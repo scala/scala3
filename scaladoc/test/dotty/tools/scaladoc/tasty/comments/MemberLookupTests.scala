@@ -60,7 +60,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
     val target = wrappedTarget.symbol
     val lookupRes = MemberLookup.lookupOpt(parseQuery(query), None)
     assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
-    val Some((lookedUp, _, _)) = lookupRes
+    val Some((lookedUp, _, _)) = lookupRes: @unchecked
     assertSame(query, target, lookedUp)
   }
 
@@ -83,7 +83,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       val target = sym.symbol
       val lookupRes = MemberLookup.lookupOpt(parseQuery(query), None)
       assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
-      val Some((_ , _, Some(owner))) = lookupRes
+      val Some((_ , _, Some(owner))) = lookupRes: @unchecked
       assertSame(query, target, owner)
     }
   }
@@ -102,7 +102,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       val lookupRes = MemberLookup.lookupOpt(parseQuery(query), Some(cls("scala.=:=").symbol))
       assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
       println(lookupRes)
-      val Some((_ , _, owner)) = lookupRes
+      val Some((_ , _, owner)) = lookupRes: @unchecked
       assertSame(query, None, owner)
     }
   }
@@ -161,7 +161,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
     )
 
     cases.foreach { case ((Sym(owner), query), Sym(target)) =>
-      val Some((lookedUp, _, _)) = MemberLookup.lookup(parseQuery(query), owner)
+      val Some((lookedUp, _, _)) = MemberLookup.lookup(parseQuery(query), owner): @unchecked
       assertSame(s"$owner / $query", target, lookedUp)
     }
   }
@@ -176,7 +176,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
   given q.type = q
 
   def parseQuery(query: String): Query = {
-    val Right(parsed) = QueryParser(query).tryReadQuery()
+    val Right(parsed) = QueryParser(query).tryReadQuery(): @unchecked
     parsed
   }
 

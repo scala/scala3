@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class Foo(val x: String) {
 
   def this() = this({

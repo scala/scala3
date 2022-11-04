@@ -7,8 +7,9 @@ import core.Names.SimpleName
 import Scanners._
 import util.SourceFile
 import JavaTokens._
-import scala.annotation.{ switch, tailrec }
+import scala.annotation.{switch, tailrec}
 import util.Chars._
+import PartialFunction.cond
 
 object JavaScanners {
 
@@ -31,23 +32,29 @@ object JavaScanners {
     // Get next token ------------------------------------------------------------
 
     def nextToken(): Unit =
-      if (next.token == EMPTY) {
+      if next.token == EMPTY then
         lastOffset = lastCharOffset
         fetchToken()
-      }
-      else {
-        this copyFrom next
+      else
+        this.copyFrom(next)
         next.token = EMPTY
-      }
 
-    def lookaheadToken: Int = {
-      prev copyFrom this
-      nextToken()
+    def lookaheadToken: Int =
+      lookAhead()
       val t = token
-      next copyFrom this
-      this copyFrom prev
+      reset()
       t
-    }
+
+    def lookAhead() =
+      prev.copyFrom(this)
+      nextToken()
+
+    def reset() =
+      next.copyFrom(this)
+      this.copyFrom(prev)
+
+    class LookaheadScanner extends JavaScanner(source, startFrom = charOffset - 1):
+      override protected def initialize(): Unit = nextChar()
 
     /** read next token
       */
@@ -93,15 +100,23 @@ object JavaScanners {
 
             case '\"' =>
               nextChar()
-              while (ch != '\"' && (isUnicodeEscape || ch != CR && ch != LF && ch != SU))
-                getlitch()
-              if (ch == '\"') {
-                token = STRINGLIT
-                setStrVal()
-                nextChar()
-              }
+              if ch != '\"' then // "..." non-empty string literal
+                while ch != '\"' && (isUnicodeEscape || ch != CR && ch != LF && ch != SU) do
+                  getlitch()
+                if ch == '\"' then
+                  token = STRINGLIT
+                  setStrVal()
+                  nextChar()
+                else
+                  error("unclosed string literal")
               else
-                error("unclosed string literal")
+                nextChar()
+                if ch != '\"' then // "" empty string literal
+                  token = STRINGLIT
+                  setStrVal()
+                else
+                  nextChar()
+                  getTextBlock()
 
             case '\'' =>
               nextChar()
@@ -179,7 +194,7 @@ object JavaScanners {
               nextChar()
 
             case ':' =>
-              token = COLON
+              token = COLONop
               nextChar()
 
             case '@' =>
@@ -399,46 +414,177 @@ object JavaScanners {
 
     // Literals -----------------------------------------------------------------
 
-    /** read next character in character or string literal:
+    /** Read next character in character or string literal.
       */
-    protected def getlitch(): Unit =
-      if (ch == '\\') {
+    protected def getlitch(): Unit = getlitch(scanOnly = false, inTextBlock = false)
+
+    /** Read next character in character or string literal.
+     *
+     *  @param scanOnly skip emitting errors or adding to the literal buffer
+     *  @param inTextBlock is this for a text block?
+     */
+    def getlitch(scanOnly: Boolean, inTextBlock: Boolean): Unit =
+      def octal: Char =
+        val leadch: Char = ch
+        var oct: Int = digit2int(ch, 8)
         nextChar()
         if ('0' <= ch && ch <= '7') {
-          val leadch: Char = ch
-          var oct: Int = digit2int(ch, 8)
+          oct = oct * 8 + digit2int(ch, 8)
           nextChar()
-          if ('0' <= ch && ch <= '7') {
+          if (leadch <= '3' && '0' <= ch && ch <= '7') {
             oct = oct * 8 + digit2int(ch, 8)
             nextChar()
-            if (leadch <= '3' && '0' <= ch && ch <= '7') {
-              oct = oct * 8 + digit2int(ch, 8)
-              nextChar()
-            }
           }
-          putChar(oct.asInstanceOf[Char])
         }
-        else {
-          ch match {
-            case 'b' => putChar('\b')
-            case 't' => putChar('\t')
-            case 'n' => putChar('\n')
-            case 'f' => putChar('\f')
-            case 'r' => putChar('\r')
-            case '\"' => putChar('\"')
-            case '\'' => putChar('\'')
-            case '\\' => putChar('\\')
-            case _ =>
-              error("invalid escape character", charOffset - 1)
-              putChar(ch)
-          }
+        oct.asInstanceOf[Char]
+      end octal
+      def greatEscape: Char =
+        nextChar()
+        if '0' <= ch && ch <= '7' then octal
+        else
+          val x = ch match
+            case 'b'  => '\b'
+            case 's'  => ' '
+            case 't'  => '\t'
+            case 'n'  => '\n'
+            case 'f'  => '\f'
+            case 'r'  => '\r'
+            case '\"' => '\"'
+            case '\'' => '\''
+            case '\\' => '\\'
+            case CR | LF if inTextBlock =>
+              if !scanOnly then nextChar()
+              0
+            case _    =>
+              if !scanOnly then error("invalid escape character", charOffset - 1)
+              ch
+          if x != 0 then nextChar()
+          x
+      end greatEscape
+
+      // begin getlitch
+      val c: Char =
+        if ch == '\\' then greatEscape
+        else
+          val res = ch
           nextChar()
-        }
-      }
-      else {
-        putChar(ch)
+          res
+      if c != 0 && !scanOnly then putChar(c)
+    end getlitch
+
+    /** Read a triple-quote delimited text block, starting after the first three double quotes.
+      */
+    private def getTextBlock(): Unit = {
+      // Open delimiter is followed by optional space, then a newline
+      while (ch == ' ' || ch == '\t' || ch == FF) {
         nextChar()
       }
+      if (ch != LF && ch != CR) { // CR-LF is already normalized into LF by `JavaCharArrayReader`
+        error("illegal text block open delimiter sequence, missing line terminator")
+        return
+      }
+      nextChar()
+
+      /* Do a lookahead scan over the full text block to:
+       *   - compute common white space prefix
+       *   - find the offset where the text block ends
+       */
+      var commonWhiteSpacePrefix = Int.MaxValue
+      var blockEndOffset = 0
+      var blockClosed = false
+      var lineWhiteSpacePrefix = 0
+      var lineIsOnlyWhitespace = true
+      val in = LookaheadScanner()
+      while (!blockClosed && (isUnicodeEscape || ch != SU)) {
+        if (in.ch == '\"') { // Potential end of the block
+          in.nextChar()
+          if (in.ch == '\"') {
+            in.nextChar()
+            if (in.ch == '\"') {
+              blockClosed = true
+              commonWhiteSpacePrefix = commonWhiteSpacePrefix min lineWhiteSpacePrefix
+              blockEndOffset = in.charOffset - 2
+            }
+          }
+
+          // Not the end of the block - just a single or double " character
+          if (!blockClosed) {
+            lineIsOnlyWhitespace = false
+          }
+        } else if (in.ch == CR || in.ch == LF) { // new line in the block
+          in.nextChar()
+          if (!lineIsOnlyWhitespace) {
+            commonWhiteSpacePrefix = commonWhiteSpacePrefix min lineWhiteSpacePrefix
+          }
+          lineWhiteSpacePrefix = 0
+          lineIsOnlyWhitespace = true
+        } else if (lineIsOnlyWhitespace && Character.isWhitespace(in.ch)) { // extend white space prefix
+          in.nextChar()
+          lineWhiteSpacePrefix += 1
+        } else {
+          lineIsOnlyWhitespace = false
+          in.getlitch(scanOnly = true, inTextBlock = true)
+        }
+      }
+
+      // Bail out if the block never did have an end
+      if (!blockClosed) {
+        error("unclosed text block")
+        return
+      }
+
+      // Second pass: construct the literal string value this time
+      while (charOffset < blockEndOffset) {
+        // Drop the line's leading whitespace
+        var remainingPrefix = commonWhiteSpacePrefix
+        while (remainingPrefix > 0 && ch != CR && ch != LF && charOffset < blockEndOffset) {
+          nextChar()
+          remainingPrefix -= 1
+        }
+
+        var trailingWhitespaceLength = 0
+        var escapedNewline = false         // Does the line end with `\`?
+        while (ch != CR && ch != LF && charOffset < blockEndOffset && !escapedNewline) {
+          if (Character.isWhitespace(ch)) {
+            trailingWhitespaceLength += 1
+          } else {
+            trailingWhitespaceLength = 0
+          }
+
+          // Detect if the line is about to end with `\`
+          if ch == '\\' && cond(lookaheadChar()) { case CR | LF => true } then
+            escapedNewline = true
+
+          getlitch(scanOnly = false, inTextBlock = true)
+        }
+
+        // Remove the last N characters from the buffer */
+        def popNChars(n: Int): Unit =
+          if n > 0 then
+            val text = litBuf.toString
+            litBuf.clear()
+            val trimmed = text.substring(0, text.length - (n min text.length))
+            trimmed.nn.foreach(litBuf.append)
+
+        // Drop the line's trailing whitespace
+        popNChars(trailingWhitespaceLength)
+
+        // Normalize line terminators
+        if ((ch == CR || ch == LF) && !escapedNewline) {
+          nextChar()
+          putChar('\n')
+        }
+      }
+
+      token = STRINGLIT
+      setStrVal()
+
+      // Trailing """
+      nextChar()
+      nextChar()
+      nextChar()
+    }
+    end getTextBlock
 
     /** read fractional part and exponent of floating point number
       * if one is present.
@@ -585,8 +731,10 @@ object JavaScanners {
     }
 
     /* Initialization: read first char, then first token */
-    nextChar()
-    nextToken()
+    protected def initialize(): Unit =
+      nextChar()
+      nextToken()
+    initialize()
   }
 
   private val (lastKeywordStart, kwArray) = buildKeywordArray(keywords)

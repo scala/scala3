@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: private[this] and protected[this]"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 ---
 
 The `private[this]` and `protected[this]` access modifiers are deprecated and will be phased out.

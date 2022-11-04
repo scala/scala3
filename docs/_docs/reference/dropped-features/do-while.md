@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Do-While"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/do-while.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/do-while.html
 ---
 
 The syntax construct

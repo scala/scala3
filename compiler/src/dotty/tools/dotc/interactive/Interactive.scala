@@ -79,7 +79,7 @@ object Interactive {
   def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(using Context): Tree =
     enclosingTree(pathTo(trees, pos))
 
-  /** The closes enclosing tree with a symbol, or the `EmptyTree`.
+  /** The closest enclosing tree with a symbol, or the `EmptyTree`.
    */
   def enclosingTree(path: List[Tree])(using Context): Tree =
     path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
@@ -108,7 +108,7 @@ object Interactive {
           val classTree = funSym.topLevelClass.asClass.rootTree
           val paramSymbol =
             for {
-              DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
+              case DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
               param <- paramss.flatten.find(_.name == name)
             }
             yield param.symbol
@@ -247,6 +247,11 @@ object Interactive {
   /** The reverse path to the node that closest encloses position `pos`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
    *  the tree closest enclosing `pos` and ends with an element of `trees`.
+   *
+   *  Note that if the given `pos` points out places for incomplete parses,
+   *  this method returns `errorTermTree` (`Literal(Consotant(null)`).
+   *
+   *  @see https://github.com/lampepfl/dotty/issues/15294
    */
   def pathTo(trees: List[SourceTree], pos: SourcePosition)(using Context): List[Tree] =
     pathTo(trees.map(_.tree), pos.span)
@@ -301,7 +306,7 @@ object Interactive {
             case _ =>
           }
           contextOfStat(stats, nested, ctx.owner, localCtx)
-        case tree @ CaseDef(pat, guard, rhs) if nested `eq` rhs =>
+        case tree @ CaseDef(pat, _, _) =>
           val localCtx = outer.fresh.setNewScope
           pat.foreachSubTree {
             case bind: Bind => localCtx.enter(bind.symbol)

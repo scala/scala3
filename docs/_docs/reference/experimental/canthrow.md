@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "CanThrow Capabilities"
-movedTo: https://docs.scala-lang.org/scala3/reference/experimental/canthrow.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/canthrow.html
 ---
 
 This page describes experimental support for exception checking in Scala 3. It is enabled by the language import

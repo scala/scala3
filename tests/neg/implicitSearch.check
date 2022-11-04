@@ -1,7 +1,7 @@
 -- Error: tests/neg/implicitSearch.scala:13:12 -------------------------------------------------------------------------
 13 |    sort(xs)  // error (with a partially constructed implicit argument shown)
    |            ^
-   |      no given instance of type Test.Ord[List[List[T]]] was found for parameter o of method sort in object Test.
+   |      No given instance of type Test.Ord[List[List[T]]] was found for parameter o of method sort in object Test.
    |      I found:
    |
    |          Test.listOrd[List[T]](Test.listOrd[T](/* missing */summon[Test.Ord[T]]))
@@ -10,4 +10,4 @@
 -- Error: tests/neg/implicitSearch.scala:15:38 -------------------------------------------------------------------------
 15 |    listOrd(listOrd(implicitly[Ord[T]] /*not found*/)) // error
    |                                      ^
-   |           no given instance of type Test.Ord[T] was found for parameter e of method implicitly in object Predef
+   |           No given instance of type Test.Ord[T] was found for parameter e of method implicitly in object Predef

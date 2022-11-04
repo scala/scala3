@@ -38,7 +38,7 @@ You can run `help` for commands that supported by JDB.
 
 Following file (`tests/debug/while.scala`) is an example of annotated source code:
 
-```Scala
+```scala
 object Test {
 
   def main(args: Array[String]): Unit = {

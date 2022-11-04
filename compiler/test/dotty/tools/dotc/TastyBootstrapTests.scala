@@ -12,7 +12,7 @@ import org.junit.experimental.categories.Category
 import java.io.File
 import java.nio.file._
 import java.util.stream.{ Stream => JStream }
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
 import TestSources.sources
@@ -60,7 +60,7 @@ class TastyBootstrapTests {
       compileList("lib", librarySources,
         defaultOptions.and("-Ycheck-reentrant",
           "-language:experimental.erasedDefinitions", // support declaration of scala.compiletime.erasedValue
-          //  "-source", "future",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
+          //  "-source", "future",  // TODO: re-enable once library uses updated syntax for vararg splices, wildcard imports, and import renaming
           ))(libGroup)
 
     val tastyCoreSources = sources(Paths.get("tasty/src"))

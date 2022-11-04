@@ -40,7 +40,7 @@ object RClose {
 package p3 {
 
 object Test {
-  def idMap[C[_],T](m: { def map[U](f: T => U): C[U] }): C[T] = m.map(t => t) // error: polymorphic refinement method map without matching type in parent Object is no longer allowed
+  def idMap[C[_],T](m: { def map[U](f: T => U): C[U] }): C[T] = m.map(t => t) // error: polymorphic refinement method map without matching type in parent Object is no longer allowed // error: Structural access not allowed
 
   def main(args: Array[String]): Unit = {
     idMap(Some(5)) // error: type mismatch: found Some[Int], required Object{map: [U](f: Any => U): Any}

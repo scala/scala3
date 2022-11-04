@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import scala.annotation.tailrec
@@ -99,7 +100,7 @@ object PatternMatcher {
     private val initializer = MutableSymbolMap[Tree]()
 
     private def newVar(rhs: Tree, flags: FlagSet, tpe: Type): TermSymbol =
-      newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
+      newSymbol(ctx.owner, PatMatStdBinderName.fresh(), SyntheticCase | flags,
         sanitize(tpe), coord = rhs.span)
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
@@ -261,7 +262,7 @@ object PatternMatcher {
         def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
           args match {
             case arg :: args1 =>
-              val sym :: syms1 = syms
+              val sym :: syms1 = syms: @unchecked
               patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
             case Nil =>
               assert(syms.isEmpty)
@@ -388,7 +389,9 @@ object PatternMatcher {
         case Typed(pat, tpt) =>
           val isTrusted = pat match {
             case UnApply(extractor, _, _) =>
-              extractor.symbol.is(Synthetic) && extractor.symbol.owner.linkedClass.is(Case)
+              extractor.symbol.is(Synthetic)
+              && extractor.symbol.owner.linkedClass.is(Case)
+              && !hasExplicitTypeArgs(extractor)
             case _ => false
           }
           TestPlan(TypeTest(tpt, isTrusted), scrutinee, tree.span,
@@ -411,7 +414,7 @@ object PatternMatcher {
                 assert(implicits.isEmpty)
                 acc
             }
-            val mt @ MethodType(_) = extractor.tpe.widen
+            val mt @ MethodType(_) = extractor.tpe.widen: @unchecked
             val unapp0 = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
             val unapp = applyImplicits(unapp0, implicits, mt.resultType)
             unapplyPlan(unapp, args)
@@ -659,7 +662,7 @@ object PatternMatcher {
      */
     private def inlineVars(plan: Plan): Plan = {
       val refCount = varRefCount(plan)
-      val LetPlan(topSym, _) = plan
+      val LetPlan(topSym, _) = plan: @unchecked
 
       def toDrop(sym: Symbol) = initializer.get(sym) match {
         case Some(rhs) =>
@@ -864,7 +867,7 @@ object PatternMatcher {
         else (scrutinee.select(nme.toInt), defn.IntType)
 
       def primLiteral(lit: Tree): Tree =
-        val Literal(constant) = lit
+        val Literal(constant) = lit: @unchecked
         if (constant.tag == Constants.IntTag) lit
         else if (constant.tag == Constants.StringTag) lit
         else cpy.Literal(lit)(Constant(constant.intValue))
@@ -929,7 +932,8 @@ object PatternMatcher {
           }
           emitWithMashedConditions(plan :: Nil)
         case LetPlan(sym, body) =>
-          seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
+          val valDef = ValDef(sym, initializer(sym).ensureConforms(sym.info), inferred = true).withSpan(sym.span)
+          seq(valDef :: Nil, emit(body))
         case LabeledPlan(label, expr) =>
           Labeled(label, emit(expr))
         case ReturnPlan(label) =>

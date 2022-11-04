@@ -17,6 +17,7 @@ import tpd.tpes
 import Variances.alwaysInvariant
 import config.{Config, Feature}
 import config.Printers.typr
+import inlines.{Inlines, PrepareInlineable}
 import parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
 import Annotations._
@@ -477,8 +478,8 @@ class Namer { typer: Typer =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
-            assert(childStart != other.span.start, i"duplicate child annotation $child / $other")
-            val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot)
+            assert(childStart != other.span.start || child.source != other.source, i"duplicate child annotation $child / $other")
+            val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot): @unchecked
             prefix ::: otherAnnot :: insertInto(rest)
           }
         case _ =>
@@ -516,7 +517,7 @@ class Namer { typer: Typer =>
 
     /** Remove the subtree `tree` from the expanded tree of `mdef` */
     def removeInExpanded(mdef: Tree, tree: Tree): Unit = {
-      val Thicket(trees) = expanded(mdef)
+      val Thicket(trees) = expanded(mdef): @unchecked
       mdef.putAttachment(ExpandedTree, Thicket(trees.filter(_ != tree)))
     }
 
@@ -532,7 +533,7 @@ class Namer { typer: Typer =>
      */
     def mergeModuleClass(mdef: Tree, modCls: TypeDef, fromCls: TypeDef): TypeDef = {
       var res: TypeDef | Null = null
-      val Thicket(trees) = expanded(mdef)
+      val Thicket(trees) = expanded(mdef): @unchecked
       val merged = trees.map { tree =>
         if (tree == modCls) {
           val fromTempl = fromCls.rhs.asInstanceOf[Template]
@@ -844,7 +845,7 @@ class Namer { typer: Typer =>
         def rhsToInline(using Context): tpd.Tree =
           if !original.symbol.exists && !hasDefinedSymbol(original) then
             throw
-              if sym.isCompleted then Inliner.MissingInlineInfo()
+              if sym.isCompleted then Inlines.MissingInlineInfo()
               else CyclicReference(sym)
           val mdef = typedAheadExpr(original).asInstanceOf[tpd.DefDef]
           PrepareInlineable.wrapRHS(original, mdef.tpt, mdef.rhs)
@@ -905,7 +906,7 @@ class Namer { typer: Typer =>
       if denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass then
         val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
         denot.info.parents.foreach { parent => register(child, parent.classSymbol.asClass) }
-      else if denot.is(CaseVal, butNot = Method | Module) then
+      else if denot.is(CaseVal, butNot = MethodOrModule) then
         assert(denot.is(Enum), denot)
         denot.info.classSymbols.foreach { parent => register(denot.symbol, parent) }
       end if
@@ -1060,7 +1061,7 @@ class Namer { typer: Typer =>
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
     private var tempInfo: TempClassInfo | Null = null
 
-    val TypeDef(name, impl @ Template(constr, _, self, _)) = original
+    val TypeDef(name, impl @ Template(constr, _, self, _)) = original: @unchecked
 
     private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
       case td: TypeDef => td.mods.is(Param)
@@ -1070,16 +1071,26 @@ class Namer { typer: Typer =>
 
     def init(): Context = index(params)
 
-    /** The forwarders defined by export `exp` */
-    private def exportForwarders(exp: Export)(using Context): List[tpd.MemberDef] =
+    /** The forwarders defined by export `exp`
+     *  @param  pathMethod  If it exists, the symbol referenced by the path of an export
+     *                      in an extension clause. That symbol is always a companion
+     *                      extension method.
+     */
+    private def exportForwarders(exp: Export, pathMethod: Symbol)(using Context): List[tpd.MemberDef] =
       val buf = new mutable.ListBuffer[tpd.MemberDef]
       val Export(expr, selectors) = exp
       if expr.isEmpty then
         report.error(em"Export selector must have prefix and `.`", exp.srcPos)
         return Nil
 
-      val path = typedAheadExpr(expr, AnySelectionProto)
-      checkLegalExportPath(path, selectors)
+      val (path, pathType) =
+        if pathMethod.exists then
+          val path = typedAhead(expr, _.withType(pathMethod.termRef))
+          (path, pathMethod.info.finalResultType)
+        else
+          val path = typedAheadExpr(expr, AnySelectionProto)
+          checkLegalExportPath(path, selectors)
+          (path, path.tpe)
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
 
@@ -1087,12 +1098,16 @@ class Namer { typer: Typer =>
       def canForward(mbr: SingleDenotation, alias: TermName): CanForward = {
         import CanForward.*
         val sym = mbr.symbol
-        if !sym.isAccessibleFrom(path.tpe) then
+        if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
-        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) then
+        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) || sym.isAllOf(JavaModule) then
           Skip
         else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
           No(i"is already a member of $cls")
+        else if pathMethod.exists && mbr.isType then
+          No("is a type, so it cannot be exported as extension method")
+        else if pathMethod.exists && sym.is(ExtensionMethod) then
+          No("is already an extension method, cannot be exported into another one")
         else if targets.contains(alias) then
           No(i"clashes with another export in the same export clause")
         else if sym.is(Override) then
@@ -1101,9 +1116,8 @@ class Namer { typer: Typer =>
           ) match
               case Some(other) => No(i"overrides ${other.showLocated}, which is already a member of $cls")
               case None => Yes
-        else if sym.isAllOf(JavaModule) then
-          Skip
-        else Yes
+        else
+          Yes
       }
 
       def foreachDefaultGetterOf(sym: TermSymbol, op: TermSymbol => Unit): Unit =
@@ -1112,7 +1126,7 @@ class Namer { typer: Typer =>
           if param.isTerm then
             if param.is(HasDefault) then
               val getterName = DefaultGetterName(sym.name, n)
-              val getter = path.tpe.member(DefaultGetterName(sym.name, n)).symbol
+              val getter = pathType.member(DefaultGetterName(sym.name, n)).symbol
               assert(getter.exists, i"$path does not have a default getter named $getterName")
               op(getter.asTerm)
             n += 1
@@ -1129,7 +1143,7 @@ class Namer { typer: Typer =>
               // Note: in this branch we use the assumptions
               // that `prefss.head` corresponds to `mt.paramInfos` and
               // that `prefss.tail` corresponds to `mt.resType`
-              val init :+ vararg = prefss.head
+              val init :+ vararg = prefss.head: @unchecked
               val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
               adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
             case mt: MethodOrPoly =>
@@ -1143,7 +1157,7 @@ class Namer { typer: Typer =>
           val forwarder =
             if mbr.isType then
               val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
-              var target = path.tpe.select(sym)
+              var target = pathType.select(sym)
               if target.typeParams.nonEmpty then
                 target = target.EtaExpand(target.typeParams)
               newSymbol(
@@ -1160,14 +1174,45 @@ class Namer { typer: Typer =>
                 case tp: TermRef => tp.termSymbol.is(Private) || refersToPrivate(tp.prefix)
                 case _ => false
               val (maybeStable, mbrInfo) =
-                if sym.isStableMember && sym.isPublic && !refersToPrivate(path.tpe) then
-                  (StableRealizable, ExprType(path.tpe.select(sym)))
+                if sym.isStableMember
+                    && sym.isPublic
+                    && pathType.isStable
+                    && !refersToPrivate(pathType)
+                then
+                  (StableRealizable, ExprType(pathType.select(sym)))
                 else
-                  (EmptyFlags, mbr.info.ensureMethodic)
+                  def addPathMethodParams(pathType: Type, info: Type): Type =
+                    def defines(pt: Type, pname: Name): Boolean = pt match
+                      case pt: MethodOrPoly =>
+                        pt.paramNames.contains(pname) || defines(pt.resType, pname)
+                      case _ =>
+                        false
+                    def avoidNameClashes(info: Type): Type = info match
+                      case info: MethodOrPoly =>
+                        info.derivedLambdaType(
+                          paramNames = info.paramNames.mapConserve {
+                            pname => if defines(pathType, pname) then pname.freshened else pname
+                          },
+                          resType = avoidNameClashes(info.resType))
+                      case info =>
+                        info
+                    def wrap(pt: Type, info: Type): Type = pt match
+                      case pt: MethodOrPoly =>
+                        pt.derivedLambdaType(resType = wrap(pt.resType, info))
+                      case _ =>
+                        info
+                    wrap(pathType, avoidNameClashes(info))
+
+                  val mbrInfo =
+                    if pathMethod.exists
+                    then addPathMethodParams(pathMethod.info, mbr.info.widenExpr)
+                    else mbr.info.ensureMethodic
+                  (EmptyFlags, mbrInfo)
               var flagMask = RetainedExportFlags
               if sym.isTerm then flagMask |= HasDefaultParams | NoDefaultParams
               var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & flagMask
-              if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
+              if sym.is(ExtensionMethod) || pathMethod.exists then
+                mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
 
@@ -1178,9 +1223,15 @@ class Namer { typer: Typer =>
             buf += tpd.TypeDef(forwarder.asType).withSpan(span)
           else
             import tpd._
-            val ref = path.select(sym.asTerm)
-            val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
-                ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss)))
+            def extensionParamsCount(pt: Type): Int = pt match
+              case pt: MethodOrPoly => 1 + extensionParamsCount(pt.resType)
+              case _ => 0
+            val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
+              val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
+              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
+              ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
+                .etaExpandCFT(using ctx.withOwner(forwarder))
+            })
             if forwarder.isInlineMethod then
               PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
             buf += ddef.withSpan(span)
@@ -1192,26 +1243,27 @@ class Namer { typer: Typer =>
 
       def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
         val size = buf.size
-        val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
+        val mbrs = List(name, name.toTypeName).flatMap(pathType.member(_).alternatives)
         mbrs.foreach(addForwarder(alias, _, span))
-        targets += alias
         if buf.size == size then
           val reason = mbrs.map(canForward(_, alias)).collect {
             case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
           }.headOption.getOrElse("")
           report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
+        else
+          targets += alias
 
       def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
         List(name, name.toTypeName)
-          .flatMap(path.tpe.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
+          .flatMap(pathType.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
         val nonContextual = mutable.HashSet(seen: _*)
-        val fromCaseClass = path.tpe.widen.classSymbols.exists(_.is(Case))
+        val fromCaseClass = pathType.widen.classSymbols.exists(_.is(Case))
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)
-        for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
+        for mbr <- pathType.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
           if !mbr.symbol.isSuperAccessor
               // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
               // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
@@ -1304,20 +1356,49 @@ class Namer { typer: Typer =>
     /** Add forwarders as required by the export statements in this class */
     private def processExports(using Context): Unit =
 
+      def processExport(exp: Export, pathSym: Symbol)(using Context): Unit =
+        for forwarder <- exportForwarders(exp, pathSym) do
+          forwarder.symbol.entered
+
+      def exportPathSym(path: Tree, ext: ExtMethods)(using Context): Symbol =
+        def fail(msg: String): Symbol =
+          report.error(em"export qualifier $msg", path.srcPos)
+          NoSymbol
+        path match
+          case Ident(name) =>
+            def matches(cand: Tree) = cand match
+              case meth: DefDef => meth.name == name && meth.paramss.hasSameLengthAs(ext.paramss)
+              case _ => false
+            expanded(ext).toList.filter(matches) match
+              case cand :: Nil => symbolOfTree(cand)
+              case Nil => fail(i"$name is not a parameterless companion extension method")
+              case _ => fail(i"$name cannot be overloaded")
+          case _ =>
+            fail("must be a simple reference to a companion extension method")
+
       def process(stats: List[Tree])(using Context): Unit = stats match
         case (stat: Export) :: stats1 =>
-          for forwarder <- exportForwarders(stat) do
-            forwarder.symbol.entered
+          processExport(stat, NoSymbol)
           process(stats1)
         case (stat: Import) :: stats1 =>
           process(stats1)(using ctx.importContext(stat, symbolOfTree(stat)))
+        case (stat: ExtMethods) :: stats1 =>
+          for case exp: Export <- stat.methods do
+            val pathSym = exportPathSym(exp.expr, stat)
+            if pathSym.exists then processExport(exp, pathSym)
+          process(stats1)
         case stat :: stats1 =>
           process(stats1)
         case Nil =>
 
+      def hasExport(stats: List[Tree]): Boolean = stats.exists {
+        case _: Export => true
+        case ExtMethods(_, stats1) => hasExport(stats1)
+        case _ => false
+      }
       // Do a quick scan whether we need to process at all. This avoids creating
       // import contexts for nothing.
-      if rest.exists(_.isInstanceOf[Export]) then
+      if hasExport(rest) then
         process(rest)
     end processExports
 
@@ -1387,7 +1468,7 @@ class Namer { typer: Typer =>
               else {
                 if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(GivenOrImplicit))
                   missingType(denot.symbol, "parent ")(using creationContext)
-                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.span)
+                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.srcPos)
               }
             case _ =>
               UnspecifiedErrorType.assertingErrorsReported
@@ -1499,10 +1580,7 @@ class Namer { typer: Typer =>
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.invalidateMemberCaches() // we might have checked for a member when parents were not known yet.
       cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
-      val ctorStable =
-        if cls.is(Trait) then cls.is(NoInits)
-        else cls.isNoInitsRealClass
-      if ctorStable then cls.primaryConstructor.setFlag(StableRealizable)
+      cls.setStableConstructor()
       processExports(using localCtx)
       defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
@@ -1595,7 +1673,27 @@ class Namer { typer: Typer =>
             // This case applies if the closure result type contains uninstantiated
             // type variables. In this case, constrain the closure result from below
             // by the parameter-capture-avoiding type of the body.
-            typedAheadExpr(mdef.rhs, tpt.tpe).tpe
+            val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
+
+            // The following part is important since otherwise we might instantiate
+            // the closure result type with a plain functon type that refers
+            // to local parameters. An example where this happens in `dependent-closures.scala`
+            // If the code after `val rhsType` is commented out, this file fails pickling tests.
+            // AVOIDANCE TODO: Follow up why this happens, and whether there
+            // are better ways to achieve this. It would be good if we could get rid of this code.
+            // It seems at least partially redundant with the nesting level checking on TypeVar
+            // instantiation.
+            // It turns out if we fix levels on instantiation we still need this code.
+            // Examples that fail otherwise are pos/scalaz-redux.scala and pos/java-futures.scala.
+            // So fixing levels at instantiation avoids the soundness problem but apparently leads
+            // to type inference problems since it comes too late.
+            if !Config.checkLevelsOnConstraints then
+              val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
+              if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
+                report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
+                  i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
+            //println(i"lifting $rhsType over $termParamss -> $hygienicType = ${tpt.tpe}")
+            //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>
         }
         WildcardType
@@ -1790,14 +1888,14 @@ class Namer { typer: Typer =>
         TypeOps.simplify(tp.widenTermRefExpr,
             if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null) match
           case ctp: ConstantType if sym.isInlineVal => ctp
-          case tp => TypeComparer.widenInferred(tp, pt)
+          case tp => TypeComparer.widenInferred(tp, pt, widenUnions = true)
 
     // Replace aliases to Unit by Unit itself. If we leave the alias in
     // it would be erased to BoxedUnit.
     def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
     def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
-    def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
+    def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.srcPos)
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
       if sym.isInlineVal then lhsType else inherited

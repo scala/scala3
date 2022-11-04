@@ -156,9 +156,10 @@ class TreeTypeMap(
 
   private def transformAllParamss(paramss: List[ParamClause]): (TreeTypeMap, List[ParamClause]) = paramss match
     case params :: paramss1 =>
-      val (tmap1, params1: ParamClause) = (params: @unchecked) match
+      val (tmap1, params1: ParamClause) = ((params: @unchecked) match
         case ValDefs(vparams) => transformDefs(vparams)
         case TypeDefs(tparams) => transformDefs(tparams)
+      ): @unchecked
       val (tmap2, paramss2) = tmap1.transformAllParamss(paramss1)
       (tmap2, params1 :: paramss2)
     case nil =>

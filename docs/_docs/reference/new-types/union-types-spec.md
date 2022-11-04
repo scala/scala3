@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Union Types - More Details"
-movedTo: https://docs.scala-lang.org/scala3/reference/new-types/union-types-spec.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/new-types/union-types-spec.html
 ---
 
 ## Syntax

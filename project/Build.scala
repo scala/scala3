@@ -24,10 +24,18 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
-import org.scalajs.linker.interface.ModuleInitializer
+import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
 
 object DottyJSPlugin extends AutoPlugin {
   import Build._
+
+  object autoImport {
+    val switchToESModules: StandardConfig => StandardConfig =
+      config => config.withModuleKind(ModuleKind.ESModule)
+  }
+
+  val writePackageJSON = taskKey[Unit](
+      "Write package.json to configure module type for Node.js")
 
   override def requires: Plugins = ScalaJSPlugin
 
@@ -51,15 +59,30 @@ object DottyJSPlugin extends AutoPlugin {
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
+
+    Compile / jsEnvInput := (Compile / jsEnvInput).dependsOn(writePackageJSON).value,
+    Test / jsEnvInput := (Test / jsEnvInput).dependsOn(writePackageJSON).value,
+
+    writePackageJSON := {
+      val packageType = scalaJSLinkerConfig.value.moduleKind match {
+        case ModuleKind.NoModule       => "commonjs"
+        case ModuleKind.CommonJSModule => "commonjs"
+        case ModuleKind.ESModule       => "module"
+      }
+
+      val path = target.value / "package.json"
+
+      IO.write(path, s"""{"type": "$packageType"}\n""")
+    },
   )
 }
 
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.1.3-RC2"
+  val referenceVersion = "3.2.0"
 
-  val baseVersion = "3.2.0-RC1"
+  val baseVersion = "3.2.1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -75,7 +98,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.1.2"
+  val previousDottyVersion = "3.2.0"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -97,8 +120,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.8"
-    case Bootstrapped => "2.13.8"
+    case NonBootstrapped => "2.13.10"
+    case Bootstrapped => "2.13.10"
   }
 
   val dottyOrganization = "org.scala-lang"
@@ -169,9 +192,10 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      "-Xfatal-warnings",
+      //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
+      "-Xfatal-warnings",                         // -Werror in modern usage
       "-encoding", "UTF8",
-      "-language:implicitConversions"
+      "-language:implicitConversions",
     ),
 
     (Compile / compile / javacOptions) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
@@ -774,7 +798,7 @@ object Build {
     },
 
     // Note: bench/profiles/projects.yml should be updated accordingly.
-    Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
+    Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
 
     repl := (Compile / console).value,
     Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
@@ -1201,10 +1225,22 @@ object Build {
       // A first blacklist of tests for those that do not compile or do not link
       (Test / managedSources) ++= {
         val dir = fetchScalaJSSource.value / "test-suite"
+
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (Test / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
+        }
+
+        val moduleKind = linkerConfig.moduleKind
+        val hasModules = moduleKind != ModuleKind.NoModule
+
+        def conditionally(cond: Boolean, subdir: String): Seq[File] =
+          if (!cond) Nil
+          else (dir / subdir ** "*.scala").get
+
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
-            -- "EnumerationTest.scala" // scala.Enumeration support for Scala.js is not implemented in scalac (yet)
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
@@ -1217,9 +1253,30 @@ object Build {
             )).get
 
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
+          ++ (dir / "js/src/test/require-new-target" ** "*.scala").get
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
+
+          ++ conditionally(!hasModules, "js/src/test/require-no-modules")
+          ++ conditionally(hasModules, "js/src/test/require-modules")
+          ++ conditionally(hasModules && !linkerConfig.closureCompiler, "js/src/test/require-multi-modules")
+          ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-dynamic-import")
+          ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-esmodule")
         )
+      },
+
+      Test / managedResources ++= {
+        val testDir = fetchScalaJSSource.value / "test-suite/js/src/test"
+
+        val common = (testDir / "resources" ** "*.js").get
+
+        val moduleSpecific = scalaJSLinkerConfig.value.moduleKind match {
+          case ModuleKind.NoModule       => Nil
+          case ModuleKind.CommonJSModule => (testDir / "resources-commonjs" ** "*.js").get
+          case ModuleKind.ESModule       => (testDir / "resources-esmodule" ** "*.js").get
+        }
+
+        common ++ moduleSpecific
       },
     )
 
@@ -1227,6 +1284,11 @@ object Build {
     dependsOn(`scala3-compiler` % "test->test").
     settings(
       commonNonBootstrappedSettings,
+
+      libraryDependencies ++= Seq(
+        "org.scala-js" %% "scalajs-linker" % scalaJSVersion % Test cross CrossVersion.for3Use2_13,
+        "org.scala-js" %% "scalajs-env-nodejs" % "1.3.0" % Test cross CrossVersion.for3Use2_13,
+      ),
 
       // Change the baseDirectory when running the tests
       Test / baseDirectory := baseDirectory.value.getParentFile,
@@ -1246,6 +1308,10 @@ object Build {
   lazy val `scala3-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
   lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
   lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
+
+  lazy val `scala3-bench-micro` = project.in(file("bench-micro"))
+    .asDottyBench(Bootstrapped)
+    .settings(Jmh / run / mainClass := Some("org.openjdk.jmh.Main"))
 
   val testcasesOutputDir = taskKey[Seq[String]]("Root directory where tests classses are generated")
   val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
@@ -1313,6 +1379,22 @@ object Build {
     )
   }
 
+  def bundleCSS = Def.task {
+    val unmanagedResources = (Compile / resourceDirectory).value
+    def createBundle(dir: File): Seq[File] = {
+      val (dirs, files) = IO.listFiles(dir).toList.partition(_.isDirectory)
+      val targetDir = (Compile / resourceManaged).value.toPath.resolve(unmanagedResources.toPath.relativize(dir.toPath)).toFile
+      val bundleFile = targetDir / "bundle.css"
+      if (bundleFile.exists) bundleFile.delete()
+      files.foreach(file => IO.append(bundleFile, IO.readBytes(file)))
+      bundleFile :: dirs.flatMap(createBundle)
+    }
+
+    val cssThemePath = unmanagedResources / "dotty_res" / "styles" / "theme"
+
+    createBundle(cssThemePath)
+  }
+
   val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
 
   lazy val scaladoc = project.in(file("scaladoc")).
@@ -1326,7 +1408,10 @@ object Build {
       SourceLinksIntegrationTest / test:= ((SourceLinksIntegrationTest / test) dependsOn generateScalaDocumentation.toTask("")).value,
     ).
     settings(
-      Compile / resourceGenerators += generateStaticAssetsTask.taskValue,
+      Compile / resourceGenerators ++= Seq(
+        generateStaticAssetsTask.taskValue,
+        bundleCSS.taskValue
+      ),
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.8.2",
         "org.jsoup" % "jsoup" % "1.14.3", // Needed to process .html files for static site
@@ -1813,7 +1898,17 @@ object ScaladocConfigs {
       projectFooter,
       defaultTemplate,
       Author(true),
-      Groups(true)
+      Groups(true),
+      QuickLinks(
+        List(
+          "Download::https://www.scala-lang.org/download/",
+          "Documentation::https://docs.scala-lang.org/",
+          "Libraries::https://index.scala-lang.org",
+          "Contribute::https://www.scala-lang.org/contribute/",
+          "Blog::https://www.scala-lang.org/blog/",
+          "Community::https://www.scala-lang.org/community/"
+        )
+      )
     )
   }
 
@@ -1862,6 +1957,8 @@ object ScaladocConfigs {
     val dottyManagesSources =
       (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
 
+    val tastyCoreSources = projectRoot.relativize((`tasty-core-bootstrapped`/Compile/scalaSource).value.toPath().normalize())
+
     val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
     DefaultGenerationConfig.value
       .add(ProjectName("Scala 3"))
@@ -1872,13 +1969,13 @@ object ScaladocConfigs {
       .add(CommentSyntax(List(
         s"${dottyLibRoot}=markdown",
         s"${stdLibRoot}=wiki",
+        s"${tastyCoreSources}=markdown",
         "wiki"
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
-        s"${dottyLibRoot}/scala/quoted=compile",
-        s"${dottyLibRoot}/scala/compiletime=compile"
+        s"${dottyLibRoot}/scala=compile",
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))

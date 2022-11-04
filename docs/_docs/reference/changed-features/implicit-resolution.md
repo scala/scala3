@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Changes in Implicit Resolution"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-resolution.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-resolution.html
 ---
 
 This section describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Scala 3.

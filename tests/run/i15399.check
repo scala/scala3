@@ -1,0 +1,4 @@
+Expected failure when pass Tuple3 to TupleMirror(2):
+-  expected Product with 2 elements, got 3
+Expected failure when pass Tuple1 to TupleMirror(2):
+-  expected Product with 2 elements, got 1

@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Erased Definitions - More Details"
-movedTo: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs-spec.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs-spec.html
 ---
 
 TODO: complete

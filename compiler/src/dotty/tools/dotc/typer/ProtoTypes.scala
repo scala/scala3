@@ -11,6 +11,7 @@ import Constants._
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
 import Decorators._
 import Uniques._
+import inlines.Inlines
 import config.Printers.typr
 import util.SourceFile
 import TypeComparer.necessarySubType
@@ -109,7 +110,7 @@ object ProtoTypes {
      *  achieved by replacing expected type parameters with wildcards.
      */
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
-      if (Inliner.isInlineable(meth)) {
+      if (Inlines.isInlineable(meth)) {
         constrainResult(mt, wildApprox(pt))
         true
       }
@@ -188,20 +189,33 @@ object ProtoTypes {
       case _ => false
 
     override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean =
-      name == nme.WILDCARD || hasUnknownMembers(tp1) ||
-      {
-        val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
-        def qualifies(m: SingleDenotation) =
-          val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
-          isAccessible
-          && (memberProto.isRef(defn.UnitClass)
-             || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
-              // Note: can't use `m.info` here because if `m` is a method, `m.info`
-              //       loses knowledge about `m`'s default arguments.
-        mbr match { // hasAltWith inlined for performance
-          case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
-          case _ => mbr hasAltWith qualifies
-        }
+      name == nme.WILDCARD
+      || hasUnknownMembers(tp1)
+      || {
+        try
+          val mbr = if privateOK then tp1.member(name) else tp1.nonPrivateMember(name)
+          def qualifies(m: SingleDenotation) =
+            val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
+            isAccessible
+            && (memberProto.isRef(defn.UnitClass)
+              || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
+                // Note: can't use `m.info` here because if `m` is a method, `m.info`
+                //       loses knowledge about `m`'s default arguments.
+          mbr match // hasAltWith inlined for performance
+            case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
+            case _ => mbr hasAltWith qualifies
+        catch case ex: TypeError =>
+          // A scenario where this can happen is in pos/15673.scala:
+          // We have a type `CC[A]#C` where `CC`'s upper bound is `[X] => Any`, but
+          // the current constraint stipulates CC <: SeqOps[...], where `SeqOps` defines
+          // the `C` parameter. We try to resolve this using `argDenot` but `argDenot`
+          // consults the base type of `CC`, which is not `SeqOps`, so it does not
+          // find a corresponding argument. In fact, `argDenot` is not allowed to
+          // consult short-lived things like the current constraint, so it has no other
+          // choice. The problem will be healed later, when normal selection fails
+          // and we try to instantiate type variables to compensate. But we have to make
+          // sure we do not issue a type error before we get there.
+          false
       }
 
     def underlying(using Context): Type = WildcardType
@@ -362,7 +376,7 @@ object ProtoTypes {
      *    - t2 is a ascription (t22: T) and t1 is at the outside of t22
      *    - t2 is a closure (...) => t22 and t1 is at the outside of t22
      */
-    def hasInnerErrors(t: Tree): Boolean = t match
+    def hasInnerErrors(t: Tree)(using Context): Boolean = t match
       case Typed(expr, tpe) => hasInnerErrors(expr)
       case closureDef(mdef) => hasInnerErrors(mdef.rhs)
       case _ =>
@@ -793,7 +807,7 @@ object ProtoTypes {
               else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
               val ft = defn.FunctionOf(mt.paramInfos, rt)
-              if (mt.paramInfos.nonEmpty || ft <:< pt) ft else rt
+              if mt.paramInfos.nonEmpty || (ft frozen_<:< pt) then ft else rt
           }
         }
       case et: ExprType =>
@@ -808,17 +822,23 @@ object ProtoTypes {
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
-  private def wildApprox(tp: Type, theMap: WildApproxMap | Null, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type = tp match {
+  private def wildApprox(tp: Type, theMap: WildApproxMap | Null, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type =
+    tp match {
     case tp: NamedType => // default case, inlined for speed
       val isPatternBoundTypeRef = tp.isInstanceOf[TypeRef] && tp.symbol.isPatternBound
       if (isPatternBoundTypeRef) WildcardType(tp.underlying.bounds)
       else if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen, internal))
     case tp @ AppliedType(tycon, args) =>
+      def wildArgs = args.mapConserve(arg => wildApprox(arg, theMap, seen, internal))
       wildApprox(tycon, theMap, seen, internal) match {
-        case _: WildcardType => WildcardType // this ensures we get a * type
-        case tycon1 => tp.derivedAppliedType(tycon1,
-          args.mapConserve(arg => wildApprox(arg, theMap, seen, internal)))
+        case WildcardType(TypeBounds(lo, hi)) if hi.typeParams.hasSameLengthAs(args) =>
+          val args1 = wildArgs
+          val lo1 = if lo.typeParams.hasSameLengthAs(args) then lo.appliedTo(args1) else lo
+          WildcardType(TypeBounds(lo1, hi.appliedTo(args1)))
+        case WildcardType(_) =>
+          WildcardType
+        case tycon1 => tp.derivedAppliedType(tycon1, wildArgs)
       }
     case tp: RefinedType => // default case, inlined for speed
       tp.derivedRefinedType(

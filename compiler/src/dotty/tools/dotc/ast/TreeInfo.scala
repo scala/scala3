@@ -121,6 +121,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => Nil
   }
 
+  /** Is tree explicitly parameterized with type arguments? */
+  def hasExplicitTypeArgs(tree: Tree): Boolean = tree match
+    case TypeApply(tycon, args) =>
+      args.exists(arg => !arg.span.isZeroExtent && !tycon.span.contains(arg.span))
+    case _ => false
+
   /** Is tree a path? */
   def isPath(tree: Tree): Boolean = unsplice(tree) match {
     case Ident(_) | This(_) | Super(_, _) => true
@@ -172,8 +178,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /** Is tpt a vararg type of the form T* or => T*? */
-  def isRepeatedParamType(tpt: Tree)(using Context): Boolean = tpt match {
-    case ByNameTypeTree(tpt1) => isRepeatedParamType(tpt1)
+  def isRepeatedParamType(tpt: Tree)(using Context): Boolean = stripByNameType(tpt) match {
     case tpt: TypeTree => tpt.typeOpt.isRepeatedParam
     case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _) => true
     case _ => false
@@ -189,6 +194,18 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case NamedArg(_, arg) => isWildcardStarArg(arg)
     case arg => arg.typeOpt.widen.isRepeatedParam
   }
+
+  /** Is tree a type tree of the form `=> T` or (under -Ycc) `{refs}-> T`? */
+  def isByNameType(tree: Tree)(using Context): Boolean =
+    stripByNameType(tree) ne tree
+
+  /** Strip `=> T` to `T` and (under -Ycc) `{refs}-> T` to `T` */
+  def stripByNameType(tree: Tree)(using Context): Tree = unsplice(tree) match
+    case ByNameTypeTree(t1) => t1
+    case untpd.CapturingTypeTree(_, parent) =>
+      val parent1 = stripByNameType(parent)
+      if parent1 eq parent then tree else parent1
+    case _ => tree
 
   /** All type and value parameter symbols of this DefDef */
   def allParamSyms(ddef: DefDef)(using Context): List[Symbol] =
@@ -382,6 +399,22 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       case _ => None
     }
   }
+
+  /** Under -Ycc: A builder and extractor for `=> T`, which is an alias for `{*}-> T`.
+   *  Only trees of the form `=> T` are matched; trees written directly as `{*}-> T`
+   *  are ignored by the extractor.
+   */
+  object ImpureByNameTypeTree:
+  
+    def apply(tp: ByNameTypeTree)(using Context): untpd.CapturingTypeTree =
+      untpd.CapturingTypeTree(
+        Ident(nme.CAPTURE_ROOT).withSpan(tp.span.startPos) :: Nil, tp)
+
+    def unapply(tp: Tree)(using Context): Option[ByNameTypeTree] = tp match
+      case untpd.CapturingTypeTree(id @ Ident(nme.CAPTURE_ROOT) :: Nil, bntp: ByNameTypeTree)
+      if id.span == bntp.span.startPos => Some(bntp)
+      case _ => None
+  end ImpureByNameTypeTree
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
@@ -502,7 +535,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     else if (sym.is(Module))
       if (sym.moduleClass.isNoInitsRealClass) PurePath else IdempotentPath
     else if (sym.is(Lazy)) IdempotentPath
-    else if sym.isAllOf(Inline | Param) then Impure
+    else if sym.isAllOf(InlineParam) then Impure
     else PurePath
   }
 
@@ -578,12 +611,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
             pre
           case _ =>
             tree1
-            
+
         val countsAsPure =
           if dropOp(tree1).symbol.isInlineVal
           then isIdempotentExpr(tree1)
           else isPureExpr(tree1)
-          
+
         if countsAsPure then Literal(value).withSpan(tree.span)
         else
           val pre = dropOp(tree1)
@@ -864,29 +897,33 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  that is not a member of an underlying class or trait?
    */
   def isStructuralTermSelectOrApply(tree: Tree)(using Context): Boolean = {
-    def isStructuralTermSelect(tree: Select) = {
-      def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match {
+    def isStructuralTermSelect(tree: Select) =
+      def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
-          hasRefinement(tp.underlying)
+          hasRefinement(tp.superType)
         case tp: AndType =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
         case tp: OrType =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
         case _ =>
           false
+      !tree.symbol.exists
+      && tree.isTerm
+      && {
+        val qualType = tree.qualifier.tpe
+        hasRefinement(qualType) && !qualType.derivesFrom(defn.PolyFunctionClass)
       }
-      !tree.symbol.exists && tree.isTerm && hasRefinement(tree.qualifier.tpe)
-    }
-    def loop(tree: Tree): Boolean = tree match {
+    def loop(tree: Tree): Boolean = tree match
+      case TypeApply(fun, _) =>
+        loop(fun)
       case Apply(fun, _) =>
         loop(fun)
       case tree: Select =>
         isStructuralTermSelect(tree)
       case _ =>
         false
-    }
     loop(tree)
   }
 
@@ -952,7 +989,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         Some(tree.args.head)
       else if tree.symbol == defn.QuotedTypeModule_of then
         // quoted.Type.of[<body>](quotes)
-        val TypeApply(_, body :: _) = tree.fun
+        val TypeApply(_, body :: _) = tree.fun: @unchecked
         Some(body)
       else None
   }
@@ -995,6 +1032,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           case _ => None
       case _ => None
   end AssertNotNull
+
+  object ConstantValue {
+    def unapply(tree: Tree)(using Context): Option[Any] =
+      tree match
+        case Typed(expr, _) => unapply(expr)
+        case Inlined(_, Nil, expr) => unapply(expr)
+        case Block(Nil, expr) => unapply(expr)
+        case _ =>
+          tree.tpe.widenTermRefExpr.normalized match
+            case ConstantType(Constant(x)) => Some(x)
+            case _ => None
+  }
 }
 
 object TreeInfo {

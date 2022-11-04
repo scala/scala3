@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Type Lambdas"
-movedTo: https://docs.scala-lang.org/scala3/reference/new-types/type-lambdas.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/new-types/type-lambdas.html
 ---
 
 A _type lambda_ lets one express a higher-kinded type directly, without

@@ -58,3 +58,9 @@
    |               Double definition:
    |               val bar: Bar in class Baz at line 45 and
    |               final def bar: (Baz.this.bar.bar : => (Baz.this.bar.baz.bar : Bar)) in class Baz at line 46
+-- [E083] Type Error: tests/neg/exports.scala:57:11 --------------------------------------------------------------------
+57 |    export printer.*  // error: not stable
+   |           ^^^^^^^
+   |           (No.printer : => Printer) is not a valid export prefix, since it is not an immutable path
+   |
+   | longer explanation available when compiling with `-explain`

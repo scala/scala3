@@ -1,3 +1,5 @@
+// scalajs: --compliant-semantics
+
 object Test {
   class A; class B
   def main(args: Array[String]): Unit = {

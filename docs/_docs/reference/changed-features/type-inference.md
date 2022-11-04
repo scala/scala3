@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Changes in Type Inference"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/type-inference.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/type-inference.html
 ---
 
 For more information, see the two presentations

@@ -1,3 +1,4 @@
+// scalajs: --skip
 
 trait A
 

@@ -6,7 +6,7 @@ import java.util.Collections
 import java.nio.file.Path
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
 import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 def JList[T](e: T*): JList[T] = e.asJava
 def JSet[T](e: T*): JSet[T] = e.toSet.asJava

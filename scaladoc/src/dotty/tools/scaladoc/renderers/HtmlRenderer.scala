@@ -2,7 +2,7 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.net.URI
 import java.net.URL
 import dotty.tools.scaladoc.site._
@@ -59,17 +59,17 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
   def mkHead(page: Page): AppliedTag =
     val resources = page.content match
       case t: ResolvedTemplate =>
-        t.resolved.resources ++ (if t.hasFrame then memberResourcesPaths else Nil)
+        t.resolved.resources ++ (if t.hasFrame then commonResourcesPaths ++ staticSiteOnlyResourcesPaths else Nil)
       case _ =>
-        memberResourcesPaths
+        commonResourcesPaths ++ apiOnlyResourcesPaths
 
     val earlyResources = page.content match
-      case t: ResolvedTemplate => if t.hasFrame then earlyMemberResourcePaths else Nil
-      case _ => earlyMemberResourcePaths
+      case t: ResolvedTemplate => if t.hasFrame then earlyCommonResourcePaths else Nil
+      case _ => earlyCommonResourcePaths
 
     head(
       meta(charset := "utf-8"),
-      meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1"),
+      meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1, maximum-scale=1"),
       title(page.link.name),
       canonicalUrl(absolutePath(page.link.dri)),
       link(
@@ -99,52 +99,65 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         case None => ""
     )
 
-  private def buildNavigation(pageLink: Link): AppliedTag =
+  private def buildNavigation(pageLink: Link): (Option[(Boolean, Seq[AppliedTag])], Option[(Boolean, Seq[AppliedTag])]) =
     def navigationIcon(member: Member) = member match {
       case m if m.needsOwnPage => Seq(span(cls := s"micon ${member.kind.name.take(2)}"))
       case _ => Nil
     }
 
-    def renderNested(nav: Page, toplevel: Boolean = false): (Boolean, AppliedTag) =
+    def renderNested(nav: Page, nestLevel: Int): (Boolean, AppliedTag) =
+      val isApi = nav.content.isInstanceOf[Member]
       val isSelected = nav.link.dri == pageLink.dri
+      val isTopElement = nestLevel == 0
 
       def linkHtml(expanded: Boolean = false, withArrow: Boolean = false) =
         val attrs: Seq[String] = Seq(
+          Option.when(isSelected || expanded)("h100"),
           Option.when(isSelected)("selected"),
-          Option.when(expanded)("expanded")
+          Option.when(expanded)("expanded cs"),
+          Option.when(!isApi)("de"),
         ).flatten
         val icon = nav.content match {
           case m: Member => navigationIcon(m)
           case _ => Nil
         }
         Seq(
-          span(cls := "nh " + attrs.mkString(" "))(
-            if withArrow then Seq(span(cls := "ar")) else Nil,
+          span(cls := s"nh " + attrs.mkString(" "))(
+            if withArrow then Seq(button(cls := s"ar icon-button ${if isSelected || expanded then "expanded" else ""}")) else Nil,
             a(href := pathToPage(pageLink.dri, nav.link.dri))(icon, span(nav.link.name))
           )
         )
 
       nav.children.filterNot(_.hidden) match
-        case Nil => isSelected -> div(cls := s"ni ${if isSelected then "expanded" else ""}")(linkHtml())
+        case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected then "expanded" else ""}")(linkHtml())
         case children =>
-          val nested = children.map(renderNested(_))
-          val expanded = nested.exists(_._1) || isSelected
+          val nested = children.map(renderNested(_, nestLevel + 1))
+          val expanded = nested.exists(_._1)
           val attr =
-            if expanded || isSelected || toplevel then Seq(cls := "ni expanded") else Seq(cls := "ni")
+            if expanded || isSelected then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
           (isSelected || expanded) -> div(attr)(
             linkHtml(expanded, true),
             nested.map(_._2)
           )
 
-    renderNested(navigablePage, toplevel = true)._2
+    val isRootApiPageSelected = rootApiPage.fold(false)(_.link.dri == pageLink.dri)
+    val isDocsApiPageSelected = rootDocsPage.fold(false)(_.link.dri == pageLink.dri)
+    val apiNav = rootApiPage.map { p => p.children.filterNot(_.hidden).map(renderNested(_, 0)) match
+      case entries => (entries.exists(_._1) || isRootApiPageSelected, entries.map(_._2))
+    }
+    val docsNav = rootDocsPage.map { p => p.children.filterNot(_.hidden).map(renderNested(_, 0)) match
+      case entries => (entries.exists(_._1) || isDocsApiPageSelected, entries.map(_._2))
+    }
+
+    (apiNav, docsNav)
 
   private def hasSocialLinks = !args.socialLinks.isEmpty
 
-  private def socialLinks(whiteIcon: Boolean = true) =
-    val icon = (link: SocialLinks) => if whiteIcon then link.whiteIconName else link.blackIconName
+  private def socialLinks =
+    def icon(link: SocialLinks) = link.className
     args.socialLinks.map { link =>
-      a(href := link.url)(
-        span(cls := s"social-icon", Attr("data-icon-path") := icon(link))
+      a(href := link.url) (
+        button(cls := s"icon-button ${icon(link)}")
       )
     }
 
@@ -165,11 +178,19 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
 
   private def mkFrame(link: Link, parents: Vector[Link], content: => PageContent): AppliedTag =
-    val projectLogo =
-      args.projectLogo.map { path =>
-        val fileName = Paths.get(path).getFileName()
-        span(img(src := resolveRoot(link.dri, s"project-logo/$fileName")))
-      }.toSeq
+    val projectLogoElem =
+      projectLogo.flatMap {
+        case Resource.File(path, _) =>
+          Some(span(id := "project-logo", cls := "project-logo")(img(src := resolveRoot(link.dri, path))))
+        case _ => None
+      }
+
+    val darkProjectLogoElem =
+      darkProjectLogo.flatMap {
+        case Resource.File(path, _) =>
+          Some(span(id := "dark-project-logo", cls := "project-logo")(img(src := resolveRoot(link.dri, path))))
+        case _ => None
+      }.orElse(projectLogoElem)
 
     val parentsHtml =
       val innerTags = parents.flatMap[TagArg](b => Seq(
@@ -178,6 +199,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         )).dropRight(1)
       div(cls := "breadcrumbs container")(innerTags:_*)
 
+    val (apiNavOpt, docsNavOpt): (Option[(Boolean, Seq[AppliedTag])], Option[(Boolean, Seq[AppliedTag])]) = buildNavigation(link)
+
     def textFooter: String | AppliedTag =
       args.projectFooter.fold("") { f =>
         span(id := "footer-text")(
@@ -185,81 +208,121 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         )
       }
 
-    div(id := "container")(
-      div(id := "leftColumn")(
-        div(id := "logo")(
-          projectLogo,
-          span(
-            div(cls:="projectName")(args.name)
-          ),
-          div(id := "version")(
-            div(cls := "versions-dropdown")(
-              div(onclick := "dropdownHandler()", id := "dropdown-button", cls := "dropdownbtn dropdownbtnactive")(
-                args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse(""),
-                div(id := "dropdown-content", cls := "dropdown-content")(
-                  input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
-                ),
-              ),
-            )
-          ),
-          div(cls := "socials")(
-            socialLinks()
-          )
-        ),
-        div(id := "paneSearch"),
-        nav(id := "sideMenu2")(
-          buildNavigation(link)
-        ),
-      ),
-      div(id := "main")(
-        div (id := "leftToggler")(
-          span(cls := "icon-toggler")
-        ),
-        div(id := "scaladoc-searchBar"),
-        main(id := "main-content")(
-          parentsHtml,
-          div(id := "content")(content.content),
-        ),
-        footer(
-          div(id := "generated-by")(
-            span(cls := "footer-text")(raw("Generated by")),
-            a(href := "https://github.com/lampepfl/dotty/tree/main/scaladoc")(
-              img(
-                src := resolveRoot(link.dri, "images/scaladoc_logo.svg"),
-                alt := "scaladoc",
-                cls := "scaladoc_logo"
-              ),
-              img(
-                src := resolveRoot(link.dri, "images/scaladoc_logo_dark.svg"),
-                alt := "scaladoc",
-                cls := "scaladoc_logo_dark"
-              )
-            )
-          ),
-          textFooter,
-          div(cls := "socials")(
-            span(cls := "footer-text")(if hasSocialLinks then Seq(raw("Social links")) else Nil),
-            socialLinks(whiteIcon = false)
-          ),
-          div(cls := "mode")(
-            span(cls :="footer-text")(raw("Mode")),
-            label(id := "theme-toggle", cls := "switch")(
-              input(`type` := "checkbox"),
-              span(cls := "slider")
-            )
-          ),
-          span(cls := "go-to-top-icon")(
-            a(href := "#container")(
-              span(cls:="icon-vertical_align_top"),
-              span(cls :="footer-text")(raw("Back to top"))
-            )
-          )
-        )
-      ),
-      renderTableOfContents(content.toc).fold(Nil) { toc =>
-        div(id := "toc")(
-          span(cls := "toc-title")("In this article"),
-          toc
-        )
+    def quickLinks(mobile: Boolean = false): TagArg =
+      val className = if mobile then "mobile-menu-item" else "text-button"
+      args.quickLinks.map { quickLink =>
+        a(href := quickLink.url, cls := className)(quickLink.text)
       }
+
+    div(id := "")(
+      div(id := "header", cls := "body-small")(
+        div(cls := "header-container-left")(
+          a(href := pathToRoot(link.dri), cls := "logo-container")(
+            projectLogoElem.toSeq,
+            darkProjectLogoElem.toSeq,
+            span(cls := "project-name h300")(args.name)
+          ),
+          span(onclick := "dropdownHandler(event)", cls := "text-button with-arrow", id := "dropdown-trigger")(
+            a(args.projectVersion.map(v => div(cls:="projectVersion")(v)).toSeq),
+          ),
+          div(id := "version-dropdown", cls := "dropdown-menu") ()
+        ),
+         div(cls:="header-container-right")(
+          button(id := "search-toggle", cls := "icon-button"),
+          quickLinks(),
+          span(id := "theme-toggle", cls := "icon-button"),
+          span(id := "mobile-menu-toggle", cls := "icon-button hamburger"),
+        ),
+      ),
+      div(id := "mobile-menu")(
+        div(cls := "mobile-menu-header body-small")(
+          span(cls := "mobile-menu-logo")(
+            projectLogoElem.toSeq,
+            darkProjectLogoElem.toSeq,
+            span(cls := "project-name h300")(args.name)
+          ),
+          button(id := "mobile-menu-close", cls := "icon-button close"),
+        ),
+        div(cls := "mobile-menu-container body-medium")(
+          input(id := "mobile-scaladoc-searchbar-input", cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything"),
+          quickLinks(mobile = true),
+          span(id := "mobile-theme-toggle", cls := "mobile-menu-item mode"),
+        )
+      ),
+      span(id := "mobile-sidebar-toggle", cls := "floating-button"),
+      div(id := "leftColumn", cls := "body-small")(
+        Seq(
+          div(cls:= "switcher-container")(
+            docsNavOpt match {
+              case Some(isDocsActive, docsNav) =>
+                Seq(a(id := "docs-nav-button", cls:= s"switcher h100 ${if isDocsActive then "selected" else ""}", href := pathToPage(link.dri, rootDocsPage.get.link.dri))("Docs"))
+              case _ => Nil
+            },
+            apiNavOpt match {
+              case Some(isApiActive, apiNav) =>
+                Seq(a(id := "api-nav-button", cls:= s"switcher h100 ${if isApiActive then "selected" else ""}", href := pathToPage(link.dri, rootApiPage.get.link.dri))("API"))
+              case _ => Nil
+            }
+          ),
+          apiNavOpt
+            .filter(_._1)
+            .map(apiNav => nav(id := "api-nav", cls := s"side-menu")(apiNav._2))
+            .orElse(docsNavOpt.map(docsNav => nav(id := "docs-nav", cls := s"side-menu")(docsNav._2)))
+            .get
+        )
+      ),
+      div(id := "footer", cls := "body-small")(
+        div(cls := "left-container")(
+         "Generated with"
+        ),
+        div(cls := "right-container")(
+          socialLinks,
+          div(cls := "text")(
+            "© 2002-2021 · LAMP/EPFL"
+          )
+        ),
+        div(cls := "text-mobile")(
+          "© 2002-2021 · LAMP/EPFL"
+        )
+      ),
+      div(id := "scaladoc-searchBar"),
+      div(id := "main")(
+        parentsHtml,
+        div(id := "content", cls := "body-medium")(
+          content.content,
+          renderTableOfContents(content.toc).fold(Nil) { toc =>
+            div(id := "toc", cls:="body-small")(
+            div(id := "toc-container") (
+              span(cls := "toc-title h200")("In this article"),
+              toc
+            ),
+          )
+          },
+        ),
+        div(id := "footer", cls := "body-small mobile-footer")(
+          div(cls := "left-container")(
+            "Generated with"
+          ),
+          div(cls := "right-container")(
+            a(href := "https://github.com/lampepfl/dotty") (
+              button(cls := "icon-button gh")
+            ),
+            a(href := "https://twitter.com/scala_lang") (
+              button(cls := "icon-button twitter")
+            ),
+            a(href := "https://discord.com/invite/scala") (
+              button(cls := "icon-button discord"),
+            ),
+            a(href := "https://gitter.im/scala/scala") (
+              button(cls := "icon-button gitter"),
+            ),
+            div(cls := "text")(
+              "© 2002-2021 · LAMP/EPFL"
+            )
+          ),
+          div(cls := "text-mobile")(
+            "© 2002-2021 · LAMP/EPFL"
+          )
+        ),
+      ),
     )

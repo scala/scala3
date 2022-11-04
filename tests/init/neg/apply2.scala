@@ -6,5 +6,5 @@ object O:
     val a = A(this)
 
   val b = new B
-  val n = 10         // error
+  val n = 10  // error
 end O

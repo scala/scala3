@@ -164,8 +164,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
-  def TypeTree(tp: Type)(using Context): TypeTree =
-    untpd.TypeTree().withType(tp)
+  def TypeTree(tp: Type, inferred: Boolean = false)(using Context): TypeTree =
+    (if inferred then untpd.InferredTypeTree() else untpd.TypeTree()).withType(tp)
 
   def SingletonTypeTree(ref: Tree)(using Context): SingletonTypeTree =
     ta.assignType(untpd.SingletonTypeTree(ref), ref)
@@ -203,8 +203,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.UnApply(fun, implicits, patterns), proto)
   }
 
-  def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree)(using Context): ValDef =
-    ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
+  def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree, inferred: Boolean = false)(using Context): ValDef =
+    ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info, inferred), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree, flags: FlagSet = EmptyFlags)(using Context): ValDef =
     ValDef(newSymbol(ctx.owner, name, Synthetic | flags, rhs.tpe.widen, coord = rhs.span), rhs)
@@ -293,7 +293,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(using Context): TypeDef = {
-    val firstParent :: otherParents = cls.info.parents
+    val firstParent :: otherParents = cls.info.parents: @unchecked
     val superRef =
       if (cls.is(Trait)) TypeTree(firstParent)
       else {
@@ -340,27 +340,35 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  Its position is the union of all functions in `fns`.
    */
   def AnonClass(parents: List[Type], fns: List[TermSymbol], methNames: List[TermName])(using Context): Block = {
-    val owner = fns.head.owner
+    AnonClass(fns.head.owner, parents, fns.map(_.span).reduceLeft(_ union _)) { cls =>
+      def forwarder(fn: TermSymbol, name: TermName) = {
+        val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
+        for overridden <- fwdMeth.allOverriddenSymbols do
+          if overridden.is(Extension) then fwdMeth.setFlag(Extension)
+          if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
+        DefDef(fwdMeth, ref(fn).appliedToArgss(_))
+      }
+      fns.lazyZip(methNames).map(forwarder)
+    }
+  }
+
+  /** An anonymous class
+   *
+   *      new parents { body }
+   *
+   * with the specified owner and position.
+   */
+  def AnonClass(owner: Symbol, parents: List[Type], coord: Coord)(body: ClassSymbol => List[Tree])(using Context): Block =
     val parents1 =
       if (parents.head.classSymbol.is(Trait)) {
         val head = parents.head.parents.head
         if (head.isRef(defn.AnyClass)) defn.AnyRefType :: parents else head :: parents
       }
       else parents
-    val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
-        coord = fns.map(_.span).reduceLeft(_ union _))
+    val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1, coord = coord)
     val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
-    def forwarder(fn: TermSymbol, name: TermName) = {
-      val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
-      for overridden <- fwdMeth.allOverriddenSymbols do
-        if overridden.is(Extension) then fwdMeth.setFlag(Extension)
-        if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
-      DefDef(fwdMeth, ref(fn).appliedToArgss(_))
-    }
-    val forwarders = fns.lazyZip(methNames).map(forwarder)
-    val cdef = ClassDef(cls, DefDef(constr), forwarders)
+    val cdef = ClassDef(cls, DefDef(constr), body(cls))
     Block(cdef :: Nil, New(cls.typeRef, Nil))
-  }
 
   def Import(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import =
     ta.assignType(untpd.Import(expr, selectors), newImportSymbol(ctx.owner, expr))
@@ -1010,12 +1018,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** `tree ne null` (might need a cast to be type correct) */
     def testNotNull(using Context): Tree = {
-      val receiver = if (tree.tpe.isBottomType)
-        // If the receiver is of type `Nothing` or `Null`, add an ascription so that the selection
-        // succeeds: e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
-        Typed(tree, TypeTree(defn.AnyRefType))
-      else tree.ensureConforms(defn.ObjectType)
-      receiver.select(defn.Object_ne).appliedTo(nullLiteral).withSpan(tree.span)
+      // If the receiver is of type `Nothing` or `Null`, add an ascription or cast
+      // so that the selection succeeds.
+      // e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
+      val receiver =
+        if tree.tpe.isBottomType then
+          if ctx.explicitNulls then tree.cast(defn.AnyRefType)
+          else Typed(tree, TypeTree(defn.AnyRefType))
+        else tree.ensureConforms(defn.ObjectType)
+      // also need to cast the null literal to AnyRef in explicit nulls
+      val nullLit = if ctx.explicitNulls then nullLiteral.cast(defn.AnyRefType) else nullLiteral
+      receiver.select(defn.Object_ne).appliedTo(nullLit).withSpan(tree.span)
     }
 
     /** If inititializer tree is `_`, the default value of its type,

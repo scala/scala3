@@ -1,6 +1,6 @@
 10
 meth1(1) = 2
-meth1(1.0) = 2.0
+meth1(1.0) = 2.1
 meth2(1)(1) = prefix: 0
 meth2(1)(1) = prefix: 0
 meth3 = class [I

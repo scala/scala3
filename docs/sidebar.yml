@@ -1,21 +1,5 @@
 index: index.md
 subsection:
-  - title: Usage
-    directory: docs/usage
-    index: usage/index.md
-    subsection:
-      - page: usage/sbt-projects.md
-      - page: usage/ide-support.md
-      - page: usage/cbt-projects.md
-      - title: Scaladoc
-        index: usage/scaladoc/index.md
-        subsection:
-          - page: usage/scaladoc/docstrings.md
-          - page: usage/scaladoc/linking.md
-          - page: usage/scaladoc/search-engine.md
-          - page: usage/scaladoc/settings.md
-          - page: usage/scaladoc/site-versioning.md
-          - page: usage/scaladoc/static-site.md
   - title: Reference
     directory: docs/reference
     index: reference/overview.md
@@ -156,6 +140,7 @@ subsection:
         index: reference/experimental/overview.md
         subsection:
           - page: reference/experimental/fewer-braces.md
+            hidden: true
           - page: reference/experimental/canthrow.md
           - page: reference/experimental/erased-defs.md
           - page: reference/experimental/erased-defs-spec.md
@@ -213,5 +198,6 @@ subsection:
       - page: internals/dotty-internals-1-notes.md
       - page: internals/debug-macros.md
       - page: internals/gadts.md
+      - page: internals/coverage.md
   - page: release-notes-0.1.2.md
     hidden: true

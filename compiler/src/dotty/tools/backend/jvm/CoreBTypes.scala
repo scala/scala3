@@ -5,6 +5,8 @@ package jvm
 
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.Erasure
+import scala.tools.asm.{Handle, Opcodes}
+import dotty.tools.dotc.core.StdNames
 
 /**
  * Core BTypes and some other definitions. The initialization of these definitions requies access
@@ -54,15 +56,15 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
     defn.DoubleClass  -> DOUBLE
   )
 
-  lazy val BOXED_UNIT    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Void])
-  lazy val BOXED_BOOLEAN : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Boolean])
-  lazy val BOXED_BYTE    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Byte])
-  lazy val BOXED_SHORT   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Short])
-  lazy val BOXED_CHAR    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Character])
-  lazy val BOXED_INT     : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Integer])
-  lazy val BOXED_LONG    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Long])
-  lazy val BOXED_FLOAT   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Float])
-  lazy val BOXED_DOUBLE  : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Double])
+  private lazy val BOXED_UNIT    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Void])
+  private lazy val BOXED_BOOLEAN : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Boolean])
+  private lazy val BOXED_BYTE    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Byte])
+  private lazy val BOXED_SHORT   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Short])
+  private lazy val BOXED_CHAR    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Character])
+  private lazy val BOXED_INT     : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Integer])
+  private lazy val BOXED_LONG    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Long])
+  private lazy val BOXED_FLOAT   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Float])
+  private lazy val BOXED_DOUBLE  : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Double])
 
   /**
    * Map from primitive types to their boxed class type. Useful when pushing class literals onto the
@@ -105,43 +107,79 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
   }
 
   /*
-   * RT_NOTHING and RT_NULL exist at run-time only. They are the bytecode-level manifestation (in
-   * method signatures only) of what shows up as NothingClass resp. NullClass in Scala ASTs.
+   * srNothingRef and srNullRef exist at run-time only. They are the bytecode-level manifestation (in
+   * method signatures only) of what shows up as NothingClass (scala.Nothing) resp. NullClass (scala.Null) in Scala ASTs.
    *
-   * Therefore, when RT_NOTHING or RT_NULL are to be emitted, a mapping is needed: the internal
+   * Therefore, when srNothingRef or srNullRef are to be emitted, a mapping is needed: the internal
    * names of NothingClass and NullClass can't be emitted as-is.
    * TODO @lry Once there's a 2.11.3 starr, use the commented argument list. The current starr crashes on the type literal `scala.runtime.Nothing$`
    */
-  lazy val RT_NOTHING : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Nothing$")) // (requiredClass[scala.runtime.Nothing$])
-  lazy val RT_NULL    : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Null$"))    // (requiredClass[scala.runtime.Null$])
+  lazy val srNothingRef : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Nothing$")) // (requiredClass[scala.runtime.Nothing$])
+  lazy val srNullRef    : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Null$"))    // (requiredClass[scala.runtime.Null$])
 
-  lazy val ObjectReference   : ClassBType = classBTypeFromSymbol(defn.ObjectClass)
-  lazy val objArrayReference : ArrayBType = ArrayBType(ObjectReference)
-
+  lazy val ObjectRef   : ClassBType = classBTypeFromSymbol(defn.ObjectClass)
   lazy val StringRef                   : ClassBType = classBTypeFromSymbol(defn.StringClass)
   lazy val jlStringBuilderRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuilder])
   lazy val jlStringBufferRef           : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuffer])
   lazy val jlCharSequenceRef           : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.CharSequence])
   lazy val jlClassRef                  : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Class[_]])
-  lazy val ThrowableReference          : ClassBType = classBTypeFromSymbol(defn.ThrowableClass)
-  lazy val jlCloneableReference        : ClassBType = classBTypeFromSymbol(defn.JavaCloneableClass)        // java/lang/Cloneable
-  lazy val jlNPEReference              : ClassBType = classBTypeFromSymbol(defn.NullPointerExceptionClass) // java/lang/NullPointerException
-  lazy val jioSerializableReference    : ClassBType = classBTypeFromSymbol(requiredClass[java.io.Serializable])     // java/io/Serializable
-  lazy val scalaSerializableReference  : ClassBType = classBTypeFromSymbol(requiredClass[scala.Serializable])         // scala/Serializable
-  lazy val classCastExceptionReference : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.ClassCastException])   // java/lang/ClassCastException
-  lazy val jlIllegalArgExceptionRef: ClassBType = classBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException])
-  lazy val jliSerializedLambdaRef: ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
+  lazy val jlThrowableRef              : ClassBType = classBTypeFromSymbol(defn.ThrowableClass)
+  lazy val jlCloneableRef              : ClassBType = classBTypeFromSymbol(defn.JavaCloneableClass)        // java/lang/Cloneable
+  lazy val jioSerializableRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.io.Serializable])     // java/io/Serializable
+  lazy val jlClassCastExceptionRef     : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.ClassCastException])   // java/lang/ClassCastException
+  lazy val jlIllegalArgExceptionRef    : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException])
+  lazy val jliSerializedLambdaRef      : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
+  
+  lazy val srBoxesRunTimeRef: ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
 
-  lazy val srBooleanRef : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.BooleanRef])
-  lazy val srByteRef    : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.ByteRef])
-  lazy val srCharRef    : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.CharRef])
-  lazy val srIntRef     : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.IntRef])
-  lazy val srLongRef    : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.LongRef])
-  lazy val srFloatRef   : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.FloatRef])
-  lazy val srDoubleRef  : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.DoubleRef])
+  private lazy val jliCallSiteRef              : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
+  private lazy val jliLambdaMetafactoryRef     : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
+  private lazy val jliMethodHandleRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodHandle])
+  private lazy val jliMethodHandlesLookupRef   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodHandles.Lookup])
+  private lazy val jliMethodTypeRef            : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
+  private lazy val jliStringConcatFactoryRef   : ClassBType = classBTypeFromSymbol(requiredClass("java.lang.invoke.StringConcatFactory")) // since JDK 9
+  private lazy val srLambdaDeserialize         : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize]) 
 
-  lazy val BoxesRunTime: ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
+  lazy val jliLambdaMetaFactoryMetafactoryHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliLambdaMetafactoryRef.internalName,
+    "metafactory",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false)
 
+  lazy val jliLambdaMetaFactoryAltMetafactoryHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliLambdaMetafactoryRef.internalName,
+    "altMetafactory",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false)
+    
+  lazy val jliLambdaDeserializeBootstrapHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    srLambdaDeserialize.internalName,
+    "bootstrap",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false)
+
+  lazy val jliStringConcatFactoryMakeConcatWithConstantsHandle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliStringConcatFactoryRef.internalName,
+    "makeConcatWithConstants",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false)
+  
   /**
    * Methods in scala.runtime.BoxesRuntime
    */
@@ -157,14 +195,14 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
   )
 
   lazy val asmUnboxTo: Map[BType, MethodNameAndType] = Map(
-    BOOL   -> MethodNameAndType("unboxToBoolean", MethodBType(List(ObjectReference), BOOL)),
-    BYTE   -> MethodNameAndType("unboxToByte",    MethodBType(List(ObjectReference), BYTE)),
-    CHAR   -> MethodNameAndType("unboxToChar",    MethodBType(List(ObjectReference), CHAR)),
-    SHORT  -> MethodNameAndType("unboxToShort",   MethodBType(List(ObjectReference), SHORT)),
-    INT    -> MethodNameAndType("unboxToInt",     MethodBType(List(ObjectReference), INT)),
-    LONG   -> MethodNameAndType("unboxToLong",    MethodBType(List(ObjectReference), LONG)),
-    FLOAT  -> MethodNameAndType("unboxToFloat",   MethodBType(List(ObjectReference), FLOAT)),
-    DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ObjectReference), DOUBLE))
+    BOOL   -> MethodNameAndType("unboxToBoolean", MethodBType(List(ObjectRef), BOOL)),
+    BYTE   -> MethodNameAndType("unboxToByte",    MethodBType(List(ObjectRef), BYTE)),
+    CHAR   -> MethodNameAndType("unboxToChar",    MethodBType(List(ObjectRef), CHAR)),
+    SHORT  -> MethodNameAndType("unboxToShort",   MethodBType(List(ObjectRef), SHORT)),
+    INT    -> MethodNameAndType("unboxToInt",     MethodBType(List(ObjectRef), INT)),
+    LONG   -> MethodNameAndType("unboxToLong",    MethodBType(List(ObjectRef), LONG)),
+    FLOAT  -> MethodNameAndType("unboxToFloat",   MethodBType(List(ObjectRef), FLOAT)),
+    DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ObjectRef), DOUBLE))
   )
 
   lazy val typeOfArrayOp: Map[Int, BType] = {
@@ -178,7 +216,7 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
         (List(LARRAY_LENGTH, LARRAY_GET, LARRAY_SET) map (_ -> LONG))   ++
         (List(FARRAY_LENGTH, FARRAY_GET, FARRAY_SET) map (_ -> FLOAT))  ++
         (List(DARRAY_LENGTH, DARRAY_GET, DARRAY_SET) map (_ -> DOUBLE)) ++
-        (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectReference)) : _*
+        (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectRef)) : _*
     )
   }
 }
@@ -197,12 +235,12 @@ trait CoreBTypesProxyGlobalIndependent[BTS <: BTypes] {
 
   def boxedClasses: Set[ClassBType]
 
-  def RT_NOTHING : ClassBType
-  def RT_NULL    : ClassBType
+  def srNothingRef : ClassBType
+  def srNullRef    : ClassBType
 
-  def ObjectReference          : ClassBType
-  def jlCloneableReference     : ClassBType
-  def jioSerializableReference : ClassBType
+  def ObjectRef          : ClassBType
+  def jlCloneableRef     : ClassBType
+  def jiSerializableRef  : ClassBType
 }
 
 /**
@@ -218,16 +256,6 @@ final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface
 
   def primitiveTypeMap: Map[Symbol, PrimitiveBType] = _coreBTypes.primitiveTypeMap
 
-  def BOXED_UNIT    : ClassBType = _coreBTypes.BOXED_UNIT
-  def BOXED_BOOLEAN : ClassBType = _coreBTypes.BOXED_BOOLEAN
-  def BOXED_BYTE    : ClassBType = _coreBTypes.BOXED_BYTE
-  def BOXED_SHORT   : ClassBType = _coreBTypes.BOXED_SHORT
-  def BOXED_CHAR    : ClassBType = _coreBTypes.BOXED_CHAR
-  def BOXED_INT     : ClassBType = _coreBTypes.BOXED_INT
-  def BOXED_LONG    : ClassBType = _coreBTypes.BOXED_LONG
-  def BOXED_FLOAT   : ClassBType = _coreBTypes.BOXED_FLOAT
-  def BOXED_DOUBLE  : ClassBType = _coreBTypes.BOXED_DOUBLE
-
   def boxedClasses: Set[ClassBType] = _coreBTypes.boxedClasses
 
   def boxedClassOfPrimitive: Map[PrimitiveBType, ClassBType] = _coreBTypes.boxedClassOfPrimitive
@@ -236,36 +264,29 @@ final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface
 
   def unboxResultType: Map[Symbol, PrimitiveBType] = _coreBTypes.unboxResultType
 
-  def RT_NOTHING : ClassBType = _coreBTypes.RT_NOTHING
-  def RT_NULL    : ClassBType = _coreBTypes.RT_NULL
+  def srNothingRef : ClassBType = _coreBTypes.srNothingRef
+  def srNullRef    : ClassBType = _coreBTypes.srNullRef
 
-  def ObjectReference   : ClassBType = _coreBTypes.ObjectReference
-  def objArrayReference : ArrayBType = _coreBTypes.objArrayReference
-
+  def ObjectRef                   : ClassBType = _coreBTypes.ObjectRef
   def StringRef                   : ClassBType = _coreBTypes.StringRef
   def jlStringBuilderRef          : ClassBType = _coreBTypes.jlStringBuilderRef
   def jlStringBufferRef           : ClassBType = _coreBTypes.jlStringBufferRef
   def jlCharSequenceRef           : ClassBType = _coreBTypes.jlCharSequenceRef
   def jlClassRef                  : ClassBType = _coreBTypes.jlClassRef
-  def ThrowableReference          : ClassBType = _coreBTypes.ThrowableReference
-  def jlCloneableReference        : ClassBType = _coreBTypes.jlCloneableReference
-  def jlNPEReference              : ClassBType = _coreBTypes.jlNPEReference
-  def jioSerializableReference    : ClassBType = _coreBTypes.jioSerializableReference
-  def scalaSerializableReference  : ClassBType = _coreBTypes.scalaSerializableReference
-  def classCastExceptionReference : ClassBType = _coreBTypes.classCastExceptionReference
+  def jlThrowableRef              : ClassBType = _coreBTypes.jlThrowableRef
+  def jlCloneableRef              : ClassBType = _coreBTypes.jlCloneableRef
+  def jiSerializableRef           : ClassBType = _coreBTypes.jioSerializableRef
+  def jlClassCastExceptionRef     : ClassBType = _coreBTypes.jlClassCastExceptionRef
   def jlIllegalArgExceptionRef    : ClassBType = _coreBTypes.jlIllegalArgExceptionRef
   def jliSerializedLambdaRef      : ClassBType = _coreBTypes.jliSerializedLambdaRef
 
-  def srBooleanRef : ClassBType = _coreBTypes.srBooleanRef
-  def srByteRef    : ClassBType = _coreBTypes.srByteRef
-  def srCharRef    : ClassBType = _coreBTypes.srCharRef
-  def srIntRef     : ClassBType = _coreBTypes.srIntRef
-  def srLongRef    : ClassBType = _coreBTypes.srLongRef
-  def srFloatRef   : ClassBType = _coreBTypes.srFloatRef
-  def srDoubleRef  : ClassBType = _coreBTypes.srDoubleRef
+  def srBoxesRuntimeRef: ClassBType = _coreBTypes.srBoxesRunTimeRef
 
-  def BoxesRunTime: ClassBType = _coreBTypes.BoxesRunTime
-
+  def jliLambdaMetaFactoryMetafactoryHandle    : Handle = _coreBTypes.jliLambdaMetaFactoryMetafactoryHandle
+  def jliLambdaMetaFactoryAltMetafactoryHandle : Handle = _coreBTypes.jliLambdaMetaFactoryAltMetafactoryHandle
+  def jliLambdaDeserializeBootstrapHandle      : Handle = _coreBTypes.jliLambdaDeserializeBootstrapHandle
+  def jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle = _coreBTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle
+  
   def asmBoxTo  : Map[BType, MethodNameAndType] = _coreBTypes.asmBoxTo
   def asmUnboxTo: Map[BType, MethodNameAndType] = _coreBTypes.asmUnboxTo
 

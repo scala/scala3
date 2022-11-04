@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Changes in Compiler Plugins"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/compiler-plugins.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/compiler-plugins.html
 ---
 
 Compiler plugins are supported in Scala 3 since Dotty 0.9. There are two notable changes

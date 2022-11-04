@@ -70,7 +70,7 @@ object RefChecks {
 
     // Check for doomed attempt to overload applyDynamic
     if (clazz derivesFrom defn.DynamicClass)
-      for ((_, m1 :: m2 :: _) <- (clazz.info member nme.applyDynamic).alternatives groupBy (_.symbol.typeParams.length))
+      for (case (_, m1 :: m2 :: _) <- (clazz.info member nme.applyDynamic).alternatives groupBy (_.symbol.typeParams.length))
         report.error("implementation restriction: applyDynamic cannot be overloaded except by methods with different numbers of type parameters, e.g. applyDynamic[T1](method: String)(arg: T1) and applyDynamic[T1, T2](method: String)(arg1: T1, arg2: T2)",
           m1.symbol.srcPos)
   }
@@ -95,7 +95,7 @@ object RefChecks {
    *  and required classes. Also check that only `enum` constructs extend
    *  `java.lang.Enum` and no user-written class extends ContextFunctionN.
    */
-  private def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
+  def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
@@ -106,8 +106,9 @@ object RefChecks {
       val psyms = cls.asClass.parentSyms
       for (psym <- psyms)
         checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
-      for (reqd <- cinfo.cls.givenSelfType.classSymbols)
-        checkSelfConforms(reqd, "missing requirement", "required")
+      for reqd <- cinfo.cls.givenSelfType.classSymbols do
+        if reqd != cls then
+          checkSelfConforms(reqd, "missing requirement", "required")
 
       def isClassExtendingJavaEnum =
         !cls.isOneOf(Enum | Trait) && psyms.contains(defn.JavaEnumClass)
@@ -272,7 +273,7 @@ object RefChecks {
    *  TODO This still needs to be cleaned up; the current version is a straight port of what was there
    *       before, but it looks too complicated and method bodies are far too large.
    */
-  private def checkAllOverrides(clazz: ClassSymbol)(using Context): Unit = {
+  def checkAllOverrides(clazz: ClassSymbol)(using Context): Unit = {
     val self = clazz.thisType
     val upwardsSelf = upwardsThisType(clazz)
     var hasErrors = false
@@ -316,7 +317,7 @@ object RefChecks {
     /* Check that all conditions for overriding `other` by `member`
        * of class `clazz` are met.
        */
-    def checkOverride(member: Symbol, other: Symbol): Unit = {
+    def checkOverride(member: Symbol, other: Symbol): Unit =
       def memberTp(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
         else self.memberInfo(member)
@@ -373,6 +374,11 @@ object RefChecks {
         if trueMatch && noErrorType then
           emitOverrideError(overrideErrorMsg(msg, compareTypes))
 
+      def overrideDeprecation(what: String, member: Symbol, other: Symbol, fix: String): Unit =
+        report.deprecationWarning(
+          s"overriding $what${infoStringWithLocation(other)} is deprecated;\n  ${infoString(member)} should be $fix.",
+          if member.owner == clazz then member.srcPos else clazz.srcPos)
+
       def autoOverride(sym: Symbol) =
         sym.is(Synthetic) && (
           desugar.isDesugaredCaseClassMethodName(member.name) || // such names are added automatically, can't have an override preset.
@@ -423,6 +429,7 @@ object RefChecks {
         def otherIsJavaProtected = other.isAllOf(JavaProtected)               // or o is Java defined and protected (see #3946)
         memberIsPublic || protectedOK && (accessBoundaryOK || otherIsJavaProtected)
       end isOverrideAccessOK
+
       if !member.hasTargetName(other.targetName) then
         overrideTargetNameError()
       else if !isOverrideAccessOK then
@@ -484,7 +491,7 @@ object RefChecks {
           "(this rule is designed to prevent ``accidental overrides'')")
       else if (other.isStableMember && !member.isStableMember) // (1.5)
         overrideError("needs to be a stable, immutable value")
-      else if (member.is(ModuleVal) && !other.isRealMethod && !other.isOneOf(Deferred | Lazy))
+      else if (member.is(ModuleVal) && !other.isRealMethod && !other.isOneOf(DeferredOrLazy))
         overrideError("may not override a concrete non-lazy value")
       else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
                  !warnOnMigration(overrideErrorMsg("may not override a non-lazy value"), member.srcPos, version = `3.0`))
@@ -509,21 +516,9 @@ object RefChecks {
           overrideError("cannot have a @targetName annotation since external names would be different")
       else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.12)
         overrideError("may not override non-experimental member")
-      else
-        checkOverrideDeprecated()
-    }
+      else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
+        overrideDeprecation("", member, other, "removed or renamed")
     end checkOverride
-
-    /* TODO enable; right now the annotation is scala-private, so cannot be seen
-         * here.
-         */
-    def checkOverrideDeprecated() = { /*
-          if (other.hasDeprecatedOverridingAnnotation) {
-            val suffix = other.deprecatedOverridingMessage map (": " + _) getOrElse ""
-            val msg = s"overriding ${other.fullLocationString} is deprecated$suffix"
-            unit.deprecationWarning(member.pos, msg)
-          }*/
-    }
 
     OverridingPairsChecker(clazz, self).checkAll(checkOverride)
     printMixinOverrideErrors()
@@ -1015,7 +1010,7 @@ object RefChecks {
         ErrorReporting.substitutableTypeSymbolsInScope(sd.symbol).map(_.denot.name.show)
       for
         annotation <- sd.getAnnotation(defn.ImplicitNotFoundAnnot)
-        PositionedStringLiteralArgument(msg, span) <- annotation.argument(0)
+        case PositionedStringLiteralArgument(msg, span) <- annotation.argument(0)
       do forEachTypeVariableReferenceIn(msg) { case (ref, start) =>
         if !substitutableTypesNames.contains(ref) then
           reportInvalidReference(span, ref, start, sd)

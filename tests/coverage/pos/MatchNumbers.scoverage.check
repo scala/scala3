@@ -42,23 +42,6 @@ MatchNumbers$
 Object
 covtest.MatchNumbers$
 f
-121
-126
-6
-<
-Apply
-false
-0
-false
-x < 0
-
-2
-MatchNumbers.scala
-covtest
-MatchNumbers$
-Object
-covtest.MatchNumbers$
-f
 137
 148
 7
@@ -69,7 +52,7 @@ false
 false
 case x: Int
 
-3
+2
 MatchNumbers.scala
 covtest
 MatchNumbers$
@@ -86,7 +69,7 @@ false
 false
 case y: Long
 
-4
+3
 MatchNumbers.scala
 covtest
 MatchNumbers$
@@ -103,7 +86,7 @@ false
 false
 def f
 
-5
+4
 MatchNumbers.scala
 covtest
 MatchNumbers$
@@ -120,7 +103,7 @@ false
 false
 f(0)
 
-6
+5
 MatchNumbers.scala
 covtest
 MatchNumbers$

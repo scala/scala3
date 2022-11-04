@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class Foo(@Named s: String)
 
 object Test {

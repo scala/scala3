@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 // from https://github.com/rickynils/scalacheck/issues/290
 import scala.concurrent.*
 import scala.concurrent.duration.*

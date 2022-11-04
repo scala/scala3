@@ -7,6 +7,7 @@ import scala.language.unsafeNulls
 import java.nio.file.Paths
 import org.junit.{Test, AfterClass}
 import org.junit.Assert.assertEquals
+import org.junit.experimental.categories.Category
 
 import vulpix.TestConfiguration
 
@@ -156,6 +157,7 @@ class BashScriptsTests:
    * verify that scriptPath.sc sees a valid script.path property,
    * and that it's value is the path to "scriptPath.sc".
    */
+  @Category(Array(classOf[BootstrappedOnlyTests]))
   @Test def verifyScriptPathProperty =
     val scriptFile = testFiles.find(_.getName == "scriptPath.sc").get
     val expected = s"${scriptFile.getName}"

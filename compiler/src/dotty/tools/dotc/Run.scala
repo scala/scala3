@@ -11,15 +11,14 @@ import Denotations.Denotation
 import typer.Typer
 import typer.ImportInfo.withRootImports
 import Decorators._
-import io.{AbstractFile, VirtualFile}
+import io.AbstractFile
 import Phases.unfusedPhases
 
 import util._
-import reporting.{Suppression, Action}
+import reporting.{Suppression, Action, Profile, ActiveProfile, NoProfile}
 import reporting.Diagnostic
 import reporting.Diagnostic.Warning
 import rewrites.Rewrites
-
 import profile.Profiler
 import printing.XprintMode
 import typer.ImplicitRunInfo
@@ -197,11 +196,20 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compileUnits()(using ctx)
   }
 
+  var profile: Profile = NoProfile
+
   private def compileUnits()(using Context) = Stats.maybeMonitored {
     if (!ctx.mode.is(Mode.Interactive)) // IDEs might have multi-threaded access, accesses are synchronized
       ctx.base.checkSingleThreaded()
 
     compiling = true
+
+    profile =
+      if ctx.settings.Vprofile.value
+        || !ctx.settings.VprofileSortedBy.value.isEmpty
+        || ctx.settings.VprofileDetails.value != 0
+      then ActiveProfile(ctx.settings.VprofileDetails.value.max(0).min(1000))
+      else NoProfile
 
     // If testing pickler, make sure to stop after pickling phase:
     val stopAfter =
@@ -282,11 +290,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   private def printTree(last: PrintedTree)(using Context): PrintedTree = {
     val unit = ctx.compilationUnit
-    val prevPhase = ctx.phase.prev // can be a mini-phase
-    val fusedPhase = ctx.base.fusedContaining(prevPhase)
+    val fusedPhase = ctx.phase.prevMega
     val echoHeader = f"[[syntax trees at end of $fusedPhase%25s]] // ${unit.source}"
     val tree = if ctx.isAfterTyper then unit.tpdTree else unit.untpdTree
-    val treeString = tree.show(using ctx.withProperty(XprintMode, Some(())))
+    val treeString = fusedPhase.show(tree)
 
     last match {
       case SomePrintedTree(phase, lastTreeString) if lastTreeString == treeString =>
@@ -307,12 +314,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def compileFromStrings(scalaSources: List[String], javaSources: List[String] = Nil): Unit = {
     def sourceFile(source: String, isJava: Boolean): SourceFile = {
       val uuid = java.util.UUID.randomUUID().toString
-      val ext = if (isJava) ".java" else ".scala"
-      val virtualFile = new VirtualFile(s"compileFromString-$uuid.$ext")
-      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.nn.name)) // buffering is still advised by javadoc
-      writer.write(source)
-      writer.close()
-      new SourceFile(virtualFile, Codec.UTF8)
+      val ext = if (isJava) "java" else "scala"
+      val name = s"compileFromString-$uuid.$ext"
+      SourceFile.virtual(name, source)
     }
     val sources =
       scalaSources.map(sourceFile(_, isJava = false)) ++
@@ -325,8 +329,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def printSummary(): Unit = {
     printMaxConstraint()
     val r = runContext.reporter
-    r.summarizeUnreportedWarnings
-    r.printSummary
+    if !r.errorsReported then
+      profile.printSummary()
+    r.summarizeUnreportedWarnings()
+    r.printSummary()
   }
 
   override def reset(): Unit = {

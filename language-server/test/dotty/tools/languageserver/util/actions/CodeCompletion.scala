@@ -7,7 +7,7 @@ import dotty.tools.languageserver.util.server.TestFile
 import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind}
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * An action requesting for code completion at `marker`, expecting `expected`.

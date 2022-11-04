@@ -62,7 +62,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
     if body.isTerm then
       cpy.Apply(quote)(quote.fun, body :: Nil)
     else
-      val TypeApply(fun, _) = quote.fun
+      val TypeApply(fun, _) = quote.fun: @unchecked
       cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body :: Nil), quote.args)
 
   /** Transform the expression splice `splice` which contains the spliced `body`. */

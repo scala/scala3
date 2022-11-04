@@ -66,3 +66,26 @@ class AnnotationsTest:
           s"A missing annotation while parsing a Java class should be silently ignored but: ${ctx.reporter.summary}")
       }
     }
+
+  @Test def surviveMissingInnerClassAnnot: Unit =
+    withJavaCompiled(
+      VirtualJavaSource("Outer.java",
+        """|package a.b;
+           |public @interface Outer { public @interface Value { @interface Immutable {} } }
+           |""".stripMargin),
+      VirtualJavaSource("Baz.java",
+        """|package a.b;
+           |@Outer.Value.Immutable abstract class Baz {}""".stripMargin)
+    ) { javaOutputDir =>
+      Files.delete(javaOutputDir.resolve("a/b/Outer.class"))
+      Files.delete(javaOutputDir.resolve("a/b/Outer$Value.class"))
+      Files.delete(javaOutputDir.resolve("a/b/Outer$Value$Immutable.class"))
+      inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
+        val cls = requiredClass("a.b.Baz")
+        val annots = cls.annotations.map(_.tree)
+        assert(annots == Nil,
+          s"class Baz should have no visible annotations since Outer.Value.Immutable is not on the classpath, but found: $annots")
+        assert(!ctx.reporter.hasErrors && !ctx.reporter.hasWarnings,
+          s"A missing annotation while parsing a Java class should be silently ignored but: ${ctx.reporter.summary}")
+      }
+    }

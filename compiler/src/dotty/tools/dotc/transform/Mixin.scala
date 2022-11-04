@@ -23,7 +23,11 @@ object Mixin {
   val description: String = "expand trait fields and trait initializers"
 
   def traitSetterName(getter: TermSymbol)(using Context): TermName =
+    extension (name: Name) def qualifiedToSimple = name.replace {
+      case n @ AnyQualifiedName(_, _) => n.toSimpleName
+    }
     getter.ensureNotPrivate.name
+      .qualifiedToSimple  // TODO: Find out why TraitSetterNames can't be defined over QualifiedNames
       .expandedName(getter.owner, TraitSetterName)
       .asTermName.syntheticSetterName
 }
@@ -218,7 +222,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           }
           (scall, stats ::: inits, args)
       case _ =>
-        val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
+        val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree: @unchecked
         val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
         (superRef(tree.symbol, tree.span).appliedToTermArgs(callArgs), Nil, initArgs)
     }

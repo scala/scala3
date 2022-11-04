@@ -86,7 +86,7 @@ object Implicits:
    */
   abstract class ImplicitRefs(initctx: Context) {
     val irefCtx =
-      if (initctx == NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled)
+      if (initctx eq NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled)
     protected given Context = irefCtx
 
     /** The nesting level of this context. Non-zero only in ContextialImplicits */
@@ -411,14 +411,14 @@ object Implicits:
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
-    final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits]
+    final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
     final def reason: SearchFailureType = tree.tpe.asInstanceOf[SearchFailureType]
   }
 
   object SearchFailure {
     def apply(tpe: SearchFailureType, span: Span)(using Context): SearchFailure = {
       val id = tpe match
-        case tpe: AmbiguousImplicits =>
+        case tpe: (AmbiguousImplicits | TooUnspecific) =>
           untpd.SearchFailureIdent(nme.AMBIGUOUS, s"/* ambiguous: ${tpe.explanation} */")
         case _ =>
           untpd.SearchFailureIdent(nme.MISSING, "/* missing */")
@@ -503,6 +503,17 @@ object Implicits:
   @sharable val ImplicitSearchTooLargeFailure: SearchFailure =
     SearchFailure(ImplicitSearchTooLarge, NoSpan)(using NoContext)
 
+  /** A failure value indicating that an implicit search for a conversion was not tried */
+  case class TooUnspecific(target: Type) extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty):
+    override def whyNoConversion(using Context): String =
+      i"""
+         |Note that implicit conversions were not tried because the result of an implicit conversion
+         |must be more specific than $target"""
+    override def explanation(using Context) =
+      i"""${super.explanation}.
+         |The expected type $target is not specific enough, so no search was attempted"""
+    override def toString = s"TooUnspecific"
+
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(using Context): String =
@@ -548,6 +559,18 @@ object Implicits:
     def argument = EmptyTree
     override def msg(using Context) = _msg
     def explanation(using Context) = msg.toString
+
+  /** A search failure type for failed synthesis of terms for special types */
+  class SynthesisFailure(reasons: List[String], val expectedType: Type) extends SearchFailureType:
+    def argument = EmptyTree
+
+    private def formatReasons =
+      if reasons.length > 1 then
+        reasons.mkString("\n\t* ", "\n\t* ", "")
+      else
+        reasons.mkString
+
+    def explanation(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}: ${formatReasons}"
 
 end Implicits
 
@@ -751,7 +774,7 @@ trait ImplicitRunInfo:
               WildcardType
             else
               seen += t
-              t.underlying match
+              t.superType match
                 case TypeBounds(lo, hi) =>
                   if lo.isBottomTypeAfterErasure then apply(hi)
                   else AndType.make(apply(lo), apply(hi))
@@ -816,7 +839,7 @@ trait Implicits:
       def isOldStyleFunctionConversion(tpe: Type): Boolean =
         tpe match {
           case PolyType(_, resType) => isOldStyleFunctionConversion(resType)
-          case _ => tpe.derivesFrom(defn.FunctionClass(1)) && !tpe.derivesFrom(defn.ConversionClass) && !tpe.derivesFrom(defn.SubTypeClass)
+          case _ => tpe.derivesFrom(defn.FunctionSymbol(1)) && !tpe.derivesFrom(defn.ConversionClass) && !tpe.derivesFrom(defn.SubTypeClass)
         }
 
       try
@@ -854,7 +877,12 @@ trait Implicits:
         if fail.isAmbiguous then failed
         else
           if synthesizer == null then synthesizer = Synthesizer(this)
-          synthesizer.uncheckedNN.tryAll(formal, span).orElse(failed)
+          val (tree, errors) = synthesizer.uncheckedNN.tryAll(formal, span)
+          if errors.nonEmpty then
+            SearchFailure(new SynthesisFailure(errors, formal), span).tree
+          else
+            tree.orElse(failed)
+
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {
@@ -1108,9 +1136,9 @@ trait Implicits:
         ctx.reporter.removeBufferedMessages
         adapted.tpe match {
           case _: SearchFailureType => SearchFailure(adapted)
-          case error: PreviousErrorType if !adapted.symbol.isAccessibleFrom(cand.ref.prefix) => 
+          case error: PreviousErrorType if !adapted.symbol.isAccessibleFrom(cand.ref.prefix) =>
             SearchFailure(adapted.withType(new NestedFailure(error.msg, pt)))
-          case _ => 
+          case _ =>
             // Special case for `$conforms` and `<:<.refl`. Showing them to the users brings
             // no value, so we instead report a `NoMatchingImplicitsFailure`
             if (adapted.symbol == defn.Predef_conforms || adapted.symbol == defn.SubType_refl)
@@ -1132,15 +1160,17 @@ trait Implicits:
 
     private def isCoherent = pt.isRef(defn.CanEqualClass)
 
-    val wideProto = pt.widenExpr
+    private val wideProto = pt.widenExpr
+
+    private val srcPos = ctx.source.atSpan(span)
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto: Type =
+    private val wildProto: Type =
       if argument.isEmpty then wildApprox(pt)
       else ViewProto(wildApprox(argument.tpe.widen.normalized), wildApprox(pt))
         // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
-    val isNotGiven: Boolean = wildProto.classSymbol == defn.NotGivenClass
+    private val isNotGiven: Boolean = wildProto.classSymbol == defn.NotGivenClass
 
     private def searchTooLarge(): Boolean = ctx.searchHistory match
       case root: SearchRoot =>
@@ -1153,7 +1183,7 @@ trait Implicits:
         if result then
           var c = ctx
           while c.outer.typer eq ctx.typer do c = c.outer
-          report.warning(ImplicitSearchTooLargeWarning(limit, h.openSearchPairs), ctx.source.atSpan(span))(using c)
+          report.warning(ImplicitSearchTooLargeWarning(limit, h.openSearchPairs), srcPos)(using c)
         else
           h.root.nestedSearches = nestedSearches + 1
         result
@@ -1330,7 +1360,7 @@ trait Implicits:
              |the search will fail with a global ambiguity error instead.
              |
              |Consider using the scala.util.NotGiven class to implement similar functionality.""",
-             ctx.source.atSpan(span))
+             srcPos)
 
       /** Compare the length of the baseClasses of two symbols (except for objects,
        *  where we use the length of the companion class instead if it's bigger).
@@ -1457,7 +1487,7 @@ trait Implicits:
 
     private def searchImplicit(contextual: Boolean): SearchResult =
       if isUnderspecified(wildProto) then
-        NoMatchingImplicitsFailure
+        SearchFailure(TooUnspecific(pt), span)
       else
         val eligible =
           if contextual then
@@ -1506,11 +1536,11 @@ trait Implicits:
     def implicitScope(tp: Type): OfTypeImplicits = ctx.run.nn.implicitScope(tp)
 
     /** All available implicits, without ranking */
-    def allImplicits: Set[TermRef] = {
+    def allImplicits: Set[SearchSuccess] = {
       val contextuals = ctx.implicits.eligible(wildProto).map(tryImplicit(_, contextual = true))
       val inscope = implicitScope(wildProto).eligible.map(tryImplicit(_, contextual = false))
       (contextuals.toSet ++ inscope).collect {
-        case success: SearchSuccess => success.ref
+        case success: SearchSuccess => success
       }
     }
 
@@ -1548,7 +1578,7 @@ trait Implicits:
             if cand1.ref eq cand.ref then
               lazy val wildTp = wildApprox(tp.widenExpr)
               if belowByname && (wildTp <:< wildPt) then
-                fullyDefinedType(tp, "by-name implicit parameter", span)
+                fullyDefinedType(tp, "by-name implicit parameter", srcPos)
                 false
               else if prev.typeSize > ptSize || prev.coveringSet != ptCoveringSet then
                 loop(outer, tp.isByName || belowByname)

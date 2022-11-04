@@ -6,7 +6,7 @@ import core._
 import Texts._, ast.Trees._
 import Types.{Type, SingletonType, LambdaParam},
        Symbols.Symbol, Scopes.Scope, Constants.Constant,
-       Names.Name, Denotations._, Annotations.Annotation
+       Names.Name, Denotations._, Annotations.Annotation, Contexts.Context
 import typer.Implicits.SearchResult
 import util.SourcePosition
 import typer.ImportInfo
@@ -104,6 +104,9 @@ abstract class Printer {
   /** Textual representation of a prefix of some reference, ending in `.` or `#` */
   def toTextPrefix(tp: Type): Text
 
+  /** Textual representation of a reference in a capture set */
+  def toTextCaptureRef(tp: Type): Text
+
   /** Textual representation of symbol's declaration */
   def dclText(sym: Symbol): Text
 
@@ -182,6 +185,9 @@ abstract class Printer {
 
   /** A plain printer without any embellishments */
   def plain: Printer
+
+  /** The context in which this printer operates */
+  def printerContext: Context
 }
 object Printer {
 

@@ -1,7 +1,7 @@
 import scala.tools.partest.BytecodeTest
 import scala.tools.asm
 import scala.tools.asm.util._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object Test extends BytecodeTest {
   val nullChecks = Set(asm.Opcodes.NEW)

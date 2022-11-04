@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Pattern Bindings"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-bindings.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-bindings.html
 ---
 
 In Scala 2, pattern bindings in `val` definitions and `for` expressions are

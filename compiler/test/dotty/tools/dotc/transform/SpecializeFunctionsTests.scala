@@ -10,7 +10,7 @@ import dotty.tools.backend.jvm.DottyBytecodeTest
 
 class SpecializeFunctionsTests extends DottyBytecodeTest {
 
-  import scala.collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
 
   @Test def specializeParentIntToInt = {
     val source = """

@@ -7,6 +7,7 @@ import scala.language.unsafeNulls
 import java.nio.file.Paths
 import org.junit.{Test, AfterClass}
 import org.junit.Assert.assertEquals
+import org.junit.experimental.categories.Category
 
 import vulpix.TestConfiguration
 
@@ -15,6 +16,7 @@ import ScriptTestEnv.*
 /**
  *   +. test scala -e <expression>
  */
+@Category(Array(classOf[BootstrappedOnlyTests]))
 class ExpressionTest:
   /*
    * verify -e <expression> works.

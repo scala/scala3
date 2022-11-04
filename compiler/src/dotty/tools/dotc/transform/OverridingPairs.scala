@@ -29,7 +29,9 @@ object OverridingPairs:
     /** Symbols to exclude: Here these are constructors and private locals.
      *  But it may be refined in subclasses.
      */
-    protected def exclude(sym: Symbol): Boolean = !sym.memberCanMatchInheritedSymbols
+    protected def exclude(sym: Symbol): Boolean =
+      !sym.memberCanMatchInheritedSymbols
+      || ctx.phase == Phases.checkCapturesPhase && sym.is(Recheck.ResetPrivate)
 
     /** The parents of base that are checked when deciding whether an overriding
      *  pair has already been treated in a parent class.

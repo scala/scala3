@@ -2,6 +2,8 @@
 3 |    val aAgain = foo(5) // error
   |        ^
   |        Access non-initialized value aAgain. Calling trace:
+  |        -> class A {	[ unsound4.scala:1 ]
+  |           ^
   |        -> val aAgain = foo(5) // error	[ unsound4.scala:3 ]
   |                        ^^^^^^
   |        -> def foo(x: Int): A = if (x < 5) then this else foo(x - 1).aAgain	[ unsound4.scala:2 ]

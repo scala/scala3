@@ -1,5 +1,7 @@
+// scalajs: --skip
+
 object Test extends App {
-  import scala.collection.JavaConverters.*
+  import scala.jdk.CollectionConverters.*
 
   def ser(a: AnyRef) =
     (new java.io.ObjectOutputStream(new java.io.ByteArrayOutputStream())).writeObject(a)

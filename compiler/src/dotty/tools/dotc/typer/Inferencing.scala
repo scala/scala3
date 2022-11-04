@@ -8,15 +8,14 @@ import Contexts._, Types._, Flags._, Symbols._
 import ProtoTypes._
 import NameKinds.{AvoidNameKind, UniqueName}
 import util.Spans._
-import util.{Stats, SimpleIdentityMap}
+import util.{Stats, SimpleIdentityMap, SrcPos}
 import Decorators._
 import config.Printers.{gadts, typr}
 import annotation.tailrec
+import reporting._
 import collection.mutable
 
 import scala.annotation.internal.sharable
-
-import config.Printers.gadts
 
 object Inferencing {
 
@@ -30,10 +29,7 @@ object Inferencing {
    */
   def isFullyDefined(tp: Type, force: ForceDegree.Value)(using Context): Boolean = {
     val nestedCtx = ctx.fresh.setNewTyperState()
-    val result =
-      try new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
-      catch case ex: StackOverflowError =>
-        false // can happen for programs with illegal recusions, e.g. neg/recursive-lower-constraint.scala
+    val result = new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
     if (result) nestedCtx.typerState.commit()
     result
   }
@@ -49,9 +45,13 @@ object Inferencing {
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
    */
-  def fullyDefinedType(tp: Type, what: String, span: Span)(using Context): Type =
-    if (isFullyDefined(tp, ForceDegree.all)) tp
-    else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $span") // !!! DEBUG
+  def fullyDefinedType(tp: Type, what: String, pos: SrcPos)(using Context): Type =
+    try
+      if isFullyDefined(tp, ForceDegree.all) then tp
+      else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos")
+    catch case ex: RecursionOverflow =>
+      report.error(ex, pos)
+      UnspecifiedErrorType
 
   /** Instantiate selected type variables `tvars` in type `tp` in a special mode:
    *   1. If a type variable is constrained from below (i.e. constraint bound != given lower bound)
@@ -127,8 +127,8 @@ object Inferencing {
       couldInstantiateTypeVar(parent, applied)
     case tp: AndOrType =>
       couldInstantiateTypeVar(tp.tp1, applied) || couldInstantiateTypeVar(tp.tp2, applied)
-    case AnnotatedType(tp, _) =>
-      couldInstantiateTypeVar(tp, applied)
+    case tp: AnnotatedType =>
+      couldInstantiateTypeVar(tp.parent, applied)
     case _ =>
       false
 
@@ -171,33 +171,37 @@ object Inferencing {
 
     private var toMaximize: List[TypeVar] = Nil
 
-    def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
-      case _: WildcardType | _: ProtoType =>
-        false
-      case tvar: TypeVar if !tvar.isInstantiated =>
-        force.appliesTo(tvar)
-        && ctx.typerState.constraint.contains(tvar)
-        && {
-          val direction = instDirection(tvar.origin)
-          if minimizeSelected then
-            if direction <= 0 && tvar.hasLowerBound then
+    def apply(x: Boolean, tp: Type): Boolean =
+      try tp.dealias match
+        case _: WildcardType | _: ProtoType =>
+          false
+        case tvar: TypeVar if !tvar.isInstantiated =>
+          force.appliesTo(tvar)
+          && ctx.typerState.constraint.contains(tvar)
+          && {
+            val direction = instDirection(tvar.origin)
+            if minimizeSelected then
+              if direction <= 0 && tvar.hasLowerBound then
+                instantiate(tvar, fromBelow = true)
+              else if direction >= 0 && tvar.hasUpperBound then
+                instantiate(tvar, fromBelow = false)
+              // else hold off instantiating unbounded unconstrained variable
+            else if direction != 0 then
+              instantiate(tvar, fromBelow = direction < 0)
+            else if variance >= 0 && (force.ifBottom == IfBottom.ok || tvar.hasLowerBound) then
               instantiate(tvar, fromBelow = true)
-            else if direction >= 0 && tvar.hasUpperBound then
-              instantiate(tvar, fromBelow = false)
-            // else hold off instantiating unbounded unconstrained variable
-          else if direction != 0 then
-            instantiate(tvar, fromBelow = direction < 0)
-          else if variance >= 0 && (force.ifBottom == IfBottom.ok || tvar.hasLowerBound) then
-            instantiate(tvar, fromBelow = true)
-          else if variance >= 0 && force.ifBottom == IfBottom.fail then
-            return false
-          else
-            toMaximize = tvar :: toMaximize
-          foldOver(x, tvar)
-        }
-      case tp =>
-        foldOver(x, tp)
-    }
+            else if variance >= 0 && force.ifBottom == IfBottom.fail then
+              return false
+            else
+              toMaximize = tvar :: toMaximize
+            foldOver(x, tvar)
+          }
+        case tp =>
+          reporting.trace(s"IFT $tp") {
+            foldOver(x, tp)
+          }
+      catch case ex: Throwable =>
+        handleRecursive("check fully defined", tp.show, ex)
 
     def process(tp: Type): Boolean =
       // Maximize type vars in the order they were visited before */
@@ -313,7 +317,7 @@ object Inferencing {
       val (tl1, tvars) = constrained(tl, tree)
       var tree1 = AppliedTypeTree(tree.withType(tl1), tvars)
       tree1.tpe <:< pt
-      fullyDefinedType(tree1.tpe, "template parent", tree.span)
+      fullyDefinedType(tree1.tpe, "template parent", tree.srcPos)
       tree1
     case _ =>
       tree
@@ -403,10 +407,15 @@ object Inferencing {
     Stats.record("maximizeType")
     val vs = variances(tp)
     val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
+    val gadtBounds = ctx.gadt.symbols.map(ctx.gadt.bounds(_).nn)
     vs foreachBinding { (tvar, v) =>
       if !tvar.isInstantiated then
-        if (v == 1) tvar.instantiate(fromBelow = false)
-        else if (v == -1) tvar.instantiate(fromBelow = true)
+        // if the tvar is covariant/contravariant (v == 1/-1, respectively) in the input type tp
+        // then it is safe to instantiate if it doesn't occur in any of the GADT bounds.
+        // Eg neg/i14983 the C in Node[+C] occurs in GADT bound X >: List[C] so maximising to Node[Any] is unsound
+        // Eg pos/precise-pattern-type the T in Tree[-T] doesn't occur in any GADT bound so can maximise to Tree[Type]
+        val safeToInstantiate = v != 0 && gadtBounds.forall(!tvar.occursIn(_))
+        if safeToInstantiate then tvar.instantiate(fromBelow = v == -1)
         else {
           val bounds = TypeComparer.fullBounds(tvar.origin)
           if bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) then
@@ -516,10 +525,10 @@ object Inferencing {
   }
 
   /** Replace every top-level occurrence of a wildcard type argument by
-    *  a fresh skolem type. The skolem types are of the form $i.CAP, where
-    *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
-    *  type member. See the documentation of `TypeBox` for a rationale why we do this.
-    */
+   *  a fresh skolem type. The skolem types are of the form $i.CAP, where
+   *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
+   *  type member. See the documentation of `TypeBox` for a rationale why we do this.
+   */
   def captureWildcards(tp: Type)(using Context): Type = derivedOnDealias(tp) {
     case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
       val tparams = tycon.typeParamSymbols
@@ -637,13 +646,15 @@ trait Inferencing { this: Typer =>
             else if v.intValue != 0 then
               typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
               toInstantiate += ((tvar, v.intValue == 1))
-            else if tvar.nestingLevel > ctx.nestingLevel then
-              // Invariant: a type variable of level N can only appear
-              // in the type of a tree whose enclosing scope is level <= N.
-              typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
-              comparing(_.atLevel(ctx.nestingLevel, tvar.origin))
-            else
-              typr.println(i"no interpolation for nonvariant $tvar in $state")
+            else comparing(cmp =>
+              if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
+                // Invariant: The type of a tree whose enclosing scope is level
+                // N only contains type variables of level <= N.
+                typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
+                cmp.atLevel(ctx.nestingLevel, tvar.origin)
+              else
+                typr.println(i"no interpolation for nonvariant $tvar in $state")
+            )
 
         /** Instantiate all type variables in `buf` in the indicated directions.
          *  If a type variable A is instantiated from below, and there is another
@@ -737,4 +748,3 @@ trait Inferencing { this: Typer =>
 
 enum IfBottom:
   case ok, fail, flip
-

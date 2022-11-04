@@ -9,7 +9,7 @@ object Macro {
     import quotes.reflect.*
     sc match {
       case '{ StringContext(${Varargs(parts)}*) } =>
-        for (part @ Expr(s) <- parts)
+        for (case part @ Expr(s) <- parts)
           report.error(s, part.asTerm.pos)
     }
     '{}

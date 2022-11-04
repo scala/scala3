@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Parameter Untupling"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/parameter-untupling.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/parameter-untupling.html
 ---
 
 Say you have a list of pairs

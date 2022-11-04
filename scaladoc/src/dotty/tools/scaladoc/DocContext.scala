@@ -5,10 +5,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc.site.StaticSiteContext
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.io.VirtualFile
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
@@ -42,8 +41,7 @@ def throwableToString(t: Throwable)(using CompilerContext): String =
 
 private def sourcePostionFor(f: File)(using CompilerContext) =
     val relPath = relativePath(f.toPath)
-    val virtualFile = new VirtualFile(relPath.toString, relPath.toString)
-    val sourceFile = new SourceFile(virtualFile, Codec.UTF8)
+    val sourceFile = SourceFile.virtual(relPath.toString, content = "")
     SourcePosition(sourceFile, Spans.NoSpan)
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling

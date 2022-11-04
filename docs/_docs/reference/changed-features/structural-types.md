@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Programmatic Structural Types"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/structural-types.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/structural-types.html
 ---
 
 ## Motivation

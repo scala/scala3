@@ -91,7 +91,7 @@ class TreeChecker extends Phase with SymTransformer {
     if (ctx.phaseId <= erasurePhase.id) {
       val initial = symd.initial
       assert(symd == initial || symd.signature == initial.signature,
-        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
+        i"""Signature of ${sym.showLocated} changed at phase ${ctx.phase.prevMega}
            |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
            |Current info: ${symd.info}
@@ -122,8 +122,7 @@ class TreeChecker extends Phase with SymTransformer {
   }
 
   def check(phasesToRun: Seq[Phase], ctx: Context): Tree = {
-    val prevPhase = ctx.phase.prev // can be a mini-phase
-    val fusedPhase = ctx.base.fusedContaining(prevPhase)
+    val fusedPhase = ctx.phase.prevMega(using ctx)
     report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
 
     inContext(ctx) {
@@ -135,7 +134,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     val checkingCtx = ctx
         .fresh
-        .setMode(Mode.ImplicitsEnabled)
+        .addMode(Mode.ImplicitsEnabled)
         .setReporter(new ThrowingReporter(ctx.reporter))
 
     val checker = inContext(ctx) {
@@ -145,7 +144,7 @@ class TreeChecker extends Phase with SymTransformer {
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
         inContext(checkingCtx) {
-          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prev} ***")
+          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prevMega(using ctx)} ***")
         }
         throw ex
     }
@@ -375,14 +374,14 @@ class TreeChecker extends Phase with SymTransformer {
       val tpe = tree.typeOpt
 
       // Polymorphic apply methods stay structural until Erasure
-      val isPolyFunctionApply = (tree.name eq nme.apply) && (tree.qualifier.typeOpt <:< defn.PolyFunctionType)
+      val isPolyFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.PolyFunctionClass)
       // Outer selects are pickled specially so don't require a symbol
       val isOuterSelect = tree.name.is(OuterSelectName)
       val isPrimitiveArrayOp = ctx.erasedTypes && nme.isPrimitiveName(tree.name)
       if !(tree.isType || isPolyFunctionApply || isOuterSelect || isPrimitiveArrayOp) then
         val denot = tree.denot
         assert(denot.exists, i"Selection $tree with type $tpe does not have a denotation")
-        assert(denot.symbol.exists, i"Denotation $denot of selection $tree with type $tpe does not have a symbol")
+        assert(denot.symbol.exists, i"Denotation $denot of selection $tree with type $tpe does not have a symbol, qualifier type = ${tree.qualifier.typeOpt}")
 
       val sym = tree.symbol
       val symIsFixed = tpe match {
@@ -422,6 +421,13 @@ class TreeChecker extends Phase with SymTransformer {
       assert(tree.qual.typeOpt.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
 
+    override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = tree match
+      case Apply(Select(qual, nme.CONSTRUCTOR), _)
+          if !ctx.phase.erasedTypes
+            && defn.isSpecializedTuple(qual.typeOpt.typeSymbol) =>
+        promote(tree) // e.g. `new Tuple2$mcII$sp(7, 8)` should keep its `(7, 8)` type instead of `Tuple2$mcII$sp`
+      case _ => super.typedApply(tree, pt)
+
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
       val tpt1 = checkSimpleKinded(typedType(tree.tpt))
       val expr1 = tree.expr match
@@ -456,7 +462,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
-      val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef
+      val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef: @unchecked
       assert(cdef.symbol == cls)
       assert(impl.symbol.owner == cls)
       assert(constr.symbol.owner == cls)
@@ -575,7 +581,7 @@ class TreeChecker extends Phase with SymTransformer {
         super.typedPackageDef(tree)
 
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
-      val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt)
+      val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt): @unchecked
 
       // Check result type of the hole
       if isTermHole then assert(tpt.typeOpt <:< pt)
@@ -608,7 +614,7 @@ class TreeChecker extends Phase with SymTransformer {
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
       tree
 
-    override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree = {
+    override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
       def isPrimaryConstructorReturn =
         ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
       def infoStr(tp: Type) = tp match {

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.collection.immutable.SortedSet
 import scala.collection.immutable.TreeSet
 

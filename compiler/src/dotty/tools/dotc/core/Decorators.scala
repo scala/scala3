@@ -13,10 +13,7 @@ import transform.MegaPhase
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
 
-  /** Extension methods for toType/TermName methods on strings.
-   *  They are in an implicit object for now, so that we can import decorators
-   *  with a normal wildcard. In the future, once #9255 is in trunk, replace with
-   *  a simple collective extension.
+  /** Extension methods for toType/TermName methods on PreNames.
    */
   extension (pn: PreName)
     def toTermName: TermName = pn match
@@ -184,6 +181,9 @@ object Decorators {
       loop(xs, xs, 0)
     end mapWithIndexConserve
 
+    /** True if two lists have the same length.  Since calling length on linear sequences
+     *  is Θ(n), it is an inadvisable way to test length equality.  This method is Θ(n min m).
+     */
     final def hasSameLengthAs[U](ys: List[U]): Boolean = {
       @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
         if (xs.isEmpty) ys.isEmpty
@@ -293,13 +293,13 @@ object Decorators {
      *  error messages after the first one if some of their arguments are "non-sensical".
      */
     def em(args: Shown*)(using Context): String =
-      new ErrorMessageFormatter(sc).assemble(args)
+      forErrorMessages(new StringFormatter(sc).assemble(args))
 
     /** Formatting with added explanations: Like `em`, but add explanations to
      *  give more info about type variables and to disambiguate where needed.
      */
     def ex(args: Shown*)(using Context): String =
-      explained(em(args: _*))
+      explained(new StringFormatter(sc).assemble(args))
 
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)

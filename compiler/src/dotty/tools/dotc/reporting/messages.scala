@@ -25,6 +25,7 @@ import ast.Trees._
 import ast.untpd
 import ast.tpd
 import transform.SymUtils._
+import cc.CaptureSet.IdentityCaptRefMap
 
 /**  Messages
   *  ========
@@ -250,7 +251,7 @@ import transform.SymUtils._
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
     // these are usually easier to analyze. We exclude F-bounds since these would
     // lead to a recursive infinite expansion.
-    object reported extends TypeMap:
+    object reported extends TypeMap, IdentityCaptRefMap:
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
       var fbounded = false
@@ -294,7 +295,6 @@ import transform.SymUtils._
     override def explain =
       val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
       treeStr + "\n" + super.explain
-
 
   end TypeMismatch
 
@@ -424,7 +424,7 @@ import transform.SymUtils._
     def msg = em"""An ${hl("implicit class")} may not be top-level"""
 
     def explain = {
-      val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
+      val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef: @unchecked
       val exampleArgs =
         if(constr0.termParamss.isEmpty) "..."
         else constr0.termParamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
@@ -674,7 +674,7 @@ import transform.SymUtils._
     }
   }
 
-  class ByNameParameterNotSupported(tpe: untpd.TypTree)(using Context)
+  class ByNameParameterNotSupported(tpe: untpd.Tree)(using Context)
   extends SyntaxMsg(ByNameParameterNotSupportedID) {
     def msg = em"By-name parameter type ${tpe} not allowed here."
 
@@ -1066,37 +1066,6 @@ import transform.SymUtils._
            |"""
   }
 
-  class DanglingThisInPath()(using Context) extends SyntaxMsg(DanglingThisInPathID) {
-    def msg = em"""Expected an additional member selection after the keyword ${hl("this")}"""
-    def explain =
-      val contextCode: String =
-        """  trait Outer {
-          |    val member: Int
-          |    type Member
-          |    trait Inner {
-          |      ...
-          |    }
-          |  }"""
-      val importCode: String =
-        """  import Outer.this.member
-          |  //               ^^^^^^^"""
-      val typeCode: String =
-        """  type T = Outer.this.Member
-          |  //                 ^^^^^^^"""
-      em"""|Paths of imports and type selections must not end with the keyword ${hl("this")}.
-           |
-           |Maybe you forgot to select a member of ${hl("this")}? As an example, in the
-           |following context:
-           |${contextCode}
-           |
-           |- This is a valid import expression using a path
-           |${importCode}
-           |
-           |- This is a valid type using a path
-           |${typeCode}
-           |"""
-  }
-
   class OverridesNothing(member: Symbol)(using Context)
   extends DeclarationMsg(OverridesNothingID) {
     def msg = em"""${member} overrides nothing"""
@@ -1477,9 +1446,18 @@ import transform.SymUtils._
   }
 
   class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
-    extends TypeMismatchMsg(tpe, bound)(DoesNotConformToBoundID) {
-    def msg = em"Type argument ${tpe} does not conform to $which bound $bound"
-  }
+    extends TypeMismatchMsg(
+      if which == "lower" then bound else tpe,
+      if which == "lower" then tpe else bound)(DoesNotConformToBoundID):
+    private def isBounds = tpe match
+      case TypeBounds(lo, hi) => lo ne hi
+      case _ => false
+    override def canExplain = !isBounds
+    def msg =
+      if isBounds then
+        em"Type argument ${tpe} does not overlap with $which bound $bound"
+      else
+        em"Type argument ${tpe} does not conform to $which bound $bound"
 
   class DoesNotConformToSelfType(category: String, selfType: Type, cls: Symbol,
                                  otherSelf: Type, relation: String, other: Symbol)(
@@ -2375,12 +2353,12 @@ import transform.SymUtils._
   class CaseClassMissingNonImplicitParamList(cdef: untpd.TypeDef)(using Context)
     extends SyntaxMsg(CaseClassMissingNonImplicitParamListID) {
     def msg =
-      em"""|A ${hl("case class")} must have at least one non-implicit parameter list"""
+      em"""|A ${hl("case class")} must have at least one leading non-implicit parameter list"""
 
     def explain =
-      em"""|${cdef.name} must have at least one non-implicit parameter list,
+      em"""|${cdef.name} must have at least one leading non-implicit parameter list,
            | if you're aiming to have a case class parametrized only by implicit ones, you should
-           | add an explicit ${hl("()")} as a parameter list to ${cdef.name}.""".stripMargin
+           | add an explicit ${hl("()")} as the first parameter list to ${cdef.name}.""".stripMargin
   }
 
   class EnumerationsShouldNotBeEmpty(cdef: untpd.TypeDef)(using Context)
@@ -2478,15 +2456,6 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class TypeSpliceInValPattern(expr:  untpd.Tree)(using Context)
-    extends SyntaxMsg(TypeSpliceInValPatternID) {
-    def msg = "Type splices cannot be used in val patterns. Consider using `match` instead."
-    def explain =
-      em"""|Type splice: `$$${expr.show}` cannot be used in a `val` pattern. Consider rewriting the `val` pattern
-           |as a `match` with a corresponding `case` to replace the `val`.
-           |""".stripMargin
-  }
-
   class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
     extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
     def msg = em"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
@@ -2540,3 +2509,29 @@ import transform.SymUtils._
           |
           |${openSearchPairs.reverse.map(showQuery)}%\n%
         """
+
+  class TargetNameOnTopLevelClass(symbol: Symbol)(using Context)
+  extends SyntaxMsg(TargetNameOnTopLevelClassID):
+    def msg = em"${hl("@targetName")} annotation not allowed on top-level $symbol"
+    def explain =
+      val annot = symbol.getAnnotation(defn.TargetNameAnnot).get
+      em"""The @targetName annotation may be applied to a top-level ${hl("val")} or ${hl("def")}, but not
+          |a top-level ${hl("class")}, ${hl("trait")}, or ${hl("object")}.
+          |
+          |This restriction is due to the naming convention of Java classfiles, whose filenames
+          |are based on the name of the class defined within. If @targetName were permitted
+          |here, the name of the classfile would be based on the target name, and the compiler
+          |could not associate that classfile with the Scala-visible defined name of the class.
+          |
+          |If your use case requires @targetName, consider wrapping $symbol in an ${hl("object")}
+          |(and possibly exporting it), as in the following example:
+          |
+          |${hl("object Wrapper:")}
+          |  $annot $symbol { ... }
+          |
+          |${hl("export")} Wrapper.${symbol.name}  ${hl("// optional")}"""
+
+  class NotClassType(tp: Type)(using Context)
+  extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
+    def msg = ex"$tp is not a class type"
+    def explain = ""

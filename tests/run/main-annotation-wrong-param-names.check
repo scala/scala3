@@ -1,0 +1,12 @@
+Error: ill-formed argument name: --n
+Error: ill-formed argument name: --i
+Usage: add [--num] <Int> [--inc] <Int>
+Error: unused argument: inc
+Error: unused argument: 10
+Usage: add [--num] <Int> [--inc] <Int>
+Error: unknown argument name: --something
+Error: missing argument for inc
+Usage: add [--num] <Int> [--inc] <Int>
+Error: unknown argument name: --else
+Error: missing argument for inc
+Usage: add [--num] <Int> [--inc] <Int>

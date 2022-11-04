@@ -33,7 +33,7 @@ class Scaladoc2ExternalLocationProviderIntegrationTest extends ExternalLocationP
     "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
     "https://www.scala-lang.org/api/current/scala/Predef$.html#String",
     "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html",
-    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):StringBuilder",
+    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):b.type",
     "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String",
     "https://external.stubs/api/tests/externalStubs/$div$bslash$.html",
     "https://external.stubs/api/tests/externalStubs/$bslash$div$.html"
@@ -55,14 +55,19 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
   )
 )
 
+def getScalaLibraryPath: String = {
+  val classpath: List[String] = System.getProperty("java.class.path").split(java.io.File.pathSeparatorChar).toList
+  classpath.find(_.contains("scala-library-2")).getOrElse("foobarbazz") // If we don't find the scala 2 library, the test will fail
+}
+
 class Scaladoc2LegacyExternalLocationProviderIntegrationTest extends LegacyExternalLocationProviderIntegrationTest(
   "externalScaladoc2",
-  List(".*scala.*#https://www.scala-lang.org/api/current/"),
+  List(s"${getScalaLibraryPath}#https://www.scala-lang.org/api/current/"),
   List(
     "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
     "https://www.scala-lang.org/api/current/scala/Predef$.html#String",
     "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html",
-    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):StringBuilder",
+    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):b.type",
     "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String"
   )
 )

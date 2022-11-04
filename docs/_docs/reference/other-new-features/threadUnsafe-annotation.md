@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "The @threadUnsafe annotation"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/threadUnsafe-annotation.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/threadUnsafe-annotation.html
 ---
 
 A new annotation [`@threadUnsafe`](https://scala-lang.org/api/3.x/scala/annotation/threadUnsafe.html) can be used on a field which defines

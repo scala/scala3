@@ -1,0 +1,16 @@
+-- Error: tests/neg/i6055.scala:1:12 -----------------------------------------------------------------------------------
+1 |opaque type i0           // error: opaque type must have a right-hand side
+  |^^^^^^^^^^^^^^
+  |opaque type must have a right-hand side
+-- Error: tests/neg/i6055.scala:2:12 -----------------------------------------------------------------------------------
+2 |opaque type i2 <: Int    // error: opaque type must have a right-hand side
+  |^^^^^^^^^^^^^^^^^^^^^
+  |opaque type must have a right-hand side
+-- Error: tests/neg/i6055.scala:4:12 -----------------------------------------------------------------------------------
+4 |opaque type i1[_]        // error: opaque type must have a right-hand side
+  |^^^^^^^^^^^^^^^^^
+  |opaque type must have a right-hand side
+-- Error: tests/neg/i6055.scala:5:12 -----------------------------------------------------------------------------------
+5 |opaque type x[_] <: Int  // error: opaque type must have a right-hand side
+  |^^^^^^^^^^^^^^^^^^^^^^^
+  |opaque type must have a right-hand side

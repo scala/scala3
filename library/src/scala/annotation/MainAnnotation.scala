@@ -11,7 +11,7 @@ package scala.annotation
  *    - a call to `command.run` with the closure of user-main applied to all arguments.
  *
  *  Example:
- *  ```scala
+ *  ```scala sc:nocompile
  *  /** Sum all the numbers
  *   *
  *   *  @param first Fist number to sum
@@ -20,7 +20,7 @@ package scala.annotation
  *  @myMain def sum(first: Int, second: Int = 0, rest: Int*): Int = first + second + rest.sum
  *  ```
  *  generates
- *  ```scala
+ *  ```scala sc:nocompile
  *  object foo {
  *    def main(args: Array[String]): Unit = {
  *      val mainAnnot = new myMain()
@@ -91,6 +91,7 @@ object MainAnnotation:
    *  @param documentation The documentation of the main method without the `@param` documentation (see Parameter.documentaion)
    *  @param parameters Information about the parameters of the main method
    */
+  @experimental // MiMa does not check scope inherited @experimental
   final class Info(
     val name: String,
     val documentation: String,
@@ -111,6 +112,7 @@ object MainAnnotation:
    *  @param documentation The documentation of the parameter (from `@param` documentation in the main method)
    *  @param annotations The annotations of the parameter that extend `ParameterAnnotation`
    */
+  @experimental // MiMa does not check scope inherited @experimental
   final class Parameter(
     val name: String,
     val typeName: String,
@@ -121,6 +123,7 @@ object MainAnnotation:
   )
 
   /** Marker trait for annotations that will be included in the Parameter annotations. */
+  @experimental // MiMa does not check scope inherited @experimental
   trait ParameterAnnotation extends StaticAnnotation
 
 end MainAnnotation

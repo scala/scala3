@@ -1,10 +1,6 @@
--- Error: tests/neg/i13769.scala:2:18 ----------------------------------------------------------------------------------
-2 |val te = tup.map((x: _ <: Int) => List(x)) // error // error
-  |                  ^^^^^^^^^^^
-  |                  not a legal formal parameter
--- [E006] Not Found Error: tests/neg/i13769.scala:2:39 -----------------------------------------------------------------
-2 |val te = tup.map((x: _ <: Int) => List(x)) // error // error
-  |                                       ^
-  |                                       Not found: x
+-- [E035] Syntax Error: tests/neg/i13769.scala:2:21 --------------------------------------------------------------------
+2 |val te = tup.map((x: _ <: Int) => List(x)) // error
+  |                     ^^^^^^^^
+  |                     Unbound wildcard type
   |
   | longer explanation available when compiling with `-explain`

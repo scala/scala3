@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class C { inline final def f: Int => Int = (x: Int) => x + 1 }
 
 object Test extends App {

@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Option-less pattern matching"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html
 ---
 
 The implementation of pattern matching in Scala 3 was greatly simplified compared to Scala 2. From a user perspective, this means that Scala 3 generated patterns are a _lot_ easier to debug, as variables all show up in debug modes and positions are correctly preserved.
@@ -207,7 +207,7 @@ A usage of a variadic extractor is irrefutable if one of the following condition
 
 **Note:** The last rule is necessary because, for compatibility reasons, `isEmpty` on `Some` has return type `Boolean` rather than `false`, even though it always returns `false`.
 
-**Note:** Be careful, by the first condition and the note above, it is possible to define an irrefutable extractor with a `def isEmpty: true`. 
+**Note:** Be careful, by the first condition and the note above, it is possible to define an irrefutable extractor with a `def isEmpty: true`.
 This is strongly discouraged and, if found in the wild, is almost certainly a bug.
 
 ### Sequence Match

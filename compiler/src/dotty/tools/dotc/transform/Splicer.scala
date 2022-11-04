@@ -322,7 +322,7 @@ object Splicer {
           assert(argss.head.size == argTypes.size)
           interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, fnType.resType)
         case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
-          val argTypes :+ resType = fnType.args
+          val argTypes :+ resType = fnType.args: @unchecked
           interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)
         case fnType: PolyType => interpretArgs(argss, fnType.resType)
         case fnType: ExprType => interpretArgs(argss, fnType.resType)

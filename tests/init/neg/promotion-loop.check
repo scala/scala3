@@ -1,7 +1,15 @@
 -- Error: tests/init/neg/promotion-loop.scala:16:10 --------------------------------------------------------------------
 16 |  println(b)      // error
    |          ^
-   |          Cannot prove that the value is fully initialized. Only initialized values may be used as arguments.
+   |          Cannot prove the method argument is hot. Only hot values are safe to leak.
+   |          Found = Warm[class B] { outer = ThisRef[class Test] }. Calling trace:
+   |          -> class Test { test =>	[ promotion-loop.scala:1 ]
+   |             ^
+   |          -> println(b)      // error	[ promotion-loop.scala:16 ]
+   |                     ^
    |
-   |          The unsafe promotion may cause the following problem:
-   |          Cannot prove that the value is fully initialized. Only initialized values may be used as arguments.
+   |          Promoting the value to hot failed due to the following problem:
+   |          Cannot prove that the field value outer is hot. Found = ThisRef[class Test].
+   |          Non initialized field(s): value n. Promotion trace:
+   |          -> val outer = test	[ promotion-loop.scala:12 ]
+   |             ^^^^^^^^^^^^^^^^

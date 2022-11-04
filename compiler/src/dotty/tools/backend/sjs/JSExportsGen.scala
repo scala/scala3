@@ -356,7 +356,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         None
       } else {
         val formalArgsRegistry = new FormalArgsRegistry(1, false)
-        val (List(arg), None) = formalArgsRegistry.genFormalArgs()
+        val (List(arg), None) = formalArgsRegistry.genFormalArgs(): @unchecked
         val body = genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
             setters.map(new ExportedSymbol(_, static)), jstpe.AnyType, None)
         Some((arg, body))
@@ -761,7 +761,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     // Pass previous arguments to defaultGetter
     val defaultGetterArgs = previousArgsValues(defaultGetter.info.paramInfoss.head.size)
 
-    if (targetSym.isJSType) {
+    val callGetter = if (targetSym.isJSType) {
       if (defaultGetter.owner.isNonNativeJSClass) {
         if (defaultGetter.hasAnnotation(jsdefn.JSOptionalAnnot))
           js.Undefined()
@@ -784,6 +784,12 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     } else {
       genApplyMethod(targetTree, defaultGetter, defaultGetterArgs)
     }
+
+    // #15419 If the getter returns void, we must "box" it by returning undefined
+    if (callGetter.tpe == jstpe.NoType)
+      js.Block(callGetter, js.Undefined())
+    else
+      callGetter
   }
 
   private def targetSymForDefaultGetter(sym: Symbol): Symbol =

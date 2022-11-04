@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class Bar extends JavaFoo with Foo {
   def read(): Int = ???
 }

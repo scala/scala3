@@ -3,7 +3,7 @@ package dotty.tools.scaladoc
 import java.util.ServiceLoader
 import java.io.File
 import java.util.jar._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import collection.immutable.ArraySeq
 
 import java.nio.file.Files
@@ -56,8 +56,7 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
 
   val socialLinks: Setting[List[String]] =
     MultiStringSetting("-social-links", "social-links",
-      "Links to social sites. '[github|twitter|gitter|discord]::link' syntax is used. " +
-        "'custom::link::white_icon_name::black_icon_name' is also allowed, in this case icons must be present in 'images/'' directory.")
+      "Links to social sites. '[github|twitter|gitter|discord]::link' syntax is used.")
 
   val deprecatedSkipPackages: Setting[List[String]] =
     MultiStringSetting("-skip-packages", "packages", "Deprecated, please use `-skip-by-id` or `-skip-by-regex`")
@@ -134,6 +133,12 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
       ""
     )
 
+  val quickLinks: Setting[List[String]] =
+    MultiStringSetting(
+      "-quick-links",
+      "quick-links",
+      "List of quick links that is displayed in the header of documentation."
+    )
 
   def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, scastieConfiguration)
+    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks)

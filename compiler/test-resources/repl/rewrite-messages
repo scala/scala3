@@ -1,0 +1,17 @@
+// scalac: -source:future-migration -deprecation -Werror
+scala> import scala.util._
+-- Error: ----------------------------------------------------------------------
+1 | import scala.util._
+  |                   ^
+  |         `_` is no longer supported for a wildcard import; use `*` instead
+
+scala> extension (x: Int) def foo(y: Int) = x + y
+def foo(x: Int)(y: Int): Int
+
+scala> 2 foo 4
+-- Error: ----------------------------------------------------------------------
+1 | 2 foo 4
+  |   ^^^
+  |Alphanumeric method foo is not declared infix; it should not be used as infix operator.
+  |Instead, use method syntax .foo(...) or backticked identifier `foo`.
+1 error found

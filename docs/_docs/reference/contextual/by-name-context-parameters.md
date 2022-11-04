@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "By-Name Context Parameters"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/by-name-context-parameters.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/by-name-context-parameters.html
 ---
 
 Context parameters can be declared by-name to avoid a divergent inferred expansion. Example:

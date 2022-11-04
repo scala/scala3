@@ -2,7 +2,7 @@ package dotty.tools.dotc.semanticdb
 
 import java.nio.file._
 import java.nio.charset.StandardCharsets
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.semanticdb.Scala3.given
 
@@ -12,8 +12,10 @@ object Tools:
   def mkURIstring(path: Path): String =
     // Calling `.toUri` on a relative path will convert it to absolute. Iteration through its parts instead preserves
     // the resulting URI as relative.
-    val uriParts = for part <- path.asScala yield new java.net.URI(null, null, part.toString, null)
-    uriParts.mkString("/")
+    // To prevent colon `:` from being treated as a scheme separator, prepend a slash `/` to each part to trick the URI
+    // parser into treating it as an absolute path, and then strip the spurious leading slash from the final result.
+    val uriParts = for part <- path.asScala yield new java.net.URI(null, null, "/" + part.toString, null)
+    uriParts.mkString.stripPrefix("/")
 
   /** Load SemanticDB TextDocument for a single Scala source file
    *

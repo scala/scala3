@@ -89,7 +89,7 @@ object Mode {
   /** Don't suppress exceptions thrown during show */
   val PrintShowExceptions: Mode = newMode(18, "PrintShowExceptions")
 
-  val PatternOrTypeBits: Mode = Pattern | Type | InPatternAlternative
+  val PatternOrTypeBits: Mode = Pattern | Type
 
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.

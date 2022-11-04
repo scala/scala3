@@ -203,24 +203,33 @@ object QuoteMatcher {
         // Matches an open term and wraps it into a lambda that provides the free variables
         case Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil)
             if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
-          val names: List[TermName] = args.map {
-            case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
-            case arg => arg.symbol.name.asTermName
+          def hoasClosure = {
+            val names: List[TermName] = args.map {
+              case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
+              case arg => arg.symbol.name.asTermName
+            }
+            val argTypes = args.map(x => x.tpe.widenTermRefExpr)
+            val methTpe = MethodType(names)(_ => argTypes, _ => pattern.tpe)
+            val meth = newAnonFun(ctx.owner, methTpe)
+            def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
+              val argsMap = args.map(_.symbol).zip(lambdaArgss.head).toMap
+              val body = new TreeMap {
+                override def transform(tree: Tree)(using Context): Tree =
+                  tree match
+                    case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
+                    case tree => super.transform(tree)
+              }.transform(scrutinee)
+              TreeOps(body).changeNonLocalOwners(meth)
+            }
+            Closure(meth, bodyFn)
           }
-          val argTypes = args.map(x => x.tpe.widenTermRefExpr)
-          val methTpe = MethodType(names)(_ => argTypes, _ => pattern.tpe)
-          val meth = newAnonFun(ctx.owner, methTpe)
-          def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
-            val argsMap = args.map(_.symbol).zip(lambdaArgss.head).toMap
-            val body = new TreeMap {
-              override def transform(tree: Tree)(using Context): Tree =
-                tree match
-                  case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
-                  case tree => super.transform(tree)
-            }.transform(scrutinee)
-            TreeOps(body).changeNonLocalOwners(meth)
+          val capturedArgs = args.map(_.symbol)
+          val captureEnv = summon[Env].filter((k, v) => !capturedArgs.contains(v))
+          withEnv(captureEnv) {
+            scrutinee match
+              case ClosedPatternTerm(scrutinee) => matched(hoasClosure)
+              case _ => notMatched
           }
-          matched(Closure(meth, bodyFn))
 
         /* Match type ascription (b) */
         case Typed(expr2, _) =>

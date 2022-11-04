@@ -117,11 +117,23 @@ object Test {
   val t83: ToDouble[1] = 1.0
   val t84: ToDouble[2] = 2 // error
 
-  // Singleton operations are covariant.
-  type Plus2[X <: Int] = X + 2
-  val x: Int = 5
-  val xPlus2: Plus2[x.type] = (x + 2).asInstanceOf
-  summon[xPlus2.type + 1 <:< Plus2[x.type] + 1]
+  // Singletons are dereferenced
+  val t85: Int = 5
+  val t86: t85.type = t85
+  summon[t85.type + t85.type =:= t86.type + t86.type]
+
+  // Singletons are dereferenced recursively
+  val t87: t86.type = t87
+  summon[t85.type + t85.type =:= t87.type + t87.type]
+
+  // Skolems of compile-time types are dereferenced:
+  // (?1 : (Test.x : Int) * (Test.x : Int)) --> (Test.x : Int) * (Test.x : Int)
   def mult(x: Int, y: Int): x.type * y.type = (x * y).asInstanceOf
-  val y: x.type * x.type * x.type = mult(mult(x, x), x)
+  val t88: t85.type * t85.type * t85.type = mult(mult(t85, t85), t85)
+
+  // Compile-time operations with singleton arguments are singletons
+  summon[t85.type + t86.type <:< Singleton]
+
+  // Compile-time operations with non-singleton arguments are not singletons  
+  summon[t85.type + Int <:< Singleton] // error
 }

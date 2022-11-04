@@ -1,6 +1,7 @@
 ---
 layout: main
 ---
+
 <div class="container">
   <div id="site-header">
     <div class="wrap">
@@ -31,20 +32,29 @@ layout: main
   {{ content }}
   <nav class="arrows-wrapper" aria-label="Page navigation">
     {% if page.previous %}
-    <a rel="prev" href="{{ page.previous.url }}" class="arrows previous" aria-keyshortcuts="Left">
-        <span>{{ page.previous.title }}</span>
-        <i class="fa fa-angle-left"></i>
+    <a
+      rel="prev"
+      href="{{ page.previous.url }}"
+      class="arrows previous"
+      aria-keyshortcuts="Left"
+    >
+      <span>{{ page.previous.title }}</span>
+      <i class="fa fa-angle-left"></i>
     </a>
-    {% endif %}
-    {% if page.next %}
-    <a rel="next" href="{{ page.next.url }}" class="arrows next" aria-keyshortcuts="Right">
-        <span>{{ page.next.title }}</span>
-        <i class="fa fa-angle-right"></i>
+    {% endif %} {% if page.next %}
+    <a
+      rel="next"
+      href="{{ page.next.url }}"
+      class="arrows next"
+      aria-keyshortcuts="Right"
+    >
+      <span>{{ page.next.title }}</span>
+      <i class="fa fa-angle-right"></i>
     </a>
     {% endif %}
   </nav>
   <div class="content-contributors hidden">
-    <span><b>Contributors to this page</b></span>
+    <h1 class="h200">Contributors to this page</h1>
     <div id="documentation-contributors" class="contributors-container"></div>
   </div>
 </div>

@@ -13,20 +13,20 @@ import java.lang.System.{lineSeparator => nl}
 class WorksheetTest {
 
   @Test def runExpression: Unit = {
-    ws"${m1}2 + 2${m2}".withSource
+    ws"${m1}2 + 2${m2}"
       .run(m1,
         ((m1 to m2), "val res0: Int = 4"))
   }
 
   @Test def runSimpleVal: Unit = {
-    ws"${m1}val foo = 123${m2}".withSource
+    ws"${m1}val foo = 123${m2}"
       .run(m1,
         ((m1 to m2), "val foo: Int = 123"))
   }
 
   @Test def usePreviousDefinition: Unit = {
     ws"""${m1}val foo = 123${m2}
-         ${m3}val bar = foo + 1${m4}""".withSource
+         ${m3}val bar = foo + 1${m4}"""
       .run(m1,
         ((m1 to m2), "val foo: Int = 123"),
         ((m3 to m4), "val bar: Int = 124"))
@@ -34,7 +34,7 @@ class WorksheetTest {
 
   @Test def defineObject: Unit = {
     ws"""${m1}def foo(x: Int) = x + 1${m2}
-         ${m3}foo(1)${m4}""".withSource
+         ${m3}foo(1)${m4}"""
       .run(m1,
         ((m1 to m2), "def foo(x: Int): Int"),
         ((m3 to m4), "val res0: Int = 2"))
@@ -42,7 +42,7 @@ class WorksheetTest {
 
   @Test def defineCaseClass: Unit = {
     ws"""${m1}case class Foo(x: Int)${m2}
-        |${m3}Foo(1)${m4}""".withSource
+        |${m3}Foo(1)${m4}"""
       .run(m1,
         ((m1 to m2), "// defined case class Foo"),
         ((m3 to m4), "val res0: Foo = Foo(1)"))
@@ -52,7 +52,7 @@ class WorksheetTest {
     ws"""${m1}class Foo(x: Int) {
            override def toString: String = "Foo"
          }${m2}
-         ${m3}new Foo(1)${m4}""".withSource
+         ${m3}new Foo(1)${m4}"""
       .run(m1,
         ((m1 to m2), "// defined class Foo"),
         ((m3 to m4), "val res0: Foo = Foo"))
@@ -61,7 +61,7 @@ class WorksheetTest {
   @Test def defineAnonymousClass0: Unit = {
     ws"""${m1}new {
           override def toString: String = "Foo"
-         }${m2}""".withSource
+         }${m2}"""
       .run(m1,
         ((m1 to m2), "val res0: Object = Foo"))
   }
@@ -71,7 +71,7 @@ class WorksheetTest {
         |${m3}trait Bar${m4}
         |${m5}new Foo with Bar {
         |   override def toString: String = "Foo"
-        |}${m6}""".withSource
+        |}${m6}"""
       .run(m1,
         ((m1 to m2), "// defined class Foo"),
         ((m3 to m4), "// defined trait Bar"),
@@ -79,7 +79,7 @@ class WorksheetTest {
   }
 
   @Test def produceMultilineOutput: Unit = {
-    ws"""${m1}1 to 3 foreach println${m2}""".withSource
+    ws"""${m1}1 to 3 foreach println${m2}"""
       .run(m1,
         ((m1 to m2), s"1${nl}2${nl}3"))
   }
@@ -88,14 +88,14 @@ class WorksheetTest {
     ws"""${m1}1 + 2 match {
           case x if x % 2 == 0 => "even"
           case _ => "odd"
-        }${m2}""".withSource
+        }${m2}"""
       .run(m1,
         ((m1 to m2), "val res0: String = odd"))
   }
 
   @Test def evaluationException: Unit = {
     ws"""${m1}val foo = 1 / 0${m2}
-         ${m3}val bar = 2${m4}""".withSource
+         ${m3}val bar = 2${m4}"""
       .runNonStrict(m1,
         ((m1 to m2), "java.lang.ArithmeticException: / by zero"),
         ((m3 to m4), "val bar: Int = 2"))
@@ -104,7 +104,7 @@ class WorksheetTest {
   @Test def worksheetCompletion(): Unit = {
     ws"""class Foo { def bar = 123 }
          val x = new Foo
-         x.b${m1}""".withSource
+         x.b${m1}"""
       .completion(m1, Set(("bar", CompletionItemKind.Method, "=> Int")))
   }
 
@@ -160,7 +160,7 @@ class WorksheetTest {
   @Test def worksheetHighlight(): Unit = {
     ws"""class ${m1}Foo${m2} { def ${m3}bar${m4} = 123  }
          val x = new ${m5}Foo${m6}
-         x.${m7}bar${m8}""".withSource
+         x.${m7}bar${m8}"""
       .highlight(m1 to m2, (m1 to m2, DocumentHighlightKind.Read), (m5 to m6, DocumentHighlightKind.Read))
       .highlight(m3 to m4, (m3 to m4, DocumentHighlightKind.Read), (m7 to m8, DocumentHighlightKind.Read))
       .highlight(m5 to m6, (m1 to m2, DocumentHighlightKind.Read), (m5 to m6, DocumentHighlightKind.Read))
@@ -175,7 +175,7 @@ class WorksheetTest {
   @Test def worksheetHover(): Unit = {
     ws"""/** A class */ class ${m1}Foo${m2} { /** A method */ def ${m3}bar${m4} = 123  }
          val x = new ${m5}Foo${m6}
-         x.${m7}bar${m8}""".withSource
+         x.${m7}bar${m8}"""
       .hover(m1 to m2, hoverContent(s"${WorksheetWrapper}.Foo", "A class"))
       .hover(m3 to m4, hoverContent("Int", "A method"))
       .hover(m5 to m6, hoverContent(s"${WorksheetWrapper}.Foo", "A class"))
@@ -185,7 +185,7 @@ class WorksheetTest {
   @Test def worksheetDocumentSymbol(): Unit = {
     ws"""${m1}class Foo {
       ${m3}def bar = 123${m4}
-         }${m2}""".withSource
+         }${m2}"""
       .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class, WorksheetWrapper.moduleClassName.stripModuleClassSuffix.toString),
                           (m3 to m4).symInfo("bar", SymbolKind.Method, "Foo"))
   }
@@ -205,20 +205,20 @@ class WorksheetTest {
     ws"""${m1}val foo = 1
          val bar = 2
          while (true) {}
-         val baz = 3""".withSource
+         val baz = 3"""
       .cancelRun(m1, afterMs = 5000)
   }
 
   @Test def systemExit(): Unit = {
     ws"""${m1}println("Hello, world!")${m2}
          System.exit(0)
-         println("Goodbye!")""".withSource
+         println("Goodbye!")"""
       .run(m1,
         ((m1 to m2), "Hello, world!"))
   }
 
   @Test def outputOnStdErr(): Unit = {
-    ws"""${m1}System.err.println("Oh no")${m2}""".withSource
+    ws"""${m1}System.err.println("Oh no")${m2}"""
       .run(m1,
         ((m1 to m2), "Oh no"))
   }

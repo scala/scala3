@@ -1,0 +1,105 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+foo
+61
+68
+4
+foo
+DefDef
+false
+0
+false
+def foo
+
+1
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+get
+114
+121
+7
+get
+DefDef
+false
+0
+false
+def get
+
+2
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+<init>
+138
+147
+9
+foo
+Apply
+false
+0
+false
+"str".foo
+
+3
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+<init>
+138
+150
+9
+<none>
+Apply
+false
+0
+false
+"str".foo(0)
+
+4
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+<init>
+238
+248
+10
+get
+Apply
+false
+0
+false
+123.get(0)
+

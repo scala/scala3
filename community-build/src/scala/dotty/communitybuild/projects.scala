@@ -22,7 +22,7 @@ def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
 /** Executes shell command, returns false in case of error. */
 def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: Map[String, String]): Int =
-  import collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
   val command = binary +: arguments
   log(command.mkString(" "))
   val builder = new ProcessBuilder(command: _*).directory(projectDir.toFile).inheritIO()
@@ -140,7 +140,7 @@ final case class SbtCommunityProject(
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.6.2",
+      "-sbt-version", "1.7.1",
       "-Dsbt.supershell=false",
       s"-Ddotty.communitybuild.dir=$communitybuildDir",
       s"--addPluginSbtFile=$sbtPluginFilePath"
@@ -265,9 +265,8 @@ object projects:
 
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
-    sbtTestCommand   = "jvm/test;js/test",
-    sbtPublishCommand = "jvm/publishLocal;js/publishLocal",
-    sbtDocCommand = forceDoc("jvm")
+    sbtTestCommand   = "coreJVM/test;coreJS/test",
+    sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal"
   )
 
   lazy val scalatest: SbtCommunityProject = SbtCommunityProject(
@@ -506,10 +505,8 @@ object projects:
 
   lazy val scalaJava8Compat = SbtCommunityProject(
     project        = "scala-java8-compat",
-    // the fnGen subproject must be built with 2.12.x
-    sbtTestCommand = s"++2.12.14; ++$compilerVersion; set fnGen/dependencyOverrides := Nil; test",
-    sbtPublishCommand = s"++2.12.14; ++$compilerVersion; set fnGen/dependencyOverrides := Nil; publishLocal",
-    scalacOptions = Nil // avoid passing Scala 3 options to Scala 2.12 in fnGen subproject
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
   )
 
   lazy val verify = SbtCommunityProject(
@@ -550,8 +547,8 @@ object projects:
 
   lazy val cats = SbtCommunityProject(
     project = "cats",
-    sbtTestCommand = "set Global/scalaJSStage := FastOptStage;buildJVM;validateAllJS",
-    sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
+    sbtTestCommand = "set Global/scalaJSStage := FastOptStage;rootJVM/test;rootJS/test",
+    sbtPublishCommand = "rootJVM/publishLocal;rootJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init") // disable -Ysafe-init, due to -Xfatal-warning
 
@@ -755,10 +752,18 @@ object projects:
 
   lazy val http4s = SbtCommunityProject(
     project = "http4s",
-    sbtTestCommand = "tests/test; server/test; client/test; ember-core/test; ember-server/test; ember-client/test; circe/test",
+    sbtTestCommand = """set ThisBuild / tlFatalWarnings := false; rootJVM/test""",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
     dependencies = List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
+  )
+
+  lazy val parboiled2 = SbtCommunityProject(
+    project = "parboiled2",
+    sbtTestCommand = "parboiledCoreJVM/test; parboiledJVM/test",
+    sbtPublishCommand = "publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
+    dependencies = List(utest, scalacheck)
   )
 
 end projects
@@ -841,7 +846,8 @@ def allProjects = List(
   projects.specs2,
   projects.coop,
   projects.spire,
-  projects.http4s
+  projects.http4s,
+  projects.parboiled2,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

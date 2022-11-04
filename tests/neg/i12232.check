@@ -1,12 +1,12 @@
 -- Error: tests/neg/i12232.scala:17:15 ---------------------------------------------------------------------------------
 17 |  foo(min(3, 4)) // error: works in Scala 2, not in 3
    |               ^
-   |               no given instance of type Op[Int, Int, V] was found for parameter op of method min in object Foo
+   |               No given instance of type Op[Int, Int, V] was found for parameter op of method min in object Foo
    |
    |               where:    V is a type variable with constraint <: Double
 -- Error: tests/neg/i12232.scala:19:16 ---------------------------------------------------------------------------------
 19 |  foo(minR(3, 4)) // error: works in Scala 2, not in 3
    |                ^
-   |               no given instance of type Op[Int, Int, R] was found for parameter op of method minR in object Foo
+   |               No given instance of type Op[Int, Int, R] was found for parameter op of method minR in object Foo
    |
    |               where:    R is a type variable with constraint <: Double

@@ -22,17 +22,28 @@ object SyntheticsSupport:
 
   end extension
 
+  private def hackExists(using Quotes)(rpos: reflect.Position) = {
+    import reflect._
+    import dotty.tools.dotc
+    import dotty.tools.dotc.util.Spans._
+    given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    val pos = rpos.asInstanceOf[dotc.util.SourcePosition]
+    pos.exists
+  }
+
   def isSyntheticField(using Quotes)(c: reflect.Symbol) =
     import reflect._
     c.flags.is(Flags.CaseAccessor) || (c.flags.is(Flags.Module) && !c.flags.is(Flags.Given))
 
   def constructorWithoutParamLists(using Quotes)(c: reflect.ClassDef): Boolean =
-    c.constructor.pos.start == c.constructor.pos.end || {
-      val end = c.constructor.pos.end
-      val typesEnd =  c.constructor.leadingTypeParams.lastOption.fold(end - 1)(_.pos.end)
-      val classDefTree = c.constructor.show
-      c.constructor.leadingTypeParams.nonEmpty && end <= typesEnd + 1
-    }
+    if hackExists(c.constructor.pos) then {
+      c.constructor.pos.start == c.constructor.pos.end || {
+        val end = c.constructor.pos.end
+        val typesEnd =  c.constructor.leadingTypeParams.lastOption.fold(end - 1)(_.pos.end)
+        val classDefTree = c.constructor.show
+        c.constructor.leadingTypeParams.nonEmpty && end <= typesEnd + 1
+      }
+    } else false
 
   def getSupertypes(using Quotes)(c: reflect.ClassDef) =
     c.symbol.typeRef.baseClasses.map(b => b -> c.symbol.typeRef.baseType(b)).tail

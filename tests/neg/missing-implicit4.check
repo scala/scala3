@@ -1,7 +1,7 @@
 -- Error: tests/neg/missing-implicit4.scala:14:4 -----------------------------------------------------------------------
 14 |  ff // error
    |    ^
-   |    no given instance of type Zip[Option] was found for parameter xs of method ff
+   |    No given instance of type Zip[Option] was found for parameter xs of method ff
    |
    |    The following import might fix the problem:
    |
@@ -19,7 +19,7 @@
 -- Error: tests/neg/missing-implicit4.scala:20:42 ----------------------------------------------------------------------
 20 |    List(1, 2, 3).traverse(x => Option(x)) // error
    |                                          ^
-   |  no given instance of type Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
+   |  No given instance of type Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
    |
    |  The following import might fix the problem:
    |

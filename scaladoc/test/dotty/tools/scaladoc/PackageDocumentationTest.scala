@@ -3,7 +3,7 @@ package dotty.tools.scaladoc
 import org.junit.Assert._
 import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 
 class PackageDocumentationTest extends ScaladocTest("packageobjdocs"):

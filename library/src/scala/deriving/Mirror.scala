@@ -57,7 +57,6 @@ object Mirror {
       p.fromProduct(a)
 
     /** Create a new instance of type `T` with elements taken from tuple `t`. */
-    @annotation.experimental
     def fromTuple(t: p.MirroredElemTypes): T =
       p.fromProduct(t)
 }

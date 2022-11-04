@@ -2,7 +2,7 @@
 -- Error: tests/neg-macros/i9014b/Test_2.scala:1:23 --------------------------------------------------------------------
 1 |val tests = summon[Bar] // error
   |                       ^
-  |                       no given instance of type Bar was found for parameter x of method summon in object Predef.
+  |                       No given instance of type Bar was found for parameter x of method summon in object Predef.
   |                       I found:
   |
   |                           given_Bar

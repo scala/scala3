@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Compile-time operations"
-movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/compiletime-ops.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/compiletime-ops.html
 ---
 
 ## The `scala.compiletime` Package

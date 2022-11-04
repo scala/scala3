@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class VCInt(val x: Int) extends AnyVal
 class VCString(val x: String) extends AnyVal
 

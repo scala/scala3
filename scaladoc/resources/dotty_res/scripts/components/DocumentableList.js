@@ -4,7 +4,7 @@
  *  @typedef { [key: string, value: string][] } Dataset
  */
 
-class DocumentableList extends Component {
+ class DocumentableList extends Component {
   constructor(props) {
     super(props);
 
@@ -140,7 +140,7 @@ class List {
 
     function includesInputValue() {
       const lcValue = filter.value.toLowerCase()
-      return elementData.name.toLowerCase().includes(lcValue) 
+      return elementData.name.toLowerCase().includes(lcValue)
           || elementData.description.toLowerCase().includes(lcValue);
     }
 
@@ -177,7 +177,7 @@ class List {
         .every(([filterKey, value]) => {
           const filterGroup = filter.filters[filterKey]
 
-          return value.split(",").some(v => filterGroup && filterGroup[v].selected)
+          return Object.entries(filterGroup).filter(arr => arr[1].selected).length == 0 || value.split(",").some(v => (filterGroup && filterGroup[v].selected))
         })
 
       return isVisible

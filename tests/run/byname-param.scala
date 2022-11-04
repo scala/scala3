@@ -8,4 +8,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     theTrap(true, println(1))
   }
+
+  def println(x: Any): Unit =
+    Predef.println(if (x == ()) "()" else x) // portable on Scala.js
 }

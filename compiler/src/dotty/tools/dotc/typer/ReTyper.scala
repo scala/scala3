@@ -51,7 +51,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
   override def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree =
     promote(tree)
 
-  override def typedImport(tree: untpd.Import, sym: Symbol)(using Context): Tree =
+  override def typedImport(tree: untpd.Import)(using Context): Tree =
     promote(tree)
 
   override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree = {
@@ -72,6 +72,9 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(using Context): TypTree =
     promote(TypeTree(tree.tpe).withSpan(tree.span))
+
+  override def typedExport(exp: untpd.Export)(using Context): Export =
+    promote(exp)
 
   override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind = {
     assertTyped(tree)

@@ -70,7 +70,7 @@ object parsePackage extends ParserTest {
     val buf = parsedTrees map transformer.transform
     val ms2 = (System.nanoTime() - start)/1000000
     println(s"$parsed files parsed in ${ms1}ms, $nodes nodes transformed in ${ms2-ms1}ms, total trees created = ${Trees.ntrees}")
-    ctx.reporter.printSummary
+    ctx.reporter.printSummary()
   }
 
   def main(args: Array[String]): Unit = {

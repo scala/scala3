@@ -31,7 +31,7 @@ object Test extends App {
     case x   => throw new MatchError(x)
   }
   List("A","X").foreach { s =>
-    println(s"$s ${Try(unitary(s))}")
+    println(s"$s ${Try(unitary(s))}".replace("undefined", "()")) // replace for portability on Scala.js
   }
 
   println("=====")

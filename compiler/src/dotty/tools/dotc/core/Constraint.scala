@@ -126,6 +126,12 @@ abstract class Constraint extends Showable {
    */
   def subst(from: TypeLambda, to: TypeLambda)(using Context): This
 
+  /** Is `tv` marked as hard in the constraint? */
+  def isHard(tv: TypeVar): Boolean
+  
+  /** The same as this constraint, but with `tv` marked as hard. */
+  def withHard(tv: TypeVar)(using Context): This
+
   /** Gives for each instantiated type var that does not yet have its `inst` field
    *  set, the instance value stored in the constraint. Storing instances in constraints
    *  is done only in a temporary way for contexts that may be retracted

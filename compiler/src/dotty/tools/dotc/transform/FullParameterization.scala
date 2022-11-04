@@ -152,7 +152,7 @@ trait FullParameterization {
       val origClass = origMeth.enclosingClass.asClass
       val origLeadingTypeParamSyms = allInstanceTypeParams(originalDef, abstractOverClass)
       val origOtherParamSyms = originalDef.trailingParamss.flatten.map(_.symbol)
-      val thisRef :: argRefs = vrefss.flatten
+      val thisRef :: argRefs = vrefss.flatten: @unchecked
 
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
        *  @param   targs  Any type arguments passed to the rewired tree.

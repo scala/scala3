@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Union Types"
-movedTo: https://docs.scala-lang.org/scala3/reference/new-types/union-types.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/new-types/union-types.html
 ---
 
 A union type `A | B` has as values all values of type `A` and also all values of type `B`.

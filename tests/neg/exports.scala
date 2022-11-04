@@ -49,3 +49,9 @@
     val baz: Baz = new Baz
     export baz._
   }
+
+  object No:
+    def printer =
+      println("new Printer")
+      new Printer
+    export printer.*  // error: not stable

@@ -184,8 +184,8 @@ object Scala3:
     val EmptyPackage: String = "_empty_/"
     val LocalPrefix: String = "local"
     val PackageObjectDescriptor: String = "package."
-    val s"${RootPackageName @ _}/" = RootPackage
-    val s"${EmptyPackageName @ _}/" = EmptyPackage
+    val s"${RootPackageName @ _}/" = RootPackage: @unchecked
+    val s"${EmptyPackageName @ _}/" = EmptyPackage: @unchecked
 
     def displaySymbol(symbol: Symbol)(using Context): String =
       if symbol.isPackageObject then
@@ -416,7 +416,7 @@ object Scala3:
         unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar).nn)
 
       def isJavaIdent =
-        isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
+        symbol.nonEmpty && isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
   end StringOps
 
   given InfoOps: AnyRef with

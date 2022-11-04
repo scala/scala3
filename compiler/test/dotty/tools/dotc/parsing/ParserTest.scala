@@ -21,7 +21,7 @@ class ParserTest extends DottyTest {
     parsedTrees.clear()
   }
 
-  def parse(file: PlainFile): Tree = parseSource(new SourceFile(file, Codec.UTF8))
+  def parse(file: PlainFile): Tree = parseSource(SourceFile(file, Codec.UTF8))
 
   private def parseSource(source: SourceFile): Tree = {
     //println("***** parsing " + source.file)

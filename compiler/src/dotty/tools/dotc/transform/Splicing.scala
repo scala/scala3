@@ -22,7 +22,6 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
-import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.config.ScalaRelease.*
 
 import scala.annotation.constructorOnly
@@ -125,7 +124,7 @@ class Splicing extends MacroTransform:
             val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
             newSplicedCode2
         case tree: TypeDef if tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
-          val tp @ TypeRef(qual: TermRef, _) = tree.rhs.tpe.hiBound
+          val tp @ TypeRef(qual: TermRef, _) = tree.rhs.tpe.hiBound: @unchecked
           quotedDefs += tree.symbol
           val hole = typeHoles.get(qual.symbol) match
             case Some (hole) => cpy.Hole(hole)(content = EmptyTree)
@@ -294,7 +293,7 @@ class Splicing extends MacroTransform:
         reflect.asExpr(tree.tpe)(
           reflect.Assign(
             reflect.asTerm(capturedTerm(tree.lhs)),
-            reflect.asTerm(quoted(tree.rhs))
+            reflect.asTerm(quoted(transform(tree.rhs)))
           )
         )
       }

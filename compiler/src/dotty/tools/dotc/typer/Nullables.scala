@@ -20,6 +20,10 @@ import ast.Trees.mods
 object Nullables:
   import ast.tpd._
 
+  def importUnsafeNulls(using Context): Import = Import(
+    ref(defn.LanguageModule),
+    List(untpd.ImportSelector(untpd.Ident(nme.unsafeNulls), EmptyTree, EmptyTree)))
+
   inline def unsafeNullsEnabled(using Context): Boolean =
     ctx.explicitNulls && !ctx.mode.is(Mode.SafeNulls)
 
@@ -263,7 +267,7 @@ object Nullables:
       @tailrec def recur(s: Symbol): Boolean =
         s != NoSymbol
         && s != refOwner
-        && (s.isOneOf(Lazy | Method) // not at the rhs of lazy ValDef or in a method (or lambda)
+        && (s.isOneOf(MethodOrLazy) // not at the rhs of lazy ValDef or in a method (or lambda)
             || s.isClass // not in a class
             || recur(s.owner))
 

@@ -20,7 +20,7 @@ import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
-import dotty.tools.dotc.typer.Inliner
+import dotty.tools.dotc.inlines.Inlines
 
 import scala.annotation.constructorOnly
 
@@ -84,10 +84,10 @@ class PickleQuotes extends MacroTransform {
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match
-      case tree: RefTree if !Inliner.inInlineMethod =>
+      case tree: RefTree if !Inlines.inInlineMethod =>
         assert(!tree.symbol.isQuote)
         assert(!tree.symbol.isExprSplice)
-      case _ : TypeDef if !Inliner.inInlineMethod =>
+      case _ : TypeDef if !Inlines.inInlineMethod =>
         assert(!tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot),
           s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")
       case _ =>
@@ -101,7 +101,7 @@ class PickleQuotes extends MacroTransform {
         case Apply(Select(Apply(TypeApply(fn, List(tpt)), List(code)),nme.apply), List(quotes))
         if fn.symbol == defn.QuotedRuntime_exprQuote =>
           val (contents, codeWithHoles) = makeHoles(code)
-          val sourceRef = Inliner.inlineCallTrace(ctx.owner, tree.sourcePos)
+          val sourceRef = Inlines.inlineCallTrace(ctx.owner, tree.sourcePos)
           val codeWithHoles2 = Inlined(sourceRef, Nil, codeWithHoles)
           val pickled = PickleQuotes(quotes, codeWithHoles2, contents, tpt.tpe, false)
           transform(pickled) // pickle quotes that are in the contents
@@ -317,12 +317,12 @@ object PickleQuotes {
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = termSplices.map { case (splice, idx) =>
-                val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _, _), _, _) = splice.tpe
+                val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _, _), _, _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)
                   }
-                  val Block(List(ddef: DefDef), _) = splice
+                  val Block(List(ddef: DefDef), _) = splice: @unchecked
                   // TODO: beta reduce inner closure? Or wait until BetaReduce phase?
                   BetaReduce(ddef, spliceArgs).select(nme.apply).appliedTo(args(2).asInstance(quotesType))
                 }

@@ -1,6 +1,8 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc
+package core
 
 import Types._, Symbols._, Contexts._
+import cc.CaptureSet.IdempotentCaptRefMap
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -161,8 +163,9 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final class SubstBindingMap(from: BindingType, to: BindingType)(using Context) extends DeepTypeMap {
+  final class SubstBindingMap(from: BindingType, to: BindingType)(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
+    def inverse(tp: Type): Type = tp.subst(to, from)
   }
 
   final class Subst1Map(from: Symbol, to: Type)(using Context) extends DeepTypeMap {
@@ -177,8 +180,9 @@ object Substituters:
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap {
+  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
+    def inverse(tp: Type) = tp.substSym(to, from) // implicitly requires that `to` contains no duplicates.
   }
 
   final class SubstThisMap(from: ClassSymbol, to: Type)(using Context) extends DeepTypeMap {
@@ -189,11 +193,11 @@ object Substituters:
     def apply(tp: Type): Type = substRecThis(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstParamMap(from: ParamRef, to: Type)(using Context) extends DeepTypeMap {
+  final class SubstParamMap(from: ParamRef, to: Type)(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
     def apply(tp: Type): Type = substParam(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap {
+  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
     def apply(tp: Type): Type = substParams(tp, from, to, this)(using mapCtx)
   }
 

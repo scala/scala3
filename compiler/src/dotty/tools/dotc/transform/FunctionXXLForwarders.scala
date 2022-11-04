@@ -45,7 +45,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
 
     val forwarders =
       for {
-        (ddef: DefDef) <- impl.body
+        case (ddef: DefDef) <- impl.body
         if ddef.name == nme.apply && ddef.symbol.is(Method) &&
            ddef.symbol.signature.paramsSig.size > MaxImplementedFunctionArity &&
            ddef.symbol.allOverriddenSymbols.exists(sym => defn.isXXLFunctionClass(sym.owner))

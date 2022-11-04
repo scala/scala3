@@ -23,6 +23,8 @@ import scala.util.control.NonFatal
 import config.Config
 import reporting._
 import collection.mutable
+import transform.TypeUtils._
+import cc.{CapturingType, derivedCapturingType}
 
 import scala.annotation.internal.sharable
 
@@ -91,6 +93,10 @@ object SymDenotations {
       setFlag(
         if (myFlags.is(Trait)) NoInitsInterface & bodyFlags // no parents are initialized from a trait
         else NoInits & bodyFlags & parentFlags)
+
+    final def setStableConstructor()(using Context): Unit =
+      val ctorStable = if myFlags.is(Trait) then myFlags.is(NoInits) else isNoInitsRealClass
+      if ctorStable then primaryConstructor.setFlag(StableRealizable)
 
     def isCurrent(fs: FlagSet)(using Context): Boolean =
       def knownFlags(info: Type): FlagSet = info match
@@ -223,6 +229,11 @@ object SymDenotations {
     final def annotations(using Context): List[Annotation] = {
       ensureCompleted(); myAnnotations
     }
+
+    /** The annotations without ensuring that the symbol is completed.
+     *  Used for diagnostics where we don't want to force symbols.
+     */
+    final def annotationsUNSAFE(using Context): List[Annotation] = myAnnotations
 
     /** Update the annotations of this denotation */
     final def annotations_=(annots: List[Annotation]): Unit =
@@ -482,11 +493,10 @@ object SymDenotations {
         def qualify(n: SimpleName) =
           val qn = kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
           if kind == FlatName && !encl.is(JavaDefined) then qn.compactified else qn
-        val fn = name replace {
-          case name: SimpleName => qualify(name)
-          case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
+        val fn = name.replaceDeep {
+          case n: SimpleName => qualify(n)
         }
-        if (name.isTypeName) fn.toTypeName else fn.toTermName
+        if name.isTypeName then fn.toTypeName else fn.toTermName
       }
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
@@ -653,6 +663,9 @@ object SymDenotations {
     def seesOpaques(using Context): Boolean =
       containsOpaques ||
       is(Module, butNot = Package) && owner.seesOpaques
+
+    def isProvisional(using Context): Boolean =
+      flagsUNSAFE.is(Provisional) // do not force the info to check the flag
 
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:
@@ -1039,6 +1052,7 @@ object SymDenotations {
               case tp: TermRef => tp.symbol
               case tp: Symbol => sourceOfSelf(tp.info)
               case tp: RefinedType => sourceOfSelf(tp.parent)
+              case tp: AnnotatedType => sourceOfSelf(tp.parent)
             }
             sourceOfSelf(selfType)
           case info: LazyType =>
@@ -1507,8 +1521,7 @@ object SymDenotations {
       case tp: ExprType => hasSkolems(tp.resType)
       case tp: AppliedType => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
-      case tp: AndType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
-      case tp: OrType  => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
+      case tp: AndOrType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
       case tp: AnnotatedType => hasSkolems(tp.parent)
       case _ => false
     }
@@ -1613,7 +1626,7 @@ object SymDenotations {
             c.ensureCompleted()
       end completeChildrenIn
 
-      if is(Sealed) then
+      if is(Sealed) || isAllOf(JavaEnumTrait) then
         if !is(ChildrenQueried) then
           // Make sure all visible children are completed, so that
           // they show up in Child annotations. A possible child is visible if it
@@ -2163,6 +2176,9 @@ object SymDenotations {
 
           case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
             recur(TypeComparer.bounds(tp).hi)
+
+          case CapturingType(parent, refs) =>
+            tp.derivedCapturingType(recur(parent), refs)
 
           case tp: TypeProxy =>
             def computeTypeProxy = {

@@ -226,4 +226,23 @@ object Config {
    *  reduces the number of allocated denotations by ~50%.
    */
   inline val reuseSymDenotations = true
+
+  /** If `checkLevelsOnConstraints` is true, check levels of type variables
+   *  and create fresh ones as needed when bounds are first entered intot he constraint.
+   *  If `checkLevelsOnInstantiation` is true, allow level-incorrect constraints but
+   *  fix levels on type variable instantiation.
+   */
+  inline val checkLevelsOnConstraints = false
+  inline val checkLevelsOnInstantiation = true
+
+  /** If true, print capturing types in the form `{c} T`.
+   *  If false, print them in the form `T @retains(c)`.
+   */
+  inline val printCaptureSetsAsPrefix = true
+
+  /** If true, allow mappping capture set variables under -Ycc with maps that are neither
+   *  bijective nor idempotent. We currently do now know how to do this correctly in all
+   *  cases, though.
+   */
+  inline val ccAllowUnsoundMaps = false
 }

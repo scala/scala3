@@ -34,10 +34,10 @@ object Annotations {
       if (i < args.length) Some(args(i)) else None
     }
     def argumentConstant(i: Int)(using Context): Option[Constant] =
-      for (ConstantType(c) <- argument(i) map (_.tpe.widenTermRefExpr.normalized)) yield c
+      for (case ConstantType(c) <- argument(i) map (_.tpe.widenTermRefExpr.normalized)) yield c
 
     def argumentConstantString(i: Int)(using Context): Option[String] =
-      for (Constant(s: String) <- argumentConstant(i)) yield s
+      for (case Constant(s: String) <- argumentConstant(i)) yield s
 
     /** The tree evaluaton is in progress. */
     def isEvaluating: Boolean = false
@@ -45,7 +45,7 @@ object Annotations {
     /** The tree evaluation has finished. */
     def isEvaluated: Boolean = true
 
-    /** Normally, type map over all tree nodes of this annotation, but can
+    /** Normally, applies a type map to all tree nodes of this annotation, but can
      *  be overridden. Returns EmptyAnnotation if type type map produces a range
      *  type, since ranges cannot be types of trees.
      */
@@ -83,6 +83,10 @@ object Annotations {
 
     def sameAnnotation(that: Annotation)(using Context): Boolean =
       symbol == that.symbol && tree.sameTree(that.tree)
+
+    /** Operations for hash-consing, can be overridden */
+    def hash: Int = System.identityHashCode(this)
+    def eql(that: Annotation) = this eq that
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
@@ -219,7 +223,7 @@ object Annotations {
 
       def unapply(ann: Annotation)(using Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
-          val AppliedType(_, (arg: NamedType) :: Nil) = ann.tree.tpe
+          val AppliedType(_, (arg: NamedType) :: Nil) = ann.tree.tpe: @unchecked
           Some(arg.symbol)
         }
         else None

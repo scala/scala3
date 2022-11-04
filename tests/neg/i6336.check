@@ -1,0 +1,18 @@
+-- [E007] Type Mismatch Error: tests/neg/i6336.scala:2:18 --------------------------------------------------------------
+2 |  val a: AnyVal = "foo" // error
+  |                  ^^^^^
+  |                  Found:    ("foo" : String)
+  |                  Required: AnyVal
+  |                  Note that implicit conversions were not tried because the result of an implicit conversion
+  |                  must be more specific than AnyVal
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i6336.scala:3:18 --------------------------------------------------------------
+3 |  val b: AnyRef = 1 // error
+  |                  ^
+  |                  Found:    (1 : Int)
+  |                  Required: AnyRef
+  |                  Note that implicit conversions were not tried because the result of an implicit conversion
+  |                  must be more specific than AnyRef
+  |
+  | longer explanation available when compiling with `-explain`

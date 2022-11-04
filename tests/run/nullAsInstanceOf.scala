@@ -10,14 +10,17 @@ object Test {
     val d = null.asInstanceOf[Double]
     val str = null.asInstanceOf[String]
 
-    println(u)
-    println(b)
-    println(c)
-    println(s)
-    println(i)
-    println(l)
-    println(f)
-    println(d)
-    println(str)
+    assertIs((), u)
+    assertIs(0.toByte, b)
+    assertIs('\u0000', c)
+    assertIs(0.toShort, s)
+    assertIs(0, i)
+    assertIs(0L, l)
+    assertIs(0.0f, f)
+    assertIs(0.0, d)
+    assertIs(null, str)
   }
+
+  def assertIs(expected: Any, actual: Any): Unit =
+    assert(java.util.Objects.equals(expected, actual))
 }

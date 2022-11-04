@@ -44,3 +44,6 @@ object Test:
     println(samInvariantExtends.first("i"))
     println(samInOutExtends.first(10))
     println(samWithCustomAliases.first())
+
+  def println(x: Any): Unit =
+    Console.println(if x == () then "()" else x.toString) // portable on Scala.js

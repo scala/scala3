@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import java.io.{ByteArrayInputStream, ObjectInputStream, ObjectOutputStream, ByteArrayOutputStream}
 
 trait IntToString extends java.io.Serializable { def apply(i: Int): String }

@@ -56,3 +56,19 @@
    |                   Recursive value $1$ needs type
    |
    | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/t5702-neg-bad-and-wild.scala:22:20 ---------------------------------------------------------------
+22 |    val K(x @ _*) = k
+   |                    ^
+   |        pattern's type Int* does not match the right hand side expression's type Int
+   |
+   |        If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
+   |        which may result in a MatchError at runtime.
+   |        This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+-- Warning: tests/neg/t5702-neg-bad-and-wild.scala:25:20 ---------------------------------------------------------------
+25 |    val (b, _ * ) = (5,6) // ok
+   |                    ^^^^^
+   |        pattern's type Int* does not match the right hand side expression's type Int
+   |
+   |        If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
+   |        which may result in a MatchError at runtime.
+   |        This patch can be rewritten automatically under -rewrite -source 3.2-migration.

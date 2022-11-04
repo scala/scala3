@@ -328,6 +328,9 @@ object TypeErasure {
         isGenericArrayElement(tp.alias, isScala2)
       case tp: TypeBounds =>
         !fitsInJVMArray(tp.hi)
+      case tp: MatchType =>
+        val alts = tp.alternatives
+        alts.nonEmpty && !fitsInJVMArray(alts.reduce(OrType(_, _, soft = true)))
       case tp: TypeProxy =>
         isGenericArrayElement(tp.translucentSuperType, isScala2)
       case tp: AndType =>
@@ -363,13 +366,13 @@ object TypeErasure {
    *  which leads to more predictable bytecode and (?) faster dynamic dispatch.
    */
   def erasedLub(tp1: Type, tp2: Type)(using Context): Type = {
-    // After erasure, C | {Null, Nothing} is just C, if C is a reference type.
-    // We need to short-circuit this case here because the regular lub logic below
-    // relies on the class hierarchy, which doesn't properly capture `Null`s subtyping
-    // behaviour.
-    if (tp1.isBottomTypeAfterErasure && tp2.derivesFrom(defn.ObjectClass)) return tp2
-    if (tp2.isBottomTypeAfterErasure && tp1.derivesFrom(defn.ObjectClass)) return tp1
-    tp1 match {
+    // We need to short-circuit the following 2 case because the regular lub logic in the else relies on
+    // the class hierarchy, which doesn't properly capture `Nothing`/`Null` subtyping behaviour.
+    if tp1.isRef(defn.NothingClass) || (tp1.isRef(defn.NullClass) && tp2.derivesFrom(defn.ObjectClass)) then
+      tp2 // After erasure, Nothing | T is just T and Null | C is just C, if C is a reference type.
+    else if tp2.isRef(defn.NothingClass) || (tp2.isRef(defn.NullClass) && tp1.derivesFrom(defn.ObjectClass)) then
+      tp1 // After erasure, T | Nothing is just T and C | Null is just C, if C is a reference type.
+    else tp1 match {
       case JavaArrayType(elem1) =>
         import dotty.tools.dotc.transform.TypeUtils._
         tp2 match {
@@ -599,7 +602,9 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
       else if (semiEraseVCs && isDerivedValueClass(tycon.classSymbol)) eraseDerivedValueClass(tp)
       else apply(tp.translucentSuperType)
-    case _: TermRef | _: ThisType =>
+    case tp: TermRef =>
+      this(underlyingOfTermRef(tp))
+    case _: ThisType =>
       this(tp.widen)
     case SuperType(thistpe, supertpe) =>
       SuperType(this(thistpe), this(supertpe))
@@ -638,6 +643,11 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
           tp.derivedLambdaType(names ++ rt.paramNames, formals ++ rt.paramInfos, rt.resultType)
+        case NoType =>
+          // Can happen if we smuggle in a Nothing in the qualifier. Normally we prevent that
+          // in Checking.checkMembersOK, but compiler-generated code can bypass this test.
+          // See i15377.scala for a test case.
+          NoType
         case rt =>
           tp.derivedLambdaType(names, formals, rt)
       }
@@ -679,8 +689,21 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       tp
   }
 
+  /** Widen term ref, skipping any `()` parameter of an eventual getter. Used to erase a TermRef.
+   *  Since getters are introduced after erasure, one would think that erasing a TermRef
+   *  could just use `widen`. However, it's possible that the TermRef got read from a class
+   *  file after Getters (i.e. in the backend). In that case, the reference will not get
+   *  an earlier denotation even when time travelling forward to erasure. Hence, we
+   *  need to take the extra precaution of going from nullary method types to their resuls.
+   *  A test case where this is needed is pos/i15649.scala, which fails non-deterministically
+   *  if `underlyingOfTermRef` is replaced by `widen`.
+   */
+  private def underlyingOfTermRef(tp: TermRef)(using Context) = tp.widen match
+    case tpw @ MethodType(Nil) if tp.symbol.isGetter => tpw.resultType
+    case tpw => tpw
+
   private def eraseArray(tp: Type)(using Context) = {
-    val defn.ArrayOf(elemtp) = tp
+    val defn.ArrayOf(elemtp) = tp: @unchecked
     if (isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2)) defn.ObjectType
     else
       try JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, wildcardOK)(elemtp))
@@ -689,6 +712,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
   }
 
   private def erasePair(tp: Type)(using Context): Type = {
+    // NOTE: `tupleArity` does not consider TypeRef(EmptyTuple$) equivalent to EmptyTuple.type,
+    // we fix this for printers, but type erasure should be preserved.
     val arity = tp.tupleArity
     if (arity < 0) defn.ProductClass.typeRef
     else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity).nn
@@ -822,7 +847,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case JavaArrayType(elem) =>
         sigName(elem) ++ "[]"
       case tp: TermRef =>
-        sigName(tp.widen)
+        sigName(underlyingOfTermRef(tp))
       case ExprType(rt) =>
         sigName(defn.FunctionOf(Nil, rt))
       case tp: TypeVar =>

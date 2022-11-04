@@ -512,14 +512,15 @@ object Symbols {
 // ---- Symbol creation methods ----------------------------------
 
   /** Create a symbol from its fields (info may be lazy) */
-  def newSymbol[N <: Name](
+  def newSymbol[N <: Name](using Context)(
       owner: Symbol,
       name: N,
       flags: FlagSet,
       info: Type,
       privateWithin: Symbol = NoSymbol,
-      coord: Coord = NoCoord)(using Context): Symbol { type ThisName = N } = {
-    val sym = new Symbol(coord, ctx.base.nextSymId, ctx.nestingLevel).asInstanceOf[Symbol { type ThisName = N }]
+      coord: Coord = NoCoord,
+      nestingLevel: Int = ctx.nestingLevel): Symbol { type ThisName = N } = {
+    val sym = new Symbol(coord, ctx.base.nextSymId, nestingLevel).asInstanceOf[Symbol { type ThisName = N }]
     val denot = SymDenotation(sym, owner, name, flags, info, privateWithin)
     sym.denot = denot
     sym

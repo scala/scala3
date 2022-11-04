@@ -4,6 +4,7 @@ package dotc
 import core._
 import Contexts._
 import typer.{TyperPhase, RefChecks}
+import cc.CheckCaptures
 import parsing.Parser
 import Phases.Phase
 import transform._
@@ -24,13 +25,8 @@ class Compiler {
    *  all refs to it would become outdated - they could not be dereferenced in the
    *  new phase.
    *
-   *  After erasure, signature changing denot-transformers are OK because erasure
-   *  will make sure that only term refs with fixed SymDenotations survive beyond it. This
-   *  is possible because:
-   *
-   *   - splitter has run, so every ident or select refers to a unique symbol
-   *   - after erasure, asSeenFrom is the identity, so every reference has a
-   *     plain SymDenotation, as opposed to a UniqueRefDenotation.
+   *  After erasure, signature changing denot-transformers are OK because signatures
+   *  are never recomputed later than erasure.
    */
   def phases: List[List[Phase]] =
     frontendPhases ::: picklerPhases ::: transformPhases ::: backendPhases
@@ -83,6 +79,10 @@ class Compiler {
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher) ::      // Compile pattern matches
+    List(new TestRecheck.Pre) ::     // Test only: run rechecker, enabled under -Yrecheck-test
+    List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
+    List(new CheckCaptures.Pre) ::   // Preparations for check captures phase, enabled under -Ycc
+    List(new CheckCaptures) ::       // Check captures, enabled under -Ycc
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
@@ -96,6 +96,7 @@ class Compiler {
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
          new SpecializeFunctions,    // Specialized Function{0,1,2} by replacing super with specialized super
+         new SpecializeTuples,       // Specializes Tuples by replacing tuple construction and selection trees
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections

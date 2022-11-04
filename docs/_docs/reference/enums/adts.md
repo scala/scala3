@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Algebraic Data Types"
-movedTo: https://docs.scala-lang.org/scala3/reference/enums/adts.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/enums/adts.html
 ---
 
 The [`enum` concept](./enums.md) is general enough to also support algebraic data

@@ -140,7 +140,7 @@ object ParsedComment {
    */
   private def toDescriptionList(ctx: Context, items: List[String]): String = inContext(ctx) {
     val formattedItems = items.map { p =>
-      val name :: rest = p.split(" ", 2).toList
+      val name :: rest = p.split(" ", 2).toList: @unchecked
       s"${bold(name)} ${rest.mkString("").trim}"
     }
     toMarkdownList(ctx, formattedItems)

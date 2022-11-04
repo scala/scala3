@@ -30,7 +30,7 @@ object ExternalDocLink:
       case path :: apiUrl :: Nil => for {
         url <- tryParse(mapping, "url")(URL(apiUrl))
       } yield ExternalDocLink(
-        List(s"$path.*".r),
+        List(s"${Regex.quote(path)}.*".r),
         url,
         DocumentationKind.Scaladoc2,
         None

@@ -19,7 +19,7 @@ class ScannerTest extends DottyTest {
 
   def scan(file: PlainFile): Unit = {
     //println("***** scanning " + file)
-    val source = new SourceFile(file, Codec.UTF8)
+    val source = SourceFile(file, Codec.UTF8)
     val scanner = new Scanner(source)
     var i = 0
     while (scanner.token != EOF) {

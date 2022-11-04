@@ -37,7 +37,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     override def parents = Array(root.superClass)
 
     override def exclude(sym: Symbol) =
-      !sym.isOneOf(MethodOrModule) || super.exclude(sym)
+      !sym.isOneOf(MethodOrModule) || sym.isAllOf(Module | JavaDefined) || super.exclude(sym)
 
     override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
       OverridingPairs.isOverridingPair(sym1, sym2, parent.thisType)

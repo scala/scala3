@@ -70,8 +70,9 @@ object WConf:
       case "id" => conf match
         case ErrorId(num) =>
           ErrorMessageID.fromErrorNumber(num.toInt) match
-            case Some(errId) => Right(MessageID(errId))
-            case _ => Left(s"unknonw error message number: E$num")
+            case Some(errId) if errId.isActive => Right(MessageID(errId))
+            case Some(errId) => Left(s"E${num} is marked as inactive.")
+            case _ => Left(s"Unknown error message number: E${num}")
         case _ =>
           Left(s"invalid error message id: $conf")
       case "name" =>

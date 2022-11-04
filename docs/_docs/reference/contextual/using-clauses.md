@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Using Clauses"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/using-clauses.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/using-clauses.html
 ---
 
 Functional programming tends to express most dependencies as simple function parameterization.

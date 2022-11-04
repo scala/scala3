@@ -51,7 +51,7 @@ trait Plugins {
     }
     else _roughPluginsList
 
-  /** Load all available plugins.  Skips plugins that
+  /** Load all available plugins. Skips plugins that
    *  either have the same name as another one, or which
    *  define a phase name that another one does.
    */
@@ -62,7 +62,7 @@ trait Plugins {
       plugNames: Set[String]): List[Plugin] = {
       if (plugins.isEmpty) return Nil // early return
 
-      val plug :: tail      = plugins
+      val plug :: tail      = plugins: @unchecked
       def withoutPlug       = pick(tail, plugNames)
       def withPlug          = plug :: pick(tail, plugNames + plug.name)
 

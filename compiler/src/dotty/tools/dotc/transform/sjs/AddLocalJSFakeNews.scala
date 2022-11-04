@@ -59,7 +59,7 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
 
   override def transformApply(tree: Apply)(using Context): Tree = {
     if (tree.symbol == jsdefn.Runtime_createLocalJSClass) {
-      val classValueArg :: superClassValueArg :: _ :: Nil = tree.args
+      val classValueArg :: superClassValueArg :: _ :: Nil = tree.args: @unchecked
       val cls = classValueArg match {
         case Literal(constant) if constant.tag == Constants.ClazzTag =>
           constant.typeValue.typeSymbol.asClass

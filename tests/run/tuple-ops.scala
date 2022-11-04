@@ -30,3 +30,6 @@ val t4: Unit = d.zip(d)
 
 @main def Test =
   List(r1, r2, r3, r4, r5, r6, r7, t3, t4).foreach(println)
+
+def println(x: Any): Unit =
+  Console.println(if x == () then "()" else x) // portable on Scala.js

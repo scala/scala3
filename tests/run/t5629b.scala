@@ -26,9 +26,9 @@ object Test extends App {
     }
   }
 
-  val pf = newPF(1)
-  println("=== pf(1):")
-  try { pf(1) } catch { case x: Throwable => println(x) }
+  val pf = newPF(100000)
+  println("=== pf(100000):")
+  try { pf(100000) } catch { case x: Throwable => println(x) }
   println("=== pf(42):")
   pf(42)
   println("=== done")

@@ -263,8 +263,6 @@ Standard Section: "Comments" Comment*
 ```none
   Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 ```
-
-* @syntax markdown
 **************************************************************************************/
 
 object TastyFormat {
@@ -306,7 +304,7 @@ object TastyFormat {
    *  is able to read final TASTy documents if the file's
    *  `MinorVersion` is strictly less than the current value.
    */
-  final val ExperimentalVersion: Int = 1
+  final val ExperimentalVersion: Int = 0
 
   /**This method implements a binary relation (`<:<`) between two TASTy versions.
    *

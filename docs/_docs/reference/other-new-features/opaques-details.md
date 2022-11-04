@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Opaque Type Aliases: More Details"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/opaques-details.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/opaques-details.html
 ---
 
 ## Syntax

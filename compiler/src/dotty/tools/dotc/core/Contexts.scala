@@ -14,7 +14,8 @@ import Uniques._
 import ast.Trees._
 import ast.untpd
 import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
-import typer.{Implicits, ImportInfo, Inliner, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import inlines.Inliner
 import Nullables._
 import Implicits.ContextualImplicits
 import config.Settings._
@@ -24,7 +25,7 @@ import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
 import printing._
-import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings, ScalaRelease}
+import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 import classfile.ReusableDataReader
 import StdNames.nme
 
@@ -38,9 +39,6 @@ import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
-import dotty.tools.tasty.TastyFormat
-import dotty.tools.dotc.config.{ NoScalaVersion, SpecificScalaVersion, AnyScalaVersion, ScalaBuild }
-import dotty.tools.dotc.core.tasty.TastyVersion
 
 object Contexts {
 
@@ -167,7 +165,7 @@ object Contexts {
     protected def scope_=(scope: Scope): Unit = _scope = scope
     final def scope: Scope = _scope
 
-    /** The current type comparer */
+    /** The current typerstate */
     private var _typerState: TyperState = _
     protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
     final def typerState: TyperState = _typerState
@@ -478,22 +476,7 @@ object Contexts {
 
     /** A new context that summarizes an import statement */
     def importContext(imp: Import[?], sym: Symbol): FreshContext =
-      fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
-
-    def scalaRelease: ScalaRelease =
-      val releaseName = base.settings.scalaOutputVersion.value
-      if releaseName.nonEmpty then ScalaRelease.parse(releaseName).get else ScalaRelease.latest
-
-    def tastyVersion: TastyVersion =
-      import math.Ordered.orderingToOrdered
-      val latestRelease = ScalaRelease.latest
-      val specifiedRelease = scalaRelease
-      if specifiedRelease < latestRelease then
-        // This is needed to make -scala-output-version a no-op when set to the latest release for unstable versions of the compiler
-        // (which might have the tasty format version numbers set to higher values before they're decreased during a release)
-        TastyVersion.fromStableScalaRelease(specifiedRelease.majorVersion, specifiedRelease.minorVersion)
-      else
-        TastyVersion.compilerVersion
+       fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
 
     /** Is the debug option set? */
     def debug: Boolean = base.settings.Ydebug.value
@@ -836,7 +819,7 @@ object Contexts {
 
   @sharable object NoContext extends Context((null: ContextBase | Null).uncheckedNN) {
     source = NoSource
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
   }
 
   /** A context base defines state and associated methods that exist once per

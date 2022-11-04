@@ -89,8 +89,8 @@ abstract class BTypes {
 
     final def isNonVoidPrimitiveType = isPrimitive && this != UNIT
 
-    final def isNullType             = this == RT_NULL
-    final def isNothingType          = this == RT_NOTHING
+    final def isNullType             = this == srNullRef
+    final def isNothingType          = this == srNothingRef
 
     final def isBoxed = this.isClass && boxedClasses(this.asClassBType)
 
@@ -113,7 +113,7 @@ abstract class BTypes {
 
       this match {
         case ArrayBType(component) =>
-          if (other == ObjectReference || other == jlCloneableReference || other == jioSerializableReference) true
+          if (other == ObjectRef || other == jlCloneableRef || other == jiSerializableRef) true
           else other match {
             case ArrayBType(otherComponoent) => component.conformsTo(otherComponoent)
             case _ => false
@@ -122,7 +122,7 @@ abstract class BTypes {
         case classType: ClassBType =>
           if (isBoxed) {
             if (other.isBoxed) this == other
-            else if (other == ObjectReference) true
+            else if (other == ObjectRef) true
             else other match {
               case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType) // e.g., java/lang/Double conforms to java/lang/Number
               case _ => false
@@ -165,7 +165,7 @@ abstract class BTypes {
 
         assert(other.isRef, s"Cannot compute maxType: $this, $other")
         // Approximate `lub`. The common type of two references is always ObjectReference.
-        ObjectReference
+        ObjectRef
     }
 
     /**
@@ -668,7 +668,7 @@ abstract class BTypes {
       if (this == other) return true
 
       if (isInterface) {
-        if (other == ObjectReference) return true // interfaces conform to Object
+        if (other == ObjectRef) return true // interfaces conform to Object
         if (!other.isInterface) return false // this is an interface, the other is some class other than object. interfaces cannot extend classes, so the result is false.
         // else: this and other are both interfaces. continue to (*)
       } else {
@@ -698,13 +698,13 @@ abstract class BTypes {
           // exercised by test/files/run/t4761.scala
           if      (other.isSubtypeOf(this)) this
           else if (this.isSubtypeOf(other)) other
-          else ObjectReference
+          else ObjectRef
 
         case (true, false) =>
-          if (other.isSubtypeOf(this)) this else ObjectReference
+          if (other.isSubtypeOf(this)) this else ObjectRef
 
         case (false, true) =>
-          if (this.isSubtypeOf(other)) other else ObjectReference
+          if (this.isSubtypeOf(other)) other else ObjectRef
 
         case _ =>
           // TODO @lry I don't really understand the reasoning here.

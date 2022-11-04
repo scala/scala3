@@ -1,0 +1,10 @@
+-- Error: tests/neg/i14127.scala:6:55 ----------------------------------------------------------------------------------
+6 |    *: Int *: Int *: Int *: Int *: Int *: EmptyTuple)]] // error
+  |                                                       ^
+  |No given instance of type deriving.Mirror.Of[(Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, 
+  |  Int
+  |, Int, Int)] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type deriving.Mirror.Of[(Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, 
+  |  Int
+  |, Int, Int)]: 
+  |	* class *: is not a generic product because it reduces to a tuple with arity 23, expected arity <= 22
+  |	* class *: is not a generic sum because it does not have subclasses

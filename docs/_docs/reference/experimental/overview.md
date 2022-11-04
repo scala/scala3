@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Experimental"
-movedTo: https://docs.scala-lang.org/scala3/reference/experimental/overview.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/overview.html
 redirectFrom: overview.html
 ---
 
@@ -26,3 +26,4 @@ They can be imported at the top-level if all top-level definitions are `@experim
 Some experimental language features that are still in research and development can be enabled with special compiler options. These include
 
 * [`-Yexplicit-nulls`](./explicit-nulls.md). Enable support for tracking null references in the type system.
+* [`-Ycc`](./cc.md). Enable support for capture checking.

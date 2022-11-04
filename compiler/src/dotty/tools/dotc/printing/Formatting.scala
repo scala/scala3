@@ -18,9 +18,8 @@ object Formatting {
   object ShownDef:
     /** Represents a value that has been "shown" and can be consumed by StringFormatter.
      *  Not just a string because it may be a Seq that StringFormatter will intersperse with the trailing separator.
-     *  Also, it's not a `String | Seq[String]` because then we'd need a Context to call `Showable#show`.  We could
-     *  make Context a requirement for a Show instance but then we'd have lots of instances instead of just one ShowAny
-     *  instance.  We could also try to make `Show#show` require the Context, but then that breaks the Conversion. */
+     *  It may also be a CtxShow, which allows the Show instance to finish showing the value with the string
+     *  interpolator's correct context, that is with non-sensical tagging, message limiting, explanations, etc. */
     opaque type Shown = Any
     object Shown:
       given [A: Show]: Conversion[A, Shown] = Show[A].show(_)
@@ -29,12 +28,23 @@ object Formatting {
       /** Show a value T by returning a "shown" result. */
       def show(x: T): Shown
 
+    trait CtxShow:
+      def run(using Context): Shown
+
+    extension (s: Shown)
+      def ctxShow(using Context): Shown = s match
+        case cs: CtxShow => cs.run
+        case _           => s
+
     /** The base implementation, passing the argument to StringFormatter which will try to `.show` it. */
     object ShowAny extends Show[Any]:
       def show(x: Any): Shown = x
 
-    class ShowImplicits2:
+    class ShowImplicits3:
       given Show[Product] = ShowAny
+
+    class ShowImplicits2 extends ShowImplicits3:
+      given Show[ParamInfo] = ShowAny
 
     class ShowImplicits1 extends ShowImplicits2:
       given Show[ImplicitRef]      = ShowAny
@@ -45,10 +55,12 @@ object Formatting {
       inline def apply[A](using inline z: Show[A]): Show[A] = z
 
       given [X: Show]: Show[Seq[X]] with
-        def show(x: Seq[X]) = x.map(Show[X].show)
+        def show(x: Seq[X]) = new CtxShow:
+          def run(using Context) = x.map(show1)
 
       given [A: Show, B: Show]: Show[(A, B)] with
-        def show(x: (A, B)) = (Show[A].show(x._1), Show[B].show(x._2))
+        def show(x: (A, B)) = new CtxShow:
+          def run(using Context) = (show1(x._1), show1(x._2))
 
       given [X: Show]: Show[X | Null] with
         def show(x: X | Null) = if x == null then "null" else Show[X].show(x.nn)
@@ -64,6 +76,7 @@ object Formatting {
       given Show[Int]                                 = ShowAny
       given Show[Char]                                = ShowAny
       given Show[Boolean]                             = ShowAny
+      given Show[Integer]                             = ShowAny
       given Show[String]                              = ShowAny
       given Show[Class[?]]                            = ShowAny
       given Show[Throwable]                           = ShowAny
@@ -77,6 +90,11 @@ object Formatting {
       given Show[util.SourceFile]                     = ShowAny
       given Show[util.Spans.Span]                     = ShowAny
       given Show[tasty.TreeUnpickler#OwnerTree]       = ShowAny
+
+      private def show1[A: Show](x: A)(using Context) = show2(Show[A].show(x).ctxShow)
+      private def show2(x: Shown)(using Context): String = x match
+        case seq: Seq[?] => seq.map(show2).mkString("[", ", ", "]")
+        case res         => res.tryToShow
     end Show
   end ShownDef
   export ShownDef.{ Show, Shown }
@@ -93,13 +111,14 @@ object Formatting {
   class StringFormatter(protected val sc: StringContext) {
     protected def showArg(arg: Any)(using Context): String = arg.tryToShow
 
-    private def treatArg(arg: Shown, suffix: String)(using Context): (Any, String) = arg match {
-      case arg: Seq[?] if suffix.nonEmpty && suffix.head == '%' =>
-        val (rawsep, rest) = suffix.tail.span(_ != '%')
-        val sep = StringContext.processEscapes(rawsep)
-        if (rest.nonEmpty) (arg.map(showArg).mkString(sep), rest.tail)
-        else (arg, suffix)
-      case _ =>
+    private def treatArg(arg: Shown, suffix: String)(using Context): (String, String) = arg.ctxShow match {
+      case arg: Seq[?] if suffix.indexOf('%') == 0 && suffix.indexOf('%', 1) != -1 =>
+        val end = suffix.indexOf('%', 1)
+        val sep = StringContext.processEscapes(suffix.substring(1, end))
+        (arg.mkString(sep), suffix.substring(end + 1))
+      case arg: Seq[?] =>
+        (arg.map(showArg).mkString("[", ", ", "]"), suffix)
+      case arg =>
         (showArg(arg), suffix)
     }
 
@@ -125,11 +144,13 @@ object Formatting {
    *  like concatenation, stripMargin etc on the values returned by em"...", and in the current error
    *  message composition methods, this is crucial.
    */
-  class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc):
-    override protected def showArg(arg: Any)(using Context): String =
-      wrapNonSensical(arg, super.showArg(arg)(using errorMessageCtx))
+  def forErrorMessages(op: Context ?=> String)(using Context): String = op(using errorMessageCtx)
 
-  private def wrapNonSensical(arg: Any, str: String)(using Context): String = {
+  private class ErrorMessagePrinter(_ctx: Context) extends RefinedPrinter(_ctx):
+    override def toText(tp: Type): Text    = wrapNonSensical(tp, super.toText(tp))
+    override def toText(sym: Symbol): Text = wrapNonSensical(sym, super.toText(sym))
+
+  private def wrapNonSensical(arg: Any, text: Text)(using Context): Text = {
     import Message._
     def isSensical(arg: Any): Boolean = arg match {
       case tpe: Type =>
@@ -142,8 +163,8 @@ object Formatting {
       case _ => true
     }
 
-    if (isSensical(arg)) str
-    else nonSensicalStartTag + str + nonSensicalEndTag
+    if (isSensical(arg)) text
+    else nonSensicalStartTag ~ text ~ nonSensicalEndTag
   }
 
   private type Recorded = Symbol | ParamRef | SkolemType
@@ -194,7 +215,7 @@ object Formatting {
     }
   }
 
-  private class ExplainingPrinter(seen: Seen)(_ctx: Context) extends RefinedPrinter(_ctx) {
+  private class ExplainingPrinter(seen: Seen)(_ctx: Context) extends ErrorMessagePrinter(_ctx) {
 
     /** True if printer should a source module instead of its module class */
     private def useSourceModule(sym: Symbol): Boolean =
@@ -298,9 +319,12 @@ object Formatting {
   }
 
   private def errorMessageCtx(using Context): Context =
-    ctx.property(MessageLimiter) match
+    val ctx1 = ctx.property(MessageLimiter) match
       case Some(_: ErrorMessageLimiter) => ctx
       case _ => ctx.fresh.setProperty(MessageLimiter, ErrorMessageLimiter())
+    ctx1.printer match
+      case _: ErrorMessagePrinter => ctx1
+      case _ => ctx1.fresh.setPrinterFn(ctx => ErrorMessagePrinter(ctx))
 
   /** Context with correct printer set for explanations */
   private def explainCtx(seen: Seen)(using Context): Context =
@@ -355,8 +379,8 @@ object Formatting {
     *         highlight the difference
     */
   def typeDiff(found: Type, expected: Type)(using Context): (String, String) = {
-    val fnd = wrapNonSensical(found, found.show)
-    val exp = wrapNonSensical(expected, expected.show)
+    val fnd = wrapNonSensical(found, found.toText(ctx.printer)).show
+    val exp = wrapNonSensical(expected, expected.toText(ctx.printer)).show
 
     DiffUtil.mkColoredTypeDiff(fnd, exp) match {
       case _ if ctx.settings.color.value == "never" => (fnd, exp)
@@ -368,4 +392,9 @@ object Formatting {
   /** Explicit syntax highlighting */
   def hl(s: String)(using Context): String =
     SyntaxHighlighting.highlight(s)
+
+  /** Explicitly highlight a string with the same formatting as used for keywords */
+  def hlAsKeyword(str: String)(using Context): String =
+    if str.isEmpty || ctx.settings.color.value == "never" then str
+    else s"${SyntaxHighlighting.KeywordColor}$str${SyntaxHighlighting.NoColor}"
 }

@@ -6,14 +6,10 @@ import java.nio.file.Path
 case class SnippetCompilerArg(flag: SCFlags):
   def overrideFlag(f: SCFlags): SnippetCompilerArg = copy(flag = f)
 
-sealed trait SCFlags(val flagName: String)
-
-object SCFlags:
-  case object Compile extends SCFlags("compile")
-  case object NoCompile extends SCFlags("nocompile")
-  case object Fail extends SCFlags("fail")
-
-  def values: Seq[SCFlags] = Seq(Compile, NoCompile, Fail)
+enum SCFlags(val flagName: String):
+  case Compile extends SCFlags("compile")
+  case NoCompile extends SCFlags("nocompile")
+  case Fail extends SCFlags("fail")
 
 case class SnippetCompilerArgs(scFlags: PathBased[SCFlags], defaultFlag: SCFlags):
   def get(member: Member): SnippetCompilerArg =

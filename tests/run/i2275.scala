@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Test {
   var count = 0
 

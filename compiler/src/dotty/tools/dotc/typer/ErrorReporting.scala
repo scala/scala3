@@ -124,13 +124,27 @@ object ErrorReporting {
 
     def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailureType = NoMatchingImplicits): Tree = {
       val normTp = normalize(tree.tpe, pt)
-      val treeTp = if (normTp <:< pt) tree.tpe else normTp
-        // use normalized type if that also shows an error, original type otherwise
+      val normPt = normalize(pt, pt)
+
+      def contextFunctionCount(tp: Type): Int = tp.stripped match
+        case defn.ContextFunctionType(_, restp, _) => 1 + contextFunctionCount(restp)
+        case _ => 0
+      def strippedTpCount = contextFunctionCount(tree.tpe) - contextFunctionCount(normTp)
+      def strippedPtCount = contextFunctionCount(pt) - contextFunctionCount(normPt)
+
+      val (treeTp, expectedTp) =
+        if normTp <:< normPt || strippedTpCount != strippedPtCount
+        then (tree.tpe, pt)
+        else (normTp, normPt)
+        // use normalized types if that also shows an error, and both sides stripped
+        // the same number of context functions. Use original types otherwise.
+
       def missingElse = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
           "\nMaybe you are missing an else part for the conditional?"
         case _ => ""
-      errorTree(tree, TypeMismatch(treeTp, pt, Some(tree), implicitFailure.whyNoConversion, missingElse))
+
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), implicitFailure.whyNoConversion, missingElse))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
@@ -152,15 +166,6 @@ object ErrorReporting {
       i"""${TypeComparer.explained(_.isSubType(found, expected), header)}
          |
          |The tests were made under $constraintText"""
-
-    /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
-     *  all occurrences of `${X}` where `X` is in `paramNames` with the
-     *  corresponding shown type in `args`.
-     */
-
-    def rewriteNotice: String =
-      if Feature.migrateTo3 then "\nThis patch can be inserted automatically under -rewrite."
-      else ""
 
     def whyFailedStr(fail: FailedExtension) =
       i"""    failed with
@@ -257,6 +262,9 @@ class ImplicitSearchError(
         case _ =>
           defaultAmbiguousImplicitMsg(ambi)
       }
+    case ambi @ TooUnspecific(target) =>
+      ex"""No implicit search was attempted${location("for")}
+          |since the expected type $target is not specific enough"""
     case _ =>
       val shortMessage = userDefinedImplicitNotFoundParamMessage
         .orElse(userDefinedImplicitNotFoundTypeMessage)
@@ -266,25 +274,31 @@ class ImplicitSearchError(
       ++ ErrorReporting.matchReductionAddendum(pt)
   }
 
-  private def formatMsg(shortForm: String)(headline: String = shortForm) = arg match {
+  private def formatMsg(shortForm: String)(headline: String = shortForm) = arg match
     case arg: Trees.SearchFailureIdent[?] =>
-      shortForm
+      arg.tpe match
+        case _: NoMatchingImplicits => headline
+        case tpe: SearchFailureType =>
+          i"$headline. ${tpe.explanation}"
+        case _ => headline
     case _ =>
-      arg.tpe match {
+      arg.tpe match
         case tpe: SearchFailureType =>
           val original = arg match
             case Inlined(call, _, _) => call
             case _ => arg
-
           i"""$headline.
             |I found:
             |
             |    ${original.show.replace("\n", "\n    ")}
             |
             |But ${tpe.explanation}."""
-      }
-  }
+        case _ => headline
 
+  /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
+   *  all occurrences of `${X}` where `X` is in `paramNames` with the
+   *  corresponding shown type in `args`.
+   */
   private def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type]): String = {
     def translate(name: String): Option[String] = {
       val idx = paramNames.indexOf(name)
@@ -307,12 +321,10 @@ class ImplicitSearchError(
   private def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
   private def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) =
-    formatMsg(s"ambiguous given instances: ${ambi.explanation}${location("of")}")(
-      s"ambiguous given instances of type ${pt.show} found${location("for")}"
-    )
+    s"Ambiguous given instances: ${ambi.explanation}${location("of")}"
 
   private def defaultImplicitNotFoundMessage =
-    ex"no given instance of type $pt was found${location("for")}"
+    ex"No given instance of type $pt was found${location("for")}"
 
   /** Construct a custom error message given an ambiguous implicit
    *  candidate `alt` and a user defined message `raw`.
@@ -323,7 +335,7 @@ class ImplicitSearchError(
       case _           => Nil
     }
     def resolveTypes(targs: List[tpd.Tree])(using Context) =
-      targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.span))
+      targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
 
     // We can extract type arguments from:
     //   - a function call:
@@ -392,7 +404,7 @@ class ImplicitSearchError(
           .map(userDefinedImplicitNotFoundTypeMessage)
           .find(_.isDefined).flatten
       case tp: TypeProxy =>
-        recur(tp.underlying)
+        recur(tp.superType)
       case tp: AndType =>
         recur(tp.tp1).orElse(recur(tp.tp2))
       case _ =>

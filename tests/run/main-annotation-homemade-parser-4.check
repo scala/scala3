@@ -1,0 +1,7 @@
+Some(7)
+Some(42)
+None
+
+Left(7)
+Right(No argument given)
+Right(Unable to parse argument abc)

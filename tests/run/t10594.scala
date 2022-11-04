@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class C {
   var x = 0
 
@@ -120,7 +122,7 @@ class C {
       m();m()
       // 8272
     }
-  }  
+  }
 }
 
 object Test {

@@ -1,0 +1,144 @@
+scala> class NInt(val x: Int) extends AnyVal
+// defined class NInt
+
+scala> NInt(23)
+val res0: NInt = NInt@17
+
+scala> res0.toString
+val res1: String = NInt@17
+
+scala> 23
+val res2: Int = 23
+
+scala> class NBoolean(val x: Boolean) extends AnyVal
+// defined class NBoolean
+
+scala> NBoolean(true)
+val res3: NBoolean = NBoolean@4cf
+
+scala> res3.toString
+val res4: String = NBoolean@4cf
+
+scala> true
+val res5: Boolean = true
+
+scala> class NByte(val x: Byte) extends AnyVal
+// defined class NByte
+
+scala> NByte(1)
+val res6: NByte = NByte@1
+
+scala> res6.toString
+val res7: String = NByte@1
+
+scala> val res8: Byte = 1
+val res8: Byte = 1
+
+scala> class NShort(val x: Short) extends AnyVal
+// defined class NShort
+
+scala> NShort(1)
+val res9: NShort = NShort@1
+
+scala> res9.toString
+val res10: String = NShort@1
+
+scala> val res11: Short = 1
+val res11: Short = 1
+
+scala> class NLong(val x: Long) extends AnyVal
+// defined class NLong
+
+scala> NLong(1)
+val res12: NLong = NLong@1
+
+scala> res12.toString
+val res13: String = NLong@1
+
+scala> 1L
+val res14: Long = 1
+
+scala> class NFloat(val x: Float) extends AnyVal
+// defined class NFloat
+
+scala> NFloat(1L)
+val res15: NFloat = NFloat@3f800000
+
+scala> res15.toString
+val res16: String = NFloat@3f800000
+
+scala> 1.0F
+val res17: Float = 1.0
+
+scala> class NDouble(val x: Double) extends AnyVal
+// defined class NDouble
+
+scala> NDouble(1D)
+val res18: NDouble = NDouble@3ff00000
+
+scala> res18.toString
+val res19: String = NDouble@3ff00000
+
+scala> 1.0D
+val res20: Double = 1.0
+
+scala> class NChar(val x: Char) extends AnyVal
+// defined class NChar
+
+scala> NChar('a')
+val res21: NChar = NChar@61
+
+scala> res21.toString
+val res22: String = NChar@61
+
+scala> 'a'
+val res23: Char = a
+
+scala> class NString(val x: String) extends AnyVal
+// defined class NString
+
+scala> NString("test")
+val res24: NString = NString@364492
+
+scala> res24.toString
+val res25: String = NString@364492
+
+scala> "test"
+val res26: String = test
+
+scala> class CustomToString(val x: Int) extends AnyVal { override def toString(): String = s"Test$x" }
+// defined class CustomToString
+
+scala> CustomToString(23)
+val res27: CustomToString = Test23
+
+scala> res27.toString
+val res28: String = Test23
+
+scala> class `<>`(x: Int) extends AnyVal
+// defined class <>
+
+scala> `<>`(23)
+val res29: <> = less$greater@17
+
+scala> res29.toString
+val res30: String = less$greater@17
+
+scala> class `🤪`(x: Int) extends AnyVal
+// defined class 🤪
+
+scala> `🤪`(23)
+val res31: 🤪 = uD83E$uDD2A@17
+
+scala> res31.toString
+val res32: String = uD83E$uDD2A@17
+
+scala> object Outer { class Foo(x: Int) extends AnyVal }
+// defined object Outer
+
+scala> Outer.Foo(23)
+val res33: Outer.Foo = Outer$Foo@17
+
+scala> res33.toString
+val res34: String = Outer$Foo@17
+

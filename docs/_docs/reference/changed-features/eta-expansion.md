@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Automatic Eta Expansion"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/eta-expansion.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/eta-expansion.html
 ---
 
 The conversion of _methods_ into _functions_ has been improved and happens automatically for methods with one or more parameters.

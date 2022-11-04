@@ -1,31 +1,38 @@
 package scala.compiletime
 package ops
 
-import annotation.experimental
-
 object any:
   /** Equality comparison of two singleton types.
    * ```scala
+   *  //{
+   *  import compiletime.ops.any._
+   *  //}
    * val eq1: 1 == 1 = true
    * val eq2: 1 == "1" = false
    * val eq3: "1" == "1" = true
    * ```
    * @syntax markdown
    */
-  type ==[+X, +Y] <: Boolean
+  type ==[X, Y] <: Boolean
 
   /** Inequality comparison of two singleton types.
    * ```scala
+   *  //{
+   *  import compiletime.ops.any._
+   *  //}
    * val eq1: 1 != 1 = false
    * val eq2: 1 != "1" = true
    * val eq3: "1" != "1" = false
    * ```
    * @syntax markdown
    */
-  type !=[+X, +Y] <: Boolean
+  type !=[X, Y] <: Boolean
 
   /** Tests if a type is a constant.
    * ```scala
+   *  //{
+   *  import compiletime.ops.any._
+   *  //}
    * val c1: IsConst[1] = true
    * val c2: IsConst["hi"] = true
    * val c3: IsConst[false] = true
@@ -34,6 +41,9 @@ object any:
    * If the type is not yet known, then `IsConst` remains unevaluated, and
    * will be evaluated only at its concrete type application. E.g.:
    * ```scala
+   *  //{
+   *  import compiletime.ops.any._
+   *  //}
    * //def `isConst`` returns the type `IsConst[X]`, since `X` is not yet known.
    * def isConst[X] : IsConst[X] = ???
    * val c5 : true = isConst[1] //now the type is known to be a constant
@@ -41,15 +51,16 @@ object any:
    * ```
    * @syntax markdown
    */
-  @experimental
   type IsConst[X] <: Boolean
 
   /** String conversion of a constant singleton type.
    *  ```scala
+   *  //{
+   *  import compiletime.ops.any._
+   *  //}
    *  val s1: ToString[1] = "1"
    *  val sTrue: ToString[true] = "true"
    *  ```
    *  @syntax markdown
    */
-  @experimental
-  type ToString[+X] <: String
+  type ToString[X] <: String

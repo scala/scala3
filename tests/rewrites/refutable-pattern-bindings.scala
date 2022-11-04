@@ -23,3 +23,5 @@ val j :: k =
   for
     (x: String) <- xs
   yield x
+
+val (_: Int | _: AnyRef) = ??? : AnyRef

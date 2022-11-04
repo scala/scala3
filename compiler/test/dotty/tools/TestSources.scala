@@ -5,7 +5,7 @@ import scala.language.unsafeNulls
 import java.io.File
 import java.nio.file._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object TestSources {
 
@@ -13,17 +13,21 @@ object TestSources {
 
   def posFromTastyBlacklistFile: String = "compiler/test/dotc/pos-from-tasty.blacklist"
   def posTestPicklingBlacklistFile: String = "compiler/test/dotc/pos-test-pickling.blacklist"
+  def posTestRecheckExcludesFile = "compiler/test/dotc/pos-test-recheck.excludes"
 
   def posFromTastyBlacklisted: List[String] = loadList(posFromTastyBlacklistFile)
   def posTestPicklingBlacklisted: List[String] = loadList(posTestPicklingBlacklistFile)
+  def posTestRecheckExcluded = loadList(posTestRecheckExcludesFile)
 
   // run tests lists
 
   def runFromTastyBlacklistFile: String = "compiler/test/dotc/run-from-tasty.blacklist"
   def runTestPicklingBlacklistFile: String = "compiler/test/dotc/run-test-pickling.blacklist"
+  def runTestRecheckExcludesFile = "compiler/test/dotc/run-test-recheck.excludes"
 
   def runFromTastyBlacklisted: List[String] = loadList(runFromTastyBlacklistFile)
   def runTestPicklingBlacklisted: List[String] = loadList(runTestPicklingBlacklistFile)
+  def runTestRecheckExcluded = loadList(runTestRecheckExcludesFile)
 
   // load lists
 

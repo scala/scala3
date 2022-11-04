@@ -1,7 +1,7 @@
 package dotty.tools.scaladoc
 
 import dotty.tools.scaladoc.tasty.ScaladocTastyInspector
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import transformers._
 
 case class Module(rootPackage: Member, members: Map[DRI, Member])
@@ -16,7 +16,7 @@ object ScalaModuleProvider:
     def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.members.flatMap(flattenMember)
 
     val topLevelPackage =
-      Member("API", site.apiPageDRI, Kind.RootPackage, members = packageMembers, docs = rootDoc)
+      Member("API", "", site.apiPageDRI, Kind.RootPackage, members = packageMembers, docs = rootDoc)
 
     val original = Module(topLevelPackage, flattenMember(topLevelPackage).toMap)
 

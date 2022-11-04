@@ -34,7 +34,7 @@
 -- Error: tests/neg/i12049.scala:24:20 ---------------------------------------------------------------------------------
 24 |val _ = summon[M[B]]  // error
    |                    ^
-   |                    no given instance of type M[B] was found for parameter x of method summon in object Predef
+   |                    No given instance of type M[B] was found for parameter x of method summon in object Predef
    |
    |                    Note: a match type could not be fully reduced:
    |

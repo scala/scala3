@@ -1,0 +1,8 @@
+Error: unused argument: SPAAAAACE
+Usage: add [--num] <Int> [--inc] <Int>
+Error: unused argument: 3
+Usage: add [--num] <Int> [--inc] <Int>
+Error: unused argument: 10
+Usage: add [--num] <Int> [--inc] <Int>
+Error: unused argument: 01
+Usage: add [--num] <Int> [--inc] <Int>

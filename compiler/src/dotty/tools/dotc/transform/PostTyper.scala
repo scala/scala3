@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
 import scala.collection.mutable
 import core._
 import dotty.tools.dotc.typer.Checking
-import dotty.tools.dotc.typer.Inliner
+import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.typer.VarianceChecker
 import typer.ErrorReporting.errorTree
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
@@ -14,7 +14,9 @@ import Decorators._
 import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
+import util.SrcPos
 import reporting._
+import NameKinds.WildcardParamName
 
 object PostTyper {
   val name: String = "posttyper"
@@ -225,7 +227,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case (NamedArg(_, arg) :: _, namedArgs1) =>
                 arg :: reorderArgs(pnames1, namedArgs1, otherArgs)
               case _ =>
-                val otherArg :: otherArgs1 = otherArgs
+                val otherArg :: otherArgs1 = otherArgs: @unchecked
                 otherArg :: reorderArgs(pnames1, namedArgs, otherArgs1)
             }
           case nil =>
@@ -282,7 +284,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.isType then
             checkNotPackage(tree)
           else
-            if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
+            if tree.symbol.is(Inline) && !Inlines.inInlineMethod then
               ctx.compilationUnit.needsInlining = true
             checkNoConstructorProxy(tree)
             tree.tpe match {
@@ -342,7 +344,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
-          args.foreach(checkInferredWellFormed)
+          for arg <- args do
+            checkInferredWellFormed(arg)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
@@ -356,7 +359,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           val pos = call.sourcePos
-          val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
+          val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
           withNoCheckNews(templ.parents.flatMap(newPart)) {
@@ -388,20 +391,27 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 for parent <- impl.parents do
                   Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
             // Add SourceFile annotation to top-level classes
-            if sym.owner.is(Package)
-               && ctx.compilationUnit.source.exists
-               && sym != defn.SourceFileAnnot
-            then
-              val reference = ctx.settings.sourceroot.value
-              val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
-              sym.addAnnotation(Annotation.makeSourceFile(relativePath))
-          else (tree.rhs, sym.info) match
-            case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
-              VarianceChecker.checkLambda(rhs, bounds)
-              if sym.isOpaqueAlias then
-                VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
-            case _ =>
+            if sym.owner.is(Package) then
+              if ctx.compilationUnit.source.exists && sym != defn.SourceFileAnnot then
+                val reference = ctx.settings.sourceroot.value
+                val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
+                sym.addAnnotation(Annotation.makeSourceFile(relativePath))
+              if ctx.settings.Ycc.value && sym != defn.CaptureCheckedAnnot then
+                sym.addAnnotation(Annotation(defn.CaptureCheckedAnnot))
+          else
+            if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
+              Checking.checkGoodBounds(tree.symbol)
+            (tree.rhs, sym.info) match
+              case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
+                VarianceChecker.checkLambda(rhs, bounds)
+                if sym.isOpaqueAlias then
+                  VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
+              case _ =>
           processMemberDef(super.transform(tree))
+        case tree: Bind =>
+          if tree.symbol.isType && !tree.symbol.name.is(WildcardParamName) then
+            Checking.checkGoodBounds(tree.symbol)
+          super.transform(tree)
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.srcPos)
           super.transform(tree)
@@ -430,21 +440,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case tpe => tpe
             }
           )
-        case Import(expr, selectors) =>
-          val exprTpe = expr.tpe
-          val seen = mutable.Set.empty[Name]
-
-          def checkIdent(sel: untpd.ImportSelector): Unit =
-            if !exprTpe.member(sel.name).exists
-               && !exprTpe.member(sel.name.toTypeName).exists then
-              report.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.srcPos)
-            if seen.contains(sel.name) then
-              report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
-            seen += sel.name
-
-          for sel <- selectors do
-            if !sel.isWildcard then checkIdent(sel)
-          super.transform(tree)
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
             // The added mode signals that bounds in a pattern need not

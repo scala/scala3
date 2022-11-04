@@ -24,7 +24,9 @@ object JSPrimitives {
 
   inline val UNITVAL = JS_NATIVE + 1 // () value, which is undefined
 
-  inline val JS_IMPORT = UNITVAL + 1        // js.import.apply(specifier)
+  inline val JS_NEW_TARGET = UNITVAL + 1 // js.new.target
+
+  inline val JS_IMPORT = JS_NEW_TARGET + 1  // js.import.apply(specifier)
   inline val JS_IMPORT_META = JS_IMPORT + 1 // js.import.meta
 
   inline val CONSTRUCTOROF = JS_IMPORT_META + 1                         // runtime.constructorOf(clazz)
@@ -32,13 +34,14 @@ object JSPrimitives {
   inline val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
   inline val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
   inline val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
+  inline val DYNAMIC_IMPORT = LINKING_INFO + 1                          // runtime.dynamicImport
 
-  inline val STRICT_EQ = LINKING_INFO + 1 // js.special.strictEquals
-  inline val IN = STRICT_EQ + 1           // js.special.in
-  inline val INSTANCEOF = IN + 1          // js.special.instanceof
-  inline val DELETE = INSTANCEOF + 1      // js.special.delete
-  inline val FORIN = DELETE + 1           // js.special.forin
-  inline val DEBUGGER = FORIN + 1         // js.special.debugger
+  inline val STRICT_EQ = DYNAMIC_IMPORT + 1 // js.special.strictEquals
+  inline val IN = STRICT_EQ + 1             // js.special.in
+  inline val INSTANCEOF = IN + 1            // js.special.instanceof
+  inline val DELETE = INSTANCEOF + 1        // js.special.delete
+  inline val FORIN = DELETE + 1             // js.special.forin
+  inline val DEBUGGER = FORIN + 1           // js.special.debugger
 
   inline val THROW = DEBUGGER + 1
 
@@ -105,6 +108,8 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
 
     addPrimitive(defn.BoxedUnit_UNIT, UNITVAL)
 
+    addPrimitive(jsdefn.JSNew_target, JS_NEW_TARGET)
+
     addPrimitive(jsdefn.JSImport_apply, JS_IMPORT)
     addPrimitive(jsdefn.JSImport_meta, JS_IMPORT_META)
 
@@ -113,6 +118,7 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Runtime_createLocalJSClass, CREATE_LOCAL_JS_CLASS)
     addPrimitive(jsdefn.Runtime_withContextualJSClassValue, WITH_CONTEXTUAL_JS_CLASS_VALUE)
     addPrimitive(jsdefn.Runtime_linkingInfo, LINKING_INFO)
+    addPrimitive(jsdefn.Runtime_dynamicImport, DYNAMIC_IMPORT)
 
     addPrimitive(jsdefn.Special_strictEquals, STRICT_EQ)
     addPrimitive(jsdefn.Special_in, IN)
