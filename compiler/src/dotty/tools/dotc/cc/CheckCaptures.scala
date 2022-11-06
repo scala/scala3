@@ -444,13 +444,9 @@ class CheckCaptures extends Recheck, SymTransformer:
               atPhase(preRecheckPhase.prev)(meth.denot.copySymDenotation())
                 .installAfter(preRecheckPhase)
 
-              //atPhase(preRecheckPhase.prev)(meth.denot.copySymDenotation())
-              //  .installAfter(thisPhase)
               // Next, update all parameter symbols to match expected formals
               meth.paramSymss.head.lazyZip(ptformals).foreach { (psym, pformal) =>
-                psym.copySymDenotation(info = pformal.mapExprType).installAfter(preRecheckPhase)
-              //  psym.copySymDenotation(info = pformal).installAfter(thisPhase)
-              //  println(i"UPDATE $psym to ${pformal.mapExprType}, was $pformal")
+                psym.updateInfoBetween(preRecheckPhase, thisPhase, pformal.mapExprType)
               }
               // Next, update types of parameter ValDefs
               mdef.paramss.head.lazyZip(ptformals).foreach { (param, pformal) =>
@@ -464,8 +460,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   denot.info = mt.companion(ptformals, mdef.tpt.knownType)
                     .showing(i"simplify info of $meth to $result", capt)
                   recheckDef(mdef, meth)
-              meth.copySymDenotation(info = completer, initFlags = meth.flags &~ Touched)
-                .installAfter(preRecheckPhase)
+              meth.updateInfoBetween(preRecheckPhase, thisPhase, completer)
             case _ =>
         case _ =>
       super.recheckBlock(block, pt)
