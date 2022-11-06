@@ -774,17 +774,19 @@ object RefChecks {
 
         // For each member, check that the type of its symbol, as seen from `self`
         // can override the info of this member
-        for (name <- membersToCheck)
-          for (mbrd <- self.member(name).alternatives) {
-            val mbr = mbrd.symbol
-            val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
-            if (!mbrType.overrides(mbrd.info, relaxedCheck = false, matchLoosely = true))
-              report.errorOrMigrationWarning(
-                em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
-                    |  its type             $mbrType
-                    |  does not conform to  ${mbrd.info}""",
-                (if (mbr.owner == clazz) mbr else clazz).srcPos, from = `3.0`)
+        withMode(Mode.IgnoreCaptures) {
+          for (name <- membersToCheck)
+            for (mbrd <- self.member(name).alternatives) {
+              val mbr = mbrd.symbol
+              val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
+              if (!mbrType.overrides(mbrd.info, relaxedCheck = false, matchLoosely = true))
+                report.errorOrMigrationWarning(
+                  em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
+                      |  its type             $mbrType
+                      |  does not conform to  ${mbrd.info}""",
+                  (if (mbr.owner == clazz) mbr else clazz).srcPos, from = `3.0`)
           }
+        }
       }
 
       /** Check that inheriting a case class does not constitute a variant refinement
