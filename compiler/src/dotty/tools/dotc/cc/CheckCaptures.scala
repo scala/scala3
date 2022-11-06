@@ -432,7 +432,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       block match
         case closureDef(mdef) =>
           pt.dealias match
-            case defn.FunctionOf(ptformals, _, _, _) if ptformals.forall(_.captureSet.isAlwaysEmpty) =>
+            case defn.FunctionOf(ptformals, _, _, _)
+            if ptformals.nonEmpty && ptformals.forall(_.captureSet.isAlwaysEmpty) =>
               // Redo setup of the anonymous function so that formal parameters don't
               // get capture sets. This is important to avoid false widenings to `*`
               // when taking the base type of the actual closures's dependent function
@@ -442,9 +443,14 @@ class CheckCaptures extends Recheck, SymTransformer:
               // First, undo the previous setup which installed a completer for `meth`.
               atPhase(preRecheckPhase.prev)(meth.denot.copySymDenotation())
                 .installAfter(preRecheckPhase)
+
+              //atPhase(preRecheckPhase.prev)(meth.denot.copySymDenotation())
+              //  .installAfter(thisPhase)
               // Next, update all parameter symbols to match expected formals
               meth.paramSymss.head.lazyZip(ptformals).foreach { (psym, pformal) =>
-                psym.copySymDenotation(info = pformal).installAfter(preRecheckPhase)
+                psym.copySymDenotation(info = pformal.mapExprType).installAfter(preRecheckPhase)
+              //  psym.copySymDenotation(info = pformal).installAfter(thisPhase)
+              //  println(i"UPDATE $psym to ${pformal.mapExprType}, was $pformal")
               }
               // Next, update types of parameter ValDefs
               mdef.paramss.head.lazyZip(ptformals).foreach { (param, pformal) =>

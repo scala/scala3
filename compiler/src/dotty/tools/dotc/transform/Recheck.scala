@@ -22,6 +22,7 @@ import StdNames.nme
 import reporting.trace
 import annotation.constructorOnly
 import cc.CaptureSet.IdempotentCaptRefMap
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 
 object Recheck:
   import tpd.*
@@ -91,6 +92,18 @@ object Recheck:
 
     def hasRememberedType: Boolean = tree.hasAttachment(RecheckedType)
 
+  extension (tpe: Type)
+
+    /** Map ExprType => T to () ?=> T (and analogously for pure versions).
+     *  Even though this phase runs after ElimByName, ExprTypes can still occur
+     *  as by-name arguments of applied types. See note in doc comment for
+     *  ElimByName phase. Test case is bynamefun.scala.
+     */
+    def mapExprType(using Context): Type = tpe match
+      case ExprType(rt) => defn.ByNameFunction(rt)
+      case _ => tpe
+
+
 /** A base class that runs a simplified typer pass over an already re-typed program. The pass
  *  does not transform trees but returns instead the re-typed type of each tree as it is
  *  traversed. The Recheck phase must be directly preceded by a phase of type PreRecheck.
@@ -152,15 +165,27 @@ abstract class Recheck extends Phase, SymTransformer:
         else AnySelectionProto
       recheckSelection(tree, recheck(qual, proto).widenIfUnstable, name, pt)
 
+    /** When we select the `apply` of a function with type such as `(=> A) => B`,
+     *  we need to convert the parameter type `=> A` to `() ?=> A`. See doc comment
+     *  of `mapExprType`.
+     */
+    def normalizeByName(mbr: SingleDenotation)(using Context): SingleDenotation = mbr.info match
+      case mt: MethodType if mt.paramInfos.exists(_.isInstanceOf[ExprType]) =>
+        mbr.derivedSingleDenotation(mbr.symbol,
+          mt.derivedLambdaType(paramInfos = mt.paramInfos.map(_.mapExprType)))
+      case _ =>
+        mbr
+
     def recheckSelection(tree: Select, qualType: Type, name: Name,
         sharpen: Denotation => Denotation)(using Context): Type =
       if name.is(OuterSelectName) then tree.tpe
       else
         //val pre = ta.maybeSkolemizePrefix(qualType, name)
-        val mbr = sharpen(
+        val mbr = normalizeByName(
+          sharpen(
             qualType.findMember(name, qualType,
               excluded = if tree.symbol.is(Private) then EmptyFlags else Private
-          )).suchThat(tree.symbol == _)
+          )).suchThat(tree.symbol == _))
         constFold(tree, qualType.select(name, mbr))
           //.showing(i"recheck select $qualType . $name : ${mbr.info} = $result")
 
@@ -215,7 +240,8 @@ abstract class Recheck extends Phase, SymTransformer:
       mt.instantiate(argTypes)
 
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      recheck(tree.fun).widen match
+      val funtpe = recheck(tree.fun)
+      funtpe.widen match
         case fntpe: MethodType =>
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
           val formals =
@@ -223,7 +249,7 @@ abstract class Recheck extends Phase, SymTransformer:
             else fntpe.paramInfos
           def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
             case arg :: args1 =>
-              val argType = recheck(arg, formals.head)
+              val argType = recheck(arg, formals.head.mapExprType)
               val formals1 =
                 if fntpe.isParamDependent
                 then formals.tail.map(_.substParam(prefs.head, argType))
@@ -235,6 +261,8 @@ abstract class Recheck extends Phase, SymTransformer:
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
           constFold(tree, instantiate(fntpe, argTypes, tree.fun.symbol))
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
+        case tp =>
+          assert(false, i"unexpected type of ${tree.fun}: $funtpe")
 
     def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       recheck(tree.fun).widen match
