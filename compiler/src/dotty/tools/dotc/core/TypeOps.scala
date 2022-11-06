@@ -186,7 +186,7 @@ object TypeOps:
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>
         // See documentation of `Types#simplified`
-        val addTypeVars = new TypeMap:
+        val addTypeVars = new TypeMap with IdempotentCaptRefMap:
           val constraint = ctx.typerState.constraint
           def apply(t: Type): Type = t match
             case t: TypeParamRef => constraint.typeVarOfParam(t).orElse(t)
