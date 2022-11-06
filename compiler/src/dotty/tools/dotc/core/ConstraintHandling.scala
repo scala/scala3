@@ -58,6 +58,12 @@ trait ConstraintHandling {
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
+  /** Used for match type reduction: If false, we don't recognize an abstract type
+   *  to be a subtype type of any of its base classes. This is in place only at the
+   *  toplevel; it is turned on again when we add parts of the scrutinee to the constraint.
+   */
+  protected var canWidenAbstract: Boolean = true
+
   protected var myNecessaryConstraintsOnly = false
   /** When collecting the constraints needed for a particular subtyping
    *  judgment to be true, we sometimes need to approximate the constraint
@@ -839,13 +845,17 @@ trait ConstraintHandling {
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
+      val saved = canWidenAbstract
+      canWidenAbstract = true
       try bound match
         case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
         case _ =>
           val pbound = avoidLambdaParams(bound)
           kindCompatible(param, pbound) && addBoundTransitively(param, pbound, !fromBelow)
-      finally addConstraintInvocations -= 1
+      finally
+        canWidenAbstract = saved
+        addConstraintInvocations -= 1
     }
   end addConstraint
 

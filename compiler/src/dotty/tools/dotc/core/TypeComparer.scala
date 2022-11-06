@@ -60,8 +60,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** Indicates whether the subtype check used GADT bounds */
   private var GADTused: Boolean = false
 
-  protected var canWidenAbstract: Boolean = true
-
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
 
