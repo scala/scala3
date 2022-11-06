@@ -141,13 +141,16 @@ object Synthetics:
   /** Drop added capture information from the type of an `unapply` */
   private def dropUnapplyCaptures(info: Type)(using Context): Type = info match
     case info: MethodType =>
-      val CapturingType(oldParamInfo, _) :: Nil = info.paramInfos: @unchecked
-      def oldResult(tp: Type): Type = tp match
-        case tp: MethodOrPoly =>
-          tp.derivedLambdaType(resType = oldResult(tp.resType))
-        case CapturingType(tp, _) =>
-          tp
-      info.derivedLambdaType(paramInfos = oldParamInfo :: Nil, resType = oldResult(info.resType))
+      info.paramInfos match
+        case CapturingType(oldParamInfo, _) :: Nil =>
+          def oldResult(tp: Type): Type = tp match
+            case tp: MethodOrPoly =>
+              tp.derivedLambdaType(resType = oldResult(tp.resType))
+            case CapturingType(tp, _) =>
+              tp
+          info.derivedLambdaType(paramInfos = oldParamInfo :: Nil, resType = oldResult(info.resType))
+        case _ =>
+          info
     case info: PolyType =>
       info.derivedLambdaType(resType = dropUnapplyCaptures(info.resType))
 
