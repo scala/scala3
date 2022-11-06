@@ -2,20 +2,22 @@ package dotty.tools
 package dotc
 package typer
 
-import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Names.{Name, TermName}
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.TypeErasure
-import util.Spans._
-import core.Symbols._
-import ErrorReporting._
-import reporting._
+import util.Spans.*
+import core.Symbols.*
+import ErrorReporting.*
+import dotty.tools.dotc.transform.ValueClasses
+import dotty.tools.dotc.transform.TypeUtils.isPrimitiveValueType
+import reporting.*
 
 object Dynamic {
   private def isDynamicMethod(name: Name): Boolean =
@@ -215,6 +217,12 @@ trait Dynamic {
       errorTree(tree, em"Structural access not allowed on method $name because it $reason")
 
     fun.tpe.widen match {
+      case tpe: ValueType if ValueClasses.isDerivedValueClass(tpe.classSymbol) =>
+        val underlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass).info.resultType.asSeenFrom(tpe, tpe.classSymbol)
+        val wrapped = structuralCall(nme.selectDynamic, Nil)
+        val resultTree = if wrapped.tpe.isExactlyAny then New(tpe, wrapped.cast(underlying) :: Nil) else wrapped
+        resultTree.cast(tpe)
+
       case tpe: ValueType =>
         structuralCall(nme.selectDynamic, Nil).cast(tpe)
 
@@ -236,7 +244,11 @@ trait Dynamic {
               fail(i"has a parameter type with an unstable erasure") :: Nil
             else
               TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos.map(clsOf(_))
-          structuralCall(nme.applyDynamic, classOfs).cast(tpe.finalResultType)
+          val finalTpe = tpe.finalResultType
+          if ValueClasses.isDerivedValueClass(finalTpe.classSymbol) then
+            New(finalTpe, structuralCall(nme.applyDynamic, classOfs).cast(finalTpe)
+              .cast(ValueClasses.valueClassUnbox(finalTpe.classSymbol.asClass).info.resultType.asSeenFrom(finalTpe, finalTpe.classSymbol)) :: Nil)
+          else structuralCall(nme.applyDynamic, classOfs).cast(finalTpe)
         }
 
       // (@allanrenucci) I think everything below is dead code
