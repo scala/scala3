@@ -452,9 +452,10 @@ class CheckCaptures extends Recheck, SymTransformer:
                 tpt.rememberTypeAlways(pformal)
               }
               // Next, install a new completer reflecting the new parameters for the anonymous method
+              val mt = meth.info.asInstanceOf[MethodType]
               val completer = new LazyType:
                 def complete(denot: SymDenotation)(using Context) =
-                  denot.info = MethodType(ptformals, mdef.tpt.knownType)
+                  denot.info = mt.companion(ptformals, mdef.tpt.knownType)
                     .showing(i"simplify info of $meth to $result", capt)
                   recheckDef(mdef, meth)
               meth.copySymDenotation(info = completer, initFlags = meth.flags &~ Touched)
