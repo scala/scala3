@@ -417,7 +417,7 @@ ValDcl            ::=  ids ‘:’ Type                                         
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         TypeDefTree(_, name, tparams, bound
+TypeDcl           ::=  id [TypTypeParamClause] {FunParamClause} TypeBounds         TypeDefTree(_, name, tparams, bound
                        [‘=’ Type]
 
 Def               ::=  ‘val’ PatDef
