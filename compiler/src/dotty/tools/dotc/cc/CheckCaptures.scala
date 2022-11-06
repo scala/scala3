@@ -464,25 +464,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       super.recheckBlock(block, pt)
 
-    /** If `rhsProto` has `*` as its capture set, wrap `rhs` in a `unsafeBox`.
-     *  Used to infer `unsafeBox` for expressions that get assigned to variables
-     *  that have universal capture set.
-     */
-    def maybeBox(rhs: Tree, rhsProto: Type)(using Context): Tree =
-      if rhsProto.captureSet.isUniversal then
-        ref(defn.Caps_unsafeBox).appliedToType(rhsProto).appliedTo(rhs)
-      else rhs
-
-    override def recheckAssign(tree: Assign)(using Context): Type =
-      val rhsProto = recheck(tree.lhs).widen
-      recheck(maybeBox(tree.rhs, rhsProto), rhsProto)
-      defn.UnitType
-
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
       try
         if !sym.is(Module) then // Modules are checked by checking the module class
-          if sym.is(Mutable) then recheck(maybeBox(tree.rhs, sym.info), sym.info)
-          else super.recheckValDef(tree, sym)
+          super.recheckValDef(tree, sym)
       finally
         if !sym.is(Param) then
           // Parameters with inferred types belong to anonymous methods. We need to wait
