@@ -871,12 +871,13 @@ class CheckCaptures extends Recheck, SymTransformer:
           val isLocal =
             sym.owner.ownersIterator.exists(_.isTerm)
             || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
-
-          // The following classes of definitions need explicit capture types ...
-          if !isLocal                            // ... since external capture types are not inferred
-            || sym.owner.is(Trait)               // ... since we do OverridingPairs checking before capture inference
-            || sym.allOverriddenSymbols.nonEmpty // ... since we do override checking before capture inference
-          then
+          def canUseInferred =            // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
+            sym.is(Private)                         // private symbols can always have inferred types
+            ||                                      // non-local symbols cannot have inferred types since external capture types are not inferred
+              isLocal                               // local symbols still need an explicit types if
+              && !sym.owner.is(Trait)               //   - they are defined in a trait, since we do OverridingPairs checking before capture inference
+              && !sym.allOverriddenSymbols.nonEmpty //   - they override some other symbol, since we do override checking before capture inference
+          if !canUseInferred then
             val inferred = t.tpt.knownType
             def checkPure(tp: Type) = tp match
               case CapturingType(_, refs) if !refs.elems.isEmpty =>
