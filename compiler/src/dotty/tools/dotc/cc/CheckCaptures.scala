@@ -504,6 +504,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         for param <- cls.paramGetters do
           if !param.hasAnnotation(defn.ConstructorOnlyAnnot) then
             checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
+        if cls.derivesFrom(defn.ThrowableClass) then
+          checkSubset(thisSet, CaptureSet.emptyOfException, tree.srcPos)
         super.recheckClassDef(tree, impl, cls)
       finally
         curEnv = saved

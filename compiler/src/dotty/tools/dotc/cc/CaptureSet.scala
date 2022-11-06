@@ -326,6 +326,11 @@ object CaptureSet:
   /** Used as a recursion brake */
   @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
 
+  /** The empty capture set with a description that says it's the elf type of an
+   *  exception class.
+   */
+  val emptyOfException: CaptureSet.Const = Const(emptySet, "of an exception class")
+
   def apply(elems: CaptureRef*)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty
     else Const(SimpleIdentitySet(elems.map(_.normalizedRef)*))
