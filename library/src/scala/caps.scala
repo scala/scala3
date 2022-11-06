@@ -16,3 +16,9 @@ import annotation.experimental
    *  avoids the error that would be raised when unboxing `*`.
    */
   extension [T](x: T) def unsafeUnbox: T = x
+
+  /** Mixing in this trait forces a trait or class to be pure, i.e.
+   *  have no capabilities retained in its self type.
+   */
+  trait Pure:
+    this: Pure =>
