@@ -17,6 +17,7 @@ import scala.util.matching.Regex
 import scala.concurrent.duration._
 import TestSources.sources
 import vulpix._
+import reporting.TestReporter
 
 class TastyBootstrapTests {
   import ParallelTesting._
@@ -114,6 +115,7 @@ object TastyBootstrapTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {

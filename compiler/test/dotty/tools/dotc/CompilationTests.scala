@@ -16,6 +16,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
 import TestSources.sources
+import reporting.TestReporter
 import vulpix._
 
 class CompilationTests {
@@ -44,7 +45,7 @@ class CompilationTests {
       compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init")),
       // Run tests for experimental lightweight lazy vals
-      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylightweight-lazy-vals"), FileFilter.include(TestSources.posLazyValsAllowlist)),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylightweight-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/pos-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
@@ -219,7 +220,7 @@ class CompilationTests {
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init"), FileFilter.exclude("serialization-new.scala")),
       // Run tests for experimental lightweight lazy vals and stable lazy vals.
-      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init", "-Ylightweight-lazy-vals"), FileFilter.include(TestSources.runLazyValsAllowlist)),
+      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init", "-Ylightweight-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ).checkRuns()
   }
 
@@ -317,6 +318,7 @@ object CompilationTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {
