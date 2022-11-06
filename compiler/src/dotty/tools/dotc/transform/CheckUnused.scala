@@ -5,9 +5,9 @@ import dotty.tools.dotc.ast.tpd.TreeTraverser
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators.{i,em}
-import dotty.tools.dotc.core.Flags.{Private, Given}
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.{em, i}
+import dotty.tools.dotc.core.Flags.{Given, GivenVal, Param, Private}
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
@@ -16,6 +16,8 @@ import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.transform.CheckUnused.UnusedData.UnusedResult
 import dotty.tools.dotc.core.Mode
+
+import scala.collection.mutable
 
 
 /**
@@ -36,11 +38,14 @@ class CheckUnused extends Phase:
   override def isRunnable(using Context): Boolean =
     ctx.settings.WunusedHas.imports ||
     ctx.settings.WunusedHas.locals  ||
-    ctx.settings.WunusedHas.privates
+    ctx.settings.WunusedHas.explicits  ||
+    ctx.settings.WunusedHas.implicits  ||
+    ctx.settings.WunusedHas.privates ||
+    ctx.settings.WunusedHas.patvars
 
   override def run(using Context): Unit =
     val tree = ctx.compilationUnit.tpdTree
-    val data = UnusedData(ctx)
+    val data = UnusedData()
     val fresh = ctx.fresh.setProperty(_key, data)
     traverser.traverse(tree)(using fresh)
     reportUnused(data.getUnused)
@@ -56,7 +61,7 @@ class CheckUnused extends Phase:
     import UnusedData.ScopeType
 
     override def traverse(tree: tpd.Tree)(using Context): Unit = tree match
-      case imp@Import(_, sels) => sels.foreach { s =>
+      case imp@Import(_, sels) => sels.foreach { _ =>
           ctx.property(_key).foreach(_.registerImport(imp))
         }
       case ident: Ident =>
@@ -97,11 +102,14 @@ class CheckUnused extends Phase:
       case t:tpd.DefDef =>
         ctx.property(_key).foreach(_.registerDef(t))
         traverseChildren(tree)
+      case t: tpd.Bind =>
+        ctx.property(_key).foreach(_.registerPatVar(t))
+        traverseChildren(tree)
       case _ => traverseChildren(tree)
 
   }
 
-  private def reportUnused(res: UnusedData.UnusedResult)(using Context) =
+  private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
     import CheckUnused.WarnTypes
     res.foreach { s =>
       s match
@@ -109,8 +117,14 @@ class CheckUnused extends Phase:
           report.warning(s"unused import", t)
         case (t, WarnTypes.LocalDefs) =>
           report.warning(s"unused local definition", t)
+        case (t, WarnTypes.ExplicitParams) =>
+          report.warning(s"unused explicit parameter", t)
+        case (t, WarnTypes.ImplicitParams) =>
+          report.warning(s"unused implicit parameter", t)
         case (t, WarnTypes.PrivateMembers) =>
           report.warning(s"unused private member", t)
+        case (t, WarnTypes.PatVars) =>
+          report.warning(s"unused pattern variable", t)
     }
 
 end CheckUnused
@@ -122,7 +136,10 @@ object CheckUnused:
   enum WarnTypes:
     case Imports
     case LocalDefs
+    case ExplicitParams
+    case ImplicitParams
     case PrivateMembers
+    case PatVars
 
   /**
    * A stateful class gathering the infos on :
@@ -130,26 +147,34 @@ object CheckUnused:
    * - definitions
    * - usage
    */
-  private class UnusedData(initctx: Context):
-    import collection.mutable.{Set => MutSet, Map => MutMap, Stack, ListBuffer}
+  private class UnusedData:
+    import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack, ListBuffer}
     import UnusedData.ScopeType
 
     var currScope: ScopeType = ScopeType.Other
 
     /* IMPORTS */
-    private val impInScope = Stack(MutMap[Int, ListBuffer[ImportSelector]]())
+    private val impInScope = MutStack(MutMap[Int, ListBuffer[ImportSelector]]())
     private val unusedImport = MutSet[ImportSelector]()
-    private val usedImports = Stack(MutSet[Int]())
+    private val usedImports = MutStack(MutSet[Int]())
 
-    /* LOCAL DEF OR VAL / Private Def or Val*/
-    private val localDefInScope = Stack(MutSet[tpd.ValOrDefDef]())
-    private val privateDefInScope = Stack(MutSet[tpd.ValOrDefDef]())
+    /* LOCAL DEF OR VAL / Private Def or Val / Pattern variables */
+    private val localDefInScope = MutStack(MutSet[tpd.ValOrDefDef]())
+    private val privateDefInScope = MutStack(MutSet[tpd.ValOrDefDef]())
+    private val explicitParamInScope = MutStack(MutSet[tpd.ValOrDefDef]())
+    private val implicitParamInScope = MutStack(MutSet[tpd.ValOrDefDef]())
+    private val patVarsInScope = MutStack(MutSet[tpd.Bind]())
+
     private val unusedLocalDef = ListBuffer[tpd.ValOrDefDef]()
     private val unusedPrivateDef = ListBuffer[tpd.ValOrDefDef]()
+    private val unusedExplicitParams = ListBuffer[tpd.ValOrDefDef]()
+    private val unusedImplicitParams = ListBuffer[tpd.ValOrDefDef]()
+    private val unusedPatVars = ListBuffer[tpd.Bind]()
+
     private val usedDef = MutSet[Int]()
 
     private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
-      case ident@untpd.Ident(name) => name == StdNames.nme.WILDCARD
+      case untpd.Ident(name) => name == StdNames.nme.WILDCARD
       case _ => false
 
     /** Register the id of a found (used) symbol */
@@ -181,10 +206,18 @@ object CheckUnused:
       }
 
     def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
-      if currScope == ScopeType.Local then
+      if valOrDef.symbol.is(Param) then
+        if valOrDef.symbol.is(Given) then
+          implicitParamInScope.top += valOrDef
+        else
+          explicitParamInScope.top += valOrDef
+      else if currScope == ScopeType.Local then
         localDefInScope.top += valOrDef
       else if currScope == ScopeType.Template && valOrDef.symbol.is(Private) then
         privateDefInScope.top += valOrDef
+
+    def registerPatVar(patvar: tpd.Bind)(using Context): Unit =
+      patVarsInScope.top += patvar
 
     /** enter a new scope */
     def pushScope(): Unit =
@@ -193,13 +226,19 @@ object CheckUnused:
       impInScope.push(MutMap())
       // local and private defs :
       localDefInScope.push(MutSet())
+      explicitParamInScope.push(MutSet())
+      implicitParamInScope.push(MutSet())
       privateDefInScope.push(MutSet())
+      patVarsInScope.push(MutSet())
 
     /** leave the current scope */
     def popScope()(using Context): Unit =
       popScopeImport()
       popScopeLocalDef()
+      popScopeExplicitParam()
+      popScopeImplicitParam()
       popScopePrivateDef()
+      popScopePatVars()
 
     def popScopeImport(): Unit =
       val usedImp = MutSet[ImportSelector]()
@@ -211,7 +250,7 @@ object CheckUnused:
             usedImp.addAll(value)
             false
       }
-      if usedImports.size > 0 then
+      if usedImports.nonEmpty then
         usedImports.top.addAll(notDefined)
 
       poppedImp.values.flatten.foreach{ sel =>
@@ -225,11 +264,21 @@ object CheckUnused:
       val unused = localDefInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
       unusedLocalDef ++= unused
 
+    def popScopeExplicitParam()(using Context): Unit =
+      val unused = explicitParamInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
+      unusedExplicitParams ++= unused
+
+    def popScopeImplicitParam()(using Context): Unit =
+      val unused = implicitParamInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
+      unusedImplicitParams ++= unused
+
     def popScopePrivateDef()(using Context): Unit =
-      val unused = privateDefInScope.pop().filterInPlace{d =>
-        !usedDef(d.symbol.id)
-      }
+      val unused = privateDefInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
       unusedPrivateDef ++= unused
+
+    def popScopePatVars()(using Context): Unit =
+      val unused = patVarsInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
+      unusedPatVars ++= unused
 
     /**
      * Leave the scope and return a `List` of unused `ImportSelector`s
@@ -245,15 +294,30 @@ object CheckUnused:
           Nil
       val sortedLocalDefs =
         if ctx.settings.WunusedHas.locals then
-          unusedLocalDef.map(d => d.withSpan(d.span.withEnd(d.tpt.startPos.start)) -> WarnTypes.LocalDefs).toList
+          unusedLocalDef.map(d => d.namePos -> WarnTypes.LocalDefs).toList
+        else
+          Nil
+      val sortedExplicitParams =
+        if ctx.settings.WunusedHas.explicits then
+          unusedExplicitParams.map(d => d.namePos -> WarnTypes.ExplicitParams).toList
+        else
+          Nil
+      val sortedImplicitParams =
+        if ctx.settings.WunusedHas.implicits then
+          unusedImplicitParams.map(d => d.namePos -> WarnTypes.ImplicitParams).toList
         else
           Nil
       val sortedPrivateDefs =
         if ctx.settings.WunusedHas.privates then
-          unusedPrivateDef.map(d => d.withSpan(d.span.withEnd(d.tpt.startPos.start)) -> WarnTypes.PrivateMembers).toList
+          unusedPrivateDef.map(d => d.namePos -> WarnTypes.PrivateMembers).toList
         else
           Nil
-      List(sortedImp, sortedLocalDefs, sortedPrivateDefs).flatten.sortBy { s =>
+      val sortedPatVars =
+        if ctx.settings.WunusedHas.patvars then
+          unusedPatVars.map(d => d.namePos -> WarnTypes.PatVars).toList
+        else
+          Nil
+      List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams, sortedPrivateDefs, sortedPatVars).flatten.sortBy { s =>
         val pos = s._1.sourcePos
         (pos.line, pos.column)
       }
@@ -264,6 +328,7 @@ object CheckUnused:
       enum ScopeType:
         case Local
         case Template
+        case Param
         case Other
 
       type UnusedResult = List[(dotty.tools.dotc.util.SrcPos, WarnTypes)]
