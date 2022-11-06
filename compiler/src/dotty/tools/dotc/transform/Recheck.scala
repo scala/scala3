@@ -147,7 +147,10 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def recheckSelect(tree: Select, pt: Type)(using Context): Type =
       val Select(qual, name) = tree
-      recheckSelection(tree, recheck(qual, AnySelectionProto).widenIfUnstable, name, pt)
+      val proto =
+        if tree.symbol == defn.Any_asInstanceOf then WildcardType
+        else AnySelectionProto
+      recheckSelection(tree, recheck(qual, proto).widenIfUnstable, name, pt)
 
     def recheckSelection(tree: Select, qualType: Type, name: Name,
         sharpen: Denotation => Denotation)(using Context): Type =
