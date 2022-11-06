@@ -168,6 +168,17 @@ extension (tp: Type)
 
 extension (sym: Symbol)
 
+  /** A class is pure if one of its base types has an explicitly declared self type
+   *  with an empty capture set.
+   */
+  def isPureClass(using Context): Boolean = sym match
+    case cls: ClassSymbol =>
+      cls.baseClasses.exists(bc =>
+        val selfType = bc.givenSelfType
+        selfType.exists && selfType.captureSet.isAlwaysEmpty)
+    case _ =>
+      false
+
   /** Does this symbol allow results carrying the universal capability?
    *  Currently this is true only for function type applies (since their
    *  results are unboxed) and `erasedValue` since this function is magic in
