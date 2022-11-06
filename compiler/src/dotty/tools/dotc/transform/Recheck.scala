@@ -300,7 +300,16 @@ abstract class Recheck extends Phase, SymTransformer:
 
       val rawType = recheck(tree.expr)
       val ownType = avoidMap(rawType)
-      checkConforms(ownType, tree.from.symbol.returnProto, tree)
+      // The pattern matching translation, which runs before this phase
+      // sometimes instantiates return types with singleton type alternatives
+      // but the returned expression is widened. We compensate by widening the expected
+      // type as well.
+      def widened(tp: Type): Type = tp match
+        case tp: SingletonType => tp.widen
+        case tp: AndOrType => tp.derivedAndOrType(widened(tp.tp1), widened(tp.tp2))
+        case tp @ AnnotatedType(tp1, ann) => tp.derivedAnnotatedType(widened(tp1), ann)
+        case _ => tp
+      checkConforms(ownType, widened(tree.from.symbol.returnProto), tree)
       defn.NothingType
     end recheckReturn
 
