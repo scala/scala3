@@ -10,7 +10,7 @@ import config.Printers.{capt, recheckr}
 import config.{Config, Feature}
 import ast.{tpd, untpd, Trees}
 import Trees.*
-import typer.RefChecks.{checkAllOverrides, checkParents}
+import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents}
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
@@ -833,13 +833,21 @@ class CheckCaptures extends Recheck, SymTransformer:
           cls => !parentTrees(cls).exists(ptree => parentTrees.contains(ptree.tpe.classSymbol))
         }
         assert(roots.nonEmpty)
-        for root <- roots do
-          checkParents(root, parentTrees(root))
+        for case root: ClassSymbol <- roots do
+          checkSelfAgainstParents(root, root.baseClasses)
           val selfType = root.asClass.classInfo.selfType
           interpolator(startingVariance = -1).traverse(selfType)
           if !root.isEffectivelySealed  then
+            def matchesExplicitRefsInBaseClass(refs: CaptureSet, cls: ClassSymbol): Boolean =
+              cls.baseClasses.tail.exists { psym =>
+                val selfType = psym.asClass.givenSelfType
+                selfType.exists && selfType.captureSet.elems == refs.elems
+              }
             selfType match
-              case CapturingType(_, refs: CaptureSet.Var) if !refs.isUniversal =>
+              case CapturingType(_, refs: CaptureSet.Var)
+              if !refs.isUniversal && !matchesExplicitRefsInBaseClass(refs, root) =>
+                // Forbid inferred self types unless they are already implied by an explicit
+                // self type in a parent.
                 report.error(
                   i"""$root needs an explicitly declared self type since its
                      |inferred self type $selfType
