@@ -489,7 +489,8 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Class-specific capture set relations:
      *   1. The capture set of a class includes the capture sets of its parents.
      *   2. The capture set of the self type of a class includes the capture set of the class.
-     *   3. The capture set of the self type of a class includes the capture set of every class parameter.
+     *   3. The capture set of the self type of a class includes the capture set of every class parameter,
+     *      unless the parameter is marked @constructorOnly.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       val saved = curEnv
@@ -501,7 +502,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
         checkSubset(localSet, thisSet, tree.srcPos) // (2)
         for param <- cls.paramGetters do
-          checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
+          if !param.hasAnnotation(defn.ConstructorOnlyAnnot) then
+            checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
         super.recheckClassDef(tree, impl, cls)
       finally
         curEnv = saved
