@@ -98,7 +98,10 @@ extends tpd.TreeTraverser:
     def addCaptureRefinements(tp: Type): Type = tp match
       case _: TypeRef | _: AppliedType if tp.typeParams.isEmpty =>
         tp.typeSymbol match
-          case cls: ClassSymbol if !defn.isFunctionClass(cls) =>
+          case cls: ClassSymbol
+          if !defn.isFunctionClass(cls) && !cls.is(JavaDefined) =>
+            // We assume that Java classes can refer to capturing Scala types only indirectly,
+            // using type parameters. Hence, no need to refine them.
             cls.paramGetters.foldLeft(tp) { (core, getter) =>
               if getter.termRef.isTracked then
                 val getterType = tp.memberInfo(getter).strippedDealias
