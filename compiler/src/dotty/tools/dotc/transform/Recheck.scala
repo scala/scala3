@@ -300,10 +300,14 @@ abstract class Recheck extends Phase, SymTransformer:
 
       val rawType = recheck(tree.expr)
       val ownType = avoidMap(rawType)
+
       // The pattern matching translation, which runs before this phase
       // sometimes instantiates return types with singleton type alternatives
       // but the returned expression is widened. We compensate by widening the expected
-      // type as well.
+      // type as well. See also `widenSkolems` in `checkConformsExpr` which fixes
+      // a more general problem. It turns out that pattern matching returns
+      // are not checked by Ycheck, that's why these problems were allowed to slip
+      // through.
       def widened(tp: Type): Type = tp match
         case tp: SingletonType => tp.widen
         case tp: AndOrType => tp.derivedAndOrType(widened(tp.tp1), widened(tp.tp2))
@@ -435,6 +439,27 @@ abstract class Recheck extends Phase, SymTransformer:
           throw ex
       }
 
+    /** Typing and previous transforms sometiems leaves skolem types in prefixes of
+     *  NamedTypes in `expected` that do not match the `actual` Type. -Ycheck does
+     *  not complain (need to find out why), but a full recheck does. We compensate
+     *  by de-skolemizing everywhere in `expected` except when variance is negative.
+     *  @return If `tp` contains SkolemTypes in covariant or invariant positions,
+     *          the type where these SkolemTypes are mapped to their underlying type.
+     *          Otherwise, `tp` itself
+     */
+    def widenSkolems(tp: Type)(using Context): Type =
+      object widenSkolems extends TypeMap, IdempotentCaptRefMap:
+        var didWiden: Boolean = false
+        def apply(t: Type): Type = t match
+          case t: SkolemType if variance >= 0 =>
+            didWiden = true
+            apply(t.underlying)
+          case t: LazyRef => t
+          case t @ AnnotatedType(t1, ann) => t.derivedAnnotatedType(apply(t1), ann)
+          case _ => mapOver(t)
+      val tp1 = widenSkolems(tp)
+      if widenSkolems.didWiden then tp1 else tp
+
     /** If true, print info for some successful checkConforms operations (failing ones give
      *  an error message in any case).
      */
@@ -450,11 +475,16 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
       //println(i"check conforms $actual <:< $expected")
-      val isCompatible =
+
+      def isCompatible(expected: Type): Boolean =
         actual <:< expected
         || expected.isRepeatedParam
-            && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
-      if !isCompatible then
+            && isCompatible(expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass)))
+        || {
+          val widened = widenSkolems(expected)
+          (widened ne expected) && isCompatible(widened)
+        }
+      if !isCompatible(expected) then
         recheckr.println(i"conforms failed for ${tree}: $actual vs $expected")
         err.typeMismatch(tree.withType(actual), expected)
       else if debugSuccesses then
@@ -462,6 +492,7 @@ abstract class Recheck extends Phase, SymTransformer:
           case _: Ident =>
             println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actual, expected))}")
           case _ =>
+    end checkConformsExpr
 
     def checkUnit(unit: CompilationUnit)(using Context): Unit =
       recheck(unit.tpdTree)

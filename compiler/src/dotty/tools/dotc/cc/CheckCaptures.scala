@@ -762,7 +762,8 @@ class CheckCaptures extends Recheck, SymTransformer:
               // We can't box/unbox the universal capability. Leave `actual` as it is
               // so we get an error in checkConforms. This tends to give better error
               // messages than disallowing the root capability in `criticalSet`.
-              capt.println(i"cannot box/unbox $actual vs $expected")
+              if ctx.settings.YccDebug.value then
+                println(i"cannot box/unbox $actual vs $expected")
               actual
             else
               // Disallow future addition of `*` to `criticalSet`.
