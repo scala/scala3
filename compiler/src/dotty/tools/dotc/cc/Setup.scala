@@ -385,20 +385,18 @@ extends tpd.TreeTraverser:
           return
         tree.tpt match
           case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
+            tree.paramss.foreach(traverse)
             transformTT(tpt, boxed = false, exact = true)
+            traverse(tree.rhs)
             //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
           case _ =>
-        traverseChildren(tree)
+            traverseChildren(tree)
       case tree @ ValDef(_, tpt: TypeTree, _) =>
-        val isVar = tree.symbol.is(Mutable)
-        val overrides = tree.symbol.allOverriddenSymbols.hasNext
-        //if overrides then println(i"transforming overriding ${tree.symbol}")
-        if isVar || overrides then
-          transformTT(tpt,
-              boxed = isVar,    // types of mutable variables are boxed
-              exact = overrides // types of symbols that override a parent don't get a capture set
-            )
-        traverseChildren(tree)
+        transformTT(tpt,
+          boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
+          exact = tree.symbol.allOverriddenSymbols.hasNext // types of symbols that override a parent don't get a capture set
+        )
+        traverse(tree.rhs)
       case tree @ TypeApply(fn, args) =>
         traverse(fn)
         for case arg: TypeTree <- args do
