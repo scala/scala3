@@ -826,7 +826,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
             else subCaptures(refs1, refs2, frozenConstraint).isOK
               && sameBoxed(tp1, tp2, refs1)
-              && recur(tp1.widen.stripCapturing, parent2)
+              && (recur(tp1.widen.stripCapturing, parent2)
+                 || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
+                    // this alternative is needed in case the right hand side is a
+                    // capturing type that contains the lhs as an |-alternative.
+                 )
           catch case ex: AssertionError =>
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex
