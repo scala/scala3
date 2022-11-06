@@ -80,9 +80,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.2.1"
+  val referenceVersion = "3.2.2-RC1"
 
-  val baseVersion = "3.2.2-RC1"
+  val baseVersion = "3.3.0-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -545,7 +545,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.3.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.4.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
@@ -607,7 +607,7 @@ object Build {
         if (args.contains("--help")) {
           println(
             s"""
-               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [<filter>]
+               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [<filter>]
                |
                |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
                |excluding tests tagged with dotty.SlowTests.
@@ -615,6 +615,7 @@ object Build {
                |  --help                show this message
                |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
                |  --update-checkfiles   override the checkfiles that did not match with the current output
+               |  --failed              re-run only failed tests
                |  <filter>              substring of the path of the tests file
                |
              """.stripMargin
@@ -623,11 +624,13 @@ object Build {
         }
         else {
           val updateCheckfile = args.contains("--update-checkfiles")
+          val rerunFailed = args.contains("--failed")
           val fromTasty = args.contains("--from-tasty")
-          val args1 = if (updateCheckfile | fromTasty) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty") else args
+          val args1 = if (updateCheckfile | fromTasty | rerunFailed) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty" && x != "--failed") else args
           val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests dotty.tools.dotc.coverage.*"
           val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
             (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
+            (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
             (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
           (Test / testOnly).toTask(cmd)
         }

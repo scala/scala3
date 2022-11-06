@@ -1502,11 +1502,17 @@ trait Applications extends Compatibility {
   }
 
   /** Drop any leading implicit parameter sections */
-  def stripImplicit(tp: Type)(using Context): Type = tp match {
+  def stripImplicit(tp: Type, wildcardOnly: Boolean = false)(using Context): Type = tp match {
     case mt: MethodType if mt.isImplicitMethod =>
-      stripImplicit(resultTypeApprox(mt))
+      stripImplicit(resultTypeApprox(mt, wildcardOnly))
     case pt: PolyType =>
-      pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType)).asInstanceOf[PolyType].flatten
+      pt.derivedLambdaType(pt.paramNames, pt.paramInfos,
+          stripImplicit(pt.resultType, wildcardOnly = true))
+            // can't use TypeParamRefs for parameter references in `resultTypeApprox`
+            // since their bounds can refer to type parameters in `pt` that are not
+            // bound by the constraint. This can lead to hygiene violations if subsequently
+            // `pt` itself is added to the constraint. Test case is run/enrich-gentraversable.scala.
+        .asInstanceOf[PolyType].flatten
     case _ =>
       tp
   }
