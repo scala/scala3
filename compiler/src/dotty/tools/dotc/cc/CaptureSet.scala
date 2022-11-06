@@ -271,7 +271,7 @@ sealed abstract class CaptureSet extends Showable:
     map(Substituters.SubstParamsMap(tl, to))
 
   /** Invoke handler if this set has (or later aquires) the root capability `*` */
-  def disallowRootCapability(handler: () => Unit)(using Context): this.type =
+  def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
     if isUniversal then handler()
     this
 
@@ -378,7 +378,7 @@ object CaptureSet:
     def isAlwaysEmpty = false
 
     /** A handler to be invoked if the root reference `*` is added to this set */
-    var addRootHandler: () => Unit = () => ()
+    var rootAddedHandler: () => Context ?=> Unit = () => ()
 
     var description: String = ""
 
@@ -409,7 +409,7 @@ object CaptureSet:
     def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       if !isConst && recordElemsState() then
         elems ++= newElems
-        if isUniversal then addRootHandler()
+        if isUniversal then rootAddedHandler()
         // assert(id != 2 || elems.size != 2, this)
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
@@ -426,8 +426,8 @@ object CaptureSet:
       else
         CompareResult.fail(this)
 
-    override def disallowRootCapability(handler: () => Unit)(using Context): this.type =
-      addRootHandler = handler
+    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
+      rootAddedHandler = handler
       super.disallowRootCapability(handler)
 
     private var computingApprox = false
