@@ -242,7 +242,8 @@ class CompilationTests {
     ).checkCompile()
   }
 
-  @Test def recheck: Unit =
+  //@Test disabled in favor of posWithCompilerCC to save time.
+  def recheck: Unit =
     given TestGroup = TestGroup("recheck")
     aggregateTests(
       compileFilesInDir("tests/new", recheckOptions),
