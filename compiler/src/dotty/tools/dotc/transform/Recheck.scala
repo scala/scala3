@@ -133,7 +133,9 @@ abstract class Recheck extends Phase, SymTransformer:
     else sym
 
   def run(using Context): Unit =
-    newRechecker().checkUnit(ctx.compilationUnit)
+    val rechecker = newRechecker()
+    rechecker.checkUnit(ctx.compilationUnit)
+    rechecker.reset()
 
   def newRechecker()(using Context): Rechecker
 
@@ -152,6 +154,12 @@ abstract class Recheck extends Phase, SymTransformer:
      *  `knownType`? By default true only is `keepAllTypes` hold, but can be overridden.
      */
     def keepType(tree: Tree): Boolean = keepAllTypes
+
+    private val prevSelDenots = util.HashMap[NamedType, Denotation]()
+
+    def reset()(using Context): Unit =
+      for (ref, mbr) <- prevSelDenots.iterator do
+        ref.withDenot(mbr)
 
     /** Constant-folded rechecked type `tp` of tree `tree` */
     protected def constFold(tree: Tree, tp: Type)(using Context): Type =
@@ -190,7 +198,16 @@ abstract class Recheck extends Phase, SymTransformer:
             qualType.findMember(name, qualType,
               excluded = if tree.symbol.is(Private) then EmptyFlags else Private
           )).suchThat(tree.symbol == _))
-        constFold(tree, qualType.select(name, mbr))
+        val newType = tree.tpe match
+          case prevType: NamedType =>
+            val prevDenot = prevType.denot
+            val newType = qualType.select(name, mbr)
+            if (newType eq prevType) && (mbr.info ne prevDenot.info) && !prevSelDenots.contains(prevType) then
+              prevSelDenots(prevType) = prevDenot
+            newType
+          case _ =>
+            qualType.select(name, mbr)
+        constFold(tree, newType)
           //.showing(i"recheck select $qualType . $name : ${mbr.info} = $result")
 
 
