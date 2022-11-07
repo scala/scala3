@@ -228,7 +228,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     }
 
     val superCallsAndArgs: Map[Symbol, (Tree, List[Tree], List[Tree])] = (
-      for (p <- impl.parents; constr = stripBlock(p).symbol if constr.isConstructor)
+      for
+        p: Tree <- impl.parents  // !cc! explicit type on `p` is needed
+        constr = stripBlock(p).symbol
+        if constr.isConstructor
       yield constr.owner -> transformConstructor(p)
     ).toMap
 

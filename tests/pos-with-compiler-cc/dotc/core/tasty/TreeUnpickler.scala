@@ -46,6 +46,7 @@ import dotty.tools.tasty.TastyFormat._
 
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
+import language.experimental.pureFunctions
 
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle
@@ -663,9 +664,9 @@ class TreeUnpickler(reader: TastyReader,
     /** Read modifier list into triplet of flags, annotations and a privateWithin
      *  boundary symbol.
      */
-    def readModifiers(end: Addr)(using Context): (FlagSet, List[Symbol => Annotation], Symbol) = {
+    def readModifiers(end: Addr)(using Context): (FlagSet, List[Symbol -> Annotation], Symbol) = {
       var flags: FlagSet = EmptyFlags
-      var annotFns: List[Symbol => Annotation] = Nil
+      var annotFns: List[Symbol -> Annotation] = Nil
       var privateWithin: Symbol = NoSymbol
       while (currentAddr.index != end.index) {
         def addFlag(flag: FlagSet) = {
@@ -732,7 +733,7 @@ class TreeUnpickler(reader: TastyReader,
 
     private def readWithin(using Context): Symbol = readType().typeSymbol
 
-    private def readAnnot(using Context): Symbol => Annotation =
+    private def readAnnot(using Context): Symbol -> Annotation =
       readByte()
       val end = readEnd()
       val tp = readType()
@@ -1450,10 +1451,10 @@ class TreeUnpickler(reader: TastyReader,
       setSpan(start, CaseDef(pat, guard, rhs))
     }
 
-    def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Trees.Lazy[T] =
+    def readLater[T <: AnyRef](end: Addr, op: TreeReader -> Context ?-> T)(using Context): Trees.Lazy[T] =
       readLaterWithOwner(end, op)(ctx.owner)
 
-    def readLaterWithOwner[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Symbol => Trees.Lazy[T] = {
+    def readLaterWithOwner[T <: AnyRef](end: Addr, op: TreeReader -> Context ?-> T)(using Context): Symbol -> Trees.Lazy[T] = {
       val localReader = fork
       goto(end)
       val mode = ctx.mode

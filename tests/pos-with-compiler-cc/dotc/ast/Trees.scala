@@ -17,6 +17,8 @@ import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
 import compiletime.uninitialized
 import Decorators._
+import annotation.retains
+import language.experimental.pureFunctions
 
 object Trees {
 
@@ -47,7 +49,7 @@ object Trees {
    *     nodes.
    */
   abstract class Tree[+T <: Untyped](implicit @constructorOnly src: SourceFile)
-  extends Positioned, SrcPos, Product, Attachment.Container, printing.Showable {
+  extends Positioned, SrcPos, Product, Attachment.Container, printing.Showable, caps.Pure {
 
     if (Stats.enabled) ntrees += 1
 
@@ -431,7 +433,7 @@ object Trees {
     def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
 
-  class SearchFailureIdent[+T <: Untyped] private[ast] (name: Name, expl: => String)(implicit @constructorOnly src: SourceFile)
+  class SearchFailureIdent[+T <: Untyped] private[ast] (name: Name, expl: -> String)(implicit @constructorOnly src: SourceFile)
     extends Ident[T](name) {
     def explanation = expl
     override def toString: String = s"SearchFailureIdent($explanation)"
@@ -1518,7 +1520,7 @@ object Trees {
       }
     }
 
-    abstract class TreeAccumulator[X] { self =>
+    abstract class TreeAccumulator[X] { self: TreeAccumulator[X] @retains(caps.*) =>
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(using Context): X
 

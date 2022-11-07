@@ -974,8 +974,6 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       tree.rhs match {
         case sel: Select if sel.symbol == jsdefn.JSPackage_native =>
           // ok
-        case rhs: Ident if rhs.symbol == jsdefn.JSPackage_native =>
-          // ok
         case _ =>
           val pos = if (tree.rhs != EmptyTree) tree.rhs.srcPos else tree.srcPos
           report.error(s"$longKindStr may only call js.native.", pos)

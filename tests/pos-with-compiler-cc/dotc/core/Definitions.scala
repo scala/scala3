@@ -19,6 +19,7 @@ import Symbols.requiredModuleRef
 import cc.{CapturingType, CaptureSet, EventuallyCapturingType}
 
 import scala.annotation.tailrec
+import language.experimental.pureFunctions
 
 object Definitions {
 
@@ -70,7 +71,7 @@ class Definitions {
   // NOTE: Ideally we would write `parentConstrs: => Type*` but SIP-24 is only
   // implemented in Dotty and not in Scala 2.
   // See <http://docs.scala-lang.org/sips/pending/repeated-byname.html>.
-  private def enterSpecialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: => Seq[Type]): ClassSymbol = {
+  private def enterSpecialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: -> Seq[Type]): ClassSymbol = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(using Context): Unit = {
         val cls = denot.asClass.classSymbol
@@ -182,7 +183,7 @@ class Definitions {
       tl => op(tl.paramRefs(0), tl.paramRefs(1))))
 
   private def enterPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
-                    resultTypeFn: PolyType => Type,
+                    resultTypeFn: PolyType -> Type,
                     flags: FlagSet = EmptyFlags,
                     bounds: TypeBounds = TypeBounds.empty,
                     useCompleter: Boolean = false) = {
@@ -199,7 +200,7 @@ class Definitions {
     enterMethod(cls, name, info, flags)
   }
 
-  private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
+  private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType -> Type, flags: FlagSet) =
     enterPolyMethod(cls, name, 1, resultTypeFn, flags)
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[TypeRef | Null] = {
@@ -2032,12 +2033,6 @@ class Definitions {
     }
     addSyntheticSymbolsComments
   }
-
-  /** Definitions used in Lazy Vals implementation */
-  val LazyValsModuleName = "scala.runtime.LazyVals"
-  @tu lazy val LazyValsModule = requiredModule(LazyValsModuleName)
-  @tu lazy val LazyValsWaitingState = requiredClass(s"$LazyValsModuleName.Waiting")
-  @tu lazy val LazyValsControlState = requiredClass(s"$LazyValsModuleName.LazyValControlState")
 
   def addSyntheticSymbolsComments(using Context): Unit =
     def add(sym: Symbol, doc: String) = ctx.docCtx.foreach(_.addDocstring(sym, Some(Comment(NoSpan, doc))))

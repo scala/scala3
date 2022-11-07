@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 /** A class for the readonly part of mutable sets.
  */
-abstract class ReadOnlySet[T]:
+abstract class ReadOnlySet[T] extends caps.Pure:
 
   /** The entry in the set such that `isEqual(x, entry)`, or else `null`. */
   def lookup(x: T): T | Null

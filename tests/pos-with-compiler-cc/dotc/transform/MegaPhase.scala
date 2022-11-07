@@ -28,7 +28,7 @@ object MegaPhase {
    *   - Other: to prepape/transform a tree that does not have a specific prepare/transform
    *     method pair.
    */
-  abstract class MiniPhase extends Phase {
+  abstract class MiniPhase extends Phase, caps.Pure {
 
     private[MegaPhase] var superPhase: MegaPhase = _
     private[MegaPhase] var idxInGroup: Int = _

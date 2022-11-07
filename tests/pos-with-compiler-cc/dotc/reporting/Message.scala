@@ -4,10 +4,9 @@ package reporting
 
 import core.Contexts.*, core.Decorators.*, core.Mode
 import config.SourceVersion
-
 import scala.language.unsafeNulls
-
 import scala.annotation.threadUnsafe
+import language.experimental.pureFunctions
 
 object Message {
   val nonSensicalStartTag: String = "<nonsensical>"
@@ -119,15 +118,15 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     override val canExplain = self.canExplain
   }
 
-  def append(suffix: => String): Message = mapMsg(_ ++ suffix)
+  def append(suffix: -> String): Message = mapMsg(_ ++ suffix)
 
-  def mapMsg(f: String => String): Message = new Message(errorId):
+  def mapMsg(f: String -> String): Message = new Message(errorId):
     val kind       = self.kind
     def msg        = f(self.msg)
     def explain    = self.explain
     override def canExplain = self.canExplain
 
-  def appendExplanation(suffix: => String): Message = new Message(errorId):
+  def appendExplanation(suffix: -> String): Message = new Message(errorId):
     val kind       = self.kind
     def msg        = self.msg
     def explain    = self.explain ++ suffix
@@ -144,7 +143,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-class NoExplanation(msgFn: => String) extends Message(ErrorMessageID.NoExplanationID) {
+class NoExplanation(msgFn: -> String) extends Message(ErrorMessageID.NoExplanationID) {
   def msg: String = msgFn
   def explain: String = ""
   val kind: MessageKind = MessageKind.NoKind

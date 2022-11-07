@@ -25,6 +25,7 @@ import reporting._
 import collection.mutable
 import transform.TypeUtils._
 import cc.{CapturingType, derivedCapturingType}
+import language.experimental.pureFunctions
 
 import scala.annotation.internal.sharable
 
@@ -2429,6 +2430,8 @@ object SymDenotations {
           )
         if compiledNow.exists then compiledNow
         else
+          //val union = (d1: Set[AbstractFile], d2: Set[AbstractFile]) => d1.union(d2)
+          // !cc! need to break `u` out into separate definition, writing `_ union _` below gives an error
           val assocFiles = multi.aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
           if assocFiles.size == 1 then
             multi // they are all overloaded variants from the same file
@@ -2634,8 +2637,8 @@ object SymDenotations {
    *  of these function types.
    */
   abstract class LazyType extends UncachedGroundType
-    with (Symbol => LazyType)
-    with ((TermSymbol, ClassSymbol) => LazyType) { self =>
+    with (Symbol -> LazyType)
+    with ((TermSymbol, ClassSymbol) -> LazyType) { self =>
 
     /** Sets all missing fields of given denotation */
     def complete(denot: SymDenotation)(using Context): Unit
@@ -2646,8 +2649,8 @@ object SymDenotations {
     private var myDecls: Scope = EmptyScope
     private var mySourceModule: Symbol | Null = null
     private var myModuleClass: Symbol | Null = null
-    private var mySourceModuleFn: Context ?=> Symbol = LazyType.NoSymbolFn
-    private var myModuleClassFn: Context ?=> Symbol = LazyType.NoSymbolFn
+    private var mySourceModuleFn: Context ?-> Symbol = LazyType.NoSymbolFn
+    private var myModuleClassFn: Context ?-> Symbol = LazyType.NoSymbolFn
 
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(using Context): List[TypeParamInfo] =
@@ -2663,8 +2666,8 @@ object SymDenotations {
       myModuleClass.nn
 
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
-    def withSourceModule(sourceModuleFn: Context ?=> Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
-    def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
+    def withSourceModule(sourceModuleFn: Context ?-> Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
+    def withModuleClass(moduleClassFn: Context ?-> Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
 
     override def toString: String = getClass.toString
 

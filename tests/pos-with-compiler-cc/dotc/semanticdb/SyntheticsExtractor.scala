@@ -11,7 +11,7 @@ import dotty.tools.dotc.{semanticdb => s}
 class SyntheticsExtractor:
   import Scala3.{_, given}
 
-  val visited = collection.mutable.HashSet[Tree]()
+  val visited: collection.mutable.HashSet[Tree] = collection.mutable.HashSet()
 
   def tryFindSynthetic(tree: Tree)(using Context, SemanticSymbolBuilder, TypeOps): Option[s.Synthetic] =
     extension (synth: s.Synthetic)

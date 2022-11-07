@@ -12,6 +12,7 @@ import dotty.tools.dotc.util.SourcePosition
 import java.util.Optional
 import scala.util.chaining._
 import core.Decorators.toMessage
+import language.experimental.pureFunctions
 
 object Diagnostic:
 
@@ -25,7 +26,7 @@ object Diagnostic:
     msg: Message,
     pos: SourcePosition
   ) extends Diagnostic(msg, pos, ERROR):
-    def this(str: => String, pos: SourcePosition) = this(str.toMessage, pos)
+    def this(str: -> String, pos: SourcePosition) = this(str.toMessage, pos)
 
   /** A sticky error is an error that should not be hidden by backtracking and
    *  trying some alternative path. Typically, errors issued after catching
@@ -49,7 +50,7 @@ object Diagnostic:
     msg: Message,
     pos: SourcePosition
   ) extends Diagnostic(msg, pos, INFO):
-    def this(str: => String, pos: SourcePosition) = this(str.toMessage, pos)
+    def this(str: -> String, pos: SourcePosition) = this(str.toMessage, pos)
 
   abstract class ConditionalWarning(
     msg: Message,

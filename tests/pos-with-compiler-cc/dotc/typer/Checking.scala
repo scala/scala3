@@ -42,6 +42,7 @@ import transform.TypeUtils.*
 
 import collection.mutable
 import reporting._
+import language.experimental.pureFunctions
 
 object Checking {
   import tpd._
@@ -472,7 +473,7 @@ object Checking {
     def checkWithDeferred(flag: FlagSet) =
       if (sym.isOneOf(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
-    def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: => String) =
+    def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: -> String) =
       if (sym.isAllOf(flag1 | flag2)) fail(msg.toMessage)
     def checkCombination(flag1: FlagSet, flag2: FlagSet) =
       if sym.isAllOf(flag1 | flag2) then
@@ -600,7 +601,7 @@ object Checking {
    */
   def checkNoPrivateLeaks(sym: Symbol)(using Context): Type = {
     class NotPrivate extends TypeMap {
-      var errors: List[() => String] = Nil
+      var errors: List[() -> String] = Nil
       private var inCaptureSet: Boolean = false
 
       def accessBoundary(sym: Symbol): Symbol =
@@ -782,7 +783,7 @@ object Checking {
       languageImport(qual) match
         case Some(nme.experimental)
         if !ctx.owner.isInExperimentalScope && !selectors.forall(isAllowedImport) =>
-          def check(stable: => String) =
+          def check(stable: -> String) =
             Feature.checkExperimentalFeature("features", imp.srcPos,
               s"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
           if ctx.owner.is(Package) then
@@ -1036,7 +1037,7 @@ trait Checking {
 
   /** Issue a feature warning if feature is not enabled */
   def checkFeature(name: TermName,
-                   description: => String,
+                   description: -> String,
                    featureUseSite: Symbol,
                    pos: SrcPos)(using Context): Unit =
     if !Feature.enabled(name) then
@@ -1046,7 +1047,7 @@ trait Checking {
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
    *  argument is infeasible, issue and error and continue with upper bound.
    */
-  def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = {
+  def checkFeasibleParent(tp: Type, pos: SrcPos, where: -> String = "")(using Context): Type = {
     def checkGoodBounds(tp: Type) = tp match {
       case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
         report.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
@@ -1526,7 +1527,7 @@ trait ReChecking extends Checking {
   override def checkCanThrow(tp: Type, span: Span)(using Context): Tree = EmptyTree
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
   override def checkNoContextFunctionType(tree: Tree)(using Context): Unit = ()
-  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
+  override def checkFeature(name: TermName, description: -> String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {
@@ -1537,7 +1538,7 @@ trait NoChecking extends ReChecking {
   override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit = ()
-  override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
+  override def checkFeasibleParent(tp: Type, pos: SrcPos, where: -> String = "")(using Context): Type = tp
   override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()

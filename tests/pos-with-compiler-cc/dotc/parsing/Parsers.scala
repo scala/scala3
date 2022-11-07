@@ -33,6 +33,7 @@ import config.Feature
 import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
 import config.SourceVersion._
 import config.SourceVersion
+import language.experimental.pureFunctions
 
 object Parsers {
 
@@ -143,10 +144,10 @@ object Parsers {
         syntaxError(msg, Span(offset, offset + length))
         lastErrorOffset = in.offset
 
-    def syntaxError(msg: => String, offset: Int): Unit =
+    def syntaxError(msg: -> String, offset: Int): Unit =
       syntaxError(msg.toMessage, offset)
 
-    def syntaxError(msg: => String): Unit =
+    def syntaxError(msg: -> String): Unit =
       syntaxError(msg, in.offset)
 
     /** Unconditionally issue an error at given span, without
@@ -155,7 +156,7 @@ object Parsers {
     def syntaxError(msg: Message, span: Span): Unit =
       report.error(msg, source.atSpan(span))
 
-    def syntaxError(msg: => String, span: Span): Unit =
+    def syntaxError(msg: -> String, span: Span): Unit =
       syntaxError(msg.toMessage, span)
 
     def unimplementedExpr(using Context): Select =
@@ -288,7 +289,7 @@ object Parsers {
         syntaxError(msg, offset)
         skip()
 
-    def syntaxErrorOrIncomplete(msg: => String): Unit =
+    def syntaxErrorOrIncomplete(msg: -> String): Unit =
       syntaxErrorOrIncomplete(msg.toMessage, in.offset)
 
     def syntaxErrorOrIncomplete(msg: Message, span: Span): Unit =

@@ -286,7 +286,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           }
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
-        toText(lo) ~ ".." ~ toText(hi)
+        toText(lo) ~ " .. " ~ toText(hi)
       case _ =>
         tp.fallbackToText(this)
     }
@@ -698,9 +698,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
                 Text(ups.map(toText), ", ")
           Text(deps, "\n")
         }
-      val depsText = if Config.showConstraintDeps then c.depsToString else ""
       //Printer.debugPrintUnique = false
-      Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText, depsText))
+      Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
     finally
       ctx.typerState.constraint = savedConstraint
 

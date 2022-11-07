@@ -21,6 +21,7 @@ import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap}
 import StdNames.nme
 import NameKinds.DefaultGetterName
 import reporting.trace
+import language.experimental.pureFunctions
 
 /** The capture checker */
 object CheckCaptures:
@@ -721,20 +722,21 @@ class CheckCaptures extends Recheck, SymTransformer:
        *  the innermost capturing type. The outer capture annotations can be
        *  reconstructed with the returned function.
        */
-      def destructCapturingType(tp: Type, reconstruct: Type => Type = x => x): ((Type, CaptureSet, Boolean), Type => Type) =
+      def destructCapturingType(tp: Type, reconstruct: Type -> Type = (x: Type) => x) // !cc! need monomorphic default argument
+          : (Type, CaptureSet, Boolean, Type -> Type) =
         tp.dealias match
           case tp @ CapturingType(parent, cs) =>
             if parent.dealias.isCapturingType then
               destructCapturingType(parent, res => reconstruct(tp.derivedCapturingType(res, cs)))
             else
-              ((parent, cs, tp.isBoxed), reconstruct)
+              (parent, cs, tp.isBoxed, reconstruct)
           case actual =>
-            ((actual, CaptureSet(), false), reconstruct)
+            (actual, CaptureSet(), false, reconstruct)
 
       def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true) {
         if expected.isInstanceOf[WildcardType] then actual
         else
-          val ((parent, cs, actualIsBoxed), recon) = destructCapturingType(actual)
+          val (parent, cs, actualIsBoxed, recon: (Type -> Type)) = destructCapturingType(actual)
 
           val needsAdaptation = actualIsBoxed != expected.isBoxedCapturing
           val insertBox = needsAdaptation && covariant != actualIsBoxed

@@ -25,6 +25,7 @@ import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.config.ScalaRelease.*
 
 import scala.annotation.constructorOnly
+import language.experimental.pureFunctions
 
 object Splicing:
   val name: String = "splicing"
@@ -186,7 +187,7 @@ class Splicing extends MacroTransform:
    *  {{{ <holeIdx++> | T2 | x, X | (x$1: Expr[T1], X$1: Type[X]) => (using Quotes) ?=> {... ${x$1} ...  X$1.Underlying ...}  }}}
    *  ```
    */
-  private class SpliceTransformer(spliceOwner: Symbol, isCaptured: Symbol => Boolean) extends Transformer:
+  private class SpliceTransformer(spliceOwner: Symbol, isCaptured: Symbol -> Boolean) extends Transformer:
     private var refBindingMap = mutable.Map.empty[Symbol, (Tree, Symbol)]
     /** Reference to the `Quotes` instance of the current level 1 splice */
     private var quotes: Tree | Null = null // TODO: add to the context

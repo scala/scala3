@@ -15,7 +15,7 @@ import scala.annotation.internal.sharable
 
 /** The base class of all printers
  */
-abstract class Printer {
+abstract class Printer extends caps.Pure {
 
   private var prec: Precedence = GlobalPrec
 

@@ -23,6 +23,7 @@ import config.Printers.overload
 import util.common._
 import typer.ProtoTypes.NoViewsAllowed
 import collection.mutable.ListBuffer
+import language.experimental.pureFunctions
 
 /** Denotations represent the meaning of symbols and named types.
  *  The following diagram shows how the principal types of denotations
@@ -75,7 +76,7 @@ object Denotations {
   /** A PreDenotation represents a group of single denotations or a single multi-denotation
    *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
    */
-  abstract class PreDenotation {
+  abstract class PreDenotation extends caps.Pure {
 
     /** A denotation in the group exists */
     def exists: Boolean
@@ -1326,7 +1327,10 @@ object Denotations {
       }
       else owner
     }
-    def recur(path: Name, wrap: TermName => Name = identity): Denotation = path match {
+    def recur(
+        path: Name,
+        wrap: TermName -> Name = identity[Name] // !cc! default argument needs to be instantiated, error if [Name] is dropped
+      ): Denotation = path match {
       case path: TypeName =>
         recur(path.toTermName, n => n.toTypeName)
       case ModuleClassName(underlying) =>
@@ -1336,7 +1340,7 @@ object Denotations {
       case qn @ AnyQualifiedName(prefix, _) =>
         recur(prefix, n => wrap(qn.info.mkString(n).toTermName))
       case path: SimpleName =>
-        def recurSimple(len: Int, wrap: TermName => Name): Denotation = {
+        def recurSimple(len: Int, wrap: TermName -> Name): Denotation = {
           val point = path.lastIndexOf('.', len - 1)
           val selector = wrap(path.slice(point + 1, len).asTermName)
           val prefix =
@@ -1364,7 +1368,7 @@ object Denotations {
       NoSymbol
 
   /** An exception for accessing symbols that are no longer valid in current run */
-  class StaleSymbol(msg: => String) extends Exception {
+  class StaleSymbol(msg: -> String) extends Exception {
     util.Stats.record("stale symbol")
     override def getMessage(): String = msg
   }

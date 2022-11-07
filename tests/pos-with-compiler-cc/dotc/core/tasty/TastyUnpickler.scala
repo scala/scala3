@@ -11,6 +11,7 @@ import TastyBuffer.NameRef
 import scala.collection.mutable
 import Names.{TermName, termName, EmptyTermName}
 import NameKinds._
+import language.experimental.pureFunctions
 
 object TastyUnpickler {
 
@@ -18,7 +19,7 @@ object TastyUnpickler {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): R
   }
 
-  class NameTable extends (NameRef => TermName) {
+  class NameTable extends (NameRef -> TermName) {
     private val names = new mutable.ArrayBuffer[TermName]
     def add(name: TermName): mutable.ArrayBuffer[TermName] = names += name
     def apply(ref: NameRef): TermName = names(ref.index)

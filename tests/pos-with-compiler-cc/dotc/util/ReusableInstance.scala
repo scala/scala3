@@ -2,6 +2,7 @@ package dotty.tools.dotc.util
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.chaining._
+import language.experimental.pureFunctions
 
 /** A wrapper for a list of cached instances of a type `T`.
   * The wrapper is recursion-reentrant: several instances are kept, so
@@ -14,7 +15,7 @@ import scala.util.chaining._
   *
   * Ported from scala.reflect.internal.util.ReusableInstance
   */
-final class ReusableInstance[T <: AnyRef] private (make: => T) {
+final class ReusableInstance[T <: AnyRef] private (make: -> T) {
   private[this] val cache = new ArrayBuffer[T](ReusableInstance.InitialSize).tap(_.addOne(make))
   private[this] var taken = 0
 
@@ -29,5 +30,5 @@ final class ReusableInstance[T <: AnyRef] private (make: => T) {
 object ReusableInstance {
   private inline val InitialSize = 4
 
-  def apply[T <: AnyRef](make: => T): ReusableInstance[T] = new ReusableInstance[T](make)
+  def apply[T <: AnyRef](make: -> T): ReusableInstance[T] = new ReusableInstance[T](make)
 }
