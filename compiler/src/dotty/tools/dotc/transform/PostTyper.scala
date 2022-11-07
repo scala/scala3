@@ -375,21 +375,25 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             )
           }
         case tree: ValDef =>
+          registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
+          registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
+          registerIfHasMacroAnnotations(tree)
           val sym = tree.symbol
           if (sym.isClass)
             VarianceChecker.check(tree)
             annotateExperimental(sym)
+            checkMacroAnnotation(sym)
             tree.rhs match
               case impl: Template =>
                 for parent <- impl.parents do
@@ -482,6 +486,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+
+    /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */
+    private def registerIfHasMacroAnnotations(tree: DefTree)(using Context) =
+      if !Inlines.inInlineMethod && MacroAnnotations.hasMacroAnnotation(tree.symbol) then
+        ctx.compilationUnit.hasMacroAnnotations = true
+
+    /** Check macro annotations implementations  */
+    private def checkMacroAnnotation(sym: Symbol)(using Context) =
+      if sym.derivesFrom(defn.MacroAnnotationClass) && !sym.isStatic then
+        report.error("classes that extend MacroAnnotation must not be inner/local classes", sym.srcPos)
 
     private def checkErasedDef(tree: ValOrDefDef)(using Context): Unit =
       if tree.symbol.is(Erased, butNot = Macro) then

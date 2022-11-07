@@ -62,6 +62,9 @@ val experimentalDefinitionInLibrary = Set(
   // Can be stabilized in 3.3.0 or later.
   "scala.deriving.Mirror$.fromProductTyped", // This API is a bit convoluted. We may need some more feedback before we can stabilize it.
 
+  //// New feature: Macro annotations
+  "scala.annotation.MacroAnnotation",
+
    //// New APIs: Quotes
   // Can be stabilized in 3.3.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",

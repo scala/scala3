@@ -1,0 +1,97 @@
+
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:18:6 ---------------------------------------------------------
+17 |  @error
+18 |  val vMember: Int = 1 // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:20:11 --------------------------------------------------------
+19 |  @error
+20 |  lazy val lvMember: Int = 1 // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:22:6 ---------------------------------------------------------
+21 |  @error
+22 |  def dMember: Int = 1 // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:24:8 ---------------------------------------------------------
+23 |  @error
+24 |  given gMember: Int = 1 // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:26:8 ---------------------------------------------------------
+25 |  @error
+26 |  given gMember2: Num[Int] with // error: object not supported (TODO support)
+   |  ^
+   |  macro annotations are not supported on object
+27 |    def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:29:8 ---------------------------------------------------------
+28 |  @error
+29 |  given gMember3(using DummyImplicit): Num[Int] with // error: class not supported (TODO support)
+   |  ^
+   |  macro annotations are not supported on class
+30 |    def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:34:8 ---------------------------------------------------------
+33 |    @error
+34 |    val vLocal: Int = 1 // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:36:13 --------------------------------------------------------
+35 |    @error
+36 |    lazy val lvLocal: Int = 1 // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:38:8 ---------------------------------------------------------
+37 |    @error
+38 |    def dLocal: Int = 1 // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:40:10 --------------------------------------------------------
+39 |    @error
+40 |    given gLocal: Int = 1 // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:42:10 --------------------------------------------------------
+41 |    @error
+42 |    given gLocal2: Num[Int] with // error: object not supported (TODO support)
+   |    ^
+   |    macro annotations are not supported on object
+43 |      def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:45:10 --------------------------------------------------------
+44 |    @error
+45 |    given gLocal3(using DummyImplicit): Num[Int] with // error: class not supported (TODO support)
+   |    ^
+   |    macro annotations are not supported on class
+46 |      def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:2:4 ----------------------------------------------------------
+1 |@error
+2 |val vGlobal: Int = 1 // error
+  |^
+  |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:4:9 ----------------------------------------------------------
+3 |@error
+4 |lazy val lvGlobal: Int = 1 // error
+  |^
+  |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:6:4 ----------------------------------------------------------
+5 |@error
+6 |def dGlobal: Int = 1 // error
+  |^
+  |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:8:6 ----------------------------------------------------------
+7 |@error
+8 |given gGlobal: Int = 1 // error
+  |^
+  |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:10:6 ---------------------------------------------------------
+ 9 |@error
+10 |given gGlobal2: Num[Int] with // error: object not supported (TODO support)
+   |^
+   |macro annotations are not supported on object
+11 |  def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:13:6 ---------------------------------------------------------
+12 |@error
+13 |given gGlobal3(using DummyImplicit): Num[Int] with // error: class not supported (TODO support)
+   |^
+   |macro annotations are not supported on class
+14 |  def zero = 0

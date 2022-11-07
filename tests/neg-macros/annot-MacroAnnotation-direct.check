@@ -1,0 +1,6 @@
+-- [E042] Type Error: tests/neg-macros/annot-MacroAnnotation-direct.scala:3:0 ------------------------------------------
+3 |@MacroAnnotation // error
+  |^^^^^^^^^^^^^^^^
+  |MacroAnnotation is a trait; it cannot be instantiated
+  |
+  | longer explanation available when compiling with `-explain`
