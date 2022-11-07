@@ -18,7 +18,7 @@ package object tools {
      *  Flow-typing under explicit nulls will automatically insert many necessary
      *  occurrences of uncheckedNN.
      */
-    inline def uncheckedNN: T = x.asInstanceOf[T]
+    transparent inline def uncheckedNN: T = x.asInstanceOf[T]
 
     inline def toOption: Option[T] =
       if x == null then None else Some(x.asInstanceOf[T])
