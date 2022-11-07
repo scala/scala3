@@ -963,6 +963,7 @@ class Definitions {
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
     @tu lazy val Caps_unsafeBox: Symbol = CapsModule.requiredMethod("unsafeBox")
     @tu lazy val Caps_unsafeUnbox: Symbol = CapsModule.requiredMethod("unsafeUnbox")
+    @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsModule.requiredMethod("unsafeBoxFunArg")
     @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("*")
 
   // Annotation base classes

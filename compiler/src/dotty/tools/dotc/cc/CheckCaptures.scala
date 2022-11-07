@@ -337,12 +337,21 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val meth = tree.fun.symbol
       includeCallCaptures(meth, tree.srcPos)
-      if meth == defn.Caps_unsafeBox || meth == defn.Caps_unsafeUnbox then
+      def mapArgUsing(f: Type => Type) =
         val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheckStart(arg, pt)
-          .forceBoxStatus(boxed = meth == defn.Caps_unsafeBox)
+        val argType0 = f(recheckStart(arg, pt))
         val argType = super.recheckFinish(argType0, arg, pt)
         super.recheckFinish(argType, tree, pt)
+
+      if meth == defn.Caps_unsafeBox then
+        mapArgUsing(_.forceBoxStatus(true))
+      else if meth == defn.Caps_unsafeUnbox then
+        mapArgUsing(_.forceBoxStatus(false))
+      else if meth == defn.Caps_unsafeBoxFunArg then
+        mapArgUsing {
+          case defn.FunctionOf(paramtpe :: Nil, restpe, isContectual, isErased) =>
+            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContectual, isErased)
+        }
       else
         super.recheckApply(tree, pt) match
           case appType @ CapturingType(appType1, refs) =>

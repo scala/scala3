@@ -17,6 +17,11 @@ import annotation.experimental
    */
   extension [T](x: T) def unsafeUnbox: T = x
 
+  /** If argument is of type `box cs T`, converts to type `cs T`. This
+   *  avoids the error that would be raised when unboxing `*`.
+   */
+  extension [T, U](f: T => U) def unsafeBoxFunArg: T => U = f
+
   /** Mixing in this trait forces a trait or class to be pure, i.e.
    *  have no capabilities retained in its self type.
    */
