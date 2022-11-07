@@ -520,7 +520,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         res
 
       case CapturingType(parent1, refs1) =>
-        if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+        if tp2.isAny then true
+        else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
         then recur(parent1, tp2)
         else thirdTry
       case tp1: AnnotatedType if !tp1.isRefining =>
