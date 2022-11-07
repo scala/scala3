@@ -18,6 +18,7 @@ import Errors.*
 
 import scala.collection.mutable
 import scala.annotation.tailrec
+import caps.unsafe.unsafeBoxFunArg
 
 object Semantic:
 
@@ -1669,7 +1670,8 @@ object Semantic:
       }
 
       // initialize super classes after outers are set
-      tasks.foreach(task => task())
+      tasks.foreach(((task: () => Unit) => task()).unsafeBoxFunArg)
+        // !cc! .asInstanceOf needed to convert from `(() => Unit) -> Unit` to  `(box () => Unit) -> Unit`.
     end if
 
     var fieldsChanged = true

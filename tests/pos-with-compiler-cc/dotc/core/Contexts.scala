@@ -39,12 +39,13 @@ import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
+import language.experimental.pureFunctions
 
 object Contexts {
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
-  private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
+  private val (printerFnLoc,        store3) = store2.newLocation[Context -> Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
   private val (compilationUnitLoc,  store5) = store4.newLocation[CompilationUnit]()
   private val (runLoc,              store6) = store5.newLocation[Run | Null]()
@@ -211,7 +212,7 @@ object Contexts {
     def sbtCallback: AnalysisCallback = store(sbtCallbackLoc)
 
     /** The current plain printer */
-    def printerFn: Context => Printer = store(printerFnLoc)
+    def printerFn: Context -> Printer = store(printerFnLoc)
 
     /** A function creating a printer */
     def printer: Printer =
@@ -275,7 +276,7 @@ object Contexts {
     def nestingLevel: Int = effectiveScope.nestingLevel
 
     /** Sourcefile corresponding to given abstract file, memoized */
-    def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
+    def getSource(file: AbstractFile, codec: -> Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("Context.getSource")
       base.sources.getOrElseUpdate(file, SourceFile(file, codec))
     }
@@ -636,7 +637,7 @@ object Contexts {
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
-    def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
+    def setPrinterFn(printer: Context -> Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)

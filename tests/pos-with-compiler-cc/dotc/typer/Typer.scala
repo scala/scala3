@@ -51,6 +51,7 @@ import Nullables._
 import NullOpsDecorator._
 import cc.CheckCaptures
 import config.Config
+import language.experimental.pureFunctions
 
 import scala.annotation.constructorOnly
 
@@ -676,7 +677,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
     }
 
-    def selectWithFallback(fallBack: Context ?=> Tree) =
+    def selectWithFallback(fallBack: Context ?-> Tree) =
       tryAlternatively(typeSelectOnTerm)(fallBack)
 
     if (tree.qualifier.isType) {
@@ -1100,7 +1101,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  expected type of a block is the anonymous class defined inside it. In that
    *  case there's technically a leak which is not removed by the ascription.
    */
-  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree = {
+  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: -> List[Symbol])(using Context): Tree = {
     def ascribeType(tree: Tree, pt: Type): Tree = tree match {
       case block @ Block(stats, expr) if !expr.isInstanceOf[Closure] =>
         val expr1 = ascribeType(expr, pt)
@@ -2818,7 +2819,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val tupleXXLobj = untpd.ref(defn.TupleXXLModule.termRef)
         val app = untpd.cpy.Apply(tree)(tupleXXLobj, elems.map(untpd.TypedSplice(_)))
           .withSpan(tree.span)
-        val app1 = typed(app, if ctx.mode.is(Mode.Pattern) then pt else defn.TupleXXLClass.typeRef)
+        val app1 = typed(app, defn.TupleXXLClass.typeRef)
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
           val elemTpes = elems.lazyZip(pts).map((elem, pt) =>
@@ -3164,7 +3165,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(using Context): Tree =
     withMode(Mode.Pattern)(typed(tree, selType))
 
-  def tryEither[T](op: Context ?=> T)(fallBack: (T, TyperState) => T)(using Context): T = {
+  def tryEither[T](op: Context ?-> T)(fallBack: (T, TyperState) => T)(using Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result = op(using nestedCtx)
     if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
@@ -3181,7 +3182,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Try `op1`, if there are errors, try `op2`, if `op2` also causes errors, fall back
    *  to errors and result of `op1`.
    */
-  def tryAlternatively[T](op1: Context ?=> T)(op2: Context ?=> T)(using Context): T =
+  def tryAlternatively[T](op1: Context ?-> T)(op2: Context ?-> T)(using Context): T =
     tryEither(op1) { (failedVal, failedState) =>
       tryEither(op2) { (_, _) =>
         failedState.commit()
@@ -4175,7 +4176,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   protected def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =
     // TODO check that call is to a method with valid signature
-    def typedPrefix(tree: untpd.RefTree)(splice: Context ?=> Tree => Tree)(using Context): Tree = {
+    def typedPrefix(tree: untpd.RefTree)(splice: Context ?-> Tree -> Tree)(using Context): Tree = {
       tryAlternatively {
         splice(typedExpr(tree, defn.AnyType))
       } {

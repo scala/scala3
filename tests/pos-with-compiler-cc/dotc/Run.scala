@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.io.Codec
+import caps.unsafe.unsafeUnbox
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
@@ -270,7 +271,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       Rewrites.writeBack()
     suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)
     while (finalizeActions.nonEmpty) {
-      val action = finalizeActions.remove(0)
+      val action = finalizeActions.remove(0).unsafeUnbox
       action()
     }
     compiling = false

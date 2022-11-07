@@ -10,6 +10,7 @@ import util.{SrcPos, NoSourcePosition}
 import SourceVersion._
 import reporting.Message
 import NameKinds.QualifiedName
+import language.experimental.pureFunctions
 
 object Feature:
 
@@ -123,7 +124,7 @@ object Feature:
     else
       false
 
-  def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
+  def checkExperimentalFeature(which: String, srcPos: SrcPos, note: -> String = "")(using Context) =
     if !isExperimentalEnabled then
       report.error(i"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
 

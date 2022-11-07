@@ -5,7 +5,7 @@ import collection.mutable.ListBuffer
 /** A simple linked map with `eq` as the key comparison, optimized for small maps.
  *  It has linear complexity for `apply`, `updated`, and `remove`.
  */
-abstract class SimpleIdentityMap[K <: AnyRef, +V <: AnyRef] extends (K => V | Null) {
+sealed abstract class SimpleIdentityMap[K <: AnyRef, +V <: AnyRef] extends (K => V | Null) {
   final def isEmpty: Boolean = this eq SimpleIdentityMap.myEmpty
   def size: Int
   def apply(k: K): V | Null

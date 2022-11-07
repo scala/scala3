@@ -85,10 +85,7 @@ object Inlines:
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
-    if ctx.isAfterTyper then
-      // During typer we wait with cross version checks until PostTyper, in order
-      // not to provoke cyclic references. See i16116 for a test case.
-      CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
+    CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
 
     if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
 

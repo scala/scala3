@@ -10,11 +10,13 @@ import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
 import dotty.tools.dotc.reporting.Diagnostic._
 import dotty.tools.dotc.reporting.Message._
 import dotty.tools.dotc.util.NoSourcePosition
+import core.Decorators.toMessage
 
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
 import scala.collection.mutable
-import core.Decorators.toMessage
+import scala.caps.unsafe.unsafeUnbox
+import language.experimental.pureFunctions
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -31,7 +33,7 @@ object Reporter {
 
   type ErrorHandler = (Diagnostic, Context) => Unit
 
-  private val defaultIncompleteHandler: ErrorHandler =
+  private val defaultIncompleteHandler: (Diagnostic, Context) -> Unit =
     (mc, ctx) => ctx.reporter.report(mc)(using ctx)
 
   /** Show prompt if `-Xprompt` is passed as a flag to the compiler */
@@ -84,13 +86,14 @@ abstract class Reporter extends interfaces.ReporterResult {
   private var incompleteHandler: ErrorHandler = defaultIncompleteHandler
 
   def withIncompleteHandler[T](handler: ErrorHandler)(op: => T): T = {
-    val saved = incompleteHandler
+    val saved = incompleteHandler.unsafeUnbox
     incompleteHandler = handler
     try op
     finally incompleteHandler = saved
   }
 
-  private def isIncompleteChecking = incompleteHandler ne defaultIncompleteHandler
+  private def isIncompleteChecking =
+    incompleteHandler.unsafeUnbox ne defaultIncompleteHandler
 
   private var _errorCount = 0
   private var _warningCount = 0
@@ -203,7 +206,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   def report(dia: Diagnostic)(using Context): Unit = issueIfNotSuppressed(dia)
 
   def incomplete(dia: Diagnostic)(using Context): Unit =
-    incompleteHandler(dia, ctx)
+    incompleteHandler.unsafeUnbox(dia, ctx)
 
   /** Summary of warnings and errors */
   def summary: String = {

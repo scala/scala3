@@ -16,6 +16,7 @@ import util.{SimpleIdentitySet, Property}
 import util.common.alwaysTrue
 import scala.collection.mutable
 import config.Config.ccAllowUnsoundMaps
+import language.experimental.pureFunctions
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -37,7 +38,7 @@ import config.Config.ccAllowUnsoundMaps
  *  if the mapped function is either a bijection or if it is idempotent
  *  on capture references (c.f. doc comment on `map` below).
  */
-sealed abstract class CaptureSet extends Showable:
+sealed abstract class CaptureSet extends Showable, caps.Pure:
   import CaptureSet.*
 
   /** The elements of this capture set. For capture variables,
@@ -222,7 +223,7 @@ sealed abstract class CaptureSet extends Showable:
   /** The largest subset (via <:<) of this capture set that only contains elements
    *  for which `p` is true.
    */
-  def filter(p: CaptureRef => Boolean)(using Context): CaptureSet =
+  def filter(p: CaptureRef -> Boolean)(using Context): CaptureSet =
     if this.isConst then
       val elems1 = elems.filter(p)
       if elems1 == elems then this
@@ -377,8 +378,10 @@ object CaptureSet:
     def isConst = isSolved
     def isAlwaysEmpty = false
 
-    /** A handler to be invoked if the root reference `*` is added to this set */
-    var rootAddedHandler: () => Context ?=> Unit = () => ()
+    /** A handler to be invoked if the root reference `*` is added to this set
+     *  The handler is pure in the sense that it will only output diagnostics.
+     */
+    var rootAddedHandler: () -> Context ?-> Unit = () => ()
 
     var description: String = ""
 
@@ -426,7 +429,7 @@ object CaptureSet:
       else
         CompareResult.fail(this)
 
-    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
+    override def disallowRootCapability(handler: () -> Context ?-> Unit)(using Context): this.type =
       rootAddedHandler = handler
       super.disallowRootCapability(handler)
 
@@ -618,7 +621,7 @@ object CaptureSet:
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
-    (val source: Var, p: CaptureRef => Boolean)(using @constructorOnly ctx: Context)
+    (val source: Var, p: CaptureRef -> Boolean)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.elems.filter(p)):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =

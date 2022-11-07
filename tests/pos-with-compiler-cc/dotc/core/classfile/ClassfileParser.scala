@@ -23,6 +23,7 @@ import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
+import language.experimental.pureFunctions
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
@@ -629,10 +630,10 @@ class ClassfileParser(
         case (name, tag: EnumTag)     => untpd.NamedArg(name.name, tag.toTree).withSpan(NoSpan)
       }
 
-    protected var mySym: Symbol | (Context ?=> Symbol) =
+    protected var mySym: Symbol | (Context ?-> Symbol) =
       (ctx: Context) ?=> annotType.classSymbol
 
-    protected var myTree: Tree | (Context ?=> Tree) =
+    protected var myTree: Tree | (Context ?-> Tree) =
       (ctx: Context) ?=> untpd.resolveConstructor(annotType, args)
 
     def untpdTree(using Context): untpd.Tree =

@@ -1651,7 +1651,7 @@ end Implicits
  * recursive references and emit a complete implicit dictionary when the outermost search
  * is complete.
  */
-abstract class SearchHistory:
+abstract class SearchHistory extends caps.Pure:
   val root: SearchRoot
   /** Does this search history contain any by name implicit arguments. */
   val byname: Boolean
@@ -1896,7 +1896,8 @@ sealed class TermRefSet(using Context):
       prefixes0 match
         case prefix: Type => f(TermRef(prefix, sym.uncheckedNN))
         case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym.uncheckedNN)))
-    elems.forEach(handle)
+    elems.forEach(handle.asInstanceOf)
+      // !cc! cast is needed to circumvent problematic interaction of box and Java wildcards
 
   // used only for debugging
   def showAsList: List[TermRef] = {

@@ -17,6 +17,7 @@ import util.SourceFile
 import TypeComparer.necessarySubType
 
 import scala.annotation.internal.sharable
+import scala.annotation.retains
 
 object ProtoTypes {
 
@@ -122,15 +123,15 @@ object ProtoTypes {
   }
 
   /** A trait for prototypes that match all types */
-  trait MatchAlways extends ProtoType {
+  trait MatchAlways extends ProtoType, caps.Pure {
     def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean = true
     def map(tm: TypeMap)(using Context): ProtoType = this
-    def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = x
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T = x
     override def toString: String = getClass.toString
   }
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
-  abstract case class IgnoredProto(ignored: Type) extends CachedGroundType with MatchAlways:
+  abstract case class IgnoredProto(ignored: Type) extends CachedGroundType, MatchAlways, caps.Pure:
     private var myWasDeepened = false
     override def revealIgnored = ignored
     override def deepenProto(using Context): Type =
@@ -164,7 +165,7 @@ object ProtoTypes {
    *       [ ].name: proto
    */
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
-  extends CachedProxyType with ProtoType with ValueTypeOrProto {
+  extends CachedProxyType, ProtoType, ValueTypeOrProto, caps.Pure {
 
     /** Is the set of members of this type unknown, in the sense that we
      *  cannot compute a non-trivial upper approximation? This is the case if:
@@ -239,7 +240,7 @@ object ProtoTypes {
       memberProto.unusableForInference
 
     def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
-    def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = ta(x, memberProto)
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T = ta(x, memberProto)
 
     override def deepenProto(using Context): SelectionProto =
       derivedSelectionProto(name, memberProto.deepenProto, compat)
@@ -544,7 +545,7 @@ object ProtoTypes {
     def map(tm: TypeMap)(using Context): FunProto =
       derivedFunProto(args, tm(resultType), typer)
 
-    def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T =
       ta(ta.foldOver(x, typedArgs().tpes), resultType)
 
     override def deepenProto(using Context): FunProto =
@@ -574,7 +575,7 @@ object ProtoTypes {
    *    []: argType => resultType
    */
   abstract case class ViewProto(argType: Type, resType: Type)
-  extends CachedGroundType with ApplyingProto {
+  extends CachedGroundType, ApplyingProto, caps.Pure {
 
     override def resultType(using Context): Type = resType
 
@@ -601,7 +602,7 @@ object ProtoTypes {
 
     def map(tm: TypeMap)(using Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
 
-    def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T =
       ta(ta(x, argType), resultType)
 
     override def deepenProto(using Context): ViewProto =
@@ -655,7 +656,7 @@ object ProtoTypes {
     def map(tm: TypeMap)(using Context): PolyProto =
       derivedPolyProto(targs, tm(resultType))
 
-    def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T =
       ta(ta.foldOver(x, targs.tpes), resultType)
 
     override def deepenProto(using Context): PolyProto =
@@ -703,7 +704,10 @@ object ProtoTypes {
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
       for (paramRef <- tl.paramRefs)
       yield {
-        val tt = InferredTypeTree().withSpan(owningTree.span)
+        val tt = InferredTypeTree[Type]().withSpan(owningTree.span)
+          // !cc! explicit type argument [Type] needed since otherwise it is
+          // inferred to be `{*} Type`, which violates the upper bound. The
+          // inference works like this because of the contravariance of Tree.
         val tvar = TypeVar(paramRef, state, nestingLevel)
         state.ownedVars += tvar
         tt.withType(tvar)

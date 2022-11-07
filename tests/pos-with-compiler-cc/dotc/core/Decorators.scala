@@ -10,6 +10,7 @@ import Contexts._, Names._, Phases._, Symbols._
 import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
+import language.experimental.pureFunctions
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -58,7 +59,7 @@ object Decorators {
       padding + s.replace("\n", "\n" + padding)
   end extension
 
-  extension (str: => String)
+  extension (str: -> String)
     def toMessage: Message = reporting.NoExplanation(str)
 
   /** Implements a findSymbol method on iterators of Symbols that
