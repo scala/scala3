@@ -3807,7 +3807,7 @@ object Parsers {
         if !(name.isEmpty && noParams) then acceptColon()
         val parents =
           if isSimpleLiteral then rejectWildcardType(annotType()) :: Nil
-          else constrApp() :: withConstrApps()
+          else refinedTypeRest(constrApp()) :: withConstrApps()
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then
           accept(EQUALS)
