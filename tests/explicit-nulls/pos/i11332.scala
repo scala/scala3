@@ -9,10 +9,14 @@ import java.lang.invoke._, MethodType.methodType
 class Foo:
   def neg(x: Int): Int = -x
 
-  val l    = MethodHandles.lookup()
-  val self = new Foo()
+object Test:
+  def main(args: Array[String]): Unit =
+    val l    = MethodHandles.lookup()
+    val self = new Foo()
 
-  val test = // testing as a expression tree - previously derivedSelect broke the type
-    l
-      .findVirtual(classOf[Foo], "neg", methodType(classOf[Int], classOf[Int]))
-      .invokeExact(self, 4): Int
+    val res4 = {
+      l // explicit chain method call - previously derivedSelect broke the type
+        .findVirtual(classOf[Foo], "neg", methodType(classOf[Int], classOf[Int]))
+        .invokeExact(self, 4): Int
+    }
+    assert(-4 == res4)
