@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:23:49 ------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error
    |                                                 ^
-   |                                                 Found:    ? ({*} CT[Exception]) -> CanThrow[? Exception]
+   |                                                 Found:    ? ({*} CT[Exception]) -> CanThrow[Exception]
    |                                                 Required: CanThrow[Exception] => box {*} CT[Exception]
 24 |    (x: CanThrow[Exception]) => x
 25 |  }{
