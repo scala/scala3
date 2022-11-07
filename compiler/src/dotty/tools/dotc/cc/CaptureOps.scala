@@ -166,16 +166,43 @@ extension (tp: Type)
       case CapturingType(_, _) => true
       case _ => false
 
+  /** Is type known to be always pure by its class structure,
+   *  so that adding a capture set to it would not make sense?
+   */
+  def isAlwaysPure(using Context): Boolean = tp.dealias match
+    case tp: (TypeRef | AppliedType) =>
+      val sym = tp.typeSymbol
+      if sym.isClass then sym.isPureClass
+      else tp.superType.isAlwaysPure
+    case CapturingType(parent, refs) =>
+      parent.isAlwaysPure || refs.isAlwaysEmpty
+    case tp: TypeProxy =>
+      tp.superType.isAlwaysPure
+    case tp: AndType =>
+      tp.tp1.isAlwaysPure || tp.tp2.isAlwaysPure
+    case tp: OrType =>
+      tp.tp1.isAlwaysPure && tp.tp2.isAlwaysPure
+    case _ =>
+      false
+
 extension (sym: Symbol)
 
-  /** A class is pure if one of its base types has an explicitly declared self type
-   *  with an empty capture set.
+  /** A class is pure if:
+   *   - one its base types has an explicitly declared self type with an empty capture set
+   *   - or it is a value class
+   *   - or it is Nothing or Null
    */
   def isPureClass(using Context): Boolean = sym match
     case cls: ClassSymbol =>
+      val AnyValClass = defn.AnyValClass
       cls.baseClasses.exists(bc =>
-        val selfType = bc.givenSelfType
-        selfType.exists && selfType.captureSet.isAlwaysEmpty)
+        bc == AnyValClass
+        || {
+          val selfType = bc.givenSelfType
+          selfType.exists && selfType.captureSet.isAlwaysEmpty
+        })
+      || cls == defn.NothingClass
+      || cls == defn.NullClass
     case _ =>
       false
 

@@ -101,20 +101,22 @@ object RefChecks {
    *               is the intersection of the capture sets of all its parents
    */
   def checkSelfAgainstParents(cls: ClassSymbol, parents: List[Symbol])(using Context): Unit =
-    val cinfo = cls.classInfo
+    withMode(Mode.CheckBoundsOrSelfType) {
+      val cinfo = cls.classInfo
 
-    def checkSelfConforms(other: ClassSymbol, category: String, relation: String) =
-      val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
-      if otherSelf.exists then
-        if !(cinfo.selfType <:< otherSelf) then
-          report.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other),
-            cls.srcPos)
+      def checkSelfConforms(other: ClassSymbol, category: String, relation: String) =
+        val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
+        if otherSelf.exists then
+          if !(cinfo.selfType <:< otherSelf) then
+            report.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other),
+              cls.srcPos)
 
-    for psym <- parents do
-      checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
-    for reqd <- cls.asClass.givenSelfType.classSymbols do
-      if reqd != cls then
-        checkSelfConforms(reqd, "missing requirement", "required")
+      for psym <- parents do
+        checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
+      for reqd <- cls.asClass.givenSelfType.classSymbols do
+        if reqd != cls then
+          checkSelfConforms(reqd, "missing requirement", "required")
+    }
   end checkSelfAgainstParents
 
   /** Check that self type of this class conforms to self types of parents

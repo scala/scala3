@@ -765,11 +765,11 @@ object Types {
         val rinfo = tp.refinedInfo
         if (name.isTypeName && !pinfo.isInstanceOf[ClassInfo]) { // simplified case that runs more efficiently
           val jointInfo =
-            if rinfo.isInstanceOf[TypeAlias] && !ctx.mode.is(Mode.CheckBounds) then
+            if rinfo.isInstanceOf[TypeAlias] && !ctx.mode.is(Mode.CheckBoundsOrSelfType) then
               // In normal situations, the only way to "improve" on rinfo is to return an empty type bounds
               // So, we do not lose anything essential in "widening" to rinfo.
               // We need to compute the precise info only when checking for empty bounds
-              // which is communicated by the CheckBounds mode.
+              // which is communicated by the CheckBoundsOrSelfType mode.
               rinfo
             else if ctx.base.pendingMemberSearches.contains(name) then
               pinfo safe_& rinfo

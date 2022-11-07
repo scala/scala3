@@ -23,7 +23,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
 
 /** Provides methods to compare types.
  */
@@ -522,6 +522,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case CapturingType(parent1, refs1) =>
         if tp2.isAny then true
         else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+          || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
         then recur(parent1, tp2)
         else thirdTry
       case tp1: AnnotatedType if !tp1.isRefining =>

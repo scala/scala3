@@ -70,10 +70,14 @@ object Mode {
   /** We are currently unpickling Scala2 info */
   val Scala2Unpickling: Mode = newMode(13, "Scala2Unpickling")
 
-  /** We are currently checking bounds to be non-empty, so we should not
-   *  do any widening when computing members of refined types.
+  /** Signifies one of two possible situations:
+   *   1. We are currently checking bounds to be non-empty, so we should not
+   *      do any widening when computing members of refined types.
+   *   2. We are currently checking self type conformance, so we should not
+   *      ignore capture sets added to otherwise pure classes (only needed
+   *      for capture checking).
    */
-  val CheckBounds: Mode = newMode(14, "CheckBounds")
+  val CheckBoundsOrSelfType: Mode = newMode(14, "CheckBoundsOrSelfType")
 
   /** Use Scala2 scheme for overloading and implicit resolution */
   val OldOverloadingResolution: Mode = newMode(15, "OldOverloadingResolution")

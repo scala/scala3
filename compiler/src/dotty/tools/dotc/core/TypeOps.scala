@@ -615,7 +615,7 @@ object TypeOps:
       boundss: List[TypeBounds],
       instantiate: (Type, List[Type]) => Type,
       app: Type)(
-      using Context): List[BoundsViolation] = withMode(Mode.CheckBounds) {
+      using Context): List[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
     val argTypes = args.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
