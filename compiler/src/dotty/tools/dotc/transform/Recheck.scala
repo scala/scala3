@@ -72,7 +72,7 @@ object Recheck:
       val symd = sym.denot
       symd.validFor.firstPhaseId == phase.id + 1 && (sym.originDenotation ne symd)
 
-  extension (tree: Tree)
+  extension [T <: Tree](tree: T)
 
     /** Remember `tpe` as the type of `tree`, which might be different from the
      *  type stored in the tree itself, unless a type was already remembered for `tree`.
@@ -87,10 +87,14 @@ object Recheck:
       if tpe ne tree.tpe then tree.putAttachment(RecheckedType, tpe)
 
     /** The remembered type of the tree, or if none was installed, the original type */
-    def knownType =
+    def knownType: Type =
       tree.attachmentOrElse(RecheckedType, tree.tpe)
 
     def hasRememberedType: Boolean = tree.hasAttachment(RecheckedType)
+
+    def withKnownType(using Context): T = tree.getAttachment(RecheckedType) match
+      case Some(tpe) => tree.withType(tpe).asInstanceOf[T]
+      case None => tree
 
   extension (tpe: Type)
 

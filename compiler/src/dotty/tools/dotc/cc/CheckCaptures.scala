@@ -11,6 +11,7 @@ import config.{Config, Feature}
 import ast.{tpd, untpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents}
+import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
@@ -911,8 +912,27 @@ class CheckCaptures extends Recheck, SymTransformer:
                       |The type needs to be declared explicitly.""", t.srcPos)
               case _ =>
             inferred.foreachPart(checkPure, StopAt.Static)
+        case t @ TypeApply(fun, args) =>
+          fun.knownType.widen match
+            case tl: PolyType =>
+              val normArgs = args.lazyZip(tl.paramInfos).map { (arg, bounds) =>
+                arg.withType(arg.knownType.forceBoxStatus(
+                  bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
+              }
+              checkBounds(normArgs, tl)
+            case _ =>
         case _ =>
       }
-
+      if !ctx.reporter.errorsReported then
+        // We dont report errors hre if previous errors were reported, because other
+        // errors often result in bad applied types, but flagging these bad types gives
+        // often worse error messages than the original errors.
+        val checkApplied = new TreeTraverser:
+          def traverse(t: Tree)(using Context) = t match
+            case tree: InferredTypeTree =>
+            case tree: New =>
+            case tree: TypeTree => checkAppliedTypesIn(tree.withKnownType)
+            case _ => traverseChildren(t)
+        checkApplied.traverse(unit)
   end CaptureChecker
 end CheckCaptures

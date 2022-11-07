@@ -67,11 +67,12 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
     instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
-    args.lazyZip(boundss).foreach { (arg, bound) =>
-      if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
-        errorTree(arg,
-          showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
-    }
+    if ctx.phase != Phases.checkCapturesPhase then
+      args.lazyZip(boundss).foreach { (arg, bound) =>
+        if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
+          errorTree(arg,
+            showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
+      }
     for (arg, which, bound) <- TypeOps.boundsViolations(args, boundss, instantiate, app) do
       report.error(
         showInferred(DoesNotConformToBound(arg.tpe, which, bound), app, tpt),
