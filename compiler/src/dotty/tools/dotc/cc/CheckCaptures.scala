@@ -18,6 +18,7 @@ import Recheck.*
 import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap}
 import StdNames.nme
+import NameKinds.DefaultGetterName
 import reporting.trace
 
 /** The capture checker */
@@ -885,11 +886,14 @@ class CheckCaptures extends Recheck, SymTransformer:
           val isLocal =
             sym.owner.ownersIterator.exists(_.isTerm)
             || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
-          def canUseInferred =        // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
-            sym.is(Private)           // private symbols can always have inferred types
-            ||                        // non-local symbols cannot have inferred types since external capture types are not inferred
-              isLocal                 // local symbols still need explicit types if
-              && !sym.owner.is(Trait) // they are defined in a trait, since we do OverridingPairs checking before capture inference
+          def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
+            sym.is(Private)                   // private symbols can always have inferred types
+            || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
+                                              // too annoying. This is a hole since a defualt getter's result type
+                                              // might leak into a type variable.
+            ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
+              isLocal                         // local symbols still need explicit types if
+              && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
           def isNotPureThis(ref: CaptureRef) = ref match {
             case ref: ThisType => !ref.cls.isPureClass
             case _ => true
