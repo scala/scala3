@@ -10,6 +10,7 @@ import Contexts._, Names._, Phases._, Symbols._
 import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
+import language.experimental.pureFunctions
 
 /** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
@@ -61,7 +62,7 @@ object Decorators {
   /** Convert lazy string to message. To be with caution, since no message-defined
    *  formatting will be done on the string.
    */
-  extension (str: => String)
+  extension (str: -> String)
     def toMessage: Message = NoExplanation(str)(using NoContext)
 
   /** Implements a findSymbol method on iterators of Symbols that

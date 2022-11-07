@@ -49,7 +49,7 @@ class TryCatchPatterns extends MiniPhase {
 
   override def checkPostCondition(tree: Tree)(using Context): Unit = tree match {
     case Try(_, cases, _) =>
-      cases.foreach {
+      cases.foreach { (t: CaseDef) => t match // !cc! explicity typed scrutinee is needed
         case CaseDef(Typed(_, _), guard, _) => assert(guard.isEmpty, "Try case should not contain a guard.")
         case CaseDef(Bind(_, _), guard, _) => assert(guard.isEmpty, "Try case should not contain a guard.")
         case c =>

@@ -29,6 +29,7 @@ import transform.SymUtils._
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet.IdentityCaptRefMap
+import language.experimental.pureFunctions
 
 /**  Messages
   *  ========
@@ -245,7 +246,7 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: => String*)(using Context)
+class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: -> String*)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
   def msg(using Context) =
@@ -300,7 +301,7 @@ class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  ad
 
 end TypeMismatch
 
-class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
+class NotAMember(site: Type, val name: Name, selected: String, addendum: -> String = "")(using Context)
 extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
   //println(i"site = $site, decls = ${site.decls}, source = ${site.typeSymbol.sourceFile}") //DEBUG
 
@@ -824,7 +825,7 @@ extends Message(LossyWideningConstantConversionID):
                 |Write `.to$targetType` instead."""
   def explain(using Context) = ""
 
-class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
+class PatternMatchExhaustivity(uncoveredFn: -> String, hasMore: Boolean)(using Context)
 extends Message(PatternMatchExhaustivityID) {
   def kind = MessageKind.PatternMatchExhaustivity
   lazy val uncovered = uncoveredFn
@@ -844,7 +845,7 @@ extends Message(PatternMatchExhaustivityID) {
         |"""
 }
 
-class UncheckedTypePattern(msgFn: => String)(using Context)
+class UncheckedTypePattern(msgFn: -> String)(using Context)
   extends PatternMatchMsg(UncheckedTypePatternID) {
   def msg(using Context) = msgFn
   def explain(using Context) =
@@ -1101,7 +1102,7 @@ extends DeclarationMsg(OverridesNothingButNameExistsID) {
 }
 
 class OverrideError(
-    core: Context ?=> String, base: Type,
+    core: Context ?-> String, base: Type,
     member: Symbol, other: Symbol,
     memberTp: Type, otherTp: Type)(using Context)
 extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
@@ -1988,7 +1989,7 @@ class StaticFieldsShouldPrecedeNonStatic(member: Symbol, defns: List[tpd.Tree])(
   }
 }
 
-class CyclicInheritance(symbol: Symbol, addendum: => String)(using Context) extends SyntaxMsg(CyclicInheritanceID) {
+class CyclicInheritance(symbol: Symbol, addendum: -> String)(using Context) extends SyntaxMsg(CyclicInheritanceID) {
   def msg(using Context) = i"Cyclic inheritance: $symbol extends itself$addendum"
   def explain(using Context) = {
     val codeExample = "class A extends A"
@@ -2554,7 +2555,7 @@ class MissingImplicitArgument(
     pt: Type,
     where: String,
     paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
-    ignoredInstanceNormalImport: => Option[SearchSuccess]
+    ignoredInstanceNormalImport: -> Option[SearchSuccess]
   )(using Context) extends TypeMsg(MissingImplicitArgumentID), ShowMatchTrace(pt):
 
   arg.tpe match

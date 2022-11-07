@@ -12,6 +12,7 @@ import config.SourceVersion
 import scala.language.unsafeNulls
 
 import scala.annotation.threadUnsafe
+import language.experimental.pureFunctions
 
 /** ## Tips for error message generation
  *
@@ -51,7 +52,7 @@ object Message:
    */
   private class Seen(disambiguate: Boolean):
 
-    val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]]:
+    private val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]]:
       override def default(key: SeenKey) = Nil
 
     var nonSensical = false
@@ -362,16 +363,16 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     override val canExplain = self.canExplain
     override def isNonSensical = self.isNonSensical
 
-  def append(suffix: => String): Message = mapMsg(_ ++ suffix)
-  def prepend(prefix: => String): Message = mapMsg(prefix ++ _)
+  def append(suffix: -> String): Message = mapMsg(_ ++ suffix)
+  def prepend(prefix: -> String): Message = mapMsg(prefix ++ _)
 
-  def mapMsg(f: String => String): Message = new Message(errorId):
+  def mapMsg(f: String -> String): Message = new Message(errorId):
     val kind = self.kind
     def msg(using Context) = f(self.msg)
     def explain(using Context) = self.explain
     override def canExplain = self.canExplain
 
-  def appendExplanation(suffix: => String): Message = new Message(errorId):
+  def appendExplanation(suffix: -> String): Message = new Message(errorId):
     val kind = self.kind
     def msg(using Context) = self.msg
     def explain(using Context) = self.explain ++ suffix
@@ -392,7 +393,7 @@ trait NoDisambiguation extends Message:
   withoutDisambiguation()
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-final class NoExplanation(msgFn: Context ?=> String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
+final class NoExplanation(msgFn: Context ?-> String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
   def msg(using Context): String = msgFn
   def explain(using Context): String = ""
   val kind: MessageKind = MessageKind.NoKind

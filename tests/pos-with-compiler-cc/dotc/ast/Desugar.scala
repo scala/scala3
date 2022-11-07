@@ -683,7 +683,7 @@ object desugar {
       else (Nil, Nil)
     }
 
-    var parents1 = parents
+    var parents1: List[untpd.Tree] = parents // !cc! need explicit type to make capture checking pass
     if (isEnumCase && parents.isEmpty)
       parents1 = enumClassTypeRef :: Nil
     if (isNonEnumCase)
@@ -1789,7 +1789,10 @@ object desugar {
         val elems = segments flatMap {
           case ts: Thicket => ts.trees.tail
           case t => Nil
-        } map {
+        } map { (t: Tree) => t match
+            // !cc! explicitly typed parameter (t: Tree) is needed since otherwise
+            // we get an error similar to #16268. (The explicit type constrains the type of `segments`
+            // which is otherwise List[{*} tree])
           case Block(Nil, EmptyTree) => Literal(Constant(())) // for s"... ${} ..."
           case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
           case t => t

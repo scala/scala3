@@ -11,6 +11,7 @@ import dotty.tools.dotc.reporting._
 import dotty.tools.io.AbstractFile
 
 import scala.quoted.runtime.impl.QuotesImpl
+import caps.unsafe.unsafeUnbox
 
 /**
   * Decompiler to be used with IDEs
@@ -40,7 +41,7 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
       val unit = ctx.run.nn.units.head
 
       val decompiled = QuotesImpl.showDecompiledTree(unit.tpdTree)
-      val tree = new TastyHTMLPrinter(unit.pickled.head._2()).showContents()
+      val tree = new TastyHTMLPrinter(unit.pickled.head._2.unsafeUnbox()).showContents()
 
       reporter.removeBufferedMessages.foreach(message => System.err.println(message))
       (tree, decompiled)

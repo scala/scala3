@@ -13,8 +13,9 @@ import Decorators._
 import reporting._
 import ast.untpd
 import config.Printers.cyclicErrors
+import language.experimental.pureFunctions
 
-abstract class TypeError(using creationContext: Context) extends Exception(""):
+abstract class TypeError(using creationContext: Context) extends Exception(""), caps.Pure:
 
   /** Convert to message. This takes an additional Context, so that we
    *  use the context when the message is first produced, i.e. when the TypeError
@@ -50,7 +51,7 @@ class MissingType(pre: Type, name: Name)(using Context) extends TypeError:
         |the classfile defining the type might be missing from the classpath${otherReason(pre)}"""
 end MissingType
 
-class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)(using Context)
+class RecursionOverflow(val op: String, details: -> String, val previous: Throwable, val weight: Int)(using Context)
 extends TypeError:
 
   def explanation: String = s"$op $details"
@@ -97,7 +98,7 @@ end RecursionOverflow
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
 object handleRecursive {
-  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
+  def apply(op: String, details: -> String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
     if (ctx.settings.YnoDecodeStacktraces.value)
       throw exc
     else

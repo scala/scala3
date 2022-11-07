@@ -15,6 +15,7 @@ import core.Flags._
 import util.Spans._
 import reporting._
 import config.Printers.{ transforms => debug }
+import language.experimental.pureFunctions
 
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
@@ -195,7 +196,7 @@ object TypeTestsCasts {
           def testCls = effectiveClass(testType.widen)
           def unboxedTestCls = effectiveClass(unboxedTestType.widen)
 
-          def unreachable(why: => String)(using Context): Boolean = {
+          def unreachable(why: -> String)(using Context): Boolean = {
             if (flagUnrelated)
               if (inMatch) report.error(em"this case is unreachable since $why", expr.srcPos)
               else report.warning(em"this will always yield false since $why", expr.srcPos)

@@ -9,15 +9,15 @@ import config.SourceVersion
 import ast._
 import config.Feature.sourceVersion
 import java.lang.System.currentTimeMillis
-
+import language.experimental.pureFunctions
 
 object report:
 
   /** For sending messages that are printed only if -verbose is set */
-  def inform(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def inform(msg: -> String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     if ctx.settings.verbose.value then echo(msg, pos)
 
-  def echo(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def echo(msg: -> String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     ctx.reporter.report(new Info(msg.toMessage, pos.sourcePos))
 
   private def issueWarning(warning: Warning)(using Context): Unit =
@@ -35,7 +35,7 @@ object report:
   def featureWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new FeatureWarning(msg, pos.sourcePos))
 
-  def featureWarning(feature: String, featureDescription: => String,
+  def featureWarning(feature: String, featureDescription: -> String,
       featureUseSite: Symbol, required: Boolean, pos: SrcPos)(using Context): Unit =
     val req = if required then "needs to" else "should"
     val fqname = s"scala.language.$feature"
@@ -61,7 +61,7 @@ object report:
   def warning(msg: Message)(using Context): Unit =
     warning(msg, NoSourcePosition)
 
-  def warning(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def warning(msg: -> String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     warning(msg.toMessage, pos)
 
   def error(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
@@ -69,10 +69,10 @@ object report:
     ctx.reporter.report(new Error(msg, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
 
-  def error(msg: => String, pos: SrcPos)(using Context): Unit =
+  def error(msg: -> String, pos: SrcPos)(using Context): Unit =
     error(msg.toMessage, pos)
 
-  def error(msg: => String)(using Context): Unit =
+  def error(msg: -> String)(using Context): Unit =
     error(msg, NoSourcePosition)
 
   def error(ex: TypeError, pos: SrcPos)(using Context): Unit =
@@ -99,27 +99,27 @@ object report:
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
    *  "contains" here.
    */
-  def log(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def log(msg: -> String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     if (ctx.settings.Ylog.value.containsPhase(ctx.phase))
       echo(s"[log ${ctx.phase}] $msg", pos)
 
-  def debuglog(msg: => String)(using Context): Unit =
+  def debuglog(msg: -> String)(using Context): Unit =
     if (ctx.debug) log(msg)
 
-  def informTime(msg: => String, start: Long)(using Context): Unit = {
+  def informTime(msg: -> String, start: Long)(using Context): Unit = {
     def elapsed = s" in ${currentTimeMillis - start}ms"
     informProgress(msg + elapsed)
   }
 
-  def informProgress(msg: => String)(using Context): Unit =
+  def informProgress(msg: -> String)(using Context): Unit =
     inform("[" + msg + "]")
 
-  def logWith[T](msg: => String)(value: T)(using Context): T = {
+  def logWith[T](msg: -> String)(value: T)(using Context): T = {
     log(msg + " " + value)
     value
   }
 
-  def debugwarn(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def debugwarn(msg: -> String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     if (ctx.settings.Ydebug.value) warning(msg, pos)
 
   private def addInlineds(pos: SrcPos)(using Context): SourcePosition =

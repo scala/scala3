@@ -22,6 +22,7 @@ import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
 import dotty.tools.dotc.transform.TreeMapWithStages._
+import language.experimental.pureFunctions
 
 object PrepareInlineable {
   import tpd._
@@ -262,7 +263,7 @@ object PrepareInlineable {
    *                     to have the inline method as owner.
    */
   def registerInlineInfo(
-      inlined: Symbol, treeExpr: Context ?=> Tree)(using Context): Unit =
+      inlined: Symbol, treeExpr: Context ?-> Tree)(using Context): Unit =
     inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated || ann.isEvaluating =>

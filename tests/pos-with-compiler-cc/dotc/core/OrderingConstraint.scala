@@ -13,6 +13,7 @@ import reflect.ClassTag
 import annotation.tailrec
 import annotation.internal.sharable
 import cc.{CapturingType, derivedCapturingType}
+import caps.unsafe.unsafeUnbox
 
 object OrderingConstraint {
 
@@ -515,7 +516,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       val stripped = stripParams(bounds, todos, isUpper = true)
       current = boundsLens.update(this, current, param, stripped)
       while todos.nonEmpty do
-        current = todos.head(current, param)
+        current = todos.head.unsafeUnbox(current, param)
         todos.dropInPlace(1)
       i += 1
     }

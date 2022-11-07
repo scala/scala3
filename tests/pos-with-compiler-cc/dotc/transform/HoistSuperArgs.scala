@@ -42,7 +42,7 @@ object HoistSuperArgs {
  *  as method parameters. The definition is installed in the scope enclosing the class,
  *  or, if that is a package, it is made a static method of the class itself.
  */
-class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase =>
+class HoistSuperArgs extends MiniPhase, IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = HoistSuperArgs.name
@@ -186,7 +186,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         // MO: The guard avoids the crash for #16351.
         // It would be good to dig deeper, but I won't have the time myself to do it.
         cpy.Block(superCall)(
-          stats = defs.mapconserve {
+          stats = defs.mapconserve { (t: Tree) => t match // !cc! explicity typed scrutinee is needed
             case vdef: ValDef =>
               try cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef, lifted.toList))
               finally lifted += vdef.symbol

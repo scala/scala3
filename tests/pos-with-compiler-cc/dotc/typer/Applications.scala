@@ -1025,7 +1025,7 @@ trait Applications extends Compatibility {
             // applications of inline functions.
             tree.args match {
               case (arg @ Match(EmptyTree, cases)) :: Nil =>
-                cases.foreach {
+                cases.foreach { (t: untpd.CaseDef) => t match // !cc! explicity typed scrutinee is needed
                   case CaseDef(Typed(_: untpd.Ident, _), _, _) => // OK
                   case CaseDef(Bind(_, Typed(_: untpd.Ident, _)), _, _) => // OK
                   case CaseDef(Ident(name), _, _) if name == nme.WILDCARD => // Ok

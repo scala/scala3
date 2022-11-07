@@ -43,6 +43,8 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.transform.SymUtils._
+import language.experimental.pureFunctions
+import annotation.retains
 
 object Types {
 
@@ -90,7 +92,7 @@ object Types {
    *
    *  Note: please keep in sync with copy in `docs/docs/internals/type-system.md`.
    */
-  abstract class Type extends Hashable with printing.Showable {
+  abstract class Type extends Hashable, printing.Showable, caps.Pure {
 
 // ----- Tests -----------------------------------------------------
 
@@ -2157,7 +2159,7 @@ object Types {
   /** A trait for proto-types, used as expected types in typer */
   trait ProtoType extends Type {
     def isMatchedBy(tp: Type, keepConstraint: Boolean = false)(using Context): Boolean
-    def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T
     def map(tm: TypeMap)(using Context): ProtoType
 
     /** If this prototype captures a context, the same prototype except that the result
@@ -3021,7 +3023,7 @@ object Types {
   }
 
   // `refFn` can be null only if `computed` is true.
-  case class LazyRef(private var refFn: (Context => (Type | Null)) | Null) extends UncachedProxyType with ValueType {
+  case class LazyRef(private var refFn: (Context -> (Type | Null)) | Null) extends UncachedProxyType with ValueType {
     private var myRef: Type | Null = null
     private var computed = false
 
@@ -3061,7 +3063,7 @@ object Types {
     override def hashCode: Int = System.identityHashCode(this)
   }
   object LazyRef:
-    def of(refFn: Context ?=> (Type | Null)): LazyRef = LazyRef(refFn(using _))
+    def of(refFn: Context ?-> (Type | Null)): LazyRef = LazyRef(refFn(using _))
 
   // --- Refined Type and RecType ------------------------------------------------
 
@@ -3157,7 +3159,7 @@ object Types {
    *
    *  Where `RecThis(...)` points back to the enclosing `RecType`.
    */
-  class RecType(parentExp: RecType => Type) extends RefinedOrRecType with BindingType {
+  class RecType(@constructorOnly parentExp: RecType => Type) extends RefinedOrRecType with BindingType {
 
     // See discussion in findMember#goRec why these vars are needed
     private[Types] var opened: Boolean = false
@@ -3881,8 +3883,8 @@ object Types {
   }
 
   abstract case class MethodType(paramNames: List[TermName])(
-      paramInfosExp: MethodType => List[Type],
-      resultTypeExp: MethodType => Type)
+      @constructorOnly paramInfosExp: MethodType => List[Type],
+      @constructorOnly resultTypeExp: MethodType => Type)
     extends MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
 
     type This = MethodType
@@ -3908,7 +3910,10 @@ object Types {
     protected def prefixString: String = companion.prefixString
   }
 
-  final class CachedMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type, val companion: MethodTypeCompanion)
+  final class CachedMethodType(paramNames: List[TermName])(
+      @constructorOnly paramInfosExp: MethodType => List[Type],
+      @constructorOnly resultTypeExp: MethodType => Type,
+      val companion: MethodTypeCompanion)
     extends MethodType(paramNames)(paramInfosExp, resultTypeExp)
 
   abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
@@ -4077,7 +4082,8 @@ object Types {
    *  Variances are stored in the `typeParams` list of the lambda.
    */
   class HKTypeLambda(val paramNames: List[TypeName], @constructorOnly variances: List[Variance])(
-      paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
+      @constructorOnly paramInfosExp: HKTypeLambda => List[TypeBounds],
+      @constructorOnly resultTypeExp: HKTypeLambda => Type)
   extends HKLambda with TypeLambda {
     type This = HKTypeLambda
     def companion: HKTypeLambda.type = HKTypeLambda
@@ -4145,7 +4151,8 @@ object Types {
    *  except it applies to terms and parameters do not have variances.
    */
   class PolyType(val paramNames: List[TypeName])(
-      paramInfosExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
+      @constructorOnly paramInfosExp: PolyType => List[TypeBounds],
+      @constructorOnly resultTypeExp: PolyType => Type)
   extends MethodOrPoly with TypeLambda {
 
     type This = PolyType
@@ -5566,7 +5573,7 @@ object Types {
   end BiTypeMap
 
   abstract class TypeMap(implicit protected var mapCtx: Context)
-  extends VariantTraversal with (Type => Type) { thisMap =>
+  extends VariantTraversal with (Type -> Type) { thisMap: TypeMap =>
 
     def apply(tp: Type): Type
 
@@ -5755,7 +5762,7 @@ object Types {
     protected def mapClassInfo(tp: ClassInfo): Type =
       derivedClassInfo(tp, this(tp.prefix))
 
-    def andThen(f: Type => Type): TypeMap = new TypeMap {
+    def andThen(f: Type -> Type): TypeMap = new TypeMap {
       override def stopAt = thisMap.stopAt
       def apply(tp: Type) = f(thisMap(tp))
     }
@@ -6092,6 +6099,7 @@ object Types {
 
   abstract class TypeAccumulator[T](implicit protected val accCtx: Context)
   extends VariantTraversal with ((T, Type) => T) {
+    this: TypeAccumulator[T] @annotation.retains(caps.*) =>
 
     def apply(x: T, tp: Type): T
 
@@ -6172,7 +6180,7 @@ object Types {
         foldOver(x2, tp.cases)
 
       case CapturingType(parent, refs) =>
-        (this(x, parent) /: refs.elems)(this)
+        (this(x, parent) /: refs.elems)(apply) // !cc! does not work under apply := this
 
       case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)

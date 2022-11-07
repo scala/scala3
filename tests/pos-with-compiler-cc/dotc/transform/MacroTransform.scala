@@ -9,7 +9,7 @@ import Contexts._
 /** A base class for transforms.
  *  A transform contains a compiler phase which applies a tree transformer.
  */
-abstract class MacroTransform extends Phase {
+abstract class MacroTransform extends Phase, caps.Pure {
 
   import ast.tpd._
 

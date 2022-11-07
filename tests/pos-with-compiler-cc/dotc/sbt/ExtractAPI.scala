@@ -26,6 +26,7 @@ import java.io.PrintWriter
 import scala.collection.mutable
 import scala.util.hashing.MurmurHash3
 import scala.util.chaining.*
+import language.experimental.pureFunctions
 
 /** This phase sends a representation of the API of classes to sbt via callbacks.
  *
@@ -594,7 +595,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     }
   }
 
-  def apiLazy(tp: => Type): api.Type = {
+  def apiLazy(tp: -> Type): api.Type = {
     // TODO: The sbt api needs a convenient way to make a lazy type.
     // For now, we repurpose Structure for this.
     val apiTp = lzy(Array(apiType(tp)))

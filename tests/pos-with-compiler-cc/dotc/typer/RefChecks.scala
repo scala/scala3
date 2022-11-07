@@ -20,6 +20,7 @@ import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
 import reporting._
 import Constants.Constant
+import language.experimental.pureFunctions
 
 object RefChecks {
   import tpd._
@@ -335,7 +336,7 @@ object RefChecks {
 
       def noErrorType = !memberTp(self).isErroneous && !otherTp(self).isErroneous
 
-      def overrideErrorMsg(core: Context ?=> String, compareTypes: Boolean = false): Message =
+      def overrideErrorMsg(core: Context ?-> String, compareTypes: Boolean = false): Message =
         val (mtp, otp) = if compareTypes then (memberTp(self), otherTp(self)) else (NoType, NoType)
         OverrideError(core, self, member, other, mtp, otp)
 
@@ -596,7 +597,8 @@ object RefChecks {
         val missing = missingTermSymbols
         // Group missing members by the name of the underlying symbol,
         // to consolidate getters and setters.
-        val grouped = missing.groupBy(_.underlyingSymbol.name)
+        val grouped = missing.groupBy(sym => sym.underlyingSymbol.name: Name)
+          // !cc! type ascription needed
 
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>

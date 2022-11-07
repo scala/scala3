@@ -24,6 +24,7 @@ import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
 import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
+import language.experimental.pureFunctions
 
 /** Provides methods to compare types.
  */
@@ -2403,8 +2404,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         NoType
     }
 
-  private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) => Type,
-      original: (Type, Type) => Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"andTypeGen(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+  private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) -> Type,
+      original: (Type, Type) -> Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"andTypeGen(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
@@ -2465,7 +2466,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *    [X1, ..., Xn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
    */
   def liftIfHK(tp1: Type, tp2: Type,
-      op: (Type, Type) => Type, original: (Type, Type) => Type, combineVariance: (Variance, Variance) => Variance) = {
+      op: (Type, Type) -> Type, original: (Type, Type) -> Type, combineVariance: (Variance, Variance) -> Variance) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
     def applied(tp: Type) = tp.appliedTo(tp.typeParams.map(_.paramInfoAsSeenFrom(tp)))
@@ -2980,8 +2981,8 @@ object TypeComparer {
     comparing(_.provablyDisjoint(tp1, tp2))
 
   def liftIfHK(tp1: Type, tp2: Type,
-      op: (Type, Type) => Type, original: (Type, Type) => Type,
-      combineVariance: (Variance, Variance) => Variance)(using Context): Type =
+      op: (Type, Type) -> Type, original: (Type, Type) -> Type,
+      combineVariance: (Variance, Variance) -> Variance)(using Context): Type =
     comparing(_.liftIfHK(tp1, tp2, op, original, combineVariance))
 
   def constValue(tp: Type)(using Context): Option[Constant] =
