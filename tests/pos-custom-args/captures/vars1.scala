@@ -1,4 +1,4 @@
-import caps.*
+import caps.unsafe.*
 
 object Test:
   type ErrorHandler = (Int, String) => Unit

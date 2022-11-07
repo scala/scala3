@@ -20,5 +20,6 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$captureChecking$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.caps"),
     ProblemFilters.exclude[MissingClassProblem]("scala.caps$Pure"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.caps$unsafe$"),
   )
 }
