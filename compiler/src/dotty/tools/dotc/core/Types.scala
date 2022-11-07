@@ -6035,13 +6035,9 @@ object Types {
   /** A range of possible types between lower bound `lo` and upper bound `hi`.
    *  Only used internally in `ApproximatingTypeMap`.
    */
-  case class Range(lo: Type, hi: Type) extends UncachedGroundType {
+  case class Range(lo: Type, hi: Type) extends UncachedGroundType:
     assert(!lo.isInstanceOf[Range])
     assert(!hi.isInstanceOf[Range])
-
-    override def toText(printer: Printer): Text =
-      lo.toText(printer) ~ ".." ~ hi.toText(printer)
-  }
 
   /** Approximate wildcards by their bounds */
   class AvoidWildcardsMap(using Context) extends ApproximatingTypeMap:
