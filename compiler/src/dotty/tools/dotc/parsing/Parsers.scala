@@ -778,7 +778,7 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if (canRewrite && (!underColonSyntax || in.fewerBracesEnabled)) {
+      if canRewrite && (!underColonSyntax || Feature.fewerBracesEnabled) then
         val openingPatchStr =
           if !colonRequired then ""
           else if testChar(startOpening - 1, Chars.isOperatorPart(_)) then " :"
@@ -786,7 +786,6 @@ object Parsers {
         val (startClosing, endClosing) = closingElimRegion()
         patch(source, Span(startOpening, endOpening), openingPatchStr)
         patch(source, Span(startClosing, endClosing), "")
-      }
       t
     }
 
@@ -1025,7 +1024,7 @@ object Parsers {
      *      body
      */
     def isColonLambda =
-      in.fewerBracesEnabled && in.token == COLONfollow && followingIsLambdaAfterColon()
+      Feature.fewerBracesEnabled && in.token == COLONfollow && followingIsLambdaAfterColon()
 
     /**   operand { infixop operand | MatchClause } [postfixop],
      *
@@ -2370,7 +2369,7 @@ object Parsers {
     /** PostfixExpr   ::= InfixExpr [id [nl]]
      *  InfixExpr     ::= PrefixExpr
      *                  | InfixExpr id [nl] InfixExpr
-     *                  | InfixExpr id `:` IndentedExpr
+     *                  | InfixExpr id ColonArgument
      *                  | InfixExpr MatchClause
      */
     def postfixExpr(location: Location = Location.ElseWhere): Tree =
@@ -2414,10 +2413,11 @@ object Parsers {
      *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
-     *                 |  SimpleExpr1 `:` ColonArgument                   -- under language.experimental.fewerBraces
-     *  ColonArgument ::= indent (CaseClauses | Block) outdent
-     *                 |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
-     *                 |  HkTypeParamClause ‘=>’ ColonArgBody
+     *                 |  SimpleExpr1 ColonArgument
+     *  ColonArgument ::= colon [LambdaStart]
+     *                    indent (CaseClauses | Block) outdent
+     *  LambdaStart   ::= FunParams (‘=>’ | ‘?=>’)
+     *                 |  HkTypeParamClause ‘=>’
      *  ColonArgBody  ::= indent (CaseClauses | Block) outdent
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’

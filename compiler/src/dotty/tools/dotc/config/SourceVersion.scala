@@ -8,6 +8,7 @@ import util.Property
 enum SourceVersion:
   case `3.0-migration`, `3.0`, `3.1` // Note: do not add `3.1-migration` here, 3.1 is the same language as 3.0.
   case `3.2-migration`, `3.2`
+  case `3.3-migration`, `3.3`
   case `future-migration`, `future`
 
   val isMigrating: Boolean = toString.endsWith("-migration")
