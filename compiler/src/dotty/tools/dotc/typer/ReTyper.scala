@@ -71,7 +71,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
     promote(tree)
 
   override def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(using Context): TypTree =
-    promote(TypeTree(tree.tpe).withSpan(tree.span))
+    promote(TypeTree(tree.typeOpt).withSpan(tree.span))
 
   override def typedExport(exp: untpd.Export)(using Context): Export =
     promote(exp)
@@ -87,8 +87,8 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
       // retract PatternOrTypeBits like in typedExpr
       withoutMode(Mode.PatternOrTypeBits)(typedUnadapted(tree.fun, AnyFunctionProto))
     val implicits1 = tree.implicits.map(typedExpr(_))
-    val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.tpe))
-    untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.tpe)
+    val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.typeOpt))
+    untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.typeOpt)
   }
 
   override def typedUnApply(tree: untpd.Apply, selType: Type)(using Context): Tree =

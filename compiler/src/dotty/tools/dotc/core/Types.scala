@@ -745,16 +745,6 @@ object Types {
           // which means that we always defensively copy the type in the future. This second
           // measure is necessary because findMember calls might be cached, so do not
           // necessarily appear in nested order.
-          // Without the defensive copy, Typer.scala fails to compile at the line
-          //
-          //      untpd.rename(lhsCore, setterName).withType(setterType), WildcardType)
-          //
-          // because the subtype check
-          //
-          //      ThisTree[Untyped]#ThisTree[Typed] <: Tree[Typed]
-          //
-          // fails (in fact it thinks the underlying type of the LHS is `Tree[Untyped]`.)
-          //
           // Without the `openedTwice` trick, Typer.scala fails to Ycheck
           // at phase resolveSuper.
           val rt =
