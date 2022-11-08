@@ -40,6 +40,7 @@ import scala.runtime.{AbstractFunction1, AbstractFunction2}
   * without inheriting unwanted implementations.
   *
   * @define coll collection
+  * @define ccoll $coll
   */
 trait IterableOnce[+A] extends Any {
 
@@ -318,8 +319,6 @@ object IterableOnce {
   *              The order of applications of the operator is unspecified and may be nondeterministic.
   * @define exactlyOnce
   *              Each element appears exactly once in the computation.
-  * @define coll collection
-  *
   */
 trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
   /////////////////////////////////////////////////////////////// Abstract methods that must be implemented
@@ -439,16 +438,16 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
    */
   def slice(from: Int, until: Int): C
 
-  /** Builds a new $coll by applying a function to all elements of this $coll.
+  /** Builds a new $ccoll by applying a function to all elements of this $coll.
    *
    *  @param f      the function to apply to each element.
-   *  @tparam B     the element type of the returned $coll.
-   *  @return       a new $coll resulting from applying the given function
+   *  @tparam B     the element type of the returned $ccoll.
+   *  @return       a new $ccoll resulting from applying the given function
    *                `f` to each element of this $coll and collecting the results.
    */
   def map[B](f: A => B): CC[B]
 
-  /** Builds a new $coll by applying a function to all elements of this $coll
+  /** Builds a new $ccoll by applying a function to all elements of this $coll
    *  and using the elements of the resulting collections.
    *
    *    For example:

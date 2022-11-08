@@ -717,8 +717,8 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
     (iterableFactory.from(left), iterableFactory.from(right))
   }
 
-  /** Returns a new $coll containing the elements from the left hand operand followed by the elements from the
-    *  right hand operand. The element type of the $coll is the most specific superclass encompassing
+  /** Returns a new $ccoll containing the elements from the left hand operand followed by the elements from the
+    *  right hand operand. The element type of the $ccoll is the most specific superclass encompassing
     *  the element types of the two operands.
     *
     *  @param suffix   the iterable to append.
@@ -862,7 +862,7 @@ object IterableOps {
   /** Operations for comparing the size of a collection to a test value.
     *
     * These operations are implemented in terms of
-    * [[scala.collection.IterableOps.sizeCompare(Int) `sizeCompare(Int)`]].
+    * [[scala.collection.IterableOps!.sizeCompare(Int):Int* `sizeCompare(Int)`]]
     */
   final class SizeCompareOps private[collection](val it: IterableOps[_, AnyConstr, _]) extends AnyVal {
     /** Tests if the size of the collection is less than some value. */
