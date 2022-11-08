@@ -249,6 +249,7 @@ Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
 PostfixExpr       ::=  InfixExpr [id]                                          -- only if language.postfixOperators is enabled
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr
+                    |  InfixExpr id ColonArgument
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ <<< CaseClauses >>>
 PrefixExpr        ::=  [PrefixOperator] SimpleExpr
@@ -267,6 +268,11 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs
                     |  SimpleExpr ArgumentExprs
+                    |  SimpleExpr ColonArgument
+ColonArgument     ::=  colon [LambdaStart]
+                       indent (CaseClauses | Block) outdent
+LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
+                    |  HkTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
 ExprSplice        ::= spliceId                                                  -- if inside quoted block
