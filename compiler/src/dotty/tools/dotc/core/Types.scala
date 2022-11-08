@@ -3413,25 +3413,29 @@ object Types {
     private var myAtoms: Atoms = _
     private var myWidened: Type = _
 
+    private def computeAtoms()(using Context): Atoms =
+      if tp1.hasClassSymbol(defn.NothingClass) then tp2.atoms
+      else if tp2.hasClassSymbol(defn.NothingClass) then tp1.atoms
+      else tp1.atoms | tp2.atoms
+
+    private def computeWidenSingletons()(using Context): Type =
+      val tp1w = tp1.widenSingletons
+      val tp2w = tp2.widenSingletons
+      if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
+
     private def ensureAtomsComputed()(using Context): Unit =
-      if atomsRunId != ctx.runId then
-        myAtoms =
-          if tp1.hasClassSymbol(defn.NothingClass) then tp2.atoms
-          else if tp2.hasClassSymbol(defn.NothingClass) then tp1.atoms
-          else tp1.atoms | tp2.atoms
-        val tp1w = tp1.widenSingletons
-        val tp2w = tp2.widenSingletons
-        myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
+      if atomsRunId != ctx.runId && !isProvisional then
+        myAtoms = computeAtoms()
+        myWidened = computeWidenSingletons()
         atomsRunId = ctx.runId
 
     override def atoms(using Context): Atoms =
       ensureAtomsComputed()
-      myAtoms
+      if isProvisional then computeAtoms() else myAtoms
 
-    override def widenSingletons(using Context): Type = {
+    override def widenSingletons(using Context): Type =
       ensureAtomsComputed()
-      myWidened
-    }
+      if isProvisional then computeWidenSingletons() else myWidened
 
     def derivedOrType(tp1: Type, tp2: Type, soft: Boolean = isSoft)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2) && soft == isSoft) this

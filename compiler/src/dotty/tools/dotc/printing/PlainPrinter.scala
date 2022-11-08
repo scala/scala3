@@ -258,8 +258,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if annot.symbol == defn.InlineParamAnnot || annot.symbol == defn.ErasedParamAnnot then toText(tpe)
         else toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
+        def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)
         if (tp.isInstantiated)
-          toTextLocal(tp.instanceOpt) ~ (Str("^") provided printDebug)
+          toTextCaret(tp.instanceOpt)
         else {
           val constr = ctx.typerState.constraint
           val bounds =
@@ -267,7 +268,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
               withMode(Mode.Printing)(TypeComparer.fullBounds(tp.origin))
             else
               TypeBounds.empty
-          if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided printDebug)
+          if (bounds.isTypeAlias) toTextCaret(bounds.lo)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
         }
