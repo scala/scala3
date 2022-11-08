@@ -6,7 +6,6 @@ import core._
 import ast.{Trees, tpd, untpd, desugar}
 import util.Stats.record
 import util.{SrcPos, NoSourcePosition}
-import Trees.Untyped
 import Contexts._
 import Flags._
 import Symbols._
@@ -491,7 +490,7 @@ trait Applications extends Compatibility {
       i"${err.refStr(methRef)}$infoStr"
 
     /** Re-order arguments to correctly align named arguments */
-    def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
+    def reorder[T <: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
 
       /** @param pnames    The list of parameter names that are missing arguments
        *  @param args      The list of arguments that are not yet passed, or that are waiting to be dropped
@@ -754,7 +753,7 @@ trait Applications extends Compatibility {
   /** Subclass of Application for type checking an Apply node, where
    *  types of arguments are either known or unknown.
    */
-  abstract class TypedApply[T >: Untyped](
+  abstract class TypedApply[T <: Untyped](
     app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Trees.Tree[T]], resultType: Type,
     override val applyKind: ApplyKind)(using Context)
   extends Application(methRef, fun.tpe, args, resultType) {

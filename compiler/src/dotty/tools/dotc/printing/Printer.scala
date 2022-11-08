@@ -149,7 +149,7 @@ abstract class Printer {
   def toText(sc: Scope): Text
 
   /** Textual representation of tree */
-  def toText[T >: Untyped](tree: Tree[T]): Text
+  def toText[T <: Untyped](tree: Tree[T]): Text
 
   /** Textual representation of source position */
   def toText(pos: SourcePosition): Text

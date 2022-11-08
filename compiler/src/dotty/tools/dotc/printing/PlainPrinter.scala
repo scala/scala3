@@ -607,7 +607,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText(sc: Scope): Text =
     ("Scope{" ~ dclsText(sc.toList) ~ "}").close
 
-  def toText[T >: Untyped](tree: Tree[T]): Text = {
+  def toText[T <: Untyped](tree: Tree[T]): Text = {
     def toTextElem(elem: Any): Text = elem match {
       case elem: Showable => elem.toText(this)
       case elem: List[?] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
