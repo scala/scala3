@@ -207,7 +207,7 @@ A usage of a variadic extractor is irrefutable if one of the following condition
 
 **Note:** The last rule is necessary because, for compatibility reasons, `isEmpty` on `Some` has return type `Boolean` rather than `false`, even though it always returns `false`.
 
-**Note:** Be careful, by the first condition and the note above, it is possible to define an irrefutable extractor with a `def isEmpty: true`. 
+**Note:** Be careful, by the first condition and the note above, it is possible to define an irrefutable extractor with a `def isEmpty: true`.
 This is strongly discouraged and, if found in the wild, is almost certainly a bug.
 
 ### Sequence Match
