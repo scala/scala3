@@ -1,0 +1,23 @@
+[[syntax trees at end of                     typer]] // tests/printing/i10693.scala
+package <empty> {
+  final lazy module val i10693$package: i10693$package = new i10693$package()
+  final module class i10693$package() extends Object() { 
+    this: i10693$package.type =>
+    def test[A >: Nothing <: Any, B >: Nothing <: Any](a: A, b: B): A | B = a
+    val v0: String | Int = test[String, Int]("string", 1)
+    val v1: Int | String = test[Int, String](1, "string")
+    val v2: String | Int = test[(String | Int), (Int | String)](v0, v1)
+    val v3: Int | String = test[(Int | String), (String | Int)](v1, v0)
+    val v4: String | Int = test[(String | Int), (Int | String)](v2, v3)
+    val v5: Int | String = test[(Int | String), (String | Int)](v3, v2)
+    val v6: String | Int = test[(String | Int), (Int | String)](v4, v5)
+    val t0: List[Int] = Tuple1.apply[Int](1).toList
+    val t1: List[Int] = Tuple2.apply[Int, Int](1, 2).toList
+    val t2: List[Int] = Tuple3.apply[Int, Int, Int](1, 2, 3).toList
+    val t3: List[Int | String] = 
+      Tuple3.apply[String, Int, Int]("A", 2, 3).toList
+    val t4: List[String | Int] = 
+      Tuple3.apply[Int, String, String](1, "B", "C").toList
+  }
+}
+

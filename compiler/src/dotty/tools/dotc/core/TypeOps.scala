@@ -157,15 +157,18 @@ object TypeOps:
         tp.derivedAlias(simplify(tp.alias, theMap))
       case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
         simplify(l, theMap) & simplify(r, theMap)
-      case tp @ OrType(l, r)
-      if !ctx.mode.is(Mode.Type)
-         && (tp.isSoft || l.isBottomType || r.isBottomType) =>
-        // Normalize A | Null and Null | A to A even if the union is hard (i.e.
-        // explicitly declared), but not if -Yexplicit-nulls is set. The reason is
-        // that in this case the normal asSeenFrom machinery is not prepared to deal
-        // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
-        // corrective steps, so no widening is wanted.
-        simplify(l, theMap) | simplify(r, theMap)
+      case tp @ OrType(l, r) =>
+        if !ctx.mode.is(Mode.Type) && (tp.isSoft || l.isBottomType || r.isBottomType) then
+          // Normalize A | Null and Null | A to A even if the union is hard (i.e.
+          // explicitly declared), but not if -Yexplicit-nulls is set. The reason is
+          // that in this case the normal asSeenFrom machinery is not prepared to deal
+          // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
+          // corrective steps, so no widening is wanted.
+          simplify(l, theMap) | simplify(r, theMap)
+        else if r.isNothingType || (l eq r) then l
+        else if l.isOrType || r.isOrType then tp.deduplicatedAbsorbingNothingTypes
+        else if l.isNothingType then r
+        else mapOver
       case tp @ CapturingType(parent, refs) =>
         if !ctx.mode.is(Mode.Type)
             && refs.subCaptures(parent.captureSet, frozen = true).isOK
