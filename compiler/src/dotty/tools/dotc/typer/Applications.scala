@@ -1210,7 +1210,7 @@ trait Applications extends Compatibility {
        && tree.tpe.classSymbol.isEnumCase
        && tree.tpe.widen.isValueType
     then
-      val widened = TypeComparer.dropTransparentTraits(
+      val widened = TypeComparer.dropTransparentClasses(
         tree.tpe.parents.reduceLeft(TypeComparer.andType(_, _)),
         pt)
       if widened <:< pt then Typed(tree, TypeTree(widened))

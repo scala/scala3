@@ -11,8 +11,9 @@ object Test {
 }
 
 object O {
-  class A
-  class B
+  class Top
+  class A extends Top
+  class B extends Top
   def f[T](x: T, y: T): T = x
 
   val x: A = f(new A { }, new A)
