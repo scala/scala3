@@ -53,7 +53,7 @@ In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
 val s = summon[Test.Codec[Option[Int]]](
-  optionCodec[Int](using intCodec)
+  using optionCodec[Int](using intCodec)
 )
 ```
 

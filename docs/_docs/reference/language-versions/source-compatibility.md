@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Source Compatibility"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/language-versions/source-compatibility.html
+movedTo: https://docs.scala-lang.org/scala3/reference/language-versions/source-compatibility.html
 ---
 
 Scala 3 does NOT guarantee source compatibility between different minor language versions (e.g. some syntax valid in 3.x might get deprecated and then phased out in 3.y for y > x). There are also some syntax structures that were valid in Scala 2 but are not anymore in Scala 3. However the compiler provides a possibility to specify the desired version of syntax used in a particular file or globally for a run of the compiler to make migration between versions easier.
@@ -40,4 +40,4 @@ class C { ... }
 
 Language imports supersede command-line settings in the source files where they are specified. Only one language import specifying a source version is allowed in a source file, and it must come before any definitions in that file.
 
-**Note**: The [Scala 3 Migration Guide](https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html) gives further information to help the Scala programmer moving from Scala 2.13 to Scala 3.
+**Note:** The [Scala 3 Migration Guide](https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html) gives further information to help the Scala programmer moving from Scala 2.13 to Scala 3.

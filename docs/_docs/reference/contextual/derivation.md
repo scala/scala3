@@ -5,9 +5,9 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/derivation.ht
 ---
 
 Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple
-conditions. A type class in this sense is any trait or class with a type parameter determining the type being operated
-on. Common examples are `Eq`, `Ordering`, or `Show`. For example, given the following `Tree` algebraic data type
-(ADT),
+conditions. A type class in this sense is any trait or class with a single type parameter determining the type being operated
+on, and the special case `CanEqual`. Common examples are `Eq`, `Ordering`, or `Show`. For example, given the following `Tree` algebraic data type
+(ADT):
 
 ```scala
 enum Tree[T] derives Eq, Ordering, Show:
@@ -16,7 +16,7 @@ enum Tree[T] derives Eq, Ordering, Show:
 ```
 
 The `derives` clause generates the following given instances for the `Eq`, `Ordering` and `Show` type classes in the
-companion object of `Tree`,
+companion object of `Tree`:
 
 ```scala
 given [T: Eq]       : Eq[Tree[T]]       = Eq.derived
@@ -26,12 +26,138 @@ given [T: Show]     : Show[Tree[T]]     = Show.derived
 
 We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Show` instances are _derived instances_.
 
-## Types supporting `derives` clauses
+**Note:** `derived` can be used manually, this is useful when you do not have control over the definition. For example we can implement `Ordering` for `Option`s like so:
+
+```scala
+given [T: Ordering]: Ordering[Option[T]] = Ordering.derived
+```
+
+It is discouraged to directly refer to the `derived` member if you can use a `derives` clause instead.
 
 All data types can have a `derives` clause. This document focuses primarily on data types which also have a given instance
 of the `Mirror` type class available.
 
-`Mirror` type class instances provide information at the type level about the components and labelling of the type.
+## Exact mechanism
+In the following, when type arguments are enumerated and the first index evaluates to a larger value than the last, then there are actually no arguments, for example: `A[T_2, ..., T_1]` means `A`.
+
+For a class/trait/object/enum `DerivingType[T_1, ..., T_N] derives TC`, a derived instance is created in `DerivingType`'s companion object (or `DerivingType` itself if it is an object).
+
+The general "shape" of the derived instance is as follows:
+```scala
+given [...](using ...): TC[ ... DerivingType[...] ... ] = TC.derived
+```
+`TC.derived` should be an expression that conforms to the expected type on the left, potentially elaborated using term and/or type inference.
+
+**Note:** `TC.derived` is a normal access, therefore if there are multiple definitions of `TC.derived`, overloading resolution applies.
+
+What the derived instance precisely looks like depends on the specifics of `DerivingType` and `TC`, we first examine `TC`:
+
+### `TC` takes 1 parameter `F`
+
+Therefore `TC` is defined as `TC[F[A_1, ..., A_K]]` (`TC[F]` if `K == 0`) for some `F`.
+There are two further cases depending on the kinds of arguments:
+
+#### `F` and all arguments of `DerivingType` have kind `*`
+**Note:** `K == 0` in this case.
+
+The generated instance is then:
+```scala
+given [T_1: TC, ..., T_N: TC]: TC[DerivingType[T_1, ..., T_N]] = TC.derived
+```
+
+This is the most common case, and is the one that was highlighted in the introduction.
+
+**Note:** The `[T_i: TC, ...]` introduces a `(using TC[T_i], ...)`, more information in [Context Bounds](./context-bounds.md).
+This allows the `derived` member to access these evidences.
+
+**Note:** If `N == 0` the above means:
+```scala
+given TC[DerivingType] = TC.derived
+```
+For example, the class
+```scala
+case class Point(x: Int, y: Int) derives Ordering
+```
+generates the instance
+```scala
+object Point:
+  ...
+  given Ordering[Point] = Ordering.derived
+```
+
+
+#### `F` and `DerivingType` have parameters of matching kind on the right
+This section covers cases where you can pair arguments of `F` and `DerivingType` starting from the right such that they have the same kinds pairwise, and all arguments of `F` or `DerivingType` (or both) are used up.
+`F` must also have at least one parameter.
+
+The general shape will then be:
+```scala
+given [...]: TC[ [...] =>> DerivingType[...] ] = TC.derived
+```
+Where of course `TC` and `DerivingType` are applied to types of the correct kind.
+
+To make this work, we split it into 3 cases:
+
+If `F` and `DerivingType` take the same number of arguments (`N == K`):
+```scala
+given TC[DerivingType] = TC.derived
+// simplified form of:
+given TC[ [A_1, ..., A_K] => DerivingType[A_1, ..., A_K] ] = TC.derived
+```
+If `DerivingType` takes less arguments than `F` (`N < K`), we use only the rightmost parameters from the type lambda:
+```scala
+given TC[ [A_1, ..., A_K] =>> DerivingType[A_(K-N+1), ..., A_K] ] = TC.derived
+
+// if DerivingType takes no arguments (N == 0), the above simplifies to:
+given TC[ [A_1, ..., A_K] =>> DerivingType ] = TC.derived
+```
+
+If `F` takes less arguments than `DerivingType` (`K < N`), we fill in the remaining leftmost slots with type parameters of the given:
+```scala
+given [T_1, ... T_(N-K)]: TC[[A_1, ..., A_K] =>> DerivingType[T_1, ... T_(N-K), A_1, ..., A_K]] = TC.derived
+```
+
+### `TC` is the `CanEqual` type class
+
+We have therefore: `DerivingType[T_1, ..., T_N] derives CanEqual`.
+
+Let `U_1`, ..., `U_M` be the parameters of `DerivingType` of kind `*`.
+(These are a subset of the `T_i`s)
+
+The generated instance is then:
+```scala
+given [T_1L, T_1R, ..., T_NL, T_NR]                            // every parameter of DerivingType twice
+      (using CanEqual[U_1L, U_1R], ..., CanEqual[U_ML, U_MR]): // only parameters of DerivingType with kind *
+        CanEqual[DerivingType[T_1L, ..., T_NL], DerivingType[T_1R, ..., T_NR]] = // again, every parameter
+          CanEqual.derived
+```
+
+The bounds of `T_i`s are handled correctly, for example: `T_2 <: T_1` becomes `T_2L <: T_1L`.
+
+For example, the class
+```scala
+class MyClass[A, G[_]](a: A, b: G[B]) derives CanEqual
+```
+generates the following given instance:
+```scala
+object MyClass:
+  ...
+  given [A_L, A_R, G_L[_], G_R[_]](using CanEqual[A_L, A_R]): CanEqual[MyClass[A_L, G_L], MyClass[A_R, G_R]] = CanEqual.derived
+```
+
+### `TC` is not valid for automatic derivation
+
+Throw an error.
+
+The exact error depends on which of the above conditions failed.
+As an example, if `TC` takes more than 1 parameter and is not `CanEqual`, the error is `DerivingType cannot be unified with the type argument of TC`.
+
+All data types can have a `derives` clause. The rest of this document focuses primarily on data types which also have a given instance
+of the `Mirror` type class available.
+
+## `Mirror`
+
+`scala.deriving.Mirror` type class instances provide information at the type level about the components and labelling of the type.
 They also provide minimal term level infrastructure to allow higher level libraries to provide comprehensive
 derivation support.
 
@@ -49,7 +175,7 @@ Instances for `Mirror` are also generated conditionally for:
   - and where the compiler can generate a `Mirror` type class instance for each child case.
 
 
-The `Mirror` type class definition is as follows:
+The `scala.deriving.Mirror` type class definition is as follows:
 
 ```scala
 sealed trait Mirror:
@@ -158,11 +284,9 @@ Note the following properties of `Mirror` types,
 + The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
   which is obtained from `MirroredType` by wildcarding its type parameters.
 
-## Type classes supporting automatic deriving
+## Implementing `derived` with `Mirror`
 
-A trait or class can appear in a `derives` clause if its companion object defines a method named `derived`. The
-signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary but it is typically of the
-following form,
+As seen before, the signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary, but we expect it to typically be of the following form:
 
 ```scala
 import scala.deriving.Mirror
@@ -359,20 +483,6 @@ The framework described here enables all three of these approaches without manda
 
 For a brief discussion on how to use macros to write a type class `derived`
 method please read more at [How to write a type class `derived` method using macros](./derivation-macro.md).
-
-## Deriving instances elsewhere
-
-Sometimes one would like to derive a type class instance for an ADT after the ADT is defined, without being able to
-change the code of the ADT itself.  To do this, simply define an instance using the `derived` method of the type class
-as right-hand side. E.g, to implement `Ordering` for `Option` define,
-
-```scala
-given [T: Ordering]: Ordering[Option[T]] = Ordering.derived
-```
-
-Assuming the `Ordering.derived` method has a context parameter of type `Mirror[T]` it will be satisfied by the
-compiler generated `Mirror` instance for `Option` and the derivation of the instance will be expanded on the right
-hand side of this definition in the same way as an instance defined in ADT companion objects.
 
 ## Syntax
 

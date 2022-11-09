@@ -57,7 +57,7 @@ The Scala compiler generates a program from a [`@main`](https://scala-lang.org/a
  - The generated `main` method calls method `f` with arguments converted using
    methods in the [`scala.util.CommandLineParser`](https://scala-lang.org/api/3.x/scala/util/CommandLineParser$.html) object.
 
-For instance, the `happyBirthDay` method above would generate additional code equivalent to the following class:
+For instance, the `happyBirthday` method above would generate additional code equivalent to the following class:
 
 ```scala
 final class happyBirthday:
@@ -72,8 +72,8 @@ final class happyBirthday:
       case error: CLP.ParseError => CLP.showError(error)
 ```
 
-**Note**: The `<static>` modifier above expresses that the `main` method is generated
-as a static method of class `happyBirthDay`. It is not available for user programs in Scala. Regular "static" members are generated in Scala using objects instead.
+**Note:** The `<static>` modifier above expresses that the `main` method is generated
+as a static method of class `happyBirthday`. It is not available for user programs in Scala. Regular "static" members are generated in Scala using objects instead.
 
 [`@main`](https://scala-lang.org/api/3.x/scala/main.html) methods are the recommended scheme to generate programs that can be invoked from the command line in Scala 3. They replace the previous scheme to write program as objects with a special `App` parent class. In Scala 2, `happyBirthday` could be written also like this:
 

@@ -49,10 +49,10 @@ subsection:
           - page: reference/metaprogramming/compiletime-ops.md
           - page: reference/metaprogramming/macros.md
           - page: reference/metaprogramming/macros-spec.md
+          - page: reference/metaprogramming/simple-smp.md # description of a simplified metaprogramming language, this might not be the best place for it
           - page: reference/metaprogramming/staging.md
           - page: reference/metaprogramming/reflection.md
           - page: reference/metaprogramming/tasty-inspect.md
-          - page: reference/metaprogramming/simple-smp.md
       - title: Other New Features
         index: reference/other-new-features/other-new-features.md
         subsection:
