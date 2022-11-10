@@ -36,12 +36,16 @@ object JSPrimitives {
   inline val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
   inline val DYNAMIC_IMPORT = LINKING_INFO + 1                          // runtime.dynamicImport
 
-  inline val STRICT_EQ = DYNAMIC_IMPORT + 1 // js.special.strictEquals
-  inline val IN = STRICT_EQ + 1             // js.special.in
-  inline val INSTANCEOF = IN + 1            // js.special.instanceof
-  inline val DELETE = INSTANCEOF + 1        // js.special.delete
-  inline val FORIN = DELETE + 1             // js.special.forin
-  inline val DEBUGGER = FORIN + 1           // js.special.debugger
+  inline val STRICT_EQ = DYNAMIC_IMPORT + 1                // js.special.strictEquals
+  inline val IN = STRICT_EQ + 1                            // js.special.in
+  inline val INSTANCEOF = IN + 1                           // js.special.instanceof
+  inline val DELETE = INSTANCEOF + 1                       // js.special.delete
+  inline val FORIN = DELETE + 1                            // js.special.forin
+  inline val JS_THROW = FORIN + 1                          // js.special.throw
+  inline val JS_TRY_CATCH = JS_THROW + 1                   // js.special.tryCatch
+  inline val WRAP_AS_THROWABLE = JS_TRY_CATCH + 1          // js.special.wrapAsThrowable
+  inline val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
+  inline val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
 
   inline val THROW = DEBUGGER + 1
 
@@ -125,6 +129,10 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Special_instanceof, INSTANCEOF)
     addPrimitive(jsdefn.Special_delete, DELETE)
     addPrimitive(jsdefn.Special_forin, FORIN)
+    addPrimitive(jsdefn.Special_throw, JS_THROW)
+    addPrimitive(jsdefn.Special_tryCatch, JS_TRY_CATCH)
+    addPrimitive(jsdefn.Special_wrapAsThrowable, WRAP_AS_THROWABLE)
+    addPrimitive(jsdefn.Special_unwrapFromThrowable, UNWRAP_FROM_THROWABLE)
     addPrimitive(jsdefn.Special_debugger, DEBUGGER)
 
     addPrimitive(defn.throwMethod, THROW)

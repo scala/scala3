@@ -650,7 +650,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         js.LoadJSConstructor(encodeClassName(superClassSym))
     }
 
-    val receiver = js.This()(jstpe.AnyType)
+    val receiver = js.This()(currentThisType)
     val nameTree = genExpr(sym.jsName)
 
     if (sym.isJSGetter) {
@@ -754,7 +754,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
             genApplyMethodMaybeStatically(receiver, modAccessor, Nil)
         }
       } else {
-        js.This()(encodeClassType(targetSym))
+        js.This()(currentThisType)
       }
     }
 
@@ -811,7 +811,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     def receiver =
       if (static) genLoadModule(sym.owner)
-      else js.This()(encodeClassType(currentClass))
+      else js.This()(currentThisType)
 
     def boxIfNeeded(call: js.Tree): js.Tree =
       box(call, atPhase(elimErasedValueTypePhase)(sym.info.resultType))

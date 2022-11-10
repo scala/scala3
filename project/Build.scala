@@ -522,6 +522,9 @@ object Build {
 
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
+      // Temporary for the upgrade to Scala.js 1.11.0 - remove with Scala.js 1.12.0
+      Compile / scalacOptions -= "-Xfatal-warnings",
+
       // Generate compiler.properties, used by sbt
       (Compile / resourceGenerators) += Def.task {
         import java.util._
@@ -1192,6 +1195,7 @@ object Build {
             "isFullOpt" -> (stage == FullOptStage),
             "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
             "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+            "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
             "strictFloats" -> sems.strictFloats,
             "productionMode" -> sems.productionMode,
@@ -1303,6 +1307,7 @@ object Build {
 
         Seq(
           "-Ddotty.tests.classes.dottyLibraryJS=" + dottyLibraryJSJar,
+          "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
