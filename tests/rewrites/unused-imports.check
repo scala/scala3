@@ -33,30 +33,26 @@ class C:
       case E.E0 => "e0"
       case E.E1 => "e1"
 
-  locally {
+  locally:
     import Givens.{*, given}
 
     def g(s: String)(using Ordering[C]) = ???
     def ordered = g(greeting)
-  }
-  locally {
+  locally:
     import Givens.{cOrdering, *}
 
     def g(s: String)(using Ordering[C]) = ???
     def ordered = g(greeting)
-  }
-  locally {
+  locally:
     import Givens.given Ordering[C]
 
     def g(s: String)(using Ordering[C]) = ???
     println(g(""))
-  }
-  locally {
+  locally:
     import Givens.given Ordering[C]
 
     def g(s: String)(using Ordering[C]) = ???
     println(g(""))
-  }
 end C
 
 object Givens:
