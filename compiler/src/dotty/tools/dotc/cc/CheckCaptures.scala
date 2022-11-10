@@ -606,10 +606,26 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Massage `actual` and `expected` types using the methods below before checking conformance */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
-      val expected1 = addOuterRefs(expected, actual)
+      val expected1 = makeFunctionDependent(addOuterRefs(expected, actual), actual.stripCapturing)
       val actual1 = adaptBoxed(actual, expected1, tree.srcPos)
       //println(i"check conforms $actual1 <<< $expected1")
       super.checkConformsExpr(actual1, expected1, tree)
+
+    private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean, isErased: Boolean)(using Context): Type =
+      MethodType.companion(isContextual = isContextual, isErased = isErased)(args, resultType)
+        .toFunctionType(isJava = false, alwaysDependent = true)
+
+    private def makeFunctionDependent(expected: Type, actual: Type)(using Context): Type =
+      def recur(expected: Type): Type = expected.dealias match
+        case expected @ CapturingType(eparent, refs) =>
+          CapturingType(recur(eparent), refs, boxed = expected.isBoxed)
+        case expected @ defn.FunctionOf(args, resultType, isContextual, isErased)
+          if defn.isNonRefinedFunction(expected) && defn.isFunctionType(actual) && !defn.isNonRefinedFunction(actual) =>
+          val expected1 = toDepFun(args, resultType, isContextual, isErased)
+          expected1
+        case _ =>
+          expected
+      recur(expected)
 
     /** For the expected type, implement the rule outlined in #14390:
      *   - when checking an expression `a: Ca Ta` against an expected type `Ce Te`,
