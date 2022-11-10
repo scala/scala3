@@ -935,7 +935,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       }
       if !ctx.reporter.errorsReported then
-        // We dont report errors hre if previous errors were reported, because other
+        // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives
         // often worse error messages than the original errors.
         val checkApplied = new TreeTraverser:
