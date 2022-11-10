@@ -3487,11 +3487,8 @@ object Types {
     }
 
     /** Returns the set of non-union (leaf) types composing this union tree with Nothing types
-     *  absorbed by other types, if present.
-     *  For example:
-     *  {{{A | B | C | B | (A & (B | C)) | Nothing}}}
-     *  returns
-     *  {{{Set(A, B, C, (A & (B | C)))}}}
+     *  absorbed by other types, if present. For example:<br>
+     *  `(A | B | C | B | (A & (B | C)) | Nothing)` returns `Set(A, B, C, (A & (B | C)))`.
      */
     private def gatherTreeUniqueMembersAbsorbingNothingTypes(using Context): Set[Type] = {
       (tp1, tp2) match
