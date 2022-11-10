@@ -279,6 +279,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
             case ex: Throwable => Str("...")
           }
         "LazyRef(" ~ refTxt ~ ")"
+      case Range(lo, hi) =>
+        toText(lo) ~ ".." ~ toText(hi)
       case _ =>
         tp.fallbackToText(this)
     }

@@ -23,7 +23,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
 
 /** Provides methods to compare types.
  */
@@ -59,8 +59,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Indicates whether the subtype check used GADT bounds */
   private var GADTused: Boolean = false
-
-  protected var canWidenAbstract: Boolean = true
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -522,7 +520,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         res
 
       case CapturingType(parent1, refs1) =>
-        if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+        if tp2.isAny then true
+        else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+          || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
         then recur(parent1, tp2)
         else thirdTry
       case tp1: AnnotatedType if !tp1.isRefining =>
@@ -826,7 +826,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
             else subCaptures(refs1, refs2, frozenConstraint).isOK
               && sameBoxed(tp1, tp2, refs1)
-              && recur(tp1.widen.stripCapturing, parent2)
+              && (recur(tp1.widen.stripCapturing, parent2)
+                 || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
+                    // this alternative is needed in case the right hand side is a
+                    // capturing type that contains the lhs as an alternative of a union type.
+                 )
           catch case ex: AssertionError =>
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex

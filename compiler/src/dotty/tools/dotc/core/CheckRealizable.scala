@@ -149,7 +149,7 @@ class CheckRealizable(using Context) {
    */
   private def boundsRealizability(tp: Type) = {
 
-    val memberProblems = withMode(Mode.CheckBounds) {
+    val memberProblems = withMode(Mode.CheckBoundsOrSelfType) {
       for {
         mbr <- tp.nonClassTypeMembers
         if !(mbr.info.loBound <:< mbr.info.hiBound)
@@ -157,7 +157,7 @@ class CheckRealizable(using Context) {
       yield new HasProblemBounds(mbr.name, mbr.info)
     }
 
-    val refinementProblems = withMode(Mode.CheckBounds) {
+    val refinementProblems = withMode(Mode.CheckBoundsOrSelfType) {
       for {
         name <- refinedNames(tp)
         if (name.isTypeName)

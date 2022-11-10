@@ -765,11 +765,11 @@ object Types {
         val rinfo = tp.refinedInfo
         if (name.isTypeName && !pinfo.isInstanceOf[ClassInfo]) { // simplified case that runs more efficiently
           val jointInfo =
-            if rinfo.isInstanceOf[TypeAlias] && !ctx.mode.is(Mode.CheckBounds) then
+            if rinfo.isInstanceOf[TypeAlias] && !ctx.mode.is(Mode.CheckBoundsOrSelfType) then
               // In normal situations, the only way to "improve" on rinfo is to return an empty type bounds
               // So, we do not lose anything essential in "widening" to rinfo.
               // We need to compute the precise info only when checking for empty bounds
-              // which is communicated by the CheckBounds mode.
+              // which is communicated by the CheckBoundsOrSelfType mode.
               rinfo
             else if ctx.base.pendingMemberSearches.contains(name) then
               pinfo safe_& rinfo
@@ -2338,7 +2338,8 @@ object Types {
       lastDenotation match {
         case lastd0: SingleDenotation =>
           val lastd = lastd0.skipRemoved
-          if (lastd.validFor.runId == ctx.runId && (checkedPeriod != Nowhere)) finish(lastd.current)
+          if lastd.validFor.runId == ctx.runId && checkedPeriod != Nowhere then
+            finish(lastd.current)
           else lastd match {
             case lastd: SymDenotation =>
               if (stillValid(lastd) && (checkedPeriod != Nowhere)) finish(lastd.current)
@@ -2443,6 +2444,8 @@ object Types {
     }
 
     private def checkDenot()(using Context) = {}
+      //if name.toString == "getConstructor" then
+      //  println(i"set denot of $this to ${denot.info}, ${denot.getClass}, ${Phases.phaseOf(denot.validFor.lastPhaseId)} at ${ctx.phase}")
 
     private def checkSymAssign(sym: Symbol)(using Context) = {
       def selfTypeOf(sym: Symbol) =
@@ -6036,13 +6039,9 @@ object Types {
   /** A range of possible types between lower bound `lo` and upper bound `hi`.
    *  Only used internally in `ApproximatingTypeMap`.
    */
-  case class Range(lo: Type, hi: Type) extends UncachedGroundType {
+  case class Range(lo: Type, hi: Type) extends UncachedGroundType:
     assert(!lo.isInstanceOf[Range])
     assert(!hi.isInstanceOf[Range])
-
-    override def toText(printer: Printer): Text =
-      lo.toText(printer) ~ ".." ~ hi.toText(printer)
-  }
 
   /** Approximate wildcards by their bounds */
   class AvoidWildcardsMap(using Context) extends ApproximatingTypeMap:

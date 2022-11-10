@@ -31,10 +31,12 @@ object Synthetics:
    *  The types of these symbols are transformed in a special way without
    *  looking at the definitions's RHS
    */
-  def needsTransform(sym: SymDenotation)(using Context): Boolean =
-    isSyntheticCopyMethod(sym)
-    || isSyntheticCompanionMethod(sym, nme.apply, nme.unapply)
-    || isSyntheticCopyDefaultGetterMethod(sym)
+  def needsTransform(symd: SymDenotation)(using Context): Boolean =
+    isSyntheticCopyMethod(symd)
+    || isSyntheticCompanionMethod(symd, nme.apply, nme.unapply)
+    || isSyntheticCopyDefaultGetterMethod(symd)
+    || (symd.symbol eq defn.Object_eq)
+    || (symd.symbol eq defn.Object_ne)
 
   /** Method is excluded from regular capture checking.
    *  Excluded are synthetic class members
@@ -141,13 +143,16 @@ object Synthetics:
   /** Drop added capture information from the type of an `unapply` */
   private def dropUnapplyCaptures(info: Type)(using Context): Type = info match
     case info: MethodType =>
-      val CapturingType(oldParamInfo, _) :: Nil = info.paramInfos: @unchecked
-      def oldResult(tp: Type): Type = tp match
-        case tp: MethodOrPoly =>
-          tp.derivedLambdaType(resType = oldResult(tp.resType))
-        case CapturingType(tp, _) =>
-          tp
-      info.derivedLambdaType(paramInfos = oldParamInfo :: Nil, resType = oldResult(info.resType))
+      info.paramInfos match
+        case CapturingType(oldParamInfo, _) :: Nil =>
+          def oldResult(tp: Type): Type = tp match
+            case tp: MethodOrPoly =>
+              tp.derivedLambdaType(resType = oldResult(tp.resType))
+            case CapturingType(tp, _) =>
+              tp
+          info.derivedLambdaType(paramInfos = oldParamInfo :: Nil, resType = oldResult(info.resType))
+        case _ =>
+          info
     case info: PolyType =>
       info.derivedLambdaType(resType = dropUnapplyCaptures(info.resType))
 
@@ -163,7 +168,9 @@ object Synthetics:
       sym.copySymDenotation(info = addUnapplyCaptures(sym.info))
     case nme.apply | nme.copy =>
       sym.copySymDenotation(info = addCaptureDeps(sym.info))
-
+    case n if n == nme.eq || n == nme.ne =>
+      sym.copySymDenotation(info =
+        MethodType(defn.ObjectType.capturing(CaptureSet.universal) :: Nil, defn.BooleanType))
 
   /** If `sym` refers to a synthetic apply, unapply, copy, or copy default getter method
    *  of a case class, transform it back to what it was before the CC phase.
@@ -176,5 +183,7 @@ object Synthetics:
       sym.copySymDenotation(info = dropUnapplyCaptures(sym.info))
     case nme.apply | nme.copy =>
       sym.copySymDenotation(info = dropCaptureDeps(sym.info))
+    case n if n == nme.eq || n == nme.ne =>
+      sym.copySymDenotation(info = defn.methOfAnyRef(defn.BooleanType))
 
 end Synthetics

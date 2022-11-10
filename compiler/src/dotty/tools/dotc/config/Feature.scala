@@ -79,19 +79,27 @@ object Feature:
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
 
+  /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
     enabledBySetting(pureFunctions)
     || ctx.compilationUnit.knowsPureFuns
     || ccEnabled
 
+  /** Is captureChecking enabled for this compilation unit? */
   def ccEnabled(using Context) =
     enabledBySetting(captureChecking)
     || ctx.compilationUnit.needsCaptureChecking
 
+  /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
     enabledBySetting(pureFunctions)
-    || enabledBySetting(captureChecking)
     || ctx.run != null && ctx.run.nn.pureFunsImportEncountered
+    || ccEnabledSomewhere
+
+  /** Is captureChecking enabled for any of the currently compiled compilation units? */
+  def ccEnabledSomewhere(using Context) =
+    enabledBySetting(captureChecking)
+    || ctx.run != null && ctx.run.nn.ccImportEncountered
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
@@ -143,6 +151,11 @@ object Feature:
   def isExperimentalEnabled(using Context): Boolean =
     Properties.experimental && !ctx.settings.YnoExperimental.value
 
+  /** Handle language import `import language.<prefix>.<imported>` if it is one
+   *  of the global imports `pureFunctions` or `captureChecking`. In this case
+   *  make the compilation unit's and current run's fields accordingly.
+   *  @return true iff import that was handled
+   */
   def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
     val fullFeatureName = QualifiedName(prefix, imported.asTermName)
     if fullFeatureName == pureFunctions then
@@ -151,7 +164,7 @@ object Feature:
       true
     else if fullFeatureName == captureChecking then
       ctx.compilationUnit.needsCaptureChecking = true
-      if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
+      if ctx.run != null then ctx.run.nn.ccImportEncountered = true
       true
     else
       false

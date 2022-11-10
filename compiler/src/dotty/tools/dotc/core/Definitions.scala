@@ -961,9 +961,11 @@ class Definitions {
   def RuntimeTupleFunctionsModule(using Context): Symbol = requiredModule("scala.runtime.TupledFunctions")
 
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
-    @tu lazy val Caps_unsafeBox: Symbol = CapsModule.requiredMethod("unsafeBox")
-    @tu lazy val Caps_unsafeUnbox: Symbol = CapsModule.requiredMethod("unsafeUnbox")
     @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("*")
+    @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
+    @tu lazy val Caps_unsafeBox: Symbol = CapsUnsafeModule.requiredMethod("unsafeBox")
+    @tu lazy val Caps_unsafeUnbox: Symbol = CapsUnsafeModule.requiredMethod("unsafeUnbox")
+    @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
@@ -1346,6 +1348,15 @@ class Definitions {
   @tu lazy val topClasses: Set[Symbol] = Set(AnyClass, MatchableClass, ObjectClass, AnyValClass)
 
   @tu lazy val untestableClasses: Set[Symbol] = Set(NothingClass, NullClass, SingletonClass)
+
+  /** Base classes that are assumed to be pure for the purposes of capture checking.
+   *  Every class inheriting from a pure baseclass is pure.
+   */
+  @tu lazy val pureBaseClasses = Set(defn.AnyValClass, defn.ThrowableClass)
+
+  /** Non-inheritable lasses that are assumed to be pure for the purposes of capture checking,
+   */
+  @tu lazy val pureSimpleClasses = Set(StringClass, NothingClass, NullClass)
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))

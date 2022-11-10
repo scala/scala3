@@ -186,7 +186,7 @@ object TypeOps:
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>
         // See documentation of `Types#simplified`
-        val addTypeVars = new TypeMap:
+        val addTypeVars = new TypeMap with IdempotentCaptRefMap:
           val constraint = ctx.typerState.constraint
           def apply(t: Type): Type = t match
             case t: TypeParamRef => constraint.typeVarOfParam(t).orElse(t)
@@ -615,7 +615,7 @@ object TypeOps:
       boundss: List[TypeBounds],
       instantiate: (Type, List[Type]) => Type,
       app: Type)(
-      using Context): List[BoundsViolation] = withMode(Mode.CheckBounds) {
+      using Context): List[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
     val argTypes = args.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
