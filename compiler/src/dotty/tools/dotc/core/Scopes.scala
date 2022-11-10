@@ -467,7 +467,7 @@ object Scopes {
     override def size: Int = 0
     override def nestingLevel: Int = 0
     override def toList(using Context): List[Symbol] = Nil
-    override def cloneScope(using Context): MutableScope = unsupported("cloneScope")
+    override def cloneScope(using Context): MutableScope = newScope(nestingLevel)
     override def lookupEntry(name: Name)(using Context): ScopeEntry | Null = null
     override def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry | Null = null
   }
