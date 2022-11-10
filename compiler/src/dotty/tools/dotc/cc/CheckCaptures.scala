@@ -880,6 +880,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Check that externally visible `val`s or `def`s have empty capture sets. If not,
      *     suggest an explicit type. This is so that separate compilation (where external
      *     symbols have empty capture sets) gives the same results as joint compilation.
+     *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       unit.foreachSubTree {
