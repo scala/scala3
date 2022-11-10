@@ -891,6 +891,24 @@ class CheckCaptures extends Recheck, SymTransformer:
           capt.println(i"checked $root with $selfType")
     end checkSelfTypes
 
+    private def healTypeParamCaptureSet(cs: CaptureSet)(using Context) = {
+      def avoidParam(tpr: TermParamRef): List[CaptureSet] =
+        val refs = tpr.binder.paramInfos(tpr.paramNum).captureSet
+        refs.filter(!_.isInstanceOf[TermParamRef]) :: refs.elems.toList.flatMap {
+          case tpr: TermParamRef => avoidParam(tpr)
+          case _ => Nil
+        }
+
+      val widenedSets = cs.elems.toList flatMap {
+        case tpr: TermParamRef => avoidParam(tpr)
+        case _ => Nil
+      }
+
+      widenedSets foreach { cs1 =>
+        cs1.subCaptures(cs, frozen = false)
+      }
+    }
+
     /** Perform the following kinds of checks
      *   - Check all explicitly written capturing types for well-formedness using `checkWellFormedPost`.
      *   - Check that externally visible `val`s or `def`s have empty capture sets. If not,
@@ -949,6 +967,19 @@ class CheckCaptures extends Recheck, SymTransformer:
               }
               checkBounds(normArgs, tl)
             case _ =>
+
+          args foreach { targ =>
+            val tp = targ.knownType
+            val tm = new TypeMap with IdempotentCaptRefMap:
+              def apply(tp: Type): Type =
+                tp match
+                  case CapturingType(parent, refs) =>
+                    healTypeParamCaptureSet(refs)
+                    mapOver(tp)
+                  case _ =>
+                    mapOver(tp)
+            tm(tp)
+          }
         case _ =>
       }
       if !ctx.reporter.errorsReported then
