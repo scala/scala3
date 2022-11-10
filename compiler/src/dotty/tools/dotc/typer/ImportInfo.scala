@@ -59,6 +59,8 @@ class ImportInfo(symf: Context ?=> Symbol,
                  val enclosingSpan: Span,
                  val isRootImport: Boolean = false) extends Showable {
 
+  override def toString = selectors.mkString(s"ImportInfo#$hashCode(", ",", s") at $enclosingSpan")
+
   private def symNameOpt = qualifier match {
     case ref: untpd.RefTree => Some(ref.name.asTermName)
     case _                  => None

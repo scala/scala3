@@ -44,6 +44,7 @@ object Implicits:
    */
   class ImportedImplicitRef(val underlyingRef: TermRef, val importInfo: ImportInfo, val selector: Int) extends ImplicitRef:
     def implicitName(using Context): TermName = underlyingRef.implicitName
+    override def toString = s"ImportedImplicitRef($underlyingRef, $importInfo, selector=$selector)"
 
   /** An implicit definition `ImplicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
@@ -51,6 +52,7 @@ object Implicits:
   class RenamedImplicitRef(underlyingRef: TermRef, importInfo: ImportInfo, selector: Int, val alias: TermName)
   extends ImportedImplicitRef(underlyingRef, importInfo, selector):
     override def implicitName(using Context): TermName = alias
+    override def toString = s"ImportedImplicitRef($underlyingRef, $importInfo, selector=$selector, alias=$alias)"
 
   /** Both search candidates and successes are references with a specific nesting level. */
   sealed trait RefAndLevel {
@@ -1157,9 +1159,6 @@ trait Implicits:
               SearchFailure(adapted.withType(new MismatchedImplicit(ref, pt, argument)))
         }
       else
-        cand match
-          case Candidate(k: ImportedImplicitRef, _, _) => ctx.usages.use(k.importInfo, k.importInfo.selectors(k.selector))
-          case _ =>
         SearchSuccess(adapted, ref, cand.level, cand.isExtension)(ctx.typerState, ctx.gadt)
     }
   end typedImplicit
@@ -1485,7 +1484,20 @@ trait Implicits:
             validateOrdering(ord)
             throw ex
 
-      rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
+      @tailrec
+      def markSelector(allEligible: List[Candidate], foundRef: ImplicitRef): Unit =
+        allEligible match
+          case Candidate(k: ImportedImplicitRef, _, _) :: _ if k.underlyingRef == foundRef =>
+            ctx.usages.use(k.importInfo, k.importInfo.selectors(k.selector))
+          case _ :: rest => markSelector(rest, foundRef)
+          case nil => ()
+
+      rank(sort(eligible), NoMatchingImplicitsFailure, Nil) match {
+        case res: SearchSuccess if !ctx.mode.is(Mode.ImplicitExploration) =>
+          markSelector(eligible, res.ref)
+          res
+        case res => res
+      }
     end searchImplicit
 
     def isUnderSpecifiedArgument(tp: Type): Boolean =

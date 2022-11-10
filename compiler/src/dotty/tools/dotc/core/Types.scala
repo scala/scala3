@@ -2736,8 +2736,8 @@ object Types {
     override def eql(that: Type): Boolean = this eq that // safe because named types are hash-consed separately
   }
 
-  /** A reference to an implicit definition. This can be either a TermRef or a
-   *  Implicits.RenamedImplicitRef.
+  /** A reference to an implicit definition. This can be either a TermRef or
+   *  an Implicits.{ImportedImplicitRef, RenamedImplicitRef}.
    */
   trait ImplicitRef {
     def implicitName(using Context): TermName
