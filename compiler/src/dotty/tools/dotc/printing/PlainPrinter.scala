@@ -111,7 +111,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def refinementNameString(tp: RefinedType): String = nameString(tp.refinedName)
 
   /** String representation of a refinement */
-  protected def toTextRefinement(rt: RefinedType): Closed =
+  protected def toTextRefinement(rt: RefinedType): Text =
     (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
   protected def argText(arg: Type): Text = homogenizeArg(arg) match {
