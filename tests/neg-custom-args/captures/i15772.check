@@ -1,14 +1,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:20:49 ---------------------------------------
 20 |    val boxed1 : (({*} C) => Unit) -> Unit = box1(c)  // error
    |                                             ^^^^^^^
-   |                                             Found:    {c} ({*} ({c} C{arg: {*} C}) -> Unit) -> Unit
+   |                                             Found:    {c} ({*} ({c} C{val arg: {*} C}) -> Unit) -> Unit
    |                                             Required: (({*} C) => Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:27:38 ---------------------------------------
 27 |    val boxed2 : Observe[{*} C] = box2(c)  // error
    |                                  ^^^^^^^
-   |                                  Found:    {c} ({*} ({c} C{arg: {*} C}) -> Unit) -> Unit
+   |                                  Found:    {c} ({*} ({c} C{val arg: {*} C}) -> Unit) -> Unit
    |                                  Required: Observe[{*} C]
    |
    | longer explanation available when compiling with `-explain`
@@ -16,7 +16,7 @@
 33 |  val boxed2 : Observe[{*} C] = box2(c) // error
    |                                     ^
    |                                     Found:    {*} C
-   |                                     Required: box {*} C{arg: ? C}
+   |                                     Required: box {*} C{val arg: ? C}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:44:2 ----------------------------------------
