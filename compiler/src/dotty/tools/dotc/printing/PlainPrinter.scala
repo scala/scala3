@@ -112,7 +112,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** String representation of a refinement */
   protected def toTextRefinement(rt: RefinedType): Text =
-    (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
+    val keyword = rt.refinedInfo match {
+      case _: ExprType | _: MethodOrPoly => "def "
+      case _: TypeBounds => "type "
+      case _: TypeProxy => "val "
+      case _ => ""
+    }
+    (keyword ~ refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
   protected def argText(arg: Type): Text = homogenizeArg(arg) match {
     case arg: TypeBounds => "?" ~ toText(arg)
