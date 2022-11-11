@@ -1906,14 +1906,6 @@ object Types {
       case _ => show
     }
 
-    /** Returns the shortened and slightly prettified name of the class of the type. */
-    def className: String =
-      def go(s: String): String =
-        import Predef.augmentString // "import Texts._" imports the conversion to Text, which has a stripPrefix
-        val s2 = s.stripPrefix("Cached").stripPrefix("Real").stripSuffix("Impl").stripSuffix("$")
-        if s == s2 then s2 else go(s2)
-      go(getClass.getSimpleName.nn)
-
     /** A simplified version of this type which is equivalent wrt =:= to this type.
      *  This applies a typemap to the type which (as all typemaps) follows type
      *  variable instances and reduces typerefs over refined types. It also
