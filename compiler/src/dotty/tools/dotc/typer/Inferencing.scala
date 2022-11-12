@@ -635,14 +635,27 @@ trait Inferencing { this: Typer =>
                 // isInstantiated needs to be checked again, since previous interpolations could already have
                 // instantiated `tvar` through unification.
                 val v = vs(tvar)
+                val tparam = tvar.origin
                 if v == null then buf += ((tvar, 0))
-                else if v.intValue != 0 then buf += ((tvar, v.intValue))
+                else if v.intValue != 0 then
+                  def hasLowerBound =
+                    (constraint.nonParamBounds(tparam).lo ne tparam.underlying.bounds.lo)
+                    || constraint.lower(tparam).nonEmpty
+                  def avoidNothing =
+                    (tp eq tvar) && pt.isInstanceOf[SelectionProto]
+                  if v.intValue != 1 || hasLowerBound || !avoidNothing then
+                    // Don't interpolate to lower if there is no lower bound other than
+                    // the declared one, the current type is exactly `tvar`, and the expression is
+                    // followed by a selection. In this case we should wait so that we can
+                    // instantiate `tvar` to its upper bound later in `couldInstantiateTypeVar`.
+                    // Test case is pos/i16323.scala.
+                    buf += ((tvar, v.intValue))
                 else comparing(cmp =>
                   if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
                     // Invariant: The type of a tree whose enclosing scope is level
                     // N only contains type variables of level <= N.
                     typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
-                    cmp.atLevel(ctx.nestingLevel, tvar.origin)
+                    cmp.atLevel(ctx.nestingLevel, tparam)
                   else
                     typr.println(i"no interpolation for nonvariant $tvar in $state")
                 )
