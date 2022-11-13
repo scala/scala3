@@ -910,7 +910,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  This solves the soundness issue caused by the ill-formness of ?1.
      */
     private def healTypeParam(tree: Tree)(using Context): Unit =
-      val tm = new TypeMap with IdempotentCaptRefMap:
+      val checker = new TypeTraverser:
         private def isAllowed(ref: CaptureRef): Boolean = ref match
           case ref: TermParamRef => allowed.contains(ref)
           case _ => true
@@ -947,25 +947,26 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
 
-        def apply(tp: Type) =
+        def traverse(tp: Type) =
           tp match
             case CapturingType(parent, refs) =>
               healCaptureSet(refs)
-              mapOver(tp)
+              // mapOver(tp)
+              traverseChildren(parent)
             case tp @ RefinedType(parent, rname, rinfo: MethodType) =>
-              this(rinfo)
+              traverseChildren(rinfo)
             case tp: TermLambda =>
               val localParams: List[TermParamRef] = tp.paramRefs
               val saved = allowed
               try
                 localParams foreach { x => allowed = allowed + x }
-                mapOver(tp)
+                traverseChildren(tp)
               finally allowed = saved
             case _ =>
-              mapOver(tp)
+              traverseChildren(tp)
 
       if tree.isInstanceOf[InferredTypeTree] then
-        tm(tree.knownType)
+        checker.traverse(tree.knownType)
     end healTypeParam
 
     /** Perform the following kinds of checks
