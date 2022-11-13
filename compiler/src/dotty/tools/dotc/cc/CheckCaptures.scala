@@ -891,23 +891,82 @@ class CheckCaptures extends Recheck, SymTransformer:
           capt.println(i"checked $root with $selfType")
     end checkSelfTypes
 
-    private def healTypeParamCaptureSet(cs: CaptureSet)(using Context) = {
-      def avoidParam(tpr: TermParamRef): List[CaptureSet] =
-        val refs = tpr.binder.paramInfos(tpr.paramNum).captureSet
-        refs.filter(!_.isInstanceOf[TermParamRef]) :: refs.elems.toList.flatMap {
-          case tpr: TermParamRef => avoidParam(tpr)
-          case _ => Nil
-        }
+    /** Heal ill-formed capture sets in the type parameter.
+     *
+     *  We can push parameter refs into a capture set in type parameters
+     *  that this type parameter can't see.
+     *  For example, when capture checking the following expression:
+     *
+     *    def usingLogFile[T](op: (f: {*} File) => T): T = ...
+     *
+     *    usingLogFile[box ?1 () -> Unit] { (f: {*} File) => () => { f.write(0) } }
+     *
+     *  We may propagate `f` into ?1, making ?1 ill-formed.
+     *  This also causes soundness issues, since `f` in ?1 should be widened to `*`,
+     *  giving rise to an error that `*` cannot be included in a boxed capture set.
+     *
+     *  To solve this, we still allow ?1 to capture parameter refs like `f`, but
+     *  compensate this by pushing the widened capture set of `f` into ?1.
+     *  This solves the soundness issue caused by the ill-formness of ?1.
+     */
+    private def healTypeParam(tree: Tree)(using Context): Unit =
+      val tm = new TypeMap with IdempotentCaptRefMap:
+        private def isAllowed(ref: CaptureRef): Boolean = ref match
+          case ref: TermParamRef => allowed.contains(ref)
+          case _ => true
 
-      val widenedSets = cs.elems.toList flatMap {
-        case tpr: TermParamRef => avoidParam(tpr)
-        case _ => Nil
-      }
+        private def widenParamRefs(refs: List[TermParamRef]): List[CaptureSet] =
+          @scala.annotation.tailrec
+          def recur(todos: List[TermParamRef], acc: List[CaptureSet]): List[CaptureSet] =
+            todos match
+              case Nil => acc
+              case ref :: rem =>
+                val cs = ref.binder.paramInfos(ref.paramNum).captureSet
+                val nextAcc = cs.filter(isAllowed(_)) :: acc
+                val nextRem: List[TermParamRef] = (cs.elems.toList.filter(!isAllowed(_)) ++ rem).asInstanceOf
+                recur(nextRem, nextAcc)
+          recur(refs, Nil)
 
-      widenedSets foreach { cs1 =>
-        cs1.subCaptures(cs, frozen = false)
-      }
-    }
+        private def healCaptureSet(cs: CaptureSet): Unit =
+          val toInclude = widenParamRefs(cs.elems.toList.filter(!isAllowed(_)).asInstanceOf)
+          toInclude foreach { cs1 =>
+            // We omit the check of the result of capture set inclusion here,
+            // since there are only two possible kinds of errors.
+            // Both kinds will be detected in other places and tend to
+            // give better error messages.
+            //
+            // The two kinds of errors are:
+            // - Pushing `*` to a boxed capture set.
+            //   This triggers error reporting registered as the `rootAddedHandler`
+            //   in `CaptureSet`.
+            // - Failing to include a capture reference in a capture set.
+            //   This is mostly due to the restriction placed by explicit type annotations,
+            //   and should already be reported as a type mismatch during `checkConforms`.
+            cs1.subCaptures(cs, frozen = false)
+          }
+
+        private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
+
+        def apply(tp: Type) =
+          tp match
+            case CapturingType(parent, refs) =>
+              healCaptureSet(refs)
+              mapOver(tp)
+            case tp @ RefinedType(parent, rname, rinfo: MethodType) =>
+              this(rinfo)
+            case tp: TermLambda =>
+              val localParams: List[TermParamRef] = tp.paramRefs
+              val saved = allowed
+              try
+                localParams foreach { x => allowed = allowed + x }
+                mapOver(tp)
+              finally allowed = saved
+            case _ =>
+              mapOver(tp)
+
+      if tree.isInstanceOf[InferredTypeTree] then
+        tm(tree.knownType)
+    end healTypeParam
 
     /** Perform the following kinds of checks
      *   - Check all explicitly written capturing types for well-formedness using `checkWellFormedPost`.
@@ -915,6 +974,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *     suggest an explicit type. This is so that separate compilation (where external
      *     symbols have empty capture sets) gives the same results as joint compilation.
      *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
+     *   - Heal ill-formed capture sets of type parameters. See `healTypeParam`.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       unit.foreachSubTree {
@@ -968,18 +1028,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               checkBounds(normArgs, tl)
             case _ =>
 
-          args foreach { targ =>
-            val tp = targ.knownType
-            val tm = new TypeMap with IdempotentCaptRefMap:
-              def apply(tp: Type): Type =
-                tp match
-                  case CapturingType(parent, refs) =>
-                    healTypeParamCaptureSet(refs)
-                    mapOver(tp)
-                  case _ =>
-                    mapOver(tp)
-            tm(tp)
-          }
+          args.foreach(healTypeParam(_))
         case _ =>
       }
       if !ctx.reporter.errorsReported then
