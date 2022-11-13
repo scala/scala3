@@ -115,15 +115,6 @@ class CrossVersionChecks extends MiniPhase:
     }
   }
 
-  /** Check that classes extending experimental classes or nested in experimental classes have the @experimental annotation. */
-  private def checkExperimentalInheritance(cls: ClassSymbol)(using Context): Unit =
-    if !cls.isAnonymousClass && !cls.isInExperimentalScope then
-      cls.info.parents.find(_.typeSymbol.isExperimental) match
-        case Some(parent) =>
-          report.error(em"extension of experimental ${parent.typeSymbol} must have @experimental annotation", cls.srcPos)
-        case _ =>
-  end checkExperimentalInheritance
-
   override def transformValDef(tree: ValDef)(using Context): ValDef =
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
@@ -134,12 +125,6 @@ class CrossVersionChecks extends MiniPhase:
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
-    tree
-
-  override def transformTemplate(tree: Template)(using Context): Tree =
-    val cls = ctx.owner.asClass
-    checkExperimentalInheritance(cls)
-    checkExperimentalAnnots(cls)
     tree
 
   override def transformIdent(tree: Ident)(using Context): Ident = {
