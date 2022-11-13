@@ -641,9 +641,9 @@ trait Inferencing { this: Typer =>
                   def hasLowerBound =
                     (constraint.nonParamBounds(tparam).lo ne tparam.underlying.bounds.lo)
                     || constraint.lower(tparam).nonEmpty
-                  def avoidNothing =
+                  def isSelectionPrefix =
                     (tp eq tvar) && pt.isInstanceOf[SelectionProto]
-                  if v.intValue != 1 || hasLowerBound || !avoidNothing then
+                  if v.intValue != 1 || hasLowerBound || !isSelectionPrefix then
                     // Don't interpolate to lower if there is no lower bound other than
                     // the declared one, the current type is exactly `tvar`, and the expression is
                     // followed by a selection. In this case we should wait so that we can
