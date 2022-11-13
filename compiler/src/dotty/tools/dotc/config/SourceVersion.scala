@@ -19,7 +19,7 @@ enum SourceVersion:
   def isAtLeast(v: SourceVersion) = stable.ordinal >= v.ordinal
 
 object SourceVersion extends Property.Key[SourceVersion]:
-  def defaultSourceVersion = `3.2`
+  def defaultSourceVersion = `3.3`
 
   /** language versions that may appear in a language import, are deprecated, but not removed from the standard library. */
   val illegalSourceVersionNames = List("3.1-migration").map(_.toTermName)
