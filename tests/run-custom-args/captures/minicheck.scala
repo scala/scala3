@@ -112,13 +112,13 @@ object NoContext extends FreshCtx(-1):
 
 type FreshContext = {*} FreshCtx
 
-def ctx(using c: Context): {c} Ctx = c
+inline def ctx(using c: Context): {c} Ctx = c
 
 // !cc! it does not work if ctxStack is an Array[FreshContext] instead.
 var ctxStack = Array.tabulate(16)(new FreshCtx(_))
 var curLevel = 0
 
-def inFreshContext[T](op: FreshContext ?-> T)(using Context): T =
+private def freshContext(using Context): FreshContext =
   if curLevel == ctxStack.length then
     val prev = ctxStack
     ctxStack = new Array[FreshCtx](curLevel * 2)
@@ -127,17 +127,17 @@ def inFreshContext[T](op: FreshContext ?-> T)(using Context): T =
       ctxStack(level) = FreshCtx(level)
   val result = ctxStack(curLevel).initFrom(ctx)
   curLevel += 1
-  try op(using result)
-  finally curLevel -= 1
+  result
 
-def withOwner[T](owner: Symbol)(op: Context ?-> T)(using Context): T =
-  val prev = ctx
+inline def inFreshContext[T](inline op: FreshContext ?-> T)(using Context): T =
+  try op(using freshContext) finally curLevel -= 1
+
+inline def withOwner[T](owner: Symbol)(inline op: Context ?-> T)(using Context): T =
   inFreshContext: c ?=>
     c.owner = owner
     op
 
-def withScope[T](scope: Scope)(op: Context ?-> T)(using Context): T =
-  val prev = ctx
+inline def withScope[T](scope: Scope)(inline op: Context ?-> T)(using Context): T =
   inFreshContext: c ?=>
     c.scope = scope
     op
@@ -168,8 +168,8 @@ def typedUnadapted(tree: Tree, expected: Type = NoType)(using Context): Type = t
             sym.info = withOwner(sym):
               typed(rhs)
         ctx.scope.enter(sym)
-      try typed(res, expected)
-      finally for sym <- ctx.scope.elements do sym.info
+      for sym <- ctx.scope.elements do sym.info
+      typed(res, expected)
   case Ref(name: String) =>
     def findIn(c: Context): Symbol =
       val sym = c.scope.lookup(name)
@@ -188,7 +188,7 @@ def typedUnadapted(tree: Tree, expected: Type = NoType)(using Context): Type = t
       case value: Int => IntType()
       case value: String => StringType()
       case _ =>
-        report.error(s"Int or String literzal expected by $value found")
+        report.error(s"Int or String literal expected by $value found")
         NoType
 
 object sugar:
@@ -203,7 +203,7 @@ import sugar.*
 
 val prog =
   Ref("x") + Length(Ref("s")) where (
-    "x" := Lit(1),
+    "x" := Lit(1) + Length(Ref("s")),
     "s" := Lit("abc"))
 
 val bad = Ref("x") + Ref("s") where (
