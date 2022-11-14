@@ -2259,7 +2259,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedAnnotation(annot: untpd.Tree)(using Context): Tree =
-    checkAnnotArgs(typed(annot, defn.AnnotationClass.typeRef))
+    checkAnnotClass(checkAnnotArgs(typed(annot)))
 
   def registerNowarn(tree: Tree, mdef: untpd.Tree)(using Context): Unit =
     val annot = Annotations.Annotation(tree)
@@ -2595,6 +2595,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    */
   def ensureConstrCall(cls: ClassSymbol, parent: Tree, psym: Symbol)(using Context): Tree =
     if parent.isType && !cls.is(Trait) && !cls.is(JavaDefined) && psym.isClass
+        // Annotations are represented as traits with constructors, but should
+        // never be called as such outside of annotation trees.
+        && !psym.is(JavaAnnotation)
         && (!psym.is(Trait)
             || psym.primaryConstructor.info.takesParams && !cls.superClass.isSubClass(psym))
     then typed(untpd.New(untpd.TypedSplice(parent), Nil))
@@ -2669,7 +2672,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
-    val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
+    val annot1 = checkAnnotClass(typedExpr(tree.annot))
     val annotCls = Annotations.annotClass(annot1)
     if annotCls == defn.NowarnAnnot then
       registerNowarn(annot1, tree)
