@@ -557,8 +557,10 @@ trait ConstraintHandling {
   end approximation
 
   private def isTransparent(tp: Type)(using Context): Boolean = tp match
-    case AndType(tp1, tp2) => isTransparent(tp1) && isTransparent(tp2)
-    case _ => tp.typeSymbol.isTransparentClass && !tp.isLambdaSub
+    case AndType(tp1, tp2) =>
+      isTransparent(tp1) && isTransparent(tp2)
+    case _ =>
+      tp.underlyingClassRef(refinementOK = false).typeSymbol.isTransparentClass
 
   /** If `tp` is an intersection such that some operands are transparent trait instances
    *  and others are not, replace as many transparent trait instances as possible with Any
@@ -572,18 +574,17 @@ trait ConstraintHandling {
     var dropped: List[Type] = List() // the types dropped so far, last one on top
 
     def dropOneTransparentClass(tp: Type): Type =
-      val tpd = tp.dealias
-      if isTransparent(tpd) && !kept.contains(tpd) then
-        dropped = tpd :: dropped
+      if isTransparent(tp) && !kept.contains(tp) then
+        dropped = tp :: dropped
         defn.AnyType
-      else tpd match
+      else tp match
         case AndType(tp1, tp2) =>
           val tp1w = dropOneTransparentClass(tp1)
           if tp1w ne tp1 then tp1w & tp2
           else
             val tp2w = dropOneTransparentClass(tp2)
             if tp2w ne tp2 then tp1 & tp2w
-            else tpd
+            else tp
         case _ =>
           tp
 
