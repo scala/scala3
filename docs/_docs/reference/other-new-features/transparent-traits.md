@@ -85,7 +85,7 @@ declared transparent.
 
 Transparent traits and classes can be given as explicit types as usual. But they are often elided when types are inferred. Roughly, the rules for type inference imply the following.
 
- - Transparent traits and classes are dropped from intersections where possible.
+ - Transparent traits are dropped from intersections where possible.
  - Union types are not widened if widening would result in only transparent supertypes.
 
 The precise rules are as follows:
@@ -94,8 +94,8 @@ The precise rules are as follows:
 - where that type is not higher-kinded,
 - and where `B` is its known upper bound or `Any` if none exists:
 - If the type inferred so far is of the form `T1 & ... & Tn` where
-  `n >= 1`, replace the maximal number of transparent `Ti`s  by `Any`, while ensuring that
+  `n >= 1`, replace the maximal number of transparent traits `Ti`s  by `Any`, while ensuring that
   the resulting type is still a subtype of the bound `B`.
-- However, do not perform this widening if all transparent types `Ti` can get replaced in that way. This clause ensures that a single transparent trait instance such as [`Product`](https://scala-lang.org/api/3.x/scala/Product.html) is not widened to [`Any`](https://scala-lang.org/api/3.x/scala/Any.html). Transparent trait instances are only dropped when they appear in conjunction with some other type.
+- However, do not perform this widening if all types `Ti` can get replaced in that way. This clause ensures that a single transparent trait instance such as [`Product`](https://scala-lang.org/api/3.x/scala/Product.html) is not widened to [`Any`](https://scala-lang.org/api/3.x/scala/Any.html). Transparent trait instances are only dropped when they appear in conjunction with some other type.
 
-- If the original type was a is union type that got widened in a previous step to a product consisting only of transparent types, keep the original union type instead of its widened form.
+- If the original type was a is union type that got widened in a previous step to a product consisting only of transparent traits and classes, keep the original union type instead of its widened form.

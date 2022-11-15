@@ -3011,8 +3011,8 @@ object TypeComparer {
   def widenInferred(inst: Type, bound: Type, widenUnions: Boolean)(using Context): Type =
     comparing(_.widenInferred(inst, bound, widenUnions))
 
-  def dropTransparentClasses(tp: Type, bound: Type)(using Context): Type =
-    comparing(_.dropTransparentClasses(tp, bound))
+  def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
+    comparing(_.dropTransparentTraits(tp, bound))
 
   def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false)(using Context): Boolean =
     comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement))
