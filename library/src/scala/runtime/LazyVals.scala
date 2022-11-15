@@ -9,19 +9,15 @@ import scala.annotation.*
  */
 object LazyVals {
   @nowarn
-  private[this] val unsafe: sun.misc.Unsafe =
-      classOf[sun.misc.Unsafe].getDeclaredFields.nn.find { field =>
-        field.nn.getType == classOf[sun.misc.Unsafe] && {
-          field.nn.setAccessible(true)
-          true
-        }
-      }
-      .map(_.nn.get(null).asInstanceOf[sun.misc.Unsafe])
-      .getOrElse {
-        throw new ExceptionInInitializerError {
-          new IllegalStateException("Can't find instance of sun.misc.Unsafe")
-        }
-      }
+  private[this] val unsafe: sun.misc.Unsafe = {
+    val unsafeField = classOf[sun.misc.Unsafe].getDeclaredField("theUnsafe").nn
+    if unsafeField.getType == classOf[sun.misc.Unsafe] then
+      unsafeField.setAccessible(true)
+    else throw new ExceptionInInitializerError {
+      new IllegalStateException("Can't find instance of sun.misc.Unsafe")
+    }
+    unsafeField.get(null).asInstanceOf[sun.misc.Unsafe]
+  }
 
   private[this] val base: Int = {
     val processors = java.lang.Runtime.getRuntime.nn.availableProcessors()
