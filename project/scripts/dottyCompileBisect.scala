@@ -70,4 +70,5 @@ class CommitBisect(files: List[String]):
     "git bisect start".!
     s"git bisect bad $fistBadHash".!
     s"git bisect good $lastGoodHash".!
-    s"git bisect run sh project/scripts/dottyCompileBisect.sh ${files.mkString(" ")}".!
+    s"""git bisect run 'rm -r out && mkdir out && mkdir out/bisect && sbt "clean; scalac -d out/bisect ${files.mkString(" ")}'""".!
+    s"git bisect reset".!
