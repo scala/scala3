@@ -163,21 +163,28 @@ private sealed trait WarningSettings:
     name = "-Wunused",
     helpArg = "warning",
     descr = "Enable or disable specific `unused` warnings",
-    choices = List("nowarn", "all", "imports", "locals", "privates", "patvars", "explicits", "implicits", "params"),
+    choices = List("nowarn", "all", "imports", "locals", "privates", "patvars", "explicits", "implicits", "params", "linted"),
     default = Nil
   )
   object WunusedHas:
     def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
     def nowarn(using Context) = allOr("nowarn")
-    def imports(using Context) = allOr("imports")
-    def locals(using Context) = allOr("locals")
+
+    def imports(using Context) =
+      allOr("imports") || allOr("linted")
+    def locals(using Context) =
+      allOr("locals") || allOr("linted")
     /** -Wunused:explicits OR -Wunused:params */
-    def explicits(using Context) = allOr("explicits") || allOr("params")
+    def explicits(using Context) =
+      allOr("explicits") || allOr("params")
     /** -Wunused:implicits OR -Wunused:params */
-    def implicits(using Context) = allOr("implicits") || allOr("params")
+    def implicits(using Context) =
+      allOr("implicits") || allOr("params") || allOr("linted")
     def params(using Context) = allOr("params")
-    def privates(using Context) = allOr("privates")
+    def privates(using Context) =
+      allOr("privates") || allOr("linted")
     def patvars(using Context) = allOr("patvars")
+    def linted(using Context) = allOr("linted")
 
   val Wconf: Setting[List[String]] = MultiStringSetting(
     "-Wconf",

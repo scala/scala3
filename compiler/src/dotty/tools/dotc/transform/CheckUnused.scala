@@ -36,12 +36,7 @@ class CheckUnused extends Phase:
   override def description: String = CheckUnused.description
 
   override def isRunnable(using Context): Boolean =
-    ctx.settings.WunusedHas.imports ||
-    ctx.settings.WunusedHas.locals  ||
-    ctx.settings.WunusedHas.explicits  ||
-    ctx.settings.WunusedHas.implicits  ||
-    ctx.settings.WunusedHas.privates ||
-    ctx.settings.WunusedHas.patvars
+    ctx.settings.Wunused.value.nonEmpty
 
   override def run(using Context): Unit =
     val tree = ctx.compilationUnit.tpdTree
@@ -61,40 +56,17 @@ class CheckUnused extends Phase:
     import UnusedData.ScopeType
 
     override def traverse(tree: tpd.Tree)(using Context): Unit = tree match
-      case imp@Import(_, sels) => sels.foreach { _ =>
-          ctx.property(_key).foreach(_.registerImport(imp))
-        }
+      case imp:tpd.Import =>
+        ctx.property(_key).foreach(_.registerImport(imp))
       case ident: Ident =>
-        val id = ident.symbol.id
-        ctx.property(_key).foreach(_.registerUsed(id))
+        ctx.property(_key).foreach(_.registerUsed(ident.symbol))
         traverseChildren(tree)
       case sel: Select =>
-        val id = sel.symbol.id
-        ctx.property(_key).foreach(_.registerUsed(id))
+        ctx.property(_key).foreach(_.registerUsed(sel.symbol))
         traverseChildren(tree)
-      case tpd.Block(_,_) =>
-        var prev: ScopeType = ScopeType.Other
+      case _: (tpd.Block | tpd.Template) =>
         ctx.property(_key).foreach { ud =>
-          ud.pushScope()
-          prev = ud.currScope
-          ud.currScope = ScopeType.Local
-        }
-        traverseChildren(tree)
-        ctx.property(_key).foreach { ud =>
-          ud.popScope()
-          ud.currScope = prev
-        }
-      case tpd.Template(_,_,_,_) =>
-        var prev: ScopeType = ScopeType.Other
-        ctx.property(_key).foreach { ud =>
-          ud.pushScope()
-          prev = ud.currScope
-          ud.currScope = ScopeType.Template
-        }
-        traverseChildren(tree)
-        ctx.property(_key).foreach { ud =>
-          ud.popScope()
-          ud.currScope = prev
+          ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree))
         }
       case t:tpd.ValDef =>
         ctx.property(_key).foreach(_.registerDef(t))
@@ -111,7 +83,7 @@ class CheckUnused extends Phase:
 
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
     import CheckUnused.WarnTypes
-    res.foreach { s =>
+    res.warnings.foreach { s =>
       s match
         case (t, WarnTypes.Imports) =>
           report.warning(s"unused import", t)
@@ -149,14 +121,15 @@ object CheckUnused:
    */
   private class UnusedData:
     import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack, ListBuffer}
+    import dotty.tools.dotc.core.Symbols.Symbol
     import UnusedData.ScopeType
 
-    var currScope: ScopeType = ScopeType.Other
+    var currScopeType: ScopeType = ScopeType.Other
 
     /* IMPORTS */
-    private val impInScope = MutStack(MutMap[Int, ListBuffer[ImportSelector]]())
+    private val impInScope = MutStack(MutMap[Symbol, ListBuffer[ImportSelector]]())
     private val unusedImport = MutSet[ImportSelector]()
-    private val usedImports = MutStack(MutSet[Int]())
+    private val usedImports = MutStack(MutSet[Symbol]())
 
     /* LOCAL DEF OR VAL / Private Def or Val / Pattern variables */
     private val localDefInScope = MutStack(MutSet[tpd.ValOrDefDef]())
@@ -171,14 +144,26 @@ object CheckUnused:
     private val unusedImplicitParams = ListBuffer[tpd.ValOrDefDef]()
     private val unusedPatVars = ListBuffer[tpd.Bind]()
 
-    private val usedDef = MutSet[Int]()
+    private val usedDef = MutSet[Symbol]()
+
+    /**
+     * Push a new Scope of the given type, executes the given Unit and
+     * pop it back to the original type.
+     */
+    def inNewScope(newScope: ScopeType)(execInNewScope: => Unit)(using Context): Unit =
+      val prev = currScopeType
+      currScopeType = newScope
+      pushScope()
+      execInNewScope
+      popScope()
+      currScopeType = prev
 
     private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
       case untpd.Ident(name) => name == StdNames.nme.WILDCARD
       case _ => false
 
     /** Register the id of a found (used) symbol */
-    def registerUsed(id: Int): Unit =
+    def registerUsed(id: Symbol): Unit =
       usedImports.top += id
       usedDef += id
 
@@ -192,12 +177,11 @@ object CheckUnused:
         else if s.isWildcard then
           tree.tpe.allMembers
             .filter(m => m.symbol.is(Given) == s.isGiven) // given imports
-            .map(_.symbol.id -> s)
-
+            .map(_.symbol -> s)
         else
-          val id = tree.tpe.member(s.name.toTermName).symbol.id
-          val typeId = tree.tpe.member(s.name.toTypeName).symbol.id
-          List(id -> s, typeId -> s)
+          val termSymbol = tree.tpe.member(s.name.toTermName).symbol
+          val typeSymbol = tree.tpe.member(s.name.toTypeName).symbol
+          List(termSymbol -> s, typeSymbol -> s)
       }
       entries.foreach{(id, sel) =>
         map.get(id) match
@@ -211,9 +195,9 @@ object CheckUnused:
           implicitParamInScope.top += valOrDef
         else
           explicitParamInScope.top += valOrDef
-      else if currScope == ScopeType.Local then
+      else if currScopeType == ScopeType.Local then
         localDefInScope.top += valOrDef
-      else if currScope == ScopeType.Template && valOrDef.symbol.is(Private) then
+      else if currScopeType == ScopeType.Template && valOrDef.symbol.is(Private) then
         privateDefInScope.top += valOrDef
 
     def registerPatVar(patvar: tpd.Bind)(using Context): Unit =
@@ -261,23 +245,23 @@ object CheckUnused:
       }
 
     def popScopeLocalDef()(using Context): Unit =
-      val unused = localDefInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
+      val unused = localDefInScope.pop().filterInPlace(d => !usedDef(d.symbol))
       unusedLocalDef ++= unused
 
     def popScopeExplicitParam()(using Context): Unit =
-      val unused = explicitParamInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
+      val unused = explicitParamInScope.pop().filterInPlace(d => !usedDef(d.symbol))
       unusedExplicitParams ++= unused
 
     def popScopeImplicitParam()(using Context): Unit =
-      val unused = implicitParamInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
+      val unused = implicitParamInScope.pop().filterInPlace(d => !usedDef(d.symbol))
       unusedImplicitParams ++= unused
 
     def popScopePrivateDef()(using Context): Unit =
-      val unused = privateDefInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
+      val unused = privateDefInScope.pop().filterInPlace(d => !usedDef(d.symbol))
       unusedPrivateDef ++= unused
 
     def popScopePatVars()(using Context): Unit =
-      val unused = patVarsInScope.pop().filterInPlace(d => !usedDef(d.symbol.id))
+      val unused = patVarsInScope.pop().filterInPlace(d => !usedDef(d.symbol))
       unusedPatVars ++= unused
 
     /**
@@ -317,10 +301,11 @@ object CheckUnused:
           unusedPatVars.map(d => d.namePos -> WarnTypes.PatVars).toList
         else
           Nil
-      List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams, sortedPrivateDefs, sortedPatVars).flatten.sortBy { s =>
+      val warnings = List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams, sortedPrivateDefs, sortedPatVars).flatten.sortBy { s =>
         val pos = s._1.sourcePos
         (pos.line, pos.column)
       }
+      UnusedResult(warnings, Nil)
 
   end UnusedData
 
@@ -328,9 +313,14 @@ object CheckUnused:
       enum ScopeType:
         case Local
         case Template
-        case Param
         case Other
 
-      type UnusedResult = List[(dotty.tools.dotc.util.SrcPos, WarnTypes)]
+      object ScopeType:
+        def fromTree(tree: tpd.Tree): ScopeType = tree match
+          case _:tpd.Template => Template
+          case _:tpd.Block => Local
+          case _ => Other
+
+      case class UnusedResult(warnings: List[(dotty.tools.dotc.util.SrcPos, WarnTypes)], usedImports: List[(tpd.Import, untpd.ImportSelector)])
 end CheckUnused
 
