@@ -63,7 +63,7 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
       case Nil => this
       case extendType :: withTypes =>
         val extendPart = keyword(" extends ").signature(extendType.signature)
-        withTypes.foldLeft(extendPart)((bdr2, tpe) => bdr2.keyword(" with ").signature(tpe.signature))
+        withTypes.foldLeft(extendPart)((bdr2, tpe) => bdr2.keyword(", ").signature(tpe.signature))
 
   def modifiersAndVisibility(t: Member) =
     val (prefixMods, suffixMods) = t.modifiers.partition(_.prefix)
