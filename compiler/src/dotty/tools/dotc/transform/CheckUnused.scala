@@ -17,7 +17,6 @@ import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.transform.CheckUnused.UnusedData.UnusedResult
 import dotty.tools.dotc.core.Mode
 
-import scala.collection.mutable
 
 
 /**
@@ -56,6 +55,7 @@ class CheckUnused extends Phase:
     import UnusedData.ScopeType
 
     override def traverse(tree: tpd.Tree)(using Context): Unit =
+      val newCtx = if tree.symbol.exists then ctx.withOwner(tree.symbol) else ctx
       if tree.isDef then // register the annotations for usage
         ctx.property(_key).foreach(_.registerUsedAnnotation(tree.symbol))
       tree match
@@ -63,24 +63,25 @@ class CheckUnused extends Phase:
           ctx.property(_key).foreach(_.registerImport(imp))
         case ident: Ident =>
           ctx.property(_key).foreach(_.registerUsed(ident.symbol))
-          traverseChildren(tree)
+          traverseChildren(tree)(using newCtx)
         case sel: Select =>
           ctx.property(_key).foreach(_.registerUsed(sel.symbol))
-          traverseChildren(tree)
+          traverseChildren(tree)(using newCtx)
         case _: (tpd.Block | tpd.Template) =>
           ctx.property(_key).foreach { ud =>
-            ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree))
+            ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree)(using newCtx))
           }
         case t:tpd.ValDef =>
           ctx.property(_key).foreach(_.registerDef(t))
-          traverseChildren(tree)
+          traverseChildren(tree)(using newCtx)
         case t:tpd.DefDef =>
           ctx.property(_key).foreach(_.registerDef(t))
-          traverseChildren(tree)
+          traverseChildren(tree)(using newCtx)
         case t: tpd.Bind =>
           ctx.property(_key).foreach(_.registerPatVar(t))
-          traverseChildren(tree)
-        case _ => traverseChildren(tree)
+          traverseChildren(tree)(using newCtx)
+        case _ =>
+          traverseChildren(tree)(using newCtx)
 
   }
 
@@ -123,29 +124,29 @@ object CheckUnused:
    * - usage
    */
   private class UnusedData:
-    import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack, ListBuffer}
+    import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack}
     import dotty.tools.dotc.core.Symbols.Symbol
     import UnusedData.ScopeType
 
     var currScopeType: ScopeType = ScopeType.Other
 
     /* IMPORTS */
-    private val impInScope = MutStack(MutMap[Symbol, ListBuffer[ImportSelector]]())
+    private val impInScope = MutStack(MutSet[tpd.Import]())
+    private val usedInScope = MutStack(MutSet[(Symbol,Boolean)]())
     private val unusedImport = MutSet[ImportSelector]()
-    private val usedImports = MutStack(MutSet[Symbol]())
 
     /* LOCAL DEF OR VAL / Private Def or Val / Pattern variables */
-    private val localDefInScope = MutStack(MutSet[tpd.ValOrDefDef]())
-    private val privateDefInScope = MutStack(MutSet[tpd.ValOrDefDef]())
-    private val explicitParamInScope = MutStack(MutSet[tpd.ValOrDefDef]())
-    private val implicitParamInScope = MutStack(MutSet[tpd.ValOrDefDef]())
-    private val patVarsInScope = MutStack(MutSet[tpd.Bind]())
+    private val localDefInScope = MutSet[tpd.ValOrDefDef]()
+    private val privateDefInScope = MutSet[tpd.ValOrDefDef]()
+    private val explicitParamInScope = MutSet[tpd.ValOrDefDef]()
+    private val implicitParamInScope = MutSet[tpd.ValOrDefDef]()
+    private val patVarsInScope = MutSet[tpd.Bind]()
 
-    private val unusedLocalDef = ListBuffer[tpd.ValOrDefDef]()
-    private val unusedPrivateDef = ListBuffer[tpd.ValOrDefDef]()
-    private val unusedExplicitParams = ListBuffer[tpd.ValOrDefDef]()
-    private val unusedImplicitParams = ListBuffer[tpd.ValOrDefDef]()
-    private val unusedPatVars = ListBuffer[tpd.Bind]()
+    private val unusedLocalDef = MutSet[tpd.ValOrDefDef]()
+    private val unusedPrivateDef = MutSet[tpd.ValOrDefDef]()
+    private val unusedExplicitParams = MutSet[tpd.ValOrDefDef]()
+    private val unusedImplicitParams = MutSet[tpd.ValOrDefDef]()
+    private val unusedPatVars = MutSet[tpd.Bind]()
 
     private val usedDef = MutSet[Symbol]()
 
@@ -161,122 +162,66 @@ object CheckUnused:
       popScope()
       currScopeType = prev
 
-    private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
-      case untpd.Ident(name) => name == StdNames.nme.WILDCARD
-      case _ => false
-
-
     /** Register all annotations of this symbol's denotation */
     def registerUsedAnnotation(sym: Symbol)(using Context): Unit =
       val annotSym = sym.denot.annotations.map(_.symbol)
       registerUsed(annotSym)
 
     /** Register a found (used) symbol */
-    def registerUsed(sym: Symbol): Unit =
-      usedImports.top += sym
+    def registerUsed(sym: Symbol)(using Context): Unit =
+      usedInScope.top += sym -> sym.isAccessibleAsIdent
       usedDef += sym
 
     /** Register a list of found (used) symbols */
-    def registerUsed(sym: Seq[Symbol]): Unit =
-      usedImports.top ++= sym
-      usedDef ++= sym
+    def registerUsed(syms: Seq[Symbol])(using Context): Unit =
+      usedInScope.top ++= syms.map(s => s -> s.isAccessibleAsIdent)
+      usedDef ++= syms
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
-      val tpd.Import(tree, sels) = imp
-      val map = impInScope.top
-      val entries = sels.flatMap{ s =>
-        if isImportExclusion(s) then
-          Nil // ignore exclusion import
-        else if s.isWildcard then
-          tree.tpe.allMembers
-            .filter(m => m.symbol.is(Given) == s.isGiven) // given imports
-            .map(_.symbol -> s)
-        else
-          val termSymbol = tree.tpe.member(s.name.toTermName).symbol
-          val typeSymbol = tree.tpe.member(s.name.toTypeName).symbol
-          List(termSymbol -> s, typeSymbol -> s)
-      }
-      entries.foreach{(sym, sel) =>
-        map.get(sym) match
-          case None => map.put(sym, ListBuffer(sel))
-          case Some(value) => value += sel
-      }
+      impInScope.top += imp
+      unusedImport ++= imp.selectors.filter(s => !isImportExclusion(s))
 
     def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
       if valOrDef.symbol.is(Param) then
         if valOrDef.symbol.is(Given) then
-          implicitParamInScope.top += valOrDef
+          implicitParamInScope += valOrDef
         else
-          explicitParamInScope.top += valOrDef
+          explicitParamInScope += valOrDef
       else if currScopeType == ScopeType.Local then
-        localDefInScope.top += valOrDef
+        localDefInScope += valOrDef
       else if currScopeType == ScopeType.Template && valOrDef.symbol.is(Private, butNot = SelfName) then
-        privateDefInScope.top += valOrDef
+        privateDefInScope += valOrDef
 
     def registerPatVar(patvar: tpd.Bind)(using Context): Unit =
-      patVarsInScope.top += patvar
+      patVarsInScope += patvar
 
     /** enter a new scope */
     def pushScope(): Unit =
       // unused imports :
-      usedImports.push(MutSet())
-      impInScope.push(MutMap())
-      // local and private defs :
-      localDefInScope.push(MutSet())
-      explicitParamInScope.push(MutSet())
-      implicitParamInScope.push(MutSet())
-      privateDefInScope.push(MutSet())
-      patVarsInScope.push(MutSet())
+      impInScope.push(MutSet())
+      usedInScope.push(MutSet())
 
     /** leave the current scope */
     def popScope()(using Context): Unit =
       popScopeImport()
-      popScopeLocalDef()
-      popScopeExplicitParam()
-      popScopeImplicitParam()
-      popScopePrivateDef()
-      popScopePatVars()
 
-    def popScopeImport(): Unit =
-      val usedImp = MutSet[ImportSelector]()
-      val poppedImp = impInScope.pop()
-      val notDefined = usedImports.pop.filter{sym =>
-        poppedImp.remove(sym) match
-          case None => true
-          case Some(value) =>
-            usedImp.addAll(value)
-            false
+    def popScopeImport()(using Context): Unit =
+      val used = usedInScope.pop().toSet
+      val imports = impInScope.pop().toSet
+      val kept = used.filter { t =>
+        val (sym, isAccessible) = t
+        !imports.exists { imp =>
+          sym.isInImport(imp, isAccessible) match
+            case None => false
+            case Some(sel) =>
+              unusedImport -= sel
+              true
+        }
       }
-      if usedImports.nonEmpty then
-        usedImports.top.addAll(notDefined)
-
-      poppedImp.values.flatten.foreach{ sel =>
-        // If **any** of the entities used by the import is used,
-        // do not add to the `unused` Set
-        if !usedImp(sel) then
-          unusedImport += sel
-      }
-
-    def popScopeLocalDef()(using Context): Unit =
-      val unused = localDefInScope.pop().filterInPlace(d => !usedDef(d.symbol))
-      unusedLocalDef ++= unused
-
-    def popScopeExplicitParam()(using Context): Unit =
-      val unused = explicitParamInScope.pop().filterInPlace(d => !usedDef(d.symbol))
-      unusedExplicitParams ++= unused
-
-    def popScopeImplicitParam()(using Context): Unit =
-      val unused = implicitParamInScope.pop().filterInPlace(d => !usedDef(d.symbol))
-      unusedImplicitParams ++= unused
-
-    def popScopePrivateDef()(using Context): Unit =
-      val unused = privateDefInScope.pop().filterInPlace(d => !usedDef(d.symbol))
-      unusedPrivateDef ++= unused
-
-    def popScopePatVars()(using Context): Unit =
-      val unused = patVarsInScope.pop().filterInPlace(d => !usedDef(d.symbol))
-      unusedPatVars ++= unused
+      if usedInScope.nonEmpty then
+        usedInScope.top ++= kept
+      usedDef ++= used.map(_._1)
 
     /**
      * Leave the scope and return a `List` of unused `ImportSelector`s
@@ -292,27 +237,27 @@ object CheckUnused:
           Nil
       val sortedLocalDefs =
         if ctx.settings.WunusedHas.locals then
-          unusedLocalDef.map(d => d.namePos -> WarnTypes.LocalDefs).toList
+          localDefInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.LocalDefs).toList
         else
           Nil
       val sortedExplicitParams =
         if ctx.settings.WunusedHas.explicits then
-          unusedExplicitParams.map(d => d.namePos -> WarnTypes.ExplicitParams).toList
+          explicitParamInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.ExplicitParams).toList
         else
           Nil
       val sortedImplicitParams =
         if ctx.settings.WunusedHas.implicits then
-          unusedImplicitParams.map(d => d.namePos -> WarnTypes.ImplicitParams).toList
+          implicitParamInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.ImplicitParams).toList
         else
           Nil
       val sortedPrivateDefs =
         if ctx.settings.WunusedHas.privates then
-          unusedPrivateDef.map(d => d.namePos -> WarnTypes.PrivateMembers).toList
+          privateDefInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.PrivateMembers).toList
         else
           Nil
       val sortedPatVars =
         if ctx.settings.WunusedHas.patvars then
-          unusedPatVars.map(d => d.namePos -> WarnTypes.PatVars).toList
+          patVarsInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.PatVars).toList
         else
           Nil
       val warnings = List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams, sortedPrivateDefs, sortedPatVars).flatten.sortBy { s =>
@@ -321,6 +266,31 @@ object CheckUnused:
       }
       UnusedResult(warnings, Nil)
 
+    //============================ HELPERS ====================================
+
+    private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
+      case untpd.Ident(name) => name == StdNames.nme.WILDCARD
+      case _ => false
+    extension (sym: Symbol)
+      def isAccessibleAsIdent(using Context): Boolean =
+        sym.exists &&
+          ctx.outersIterator.exists{ c =>
+            c.owner == sym.owner
+            || sym.owner.isClass && c.owner.isClass
+                && c.owner.thisType.baseClasses.contains(sym.owner)
+                && c.owner.thisType.member(sym.name).alternatives.contains(sym)
+          }
+      def isInImport(imp: tpd.Import, isAccessible: Boolean)(using Context): Option[ImportSelector] =
+        val tpd.Import(qual, sels) = imp
+        val sameQualType =
+          qual.tpe.member(sym.name.toTermName).symbol == sym ||
+          qual.tpe.member(sym.name.toTypeName).symbol == sym
+        def selector = sels.find(sel => sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name)
+        def wildcard = sels.find(sel => sel.isWildcard && (sym.is(Given) == sel.isGiven))
+        if sameQualType && !isAccessible then
+          selector.orElse(wildcard)
+        else
+          None
   end UnusedData
 
   object UnusedData:
