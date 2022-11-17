@@ -35,7 +35,8 @@ class CheckUnused extends Phase:
   override def description: String = CheckUnused.description
 
   override def isRunnable(using Context): Boolean =
-    ctx.settings.Wunused.value.nonEmpty
+    ctx.settings.Wunused.value.nonEmpty &&
+    !ctx.isJava
 
   override def run(using Context): Unit =
     val tree = ctx.compilationUnit.tpdTree
@@ -179,8 +180,9 @@ object CheckUnused:
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
-      impInScope.top += imp
-      unusedImport ++= imp.selectors.filter(s => !isImportExclusion(s))
+      if !tpd.languageImport(imp.expr).nonEmpty then
+        impInScope.top += imp
+        unusedImport ++= imp.selectors.filter(s => !isImportExclusion(s))
 
     def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
       if valOrDef.symbol.is(Param) then
