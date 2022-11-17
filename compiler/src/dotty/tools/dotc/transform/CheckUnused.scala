@@ -7,7 +7,7 @@ import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.{em, i}
-import dotty.tools.dotc.core.Flags.{Given, GivenVal, Param, Private}
+import dotty.tools.dotc.core.Flags.{Given, GivenVal, Param, Private, SelfName}
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
@@ -55,29 +55,32 @@ class CheckUnused extends Phase:
     import tpd._
     import UnusedData.ScopeType
 
-    override def traverse(tree: tpd.Tree)(using Context): Unit = tree match
-      case imp:tpd.Import =>
-        ctx.property(_key).foreach(_.registerImport(imp))
-      case ident: Ident =>
-        ctx.property(_key).foreach(_.registerUsed(ident.symbol))
-        traverseChildren(tree)
-      case sel: Select =>
-        ctx.property(_key).foreach(_.registerUsed(sel.symbol))
-        traverseChildren(tree)
-      case _: (tpd.Block | tpd.Template) =>
-        ctx.property(_key).foreach { ud =>
-          ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree))
-        }
-      case t:tpd.ValDef =>
-        ctx.property(_key).foreach(_.registerDef(t))
-        traverseChildren(tree)
-      case t:tpd.DefDef =>
-        ctx.property(_key).foreach(_.registerDef(t))
-        traverseChildren(tree)
-      case t: tpd.Bind =>
-        ctx.property(_key).foreach(_.registerPatVar(t))
-        traverseChildren(tree)
-      case _ => traverseChildren(tree)
+    override def traverse(tree: tpd.Tree)(using Context): Unit =
+      if tree.isDef then // register the annotations for usage
+        ctx.property(_key).foreach(_.registerUsedAnnotation(tree.symbol))
+      tree match
+        case imp:tpd.Import =>
+          ctx.property(_key).foreach(_.registerImport(imp))
+        case ident: Ident =>
+          ctx.property(_key).foreach(_.registerUsed(ident.symbol))
+          traverseChildren(tree)
+        case sel: Select =>
+          ctx.property(_key).foreach(_.registerUsed(sel.symbol))
+          traverseChildren(tree)
+        case _: (tpd.Block | tpd.Template) =>
+          ctx.property(_key).foreach { ud =>
+            ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree))
+          }
+        case t:tpd.ValDef =>
+          ctx.property(_key).foreach(_.registerDef(t))
+          traverseChildren(tree)
+        case t:tpd.DefDef =>
+          ctx.property(_key).foreach(_.registerDef(t))
+          traverseChildren(tree)
+        case t: tpd.Bind =>
+          ctx.property(_key).foreach(_.registerPatVar(t))
+          traverseChildren(tree)
+        case _ => traverseChildren(tree)
 
   }
 
@@ -162,10 +165,21 @@ object CheckUnused:
       case untpd.Ident(name) => name == StdNames.nme.WILDCARD
       case _ => false
 
-    /** Register the id of a found (used) symbol */
-    def registerUsed(id: Symbol): Unit =
-      usedImports.top += id
-      usedDef += id
+
+    /** Register all annotations of this symbol's denotation */
+    def registerUsedAnnotation(sym: Symbol)(using Context): Unit =
+      val annotSym = sym.denot.annotations.map(_.symbol)
+      registerUsed(annotSym)
+
+    /** Register a found (used) symbol */
+    def registerUsed(sym: Symbol): Unit =
+      usedImports.top += sym
+      usedDef += sym
+
+    /** Register a list of found (used) symbols */
+    def registerUsed(sym: Seq[Symbol]): Unit =
+      usedImports.top ++= sym
+      usedDef ++= sym
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
@@ -183,9 +197,9 @@ object CheckUnused:
           val typeSymbol = tree.tpe.member(s.name.toTypeName).symbol
           List(termSymbol -> s, typeSymbol -> s)
       }
-      entries.foreach{(id, sel) =>
-        map.get(id) match
-          case None => map.put(id, ListBuffer(sel))
+      entries.foreach{(sym, sel) =>
+        map.get(sym) match
+          case None => map.put(sym, ListBuffer(sel))
           case Some(value) => value += sel
       }
 
@@ -197,7 +211,7 @@ object CheckUnused:
           explicitParamInScope.top += valOrDef
       else if currScopeType == ScopeType.Local then
         localDefInScope.top += valOrDef
-      else if currScopeType == ScopeType.Template && valOrDef.symbol.is(Private) then
+      else if currScopeType == ScopeType.Template && valOrDef.symbol.is(Private, butNot = SelfName) then
         privateDefInScope.top += valOrDef
 
     def registerPatVar(patvar: tpd.Bind)(using Context): Unit =
@@ -227,8 +241,8 @@ object CheckUnused:
     def popScopeImport(): Unit =
       val usedImp = MutSet[ImportSelector]()
       val poppedImp = impInScope.pop()
-      val notDefined = usedImports.pop.filter{id =>
-        poppedImp.remove(id) match
+      val notDefined = usedImports.pop.filter{sym =>
+        poppedImp.remove(sym) match
           case None => true
           case Some(value) =>
             usedImp.addAll(value)

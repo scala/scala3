@@ -99,3 +99,58 @@ object SomeGivenImports:
   given Int = 0
   given String = "foo"
 
+/* BEGIN : Check on packages*/
+package p {
+  class C
+}
+
+package p {
+  import p._ // error
+  package q {
+    class U {
+      def f = new C
+    }
+  }
+}
+/* END : Check on packages*/
+
+/* BEGIN : tests on meta-language features */
+object TestGivenCoversionScala2:
+  /* note: scala3 Conversion[U,T] do not require an import */
+  import language.implicitConversions // OK
+
+  implicit def doubleToInt(d:Double):Int = d.toInt
+
+  def idInt(i:Int):Int = i
+  val someInt = idInt(1.0)
+
+object TestTailrecImport:
+  import annotation.tailrec // OK
+  @tailrec
+  def fac(x:Int, acc:Int = 1): Int =
+    if x == 0 then acc else fac(x - 1, acc * x)
+/* END : tests on meta-language features */
+
+/* BEGIN : tests on given import order */
+object GivenImportOrderAtoB:
+  class X
+  class Y extends X
+  object A { implicit val x: X = new X }
+  object B { implicit val y: Y = new Y }
+  class C {
+    import A._ // error
+    import B._
+    def t = implicitly[X]
+  }
+
+object GivenImportOrderBtoA:
+  class X
+  class Y extends X
+  object A { implicit val x: X = new X }
+  object B { implicit val y: Y = new Y }
+  class C {
+    import B._
+    import A._ // error
+    def t = implicitly[X]
+  }
+/* END : tests on given import order */

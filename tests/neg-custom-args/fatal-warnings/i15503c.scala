@@ -1,5 +1,7 @@
 // scalac: -Wunused:privates
+trait C
 class A:
+  self: C => // OK
   class B:
     private[A] val a = 1 // OK
     private[B] val b = 1 // OK
