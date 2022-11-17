@@ -34,6 +34,9 @@ given [T: Ordering]: Ordering[Option[T]] = Ordering.derived
 
 It is discouraged to directly refer to the `derived` member if you can use a `derives` clause instead.
 
+All data types can have a `derives` clause. This document focuses primarily on data types which also have a given instance
+of the `Mirror` type class available.
+
 ## Exact mechanism
 In the following, when type arguments are enumerated and the first index evaluates to a larger value than the last, then there are actually no arguments, for example: `A[T_2, ..., T_1]` means `A`.
 
@@ -286,6 +289,8 @@ Note the following properties of `Mirror` types,
 As seen before, the signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary, but we expect it to typically be of the following form:
 
 ```scala
+import scala.deriving.Mirror
+
 inline def derived[T](using Mirror.Of[T]): TC[T] = ...
 ```
 
