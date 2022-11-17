@@ -16,7 +16,7 @@ import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
 import org.jline.utils.AttributedString
 
-final class JLineTerminal extends java.io.Closeable {
+class JLineTerminal extends java.io.Closeable {
   // import java.util.logging.{Logger, Level}
   // Logger.getLogger("org.jline").setLevel(Level.FINEST)
 
@@ -30,7 +30,8 @@ final class JLineTerminal extends java.io.Closeable {
   private def blue(str: String)(using Context) =
     if (ctx.settings.color.value != "never") Console.BLUE + str + Console.RESET
     else str
-  private def prompt(using Context)        = blue("\nscala> ")
+  protected def promptStr = "scala"
+  private def prompt(using Context)        = blue(s"\n$promptStr> ")
   private def newLinePrompt(using Context) = blue("     | ")
 
   /** Blockingly read line from `System.in`

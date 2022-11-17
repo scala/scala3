@@ -28,10 +28,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   import Rendering._
 
-  private var myClassLoader: AbstractFileClassLoader = _
+  var myClassLoader: AbstractFileClassLoader = _
 
   /** (value, maxElements, maxCharacters) => String */
-  private var myReplStringOf: (Object, Int, Int) => String = _
+  var myReplStringOf: (Object, Int, Int) => String = _
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
