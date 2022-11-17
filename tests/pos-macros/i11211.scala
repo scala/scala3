@@ -12,7 +12,7 @@ def takeOptionImpl2[T](using Quotes, Type[T]): Unit = '{
 def takeOptionImpl[T](o: Expr[Option[T]], default: Expr[T])(using Quotes, Type[T]): Expr[T] = '{
  $o match {
    case Some(t1) => t1
-   case None: Option[T] => $default
+   case None => $default
  }
 }
 
