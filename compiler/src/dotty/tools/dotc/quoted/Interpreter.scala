@@ -73,8 +73,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
       else if (fn.symbol.is(Module))
         interpretModuleAccess(fn.symbol)
       else if (fn.symbol.is(Method) && fn.symbol.isStatic) {
-        val staticMethodCall = interpretedStaticMethodCall(fn.symbol.owner, fn.symbol)
-        staticMethodCall(interpretArgs(args, fn.symbol.info))
+        interpretedStaticMethodCall(fn.symbol.owner, fn.symbol, interpretArgs(args, fn.symbol.info))
       }
       else if fn.symbol.isStatic then
         assert(args.isEmpty)
@@ -83,8 +82,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
         if (fn.name == nme.asInstanceOfPM)
           interpretModuleAccess(fn.qualifier.symbol)
         else {
-          val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)
-          staticMethodCall(interpretArgs(args, fn.symbol.info))
+          interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol, interpretArgs(args, fn.symbol.info))
         }
       else if (env.contains(fn.symbol))
         env(fn.symbol)
@@ -158,7 +156,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
   private def interpretVarargs(args: List[Object]): Object =
     args.toSeq
 
-  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol): List[Object] => Object = {
+  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object = {
     val (inst, clazz) =
       try
         if (moduleClass.name.startsWith(str.REPL_SESSION_LINE))
@@ -175,7 +173,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
 
     val name = fn.name.asTermName
     val method = getMethod(clazz, name, paramsSig(fn))
-    (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args: _*), method)
+    stopIfRuntimeException(method.invoke(inst, args: _*), method)
   }
 
   private def interpretedStaticFieldAccess(sym: Symbol): Object = {
