@@ -10,13 +10,19 @@ import scala.annotation.*
 object LazyVals {
   @nowarn
   private[this] val unsafe: sun.misc.Unsafe = {
-    val unsafeField = classOf[sun.misc.Unsafe].getDeclaredField("theUnsafe").nn
-    if unsafeField.getType == classOf[sun.misc.Unsafe] then
-      unsafeField.setAccessible(true)
-    else throw new ExceptionInInitializerError {
-      new IllegalStateException("Can't find instance of sun.misc.Unsafe")
-    }
-    unsafeField.get(null).asInstanceOf[sun.misc.Unsafe]
+    def throwInitializationException() = 
+      throw new ExceptionInInitializerError(
+        new IllegalStateException("Can't find instance of sun.misc.Unsafe")
+      )
+    try
+      val unsafeField = classOf[sun.misc.Unsafe].getDeclaredField("theUnsafe").nn
+      if unsafeField.getType == classOf[sun.misc.Unsafe] then
+        unsafeField.setAccessible(true)
+        unsafeField.get(null).asInstanceOf[sun.misc.Unsafe]
+      else
+        throwInitializationException()
+    catch case _: NoSuchFieldException =>
+      throwInitializationException()
   }
 
   private[this] val base: Int = {
