@@ -418,16 +418,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           true
         }
         def compareTypeParamRef =
-          assumedTrue(tp1) ||
-          tp2.match {
-            case tp2: TypeParamRef => constraint.isLess(tp1, tp2)
-            case _ => false
-          } ||
-          isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2) || {
-            if (canConstrain(tp1) && !approx.high)
-              addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
-            else thirdTry
-          }
+          assumedTrue(tp1)
+          || tp2.dealias.match
+              case tp2a: TypeParamRef => constraint.isLess(tp1, tp2a)
+              case tp2a: AndType => recur(tp1, tp2a)
+              case _ => false
+          || isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2)
+          || (if canConstrain(tp1) && !approx.high then
+                addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
+              else thirdTry)
+
         compareTypeParamRef
       case tp1: ThisType =>
         val cls1 = tp1.cls
@@ -585,7 +585,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     def compareTypeParamRef(tp2: TypeParamRef): Boolean =
-      assumedTrue(tp2) || {
+      assumedTrue(tp2)
+      || {
         val alwaysTrue =
           // The following condition is carefully formulated to catch all cases
           // where the subtype relation is true without needing to add a constraint
@@ -596,11 +597,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // widening in `fourthTry` before adding to the constraint.
           if (frozenConstraint) recur(tp1, bounds(tp2).lo.boxed)
           else isSubTypeWhenFrozen(tp1, tp2)
-        alwaysTrue || {
-          if (canConstrain(tp2) && !approx.low)
-            addConstraint(tp2, tp1.widenExpr, fromBelow = true)
-          else fourthTry
-        }
+        alwaysTrue
+        || tp1.dealias.match
+            case tp1a: OrType => recur(tp1a, tp2)
+            case _ => false
+        || (if canConstrain(tp2) && !approx.low then
+              addConstraint(tp2, tp1.widenExpr, fromBelow = true)
+            else fourthTry)
       }
 
     def thirdTry: Boolean = tp2 match {
