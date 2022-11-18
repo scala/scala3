@@ -197,15 +197,24 @@ object Annotations {
 
     def apply(cls: ClassSymbol)(using Context): Annotation =
       apply(cls, Nil)
+    
+    def apply(cls: ClassSymbol, span: Span)(using Context): Annotation =
+      apply(cls, Nil, span)
 
     def apply(cls: ClassSymbol, arg: Tree)(using Context): Annotation =
       apply(cls, arg :: Nil)
+    
+    def apply(cls: ClassSymbol, arg: Tree, span: Span)(using Context): Annotation =
+      apply(cls, arg :: Nil, span)
 
     def apply(cls: ClassSymbol, arg1: Tree, arg2: Tree)(using Context): Annotation =
       apply(cls, arg1 :: arg2 :: Nil)
 
     def apply(cls: ClassSymbol, args: List[Tree])(using Context): Annotation =
       apply(cls.typeRef, args)
+    
+    def apply(cls: ClassSymbol, args: List[Tree], span: Span)(using Context): Annotation =
+      apply(cls.typeRef, args, span)
 
     def apply(atp: Type, arg: Tree)(using Context): Annotation =
       apply(atp, arg :: Nil)
@@ -215,6 +224,9 @@ object Annotations {
 
     def apply(atp: Type, args: List[Tree])(using Context): Annotation =
       apply(New(atp, args))
+    
+    def apply(atp: Type, args: List[Tree], span: Span)(using Context): Annotation =
+      apply(New(atp, args).withSpan(span))
 
     /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol)(treeFn: Context ?=> Tree): Annotation =
@@ -251,8 +263,8 @@ object Annotations {
         else None
     }
 
-    def makeSourceFile(path: String)(using Context): Annotation =
-      apply(defn.SourceFileAnnot, Literal(Constant(path)))
+    def makeSourceFile(path: String, span: Span)(using Context): Annotation =
+      apply(defn.SourceFileAnnot, Literal(Constant(path)), span)
   }
 
   @sharable val EmptyAnnotation = Annotation(EmptyTree)

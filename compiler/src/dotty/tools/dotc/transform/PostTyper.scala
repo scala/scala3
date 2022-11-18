@@ -395,9 +395,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               if ctx.compilationUnit.source.exists && sym != defn.SourceFileAnnot then
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
-                sym.addAnnotation(Annotation.makeSourceFile(relativePath))
+                sym.addAnnotation(Annotation.makeSourceFile(relativePath, tree.span))
               if Feature.pureFunsEnabled && sym != defn.WithPureFunsAnnot then
-                sym.addAnnotation(Annotation(defn.WithPureFunsAnnot))
+                sym.addAnnotation(Annotation(defn.WithPureFunsAnnot, tree.span))
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)
@@ -499,8 +499,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     private def annotateExperimental(sym: Symbol)(using Context): Unit =
       if sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot) then
-        sym.addAnnotation(defn.ExperimentalAnnot)
-        sym.companionModule.addAnnotation(defn.ExperimentalAnnot)
+        sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
+        sym.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
   }
 }
