@@ -46,7 +46,7 @@ Here, the conversion from `String` to `Iterable[Char]` is applied on the results
 ## Vararg arguments
 
 When applied to a vararg parameter, `into` allows a conversion on each argument value individually. For example, consider a method `concatAll` that concatenates a variable
-number of `Seq[Char]` arguments, and also allows implicit conversions into `Seq[Char`:
+number of `IterableOnce[Char]` arguments, and also allows implicit conversions into `IterableOnce[Char]`:
 
 ```scala
 def concatAll(xss: into IterableOnce[Char]*): List[Char] =
