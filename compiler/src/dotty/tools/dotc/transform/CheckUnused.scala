@@ -51,40 +51,42 @@ class CheckUnused extends Phase:
    * It traverse the tree the tree and gather the data in the
    * corresponding context property
    */
-  private def traverser = new TreeTraverser {
+  private def traverser = new TreeTraverser:
     import tpd._
     import UnusedData.ScopeType
 
+    /* Register every imports, definition and usage */
     override def traverse(tree: tpd.Tree)(using Context): Unit =
+      val unusedDataApply = ctx.property(_key).foreach
       val newCtx = if tree.symbol.exists then ctx.withOwner(tree.symbol) else ctx
       if tree.isDef then // register the annotations for usage
-        ctx.property(_key).foreach(_.registerUsedAnnotation(tree.symbol))
+        unusedDataApply(_.registerUsedAnnotation(tree.symbol))
       tree match
         case imp:tpd.Import =>
-          ctx.property(_key).foreach(_.registerImport(imp))
+          unusedDataApply(_.registerImport(imp))
         case ident: Ident =>
-          ctx.property(_key).foreach(_.registerUsed(ident.symbol))
+          unusedDataApply(_.registerUsed(ident.symbol))
           traverseChildren(tree)(using newCtx)
         case sel: Select =>
-          ctx.property(_key).foreach(_.registerUsed(sel.symbol))
+          unusedDataApply(_.registerUsed(sel.symbol))
           traverseChildren(tree)(using newCtx)
         case _: (tpd.Block | tpd.Template) =>
-          ctx.property(_key).foreach { ud =>
+          unusedDataApply { ud =>
             ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree)(using newCtx))
           }
         case t:tpd.ValDef =>
-          ctx.property(_key).foreach(_.registerDef(t))
+          unusedDataApply(_.registerDef(t))
           traverseChildren(tree)(using newCtx)
         case t:tpd.DefDef =>
-          ctx.property(_key).foreach(_.registerDef(t))
+          unusedDataApply(_.registerDef(t))
           traverseChildren(tree)(using newCtx)
         case t: tpd.Bind =>
-          ctx.property(_key).foreach(_.registerPatVar(t))
+          unusedDataApply(_.registerPatVar(t))
           traverseChildren(tree)(using newCtx)
         case _ =>
           traverseChildren(tree)(using newCtx)
-
-  }
+    end traverse
+  end traverser
 
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
     import CheckUnused.WarnTypes
@@ -129,11 +131,19 @@ object CheckUnused:
     import dotty.tools.dotc.core.Symbols.Symbol
     import UnusedData.ScopeType
 
+    /** The current scope during the tree traversal */
     var currScopeType: ScopeType = ScopeType.Other
 
     /* IMPORTS */
     private val impInScope = MutStack(MutSet[tpd.Import]())
+    /**
+     * We store the symbol along with their accessibility without import.
+     * Accessibility to their definition in outer context/scope
+     *
+     * See the `isAccessibleAsIdent` extension method below in the file
+     */
     private val usedInScope = MutStack(MutSet[(Symbol,Boolean)]())
+    /* unused import collected during traversal */
     private val unusedImport = MutSet[ImportSelector]()
 
     /* LOCAL DEF OR VAL / Private Def or Val / Pattern variables */
@@ -143,12 +153,14 @@ object CheckUnused:
     private val implicitParamInScope = MutSet[tpd.ValOrDefDef]()
     private val patVarsInScope = MutSet[tpd.Bind]()
 
+    /* Unused collection collected at the end */
     private val unusedLocalDef = MutSet[tpd.ValOrDefDef]()
     private val unusedPrivateDef = MutSet[tpd.ValOrDefDef]()
     private val unusedExplicitParams = MutSet[tpd.ValOrDefDef]()
     private val unusedImplicitParams = MutSet[tpd.ValOrDefDef]()
     private val unusedPatVars = MutSet[tpd.Bind]()
 
+    /** All used symbols */
     private val usedDef = MutSet[Symbol]()
 
     /**
@@ -184,6 +196,7 @@ object CheckUnused:
         impInScope.top += imp
         unusedImport ++= imp.selectors.filter(s => !isImportExclusion(s))
 
+    /** Register (or not) some `val` or `def` according to the context, scope and flags */
     def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
       if valOrDef.symbol.is(Param) then
         if valOrDef.symbol.is(Given) then
@@ -195,6 +208,7 @@ object CheckUnused:
       else if currScopeType == ScopeType.Template && valOrDef.symbol.is(Private, butNot = SelfName) then
         privateDefInScope += valOrDef
 
+    /** Register pattern variable */
     def registerPatVar(patvar: tpd.Bind)(using Context): Unit =
       patVarsInScope += patvar
 
@@ -204,15 +218,19 @@ object CheckUnused:
       impInScope.push(MutSet())
       usedInScope.push(MutSet())
 
-    /** leave the current scope */
+    /**
+     * leave the current scope and do :
+     *
+     * - If there are imports in this scope check for unused ones
+     */
     def popScope()(using Context): Unit =
-      popScopeImport()
-
-    def popScopeImport()(using Context): Unit =
+      // used symbol in this scope
       val used = usedInScope.pop().toSet
+      // used imports in this scope
       val imports = impInScope.pop().toSet
       val kept = used.filter { t =>
         val (sym, isAccessible) = t
+        // keep the symbol for outer scope, if it matches **no** import
         !imports.exists { imp =>
           sym.isInImport(imp, isAccessible) match
             case None => false
@@ -221,9 +239,14 @@ object CheckUnused:
               true
         }
       }
+      // if there's an outer scope
       if usedInScope.nonEmpty then
+        // we keep the symbols not referencing an import in this scope
+        // as it can be the only reference to an outer import
         usedInScope.top ++= kept
+      // register usage in this scope for other warnings at the end of the phase
       usedDef ++= used.map(_._1)
+    end popScope
 
     /**
      * Leave the scope and return a `List` of unused `ImportSelector`s
@@ -267,13 +290,15 @@ object CheckUnused:
         (pos.line, pos.column)
       }
       UnusedResult(warnings, Nil)
-
+    end getUnused
     //============================ HELPERS ====================================
 
     private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
       case untpd.Ident(name) => name == StdNames.nme.WILDCARD
       case _ => false
+
     extension (sym: Symbol)
+      /** is accessible without import in current context */
       def isAccessibleAsIdent(using Context): Boolean =
         sym.exists &&
           ctx.outersIterator.exists{ c =>
@@ -282,17 +307,18 @@ object CheckUnused:
                 && c.owner.thisType.baseClasses.contains(sym.owner)
                 && c.owner.thisType.member(sym.name).alternatives.contains(sym)
           }
+
+      /** Given an import and accessibility, return an option of selector that match import<->symbol */
       def isInImport(imp: tpd.Import, isAccessible: Boolean)(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
-        val sameQualType =
-          qual.tpe.member(sym.name.toTermName).symbol == sym ||
-          qual.tpe.member(sym.name.toTypeName).symbol == sym
+        val qualHasSymbol = qual.tpe.member(sym.name).symbol == sym
         def selector = sels.find(sel => sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name)
         def wildcard = sels.find(sel => sel.isWildcard && (sym.is(Given) == sel.isGiven))
-        if sameQualType && !isAccessible then
-          selector.orElse(wildcard)
+        if qualHasSymbol && !isAccessible then
+          selector.orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
+
   end UnusedData
 
   object UnusedData:
