@@ -158,35 +158,46 @@ class InlineReducer(inliner: Inliner)(using Context):
     *
     *  where `def` is used for call-by-name parameters. However, we shortcut any NoPrefix
     *  refs among the ei's directly without creating an intermediate binding.
+    *
+    *  This variant of beta-reduction preserves the integrity of `Inlined` tree nodes.
     */
   def betaReduce(tree: Tree)(using Context): Tree = tree match {
-    case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-      // closureDef also returns a result for closures wrapped in Inlined nodes.
-      // These need to be preserved.
-      def recur(cl: Tree): Tree = cl match
-        case Inlined(call, bindings, expr) =>
-          cpy.Inlined(cl)(call, bindings, recur(expr))
-        case _ => ddef.tpe.widen match
-          case mt: MethodType if ddef.paramss.head.length == args.length =>
-            val bindingsBuf = new DefBuffer
-            val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
-              arg.tpe.dealias match {
-                case ref @ TermRef(NoPrefix, _) => ref.symbol
-                case _ =>
-                  paramBindingDef(name, paramtp, arg, bindingsBuf)(
-                    using ctx.withSource(cl.source)
-                  ).symbol
+    case Apply(Select(cl, nme.apply), args) if defn.isFunctionType(cl.tpe) =>
+      val bindingsBuf = new DefBuffer
+      def recur(cl: Tree): Option[Tree] = cl match
+        case Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
+          recur(expr).map(cpy.Inlined(cl)(call, bindings, _))
+        case Block(Nil, expr) =>
+          recur(expr).map(cpy.Block(cl)(Nil, _))
+        case Typed(expr, tpt) =>
+          recur(expr)
+        case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
+          ddef.tpe.widen match
+            case mt: MethodType if ddef.paramss.head.length == args.length =>
+              val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
+                arg.tpe.dealias match {
+                  case ref @ TermRef(NoPrefix, _) => ref.symbol
+                  case _ =>
+                    paramBindingDef(name, paramtp, arg, bindingsBuf)(
+                      using ctx.withSource(cl.source)
+                    ).symbol
+                }
               }
-            }
-            val expander = new TreeTypeMap(
-              oldOwners = ddef.symbol :: Nil,
-              newOwners = ctx.owner :: Nil,
-              substFrom = ddef.paramss.head.map(_.symbol),
-              substTo = argSyms)
-            Block(bindingsBuf.toList, expander.transform(ddef.rhs)).withSpan(tree.span)
-          case _ => tree
-      recur(cl)
-    case _ => tree
+              val expander = new TreeTypeMap(
+                oldOwners = ddef.symbol :: Nil,
+                newOwners = ctx.owner :: Nil,
+                substFrom = ddef.paramss.head.map(_.symbol),
+                substTo = argSyms)
+              Some(expander.transform(ddef.rhs))
+            case _ => None
+        case _ => None
+      recur(cl) match
+        case Some(reduced) =>
+          Block(bindingsBuf.toList, reduced).withSpan(tree.span)
+        case None =>
+          tree
+    case _ =>
+      tree
   }
 
   /** The result type of reducing a match. It consists optionally of a list of bindings
@@ -281,7 +292,7 @@ class InlineReducer(inliner: Inliner)(using Context):
         // Test case is pos-macros/i15971
         val tptBinds = getBinds(Set.empty[TypeSymbol], tpt)
         val binds: Set[TypeSymbol] = pat match {
-          case UnApply(TypeApply(_, tpts), _, _) => 
+          case UnApply(TypeApply(_, tpts), _, _) =>
             getBinds(Set.empty[TypeSymbol], tpts) ++ tptBinds
           case _ => tptBinds
         }
