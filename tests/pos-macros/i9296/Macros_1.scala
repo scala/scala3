@@ -5,8 +5,8 @@ import scala.concurrent.*
 
 object M {
 
-  inline def resolveInMacros[F[_],T](f: Future[T]):Conversion[Future[T],F[T]] =
-     ${ resolveInMacrosImpl[F,T]('f) }
+  transparent inline def resolveInMacros[F[_],T](f: Future[T]):Conversion[Future[T],F[T]] =
+     ${ resolveInMacrosImpl[F,T]('f) } : Conversion[Future[T],F[T]]
 
   def resolveInMacrosImpl[F[_]:Type,T:Type](f:Expr[Future[T]])(using qctx:Quotes):Expr[
                                                       Conversion[Future[T],F[T]]]={

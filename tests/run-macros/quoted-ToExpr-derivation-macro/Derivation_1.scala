@@ -4,7 +4,7 @@ import scala.quoted._
 
 object ToExprMaker {
 
-  inline given derived[T](using inline m: Mirror.Of[T]): ToExpr[T] = ${ derivedExpr('m) }
+  transparent inline given derived[T](using inline m: Mirror.Of[T]): ToExpr[T] = ${ derivedExpr('m) } : ToExpr[T]
 
   private def derivedExpr[T](mirrorExpr: Expr[Mirror.Of[T]])(using Quotes, Type[T]): Expr[ToExpr[T]] = {
     val tpe = summonExprOrError[Type[T]]

@@ -1,7 +1,7 @@
 import scala.quoted._
 import scala.reflect.ClassTag
 
-inline def showType[T]: String = ${ showTypeImpl[T] }
+transparent inline def showType[T]: String = ${ showTypeImpl[T] } : String
 
 private def showTypeImpl[T: Type](using Quotes): Expr[String] =
   Expr.summon[ClassTag[T]] match

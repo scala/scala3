@@ -8,5 +8,5 @@ def doEncoding(ctx: MyContext): Unit =
   summon[MyEncoder]
   summonInlineMyEncoder()
 
-inline def summonInlineMyEncoder(): Unit =
+transparent inline def summonInlineMyEncoder(): Unit =
   compiletime.summonInline[MyEncoder]

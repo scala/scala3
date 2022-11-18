@@ -7,17 +7,17 @@ trait Printer[T]:
 given Printer[String] with
   def format: String = "String"
 
-inline given[T](using mirror: Mirror.ProductOf[T]): Printer[T] = Printer.derived[T]
+transparent inline given[T](using mirror: Mirror.ProductOf[T]): Printer[T] = Printer.derived[T]
 
 object Printer:
   inline def apply[T](using printer: Printer[T]): Printer[T] = printer
 
-  inline def derived[T](using mirror: Mirror.ProductOf[T]): Printer[T] =
+  transparent inline def derived[T](using mirror: Mirror.ProductOf[T]): Printer[T] =
     val params = summonPrinters[mirror.MirroredElemTypes]
     new Printer[T] :
       def format: String = params.map(p => p.format).mkString(",")
 
-inline def summonPrinters[Types <: Tuple]: Seq[Printer[?]] = inline erasedValue[Types] match
+transparent inline def summonPrinters[Types <: Tuple]: Seq[Printer[?]] = inline erasedValue[Types] match
   case _: EmptyTuple => Seq.empty
   case _: (v *: vs) => summonInline[Printer[v]] +: summonPrinters[vs]
 

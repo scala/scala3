@@ -4,7 +4,7 @@ import scala.deriving.Mirror
 trait EnumerateNames[T]
 
 object EnumerateNames {
-  inline def derived[T]: EnumerateNames[T] =
+  transparent inline def derived[T]: EnumerateNames[T] =
     summonFrom {
       case ev: Mirror.Of[T] =>
         inline ev match

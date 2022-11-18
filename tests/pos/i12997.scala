@@ -7,7 +7,7 @@ val a = {
 }
 
 // doesn't
-inline def summonInt = {
+transparent inline def summonInt = {
     given Int = 0
     summonInline[Int]
 }

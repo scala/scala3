@@ -38,9 +38,9 @@ object Deriving {
   }
 
   object Eq {
-    inline def tryEq[T](x: T, y: T) = summonInline[Eq[T]].equals(x, y)
+    transparent inline def tryEq[T](x: T, y: T) = summonInline[Eq[T]].equals(x, y)
 
-    inline def deriveForSum[Alts <: Tuple](x: Any, y: Any): Boolean = inline erasedValue[Alts] match {
+    transparent inline def deriveForSum[Alts <: Tuple](x: Any, y: Any): Boolean = inline erasedValue[Alts] match {
       case _: (alt *: alts1) =>
         x match {
           case x: `alt` =>
@@ -54,7 +54,7 @@ object Deriving {
         false
     }
 
-    inline def deriveForProduct[Elems <: Tuple](xs: Elems, ys: Elems): Boolean = inline erasedValue[Elems] match {
+    transparent inline def deriveForProduct[Elems <: Tuple](xs: Elems, ys: Elems): Boolean = inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         val xs1 = xs.asInstanceOf[elem *: elems1]
         val ys1 = ys.asInstanceOf[elem *: elems1]
@@ -64,11 +64,11 @@ object Deriving {
         true
     }
 
-    inline def derivedForSum[T, Alts <: Tuple](implicit ev: HasSumShape[T, Alts]): Eq[T] = new {
+    transparent inline def derivedForSum[T, Alts <: Tuple](implicit ev: HasSumShape[T, Alts]): Eq[T] = new {
       def equals(x: T, y: T): Boolean = deriveForSum[Alts](x, y)
     }
 
-    inline def derivedForProduct[T, Elems <: Tuple](implicit ev: HasProductShape[T, Elems]): Eq[T] = new {
+    transparent inline def derivedForProduct[T, Elems <: Tuple](implicit ev: HasProductShape[T, Elems]): Eq[T] = new {
       def equals(x: T, y: T): Boolean = deriveForProduct[Elems](ev.toProduct(x), ev.toProduct(y))
     }
 

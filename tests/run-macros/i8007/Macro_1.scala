@@ -13,8 +13,8 @@ object Macro1 {
   // Demonstrates the use of quoted pattern matching
   // over a refined type extracting the tuple type
   // for e.g., MirroredElemLabels
-  inline def test1[T](value: =>T): List[String] =
-    ${ test1Impl('value) }
+  transparent inline def test1[T](value: =>T): List[String] =
+    ${ test1Impl('value) }: List[String]
 
   def test1Impl[T: Type](value: Expr[T])(using Quotes): Expr[List[String]] = {
     import quotes.reflect.*

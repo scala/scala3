@@ -222,9 +222,9 @@ object Eq {
   import scala.compiletime.{erasedValue, summonInline}
   import TypeLevel.*
 
-  inline def tryEql[T](x: T, y: T) = summonInline[Eq[T]].eql(x, y)
+  transparent inline def tryEql[T](x: T, y: T) = summonInline[Eq[T]].eql(x, y)
 
-  inline def eqlElems[Elems <: Tuple](xm: Mirror, ym: Mirror, n: Int): Boolean =
+  transparent inline def eqlElems[Elems <: Tuple](xm: Mirror, ym: Mirror, n: Int): Boolean =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryEql[elem](xm(n).asInstanceOf, ym(n).asInstanceOf) &&
@@ -233,7 +233,7 @@ object Eq {
         true
     }
 
-  inline def eqlCases[Alts <: Tuple](xm: Mirror, ym: Mirror, n: Int): Boolean =
+  transparent inline def eqlCases[Alts <: Tuple](xm: Mirror, ym: Mirror, n: Int): Boolean =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         if (xm.ordinal == n) eqlElems[elems](xm, ym, 0)
@@ -242,7 +242,7 @@ object Eq {
         false
     }
 
-  inline def derived[T, S <: Shape](implicit ev: Generic[T]): Eq[T] = new {
+  transparent inline def derived[T, S <: Shape](implicit ev: Generic[T]): Eq[T] = new {
     def eql(x: T, y: T): Boolean = {
       val xm = ev.reflect(x)
       val ym = ev.reflect(y)
@@ -273,9 +273,9 @@ object Pickler {
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonInline[Pickler[T]].pickle(buf, x)
+  transparent inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonInline[Pickler[T]].pickle(buf, x)
 
-  inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Mirror, n: Int): Unit =
+  transparent inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Mirror, n: Int): Unit =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryPickle[elem](buf, elems(n).asInstanceOf[elem])
@@ -283,7 +283,7 @@ object Pickler {
       case _: EmptyTuple =>
     }
 
-  inline def pickleCases[Alts <: Tuple](buf: mutable.ListBuffer[Int], xm: Mirror, n: Int): Unit =
+  transparent inline def pickleCases[Alts <: Tuple](buf: mutable.ListBuffer[Int], xm: Mirror, n: Int): Unit =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         if (xm.ordinal == n) pickleElems[elems](buf, xm, 0)
@@ -291,9 +291,9 @@ object Pickler {
       case _: EmptyTuple =>
     }
 
-  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonInline[Pickler[T]].unpickle(buf)
+  transparent inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonInline[Pickler[T]].unpickle(buf)
 
-  inline def unpickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Array[AnyRef], n: Int): Unit =
+  transparent inline def unpickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Array[AnyRef], n: Int): Unit =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         elems(n) = tryUnpickle[elem](buf).asInstanceOf[AnyRef]
@@ -301,7 +301,7 @@ object Pickler {
       case _: EmptyTuple =>
     }
 
-  inline def unpickleCase[T, Elems <: Tuple](gen: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
+  transparent inline def unpickleCase[T, Elems <: Tuple](gen: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
     inline val size = constValue[Tuple.Size[Elems]]
     inline if (size == 0)
       gen.reify(gen.common.mirror(ordinal))
@@ -312,7 +312,7 @@ object Pickler {
     }
   }
 
-  inline def unpickleCases[T, Alts <: Tuple](r: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
+  transparent inline def unpickleCases[T, Alts <: Tuple](r: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[_, elems] *: alts1) =>
         if (n == ordinal) unpickleCase[T, elems](r, buf, ordinal)
@@ -321,7 +321,7 @@ object Pickler {
         throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ordinal")
     }
 
-  inline def derived[T, S <: Shape](implicit ev: Generic[T]): Pickler[T] = new {
+  transparent inline def derived[T, S <: Shape](implicit ev: Generic[T]): Pickler[T] = new {
     def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = {
       val xm = ev.reflect(x)
       inline erasedValue[ev.Shape] match {
@@ -354,9 +354,9 @@ object Show {
   import scala.compiletime.{erasedValue, summonInline}
   import TypeLevel.*
 
-  inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
+  transparent inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
-  inline def showElems[Elems <: Tuple](elems: Mirror, n: Int): List[String] =
+  transparent inline def showElems[Elems <: Tuple](elems: Mirror, n: Int): List[String] =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         val formal = elems.elementLabel(n)
@@ -366,7 +366,7 @@ object Show {
         Nil
     }
 
-  inline def showCases[Alts <: Tuple](xm: Mirror, n: Int): String =
+  transparent inline def showCases[Alts <: Tuple](xm: Mirror, n: Int): String =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         if (xm.ordinal == n) showElems[elems](xm, 0).mkString(", ")
@@ -375,7 +375,7 @@ object Show {
         throw new MatchError(xm)
     }
 
-  inline def derived[T, S <: Shape](implicit ev: Generic[T]): Show[T] = new {
+  transparent inline def derived[T, S <: Shape](implicit ev: Generic[T]): Show[T] = new {
     def show(x: T): String = {
       val xm = ev.reflect(x)
       val args = inline erasedValue[ev.Shape] match {

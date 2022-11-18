@@ -40,7 +40,7 @@ object Macro2 {
     }
   }
 
-  inline def test2[T](value: =>T): Unit = ${ test2Impl('value) }
+  transparent inline def test2[T](value: =>T): Unit = ${ test2Impl('value) }: Unit
 
   def test2Impl[T: Type](value: Expr[T])(using Quotes): Expr[Unit] = {
     import quotes.reflect.*

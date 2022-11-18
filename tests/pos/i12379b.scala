@@ -1,4 +1,4 @@
-inline def convFail[Of, From](inline from : From) : Unit =
+transparent inline def convFail[Of, From](inline from : From) : Unit =
   val c = compiletime.summonInline[Conversion[From, Of]]
 
 inline def convOK[Of, From](inline from : From)(using c : Conversion[From, Of]) : Unit = {}

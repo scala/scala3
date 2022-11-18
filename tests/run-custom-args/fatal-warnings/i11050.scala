@@ -109,7 +109,7 @@ object Show:
   given Show[Char]   with { def show(x: Char)   = s"'$x'"   }
   given Show[String] with { def show(x: String) = s"$"$x$"" }
 
-  inline def show[T](x: T): String = summonInline[Show[T]].show(x)
+  transparent inline def show[T](x: T): String = summonInline[Show[T]].show(x)
 
   transparent inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] = new {
     def show(x: T): String = inline ev match {

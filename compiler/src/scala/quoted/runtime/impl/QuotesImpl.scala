@@ -2395,6 +2395,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Implicits extends ImplicitsModule:
       def search(tpe: TypeRepr): ImplicitSearchResult =
+        if ctx.isAfterTyper then report.error("Can not perform implicit search in non-transparent macro")
         ctx.typer.inferImplicitArg(tpe, Position.ofMacroExpansion.span)
     end Implicits
 

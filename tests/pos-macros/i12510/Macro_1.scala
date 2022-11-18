@@ -1,8 +1,8 @@
 object M {
   import scala.quoted.*
 
-  inline def valueOfUnit: ValueOf[Unit] =
-    ${ _valueOfUnit }
+  transparent inline def valueOfUnit: ValueOf[Unit] =
+    ${ _valueOfUnit }: ValueOf[Unit]
 
   def _valueOfUnit(using Quotes): Expr[ValueOf[Unit]] = {
     import quotes.reflect.*

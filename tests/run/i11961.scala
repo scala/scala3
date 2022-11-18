@@ -28,14 +28,14 @@ object Printable:
          def print: Unit =
             elems.foreach(_.print)
 
-   inline given derived[T](using m: Mirror.Of[T]): Printable[T] =
+   transparent inline given derived[T](using m: Mirror.Of[T]): Printable[T] =
       val elemInstances = summonAllPrintable[m.MirroredElemTypes]
       inline m match
          case p: Mirror.ProductOf[T] => printProduct(p, elemInstances)
 
 end Printable
 
-inline def summonAllPrintable[T <: Tuple]: List[Printable[_]] =
+transparent inline def summonAllPrintable[T <: Tuple]: List[Printable[_]] =
    inline erasedValue[T] match
       case _: EmptyTuple => Nil
       case _: (t *: ts) => summonInline[Printable[t]] :: summonAllPrintable[ts]

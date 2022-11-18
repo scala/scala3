@@ -4,7 +4,7 @@ object demo {
 
   given Reader[Int]()
 
-  inline def summonReader[T <: Tuple]: List[Reader[_]] = inline compiletime.erasedValue[T] match {
+  transparent inline def summonReader[T <: Tuple]: List[Reader[_]] = inline compiletime.erasedValue[T] match {
     case _: EmptyTuple => Nil
     case _: (t *: ts) => compiletime.summonInline[Reader[t]] :: summonReader[ts]
   }
@@ -14,7 +14,7 @@ object demo {
     childReaders: List[Reader[_]]
   ) extends Reader[A]
 
-  inline given rdr[A <: Tuple](using m: deriving.Mirror.ProductOf[A]): Reader[A] = {
+  transparent inline given rdr[A <: Tuple](using m: deriving.Mirror.ProductOf[A]): Reader[A] = {
     new CombinedReader(m, summonReader[m.MirroredElemTypes])
   }
 

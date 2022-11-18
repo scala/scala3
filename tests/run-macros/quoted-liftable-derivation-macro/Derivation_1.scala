@@ -9,7 +9,7 @@ object Lft {
   given Lft[Int] with
     def toExpr(x: Int)(using Type[Int], Quotes) = Expr(x)
 
-  inline given derived[T](using inline m: Mirror.Of[T]): Lft[T] = ${ derivedExpr('m) }
+  transparent inline given derived[T](using inline m: Mirror.Of[T]): Lft[T] = ${ derivedExpr('m) }: Lft[T]
 
   private def derivedExpr[T](mirrorExpr: Expr[Mirror.Of[T]])(using qctx: Quotes, tpe: Type[T]): Expr[Lft[T]] = {
     mirrorExpr match {

@@ -9,7 +9,7 @@ object Schema {
   implicit def mapSchema[A, B](implicit evA: Schema[A], evB: Schema[B]): Schema[Map[A, B]] =
     new Schema[Map[A, B]] {}
 
-  inline def recurse[Label, A <: Tuple](index: Int = 0): List[(String, Schema[Any], Int)] =
+  transparent inline def recurse[Label, A <: Tuple](index: Int = 0): List[(String, Schema[Any], Int)] =
     inline erasedValue[(Label, A)] match {
       case (_: (name *: names), _: (t *: ts)) =>
         val label       = constValue[name].toString
@@ -18,7 +18,7 @@ object Schema {
       case (_: EmptyTuple, _)                 => Nil
     }
 
-  inline def derived[A]: Schema[A] =
+  transparent inline def derived[A]: Schema[A] =
     inline summonInline[Mirror.Of[A]] match {
       case m: Mirror.SumOf[A]     =>
         lazy val members     = recurse[m.MirroredElemLabels, m.MirroredElemTypes]()
@@ -28,7 +28,7 @@ object Schema {
         new Schema[A] {}
     }
 
-  inline given gen[A]: Schema[A] = derived[A]
+  transparent inline given gen[A]: Schema[A] = derived[A]
 }
 
 sealed trait InputValue

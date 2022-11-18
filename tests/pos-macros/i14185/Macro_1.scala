@@ -1,7 +1,7 @@
 import scala.quoted.*
 
 object Test {
-  inline def foo[A, M[_]]: Unit = ${ fooImpl[A, M] }
+  transparent inline def foo[A, M[_]]: Unit = ${ fooImpl[A, M] } : Unit
 
   private def fooImpl[A, M[_]](
       using

@@ -21,4 +21,4 @@ def summonConversionImpl(using qctx: Quotes): Expr[Any] = {
   }
 }
 
-inline def summonConversion() = ${summonConversionImpl}
+transparent inline def summonConversion(): Any = ${summonConversionImpl} : Any

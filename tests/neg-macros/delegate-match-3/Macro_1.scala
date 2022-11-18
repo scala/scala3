@@ -1,7 +1,7 @@
 import scala.quoted.*
 
 
-inline def f: Any = ${ fImpl }
+transparent inline def f: Any = ${ fImpl } : Any
 
 private def fImpl(using Quotes) : Expr[Unit] = {
   import quotes.reflect.*

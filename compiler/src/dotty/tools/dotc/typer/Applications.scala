@@ -983,8 +983,9 @@ trait Applications extends Compatibility {
           }
           typedDynamicApply(tree, isInsertedApply, pt)
         case _ =>
-          if (originalProto.isDropped) fun1
-          else if (fun1.symbol == defn.Compiletime_summonFrom)
+          if originalProto.isDropped then fun1
+          else if fun1.symbol == defn.Compiletime_summonFrom then
+            if ctx.isAfterTyper then report.error("Can not perform summonFrom implicit search in non-transparent inline")
             // Special handling of `summonFrom { ... }`.
             // We currently cannot use a macro for that since unlike other inline methods
             // summonFrom needs to expand lazily. For instance, in

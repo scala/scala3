@@ -16,18 +16,18 @@ object MyTypeClass {
   given IntTypeClass: MyTypeClass[Int] with
     def makeString(a: Int): String = a.toString
 
-  inline given derived[A](using m: Mirror.Of[A]): MyTypeClass[A] =
+  transparent inline given derived[A](using m: Mirror.Of[A]): MyTypeClass[A] =
     inline m match
       case p: Mirror.ProductOf[A] => productConverter(p)
 
 
-  private inline def summonElementTypeClasses[A](m: Mirror.Of[A]): IArray[Object] =
+  private transparent inline def summonElementTypeClasses[A](m: Mirror.Of[A]): IArray[Object] =
     // this doesn't work
     summonAll[Tuple.Map[m.MirroredElemTypes, [A] =>> Lazy[MyTypeClass[A]]]].toIArray
     // but this does
     // summonAll[Tuple.Map[Tuple.Map[m.MirroredElemTypes, MyTypeClass], Lazy]].toIArray
 
-  private inline def productConverter[A](m: Mirror.ProductOf[A]): MyTypeClass[A] = {
+  private transparent inline def productConverter[A](m: Mirror.ProductOf[A]): MyTypeClass[A] = {
     val elementTypeClasses = summonElementTypeClasses(m)
     new MyTypeClass[A] {
       def makeString(a: A): String = {

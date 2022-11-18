@@ -447,6 +447,7 @@ object Inlines:
                 case _ =>
                   evidence
             }
+          if ctx.isAfterTyper then report.error("Can not perform summonInline implicit search in non-transparent inline")
           return searchImplicit(callTypeArgs.head)
         }
       end if

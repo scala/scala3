@@ -11,7 +11,7 @@ object Schema extends SchemaDerivation {
 }
 
 trait SchemaDerivation {
-  inline def recurse[A <: Tuple]: List[Schema[Any]] =
+  transparent inline def recurse[A <: Tuple]: List[Schema[Any]] =
     inline erasedValue[A] match {
       case _: (t *: ts) =>
         val builder = summonInline[Schema[t]].asInstanceOf[Schema[Any]]
@@ -19,7 +19,7 @@ trait SchemaDerivation {
       case _: EmptyTuple => Nil
     }
 
-  inline def derived[A]: Schema[A] =
+  transparent inline def derived[A]: Schema[A] =
     inline summonInline[Mirror.Of[A]] match {
       case m: Mirror.SumOf[A] =>
         lazy val subTypes = recurse[m.MirroredElemTypes]
@@ -34,7 +34,7 @@ trait SchemaDerivation {
         }
     }
 
-  inline given gen[A]: Schema[A] = derived
+  transparent inline given gen[A]: Schema[A] = derived
 }
 
 case class H(i: Int)

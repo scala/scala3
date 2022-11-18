@@ -3,7 +3,7 @@ import scala.compiletime.{erasedValue, summonInline}
 
 // File that breaks the infinite loop caused by implicit search in i13146.scala
 
-inline def summonAll[P, T <: Tuple]: List[Eq[_]] =
+transparent inline def summonAll[P, T <: Tuple]: List[Eq[_]] =
   inline erasedValue[T] match
     case _: EmptyTuple => Nil
     case _: (t *: ts) => loopBreaker[P, t] :: summonAll[P, ts]
@@ -12,7 +12,7 @@ inline def summonAll[P, T <: Tuple]: List[Eq[_]] =
  *  @note aparently it needs to be defined separately from `summonAll` to avoid an infinite loop
  *  in inlining.
  */
-inline def loopBreaker[P, T]: Eq[T] = compiletime.summonFrom {
+transparent inline def loopBreaker[P, T]: Eq[T] = compiletime.summonFrom {
   case infiniteRecursion: (T =:= P) => compiletime.error("cannot derive Eq, it will cause an infinite loop")
   case recursiveEvidence: (T <:< P) =>
     // summonInline will work because to get here `P` must also have a Mirror instance
@@ -47,7 +47,7 @@ object Eq:
           case ((x, y), elem) => check(elem)(x, y)
         }
 
-  inline given derived[T](using m: Mirror.Of[T]): Eq[T] =
+  transparent inline given derived[T](using m: Mirror.Of[T]): Eq[T] =
     lazy val elemInstances = summonAll[T, m.MirroredElemTypes]
     inline m match
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)

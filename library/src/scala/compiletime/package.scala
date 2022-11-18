@@ -167,7 +167,7 @@ transparent inline def summonInline[T]: T =
  *  @tparam T the tuple containing the types of the values to be summoned
  *  @return the given values typed as elements of the tuple
  */
-inline def summonAll[T <: Tuple]: T =
+transparent inline def summonAll[T <: Tuple]: T =
   val res =
     inline erasedValue[T] match
       case _: EmptyTuple => EmptyTuple

@@ -8,9 +8,9 @@ object Lib {
   import scala.quoted._
   import Opt.*
 
-  inline def optTwo = ${optTwoExpr}
-  inline def smTwo = ${smTwoExpr}
-  inline def none = ${noneExpr}
+  transparent inline def optTwo = ${optTwoExpr}
+  transparent inline def smTwo = ${smTwoExpr}
+  transparent inline def none = ${noneExpr}
 
   private def optTwoExpr(using Quotes): Expr[Opt[Int]] =
     summon[Lft[Opt[Int]]].toExpr(Sm(2))
