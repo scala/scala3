@@ -56,7 +56,7 @@ Here, the call
 ```scala
 concatAll(List('a'), "bc", Array('d', 'e'))
 ```
-would apply two _different_ implicit conversions: the conversion from `String` to `List[Char]` gets applied to the second argument and the conversion from `Array[Char]` to `Iterable[Char]` gets applied to the third argument.
+would apply two _different_ implicit conversions: the conversion from `String` to `Iterable[Char]` gets applied to the second argument and the conversion from `Array[Char]` to `Iterable[Char]` gets applied to the third argument.
 
 ## Retrofitting Scala 2 libraries
 
