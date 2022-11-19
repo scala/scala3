@@ -522,7 +522,6 @@ object Contexts {
     def outer: Context = _outer
 
     private var _period: Period = uninitialized
-      _period = period
     final def period: Period = _period
 
     private var _mode: Mode = uninitialized
