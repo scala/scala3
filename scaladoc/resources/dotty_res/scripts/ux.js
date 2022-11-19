@@ -19,16 +19,16 @@ const attrsToCopy = [
  * @returns {SavedPageState}
  */
 function savePageState(doc) {
-  const attrs = {}
+  const attrs = {};
   for (const attr of attrsToCopy) {
-    attrs[attr] = doc.documentElement.getAttribute(attr)
+    attrs[attr] = doc.documentElement.getAttribute(attr);
   }
   return {
-    mainDiv: doc.querySelector("#main").innerHTML,
+    mainDiv: doc.querySelector("#main")?.innerHTML,
     leftColumn: doc.querySelector("#leftColumn").innerHTML,
     title: doc.title,
     attrs,
-  }
+  };
 }
 
 /**
@@ -36,11 +36,11 @@ function savePageState(doc) {
  * @param {SavedPageState} saved
  */
 function loadPageState(doc, saved) {
-  doc.title = saved.title
-  doc.querySelector("#main").innerHTML = saved.mainDiv
-  doc.querySelector("#leftColumn").innerHTML = saved.leftColumn
+  doc.title = saved.title;
+  doc.querySelector("#main").innerHTML = saved.mainDiv;
+  doc.querySelector("#leftColumn").innerHTML = saved.leftColumn;
   for (const attr of attrsToCopy) {
-    doc.documentElement.setAttribute(attr, saved.attrs[attr])
+    doc.documentElement.setAttribute(attr, saved.attrs[attr]);
   }
 }
 
@@ -328,15 +328,23 @@ window.addEventListener(DYNAMIC_PAGE_LOAD, () => {
 });
 
 window.addEventListener("dynamicPageLoad", () => {
-  const leftColumn = document.querySelector(".show");
-  if (leftColumn) leftColumn.classList.remove("show");
+  const sideMenuOpen = sessionStorage.getItem("sideMenuOpen");
+  if (sideMenuOpen) {
+    if (document.querySelector("#leftColumn").classList.contains("show")) {
+      document.querySelector("#content").classList.add("sidebar-shown");
+    }
+    sessionStorage.removeItem("sideMenuOpen");
+  } else {
+    const leftColumn = document.querySelector(".show");
+    if (leftColumn) leftColumn.classList.remove("show");
 
-  const mobileSidebarToggleButton = document.querySelector(".menu-shown");
-  if (mobileSidebarToggleButton)
-    mobileSidebarToggleButton.classList.remove("menu-shown");
+    const mobileSidebarToggleButton = document.querySelector(".menu-shown");
+    if (mobileSidebarToggleButton)
+      mobileSidebarToggleButton.classList.remove("menu-shown");
 
-  const content = document.querySelector(".sidebar-shown");
-  if (content) content.classList.remove("sidebar-shown");
+    const content = document.querySelector(".sidebar-shown");
+    if (content) content.classList.remove("sidebar-shown");
+  }
 });
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -514,7 +522,7 @@ members.forEach((member) => {
     const navbarHeight = document.querySelector("#header").clientHeight;
     const filtersHeight = document.querySelector(
       ".documentableFilter",
-    ).clientHeight;
+    )?.clientHeight;
     if (navbarHeight && filtersHeight) {
       member.style.scrollMarginTop = `${navbarHeight + filtersHeight}px`;
     }
@@ -526,9 +534,22 @@ members.forEach((member) => {
     const navbarHeight = document.querySelector("#header").clientHeight;
     const filtersHeight = document.querySelector(
       ".documentableFilter",
-    ).clientHeight;
+    )?.clientHeight;
     if (navbarHeight && filtersHeight) {
       member.style.scrollMarginTop = `${navbarHeight + filtersHeight}px`;
     }
   });
+});
+
+window.addEventListener(DYNAMIC_PAGE_LOAD, () => {
+  const docsLink = document.querySelector("#docs-nav-button");
+  const apiLink = document.querySelector("#api-nav-button");
+
+  docsLink &&
+    apiLink &&
+    [docsLink, apiLink].forEach((button) => {
+      button.addEventListener("click", () => {
+        sessionStorage.setItem("sideMenuOpen", true);
+      });
+    });
 });

@@ -11,6 +11,13 @@
   padding: var(--base-spacing);
 }
 
+@media (max-height: 600px) and (orientation: landscape){
+  #toc-container {
+   position: fixed;
+   top: 90px;
+  }
+}
+
 .toc-list {
   margin-block-start: calc(2 * var(--base-spacing));
   margin-block-end: 0;
@@ -35,12 +42,19 @@
     left: calc(102 * var(--base-spacing));
   }
 }*/
+@media (max-height: 820px) and (orientation: landscape){
+  .toc-nav {
+    max-height: calc(100vh - 200px);
+    overflow: auto;
+  }
+}
 
 @media (max-width: 768px) {
   #toc {
     display: none;
   }
 }
+
 
 .toc-title {
   color: var(--text-primary);
