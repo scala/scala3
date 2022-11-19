@@ -28,6 +28,7 @@ import printing._
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 import classfile.ReusableDataReader
 import StdNames.nme
+import compiletime.uninitialized
 
 import scala.annotation.internal.sharable
 
@@ -310,7 +311,7 @@ object Contexts {
     /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
-    private var creationTrace: Array[StackTraceElement] = _
+    private var creationTrace: Array[StackTraceElement] = uninitialized
 
     private def setCreationTrace() =
       creationTrace = (new Throwable).getStackTrace().take(20)
@@ -517,55 +518,41 @@ object Contexts {
    */
   class FreshContext(base: ContextBase) extends Context(base) {
 
-    private var _outer: Context = _
-    protected def outer_=(outer: Context): Unit = _outer = outer
+    private var _outer: Context = uninitialized
     def outer: Context = _outer
 
-    private var _period: Period = _
-    protected def period_=(period: Period): Unit =
-      assert(period.firstPhaseId == period.lastPhaseId, period)
+    private var _period: Period = uninitialized
       _period = period
     final def period: Period = _period
 
-    private var _mode: Mode = _
-    protected def mode_=(mode: Mode): Unit = _mode = mode
+    private var _mode: Mode = uninitialized
     final def mode: Mode = _mode
 
-    private var _owner: Symbol = _
-    protected def owner_=(owner: Symbol): Unit = _owner = owner
+    private var _owner: Symbol = uninitialized
     final def owner: Symbol = _owner
 
-    /** The current tree */
     private var _tree: Tree[?]= _
-    protected def tree_=(tree: Tree[?]): Unit = _tree = tree
     final def tree: Tree[?] = _tree
 
-    private var _scope: Scope = _
-    protected def scope_=(scope: Scope): Unit = _scope = scope
+    private var _scope: Scope = uninitialized
     final def scope: Scope = _scope
 
-    private var _typerState: TyperState = _
-    protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
+    private var _typerState: TyperState = uninitialized
     final def typerState: TyperState = _typerState
 
-    private var _gadt: GadtConstraint = _
-    protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
+    private var _gadt: GadtConstraint = uninitialized
     final def gadt: GadtConstraint = _gadt
 
-    private var _searchHistory: SearchHistory = _
-    protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
+    private var _searchHistory: SearchHistory = uninitialized
     final def searchHistory: SearchHistory = _searchHistory
 
-    private var _source: SourceFile = _
-    protected def source_=(source: SourceFile): Unit = _source = source
+    private var _source: SourceFile = uninitialized
     final def source: SourceFile = _source
 
-    private var _moreProperties: Map[Key[Any], Any] = _
-    protected def moreProperties_=(moreProperties: Map[Key[Any], Any]): Unit = _moreProperties = moreProperties
+    private var _moreProperties: Map[Key[Any], Any] = uninitialized
     final def moreProperties: Map[Key[Any], Any] = _moreProperties
 
-    private var _store: Store = _
-    protected def store_=(store: Store): Unit = _store = store
+    private var _store: Store = uninitialized
     final def store: Store = _store
 
    /** Initialize all context fields, except typerState, which has to be set separately
@@ -593,51 +580,74 @@ object Contexts {
 
     def setPeriod(period: Period): this.type =
       util.Stats.record("Context.setPeriod")
-      this.period = period
+      assert(period.firstPhaseId == period.lastPhaseId, period)
+      this._period = period
       this
+
     def setMode(mode: Mode): this.type =
       util.Stats.record("Context.setMode")
-      this.mode = mode
+      this._mode = mode
       this
+
     def setOwner(owner: Symbol): this.type =
       util.Stats.record("Context.setOwner")
       assert(owner != NoSymbol)
-      this.owner = owner
+      this._owner = owner
       this
+
     def setTree(tree: Tree[?]): this.type =
       util.Stats.record("Context.setTree")
-      this.tree = tree
+      this._tree = tree
       this
-    def setScope(scope: Scope): this.type = { this.scope = scope; this }
+
+    def setScope(scope: Scope): this.type =
+      this._scope = scope
+      this
+
     def setNewScope: this.type =
       util.Stats.record("Context.setScope")
-      this.scope = newScope
+      this._scope = newScope
       this
-    def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
-    def setNewTyperState(): this.type = setTyperState(typerState.fresh(committable = true))
-    def setExploreTyperState(): this.type = setTyperState(typerState.fresh(committable = false))
-    def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
-    def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
+
+    def setTyperState(typerState: TyperState): this.type =
+      this._typerState = typerState
+      this
+    def setNewTyperState(): this.type =
+      setTyperState(typerState.fresh(committable = true))
+    def setExploreTyperState(): this.type =
+      setTyperState(typerState.fresh(committable = false))
+    def setReporter(reporter: Reporter): this.type =
+      setTyperState(typerState.fresh().setReporter(reporter))
+
+    def setTyper(typer: Typer): this.type =
+      this._scope = typer.scope
+      setTypeAssigner(typer)
+
     def setGadt(gadt: GadtConstraint): this.type =
       util.Stats.record("Context.setGadt")
-      this.gadt = gadt
+      this._gadt = gadt
       this
-    def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
+    def setFreshGADTBounds: this.type =
+      setGadt(gadt.fresh)
+
     def setSearchHistory(searchHistory: SearchHistory): this.type =
       util.Stats.record("Context.setSearchHistory")
-      this.searchHistory = searchHistory
+      this._searchHistory = searchHistory
       this
+
     def setSource(source: SourceFile): this.type =
       util.Stats.record("Context.setSource")
-      this.source = source
+      this._source = source
       this
+
     private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type =
       util.Stats.record("Context.setMoreProperties")
-      this.moreProperties = moreProperties
+      this._moreProperties = moreProperties
       this
+
     private def setStore(store: Store): this.type =
       util.Stats.record("Context.setStore")
-      this.store = store
+      this._store = store
       this
 
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = {
@@ -691,6 +701,28 @@ object Contexts {
 
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
+
+  object FreshContext:
+    /** Defines an initial context with given context base and possible settings. */
+    def initial(base: ContextBase, settingsGroup: SettingGroup): Context =
+      val c = new FreshContext(base)
+      c._outer = NoContext
+      c._period = InitialPeriod
+      c._mode = Mode.None
+      c._typerState = TyperState.initialState()
+      c._owner = NoSymbol
+      c._tree = untpd.EmptyTree
+      c._moreProperties = Map(MessageLimiter -> DefaultMessageLimiter())
+      c._scope = EmptyScope
+      c._source = NoSource
+      c._store = initialStore
+          .updated(settingsStateLoc, settingsGroup.defaultState)
+          .updated(notNullInfosLoc, Nil)
+          .updated(compilationUnitLoc, NoCompilationUnit)
+      c._searchHistory = new SearchRoot
+      c._gadt = GadtConstraint.empty
+      c
+  end FreshContext
 
   given ops: AnyRef with
     extension (c: Context)
@@ -807,30 +839,9 @@ object Contexts {
     finally ctx.base.comparersInUse = saved
   end comparing
 
-  /** A class defining the initial context with given context base
-   *  and set of possible settings.
-   */
-  private class InitialContext(base: ContextBase, settingsGroup: SettingGroup) extends FreshContext(base) {
-    outer = NoContext
-    period = InitialPeriod
-    mode = Mode.None
-    typerState = TyperState.initialState()
-    owner = NoSymbol
-    tree = untpd.EmptyTree
-    moreProperties = Map(MessageLimiter -> DefaultMessageLimiter())
-    scope = EmptyScope
-    source = NoSource
-    store = initialStore
-      .updated(settingsStateLoc, settingsGroup.defaultState)
-      .updated(notNullInfosLoc, Nil)
-      .updated(compilationUnitLoc, NoCompilationUnit)
-    searchHistory = new SearchRoot
-    gadt = GadtConstraint.empty
-  }
-
   @sharable val NoContext: Context = new FreshContext((null: ContextBase | Null).uncheckedNN) {
-    source = NoSource
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
+    setSource(NoSource)
   }
 
   /** A context base defines state and associated methods that exist once per
@@ -844,10 +855,10 @@ object Contexts {
     val settings: ScalaSettings = new ScalaSettings
 
     /** The initial context */
-    val initialCtx: Context = new InitialContext(this, settings)
+    val initialCtx: Context = FreshContext.initial(this: @unchecked, settings)
 
     /** The platform, initialized by `initPlatform()`. */
-    private var _platform: Platform | Null = _
+    private var _platform: Platform | Null = uninitialized
 
     /** The platform */
     def platform: Platform = {
@@ -933,18 +944,18 @@ object Contexts {
 
     // Phases state
 
-    private[core] var phasesPlan: List[List[Phase]] = _
+    private[core] var phasesPlan: List[List[Phase]] = uninitialized
 
     /** Phases by id */
-    private[dotc] var phases: Array[Phase] = _
+    private[dotc] var phases: Array[Phase] = uninitialized
 
     /** Phases with consecutive Transforms grouped into a single phase, Empty array if fusion is disabled */
     private[core] var fusedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
-    private[core] var nextDenotTransformerId: Array[Int] = _
+    private[core] var nextDenotTransformerId: Array[Int] = uninitialized
 
-    private[core] var denotTransformers: Array[DenotTransformer] = _
+    private[core] var denotTransformers: Array[DenotTransformer] = uninitialized
 
     /** Flag to suppress inlining, set after overflow */
     private[dotc] var stopInlining: Boolean = false
@@ -978,7 +989,7 @@ object Contexts {
 
     private[core] val reusableDataReader = ReusableInstance(new ReusableDataReader())
 
-    private[dotc] var wConfCache: (List[String], WConf) = _
+    private[dotc] var wConfCache: (List[String], WConf) = uninitialized
 
     def sharedCharArray(len: Int): Array[Char] =
       while len > charArray.length do
