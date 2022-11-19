@@ -123,7 +123,9 @@ object Contexts {
    */
   abstract class Context(val base: ContextBase) { thiscontext =>
 
-    given Context = this
+    protected given Context = this
+
+    def outer: Context
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
     def outersIterator: Iterator[Context] = new Iterator[Context] {
@@ -132,65 +134,20 @@ object Contexts {
       def next = { val c = current; current = current.outer; c }
     }
 
-    /** The outer context */
-    private var _outer: Context = _
-    protected def outer_=(outer: Context): Unit = _outer = outer
-    final def outer: Context = _outer
-
-    /** The current context */
-    private var _period: Period = _
-    protected def period_=(period: Period): Unit = {
-      assert(period.firstPhaseId == period.lastPhaseId, period)
-      _period = period
-    }
-    final def period: Period = _period
-
-    /** The scope nesting level */
-    private var _mode: Mode = _
-    protected def mode_=(mode: Mode): Unit = _mode = mode
-    final def mode: Mode = _mode
-
-    /** The current owner symbol */
-    private var _owner: Symbol = _
-    protected def owner_=(owner: Symbol): Unit = _owner = owner
-    final def owner: Symbol = _owner
-
-    /** The current tree */
-    private var _tree: Tree[?]= _
-    protected def tree_=(tree: Tree[?]): Unit = _tree = tree
-    final def tree: Tree[?] = _tree
-
-    /** The current scope */
-    private var _scope: Scope = _
-    protected def scope_=(scope: Scope): Unit = _scope = scope
-    final def scope: Scope = _scope
-
-    /** The current typerstate */
-    private var _typerState: TyperState = _
-    protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
-    final def typerState: TyperState = _typerState
-
-    /** The current bounds in force for type parameters appearing in a GADT */
-    private var _gadt: GadtConstraint = _
-    protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
-    final def gadt: GadtConstraint = _gadt
-
-    /** The history of implicit searches that are currently active */
-    private var _searchHistory: SearchHistory = _
-    protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
-    final def searchHistory: SearchHistory = _searchHistory
-
-    /** The current source file */
-    private var _source: SourceFile = _
-    protected def source_=(source: SourceFile): Unit = _source = source
-    final def source: SourceFile = _source
+    def period: Period
+    def mode: Mode
+    def owner: Symbol
+    def tree: Tree[?]
+    def scope: Scope
+    def typerState: TyperState
+    def gadt: GadtConstraint
+    def searchHistory: SearchHistory
+    def source: SourceFile
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
      */
-    private var _moreProperties: Map[Key[Any], Any] = _
-    protected def moreProperties_=(moreProperties: Map[Key[Any], Any]): Unit = _moreProperties = moreProperties
-    final def moreProperties: Map[Key[Any], Any] = _moreProperties
+    def moreProperties: Map[Key[Any], Any]
 
     def property[T](key: Key[T]): Option[T] =
       moreProperties.get(key).asInstanceOf[Option[T]]
@@ -200,9 +157,7 @@ object Contexts {
      *  Access to store entries is much faster than access to properties, and only
      *  slightly slower than a normal field access would be.
      */
-    private var _store: Store = _
-    protected def store_=(store: Store): Unit = _store = store
-    final def store: Store = _store
+    def store: Store
 
     /** The compiler callback implementation, or null if no callback will be called. */
     def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
@@ -240,7 +195,7 @@ object Contexts {
     def typeAssigner: TypeAssigner = store(typeAssignerLoc)
 
     /** The new implicit references that are introduced by this scope */
-    protected var implicitsCache: ContextualImplicits | Null = null
+    private var implicitsCache: ContextualImplicits | Null = null
     def implicits: ContextualImplicits = {
       if (implicitsCache == null)
         implicitsCache = {
@@ -304,7 +259,6 @@ object Contexts {
 
     /** AbstractFile with given path, memoized */
     def getFile(name: String): AbstractFile = getFile(name.toTermName)
-
 
     private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Null = null
 
@@ -491,30 +445,6 @@ object Contexts {
     /** Is the explicit nulls option set? */
     def explicitNulls: Boolean = base.settings.YexplicitNulls.value
 
-    /** Initialize all context fields, except typerState, which has to be set separately
-     *  @param  outer   The outer context
-     *  @param  origin  The context from which fields are copied
-     */
-    private[Contexts] def init(outer: Context, origin: Context): this.type = {
-      _outer = outer
-      _period = origin.period
-      _mode = origin.mode
-      _owner = origin.owner
-      _tree = origin.tree
-      _scope = origin.scope
-      _gadt = origin.gadt
-      _searchHistory = origin.searchHistory
-      _source = origin.source
-      _moreProperties = origin.moreProperties
-      _store = origin.store
-      this
-    }
-
-    def reuseIn(outer: Context): this.type =
-      implicitsCache = null
-      related = null
-      init(outer, outer)
-
     /** A fresh clone of this context embedded in this context. */
     def fresh: FreshContext = freshOver(this)
 
@@ -565,6 +495,13 @@ object Contexts {
     def uniques: util.WeakHashSet[Type]            = base.uniques
 
     def initialize()(using Context): Unit = base.initialize()
+
+    protected def resetCaches(): Unit =
+      implicitsCache = null
+      related = null
+
+    /** Reuse this context as a fresh context nested inside `outer` */
+    def reuseIn(outer: Context): this.type
   }
 
   /** A condensed context provides only a small memory footprint over
@@ -579,6 +516,81 @@ object Contexts {
    *  of its attributes using the with... methods.
    */
   class FreshContext(base: ContextBase) extends Context(base) {
+
+    private var _outer: Context = _
+    protected def outer_=(outer: Context): Unit = _outer = outer
+    def outer: Context = _outer
+
+    private var _period: Period = _
+    protected def period_=(period: Period): Unit =
+      assert(period.firstPhaseId == period.lastPhaseId, period)
+      _period = period
+    final def period: Period = _period
+
+    private var _mode: Mode = _
+    protected def mode_=(mode: Mode): Unit = _mode = mode
+    final def mode: Mode = _mode
+
+    private var _owner: Symbol = _
+    protected def owner_=(owner: Symbol): Unit = _owner = owner
+    final def owner: Symbol = _owner
+
+    /** The current tree */
+    private var _tree: Tree[?]= _
+    protected def tree_=(tree: Tree[?]): Unit = _tree = tree
+    final def tree: Tree[?] = _tree
+
+    private var _scope: Scope = _
+    protected def scope_=(scope: Scope): Unit = _scope = scope
+    final def scope: Scope = _scope
+
+    private var _typerState: TyperState = _
+    protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
+    final def typerState: TyperState = _typerState
+
+    private var _gadt: GadtConstraint = _
+    protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
+    final def gadt: GadtConstraint = _gadt
+
+    private var _searchHistory: SearchHistory = _
+    protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
+    final def searchHistory: SearchHistory = _searchHistory
+
+    private var _source: SourceFile = _
+    protected def source_=(source: SourceFile): Unit = _source = source
+    final def source: SourceFile = _source
+
+    private var _moreProperties: Map[Key[Any], Any] = _
+    protected def moreProperties_=(moreProperties: Map[Key[Any], Any]): Unit = _moreProperties = moreProperties
+    final def moreProperties: Map[Key[Any], Any] = _moreProperties
+
+    private var _store: Store = _
+    protected def store_=(store: Store): Unit = _store = store
+    final def store: Store = _store
+
+   /** Initialize all context fields, except typerState, which has to be set separately
+     *  @param  outer   The outer context
+     *  @param  origin  The context from which fields are copied
+     */
+    private[Contexts] def init(outer: Context, origin: Context): this.type = {
+      _outer = outer
+      _period = origin.period
+      _mode = origin.mode
+      _owner = origin.owner
+      _tree = origin.tree
+      _scope = origin.scope
+      _gadt = origin.gadt
+      _searchHistory = origin.searchHistory
+      _source = origin.source
+      _moreProperties = origin.moreProperties
+      _store = origin.store
+      this
+    }
+
+    def reuseIn(outer: Context): this.type =
+      resetCaches()
+      init(outer, outer)
+
     def setPeriod(period: Period): this.type =
       util.Stats.record("Context.setPeriod")
       this.period = period
@@ -627,7 +639,6 @@ object Contexts {
       util.Stats.record("Context.setStore")
       this.store = store
       this
-    def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
 
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = {
       setSource(compilationUnit.source)
@@ -817,7 +828,7 @@ object Contexts {
     gadt = GadtConstraint.empty
   }
 
-  @sharable object NoContext extends Context((null: ContextBase | Null).uncheckedNN) {
+  @sharable val NoContext: Context = new FreshContext((null: ContextBase | Null).uncheckedNN) {
     source = NoSource
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
   }
