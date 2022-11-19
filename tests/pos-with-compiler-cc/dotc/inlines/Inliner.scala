@@ -23,7 +23,6 @@ import util.Spans.Span
 import dotty.tools.dotc.transform.Splicer
 import quoted.QuoteUtils
 import scala.annotation.constructorOnly
-import language.experimental.pureFunctions
 
 /** General support for inlining */
 object Inliner:
@@ -109,8 +108,8 @@ object Inliner:
   // They are generally left alone (not mapped further, and if they wrap a type
   // the type Inlined wrapper gets dropped
   private class InlinerMap(
-      typeMap: Type -> Type,
-      treeMap: Tree -> Tree,
+      typeMap: Type => Type,
+      treeMap: Tree => Tree,
       oldOwners: List[Symbol],
       newOwners: List[Symbol],
       substFrom: List[Symbol],
@@ -119,8 +118,8 @@ object Inliner:
       typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
 
     override def copy(
-        typeMap: Type -> Type,
-        treeMap: Tree -> Tree,
+        typeMap: Type => Type,
+        treeMap: Tree => Tree,
         oldOwners: List[Symbol],
         newOwners: List[Symbol],
         substFrom: List[Symbol],
@@ -171,7 +170,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** A map from references to (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
-  private[inlines] val paramProxy: mutable.HashMap[Type, Type] = new mutable.HashMap
+  private[inlines] val paramProxy = new mutable.HashMap[Type, Type]
 
   /** A map from the classes of (direct and outer) this references in `rhsToInline`
    *  to references of their proxies.

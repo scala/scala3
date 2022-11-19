@@ -10,7 +10,6 @@ import util.{SrcPos, NoSourcePosition}
 import SourceVersion._
 import reporting.Message
 import NameKinds.QualifiedName
-import language.experimental.pureFunctions
 
 object Feature:
 
@@ -110,7 +109,11 @@ object Feature:
       case Some(v) => v
       case none => sourceVersionSetting
 
-  def migrateTo3(using Context): Boolean = sourceVersion == `3.0-migration`
+  def migrateTo3(using Context): Boolean =
+    sourceVersion == `3.0-migration`
+
+  def fewerBracesEnabled(using Context) =
+    sourceVersion.isAtLeast(`3.3`) || enabled(fewerBraces)
 
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.
@@ -124,7 +127,7 @@ object Feature:
     else
       false
 
-  def checkExperimentalFeature(which: String, srcPos: SrcPos, note: -> String = "")(using Context) =
+  def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
     if !isExperimentalEnabled then
       report.error(i"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
 

@@ -18,7 +18,6 @@ import typer.ConstFold
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-import language.experimental.pureFunctions
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -1455,7 +1454,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    * @return The symbols imported.
    */
   def importedSymbols(imp: Import,
-                      selectorPredicate: untpd.ImportSelector -> Boolean = util.common.alwaysTrue)
+                      selectorPredicate: untpd.ImportSelector => Boolean = util.common.alwaysTrue)
                      (using Context): List[Symbol] =
     imp.selectors.find(selectorPredicate) match
       case Some(sel) => importedSymbols(imp.expr, sel.name)

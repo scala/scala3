@@ -26,7 +26,6 @@ import ast.untpd
 import ast.tpd
 import transform.SymUtils._
 import cc.CaptureSet.IdentityCaptRefMap
-import language.experimental.pureFunctions
 
 /**  Messages
   *  ========
@@ -243,7 +242,7 @@ import language.experimental.pureFunctions
     }
   }
 
-  class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: -> String*)(using Context)
+  class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: => String*)(using Context)
     extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
@@ -299,7 +298,7 @@ import language.experimental.pureFunctions
 
   end TypeMismatch
 
-  class NotAMember(site: Type, val name: Name, selected: String, addendum: -> String = "")(using Context)
+  class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
   extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
     //println(i"site = $site, decls = ${site.decls}, source = ${site.typeSymbol.sourceFile}") //DEBUG
 
@@ -823,7 +822,7 @@ import language.experimental.pureFunctions
                    |Write `.to$targetType` instead.""".stripMargin
     def explain = ""
 
-  class PatternMatchExhaustivity(uncoveredFn: -> String, hasMore: Boolean)(using Context)
+  class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
   extends Message(PatternMatchExhaustivityID) {
     def kind = MessageKind.PatternMatchExhaustivity
     lazy val uncovered = uncoveredFn
@@ -843,7 +842,7 @@ import language.experimental.pureFunctions
            |"""
   }
 
-  class UncheckedTypePattern(msgFn: -> String)(using Context)
+  class UncheckedTypePattern(msgFn: => String)(using Context)
     extends PatternMatchMsg(UncheckedTypePatternID) {
     def msg = msgFn
     def explain =
@@ -1391,7 +1390,7 @@ import language.experimental.pureFunctions
            |""".stripMargin
   }
 
-  class TypeDoesNotTakeParameters(tpe: Type, params: List[Trees.Tree[Trees.Untyped]])(using Context)
+  class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
     extends TypeMsg(TypeDoesNotTakeParametersID) {
     private def fboundsAddendum =
       if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
@@ -1973,7 +1972,7 @@ import language.experimental.pureFunctions
     }
   }
 
-  class CyclicInheritance(symbol: Symbol, addendum: -> String)(using Context) extends SyntaxMsg(CyclicInheritanceID) {
+  class CyclicInheritance(symbol: Symbol, addendum: => String)(using Context) extends SyntaxMsg(CyclicInheritanceID) {
     def msg = em"Cyclic inheritance: $symbol extends itself$addendum"
     def explain = {
       val codeExample = "class A extends A"

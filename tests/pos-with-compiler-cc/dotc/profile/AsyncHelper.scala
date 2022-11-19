@@ -107,7 +107,7 @@ object AsyncHelper {
       var lastEndNs = 0L
     }
 
-    val localData: ThreadLocal[ThreadProfileData] = new ThreadLocal[ThreadProfileData]
+    val localData = new ThreadLocal[ThreadProfileData]
 
     private class SinglePhaseInstrumentedThreadPoolExecutor
     (   corePoolSize: Int, maximumPoolSize: Int, keepAliveTime: Long, unit: TimeUnit,

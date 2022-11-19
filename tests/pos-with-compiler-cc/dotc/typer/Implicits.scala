@@ -568,9 +568,9 @@ object Implicits:
       if reasons.length > 1 then
         reasons.mkString("\n\t* ", "\n\t* ", "")
       else
-        reasons.mkString
+        reasons.mkString(" ", "", "")
 
-    def explanation(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}: ${formatReasons}"
+    def explanation(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}:${formatReasons}"
 
 end Implicits
 
@@ -1651,7 +1651,7 @@ end Implicits
  * recursive references and emit a complete implicit dictionary when the outermost search
  * is complete.
  */
-abstract class SearchHistory extends caps.Pure:
+abstract class SearchHistory:
   val root: SearchRoot
   /** Does this search history contain any by name implicit arguments. */
   val byname: Boolean
@@ -1896,8 +1896,7 @@ sealed class TermRefSet(using Context):
       prefixes0 match
         case prefix: Type => f(TermRef(prefix, sym.uncheckedNN))
         case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym.uncheckedNN)))
-    elems.forEach(handle.asInstanceOf)
-      // !cc! cast is needed to circumvent problematic interaction of box and Java wildcards
+    elems.forEach(handle)
 
   // used only for debugging
   def showAsList: List[TermRef] = {

@@ -20,7 +20,6 @@ import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
 import reporting._
 import Constants.Constant
-import language.experimental.pureFunctions
 
 object RefChecks {
   import tpd._
@@ -620,8 +619,7 @@ object RefChecks {
         val missing = missingTermSymbols
         // Group missing members by the name of the underlying symbol,
         // to consolidate getters and setters.
-        val grouped = missing.groupBy(sym => sym.underlyingSymbol.name: Name)
-          // !cc! type ascription needed
+        val grouped = missing.groupBy(_.underlyingSymbol.name)
 
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
@@ -863,7 +861,7 @@ object RefChecks {
      *  Return an optional by name error message if this test fails.
      */
     def variantInheritanceProblems(
-        baseCls: Symbol, middle: Symbol, baseStr: String, middleStr: String): Option[() -> String] = {
+        baseCls: Symbol, middle: Symbol, baseStr: String, middleStr: String): Option[() => String] = {
       val superBT = self.baseType(middle)
       val thisBT = self.baseType(baseCls)
       val combinedBT = superBT.baseType(baseCls)

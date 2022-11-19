@@ -822,7 +822,7 @@ object JavaParsers {
       val iface = atSpan(start, nameOffset) {
         TypeDef(
           name,
-          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.Trait | Flags.JavaInterface | Flags.Abstract)
+          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.JavaInterface)
       }
       addCompanionObject(statics, iface)
     }
@@ -858,10 +858,9 @@ object JavaParsers {
       }
       (statics.toList, members.toList)
     }
-    def annotationParents: List[Select] = List(
-      scalaAnnotationDot(tpnme.Annotation),
-      Select(javaLangDot(nme.annotation), tpnme.Annotation),
-      scalaAnnotationDot(tpnme.ClassfileAnnotation)
+    def annotationParents: List[Tree] = List(
+      javaLangObject(),
+      Select(javaLangDot(nme.annotation), tpnme.Annotation)
     )
     def annotationDecl(start: Offset, mods: Modifiers): List[Tree] = {
       accept(AT)
@@ -877,7 +876,7 @@ object JavaParsers {
         List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
       val templ = makeTemplate(annotationParents, constr :: body, List(), true)
       val annot = atSpan(start, nameOffset) {
-        TypeDef(name, templ).withMods(mods | Flags.Abstract)
+        TypeDef(name, templ).withMods(mods | Flags.JavaInterface | Flags.JavaAnnotation)
       }
       addCompanionObject(statics, annot)
     }

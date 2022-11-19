@@ -17,7 +17,6 @@ import PlainFile.toPlainFile
 import scala.jdk.CollectionConverters._
 import scala.collection.immutable.ArraySeq
 import scala.util.control.NonFatal
-import language.experimental.pureFunctions
 
 /**
  * A trait allowing to look for classpath entries in directories. It provides common logic for
@@ -33,7 +32,7 @@ trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends EfficientCla
 
   protected def emptyFiles: Array[F] // avoids reifying ClassTag[F]
   protected def getSubDir(dirName: String): Option[F]
-  protected def listChildren(dir: F, filter: Option[F -> Boolean] = (None: Option[F -> Boolean])): Array[F] // !cc! need explicit typing of default argument
+  protected def listChildren(dir: F, filter: Option[F => Boolean] = None): Array[F]
   protected def getName(f: F): String
   protected def toAbstractFile(f: F): AbstractFile
   protected def isPackage(f: F): Boolean
@@ -91,7 +90,7 @@ trait JFileDirectoryLookup[FileEntryType <: ClassRepresentation] extends Directo
     if (packageDir.exists && packageDir.isDirectory) Some(packageDir)
     else None
   }
-  protected def listChildren(dir: JFile, filter: Option[JFile -> Boolean]): Array[JFile] = {
+  protected def listChildren(dir: JFile, filter: Option[JFile => Boolean]): Array[JFile] = {
     val listing = filter match {
       case Some(f) => dir.listFiles(mkFileFilter(f))
       case None => dir.listFiles()

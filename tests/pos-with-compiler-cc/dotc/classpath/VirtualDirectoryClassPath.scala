@@ -8,7 +8,6 @@ import FileUtils._
 import java.net.URL
 
 import dotty.tools.io.ClassPath
-import language.experimental.pureFunctions
 
 case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[ClassFileEntryImpl] with NoSourcePaths {
   type F = AbstractFile
@@ -29,7 +28,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   protected def emptyFiles: Array[AbstractFile] = Array.empty
   protected def getSubDir(packageDirName: String): Option[AbstractFile] =
     Option(lookupPath(dir)(packageDirName.split(java.io.File.separator).toIndexedSeq, directory = true))
-  protected def listChildren(dir: AbstractFile, filter: Option[AbstractFile -> Boolean]): Array[F] = filter match {
+  protected def listChildren(dir: AbstractFile, filter: Option[AbstractFile => Boolean] = None): Array[F] = filter match {
     case Some(f) => dir.iterator.filter(f).toArray
     case _ => dir.toArray
   }

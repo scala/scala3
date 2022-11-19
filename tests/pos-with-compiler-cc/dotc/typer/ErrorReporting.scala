@@ -15,7 +15,6 @@ import reporting._
 import collection.mutable
 
 import scala.util.matching.Regex
-import language.experimental.pureFunctions
 
 object ErrorReporting {
 
@@ -27,7 +26,7 @@ object ErrorReporting {
   def errorTree(tree: untpd.Tree, msg: Message)(using Context): tpd.Tree =
     errorTree(tree, msg, tree.srcPos)
 
-  def errorTree(tree: untpd.Tree, msg: -> String)(using Context): tpd.Tree =
+  def errorTree(tree: untpd.Tree, msg: => String)(using Context): tpd.Tree =
     errorTree(tree, msg.toMessage)
 
   def errorTree(tree: untpd.Tree, msg: TypeError, pos: SrcPos)(using Context): tpd.Tree =
@@ -38,7 +37,7 @@ object ErrorReporting {
     ErrorType(msg)
   }
 
-  def errorType(msg: -> String, pos: SrcPos)(using Context): ErrorType =
+  def errorType(msg: => String, pos: SrcPos)(using Context): ErrorType =
     errorType(msg.toMessage, pos)
 
   def errorType(ex: TypeError, pos: SrcPos)(using Context): ErrorType = {
@@ -65,7 +64,7 @@ object ErrorReporting {
           case tp: AppliedType if tp.isMatchAlias => MatchTypeTrace.record(tp.tryNormalize)
           case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
           case _ => foldOver(s, tp)
-    tps.foldLeft("")(collectMatchTrace.apply) // !cc! .apply needed since otherwise box conversion gets confused
+    tps.foldLeft("")(collectMatchTrace)
 
   class Errors(using Context) {
 
@@ -188,7 +187,9 @@ object ErrorReporting {
          |The tests were made under $constraintText"""
 
     def whyFailedStr(fail: FailedExtension) =
-      i"""    failed with
+      i"""
+         |
+         |    failed with:
          |
          |${fail.whyFailed.message.indented(8)}"""
 
@@ -268,8 +269,8 @@ class ImplicitSearchError(
   pt: Type,
   where: String,
   paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
-  ignoredInstanceNormalImport: -> Option[SearchSuccess],
-  importSuggestionAddendum: -> String
+  ignoredInstanceNormalImport: => Option[SearchSuccess],
+  importSuggestionAddendum: => String
 )(using ctx: Context) {
 
   def missingArgMsg = arg.tpe match {

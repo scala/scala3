@@ -13,6 +13,7 @@ import collection.mutable
 import ast.Trees._
 import core.NameKinds.SuperArgName
 import SymUtils._
+import core.Decorators.*
 
 object HoistSuperArgs {
   val name: String = "hoistSuperArgs"
@@ -41,7 +42,7 @@ object HoistSuperArgs {
  *  as method parameters. The definition is installed in the scope enclosing the class,
  *  or, if that is a package, it is made a static method of the class itself.
  */
-class HoistSuperArgs extends MiniPhase, IdentityDenotTransformer { thisPhase =>
+class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = HoistSuperArgs.name
@@ -181,9 +182,11 @@ class HoistSuperArgs extends MiniPhase, IdentityDenotTransformer { thisPhase =>
 
     /** Hoist complex arguments in super call out of the class. */
     def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef, lifted: mutable.ListBuffer[Symbol]): Tree = superCall match
-      case Block(defs, expr) =>
+      case Block(defs, expr) if !expr.symbol.owner.is(Scala2x) =>
+        // MO: The guard avoids the crash for #16351.
+        // It would be good to dig deeper, but I won't have the time myself to do it.
         cpy.Block(superCall)(
-          stats = defs.mapconserve { (t: Tree) => t match // !cc! explicity typed scrutinee is needed
+          stats = defs.mapconserve {
             case vdef: ValDef =>
               try cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef, lifted.toList))
               finally lifted += vdef.symbol

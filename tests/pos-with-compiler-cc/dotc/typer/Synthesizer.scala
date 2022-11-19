@@ -19,13 +19,12 @@ import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
 import ast.tpd._
 import Synthesizer._
-import language.experimental.pureFunctions
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   /** Handlers to synthesize implicits for special types */
-  type SpecialHandler = (Type, Span) -> Context ?-> TreeWithErrors
+  type SpecialHandler = (Type, Span) => Context ?=> TreeWithErrors
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
@@ -476,7 +475,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     if acceptableMsg.isEmpty && clsIsGenericSum then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
-      def internalError(msg: -> String)(using Context): Unit =
+      def internalError(msg: => String)(using Context): Unit =
         report.error(i"""Internal error when synthesizing sum mirror for $cls:
                         |$msg""".stripMargin, ctx.source.atSpan(span))
 
@@ -596,7 +595,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
     case _                     => tp
 
-  private enum ManifestKind extends caps.Pure: // !cc! should all enums be Pure?
+  private enum ManifestKind:
     case Full, Opt, Clss
 
     /** The kind that should be used for an array element, if we are `OptManifest` then this

@@ -376,7 +376,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
-      assert(tree.isType || ctx.mode.is(Mode.Pattern) && untpd.isWildcardArg(tree) || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
+      assert(tree.isType || ctx.mode.is(Mode.Pattern) && untpd.isWildcardArg(tree) || !needsSelect(tree.typeOpt), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
       assertDefined(tree)
 
       checkNotRepeated(super.typedIdent(tree, pt))

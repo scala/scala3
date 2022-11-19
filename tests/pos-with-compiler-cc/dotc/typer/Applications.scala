@@ -6,7 +6,6 @@ import core._
 import ast.{Trees, tpd, untpd, desugar}
 import util.Stats.record
 import util.{SrcPos, NoSourcePosition}
-import Trees.Untyped
 import Contexts._
 import Flags._
 import Symbols._
@@ -491,7 +490,7 @@ trait Applications extends Compatibility {
       i"${err.refStr(methRef)}$infoStr"
 
     /** Re-order arguments to correctly align named arguments */
-    def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
+    def reorder[T <: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
 
       /** @param pnames    The list of parameter names that are missing arguments
        *  @param args      The list of arguments that are not yet passed, or that are waiting to be dropped
@@ -548,7 +547,7 @@ trait Applications extends Compatibility {
 
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
-      sym.is(JavaDefined) && sym.isConstructor && sym.owner.derivesFrom(defn.AnnotationClass)
+      sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
 
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
@@ -754,7 +753,7 @@ trait Applications extends Compatibility {
   /** Subclass of Application for type checking an Apply node, where
    *  types of arguments are either known or unknown.
    */
-  abstract class TypedApply[T >: Untyped](
+  abstract class TypedApply[T <: Untyped](
     app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Trees.Tree[T]], resultType: Type,
     override val applyKind: ApplyKind)(using Context)
   extends Application(methRef, fun.tpe, args, resultType) {
@@ -1005,7 +1004,7 @@ trait Applications extends Compatibility {
             // applications of inline functions.
             tree.args match {
               case (arg @ Match(EmptyTree, cases)) :: Nil =>
-                cases.foreach { (t: untpd.CaseDef) => t match // !cc! explicity typed scrutinee is needed
+                cases.foreach {
                   case CaseDef(Typed(_: untpd.Ident, _), _, _) => // OK
                   case CaseDef(Bind(_, Typed(_: untpd.Ident, _)), _, _) => // OK
                   case CaseDef(Ident(name), _, _) if name == nme.WILDCARD => // Ok
@@ -1502,11 +1501,17 @@ trait Applications extends Compatibility {
   }
 
   /** Drop any leading implicit parameter sections */
-  def stripImplicit(tp: Type)(using Context): Type = tp match {
+  def stripImplicit(tp: Type, wildcardOnly: Boolean = false)(using Context): Type = tp match {
     case mt: MethodType if mt.isImplicitMethod =>
-      stripImplicit(resultTypeApprox(mt))
+      stripImplicit(resultTypeApprox(mt, wildcardOnly))
     case pt: PolyType =>
-      pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType)).asInstanceOf[PolyType].flatten
+      pt.derivedLambdaType(pt.paramNames, pt.paramInfos,
+          stripImplicit(pt.resultType, wildcardOnly = true))
+            // can't use TypeParamRefs for parameter references in `resultTypeApprox`
+            // since their bounds can refer to type parameters in `pt` that are not
+            // bound by the constraint. This can lead to hygiene violations if subsequently
+            // `pt` itself is added to the constraint. Test case is run/enrich-gentraversable.scala.
+        .asInstanceOf[PolyType].flatten
     case _ =>
       tp
   }

@@ -18,7 +18,6 @@ import config.Printers.patmatch
 import reporting._
 import dotty.tools.dotc.ast._
 import util.Property._
-import language.experimental.pureFunctions
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches
@@ -106,7 +105,7 @@ object PatternMatcher {
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
     /** The plan `let x = rhs in body(x)` where `x` is a fresh variable */
-    private def letAbstract(rhs: Tree, tpe: Type = NoType)(body: Symbol -> Plan): Plan = {
+    private def letAbstract(rhs: Tree, tpe: Type = NoType)(body: Symbol => Plan): Plan = {
       val declTpe = if tpe.exists then tpe else rhs.tpe
       val vble = newVar(rhs, EmptyFlags, declTpe)
       initializer(vble) = rhs
@@ -114,7 +113,7 @@ object PatternMatcher {
     }
 
     /** The plan `l: { expr(l) }` where `l` is a fresh label */
-    private def altsLabeledAbstract(expr: (-> Plan) -> Plan): Plan = {
+    private def altsLabeledAbstract(expr: (=> Plan) => Plan): Plan = {
       val label = newSymbol(ctx.owner, PatMatAltsName.fresh(), Synthetic | Label,
         defn.UnitType)
       LabeledPlan(label, expr(ReturnPlan(label)))
@@ -468,7 +467,7 @@ object PatternMatcher {
     // ----- Optimizing plans ---------------
 
     /** A superclass for plan transforms */
-    class PlanTransform extends (Plan -> Plan) {
+    class PlanTransform extends (Plan => Plan) {
       protected val treeMap: TreeMap = new TreeMap {
         override def transform(tree: Tree)(using Context) = tree
       }
@@ -1033,7 +1032,7 @@ object PatternMatcher {
       case _ =>
     end checkSwitch
 
-    val optimizations: List[(String, Plan -> Plan)] = List(
+    val optimizations: List[(String, Plan => Plan)] = List(
       "mergeTests" -> mergeTests,
       "inlineVars" -> inlineVars
     )

@@ -7,7 +7,7 @@ import collection.mutable
 /** A simple linked set with `eq` as the comparison, optimized for small sets.
  *  It has linear complexity for `contains`, `+`, and `-`.
  */
-sealed abstract class SimpleIdentitySet[+Elem <: AnyRef] {
+abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def size: Int
   def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E]
   def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem]

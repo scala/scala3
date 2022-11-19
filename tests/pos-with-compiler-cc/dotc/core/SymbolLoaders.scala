@@ -23,7 +23,6 @@ import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
-import language.experimental.pureFunctions
 
 
 object SymbolLoaders {
@@ -212,10 +211,7 @@ object SymbolLoaders {
     override def sourceModule(using Context): TermSymbol = _sourceModule
     def description(using Context): String = "package loader " + sourceModule.fullName
 
-    private var enterFlatClasses: Option[() -> Context ?-> Unit] = None
-      // Having a pure function type returning `Unit` does look weird.
-      // The point is that the function should not have any effect that matters for
-      // the compiler, in particular it should not capture a context.
+    private var enterFlatClasses: Option[() => Context ?=> Unit] = None
 
     Stats.record("package scopes")
 

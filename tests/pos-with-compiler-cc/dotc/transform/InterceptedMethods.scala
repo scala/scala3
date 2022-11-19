@@ -65,7 +65,7 @@ class InterceptedMethods extends MiniPhase {
   override def transformApply(tree: Apply)(using Context): Tree = {
     lazy val qual = tree.fun match {
       case Select(qual, _) => qual
-      case ident @ Ident(_) =>
+      case ident: Ident =>
         ident.tpe match {
           case TermRef(prefix: TermRef, _) =>
             tpd.ref(prefix)

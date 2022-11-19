@@ -39,13 +39,12 @@ import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
-import language.experimental.pureFunctions
 
 object Contexts {
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
-  private val (printerFnLoc,        store3) = store2.newLocation[Context -> Printer](new RefinedPrinter(_))
+  private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
   private val (compilationUnitLoc,  store5) = store4.newLocation[CompilationUnit]()
   private val (runLoc,              store6) = store5.newLocation[Run | Null]()
@@ -157,9 +156,9 @@ object Contexts {
     final def owner: Symbol = _owner
 
     /** The current tree */
-    private var _tree: Tree[? >: Untyped]= _
-    protected def tree_=(tree: Tree[? >: Untyped]): Unit = _tree = tree
-    final def tree: Tree[? >: Untyped] = _tree
+    private var _tree: Tree[?]= _
+    protected def tree_=(tree: Tree[?]): Unit = _tree = tree
+    final def tree: Tree[?] = _tree
 
     /** The current scope */
     private var _scope: Scope = _
@@ -212,7 +211,7 @@ object Contexts {
     def sbtCallback: AnalysisCallback = store(sbtCallbackLoc)
 
     /** The current plain printer */
-    def printerFn: Context -> Printer = store(printerFnLoc)
+    def printerFn: Context => Printer = store(printerFnLoc)
 
     /** A function creating a printer */
     def printer: Printer =
@@ -276,7 +275,7 @@ object Contexts {
     def nestingLevel: Int = effectiveScope.nestingLevel
 
     /** Sourcefile corresponding to given abstract file, memoized */
-    def getSource(file: AbstractFile, codec: -> Codec = Codec(settings.encoding.value)) = {
+    def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("Context.getSource")
       base.sources.getOrElseUpdate(file, SourceFile(file, codec))
     }
@@ -470,7 +469,7 @@ object Contexts {
     }
 
     /** The context of expression `expr` seen as a member of a statement sequence */
-    def exprContext(stat: Tree[? >: Untyped], exprOwner: Symbol): Context =
+    def exprContext(stat: Tree[?], exprOwner: Symbol): Context =
       if (exprOwner == this.owner) this
       else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
       else fresh.setOwner(exprOwner)
@@ -593,7 +592,7 @@ object Contexts {
       assert(owner != NoSymbol)
       this.owner = owner
       this
-    def setTree(tree: Tree[? >: Untyped]): this.type =
+    def setTree(tree: Tree[?]): this.type =
       util.Stats.record("Context.setTree")
       this.tree = tree
       this
@@ -637,7 +636,7 @@ object Contexts {
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
-    def setPrinterFn(printer: Context -> Printer): this.type = updateStore(printerFnLoc, printer)
+    def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)

@@ -11,8 +11,6 @@ import util.Spans.Span
 import annotation.constructorOnly
 import annotation.internal.sharable
 import Decorators._
-import annotation.retains
-import language.experimental.pureFunctions
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
@@ -44,7 +42,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** mods object name impl */
   case class ModuleDef(name: TermName, impl: Template)(implicit @constructorOnly src: SourceFile)
     extends MemberDef {
-    type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
+    type ThisTree[+T <: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
     def withName(name: Name)(using Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
@@ -151,7 +149,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class CapturingTypeTree(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
 
   /** Short-lived usage in typer, does not need copy/transform/fold infrastructure */
-  case class DependentTypeTree(tp: List[Symbol] -> Type)(implicit @constructorOnly src: SourceFile) extends Tree
+  case class DependentTypeTree(tp: List[Symbol] => Type)(implicit @constructorOnly src: SourceFile) extends Tree
 
   @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(NoSource) with WithoutTypeOrPos[Untyped] {
     override def isEmpty: Boolean = true
@@ -371,7 +369,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   // ------ Creation methods for untyped only -----------------
 
   def Ident(name: Name)(implicit src: SourceFile): Ident = new Ident(name)
-  def SearchFailureIdent(name: Name, explanation: -> String)(implicit src: SourceFile): SearchFailureIdent = new SearchFailureIdent(name, explanation)
+  def SearchFailureIdent(name: Name, explanation: => String)(implicit src: SourceFile): SearchFailureIdent = new SearchFailureIdent(name, explanation)
   def Select(qualifier: Tree, name: Name)(implicit src: SourceFile): Select = new Select(qualifier, name)
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit src: SourceFile): Select = new SelectWithSig(qualifier, name, sig)
   def This(qual: Ident)(implicit src: SourceFile): This = new This(qual)
@@ -733,8 +731,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
   }
 
-  abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] {
-    self: UntypedTreeAccumulator[X] @retains(caps.*) =>
+  abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] { self =>
     override def foldMoreCases(x: X, tree: Tree)(using Context): X = tree match {
       case ModuleDef(name, impl) =>
         this(x, impl)

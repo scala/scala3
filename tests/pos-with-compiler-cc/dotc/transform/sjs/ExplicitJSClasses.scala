@@ -722,9 +722,8 @@ object ExplicitJSClasses {
   val LocalJSClassValueName: UniqueNameKind = new UniqueNameKind("$jsclass")
 
   private final class MyState {
-    val nestedObject2superTypeConstructor:  MutableSymbolMap[Type] = new MutableSymbolMap[Type]
-    val localClass2jsclassVal: MutableSymbolMap[TermSymbol] = new MutableSymbolMap[TermSymbol]
-    val notYetReferencedLocalClasses: util.HashSet[Symbol] = new util.HashSet[Symbol]
-      // !cc! type ascriptions needed for 3 vals above, otherwise they get strange inferred types
+    val nestedObject2superTypeConstructor = new MutableSymbolMap[Type]
+    val localClass2jsclassVal = new MutableSymbolMap[TermSymbol]
+    val notYetReferencedLocalClasses = new util.HashSet[Symbol]
   }
 }

@@ -17,7 +17,7 @@ import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
-import config.Feature.migrateTo3
+import config.Feature.{migrateTo3, fewerBracesEnabled}
 import config.SourceVersion.`3.0`
 import reporting.{NoProfile, Profile}
 
@@ -201,25 +201,6 @@ object Scanners {
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
-
-    private inline val fewerBracesByDefault = false
-      // turn on to study impact on codebase if `fewerBraces` was the default
-
-    private var fewerBracesEnabledCache = false
-    private var fewerBracesEnabledCtx: Context = NoContext
-
-    def fewerBracesEnabled =
-      if fewerBracesEnabledCtx ne myLanguageImportContext then
-        fewerBracesEnabledCache =
-          featureEnabled(Feature.fewerBraces)
-          || fewerBracesByDefault && indentSyntax && !migrateTo3
-          		// ensure that fewer braces is not the default for 3.0-migration since
-          		//     { x: T =>
-          		//       expr
-          		//     }
-                // would be ambiguous
-        fewerBracesEnabledCtx = myLanguageImportContext
-      fewerBracesEnabledCache
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -1569,7 +1550,7 @@ object Scanners {
    *   InBraces    a pair of braces { ... }
    *   Indented    a pair of <indent> ... <outdent> tokens
    */
-  abstract class Region(val closedBy: Token) extends caps.Pure:
+  abstract class Region(val closedBy: Token):
 
    /** The region enclosing this one, or `null` for the outermost region */
     def outer: Region | Null

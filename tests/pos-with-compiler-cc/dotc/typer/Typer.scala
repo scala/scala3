@@ -51,7 +51,6 @@ import Nullables._
 import NullOpsDecorator._
 import cc.CheckCaptures
 import config.Config
-import language.experimental.pureFunctions
 
 import scala.annotation.constructorOnly
 
@@ -477,17 +476,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  (x: T | Null) => x.$asInstanceOf$[x.type & T]
    */
   def toNotNullTermRef(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
-    case tp @ OrNull(tpnn) =>
-      tp match
-        case ref: TermRef
-        if pt != AssignProto && // Ensure it is not the lhs of Assign
-        ctx.notNullInfos.impliesNotNull(ref) &&
-        // If a reference is in the context, it is already trackable at the point we add it.
-        // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
-        !ref.usedOutOfOrder =>
-          tree.cast(AndType(ref, tpnn))
-        case _ =>
-          tree
+    case ref: TermRef
+    if pt != AssignProto && // Ensure it is not the lhs of Assign
+    ctx.notNullInfos.impliesNotNull(ref) &&
+    // If a reference is in the context, it is already trackable at the point we add it.
+    // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
+    !ref.usedOutOfOrder =>
+      ref match
+        case OrNull(tpnn) => tree.cast(AndType(ref, tpnn))
+        case _            => tree
     case _ =>
       tree
 
@@ -681,7 +678,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
     }
 
-    def selectWithFallback(fallBack: Context ?-> Tree) =
+    def selectWithFallback(fallBack: Context ?=> Tree) =
       tryAlternatively(typeSelectOnTerm)(fallBack)
 
     if (tree.qualifier.isType) {
@@ -1105,7 +1102,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  expected type of a block is the anonymous class defined inside it. In that
    *  case there's technically a leak which is not removed by the ascription.
    */
-  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: -> List[Symbol])(using Context): Tree = {
+  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree = {
     def ascribeType(tree: Tree, pt: Type): Tree = tree match {
       case block @ Block(stats, expr) if !expr.isInstanceOf[Closure] =>
         val expr1 = ascribeType(expr, pt)
@@ -2264,7 +2261,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedAnnotation(annot: untpd.Tree)(using Context): Tree =
-    checkAnnotArgs(typed(annot, defn.AnnotationClass.typeRef))
+    checkAnnotClass(checkAnnotArgs(typed(annot)))
 
   def registerNowarn(tree: Tree, mdef: untpd.Tree)(using Context): Unit =
     val annot = Annotations.Annotation(tree)
@@ -2600,6 +2597,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    */
   def ensureConstrCall(cls: ClassSymbol, parent: Tree, psym: Symbol)(using Context): Tree =
     if parent.isType && !cls.is(Trait) && !cls.is(JavaDefined) && psym.isClass
+        // Annotations are represented as traits with constructors, but should
+        // never be called as such outside of annotation trees.
+        && !psym.is(JavaAnnotation)
         && (!psym.is(Trait)
             || psym.primaryConstructor.info.takesParams && !cls.superClass.isSubClass(psym))
     then typed(untpd.New(untpd.TypedSplice(parent), Nil))
@@ -2674,7 +2674,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
-    val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
+    val annot1 = checkAnnotClass(typedExpr(tree.annot))
     val annotCls = Annotations.annotClass(annot1)
     if annotCls == defn.NowarnAnnot then
       registerNowarn(annot1, tree)
@@ -2823,7 +2823,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val tupleXXLobj = untpd.ref(defn.TupleXXLModule.termRef)
         val app = untpd.cpy.Apply(tree)(tupleXXLobj, elems.map(untpd.TypedSplice(_)))
           .withSpan(tree.span)
-        val app1 = typed(app, defn.TupleXXLClass.typeRef)
+        val app1 = typed(app, if ctx.mode.is(Mode.Pattern) then pt else defn.TupleXXLClass.typeRef)
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
           val elemTpes = elems.lazyZip(pts).map((elem, pt) =>
@@ -3169,7 +3169,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(using Context): Tree =
     withMode(Mode.Pattern)(typed(tree, selType))
 
-  def tryEither[T](op: Context ?-> T)(fallBack: (T, TyperState) => T)(using Context): T = {
+  def tryEither[T](op: Context ?=> T)(fallBack: (T, TyperState) => T)(using Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result = op(using nestedCtx)
     if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
@@ -3186,7 +3186,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Try `op1`, if there are errors, try `op2`, if `op2` also causes errors, fall back
    *  to errors and result of `op1`.
    */
-  def tryAlternatively[T](op1: Context ?-> T)(op2: Context ?-> T)(using Context): T =
+  def tryAlternatively[T](op1: Context ?=> T)(op2: Context ?=> T)(using Context): T =
     tryEither(op1) { (failedVal, failedState) =>
       tryEither(op2) { (_, _) =>
         failedState.commit()
@@ -3426,42 +3426,59 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       ErrorReporting.missingArgs(tree, mt)
       tree.withType(mt.resultType)
 
-    def adaptOverloaded(ref: TermRef) = {
+    def adaptOverloaded(ref: TermRef) =
+      // get all the alternatives
       val altDenots =
         val allDenots = ref.denot.alternatives
         if pt.isExtensionApplyProto then allDenots.filter(_.symbol.is(ExtensionMethod))
         else allDenots
+
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
+
+      /** Search for an alternative that does not take parameters.
+       * If there is one, return it, otherwise emit an error.
+       */
+      def tryParameterless(alts: List[TermRef])(error: => tpd.Tree): Tree =
+        alts.filter(_.info.isParameterless) match
+          case alt :: Nil => readaptSimplified(tree.withType(alt))
+          case _ =>
+            if altDenots.exists(_.info.paramInfoss == ListOfNil) then
+              typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
+            else
+              error
+
       def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
       val alts = altDenots.map(altRef)
-      resolveOverloaded(alts, pt) match {
+
+      resolveOverloaded(alts, pt) match
         case alt :: Nil =>
           readaptSimplified(tree.withType(alt))
         case Nil =>
-          // If alternative matches, there are still two ways to recover:
+          // If no alternative matches, there are still two ways to recover:
           //  1. If context is an application, try to insert an apply or implicit
           //  2. If context is not an application, pick a alternative that does
           //     not take parameters.
-          def noMatches =
-            errorTree(tree, NoMatchingOverload(altDenots, pt))
-          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
-          pt match {
+
+          def errorNoMatch = errorTree(tree, NoMatchingOverload(altDenots, pt))
+
+          pt match
             case pt: FunOrPolyProto if pt.applyKind != ApplyKind.Using =>
               // insert apply or convert qualifier, but only for a regular application
-              tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
+              tryInsertApplyOrImplicit(tree, pt, locked)(errorNoMatch)
             case _ =>
-              alts.filter(_.info.isParameterless) match {
-                case alt :: Nil => readaptSimplified(tree.withType(alt))
-                case _ =>
-                  if (altDenots exists (_.info.paramInfoss == ListOfNil))
-                    typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
-                  else
-                    noMatches
-              }
-          }
+              tryParameterless(alts)(errorNoMatch)
+
         case ambiAlts =>
-          if tree.tpe.isErroneous || pt.isErroneous then tree.withType(UnspecifiedErrorType)
-          else
+          // If there are ambiguous alternatives, and:
+          // 1. the types aren't erroneous
+          // 2. the expected type is not a function type
+          // 3. there exist a parameterless alternative
+          //
+          // Then, pick the parameterless alternative.
+          // See tests/pos/i10715-scala and tests/pos/i10715-java.
+
+          /** Constructs an "ambiguous overload" error */
+          def errorAmbiguous =
             val remainingDenots = altDenots.filter(denot => ambiAlts.contains(altRef(denot)))
             val addendum =
               if ambiAlts.exists(!_.symbol.exists) then
@@ -3470,8 +3487,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     |Note: Overloaded definitions introduced by refinements cannot be resolved"""
               else ""
             errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt, addendum))
-      }
-    }
+          end errorAmbiguous
+
+          if tree.tpe.isErroneous || pt.isErroneous then
+            tree.withType(UnspecifiedErrorType)
+          else
+            pt match
+              case _: FunProto =>
+                errorAmbiguous
+              case _  =>
+                tryParameterless(alts)(errorAmbiguous)
+
+      end match
+    end adaptOverloaded
 
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
       case wtp: MethodOrPoly =>
@@ -4180,7 +4208,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   protected def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =
     // TODO check that call is to a method with valid signature
-    def typedPrefix(tree: untpd.RefTree)(splice: Context ?-> Tree -> Tree)(using Context): Tree = {
+    def typedPrefix(tree: untpd.RefTree)(splice: Context ?=> Tree => Tree)(using Context): Tree = {
       tryAlternatively {
         splice(typedExpr(tree, defn.AnyType))
       } {

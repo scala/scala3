@@ -13,7 +13,6 @@ import Decorators._
 import reporting._
 import ast.untpd
 import config.Printers.cyclicErrors
-import language.experimental.pureFunctions
 
 class TypeError(msg: String) extends Exception(msg) {
   def this() = this("")
@@ -44,7 +43,7 @@ class MissingType(pre: Type, name: Name) extends TypeError {
   }
 }
 
-class RecursionOverflow(val op: String, details: -> String, val previous: Throwable, val weight: Int)
+class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)
 extends TypeError {
 
   def explanation: String = s"$op $details"
@@ -92,7 +91,7 @@ extends TypeError {
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
 object handleRecursive {
-  def apply(op: String, details: -> String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
+  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
     if (ctx.settings.YnoDecodeStacktraces.value)
       throw exc
     else

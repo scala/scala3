@@ -64,7 +64,7 @@ object Scopes {
    *  or to delete them. These methods are provided by subclass
    *  MutableScope.
    */
-  abstract class Scope extends printing.Showable, caps.Pure {
+  abstract class Scope extends printing.Showable {
 
     /** The last scope-entry from which all others are reachable via `prev` */
     private[dotc] def lastEntry: ScopeEntry | Null
@@ -467,7 +467,7 @@ object Scopes {
     override def size: Int = 0
     override def nestingLevel: Int = 0
     override def toList(using Context): List[Symbol] = Nil
-    override def cloneScope(using Context): MutableScope = unsupported("cloneScope")
+    override def cloneScope(using Context): MutableScope = newScope(nestingLevel)
     override def lookupEntry(name: Name)(using Context): ScopeEntry | Null = null
     override def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry | Null = null
   }
