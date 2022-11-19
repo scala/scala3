@@ -188,7 +188,9 @@ object ErrorReporting {
          |The tests were made under $constraintText"""
 
     def whyFailedStr(fail: FailedExtension) =
-      i"""    failed with
+      i"""
+         |
+         |    failed with:
          |
          |${fail.whyFailed.message.indented(8)}"""
 

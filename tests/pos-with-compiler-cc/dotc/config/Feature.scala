@@ -110,7 +110,11 @@ object Feature:
       case Some(v) => v
       case none => sourceVersionSetting
 
-  def migrateTo3(using Context): Boolean = sourceVersion == `3.0-migration`
+  def migrateTo3(using Context): Boolean =
+    sourceVersion == `3.0-migration`
+
+  def fewerBracesEnabled(using Context) =
+    sourceVersion.isAtLeast(`3.3`) || enabled(fewerBraces)
 
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.

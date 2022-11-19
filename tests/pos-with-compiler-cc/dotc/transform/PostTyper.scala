@@ -302,12 +302,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             checkNoConstructorProxy(tree)
             transformSelect(tree, Nil)
         case tree: Apply =>
-          val methType = tree.fun.tpe.widen
+          val methType = tree.fun.tpe.widen.asInstanceOf[MethodType]
           val app =
             if (methType.isErasedMethod)
               tpd.cpy.Apply(tree)(
                 tree.fun,
                 tree.args.mapConserve(arg =>
+                  if methType.isResultDependent then
+                    Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
                   if (methType.isImplicitMethod && arg.span.isSynthetic)
                     arg match
                       case _: RefTree | _: Apply | _: TypeApply if arg.symbol.is(Erased) =>

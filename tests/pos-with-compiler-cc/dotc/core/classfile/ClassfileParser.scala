@@ -166,11 +166,7 @@ class ClassfileParser(
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
       val superType =
-        if (isAnnotation) {
-          in.nextChar
-          defn.AnnotationClass.typeRef
-        }
-        else if (classRoot.symbol == defn.ComparableClass ||
+        if (classRoot.symbol == defn.ComparableClass ||
                  classRoot.symbol == defn.JavaCloneableClass ||
                  classRoot.symbol == defn.JavaSerializableClass) {
           // Treat these interfaces as universal traits
@@ -187,7 +183,6 @@ class ClassfileParser(
         // Consequently, no best implicit for the "Integral" evidence parameter of "range"
         // is found. Previously, this worked because of weak conformance, which has been dropped.
 
-      if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeRef :: ifaces
       superType :: ifaces
     }
 
@@ -846,7 +841,7 @@ class ClassfileParser(
 
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
-      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol)
+      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol && sym.name != nme.CONSTRUCTOR)
       val paramNames = attrs.map(_.name.asTermName)
       val paramTypes = attrs.map(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)

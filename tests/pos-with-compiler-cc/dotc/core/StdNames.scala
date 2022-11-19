@@ -243,7 +243,6 @@ object StdNames {
     final val ToString: N             = "ToString"
     final val Xor: N                  = "^"
 
-    final val ClassfileAnnotation: N = "ClassfileAnnotation"
     final val ClassManifest: N       = "ClassManifest"
     final val Enum: N                = "Enum"
     final val Group: N               = "Group"

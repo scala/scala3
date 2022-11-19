@@ -1391,7 +1391,7 @@ import language.experimental.pureFunctions
            |""".stripMargin
   }
 
-  class TypeDoesNotTakeParameters(tpe: Type, params: List[Trees.Tree[Trees.Untyped]])(using Context)
+  class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
     extends TypeMsg(TypeDoesNotTakeParametersID) {
     private def fboundsAddendum =
       if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then

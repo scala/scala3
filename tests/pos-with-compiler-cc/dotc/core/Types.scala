@@ -747,16 +747,6 @@ object Types {
           // which means that we always defensively copy the type in the future. This second
           // measure is necessary because findMember calls might be cached, so do not
           // necessarily appear in nested order.
-          // Without the defensive copy, Typer.scala fails to compile at the line
-          //
-          //      untpd.rename(lhsCore, setterName).withType(setterType), WildcardType)
-          //
-          // because the subtype check
-          //
-          //      ThisTree[Untyped]#ThisTree[Typed] <: Tree[Typed]
-          //
-          // fails (in fact it thinks the underlying type of the LHS is `Tree[Untyped]`.)
-          //
           // Without the `openedTwice` trick, Typer.scala fails to Ycheck
           // at phase resolveSuper.
           val rt =
@@ -1289,15 +1279,14 @@ object Types {
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
     def widenUnion(using Context): Type = widen match
-      case tp @ OrNull(tp1) =>
-        tp match
-          case tp: OrType =>
-            // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-            val tp1Widen = tp1.widenUnionWithoutNull
-            if (tp1Widen.isRef(defn.AnyClass)) tp1Widen
-            else tp.derivedOrType(tp1Widen, defn.NullType)
-          case _ =>
-            tp.widenUnionWithoutNull
+      case tp: OrType => tp match
+        case OrNull(tp1) =>
+          // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+          val tp1Widen = tp1.widenUnionWithoutNull
+          if (tp1Widen.isRef(defn.AnyClass)) tp1Widen
+          else tp.derivedOrType(tp1Widen, defn.NullType)
+        case _ =>
+          tp.widenUnionWithoutNull
       case tp =>
         tp.widenUnionWithoutNull
 
@@ -3430,25 +3419,29 @@ object Types {
     private var myAtoms: Atoms = _
     private var myWidened: Type = _
 
+    private def computeAtoms()(using Context): Atoms =
+      if tp1.hasClassSymbol(defn.NothingClass) then tp2.atoms
+      else if tp2.hasClassSymbol(defn.NothingClass) then tp1.atoms
+      else tp1.atoms | tp2.atoms
+
+    private def computeWidenSingletons()(using Context): Type =
+      val tp1w = tp1.widenSingletons
+      val tp2w = tp2.widenSingletons
+      if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
+
     private def ensureAtomsComputed()(using Context): Unit =
-      if atomsRunId != ctx.runId then
-        myAtoms =
-          if tp1.hasClassSymbol(defn.NothingClass) then tp2.atoms
-          else if tp2.hasClassSymbol(defn.NothingClass) then tp1.atoms
-          else tp1.atoms | tp2.atoms
-        val tp1w = tp1.widenSingletons
-        val tp2w = tp2.widenSingletons
-        myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
+      if atomsRunId != ctx.runId && !isProvisional then
+        myAtoms = computeAtoms()
+        myWidened = computeWidenSingletons()
         atomsRunId = ctx.runId
 
     override def atoms(using Context): Atoms =
       ensureAtomsComputed()
-      myAtoms
+      if isProvisional then computeAtoms() else myAtoms
 
-    override def widenSingletons(using Context): Type = {
+    override def widenSingletons(using Context): Type =
       ensureAtomsComputed()
-      myWidened
-    }
+      if isProvisional then computeWidenSingletons() else myWidened
 
     def derivedOrType(tp1: Type, tp2: Type, soft: Boolean = isSoft)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2) && soft == isSoft) this

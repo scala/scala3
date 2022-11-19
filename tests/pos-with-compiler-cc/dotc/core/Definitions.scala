@@ -970,7 +970,6 @@ class Definitions {
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
-  @tu lazy val ClassfileAnnotationClass: ClassSymbol = requiredClass("scala.annotation.ClassfileAnnotation")
   @tu lazy val StaticAnnotationClass: ClassSymbol = requiredClass("scala.annotation.StaticAnnotation")
   @tu lazy val RefiningAnnotationClass: ClassSymbol = requiredClass("scala.annotation.RefiningAnnotation")
 
@@ -1349,6 +1348,15 @@ class Definitions {
   @tu lazy val topClasses: Set[Symbol] = Set(AnyClass, MatchableClass, ObjectClass, AnyValClass)
 
   @tu lazy val untestableClasses: Set[Symbol] = Set(NothingClass, NullClass, SingletonClass)
+
+  /** Base classes that are assumed to be pure for the purposes of capture checking.
+   *  Every class inheriting from a pure baseclass is pure.
+   */
+  @tu lazy val pureBaseClasses = Set(defn.AnyValClass, defn.ThrowableClass)
+
+  /** Non-inheritable lasses that are assumed to be pure for the purposes of capture checking,
+   */
+  @tu lazy val pureSimpleClasses = Set(StringClass, NothingClass, NullClass)
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
@@ -1830,20 +1838,53 @@ class Definitions {
   def isInfix(sym: Symbol)(using Context): Boolean =
     (sym eq Object_eq) || (sym eq Object_ne)
 
-  @tu lazy val assumedTransparentTraits =
-    Set[Symbol](ComparableClass, ProductClass, SerializableClass,
-      // add these for now, until we had a chance to retrofit 2.13 stdlib
-      // we should do a more through sweep through it then.
-      requiredClass("scala.collection.SortedOps"),
-      requiredClass("scala.collection.StrictOptimizedSortedSetOps"),
-      requiredClass("scala.collection.generic.DefaultSerializable"),
-      requiredClass("scala.collection.generic.IsIterable"),
-      requiredClass("scala.collection.generic.IsIterableOnce"),
-      requiredClass("scala.collection.generic.IsMap"),
-      requiredClass("scala.collection.generic.IsSeq"),
-      requiredClass("scala.collection.generic.Subtractable"),
-      requiredClass("scala.collection.immutable.StrictOptimizedSeqOps")
-    )
+  @tu lazy val assumedTransparentNames: Map[Name, Set[Symbol]] =
+    // add these for now, until we had a chance to retrofit 2.13 stdlib
+    // we should do a more through sweep through it then.
+    val strs = Map(
+      "Any" -> Set("scala"),
+      "AnyVal" -> Set("scala"),
+      "Matchable" -> Set("scala"),
+      "Product" -> Set("scala"),
+      "Object" -> Set("java.lang"),
+      "Comparable" -> Set("java.lang"),
+      "Serializable" -> Set("java.io"),
+      "BitSetOps" -> Set("scala.collection"),
+      "IndexedSeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "IterableOnceOps" -> Set("scala.collection"),
+      "IterableOps" -> Set("scala.collection"),
+      "LinearSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "MapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "SeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "SetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "SortedMapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "SortedOps" -> Set("scala.collection"),
+      "SortedSetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
+      "StrictOptimizedIterableOps" -> Set("scala.collection"),
+      "StrictOptimizedLinearSeqOps" -> Set("scala.collection"),
+      "StrictOptimizedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "StrictOptimizedSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "StrictOptimizedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "StrictOptimizedSortedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "StrictOptimizedSortedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
+      "ArrayDequeOps" -> Set("scala.collection.mutable"),
+      "DefaultSerializable" -> Set("scala.collection.generic"),
+      "IsIterable" -> Set("scala.collection.generic"),
+      "IsIterableLowPriority" -> Set("scala.collection.generic"),
+      "IsIterableOnce" -> Set("scala.collection.generic"),
+      "IsIterableOnceLowPriority" -> Set("scala.collection.generic"),
+      "IsMap" -> Set("scala.collection.generic"),
+      "IsSeq" -> Set("scala.collection.generic"))
+    strs.map { case (simple, pkgs) => (
+        simple.toTypeName,
+        pkgs.map(pkg => staticRef(pkg.toTermName, isPackage = true).symbol.moduleClass)
+      )
+    }
+
+  def isAssumedTransparent(sym: Symbol): Boolean =
+    assumedTransparentNames.get(sym.name) match
+      case Some(pkgs) => pkgs.contains(sym.owner)
+      case none => false
 
   // ----- primitive value class machinery ------------------------------------------
 

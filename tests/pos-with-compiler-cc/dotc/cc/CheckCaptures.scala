@@ -517,8 +517,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         for param <- cls.paramGetters do
           if !param.hasAnnotation(defn.ConstructorOnlyAnnot) then
             checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
-        if cls.derivesFrom(defn.ThrowableClass) then
-          checkSubset(thisSet, CaptureSet.emptyOfException, tree.srcPos)
+        for pureBase <- cls.pureBaseClass do
+          checkSubset(thisSet,
+            CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
+            tree.srcPos)
         super.recheckClassDef(tree, impl, cls)
       finally
         curEnv = saved
@@ -880,6 +882,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Check that externally visible `val`s or `def`s have empty capture sets. If not,
      *     suggest an explicit type. This is so that separate compilation (where external
      *     symbols have empty capture sets) gives the same results as joint compilation.
+     *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       unit.foreachSubTree {
@@ -935,7 +938,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       }
       if !ctx.reporter.errorsReported then
-        // We dont report errors hre if previous errors were reported, because other
+        // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives
         // often worse error messages than the original errors.
         val checkApplied = new TreeTraverser:

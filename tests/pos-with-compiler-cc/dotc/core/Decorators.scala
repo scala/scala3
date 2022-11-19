@@ -275,6 +275,9 @@ object Decorators {
             s"[cannot display due to $msg, raw string = $x]"
       case _ => String.valueOf(x).nn
 
+    /** Returns the simple class name of `x`. */
+    def className: String = getClass.getSimpleName.nn
+
   extension [T](x: T)
     def assertingErrorsReported(using Context): T = {
       assert(ctx.reporter.errorsReported)

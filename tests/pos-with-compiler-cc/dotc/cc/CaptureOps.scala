@@ -185,24 +185,27 @@ extension (tp: Type)
     case _ =>
       false
 
+extension (cls: ClassSymbol)
+
+  def pureBaseClass(using Context): Option[Symbol] =
+    cls.baseClasses.find(bc =>
+      defn.pureBaseClasses.contains(bc)
+      || {
+        val selfType = bc.givenSelfType
+        selfType.exists && selfType.captureSet.isAlwaysEmpty
+      })
+
 extension (sym: Symbol)
 
   /** A class is pure if:
    *   - one its base types has an explicitly declared self type with an empty capture set
    *   - or it is a value class
-   *   - or it is Nothing or Null
+   *   - or it is an exception
+   *   - or it is one of Nothing, Null, or String
    */
   def isPureClass(using Context): Boolean = sym match
     case cls: ClassSymbol =>
-      val AnyValClass = defn.AnyValClass
-      cls.baseClasses.exists(bc =>
-        bc == AnyValClass
-        || {
-          val selfType = bc.givenSelfType
-          selfType.exists && selfType.captureSet.isAlwaysEmpty
-        })
-      || cls == defn.NothingClass
-      || cls == defn.NullClass
+      cls.pureBaseClass.isDefined || defn.pureSimpleClasses.contains(cls)
     case _ =>
       false
 

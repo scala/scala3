@@ -568,9 +568,9 @@ object Implicits:
       if reasons.length > 1 then
         reasons.mkString("\n\t* ", "\n\t* ", "")
       else
-        reasons.mkString
+        reasons.mkString(" ", "", "")
 
-    def explanation(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}: ${formatReasons}"
+    def explanation(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}:${formatReasons}"
 
 end Implicits
 

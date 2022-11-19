@@ -497,7 +497,7 @@ object Checking {
     }
     if sym.is(Transparent) then
       if sym.isType then
-        if !sym.is(Trait) then fail(em"`transparent` can only be used for traits".toMessage)
+        if !sym.isExtensibleClass then fail(em"`transparent` can only be used for extensible classes and traits".toMessage)
       else
         if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods".toMessage)
     if (!sym.isClass && sym.is(Abstract))
@@ -1111,6 +1111,8 @@ trait Checking {
   def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit =
     if (!ctx.isAfterTyper) {
       val called = call.tpe.classSymbol
+      if (called.is(JavaAnnotation))
+        report.error(i"${called.name} must appear without any argument to be a valid class parent because it is a Java annotation", call.srcPos)
       if (caller.is(Trait))
         report.error(i"$caller may not call constructor of $called", call.srcPos)
       else if (called.is(Trait) && !caller.mixins.contains(called))
@@ -1263,6 +1265,23 @@ trait Checking {
   def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit =
     if !Inlines.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
+
+  /** Check that the class corresponding to this tree is either a Scala or Java annotation.
+   *
+   *  @return The original tree or an error tree in case `tree` isn't a valid
+   *          annotation or already an error tree.
+   */
+  def checkAnnotClass(tree: Tree)(using Context): Tree =
+    if tree.tpe.isError then
+      return tree
+    val cls = Annotations.annotClass(tree)
+    if cls.is(JavaDefined) then
+      if !cls.is(JavaAnnotation) then
+        errorTree(tree, em"$cls is not a valid Java annotation: it was not declared with `@interface`")
+      else tree
+    else if !cls.derivesFrom(defn.AnnotationClass) then
+      errorTree(tree, em"$cls is not a valid Scala annotation: it does not extend `scala.annotation.Annotation`")
+    else tree
 
   /** Check arguments of compiler-defined annotations */
   def checkAnnotArgs(tree: Tree)(using Context): tree.type =

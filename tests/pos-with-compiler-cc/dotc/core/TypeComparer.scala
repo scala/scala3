@@ -830,7 +830,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               && (recur(tp1.widen.stripCapturing, parent2)
                  || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
                     // this alternative is needed in case the right hand side is a
-                    // capturing type that contains the lhs as an |-alternative.
+                    // capturing type that contains the lhs as an alternative of a union type.
                  )
           catch case ex: AssertionError =>
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
