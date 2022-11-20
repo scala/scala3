@@ -926,7 +926,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             todos match
               case Nil => acc
               case ref :: rem =>
-                val cs = ref.binder.paramInfos(ref.paramNum).captureSet
+                val cs = ref.captureSetOfInfo
                 val nextAcc = cs.filter(isAllowed(_)) :: acc
                 val nextRem: List[TermParamRef] = (cs.elems.toList.filter(!isAllowed(_)) ++ rem).asInstanceOf
                 recur(nextRem, nextAcc)
