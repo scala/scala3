@@ -934,21 +934,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         private def healCaptureSet(cs: CaptureSet): Unit =
           val toInclude = widenParamRefs(cs.elems.toList.filter(!isAllowed(_)).asInstanceOf)
-          toInclude foreach { cs1 =>
-            // We omit the check of the result of capture set inclusion here,
-            // since there are only two possible kinds of errors.
-            // Both kinds will be detected in other places and tend to
-            // give better error messages.
-            //
-            // The two kinds of errors are:
-            // - Pushing `*` to a boxed capture set.
-            //   This triggers error reporting registered as the `rootAddedHandler`
-            //   in `CaptureSet`.
-            // - Failing to include a capture reference in a capture set.
-            //   This is mostly due to the restriction placed by explicit type annotations,
-            //   and should already be reported as a type mismatch during `checkConforms`.
-            cs1.subCaptures(cs, frozen = false)
-          }
+          toInclude.foreach(checkSubset(_, cs, tree.srcPos))
 
         private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
 
@@ -956,10 +942,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           tp match
             case CapturingType(parent, refs) =>
               healCaptureSet(refs)
-              // mapOver(tp)
-              traverseChildren(parent)
+              traverse(parent)
             case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
-              traverseChildren(rinfo)
+              traverse(rinfo)
             case tp: TermLambda =>
               val saved = allowed
               try
