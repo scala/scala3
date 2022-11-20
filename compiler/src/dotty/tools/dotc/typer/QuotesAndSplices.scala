@@ -54,7 +54,7 @@ trait QuotesAndSplices {
       val msg = em"""Quoted types `'[..]` can only be used in patterns.
                     |
                     |Hint: To get a scala.quoted.Type[T] use scala.quoted.Type.of[T] instead.
-                    |""".stripMargin
+                    |"""
       report.error(msg, tree.srcPos)
       EmptyTree
     else

@@ -1743,7 +1743,7 @@ object Parsers {
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
           if sourceVersion.isAtLeast(future) then
-            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead".toMessage)
+            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
             patch(source, Span(in.offset, in.offset + 1), "?")
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
@@ -3488,7 +3488,7 @@ object Parsers {
               if sourceVersion.isAtLeast(future) then
                 deprecationWarning(
                   em"""`= _` has been deprecated; use `= uninitialized` instead.
-                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""".toMessage,
+                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""",
                   rhsOffset)
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }

@@ -127,10 +127,10 @@ class TreeUnpickler(reader: TastyReader,
           if f == null then "" else s" in $f"
         if ctx.settings.YdebugUnpickling.value then throw ex
         else throw TypeError(
-          em"""Could not read definition of $denot$where
-              |An exception was encountered:
-              |  $ex
-              |Run with -Ydebug-unpickling to see full stack trace.""")
+          e"""Could not read definition of $denot$where
+             |An exception was encountered:
+             |  $ex
+             |Run with -Ydebug-unpickling to see full stack trace.""")
       treeAtAddr(currentAddr) =
         try
           atPhaseBeforeTransforms {

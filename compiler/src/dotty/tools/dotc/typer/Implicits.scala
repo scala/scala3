@@ -435,13 +435,13 @@ object Implicits:
 
     final protected def qualify(using Context): String = expectedType match {
       case SelectionProto(name, mproto, _, _) if !argument.isEmpty =>
-        em"provide an extension method `$name` on ${argument.tpe}"
+        e"provide an extension method `$name` on ${argument.tpe}"
       case NoType =>
-        if (argument.isEmpty) em"match expected type"
-        else em"convert from ${argument.tpe} to expected type"
+        if (argument.isEmpty) e"match expected type"
+        else e"convert from ${argument.tpe} to expected type"
       case _ =>
-        if (argument.isEmpty) em"match type ${clarify(expectedType)}"
-        else em"convert from ${argument.tpe} to ${clarify(expectedType)}"
+        if (argument.isEmpty) e"match type ${clarify(expectedType)}"
+        else e"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
 
     /** An explanation of the cause of the failure as a string */
@@ -489,7 +489,7 @@ object Implicits:
       }
 
     def explanation(using Context): String =
-      em"no implicit values were found that $qualify"
+      e"no implicit values were found that $qualify"
     override def toString = s"NoMatchingImplicits($expectedType, $argument)"
   }
 
@@ -522,7 +522,7 @@ object Implicits:
       if str1 == str2 then
         str1 = ctx.printer.toTextRef(alt1.ref).show
         str2 = ctx.printer.toTextRef(alt2.ref).show
-      em"both $str1 and $str2 $qualify"
+      e"both $str1 and $str2 $qualify"
     override def whyNoConversion(using Context): String =
       if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
         ""
@@ -537,20 +537,20 @@ object Implicits:
                            val expectedType: Type,
                            val argument: Tree) extends SearchFailureType {
     def explanation(using Context): String =
-      em"${err.refStr(ref)} does not $qualify"
+      e"${err.refStr(ref)} does not $qualify"
   }
 
   class DivergingImplicit(ref: TermRef,
                           val expectedType: Type,
                           val argument: Tree) extends SearchFailureType {
     def explanation(using Context): String =
-      em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
+      e"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
 
   /** A search failure type for attempted ill-typed extension method calls */
   class FailedExtension(extApp: Tree, val expectedType: Type, val whyFailed: Message) extends SearchFailureType:
     def argument = EmptyTree
-    def explanation(using Context) = em"$extApp does not $qualify"
+    def explanation(using Context) = e"$extApp does not $qualify"
 
    /** A search failure type for aborted searches of extension methods, typically
     *  because of a cyclic reference or similar.
@@ -570,7 +570,7 @@ object Implicits:
       else
         reasons.mkString(" ", "", "")
 
-    def explanation(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}:${formatReasons}"
+    def explanation(using Context) = e"Failed to synthesize an instance of type ${clarify(expectedType)}:${formatReasons}"
 
 end Implicits
 
@@ -939,10 +939,10 @@ trait Implicits:
         val qt = qual.tpe.widen
         val qt1 = qt.dealiasKeepAnnots
         def addendum = if (qt1 eq qt) "" else (i"\nThe required type is an alias of: $qt1")
-        em"parameter of ${qual.tpe.widen}$addendum"
+        e"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
-        em"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
-              else s"parameter $paramName" } of $methodStr"
+        e"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
+             else s"parameter $paramName" } of $methodStr"
     }
 
   /** A CanEqual[T, U] instance is assumed

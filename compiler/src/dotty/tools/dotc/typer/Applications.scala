@@ -563,7 +563,7 @@ trait Applications extends Compatibility {
                   i"it is not the only argument to be passed to the corresponding repeated parameter $formal"
                 else
                   i"the corresponding parameter has type $formal which is not a repeated parameter type"
-              fail(em"Sequence argument type annotation `*` cannot be used here:\n$addendum".toMessage, arg)
+              fail(em"Sequence argument type annotation `*` cannot be used here:\n$addendum", arg)
 
           /** Add result of typing argument `arg` against parameter type `formal`.
            *  @return  The remaining formal parameter types. If the method is parameter-dependent

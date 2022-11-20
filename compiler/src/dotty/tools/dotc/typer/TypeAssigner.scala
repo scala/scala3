@@ -177,16 +177,16 @@ trait TypeAssigner {
     val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
     val whatCanNot = alts match
       case Nil =>
-        em"$name cannot"
+        e"$name cannot"
       case sym :: Nil =>
-        em"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
+        e"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
       case _ =>
-        em"none of the overloaded alternatives named $name can"
+        e"none of the overloaded alternatives named $name can"
     val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
     val whyNot = new StringBuffer
     alts.foreach(_.isAccessibleFrom(pre, superAccess, whyNot))
     if tpe.isError then tpe
-    else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
+    else errorType(e"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
 
   def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type = tp match
     case AppliedType(tycon, args) =>

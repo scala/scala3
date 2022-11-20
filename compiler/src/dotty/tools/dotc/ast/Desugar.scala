@@ -1137,7 +1137,7 @@ object desugar {
       def errorOnGivenBinding(bind: Bind)(using Context): Boolean =
         report.error(
           em"""${hl("given")} patterns are not allowed in a ${hl("val")} definition,
-              |please bind to an identifier and use an alias given.""".stripMargin, bind)
+              |please bind to an identifier and use an alias given.""", bind)
         false
 
       def isTuplePattern(arity: Int): Boolean = pat match {

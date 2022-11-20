@@ -283,7 +283,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             def checkUnambiguous(found: Type) =
               val other = recur(selectors.tail)
               if other.exists && found.exists && found != other then
-                fail(em"reference to `$name` is ambiguous; it is imported twice".toMessage)
+                fail(em"reference to `$name` is ambiguous; it is imported twice")
               found
 
             if selector.rename == termName && selector.rename != nme.WILDCARD then

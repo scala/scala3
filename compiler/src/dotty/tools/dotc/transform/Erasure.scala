@@ -556,8 +556,9 @@ object Erasure {
             if tree.symbol.is(Flags.Inline) then
               em"""${tree.symbol} is declared as `inline`, but was not inlined
                   |
-                  |Try increasing `-Xmax-inlines` above ${ctx.settings.XmaxInlines.value}""".stripMargin
-            else em"${tree.symbol} is declared as `erased`, but is in fact used"
+                  |Try increasing `-Xmax-inlines` above ${ctx.settings.XmaxInlines.value}"""
+            else
+              em"${tree.symbol} is declared as `erased`, but is in fact used"
           report.error(msg, tree.srcPos)
         tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
           case Some(annot) =>

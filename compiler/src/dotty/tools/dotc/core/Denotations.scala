@@ -1268,9 +1268,9 @@ object Denotations {
       if sd1.exists then
         if sd2.exists then
           throw TypeError(
-            em"""Failure to disambiguate overloaded reference with
-                |  ${denot1.symbol.showLocated}: ${denot1.info}  and
-                |  ${denot2.symbol.showLocated}: ${denot2.info}""")
+            e"""Failure to disambiguate overloaded reference with
+               |  ${denot1.symbol.showLocated}: ${denot1.info}  and
+               |  ${denot2.symbol.showLocated}: ${denot2.info}""")
         else sd1
       else sd2
     }

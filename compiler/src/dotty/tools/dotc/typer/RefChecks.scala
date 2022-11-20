@@ -816,7 +816,7 @@ object RefChecks {
           for (baseCls <- caseCls.info.baseClasses.tail)
             if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
               for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
-                report.errorOrMigrationWarning(problem(), clazz.srcPos, from = `3.0`)
+                report.errorOrMigrationWarning(problem, clazz.srcPos, from = `3.0`)
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
@@ -847,7 +847,7 @@ object RefChecks {
           if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
           problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
         }
-        report.error(problem(), clazz.srcPos)
+        report.error(problem, clazz.srcPos)
       }
 
       checkParameterizedTraitsOK()
@@ -861,13 +861,13 @@ object RefChecks {
      *  Return an optional by name error message if this test fails.
      */
     def variantInheritanceProblems(
-        baseCls: Symbol, middle: Symbol, baseStr: String, middleStr: String): Option[() => String] = {
+        baseCls: Symbol, middle: Symbol, baseStr: String, middleStr: String): Option[Message] = {
       val superBT = self.baseType(middle)
       val thisBT = self.baseType(baseCls)
       val combinedBT = superBT.baseType(baseCls)
       if (combinedBT =:= thisBT) None // ok
       else
-        Some(() =>
+        Some(
           em"""illegal inheritance: $clazz inherits conflicting instances of $baseStr base $baseCls.
               |
               |  Direct basetype: $thisBT

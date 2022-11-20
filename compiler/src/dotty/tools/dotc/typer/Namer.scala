@@ -462,7 +462,7 @@ class Namer { typer: Typer =>
         if isProvisional then
           typr.println(i"provisional superclass $first for $cls")
           first = AnnotatedType(first, Annotation(defn.ProvisionalSuperClassAnnot))
-        checkFeasibleParent(first, cls.srcPos, em" in inferred superclass $first") :: parents
+        checkFeasibleParent(first, cls.srcPos, e" in inferred superclass $first") :: parents
   end ensureFirstIsClass
 
   /** Add child annotation for `child` to annotations of `cls`. The annotation

@@ -70,6 +70,9 @@ object report:
   def warning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new Warning(msg, addInlineds(pos)))
 
+  def warning(msg: Message)(using Context): Unit =
+    warning(msg, NoSourcePosition)
+
   def warning(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     warning(msg.toMessage, pos)
 
@@ -77,6 +80,9 @@ object report:
     val fullPos = addInlineds(pos)
     ctx.reporter.report(new Error(msg, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
+
+  def error(msg: Message)(using Context): Unit =
+    error(msg, NoSourcePosition)
 
   def error(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     error(msg.toMessage, pos)

@@ -135,8 +135,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     for ((info, _) <- tups.tail) {
       report.error(
-          em"export overload conflicts with export of $firstSym: " +
-          "a field may not share its exported name with another export",
+          em"export overload conflicts with export of $firstSym: a field may not share its exported name with another export",
           info.pos)
     }
 
@@ -264,8 +263,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       .alternatives
 
     assert(!alts.isEmpty,
-        em"Ended up with no alternatives for ${classSym.fullName}::$name. " +
-        em"Original set was ${alts} with types ${alts.map(_.info)}")
+        em"""Ended up with no alternatives for ${classSym.fullName}::$name.
+            |Original set was ${alts} with types ${alts.map(_.info)}""")
 
     val (jsName, isProp) = exportNameInfo(name)
 

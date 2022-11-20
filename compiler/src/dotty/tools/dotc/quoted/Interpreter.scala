@@ -60,7 +60,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
     case tree: Ident if tree.symbol.is(Inline, butNot = Method) =>
       tree.tpe.widenTermRefExpr match
         case ConstantType(c) => c.value.asInstanceOf[Object]
-        case _ => throw new StopInterpretation(em"${tree.symbol} could not be inlined", tree.srcPos)
+        case _ => throw new StopInterpretation(e"${tree.symbol} could not be inlined", tree.srcPos)
 
     // TODO disallow interpreted method calls as arguments
     case Call(fn, args) =>
@@ -231,7 +231,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
     try clazz.getMethod(name.toString, paramClasses: _*)
     catch {
       case _: NoSuchMethodException =>
-        val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
+        val msg = e"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
         throw new StopInterpretation(msg, pos)
       case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
           if (ctx.settings.XprintSuspension.value)

@@ -2438,10 +2438,10 @@ object SymDenotations {
             val youngest = assocFiles.filter(_.lastModified == lastModDate)
             val chosen = youngest.head
             def ambiguousFilesMsg(f: AbstractFile) =
-              em"""Toplevel definition $name is defined in
-                  |  $chosen
-                  |and also in
-                  |  $f"""
+              e"""Toplevel definition $name is defined in
+                 |  $chosen
+                 |and also in
+                 |  $f"""
             if youngest.size > 1 then
               throw TypeError(i"""${ambiguousFilesMsg(youngest.tail.head)}
                                  |One of these files should be removed from the classpath.""")
@@ -2454,8 +2454,8 @@ object SymDenotations {
               try f.container == chosen.container catch case NonFatal(ex) => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
-                report.warning(i"""${ambiguousFilesMsg(conflicting.nn)}
-                               |Keeping only the definition in $chosen""")
+                report.warning(em"""${ambiguousFilesMsg(conflicting.nn)}
+                                   |Keeping only the definition in $chosen""")
                 ambiguityWarningIssued = true
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
       end dropStale

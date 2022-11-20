@@ -87,18 +87,18 @@ object ErrorReporting {
 
     def expectedTypeStr(tp: Type): String = tp match {
       case tp: PolyProto =>
-        em"type arguments [${tp.targs.tpes}%, %] and ${expectedTypeStr(revealDeepenedArgs(tp.resultType))}"
+        e"type arguments [${tp.targs.tpes}%, %] and ${expectedTypeStr(revealDeepenedArgs(tp.resultType))}"
       case tp: FunProto =>
         def argStr(tp: FunProto): String =
           val result = revealDeepenedArgs(tp.resultType) match {
             case restp: FunProto => argStr(restp)
             case _: WildcardType | _: IgnoredProto => ""
-            case tp => em" and expected result type $tp"
+            case tp => e" and expected result type $tp"
           }
-          em"(${tp.typedArgs().tpes}%, %)$result"
+          e"(${tp.typedArgs().tpes}%, %)$result"
         s"arguments ${argStr(tp)}"
       case _ =>
-        em"expected type $tp"
+        e"expected type $tp"
     }
 
     def anonymousTypeMemberStr(tpe: Type): String = {
@@ -107,12 +107,12 @@ object ErrorReporting {
         case _: MethodOrPoly => "method"
         case _ => "value of type"
       }
-      em"$kind $tpe"
+      e"$kind $tpe"
     }
 
     def overloadedAltsStr(alts: List[SingleDenotation]): String =
-      em"overloaded alternatives of ${denotStr(alts.head)} with types\n" +
-      em" ${alts map (_.info)}%\n %"
+      e"overloaded alternatives of ${denotStr(alts.head)} with types\n" +
+      e" ${alts map (_.info)}%\n %"
 
     def denotStr(denot: Denotation): String =
       if (denot.isOverloaded) overloadedAltsStr(denot.alternatives)
@@ -443,7 +443,7 @@ class ImplicitSearchError(
 
   private def hiddenImplicitsAddendum: String =
     def hiddenImplicitNote(s: SearchSuccess) =
-      em"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+      e"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
 
     val normalImports = ignoredInstanceNormalImport.map(hiddenImplicitNote)
 

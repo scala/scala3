@@ -496,15 +496,15 @@ object Checking {
     }
     if sym.is(Transparent) then
       if sym.isType then
-        if !sym.isExtensibleClass then fail(em"`transparent` can only be used for extensible classes and traits".toMessage)
+        if !sym.isExtensibleClass then fail(em"`transparent` can only be used for extensible classes and traits")
       else
-        if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods".toMessage)
+        if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods")
     if (!sym.isClass && sym.is(Abstract))
       fail(OnlyClassesCanBeAbstract(sym))
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
-      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}".toMessage)
+      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -600,7 +600,7 @@ object Checking {
    */
   def checkNoPrivateLeaks(sym: Symbol)(using Context): Type = {
     class NotPrivate extends TypeMap {
-      var errors: List[() => String] = Nil
+      var errors: List[Message] = Nil
       private var inCaptureSet: Boolean = false
 
       def accessBoundary(sym: Symbol): Symbol =
@@ -632,7 +632,7 @@ object Checking {
           var tp1 =
             if (isLeaked(tp.symbol)) {
               errors =
-                (() => em"non-private ${sym.showLocated} refers to private ${tp.symbol}\nin its type signature ${sym.info}")
+                em"non-private ${sym.showLocated} refers to private ${tp.symbol}\nin its type signature ${sym.info}"
                 :: errors
               tp
             }
@@ -673,7 +673,7 @@ object Checking {
     }
     val notPrivate = new NotPrivate
     val info = notPrivate(sym.info)
-    notPrivate.errors.foreach(error => report.errorOrMigrationWarning(error(), sym.srcPos, from = `3.0`))
+    notPrivate.errors.foreach(report.errorOrMigrationWarning(_, sym.srcPos, from = `3.0`))
     info
   }
 
@@ -843,9 +843,9 @@ trait Checking {
               case Select(id, _) => id
               case _ => EmptyTree
           if extractor.isEmpty then
-            em"pattern binding uses refutable extractor"
+            e"pattern binding uses refutable extractor"
           else
-            em"pattern binding uses refutable extractor `$extractor`"
+            e"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
         if isPatDef then "adding `: @unchecked` after the expression"
@@ -935,8 +935,8 @@ trait Checking {
       // we restrict wildcard export from package as incremental compilation does not yet
       // register a dependency on "all members of a package" - see https://github.com/sbt/zinc/issues/226
       report.error(
-        em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix " +
-          "for a wildcard export, as it is a package.", path.srcPos)
+        em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix for a wildcard export, as it is a package",
+        path.srcPos)
 
   /** Check that module `sym` does not clash with a class of the same name
    *  that is concurrently compiled in another source file.

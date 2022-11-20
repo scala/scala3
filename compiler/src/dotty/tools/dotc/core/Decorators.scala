@@ -59,7 +59,7 @@ object Decorators {
   end extension
 
   extension (str: => String)
-    def toMessage: Message = reporting.NoExplanation(str)
+    def toMessage: Message = NoExplanation(str)
 
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.
@@ -291,16 +291,40 @@ object Decorators {
     def derivedCons(x1: T, xs1: List[T]) =
       if (xs.head eq x1) && (xs.tail eq xs1) then xs else x1 :: xs1
 
+  /* This extension defines the following string formatters:
+   *   i, e, ex, em, exm
+   * String formatters ending in `m` produce a message, the others produce a string.
+   * Details are as follows:
+   *
+   *   i  : Gneral purpose string interpolator that uses Formtting.show to print compiler data
+   *   e  : Like `i`, but with logic that limits the size of messages and that
+   *        filters out nonsensical messages after the first error is reported.
+   *        `e` or its variants should be used for error messages and warnings instead of `i`.
+   *   ex : Like `e`, but it assembles additional info on type variables and for
+   *        disambiguating symbols.
+   *   em : Like `e`, but producing a message
+   *   exm: Like `ex`, but producing a message
+   */
   extension (sc: StringContext)
     /** General purpose string formatting */
     def i(args: Shown*)(using Context): String =
       new StringFormatter(sc).assemble(args)
 
-    /** Formatting for error messages: Like `i` but suppress follow-on
-     *  error messages after the first one if some of their arguments are "non-sensical".
+    /** Formatting for error messages: Like `i`, with two modifications
+     *   - limit size of messages
+     *   - mark some parts of messages with <nonsensical> tags, so that
+     *     error messages after the first one are filtered out if some of
+     *     their arguments are "non-sensical".
      */
-    def em(args: Shown*)(using Context): String =
+    def e(args: Shown*)(using Context): String =
       forErrorMessages(new StringFormatter(sc).assemble(args))
+
+    /** A NoExplanation message formatted with `e` */
+    def em(args: Shown*)(using Context): NoExplanation =
+      NoExplanation(e(args*))
+
+    def exm(args: Shown*)(using Context): NoExplanation =
+      NoExplanation(ex(args*))
 
     /** Formatting with added explanations: Like `em`, but add explanations to
      *  give more info about type variables and to disambiguate where needed.
