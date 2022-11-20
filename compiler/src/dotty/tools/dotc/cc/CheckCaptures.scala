@@ -916,6 +916,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           case ref: TermParamRef => allowed.contains(ref)
           case _ => true
 
+        // Widen the given term parameter refs x₁ : C₁ S₁ , ⋯ , xₙ : Cₙ Sₙ to their capture sets C₁ , ⋯ , Cₙ.
+        //
+        // If in these capture sets there are any capture references that are term parameter references we should avoid,
+        // we will widen them recursively.
         private def widenParamRefs(refs: List[TermParamRef]): List[CaptureSet] =
           @scala.annotation.tailrec
           def recur(todos: List[TermParamRef], acc: List[CaptureSet]): List[CaptureSet] =
@@ -954,13 +958,12 @@ class CheckCaptures extends Recheck, SymTransformer:
               healCaptureSet(refs)
               // mapOver(tp)
               traverseChildren(parent)
-            case tp @ RefinedType(parent, rname, rinfo: MethodType) =>
+            case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
               traverseChildren(rinfo)
             case tp: TermLambda =>
-              val localParams: List[TermParamRef] = tp.paramRefs
               val saved = allowed
               try
-                localParams foreach { x => allowed = allowed + x }
+                tp.paramRefs.foreach(allowed += _)
                 traverseChildren(tp)
               finally allowed = saved
             case _ =>
