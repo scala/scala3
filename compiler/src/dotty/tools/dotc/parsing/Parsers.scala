@@ -3,35 +3,36 @@ package dotc
 package parsing
 
 import scala.language.unsafeNulls
-
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, SourcePosition, NoSourcePosition }
-import Tokens._
-import Scanners._
+import util.{NoSourcePosition, SourceFile, SourcePosition}
+import Tokens.*
+import Scanners.*
 import xml.MarkupParsers.MarkupParser
-import core._
-import Flags._
-import Contexts._
-import Names._
-import NameKinds.{WildcardParamName, QualifiedName}
-import NameOps._
+import core.*
+import Flags.*
+import Contexts.*
+import Names.*
+import NameKinds.{QualifiedName, WildcardParamName}
+import NameOps.*
 import ast.{Positioned, Trees}
-import ast.Trees._
-import StdNames._
-import util.Spans._
-import Constants._
+import ast.Trees.*
+import StdNames.*
+import util.Spans.*
+import Constants.*
 import Symbols.NoSymbol
-import ScriptParsers._
-import Decorators._
+import ScriptParsers.*
+import Decorators.*
 import util.Chars
+
 import scala.annotation.tailrec
-import rewrites.Rewrites.{patch, overlapsPatch}
-import reporting._
+import rewrites.Rewrites.{overlapsPatch, patch}
+import reporting.*
 import config.Feature
-import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
-import config.SourceVersion._
+import config.Feature.{globalOnlyImports, migrateTo3, saferExceptions, sourceVersion}
+import config.Printers
+import config.SourceVersion.*
 import config.SourceVersion
 
 object Parsers {
@@ -3555,9 +3556,10 @@ object Parsers {
       else {
         val mods1 = addFlag(mods, Method)
         val ident = termIdent()
-        var name = ident.name.asTermName
+        val name = ident.name.asTermName
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(numLeadParams = numLeadParams)
+        val exceptions = throwsClauseOpt
         var tpt = fromWithinReturnType { typedOpt() }
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
@@ -3580,6 +3582,18 @@ object Parsers {
         finalizeDef(ddef, mods1, start)
       }
     }
+
+    def throwsClauseOpt : List[Tree] =
+      if in.featureEnabled(Feature.saferExceptions) then
+        if(isIdent(nme.throws))
+          in.nextToken()
+          val except = commaSeparated(() => toplevelTyp())
+          Printers.saferExceptions.println(i"exceptions thrown are : $except")
+          except
+        else
+          Nil
+      else
+        Nil
 
     /** ConstrExpr      ::=  SelfInvocation
      *                    |  `{' SelfInvocation {semi BlockStat} `}'
