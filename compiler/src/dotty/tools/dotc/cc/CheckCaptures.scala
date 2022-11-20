@@ -606,7 +606,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Massage `actual` and `expected` types using the methods below before checking conformance */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
-      val expected1 = makeFunctionDependent(addOuterRefs(expected, actual), actual.stripCapturing)
+      val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
       val actual1 = adaptBoxed(actual, expected1, tree.srcPos)
       //println(i"check conforms $actual1 <<< $expected1")
       super.checkConformsExpr(actual1, expected1, tree)
@@ -615,7 +615,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       MethodType.companion(isContextual = isContextual, isErased = isErased)(args, resultType)
         .toFunctionType(isJava = false, alwaysDependent = true)
 
-    private def makeFunctionDependent(expected: Type, actual: Type)(using Context): Type =
+    /** Turn `expected` into a dependent function when `actual` is dependent. */
+    private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
       def recur(expected: Type): Type = expected.dealias match
         case expected @ CapturingType(eparent, refs) =>
           CapturingType(recur(eparent), refs, boxed = expected.isBoxed)
