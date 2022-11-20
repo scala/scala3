@@ -49,4 +49,5 @@ object Printers {
   val typr = noPrinter
   val unapp = noPrinter
   val variances = noPrinter
+  val saferExceptions = new Printer
 }
