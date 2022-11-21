@@ -133,6 +133,9 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     def explain    = self.explain ++ suffix
     override def canExplain = true
 
+  def wrap(header: => String, trailer: => String): Message =
+    mapMsg(s => header ++ s ++ trailer)
+
   /** Override with `true` for messages that should always be shown even if their
    *  position overlaps another messsage of a different class. On the other hand
    *  multiple messages of the same class with overlapping positions will lead
@@ -144,7 +147,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-class NoExplanation(msgFn: => String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
+final class NoExplanation(msgFn: => String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
   def msg: String = msgFn
   def explain: String = ""
   val kind: MessageKind = MessageKind.NoKind

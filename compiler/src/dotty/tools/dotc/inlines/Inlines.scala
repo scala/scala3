@@ -442,8 +442,7 @@ object Inlines:
               val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
               evidence.tpe match
                 case fail: Implicits.SearchFailureType =>
-                  val msg = evTyper.missingArgMsg(evidence, tpt.tpe, "")
-                  errorTree(call, em"$msg")
+                  errorTree(call, evTyper.missingArgMsg(evidence, tpt.tpe, ""))
                 case _ =>
                   evidence
             }

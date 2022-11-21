@@ -478,7 +478,7 @@ trait Applications extends Compatibility {
         matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
         if (methType.isError) ok = false
-        else fail(s"$methString does not take parameters".toMessage)
+        else fail(em"$methString does not take parameters")
     }
 
     /** The application was successful */
@@ -518,10 +518,10 @@ trait Applications extends Compatibility {
               else { // name not (or no longer) available for named arg
                 def msg =
                   if (methodType.paramNames contains aname)
-                    s"parameter $aname of $methString is already instantiated"
+                    em"parameter $aname of $methString is already instantiated"
                   else
-                    s"$methString does not have a parameter $aname"
-                fail(msg.toMessage, arg.asInstanceOf[Arg])
+                    em"$methString does not have a parameter $aname"
+                fail(msg, arg.asInstanceOf[Arg])
                 arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop)
               }
             case arg :: args1 =>
@@ -647,10 +647,10 @@ trait Applications extends Compatibility {
               def msg = arg match
                 case untpd.Tuple(Nil)
                 if applyKind == ApplyKind.InfixTuple && funType.widen.isNullaryMethod =>
-                  i"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
+                  em"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
                 case _ =>
-                  i"too many arguments for $methString"
-              fail(msg.toMessage, arg)
+                  em"too many arguments for $methString"
+              fail(msg, arg)
             case nil =>
           }
       }

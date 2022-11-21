@@ -172,21 +172,8 @@ trait TypeAssigner {
     errorType(msg, tree.srcPos)
 
   def inaccessibleErrorType(tpe: NamedType, superAccess: Boolean, pos: SrcPos)(using Context): Type =
-    val pre = tpe.prefix
-    val name = tpe.name
-    val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
-    val whatCanNot = alts match
-      case Nil =>
-        e"$name cannot"
-      case sym :: Nil =>
-        e"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
-      case _ =>
-        e"none of the overloaded alternatives named $name can"
-    val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
-    val whyNot = new StringBuffer
-    alts.foreach(_.isAccessibleFrom(pre, superAccess, whyNot))
     if tpe.isError then tpe
-    else errorType(e"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
+    else errorType(CannotBeAccessed(tpe, superAccess), pos)
 
   def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type = tp match
     case AppliedType(tycon, args) =>

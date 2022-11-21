@@ -435,19 +435,17 @@ object Implicits:
 
     final protected def qualify(using Context): String = expectedType match {
       case SelectionProto(name, mproto, _, _) if !argument.isEmpty =>
-        e"provide an extension method `$name` on ${argument.tpe}"
+        i"provide an extension method `$name` on ${argument.tpe}"
       case NoType =>
-        if (argument.isEmpty) e"match expected type"
-        else e"convert from ${argument.tpe} to expected type"
+        if (argument.isEmpty) i"match expected type"
+        else i"convert from ${argument.tpe} to expected type"
       case _ =>
-        if (argument.isEmpty) e"match type ${clarify(expectedType)}"
-        else e"convert from ${argument.tpe} to ${clarify(expectedType)}"
+        if (argument.isEmpty) i"match type ${clarify(expectedType)}"
+        else i"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
 
     /** An explanation of the cause of the failure as a string */
-    def explanation(using Context): String
-
-    def msg(using Context): Message = explanation.toMessage
+    def explanation(using Context): String = msg.message
 
     /** If search was for an implicit conversion, a note describing the failure
      *  in more detail - this is either empty or starts with a '\n'
@@ -488,8 +486,9 @@ object Implicits:
         map(tp)
       }
 
-    def explanation(using Context): String =
-      e"no implicit values were found that $qualify"
+    def msg(using Context): Message =
+      em"no implicit values were found that $qualify"
+
     override def toString = s"NoMatchingImplicits($expectedType, $argument)"
   }
 
@@ -509,20 +508,20 @@ object Implicits:
       i"""
          |Note that implicit conversions were not tried because the result of an implicit conversion
          |must be more specific than $target"""
-    override def explanation(using Context) =
-      i"""${super.explanation}.
-         |The expected type $target is not specific enough, so no search was attempted"""
+
+    override def msg(using Context) =
+      super.msg.wrap("", "\nThe expected type $target is not specific enough, so no search was attempted")
     override def toString = s"TooUnspecific"
 
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
-    def explanation(using Context): String =
+    def msg(using Context): Message =
       var str1 = err.refStr(alt1.ref)
       var str2 = err.refStr(alt2.ref)
       if str1 == str2 then
         str1 = ctx.printer.toTextRef(alt1.ref).show
         str2 = ctx.printer.toTextRef(alt2.ref).show
-      e"both $str1 and $str2 $qualify"
+      em"both $str1 and $str2 $qualify"
     override def whyNoConversion(using Context): String =
       if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
         ""
@@ -536,21 +535,21 @@ object Implicits:
   class MismatchedImplicit(ref: TermRef,
                            val expectedType: Type,
                            val argument: Tree) extends SearchFailureType {
-    def explanation(using Context): String =
-      e"${err.refStr(ref)} does not $qualify"
+    def msg(using Context): Message =
+      em"${err.refStr(ref)} does not $qualify"
   }
 
   class DivergingImplicit(ref: TermRef,
                           val expectedType: Type,
                           val argument: Tree) extends SearchFailureType {
-    def explanation(using Context): String =
-      e"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
+    def msg(using Context): Message =
+      em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
 
   /** A search failure type for attempted ill-typed extension method calls */
   class FailedExtension(extApp: Tree, val expectedType: Type, val whyFailed: Message) extends SearchFailureType:
     def argument = EmptyTree
-    def explanation(using Context) = e"$extApp does not $qualify"
+    def msg(using Context) = em"$extApp does not $qualify"
 
    /** A search failure type for aborted searches of extension methods, typically
     *  because of a cyclic reference or similar.
@@ -558,7 +557,6 @@ object Implicits:
   class NestedFailure(_msg: Message, val expectedType: Type) extends SearchFailureType:
     def argument = EmptyTree
     override def msg(using Context) = _msg
-    def explanation(using Context) = msg.toString
 
   /** A search failure type for failed synthesis of terms for special types */
   class SynthesisFailure(reasons: List[String], val expectedType: Type) extends SearchFailureType:
@@ -570,7 +568,7 @@ object Implicits:
       else
         reasons.mkString(" ", "", "")
 
-    def explanation(using Context) = e"Failed to synthesize an instance of type ${clarify(expectedType)}:${formatReasons}"
+    def msg(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}:${formatReasons}"
 
 end Implicits
 
@@ -905,7 +903,7 @@ trait Implicits:
     pt: Type,
     where: String,
     paramSymWithMethodCallTree: Option[(Symbol, Tree)] = None
-  )(using Context): String = {
+  )(using Context): Message = {
     def findHiddenImplicitsCtx(c: Context): Context =
       if c == NoContext then c
       else c.freshOver(findHiddenImplicitsCtx(c.outer)).addMode(Mode.FindHiddenImplicits)
@@ -928,8 +926,7 @@ trait Implicits:
           // example where searching for a nested type causes an infinite loop.
           None
 
-    val error = new ImplicitSearchError(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, importSuggestionAddendum(pt))
-    error.missingArgMsg
+    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, importSuggestionAddendum)
   }
 
   /** A string indicating the formal parameter corresponding to a  missing argument */
@@ -939,9 +936,9 @@ trait Implicits:
         val qt = qual.tpe.widen
         val qt1 = qt.dealiasKeepAnnots
         def addendum = if (qt1 eq qt) "" else (i"\nThe required type is an alias of: $qt1")
-        e"parameter of ${qual.tpe.widen}$addendum"
+        i"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
-        e"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
+        i"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
              else s"parameter $paramName" } of $methodStr"
     }
 
@@ -1050,7 +1047,9 @@ trait Implicits:
               withMode(Mode.OldOverloadingResolution)(inferImplicit(pt, argument, span)) match {
                 case altResult: SearchSuccess =>
                   report.migrationWarning(
-                    s"According to new implicit resolution rules, this will be ambiguous:\n${result.reason.explanation}",
+                    result.reason.msg.wrap(
+                      s"According to new implicit resolution rules, this will be ambiguous:\n",
+                      ""),
                     ctx.source.atSpan(span))
                   altResult
                 case _ =>

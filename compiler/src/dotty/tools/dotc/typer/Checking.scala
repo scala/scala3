@@ -843,9 +843,9 @@ trait Checking {
               case Select(id, _) => id
               case _ => EmptyTree
           if extractor.isEmpty then
-            e"pattern binding uses refutable extractor"
+            i"pattern binding uses refutable extractor"
           else
-            e"pattern binding uses refutable extractor `$extractor`"
+            i"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
         if isPatDef then "adding `: @unchecked` after the expression"

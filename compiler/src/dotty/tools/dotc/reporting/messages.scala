@@ -15,9 +15,10 @@ import printing.Formatting
 import ErrorMessageID._
 import ast.Trees
 import config.{Feature, ScalaVersion}
-import typer.ErrorReporting.{err, matchReductionAddendum}
+import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
 import typer.ProtoTypes.ViewProto
-import typer.Implicits.Candidate
+import typer.Implicits.*
+import typer.Inferencing
 import scala.util.control.NonFatal
 import StdNames.nme
 import printing.Formatting.hl
@@ -25,6 +26,8 @@ import ast.Trees._
 import ast.untpd
 import ast.tpd
 import transform.SymUtils._
+import scala.util.matching.Regex
+import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet.IdentityCaptRefMap
 
 /**  Messages
@@ -244,34 +247,34 @@ import cc.CaptureSet.IdentityCaptRefMap
   class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: => String*)(using Context)
     extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
-    // replace constrained TypeParamRefs and their typevars by their bounds where possible
-    // and the bounds are not f-bounds.
-    // The idea is that if the bounds are also not-subtypes of each other to report
-    // the type mismatch on the bounds instead of the original TypeParamRefs, since
-    // these are usually easier to analyze. We exclude F-bounds since these would
-    // lead to a recursive infinite expansion.
-    object reported extends TypeMap, IdentityCaptRefMap:
-      def setVariance(v: Int) = variance = v
-      val constraint = mapCtx.typerState.constraint
-      var fbounded = false
-      def apply(tp: Type): Type = tp match
-        case tp: TypeParamRef =>
-          constraint.entry(tp) match
-            case bounds: TypeBounds =>
-              if variance < 0 then apply(TypeComparer.fullUpperBound(tp))
-              else if variance > 0 then apply(TypeComparer.fullLowerBound(tp))
-              else tp
-            case NoType => tp
-            case instType => apply(instType)
-        case tp: TypeVar =>
-          apply(tp.stripTypeVar)
-        case tp: LazyRef =>
-          fbounded = true
-          tp
-        case _ =>
-          mapOver(tp)
-
     def msg =
+      // replace constrained TypeParamRefs and their typevars by their bounds where possible
+      // and the bounds are not f-bounds.
+      // The idea is that if the bounds are also not-subtypes of each other to report
+      // the type mismatch on the bounds instead of the original TypeParamRefs, since
+      // these are usually easier to analyze. We exclude F-bounds since these would
+      // lead to a recursive infinite expansion.
+      object reported extends TypeMap, IdentityCaptRefMap:
+        def setVariance(v: Int) = variance = v
+        val constraint = mapCtx.typerState.constraint
+        var fbounded = false
+        def apply(tp: Type): Type = tp match
+          case tp: TypeParamRef =>
+            constraint.entry(tp) match
+              case bounds: TypeBounds =>
+                if variance < 0 then apply(TypeComparer.fullUpperBound(tp))
+                else if variance > 0 then apply(TypeComparer.fullLowerBound(tp))
+                else tp
+              case NoType => tp
+              case instType => apply(instType)
+          case tp: TypeVar =>
+            apply(tp.stripTypeVar)
+          case tp: LazyRef =>
+            fbounded = true
+            tp
+          case _ =>
+            mapOver(tp)
+
       val found1 = reported(found)
       reported.setVariance(-1)
       val expected1 = reported(expected)
@@ -290,6 +293,7 @@ import cc.CaptureSet.IdentityCaptRefMap
       s"""|Found:    $foundStr
           |Required: $expectedStr""".stripMargin
         + whereSuffix + postScript
+    end msg
 
     override def explain =
       val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
@@ -1126,7 +1130,7 @@ import cc.CaptureSet.IdentityCaptRefMap
   class ExpectedTokenButFound(expected: Token, found: Token)(using Context)
   extends SyntaxMsg(ExpectedTokenButFoundID) {
 
-    private lazy val foundText = Tokens.showToken(found)
+    private def foundText = Tokens.showToken(found)
 
     def msg =
       val expectedText =
@@ -1248,10 +1252,10 @@ import cc.CaptureSet.IdentityCaptRefMap
 
   class SkolemInInferred(tree: tpd.Tree, pt: Type, argument: tpd.Tree)(using Context)
   extends TypeMsg(SkolemInInferredID):
-    private def argStr =
-      if argument.isEmpty then ""
-      else i" from argument of type ${argument.tpe.widen}"
     def msg =
+      def argStr =
+        if argument.isEmpty then ""
+        else i" from argument of type ${argument.tpe.widen}"
       e"""Failure to generate given instance for type $pt$argStr)
          |
          |I found: $tree
@@ -1296,7 +1300,7 @@ import cc.CaptureSet.IdentityCaptRefMap
       *      imported by <tree>
       *  or  defined in <symbol>
       */
-    private def bindingString(prec: BindingPrec, whereFound: Context, qualifier: String = "") = {
+    private def bindingString(prec: BindingPrec, whereFound: Context, qualifier: String = "")(using Context) = {
       val howVisible = prec match {
         case BindingPrec.Definition => "defined"
         case BindingPrec.Inheritance => "inherited"
@@ -1332,7 +1336,7 @@ import cc.CaptureSet.IdentityCaptRefMap
 
   class MethodDoesNotTakeParameters(tree: tpd.Tree)(using Context)
   extends TypeMsg(MethodDoesNotTakeParametersId) {
-    def methodSymbol: Symbol =
+    def methodSymbol(using Context): Symbol =
       def recur(t: tpd.Tree): Symbol =
         val sym = tpd.methPart(t).symbol
         if sym == defn.Any_typeCast then
@@ -1391,7 +1395,7 @@ import cc.CaptureSet.IdentityCaptRefMap
 
   class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
     extends TypeMsg(TypeDoesNotTakeParametersID) {
-    private def fboundsAddendum =
+    private def fboundsAddendum(using Context) =
       if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
         "\n(Note that F-bounds of type parameters may not be type lambdas)"
       else ""
@@ -1531,11 +1535,10 @@ import cc.CaptureSet.IdentityCaptRefMap
     implicit ctx: Context)
     extends SyntaxMsg(OnlyClassesCanHaveDeclaredButUndefinedMembersID) {
 
-    private def varNote =
-      if (sym.is(Mutable)) "Note that variables need to be initialized to be defined."
-      else ""
     def msg = e"""Declaration of $sym not allowed here: only classes can have declared but undefined members"""
-    def explain = s"$varNote"
+    def explain =
+      if sym.is(Mutable) then "Note that variables need to be initialized to be defined."
+      else ""
   }
 
   class CannotExtendAnyVal(sym: Symbol)(using Context)
@@ -1569,7 +1572,7 @@ import cc.CaptureSet.IdentityCaptRefMap
   class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(using Context)
     extends SyntaxMsg(CannotHaveSameNameAsID) {
     import CannotHaveSameNameAs._
-    def reasonMessage: String = reason match {
+    def reasonMessage(using Context): String = reason match {
       case CannotBeOverridden => "class definitions cannot be overridden"
       case DefinedInSelf(self) =>
         s"""cannot define ${sym.showKind} member with the same name as a ${cls.showKind} member in self reference ${self.name}.
@@ -1851,16 +1854,16 @@ import cc.CaptureSet.IdentityCaptRefMap
   }
 
   class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context) extends NamingMsg(AlreadyDefinedID):
-    private def where: String =
-      if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
-        i" in ${conflicting.associatedFile}"
-      else if conflicting.owner == owner then ""
-      else i" in ${conflicting.owner}"
-    private def note =
-      if owner.is(Method) || conflicting.is(Method) then
-        "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
-      else ""
     def msg =
+      def where: String =
+        if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
+          i" in ${conflicting.associatedFile}"
+        else if conflicting.owner == owner then ""
+        else i" in ${conflicting.owner}"
+      def note =
+        if owner.is(Method) || conflicting.is(Method) then
+          "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
+        else ""
       if conflicting.isTerm != name.isTermName then
         e"$name clashes with $conflicting$where; the two must be defined together"
       else
@@ -1868,12 +1871,12 @@ import cc.CaptureSet.IdentityCaptRefMap
     def explain = ""
 
   class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
-    lazy val (where, or) =
-      if pkg.associatedFile == null then ("", "")
-      else (s" in ${pkg.associatedFile}", " or delete the containing class file")
-    def msg = e"""${pkg.name} is the name of $pkg$where.
-                          |It cannot be used at the same time as the name of a package."""
+    def msg =
+      def where = if pkg.associatedFile == null then "" else s" in ${pkg.associatedFile}"
+      e"""${pkg.name} is the name of $pkg$where.
+         |It cannot be used at the same time as the name of a package."""
     def explain =
+      def or = if pkg.associatedFile == null then "" else " or delete the containing class file"
       e"""An ${hl("object")} or other toplevel definition cannot have the same name as an existing ${hl("package")}.
          |Rename either one of them$or."""
   }
@@ -2487,7 +2490,7 @@ import cc.CaptureSet.IdentityCaptRefMap
   class ImplicitSearchTooLargeWarning(limit: Int, openSearchPairs: List[(Candidate, Type)])(using Context)
     extends TypeMsg(ImplicitSearchTooLargeID):
     override def showAlways = true
-    def showQuery(query: (Candidate, Type)): String =
+    def showQuery(query: (Candidate, Type))(using Context): String =
       i"  ${query._1.ref.symbol.showLocated}  for  ${query._2}}"
     def msg =
       e"""Implicit search problem too large.
@@ -2533,3 +2536,212 @@ import cc.CaptureSet.IdentityCaptRefMap
     def msg = ex"$tp is not a class type"
     def explain = ""
 
+  class MissingImplicitArgument(
+      arg: tpd.Tree,
+      pt: Type,
+      where: String,
+      paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
+      ignoredInstanceNormalImport: => Option[SearchSuccess],
+      importSuggestionAddendum: Type => String
+    )(using ctx: Context) extends TypeMsg(MissingImplicitArgumentID):
+
+    def msg: String =
+
+      def formatMsg(shortForm: String)(headline: String = shortForm) = arg match
+        case arg: Trees.SearchFailureIdent[?] =>
+          arg.tpe match
+            case _: NoMatchingImplicits => headline
+            case tpe: SearchFailureType =>
+              i"$headline. ${tpe.explanation}"
+            case _ => headline
+        case _ =>
+          arg.tpe match
+            case tpe: SearchFailureType =>
+              val original = arg match
+                case Inlined(call, _, _) => call
+                case _ => arg
+              i"""$headline.
+                |I found:
+                |
+                |    ${original.show.replace("\n", "\n    ")}
+                |
+                |But ${tpe.explanation}."""
+            case _ => headline
+
+      /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
+       *  all occurrences of `${X}` where `X` is in `paramNames` with the
+       *  corresponding shown type in `args`.
+       */
+      def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type]): String = {
+        def translate(name: String): Option[String] = {
+          val idx = paramNames.indexOf(name)
+          if (idx >= 0) Some(ex"${args(idx)}") else None
+        }
+
+        """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match {
+          case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("")).nn
+        })
+      }
+
+      /** Extract a user defined error message from a symbol `sym`
+       *  with an annotation matching the given class symbol `cls`.
+       */
+      def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
+        ann <- sym.getAnnotation(cls)
+        msg <- ann.argumentConstantString(0)
+      } yield msg
+
+      def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
+
+      def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) =
+        s"Ambiguous given instances: ${ambi.explanation}${location("of")}"
+
+      def defaultImplicitNotFoundMessage =
+        ex"No given instance of type $pt was found${location("for")}"
+
+      /** Construct a custom error message given an ambiguous implicit
+       *  candidate `alt` and a user defined message `raw`.
+       */
+      def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
+        val params = alt.ref.underlying match {
+          case p: PolyType => p.paramNames.map(_.toString)
+          case _           => Nil
+        }
+        def resolveTypes(targs: List[tpd.Tree])(using Context) =
+          targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
+
+        // We can extract type arguments from:
+        //   - a function call:
+        //     @implicitAmbiguous("msg A=${A}")
+        //     implicit def f[A](): String = ...
+        //     implicitly[String] // found: f[Any]()
+        //
+        //   - an eta-expanded function:
+        //     @implicitAmbiguous("msg A=${A}")
+        //     implicit def f[A](x: Int): String = ...
+        //     implicitly[Int => String] // found: x => f[Any](x)
+
+        val call = tpd.closureBody(alt.tree) // the tree itself if not a closure
+        val targs = tpd.typeArgss(call).flatten
+        val args = resolveTypes(targs)(using ctx.fresh.setTyperState(alt.tstate))
+        userDefinedErrorString(raw, params, args)
+      }
+
+      /** @param rawMsg           Message template with variables, e.g. "Variable A is ${A}"
+       *  @param sym              Symbol of the annotated type or of the method whose parameter was annotated
+       *  @param substituteType   Function substituting specific types for abstract types associated with variables, e.g A -> Int
+       */
+      def formatAnnotationMessage(rawMsg: String, sym: Symbol, substituteType: Type => Type): String = {
+        val substitutableTypesSymbols = substitutableTypeSymbolsInScope(sym)
+
+        userDefinedErrorString(
+          rawMsg,
+          paramNames = substitutableTypesSymbols.map(_.name.unexpandedName.toString),
+          args = substitutableTypesSymbols.map(_.typeRef).map(substituteType)
+        )
+      }
+
+      /** Extracting the message from a method parameter, e.g. in
+       *
+       *  trait Foo
+       *
+       *  def foo(implicit @annotation.implicitNotFound("Foo is missing") foo: Foo): Any = ???
+       */
+      def userDefinedImplicitNotFoundParamMessage: Option[String] = paramSymWithMethodCallTree.flatMap { (sym, applTree) =>
+        userDefinedMsg(sym, defn.ImplicitNotFoundAnnot).map { rawMsg =>
+          val fn = tpd.funPart(applTree)
+          val targs = tpd.typeArgss(applTree).flatten
+          val methodOwner = fn.symbol.owner
+          val methodOwnerType = tpd.qualifier(fn).tpe
+          val methodTypeParams = fn.symbol.paramSymss.flatten.filter(_.isType)
+          val methodTypeArgs = targs.map(_.tpe)
+          val substituteType = (_: Type).asSeenFrom(methodOwnerType, methodOwner).subst(methodTypeParams, methodTypeArgs)
+          formatAnnotationMessage(rawMsg, sym.owner, substituteType)
+        }
+      }
+
+      /** Extracting the message from a type, e.g. in
+       *
+       *  @annotation.implicitNotFound("Foo is missing")
+       *  trait Foo
+       *
+       *  def foo(implicit foo: Foo): Any = ???
+       */
+      def userDefinedImplicitNotFoundTypeMessage: Option[String] =
+        def recur(tp: Type): Option[String] = tp match
+          case tp: TypeRef =>
+            val sym = tp.symbol
+            userDefinedImplicitNotFoundTypeMessageFor(sym).orElse(recur(tp.info))
+          case tp: ClassInfo =>
+            tp.baseClasses.iterator
+              .map(userDefinedImplicitNotFoundTypeMessageFor)
+              .find(_.isDefined).flatten
+          case tp: TypeProxy =>
+            recur(tp.superType)
+          case tp: AndType =>
+            recur(tp.tp1).orElse(recur(tp.tp2))
+          case _ =>
+            None
+        recur(pt)
+
+      def userDefinedImplicitNotFoundTypeMessageFor(sym: Symbol): Option[String] =
+        for
+          rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
+          if Feature.migrateTo3 || sym != defn.Function1
+            // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
+        yield
+          val substituteType = (_: Type).asSeenFrom(pt, sym)
+          formatAnnotationMessage(rawMsg, sym, substituteType)
+
+      def hiddenImplicitsAddendum: String =
+        def hiddenImplicitNote(s: SearchSuccess) =
+          i"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+        val normalImports = ignoredInstanceNormalImport.map(hiddenImplicitNote)
+        normalImports.getOrElse(importSuggestionAddendum(pt))
+
+      object AmbiguousImplicitMsg {
+        def unapply(search: SearchSuccess): Option[String] =
+          userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
+      }
+
+      arg.tpe match
+        case ambi: AmbiguousImplicits =>
+          (ambi.alt1, ambi.alt2) match
+            case (alt @ AmbiguousImplicitMsg(msg), _) =>
+              userDefinedAmbiguousImplicitMsg(alt, msg)
+            case (_, alt @ AmbiguousImplicitMsg(msg)) =>
+              userDefinedAmbiguousImplicitMsg(alt, msg)
+            case _ =>
+              defaultAmbiguousImplicitMsg(ambi)
+        case ambi @ TooUnspecific(target) =>
+          ex"""No implicit search was attempted${location("for")}
+              |since the expected type $target is not specific enough"""
+        case _ =>
+          val shortMessage = userDefinedImplicitNotFoundParamMessage
+            .orElse(userDefinedImplicitNotFoundTypeMessage)
+            .getOrElse(defaultImplicitNotFoundMessage)
+          formatMsg(shortMessage)()
+          ++ hiddenImplicitsAddendum
+          ++ matchReductionAddendum(pt)
+    end msg
+    def explain = ""
+  end MissingImplicitArgument
+
+  class CannotBeAccessed(tpe: NamedType, superAccess: Boolean)(using Context)
+  extends ReferenceMsg(CannotBeAccessedID):
+    def msg =
+      val pre = tpe.prefix
+      val name = tpe.name
+      val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
+      val whatCanNot = alts match
+        case Nil =>
+          e"$name cannot"
+        case sym :: Nil =>
+          e"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
+        case _ =>
+          e"none of the overloaded alternatives named $name can"
+      val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
+      val whyNot = new StringBuffer
+      alts.foreach(_.isAccessibleFrom(pre, superAccess, whyNot))
+      e"$whatCanNot be accessed as a member of $pre$where.$whyNot"
+    def explain = ""
