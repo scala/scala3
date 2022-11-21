@@ -3976,9 +3976,9 @@ object Types {
           tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
         case tp @ AppliedType(tycon, args) if defn.isFunctionType(tp) =>
           wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
-        case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionType(tp) =>
+        case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionOrPolyType(tp) =>
           wrapConvertible(tp.derivedRefinedType(parent, rname, addInto(rinfo)))
-        case tp: MethodType =>
+        case tp: MethodOrPoly =>
           tp.derivedLambdaType(resType = addInto(tp.resType))
         case ExprType(resType) =>
           ExprType(addInto(resType))

@@ -55,7 +55,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps",
   "scala.caps$",
 
-  //// New festure: into
+  //// New feature: into
   "scala.annotation.allowConversions",
 
   //// New APIs: Mirror
