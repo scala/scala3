@@ -59,7 +59,7 @@ object Decorators {
   end extension
 
   extension (str: => String)
-    def toMessage: Message = NoExplanation(str)
+    def toMessage: Message = NoExplanation(str)(using NoContext)
 
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.

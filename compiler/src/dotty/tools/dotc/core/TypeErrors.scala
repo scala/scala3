@@ -16,7 +16,7 @@ import config.Printers.cyclicErrors
 
 abstract class TypeError(using creationContext: Context) extends Exception(""):
 
-  /** Convert to message. This uses an additional Context, so that we
+  /** Convert to message. This takes an additional Context, so that we
    *  use the context when the message is first produced, i.e. when the TypeError
    *  is handled. This makes a difference for CyclicErrors since we need to know
    *  the context where the completed symbol is referenced, but the creation
@@ -26,7 +26,7 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
    */
   def toMessage(using Context): Message
 
-  /** Uses creation context to produce the message */
+  /** Uses creationContext to produce the message */
   override def getMessage: String = toMessage.message
 
 object TypeError:

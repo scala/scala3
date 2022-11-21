@@ -40,10 +40,10 @@ import cc.CaptureSet.IdentityCaptRefMap
   *  ```
   */
 
-  abstract class SyntaxMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class SyntaxMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
     def kind = MessageKind.Syntax
 
-  abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class TypeMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
     def kind = MessageKind.Type
 
   trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
@@ -55,27 +55,27 @@ import cc.CaptureSet.IdentityCaptRefMap
     def explain = err.whyNoMatchStr(found, expected)
     override def canExplain = true
 
-  abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class NamingMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
     def kind = MessageKind.Naming
 
-  abstract class DeclarationMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class DeclarationMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
     def kind = MessageKind.Declaration
 
   /** A simple not found message (either for idents, or member selection.
    *  Messages of this class are sometimes dropped in favor of other, more
    *  specific messages.
    */
-  abstract class NotFoundMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class NotFoundMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
     def kind = MessageKind.NotFound
     def name: Name
 
-  abstract class PatternMatchMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class PatternMatchMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
     def kind = MessageKind.PatternMatch
 
-  abstract class CyclicMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
     def kind = MessageKind.Cyclic
 
-  abstract class ReferenceMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class ReferenceMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
     def kind = MessageKind.Reference
 
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
@@ -1097,7 +1097,7 @@ import cc.CaptureSet.IdentityCaptRefMap
           |"""
   }
 
-  class OverrideError(override val msg: String) extends DeclarationMsg(OverrideErrorID):
+  class OverrideError(override val msg: String)(using Context) extends DeclarationMsg(OverrideErrorID):
     def explain = ""
 
   class OverrideTypeMismatchError(override val msg: String, memberTp: Type, otherTp: Type)(using Context)

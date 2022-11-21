@@ -40,7 +40,7 @@ object Message {
   * @param errorId a unique id identifying the message, this will be
   *                used to reference documentation online
   */
-abstract class Message(val errorId: ErrorMessageID) { self =>
+abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   import Message._
 
   /** The `msg` contains the diagnostic message e.g:
@@ -144,7 +144,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-class NoExplanation(msgFn: => String) extends Message(ErrorMessageID.NoExplanationID) {
+class NoExplanation(msgFn: => String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
   def msg: String = msgFn
   def explain: String = ""
   val kind: MessageKind = MessageKind.NoKind

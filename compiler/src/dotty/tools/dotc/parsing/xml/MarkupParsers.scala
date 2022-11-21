@@ -6,6 +6,7 @@ package xml
 import scala.language.unsafeNulls
 
 import scala.collection.mutable
+import core.Contexts.Context
 import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
 import util.Chars.SU
@@ -50,7 +51,7 @@ object MarkupParsers {
     override def getMessage: String = "input ended while parsing XML"
   }
 
-  class MarkupParser(parser: Parser, final val preserveWS: Boolean)(implicit src: SourceFile) extends MarkupParserCommon {
+  class MarkupParser(parser: Parser, final val preserveWS: Boolean)(using Context) extends MarkupParserCommon {
 
     import Tokens.{ LBRACE, RBRACE }
 
