@@ -1102,6 +1102,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val (stats1, exprCtx) = withoutMode(Mode.Pattern) {
       typedBlockStats(tree.stats)
     }
+
     var expr1 = typedExpr(tree.expr, pt.dropIfProto)(using exprCtx)
 
     // If unsafe nulls is enabled inside a block but not enabled outside
@@ -3128,7 +3129,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         traverse(xtree :: rest)
       case stat :: rest =>
         val stat1 = typed(stat)(using ctx.exprContext(stat, exprOwner))
-        checkStatementPurity(stat1)(stat, exprOwner)
+        if !checkInterestingResultInStatement(stat1) then checkStatementPurity(stat1)(stat, exprOwner)
         buf += stat1
         traverse(rest)(using stat1.nullableContext)
       case nil =>
@@ -4211,6 +4212,59 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               untpd.TypedSplice(dummyTreeOfType(pt)))
           typedExpr(cmp, defn.BooleanType)
       case _ =>
+
+  private def checkInterestingResultInStatement(t: Tree)(using Context): Boolean = {
+    def isUninterestingSymbol(sym: Symbol): Boolean =
+      sym == NoSymbol ||
+      sym.isConstructor ||
+      sym.is(Package) ||
+      sym.isPackageObject ||
+      sym == defn.BoxedUnitClass ||
+      sym == defn.AnyClass ||
+      sym == defn.AnyRefAlias ||
+      sym == defn.AnyValClass
+    def isUninterestingType(tpe: Type): Boolean =
+      tpe == NoType ||
+      tpe.typeSymbol == defn.UnitClass ||
+      defn.isBottomClass(tpe.typeSymbol) ||
+      tpe =:= defn.UnitType ||
+      tpe.typeSymbol == defn.BoxedUnitClass ||
+      tpe =:= defn.AnyValType ||
+      tpe =:= defn.AnyType ||
+      tpe =:= defn.AnyRefType
+    def isJavaApplication(t: Tree): Boolean = t match {
+      case Apply(f, _) => f.symbol.is(JavaDefined) && !defn.ObjectClass.isSubClass(f.symbol.owner)
+      case _ => false
+    }
+    def checkInterestingShapes(t: Tree): Boolean = t match {
+      case If(_, thenpart, elsepart) => checkInterestingShapes(thenpart) || checkInterestingShapes(elsepart)
+      case Block(_, res) => checkInterestingShapes(res)
+      case Match(_, cases) => cases.exists(k => checkInterestingShapes(k.body))
+      case _ => checksForInterestingResult(t)
+    }
+    def checksForInterestingResult(t: Tree): Boolean = (
+         !t.isDef                               // ignore defs
+      && !isUninterestingSymbol(t.symbol)       // ctors, package, Unit, Any
+      && !isUninterestingType(t.tpe)            // bottom types, Unit, Any
+      && !isThisTypeResult(t)                   // buf += x
+      && !isSuperConstrCall(t)                  // just a thing
+      && !isJavaApplication(t)                  // Java methods are inherently side-effecting
+      // && !treeInfo.hasExplicitUnit(t)           // suppressed by explicit expr: Unit // TODO Should explicit `: Unit` be added as warning suppression?
+    )
+    if ctx.settings.WNonUnitStatement.value && !ctx.isAfterTyper && checkInterestingShapes(t) then
+      val where = t match {
+        case Block(_, res) => res
+        case If(_, thenpart, Literal(Constant(()))) =>
+          thenpart match {
+            case Block(_, res) => res
+            case _ => thenpart
+          }
+        case _ => t
+      }
+      report.warning(UnusedNonUnitValue(where.tpe), t.srcPos)
+      true
+    else false
+  }
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(using Context): Unit =
     if !tree.tpe.isErroneous

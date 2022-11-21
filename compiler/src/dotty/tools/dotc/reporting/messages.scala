@@ -2806,3 +2806,9 @@ class ValueDiscarding(tp: Type)(using Context)
     def kind = MessageKind.PotentialIssue
     def msg(using Context) = i"discarded non-Unit value of type $tp"
     def explain(using Context) = ""
+
+class UnusedNonUnitValue(tp: Type)(using Context)
+  extends Message(UnusedNonUnitValueID):
+    def kind = MessageKind.PotentialIssue
+    def msg(using Context) = i"unused value of type $tp"
+    def explain(using Context) = ""
