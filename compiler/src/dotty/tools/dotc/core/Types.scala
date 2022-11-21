@@ -397,6 +397,10 @@ object Types {
     def isRepeatedParam(using Context): Boolean =
       typeSymbol eq defn.RepeatedParamClass
 
+    /** Is this a parameter type that allows implicit argument converson? */
+    def isConvertibleParam(using Context): Boolean =
+      typeSymbol eq defn.IntoType
+
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
      */
@@ -536,7 +540,7 @@ object Types {
       case tp: ClassInfo =>
         tp.cls :: Nil
       case AndType(l, r) =>
-        l.parentSymbols(include) | r.parentSymbols(include)
+        l.parentSymbols(include).setUnion(r.parentSymbols(include))
       case OrType(l, r) =>
         l.parentSymbols(include) intersect r.parentSymbols(include) // TODO does not conform to spec
       case _ =>
@@ -1864,6 +1868,11 @@ object Types {
 
     def dropRepeatedAnnot(using Context): Type = dropAnnot(defn.RepeatedAnnot)
 
+    /** A translation from types of original parameter ValDefs to the types
+     *  of parameters in MethodTypes.
+     *  Translates `Seq[T] @repeated` or `Array[T] @repeated` to `<repeated>[T]`.
+     *  That way, repeated arguments are made manifest without risk of dropped annotations.
+     */
     def annotatedToRepeated(using Context): Type = this match {
       case tp @ ExprType(tp1) =>
         tp.derivedExprType(tp1.annotatedToRepeated)
@@ -3948,27 +3957,48 @@ object Types {
      *  and inline parameters:
      *   - replace @repeated annotations on Seq or Array types by <repeated> types
      *   - add @inlineParam to inline parameters
+     *   - add @erasedParam to erased parameters
+     *   - wrap types of parameters that have an @allowConversions annotation with Into[_]
      */
-    def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType = {
-      def translateInline(tp: Type): Type = tp match {
-        case ExprType(resType) => ExprType(AnnotatedType(resType, Annotation(defn.InlineParamAnnot)))
-        case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
-      }
-      def translateErased(tp: Type): Type = tp match {
-        case ExprType(resType) => ExprType(AnnotatedType(resType, Annotation(defn.ErasedParamAnnot)))
-        case _ => AnnotatedType(tp, Annotation(defn.ErasedParamAnnot))
-      }
-      def paramInfo(param: Symbol) = {
+    def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
+      def addAnnotation(tp: Type, cls: ClassSymbol): Type = tp match
+        case ExprType(resType) => ExprType(addAnnotation(resType, cls))
+        case _ => AnnotatedType(tp, Annotation(cls))
+
+      def wrapConvertible(tp: Type) =
+        AppliedType(defn.IntoType.typeRef, tp :: Nil)
+
+      /** Add `Into[..] to the type itself and if it is a function type, to all its
+       *  curried result type(s) as well.
+       */
+      def addInto(tp: Type): Type = tp match
+        case tp @ AppliedType(tycon, args) if tycon.typeSymbol == defn.RepeatedParamClass =>
+          tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
+        case tp @ AppliedType(tycon, args) if defn.isFunctionType(tp) =>
+          wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
+        case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionOrPolyType(tp) =>
+          wrapConvertible(tp.derivedRefinedType(parent, rname, addInto(rinfo)))
+        case tp: MethodOrPoly =>
+          tp.derivedLambdaType(resType = addInto(tp.resType))
+        case ExprType(resType) =>
+          ExprType(addInto(resType))
+        case _ =>
+          wrapConvertible(tp)
+
+      def paramInfo(param: Symbol) =
         var paramType = param.info.annotatedToRepeated
-        if (param.is(Inline)) paramType = translateInline(paramType)
-        if (param.is(Erased)) paramType = translateErased(paramType)
+        if param.is(Inline) then
+          paramType = addAnnotation(paramType, defn.InlineParamAnnot)
+        if param.is(Erased) then
+          paramType = addAnnotation(paramType, defn.ErasedParamAnnot)
+        if param.hasAnnotation(defn.AllowConversionsAnnot) then
+          paramType = addInto(paramType)
         paramType
-      }
 
       apply(params.map(_.name.asTermName))(
          tl => params.map(p => tl.integrate(params, paramInfo(p))),
          tl => tl.integrate(params, resultType))
-    }
+    end fromSymbols
 
     final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
       checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
