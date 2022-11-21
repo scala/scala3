@@ -165,12 +165,6 @@ class InlineReducer(inliner: Inliner)(using Context):
     case Apply(Select(cl, nme.apply), args) if defn.isFunctionType(cl.tpe) =>
       val bindingsBuf = new DefBuffer
       def recur(cl: Tree): Option[Tree] = cl match
-        case Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
-          recur(expr).map(cpy.Inlined(cl)(call, bindings, _))
-        case Block(Nil, expr) =>
-          recur(expr).map(cpy.Block(cl)(Nil, _))
-        case Typed(expr, tpt) =>
-          recur(expr)
         case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
           ddef.tpe.widen match
             case mt: MethodType if ddef.paramss.head.length == args.length =>
@@ -190,6 +184,12 @@ class InlineReducer(inliner: Inliner)(using Context):
                 substTo = argSyms)
               Some(expander.transform(ddef.rhs))
             case _ => None
+        case Block(stats, expr) if stats.forall(isPureBinding) =>
+          recur(expr).map(cpy.Block(cl)(stats, _))
+        case Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
+          recur(expr).map(cpy.Inlined(cl)(call, bindings, _))
+        case Typed(expr, tpt) =>
+          recur(expr)
         case _ => None
       recur(cl) match
         case Some(reduced) =>
