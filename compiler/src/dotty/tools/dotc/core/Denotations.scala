@@ -300,9 +300,9 @@ object Denotations {
         case NoDenotation | _: NoQualifyingRef | _: MissingRef =>
           def argStr = if (args.isEmpty) "" else i" matching ($args%, %)"
           val msg =
-            if (site.exists) i"$site does not have a member $kind $name$argStr"
-            else i"missing: $kind $name$argStr"
-          throw new TypeError(msg)
+            if site.exists then em"$site does not have a member $kind $name$argStr"
+            else em"missing: $kind $name$argStr"
+          throw TypeError(msg)
         case denot =>
           denot.symbol
       }
@@ -1268,9 +1268,9 @@ object Denotations {
       if sd1.exists then
         if sd2.exists then
           throw TypeError(
-            e"""Failure to disambiguate overloaded reference with
-               |  ${denot1.symbol.showLocated}: ${denot1.info}  and
-               |  ${denot2.symbol.showLocated}: ${denot2.info}""")
+            em"""Failure to disambiguate overloaded reference with
+                |  ${denot1.symbol.showLocated}: ${denot1.info}  and
+                |  ${denot2.symbol.showLocated}: ${denot2.info}""")
         else sd1
       else sd2
     }

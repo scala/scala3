@@ -1096,7 +1096,7 @@ trait Applications extends Compatibility {
   /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
   protected def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(using Context): Tree =
     if ctx.reporter.errorsReported then
-      throw TypeError(i"unexpected function type: ${methPart(fun).tpe}")
+      throw TypeError(em"unexpected function type: ${methPart(fun).tpe}")
     else
       throw Error(i"unexpected type.\n  fun = $fun,\n  methPart(fun) = ${methPart(fun)},\n  methPart(fun).tpe = ${methPart(fun).tpe},\n  tpe = ${fun.tpe}")
 

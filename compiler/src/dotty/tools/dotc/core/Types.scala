@@ -2414,12 +2414,12 @@ object Types {
       }
       else {
         if (!ctx.reporter.errorsReported)
-          throw new TypeError(
-            i"""bad parameter reference $this at ${ctx.phase}
-               |the parameter is ${param.showLocated} but the prefix $prefix
-               |does not define any corresponding arguments.
-               |idx = $idx, args = $args%, %,
-               |constraint = ${ctx.typerState.constraint}""")
+          throw TypeError(
+            em"""bad parameter reference $this at ${ctx.phase}
+                |the parameter is ${param.showLocated} but the prefix $prefix
+                |does not define any corresponding arguments.
+                |idx = $idx, args = $args%, %,
+                |constraint = ${ctx.typerState.constraint}""")
         NoDenotation
       }
     }

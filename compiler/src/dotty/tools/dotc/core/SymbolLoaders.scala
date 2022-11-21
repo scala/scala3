@@ -88,8 +88,8 @@ object SymbolLoaders {
         return NoSymbol
       }
       else
-        throw new TypeError(
-          i"""$owner contains object and package with same name: $pname
+        throw TypeError(
+          em"""$owner contains object and package with same name: $pname
              |one of them needs to be removed from classpath""")
     newModuleSymbol(owner, pname, PackageCreationFlags, PackageCreationFlags,
       completer).entered

@@ -168,7 +168,8 @@ object SymDenotations {
           }
         }
         else {
-          if (myFlags.is(Touched)) throw CyclicReference(this)
+          if (myFlags.is(Touched))
+            throw CyclicReference(this)(using ctx.withOwner(symbol))
           myFlags |= Touched
           atPhase(validFor.firstPhaseId)(completer.complete(this))
         }
@@ -2438,13 +2439,13 @@ object SymDenotations {
             val youngest = assocFiles.filter(_.lastModified == lastModDate)
             val chosen = youngest.head
             def ambiguousFilesMsg(f: AbstractFile) =
-              e"""Toplevel definition $name is defined in
+              i"""Toplevel definition $name is defined in
                  |  $chosen
                  |and also in
                  |  $f"""
             if youngest.size > 1 then
-              throw TypeError(i"""${ambiguousFilesMsg(youngest.tail.head)}
-                                 |One of these files should be removed from the classpath.""")
+              throw TypeError(em"""${ambiguousFilesMsg(youngest.tail.head)}
+                                  |One of these files should be removed from the classpath.""")
 
             // Warn if one of the older files comes from a different container.
             // In that case picking the youngest file is not necessarily what we want,
