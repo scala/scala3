@@ -1,5 +1,5 @@
 // Usage
-// > scala-cli project/scripts/dottyCompileBisect.scala -- File1.scala File2.scala
+// > scala-cli project/scripts/dottyCompileBisect.scala -- [--run <main.class.name>] [<compiler-option> ...] <file1.scala> [<fileN.scala> ...]
 //
 // This script will bisect the compilation failure starting with a fast bisection on released nightly builds.
 // Then it will bisect the commits between the last nightly that worked and the first nightly that failed.
@@ -8,20 +8,37 @@
 import sys.process._
 import scala.io.Source
 import Releases.Release
+import java.io.File
+import java.nio.file.{Files, Paths, StandardCopyOption}
 
-@main def dottyCompileBisect(files: String*): Unit =
-  val releaseBisect = ReleaseBisect(files.toList)
-  val fistBadRelease = releaseBisect.bisect(Releases.allReleases)
+@main def dottyCompileBisect(args: String*): Unit =
+  val (mainClass, compilerArgs) = args match
+    case Seq("--run", mainClass, compilerArgs*) =>
+      (Some(mainClass), compilerArgs)
+    case _ =>
+      (None, args)
+
+  val releaseBisect = ReleaseBisect(mainClass, compilerArgs.toList)
+  val bisectedBadRelease = releaseBisect.bisectedBadRelease(Releases.allReleases)
   println("\nFinished bisecting releases\n")
-  fistBadRelease.previous match
-    case Some(lastGoodRelease) =>
-      println(s"Last good release: $lastGoodRelease\nFirst bad release: $fistBadRelease\n")
-      val commitBisect = CommitBisect(files.toList)
-      commitBisect.bisect(lastGoodRelease.hash, fistBadRelease.hash)
-    case None =>
-      println(s"No good release found")
 
-class ReleaseBisect(files: List[String]):
+  bisectedBadRelease match
+    case Some(firstBadRelease) =>
+      firstBadRelease.previous match
+        case Some(lastGoodRelease) =>
+          println(s"Last good release: $lastGoodRelease")
+          println(s"First bad release: $firstBadRelease")
+          val commitBisect = CommitBisect(mainClass, compilerArgs.toList)
+          commitBisect.bisect(lastGoodRelease.hash, firstBadRelease.hash)
+        case None =>
+          println(s"No good release found")
+    case None =>
+      println(s"No bad release found")
+
+class ReleaseBisect(mainClass: Option[String], compilerArgs: List[String]):
+  def bisectedBadRelease(releases: Vector[Release]): Option[Release] =
+    Some(bisect(releases: Vector[Release]))
+      .filter(!isGoodRelease(_))
 
   def bisect(releases: Vector[Release]): Release =
     assert(releases.length > 1, "Need at least 2 releases to bisect")
@@ -35,7 +52,12 @@ class ReleaseBisect(files: List[String]):
 
   private def isGoodRelease(release: Release): Boolean =
     println(s"Testing ${release.version}")
-    val res = s"""scala-cli compile ${files.mkString(" ")} -S "${release.version}"""".!
+    val testCommand = mainClass match
+      case Some(className) =>
+        s"run --main-class '$className'"
+      case None =>
+        "compile"
+    val res = s"""scala-cli $testCommand -S '${release.version}' ${compilerArgs.mkString(" ")}""".!
     val isGood = res == 0
     println(s"Test result: ${release.version} is a ${if isGood then "good" else "bad"} release\n")
     isGood
@@ -64,10 +86,14 @@ object Releases:
 
     override def toString: String = version
 
-class CommitBisect(files: List[String]):
+class CommitBisect(mainClass: Option[String], compilerArgs: List[String]):
   def bisect(lastGoodHash: String, fistBadHash: String): Unit =
     println(s"Starting bisecting commits $lastGoodHash..$fistBadHash\n")
+    val runOption = mainClass.map(className => s"--run $className").getOrElse("")
+    val scriptFile = Paths.get("project", "scripts", "dottyCompileBisect.sh")
+    val tempScriptFile = File.createTempFile("dottyCompileBisect", "sh").toPath
+    Files.copy(scriptFile, tempScriptFile, StandardCopyOption.REPLACE_EXISTING)
     "git bisect start".!
     s"git bisect bad $fistBadHash".!
     s"git bisect good $lastGoodHash".!
-    s"git bisect run sh project/scripts/dottyCompileBisect.sh ${files.mkString(" ")}".!
+    s"git bisect run sh ${tempScriptFile.toAbsolutePath} ${runOption} ${compilerArgs.mkString(" ")}".!
