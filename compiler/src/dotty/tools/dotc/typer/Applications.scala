@@ -23,7 +23,7 @@ import Inferencing._
 import reporting._
 import transform.TypeUtils._
 import transform.SymUtils._
-import Nullables._
+import Nullables._, NullOpsDecorator.*
 import config.Feature
 
 import collection.mutable
@@ -340,6 +340,12 @@ object Applications {
     val getter = findDefaultGetter(fn, n, testOnly)
     if getter.isEmpty then getter
     else spliceMeth(getter.withSpan(fn.span), fn)
+
+  def retypeSignaturePolymorphicFn(fun: Tree, methType: Type)(using Context): Tree =
+    val sym1 = fun.symbol
+    val flags2 = sym1.flags | NonMember // ensures Select typing doesn't let TermRef#withPrefix revert the type
+    val sym2 = sym1.copy(info = methType, flags = flags2) // symbol not entered, to avoid overload resolution problems
+    fun.withType(sym2.termRef)
 }
 
 trait Applications extends Compatibility {
@@ -936,6 +942,21 @@ trait Applications extends Compatibility {
       /** Type application where arguments come from prototype, and no implicits are inserted */
       def simpleApply(fun1: Tree, proto: FunProto)(using Context): Tree =
         methPart(fun1).tpe match {
+          case funRef: TermRef if funRef.symbol.isSignaturePolymorphic =>
+            // synthesize a method type based on the types at the call site.
+            // one can imagine the original signature-polymorphic method as
+            // being infinitely overloaded, with each individual overload only
+            // being brought into existence as needed
+            val originalResultType = funRef.symbol.info.resultType.stripNull
+            val resultType =
+              if !originalResultType.isRef(defn.ObjectClass) then originalResultType
+              else AvoidWildcardsMap()(proto.resultType.deepenProtoTrans) match
+                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _) => resTp
+                case resTp if isFullyDefined(resTp, ForceDegree.all) => resTp
+                case _ => defn.ObjectType
+            val methType = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
+            val fun2 = Applications.retypeSignaturePolymorphicFn(fun1, methType)
+            simpleApply(fun2, proto)
           case funRef: TermRef =>
             val app = ApplyTo(tree, fun1, funRef, proto, pt)
             convertNewGenericArray(

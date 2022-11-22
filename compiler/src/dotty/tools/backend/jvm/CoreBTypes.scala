@@ -134,8 +134,8 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
 
   private lazy val jliCallSiteRef              : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
   private lazy val jliLambdaMetafactoryRef     : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
-  private lazy val jliMethodHandleRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodHandle])
-  private lazy val jliMethodHandlesLookupRef   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodHandles.Lookup])
+  private lazy val jliMethodHandleRef          : ClassBType = classBTypeFromSymbol(defn.MethodHandleClass)
+  private lazy val jliMethodHandlesLookupRef   : ClassBType = classBTypeFromSymbol(defn.MethodHandlesLookupClass)
   private lazy val jliMethodTypeRef            : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
   private lazy val jliStringConcatFactoryRef   : ClassBType = classBTypeFromSymbol(requiredClass("java.lang.invoke.StringConcatFactory")) // since JDK 9
   private lazy val srLambdaDeserialize         : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize]) 
