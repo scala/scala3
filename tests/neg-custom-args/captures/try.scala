@@ -44,7 +44,7 @@ def test =
   yy // OK
 
 
-val global = handle {
+val global: () -> Int = handle {
   (x: CanThrow[Exception]) =>
     () =>
       raise(new Exception)(using x)

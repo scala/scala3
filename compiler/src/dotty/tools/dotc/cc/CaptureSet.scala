@@ -546,7 +546,7 @@ object CaptureSet:
           else CompareResult.fail(this)
         }
         .andAlso {
-          if (origin ne source) && mapIsIdempotent then
+          if (origin ne source) && (origin ne initial) && mapIsIdempotent then
             // `tm` is idempotent, propagate back elems from image set.
             // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
             // `r` is _one_ possible solution in `source` that would make an `r` appear in this set.
