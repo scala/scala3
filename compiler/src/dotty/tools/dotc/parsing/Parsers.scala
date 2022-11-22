@@ -15,7 +15,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
-import NameKinds.WildcardParamName
+import NameKinds.{WildcardParamName, QualifiedName}
 import NameOps._
 import ast.{Positioned, Trees}
 import ast.Trees._
@@ -30,7 +30,7 @@ import scala.annotation.tailrec
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
 import config.Feature
-import config.Feature.{sourceVersion, migrateTo3}
+import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -142,7 +142,12 @@ object Parsers {
         val length = if offset == in.offset && in.name != null then in.name.show.length else 0
         syntaxError(msg, Span(offset, offset + length))
         lastErrorOffset = in.offset
-      end if
+
+    def syntaxError(msg: => String, offset: Int): Unit =
+      syntaxError(msg.toMessage, offset)
+
+    def syntaxError(msg: => String): Unit =
+      syntaxError(msg, in.offset)
 
     /** Unconditionally issue an error at given span, without
      *  updating lastErrorOffset.
@@ -150,8 +155,11 @@ object Parsers {
     def syntaxError(msg: Message, span: Span): Unit =
       report.error(msg, source.atSpan(span))
 
+    def syntaxError(msg: => String, span: Span): Unit =
+      syntaxError(msg.toMessage, span)
+
     def unimplementedExpr(using Context): Select =
-      Select(Select(rootDot(nme.scala), nme.Predef), nme.???)
+      Select(scalaDot(nme.Predef), nme.???)
   }
 
   trait OutlineParserCommon extends ParserCommon {
@@ -188,7 +196,7 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
-    def isPureArrow(name: Name): Boolean = ctx.settings.Ycc.value && isIdent(name)
+    def isPureArrow(name: Name): Boolean = isIdent(name) && Feature.pureFunsEnabled
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
@@ -259,9 +267,6 @@ object Parsers {
       in.skip()
       lastErrorOffset = in.offset
 
-    def warning(msg: Message, sourcePos: SourcePosition): Unit =
-      report.warning(msg, sourcePos)
-
     def warning(msg: Message, offset: Int = in.offset): Unit =
       report.warning(msg, source.atSpan(Span(offset)))
 
@@ -282,6 +287,9 @@ object Parsers {
       else
         syntaxError(msg, offset)
         skip()
+
+    def syntaxErrorOrIncomplete(msg: => String): Unit =
+      syntaxErrorOrIncomplete(msg.toMessage, in.offset)
 
     def syntaxErrorOrIncomplete(msg: Message, span: Span): Unit =
       if in.token == EOF then
@@ -350,7 +358,7 @@ object Parsers {
           val statFollows = mustStartStatTokens.contains(found)
           syntaxError(
             if noPrevStat then IllegalStartOfStatement(what, isModifier, statFollows)
-            else i"end of $what expected but ${showToken(found)} found")
+            else i"end of $what expected but ${showToken(found)} found".toMessage)
           if mustStartStatTokens.contains(found) then
             false // it's a statement that might be legal in an outer context
           else
@@ -610,11 +618,11 @@ object Parsers {
           if in.isNewLine && !(nextIndentWidth < startIndentWidth) then
             warning(
               if startIndentWidth <= nextIndentWidth then
-                i"""Line is indented too far to the right, or a `{` is missing before:
+                  i"""Line is indented too far to the right, or a `{` is missing before:
                    |
-                   |${t.tryToShow}"""
+                   |${t.tryToShow}""".toMessage
               else
-                in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth),
+                in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth).toMessage,
               in.next.offset
             )
           t
@@ -627,7 +635,7 @@ object Parsers {
       if in.isNewLine then
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if in.currentRegion.indentWidth < nextIndentWidth then
-          warning(i"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
+          warning(i"Line is indented too far to the right, or a `{` or `:` is missing".toMessage, in.next.offset)
 
 /* -------- REWRITES ----------------------------------------------------------- */
 
@@ -770,7 +778,7 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if (canRewrite && (!underColonSyntax || in.fewerBracesEnabled)) {
+      if canRewrite && (!underColonSyntax || Feature.fewerBracesEnabled) then
         val openingPatchStr =
           if !colonRequired then ""
           else if testChar(startOpening - 1, Chars.isOperatorPart(_)) then " :"
@@ -778,7 +786,6 @@ object Parsers {
         val (startClosing, endClosing) = closingElimRegion()
         patch(source, Span(startOpening, endOpening), openingPatchStr)
         patch(source, Span(startClosing, endClosing), "")
-      }
       t
     }
 
@@ -960,11 +967,11 @@ object Parsers {
         isArrowIndent()
       else false
 
-    /** Under -Ycc: is the following token sequuence a capture set `{ref1, ..., refN}`
-     *  followed by a token that can start a type?
+    /** Under captureChecking language import: is the following token sequence a
+     *  capture set `{ref1, ..., refN}` followed by a token that can start a type?
      */
     def followingIsCaptureSet(): Boolean =
-      ctx.settings.Ycc.value && {
+      Feature.ccEnabled && {
         val lookahead = in.LookaheadScanner()
         def followingIsTypeStart() =
           lookahead.nextToken()
@@ -1017,7 +1024,7 @@ object Parsers {
      *      body
      */
     def isColonLambda =
-      in.fewerBracesEnabled && in.token == COLONfollow && followingIsLambdaAfterColon()
+      Feature.fewerBracesEnabled && in.token == COLONfollow && followingIsLambdaAfterColon()
 
     /**   operand { infixop operand | MatchClause } [postfixop],
      *
@@ -1436,9 +1443,12 @@ object Parsers {
     /** CaptureRef  ::=  ident | `this`
      */
     def captureRef(): Tree =
-      if in.token == THIS then simpleRef() else termIdent()
+      if in.token == THIS then simpleRef()
+      else termIdent() match
+        case Ident(nme.CAPTURE_ROOT) => captureRoot
+        case id => id
 
-    /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under -Ycc
+    /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
     def captureSet(): List[Tree] = inBraces {
       if in.token == RBRACE then Nil else commaSeparated(captureRef)
@@ -1449,12 +1459,12 @@ object Parsers {
      *                   |  FunParamClause ‘=>>’ Type
      *                   |  MatchType
      *                   |  InfixType
-     *                   |  CaptureSet Type                            -- under -Ycc
+     *                   |  CaptureSet Type                            -- under captureChecking
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
-     *                   |  (‘->’ | ‘?->’ ) Type                       -- under -Ycc
+     *                   |  (‘->’ | ‘?->’ ) Type                       -- under pureFunctions
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
-     *                   |  HKTypeParamClause ‘->’ Type                -- under -Ycc
+     *                   |  HKTypeParamClause ‘->’ Type                -- under pureFunctions
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
@@ -1474,8 +1484,9 @@ object Parsers {
             if !imods.flags.isEmpty || params.isEmpty then
               syntaxError(em"illegal parameter list for type lambda", start)
               token = ARROW
-          else if ctx.settings.Ycc.value then
-            // `=>` means impure function under -Ycc whereas `->` is a regular function.
+          else if Feature.pureFunsEnabled then
+            // `=>` means impure function under pureFunctions or captureChecking
+            // language imports, whereas `->` is then a regular function.
             imods |= Impure
 
           if token == CTXARROW then
@@ -1732,7 +1743,7 @@ object Parsers {
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
           if sourceVersion.isAtLeast(future) then
-            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
+            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead".toMessage)
             patch(source, Span(in.offset, in.offset + 1), "?")
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
@@ -1879,7 +1890,7 @@ object Parsers {
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
         val tp = atSpan(in.skipToken()) { ByNameTypeTree(core()) }
-        if isImpure && ctx.settings.Ycc.value then ImpureByNameTypeTree(tp) else tp
+        if isImpure && Feature.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
       else if in.token == LBRACE && followingIsCaptureSet() then
         val start = in.offset
         val cs = captureSet()
@@ -1906,6 +1917,13 @@ object Parsers {
       else
         core()
 
+    private def maybeInto(tp: () => Tree) =
+      if in.isIdent(nme.into)
+          && in.featureEnabled(Feature.into)
+          && canStartTypeTokens.contains(in.lookahead.token)
+      then atSpan(in.skipToken()) { Into(tp()) }
+      else tp()
+
     /** FunArgType ::=  Type
      *               |  `=>' Type
      *               |  [CaptureSet] `->' Type
@@ -1918,10 +1936,10 @@ object Parsers {
      */
     def paramType(): Tree = paramTypeOf(paramValueType)
 
-    /** ParamValueType ::= Type [`*']
+    /** ParamValueType ::= [`into`] Type [`*']
      */
     def paramValueType(): Tree = {
-      val t = toplevelTyp()
+      val t = maybeInto(toplevelTyp)
       if (isIdent(nme.raw.STAR)) {
         in.nextToken()
         atSpan(startOffset(t)) { PostfixOp(t, Ident(tpnme.raw.STAR)) }
@@ -2171,10 +2189,11 @@ object Parsers {
               else Literal(Constant(())) // finally without an expression
             }
             else {
-              if (handler.isEmpty) warning(
-                EmptyCatchAndFinallyBlock(body),
-                source.atSpan(Span(tryOffset, endOffset(body)))
-              )
+              if handler.isEmpty then
+                report.warning(
+                  EmptyCatchAndFinallyBlock(body),
+                  source.atSpan(Span(tryOffset, endOffset(body)))
+                )
               EmptyTree
             }
           ParsedTry(body, handler, finalizer)
@@ -2357,7 +2376,7 @@ object Parsers {
     /** PostfixExpr   ::= InfixExpr [id [nl]]
      *  InfixExpr     ::= PrefixExpr
      *                  | InfixExpr id [nl] InfixExpr
-     *                  | InfixExpr id `:` IndentedExpr
+     *                  | InfixExpr id ColonArgument
      *                  | InfixExpr MatchClause
      */
     def postfixExpr(location: Location = Location.ElseWhere): Tree =
@@ -2401,10 +2420,11 @@ object Parsers {
      *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
-     *                 |  SimpleExpr1 `:` ColonArgument                   -- under language.experimental.fewerBraces
-     *  ColonArgument ::= indent (CaseClauses | Block) outdent
-     *                 |  FunParams (‘=>’ | ‘?=>’) ColonArgBody
-     *                 |  HkTypeParamClause ‘=>’ ColonArgBody
+     *                 |  SimpleExpr1 ColonArgument
+     *  ColonArgument ::= colon [LambdaStart]
+     *                    indent (CaseClauses | Block) outdent
+     *  LambdaStart   ::= FunParams (‘=>’ | ‘?=>’)
+     *                 |  HkTypeParamClause ‘=>’
      *  ColonArgBody  ::= indent (CaseClauses | Block) outdent
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’
@@ -2768,7 +2788,7 @@ object Parsers {
             warning(i"""Misleading indentation: this expression forms part of the preceding catch case.
                        |If this is intended, it should be indented for clarity.
                        |Otherwise, if the handler is intended to be empty, use a multi-line catch with
-                       |an indented case.""")
+                       |an indented case.""".toMessage)
           expr()
         else block()
       })
@@ -2809,11 +2829,14 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1(location) :: patternAlts(location) }
       else Nil
 
-    /**  Pattern1     ::= Pattern2 [Ascription]
+    /**  Pattern1     ::= PatVar Ascription
+     *                  | [‘-’] integerLiteral Ascription
+     *                  | [‘-’] floatingPointLiteral Ascription
+     *                  | Pattern2
      */
     def pattern1(location: Location = Location.InPattern): Tree =
       val p = pattern2()
-      if in.isColon then
+      if (isVarPattern(p) || p.isInstanceOf[Number]) && in.isColon then
         in.nextToken()
         ascription(p, location)
       else p
@@ -2989,7 +3012,8 @@ object Parsers {
         inBrackets {
           if in.token == THIS then
             if sourceVersion.isAtLeast(future) then
-              deprecationWarning("The [this] qualifier will be deprecated in the future; it should be dropped.")
+              deprecationWarning(
+                "The [this] qualifier will be deprecated in the future; it should be dropped.".toMessage)
             in.nextToken()
             mods | Local
           else mods.withPrivateWithin(ident().toTypeName)
@@ -3294,25 +3318,25 @@ object Parsers {
       languageImport(tree) match
         case Some(prefix) =>
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
-          for
-            case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
-            if allSourceVersionNames.contains(imported)
-          do
-            if !outermost then
-              syntaxError(i"source version import is only allowed at the toplevel", id.span)
-            else if ctx.compilationUnit.sourceVersion.isDefined then
-              syntaxError(i"duplicate source version import", id.span)
-            else if illegalSourceVersionNames.contains(imported) then
-              val candidate =
-                val nonMigration = imported.toString.replace("-migration", "")
-                validSourceVersionNames.find(_.show == nonMigration)
-              val baseMsg = i"`$imported` is not a valid source version"
-              val msg = candidate match
-                case Some(member) => i"$baseMsg, did you mean language.`$member`?"
-                case _ => baseMsg
-              syntaxError(msg, id.span)
-            else
-              ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+          for case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors do
+            if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost then
+              syntaxError(i"this language import is only allowed at the toplevel", id.span)
+            if allSourceVersionNames.contains(imported) && prefix.isEmpty then
+              if !outermost then
+                syntaxError(i"source version import is only allowed at the toplevel", id.span)
+              else if ctx.compilationUnit.sourceVersion.isDefined then
+                syntaxError(i"duplicate source version import", id.span)
+              else if illegalSourceVersionNames.contains(imported) then
+                val candidate =
+                  val nonMigration = imported.toString.replace("-migration", "")
+                  validSourceVersionNames.find(_.show == nonMigration)
+                val baseMsg = i"`$imported` is not a valid source version"
+                val msg = candidate match
+                  case Some(member) => i"$baseMsg, did you mean language.`$member`?"
+                  case _ => baseMsg
+                syntaxError(msg, id.span)
+              else
+                ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
         case None =>
       imp
 
@@ -3471,7 +3495,8 @@ object Parsers {
               if sourceVersion.isAtLeast(future) then
                 deprecationWarning(
                   em"""`= _` has been deprecated; use `= uninitialized` instead.
-                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""", rhsOffset)
+                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""".toMessage,
+                  rhsOffset)
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }
             case rhs0 => rhs0
@@ -3792,7 +3817,7 @@ object Parsers {
         if !(name.isEmpty && noParams) then acceptColon()
         val parents =
           if isSimpleLiteral then rejectWildcardType(annotType()) :: Nil
-          else constrApp() :: withConstrApps()
+          else refinedTypeRest(constrApp()) :: withConstrApps()
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then
           accept(EQUALS)

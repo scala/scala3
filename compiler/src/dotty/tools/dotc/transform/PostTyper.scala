@@ -14,6 +14,7 @@ import Decorators._
 import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
+import config.Feature
 import util.SrcPos
 import reporting._
 import NameKinds.WildcardParamName
@@ -301,12 +302,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             checkNoConstructorProxy(tree)
             transformSelect(tree, Nil)
         case tree: Apply =>
-          val methType = tree.fun.tpe.widen
+          val methType = tree.fun.tpe.widen.asInstanceOf[MethodType]
           val app =
             if (methType.isErasedMethod)
               tpd.cpy.Apply(tree)(
                 tree.fun,
                 tree.args.mapConserve(arg =>
+                  if methType.isResultDependent then
+                    Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
                   if (methType.isImplicitMethod && arg.span.isSynthetic)
                     arg match
                       case _: RefTree | _: Apply | _: TypeApply if arg.symbol.is(Erased) =>
@@ -359,6 +362,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           val pos = call.sourcePos
+          CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
@@ -396,8 +400,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
                 sym.addAnnotation(Annotation.makeSourceFile(relativePath))
-              if ctx.settings.Ycc.value && sym != defn.CaptureCheckedAnnot then
-                sym.addAnnotation(Annotation(defn.CaptureCheckedAnnot))
+              if Feature.pureFunsEnabled && sym != defn.WithPureFunsAnnot then
+                sym.addAnnotation(Annotation(defn.WithPureFunsAnnot))
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)

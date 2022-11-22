@@ -5,7 +5,7 @@ trait Test {
 
   val z: *.type // error
 
-  val b: ImpureFunction1[Int, Int] // error
+  val b: ImpureFunction1[Int, Int] // now OK
 
   val a: {z} String // error
 }  // error

@@ -9,6 +9,7 @@ import scala.util.control.NonFatal
 import Contexts._, Names._, Phases._, Symbols._
 import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
 import transform.MegaPhase
+import reporting.{Message, NoExplanation}
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -57,6 +58,9 @@ object Decorators {
       padding + s.replace("\n", "\n" + padding)
   end extension
 
+  extension (str: => String)
+    def toMessage: Message = reporting.NoExplanation(str)
+
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.
    */
@@ -74,7 +78,7 @@ object Decorators {
   /** Implements filterConserve, zipWithConserve methods
    *  on lists that avoid duplication of list nodes where feasible.
    */
-  implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
+  extension [T](xs: List[T])
 
     final def mapconserve[U](f: T => U): List[U] = {
       @tailrec
@@ -203,11 +207,7 @@ object Decorators {
     }
 
     /** Union on lists seen as sets */
-    def | (ys: List[T]): List[T] = xs ::: (ys filterNot (xs contains _))
-
-    /** Intersection on lists seen as sets */
-    def & (ys: List[T]): List[T] = xs filter (ys contains _)
-  }
+    def setUnion (ys: List[T]): List[T] = xs ::: ys.filterNot(xs contains _)
 
   extension [T, U](xss: List[List[T]])
     def nestedMap(f: T => U): List[List[U]] = xss match
@@ -269,6 +269,9 @@ object Decorators {
             val msg = ex match { case te: TypeError => te.toMessage case _ => ex.getMessage }
             s"[cannot display due to $msg, raw string = $x]"
       case _ => String.valueOf(x).nn
+
+    /** Returns the simple class name of `x`. */
+    def className: String = getClass.getSimpleName.nn
 
   extension [T](x: T)
     def assertingErrorsReported(using Context): T = {

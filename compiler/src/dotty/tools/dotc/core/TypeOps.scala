@@ -186,7 +186,7 @@ object TypeOps:
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>
         // See documentation of `Types#simplified`
-        val addTypeVars = new TypeMap:
+        val addTypeVars = new TypeMap with IdempotentCaptRefMap:
           val constraint = ctx.typerState.constraint
           def apply(t: Type): Type = t match
             case t: TypeParamRef => constraint.typeVarOfParam(t).orElse(t)
@@ -225,16 +225,18 @@ object TypeOps:
    */
   def orDominator(tp: Type)(using Context): Type = {
 
-    /** a faster version of cs1 intersect cs2 that treats bottom types correctly */
+    /** a faster version of cs1 intersect cs2 */
     def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] =
-      if cs1.head == defn.NothingClass then cs2
-      else if cs2.head == defn.NothingClass then cs1
-      else if cs1.head == defn.NullClass && !ctx.explicitNulls && cs2.head.derivesFrom(defn.ObjectClass) then cs2
-      else if cs2.head == defn.NullClass && !ctx.explicitNulls && cs1.head.derivesFrom(defn.ObjectClass) then cs1
-      else
-        val cs2AsSet = new util.HashSet[ClassSymbol](128)
-        cs2.foreach(cs2AsSet += _)
-        cs1.filter(cs2AsSet.contains)
+      val cs2AsSet = BaseClassSet(cs2)
+      cs1.filter(cs2AsSet.contains)
+
+    /** a version of Type#baseClasses that treats bottom types correctly */
+    def orBaseClasses(tp: Type): List[ClassSymbol] = tp.stripTypeVar match
+      case OrType(tp1, tp2) =>
+        if tp1.isBottomType && (tp1 frozen_<:< tp2) then orBaseClasses(tp2)
+        else if tp2.isBottomType && (tp2 frozen_<:< tp1) then orBaseClasses(tp1)
+        else intersect(orBaseClasses(tp1), orBaseClasses(tp2))
+      case _ => tp.baseClasses
 
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
     def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
@@ -369,7 +371,7 @@ object TypeOps:
       }
 
       // Step 3: Intersect base classes of both sides
-      val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
+      val commonBaseClasses = orBaseClasses(tp)
       val doms = dominators(commonBaseClasses, Nil)
       def baseTp(cls: ClassSymbol): Type =
         tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
@@ -531,6 +533,18 @@ object TypeOps:
         val sym = tp.symbol
         forbidden.contains(sym)
 
+      /** We need to split the set into upper and lower approximations
+       *  only if it contains a local element. The idea here is that at the
+       *  time we perform an `avoid` all local elements are already accounted for
+       *  and no further elements will be added afterwards. So we can just keep
+       *  the set as it is. See comment by @linyxus on #16261.
+       */
+      override def needsRangeIfInvariant(refs: CaptureSet): Boolean =
+        refs.elems.exists {
+          case ref: TermRef => toAvoid(ref)
+          case _ => false
+        }
+
       override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(
@@ -601,7 +615,7 @@ object TypeOps:
       boundss: List[TypeBounds],
       instantiate: (Type, List[Type]) => Type,
       app: Type)(
-      using Context): List[BoundsViolation] = withMode(Mode.CheckBounds) {
+      using Context): List[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
     val argTypes = args.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
@@ -770,20 +784,15 @@ object TypeOps:
           tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          def lo = LazyRef.of(apply(tp.underlying.loBound))
-          def hi = LazyRef.of(apply(tp.underlying.hiBound))
           val lookup = boundTypeParams.lookup(tp)
           if lookup != null then lookup
           else
-            val tv = newTypeVar(TypeBounds(lo, hi))
+            val TypeBounds(lo, hi) = tp.underlying.bounds
+            val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
             boundTypeParams(tp) = tv
-            // Force lazy ref eagerly using current context
-            // Otherwise, the lazy ref will be forced with a unknown context,
-            // which causes a problem in tests/patmat/i3645e.scala
-            lo.ref
-            hi.ref
+            assert(tv <:< apply(hi))
+            apply(lo) <:< tv //  no assert, since bounds might conflict
             tv
-          end if
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
 
@@ -866,6 +875,10 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
+      // if there's a change in variance in type parameters (between subtype tp1 and supertype tp2)
+      // then we don't want to maximise the type variables in the wrong direction.
+      // For instance 15967, A[-Z] and B[Y] extends A[Y], we don't want to maximise Y to Any
+      maximizeType(protoTp1.baseType(tp2.classSymbol), NoSpan)
       maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }

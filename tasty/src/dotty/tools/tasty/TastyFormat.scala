@@ -91,6 +91,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   THROW                 throwableExpr_Term                         -- throw throwableExpr
                   NAMEDARG              paramName_NameRef arg_Term                 -- paramName = arg
                   APPLY          Length fn_Term arg_Term*                          -- fn(args)
+                  APPLYsigpoly   Length fn_Term meth_Type arg_Term*                -- The application of a signature-polymorphic method
                   TYPEAPPLY      Length fn_Term arg_Type*                          -- fn[args]
                   SUPER          Length this_Term mixinTypeIdent_Tree?             -- super[mixin]
                   TYPED          Length expr_Term ascriptionType_Term              -- expr: ascription
@@ -578,6 +579,7 @@ object TastyFormat {
   // final val ??? = 178
   // final val ??? = 179
   final val METHODtype = 180
+  final val APPLYsigpoly = 181
 
   final val MATCHtype = 190
   final val MATCHtpt = 191
@@ -744,6 +746,7 @@ object TastyFormat {
     case BOUNDED => "BOUNDED"
     case APPLY => "APPLY"
     case TYPEAPPLY => "TYPEAPPLY"
+    case APPLYsigpoly => "APPLYsigpoly"
     case NEW => "NEW"
     case THROW => "THROW"
     case TYPED => "TYPED"

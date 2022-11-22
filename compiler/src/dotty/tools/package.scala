@@ -18,7 +18,7 @@ package object tools {
      *  Flow-typing under explicit nulls will automatically insert many necessary
      *  occurrences of uncheckedNN.
      */
-    inline def uncheckedNN: T = x.asInstanceOf[T]
+    transparent inline def uncheckedNN: T = x.asInstanceOf[T]
 
     inline def toOption: Option[T] =
       if x == null then None else Some(x.asInstanceOf[T])
@@ -42,4 +42,11 @@ package object tools {
 
   def unreachable(x: Any = "<< this case was declared unreachable >>"): Nothing =
     throw new MatchError(x)
+
+  transparent inline def assertShort(inline assertion: Boolean, inline message: Any = null): Unit =
+    if !assertion then
+      val msg = message
+      val e = if msg == null then AssertionError() else AssertionError("assertion failed: " + msg)
+      e.setStackTrace(Array())
+      throw e
 }

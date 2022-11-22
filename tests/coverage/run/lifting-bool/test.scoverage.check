@@ -161,23 +161,6 @@ test$package$
 Object
 <empty>.test$package$
 Test
-349
-366
-12
-s
-Apply
-false
-0
-false
-s"$a $b $c $d $e"
-
-9
-lifting-bool/test.scala
-<empty>
-test$package$
-Object
-<empty>.test$package$
-Test
 341
 367
 12
@@ -187,6 +170,23 @@ false
 0
 false
 println(s"$a $b $c $d $e")
+
+9
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+349
+366
+12
+s
+Apply
+false
+0
+false
+s"$a $b $c $d $e"
 
 10
 lifting-bool/test.scala
@@ -229,15 +229,15 @@ test$package$
 Object
 <empty>.test$package$
 Test
-432
-443
+422
+466
 17
-notCalled
+f
 Apply
 false
 0
 false
-notCalled()
+f(true || notCalled(), false && notCalled())
 
 13
 lifting-bool/test.scala
@@ -246,8 +246,8 @@ test$package$
 Object
 <empty>.test$package$
 Test
-454
-465
+432
+443
 17
 notCalled
 Apply
@@ -263,15 +263,15 @@ test$package$
 Object
 <empty>.test$package$
 Test
-422
-466
+454
+465
 17
-f
+notCalled
 Apply
 false
 0
 false
-f(true || notCalled(), false && notCalled())
+notCalled()
 
 15
 lifting-bool/test.scala
@@ -305,6 +305,5 @@ DefDef
 false
 0
 false
-@main
-def Test
+@main\ndef Test
 

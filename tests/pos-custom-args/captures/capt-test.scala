@@ -21,6 +21,9 @@ def map[A, B](f: A => B)(xs: LIST[A]): LIST[B] =
 class C
 type Cap = {*} C
 
+class Foo(x: Cap):
+  this: {x} Foo =>
+
 def test(c: Cap, d: Cap) =
   def f(x: Cap): Unit = if c == x then ()
   def g(x: Cap): Unit = if d == x then ()

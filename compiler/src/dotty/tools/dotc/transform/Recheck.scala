@@ -4,7 +4,7 @@ package transform
 
 import core.*
 import Symbols.*, Contexts.*, Types.*, ContextOps.*, Decorators.*, SymDenotations.*
-import Flags.*, SymUtils.*, NameKinds.*
+import Flags.*, SymUtils.*, NameKinds.*, Denotations.Denotation
 import ast.*
 import Names.Name
 import Phases.Phase
@@ -21,9 +21,11 @@ import util.Property
 import StdNames.nme
 import reporting.trace
 import annotation.constructorOnly
+import cc.CaptureSet.IdempotentCaptRefMap
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 
 object Recheck:
-  import tpd.Tree
+  import tpd.*
 
   /** A flag used to indicate that a ParamAccessor has been temporarily made not-private
    *  Only used at the start of the Recheck phase, reset at its end.
@@ -35,6 +37,13 @@ object Recheck:
 
   /** Attachment key for rechecked types of TypeTrees */
   val RecheckedType = Property.Key[Type]
+
+  val addRecheckedTypes = new TreeMap:
+    override def transform(tree: Tree)(using Context): Tree =
+      val tree1 = super.transform(tree)
+      tree.getAttachment(RecheckedType) match
+        case Some(tpe) => tree1.withType(tpe)
+        case None => tree1
 
   extension (sym: Symbol)
 
@@ -63,7 +72,7 @@ object Recheck:
       val symd = sym.denot
       symd.validFor.firstPhaseId == phase.id + 1 && (sym.originDenotation ne symd)
 
-  extension (tree: Tree)
+  extension [T <: Tree](tree: T)
 
     /** Remember `tpe` as the type of `tree`, which might be different from the
      *  type stored in the tree itself, unless a type was already remembered for `tree`.
@@ -78,10 +87,26 @@ object Recheck:
       if tpe ne tree.tpe then tree.putAttachment(RecheckedType, tpe)
 
     /** The remembered type of the tree, or if none was installed, the original type */
-    def knownType =
+    def knownType: Type =
       tree.attachmentOrElse(RecheckedType, tree.tpe)
 
     def hasRememberedType: Boolean = tree.hasAttachment(RecheckedType)
+
+    def withKnownType(using Context): T = tree.getAttachment(RecheckedType) match
+      case Some(tpe) => tree.withType(tpe).asInstanceOf[T]
+      case None => tree
+
+  extension (tpe: Type)
+
+    /** Map ExprType => T to () ?=> T (and analogously for pure versions).
+     *  Even though this phase runs after ElimByName, ExprTypes can still occur
+     *  as by-name arguments of applied types. See note in doc comment for
+     *  ElimByName phase. Test case is bynamefun.scala.
+     */
+    def mapExprType(using Context): Type = tpe match
+      case ExprType(rt) => defn.ByNameFunction(rt)
+      case _ => tpe
+
 
 /** A base class that runs a simplified typer pass over an already re-typed program. The pass
  *  does not transform trees but returns instead the re-typed type of each tree as it is
@@ -108,7 +133,9 @@ abstract class Recheck extends Phase, SymTransformer:
     else sym
 
   def run(using Context): Unit =
-    newRechecker().checkUnit(ctx.compilationUnit)
+    val rechecker = newRechecker()
+    rechecker.checkUnit(ctx.compilationUnit)
+    rechecker.reset()
 
   def newRechecker()(using Context): Rechecker
 
@@ -128,8 +155,14 @@ abstract class Recheck extends Phase, SymTransformer:
      */
     def keepType(tree: Tree): Boolean = keepAllTypes
 
+    private val prevSelDenots = util.HashMap[NamedType, Denotation]()
+
+    def reset()(using Context): Unit =
+      for (ref, mbr) <- prevSelDenots.iterator do
+        ref.withDenot(mbr)
+
     /** Constant-folded rechecked type `tp` of tree `tree` */
-    private def constFold(tree: Tree, tp: Type)(using Context): Type =
+    protected def constFold(tree: Tree, tp: Type)(using Context): Type =
       val tree1 = tree.withType(tp)
       val tree2 = ConstFold(tree1)
       if tree2 ne tree1 then tree2.tpe else tp
@@ -137,20 +170,50 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckIdent(tree: Ident)(using Context): Type =
       tree.tpe
 
-    def recheckSelect(tree: Select)(using Context): Type =
+    def recheckSelect(tree: Select, pt: Type)(using Context): Type =
       val Select(qual, name) = tree
-      recheckSelection(tree, recheck(qual).widenIfUnstable, name)
+      val proto =
+        if tree.symbol == defn.Any_asInstanceOf then WildcardType
+        else AnySelectionProto
+      recheckSelection(tree, recheck(qual, proto).widenIfUnstable, name, pt)
 
-    /** Keep the symbol of the `select` but re-infer its type */
-    def recheckSelection(tree: Select, qualType: Type, name: Name)(using Context) =
+    /** When we select the `apply` of a function with type such as `(=> A) => B`,
+     *  we need to convert the parameter type `=> A` to `() ?=> A`. See doc comment
+     *  of `mapExprType`.
+     */
+    def normalizeByName(mbr: SingleDenotation)(using Context): SingleDenotation = mbr.info match
+      case mt: MethodType if mt.paramInfos.exists(_.isInstanceOf[ExprType]) =>
+        mbr.derivedSingleDenotation(mbr.symbol,
+          mt.derivedLambdaType(paramInfos = mt.paramInfos.map(_.mapExprType)))
+      case _ =>
+        mbr
+
+    def recheckSelection(tree: Select, qualType: Type, name: Name,
+        sharpen: Denotation => Denotation)(using Context): Type =
       if name.is(OuterSelectName) then tree.tpe
       else
         //val pre = ta.maybeSkolemizePrefix(qualType, name)
-        val mbr = qualType.findMember(name, qualType,
-            excluded = if tree.symbol.is(Private) then EmptyFlags else Private
-          ).suchThat(tree.symbol == _)
-        constFold(tree, qualType.select(name, mbr))
+        val mbr = normalizeByName(
+          sharpen(
+            qualType.findMember(name, qualType,
+              excluded = if tree.symbol.is(Private) then EmptyFlags else Private
+          )).suchThat(tree.symbol == _))
+        val newType = tree.tpe match
+          case prevType: NamedType =>
+            val prevDenot = prevType.denot
+            val newType = qualType.select(name, mbr)
+            if (newType eq prevType) && (mbr.info ne prevDenot.info) && !prevSelDenots.contains(prevType) then
+              prevSelDenots(prevType) = prevDenot
+            newType
+          case _ =>
+            qualType.select(name, mbr)
+        constFold(tree, newType)
           //.showing(i"recheck select $qualType . $name : ${mbr.info} = $result")
+
+
+    /** Keep the symbol of the `select` but re-infer its type */
+    def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context): Type =
+      recheckSelection(tree, qualType, name, sharpen = identity[Denotation])
 
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
@@ -187,7 +250,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *  to FromJavaObject since it got lost in ElimRepeated
      */
     private def mapJavaArgs(formals: List[Type])(using Context): List[Type] =
-      val tm = new TypeMap:
+      val tm = new TypeMap with IdempotentCaptRefMap:
         def apply(t: Type) = t match
           case t: TypeRef if t.symbol == defn.ObjectClass => defn.FromJavaObjectType
           case _ => mapOver(t)
@@ -198,7 +261,10 @@ abstract class Recheck extends Phase, SymTransformer:
       mt.instantiate(argTypes)
 
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      recheck(tree.fun).widen match
+      val funTp = recheck(tree.fun)
+      // reuse the tree's type on signature polymorphic methods, instead of using the (wrong) rechecked one
+      val funtpe = if tree.fun.symbol.originalSignaturePolymorphic.exists then tree.fun.tpe else funTp
+      funtpe.widen match
         case fntpe: MethodType =>
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
           val formals =
@@ -206,7 +272,7 @@ abstract class Recheck extends Phase, SymTransformer:
             else fntpe.paramInfos
           def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
             case arg :: args1 =>
-              val argType = recheck(arg, formals.head)
+              val argType = recheck(arg, formals.head.mapExprType)
               val formals1 =
                 if fntpe.isParamDependent
                 then formals.tail.map(_.substParam(prefs.head, argType))
@@ -218,6 +284,8 @@ abstract class Recheck extends Phase, SymTransformer:
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
           constFold(tree, instantiate(fntpe, argTypes, tree.fun.symbol))
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
+        case tp =>
+          assert(false, i"unexpected type of ${tree.fun}: $funtpe")
 
     def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       recheck(tree.fun).widen match
@@ -248,7 +316,7 @@ abstract class Recheck extends Phase, SymTransformer:
       recheckBlock(tree.stats, tree.expr, pt)
 
     def recheckInlined(tree: Inlined, pt: Type)(using Context): Type =
-      recheckBlock(tree.bindings, tree.expansion, pt)
+      recheckBlock(tree.bindings, tree.expansion, pt)(using inlineContext(tree.call))
 
     def recheckIf(tree: If, pt: Type)(using Context): Type =
       recheck(tree.cond, defn.BooleanType)
@@ -283,7 +351,20 @@ abstract class Recheck extends Phase, SymTransformer:
 
       val rawType = recheck(tree.expr)
       val ownType = avoidMap(rawType)
-      checkConforms(ownType, tree.from.symbol.returnProto, tree)
+
+      // The pattern matching translation, which runs before this phase
+      // sometimes instantiates return types with singleton type alternatives
+      // but the returned expression is widened. We compensate by widening the expected
+      // type as well. See also `widenSkolems` in `checkConformsExpr` which fixes
+      // a more general problem. It turns out that pattern matching returns
+      // are not checked by Ycheck, that's why these problems were allowed to slip
+      // through.
+      def widened(tp: Type): Type = tp match
+        case tp: SingletonType => tp.widen
+        case tp: AndOrType => tp.derivedAndOrType(widened(tp.tp1), widened(tp.tp2))
+        case tp @ AnnotatedType(tp1, ann) => tp.derivedAnnotatedType(widened(tp1), ann)
+        case _ => tp
+      checkConforms(ownType, widened(tree.from.symbol.returnProto), tree)
       defn.NothingType
     end recheckReturn
 
@@ -344,7 +425,7 @@ abstract class Recheck extends Phase, SymTransformer:
         val sym = tree.symbol
         tree match
           case tree: Ident => recheckIdent(tree)
-          case tree: Select => recheckSelect(tree)
+          case tree: Select => recheckSelect(tree, pt)
           case tree: Bind => recheckBind(tree, pt)
           case tree: ValOrDefDef =>
             if tree.isEmpty then NoType
@@ -409,6 +490,27 @@ abstract class Recheck extends Phase, SymTransformer:
           throw ex
       }
 
+    /** Typing and previous transforms sometiems leaves skolem types in prefixes of
+     *  NamedTypes in `expected` that do not match the `actual` Type. -Ycheck does
+     *  not complain (need to find out why), but a full recheck does. We compensate
+     *  by de-skolemizing everywhere in `expected` except when variance is negative.
+     *  @return If `tp` contains SkolemTypes in covariant or invariant positions,
+     *          the type where these SkolemTypes are mapped to their underlying type.
+     *          Otherwise, `tp` itself
+     */
+    def widenSkolems(tp: Type)(using Context): Type =
+      object widenSkolems extends TypeMap, IdempotentCaptRefMap:
+        var didWiden: Boolean = false
+        def apply(t: Type): Type = t match
+          case t: SkolemType if variance >= 0 =>
+            didWiden = true
+            apply(t.underlying)
+          case t: LazyRef => t
+          case t @ AnnotatedType(t1, ann) => t.derivedAnnotatedType(apply(t1), ann)
+          case _ => mapOver(t)
+      val tp1 = widenSkolems(tp)
+      if widenSkolems.didWiden then tp1 else tp
+
     /** If true, print info for some successful checkConforms operations (failing ones give
      *  an error message in any case).
      */
@@ -424,11 +526,16 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
       //println(i"check conforms $actual <:< $expected")
-      val isCompatible =
+
+      def isCompatible(expected: Type): Boolean =
         actual <:< expected
         || expected.isRepeatedParam
-            && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
-      if !isCompatible then
+            && isCompatible(expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass)))
+        || {
+          val widened = widenSkolems(expected)
+          (widened ne expected) && isCompatible(widened)
+        }
+      if !isCompatible(expected) then
         recheckr.println(i"conforms failed for ${tree}: $actual vs $expected")
         err.typeMismatch(tree.withType(actual), expected)
       else if debugSuccesses then
@@ -436,6 +543,7 @@ abstract class Recheck extends Phase, SymTransformer:
           case _: Ident =>
             println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actual, expected))}")
           case _ =>
+    end checkConformsExpr
 
     def checkUnit(unit: CompilationUnit)(using Context): Unit =
       recheck(unit.tpdTree)
@@ -444,12 +552,6 @@ abstract class Recheck extends Phase, SymTransformer:
 
   /** Show tree with rechecked types instead of the types stored in the `.tpe` field */
   override def show(tree: untpd.Tree)(using Context): String =
-    val addRecheckedTypes = new TreeMap:
-      override def transform(tree: Tree)(using Context): Tree =
-        val tree1 = super.transform(tree)
-        tree.getAttachment(RecheckedType) match
-          case Some(tpe) => tree1.withType(tpe)
-          case None => tree1
     atPhase(thisPhase) {
       super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
     }

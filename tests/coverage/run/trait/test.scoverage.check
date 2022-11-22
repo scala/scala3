@@ -38,23 +38,6 @@ def x
 1
 trait/test.scala
 <empty>
-Impl2
-Class
-<empty>.Impl2
-<init>
-91
-101
-6
-<init>
-Apply
-false
-0
-false
-T2("test")
-
-2
-trait/test.scala
-<empty>
 Impl3
 Class
 <empty>.Impl3
@@ -69,58 +52,7 @@ false
 false
 Impl2()
 
-3
-trait/test.scala
-<empty>
-Impl3
-Class
-<empty>.Impl3
-<init>
-130
-143
-7
-<init>
-Apply
-false
-0
-false
-T2(Impl2().p)
-
-4
-trait/test.scala
-<empty>
-test$package$
-Object
-<empty>.test$package$
-Test
-178
-185
-11
-<init>
-Apply
-false
-0
-false
-Impl1()
-
-5
-trait/test.scala
-<empty>
-test$package$
-Object
-<empty>.test$package$
-Test
-178
-187
-11
-x
-Select
-false
-0
-false
-Impl1().x
-
-6
+2
 trait/test.scala
 <empty>
 test$package$
@@ -137,24 +69,41 @@ false
 false
 println(Impl1().x)
 
-7
+3
 trait/test.scala
 <empty>
 test$package$
 Object
 <empty>.test$package$
 Test
-204
-211
-12
+178
+185
+11
 <init>
 Apply
 false
 0
 false
-Impl2()
+Impl1()
 
-8
+4
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+178
+187
+11
+x
+Select
+false
+0
+false
+Impl1().x
+
+5
 trait/test.scala
 <empty>
 test$package$
@@ -171,24 +120,24 @@ false
 false
 println(Impl2().p)
 
-9
+6
 trait/test.scala
 <empty>
 test$package$
 Object
 <empty>.test$package$
 Test
-233
-240
-13
+204
+211
+12
 <init>
 Apply
 false
 0
 false
-Impl3()
+Impl2()
 
-10
+7
 trait/test.scala
 <empty>
 test$package$
@@ -205,7 +154,24 @@ false
 false
 println(Impl3().p)
 
-11
+8
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+233
+240
+13
+<init>
+Apply
+false
+0
+false
+Impl3()
+
+9
 trait/test.scala
 <empty>
 test$package$
@@ -220,6 +186,5 @@ DefDef
 false
 0
 false
-@main
-def Test
+@main\ndef Test
 

@@ -85,7 +85,10 @@ object Inlines:
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
-    CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
+    if ctx.isAfterTyper then
+      // During typer we wait with cross version checks until PostTyper, in order
+      // not to provoke cyclic references. See i16116 for a test case.
+      CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
 
     if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
 
@@ -155,7 +158,7 @@ object Inlines:
           tree,
           i"""|Maximal number of $reason (${setting.value}) exceeded,
               |Maybe this is caused by a recursive inline method?
-              |You can use ${setting.name} to change the limit.""",
+              |You can use ${setting.name} to change the limit.""".toMessage,
           (tree :: enclosingInlineds).last.srcPos
         )
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then

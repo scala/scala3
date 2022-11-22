@@ -170,17 +170,10 @@ describing a function into a function mapping trees to trees.
 ```scala
 object Expr:
   ...
-  def betaReduce[...](...)(...): ... = ...
+  def betaReduce[T](expr: Expr[T])(using Quotes): Expr[T]
 ```
 
-The definition of `Expr.betaReduce(f)(x)` is assumed to be functionally the same as
-`'{($f)($x)}`, however it should optimize this call by returning the
-result of beta-reducing `f(x)` if `f` is a known lambda expression.
-`Expr.betaReduce` distributes applications of `Expr` over function arrows:
-
-```scala
-Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
-```
+`Expr.betaReduce` returns an expression that is functionally equivalent to e, however if e is of the form `((y1, ..., yn) => e2)(e1, ..., en)` then it optimizes the top most call by returning the result of beta-reducing the application. Otherwise returns expr.
 
 ## Lifting Types
 
@@ -192,7 +185,7 @@ quote but no splice between the parameter binding of `T` and its
 usage. But the code can be rewritten by adding an explicit binding of a `Type[T]`:
 
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T])(using Type[R], Quotes): Expr[T => R] =
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R])(using Quotes): Expr[T => R] =
   '{ (x: t.Underlying) => ${ f('x) } }
 ```
 
@@ -217,14 +210,13 @@ would be rewritten to
 ```scala
 def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R])(using Quotes): Expr[T => R] =
   '{
-    type T = t.Underlying
+    type T = summon[Type[T]].Underlying
     (x: T) => ${ f('x) }
   }
 ```
 
-The `summon` query succeeds because there is a given instance of
-type `Type[T]` available (namely the given parameter corresponding
-to the context bound `: Type`), and the reference to that value is
+The `summon` query succeeds because there is a using parameter of
+type `Type[T]`, and the reference to that value is
 phase-correct. If that was not the case, the phase inconsistency for
 `T` would be reported as an error.
 
@@ -526,8 +518,8 @@ the code it runs produces one.
 
 ## Example Expansion
 
-Assume we have two methods, one `map` that takes an `Expr[Array[T]]` and a
-function `f` and one `sum` that performs a sum by delegating to `map`.
+Assume we have two methods, `map` that takes an `Expr[Array[T]]` and a
+function `f`, and `sum` that performs a sum by delegating to `map`.
 
 ```scala
 object Macros:
@@ -552,38 +544,66 @@ object Macros:
 end Macros
 ```
 
-A call to `sum_m(Array(1,2,3))` will first inline `sum_m`:
+A call to `sum_m(Array(1, 2, 3))` will first inline `sum_m`:
 
 ```scala
-val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
-${_root_.Macros.sum('arr)}
+val arr: Array[Int] = Array.apply(1, 2, 3)
+${ _root_.Macros.sum('arr) }
 ```
 
-then it will splice `sum`:
+then it will call `sum`:
 
 ```scala
-val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
+val arr: Array[Int] = Array.apply(1, 2, 3)
+${ '{
+  var sum = 0
+  ${ map('arr, x => '{sum += $x}) }
+  sum
+} }
+```
+
+and cancel the `${'{...}}`:
+
+```scala
+val arr: Array[Int] = Array.apply(1, 2, 3)
 
 var sum = 0
 ${ map('arr, x => '{sum += $x}) }
 sum
 ```
 
-then it will inline `map`:
+then it will extract `x => '{sum += $x}` into `f`, to have a value:
 
 ```scala
-val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
+val arr: Array[Int] = Array.apply(1, 2, 3)
 
 var sum = 0
 val f = x => '{sum += $x}
-${ _root_.Macros.map('arr, 'f)(Type.of[Int])}
+${ _root_.Macros.map('arr, 'f)(Type.of[Int]) }
 sum
 ```
 
-then it will expand and splice inside quotes `map`:
+and then call `map`:
 
 ```scala
-val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
+val arr: Array[Int] = Array.apply(1, 2, 3)
+
+var sum = 0
+val f = x => '{sum += $x}
+${ '{
+  var i: Int = 0
+  while i < arr.length do
+    val element: Int = (arr)(i)
+    sum += element
+    i += 1
+  sum
+} }
+```
+
+and cancel the `${'{...}}` again:
+
+```scala
+val arr: Array[Int] = Array.apply(1, 2, 3)
 
 var sum = 0
 val f = x => '{sum += $x}
@@ -598,7 +618,7 @@ sum
 Finally cleanups and dead code elimination:
 
 ```scala
-val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
+val arr: Array[Int] = Array.apply(1, 2, 3)
 var sum = 0
 var i: Int = 0
 while i < arr.length do
@@ -662,7 +682,7 @@ It is possible to deconstruct or extract values out of `Expr` using pattern matc
 
 `scala.quoted` contains objects that can help extracting values from `Expr`.
 
-- `scala.quoted.Expr`/`scala.quoted.Exprs`: matches an expression of a value (or list of values) and returns the value (or list of values).
+- `scala.quoted.Expr`/`scala.quoted.Exprs`: matches an expression of a value (resp. list of values) and returns the value (resp. list of values).
 - `scala.quoted.Const`/`scala.quoted.Consts`: Same as `Expr`/`Exprs` but only works on primitive values.
 - `scala.quoted.Varargs`: matches an explicit sequence of expressions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
 
@@ -682,6 +702,11 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] =
       dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
     case _ =>
       '{ $argsExpr.sum }
+
+sum(1, 2, 3) // gets matched by Varargs
+
+val xs = List(1, 2, 3)
+sum(xs*) // doesn't get matched by Varargs
 ```
 
 ### Quoted patterns

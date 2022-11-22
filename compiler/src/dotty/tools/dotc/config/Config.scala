@@ -22,6 +22,11 @@ object Config {
    */
   inline val checkConstraintsNonCyclic = false
 
+  /** Check that reverse dependencies in constraints are correct and complete.
+   *  Can also be enabled using -Ycheck-constraint-deps.
+   */
+  inline val checkConstraintDeps = false
+
   /** Check that each constraint resulting from a subtype test
    *  is satisfiable. Also check that a type variable instantiation
    *  satisfies its constraints.
@@ -184,6 +189,9 @@ object Config {
   /** If set, prints a trace of all symbol completions */
   inline val showCompletions = false
 
+  /** If set, show variable/variable reverse dependencies when printing constraints. */
+  inline val showConstraintDeps = true
+
   /** If set, method results that are context functions are flattened by adding
    *  the parameters of the context function results to the methods themselves.
    *  This is an optimization that reduces closure allocations.
@@ -240,7 +248,7 @@ object Config {
    */
   inline val printCaptureSetsAsPrefix = true
 
-  /** If true, allow mappping capture set variables under -Ycc with maps that are neither
+  /** If true, allow mappping capture set variables under captureChecking with maps that are neither
    *  bijective nor idempotent. We currently do now know how to do this correctly in all
    *  cases, though.
    */

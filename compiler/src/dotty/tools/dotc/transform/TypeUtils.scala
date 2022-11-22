@@ -76,7 +76,7 @@ object TypeUtils {
       case AndType(tp1, tp2) =>
         // We assume that we have the following property:
         // (T1, T2, ..., Tn) & (U1, U2, ..., Un) = (T1 & U1, T2 & U2, ..., Tn & Un)
-        tp1.tupleElementTypes.zip(tp2.tupleElementTypes).map { case (t1, t2) => t1 & t2 }
+        tp1.tupleElementTypes.zip(tp2.tupleElementTypes).map { case (t1, t2) => t1.intersect(t2) }
       case OrType(tp1, tp2) =>
         None // We can't combine the type of two tuples
       case _ =>
@@ -106,6 +106,11 @@ object TypeUtils {
       case self: TypeProxy =>
         self.superType.mirrorCompanionRef
     }
+
+    /** Is this type a methodic type that takes at least one parameter? */
+    def takesParams(using Context): Boolean = self.stripPoly match
+      case mt: MethodType => mt.paramNames.nonEmpty || mt.resType.takesParams
+      case _ => false
 
     /** Is this type a methodic type that takes implicit parameters (both old and new) at some point? */
     def takesImplicitParams(using Context): Boolean = self.stripPoly match

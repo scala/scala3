@@ -81,7 +81,9 @@ class ExtractSemanticDB extends Phase:
     private def excludeDef(sym: Symbol)(using Context): Boolean =
       !sym.exists
       || sym.isLocalDummy
-      || sym.is(Synthetic)
+      // basically do not register synthetic symbols, except anonymous class
+      // `new Foo { ... }`
+      || (sym.is(Synthetic) && !sym.isAnonymousClass)
       || sym.isSetter
       || sym.isOldStyleImplicitConversion(forImplicitClassOnly = true)
       || sym.owner.isGivenInstanceSummoner
@@ -178,7 +180,7 @@ class ExtractSemanticDB extends Phase:
                 if !excludeChildren(tree.symbol) then
                   traverseChildren(tree)
             }
-            if !excludeDef(tree.symbol) && tree.span.hasLength then
+            if !excludeDef(tree.symbol) && (tree.span.hasLength || tree.symbol.isAnonymousClass) then
               registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree), tree.source)
               val privateWithin = tree.symbol.privateWithin
               if privateWithin.exists then
@@ -355,7 +357,7 @@ class ExtractSemanticDB extends Phase:
       else
         Span(span.start)
 
-      if namePresentInSource(sym, span, treeSource) then
+      if namePresentInSource(sym, span, treeSource) || sym.isAnonymousClass then
         registerOccurrence(sname, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
       if !sym.is(Package) then
         registerSymbol(sym, symkinds)

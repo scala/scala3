@@ -69,7 +69,7 @@ Matching filters for @nowarn or -Wconf:
 -- Unchecked Warning: tests/neg-custom-args/nowarn/nowarn.scala:53:7 ---------------------------------------------------
 53 |  case _: List[Int] => 0 // warning (patmat, unchecked)
    |       ^
-   |       the type test for List[Int] cannot be checked at runtime
+   |the type test for List[Int] cannot be checked at runtime because its type arguments can't be determined from Any
 -- Error: tests/neg-custom-args/nowarn/nowarn.scala:31:1 ---------------------------------------------------------------
 31 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
    |^^^^^^^^^^^^^^^

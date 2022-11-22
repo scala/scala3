@@ -1,0 +1,4 @@
+-- [E171] Type Error: tests/neg/i16130.scala:3:16 ----------------------------------------------------------------------
+3 |  val foo = new Foo {}  // error
+  |                ^^^
+  |                missing argument for parameter x of constructor Foo in trait Foo: (x: Int): Foo

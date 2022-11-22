@@ -3,8 +3,16 @@ package org.scalajs.testsuite.compiler
 import org.junit.Assert.*
 import org.junit.Test
 
+import scala.concurrent.ExecutionContext.Implicits.{global => globalEc}
+import scala.concurrent.Future
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
+
+import org.scalajs.junit.async._
+
+import org.scalajs.testsuite.jsinterop.ExportLoopback
+import org.scalajs.testsuite.utils.Platform._
 
 class RegressionTestScala3 {
   import RegressionTestScala3.*
@@ -78,6 +86,65 @@ class RegressionTestScala3 {
     val f3 = { () => i += 1 }
     assertSame(f3, Thunk.asFunction0(f3()))
   }
+
+  @Test def literalTypeJSNativeIssue16173(): Unit = {
+    js.eval("""
+      var RegressionTestScala3_Issue16173_foo = "constant";
+      var RegressionTestScala3_Issue16173_bar = function() { return 5; };
+    """)
+
+    assertEquals("constant", Issue16173.foo1)
+    assertEquals("constant", Issue16173.foo2)
+
+    assertEquals(5, Issue16173.bar1())
+  }
+
+  @Test def mandatoryFieldsForSJSSemanticsInNonNativeJSClassIssue14168(): Unit = {
+    val nonNativeJS = new Issue14168.NonNativeJSClass().asInstanceOf[js.Dynamic]
+    assertEquals("string", nonNativeJS.stringField)
+    assertEquals(null, nonNativeJS.nullField)
+    assertEquals((), nonNativeJS.unitField)
+    assertEquals(true, nonNativeJS.hasOwnProperty("unitField"))
+  }
+
+  @Test def mandatoryFieldsForSJSSemanticsInStaticExportsIssue14168(): Unit = {
+    val staticExports = js.constructorOf[Issue14168.StaticExports]
+    assertEquals("string", staticExports.stringField)
+    assertEquals(null, staticExports.nullField)
+    assertEquals((), staticExports.unitField)
+    assertEquals(true, staticExports.hasOwnProperty("unitField"))
+  }
+
+  @Test def mandatoryFieldsForSJSSemanticsInTopLevelExportsIssue14168(): AsyncResult = await {
+    if (isNoModule) {
+      import js.Dynamic.global
+      Future {
+        assertEquals("string", global.RegressionTestScala3_Issue14168_stringField)
+        assertEquals(null, global.RegressionTestScala3_Issue14168_nullField)
+        assertEquals((), global.RegressionTestScala3_Issue14168_unitField)
+      }
+    } else {
+      for (exports <- ExportLoopback.exportsNamespace) yield {
+        assertEquals("string", exports.RegressionTestScala3_Issue14168_stringField)
+        assertEquals(null, exports.RegressionTestScala3_Issue14168_nullField)
+        assertEquals((), exports.RegressionTestScala3_Issue14168_unitField)
+      }
+    }
+  }
+
+  @Test def nonSelectJSNativeRHSIssue14289(): Unit = {
+    js.eval("""
+      var RegressionTestScala3_Issue14289 = {
+        "a": function() { return "foo"; },
+        "b": function() { return 5; },
+        "c": function() { return true; }
+      };
+    """)
+
+    assertEquals("foo", Issue14289.Container.a())
+    assertEquals(5, Issue14289.Container.b())
+    assertEquals(true, Issue14289.Container.c())
+  }
 }
 
 object RegressionTestScala3 {
@@ -147,6 +214,67 @@ object RegressionTestScala3 {
 
     val entries = js.Object.entries(obj)
     val js.Tuple2(k, v) = entries(0): @unchecked
+  }
+
+  object Issue16173 {
+    @js.native
+    @JSGlobal("RegressionTestScala3_Issue16173_foo")
+    val foo1: "constant" = js.native
+
+    @js.native
+    @JSGlobal("RegressionTestScala3_Issue16173_foo")
+    def foo2: "constant" = js.native
+
+    @js.native
+    @JSGlobal("RegressionTestScala3_Issue16173_bar")
+    def bar1(): 5 = js.native
+  }
+
+  object Issue14168 {
+    class NonNativeJSClass extends js.Object {
+      val stringField: "string" = "string"
+      val nullField: Null = null
+      val unitField: Unit = ()
+      final val finalValField = "finalVal"
+    }
+
+    class StaticExports extends js.Object
+
+    object StaticExports {
+      @JSExportStatic
+      val stringField: "string" = "string"
+      @JSExportStatic
+      val nullField: Null = null
+      @JSExportStatic
+      val unitField: Unit = ()
+      @JSExportStatic
+      final val finalValField = "finalVal"
+    }
+
+    object TopLevelExports {
+      @JSExportTopLevel("RegressionTestScala3_Issue14168_stringField")
+      val stringField: "string" = "string"
+      @JSExportTopLevel("RegressionTestScala3_Issue14168_nullField")
+      val nullField: Null = null
+      @JSExportTopLevel("RegressionTestScala3_Issue14168_unitField")
+      val unitField: Unit = ()
+      @JSExportTopLevel("RegressionTestScala3_Issue14168_finalValField")
+      final val finalValField = "finalVal"
+    }
+  }
+
+  object Issue14289 {
+    import scala.scalajs.js.native
+    import scala.scalajs.{js => renamedjs}
+    import scala.scalajs.js.{native => renamednative}
+
+    @js.native
+    @js.annotation.JSGlobal("RegressionTestScala3_Issue14289")
+    object Container extends js.Object {
+      def a(): String = native
+      def b(): Int = renamedjs.native
+      def c(): Boolean = renamednative
+    }
   }
 }
 

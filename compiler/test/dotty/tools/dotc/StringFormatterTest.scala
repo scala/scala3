@@ -22,6 +22,7 @@ class StringFormatterTest extends AbstractStringFormatterTest:
   @Test def flagsSeq   = check("<static>, final", i"${Seq(JavaStatic, Final)}%, %")
   @Test def flagsTup   = check("(<static>,final)", i"${(JavaStatic, Final)}")
   @Test def seqOfTup2  = check("(final,given), (private,lazy)", i"${Seq((Final, Given), (Private, Lazy))}%, %")
+  @Test def seqOfTup3  = check("(Foo,given, (right is approximated))", i"${Seq((Foo, Given, TypeComparer.ApproxState.None.addHigh))}%, %")
 
   class StorePrinter extends Printer:
     var string: String = "<never set>"
@@ -76,13 +77,18 @@ class ExStringFormatterTest extends AbstractStringFormatterTest:
                                   |where:    Foo  is a type
                                   |          Foo² is a type
                                   |""".stripMargin, ex"${(Foo, Foo)}")
+  @Test def seqOfTup3Amb = check("""[(Foo,Foo²,<nonsensical>type Err</nonsensical>)]
+                                   |
+                                   |where:    Foo  is a type
+                                   |          Foo² is a type
+                                   |""".stripMargin, ex"${Seq((Foo, Foo, Err))}")
 end ExStringFormatterTest
 
 abstract class AbstractStringFormatterTest extends DottyTest:
   override def initializeCtx(fc: FreshContext) = super.initializeCtx(fc.setSetting(fc.settings.color, "never"))
 
   def Foo = newSymbol(defn.RootClass, typeName("Foo"), EmptyFlags, TypeBounds.empty).typeRef
-  def Err = newErrorSymbol(defn.RootClass, typeName("Err"), "")
+  def Err = newErrorSymbol(defn.RootClass, typeName("Err"), "".toMessage)
   def Big = (1 to 120).foldLeft(defn.StringType)((tp, i) => RefinedType(tp, typeName("A" * 69 + i), TypeAlias(defn.IntType)))
 
   def mkCstrd =

@@ -28,9 +28,9 @@ object Test2:
   private val later2 = usingLogFile { f => Cell(() => f.write(0)) }
   later2.x()  // error
 
-  var later3: () => Unit = () => ()  // error
+  var later3: () => Unit = () => ()
   usingLogFile { f => later3 = () => f.write(0) }
-  later3()
+  later3() // error
 
   var later4: Cell[() => Unit] = Cell(() => ())
   usingLogFile { f => later4 = Cell(() => f.write(0)) }

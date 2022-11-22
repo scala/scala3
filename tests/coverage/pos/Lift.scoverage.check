@@ -1,0 +1,156 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+f
+40
+45
+3
+f
+DefDef
+false
+0
+false
+def f
+
+1
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+g
+61
+66
+4
+g
+DefDef
+false
+0
+false
+def g
+
+2
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+c
+83
+98
+5
+<init>
+Apply
+false
+0
+false
+SomeFunctions()
+
+3
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+c
+75
+80
+5
+c
+DefDef
+false
+0
+false
+def c
+
+4
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+test
+113
+121
+7
+f
+Apply
+false
+0
+false
+c.f(g())
+
+5
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+test
+113
+114
+7
+c
+Select
+false
+0
+false
+c
+
+6
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+test
+117
+120
+7
+g
+Apply
+false
+0
+false
+g()
+
+7
+Lift.scala
+covtest
+SomeFunctions
+Class
+covtest.SomeFunctions
+test
+102
+110
+7
+test
+DefDef
+false
+0
+false
+def test
+

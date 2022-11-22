@@ -131,9 +131,17 @@ object ProtoTypes {
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
   abstract case class IgnoredProto(ignored: Type) extends CachedGroundType with MatchAlways:
+    private var myWasDeepened = false
     override def revealIgnored = ignored
-    override def deepenProto(using Context): Type = ignored
+    override def deepenProto(using Context): Type =
+      myWasDeepened = true
+      ignored
     override def deepenProtoTrans(using Context): Type = ignored.deepenProtoTrans
+
+    /** Did someone look inside via deepenProto? Used for error deagniostics
+     *  to give a more extensive expected type.
+     */
+    def wasDeepened: Boolean = myWasDeepened
 
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, ignored)
 
@@ -822,17 +830,23 @@ object ProtoTypes {
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
-  private def wildApprox(tp: Type, theMap: WildApproxMap | Null, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type = tp match {
+  private def wildApprox(tp: Type, theMap: WildApproxMap | Null, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type =
+    tp match {
     case tp: NamedType => // default case, inlined for speed
       val isPatternBoundTypeRef = tp.isInstanceOf[TypeRef] && tp.symbol.isPatternBound
       if (isPatternBoundTypeRef) WildcardType(tp.underlying.bounds)
       else if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen, internal))
     case tp @ AppliedType(tycon, args) =>
+      def wildArgs = args.mapConserve(arg => wildApprox(arg, theMap, seen, internal))
       wildApprox(tycon, theMap, seen, internal) match {
-        case _: WildcardType => WildcardType // this ensures we get a * type
-        case tycon1 => tp.derivedAppliedType(tycon1,
-          args.mapConserve(arg => wildApprox(arg, theMap, seen, internal)))
+        case WildcardType(TypeBounds(lo, hi)) if hi.typeParams.hasSameLengthAs(args) =>
+          val args1 = wildArgs
+          val lo1 = if lo.typeParams.hasSameLengthAs(args) then lo.appliedTo(args1) else lo
+          WildcardType(TypeBounds(lo1, hi.appliedTo(args1)))
+        case WildcardType(_) =>
+          WildcardType
+        case tycon1 => tp.derivedAppliedType(tycon1, wildArgs)
       }
     case tp: RefinedType => // default case, inlined for speed
       tp.derivedRefinedType(

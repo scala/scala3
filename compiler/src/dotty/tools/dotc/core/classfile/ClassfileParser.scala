@@ -165,11 +165,7 @@ class ClassfileParser(
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
       val superType =
-        if (isAnnotation) {
-          in.nextChar
-          defn.AnnotationClass.typeRef
-        }
-        else if (classRoot.symbol == defn.ComparableClass ||
+        if (classRoot.symbol == defn.ComparableClass ||
                  classRoot.symbol == defn.JavaCloneableClass ||
                  classRoot.symbol == defn.JavaSerializableClass) {
           // Treat these interfaces as universal traits
@@ -186,7 +182,6 @@ class ClassfileParser(
         // Consequently, no best implicit for the "Integral" evidence parameter of "range"
         // is found. Previously, this worked because of weak conformance, which has been dropped.
 
-      if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeRef :: ifaces
       superType :: ifaces
     }
 
@@ -275,6 +270,9 @@ class ClassfileParser(
     def complete(denot: SymDenotation)(using Context): Unit = {
       val sym = denot.symbol
       val isEnum = (jflags & JAVA_ACC_ENUM) != 0
+      val isNative = (jflags & JAVA_ACC_NATIVE) != 0
+      val isTransient = (jflags & JAVA_ACC_TRANSIENT) != 0
+      val isVolatile = (jflags & JAVA_ACC_VOLATILE) != 0
       val isConstructor = name eq nme.CONSTRUCTOR
 
       /** Strip leading outer param from constructor and trailing access tag for
@@ -313,6 +311,12 @@ class ClassfileParser(
       val isVarargs = denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0
       denot.info = sigToType(sig, isVarargs = isVarargs)
       if (isConstructor) normalizeConstructorParams()
+      if isNative then
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.NativeAnnot)(New(defn.NativeAnnot.typeRef, Nil))
+      if isTransient then
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.TransientAnnot)(New(defn.TransientAnnot.typeRef, Nil))
+      if isVolatile then
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.VolatileAnnot)(New(defn.VolatileAnnot.typeRef, Nil))
       denot.info = translateTempPoly(attrCompleter.complete(denot.info, isVarargs))
       if (isConstructor) normalizeConstructorInfo()
 
@@ -836,7 +840,7 @@ class ClassfileParser(
 
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
-      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol)
+      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol && sym.name != nme.CONSTRUCTOR)
       val paramNames = attrs.map(_.name.asTermName)
       val paramTypes = attrs.map(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)

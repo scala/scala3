@@ -31,7 +31,7 @@ abstract class Printer {
    *  ### `atPrec` vs `changePrec`
    *
    *  This is to be used when changing precedence inside some sort of parentheses:
-   *  for instance, to print T[A]` use
+   *  for instance, to print `T[A]` use
    *  `toText(T) ~ '[' ~ atPrec(GlobalPrec) { toText(A) } ~ ']'`.
    *
    *  If the presence of the parentheses depends on precedence, inserting them manually is most certainly a bug.
@@ -60,8 +60,7 @@ abstract class Printer {
    *  A op B op' C parses as (A op B) op' C if op and op' are left-associative, and as
    *  A op (B op' C) if they're right-associative, so we need respectively
    *  ```scala
-   *  val isType = ??? // is this a term or type operator?
-   *  val prec = parsing.precedence(op, isType)
+   *  val prec = parsing.precedence(op)
    *  // either:
    *  changePrec(prec) { toText(a) ~ op ~ atPrec(prec + 1) { toText(b) } } // for left-associative op and op'
    *  // or:
@@ -149,7 +148,7 @@ abstract class Printer {
   def toText(sc: Scope): Text
 
   /** Textual representation of tree */
-  def toText[T >: Untyped](tree: Tree[T]): Text
+  def toText[T <: Untyped](tree: Tree[T]): Text
 
   /** Textual representation of source position */
   def toText(pos: SourcePosition): Text
@@ -162,6 +161,9 @@ abstract class Printer {
 
   /** Textual representation of a constraint */
   def toText(c: OrderingConstraint): Text
+
+  /** Textual representation of a GADT constraint */
+  def toText(c: GadtConstraint): Text
 
   /** Render element within highest precedence */
   def toTextLocal(elem: Showable): Text =

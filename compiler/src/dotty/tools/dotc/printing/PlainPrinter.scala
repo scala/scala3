@@ -14,7 +14,7 @@ import Variances.varianceSign
 import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
-import config.Config
+import config.{Config, Feature}
 import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
 
 class PlainPrinter(_ctx: Context) extends Printer {
@@ -111,8 +111,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def refinementNameString(tp: RefinedType): String = nameString(tp.refinedName)
 
   /** String representation of a refinement */
-  protected def toTextRefinement(rt: RefinedType): Closed =
-    (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
+  protected def toTextRefinement(rt: RefinedType): Text =
+    val keyword = rt.refinedInfo match {
+      case _: ExprType | _: MethodOrPoly => "def "
+      case _: TypeBounds => "type "
+      case _: TypeProxy => "val "
+      case _ => ""
+    }
+    (keyword ~ refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
   protected def argText(arg: Type): Text = homogenizeArg(arg) match {
     case arg: TypeBounds => "?" ~ toText(arg)
@@ -242,7 +248,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else toText(CapturingType(ExprType(parent), refs))
       case ExprType(restp) =>
         changePrec(GlobalPrec) {
-          (if ctx.settings.Ycc.value then "-> " else "=> ") ~ toText(restp)
+          (if Feature.pureFunsEnabled then "-> " else "=> ") ~ toText(restp)
         }
       case tp: HKTypeLambda =>
         changePrec(GlobalPrec) {
@@ -258,8 +264,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if annot.symbol == defn.InlineParamAnnot || annot.symbol == defn.ErasedParamAnnot then toText(tpe)
         else toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
+        def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)
         if (tp.isInstantiated)
-          toTextLocal(tp.instanceOpt) ~ (Str("^") provided printDebug)
+          toTextCaret(tp.instanceOpt)
         else {
           val constr = ctx.typerState.constraint
           val bounds =
@@ -267,7 +274,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
               withMode(Mode.Printing)(TypeComparer.fullBounds(tp.origin))
             else
               TypeBounds.empty
-          if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided printDebug)
+          if (bounds.isTypeAlias) toTextCaret(bounds.lo)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
         }
@@ -278,6 +285,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
             case ex: Throwable => Str("...")
           }
         "LazyRef(" ~ refTxt ~ ")"
+      case Range(lo, hi) =>
+        toText(lo) ~ ".." ~ toText(hi)
       case _ =>
         tp.fallbackToText(this)
     }
@@ -376,6 +385,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCaptureRef(tp: Type): Text =
     homogenize(tp) match
+      case tp: TermRef if tp.symbol == defn.captureRoot => Str("*")
       case tp: SingletonType => toTextRef(tp)
       case _ => toText(tp)
 
@@ -606,7 +616,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText(sc: Scope): Text =
     ("Scope{" ~ dclsText(sc.toList) ~ "}").close
 
-  def toText[T >: Untyped](tree: Tree[T]): Text = {
+  def toText[T <: Untyped](tree: Tree[T]): Text = {
     def toTextElem(elem: Any): Text = elem match {
       case elem: Showable => elem.toText(this)
       case elem: List[?] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
@@ -688,10 +698,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
                 Text(ups.map(toText), ", ")
           Text(deps, "\n")
         }
+      val depsText = if Config.showConstraintDeps then c.depsToString else ""
       //Printer.debugPrintUnique = false
-      Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
+      Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText, depsText))
     finally
       ctx.typerState.constraint = savedConstraint
+
+  def toText(g: GadtConstraint): Text =
+    val deps = for sym <- g.symbols yield
+      val bound = g.fullBounds(sym).nn
+      (typeText(toText(sym.typeRef)) ~ toText(bound)).close
+    ("GadtConstraint(" ~ Text(deps, ", ") ~ ")").close
 
   def plain: PlainPrinter = this
 

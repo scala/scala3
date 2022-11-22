@@ -2,8 +2,8 @@ import annotation.retains
 import language.experimental.erasedDefinitions
 
 class CT[E <: Exception]
-type CanThrow[E <: Exception] = CT[E] @retains(*)
-type Top  = Any @retains(*)
+type CanThrow[E <: Exception] = CT[E] @retains(caps.*)
+type Top  = Any @retains(caps.*)
 
 infix type throws[R, E <: Exception] = (erased CanThrow[E]) ?=> R
 
@@ -44,7 +44,7 @@ def test =
   yy // OK
 
 
-val global = handle {
+val global: () -> Int = handle {
   (x: CanThrow[Exception]) =>
     () =>
       raise(new Exception)(using x)

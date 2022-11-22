@@ -42,7 +42,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** mods object name impl */
   case class ModuleDef(name: TermName, impl: Template)(implicit @constructorOnly src: SourceFile)
     extends MemberDef {
-    type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
+    type ThisTree[+T <: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
     def withName(name: Name)(using Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
@@ -117,6 +117,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
   case class ExtMethods(paramss: List[ParamClause], methods: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree
+  case class Into(tpt: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
@@ -145,7 +146,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case Floating
   }
 
-  /** {x1, ..., xN} T   (only relevant under -Ycc) */
+  /** {x1, ..., xN} T   (only relevant under captureChecking) */
   case class CapturingTypeTree(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
 
   /** Short-lived usage in typer, does not need copy/transform/fold infrastructure */
@@ -217,7 +218,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Infix()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Infix)
 
-    /** Used under -Ycc to mark impure function types `A => B` in `FunctionWithMods` */
+    /** Used under pureFunctions to mark impure function types `A => B` in `FunctionWithMods` */
     case class Impure()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Impure)
   }
 
@@ -492,6 +493,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
   def javaDotLangDot(name: Name)(implicit src: SourceFile): Select = Select(Select(Ident(nme.java), nme.lang), name)
 
+  def captureRoot(using Context): Select =
+    Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
+
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
 
@@ -646,6 +650,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def ExtMethods(tree: Tree)(paramss: List[ParamClause], methods: List[Tree])(using Context): Tree = tree match
       case tree: ExtMethods if (paramss eq tree.paramss) && (methods == tree.methods) => tree
       case _ => finalize(tree, untpd.ExtMethods(paramss, methods)(tree.source))
+    def Into(tree: Tree)(tpt: Tree)(using Context): Tree = tree match
+      case tree: Into if tpt eq tree.tpt => tree
+      case _ => finalize(tree, untpd.Into(tpt)(tree.source))
     def ImportSelector(tree: Tree)(imported: Ident, renamed: Tree, bound: Tree)(using Context): Tree = tree match {
       case tree: ImportSelector if (imported eq tree.imported) && (renamed eq tree.renamed) && (bound eq tree.bound) => tree
       case _ => finalize(tree, untpd.ImportSelector(imported, renamed, bound)(tree.source))
@@ -715,6 +722,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
       case ExtMethods(paramss, methods) =>
         cpy.ExtMethods(tree)(transformParamss(paramss), transformSub(methods))
+      case Into(tpt) =>
+        cpy.Into(tree)(transform(tpt))
       case ImportSelector(imported, renamed, bound) =>
         cpy.ImportSelector(tree)(transformSub(imported), transform(renamed), transform(bound))
       case Number(_, _) | TypedSplice(_) =>
@@ -774,6 +783,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(this(x, pats), tpt), rhs)
       case ExtMethods(paramss, methods) =>
         this(paramss.foldLeft(x)(apply), methods)
+      case Into(tpt) =>
+        this(x, tpt)
       case ImportSelector(imported, renamed, bound) =>
         this(this(this(x, imported), renamed), bound)
       case Number(_, _) =>

@@ -52,6 +52,7 @@ def id(x: o.T): o.T = x
 ```
 
 Opaque type aliases cannot be `private` and cannot be overridden in subclasses.
+Opaque type aliases cannot have a context function type as right-hand side.
 
 ## Type Parameters of Opaque Types
 
@@ -64,7 +65,7 @@ opaque type G = [T] =>> List[T]
 but the following are not:
 ```scala
 opaque type BadF[T] = [U] =>> (T, U)
-opaque type BadG = [T] =>> [U] => (T, U)
+opaque type BadG = [T] =>> [U] =>> (T, U)
 ```
 
 ## Translation of Equality

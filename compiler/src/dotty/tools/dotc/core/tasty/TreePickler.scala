@@ -426,6 +426,13 @@ class TreePickler(pickler: TastyPickler) {
             writeByte(THROW)
             pickleTree(args.head)
           }
+          else if fun.symbol.originalSignaturePolymorphic.exists then
+            writeByte(APPLYsigpoly)
+            withLength {
+              pickleTree(fun)
+              pickleType(fun.tpe.widenTermRefExpr, richTypes = true) // this widens to a MethodType, so need richTypes
+              args.foreach(pickleTree)
+            }
           else {
             writeByte(APPLY)
             withLength {
@@ -451,6 +458,7 @@ class TreePickler(pickler: TastyPickler) {
           withLength {
             pickleTree(qual);
             if (!mix.isEmpty) {
+              // mixinType being a TypeRef when mix is non-empty is enforced by TreeChecker#checkSuper              
               val SuperType(_, mixinType: TypeRef) = tree.tpe: @unchecked
               pickleTree(mix.withType(mixinType))
             }

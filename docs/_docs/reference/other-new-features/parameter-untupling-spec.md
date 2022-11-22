@@ -4,37 +4,7 @@ title: "Parameter Untupling - More Details"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/parameter-untupling-spec.html
 ---
 
-## Motivation
 
-Say you have a list of pairs
-
-```scala
-val xs: List[(Int, Int)]
-```
-
-and you want to map `xs` to a list of `Int`s so that each pair of numbers is mapped to their sum.
-Previously, the best way to do this was with a pattern-matching decomposition:
-
-```scala
-xs.map {
-  case (x, y) => x + y
-}
-```
-While correct, this is inconvenient. Instead, we propose to write it the following way:
-
-```scala
-xs.map {
-  (x, y) => x + y
-}
-```
-
-or, equivalently:
-
-```scala
-xs.map(_ + _)
-```
-
-Generally, a function value with `n > 1` parameters can be converted to a function with tupled arguments if the expected type is a unary function type of the form `((T_1, ..., T_n)) => U`.
 
 ## Type Checking
 

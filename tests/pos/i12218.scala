@@ -1,4 +1,4 @@
-import language.experimental.fewerBraces
+import language.`3.3`
 @main def runTest(): Unit =
   val arr = Array(1,2,3)
   if

@@ -128,6 +128,7 @@ object StdNames {
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPORT: N                     = "<import>"
+    val INTO: N                       = "<into>"
     val MODULE_SUFFIX: N              = str.MODULE_SUFFIX
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
@@ -243,7 +244,6 @@ object StdNames {
     final val ToString: N             = "ToString"
     final val Xor: N                  = "^"
 
-    final val ClassfileAnnotation: N = "ClassfileAnnotation"
     final val ClassManifest: N       = "ClassManifest"
     final val Enum: N                = "Enum"
     final val Group: N               = "Group"
@@ -425,6 +425,8 @@ object StdNames {
     val bytes: N                = "bytes"
     val canEqual_ : N           = "canEqual"
     val canEqualAny : N         = "canEqualAny"
+    val caps: N                 = "caps"
+    val captureChecking: N      = "captureChecking"
     val checkInitialized: N     = "checkInitialized"
     val classOf: N              = "classOf"
     val classType: N            = "classType"
@@ -445,6 +447,7 @@ object StdNames {
     val derived: N              = "derived"
     val derives: N              = "derives"
     val doubleHash: N           = "doubleHash"
+    val dotty: N                = "dotty"
     val drop: N                 = "drop"
     val dynamics: N             = "dynamics"
     val elem: N                 = "elem"
@@ -498,6 +501,7 @@ object StdNames {
     val info: N                 = "info"
     val inlinedEquals: N        = "inlinedEquals"
     val internal: N             = "internal"
+    val into: N                 = "into"
     val isArray: N              = "isArray"
     val isDefinedAt: N          = "isDefinedAt"
     val isDefinedAtImpl: N      = "$isDefinedAt"
