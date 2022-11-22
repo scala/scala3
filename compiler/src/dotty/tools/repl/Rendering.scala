@@ -10,11 +10,14 @@ import dotc.core.Contexts._
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Flags._
+import dotc.core.NameOps.*
 import dotc.core.Symbols.{Symbol, defn}
 import dotc.core.StdNames.{nme, str}
 import dotc.printing.ReplPrinter
 import dotc.reporting.Diagnostic
 import dotc.transform.ValueClasses
+
+import scala.util.control.NonFatal
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a
@@ -106,7 +109,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol)(using Context): Option[String] =
+  private def valueOf(sym: Symbol)(using Context): Option[String] = try
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val symValue = resObj
@@ -123,6 +126,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         else
           s
       }
+  catch
+    case e: InvocationTargetException    => throw e
+    case e: ReflectiveOperationException => throw InvocationTargetException(e)
 
   /** Rewrap value class to their Wrapper class
    *
@@ -131,7 +137,13 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    */
   private def rewrapValueClass(sym: Symbol, value: Object)(using Context): Option[Object] =
     if ValueClasses.isDerivedValueClass(sym) then
-      val valueClassName = sym.flatName.encode.toString
+      val pkg = sym.enclosingPackageClass
+      val pkgName = if pkg.isEmptyPackage then "" else s"${pkg.fullName.mangledString}."
+      val clsFlatName = if sym.isOneOf(JavaDefined | ConstructorProxy) then
+        // See ExtractDependencies.recordDependency
+        sym.flatName.stripModuleClassSuffix
+      else sym.flatName
+      val valueClassName = pkgName + clsFlatName.mangledString
       val valueClass = Class.forName(valueClassName, true, classLoader())
       valueClass.getConstructors.headOption.map(_.newInstance(value))
     else
@@ -161,7 +173,6 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Force module initialization in the absence of members. */
   def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
-    import scala.util.control.NonFatal
     def load() =
       val objectName = sym.fullName.encode.toString
       Class.forName(objectName, true, classLoader())
