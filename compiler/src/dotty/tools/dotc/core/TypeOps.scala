@@ -166,7 +166,7 @@ object TypeOps:
           // corrective steps, so no widening is wanted.
           simplify(l, theMap) | simplify(r, theMap)
         else if r.isNothingType || (l eq r) then l
-        else if l.isOrType || r.isOrType then tp.deduplicatedAbsorbingNothingTypes
+        else if l.isInstanceOf[OrType] || r.isInstanceOf[OrType] then tp.deduplicatedAbsorbingNothingTypes
         else if l.isNothingType then r
         else mapOver
       case tp @ CapturingType(parent, refs) =>

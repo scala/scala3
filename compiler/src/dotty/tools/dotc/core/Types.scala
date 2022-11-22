@@ -446,9 +446,6 @@ object Types {
     final def containsWildcardTypes(using Context) =
       existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false)
 
-    /** Is this a union type? */
-    final def isOrType: Boolean = this.isInstanceOf[OrType]
-
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
