@@ -128,6 +128,23 @@ object ErrorReporting {
       case _ => anonymousTypeMemberStr(tp)
     }
 
+    /** Explain info of symbol `sym` as a member of class `base`.
+     *   @param  showLocation  if true also show sym's location.
+     */
+    def infoString(sym: Symbol, base: Type, showLocation: Boolean): String =
+      val sym1 = sym.underlyingSymbol
+      def info = base.memberInfo(sym1)
+      val infoStr =
+        if sym1.isAliasType then i", which equals ${info.bounds.hi}"
+        else if sym1.isAbstractOrParamType && info != TypeBounds.empty then i" with bounds$info"
+        else if sym1.is(Module) then ""
+        else if sym1.isTerm then i" of type $info"
+        else ""
+      i"${if showLocation then sym1.showLocated else sym1}$infoStr"
+
+    def infoStringWithLocation(sym: Symbol, base: Type) =
+      infoString(sym, base, showLocation = true)
+
     def exprStr(tree: Tree): String = refStr(tree.tpe)
 
     def takesNoParamsStr(tree: Tree, kind: String): String =

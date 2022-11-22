@@ -176,7 +176,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case JavaEnumParentArgsID // errorNumber: 160
   case AlreadyDefinedID // errorNumber: 161
   case CaseClassInInlinedCodeID // errorNumber: 162
-  case OverrideTypeMismatchErrorID // errorNumber: 163
+  case OverrideTypeMismatchErrorID extends ErrorMessageID(isActive = false) // errorNumber: 163
   case OverrideErrorID // errorNumber: 164
   case MatchableWarningID // errorNumber: 165
   case CannotExtendFunctionID // errorNumber: 166

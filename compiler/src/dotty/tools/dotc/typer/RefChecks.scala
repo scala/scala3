@@ -319,20 +319,10 @@ object RefChecks {
           report.error(msg.append(othersMsg), clazz.srcPos)
       }
 
-    def infoString(sym: Symbol) = infoString0(sym, sym.owner != clazz)
-    def infoStringWithLocation(sym: Symbol) = infoString0(sym, true)
-
-    def infoString0(sym: Symbol, showLocation: Boolean) = {
-      val sym1 = sym.underlyingSymbol
-      def info = self.memberInfo(sym1)
-      val infoStr =
-        if (sym1.isAliasType) i", which equals ${info.bounds.hi}"
-        else if (sym1.isAbstractOrParamType && info != TypeBounds.empty) i" with bounds$info"
-        else if (sym1.is(Module)) ""
-        else if (sym1.isTerm) i" of type $info"
-        else ""
-      i"${if (showLocation) sym1.showLocated else sym1}$infoStr"
-    }
+    def infoString(sym: Symbol) =
+      err.infoString(sym, self, showLocation = sym.owner != clazz)
+    def infoStringWithLocation(sym: Symbol) =
+      err.infoString(sym, self, showLocation = true)
 
     /* Check that all conditions for overriding `other` by `member`
        * of class `clazz` are met.
@@ -347,20 +337,9 @@ object RefChecks {
 
       def noErrorType = !memberTp(self).isErroneous && !otherTp(self).isErroneous
 
-      def overrideErrorMsg(msg: String, compareTypes: Boolean = false): Message = {
-        val isConcreteOverAbstract =
-          (other.owner isSubClass member.owner) && other.is(Deferred) && !member.is(Deferred)
-        val addendum =
-          if isConcreteOverAbstract then
-            ";\n  (Note that %s is abstract,\n  and is therefore overridden by concrete %s)".format(
-              infoStringWithLocation(other),
-              infoStringWithLocation(member))
-          else ""
-        val fullMsg =
-          s"error overriding ${infoStringWithLocation(other)};\n  ${infoString(member)} $msg$addendum"
-        if compareTypes then OverrideTypeMismatchError(fullMsg, memberTp(self), otherTp(self))
-        else OverrideError(fullMsg)
-      }
+      def overrideErrorMsg(core: Context ?=> String, compareTypes: Boolean = false): Message =
+        val (mtp, otp) = if compareTypes then (memberTp(self), otherTp(self)) else (NoType, NoType)
+        OverrideError(core, self, member, other, mtp, otp)
 
       def compatTypes(memberTp: Type, otherTp: Type): Boolean =
         try
