@@ -1,24 +1,42 @@
-// Usage
-// > scala-cli project/scripts/dottyCompileBisect.scala -- [--run <main.class.name>] [<compiler-option> ...] <file1.scala> [<fileN.scala> ...]
-//
-// This script will bisect the compilation failure starting with a fast bisection on released nightly builds.
-// Then it will bisect the commits between the last nightly that worked and the first nightly that failed.
+/*
+This script will bisect a problem with the compiler based on success/failure of the validation script passed as an argument.
+It starts with a fast bisection on released nightly builds.
+Then it will bisect the commits between the last nightly that worked and the first nightly that failed.
+Look at the `usageMessage` below for more details.
+*/
 
 
 import sys.process._
 import scala.io.Source
 import Releases.Release
 import java.io.File
-import java.nio.file.{Files, Paths, StandardCopyOption}
+
+val usageMessage = """
+  |Usage:
+  |  > scala-cli project/scripts/bisect.scala -- <validation-script>
+  |
+  |The validation script should be executable and accept a single parameter, which will be the scala version to validate.
+  |Look at bisect-cli-example.sh and bisect-expect-example.exp for reference.
+  |Don't use the example scripts modified in place as they might disappear from the repo during a checkout.
+  |Instead copy them to a different location first.
+  |
+  |Warning: The bisect script should not be run multiple times in parallel because of a potential race condition while publishing artifacts locally.
+  |
+  |Tip: Before running the bisect script run the validation script manually with some published versions of the compiler to make sure it succeeds and fails as expected.
+""".stripMargin
 
 @main def dottyCompileBisect(args: String*): Unit =
-  val (mainClass, compilerArgs) = args match
-    case Seq("--run", mainClass, compilerArgs*) =>
-      (Some(mainClass), compilerArgs)
+  val validationScriptPath = args match
+    case Seq(path) =>
+      (new File(path)).getAbsolutePath.toString
     case _ =>
-      (None, args)
+      println("Wrong script parameters.")
+      println()
+      println(usageMessage)
+      System.exit(1)
+      null
 
-  val releaseBisect = ReleaseBisect(mainClass, compilerArgs.toList)
+  val releaseBisect = ReleaseBisect(validationScriptPath)
   val bisectedBadRelease = releaseBisect.bisectedBadRelease(Releases.allReleases)
   println("\nFinished bisecting releases\n")
 
@@ -28,14 +46,14 @@ import java.nio.file.{Files, Paths, StandardCopyOption}
         case Some(lastGoodRelease) =>
           println(s"Last good release: $lastGoodRelease")
           println(s"First bad release: $firstBadRelease")
-          val commitBisect = CommitBisect(mainClass, compilerArgs.toList)
+          val commitBisect = CommitBisect(validationScriptPath)
           commitBisect.bisect(lastGoodRelease.hash, firstBadRelease.hash)
         case None =>
           println(s"No good release found")
     case None =>
       println(s"No bad release found")
 
-class ReleaseBisect(mainClass: Option[String], compilerArgs: List[String]):
+class ReleaseBisect(validationScriptPath: String):
   def bisectedBadRelease(releases: Vector[Release]): Option[Release] =
     Some(bisect(releases: Vector[Release]))
       .filter(!isGoodRelease(_))
@@ -52,13 +70,8 @@ class ReleaseBisect(mainClass: Option[String], compilerArgs: List[String]):
 
   private def isGoodRelease(release: Release): Boolean =
     println(s"Testing ${release.version}")
-    val testCommand = mainClass match
-      case Some(className) =>
-        s"run --main-class '$className'"
-      case None =>
-        "compile"
-    val res = s"""scala-cli $testCommand -S '${release.version}' ${compilerArgs.mkString(" ")}""".!
-    val isGood = res == 0
+    val result = Seq(validationScriptPath, release.version).!
+    val isGood = result == 0
     println(s"Test result: ${release.version} is a ${if isGood then "good" else "bad"} release\n")
     isGood
 
@@ -86,14 +99,16 @@ object Releases:
 
     override def toString: String = version
 
-class CommitBisect(mainClass: Option[String], compilerArgs: List[String]):
+class CommitBisect(validationScriptPath: String):
   def bisect(lastGoodHash: String, fistBadHash: String): Unit =
     println(s"Starting bisecting commits $lastGoodHash..$fistBadHash\n")
-    val runOption = mainClass.map(className => s"--run $className").getOrElse("")
-    val scriptFile = Paths.get("project", "scripts", "dottyCompileBisect.sh")
-    val tempScriptFile = File.createTempFile("dottyCompileBisect", "sh").toPath
-    Files.copy(scriptFile, tempScriptFile, StandardCopyOption.REPLACE_EXISTING)
+    val bisectRunScript = s"""
+      |scalaVersion=$$(sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+      |rm -r out
+      |sbt "clean; scala3-bootstrapped/publishLocal"
+      |$validationScriptPath "$$scalaVersion"
+    """.stripMargin
     "git bisect start".!
     s"git bisect bad $fistBadHash".!
     s"git bisect good $lastGoodHash".!
-    s"git bisect run sh ${tempScriptFile.toAbsolutePath} ${runOption} ${compilerArgs.mkString(" ")}".!
+    Seq("git", "bisect", "run", "sh", "-c", bisectRunScript).!
