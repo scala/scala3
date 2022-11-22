@@ -157,7 +157,7 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
-  val YwarnValueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.", aliases = List("-Ywarn-value-discard"))
+  val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.")
 
   val Wunused: Setting[List[String]] = MultiChoiceSetting(
     name = "-Wunused",
