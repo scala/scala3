@@ -105,7 +105,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val comment = m.docs
     val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
-    val classLikeInfo: TagArg = classLikeParts(m)
+    val classLikeInfo: TagArg = classLikeParts(m, full)
 
     val memberTypeParams = typeParams(m)
     val memberValueParams = valueParams(m)
@@ -412,10 +412,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             ))
         ))
 
-  def classLikeParts(m: Member): TagArg =
+  def classLikeParts(m: Member, full: Boolean = true): TagArg =
     if !m.kind.isInstanceOf[Classlike] then Nil else
       val graphHtml = m.graph match
-        case graph if graph.edges.nonEmpty =>
+        case graph if graph.edges.nonEmpty && full =>
           Seq(div( id := "inheritance-diagram", cls := "diagram-class showGraph")(
             button(`type` := "button", cls := "label-only-button", onclick := "zoomOut()")("Reset zoom"),
             button(`type` := "button", cls := "label-only-button", onclick := "hideGraph()")("Hide graph"),
