@@ -2620,12 +2620,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           }.toList
 
         def memberType(name: String): Symbol =
-          self.unforcedDecls.find(sym => sym.name == name.toTypeName)
+          self.typeRef.decls.find(sym => sym.name == name.toTypeName)
         def typeMember(name: String): Symbol =
           lookupPrefix.member(name.toTypeName).symbol
 
         def memberTypes: List[Symbol] =
-          self.unforcedDecls.filter(_.isType)
+          self.typeRef.decls.filter(_.isType)
         def typeMembers: List[Symbol] =
           lookupPrefix.typeMembers.map(_.symbol).toList
 
