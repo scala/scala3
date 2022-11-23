@@ -4,10 +4,11 @@ package reporting
 
 import scala.language.unsafeNulls
 
-import core.Contexts._
-import config.Config
-import config.Printers
-import core.Mode
+import core.*, Contexts.*, Decorators.*
+import config.*
+import printing.Formatting.*
+
+import scala.compiletime.*
 
 /** Exposes the {{{ trace("question") { op } }}} syntax.
  *
@@ -51,9 +52,20 @@ trait TraceSyntax:
     else op
 
   inline def apply[T](inline question: String, inline printer: Printers.Printer, inline show: Boolean)(inline op: T)(using Context): T =
-    inline if isEnabled then
-      doTrace[T](question, printer, if show then showShowable(_) else alwaysToString)(op)
-    else op
+    apply(question, printer, {
+      val showOp: T => String = inline if show == true then
+        val showT = summonInline[Show[T]]
+        {
+          given Show[T] = showT
+          t => i"$t"
+        }
+      else
+        summonFrom {
+          case given Show[T] => t => i"$t"
+          case _             => alwaysToString
+        }
+      showOp
+    })(op)
 
   inline def apply[T](inline question: String, inline printer: Printers.Printer)(inline op: T)(using Context): T =
     apply[T](question, printer, false)(op)
@@ -64,15 +76,11 @@ trait TraceSyntax:
   inline def apply[T](inline question: String)(inline op: T)(using Context): T =
     apply[T](question, false)(op)
 
-  private def showShowable(x: Any)(using Context) = x match
-    case x: printing.Showable => x.show
-    case _ => String.valueOf(x)
-
   private val alwaysToString = (x: Any) => String.valueOf(x)
 
   private def doTrace[T](question: => String,
                          printer: Printers.Printer = Printers.default,
-                         showOp: T => String = alwaysToString)
+                         showOp: T => String)
                         (op: => T)(using Context): T =
     if ctx.mode.is(Mode.Printing) || !isForced && (printer eq Printers.noPrinter) then op
     else
