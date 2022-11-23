@@ -51,3 +51,16 @@ class ValueDiscardTest:
     // - receiver is a local variable
     // --> No warning
     field.subtractOne("")
+
+  def assignmentOperator(): Unit =
+    // - += returns this.type
+    // - receiver is not a field or a local variable
+    // --> Warning
+    mutable.Set.empty[String] += "" // error
+
+  def assignmentOperatorLocalVariable(): Unit =
+    // - += returns this.type
+    // - receiver is a local variable
+    // --> No warning
+    val s: mutable.Set[String] = mutable.Set.empty[String]
+    s += ""

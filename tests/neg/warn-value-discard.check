@@ -14,3 +14,7 @@
 39 |    mutable.Set.empty[String].subtractOne("") // error
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |    discarded non-Unit value of type scala.collection.mutable.Set[String]
+-- [E172] Potential Issue Error: tests/neg/warn-value-discard.scala:59:4 -----------------------------------------------
+59 |    mutable.Set.empty[String] += "" // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    discarded non-Unit value of type scala.collection.mutable.Set[String]
