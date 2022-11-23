@@ -443,8 +443,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
             (sym == receiver.symbol) || {
               receiver match {
                 case Apply(_, _) => op.isOpAssignmentName                     // xs(i) += x
-                case _ => receiver.symbol != null &&
-                  (receiver.symbol.isGetter || receiver.symbol.isField)       // xs.addOne(x) for var xs
+                case _ => receiver.symbol.isGetter || receiver.symbol.isField // xs.addOne(x) for var xs
               }
             }
           @tailrec def loop(mt: Type): Boolean = mt match {
@@ -457,7 +456,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
             case PolyType(_, restpe) => loop(restpe)
             case _ => false
           }
-          fun.symbol != null && loop(fun.symbol.info)
+          loop(fun.symbol.info)
       }
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
