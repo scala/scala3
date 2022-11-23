@@ -925,10 +925,10 @@ object Parsers {
         lookahead.nextToken()
         lookahead.token == RPAREN
         || lookahead.token == COMMA
-           && {
-             lookahead.nextToken()
-             lookahead.token == RPAREN || lookahead.token == EOF
-           }
+          //  && {
+          //    lookahead.nextToken()
+          //    lookahead.token == RPAREN || lookahead.token == EOF
+          //  }
       }
 
     /** When encountering a `:`, is that in the binding of a lambda?

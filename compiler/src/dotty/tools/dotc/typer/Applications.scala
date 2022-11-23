@@ -387,6 +387,15 @@ trait Applications extends Compatibility {
      */
     protected def makeVarArg(n: Int, elemFormal: Type): Unit
 
+    /** If constructing trees, turn last `n` processed arguments into a
+     *  `SeqLiteral` tree with element type `elemFormal' without *
+     */
+    protected def makeVarArg2(n: Int, elemFormal: Type): Unit
+
+    /** combineargs 
+     */
+    protected def argCombineVarArg(n: Int, elemFormal: Type): Unit
+
     /** If all `args` have primitive numeric types, make sure it's the same one */
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
 
@@ -573,8 +582,11 @@ trait Applications extends Compatibility {
            */
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
-            addArg(typedArg(arg, formal), formal)
+            val x = typedArg(arg, formal)
+            // println(s"typedArg(arg, formal) when calling (addArgaddArg(typedArg(arg, formal), formal) = ${x}")
+            addArg(x, formal)
             if methodType.isParamDependent && typeOfArg(arg).exists then
+              // println(s"addedTyped second case")
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
               formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
             else
@@ -617,12 +629,64 @@ trait Applications extends Compatibility {
 
           if (formal.isRepeatedParam)
             args match {
-              case arg :: Nil if isVarArg(arg) =>
+              case arg :: Nil if isVarArg(arg) => 
+                // println(s"single VarArg argument case, arg = ${arg}")
                 addTyped(arg)
+
               case (arg @ Typed(Literal(Constant(null)), _)) :: Nil if ctx.isAfterTyper =>
+                // println(s"Null argument case, arg = ${arg}")
                 addTyped(arg)
+                // println(s"Null argument case, argTyped(arg) = ${addTyped(arg)}")
+
+              case arguments if arguments.exists(isVarArg) =>
+                println(s"new case")
+                println(s"fomal is as ${formal}")
+                   
+                def iterate(listOfArgs: List[Arg], la: List[Arg], counter: Int): Unit = 
+                  val elemFormal = formal.widenExpr.argTypesLo.head
+                  listOfArgs match
+                    case x1 :: xs =>
+                      // (x1, xs.head) match 
+                      //     case (!isVarArg(x1), !isVarArg(xs.head)) =>
+                      if (!xs.isEmpty && !isVarArg(x1) && !isVarArg(xs.head)) {
+                            iterate(xs, x1 :: la, counter)
+                      }
+                      // case (!isVarArg(x1), _ ) => 
+                      else if(!isVarArg(x1)) {
+                        if (xs.isEmpty || isVarArg(xs.head)) { // if would have been the other way around.. error 
+                          val typedArgs =
+                            harmonic(harmonizeArgs, elemFormal) {
+                              (x1 :: la).map { e =>
+                                checkNoVarArg(e)
+                                typedArg(e, elemFormal)
+                              }
+                            }
+                          typedArgs.foreach(addArg(_, elemFormal))
+                          makeVarArg2(la.length + 1, elemFormal)
+                          iterate(xs, Nil, counter + 1)
+                        }
+                      }
+                      // case(isVarArg(x1), _ ) => 
+                      else if (isVarArg(x1)) {
+                        val x = formal.asInstanceOf[AppliedType].args.head
+                        val y = defn.SeqType.appliedTo(x)  // AppliedType(defn.SeqType, List(x))
+                        addArg(typedArg(x1, y), y)
+                        //  def addArg(arg: Tree, formal: Type): Unit =
+                        //typedArgBuf += adapt(arg, formal.widenExpr)
+
+                        // typedArg(x1, y)
+                        // x1.asInstanceOf[Typed].expr) // removes star from term
+                        iterate(xs, Nil, counter + 1)   
+                      }   
+
+                      //remove * from terms then add it to the end of the Seq (in argcombined varag, seqtoRepeated) (in one method)
+                    case Nil => argCombineVarArg(counter, elemFormal)
+                iterate(arguments, Nil, 0)
+          
               case _ =>
+                // println(s"Default case, arg = ${args}")
                 val elemFormal = formal.widenExpr.argTypesLo.head
+                // println(s"elemFormal = ${elemFormal}")
                 val typedArgs =
                   harmonic(harmonizeArgs, elemFormal) {
                     args.map { arg =>
@@ -630,6 +694,7 @@ trait Applications extends Compatibility {
                       typedArg(arg, elemFormal)
                     }
                   }
+                // println(s"Once harmonic has been called, typedArgs = ${typedArgs.mkString(", ")}")
                 typedArgs.foreach(addArg(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
             }
@@ -718,6 +783,10 @@ trait Applications extends Compatibility {
     def typedArg(arg: Arg, formal: Type): Arg = arg
     final def addArg(arg: TypedArg, formal: Type): Unit = ok = ok & argOK(arg, formal)
     def makeVarArg(n: Int, elemFormal: Type): Unit = {}
+
+    def makeVarArg2(n: Int, elemFormal: Type): Unit = {}
+    def argCombineVarArg(n: Int, elemFormal: Type): Unit = {}
+
     def fail(msg: Message, arg: Arg): Unit =
       ok = false
     def fail(msg: Message): Unit =
@@ -768,12 +837,40 @@ trait Applications extends Compatibility {
     def addArg(arg: Tree, formal: Type): Unit =
       typedArgBuf += adapt(arg, formal.widenExpr)
 
+
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.dropRightInPlace(n)
       val elemtpt = TypeTree(elemFormal)
-      typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
+      val y = seqToRepeated(SeqLiteral(args, elemtpt))
+      // println(s"form once arguments are added together to the buffer: ${y}")
+      typedArgBuf += y
     }
+
+    def makeVarArg2(n: Int, elemFormal: Type): Unit = {
+      val args = typedArgBuf.takeRight(n).toList
+      typedArgBuf.dropRightInPlace(n)
+      val elemtpt = TypeTree(elemFormal) 
+      typedArgBuf += SeqLiteral(args, elemtpt)
+    }
+
+    def argCombineVarArg(n: Int, elemFormal: Type): Unit =                       
+      val varArgTrees = typedArgBuf.takeRight(n)
+      typedArgBuf.dropRightInPlace(n)
+      val repeatedarg = seqToRepeated(
+                          varArgTrees.reduce{
+                            (lh, rh) => 
+                              if ((lh.tpe.isRepeatedParam) && (rh.tpe.isRepeatedParam)) then 
+                                  (lh.asInstanceOf[Typed].expr).select(defn.Seq_++).appliedToType(elemFormal).appliedTo(rh.asInstanceOf[Typed].expr)
+                              else if ( (lh.tpe.isRepeatedParam) ) then 
+                                  (lh.asInstanceOf[Typed].expr).select(defn.Seq_++).appliedToType(elemFormal).appliedTo(rh)
+                              else if ( (rh.tpe.isRepeatedParam) ) then 
+                                  (lh).select(defn.Seq_++).appliedToType(elemFormal).appliedTo(rh.asInstanceOf[Typed].expr)
+                              else lh.select(defn.Seq_++).appliedToType(elemFormal).appliedTo(rh)})
+      typedArgBuf += repeatedarg
+    
+
+// x1.asInstanceOf[Typed].expr
 
     def harmonizeArgs(args: List[TypedArg]): List[Tree] =
       // harmonize args only if resType depends on parameter types

@@ -80,7 +80,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.2.1"
+  val referenceVersion = "3.2.0"
 
   val baseVersion = "3.2.2-RC1"
 
@@ -801,7 +801,7 @@ object Build {
     Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
 
     repl := (Compile / console).value,
-    Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
+    Compile / console / scalacOptions ++= Seq("-Xprint:typer"), // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
   )
 
   def dottyCompilerSettings(implicit mode: Mode): sbt.Def.SettingsDefinition =

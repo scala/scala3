@@ -551,6 +551,7 @@ object StdNames {
     val origin: N               = "origin"
     val parameters: N           = "parameters"
     val parts: N                = "parts"
+
     val postfixOps: N           = "postfixOps"
     val prefix : N              = "prefix"
     val processEscapes: N       = "processEscapes"
@@ -724,6 +725,7 @@ object StdNames {
     val NE       : N = "!="
     val OR       : N = "|"
     val PLUS     : N = ADD    // technically redundant, but ADD looks funny with MINUS
+    val PLUSPLUS : N = "++"
     val SUB      : N = MINUS  // ... as does SUB with PLUS
     val XOR      : N = "^"
     val ZAND     : N = "&&"

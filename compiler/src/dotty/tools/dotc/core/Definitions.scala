@@ -551,6 +551,7 @@ class Definitions {
     @tu lazy val Seq_drop         : Symbol = SeqClass.requiredMethod(nme.drop)
     @tu lazy val Seq_lengthCompare: Symbol = SeqClass.requiredMethod(nme.lengthCompare, List(IntType))
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
+    @tu lazy val Seq_++           : Symbol = SeqClass.requiredMethod(nme.PLUSPLUS)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
   @tu lazy val SeqModule: Symbol = requiredModule("scala.collection.immutable.Seq")
 
