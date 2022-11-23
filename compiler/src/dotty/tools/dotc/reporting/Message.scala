@@ -208,6 +208,31 @@ end Message
   *
   * @param errorId a unique id identifying the message, this will be
   *                used to reference documentation online
+  *
+  * Messages modify the rendendering of interpolated strings in several ways:
+  *
+  *  1. The size of the printed code is limited with a MessafeLimiter. If the message
+  *    would get too large or too deeply nested, a `...` is printed instead.
+  *  2. References to module classes are prefixed with `object ` for better recogniability.
+  *  3. A where clause is sometimes added which contains the following additional explanations:
+  *     - Rerences are disambiguated: If a message contains occurrences of the same identifier
+  *       representing different symbols, the duplicates are printed with superscripts
+  *       and the where-clause explains where each symbol is located.
+  *     - Uninstantiated variables are explained in the where-clause with additional
+  *       info about their bounds.
+  *     - Skolems are explained with additional info about their underlying type.
+  *
+  *  Messages inheriting from the NoDisambiguation trait or returned from the
+  *  `noDisambiguation()` method skip point (3) above. This makes sense if the
+  *  message already exolains where different occurrences of the same identifier
+  *  are located. Examples are NamingMsgs such as double definition errors,
+  *  overriding errors, and ambiguous implicit errors.
+  *
+  *  We consciously made the design decision to disambiguate by default and disable
+  *  disambiguation as an opt-in. The reason is that one usually does not consider all
+  *  fine-grained details when writing an error message. If disambiguation is the default,
+  *  some tests will show where clauses that look too noisy and that then can be disabled
+  *  when needed. But
   */
 abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   import Message.*

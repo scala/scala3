@@ -58,6 +58,9 @@ object Decorators {
       padding + s.replace("\n", "\n" + padding)
   end extension
 
+  /** Convert lazy string to message. To be with caution, since no message-defined
+   *  formatting will be done on the string.
+   */
   extension (str: => String)
     def toMessage: Message = NoExplanation(str)(using NoContext)
 
