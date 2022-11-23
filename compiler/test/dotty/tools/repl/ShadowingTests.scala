@@ -76,6 +76,18 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     Files.delete(file)
   end compileShadowed
 
+  @Test def io = shadowedScriptedTest(name = "io",
+    shadowed = """|package io.foo
+                  |
+                  |object Bar {
+                  |  def baz: Int = 42
+                  |}
+                  |""".stripMargin,
+    script = """|scala> io.foo.Bar.baz
+                |val res0: Int = 42
+                |""".stripMargin
+  )
+
   @Test def i7635 = shadowedScriptedTest(name = "<i7635>",
     shadowed = "class C(val c: Int)",
     script =
@@ -129,6 +141,11 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     ShadowingTests.createSubDir("util")
     testScript(name = "<shadow-subdir-util>",
       """|scala> import util.Try
+         |-- [E008] Not Found Error: -----------------------------------------------------
+         |1 | import util.Try
+         |  |             ^^^
+         |  |             value Try is not a member of util
+         |1 error found
          |
          |scala> object util { class Try { override def toString = "you've gotta try!" }  }
          |// defined object util
