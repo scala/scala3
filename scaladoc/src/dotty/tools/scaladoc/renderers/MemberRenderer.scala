@@ -175,14 +175,52 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     )
 
     val signature: MemberSignature = signatureProvider.rawSignature(member)()
-    Seq(
-      div(cls := "signature")(
-        span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
-        span(cls := "kind")(signature.kind.map(renderElement(_))),
-        signature.name.map(renderElement(_, nameClasses*)),
-        span(signature.suffix.map(renderElement(_)))
-      ),
-    )
+    val isSubtype = signature.suffix.exists {
+      case Keyword(keyword) => keyword.contains("extends")
+      case _ => false
+    }
+    if !isSubtype then
+      Seq(
+        div(cls := "signature")(
+          (Seq[TagArg](
+            span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
+            span(cls := "kind")(signature.kind.map(renderElement(_))),
+            signature.name.map(renderElement(_, nameClasses*))
+          ) ++ signature.suffix.map(renderElement(_)))*
+        ),
+      )
+    else
+      val (beforeExtends, afterExtends) = signature.suffix.splitAt(signature.suffix.indexOf(Keyword("extends")))
+      val (shortSuffix, longSuffix) = splitTypeSuffixSignature(beforeExtends, afterExtends)
+      Seq(
+        div(cls := "signature")(
+          span(cls := "signature-short")(
+            (Seq[TagArg](
+              span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
+              span(cls := "kind")(signature.kind.map(renderElement(_))),
+              signature.name.map(renderElement(_, nameClasses *))
+            ) ++ shortSuffix.map(renderElement(_)))*
+          ),
+          span(cls := "signature-long")(
+            longSuffix.map(renderElement(_))*
+          )
+        ),
+      )
+  end memberSignature
+
+  def splitTypeSuffixSignature(shortAcc: List[SignaturePart], tail: List[SignaturePart], nestedTypeLevel: Int = 0): (List[SignaturePart], List[SignaturePart]) =
+    tail match
+      case Nil =>
+        (shortAcc, Nil)
+      case (head @ Plain("[")) :: rest =>
+        splitTypeSuffixSignature(shortAcc :+ head, rest, nestedTypeLevel + 1)
+      case (head @ Plain("]")) :: rest =>
+        splitTypeSuffixSignature(shortAcc :+ head, rest, nestedTypeLevel - 1)
+      case (head @ Keyword(", ")) :: rest if nestedTypeLevel == 0 =>
+        (shortAcc :+ head, rest)
+      case head :: rest =>
+        splitTypeSuffixSignature(shortAcc :+ head, rest, nestedTypeLevel)
+
 
   def memberIcon(member: Member) = member.kind match {
     case _ =>
