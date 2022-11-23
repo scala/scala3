@@ -376,6 +376,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case denot => !denot.hasAltWith(isCurrent)
 
           def checkNoOuterDefs(denot: Denotation, last: Context, prevCtx: Context): Unit =
+            def sameTermOrType(d1: SingleDenotation, d2: Denotation) =
+              d2.containsSym(d1.symbol) || d2.hasUniqueSym && {
+                val sym1 = d1.symbol
+                val sym2 = d2.symbol
+                if sym1.isTerm then
+                  sym1.isStableMember &&
+                  sym2.isStableMember &&
+                  sym1.owner.thisType.select(name, sym1) =:= sym2.owner.thisType.select(name, sym2)
+                else
+                  (sym1.isAliasType || sym2.isAliasType) && d1.info =:= d2.info
+              }
             val outer = last.outer
             val owner = outer.owner
             if (owner eq last.owner) && (outer.scope eq last.scope) then
@@ -385,7 +396,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               val competing = scope.denotsNamed(name).filterWithFlags(required, excluded)
               if competing.exists then
                 val symsMatch = competing
-                  .filterWithPredicate(sd => denot.containsSym(sd.symbol))
+                  .filterWithPredicate(sd => sameTermOrType(sd, denot))
                   .exists
                 if !symsMatch && !suppressErrors then
                   report.errorOrMigrationWarning(
