@@ -247,8 +247,9 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         getQuoteTypeTags.getTagRef(tp)
       case _: SearchFailureType =>
         report.error(
-          ctx.typer.missingArgMsg(tag, reqType, "").wrap(
-            i"Reference to $tp within quotes requires a given $reqType in scope.\n", "\n"),
+          ctx.typer.missingArgMsg(tag, reqType, "")
+            .prepend(i"Reference to $tp within quotes requires a given $reqType in scope.\n")
+            .append("\n"),
             pos)
         tp
       case _ =>

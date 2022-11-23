@@ -561,7 +561,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def addToLast(str: String): Unit =
         diagnostics match
           case head :: tail =>
-            diagnostics = Diagnostic.Error(s"${head.msg.rawMessage}$str", head.pos) :: tail
+            diagnostics = Diagnostic.Error(s"${head.msg.message}$str", head.pos) :: tail
           case Nil =>
       var inError = false
       for line <- errorsText.linesIterator do

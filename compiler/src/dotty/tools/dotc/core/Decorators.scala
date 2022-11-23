@@ -319,7 +319,7 @@ object Decorators {
      *     their arguments are "non-sensical".
      */
     def e(args: Shown*)(using Context): String =
-      forErrorMessages(new StringFormatter(sc).assemble(args))
+      new StringFormatter(sc).assemble(args)
 
     /** A NoExplanation message formatted with `e` */
     def em(args: Shown*)(using Context): NoExplanation =
@@ -332,7 +332,7 @@ object Decorators {
      *  give more info about type variables and to disambiguate where needed.
      */
     def ex(args: Shown*)(using Context): String =
-      explained(new StringFormatter(sc).assemble(args))
+      new StringFormatter(sc).assemble(args)
 
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)

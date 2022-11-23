@@ -39,51 +39,6 @@ class StringFormatterTest extends AbstractStringFormatterTest:
     assertEquals("flags=private final <static>", store.string)
 end StringFormatterTest
 
-class EStringFormatterTest extends AbstractStringFormatterTest:
-  @Test def seq        = check("[Any, String]", e"${Seq(defn.AnyType, defn.StringType)}")
-  @Test def seqSeq     = check("Any; String", e"${Seq(defn.AnyType, defn.StringType)}%; %")
-  @Test def ellipsis   = assert(e"$Big".contains("..."))
-  @Test def err        = check("<nonsensical>type Err</nonsensical>", e"$Err")
-  @Test def ambig      = check("Foo vs Foo", e"$Foo vs $Foo")
-  @Test def cstrd      = check("Foo; Bar", e"$mkCstrd%; %")
-  @Test def seqErr     = check("[class Any, <nonsensical>type Err</nonsensical>]", e"${Seq(defn.AnyClass, Err)}")
-  @Test def seqSeqErr  = check("class Any; <nonsensical>type Err</nonsensical>", e"${Seq(defn.AnyClass, Err)}%; %")
-  @Test def tupleErr   = check("(1,<nonsensical>type Err</nonsensical>)", e"${(1, Err)}")
-  @Test def tupleAmb   = check("(Foo,Foo)", e"${(Foo, Foo)}")
-  @Test def tupleFlags = check("(Foo,abstract)", e"${(Foo, Abstract)}")
-  @Test def seqOfTupleFlags = check("[(Foo,abstract)]", e"${Seq((Foo, Abstract))}")
-end EStringFormatterTest
-
-class ExStringFormatterTest extends AbstractStringFormatterTest:
-  @Test def seq        = check("[Any, String]", ex"${Seq(defn.AnyType, defn.StringType)}")
-  @Test def seqSeq     = check("Any; String", ex"${Seq(defn.AnyType, defn.StringType)}%; %")
-  @Test def ellipsis   = assert(ex"$Big".contains("..."))
-  @Test def err        = check("<nonsensical>type Err</nonsensical>", ex"$Err")
-  @Test def ambig      = check("""Foo vs Foo²
-                                   |
-                                   |where:    Foo  is a type
-                                   |          Foo² is a type
-                                   |""".stripMargin, ex"$Foo vs $Foo")
-  @Test def cstrd      = check("""Foo; Bar
-                                   |
-                                   |where:    Bar is a type variable with constraint <: String
-                                   |          Foo is a type variable with constraint <: Int
-                                   |""".stripMargin, ex"$mkCstrd%; %")
-  @Test def seqErr     = check("[class Any, <nonsensical>type Err</nonsensical>]", ex"${Seq(defn.AnyClass, Err)}")
-  @Test def seqSeqErr  = check("class Any; <nonsensical>type Err</nonsensical>", ex"${Seq(defn.AnyClass, Err)}%; %")
-  @Test def tupleErr   = check("(1,<nonsensical>type Err</nonsensical>)", ex"${(1, Err)}")
-  @Test def tupleAmb   = check("""(Foo,Foo²)
-                                  |
-                                  |where:    Foo  is a type
-                                  |          Foo² is a type
-                                  |""".stripMargin, ex"${(Foo, Foo)}")
-  @Test def seqOfTup3Amb = check("""[(Foo,Foo²,<nonsensical>type Err</nonsensical>)]
-                                   |
-                                   |where:    Foo  is a type
-                                   |          Foo² is a type
-                                   |""".stripMargin, ex"${Seq((Foo, Foo, Err))}")
-end ExStringFormatterTest
-
 abstract class AbstractStringFormatterTest extends DottyTest:
   override def initializeCtx(fc: FreshContext) = super.initializeCtx(fc.setSetting(fc.settings.color, "never"))
 

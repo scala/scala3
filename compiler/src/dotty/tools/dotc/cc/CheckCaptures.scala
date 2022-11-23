@@ -921,7 +921,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                   em"""Non-local $sym cannot have an inferred$resultStr type
                       |$inferred
                       |with non-empty capture set $refs.
-                      |The type needs to be declared explicitly.""", t.srcPos)
+                      |The type needs to be declared explicitly.""".withoutDisambiguation(),
+                  t.srcPos)
               case _ =>
             inferred.foreachPart(checkPure, StopAt.Static)
         case t @ TypeApply(fun, args) =>

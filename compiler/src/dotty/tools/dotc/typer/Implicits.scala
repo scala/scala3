@@ -444,9 +444,6 @@ object Implicits:
         else i"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
 
-    /** An explanation of the cause of the failure as a string */
-    def explanation(using Context): String = msg.message
-
     /** If search was for an implicit conversion, a note describing the failure
      *  in more detail - this is either empty or starts with a '\n'
      */
@@ -510,7 +507,7 @@ object Implicits:
          |must be more specific than $target"""
 
     override def msg(using Context) =
-      super.msg.wrap("", "\nThe expected type $target is not specific enough, so no search was attempted")
+      super.msg.append("\nThe expected type $target is not specific enough, so no search was attempted")
     override def toString = s"TooUnspecific"
 
   /** An ambiguous implicits failure */
@@ -521,7 +518,7 @@ object Implicits:
       if str1 == str2 then
         str1 = ctx.printer.toTextRef(alt1.ref).show
         str2 = ctx.printer.toTextRef(alt2.ref).show
-      em"both $str1 and $str2 $qualify"
+      em"both $str1 and $str2 $qualify".withoutDisambiguation()
     override def whyNoConversion(using Context): String =
       if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
         ""
@@ -926,7 +923,7 @@ trait Implicits:
           // example where searching for a nested type causes an infinite loop.
           None
 
-    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, importSuggestionAddendum)
+    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport)
   }
 
   /** A string indicating the formal parameter corresponding to a  missing argument */
@@ -1047,9 +1044,8 @@ trait Implicits:
               withMode(Mode.OldOverloadingResolution)(inferImplicit(pt, argument, span)) match {
                 case altResult: SearchSuccess =>
                   report.migrationWarning(
-                    result.reason.msg.wrap(
-                      s"According to new implicit resolution rules, this will be ambiguous:\n",
-                      ""),
+                    result.reason.msg
+                      .prepend(s"According to new implicit resolution rules, this will be ambiguous:\n"),
                     ctx.source.atSpan(span))
                   altResult
                 case _ =>

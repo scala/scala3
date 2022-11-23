@@ -5291,7 +5291,12 @@ object Types {
   abstract class FlexType extends UncachedGroundType with ValueType
 
   abstract class ErrorType extends FlexType {
+
+    /** An explanation of the cause of the failure */
     def msg(using Context): Message
+
+    /** An explanation of the cause of the failure as a string */
+    def explanation(using Context): String = msg.message
   }
 
   object ErrorType:

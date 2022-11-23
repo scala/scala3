@@ -835,7 +835,7 @@ trait Checking {
           var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
           if !pat.tpe.isSingleton then reportedPt = reportedPt.widen
           val problem = if pat.tpe <:< reportedPt then "is more specialized than" else "does not match"
-          ex"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
+          em"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
         case RefutableExtractor =>
           val extractor =
             val UnApply(fn, _, _) = pat: @unchecked
@@ -843,9 +843,9 @@ trait Checking {
               case Select(id, _) => id
               case _ => EmptyTree
           if extractor.isEmpty then
-            i"pattern binding uses refutable extractor"
+            em"pattern binding uses refutable extractor"
           else
-            i"pattern binding uses refutable extractor `$extractor`"
+            em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
         if isPatDef then "adding `: @unchecked` after the expression"
@@ -863,10 +863,11 @@ trait Checking {
         else pat.srcPos
       def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
       report.gradualErrorOrMigrationWarning(
-        em"""$message
-            |
-            |If $usage is intentional, this can be communicated by $fix,
-            |which $addendum.$rewriteMsg""",
+        message.append(
+          i"""|
+              |
+              |If $usage is intentional, this can be communicated by $fix,
+              |which $addendum.$rewriteMsg"""),
         pos, warnFrom = `3.2`, errorFrom = `future`)
       false
     }

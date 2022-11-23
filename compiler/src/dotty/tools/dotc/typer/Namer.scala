@@ -1314,7 +1314,7 @@ class Namer { typer: Typer =>
                 case _ => 0
               if cmp == 0 then
                 report.error(
-                  ex"""Clashing exports: The exported
+                  em"""Clashing exports: The exported
                       |     ${forwarder.rhs.symbol}: ${alt1.widen}
                       |and  ${forwarder1.rhs.symbol}: ${alt2.widen}
                       |have the same signature after erasure and overloading resolution could not disambiguate.""",
