@@ -232,7 +232,8 @@ end Message
   *  disambiguation as an opt-in. The reason is that one usually does not consider all
   *  fine-grained details when writing an error message. If disambiguation is the default,
   *  some tests will show where clauses that look too noisy and that then can be disabled
-  *  when needed. But
+  *  when needed. But if silence is the default, one usually does not realize that
+  *  better info could be obtained by turning disambiguation on.
   */
 abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   import Message.*

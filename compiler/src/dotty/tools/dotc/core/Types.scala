@@ -5312,10 +5312,10 @@ object Types {
     def msg(using Context): Message =
       ctx.base.errorTypeMsg.get(this) match
         case Some(m) => m
-        case None => "error message from previous run no longer available".toMessage
+        case None => em"error message from previous run no longer available"
 
   object UnspecifiedErrorType extends ErrorType {
-    override def msg(using Context): Message = "unspecified error".toMessage
+    override def msg(using Context): Message = em"unspecified error"
   }
 
   /* Type used to track Select nodes that could not resolve a member and their qualifier is a scala.Dynamic. */

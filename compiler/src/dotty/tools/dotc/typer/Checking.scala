@@ -472,11 +472,11 @@ object Checking {
     def checkWithDeferred(flag: FlagSet) =
       if (sym.isOneOf(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
-    def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: => String) =
-      if (sym.isAllOf(flag1 | flag2)) fail(msg.toMessage)
+    def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: Message) =
+      if (sym.isAllOf(flag1 | flag2)) fail(msg)
     def checkCombination(flag1: FlagSet, flag2: FlagSet) =
       if sym.isAllOf(flag1 | flag2) then
-        fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym".toMessage)
+        fail(em"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
     def checkApplicable(flag: Flag, ok: Boolean) =
       if sym.is(flag, butNot = Synthetic) && !ok then
         fail(ModifierNotAllowedForDefinition(flag))
@@ -521,7 +521,7 @@ object Checking {
       if !sym.isOneOf(Method | ModuleVal) then
         fail(TailrecNotApplicable(sym))
       else if sym.is(Inline) then
-        fail("Inline methods cannot be @tailrec".toMessage)
+        fail(em"Inline methods cannot be @tailrec")
     if sym.hasAnnotation(defn.TargetNameAnnot) && sym.isClass && sym.isTopLevelClass then
       fail(TargetNameOnTopLevelClass(sym))
     if (sym.hasAnnotation(defn.NativeAnnot)) {
@@ -540,7 +540,7 @@ object Checking {
       fail(CannotExtendAnyVal(sym))
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
-      fail(s"Traits cannot have secondary constructors$addendum".toMessage)
+      fail(em"Traits cannot have secondary constructors$addendum")
     checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
     if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
@@ -561,7 +561,7 @@ object Checking {
     // The issue with `erased inline` is that the erased semantics get lost
     // as the code is inlined and the reference is removed before the erased usage check.
     checkCombination(Erased, Inline)
-    checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
+    checkNoConflict(Lazy, ParamAccessor, em"parameter may not be `lazy`")
   }
 
   /** Check for illegal or redundant modifiers on modules. This is done separately

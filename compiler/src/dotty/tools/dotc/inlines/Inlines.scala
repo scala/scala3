@@ -156,9 +156,9 @@ object Inlines:
           else ("successive inlines", ctx.settings.XmaxInlines)
         errorTree(
           tree,
-          i"""|Maximal number of $reason (${setting.value}) exceeded,
-              |Maybe this is caused by a recursive inline method?
-              |You can use ${setting.name} to change the limit.""".toMessage,
+          em"""|Maximal number of $reason (${setting.value}) exceeded,
+               |Maybe this is caused by a recursive inline method?
+               |You can use ${setting.name} to change the limit.""",
           (tree :: enclosingInlineds).last.srcPos
         )
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then

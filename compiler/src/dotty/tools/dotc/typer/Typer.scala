@@ -2670,7 +2670,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // Package will not exist if a duplicate type has already been entered, see `tests/neg/1708.scala`
         errorTree(tree,
           if pkg.exists then PackageNameAlreadyDefined(pkg)
-          else i"package ${tree.pid.name} does not exist".toMessage)
+          else em"package ${tree.pid.name} does not exist")
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
