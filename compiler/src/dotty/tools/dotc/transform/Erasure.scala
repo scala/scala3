@@ -781,7 +781,7 @@ object Erasure {
                 val tp = originalQual
                 if tp =:= qual1.tpe.widen then
                   return errorTree(qual1,
-                    ex"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
+                    em"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
                 tp
             recur(cast(qual1, castTarget))
         }

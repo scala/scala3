@@ -2926,7 +2926,7 @@ class JSCodeGen()(using genCtx: Context) {
       case defn.ArrayOf(el)  => el
       case JavaArrayType(el) => el
       case tpe =>
-        val msg = ex"expected Array $tpe"
+        val msg = em"expected Array $tpe"
         report.error(msg)
         ErrorType(msg)
     }

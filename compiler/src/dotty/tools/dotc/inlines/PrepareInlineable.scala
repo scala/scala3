@@ -284,7 +284,7 @@ object PrepareInlineable {
 
   private def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
     if Inlines.inInlineMethod(using ctx.outer) then
-      report.error(ex"Implementation restriction: nested inline methods are not supported", inlined.srcPos)
+      report.error(em"Implementation restriction: nested inline methods are not supported", inlined.srcPos)
 
     if (inlined.is(Macro) && !ctx.isAfterTyper) {
 

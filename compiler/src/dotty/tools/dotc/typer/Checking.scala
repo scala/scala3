@@ -814,7 +814,7 @@ trait Checking {
   def checkRealizableBounds(cls: Symbol, pos: SrcPos)(using Context): Unit = {
     val rstatus = boundsRealizability(cls.thisType)
     if (rstatus ne Realizable)
-      report.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
+      report.error(em"$cls cannot be instantiated since it${rstatus.msg}", pos)
   }
 
   /** Check that pattern `pat` is irrefutable for scrutinee type `sel.tpe`.
@@ -1050,7 +1050,7 @@ trait Checking {
   def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = {
     def checkGoodBounds(tp: Type) = tp match {
       case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
-        report.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
+        report.error(em"no type exists between low bound $lo and high bound $hi$where", pos)
         TypeBounds(hi, hi)
       case _ =>
         tp
@@ -1175,7 +1175,7 @@ trait Checking {
     parent match {
       case parent: ClassSymbol =>
         if (parent.is(Case))
-          report.error(ex"""case $caseCls has case ancestor $parent, but case-to-case inheritance is prohibited.
+          report.error(em"""case $caseCls has case ancestor $parent, but case-to-case inheritance is prohibited.
                         |To overcome this limitation, use extractors to pattern match on non-leaf nodes.""", pos)
         else checkCaseInheritance(parent.superClass, caseCls, pos)
       case _ =>

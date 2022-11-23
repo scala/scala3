@@ -422,7 +422,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           emitAssocs(nestedVisitor, assocs, bcodeStore)(innerClasesStore)
 
         case t =>
-          report.error(ex"Annotation argument is not a constant", t.sourcePos)
+          report.error(em"Annotation argument is not a constant", t.sourcePos)
       }
     }
 
