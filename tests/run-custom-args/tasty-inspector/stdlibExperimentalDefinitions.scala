@@ -71,6 +71,8 @@ val experimentalDefinitionInLibrary = Set(
   // Need experimental annotation macros to check that design works.
   "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
+  "scala.quoted.Quotes.reflectModule.SymbolModule.newUniqueMethod",
+  "scala.quoted.Quotes.reflectModule.SymbolModule.newUniqueVal",
 
   // New APIs: Lightweight lazy vals. Can be stabilized in 3.3.0
   "scala.runtime.LazyVals$.Evaluating",
