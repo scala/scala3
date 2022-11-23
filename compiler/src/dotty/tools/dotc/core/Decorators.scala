@@ -287,7 +287,7 @@ object Decorators {
       assert(ctx.reporter.errorsReported)
       x
     }
-    def assertingErrorsReported(msg: => String)(using Context): T = {
+    def assertingErrorsReported(msg: Message)(using Context): T = {
       assert(ctx.reporter.errorsReported, msg)
       x
     }

@@ -5304,8 +5304,6 @@ object Types {
       val et = new PreviousErrorType
       ctx.base.errorTypeMsg(et) = m
       et
-    def apply(s: => String)(using Context): ErrorType =
-      apply(s.toMessage)
   end ErrorType
 
   class PreviousErrorType extends ErrorType:
