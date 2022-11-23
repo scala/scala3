@@ -34,7 +34,9 @@ object Message:
     var nonSensical = false
     private var recordOK = disambiguate
 
-    def stopRecording() =
+    /** Clear all entries and stop further entries to be added */
+    def disable() =
+      clear()
       recordOK = false
 
     def record(str: String, isType: Boolean, entry: Recorded)(using Context): String = {
@@ -240,10 +242,10 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
       case msgPrinter: Message.Printer =>
         myIsNonSensical = msgPrinter.seen.nonSensical
         val addendum = explanations(msgPrinter.seen)
-        msgPrinter.seen.clear()
-        msgPrinter.seen.stopRecording()
-        if addendum.isEmpty || !disambiguate then ""
-        else "\n\n" ++ addendum
+        msgPrinter.seen.disable()
+          // Clear entries and stop futher recording so that messages containing the current
+          // one don't repeat the explanations or use explanations from the msgPostscript.
+        if addendum.isEmpty then "" else "\n\n" ++ addendum
       case _ =>
         ""
 
@@ -254,7 +256,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
    */
   def canExplain: Boolean = explain.nonEmpty
 
-  var myIsNonSensical: Boolean = false
+  private var myIsNonSensical: Boolean = false
 
   /** A message is non-sensical if it contains references to internally
    *  generated error types. Normally we want to suppress error messages
@@ -272,14 +274,14 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   private def inMessageContext(disambiguate: Boolean)(op: Context ?=> String): String =
     if ctx eq NoContext then op
     else
-      val (msgContext, msgPrinter: Message.Printer) = ctx.printer match
-        case printer: Message.Printer => (ctx, printer)
+      val msgContext = ctx.printer match
+        case _: Message.Printer => ctx
         case _ =>
           val seen = Seen(disambiguate)
           val ctx1 = ctx.fresh.setPrinterFn(Message.Printer(seen, _))
           if !ctx1.property(MessageLimiter).isDefined then
             ctx1.setProperty(MessageLimiter, ErrorMessageLimiter())
-          (ctx1, ctx1.printer.asInstanceOf[Message.Printer])
+          ctx1
       op(using msgContext)
 
   /** The message to report. <nonsensical> tags are filtered out */
