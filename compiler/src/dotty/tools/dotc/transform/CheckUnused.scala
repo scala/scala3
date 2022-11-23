@@ -192,9 +192,12 @@ object CheckUnused:
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
-      if !tpd.languageImport(imp.expr).nonEmpty then
+      val tpd.Import(qual, selectors) = imp
+      if !tpd.languageImport(qual).nonEmpty then
         impInScope.top += imp
-        unusedImport ++= imp.selectors.filter(s => !isImportExclusion(s))
+        unusedImport ++= selectors.filter{ s =>
+          !isImportExclusion(s) && !s.isGiven && !isSelectorOnAGiven(qual, s)
+        }
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
     def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
@@ -292,6 +295,9 @@ object CheckUnused:
       UnusedResult(warnings, Nil)
     end getUnused
     //============================ HELPERS ====================================
+
+    private def isSelectorOnAGiven(qual: tpd.Tree, sel: ImportSelector)(using Context): Boolean =
+      qual.tpe.member(sel.name).alternatives.exists(_.symbol.is(Given))
 
     private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
       case untpd.Ident(name) => name == StdNames.nme.WILDCARD
