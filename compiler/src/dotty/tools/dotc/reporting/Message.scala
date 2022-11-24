@@ -27,7 +27,7 @@ import scala.annotation.threadUnsafe
  *    they will be evaluated in the Message context, which makes formatting safer
  *    and more robust.
  *  - For common messages, or messages that might require explanation, prefer defining
- *    a new Message class in messages and use that instead. The advantage is that these
+ *    a new `Message` class in file `messages.scala` and use that instead. The advantage is that these
  *    messages have unique IDs that can be referenced elsewhere.
  */
 object Message:
@@ -45,18 +45,33 @@ object Message:
 
   private case class SeenKey(str: String, isType: Boolean)
 
-  private class Seen(disambiguate: Boolean) extends collection.mutable.HashMap[SeenKey, List[Recorded]]:
-    override def default(key: SeenKey) = Nil
+  /** A class that records printed items of one of the types in `Recorded`,
+   *  adds superscripts for disambiguations, and can explain recorded symbols
+   *  in ` where` clause
+   */
+  private class Seen(disambiguate: Boolean):
+
+    val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]]:
+      override def default(key: SeenKey) = Nil
 
     var nonSensical = false
+
+    /** If false, stop all recordings */
     private var recordOK = disambiguate
 
     /** Clear all entries and stop further entries to be added */
     def disable() =
-      clear()
+      seen.clear()
       recordOK = false
 
-    def record(str: String, isType: Boolean, entry: Recorded)(using Context): String = {
+    /** Record an entry `entry` with given String representation `str` and a
+     *  type/term namespace identified by `isType`.
+     *  If the entry was not yet recorded, allocate the next superscript corresponding
+     *  to the same string in the same name space. The first recording is the string proper
+     *  and following recordings get consecutive superscripts starting with 2.
+     *  @return  The possibly superscripted version of `str`.
+     */
+    def record(str: String, isType: Boolean, entry: Recorded)(using Context): String =
       if !recordOK then return str
       //println(s"recording $str, $isType, $entry")
 
@@ -71,15 +86,15 @@ object Message:
         case _ => e1
       }
       val key = SeenKey(str, isType)
-      val existing = apply(key)
+      val existing = seen(key)
       lazy val dealiased = followAlias(entry)
 
       // alts: The alternatives in `existing` that are equal, or follow (an alias of) `entry`
       var alts = existing.dropWhile(alt => dealiased ne followAlias(alt))
-      if (alts.isEmpty) {
+      if alts.isEmpty then
         alts = entry :: existing
-        update(key, alts)
-      }
+        seen(key) = alts
+
       val suffix = alts.length match {
         case 1 => ""
         case n => n.toString.toCharArray.map {
@@ -96,88 +111,86 @@ object Message:
         }.mkString
       }
       str + suffix
-    }
+    end record
+
+    /** Create explanation for single `Recorded` type or symbol */
+    private def explanation(entry: AnyRef)(using Context): String =
+      def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
+        if (bound.isRef(default)) "" else i"$cmp $bound"
+
+      def boundsStr(bounds: TypeBounds): String = {
+        val lo = boundStr(bounds.lo, defn.NothingClass, ">:")
+        val hi = boundStr(bounds.hi, defn.AnyClass, "<:")
+        if (lo.isEmpty) hi
+        else if (hi.isEmpty) lo
+        else s"$lo and $hi"
+      }
+
+      def addendum(cat: String, info: Type): String = info match {
+        case bounds @ TypeBounds(lo, hi) if bounds ne TypeBounds.empty =>
+          if (lo eq hi) i" which is an alias of $lo"
+          else i" with $cat ${boundsStr(bounds)}"
+        case _ =>
+          ""
+      }
+
+      entry match {
+        case param: TypeParamRef =>
+          s"is a type variable${addendum("constraint", TypeComparer.bounds(param))}"
+        case param: TermParamRef =>
+          s"is a reference to a value parameter"
+        case sym: Symbol =>
+          val info =
+            if (ctx.gadt.contains(sym))
+              sym.info & ctx.gadt.fullBounds(sym)
+            else
+              sym.info
+          s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
+        case tp: SkolemType =>
+          s"is an unknown value of type ${tp.widen.show}"
+      }
+    end explanation
+
+    /** Produce a where clause with explanations for recorded iterms.
+     */
+    def explanations(using Context): String =
+      def needsExplanation(entry: Recorded) = entry match {
+        case param: TypeParamRef => ctx.typerState.constraint.contains(param)
+        case param: ParamRef     => false
+        case skolem: SkolemType => true
+        case sym: Symbol =>
+          ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
+      }
+
+      val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
+        val res: List[(String, Recorded)] = kvs match {
+          case (key, entry :: Nil) =>
+            if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
+          case (key, entries) =>
+            for (alt <- entries) yield {
+              val tickedString = record(key.str, key.isType, alt)
+              (tickedString, alt)
+            }
+        }
+        res // help the inferrencer out
+      }.sortBy(_._1)
+
+      def columnar(parts: List[(String, String)]): List[String] = {
+        lazy val maxLen = parts.map(_._1.length).max
+        parts.map {
+          case (leader, trailer) =>
+            val variable = hl(leader)
+            s"""$variable${" " * (maxLen - leader.length)} $trailer"""
+        }
+      }
+
+      val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
+      val explainLines = columnar(explainParts)
+      if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
+    end explanations
   end Seen
 
-  /** Create explanation for single `Recorded` type or symbol */
-  def explanation(entry: AnyRef)(using Context): String =
-    def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
-      if (bound.isRef(default)) "" else i"$cmp $bound"
-
-    def boundsStr(bounds: TypeBounds): String = {
-      val lo = boundStr(bounds.lo, defn.NothingClass, ">:")
-      val hi = boundStr(bounds.hi, defn.AnyClass, "<:")
-      if (lo.isEmpty) hi
-      else if (hi.isEmpty) lo
-      else s"$lo and $hi"
-    }
-
-    def addendum(cat: String, info: Type): String = info match {
-      case bounds @ TypeBounds(lo, hi) if bounds ne TypeBounds.empty =>
-        if (lo eq hi) i" which is an alias of $lo"
-        else i" with $cat ${boundsStr(bounds)}"
-      case _ =>
-        ""
-    }
-
-    entry match {
-      case param: TypeParamRef =>
-        s"is a type variable${addendum("constraint", TypeComparer.bounds(param))}"
-      case param: TermParamRef =>
-        s"is a reference to a value parameter"
-      case sym: Symbol =>
-        val info =
-          if (ctx.gadt.contains(sym))
-            sym.info & ctx.gadt.fullBounds(sym)
-          else
-            sym.info
-        s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
-      case tp: SkolemType =>
-        s"is an unknown value of type ${tp.widen.show}"
-    }
-  end explanation
-
-  /** Turns a `Seen` into a `String` to produce an explanation for types on the
-    * form `where: T is...`
-    *
-    * @return string disambiguating types
-    */
-  private def explanations(seen: Seen)(using Context): String =
-    def needsExplanation(entry: Recorded) = entry match {
-      case param: TypeParamRef => ctx.typerState.constraint.contains(param)
-      case param: ParamRef     => false
-      case skolem: SkolemType => true
-      case sym: Symbol =>
-        ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
-    }
-
-    val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
-      val res: List[(String, Recorded)] = kvs match {
-        case (key, entry :: Nil) =>
-          if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
-        case (key, entries) =>
-          for (alt <- entries) yield {
-            val tickedString = seen.record(key.str, key.isType, alt)
-            (tickedString, alt)
-          }
-      }
-      res // help the inferrencer out
-    }.sortBy(_._1)
-
-    def columnar(parts: List[(String, String)]): List[String] = {
-      lazy val maxLen = parts.map(_._1.length).max
-      parts.map {
-        case (leader, trailer) =>
-          val variable = hl(leader)
-          s"""$variable${" " * (maxLen - leader.length)} $trailer"""
-      }
-    }
-
-    val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
-    val explainLines = columnar(explainParts)
-    if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
-  end explanations
-
+  /** Printer to be used when formatting messages */
   private class Printer(val seen: Seen, _ctx: Context) extends RefinedPrinter(_ctx):
 
     /** True if printer should a show source module instead of its module class */
@@ -284,7 +297,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     else ctx.printer match
       case msgPrinter: Message.Printer =>
         myIsNonSensical = msgPrinter.seen.nonSensical
-        val addendum = explanations(msgPrinter.seen)
+        val addendum = msgPrinter.seen.explanations
         msgPrinter.seen.disable()
           // Clear entries and stop futher recording so that messages containing the current
           // one don't repeat the explanations or use explanations from the msgPostscript.
