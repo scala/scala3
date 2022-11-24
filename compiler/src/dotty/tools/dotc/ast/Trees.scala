@@ -1745,7 +1745,7 @@ object Trees {
       val denot = receiver.tpe.member(method)
       if !denot.exists then
         overload.println(i"members = ${receiver.tpe.decls}")
-        report.error(i"no member $receiver . $method", receiver.srcPos)
+        report.error(em"no member $receiver . $method", receiver.srcPos)
       val selected =
         if (denot.isOverloaded) {
           def typeParamCount(tp: Type) = tp.widen match {

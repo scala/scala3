@@ -13,6 +13,7 @@ import Scopes._
 import Symbols._
 import StdNames._
 import Types._
+import Decorators.em
 
 import dotty.tools.dotc.transform.MegaPhase._
 
@@ -238,7 +239,7 @@ class JUnitBootstrappers extends MiniPhase {
               case NamedArg(name, _) => name.show(using ctx)
               case other => other.show(using ctx)
             }
-            report.error(s"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
+            report.error(em"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
             None
           }
         }

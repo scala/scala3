@@ -748,7 +748,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       if (params.size > MaximumJvmParameters) {
         // SI-7324
-        report.error(s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", ctx.source.atSpan(methSymbol.span))
+        report.error(em"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", ctx.source.atSpan(methSymbol.span))
         return
       }
 
@@ -800,9 +800,10 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           val veryFirstProgramPoint = currProgramPoint()
 
           if trimmedRhs == tpd.EmptyTree then
-            report.error("Concrete method has no definition: " + dd + (
-              if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
-              else ""),
+            report.error(
+              em"Concrete method has no definition: $dd${
+                  if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
+                  else ""}",
               ctx.source.atSpan(NoSpan)
             )
           else

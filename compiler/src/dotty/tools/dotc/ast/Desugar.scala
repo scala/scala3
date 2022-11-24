@@ -118,7 +118,7 @@ object desugar {
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
               def msg =
-                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
+                em"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
               ErrorType(msg).assertingErrorsReported(msg)
             }
           case _ =>
@@ -921,7 +921,7 @@ object desugar {
             case params :: paramss1 => // `params` must have a single parameter and without `given` flag
 
               def badRightAssoc(problem: String) =
-                report.error(i"right-associative extension method $problem", mdef.srcPos)
+                report.error(em"right-associative extension method $problem", mdef.srcPos)
                 extParamss ++ mdef.paramss
 
               params match
@@ -1147,7 +1147,7 @@ object desugar {
       def errorOnGivenBinding(bind: Bind)(using Context): Boolean =
         report.error(
           em"""${hl("given")} patterns are not allowed in a ${hl("val")} definition,
-              |please bind to an identifier and use an alias given.""".stripMargin, bind)
+              |please bind to an identifier and use an alias given.""", bind)
         false
 
       def isTuplePattern(arity: Int): Boolean = pat match {
@@ -1247,7 +1247,7 @@ object desugar {
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
     def check(rhs: Tree): MemberDef = rhs match
       case bounds: TypeBoundsTree if bounds.alias.isEmpty =>
-        report.error(i"opaque type must have a right-hand side", tree.srcPos)
+        report.error(em"opaque type must have a right-hand side", tree.srcPos)
         tree.withMods(tree.mods.withoutFlags(Opaque))
       case LambdaTypeTree(_, body) => check(body)
       case _ => tree

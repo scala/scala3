@@ -91,7 +91,7 @@ object TypeEval:
         val result =
           try op
           catch case e: Throwable =>
-            throw new TypeError(e.getMessage.nn)
+            throw TypeError(em"${e.getMessage.nn}")
         ConstantType(Constant(result))
 
       def constantFold1[T](extractor: Type => Option[T], op: T => Any): Option[Type] =

@@ -6,6 +6,7 @@ import java.net.{URI, URISyntaxException}
 
 import dotty.tools.dotc.core._
 import Contexts._
+import Decorators.em
 
 import dotty.tools.dotc.report
 
@@ -31,7 +32,7 @@ class JSPositions()(using Context) {
           URIMap(from, to) :: Nil
         } catch {
           case e: URISyntaxException =>
-            report.error(s"${e.getInput} is not a valid URI")
+            report.error(em"${e.getInput} is not a valid URI")
             Nil
         }
       }

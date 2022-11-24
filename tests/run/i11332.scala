@@ -21,7 +21,6 @@ object Test:
     val mhOverI = l.findVirtual(classOf[Foo], "over", methodType(classOf[String], classOf[Int]))
     val mhUnit  = l.findVirtual(classOf[Foo], "unit", methodType(classOf[Unit], classOf[String]))
     val mhObj   = l.findVirtual(classOf[Foo], "obj", methodType(classOf[Any], classOf[String]))
-    val mhCL    = l.findStatic(classOf[ClassLoader], "getPlatformClassLoader", methodType(classOf[ClassLoader]))
 
     assert(-42 == (mhNeg.invokeExact(self, 42): Int))
     assert(-33 == (mhNeg.invokeExact(self, 33): Int))
@@ -47,10 +46,12 @@ object Test:
     def any3 = mhObj.invokeExact(self, "any3")
     assert("any3" == any3)
 
-    assert(null != (mhCL.invoke(): ClassLoader))
-    assert(null != (mhCL.invoke().asInstanceOf[ClassLoader]: ClassLoader))
-    assert(null != (mhCL.invokeExact(): ClassLoader))
-    assert(null != (mhCL.invokeExact().asInstanceOf[ClassLoader]: ClassLoader))
+    // Needs JDK 9+
+    // val mhCL = l.findStatic(classOf[ClassLoader], "getPlatformClassLoader", methodType(classOf[ClassLoader]))
+    // assert(null != (mhCL.invoke(): ClassLoader))
+    // assert(null != (mhCL.invoke().asInstanceOf[ClassLoader]: ClassLoader))
+    // assert(null != (mhCL.invokeExact(): ClassLoader))
+    // assert(null != (mhCL.invokeExact().asInstanceOf[ClassLoader]: ClassLoader))
 
     expectWrongMethod {
       l // explicit chain method call

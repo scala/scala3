@@ -8,4 +8,6 @@
    |  This might be because resolution yielded as given instance a function that is not
    |  known to be total and side-effect free.
    |
+   |  where:    ?1 is an unknown value of type QC
+   |
    | longer explanation available when compiling with `-explain`

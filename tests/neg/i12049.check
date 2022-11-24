@@ -31,7 +31,7 @@
    |
    |                              case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
    |                              case EmptyTuple => EmptyTuple
--- Error: tests/neg/i12049.scala:24:20 ---------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i12049.scala:24:20 ---------------------------------------------------------------------
 24 |val _ = summon[M[B]]  // error
    |                    ^
    |                    No given instance of type M[B] was found for parameter x of method summon in object Predef

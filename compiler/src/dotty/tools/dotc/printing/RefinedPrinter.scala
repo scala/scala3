@@ -1062,7 +1062,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (sym.isImport)
       sym.infoOrCompleter match {
         case info: Namer#Completer => return info.original.show
-        case info: ImportType => return s"import $info.expr.show"
+        case info: ImportType => return s"import ${info.expr.show}"
         case _ =>
       }
     def name =
