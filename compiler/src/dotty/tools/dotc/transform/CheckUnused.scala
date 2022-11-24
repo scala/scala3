@@ -7,7 +7,7 @@ import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.{em, i}
-import dotty.tools.dotc.core.Flags.{Given, GivenVal, Param, Private, SelfName}
+import dotty.tools.dotc.core.Flags.{Given, Implicit, GivenOrImplicit, Param, Private, SelfName, Synthetic}
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
@@ -182,27 +182,25 @@ object CheckUnused:
 
     /** Register a found (used) symbol */
     def registerUsed(sym: Symbol)(using Context): Unit =
-      usedInScope.top += sym -> sym.isAccessibleAsIdent
-      usedDef += sym
+      if !isConstructorOfSynth(sym) then
+        usedInScope.top += sym -> sym.isAccessibleAsIdent
+        usedDef += sym
 
     /** Register a list of found (used) symbols */
     def registerUsed(syms: Seq[Symbol])(using Context): Unit =
-      usedInScope.top ++= syms.map(s => s -> s.isAccessibleAsIdent)
+      usedInScope.top ++= syms.filterNot(isConstructorOfSynth).map(s => s -> s.isAccessibleAsIdent)
       usedDef ++= syms
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
-      val tpd.Import(qual, selectors) = imp
-      if !tpd.languageImport(qual).nonEmpty then
+      if !tpd.languageImport(imp.expr).nonEmpty then
         impInScope.top += imp
-        unusedImport ++= selectors.filter{ s =>
-          !isImportExclusion(s) && !s.isGiven && !isSelectorOnAGiven(qual, s)
-        }
+        unusedImport ++= imp.selectors.filter(s => !isImportExclusion(s))
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
     def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
-      if valOrDef.symbol.is(Param) then
-        if valOrDef.symbol.is(Given) then
+      if valOrDef.symbol.is(Param) && !isSyntheticMainParam(valOrDef.symbol) then
+        if valOrDef.symbol.isOneOf(GivenOrImplicit) then
           implicitParamInScope += valOrDef
         else
           explicitParamInScope += valOrDef
@@ -296,8 +294,33 @@ object CheckUnused:
     end getUnused
     //============================ HELPERS ====================================
 
-    private def isSelectorOnAGiven(qual: tpd.Tree, sel: ImportSelector)(using Context): Boolean =
-      qual.tpe.member(sel.name).alternatives.exists(_.symbol.is(Given))
+    /**
+     * Is the the constructor of synthetic package object
+     * Should be ignored as it is always imported/used in package
+     * Trigger false negative on used import
+     *
+     * Without this check example:
+     *
+     * --- WITH PACKAGE : WRONG ---
+     * {{{
+     * package a:
+     *   val x: Int = 0
+     * package b:
+     *   import a._ // no warning
+     * }}}
+     * --- WITH OBJECT : OK ---
+     * {{{
+     * object a:
+     *   val x: Int = 0
+     * object b:
+     *   import a._ // unused warning
+     * }}}
+     */
+    private def isConstructorOfSynth(sym: Symbol)(using Context): Boolean =
+      sym.exists && sym.isConstructor && sym.owner.isPackageObject && sym.owner.is(Synthetic)
+
+    private def isSyntheticMainParam(sym: Symbol)(using Context): Boolean =
+      sym.exists && ctx.platform.isMainMethod(sym.owner) && sym.owner.is(Synthetic)
 
     private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
       case untpd.Ident(name) => name == StdNames.nme.WILDCARD
@@ -319,7 +342,7 @@ object CheckUnused:
         val tpd.Import(qual, sels) = imp
         val qualHasSymbol = qual.tpe.member(sym.name).symbol == sym
         def selector = sels.find(sel => sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name)
-        def wildcard = sels.find(sel => sel.isWildcard && (sym.is(Given) == sel.isGiven))
+        def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
         if qualHasSymbol && !isAccessible then
           selector.orElse(wildcard) // selector with name or wildcard (or given)
         else

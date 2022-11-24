@@ -31,6 +31,14 @@ object FooNested:
   object Nested:
     def hello = Set()
 
+object FooGivenUnused:
+  import SomeGivenImports.given // error
+
+object FooGiven:
+  import SomeGivenImports.given // OK
+  import SomeGivenImports._ // error
+
+  val foo = summon[Int]
 
 /**
  * Import used as type name are considered
@@ -84,27 +92,43 @@ object IgnoreExclusion:
   def check =
     val a = Set(1)
     val b = Map(1 -> 2)
+/**
+  * Some given values for the test
+  */
+object SomeGivenImports:
+  given Int = 0
+  given String = "foo"
 
 /* BEGIN : Check on packages*/
-package p {
-  class C
-}
+package testsamepackageimport:
+  package p {
+    class C
+  }
 
-package p {
-  import p._ // error
-  package q {
-    class U {
-      def f = new C
+  package p {
+    import p._ // error
+    package q {
+      class U {
+        def f = new C
+      }
     }
   }
-}
+// -----------------------
+
+package testpackageimport:
+  package a:
+    val x: Int = 0
+
+  package b:
+    import a._ // error
+
+
 /* END : Check on packages*/
 
 /* BEGIN : tests on meta-language features */
-object TestLanguageImportAreIgnored:
+object TestGivenCoversionScala2:
   /* note: scala3 Conversion[U,T] do not require an import */
   import language.implicitConversions // OK
-  import language._ // OK
 
   implicit def doubleToInt(d:Double):Int = d.toInt
 
@@ -126,7 +150,7 @@ object GivenImportOrderAtoB:
   object B { implicit val y: Y = new Y }
   class C {
     import A._ // error
-    import B._
+    import B._ // OK
     def t = implicitly[X]
   }
 
@@ -136,47 +160,31 @@ object GivenImportOrderBtoA:
   object A { implicit val x: X = new X }
   object B { implicit val y: Y = new Y }
   class C {
-    import B._
+    import B._ // OK
     import A._ // error
     def t = implicitly[X]
   }
 /* END : tests on given import order */
 
-/*
- * Advanced tests on given imports meta-programming
- *
- * - Currently also tests that no imported implicits are reported
- */
-
-package summoninlineconflict:
-  package lib:
-    trait A
-    trait B
-    trait C
-    trait X
-
-    given willBeUnused: (A & X) = new A with X {}
-    given willBeUsed: (A & B) = new A with B {}
-    given notUsedAtAll: Int = 0
-
-  package use:
-    import lib.{A, B, C, willBeUnused, willBeUsed, notUsedAtAll} // OK
-    import compiletime.summonInline // OK
-
-    transparent inline given conflictInside: C =
-      summonInline[A]
-      new {}
-
-    transparent inline given potentialConflict: C =
-      summonInline[B]
-      new {}
-
-    val b: B = summon[B]
-    val c: C = summon[C]
-
-package unusedgivensimports:
-  package foo:
-    given Int = 0
-
-  package bar:
-    import foo.given // OK
+/* Scala 2 implicits */
+object Scala2ImplicitsGiven:
+  object A:
+    implicit val x: Int = 1
+  object B:
+    import A.given  // OK
+    val b = summon[Int]
+  object C:
+    import A.given  // error
+    val b = 1
+  object D:
+    import A._  // OK
+    val b = summon[Int]
+  object E:
+    import A._  // error
+    val b = 1
+  object F:
+    import A.x  // OK
+    val b = summon[Int]
+  object G:
+    import A.x  // error
+    val b = 1
