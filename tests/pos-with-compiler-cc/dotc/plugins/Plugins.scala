@@ -5,6 +5,7 @@ import scala.language.unsafeNulls
 
 import core._
 import Contexts._
+import Decorators.em
 import config.{ PathResolver, Feature }
 import dotty.tools.io._
 import Phases._
@@ -83,14 +84,14 @@ trait Plugins {
 
     // Verify required plugins are present.
     for (req <- ctx.settings.require.value ; if !(plugs exists (_.name == req)))
-      report.error("Missing required plugin: " + req)
+      report.error(em"Missing required plugin: $req")
 
     // Verify no non-existent plugin given with -P
     for {
       opt <- ctx.settings.pluginOptions.value
       if !(plugs exists (opt startsWith _.name + ":"))
     }
-    report.error("bad option: -P:" + opt)
+    report.error(em"bad option: -P:$opt")
 
     plugs
   }

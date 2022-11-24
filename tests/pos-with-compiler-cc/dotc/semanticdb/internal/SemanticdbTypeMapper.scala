@@ -1,5 +1,4 @@
 package dotty.tools.dotc.semanticdb.internal
-import language.experimental.pureFunctions
 
 abstract class SemanticdbTypeMapper[BaseType, CustomType] {
   def toCustom(base: BaseType): CustomType
@@ -7,8 +6,8 @@ abstract class SemanticdbTypeMapper[BaseType, CustomType] {
 }
 
 object SemanticdbTypeMapper {
-  def apply[BaseType, CustomType](baseToCustom: BaseType -> CustomType)(
-      customToBase: CustomType -> BaseType
+  def apply[BaseType, CustomType](baseToCustom: BaseType => CustomType)(
+      customToBase: CustomType => BaseType
   ): SemanticdbTypeMapper[BaseType, CustomType] =
     new SemanticdbTypeMapper[BaseType, CustomType] {
       def toCustom(base: BaseType): CustomType = baseToCustom(base)

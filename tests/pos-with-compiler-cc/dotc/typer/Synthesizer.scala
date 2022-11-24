@@ -19,13 +19,12 @@ import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
 import ast.tpd._
 import Synthesizer._
-import language.experimental.pureFunctions
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   /** Handlers to synthesize implicits for special types */
-  type SpecialHandler = (Type, Span) -> Context ?-> TreeWithErrors
+  type SpecialHandler = (Type, Span) => Context ?=> TreeWithErrors
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
@@ -476,9 +475,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     if acceptableMsg.isEmpty && clsIsGenericSum then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
-      def internalError(msg: -> String)(using Context): Unit =
-        report.error(i"""Internal error when synthesizing sum mirror for $cls:
-                        |$msg""".stripMargin, ctx.source.atSpan(span))
+      def internalError(msg: => String)(using Context): Unit =
+        report.error(em"""Internal error when synthesizing sum mirror for $cls:
+                         |$msg""", ctx.source.atSpan(span))
 
       def childPrefix(child: Symbol)(using Context): Type =
         val symPre = TypeOps.childPrefix(pre, cls, child)
@@ -596,7 +595,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
     case _                     => tp
 
-  private enum ManifestKind extends caps.Pure: // !cc! should all enums be Pure?
+  private enum ManifestKind:
     case Full, Opt, Clss
 
     /** The kind that should be used for an array element, if we are `OptManifest` then this
@@ -692,10 +691,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         val manifest = synthesize(fullyDefinedType(arg, "Manifest argument", ctx.source.atSpan(span)), kind, topLevel = true)
         if manifest != EmptyTree then
           report.deprecationWarning(
-            i"""Compiler synthesis of Manifest and OptManifest is deprecated, instead
-               |replace with the type `scala.reflect.ClassTag[$arg]`.
-               |Alternatively, consider using the new metaprogramming features of Scala 3,
-               |see https://docs.scala-lang.org/scala3/reference/metaprogramming.html""", ctx.source.atSpan(span))
+            em"""Compiler synthesis of Manifest and OptManifest is deprecated, instead
+                |replace with the type `scala.reflect.ClassTag[$arg]`.
+                |Alternatively, consider using the new metaprogramming features of Scala 3,
+                |see https://docs.scala-lang.org/scala3/reference/metaprogramming.html""",
+            ctx.source.atSpan(span))
         withNoErrors(manifest)
       case _ =>
         EmptyTreeNoError

@@ -59,7 +59,7 @@ class ExtractSemanticDB extends Phase:
     private val localBodies = mutable.HashMap[Symbol, Tree]()
 
     /** The extracted symbol occurrences */
-    val occurrences: mutable.ListBuffer[SymbolOccurrence] = new mutable.ListBuffer()
+    val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
 
     /** The extracted symbol infos */
     val symbolInfos = new mutable.ListBuffer[SymbolInformation]()
@@ -67,7 +67,7 @@ class ExtractSemanticDB extends Phase:
     val synthetics = new mutable.ListBuffer[s.Synthetic]()
 
     /** A cache of localN names */
-    val localNames: mutable.HashSet[String] = new mutable.HashSet()
+    val localNames = new mutable.HashSet[String]()
 
     /** The symbol occurrences generated so far, as a set */
     private val generated = new mutable.HashSet[SymbolOccurrence]

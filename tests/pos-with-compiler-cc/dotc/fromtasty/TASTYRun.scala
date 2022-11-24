@@ -6,6 +6,7 @@ import scala.language.unsafeNulls
 
 import io.{JarArchive, AbstractFile, Path}
 import core.Contexts._
+import core.Decorators.em
 import java.io.File
 
 class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
@@ -27,7 +28,7 @@ class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
             .toList
         case "tasty" => TastyFileUtil.getClassName(file)
         case _ =>
-          report.error(s"File extension is not `tasty` or `jar`: ${file.path}")
+          report.error(em"File extension is not `tasty` or `jar`: ${file.path}")
           Nil
     }
     classNames.map(new TASTYCompilationUnit(_))

@@ -9,7 +9,6 @@ import scala.language.unsafeNulls
 import java.io.{File => JFile, FileFilter}
 import java.net.URL
 import dotty.tools.io.AbstractFile
-import language.experimental.pureFunctions
 
 /**
  * Common methods related to Java files and abstract files used in the context of classpath
@@ -79,7 +78,7 @@ object FileUtils {
   def mayBeValidPackage(dirName: String): Boolean =
     (dirName != "META-INF") && (dirName != "") && (dirName.charAt(0) != '.')
 
-  def mkFileFilter(f: JFile -> Boolean): FileFilter = new FileFilter {
+  def mkFileFilter(f: JFile => Boolean): FileFilter = new FileFilter {
     def accept(pathname: JFile): Boolean = f(pathname)
   }
 }

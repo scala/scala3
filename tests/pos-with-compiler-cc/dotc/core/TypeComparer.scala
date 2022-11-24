@@ -24,7 +24,6 @@ import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
 import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
-import language.experimental.pureFunctions
 
 /** Provides methods to compare types.
  */
@@ -419,16 +418,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           true
         }
         def compareTypeParamRef =
-          assumedTrue(tp1) ||
-          tp2.match {
-            case tp2: TypeParamRef => constraint.isLess(tp1, tp2)
-            case _ => false
-          } ||
-          isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2) || {
-            if (canConstrain(tp1) && !approx.high)
-              addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
-            else thirdTry
-          }
+          assumedTrue(tp1)
+          || tp2.dealias.match
+              case tp2a: TypeParamRef => constraint.isLess(tp1, tp2a)
+              case tp2a: AndType => recur(tp1, tp2a)
+              case _ => false
+          || isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2)
+          || (if canConstrain(tp1) && !approx.high then
+                addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
+              else thirdTry)
+
         compareTypeParamRef
       case tp1: ThisType =>
         val cls1 = tp1.cls
@@ -586,7 +585,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     def compareTypeParamRef(tp2: TypeParamRef): Boolean =
-      assumedTrue(tp2) || {
+      assumedTrue(tp2)
+      || {
         val alwaysTrue =
           // The following condition is carefully formulated to catch all cases
           // where the subtype relation is true without needing to add a constraint
@@ -597,11 +597,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // widening in `fourthTry` before adding to the constraint.
           if (frozenConstraint) recur(tp1, bounds(tp2).lo.boxed)
           else isSubTypeWhenFrozen(tp1, tp2)
-        alwaysTrue || {
-          if (canConstrain(tp2) && !approx.low)
-            addConstraint(tp2, tp1.widenExpr, fromBelow = true)
-          else fourthTry
-        }
+        alwaysTrue
+        || tp1.dealias.match
+            case tp1a: OrType => recur(tp1a, tp2)
+            case _ => false
+        || (if canConstrain(tp2) && !approx.low then
+              addConstraint(tp2, tp1.widenExpr, fromBelow = true)
+            else fourthTry)
       }
 
     def thirdTry: Boolean = tp2 match {
@@ -2401,8 +2403,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         NoType
     }
 
-  private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) -> Type,
-      original: (Type, Type) -> Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"andTypeGen(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+  private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) => Type,
+      original: (Type, Type) => Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"andTypeGen(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
@@ -2463,7 +2465,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *    [X1, ..., Xn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
    */
   def liftIfHK(tp1: Type, tp2: Type,
-      op: (Type, Type) -> Type, original: (Type, Type) -> Type, combineVariance: (Variance, Variance) -> Variance) = {
+      op: (Type, Type) => Type, original: (Type, Type) => Type, combineVariance: (Variance, Variance) => Variance) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
     def applied(tp: Type) = tp.appliedTo(tp.typeParams.map(_.paramInfoAsSeenFrom(tp)))
@@ -2978,8 +2980,8 @@ object TypeComparer {
     comparing(_.provablyDisjoint(tp1, tp2))
 
   def liftIfHK(tp1: Type, tp2: Type,
-      op: (Type, Type) -> Type, original: (Type, Type) -> Type,
-      combineVariance: (Variance, Variance) -> Variance)(using Context): Type =
+      op: (Type, Type) => Type, original: (Type, Type) => Type,
+      combineVariance: (Variance, Variance) => Variance)(using Context): Type =
     comparing(_.liftIfHK(tp1, tp2, op, original, combineVariance))
 
   def constValue(tp: Type)(using Context): Option[Constant] =
@@ -3162,7 +3164,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             tp
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
-        throw new TypeError(s"Match type reduction $casesText")
+        throw TypeError(em"Match type reduction $casesText")
 
     inFrozenConstraint {
       // Empty types break the basic assumption that if a scrutinee and a

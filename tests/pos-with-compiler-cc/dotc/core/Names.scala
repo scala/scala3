@@ -15,8 +15,8 @@ import scala.annotation.internal.sharable
 object Names {
   import NameKinds._
 
-  /** Things that can be turned into names with `totermName` and `toTypeName`
-   *  Decorators defines implements these as extension methods for strings.
+  /** Things that can be turned into names with `toTermName` and `toTypeName`.
+   *  Decorators implements these as extension methods for strings.
    */
   type PreName = Name | String
 
@@ -30,7 +30,7 @@ object Names {
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends Designator, Showable, caps.Pure derives CanEqual {
+  abstract class Name extends Designator, Showable derives CanEqual {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name

@@ -18,7 +18,6 @@ import typer.ConstFold
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-import language.experimental.pureFunctions
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -429,7 +428,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else
         val res = Select(TypeTree(pre), tp)
         if needLoad && !res.symbol.isStatic then
-          throw new TypeError(em"cannot establish a reference to $res")
+          throw TypeError(em"cannot establish a reference to $res")
         res
 
   def ref(sym: Symbol)(using Context): Tree =
@@ -1297,7 +1296,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else if (tree.tpe.widen isRef numericCls)
       tree
     else {
-      report.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
+      report.warning(em"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
       Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)).withSpan(tree.span)
     }
   }
@@ -1455,7 +1454,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    * @return The symbols imported.
    */
   def importedSymbols(imp: Import,
-                      selectorPredicate: untpd.ImportSelector -> Boolean = util.common.alwaysTrue)
+                      selectorPredicate: untpd.ImportSelector => Boolean = util.common.alwaysTrue)
                      (using Context): List[Symbol] =
     imp.selectors.find(selectorPredicate) match
       case Some(sel) => importedSymbols(imp.expr, sel.name)

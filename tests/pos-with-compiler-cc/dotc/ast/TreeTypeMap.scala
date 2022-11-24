@@ -7,7 +7,6 @@ import Types._, Contexts._, Flags._
 import Symbols._, Annotations._, Trees._, Symbols._, Constants.Constant
 import Decorators._
 import dotty.tools.dotc.transform.SymUtils._
-import language.experimental.pureFunctions
 
 /** A map that applies three functions and a substitution together to a tree and
  *  makes sure they are coordinated so that the result is well-typed. The functions are
@@ -33,8 +32,8 @@ import language.experimental.pureFunctions
  *  set, we would get a data race assertion error.
  */
 class TreeTypeMap(
-  val typeMap: Type -> Type = IdentityTypeMap,
-  val treeMap: tpd.Tree -> tpd.Tree = identity[tpd.Tree](_), // !cc! need explicit instantiation of default argument
+  val typeMap: Type => Type = IdentityTypeMap,
+  val treeMap: tpd.Tree => tpd.Tree = identity _,
   val oldOwners: List[Symbol] = Nil,
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
@@ -43,8 +42,8 @@ class TreeTypeMap(
   import tpd._
 
   def copy(
-      typeMap: Type -> Type,
-      treeMap: tpd.Tree -> tpd.Tree,
+      typeMap: Type => Type,
+      treeMap: tpd.Tree => tpd.Tree,
       oldOwners: List[Symbol],
       newOwners: List[Symbol],
       substFrom: List[Symbol],

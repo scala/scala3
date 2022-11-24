@@ -23,7 +23,6 @@ import util.Spans.Span
 import dotty.tools.dotc.transform.Splicer
 import quoted.QuoteUtils
 import scala.annotation.constructorOnly
-import language.experimental.pureFunctions
 
 /** General support for inlining */
 object Inliner:
@@ -109,8 +108,8 @@ object Inliner:
   // They are generally left alone (not mapped further, and if they wrap a type
   // the type Inlined wrapper gets dropped
   private class InlinerMap(
-      typeMap: Type -> Type,
-      treeMap: Tree -> Tree,
+      typeMap: Type => Type,
+      treeMap: Tree => Tree,
       oldOwners: List[Symbol],
       newOwners: List[Symbol],
       substFrom: List[Symbol],
@@ -119,8 +118,8 @@ object Inliner:
       typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
 
     override def copy(
-        typeMap: Type -> Type,
-        treeMap: Tree -> Tree,
+        typeMap: Type => Type,
+        treeMap: Tree => Tree,
         oldOwners: List[Symbol],
         newOwners: List[Symbol],
         substFrom: List[Symbol],
@@ -171,7 +170,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** A map from references to (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
-  private[inlines] val paramProxy: mutable.HashMap[Type, Type] = new mutable.HashMap
+  private[inlines] val paramProxy = new mutable.HashMap[Type, Type]
 
   /** A map from the classes of (direct and outer) this references in `rhsToInline`
    *  to references of their proxies.
@@ -254,7 +253,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         computeParamBindings(tp.resultType, targs.drop(tp.paramNames.length), argss, formalss, buf)
       case tp: MethodType =>
         if argss.isEmpty then
-          report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
+          report.error(em"missing arguments for inline method $inlinedMethod", call.srcPos)
           false
         else
           tp.paramNames.lazyZip(formalss.head).lazyZip(argss.head).foreach { (name, formal, arg) =>
@@ -617,8 +616,8 @@ class Inliner(val call: tpd.Tree)(using Context):
     def issueError() = callValueArgss match {
       case (msgArg :: Nil) :: Nil =>
         val message = msgArg.tpe match {
-          case ConstantType(Constant(msg: String)) => msg
-          case _ => s"A literal string is expected as an argument to `compiletime.error`. Got ${msgArg.show}"
+          case ConstantType(Constant(msg: String)) => msg.toMessage
+          case _ => em"A literal string is expected as an argument to `compiletime.error`. Got $msgArg"
         }
         // Usually `error` is called from within a rewrite method. In this
         // case we need to report the error at the point of the outermost enclosing inline

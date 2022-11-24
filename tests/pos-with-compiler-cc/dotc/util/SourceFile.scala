@@ -21,7 +21,6 @@ import java.nio.file.{FileSystemException, NoSuchFileException}
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
-import language.experimental.pureFunctions
 
 object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
@@ -60,7 +59,7 @@ object ScriptSourceFile {
   }
 }
 
-class SourceFile(val file: AbstractFile, computeContent: -> Array[Char]) extends interfaces.SourceFile, caps.Pure {
+class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   import SourceFile._
 
   private var myContent: Array[Char] | Null = null
@@ -279,7 +278,7 @@ object SourceFile {
     else
       SourceFile(file, chars)
 
-  def apply(file: AbstractFile | Null, computeContent: -> Array[Char]): SourceFile = new SourceFile(file, computeContent)
+  def apply(file: AbstractFile | Null, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

@@ -8,7 +8,6 @@ import util.Spans.Span
 import printing.{Showable, Printer}
 import printing.Texts.Text
 import annotation.internal.sharable
-import language.experimental.pureFunctions
 
 object Annotations {
 
@@ -16,8 +15,7 @@ object Annotations {
     if (tree.symbol.isConstructor) tree.symbol.owner
     else tree.tpe.typeSymbol
 
-  abstract class Annotation extends Showable, caps.Pure {
-
+  abstract class Annotation extends Showable {
     def tree(using Context): Tree
 
     def symbol(using Context): Symbol = annotClass(tree)
@@ -98,11 +96,11 @@ object Annotations {
     def tree(using Context): Tree = t
 
   abstract class LazyAnnotation extends Annotation {
-    protected var mySym: Symbol | (Context ?-> Symbol) | Null
+    protected var mySym: Symbol | (Context ?=> Symbol) | Null
     override def symbol(using parentCtx: Context): Symbol =
       assert(mySym != null)
       mySym match {
-        case symFn: (Context ?-> Symbol) @unchecked =>
+        case symFn: (Context ?=> Symbol) @unchecked =>
           mySym = null
           mySym = atPhaseBeforeTransforms(symFn)
             // We should always produce the same annotation tree, no matter when the
@@ -116,11 +114,11 @@ object Annotations {
       }
       mySym.asInstanceOf[Symbol]
 
-    protected var myTree: Tree | (Context ?-> Tree) | Null
+    protected var myTree: Tree | (Context ?=> Tree) | Null
     def tree(using Context): Tree =
       assert(myTree != null)
       myTree match {
-        case treeFn: (Context ?-> Tree) @unchecked =>
+        case treeFn: (Context ?=> Tree) @unchecked =>
           myTree = null
           myTree = atPhaseBeforeTransforms(treeFn)
         case _ =>
@@ -131,10 +129,10 @@ object Annotations {
     override def isEvaluated: Boolean = myTree.isInstanceOf[Tree @unchecked]
   }
 
-  class DeferredSymAndTree(symFn: Context ?-> Symbol, treeFn: Context ?-> Tree)
+  class DeferredSymAndTree(symFn: Context ?=> Symbol, treeFn: Context ?=> Tree)
   extends LazyAnnotation:
-    protected var mySym: Symbol | (Context ?-> Symbol) | Null = ctx ?=> symFn(using ctx)
-    protected var myTree: Tree | (Context ?-> Tree) | Null = ctx ?=> treeFn(using ctx)
+    protected var mySym: Symbol | (Context ?=> Symbol) | Null = ctx ?=> symFn(using ctx)
+    protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
 
   /** An annotation indicating the body of a right-hand side,
    *  typically of an inline method. Treated specially in
@@ -155,11 +153,11 @@ object Annotations {
 
   abstract class LazyBodyAnnotation extends BodyAnnotation {
     // Copy-pasted from LazyAnnotation to avoid having to turn it into a trait
-    protected var myTree: Tree | (Context ?-> Tree) | Null
+    protected var myTree: Tree | (Context ?=> Tree) | Null
     def tree(using Context): Tree =
       assert(myTree != null)
       myTree match {
-        case treeFn: (Context ?-> Tree) @unchecked =>
+        case treeFn: (Context ?=> Tree) @unchecked =>
           myTree = null
           myTree = atPhaseBeforeTransforms(treeFn)
         case _ =>
@@ -171,9 +169,9 @@ object Annotations {
   }
 
   object LazyBodyAnnotation {
-    def apply(bodyFn: Context ?-> Tree): LazyBodyAnnotation =
+    def apply(bodyFn: Context ?=> Tree): LazyBodyAnnotation =
       new LazyBodyAnnotation:
-        protected var myTree: Tree | (Context ?-> Tree) | Null = ctx ?=> bodyFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> bodyFn(using ctx)
   }
 
   object Annotation {
@@ -202,21 +200,21 @@ object Annotations {
       apply(New(atp, args))
 
     /** Create an annotation where the tree is computed lazily. */
-    def deferred(sym: Symbol)(treeFn: Context ?-> Tree): Annotation =
+    def deferred(sym: Symbol)(treeFn: Context ?=> Tree): Annotation =
       new LazyAnnotation {
-        protected var myTree: Tree | (Context ?-> Tree) | Null = ctx ?=> treeFn(using ctx)
-        protected var mySym: Symbol | (Context ?-> Symbol) | Null = sym
+        protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
+        protected var mySym: Symbol | (Context ?=> Symbol) | Null = sym
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
-    def deferredSymAndTree(symFn: Context ?-> Symbol)(treeFn: Context ?-> Tree): Annotation =
+    def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree): Annotation =
       DeferredSymAndTree(symFn, treeFn)
 
     /** Extractor for child annotations */
     object Child {
 
       /** A deferred annotation to the result of a given child computation */
-      def later(delayedSym: Context ?-> Symbol, span: Span)(using Context): Annotation = {
+      def later(delayedSym: Context ?=> Symbol, span: Span)(using Context): Annotation = {
         def makeChildLater(using Context) = {
           val sym = delayedSym
           New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)

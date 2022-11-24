@@ -31,7 +31,6 @@ import dotty.tools.dotc.quoted.{PickledQuotes, QuoteUtils}
 
 import scala.quoted.Quotes
 import scala.quoted.runtime.impl._
-import language.experimental.pureFunctions
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -57,11 +56,8 @@ object Splicer {
             val interpreter = new SpliceInterpreter(splicePos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-            val interpretedExpr: Option[Quotes -> scala.quoted.Expr[Any]] = // !cc! explicit type ascription needed here
-              interpreter.interpret(tree)
-            val interpretedTree: Tree = interpretedExpr match
-              case Some(macroClosure) => PickledQuotes.quotedExprToTree(macroClosure(QuotesImpl()))
-              case None => tree
+            val interpretedExpr = interpreter.interpret[Quotes => scala.quoted.Expr[Any]](tree)
+            val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuotesImpl())))
 
             checkEscapedVariables(interpretedTree, macroOwner)
           } finally {
@@ -81,10 +77,10 @@ object Splicer {
           ref(defn.Predef_undefined).withType(ErrorType(ex.msg))
         case NonFatal(ex) =>
           val msg =
-            s"""Failed to evaluate macro.
-               |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
-               |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
-             """.stripMargin
+            em"""Failed to evaluate macro.
+                |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
+                |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
+              """
           report.error(msg, spliceExpansionPos)
           ref(defn.Predef_undefined).withType(ErrorType(msg))
       }

@@ -23,7 +23,6 @@ import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
-import language.experimental.pureFunctions
 
 
 object SymbolLoaders {
@@ -89,8 +88,8 @@ object SymbolLoaders {
         return NoSymbol
       }
       else
-        throw new TypeError(
-          i"""$owner contains object and package with same name: $pname
+        throw TypeError(
+          em"""$owner contains object and package with same name: $pname
              |one of them needs to be removed from classpath""")
     newModuleSymbol(owner, pname, PackageCreationFlags, PackageCreationFlags,
       completer).entered
@@ -212,10 +211,7 @@ object SymbolLoaders {
     override def sourceModule(using Context): TermSymbol = _sourceModule
     def description(using Context): String = "package loader " + sourceModule.fullName
 
-    private var enterFlatClasses: Option[() -> Context ?-> Unit] = None
-      // Having a pure function type returning `Unit` does look weird.
-      // The point is that the function should not have any effect that matters for
-      // the compiler, in particular it should not capture a context.
+    private var enterFlatClasses: Option[() => Context ?=> Unit] = None
 
     Stats.record("package scopes")
 
@@ -335,8 +331,9 @@ abstract class SymbolLoader extends LazyType { self =>
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
       report.error(
-        if (msg == null) "i/o error while loading " + root.name
-        else "error while loading " + root.name + ",\n" + msg)
+        if msg == null then em"i/o error while loading ${root.name}"
+        else em"""error while loading ${root.name},
+                 |$msg""")
     }
     try {
       val start = System.currentTimeMillis
