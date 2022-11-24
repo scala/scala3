@@ -15,12 +15,12 @@ import scala.annotation.threadUnsafe
 
 /** ## Tips for error message generation
  *
- *  - You can use the `em` interpolator for error messages. It's defined in decorators.
+ *  - You can use the `em` interpolator for error messages. It's defined in core.Decorators.
  *  - You can also use a simple string argument for `error` or `warning` (not for the other variants),
  *    but the string should not be interpolated or composed of objects that require a
  *    Context for evaluation.
  *  - When embedding interpolated substrings defined elsewhere in error messages,
- *    make sure they are defined as def's instead of vals. That way, the
+ *    use `i` and make sure they are defined as def's instead of vals. That way, the
  *    possibly expensive interpolation will performed only in the case where the message
  *    is eventually printed. Note: At least during typer, it's common for messages
  *    to be discarded without being printed. Also, by making them defs, you ensure that

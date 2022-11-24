@@ -11,7 +11,7 @@ import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
 
-/** This object provides useful implicit decorators for types defined elsewhere */
+/** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
 
   /** Extension methods for toType/TermName methods on PreNames.
