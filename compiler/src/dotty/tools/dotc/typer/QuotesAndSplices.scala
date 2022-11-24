@@ -54,7 +54,7 @@ trait QuotesAndSplices {
       val msg = em"""Quoted types `'[..]` can only be used in patterns.
                     |
                     |Hint: To get a scala.quoted.Type[T] use scala.quoted.Type.of[T] instead.
-                    |""".stripMargin
+                    |"""
       report.error(msg, tree.srcPos)
       EmptyTree
     else
@@ -87,7 +87,7 @@ trait QuotesAndSplices {
         ref(defn.QuotedRuntime_exprSplice).appliedToType(argType).appliedTo(pat)
       }
       else {
-        report.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.srcPos)
+        report.error(em"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.srcPos)
         tree.withType(UnspecifiedErrorType)
       }
     else {
@@ -123,7 +123,7 @@ trait QuotesAndSplices {
     assert(ctx.mode.is(Mode.QuotedPattern))
     val untpd.Apply(splice: untpd.Splice, args) = tree: @unchecked
     if !isFullyDefined(pt, ForceDegree.flipBottom) then
-      report.error(i"Type must be fully defined.", splice.srcPos)
+      report.error(em"Type must be fully defined.", splice.srcPos)
       tree.withType(UnspecifiedErrorType)
     else if splice.isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
@@ -172,10 +172,10 @@ trait QuotesAndSplices {
       report.error("Splice ${...} outside quotes '{...} or inline method", tree.srcPos)
     else if (level < 0)
       report.error(
-        s"""Splice $${...} at level $level.
-          |
-          |Inline method may contain a splice at level 0 but the contents of this splice cannot have a splice.
-          |""".stripMargin, tree.srcPos
+        em"""Splice $${...} at level $level.
+            |
+            |Inline method may contain a splice at level 0 but the contents of this splice cannot have a splice.
+            |""", tree.srcPos
       )
 
   /** Split a typed quoted pattern is split into its type bindings, pattern expression and inner patterns.
@@ -263,7 +263,7 @@ trait QuotesAndSplices {
             transformTypeBindingTypeDef(PatMatGivenVarName.fresh(tdef.name.toTermName), tdef, typePatBuf)
           else if tdef.symbol.isClass then
             val kind = if tdef.symbol.is(Module) then "objects" else "classes"
-            report.error("Implementation restriction: cannot match " + kind, tree.srcPos)
+            report.error(em"Implementation restriction: cannot match $kind", tree.srcPos)
             EmptyTree
           else
             super.transform(tree)

@@ -152,8 +152,8 @@ trait ConstraintHandling {
       return param
     LevelAvoidMap(0, maxLevel)(param) match
       case freshVar: TypeVar => freshVar.origin
-      case _ => throw new TypeError(
-        i"Could not decrease the nesting level of ${param} from ${nestingLevel(param)} to $maxLevel in $constraint")
+      case _ => throw TypeError(
+        em"Could not decrease the nesting level of ${param} from ${nestingLevel(param)} to $maxLevel in $constraint")
 
   def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds = constraint.nonParamBounds(param)
 

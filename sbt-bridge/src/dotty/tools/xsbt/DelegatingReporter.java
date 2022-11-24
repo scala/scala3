@@ -45,7 +45,7 @@ final public class DelegatingReporter extends AbstractReporter {
       rendered.append(explanation(message, ctx));
     }
 
-    delegate.log(new Problem(position, message.msg(), severity, rendered.toString(), diagnosticCode));
+    delegate.log(new Problem(position, message.message(), severity, rendered.toString(), diagnosticCode));
   }
 
   private static Severity severityOf(int level) {

@@ -203,7 +203,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos)(using Context) =
       val res = elem.singletonCaptureSet.subCaptures(cs, frozen = false)
       if !res.isOK then
-        report.error(i"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking}", pos)
+        report.error(em"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking}", pos)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos)(using Context) =
@@ -212,7 +212,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         def header =
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
           else i"references $cs1 are not all"
-        report.error(i"$header included in allowed capture set ${res.blocking}", pos)
+        report.error(em"$header included in allowed capture set ${res.blocking}", pos)
 
     /** The current environment */
     private var curEnv: Env = Env(NoSymbol, nestedInOwner = false, CaptureSet.empty, isBoxed = false, null)
@@ -883,9 +883,9 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // Forbid inferred self types unless they are already implied by an explicit
                 // self type in a parent.
                 report.error(
-                  i"""$root needs an explicitly declared self type since its
-                     |inferred self type $selfType
-                     |is not visible in other compilation units that define subclasses.""",
+                  em"""$root needs an explicitly declared self type since its
+                      |inferred self type $selfType
+                      |is not visible in other compilation units that define subclasses.""",
                   root.srcPos)
               case _ =>
           parentTrees -= root
@@ -1005,7 +1005,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                   em"""Non-local $sym cannot have an inferred$resultStr type
                       |$inferred
                       |with non-empty capture set $refs.
-                      |The type needs to be declared explicitly.""", t.srcPos)
+                      |The type needs to be declared explicitly.""".withoutDisambiguation(),
+                  t.srcPos)
               case _ =>
             inferred.foreachPart(checkPure, StopAt.Static)
         case t @ TypeApply(fun, args) =>

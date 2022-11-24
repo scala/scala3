@@ -70,7 +70,7 @@ object NamerOps:
   def findModuleBuddy(name: Name, scope: Scope)(using Context) = {
     val it = scope.lookupAll(name).filter(_.is(Module))
     if (it.hasNext) it.next()
-    else NoSymbol.assertingErrorsReported(s"no companion $name in $scope")
+    else NoSymbol.assertingErrorsReported(em"no companion $name in $scope")
   }
 
   /** If a class has one of these flags, it does not get a constructor companion */

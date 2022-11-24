@@ -549,28 +549,30 @@ object Erasure {
 
     /** Check that Java statics and packages can only be used in selections.
       */
-    private def checkNotErased(tree: Tree)(using Context): tree.type = {
-      if (!ctx.mode.is(Mode.Type)) {
+    private def checkNotErased(tree: Tree)(using Context): tree.type =
+      if !ctx.mode.is(Mode.Type) then
         if isErased(tree) then
           val msg =
             if tree.symbol.is(Flags.Inline) then
               em"""${tree.symbol} is declared as `inline`, but was not inlined
                   |
-                  |Try increasing `-Xmax-inlines` above ${ctx.settings.XmaxInlines.value}""".stripMargin
-            else em"${tree.symbol} is declared as `erased`, but is in fact used"
+                  |Try increasing `-Xmax-inlines` above ${ctx.settings.XmaxInlines.value}"""
+            else
+              em"${tree.symbol} is declared as `erased`, but is in fact used"
           report.error(msg, tree.srcPos)
-        tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
+        tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match
           case Some(annot) =>
-            def defaultMsg =
-              i"""Reference to ${tree.symbol.showLocated} should not have survived,
-                 |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
-            val message = annot.argumentConstant(0).fold(defaultMsg)(_.stringValue)
+            val message = annot.argumentConstant(0) match
+              case Some(c) =>
+                c.stringValue.toMessage
+              case _ =>
+                em"""Reference to ${tree.symbol.showLocated} should not have survived,
+                    |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
             report.error(message, tree.srcPos)
           case _ => // OK
-        }
-      }
+
       checkNotErasedClass(tree)
-    }
+    end checkNotErased
 
     private def checkNotErasedClass(tp: Type, tree: untpd.Tree)(using Context): Unit = tp match
       case JavaArrayType(et) =>
@@ -780,7 +782,7 @@ object Erasure {
                 val tp = originalQual
                 if tp =:= qual1.tpe.widen then
                   return errorTree(qual1,
-                    ex"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
+                    em"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
                 tp
             recur(cast(qual1, castTarget))
         }

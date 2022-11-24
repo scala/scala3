@@ -2926,7 +2926,7 @@ class JSCodeGen()(using genCtx: Context) {
       case defn.ArrayOf(el)  => el
       case JavaArrayType(el) => el
       case tpe =>
-        val msg = ex"expected Array $tpe"
+        val msg = em"expected Array $tpe"
         report.error(msg)
         ErrorType(msg)
     }
@@ -3652,7 +3652,7 @@ class JSCodeGen()(using genCtx: Context) {
     } else if (sym.isJSType) {
       if (sym.is(Trait)) {
         report.error(
-            s"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
+            em"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
             pos)
         js.BooleanLiteral(true)
       } else {

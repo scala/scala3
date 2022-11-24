@@ -168,7 +168,8 @@ object SymDenotations {
           }
         }
         else {
-          if (myFlags.is(Touched)) throw CyclicReference(this)
+          if (myFlags.is(Touched))
+            throw CyclicReference(this)(using ctx.withOwner(symbol))
           myFlags |= Touched
           atPhase(validFor.firstPhaseId)(completer.complete(this))
         }
@@ -2458,13 +2459,13 @@ object SymDenotations {
             val youngest = assocFiles.filter(_.lastModified == lastModDate)
             val chosen = youngest.head
             def ambiguousFilesMsg(f: AbstractFile) =
-              em"""Toplevel definition $name is defined in
-                  |  $chosen
-                  |and also in
-                  |  $f"""
+              i"""Toplevel definition $name is defined in
+                 |  $chosen
+                 |and also in
+                 |  $f"""
             if youngest.size > 1 then
-              throw TypeError(i"""${ambiguousFilesMsg(youngest.tail.head)}
-                                 |One of these files should be removed from the classpath.""")
+              throw TypeError(em"""${ambiguousFilesMsg(youngest.tail.head)}
+                                  |One of these files should be removed from the classpath.""")
 
             // Warn if one of the older files comes from a different container.
             // In that case picking the youngest file is not necessarily what we want,
@@ -2474,8 +2475,8 @@ object SymDenotations {
               try f.container == chosen.container catch case NonFatal(ex) => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
-                report.warning(i"""${ambiguousFilesMsg(conflicting.nn)}
-                               |Keeping only the definition in $chosen""")
+                report.warning(em"""${ambiguousFilesMsg(conflicting.nn)}
+                                   |Keeping only the definition in $chosen""")
                 ambiguityWarningIssued = true
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
       end dropStale

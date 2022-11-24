@@ -1,4 +1,4 @@
--- Error: tests/neg/missing-implicit2.scala:10:18 ----------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/missing-implicit2.scala:10:18 ----------------------------------------------------------
 10 |    f(using xFromY) // error
    |                  ^
    |                  No given instance of type Y was found for parameter y of given instance xFromY
@@ -7,7 +7,7 @@
    |
    |                    import test.instances.y
    |
--- Error: tests/neg/missing-implicit2.scala:16:5 -----------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/missing-implicit2.scala:16:5 -----------------------------------------------------------
 16 |    f // error
    |     ^
    |     No given instance of type X was found for parameter x of method f in object test

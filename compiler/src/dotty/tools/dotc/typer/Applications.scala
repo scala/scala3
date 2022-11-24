@@ -484,7 +484,7 @@ trait Applications extends Compatibility {
         matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
         if (methType.isError) ok = false
-        else fail(s"$methString does not take parameters".toMessage)
+        else fail(em"$methString does not take parameters")
     }
 
     /** The application was successful */
@@ -524,10 +524,10 @@ trait Applications extends Compatibility {
               else { // name not (or no longer) available for named arg
                 def msg =
                   if (methodType.paramNames contains aname)
-                    s"parameter $aname of $methString is already instantiated"
+                    em"parameter $aname of $methString is already instantiated"
                   else
-                    s"$methString does not have a parameter $aname"
-                fail(msg.toMessage, arg.asInstanceOf[Arg])
+                    em"$methString does not have a parameter $aname"
+                fail(msg, arg.asInstanceOf[Arg])
                 arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop)
               }
             case arg :: args1 =>
@@ -569,7 +569,7 @@ trait Applications extends Compatibility {
                   i"it is not the only argument to be passed to the corresponding repeated parameter $formal"
                 else
                   i"the corresponding parameter has type $formal which is not a repeated parameter type"
-              fail(em"Sequence argument type annotation `*` cannot be used here:\n$addendum".toMessage, arg)
+              fail(em"Sequence argument type annotation `*` cannot be used here:\n$addendum", arg)
 
           /** Add result of typing argument `arg` against parameter type `formal`.
            *  @return  The remaining formal parameter types. If the method is parameter-dependent
@@ -653,10 +653,10 @@ trait Applications extends Compatibility {
               def msg = arg match
                 case untpd.Tuple(Nil)
                 if applyKind == ApplyKind.InfixTuple && funType.widen.isNullaryMethod =>
-                  i"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
+                  em"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
                 case _ =>
-                  i"too many arguments for $methString"
-              fail(msg.toMessage, arg)
+                  em"too many arguments for $methString"
+              fail(msg, arg)
             case nil =>
           }
       }
@@ -1117,7 +1117,7 @@ trait Applications extends Compatibility {
   /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
   protected def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(using Context): Tree =
     if ctx.reporter.errorsReported then
-      throw TypeError(i"unexpected function type: ${methPart(fun).tpe}")
+      throw TypeError(em"unexpected function type: ${methPart(fun).tpe}")
     else
       throw Error(i"unexpected type.\n  fun = $fun,\n  methPart(fun) = ${methPart(fun)},\n  methPart(fun).tpe = ${methPart(fun).tpe},\n  tpe = ${fun.tpe}")
 
@@ -1125,8 +1125,8 @@ trait Applications extends Compatibility {
     for (case arg @ NamedArg(id, argtpt) <- args) yield {
       if !Feature.namedTypeArgsEnabled then
         report.error(
-          i"""Named type arguments are experimental,
-             |they must be enabled with a `experimental.namedTypeArguments` language import or setting""",
+          em"""Named type arguments are experimental,
+              |they must be enabled with a `experimental.namedTypeArguments` language import or setting""",
           arg.srcPos)
       val argtpt1 = typedType(argtpt)
       cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
@@ -1417,7 +1417,7 @@ trait Applications extends Compatibility {
             case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
             case Apply(unapply, `dummyArg` :: Nil) =>
             case Inlined(u, _, _) => loop(u)
-            case DynamicUnapply(_) => report.error("Structural unapply is not supported", unapplyFn.srcPos)
+            case DynamicUnapply(_) => report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
             case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
             case _ => ().assertingErrorsReported
           }

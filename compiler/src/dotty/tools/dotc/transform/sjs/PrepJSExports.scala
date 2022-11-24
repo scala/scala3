@@ -189,7 +189,7 @@ object PrepJSExports {
         if (hasExplicitName) {
           annot.argumentConstantString(0).getOrElse {
             report.error(
-                s"The argument to ${annot.symbol.name} must be a literal string",
+                em"The argument to ${annot.symbol.name} must be a literal string",
                 annot.arguments(0))
             "dummy"
           }
