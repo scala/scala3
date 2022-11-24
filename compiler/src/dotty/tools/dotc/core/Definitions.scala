@@ -1562,10 +1562,7 @@ class Definitions {
     RootRef(() => requiredPackageRef(imp), isPredef = false)
   }
 
-  @tu private lazy val JavaRootImportFns: List[RootRef] =
-    if !ctx.settings.Yimports.isDefault then YimportsImportFns
-    else if ctx.settings.YnoImports.value then Nil
-    else JavaImportFns
+  @tu private lazy val JavaRootImportFns: List[RootRef] = JavaImportFns
 
   @tu private lazy val ScalaRootImportFns: List[RootRef] =
     if !ctx.settings.Yimports.isDefault then YimportsImportFns
