@@ -31,8 +31,9 @@ trait TypeAssigner {
         c
       case _ =>
         report.error(
-          if (qual.isEmpty) tree.show + " can be used only in a class, object, or template"
-          else qual.show + " is not an enclosing class", tree.srcPos)
+          if qual.isEmpty then em"$tree can be used only in a class, object, or template"
+          else em"$qual is not an enclosing class",
+          tree.srcPos)
         NoSymbol
     }
   }
@@ -127,7 +128,7 @@ trait TypeAssigner {
     def arrayElemType = qual1.tpe.widen match
       case JavaArrayType(elemtp) => elemtp
       case qualType =>
-        report.error("Expected Array but was " + qualType.show, tree.srcPos)
+        report.error(em"Expected Array but was $qualType", tree.srcPos)
         defn.NothingType
 
     val name = tree.name

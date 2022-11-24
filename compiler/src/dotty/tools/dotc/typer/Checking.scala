@@ -1023,8 +1023,8 @@ trait Checking {
                 ("method", (n: Name) => s"method syntax .$n(...)")
             def rewriteMsg = Message.rewriteNotice("The latter", options = "-deprecation")
             report.deprecationWarning(
-              i"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
-                 |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
+              em"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
+                  |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
               tree.op.srcPos)
             if (ctx.settings.deprecation.value) {
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
@@ -1057,7 +1057,7 @@ trait Checking {
     }
     tp match {
       case tp @ AndType(tp1, tp2) =>
-        report.error(s"conflicting type arguments$where", pos)
+        report.error(em"conflicting type arguments$where", pos)
         tp1
       case tp @ AppliedType(tycon, args) =>
         tp.derivedAppliedType(tycon, args.mapConserve(checkGoodBounds))
@@ -1112,11 +1112,11 @@ trait Checking {
     if (!ctx.isAfterTyper) {
       val called = call.tpe.classSymbol
       if (called.is(JavaAnnotation))
-        report.error(i"${called.name} must appear without any argument to be a valid class parent because it is a Java annotation", call.srcPos)
+        report.error(em"${called.name} must appear without any argument to be a valid class parent because it is a Java annotation", call.srcPos)
       if (caller.is(Trait))
-        report.error(i"$caller may not call constructor of $called", call.srcPos)
+        report.error(em"$caller may not call constructor of $called", call.srcPos)
       else if (called.is(Trait) && !caller.mixins.contains(called))
-        report.error(i"""$called is already implemented by super${caller.superClass},
+        report.error(em"""$called is already implemented by super${caller.superClass},
                    |its constructor cannot be called again""", call.srcPos)
 
       // Check that constructor call is of the form _.<init>(args1)...(argsN).
@@ -1125,7 +1125,7 @@ trait Checking {
         case Apply(fn, _) => checkLegalConstructorCall(fn, tree, "")
         case TypeApply(fn, _) => checkLegalConstructorCall(fn, tree, "type ")
         case Select(_, nme.CONSTRUCTOR) => // ok
-        case _ => report.error(s"too many ${kind}arguments in parent constructor", encl.srcPos)
+        case _ => report.error(em"too many ${kind}arguments in parent constructor", encl.srcPos)
       }
       call match {
         case Apply(fn, _) => checkLegalConstructorCall(fn, call, "")
@@ -1189,7 +1189,7 @@ trait Checking {
       val check = new TreeTraverser {
         def traverse(tree: Tree)(using Context) = tree match {
           case id: Ident if vparams.exists(_.symbol == id.symbol) =>
-            report.error("illegal forward reference to method parameter", id.srcPos)
+            report.error(em"illegal forward reference to method parameter", id.srcPos)
           case _ =>
             traverseChildren(tree)
         }
@@ -1232,7 +1232,7 @@ trait Checking {
           if (t.span.isSourceDerived && owner == badOwner)
             t match {
               case t: RefTree if allowed(t.name, checkedSym) =>
-              case _ => report.error(i"illegal reference to $checkedSym from $where", t.srcPos)
+              case _ => report.error(em"illegal reference to $checkedSym from $where", t.srcPos)
             }
         val sym = t.symbol
         t match {
@@ -1349,7 +1349,7 @@ trait Checking {
     def ensureParentDerivesFrom(enumCase: Symbol)(using Context) =
       val enumCls = enumCase.owner.linkedClass
       if !firstParent.derivesFrom(enumCls) then
-        report.error(i"enum case does not extend its enum $enumCls", enumCase.srcPos)
+        report.error(em"enum case does not extend its enum $enumCls", enumCase.srcPos)
         cls.info match
           case info: ClassInfo =>
             cls.info = info.derivedClassInfo(declaredParents = enumCls.typeRefApplied :: info.declaredParents)

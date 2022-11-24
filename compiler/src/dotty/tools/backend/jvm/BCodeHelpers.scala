@@ -79,7 +79,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       outputDirectory
     } catch {
       case ex: Throwable =>
-        report.error(s"Couldn't create file for class $cName\n${ex.getMessage}", ctx.source.atSpan(csym.span))
+        report.error(em"Couldn't create file for class $cName\n${ex.getMessage}", ctx.source.atSpan(csym.span))
         null
     }
   }
@@ -871,10 +871,11 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       try body
       catch {
         case ex: Throwable =>
-          report.error(i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
-                      |signature: $sig
-                      |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
-                  """.trim, sym.sourcePos)
+          report.error(
+            em"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+                 |signature: $sig
+                 |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
+               """, sym.sourcePos)
           throw  ex
       }
     }

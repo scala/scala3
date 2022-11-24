@@ -846,7 +846,7 @@ trait Implicits:
         inferred match {
           case SearchSuccess(_, ref, _, false) if isOldStyleFunctionConversion(ref.underlying) =>
             report.migrationWarning(
-              i"The conversion ${ref} will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.",
+              em"The conversion ${ref} will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.",
               from
             )
           case _ =>
@@ -1352,13 +1352,13 @@ trait Implicits:
 
       def warnAmbiguousNegation(ambi: AmbiguousImplicits) =
         report.migrationWarning(
-          i"""Ambiguous implicits ${ambi.alt1.ref.symbol.showLocated} and ${ambi.alt2.ref.symbol.showLocated}
-             |seem to be used to implement a local failure in order to negate an implicit search.
-             |According to the new implicit resolution rules this is no longer possible;
-             |the search will fail with a global ambiguity error instead.
-             |
-             |Consider using the scala.util.NotGiven class to implement similar functionality.""",
-             srcPos)
+          em"""Ambiguous implicits ${ambi.alt1.ref.symbol.showLocated} and ${ambi.alt2.ref.symbol.showLocated}
+              |seem to be used to implement a local failure in order to negate an implicit search.
+              |According to the new implicit resolution rules this is no longer possible;
+              |the search will fail with a global ambiguity error instead.
+              |
+              |Consider using the scala.util.NotGiven class to implement similar functionality.""",
+          srcPos)
 
       /** Compare the length of the baseClasses of two symbols (except for objects,
        *  where we use the length of the companion class instead if it's bigger).

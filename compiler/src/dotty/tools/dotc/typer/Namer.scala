@@ -201,7 +201,7 @@ class Namer { typer: Typer =>
           case tree: MemberDef => SymDenotations.canBeLocal(tree.name, flags)
           case _ => false
         if !ok then
-          report.error(i"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.srcPos)
+          report.error(em"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.srcPos)
         if adapted.is(Private) && canBeLocal then adapted | Local else adapted
       }
 
@@ -762,7 +762,7 @@ class Namer { typer: Typer =>
     }
 
   def missingType(sym: Symbol, modifier: String)(using Context): Unit = {
-    report.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.srcPos)
+    report.error(em"${modifier}type of implicit definition needs to be given explicitly", sym.srcPos)
     sym.resetFlag(GivenOrImplicit)
   }
 
@@ -831,7 +831,7 @@ class Namer { typer: Typer =>
         for (annotTree <- original.mods.annotations) {
           val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
           if (cls eq sym)
-            report.error("An annotation class cannot be annotated with iself", annotTree.srcPos)
+            report.error(em"An annotation class cannot be annotated with iself", annotTree.srcPos)
           else {
             val ann = Annotation.deferred(cls)(typedAheadExpr(annotTree)(using annotCtx))
             sym.addAnnotation(ann)
@@ -1249,7 +1249,7 @@ class Namer { typer: Typer =>
           val reason = mbrs.map(canForward(_, alias)).collect {
             case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
           }.headOption.getOrElse("")
-          report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
+          report.error(em"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
         else
           targets += alias
 
@@ -1437,7 +1437,7 @@ class Namer { typer: Typer =>
         case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
           // See issue #8073 for background
           report.error(
-              i"""Implementation restriction: case classes cannot have dependencies between parameters""",
+              em"""Implementation restriction: case classes cannot have dependencies between parameters""",
               cls.srcPos)
         case _ =>
 
@@ -1687,8 +1687,10 @@ class Namer { typer: Typer =>
             if !Config.checkLevelsOnConstraints then
               val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
-                report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
-                  i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
+                report.error(
+                  em"""return type ${tpt.tpe} of lambda cannot be made hygienic
+                      |it is not a supertype of the hygienic type $hygienicType""",
+                  mdef.srcPos)
             //println(i"lifting $rhsType over $termParamss -> $hygienicType = ${tpt.tpe}")
             //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>

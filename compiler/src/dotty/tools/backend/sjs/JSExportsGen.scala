@@ -308,7 +308,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     if (isProp && methodSyms.nonEmpty) {
       val firstAlt = alts.head
       report.error(
-          i"Conflicting properties and methods for ${classSym.fullName}::$name.",
+          em"Conflicting properties and methods for ${classSym.fullName}::$name.",
           firstAlt.srcPos)
       implicit val pos = firstAlt.span
       js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(firstAlt.sourcePos), None, None)
@@ -612,7 +612,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val altsTypesInfo = alts.map(_.info.show).sorted.mkString("\n  ")
 
     report.error(
-        s"Cannot disambiguate overloads for $fullKind $displayName with types\n  $altsTypesInfo",
+        em"Cannot disambiguate overloads for $fullKind $displayName with types\n  $altsTypesInfo",
         pos)
   }
 

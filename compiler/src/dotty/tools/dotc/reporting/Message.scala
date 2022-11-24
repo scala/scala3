@@ -13,6 +13,23 @@ import scala.language.unsafeNulls
 
 import scala.annotation.threadUnsafe
 
+/** ## Tips for error message generation
+ *
+ *  - You can use the `em` interpolator for error messages. It's defined in decorators.
+ *  - You can also use a simple string argument for `error` or `warning` (not for the other variants),
+ *    but the string should not be interpolated or composed of objects that require a
+ *    Context for evaluation.
+ *  - When embedding interpolated substrings defined elsewhere in error messages,
+ *    make sure they are defined as def's instead of vals. That way, the
+ *    possibly expensive interpolation will performed only in the case where the message
+ *    is eventually printed. Note: At least during typer, it's common for messages
+ *    to be discarded without being printed. Also, by making them defs, you ensure that
+ *    they will be evaluated in the Message context, which makes formatting safer
+ *    and more robust.
+ *  - For common messages, or messages that might require explanation, prefer defining
+ *    a new Message class in messages and use that instead. The advantage is that these
+ *    messages have unique IDs that can be referenced elsewhere.
+ */
 object Message:
   def rewriteNotice(what: String, version: SourceVersion | Null = null, options: String = "")(using Context): String =
     if !ctx.mode.is(Mode.Interactive) then

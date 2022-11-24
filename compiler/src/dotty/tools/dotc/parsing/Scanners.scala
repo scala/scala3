@@ -100,6 +100,7 @@ object Scanners {
       */
     var errOffset: Offset = NoOffset
 
+    /** Implements CharArrayReader's error method */
     protected def error(msg: String, off: Offset): Unit =
       error(msg.toMessage, off)
 
@@ -248,7 +249,7 @@ object Scanners {
         if scala3keywords.contains(keyword) && migrateTo3 then
           val what = tokenString(keyword)
           report.errorOrMigrationWarning(
-            i"$what is now a keyword, write `$what` instead of $what to keep it as an identifier",
+            em"$what is now a keyword, write `$what` instead of $what to keep it as an identifier",
             sourcePos(),
             from = `3.0`)
           patch(source, Span(offset), "`")
@@ -978,11 +979,11 @@ object Scanners {
           def fetchOther() =
             if (ch == '\u21D2') {
               nextChar(); token = ARROW
-              report.deprecationWarning("The unicode arrow `⇒` is deprecated, use `=>` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
+              report.deprecationWarning(em"The unicode arrow `⇒` is deprecated, use `=>` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
             }
             else if (ch == '\u2190') {
               nextChar(); token = LARROW
-              report.deprecationWarning("The unicode arrow `←` is deprecated, use `<-` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
+              report.deprecationWarning(em"The unicode arrow `←` is deprecated, use `<-` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
             }
             else if (Character.isUnicodeIdentifierStart(ch)) {
               putChar(ch)

@@ -241,7 +241,7 @@ object TypeTestsCasts {
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
             if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
-              report.error(i"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
+              report.error(em"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
               false
             else foundClasses.exists(check)
           end checkSensical
@@ -345,7 +345,7 @@ object TypeTestsCasts {
             val testWidened = testType.widen
             defn.untestableClasses.find(testWidened.isRef(_)) match
               case Some(untestable) =>
-                report.error(i"$untestable cannot be used in runtime type tests", tree.srcPos)
+                report.error(em"$untestable cannot be used in runtime type tests", tree.srcPos)
                 constant(expr, Literal(Constant(false)))
               case _ =>
                 val erasedTestType = erasure(testType)
@@ -359,7 +359,7 @@ object TypeTestsCasts {
           if !isTrusted && !isUnchecked then
             val whyNot = whyUncheckable(expr.tpe, argType, tree.span)
             if whyNot.nonEmpty then
-              report.uncheckedWarning(i"the type test for $argType cannot be checked at runtime because $whyNot", expr.srcPos)
+              report.uncheckedWarning(em"the type test for $argType cannot be checked at runtime because $whyNot", expr.srcPos)
           transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }

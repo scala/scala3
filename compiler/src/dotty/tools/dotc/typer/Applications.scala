@@ -1104,8 +1104,8 @@ trait Applications extends Compatibility {
     for (case arg @ NamedArg(id, argtpt) <- args) yield {
       if !Feature.namedTypeArgsEnabled then
         report.error(
-          i"""Named type arguments are experimental,
-             |they must be enabled with a `experimental.namedTypeArguments` language import or setting""",
+          em"""Named type arguments are experimental,
+              |they must be enabled with a `experimental.namedTypeArguments` language import or setting""",
           arg.srcPos)
       val argtpt1 = typedType(argtpt)
       cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
@@ -1396,7 +1396,7 @@ trait Applications extends Compatibility {
             case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
             case Apply(unapply, `dummyArg` :: Nil) =>
             case Inlined(u, _, _) => loop(u)
-            case DynamicUnapply(_) => report.error("Structural unapply is not supported", unapplyFn.srcPos)
+            case DynamicUnapply(_) => report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
             case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
             case _ => ().assertingErrorsReported
           }

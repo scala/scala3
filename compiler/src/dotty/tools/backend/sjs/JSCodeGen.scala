@@ -3652,7 +3652,7 @@ class JSCodeGen()(using genCtx: Context) {
     } else if (sym.isJSType) {
       if (sym.is(Trait)) {
         report.error(
-            s"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
+            em"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
             pos)
         js.BooleanLiteral(true)
       } else {

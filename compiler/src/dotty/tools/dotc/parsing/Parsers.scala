@@ -1069,7 +1069,7 @@ object Parsers {
         val name = in.name
         if name == nme.CONSTRUCTOR || name == nme.STATIC_CONSTRUCTOR then
           report.error(
-            i"""Illegal backquoted identifier: `<init>` and `<clinit>` are forbidden""",
+            em"""Illegal backquoted identifier: `<init>` and `<clinit>` are forbidden""",
             in.sourcePos())
         in.nextToken()
         name
@@ -1352,9 +1352,9 @@ object Parsers {
         in.nextToken()
         if in.indentWidth(in.offset) == in.currentRegion.indentWidth then
           report.errorOrMigrationWarning(
-            i"""This opening brace will start a new statement in Scala 3.
-               |It needs to be indented to the right to keep being treated as
-               |an argument to the previous expression.${rewriteNotice()}""",
+            em"""This opening brace will start a new statement in Scala 3.
+                |It needs to be indented to the right to keep being treated as
+                |an argument to the previous expression.${rewriteNotice()}""",
             in.sourcePos(), from = `3.0`)
           patch(source, Span(in.offset), "  ")
 
@@ -1966,7 +1966,7 @@ object Parsers {
         } :: contextBounds(pname)
       else if in.token == VIEWBOUND then
         report.errorOrMigrationWarning(
-          "view bounds `<%' are no longer supported, use a context bound `:' instead",
+          em"view bounds `<%' are no longer supported, use a context bound `:' instead",
           in.sourcePos(), from = `3.0`)
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
@@ -2117,8 +2117,8 @@ object Parsers {
         }
       case DO =>
         report.errorOrMigrationWarning(
-          i"""`do <body> while <cond>` is no longer supported,
-             |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
+          em"""`do <body> while <cond>` is no longer supported,
+              |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
           in.sourcePos(), from = `3.0`)
         val start = in.skipToken()
         atSpan(start) {
@@ -2306,7 +2306,7 @@ object Parsers {
         val t =
           if ((in.token == COLONop || in.token == COLONfollow) && location == Location.InBlock) {
             report.errorOrMigrationWarning(
-              s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice(`future-migration`)}",
+              em"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice(`future-migration`)}",
               source.atSpan(Span(start, in.lastOffset)),
               from = future)
             in.nextToken()
@@ -3517,7 +3517,7 @@ object Parsers {
           else ": Unit "  // trailing space ensures that `def f()def g()` works.
         if migrateTo3 then
           report.errorOrMigrationWarning(
-            s"Procedure syntax no longer supported; `$toInsert` should be inserted here",
+            em"Procedure syntax no longer supported; `$toInsert` should be inserted here",
             in.sourcePos(), from = `3.0`)
           patch(source, Span(in.lastOffset), toInsert)
           true
@@ -3931,7 +3931,7 @@ object Parsers {
           in.nextToken()
           if (in.token == LBRACE || in.token == COLONeol) {
             report.errorOrMigrationWarning(
-              "`extends` must be followed by at least one parent",
+              em"`extends` must be followed by at least one parent",
               in.sourcePos(), from = `3.0`)
             Nil
           }

@@ -58,11 +58,9 @@ object RefChecks {
           // constructors of different classes are allowed to have defaults
           if (haveDefaults.exists(x => !x.isConstructor) || owners.distinct.size < haveDefaults.size)
             report.error(
-              "in " + clazz +
-                ", multiple overloaded alternatives of " + haveDefaults.head +
-                " define default arguments" + (
-                  if (owners.forall(_ == clazz)) "."
-                  else ".\nThe members with defaults are defined in " + owners.map(_.showLocated).mkString("", " and ", ".")),
+              em"in $clazz, multiple overloaded alternatives of ${haveDefaults.head} define default arguments${
+                  if owners.forall(_ == clazz) then "."
+                  else i".\nThe members with defaults are defined in ${owners.map(_.showLocated).mkString("", " and ", ".")}"}",
               clazz.srcPos)
         }
       }
@@ -375,7 +373,7 @@ object RefChecks {
 
       def overrideDeprecation(what: String, member: Symbol, other: Symbol, fix: String): Unit =
         report.deprecationWarning(
-          s"overriding $what${infoStringWithLocation(other)} is deprecated;\n  ${infoString(member)} should be $fix.",
+          em"overriding $what${infoStringWithLocation(other)} is deprecated;\n  ${infoString(member)} should be $fix.",
           if member.owner == clazz then member.srcPos else clazz.srcPos)
 
       def autoOverride(sym: Symbol) =
@@ -461,7 +459,7 @@ object RefChecks {
         if (autoOverride(member) ||
             other.owner.isAllOf(JavaInterface) &&
             warnOnMigration(
-              "`override` modifier required when a Java 8 default method is re-implemented".toMessage,
+              em"`override` modifier required when a Java 8 default method is re-implemented",
               member.srcPos, version = `3.0`))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
@@ -518,7 +516,7 @@ object RefChecks {
           overrideError(i"cannot override val parameter ${other.showLocated}")
         else
           report.deprecationWarning(
-            i"overriding val parameter ${other.showLocated} is deprecated, will be illegal in a future version",
+            em"overriding val parameter ${other.showLocated} is deprecated, will be illegal in a future version",
             member.srcPos)
       else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.12)
         overrideError("may not override non-experimental member")
@@ -541,7 +539,7 @@ object RefChecks {
       val abstractErrors = new mutable.ListBuffer[String]
       def abstractErrorMessage =
         // a little formatting polish
-        if (abstractErrors.size <= 2) abstractErrors mkString " "
+        if (abstractErrors.size <= 2) abstractErrors.mkString(" ")
         else abstractErrors.tail.mkString(abstractErrors.head + ":\n", "\n", "")
 
       def abstractClassError(mustBeMixin: Boolean, msg: String): Unit = {
@@ -943,7 +941,7 @@ object RefChecks {
       for bc <- cls.baseClasses.tail do
         val other = sym.matchingDecl(bc, cls.thisType)
         if other.exists then
-          report.error(i"private $sym cannot override ${other.showLocated}", sym.srcPos)
+          report.error(em"private $sym cannot override ${other.showLocated}", sym.srcPos)
   end checkNoPrivateOverrides
 
   /** Check that unary method definition do not receive parameters.

@@ -331,8 +331,9 @@ abstract class SymbolLoader extends LazyType { self =>
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
       report.error(
-        if (msg == null) "i/o error while loading " + root.name
-        else "error while loading " + root.name + ",\n" + msg)
+        if msg == null then em"i/o error while loading ${root.name}"
+        else em"""error while loading ${root.name},
+                 |$msg""")
     }
     try {
       val start = System.currentTimeMillis

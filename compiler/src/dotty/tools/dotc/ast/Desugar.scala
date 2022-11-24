@@ -911,7 +911,7 @@ object desugar {
             case params :: paramss1 => // `params` must have a single parameter and without `given` flag
 
               def badRightAssoc(problem: String) =
-                report.error(i"right-associative extension method $problem", mdef.srcPos)
+                report.error(em"right-associative extension method $problem", mdef.srcPos)
                 extParamss ++ mdef.paramss
 
               params match
@@ -1237,7 +1237,7 @@ object desugar {
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
     def check(rhs: Tree): MemberDef = rhs match
       case bounds: TypeBoundsTree if bounds.alias.isEmpty =>
-        report.error(i"opaque type must have a right-hand side", tree.srcPos)
+        report.error(em"opaque type must have a right-hand side", tree.srcPos)
         tree.withMods(tree.mods.withoutFlags(Opaque))
       case LambdaTypeTree(_, body) => check(body)
       case _ => tree

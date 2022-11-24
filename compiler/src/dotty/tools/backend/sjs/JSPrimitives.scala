@@ -5,6 +5,7 @@ import Names.TermName
 import Types._
 import Contexts._
 import Symbols._
+import Decorators.em
 
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.backend.jvm.DottyPrimitives
@@ -90,7 +91,7 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty) {
-        report.error(s"Unknown primitive method $cls.$method")
+        report.error(em"Unknown primitive method $cls.$method")
       } else {
         for (s <- alts)
           addPrimitive(s, code)

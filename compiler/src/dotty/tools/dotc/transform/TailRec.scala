@@ -4,7 +4,7 @@ package transform
 import ast.{TreeTypeMap, tpd}
 import config.Printers.tailrec
 import core.*
-import Contexts.*, Flags.*, Symbols.*
+import Contexts.*, Flags.*, Symbols.*, Decorators.em
 import Constants.Constant
 import NameKinds.{TailLabelName, TailLocalName, TailTempName}
 import StdNames.nme
@@ -303,7 +303,7 @@ class TailRec extends MiniPhase {
         def fail(reason: String) = {
           if (isMandatory) {
             failureReported = true
-            report.error(s"Cannot rewrite recursive call: $reason", tree.srcPos)
+            report.error(em"Cannot rewrite recursive call: $reason", tree.srcPos)
           }
           else
             tailrec.println("Cannot rewrite recursive call at: " + tree.span + " because: " + reason)

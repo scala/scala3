@@ -67,7 +67,7 @@ class CrossVersionChecks extends MiniPhase:
       if !skipWarning then
         val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
         val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
-        report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
+        report.deprecationWarning(em"${sym.showLocated} is deprecated${since}${msg}", pos)
 
   private def checkExperimentalSignature(sym: Symbol, pos: SrcPos)(using Context): Unit =
     class Checker extends TypeTraverser:
@@ -110,8 +110,9 @@ class CrossVersionChecks extends MiniPhase:
           !sym.isDeprecated && !sym.is(Deferred))
       if (!concrOvers.isEmpty)
         report.deprecationWarning(
-          symbol.toString + " overrides concrete, non-deprecated symbol(s):" +
-            concrOvers.map(_.name).mkString("    ", ", ", ""), tree.srcPos)
+          em"""$symbol overrides concrete, non-deprecated definition(s):
+              |    ${concrOvers.map(_.name).mkString(", ")}""",
+          tree.srcPos)
     }
   }
 

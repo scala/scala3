@@ -88,7 +88,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
           report.error(
-            s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz.is(Package)}. Accessor required for ${sel} (${sel.show})",
+            em"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz.is(Package)}. Accessor required for ${sel.toString} ($sel)",
             sel.srcPos)
         else accDefs(clazz) += DefDef(acc, EmptyTree).withSpan(accRange)
         acc
@@ -109,16 +109,16 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
     if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.isAllOf(ParamForwarder))
       // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
-      report.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.srcPos)
+      report.error(em"super may be not be used on ${sym.underlyingSymbol}", sel.srcPos)
     else if (isDisallowed(sym))
-      report.error(s"super not allowed here: use this.${sel.name} instead", sel.srcPos)
+      report.error(em"super not allowed here: use this.${sel.name} instead", sel.srcPos)
     else if (sym.is(Deferred)) {
       val member = sym.overridingSymbol(clazz.asClass)
       if (!mix.name.isEmpty ||
           !member.exists ||
           !(member.is(AbsOverride) && member.isIncompleteIn(clazz)))
         report.error(
-            i"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
+            em"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
             sel.srcPos)
       else report.log(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
     }
@@ -131,7 +131,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
             val overriding = sym.overridingSymbol(intermediateClass)
             if (overriding.is(Deferred, butNot = AbsOverride) && !overriding.owner.is(Trait))
               report.error(
-                s"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
+                em"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
                 sel.srcPos)
           }
         else {

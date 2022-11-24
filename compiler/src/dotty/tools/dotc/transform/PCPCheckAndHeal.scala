@@ -253,7 +253,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
             pos)
         tp
       case _ =>
-        report.error(i"""Reference to $tp within quotes requires a given $reqType in scope.
+        report.error(em"""Reference to $tp within quotes requires a given $reqType in scope.
                      |
                      |""", pos)
         tp

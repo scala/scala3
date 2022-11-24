@@ -47,7 +47,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
       case obj: T => Some(obj)
       case obj =>
         // TODO upgrade to a full type tag check or something similar
-        report.error(s"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
+        report.error(em"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
         None
     }
 

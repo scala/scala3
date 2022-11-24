@@ -1212,8 +1212,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        && defn.isContextFunctionType(pt1.nonPrivateMember(nme.apply).info.finalResultType)
     then
       report.error(
-        i"""Implementation restriction: Expected result type $pt1
-           |is a curried dependent context function type. Such types are not yet supported.""",
+        em"""Implementation restriction: Expected result type $pt1
+            |is a curried dependent context function type. Such types are not yet supported.""",
         pos)
     pt1 match {
       case tp: TypeParamRef =>
@@ -1324,7 +1324,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val appDef = typed(appDef0).asInstanceOf[DefDef]
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
       if (mt.isParamDependent)
-        report.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
+        report.error(em"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
       val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
       val typeArgs = appDef.termParamss.head.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funSym.typeRef)
@@ -2446,7 +2446,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // error if the same parent was explicitly added in user code.
         if !tree.span.isSourceDerived then
           return EmptyTree
-        if !ctx.isAfterTyper then report.error(i"$psym is extended twice", tree.srcPos)
+        if !ctx.isAfterTyper then report.error(em"$psym is extended twice", tree.srcPos)
       else
         seenParents += psym
       val result = ensureConstrCall(cls, parent, psym)(using superCtx)
@@ -2563,7 +2563,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
          && effectiveOwner.is(Trait)
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
       then
-        report.error(i"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
+        report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
 
       // Temporarily set the typed class def as root tree so that we have at least some
       // information in the IDE in case we never reach `SetRootTree`.
@@ -2750,8 +2750,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
         else s"use `$prefix<function>$suffix` instead"
       report.errorOrMigrationWarning(
-        i"""The syntax `<function> _` is no longer supported;
-           |you can $remedy""",
+        em"""The syntax `<function> _` is no longer supported;
+            |you can $remedy""",
         tree.srcPos,
         from = future)
       if sourceVersion.isMigrating then
@@ -2883,7 +2883,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     else ""
                   val namePos = tree.sourcePos.withSpan(tree.nameSpan)
                   report.errorOrMigrationWarning(
-                    s"`?` is not a valid type name$addendum", namePos, from = `3.0`)
+                    em"`?` is not a valid type name$addendum", namePos, from = `3.0`)
                 if tree.isClassDef then
                   typedClassDef(tree, sym.asClass)(using ctx.localContext(tree, sym))
                 else
@@ -3796,8 +3796,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           }
           else {
             report.error(
-              """Scala 2 macro cannot be used in Dotty. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html
-                |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""".stripMargin, tree.srcPos.startPos)
+              em"""Scala 2 macro cannot be used in Dotty. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html
+                  |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""",
+              tree.srcPos.startPos)
             tree
           }
         else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
@@ -4228,11 +4229,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ =>
           if !config.Feature.scala2ExperimentalMacroEnabled then
             report.error(
-              """Scala 2 macro definition needs to be enabled
-                |by making the implicit value scala.language.experimental.macros visible.
-                |This can be achieved by adding the import clause 'import scala.language.experimental.macros'
-                |or by setting the compiler option -language:experimental.macros.
-              """.stripMargin, call.srcPos)
+              em"""Scala 2 macro definition needs to be enabled
+                  |by making the implicit value scala.language.experimental.macros visible.
+                  |This can be achieved by adding the import clause 'import scala.language.experimental.macros'
+                  |or by setting the compiler option -language:experimental.macros.
+                """,
+              call.srcPos)
       call match
         case call: untpd.Ident =>
           typedIdent(call, defn.AnyType)
@@ -4247,7 +4249,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             typedTypeApply(call2, defn.AnyType)
           }
         case _ =>
-          report.error("Invalid Scala 2 macro " + call.show, call.srcPos)
+          report.error(em"Invalid Scala 2 macro $call", call.srcPos)
           EmptyTree
     else typedExpr(call, defn.AnyType)
 
