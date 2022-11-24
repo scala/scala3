@@ -522,9 +522,6 @@ object Build {
 
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
-      // Temporary for the upgrade to Scala.js 1.11.0 - remove with Scala.js 1.12.0
-      Compile / scalacOptions -= "-Xfatal-warnings",
-
       // Generate compiler.properties, used by sbt
       (Compile / resourceGenerators) += Def.task {
         import java.util._
@@ -1195,6 +1192,8 @@ object Build {
             "isFullOpt" -> (stage == FullOptStage),
             "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
             "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+            "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
+            "compliantNegativeArraySizes" -> (sems.negativeArraySizes == CheckedBehavior.Compliant),
             "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
             "strictFloats" -> sems.strictFloats,
@@ -1271,6 +1270,14 @@ object Build {
           ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-esmodule")
         )
       },
+
+      /* For some reason, in Scala 3, the implementation of IterableDefaultTest
+       * resolves to `scala.collection.ArrayOps.ArrayIterator`, whose `next()`
+       * method is not compliant when called past the last element on Scala.js.
+       * It relies on catching an `ArrayIndexOutOfBoundsException`.
+       * We have to ignore it here.
+       */
+      Test / testOptions := Seq(Tests.Filter(_ != "org.scalajs.testsuite.javalib.lang.IterableDefaultTest")),
 
       Test / managedResources ++= {
         val testDir = fetchScalaJSSource.value / "test-suite/js/src/test"
