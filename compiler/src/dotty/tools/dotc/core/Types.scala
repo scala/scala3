@@ -2188,7 +2188,7 @@ object Types {
     def designator: Designator
     protected def designator_=(d: Designator): Unit
 
-    assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
+    assert(NamedType.validPrefix(prefix), s"invalid prefix $prefix")
 
     private var myName: Name | Null = null
     private var lastDenotation: Denotation | Null = null
@@ -2698,7 +2698,7 @@ object Types {
         this
 
     /** A reference like this one, but with the given prefix. */
-    final def withPrefix(prefix: Type)(using Context): NamedType = {
+    final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
         val lastSym = lastSymbol.nn
         val allowPrivate = !lastSym.exists || lastSym.is(Private)
@@ -2711,6 +2711,7 @@ object Types {
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this
+      else if !NamedType.validPrefix(prefix) then UnspecifiedErrorType
       else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
         case sym: Symbol =>
@@ -2902,6 +2903,8 @@ object Types {
     def apply(prefix: Type, designator: Name, denot: Denotation)(using Context): NamedType =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
+
+    def validPrefix(prefix: Type): Boolean = prefix.isValueType || (prefix eq NoPrefix)
   }
 
   object TermRef {
