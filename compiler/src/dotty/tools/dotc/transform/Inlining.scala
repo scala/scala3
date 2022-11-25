@@ -63,6 +63,12 @@ class Inlining extends MacroTransform with IdentityDenotTransformer {
   }
 
   private class InliningTreeMap extends TreeMapWithImplicits {
+
+    /** List of top level classes added by macro annotation in a package object.
+     *  These are added the PackageDef that owns this particular package object.
+     */
+    private val topClasses = new collection.mutable.ListBuffer[Tree]
+
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
         case tree: MemberDef =>
@@ -74,7 +80,15 @@ class Inlining extends MacroTransform with IdentityDenotTransformer {
             && MacroAnnotations.hasMacroAnnotation(tree.symbol)
           then
             val trees = new MacroAnnotations(thisPhase).expandAnnotations(tree)
-            flatTree(trees.map(super.transform))
+            val trees1 = trees.map(super.transform)
+
+            // Find classes added to the top level from a package object
+            val (topClasses0, trees2) =
+              if ctx.owner.isPackageObject then trees1.partition(_.symbol.owner == ctx.owner.owner)
+              else (Nil, trees1)
+            topClasses ++= topClasses0
+
+            flatTree(trees2)
           else super.transform(tree)
         case _: Typed | _: Block =>
           super.transform(tree)
@@ -86,6 +100,14 @@ class Inlining extends MacroTransform with IdentityDenotTransformer {
           super.transform(tree)(using StagingContext.quoteContext)
         case _: GenericApply if tree.symbol.isExprSplice =>
           super.transform(tree)(using StagingContext.spliceContext)
+        case _: PackageDef =>
+          super.transform(tree) match
+            case tree1: PackageDef if !topClasses.isEmpty =>
+              topClasses ++= tree1.stats
+              val newStats = topClasses.result()
+              topClasses.clear()
+              cpy.PackageDef(tree1)(tree1.pid, newStats)
+            case tree1 => tree1
         case _ =>
           super.transform(tree)
     }

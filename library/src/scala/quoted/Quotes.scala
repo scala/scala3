@@ -3638,6 +3638,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
        *        direct or indirect children of the reflection context's owner.
        */
+      // TODO: add flags and privateWithin
       @experimental def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
 
       /** Generates a new method symbol with the given parent, name and type.
@@ -4217,7 +4218,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     //   FLAGS   //
     ///////////////
 
-    /** FlagSet of a Symbol */
+    /** Flags of a Symbol */
     type Flags
 
     /** Module object of `type Flags`  */
