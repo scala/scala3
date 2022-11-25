@@ -38,6 +38,8 @@ import java.lang.ref.WeakReference
 import compiletime.uninitialized
 import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
+import scala.collection.mutable.ListBuffer
+import dotty.tools.dotc.util._
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -3485,40 +3487,52 @@ object Types {
 
     /** Returns the set of non-union (leaf) types composing this union tree with Nothing types
      *  absorbed by other types, if present. For example:<br>
-     *  `(A | B | C | B | (A & (B | C)) | Nothing)` returns `Set(A, B, C, (A & (B | C)))`.
+     *  `(A | B | C | B | (A & (B | C)) | Nothing)` returns `{A, B, C, (A & (B | C))}`.
      */
-    private def gatherTreeUniqueMembersAbsorbingNothingTypes(using Context): Set[Type] = {
-      (tp1, tp2) match
-        case (l: OrType, r: OrType) =>
-          l.gatherTreeUniqueMembersAbsorbingNothingTypes ++ r.gatherTreeUniqueMembersAbsorbingNothingTypes
-        case (l: OrType, r) =>
-          if r.isNothingType
-          then l.gatherTreeUniqueMembersAbsorbingNothingTypes
-          else l.gatherTreeUniqueMembersAbsorbingNothingTypes + r
-        case (l, r: OrType) =>
-          if l.isNothingType
-          then r.gatherTreeUniqueMembersAbsorbingNothingTypes
-          else r.gatherTreeUniqueMembersAbsorbingNothingTypes + l
-        case (l, r) =>
-          if r.isNothingType then Set(l)
-          else if l.isNothingType then Set(r)
-          else Set(l, r)
+    private def gatherTreeUniqueMembersAbsorbingNothingTypes(using Context): MutableSet[Type] = {
+
+      var trees = List(this)
+      val uniqueTreeMembers = new EqLinkedHashSet[Type]
+
+      while (trees.nonEmpty) {
+        trees match {
+          case head :: tail =>
+            head match {
+              case OrType(l: OrType, r: OrType) =>
+                trees = l :: r :: tail
+              case OrType(l, r: OrType) =>
+                trees = r :: tail
+                if !l.isNothingType then uniqueTreeMembers += l
+              case OrType(l: OrType, r) =>
+                trees = l :: tail
+                if !r.isNothingType then uniqueTreeMembers += r
+              case OrType(l, r) =>
+                trees = tail
+                uniqueTreeMembers += l
+                if !r.isNothingType then uniqueTreeMembers += r
+            }
+          case _ =>
+        }
+      }
+
+      uniqueTreeMembers
     }
 
-    /** Returns an equivalent union tree without repeated members and with Nothing types absorbed
-     *  by other types, if present. Weaker than LUB.
+    /** Returns an equivalent union tree without repeated members, preserving order and absorbing
+     *  Nothing types, if present. Weaker than LUB.
      */
     def deduplicatedAbsorbingNothingTypes(using Context): Type = {
+
       val uniqueTreeMembers = this.gatherTreeUniqueMembersAbsorbingNothingTypes
       val factorCount = orFactorCount(isSoft)
 
       uniqueTreeMembers.size match {
         case 1 =>
-          uniqueTreeMembers.head
+          uniqueTreeMembers.iterator.next()
         case uniqueMembersCount if uniqueMembersCount < factorCount =>
-          val uniqueMembers = uniqueTreeMembers.iterator
-          val startingUnion = OrType(uniqueMembers.next(), uniqueMembers.next(), isSoft)
-          uniqueMembers.foldLeft(startingUnion)(OrType(_, _, isSoft))
+          val members = uniqueTreeMembers.iterator
+          val startingUnion = OrType(members.next(), members.next(), isSoft)
+          members.foldLeft(startingUnion)(OrType(_, _, isSoft))
         case _ =>
           this
       }
