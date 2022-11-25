@@ -38,8 +38,8 @@ class InlineVals extends MiniPhase:
       tpt.tpe.widenTermRefExpr.dealiasKeepOpaques.normalized match
         case tp: ConstantType =>
           if !isPureExpr(rhs) then
-            val details = if enclosingInlineds.isEmpty then "" else em"but was: $rhs"
-            report.error(s"inline value must be pure$details", rhs.srcPos)
+            def details = if enclosingInlineds.isEmpty then "" else i"but was: $rhs"
+            report.error(em"inline value must be pure$details", rhs.srcPos)
         case tp =>
           if tp.typeSymbol.is(Opaque) then
             report.error(em"The type of an `inline val` cannot be an opaque type.\n\nTo inline, consider using `inline def` instead", rhs)

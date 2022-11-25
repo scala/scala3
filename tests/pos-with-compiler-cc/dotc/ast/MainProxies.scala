@@ -56,7 +56,7 @@ object MainProxies {
 
     def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree =
       if (mt.isImplicitMethod) {
-        report.error(s"@main method cannot have implicit parameters", pos)
+        report.error(em"@main method cannot have implicit parameters", pos)
         call
       }
       else {
@@ -74,7 +74,7 @@ object MainProxies {
         mt.resType match {
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
-              report.error(s"varargs parameter of @main method must come last", pos)
+              report.error(em"varargs parameter of @main method must come last", pos)
             addArgs(call1, restpe, idx + args.length)
           case _ =>
             call1
@@ -83,7 +83,7 @@ object MainProxies {
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
-      report.error(s"@main method is not statically accessible", pos)
+      report.error(em"@main method is not statically accessible", pos)
     else {
       var call = ref(mainFun.termRef)
       mainFun.info match {
@@ -91,9 +91,9 @@ object MainProxies {
         case mt: MethodType =>
           call = addArgs(call, mt, 0)
         case _: PolyType =>
-          report.error(s"@main method cannot have type parameters", pos)
+          report.error(em"@main method cannot have type parameters", pos)
         case _ =>
-          report.error(s"@main can only annotate a method", pos)
+          report.error(em"@main can only annotate a method", pos)
       }
       val errVar = Ident(nme.error)
       val handler = CaseDef(
@@ -203,7 +203,7 @@ object MainProxies {
             ))
             (sym, paramAnnotations.toVector, defaultValueSymbols(scope, sym), stat.rawComment) :: Nil
           case mainAnnot :: others =>
-            report.error(s"method cannot have multiple main annotations", mainAnnot.tree)
+            report.error(em"method cannot have multiple main annotations", mainAnnot.tree)
             Nil
         }
       case stat @ TypeDef(_, impl: Template) if stat.symbol.is(Module) =>
@@ -379,26 +379,26 @@ object MainProxies {
     end generateMainClass
 
     if (!mainFun.owner.isStaticOwner)
-      report.error(s"main method is not statically accessible", pos)
+      report.error(em"main method is not statically accessible", pos)
       None
     else mainFun.info match {
       case _: ExprType =>
         Some(generateMainClass(unitToValue(ref(mainFun.termRef)), Nil, Nil))
       case mt: MethodType =>
         if (mt.isImplicitMethod)
-          report.error(s"main method cannot have implicit parameters", pos)
+          report.error(em"main method cannot have implicit parameters", pos)
           None
         else mt.resType match
           case restpe: MethodType =>
-            report.error(s"main method cannot be curried", pos)
+            report.error(em"main method cannot be curried", pos)
             None
           case _ =>
             Some(generateMainClass(unitToValue(Apply(ref(mainFun.termRef), argRefs(mt))), argValDefs(mt), parameterInfos(mt)))
       case _: PolyType =>
-        report.error(s"main method cannot have type parameters", pos)
+        report.error(em"main method cannot have type parameters", pos)
         None
       case _ =>
-        report.error(s"main can only annotate a method", pos)
+        report.error(em"main can only annotate a method", pos)
         None
     }
   }

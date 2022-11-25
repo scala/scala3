@@ -216,7 +216,7 @@ object DesugarEnums {
           case Ident(name) =>
             val matches = tparamNames.contains(name)
             if (matches && (caseTypeParams.nonEmpty || vparamss.isEmpty))
-              report.error(i"illegal reference to type parameter $name from enum case", tree.srcPos)
+              report.error(em"illegal reference to type parameter $name from enum case", tree.srcPos)
             matches
           case LambdaTypeTree(lambdaParams, body) =>
             underBinders(lambdaParams, foldOver(x, tree))

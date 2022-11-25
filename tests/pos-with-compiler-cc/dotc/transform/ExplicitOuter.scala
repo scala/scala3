@@ -176,8 +176,9 @@ object ExplicitOuter {
           if prefix == NoPrefix then outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty))
           else prefix.widen)
     val info = if (flags.is(Method)) ExprType(target) else target
+    val currentNestingLevel = ctx.nestingLevel
     atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
-      newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord)
+      newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord, nestingLevel = currentNestingLevel)
     }
   }
 
