@@ -5,8 +5,8 @@ def test1 = {
   def f21: (Int => Int) | Null = x => x + 1
   def f22: Null | (Int => Int) = x => x + 1
 
-  def f31: (Int => Int) | (Int => Int) = x => x + 1
-  def f32: (Int => Int) | (Int => Int) | Unit = x => x + 1
+  def f31: (Int => Int) | (Int => Int) = x => x + 1  // error
+  def f32: (Int => Int) | (Int => Int) | Unit = x => x + 1 // error
 
   def f41: (Int => Int) & (Int => Int) = x => x + 1
   def f42: (Int => Int) & (Int => Int) & Any = x => x + 1
