@@ -1766,7 +1766,7 @@ object desugar {
 
     val desugared = tree match {
       case ThrowsReturn(exceptions, rteTpe) =>
-        val r = exceptions.reduce((left, right) => InfixOp(left, Ident(nme.OR.toTypeName), right))
+        val r = exceptions.reduce((left, right) => InfixOp(left, Ident(tpnme.OR), right))
         val args = AppliedTypeTree(Ident(defn.CanThrowClass.name), r)
         Printers.saferExceptions.println(i"$args")
         FunctionWithMods(args :: Nil, rteTpe, Modifiers(Flags.Given))
