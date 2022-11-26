@@ -32,15 +32,3 @@ class EqLinkedHashSet[T](
   override def iterator: Iterator[T] = linkingArray.iterator
 
 }
-
-object EqLinkedHashSet {
-  def apply[T](x: T): EqLinkedHashSet[T] =
-    val set = new EqLinkedHashSet[T]
-    set += x
-    set
-
-  def apply[T](x: T, y: T): EqLinkedHashSet[T] =
-    val set = EqLinkedHashSet(x)
-    set += y
-    set
-}

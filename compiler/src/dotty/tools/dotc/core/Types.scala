@@ -3491,28 +3491,26 @@ object Types {
      */
     private def gatherTreeUniqueMembersAbsorbingNothingTypes(using Context): MutableSet[Type] = {
 
-      var trees = List(this)
+      var unvisitedSubtrees = List(this)
       val uniqueTreeMembers = new EqLinkedHashSet[Type]
 
-      while (trees.nonEmpty) {
-        trees match {
+      while (unvisitedSubtrees.nonEmpty) {
+        unvisitedSubtrees match
           case head :: tail =>
-            head match {
+            head match
               case OrType(l: OrType, r: OrType) =>
-                trees = l :: r :: tail
+                unvisitedSubtrees = l :: r :: tail
               case OrType(l, r: OrType) =>
-                trees = r :: tail
+                unvisitedSubtrees = r :: tail
                 if !l.isNothingType then uniqueTreeMembers += l
               case OrType(l: OrType, r) =>
-                trees = l :: tail
+                unvisitedSubtrees = l :: tail
                 if !r.isNothingType then uniqueTreeMembers += r
               case OrType(l, r) =>
-                trees = tail
+                unvisitedSubtrees = tail
                 uniqueTreeMembers += l
                 if !r.isNothingType then uniqueTreeMembers += r
-            }
           case _ =>
-        }
       }
 
       uniqueTreeMembers
