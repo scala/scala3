@@ -1558,12 +1558,21 @@ class Definitions {
   private val PredefImportFns: RootRef =
     RootRef(() => ScalaPredefModule.termRef, isPredef=true)
 
-  @tu private lazy val JavaRootImportFns: List[RootRef] =
-    if ctx.settings.YnoImports.value then Nil
-    else JavaImportFns
+  @tu private lazy val YimportsImportFns: List[RootRef] = ctx.settings.Yimports.value.map { name =>
+    val denot =
+      getModuleIfDefined(name).suchThat(_.is(Module)) `orElse`
+      getPackageClassIfDefined(name).suchThat(_.is(Package))
+    if !denot.exists then
+      report.error(s"error: bad preamble import $name")
+    val termRef = denot.symbol.termRef
+    RootRef(() => termRef)
+  }
+
+  @tu private lazy val JavaRootImportFns: List[RootRef] = JavaImportFns
 
   @tu private lazy val ScalaRootImportFns: List[RootRef] =
-    if ctx.settings.YnoImports.value then Nil
+    if !ctx.settings.Yimports.isDefault then YimportsImportFns
+    else if ctx.settings.YnoImports.value then Nil
     else if ctx.settings.YnoPredef.value then ScalaImportFns
     else ScalaImportFns :+ PredefImportFns
 
