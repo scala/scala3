@@ -3576,13 +3576,24 @@ object Parsers {
             if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
             accept(EQUALS)
             expr()
-
-        val ddef = DefDef(name, joinParams(tparams, vparamss), tpt, rhs)
+        val tpe =
+          if exceptions.nonEmpty then
+            ThrowsReturn(exceptions, tpt)
+          else
+            tpt
+        val ddef = DefDef(name, joinParams(tparams, vparamss), tpe, rhs)
         if (isBackquoted(ident)) ddef.pushAttachment(Backquoted, ())
         finalizeDef(ddef, mods1, start)
       }
     }
 
+    /**
+     * Parse a 'throws' declaration.
+     * If the saferException feature is disabled, this function
+     * will return Nil.
+     * ThrowsClause := (throws toplevelTyp (, toplevelTyp)*)?
+     * @return A List of all the exceptions allowed to be thrown
+     */
     def throwsClauseOpt : List[Tree] =
       if in.featureEnabled(Feature.saferExceptions) then
         if(isIdent(nme.throws))
