@@ -24,9 +24,6 @@ object ErrorReporting {
   def errorTree(tree: untpd.Tree, msg: Message)(using Context): tpd.Tree =
     errorTree(tree, msg, tree.srcPos)
 
-  def errorTree(tree: untpd.Tree, msg: -> String)(using Context): tpd.Tree =
-    errorTree(tree, msg.toMessage)
-
   def errorTree(tree: untpd.Tree, msg: TypeError, pos: SrcPos)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
 
@@ -34,9 +31,6 @@ object ErrorReporting {
     report.error(msg, pos)
     ErrorType(msg)
   }
-
-  def errorType(msg: -> String, pos: SrcPos)(using Context): ErrorType =
-    errorType(msg.toMessage, pos)
 
   def errorType(ex: TypeError, pos: SrcPos)(using Context): ErrorType = {
     report.error(ex, pos)
@@ -147,11 +141,11 @@ object ErrorReporting {
 
     def exprStr(tree: Tree): String = refStr(tree.tpe)
 
-    def takesNoParamsStr(tree: Tree, kind: String): String =
+    def takesNoParamsMsg(tree: Tree, kind: String): Message =
       if (tree.tpe.widen.exists)
-        i"${exprStr(tree)} does not take ${kind}parameters"
+        em"${exprStr(tree)} does not take ${kind}parameters"
       else {
-        i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
+        em"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
       }
 
     def patternConstrStr(tree: Tree): String = ???
@@ -272,9 +266,9 @@ object ErrorReporting {
       ownerSym.typeRef.nonClassTypeMembers.map(_.symbol)
     }.toList
 
-  def dependentStr =
+  def dependentMsg =
     """Term-dependent types are experimental,
-      |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin
+      |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin.toMessage
 
   def err(using Context): Errors = new Errors
 }

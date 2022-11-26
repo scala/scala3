@@ -893,7 +893,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     private def inlineIfNeeded(tree: Tree)(using Context): Tree =
       val meth = tree.symbol
       if meth.isAllOf(DeferredInline) then
-        errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
+        errorTree(tree, em"Deferred inline ${meth.showLocated} cannot be invoked")
       else if Inlines.needsInlining(tree) then Inlines.inlineCall(tree)
       else tree
 
