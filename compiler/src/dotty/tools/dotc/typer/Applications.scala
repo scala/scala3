@@ -902,12 +902,20 @@ trait Applications extends Compatibility {
     if (ctx.owner.isClassConstructor && untpd.isSelfConstrCall(app)) ctx.thisCallArgContext
     else ctx
 
+  // TODO HR : Change this to check for a CanThrow Capability for a Java function call
+  /*
+    (1) - How to fetch the Exceptions from a Type definition
+          I think it may have smtg to do with the Annotations
+    (2) - How to require a given object. Try to find how given are fetched from the context when
+          The compiler tries to fetch them for contextual functions
+    (3) - Do it :-)
+    */
+
   /** Typecheck application. Result could be an `Apply` node,
    *  or, if application is an operator assignment, also an `Assign` or
    *  Block node.
    */
   def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = {
-
     def realApply(using Context): Tree = {
       val resultProto = tree.fun match
         case Select(New(tpt), _) if pt.isInstanceOf[ValueType] =>
@@ -925,7 +933,17 @@ trait Applications extends Compatibility {
         new FunProto(tree.args, resultProto)(this, tree.applyKind)(using argCtx(tree))
       record("typedApply")
       val fun1 = typedExpr(tree.fun, originalProto)
-
+      // TODO HR : Add this point, we can fetch the denotation from fun1
+      // TODO HR : If it has as annotations the ThrowsAnnotation, then request
+      // TODO HR : a given instance.Otherwise, continue processing
+      // TODO HR : Weird thing, How overloading is handled ??
+      if fun1.symbol.is(JavaDefined) && Feature.enabled(Feature.saferExceptions) then
+        // TODO HR : What's the difference between i and em interpolator. (I know that i uses the the show method, how about em ?)
+        report.warning(
+          em""" A Java function was called (${fun1.symbol.name}) in a context where safer exceptions is enabled.
+              | This function might throw an exception.
+              | Handling of Java method is yet to be implemented.
+              |""".stripMargin, tree.srcPos)
       // If adaptation created a tupled dual of `originalProto`, pick the right version
       // (tupled or not) of originalProto to proceed.
       val proto =
