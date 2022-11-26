@@ -675,7 +675,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         javaSelectOnType(qual2)
 
       case _ =>
-        errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
+        errorTree(tree, em"cannot convert to type selection") // will never be printed due to fallback
     }
 
     def selectWithFallback(fallBack: Context ?=> Tree) =
@@ -1534,8 +1534,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case _ =>
                 if (mt.isParamDependent)
                   errorTree(tree,
-                    i"""cannot turn method type $mt into closure
-                       |because it has internal parameter dependencies""")
+                    em"""cannot turn method type $mt into closure
+                        |because it has internal parameter dependencies""")
                 else if ((tree.tpt `eq` untpd.ContextualEmptyTree) && mt.paramNames.isEmpty)
                   // Note implicitness of function in target type since there are no method parameters that indicate it.
                   TypeTree(defn.FunctionOf(Nil, mt.resType, isContextual = true, isErased = false))
@@ -1783,7 +1783,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       var body1 = typedType(cdef.body, pt)
       if !body1.isType then
         assert(ctx.reporter.errorsReported)
-        body1 = TypeTree(errorType("<error: not a type>", cdef.srcPos))
+        body1 = TypeTree(errorType(em"<error: not a type>", cdef.srcPos))
       assignType(cpy.CaseDef(cdef)(pat2, EmptyTree, body1), pat2, body1)
     }
     caseRest(using ctx.fresh.setFreshGADTBounds.setNewScope)
@@ -1931,7 +1931,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       .withType(
         if isFullyDefined(pt, ForceDegree.flipBottom) then pt
         else if ctx.reporter.errorsReported then UnspecifiedErrorType
-        else errorType(i"cannot infer type; expected type $pt is not fully defined", tree.srcPos))
+        else errorType(em"cannot infer type; expected type $pt is not fully defined", tree.srcPos))
 
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): Tree =
     tree match
@@ -1945,7 +1945,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // untyped tree is no longer accessed after all
             // accesses with typedTypeTree are done.
           case None =>
-            errorTree(tree, "Something's wrong: missing original symbol for type tree")
+            errorTree(tree, em"Something's wrong: missing original symbol for type tree")
         }
       case _ =>
         completeTypeTree(InferredTypeTree(), pt, tree)
@@ -1986,9 +1986,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tree.args match
       case arg :: _ if arg.isTerm =>
         if Feature.dependentEnabled then
-          return errorTree(tree, i"Not yet implemented: T(...)")
+          return errorTree(tree, em"Not yet implemented: T(...)")
         else
-          return errorTree(tree, dependentStr)
+          return errorTree(tree, dependentMsg)
       case _ =>
 
     val tpt1 = withoutMode(Mode.Pattern) {
@@ -2127,9 +2127,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedTermLambdaTypeTree(tree: untpd.TermLambdaTypeTree)(using Context): Tree =
     if Feature.dependentEnabled then
-      errorTree(tree, i"Not yet implemented: (...) =>> ...")
+      errorTree(tree, em"Not yet implemented: (...) =>> ...")
     else
-      errorTree(tree, dependentStr)
+      errorTree(tree, dependentMsg)
 
   def typedMatchTypeTree(tree: untpd.MatchTypeTree, pt: Type)(using Context): Tree = {
     val bound1 =
@@ -2161,7 +2161,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedBind(tree: untpd.Bind, pt: Type)(using Context): Tree = {
     if !isFullyDefined(pt, ForceDegree.all) then
-      return errorTree(tree, i"expected type of $tree is not fully defined")
+      return errorTree(tree, em"expected type of $tree is not fully defined")
     val body1 = typed(tree.body, pt)
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
@@ -3779,7 +3779,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else
         val meth = methPart(tree).symbol
         if meth.isAllOf(DeferredInline) && !Inlines.inInlineMethod then
-          errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
+          errorTree(tree, em"Deferred inline ${meth.showLocated} cannot be invoked")
         else if Inlines.needsInlining(tree) then
           tree.tpe <:< wildApprox(pt)
           val errorCount = ctx.reporter.errorCount

@@ -46,7 +46,7 @@ object Applications {
   def extractorMemberType(tp: Type, name: Name, errorPos: SrcPos)(using Context): Type = {
     val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
-      errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
+      errorType(em"Overloaded reference to $ref is not allowed in extractor", errorPos)
     ref.info.widenExpr.annotatedToRepeated
   }
 
@@ -1134,14 +1134,14 @@ trait Applications extends Compatibility {
 
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
     if (ctx.mode.is(Mode.Pattern))
-      return errorTree(tree, "invalid pattern")
+      return errorTree(tree, em"invalid pattern")
 
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
     typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
       case _: TypeApply if !ctx.isAfterTyper =>
-        errorTree(tree, "illegal repeated type application")
+        errorTree(tree, em"illegal repeated type application")
       case typedFn =>
         typedFn.tpe.widen match {
           case pt: PolyType =>

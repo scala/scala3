@@ -269,7 +269,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     def checkNotPackage(tree: Tree)(using Context): Tree =
       if !tree.symbol.is(Package) then tree
-      else errorTree(tree, i"${tree.symbol} cannot be used as a type")
+      else errorTree(tree, em"${tree.symbol} cannot be used as a type")
 
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
