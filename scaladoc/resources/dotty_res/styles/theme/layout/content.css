@@ -482,6 +482,8 @@ main :is(ul, ol) li .snippet {
   background-color: var(--action-primary-background-default-solid);
   padding: calc(3 * var(--base-spacing));
   border-radius: 4px;
+  padding-left: 40px;
+  text-indent: -16px;
 }
 
 #content > div > * {
@@ -544,7 +546,13 @@ main :is(ul, ol) li .snippet {
   display: block;
 }
 
-.member-group-header,
+.member-group-header{
+  height: 80px;
+  display: flex;
+  align-items: center;
+}
+
+
 .documentableList-expander  {
   display: flex;
   cursor: pointer;

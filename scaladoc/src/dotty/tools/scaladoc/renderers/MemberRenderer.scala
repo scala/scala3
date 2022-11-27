@@ -342,7 +342,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       name,
       Seq(
         div(cls := "member-group-header")(
-          button(cls := "icon-button show-content expand"),
           h3(tabAttr(name), cls := "h400")(name)
         )
       ) ++ children,

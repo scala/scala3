@@ -82,4 +82,15 @@
   width: 80%;
 }
 
+/* TODO */
+/* @media (max-width: 1376px) {
+  .attributes {
+    display: flex;
+    flex-flow: column;
+  }
 
+  .attributes > dt {
+    padding-left: 0;
+    border-bottom: 0;
+  }
+} */
