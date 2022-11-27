@@ -156,7 +156,7 @@ object Checking {
     checker.traverse(tpt.tpe)
 
   def checkNoWildcard(tree: Tree)(using Context): Tree = tree.tpe match {
-    case tpe: TypeBounds => errorTree(tree, "no wildcard type allowed here")
+    case tpe: TypeBounds => errorTree(tree, em"no wildcard type allowed here")
     case _ => tree
   }
 
