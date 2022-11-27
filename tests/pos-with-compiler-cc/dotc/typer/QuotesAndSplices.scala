@@ -329,7 +329,7 @@ trait QuotesAndSplices {
             case tp => mapOver(tp)
           }
         }
-        new TreeTypeMap(typeMap = typeMap).transform(shape1)
+        new TreeTypeMap(typeMap = typeMap.detach).transform(shape1)
       }
 
     (typeBindings.toMap, shape2, patterns)

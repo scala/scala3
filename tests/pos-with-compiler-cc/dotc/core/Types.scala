@@ -2160,7 +2160,7 @@ object Types {
   trait ProtoType extends Type {
     def isMatchedBy(tp: Type, keepConstraint: Boolean = false)(using Context): Boolean
     def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T
-    def map(tm: TypeMap)(using Context): ProtoType
+    def map(tm: TypeMap @retains(caps.*))(using Context): ProtoType
 
     /** If this prototype captures a context, the same prototype except that the result
      *  captures the given context `ctx`.
@@ -5572,8 +5572,10 @@ object Types {
       case result: CaptureRef if result.canBeTracked => result
   end BiTypeMap
 
-  abstract class TypeMap(implicit protected var mapCtx: Context)
-  extends VariantTraversal with (Type -> Type) { thisMap: TypeMap =>
+  abstract class TypeMap(using protected val mapCtx: Context @retains(caps.*))
+  extends VariantTraversal with (Type -> Type) { thisMap: TypeMap @retains(mapCtx) =>
+
+    def detach: TypeMap = this.asInstanceOf[TypeMap] // !cc! change once we track contexts
 
     def apply(tp: Type): Type
 
@@ -5639,7 +5641,7 @@ object Types {
     protected def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
       val saved = variance
       variance = v
-      try derivedCapturingType(tp, this(parent), refs.map(this))
+      try derivedCapturingType(tp, this(parent), refs.map(detach))
       finally variance = saved
 
     /** Map this function over given type */
@@ -5705,16 +5707,16 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
+          val mapCtx1 = mapCtx.asInstanceOf[FreshContext]
           LazyRef { refCtx =>
-            given Context = refCtx
-            val ref1 = tp.ref
-            if refCtx.runId == mapCtx.runId then this(ref1)
+            val ref1 = tp.ref(using refCtx)
+            if refCtx.runId == mapCtx1.runId then this(ref1)
             else // splice in new run into map context
-              val saved = mapCtx
-              mapCtx = mapCtx.fresh
-                .setPeriod(Period(refCtx.runId, mapCtx.phaseId))
-                .setRun(refCtx.run)
-              try this(ref1) finally mapCtx = saved
+              val savedPeriod = mapCtx1.period
+              val savedRun = mapCtx1.run
+              mapCtx1.setPeriod(Period(refCtx.runId, mapCtx1.phaseId)).setRun(refCtx.run)
+              try this(ref1)
+              finally mapCtx1.setPeriod(savedPeriod).setRun(savedRun)
           }
 
         case tp: ClassInfo =>
@@ -5769,7 +5771,8 @@ object Types {
   }
 
   /** A type map that maps also parents and self type of a ClassInfo */
-  abstract class DeepTypeMap(using Context) extends TypeMap {
+  abstract class DeepTypeMap(using mapCtx: Context @retains(caps.*))
+  extends TypeMap { thisMap: TypeMap @retains(mapCtx) =>
     override def mapClassInfo(tp: ClassInfo): ClassInfo = {
       val prefix1 = this(tp.prefix)
       val parents1 = tp.declaredParents mapConserve this
@@ -5781,7 +5784,7 @@ object Types {
     }
   }
 
-  @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
+  @sharable object IdentityTypeMap extends TypeMap(using NoContext) {
     def apply(tp: Type): Type = tp
   }
 
@@ -5792,7 +5795,8 @@ object Types {
    *     variance < 0 : approximate by lower bound
    *     variance = 0 : propagate bounds to next outer level
    */
-  abstract class ApproximatingTypeMap(using Context) extends TypeMap { thisMap =>
+  abstract class ApproximatingTypeMap(using mapCtx: Context @retains(caps.*))
+  extends TypeMap { thisMap: TypeMap @retains(mapCtx) =>
 
     protected def range(lo: Type, hi: Type): Type =
       if (variance > 0) hi
