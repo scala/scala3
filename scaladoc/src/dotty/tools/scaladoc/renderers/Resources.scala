@@ -534,6 +534,11 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/package-big.svg"),
       dottyRes("images/thick.svg"),
       dottyRes("images/thick-dark.svg"),
+      dottyRes("images/banner-icons/error.svg"),
+      dottyRes("images/banner-icons/info.svg"),
+      dottyRes("images/banner-icons/neutral.svg"),
+      dottyRes("images/banner-icons/success.svg"),
+      dottyRes("images/banner-icons/warning.svg"),
       searchData(pages),
       scastieConfiguration(),
     )
