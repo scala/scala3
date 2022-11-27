@@ -24,6 +24,7 @@ import typer.Checking.checkNonCyclic
 import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
 import language.experimental.pureFunctions
+import annotation.retains
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
@@ -34,7 +35,7 @@ object ClassfileParser {
   object NoEmbedded extends Embedded
 
   /** Replace raw types with wildcard applications */
-  def cook(using Context): TypeMap = new TypeMap {
+  def cook(using ctx: Context): TypeMap = (new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.typeParams.nonEmpty =>
         AppliedType(tp, tp.symbol.typeParams.map(Function.const(TypeBounds.empty)))
@@ -50,7 +51,7 @@ object ClassfileParser {
       case _ =>
         mapOver(tp)
     }
-  }
+  }).detach // !cc! should thread context through instead
 }
 
 class ClassfileParser(

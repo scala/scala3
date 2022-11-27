@@ -138,7 +138,7 @@ class HoistSuperArgs extends MiniPhase, IdentityDenotTransformer { thisPhase =>
             val paramSyms = prefss.flatten.map(pref =>
               if pref.isType then pref.tpe.typeSymbol else pref.symbol)
             val tmap = new TreeTypeMap(
-              typeMap = new TypeMap {
+              typeMap = (new TypeMap {
                 lazy val origToParam = (origParams ::: lifted).zip(paramSyms).toMap
                 def apply(tp: Type) = tp match {
                   case tp: NamedType if needsRewire(tp) =>
@@ -149,7 +149,7 @@ class HoistSuperArgs extends MiniPhase, IdentityDenotTransformer { thisPhase =>
                   case _ =>
                     mapOver(tp)
                 }
-              },
+              }).detach,
               treeMap = {
                 case tree: RefTree if needsRewire(tree.tpe) =>
                   cpy.Ident(tree)(tree.name).withType(tree.tpe)

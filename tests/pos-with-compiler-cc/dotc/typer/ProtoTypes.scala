@@ -125,7 +125,7 @@ object ProtoTypes {
   /** A trait for prototypes that match all types */
   trait MatchAlways extends ProtoType, caps.Pure {
     def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean = true
-    def map(tm: TypeMap)(using Context): ProtoType = this
+    def map(tm: TypeMap @retains(caps.*))(using Context): ProtoType = this
     def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T = x
     override def toString: String = getClass.toString
   }
@@ -239,7 +239,7 @@ object ProtoTypes {
     override def unusableForInference(using Context): Boolean =
       memberProto.unusableForInference
 
-    def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
+    def map(tm: TypeMap @retains(caps.*))(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
     def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T = ta(x, memberProto)
 
     override def deepenProto(using Context): SelectionProto =
@@ -542,7 +542,7 @@ object ProtoTypes {
 
     override def toString: String = s"FunProto(${args mkString ","} => $resultType)"
 
-    def map(tm: TypeMap)(using Context): FunProto =
+    def map(tm: TypeMap @retains(caps.*))(using Context): FunProto =
       derivedFunProto(args, tm(resultType), typer)
 
     def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T =
@@ -600,7 +600,7 @@ object ProtoTypes {
     override def unusableForInference(using Context): Boolean =
       argType.unusableForInference || resType.unusableForInference
 
-    def map(tm: TypeMap)(using Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
+    def map(tm: TypeMap @retains(caps.*))(using Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
 
     def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T =
       ta(ta(x, argType), resultType)
@@ -653,7 +653,7 @@ object ProtoTypes {
     override def unusableForInference(using Context): Boolean =
       targs.exists(_.tpe.unusableForInference)
 
-    def map(tm: TypeMap)(using Context): PolyProto =
+    def map(tm: TypeMap @retains(caps.*))(using Context): PolyProto =
       derivedPolyProto(targs, tm(resultType))
 
     def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T =

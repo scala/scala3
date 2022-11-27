@@ -551,7 +551,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     // the owner from the inlined method to the current owner.
     val inliner = new InlinerMap(
       typeMap =
-        new DeepTypeMap {
+        (new DeepTypeMap {
           override def stopAt =
             if opaqueProxies.isEmpty then StopAt.Static else StopAt.Package
           def apply(t: Type) = t match {
@@ -562,7 +562,7 @@ class Inliner(val call: tpd.Tree)(using Context):
               else paramProxy.getOrElse(t, mapOver(t))
             case t => mapOver(t)
           }
-        },
+        }).detach,
       treeMap = {
         case tree: This =>
           tree.tpe match {
@@ -926,14 +926,14 @@ class Inliner(val call: tpd.Tree)(using Context):
     if (typeBindings.nonEmpty) {
       val typeBindingsSet = typeBindings.foldLeft[SimpleIdentitySet[Symbol]](SimpleIdentitySet.empty)(_ + _.symbol)
       val inlineTypeBindings = new TreeTypeMap(
-        typeMap = new TypeMap() {
+        typeMap = (new TypeMap() {
           override def apply(tp: Type): Type = tp match {
             case tr: TypeRef if tr.prefix.eq(NoPrefix) && typeBindingsSet.contains(tr.symbol) =>
               val TypeAlias(res) = tr.info: @unchecked
               res
             case tp => mapOver(tp)
           }
-        },
+        }).detach,
         treeMap = {
           case ident: Ident if ident.isType && typeBindingsSet.contains(ident.symbol) =>
             val TypeAlias(r) = ident.symbol.info: @unchecked
