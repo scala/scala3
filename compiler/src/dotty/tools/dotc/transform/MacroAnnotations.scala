@@ -33,14 +33,10 @@ class MacroAnnotations(thisPhase: DenotTransformer):
   def expandAnnotations(tree: MemberDef)(using Context): List[DefTree] =
     if !hasMacroAnnotation(tree.symbol) then
       List(tree)
-    else if tree.symbol.is(Module) then
-      if tree.symbol.isClass then // error only reported on module class
-        report.error("macro annotations are not supported on object", tree)
+    else if tree.symbol.is(Module) && !tree.symbol.isClass then
+      // only class is transformed
       List(tree)
-    else if tree.symbol.isClass then
-      report.error("macro annotations are not supported on class", tree)
-      List(tree)
-    else if tree.symbol.isType then
+    else if tree.symbol.isType && !tree.symbol.isClass then
       report.error("macro annotations are not supported on type", tree)
       List(tree)
     else
@@ -126,11 +122,13 @@ class MacroAnnotations(thisPhase: DenotTransformer):
   private def checkAndEnter(newTree: Tree, annotated: Symbol, annot: Annotation)(using Context) =
     val sym = newTree.symbol
     if sym.isClass then
-      report.error("Generating classes is not supported", annot.tree)
+      report.error(i"macro annotation returning a `class` is not yet supported. $annot tried to add $sym", annot.tree)
     else if sym.isType then
-      report.error("Generating type is not supported", annot.tree)
+      report.error(i"macro annotation cannot return a `type`. $annot tried to add $sym", annot.tree)
     else if sym.owner != annotated.owner then
       report.error(i"macro annotation $annot added $sym with an inconsistent owner. Expected it to be owned by ${annotated.owner} but was owned by ${sym.owner}.", annot.tree)
+    else if annotated.isClass && annotated.owner.is(Package) /*&& !sym.isClass*/ then
+      report.error(i"macro annotation can not add top-level ${sym.showKind}. $annot tried to add $sym.", annot.tree)
     else
       sym.enteredAfter(thisPhase)
 

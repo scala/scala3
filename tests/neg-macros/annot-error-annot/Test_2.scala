@@ -7,11 +7,17 @@ def dGlobal: Int = 1 // error
 @error
 given gGlobal: Int = 1 // error
 @error
-given gGlobal2: Num[Int] with // error: object not supported (TODO support)
+given gGlobal2: Num[Int] with // error
   def zero = 0
 @error
-given gGlobal3(using DummyImplicit): Num[Int] with // error: class not supported (TODO support)
+given gGlobal3(using DummyImplicit): Num[Int] with // error
   def zero = 0
+
+@error
+class cGlobal // error
+
+@error
+object oGlobal // error
 
 class B:
   @error
@@ -23,11 +29,17 @@ class B:
   @error
   given gMember: Int = 1 // error
   @error
-  given gMember2: Num[Int] with // error: object not supported (TODO support)
+  given gMember2: Num[Int] with // error
     def zero = 0
   @error
-  given gMember3(using DummyImplicit): Num[Int] with // error: class not supported (TODO support)
+  given gMember3(using DummyImplicit): Num[Int] with // error
     def zero = 0
+
+  @error
+  class cMember // error
+
+  @error
+  object oMember // error
 
   def locals: Unit =
     @error
@@ -39,11 +51,16 @@ class B:
     @error
     given gLocal: Int = 1 // error
     @error
-    given gLocal2: Num[Int] with // error: object not supported (TODO support)
+    given gLocal2: Num[Int] with // error
       def zero = 0
     @error
-    given gLocal3(using DummyImplicit): Num[Int] with // error: class not supported (TODO support)
+    given gLocal3(using DummyImplicit): Num[Int] with // error
       def zero = 0
+
+    @error
+    class cLocal // error
+    @error
+    object oLocal // error
     ()
 
 trait Num[T]:
