@@ -256,7 +256,7 @@ object Contexts {
           file
         catch
           case ex: InvalidPathException =>
-            report.error(s"invalid file path: ${ex.getMessage}")
+            report.error(em"invalid file path: ${ex.getMessage}")
             NoAbstractFile
 
     /** AbstractFile with given path, memoized */

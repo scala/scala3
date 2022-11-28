@@ -23,6 +23,7 @@ import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
+import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.report
 
 /*
@@ -700,7 +701,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var elemKind = arr.elementType
       val argsSize = args.length
       if (argsSize > dims) {
-        report.error(s"too many arguments for array constructor: found ${args.length} but array has only $dims dimension(s)", ctx.source.atSpan(app.span))
+        report.error(em"too many arguments for array constructor: found ${args.length} but array has only $dims dimension(s)", ctx.source.atSpan(app.span))
       }
       if (argsSize < dims) {
         /* In one step:

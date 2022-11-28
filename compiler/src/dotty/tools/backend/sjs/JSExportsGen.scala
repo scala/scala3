@@ -135,8 +135,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     for ((info, _) <- tups.tail) {
       report.error(
-          em"export overload conflicts with export of $firstSym: " +
-          "a field may not share its exported name with another export",
+          em"export overload conflicts with export of $firstSym: a field may not share its exported name with another export",
           info.pos)
     }
 
@@ -264,8 +263,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       .alternatives
 
     assert(!alts.isEmpty,
-        em"Ended up with no alternatives for ${classSym.fullName}::$name. " +
-        em"Original set was ${alts} with types ${alts.map(_.info)}")
+        em"""Ended up with no alternatives for ${classSym.fullName}::$name.
+            |Original set was ${alts} with types ${alts.map(_.info)}""")
 
     val (jsName, isProp) = exportNameInfo(name)
 
@@ -309,7 +308,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     if (isProp && methodSyms.nonEmpty) {
       val firstAlt = alts.head
       report.error(
-          i"Conflicting properties and methods for ${classSym.fullName}::$name.",
+          em"Conflicting properties and methods for ${classSym.fullName}::$name.",
           firstAlt.srcPos)
       implicit val pos = firstAlt.span
       js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(firstAlt.sourcePos), None, None)
@@ -613,7 +612,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val altsTypesInfo = alts.map(_.info.show).sorted.mkString("\n  ")
 
     report.error(
-        s"Cannot disambiguate overloads for $fullKind $displayName with types\n  $altsTypesInfo",
+        em"Cannot disambiguate overloads for $fullKind $displayName with types\n  $altsTypesInfo",
         pos)
   }
 
@@ -650,7 +649,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         js.LoadJSConstructor(encodeClassName(superClassSym))
     }
 
-    val receiver = js.This()(jstpe.AnyType)
+    val receiver = js.This()(currentThisType)
     val nameTree = genExpr(sym.jsName)
 
     if (sym.isJSGetter) {
@@ -754,7 +753,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
             genApplyMethodMaybeStatically(receiver, modAccessor, Nil)
         }
       } else {
-        js.This()(encodeClassType(targetSym))
+        js.This()(currentThisType)
       }
     }
 
@@ -811,7 +810,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     def receiver =
       if (static) genLoadModule(sym.owner)
-      else js.This()(encodeClassType(currentClass))
+      else js.This()(currentThisType)
 
     def boxIfNeeded(call: js.Tree): js.Tree =
       box(call, atPhase(elimErasedValueTypePhase)(sym.info.resultType))

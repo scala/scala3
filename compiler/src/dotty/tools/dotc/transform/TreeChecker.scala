@@ -417,11 +417,11 @@ class TreeChecker extends Phase with SymTransformer {
                  sym == mbr ||
                  sym.overriddenSymbol(mbr.owner.asClass) == mbr ||
                  mbr.overriddenSymbol(sym.owner.asClass) == sym),
-               ex"""symbols differ for $tree
-                   |was                 : $sym
-                   |alternatives by type: $memberSyms%, % of types ${memberSyms.map(_.info)}%, %
-                   |qualifier type      : ${qualTpe}
-                   |tree type           : ${tree.typeOpt} of class ${tree.typeOpt.getClass}""")
+               i"""symbols differ for $tree
+                  |was                 : $sym
+                  |alternatives by type: $memberSyms%, % of types ${memberSyms.map(_.info)}%, %
+                  |qualifier type      : ${qualTpe}
+                  |tree type           : ${tree.typeOpt} of class ${tree.typeOpt.getClass}""")
       }
 
       checkNotRepeated(super.typedSelect(tree, pt))

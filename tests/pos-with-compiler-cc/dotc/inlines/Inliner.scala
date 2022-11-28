@@ -254,7 +254,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         computeParamBindings(tp.resultType, targs.drop(tp.paramNames.length), argss, formalss, buf)
       case tp: MethodType =>
         if argss.isEmpty then
-          report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
+          report.error(em"missing arguments for inline method $inlinedMethod", call.srcPos)
           false
         else
           tp.paramNames.lazyZip(formalss.head).lazyZip(argss.head).foreach { (name, formal, arg) =>
@@ -617,8 +617,8 @@ class Inliner(val call: tpd.Tree)(using Context):
     def issueError() = callValueArgss match {
       case (msgArg :: Nil) :: Nil =>
         val message = msgArg.tpe match {
-          case ConstantType(Constant(msg: String)) => msg
-          case _ => s"A literal string is expected as an argument to `compiletime.error`. Got ${msgArg.show}"
+          case ConstantType(Constant(msg: String)) => msg.toMessage
+          case _ => em"A literal string is expected as an argument to `compiletime.error`. Got $msgArg"
         }
         // Usually `error` is called from within a rewrite method. In this
         // case we need to report the error at the point of the outermost enclosing inline
@@ -893,7 +893,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     private def inlineIfNeeded(tree: Tree)(using Context): Tree =
       val meth = tree.symbol
       if meth.isAllOf(DeferredInline) then
-        errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
+        errorTree(tree, em"Deferred inline ${meth.showLocated} cannot be invoked")
       else if Inlines.needsInlining(tree) then Inlines.inlineCall(tree)
       else tree
 

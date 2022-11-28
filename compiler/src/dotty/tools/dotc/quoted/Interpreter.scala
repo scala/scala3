@@ -28,6 +28,7 @@ import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.reporting.Message
 import dotty.tools.repl.AbstractFileClassLoader
 
 /** Tree interpreter for metaprogramming constructs */
@@ -46,7 +47,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
       case obj: T => Some(obj)
       case obj =>
         // TODO upgrade to a full type tag check or something similar
-        report.error(s"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
+        report.error(em"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
         None
     }
 
@@ -190,7 +191,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
   }
 
   private def unexpectedTree(tree: Tree)(implicit env: Env): Object =
-    throw new StopInterpretation("Unexpected tree could not be interpreted: " + tree, tree.srcPos)
+    throw new StopInterpretation(em"Unexpected tree could not be interpreted: ${tree.toString}", tree.srcPos)
 
   private def loadModule(sym: Symbol): Object =
     if (sym.owner.is(Package)) {
@@ -249,7 +250,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
         sw.write("\n")
         ex.printStackTrace(new PrintWriter(sw))
         sw.write("\n")
-        throw new StopInterpretation(sw.toString, pos)
+        throw new StopInterpretation(sw.toString.toMessage, pos)
       case ex: InvocationTargetException =>
         ex.getTargetException match {
           case ex: scala.quoted.runtime.StopMacroExpansion =>
@@ -270,7 +271,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
             }
             targetException.printStackTrace(new PrintWriter(sw))
             sw.write("\n")
-            throw new StopInterpretation(sw.toString, pos)
+            throw new StopInterpretation(sw.toString.toMessage, pos)
         }
     }
 
@@ -344,7 +345,7 @@ end Interpreter
 
 object Interpreter:
   /** Exception that stops interpretation if some issue is found */
-  class StopInterpretation(val msg: String, val pos: SrcPos) extends Exception
+  class StopInterpretation(val msg: Message, val pos: SrcPos) extends Exception
 
   object Call:
     import tpd._

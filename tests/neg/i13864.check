@@ -3,7 +3,7 @@
    |         ^^^^^^^^^^
    |         Implementation restriction: cannot generate CanThrow capability for this kind of catch.
    |         CanThrow capabilities can only be generated for cases of the form `ex: T` where `T` is fully defined.
--- Error: tests/neg/i13864.scala:9:10 ----------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i13864.scala:9:10 ----------------------------------------------------------------------
 9 |    foo(1) // error
   |          ^
   |          The capability to throw exception Ex[Int] is missing.

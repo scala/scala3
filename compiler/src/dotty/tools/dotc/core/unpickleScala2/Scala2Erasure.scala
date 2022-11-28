@@ -39,9 +39,9 @@ object Scala2Erasure:
     case RefinedType(parent, _, _) =>
       checkSupported(parent)
     case AnnotatedType(parent, _) if parent.dealias.isInstanceOf[Scala2RefinedType] =>
-      throw new TypeError(i"Unsupported Scala 2 type: Component $parent of intersection is annotated.")
+      throw TypeError(em"Unsupported Scala 2 type: Component $parent of intersection is annotated.")
     case tp @ TypeRef(prefix, _) if !tp.symbol.exists && prefix.dealias.isInstanceOf[Scala2RefinedType] =>
-      throw new TypeError(i"Unsupported Scala 2 type: Prefix $prefix of intersection component is an intersection or refinement.")
+      throw TypeError(em"Unsupported Scala 2 type: Prefix $prefix of intersection component is an intersection or refinement.")
     case _ =>
 
   /** A type that would be represented as a RefinedType in Scala 2.

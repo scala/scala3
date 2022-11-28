@@ -1,4 +1,4 @@
--- [E163] Declaration Error: tests/neg-custom-args/captures/lazylists2.scala:50:10 -------------------------------------
+-- [E164] Declaration Error: tests/neg-custom-args/captures/lazylists2.scala:50:10 -------------------------------------
 50 |      def tail: {xs, f} LazyList[B] = xs.tail.map(f) // error
    |          ^
    |          error overriding method tail in trait LazyList of type -> {Mapped.this} LazyList[B];

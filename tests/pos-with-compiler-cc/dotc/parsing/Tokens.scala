@@ -231,6 +231,8 @@ object Tokens extends TokensCommon {
   final val canStartInfixTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, LBRACE, AT)
 
+  final val canStartTypeTokens: TokenSet = canStartInfixTypeTokens | BitSet(LBRACE)
+
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
   final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, GIVEN)
@@ -287,7 +289,7 @@ object Tokens extends TokensCommon {
 
   final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
 
-  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
+  final val softModifierNames = Set(nme.inline, nme.into, nme.opaque, nme.open, nme.transparent, nme.infix)
 
   def showTokenDetailed(token: Int): String = debugString(token)
 

@@ -11,7 +11,7 @@ import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
 
-/** This object provides useful implicit decorators for types defined elsewhere */
+/** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
 
   /** Extension methods for toType/TermName methods on PreNames.
@@ -58,8 +58,11 @@ object Decorators {
       padding + s.replace("\n", "\n" + padding)
   end extension
 
+  /** Convert lazy string to message. To be with caution, since no message-defined
+   *  formatting will be done on the string.
+   */
   extension (str: => String)
-    def toMessage: Message = reporting.NoExplanation(str)
+    def toMessage: Message = NoExplanation(str)(using NoContext)
 
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.
@@ -265,8 +268,10 @@ object Decorators {
         catch
           case ex: CyclicReference => "... (caught cyclic reference) ..."
           case NonFatal(ex)
-              if !ctx.mode.is(Mode.PrintShowExceptions) && !ctx.settings.YshowPrintErrors.value =>
-            val msg = ex match { case te: TypeError => te.toMessage case _ => ex.getMessage }
+          if !ctx.mode.is(Mode.PrintShowExceptions) && !ctx.settings.YshowPrintErrors.value =>
+            val msg = ex match
+              case te: TypeError => te.toMessage.message
+              case _ => ex.getMessage
             s"[cannot display due to $msg, raw string = $x]"
       case _ => String.valueOf(x).nn
 
@@ -278,7 +283,7 @@ object Decorators {
       assert(ctx.reporter.errorsReported)
       x
     }
-    def assertingErrorsReported(msg: => String)(using Context): T = {
+    def assertingErrorsReported(msg: Message)(using Context): T = {
       assert(ctx.reporter.errorsReported, msg)
       x
     }
@@ -288,21 +293,16 @@ object Decorators {
       if (xs.head eq x1) && (xs.tail eq xs1) then xs else x1 :: xs1
 
   extension (sc: StringContext)
+
     /** General purpose string formatting */
     def i(args: Shown*)(using Context): String =
       new StringFormatter(sc).assemble(args)
 
-    /** Formatting for error messages: Like `i` but suppress follow-on
-     *  error messages after the first one if some of their arguments are "non-sensical".
+    /** Interpolator yielding an error message, which undergoes
+     *  the formatting defined in Message.
      */
-    def em(args: Shown*)(using Context): String =
-      forErrorMessages(new StringFormatter(sc).assemble(args))
-
-    /** Formatting with added explanations: Like `em`, but add explanations to
-     *  give more info about type variables and to disambiguate where needed.
-     */
-    def ex(args: Shown*)(using Context): String =
-      explained(new StringFormatter(sc).assemble(args))
+    def em(args: Shown*)(using Context): NoExplanation =
+      NoExplanation(i(args*))
 
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)

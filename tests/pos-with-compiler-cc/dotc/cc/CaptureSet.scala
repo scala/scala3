@@ -549,7 +549,7 @@ object CaptureSet:
           else CompareResult.fail(this)
         }
         .andAlso {
-          if (origin ne source) && mapIsIdempotent then
+          if (origin ne source) && (origin ne initial) && mapIsIdempotent then
             // `tm` is idempotent, propagate back elems from image set.
             // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
             // `r` is _one_ possible solution in `source` that would make an `r` appear in this set.
@@ -562,7 +562,7 @@ object CaptureSet:
             // elements from variable sources in contra- and non-variant positions. In essence,
             // we approximate types resulting from such maps by returning a possible super type
             // from the actual type. But this is neither sound nor complete.
-            report.warning(i"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
+            report.warning(em"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
             CompareResult.fail(this)
           else
             CompareResult.OK

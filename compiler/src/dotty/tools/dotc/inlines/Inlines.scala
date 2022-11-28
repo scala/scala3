@@ -156,9 +156,9 @@ object Inlines:
           else ("successive inlines", ctx.settings.XmaxInlines)
         errorTree(
           tree,
-          i"""|Maximal number of $reason (${setting.value}) exceeded,
-              |Maybe this is caused by a recursive inline method?
-              |You can use ${setting.name} to change the limit.""".toMessage,
+          em"""|Maximal number of $reason (${setting.value}) exceeded,
+               |Maybe this is caused by a recursive inline method?
+               |You can use ${setting.name} to change the limit.""",
           (tree :: enclosingInlineds).last.srcPos
         )
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then
@@ -442,8 +442,7 @@ object Inlines:
               val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
               evidence.tpe match
                 case fail: Implicits.SearchFailureType =>
-                  val msg = evTyper.missingArgMsg(evidence, tpt.tpe, "")
-                  errorTree(call, em"$msg")
+                  errorTree(call, evTyper.missingArgMsg(evidence, tpt.tpe, ""))
                 case _ =>
                   evidence
             }

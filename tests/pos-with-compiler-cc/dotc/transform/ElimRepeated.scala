@@ -51,10 +51,10 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
           // see https://github.com/scala/bug/issues/11714
           val validJava = isValidJavaVarArgs(sym.info)
           if !validJava then
-            report.error("""To generate java-compatible varargs:
+            report.error(em"""To generate java-compatible varargs:
                       |  - there must be a single repeated parameter
                       |  - it must be the last argument in the last parameter list
-                      |""".stripMargin,
+                      |""",
               sym.sourcePos)
           else
             addVarArgsForwarder(sym, isJavaVarargsOverride, hasAnnotation, parentHasAnnotation)

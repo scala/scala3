@@ -2188,7 +2188,7 @@ object Types {
     def designator: Designator
     protected def designator_=(d: Designator): Unit
 
-    assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
+    assert(NamedType.validPrefix(prefix), s"invalid prefix $prefix")
 
     private var myName: Name | Null = null
     private var lastDenotation: Denotation | Null = null
@@ -2423,12 +2423,12 @@ object Types {
       }
       else {
         if (!ctx.reporter.errorsReported)
-          throw new TypeError(
-            i"""bad parameter reference $this at ${ctx.phase}
-               |the parameter is ${param.showLocated} but the prefix $prefix
-               |does not define any corresponding arguments.
-               |idx = $idx, args = $args%, %,
-               |constraint = ${ctx.typerState.constraint}""")
+          throw TypeError(
+            em"""bad parameter reference $this at ${ctx.phase}
+                |the parameter is ${param.showLocated} but the prefix $prefix
+                |does not define any corresponding arguments.
+                |idx = $idx, args = $args%, %,
+                |constraint = ${ctx.typerState.constraint}""")
         NoDenotation
       }
     }
@@ -2698,7 +2698,7 @@ object Types {
         this
 
     /** A reference like this one, but with the given prefix. */
-    final def withPrefix(prefix: Type)(using Context): NamedType = {
+    final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
         val lastSym = lastSymbol.nn
         val allowPrivate = !lastSym.exists || lastSym.is(Private)
@@ -2711,6 +2711,7 @@ object Types {
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this
+      else if !NamedType.validPrefix(prefix) then UnspecifiedErrorType
       else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
         case sym: Symbol =>
@@ -2902,6 +2903,8 @@ object Types {
     def apply(prefix: Type, designator: Name, denot: Denotation)(using Context): NamedType =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
+
+    def validPrefix(prefix: Type): Boolean = prefix.isValueType || (prefix eq NoPrefix)
   }
 
   object TermRef {
@@ -5321,7 +5324,12 @@ object Types {
   abstract class FlexType extends UncachedGroundType with ValueType
 
   abstract class ErrorType extends FlexType {
+
+    /** An explanation of the cause of the failure */
     def msg(using Context): Message
+
+    /** An explanation of the cause of the failure as a string */
+    def explanation(using Context): String = msg.message
   }
 
   object ErrorType:
@@ -5329,18 +5337,16 @@ object Types {
       val et = new PreviousErrorType
       ctx.base.errorTypeMsg(et) = m
       et
-    def apply(s: => String)(using Context): ErrorType =
-      apply(s.toMessage)
   end ErrorType
 
   class PreviousErrorType extends ErrorType:
     def msg(using Context): Message =
       ctx.base.errorTypeMsg.get(this) match
         case Some(m) => m
-        case None => "error message from previous run no longer available".toMessage
+        case None => em"error message from previous run no longer available"
 
   object UnspecifiedErrorType extends ErrorType {
-    override def msg(using Context): Message = "unspecified error".toMessage
+    override def msg(using Context): Message = em"unspecified error"
   }
 
   /* Type used to track Select nodes that could not resolve a member and their qualifier is a scala.Dynamic. */
