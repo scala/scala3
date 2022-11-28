@@ -12,6 +12,8 @@ import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
 import config.Printers.inlining
 import util.SimpleIdentityMap
 
+import dotty.tools.dotc.transform.BetaReduce
+
 import collection.mutable
 
 /** A utility class offering methods for rewriting inlined code */
@@ -163,26 +165,12 @@ class InlineReducer(inliner: Inliner)(using Context):
     */
   def betaReduce(tree: Tree)(using Context): Tree = tree match {
     case Apply(Select(cl, nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-      val bindingsBuf = new DefBuffer
+      val bindingsBuf = new mutable.ListBuffer[ValDef]
       def recur(cl: Tree): Option[Tree] = cl match
         case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
           ddef.tpe.widen match
             case mt: MethodType if ddef.paramss.head.length == args.length =>
-              val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
-                arg.tpe.dealias match {
-                  case ref @ TermRef(NoPrefix, _) => ref.symbol
-                  case _ =>
-                    paramBindingDef(name, paramtp, arg, bindingsBuf)(
-                      using ctx.withSource(cl.source)
-                    ).symbol
-                }
-              }
-              val expander = new TreeTypeMap(
-                oldOwners = ddef.symbol :: Nil,
-                newOwners = ctx.owner :: Nil,
-                substFrom = ddef.paramss.head.map(_.symbol),
-                substTo = argSyms)
-              Some(expander.transform(ddef.rhs))
+              Some(BetaReduce.reduceApplication(ddef, args, bindingsBuf))
             case _ => None
         case Block(stats, expr) if stats.forall(isPureBinding) =>
           recur(expr).map(cpy.Block(cl)(stats, _))
@@ -193,7 +181,7 @@ class InlineReducer(inliner: Inliner)(using Context):
         case _ => None
       recur(cl) match
         case Some(reduced) =>
-          Block(bindingsBuf.toList, reduced).withSpan(tree.span)
+          seq(bindingsBuf.result(), reduced).withSpan(tree.span)
         case None =>
           tree
     case _ =>
