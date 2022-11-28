@@ -70,7 +70,7 @@ jobs:
   backport-to-main:
     name: Create pull request with backport to main
     permissions:
-      pull-requests: write  # for peter-evans/create-pull-request to create a PR
+      pull-requests: write  # for repo-sync/pull-request to create a PR
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
