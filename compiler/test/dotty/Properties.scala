@@ -91,6 +91,9 @@ object Properties {
   /** jline-reader jar */
   def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
 
+  /** scalajs-javalib jar */
+  def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
+
   /** scalajs-library jar */
   def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary")
 }
