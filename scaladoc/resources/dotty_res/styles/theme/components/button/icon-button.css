@@ -764,23 +764,23 @@
   content: url("../../../../images/icon-buttons/arrow-right/dark/default.svg");
 }
 
-.theme-dark .documentableElement.ar.icon-button:hover::after {
+.theme-dark .documentableElement .ar.icon-button:hover::after {
   content: url("../../../../images/icon-buttons/arrow-right/dark/hover.svg");
 }
 
-.theme-dark .documentableElement.ar.icon-button:active::after {
+.theme-dark .documentableElement .ar.icon-button:active::after {
   content: url("../../../../images/icon-buttons/arrow-right/dark/active.svg");
 }
 
-.theme-dark .documentableElement.ar.icon-button:disabled::after {
+.theme-dark .documentableElement .ar.icon-button:disabled::after {
   content: url("../../../../images/icon-buttons/arrow-right/dark/disabled.svg");
 }
 
-.theme-dark .documentableElement.ar.icon-button:focus::after {
+.theme-dark .documentableElement .ar.icon-button:focus::after {
   content: url("../../../../images/icon-buttons/arrow-right/dark/focus.svg");
 }
 
-.theme-dark .documentableElement.ar.icon-button.selected::after {
+.theme-dark .documentableElement .ar.icon-button.selected::after {
   content: url("../../../../images/icon-buttons/arrow-right/dark/selected.svg");
 }
 
