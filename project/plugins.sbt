@@ -2,7 +2,7 @@
 //
 // e.g. addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
-// some plugins haven't moved to sbt 2.x yet
+// some plugins haven't moved to scala-xml 2.x yet
 libraryDependencySchemes +=
   "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 
