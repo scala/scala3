@@ -266,20 +266,20 @@ object Interactive {
         .dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
     else Nil
 
-  def contextOfStat(stats: List[Tree], stat: Tree, exprOwner: Symbol, ctx: Context): Context = stats match {
+  def contextOfStat(stats: List[Tree], stat: Tree, exprOwner: Symbol, ctx: Context): DetachedContext = stats match {
     case Nil =>
-      ctx
+      ctx.detach
     case first :: _ if first eq stat =>
-      ctx.exprContext(stat, exprOwner)
+      ctx.exprContext(stat, exprOwner).detach
     case (imp: Import) :: rest =>
       contextOfStat(rest, stat, exprOwner, ctx.importContext(imp, inContext(ctx){imp.symbol}))
     case _ :: rest =>
       contextOfStat(rest, stat, exprOwner, ctx)
   }
 
-  def contextOfPath(path: List[Tree])(using Context): Context = path match {
+  def contextOfPath(path: List[Tree])(using Context): DetachedContext = path match {
     case Nil | _ :: Nil =>
-      ctx.fresh
+      ctx.fresh.detach
     case nested :: encl :: rest =>
       val outer = contextOfPath(encl :: rest)
       try encl match {
@@ -289,14 +289,14 @@ object Interactive {
           else contextOfStat(stats, nested, pkg.symbol.moduleClass, outer.packageContext(tree, tree.symbol))
         case tree: DefDef =>
           assert(tree.symbol.exists)
-          val localCtx = outer.localContext(tree, tree.symbol).setNewScope
+          val localCtx = outer.localContext(tree, tree.symbol).setNewScope.detach
           for params <- tree.paramss; param <- params do localCtx.enter(param.symbol)
             // Note: this overapproximates visibility a bit, since value parameters are only visible
             // in subsequent parameter sections
           localCtx
         case tree: MemberDef =>
           if (tree.symbol.exists)
-            outer.localContext(tree, tree.symbol)
+            outer.localContext(tree, tree.symbol).detach
           else
             outer
         case tree @ Block(stats, expr) =>
@@ -307,7 +307,7 @@ object Interactive {
           }
           contextOfStat(stats, nested, ctx.owner, localCtx)
         case tree @ CaseDef(pat, _, _) =>
-          val localCtx = outer.fresh.setNewScope
+          val localCtx = outer.fresh.setNewScope.detach
           pat.foreachSubTree {
             case bind: Bind => localCtx.enter(bind.symbol)
             case _ =>

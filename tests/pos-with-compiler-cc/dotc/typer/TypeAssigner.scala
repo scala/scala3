@@ -12,6 +12,7 @@ import collection.mutable
 import reporting._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
+import caps.unsafe.unsafeBoxFunArg
 
 trait TypeAssigner {
   import tpd.*
@@ -26,7 +27,7 @@ trait TypeAssigner {
           qual.isEmpty ||
           sym.name == qual ||
           sym.is(Module) && sym.name.stripModuleClassSuffix == qual)
-    ctx.outersIterator.map(_.owner).find(qualifies) match {
+    ctx.outersIterator.map(((ctx: Context) => ctx.owner).unsafeBoxFunArg).find(qualifies) match {
       case Some(c) if packageOK || !c.is(Package) =>
         c
       case _ =>
@@ -157,7 +158,7 @@ trait TypeAssigner {
 
   def importSuggestionAddendum(pt: Type)(using Context): String = ""
 
-  def notAMemberErrorType(tree: untpd.Select, qual: Tree)(using Context): ErrorType =
+  def notAMemberErrorType(tree: untpd.Select, qual: Tree)(using DetachedContext): ErrorType =
     val qualType = qual.tpe.widenIfUnstable
     def kind = if tree.isType then "type" else "value"
     val foundWithoutNull = qualType match

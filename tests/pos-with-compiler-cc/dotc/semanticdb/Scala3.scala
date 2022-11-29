@@ -13,6 +13,7 @@ import SymbolInformation.{Kind => k}
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.core.Names.Designator
+import core.Decorators.collectCC
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 
@@ -100,7 +101,7 @@ object Scala3:
             val kind = s.symbolKind(symkinds)
             val sname = sym.symbolName
             val signature = s.info.toSemanticSig(s)
-            val symbolAnnotations = s.annotations.collect{
+            val symbolAnnotations = s.annotations.collectCC {
               case annot if annot.symbol != defn.BodyAnnot && annot.symbol != defn.ChildAnnot =>
                 Annotation(annot.tree.tpe.toSemanticType(annot.symbol))
             }

@@ -88,7 +88,7 @@ object PatternMatcher {
    *  It's represented by its own data type. Plans are optimized by merging common
    *  tests and eliminating dead code.
    */
-  class Translator(resultType: Type, thisPhase: MiniPhase)(using Context) {
+  class Translator(resultType: Type, thisPhase: MiniPhase)(using DetachedContext) {
 
     // ------- Bindings for variables and labels ---------------------
 
@@ -145,7 +145,7 @@ object PatternMatcher {
     private var nxId = 0
 
     /** The different kinds of plans */
-    sealed abstract class Plan { val id: Int = nxId; nxId += 1 }
+    sealed abstract class Plan extends caps.Pure { val id: Int = nxId; nxId += 1 }
 
     case class TestPlan(test: Test, var scrutinee: Tree, span: Span,
                         var onSuccess: Plan) extends Plan {

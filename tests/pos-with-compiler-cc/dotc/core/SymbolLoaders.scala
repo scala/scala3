@@ -16,6 +16,7 @@ import StdNames._
 import classfile.ClassfileParser
 import Decorators._
 
+import util.Spans.NoCoord
 import util.Stats
 import reporting.trace
 
@@ -62,6 +63,8 @@ object SymbolLoaders {
     val module = newModuleSymbol(
       owner, name.toTermName.decode, modFlags, clsFlags,
       (module, _) => completer.proxy.withDecls(newScope).withSourceModule(module),
+      privateWithin = NoSymbol,
+      coord = NoCoord,
       assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
     enterNew(owner, module.moduleClass, completer, scope)
@@ -80,12 +83,12 @@ object SymbolLoaders {
       // require yjp.jar at runtime. See SI-2089.
       if (ctx.settings.YtermConflict.value == "package" || ctx.mode.is(Mode.Interactive)) {
         report.warning(
-          s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
+          em"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.asClass.delete(preExisting)
       }
       else if (ctx.settings.YtermConflict.value == "object") {
         report.warning(
-          s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
+          em"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
       }
       else
@@ -134,7 +137,7 @@ object SymbolLoaders {
         def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
           val ok = filePath == path
           if (!ok)
-            report.warning(i"""$what ${tree.name} is in the wrong directory.
+            report.warning(em"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
                            |But it is found in directory     ${filePath.reverse.mkString(File.separator.nn)}""",
               tree.srcPos.focus)
@@ -171,7 +174,9 @@ object SymbolLoaders {
           Nil)
       }
 
-      val unit = CompilationUnit(ctx.getSource(src))
+      val unit = inDetachedContext:
+        CompilationUnit(ctx.getSource(src, scala.io.Codec(ctx.settings.encoding.value)))
+            // !cc! default arguments can't be handled
       enterScanned(unit)(using ctx.fresh.setCompilationUnit(unit))
 
   /** The package objects of scala and scala.reflect should always
@@ -412,7 +417,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
   def load(root: SymDenotation)(using Context): Unit = {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
-    val classfileParser = new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)
+    val classfileParser = new ClassfileParser(classfile, classRoot, moduleRoot)(ctx.detach)
     val result = classfileParser.run()
     if (mayLoadTreesFromTasty)
       result match {

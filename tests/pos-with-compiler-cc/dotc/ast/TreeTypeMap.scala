@@ -39,7 +39,7 @@ class TreeTypeMap(
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
   val substTo: List[Symbol] = Nil,
-  cpy: tpd.TreeCopier = tpd.cpy)(using Context) extends tpd.TreeMap(cpy) {
+  cpy: tpd.TreeCopier = tpd.cpy)(using DetachedContext) extends tpd.TreeMap(cpy) {
   import tpd._
 
   def copy(

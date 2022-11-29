@@ -169,7 +169,7 @@ class TreeChecker extends Phase with SymTransformer {
             everDefinedSyms.get(sym) match {
               case Some(t)  =>
                 if (t ne tree)
-                  report.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
+                  report.warning(em"symbol ${sym.fullName} is defined at least twice in different parts of AST")
               // should become an error
               case None =>
                 everDefinedSyms(sym) = tree
@@ -179,7 +179,7 @@ class TreeChecker extends Phase with SymTransformer {
             if (ctx.settings.YcheckMods.value)
               tree match {
                 case t: untpd.MemberDef =>
-                  if (t.name ne sym.name) report.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
+                  if (t.name ne sym.name) report.warning(em"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
                 // todo: compare trees inside annotations
                 case _ =>
               }
@@ -473,9 +473,10 @@ class TreeChecker extends Phase with SymTransformer {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
         ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner)
+      val c = ctx // !cc! needed as a stable anchor for outersIterator below
       assert(ownerMatches(tree.symbol.owner, ctx.owner),
         i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
-        i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
+        i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${c.outersIterator.map(_.owner).toList}%, %")
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
@@ -563,7 +564,7 @@ class TreeChecker extends Phase with SymTransformer {
      *  is that we should be able to pull out an expression as an initializer
      *  of a helper value without having to do a change owner traversal of the expression.
      */
-    override def typedStats(trees: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
+    override def typedStats(trees: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], DetachedContext) = {
       for (tree <- trees) tree match {
         case tree: untpd.DefTree => checkOwner(tree)
         case _: untpd.Thicket => assert(false, i"unexpanded thicket $tree in statement sequence $trees%\n%")
@@ -628,7 +629,7 @@ class TreeChecker extends Phase with SymTransformer {
       tree1
     }
 
-    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
+    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: Context ?-> List[Symbol])(using Context): Tree =
       tree
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {

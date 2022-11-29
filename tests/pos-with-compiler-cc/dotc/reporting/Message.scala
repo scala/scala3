@@ -192,7 +192,7 @@ object Message:
   end Seen
 
   /** Printer to be used when formatting messages */
-  private class Printer(val seen: Seen, _ctx: Context) extends RefinedPrinter(_ctx):
+  private class Printer(val seen: Seen, _ctx: DetachedContext) extends RefinedPrinter(_ctx):
 
     /** True if printer should a show source module instead of its module class */
     private def useSourceModule(sym: Symbol): Boolean =
@@ -266,7 +266,7 @@ end Message
   *  when needed. But if silence is the default, one usually does not realize that
   *  better info could be obtained by turning disambiguation on.
   */
-abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
+abstract class Message(val errorId: ErrorMessageID)(using DetachedContext) { self =>
   import Message.*
 
   /** The kind of the error message, e.g. "Syntax" or "Type Mismatch".
@@ -335,7 +335,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
         case _: Message.Printer => ctx
         case _ =>
           val seen = Seen(disambiguate)
-          val ctx1 = ctx.fresh.setPrinterFn(Message.Printer(seen, _))
+          val ctx1 = ctx.fresh.setPrinterFn(c => Message.Printer(seen, c.detach))
           if !ctx1.property(MessageLimiter).isDefined then
             ctx1.setProperty(MessageLimiter, ErrorMessageLimiter())
           ctx1
@@ -393,7 +393,7 @@ trait NoDisambiguation extends Message:
   withoutDisambiguation()
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-final class NoExplanation(msgFn: Context ?-> String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
+final class NoExplanation(msgFn: Context ?-> String)(using DetachedContext) extends Message(ErrorMessageID.NoExplanationID) {
   def msg(using Context): String = msgFn
   def explain(using Context): String = ""
   val kind: MessageKind = MessageKind.NoKind

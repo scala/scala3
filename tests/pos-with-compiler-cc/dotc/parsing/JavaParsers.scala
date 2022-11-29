@@ -26,7 +26,7 @@ object JavaParsers {
 
   import ast.untpd._
 
-  class JavaParser(source: SourceFile)(using Context) extends ParserCommon(source) {
+  class JavaParser(source: SourceFile)(using DetachedContext) extends ParserCommon(source) {
 
     val definitions: Definitions = ctx.definitions
     import definitions._

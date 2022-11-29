@@ -69,7 +69,7 @@ class Driver {
    *  this method returns a list of files to compile and an updated Context.
    *  If compilation should be interrupted, this method returns None.
    */
-  def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] = {
+  def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], DetachedContext)] = {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
@@ -83,7 +83,7 @@ class Driver {
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
       fileNamesOrNone.map { fileNames =>
         val files = fileNames.map(ctx.getFile)
-        (files, fromTastySetup(files))
+        (files, fromTastySetup(files).detach)
       }
     }
   }

@@ -45,7 +45,7 @@ object StagingContext {
   /** Context with a decremented quotation level and pops the Some of top of the quote context stack or None if the stack is empty.
    *  The quotation stack could be empty if we are in a top level splice or an erroneous splice directly within a top level splice.
    */
-  def popQuotes()(using Context): (Option[tpd.Tree], Context) =
+  def popQuotes()(using Context): (Option[tpd.Tree], DetachedContext) =
     val ctx1 = ctx.fresh.setProperty(QuotationLevel, level - 1)
     val head =
       ctx.property(QuotesStack) match
@@ -54,5 +54,5 @@ object StagingContext {
           Some(x)
         case _ =>
           None // Splice at level 0 or lower
-    (head, ctx1)
+    (head, ctx1.detach)
 }

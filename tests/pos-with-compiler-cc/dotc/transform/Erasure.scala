@@ -986,7 +986,7 @@ object Erasure {
      *  which is then dropped in `typedStats`.
      */
     private def addRetainedInlineBodies(stats: List[untpd.Tree])(using Context): List[untpd.Tree] =
-      lazy val retainerDef: Map[Symbol, DefDef] = stats.collect {
+      lazy val retainerDef: Map[Symbol, DefDef] = stats.collectCC {
         case stat: DefDef @unchecked if stat.symbol.name.is(BodyRetainerName) =>
           val retainer = stat.symbol
           val origName = retainer.name.asTermName.exclude(BodyRetainerName)
@@ -1036,7 +1036,7 @@ object Erasure {
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)
 
-    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
+    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], DetachedContext) = {
       // discard Imports first, since Bridges will use tree's symbol
       val stats0 = addRetainedInlineBodies(stats.filter(!_.isInstanceOf[untpd.Import]))(using preErasureCtx)
       val stats1 =

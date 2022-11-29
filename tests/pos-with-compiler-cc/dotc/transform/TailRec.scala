@@ -159,14 +159,15 @@ class TailRec extends MiniPhase {
         val rhsFullyTransformed = varForRewrittenThis match {
           case Some(localThisSym) =>
             val thisRef = localThisSym.termRef
-            val substitute = new TreeTypeMap(
-              typeMap = _.substThisUnlessStatic(enclosingClass, thisRef)
-                .subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef)),
-              treeMap = {
-                case tree: This if tree.symbol == enclosingClass => Ident(thisRef)
-                case tree => tree
-              }
-            )
+            val substitute = inDetachedContext:
+              new TreeTypeMap(
+                typeMap = _.substThisUnlessStatic(enclosingClass, thisRef)
+                  .subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef)),
+                treeMap = {
+                  case tree: This if tree.symbol == enclosingClass => Ident(thisRef)
+                  case tree => tree
+                }
+              )
             // The previous map will map `This` references to `Ident`s even under `Super`.
             // This violates super's contract. We fix this by cleaning up `Ident`s under
             // super, mapping them back to the original `This` reference. This is not
@@ -179,7 +180,7 @@ class TailRec extends MiniPhase {
                 case _ =>
                   super.transform(t)
             cleanup.transform(substitute.transform(rhsSemiTransformed))
-          case none =>
+          case none => inDetachedContext:
             new TreeTypeMap(
               typeMap = _.subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef))
             ).transform(rhsSemiTransformed)

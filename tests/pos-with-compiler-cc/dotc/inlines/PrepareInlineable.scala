@@ -29,8 +29,8 @@ object PrepareInlineable {
 
   private val InlineAccessorsKey = new Property.Key[InlineAccessors]
 
-  def initContext(ctx: Context): Context =
-    ctx.fresh.setProperty(InlineAccessorsKey, new InlineAccessors)
+  def initContext(ctx: Context): DetachedContext =
+    ctx.fresh.setProperty(InlineAccessorsKey, new InlineAccessors).detach
 
   def makeInlineable(tree: Tree)(using Context): Tree =
     ctx.property(InlineAccessorsKey).get.makeInlineable(tree)
@@ -269,7 +269,7 @@ object PrepareInlineable {
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated || ann.isEvaluating =>
       case _ =>
         if (!ctx.isAfterTyper) {
-          val inlineCtx = ctx
+          val inlineCtx = ctx.detach
           inlined.updateAnnotation(LazyBodyAnnotation {
             given ctx: Context = inlineCtx
             var inlinedBody = dropInlineIfError(inlined, treeExpr)

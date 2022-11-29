@@ -109,11 +109,12 @@ object desugar {
      *  from subclasses.
      */
     def derivedTree(sym: Symbol)(using Context): tpd.TypeTree = {
-      val relocate = new TypeMap {
+      val dctx = ctx.detach
+      val relocate = new TypeMap(using dctx) {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
-            val defctx = mapCtx.outersIterator.dropWhile(_.scope eq mapCtx.scope).next()
+            val defctx = mapCtx.detach.outersIterator.dropWhile(_.scope eq mapCtx.scope).next()
             var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
@@ -1388,7 +1389,7 @@ object desugar {
    */
   def packageDef(pdef: PackageDef)(using Context): PackageDef = {
     checkPackageName(pdef)
-    val wrappedTypeNames = pdef.stats.collect {
+    val wrappedTypeNames = pdef.stats.collectCC {
       case stat: TypeDef if isTopLevelDef(stat) => stat.name
     }
     def inPackageObject(stat: Tree) =

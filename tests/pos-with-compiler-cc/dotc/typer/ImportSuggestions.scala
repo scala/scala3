@@ -193,10 +193,11 @@ trait ImportSuggestions:
     def deepTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
       && {
-        val task = new TimerTask:
-          def run() =
-            println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
-            ctx.run.nn.isCancelled = true
+        val task = inDetachedContext:
+          new TimerTask:
+            def run() =
+              println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+              ctx.run.nn.isCancelled = true
         val span = ctx.owner.srcPos.span
         val (expectedType, argument, kind) = pt match
           case ViewProto(argType, resType) =>

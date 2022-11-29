@@ -44,8 +44,8 @@ object Definitions {
 class Definitions {
   import Definitions._
 
-  private var initCtx: Context = _
-  private given currentContext[Dummy_so_its_a_def]: Context = initCtx
+  private var initCtx: DetachedContext = _
+  private given currentContext[Dummy_so_its_a_def]: DetachedContext = initCtx
 
   private def newPermanentSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type) =
     newSymbol(owner, name, flags | Permanent, info)
@@ -2031,7 +2031,7 @@ class Definitions {
 
   private var isInitialized = false
 
-  def init()(using Context): Unit = {
+  def init()(using ctx: DetachedContext): Unit = {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler

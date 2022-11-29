@@ -14,7 +14,7 @@ import core.Decorators.em
 
 object JavaScanners {
 
-  class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(using Context) extends ScannerCommon(source) {
+  class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(using DetachedContext) extends ScannerCommon(source) {
 
     override def decodeUni: Boolean = true
 

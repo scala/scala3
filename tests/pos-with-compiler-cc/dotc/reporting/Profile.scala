@@ -133,7 +133,7 @@ class ActiveProfile(details: Int) extends Profile:
         unit <- units.find(_.source.eq(meth.source))
       do
         val methProfile = new ActiveProfile(0)
-        val methCtx = ctx.fresh.setCompilationUnit(unit)
+        val methCtx = ctx.fresh.setCompilationUnit(unit).detach
         val s = Scanner(meth.source, span.start, methProfile)(using methCtx)
         while s.offset < span.end do s.nextToken()
         val info = methProfile.unitProfile(unit)

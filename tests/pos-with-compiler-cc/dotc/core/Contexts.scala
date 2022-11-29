@@ -30,7 +30,8 @@ import classfile.ReusableDataReader
 import StdNames.nme
 import compiletime.uninitialized
 
-import scala.annotation.internal.sharable
+import annotation.internal.sharable
+import annotation.retains
 
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
@@ -46,7 +47,7 @@ object Contexts {
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
-  private val (printerFnLoc,        store3) = store2.newLocation[Context -> Printer](new RefinedPrinter(_))
+  private val (printerFnLoc,        store3) = store2.newLocation[DetachedContext -> Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
   private val (compilationUnitLoc,  store5) = store4.newLocation[CompilationUnit]()
   private val (runLoc,              store6) = store5.newLocation[Run | Null]()
@@ -61,22 +62,22 @@ object Contexts {
   inline def ctx(using ctx: Context): Context = ctx
 
   /** Run `op` with given context */
-  inline def inContext[T](c: Context)(inline op: Context ?=> T): T =
+  inline def inContext[T](c: Context)(inline op: Context ?-> T): T =
     op(using c)
 
   /** Execute `op` at given period */
-  inline def atPeriod[T](pd: Period)(inline op: Context ?=> T)(using Context): T =
+  inline def atPeriod[T](pd: Period)(inline op: Context ?-> T)(using Context): T =
     op(using ctx.fresh.setPeriod(pd))
 
   /** Execute `op` at given phase id */
-  inline def atPhase[T](pid: PhaseId)(inline op: Context ?=> T)(using Context): T =
+  inline def atPhase[T](pid: PhaseId)(inline op: Context ?-> T)(using Context): T =
     op(using ctx.withPhase(pid))
 
   /** Execute `op` at given phase */
-  inline def atPhase[T](phase: Phase)(inline op: Context ?=> T)(using Context): T =
+  inline def atPhase[T](phase: Phase)(inline op: Context ?-> T)(using Context): T =
     op(using ctx.withPhase(phase))
 
-  inline def atNextPhase[T](inline op: Context ?=> T)(using Context): T =
+  inline def atNextPhase[T](inline op: Context ?-> T)(using Context): T =
     atPhase(ctx.phase.next)(op)
 
   /** Execute `op` at the current phase if it's before the first transform phase,
@@ -86,23 +87,28 @@ object Contexts {
    *  because the later won't work if the `Pickler` phase is not present (for example,
    *  when using `QuoteCompiler`).
    */
-  inline def atPhaseBeforeTransforms[T](inline op: Context ?=> T)(using Context): T =
+  inline def atPhaseBeforeTransforms[T](inline op: Context ?-> T)(using Context): T =
     atPhaseNoLater(firstTransformPhase.prev)(op)
 
-  inline def atPhaseNoLater[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
+  inline def atPhaseNoLater[T](limit: Phase)(inline op: Context ?-> T)(using Context): T =
     op(using if !limit.exists || ctx.phase <= limit then ctx else ctx.withPhase(limit))
 
-  inline def atPhaseNoEarlier[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
+  inline def atPhaseNoEarlier[T](limit: Phase)(inline op: Context ?-> T)(using Context): T =
     op(using if !limit.exists || limit <= ctx.phase then ctx else ctx.withPhase(limit))
 
-  inline def inMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
+  inline def inMode[T](mode: Mode)(inline op: Context ?-> T)(using ctx: Context): T =
     op(using if mode != ctx.mode then ctx.fresh.setMode(mode) else ctx)
 
-  inline def withMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
+  inline def withMode[T](mode: Mode)(inline op: Context ?-> T)(using ctx: Context): T =
     inMode(ctx.mode | mode)(op)
 
-  inline def withoutMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
+  inline def withoutMode[T](mode: Mode)(inline op: Context ?-> T)(using ctx: Context): T =
     inMode(ctx.mode &~ mode)(op)
+
+  inline def inDetachedContext[T](inline op: DetachedContext ?-> T)(using ctx: Context): T =
+    op(using ctx.detach)
+
+  type Context = ContextCls @retains(caps.*)
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
@@ -123,19 +129,11 @@ object Contexts {
    *      of all class fields of type context; allow them only in whitelisted
    *      classes (which should be short-lived).
    */
-  abstract class Context(val base: ContextBase) { thiscontext =>
+  abstract class ContextCls(val base: ContextBase) {
 
     protected given Context = this
 
-    def outer: Context
-
-    /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
-    def outersIterator: Iterator[Context] = new Iterator[Context] {
-      var current = thiscontext
-      def hasNext = current != NoContext
-      def next = { val c = current; current = current.outer; c }
-    }
-
+    def outer: ContextCls @retains(this)
     def period: Period
     def mode: Mode
     def owner: Symbol
@@ -145,6 +143,9 @@ object Contexts {
     def gadt: GadtConstraint
     def searchHistory: SearchHistory
     def source: SourceFile
+
+    /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
+    def outersIterator: Iterator[ContextCls @retains(this)]
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
@@ -168,11 +169,11 @@ object Contexts {
     def sbtCallback: AnalysisCallback = store(sbtCallbackLoc)
 
     /** The current plain printer */
-    def printerFn: Context -> Printer = store(printerFnLoc)
+    def printerFn: DetachedContext -> Printer = store(printerFnLoc)
 
     /** A function creating a printer */
     def printer: Printer =
-      val pr = printerFn(this)
+      val pr = printerFn(detach)
       if this.settings.YplainPrinter.value then pr.plain else pr
 
     /** The current settings values */
@@ -216,7 +217,7 @@ object Contexts {
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
-          else new ContextualImplicits(implicitRefs, outerImplicits, isImportContext)(this)
+          else new ContextualImplicits(implicitRefs, outerImplicits, isImportContext)(detach)
         }
       implicitsCache.nn
     }
@@ -262,49 +263,10 @@ object Contexts {
     /** AbstractFile with given path, memoized */
     def getFile(name: String): AbstractFile = getFile(name.toTermName)
 
-    private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Null = null
+    final def withPhase(phase: Phase): Context = ctx.fresh.setPhase(phase.id)
+    final def withPhase(pid: PhaseId): Context = ctx.fresh.setPhase(pid)
 
-    private def lookup(key: Phase | SourceFile): Context | Null =
-      util.Stats.record("Context.related.lookup")
-      if related == null then
-        related = SimpleIdentityMap.empty
-        null
-      else
-        related.nn(key)
-
-    private def withPhase(phase: Phase, pid: PhaseId): Context =
-      util.Stats.record("Context.withPhase")
-      val curId = phaseId
-      if curId == pid then
-        this
-      else
-        var ctx1 = lookup(phase)
-        if ctx1 == null then
-          util.Stats.record("Context.withPhase.new")
-          ctx1 = fresh.setPhase(pid)
-          related = related.nn.updated(phase, ctx1)
-        ctx1
-
-    final def withPhase(phase: Phase): Context = withPhase(phase, phase.id)
-    final def withPhase(pid: PhaseId): Context = withPhase(base.phases(pid), pid)
-
-    final def withSource(source: SourceFile): Context =
-      util.Stats.record("Context.withSource")
-      if this.source eq source then
-        this
-      else
-        var ctx1 = lookup(source)
-        if ctx1 == null then
-          util.Stats.record("Context.withSource.new")
-          val ctx2 = fresh.setSource(source)
-          if ctx2.compilationUnit eq NoCompilationUnit then
-            // `source` might correspond to a file not necessarily
-            // in the current project (e.g. when inlining library code),
-            // so set `mustExist` to false.
-            ctx2.setCompilationUnit(CompilationUnit(source, mustExist = false))
-          ctx1 = ctx2
-          related = related.nn.updated(source, ctx2)
-        ctx1
+    final def withSource(source: SourceFile): Context = ctx.fresh.setSource(source)
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
     // call to `setCreationTrace()` in this file.
@@ -408,7 +370,7 @@ object Contexts {
      *   - as scope: The parameters of the auxiliary constructor.
      */
     def thisCallArgContext: Context = {
-      val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next()
+      val constrCtx = detach.outersIterator.dropWhile(_.outer.owner == owner).next()
       superOrThisCallContext(owner, constrCtx.scope)
         .setTyperState(typerState)
         .setGadt(gadt)
@@ -418,7 +380,7 @@ object Contexts {
 
     /** The super- or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
-      var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next()
+      var classCtx = detach.outersIterator.dropWhile(!_.isClassDefContext).next()
       classCtx.outer.fresh.setOwner(owner)
         .setScope(locals)
         .setMode(classCtx.mode)
@@ -500,11 +462,18 @@ object Contexts {
 
     protected def resetCaches(): Unit =
       implicitsCache = null
-      related = null
 
     /** Reuse this context as a fresh context nested inside `outer` */
     def reuseIn(outer: Context): this.type
+
+    def detach: DetachedContext
   }
+
+  object detached:
+    opaque type DetachedContext <: ContextCls = ContextCls
+    inline def apply(c: ContextCls): DetachedContext = c
+
+  type DetachedContext = detached.DetachedContext
 
   /** A condensed context provides only a small memory footprint over
    *  a Context base, and therefore can be stored without problems in
@@ -517,10 +486,16 @@ object Contexts {
   /** A fresh context allows selective modification
    *  of its attributes using the with... methods.
    */
-  class FreshContext(base: ContextBase) extends Context(base) {
+  class FreshContext(base: ContextBase) extends ContextCls(base) { thiscontext =>
 
-    private var _outer: Context = uninitialized
-    def outer: Context = _outer
+    private var _outer: DetachedContext = uninitialized
+    def outer: DetachedContext = _outer
+
+    def outersIterator: Iterator[ContextCls] = new Iterator[ContextCls] {
+      var current: ContextCls = thiscontext
+      def hasNext = current != NoContext
+      def next = { val c = current; current = current.outer; c }
+    }
 
     private var _period: Period = uninitialized
     final def period: Period = _period
@@ -560,7 +535,7 @@ object Contexts {
      *  @param  origin  The context from which fields are copied
      */
     private[Contexts] def init(outer: Context, origin: Context): this.type = {
-      _outer = outer
+      _outer = outer.asInstanceOf[DetachedContext]
       _period = origin.period
       _mode = origin.mode
       _owner = origin.owner
@@ -577,6 +552,8 @@ object Contexts {
     def reuseIn(outer: Context): this.type =
       resetCaches()
       init(outer, outer)
+
+    def detach: DetachedContext = detached(this)
 
     def setPeriod(period: Period): this.type =
       util.Stats.record("Context.setPeriod")
@@ -657,7 +634,7 @@ object Contexts {
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
-    def setPrinterFn(printer: Context -> Printer): this.type = updateStore(printerFnLoc, printer)
+    def setPrinterFn(printer: DetachedContext -> Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
@@ -724,12 +701,14 @@ object Contexts {
       c
   end FreshContext
 
+  given detachedCtx(using c: Context): DetachedContext = c.detach
+
   given ops: AnyRef with
     extension (c: Context)
-      def addNotNullInfo(info: NotNullInfo) =
+      def addNotNullInfo(info: NotNullInfo): Context =
         c.withNotNullInfos(c.notNullInfos.extendWith(info))
 
-      def addNotNullRefs(refs: Set[TermRef]) =
+      def addNotNullRefs(refs: Set[TermRef]): Context =
         c.addNotNullInfo(NotNullInfo(refs, Set()))
 
       def withNotNullInfos(infos: List[NotNullInfo]): Context =
@@ -839,10 +818,12 @@ object Contexts {
     finally ctx.base.comparersInUse = saved
   end comparing
 
-  @sharable val NoContext: Context = new FreshContext((null: ContextBase | Null).uncheckedNN) {
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
-    setSource(NoSource)
-  }
+  @sharable val NoContext: DetachedContext = detached(
+    new FreshContext((null: ContextBase | Null).uncheckedNN) {
+      override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(detached(this: @unchecked))
+      setSource(NoSource)
+    }
+  )
 
   /** A context base defines state and associated methods that exist once per
    *  compiler run.

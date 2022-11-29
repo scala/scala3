@@ -114,7 +114,7 @@ object Inliner:
       oldOwners: List[Symbol],
       newOwners: List[Symbol],
       substFrom: List[Symbol],
-      substTo: List[Symbol])(using Context)
+      substTo: List[Symbol])(using DetachedContext)
     extends TreeTypeMap(
       typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
 
@@ -141,7 +141,7 @@ end Inliner
  *  @param  call         the original call to an inlineable method
  *  @param  rhsToInline  the body of the inlineable method that replaces the call.
  */
-class Inliner(val call: tpd.Tree)(using Context):
+class Inliner(val call: tpd.Tree)(using DetachedContext):
   import tpd._
   import Inliner._
 
@@ -540,9 +540,9 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     val inlineTyper = new InlineTyper(ctx.reporter.errorCount)
 
-    val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
+    val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope.detach
 
-    def inlinedFromOutside(tree: Tree)(span: Span): Tree =
+    def inlinedFromOutside(tree: Tree)(span: Span)(using Context): Tree =
       Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
 
     // A tree type map to prepare the inlined body for typechecked.
@@ -563,7 +563,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             case t => mapOver(t)
           }
         }).detach,
-      treeMap = {
+      treeMap = inDetachedContext {
         case tree: This =>
           tree.tpe match {
             case thistpe: ThisType =>
@@ -625,7 +625,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         // call. This way, a defensively written rewrite method can always
         // report bad inputs at the point of call instead of revealing its internals.
         val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
-        val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
+        val ctxToReport = ctx.detach.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
         // The context in which we report should still use the existing context reporter
         val ctxOrigReporter = ctxToReport.fresh.setReporter(ctx.reporter)
         inContext(ctxOrigReporter) {
@@ -920,7 +920,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.
    *  Inline def bindings that are used only once.
    */
-  private def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(using Context): (List[MemberDef], Tree) = {
+  private def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(using DetachedContext): (List[MemberDef], Tree) = {
     // inlining.println(i"drop unused $bindings%, % in $tree")
     val (termBindings, typeBindings) = bindings.partition(_.symbol.isTerm)
     if (typeBindings.nonEmpty) {

@@ -71,7 +71,7 @@ object CheckCaptures:
    *  maps parameters in contravariant capture sets to the empty set.
    *  TODO: check what happens with non-variant.
    */
-  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
+  final class SubstParamsMap(from: BindingType, to: List[Type])(using DetachedContext)
   extends ApproximatingTypeMap, IdempotentCaptRefMap:
     def apply(tp: Type): Type = tp match
       case tp: ParamRef =>
@@ -138,7 +138,7 @@ class CheckCaptures extends Recheck, SymTransformer:
   def phaseName: String = "cc"
   override def isEnabled(using Context) = true
 
-  def newRechecker()(using Context) = CaptureChecker(ctx)
+  def newRechecker()(using Context) = CaptureChecker(ctx.detach)
 
   override def run(using Context): Unit =
     if Feature.ccEnabled then
@@ -161,7 +161,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       traverseChildren(t)
 
-  class CaptureChecker(ictx: Context) extends Rechecker(ictx):
+  class CaptureChecker(ictx: DetachedContext) extends Rechecker(ictx):
     import ast.tpd.*
 
     override def keepType(tree: Tree) =
@@ -194,7 +194,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def interpolateVarsIn(tpt: Tree)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
         interpolator().traverse(tpt.knownType)
-          .showing(i"solved vars in ${tpt.knownType}", capt)
+          .showing(i"solved vars in ${tpt.knownType}", capt)(using null)
 
     /** Assert subcapturing `cs1 <: cs2` */
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
@@ -739,8 +739,8 @@ class CheckCaptures extends Recheck, SymTransformer:
        *  the innermost capturing type. The outer capture annotations can be
        *  reconstructed with the returned function.
        */
-      def destructCapturingType(tp: Type, reconstruct: Type -> Type = (x: Type) => x) // !cc! need monomorphic default argument
-          : (Type, CaptureSet, Boolean, Type -> Type) =
+      def destructCapturingType(tp: Type, reconstruct: Type -> Context ?-> Type = (x: Type) => x) // !cc! need monomorphic default argument
+          : (Type, CaptureSet, Boolean, Type -> Context ?-> Type) =
         tp.dealias match
           case tp @ CapturingType(parent, cs) =>
             if parent.dealias.isCapturingType then
@@ -753,7 +753,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true) {
         if expected.isInstanceOf[WildcardType] then actual
         else
-          val (parent, cs, actualIsBoxed, recon: (Type -> Type)) = destructCapturingType(actual)
+          val (parent, cs, actualIsBoxed, recon: (Type -> Context ?-> Type)) = destructCapturingType(actual)
 
           val needsAdaptation = actualIsBoxed != expected.isBoxedCapturing
           val insertBox = needsAdaptation && covariant != actualIsBoxed

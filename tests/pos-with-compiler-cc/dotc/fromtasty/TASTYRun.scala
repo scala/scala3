@@ -8,8 +8,9 @@ import io.{JarArchive, AbstractFile, Path}
 import core.Contexts._
 import core.Decorators.em
 import java.io.File
+import annotation.constructorOnly
 
-class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
+class TASTYRun(comp: Compiler, @constructorOnly ictx: Context) extends Run(comp, ictx) {
   override def compile(files: List[AbstractFile]): Unit = {
     val units = tastyUnits(files)
     compileUnits(units)

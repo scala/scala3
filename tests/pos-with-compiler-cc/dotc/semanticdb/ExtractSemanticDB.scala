@@ -15,6 +15,7 @@ import Names.Name
 import StdNames.nme
 import NameOps._
 import Denotations.StaleSymbol
+import Decorators.collectCC
 import util.Spans.Span
 import util.SourceFile
 import transform.SymUtils._
@@ -217,7 +218,8 @@ class ExtractSemanticDB extends Phase:
                 registerUse(genParamSymbol(name), tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
               case _ => traverse(arg)
         case tree: Assign =>
-          val qualSym = condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }
+          val qualSym = inDetachedContext:
+            condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }
           if !excludeUse(qualSym, tree.lhs.symbol) then
             val lhs = tree.lhs.symbol
             val setter = lhs.matchingSetter.orElse(lhs)
@@ -381,7 +383,7 @@ class ExtractSemanticDB extends Phase:
       if ctorParams.isEmpty || body.isEmpty then
         Map.empty
       else
-        body.collect({
+        body.collectCC({
           case tree: ValDef
           if ctorParams.contains(tree.name)
           && !tree.symbol.isPrivate =>

@@ -13,7 +13,7 @@ import Scopes._
 import Symbols._
 import StdNames._
 import Types._
-import Decorators.em
+import Decorators.{em, collectCC}
 
 import dotty.tools.dotc.transform.MegaPhase._
 
@@ -133,7 +133,7 @@ class JUnitBootstrappers extends MiniPhase {
       hasTests(sym.asClass)
     }
 
-    val bootstrappers = tree.stats.collect {
+    val bootstrappers = tree.stats.collectCC {
       case clDef: TypeDef if isTestClass(clDef.symbol) =>
         genBootstrapper(clDef.symbol.asClass)
     }

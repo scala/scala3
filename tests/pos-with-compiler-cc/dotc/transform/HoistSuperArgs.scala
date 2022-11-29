@@ -122,7 +122,7 @@ class HoistSuperArgs extends MiniPhase, IdentityDenotTransformer { thisPhase =>
         case _                    => false
 
       /** Only rewire types that are owned by the current Hoister and is an param or accessor */
-      def needsRewire(tp: Type) = tp match {
+      def needsRewire(tp: Type)(using Context) = tp match {
         case ntp: NamedType =>
           val owner = ntp.symbol.maybeOwner
           (owner == cls || owner == constr) && ntp.symbol.isParamOrAccessor
@@ -137,26 +137,27 @@ class HoistSuperArgs extends MiniPhase, IdentityDenotTransformer { thisPhase =>
           val superArgDef = DefDef(superMeth, prefss => {
             val paramSyms = prefss.flatten.map(pref =>
               if pref.isType then pref.tpe.typeSymbol else pref.symbol)
-            val tmap = new TreeTypeMap(
-              typeMap = (new TypeMap {
-                lazy val origToParam = (origParams ::: lifted).zip(paramSyms).toMap
-                def apply(tp: Type) = tp match {
-                  case tp: NamedType if needsRewire(tp) =>
-                    origToParam.get(tp.symbol) match {
-                      case Some(mappedSym) => if (tp.symbol.isType) mappedSym.typeRef else mappedSym.termRef
-                      case None => mapOver(tp)
-                    }
-                  case _ =>
-                    mapOver(tp)
-                }
-              }).detach,
-              treeMap = {
-                case tree: RefTree if needsRewire(tree.tpe) =>
-                  cpy.Ident(tree)(tree.name).withType(tree.tpe)
-                case tree =>
-                  tree
-              })
-            tmap(arg).changeOwnerAfter(constr, superMeth, thisPhase)
+            inDetachedContext:
+              val tmap = new TreeTypeMap(
+                typeMap = (new TypeMap {
+                  lazy val origToParam = (origParams ::: lifted).zip(paramSyms).toMap
+                  def apply(tp: Type) = tp match {
+                    case tp: NamedType if needsRewire(tp) =>
+                      origToParam.get(tp.symbol) match {
+                        case Some(mappedSym) => if (tp.symbol.isType) mappedSym.typeRef else mappedSym.termRef
+                        case None => mapOver(tp)
+                      }
+                    case _ =>
+                      mapOver(tp)
+                  }
+                }).detach,
+                treeMap = {
+                  case tree: RefTree if needsRewire(tree.tpe) =>
+                    cpy.Ident(tree)(tree.name).withType(tree.tpe)
+                  case tree =>
+                    tree
+                })
+              tmap(arg).changeOwnerAfter(constr, superMeth, thisPhase)
           })
           superArgDefs += superArgDef
           def termParamRefs(tp: Type, params: List[Symbol]): List[List[Tree]] = tp match {

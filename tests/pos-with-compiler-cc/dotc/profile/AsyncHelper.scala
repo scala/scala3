@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Contexts._
 
-sealed trait AsyncHelper {
+sealed trait AsyncHelper extends caps.Pure {
 
   def newUnboundedQueueFixedThreadPool
   (nThreads: Int,
@@ -26,7 +26,7 @@ object AsyncHelper {
     case r: RealProfiler => new ProfilingAsyncHelper(phase, r)
   }
 
-  private abstract class BaseAsyncHelper(phase: Phase)(using Context) extends AsyncHelper {
+  private abstract class BaseAsyncHelper(phase: Phase)(using DetachedContext) extends AsyncHelper {
     val baseGroup = new ThreadGroup(s"dotc-${phase.phaseName}")
     private def childGroup(name: String) = new ThreadGroup(baseGroup, name)
 
@@ -49,7 +49,7 @@ object AsyncHelper {
     }
   }
 
-  private final class BasicAsyncHelper(phase: Phase)(using Context) extends BaseAsyncHelper(phase) {
+  private final class BasicAsyncHelper(phase: Phase)(using DetachedContext) extends BaseAsyncHelper(phase) {
 
     override def newUnboundedQueueFixedThreadPool(nThreads: Int, shortId: String, priority: Int): ThreadPoolExecutor = {
       val threadFactory = new CommonThreadFactory(shortId, priority = priority)
@@ -66,7 +66,7 @@ object AsyncHelper {
     override protected def wrapRunnable(r: Runnable, shortId:String): Runnable = r
   }
 
-  private class ProfilingAsyncHelper(phase: Phase, private val profiler: RealProfiler)(using Context) extends BaseAsyncHelper(phase) {
+  private class ProfilingAsyncHelper(phase: Phase, private val profiler: RealProfiler)(using DetachedContext) extends BaseAsyncHelper(phase) {
 
     override def newUnboundedQueueFixedThreadPool(nThreads: Int, shortId: String, priority: Int): ThreadPoolExecutor = {
       val threadFactory = new CommonThreadFactory(shortId, priority = priority)

@@ -234,7 +234,7 @@ object Completion {
       def addMapping(name: Name, denots: ScopedDenotations) =
         mappings(name) = mappings(name) :+ denots
 
-      ctx.outersIterator.foreach { case ctx @ given Context =>
+      ctx.detach.outersIterator.foreach { case ctx @ given DetachedContext @unchecked =>
         if ctx.isImportContext then
           importedCompletions.foreach { (name, denots) =>
             addMapping(name, ScopedDenotations(denots, ctx))
@@ -339,7 +339,7 @@ object Completion {
 
       def fromImport(name: Name, nameInScope: Name): Seq[(Name, SingleDenotation)] =
         imp.site.member(name).alternatives
-          .collect { case denot if include(denot, nameInScope) => nameInScope -> denot }
+          .collectCC { case denot if include(denot, nameInScope) => nameInScope -> denot }
 
       if imp == null then
         Map.empty
@@ -404,7 +404,7 @@ object Completion {
         types.flatMap { tp =>
           val tpe = tp.widenExpr
           tpe.membersBasedOnFlags(required = ExtensionMethod, excluded = EmptyFlags)
-            .collect { case DenotWithMatchingName(denot, name) => TermRef(tpe, denot.symbol) -> name }
+            .collectCC { case DenotWithMatchingName(denot, name) => TermRef(tpe, denot.symbol) -> name }
         }
 
       // There are four possible ways for an extension method to be applicable
@@ -412,7 +412,7 @@ object Completion {
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
       val termCompleter = new Completer(Mode.Term, prefix, pos)
       val extMethodsInScope = termCompleter.scopeCompletions.toList.flatMap {
-        case (name, denots) => denots.collect { case d: SymDenotation if d.isTerm => (d.termRef, name.asTermName) }
+        case (name, denots) => denots.collectCC { case d: SymDenotation if d.isTerm => (d.termRef, name.asTermName) }
       }
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
@@ -493,7 +493,7 @@ object Completion {
         catch
           case ex: TypeError =>
 
-      val members = site.memberDenots(completionsFilter, appendMemberSyms).collect {
+      val members = site.memberDenots(completionsFilter, appendMemberSyms).collectCC {
         case mbr if include(mbr, mbr.name)
                     && mbr.symbol.isAccessibleFrom(site) => mbr
       }
@@ -538,7 +538,7 @@ object Completion {
   /** Temporary data structure representing denotations with the same name introduced in a given scope
    *  as a member of a type, by a local definition or by an import clause
    */
-  private case class ScopedDenotations(denots: Seq[SingleDenotation], ctx: Context)
+  private case class ScopedDenotations(denots: Seq[SingleDenotation], ctx: DetachedContext) extends caps.Pure
 
   /**
    * The completion mode: defines what kinds of symbols should be included in the completion

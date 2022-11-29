@@ -30,7 +30,7 @@ import Hashable._
 import Uniques._
 import collection.mutable
 import config.Config
-import annotation.{tailrec, constructorOnly}
+import annotation.{tailrec, constructorOnly, threadUnsafe}
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
@@ -40,7 +40,6 @@ import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, Ev
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.transform.SymUtils._
 import language.experimental.pureFunctions
@@ -1505,7 +1504,7 @@ object Types {
     /** The iterator of underlying types as long as type is a TypeProxy.
      *  Useful for diagnostics
      */
-    def underlyingIterator(using Context): Iterator[Type] = new Iterator[Type] {
+    def underlyingIterator(using DetachedContext): Iterator[Type] = new Iterator[Type] {
       var current = Type.this
       var hasNext = true
       def next = {
@@ -2190,7 +2189,7 @@ object Types {
     def designator: Designator
     protected def designator_=(d: Designator): Unit
 
-    assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
+    assert(NamedType.validPrefix(prefix), s"invalid prefix $prefix")
 
     private var myName: Name | Null = null
     private var lastDenotation: Denotation | Null = null
@@ -2700,7 +2699,7 @@ object Types {
         this
 
     /** A reference like this one, but with the given prefix. */
-    final def withPrefix(prefix: Type)(using Context): NamedType = {
+    final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
         val lastSym = lastSymbol.nn
         val allowPrivate = !lastSym.exists || lastSym.is(Private)
@@ -2904,6 +2903,8 @@ object Types {
     def apply(prefix: Type, designator: Name, denot: Denotation)(using Context): NamedType =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
+
+    def validPrefix(prefix: Type): Boolean = prefix.isValueType || (prefix eq NoPrefix)
   }
 
   object TermRef {
@@ -5551,7 +5552,7 @@ object Types {
    *  BiTypeMaps should map capture references to capture references.
    */
   trait BiTypeMap extends TypeMap:
-    thisMap =>
+    thisMap: BiTypeMap @retains(caps.*) =>
 
     /** The inverse of the type map as a function */
     def inverse(tp: Type): Type
@@ -5559,7 +5560,7 @@ object Types {
     /** The inverse of the type map as a BiTypeMap map, which
      *  has the original type map as its own inverse.
      */
-    def inverseTypeMap(using Context) = new BiTypeMap:
+    def inverseTypeMap(using ctx: Context): BiTypeMap @retains(ctx) = new BiTypeMap:
       def apply(tp: Type) = thisMap.inverse(tp)
       def inverse(tp: Type) = thisMap.apply(tp)
 
@@ -5572,10 +5573,12 @@ object Types {
       case result: CaptureRef if result.canBeTracked => result
   end BiTypeMap
 
-  abstract class TypeMap(using protected val mapCtx: Context @retains(caps.*))
+  abstract class TypeMap(using protected val mapCtx: Context)
   extends VariantTraversal with (Type -> Type) { thisMap: TypeMap @retains(mapCtx) =>
 
-    def detach: TypeMap = this.asInstanceOf[TypeMap] // !cc! change once we track contexts
+    def detach: TypeMap =
+      mapCtx.detach
+      this.asInstanceOf[TypeMap]
 
     def apply(tp: Type): Type
 
@@ -5771,7 +5774,7 @@ object Types {
   }
 
   /** A type map that maps also parents and self type of a ClassInfo */
-  abstract class DeepTypeMap(using mapCtx: Context @retains(caps.*))
+  abstract class DeepTypeMap(using mapCtx: Context)
   extends TypeMap { thisMap: TypeMap @retains(mapCtx) =>
     override def mapClassInfo(tp: ClassInfo): ClassInfo = {
       val prefix1 = this(tp.prefix)
@@ -5795,7 +5798,7 @@ object Types {
    *     variance < 0 : approximate by lower bound
    *     variance = 0 : propagate bounds to next outer level
    */
-  abstract class ApproximatingTypeMap(using mapCtx: Context @retains(caps.*))
+  abstract class ApproximatingTypeMap(using mapCtx: Context)
   extends TypeMap { thisMap: TypeMap @retains(mapCtx) =>
 
     protected def range(lo: Type, hi: Type): Type =
