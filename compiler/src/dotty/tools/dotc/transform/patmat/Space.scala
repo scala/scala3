@@ -169,7 +169,10 @@ trait SpaceLogic {
     def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
 
-    (simplify(a), simplify(b)) match {
+    val a2 = simplify(a)
+    val b2 = simplify(b)
+    if (a ne a2) || (b ne b2) then isSubspace(a2, b2)
+    else (a, b) match {
       case (Empty, _) => true
       case (_, Empty) => false
       case (Or(ss), _) =>
