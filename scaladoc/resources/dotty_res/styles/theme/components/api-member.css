@@ -87,7 +87,7 @@ color: var(--text-secondary);
 }
 
 .documentableElement.expand .signature-long {
-  display: block;
+  display: inline;
 }
 
 .documentableElement.expand .extender {

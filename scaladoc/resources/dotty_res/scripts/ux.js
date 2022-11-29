@@ -97,6 +97,20 @@ function attachAllListeners() {
     }
   }
 
+document
+  .querySelectorAll(".documentableElement .signature")
+  .forEach((signature) => {
+    const short = signature.querySelector(".signature-short");
+    const long = signature.querySelector(".signature-long");
+    const extender = document.createElement("span");
+    const extenderDots = document.createTextNode("...");
+    extender.appendChild(extenderDots);
+    extender.classList.add("extender");
+    if (short && long && signature.children[1].hasChildNodes()) {
+      signature.children[0].append(extender);
+    }
+  });
+
   const documentableLists = document.getElementsByClassName("documentableList");
   [...documentableLists].forEach((list) => {
     list.children[0].addEventListener("click", () => {
