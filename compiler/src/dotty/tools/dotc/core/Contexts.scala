@@ -103,6 +103,8 @@ object Contexts {
   inline def withoutMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
     inMode(ctx.mode &~ mode)(op)
 
+  type Context = ContextCls
+
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
    *  objects that turn into space leaks. To combat this risk, here are some
@@ -122,7 +124,7 @@ object Contexts {
    *      of all class fields of type context; allow them only in whitelisted
    *      classes (which should be short-lived).
    */
-  abstract class Context(val base: ContextBase) { thiscontext =>
+  abstract class ContextCls(val base: ContextBase) { thiscontext =>
 
     protected given Context = this
 
@@ -516,7 +518,7 @@ object Contexts {
   /** A fresh context allows selective modification
    *  of its attributes using the with... methods.
    */
-  class FreshContext(base: ContextBase) extends Context(base) {
+  class FreshContext(base: ContextBase) extends ContextCls(base) {
 
     private var _outer: Context = uninitialized
     def outer: Context = _outer
