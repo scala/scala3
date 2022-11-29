@@ -116,15 +116,15 @@ trait SpaceLogic {
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
   def simplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, show)(space match {
     case Prod(tp, fun, spaces) =>
-      val sps = spaces.map(simplify(_))
+      val sps = spaces.mapconserve(simplify)
       if (sps.contains(Empty)) Empty
       else if (canDecompose(tp) && decompose(tp).isEmpty) Empty
-      else Prod(tp, fun, sps)
+      else if sps eq spaces then space else Prod(tp, fun, sps)
     case Or(spaces) =>
-      val spaces2 = spaces.map(simplify(_)).filter(_ != Empty)
+      val spaces2 = spaces.map(simplify).filter(_ != Empty)
       if spaces2.isEmpty then Empty
-      else if spaces2.lengthCompare(1) == 0 then spaces2.head
-      else Or(spaces2)
+      else if spaces2.lengthIs == 1 then spaces2.head
+      else if spaces2.corresponds(spaces)(_ eq _) then space else Or(spaces2)
     case Typ(tp, _) =>
       if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else space
