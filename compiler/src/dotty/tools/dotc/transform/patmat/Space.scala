@@ -269,9 +269,11 @@ trait SpaceLogic {
           tryDecompose2(tp2)
         else
           a
+      case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
+        if (!isSameUnapply(fun1, fun2)) => a
+      case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
+        if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) => a
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-        if (!isSameUnapply(fun1, fun2)) return a
-        if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) return a
 
         val range = (0 until ss1.size).toList
         val cache = Array.fill[Space | Null](ss2.length)(null)
