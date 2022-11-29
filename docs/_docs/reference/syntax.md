@@ -350,7 +350,7 @@ ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
 
-DefParamClauses   ::=  DefParamClause { DefParamClause }
+DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
 DefParamClause    ::=  DefTypeParamClause 
                     |  DefTermParamClause 
                     |  UsingParamClause

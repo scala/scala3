@@ -3101,7 +3101,7 @@ object Parsers {
       
     end typeOrTermParamClause
     
-    /** DefParamClauses       ::= DefParamClause { DefParamClause }
+    /** DefParamClauses       ::= DefParamClause { DefParamClause }  -- and two DefTypeParamClause cannot be adjacent
      */
     def typeOrTermParamClauses(
       ownerKind: ParamOwner,
@@ -3111,7 +3111,7 @@ object Parsers {
       numLeadParams: Int = 0
     ): List[List[TypeDef] | List[ValDef]] =
 
-      def recur(firstClause: Boolean, numLeadParams: Int): List[List[TypeDef] | List[ValDef]] =
+      def recur(firstClause: Boolean, numLeadParams: Int, prevIsTypeClause: Boolean): List[List[TypeDef] | List[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
         newLineOptWhenFollowedBy(LBRACKET)
         if in.token == LPAREN then
@@ -3125,13 +3125,18 @@ object Parsers {
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
           params :: (
             if lastClause then Nil
-            else recur(firstClause = false, numLeadParams + params.length))
+            else recur(firstClause = false, numLeadParams + params.length, prevIsTypeClause = false))
         else if in.token == LBRACKET then
-          typeParamClause(ownerKind) :: recur(firstClause, numLeadParams)
+          if prevIsTypeClause then
+            syntaxError(
+              em"Type parameter lists must be separated by a term or using parameter list",
+              in.offset
+            )
+          typeParamClause(ownerKind) :: recur(firstClause, numLeadParams, prevIsTypeClause = true)
         else Nil
       end recur
 
-      recur(firstClause = true, numLeadParams = numLeadParams)
+      recur(firstClause = true, numLeadParams = numLeadParams, prevIsTypeClause = false)
     end typeOrTermParamClauses
 
 

@@ -18,11 +18,11 @@ def foo[T, U](x: T)(y: U)(z: Int, s: String)(a: Array[T])(implicit ordInt: Ord[I
 
 ### In Scala 3
 
-The new syntax allows any number of type, term and using clause, in any order, optionnaly followed by an implicit clause:
+The new syntax allows any number of type clauses, as long as they are not adjacent:
 (do note however that [implicit clause are discouraged, in favor of using clauses](https://docs.scala-lang.org/scala3/reference/contextual/relationship-implicits.html))
 
 ```scala
-def foo[T, U](x: T)(y: U)[V](z: V, s: String)[A](a: Array[A])(implicit List[U])
+def foo[T, U](x: T)(y: U)[V](z: V, s: String)(using Ord[Int])[A](a: Array[A])(implicit List[U])
 ```
 
 ### Unchanged
@@ -47,15 +47,6 @@ trait DB {
 
 Note that simply replacing `V` by `k.Value` would not be equivalent. For example, if `k.Value` is `Some[Int]`, only the above allows: 
 `getOrElse(k)[Option[Int]](None)`, which returns a `Number`.
-
-### Partial Inference
-
-It is now possible to only infer some of the type parameters, this reduces boilerplate at the use site:
-```scala
-trait StaticSizeList[S <: Int & Singleton, T]
-def filled[S <: Int & Singleton][T](x: T): StaticSizeList[S,T] = ???
-val helloes = filled[4]("Hello!") // S=4, and T is inferred
-```
 
 ## Details
 
@@ -90,9 +81,9 @@ On the other hand, the `getOrElse` method is recommended as-is, as it cannot be 
 DefDcl            ::=  DefSig ‘:’ Type
 DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr
 DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
-DefParamClauses   ::=  DefParamClause { DefParamClause }
-DefParamClause    ::=  DefTypeParamClause 
-                    |  DefTermParamClause 
+DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
+DefParamClause    ::=  DefTypeParamClause
+                    |  DefTermParamClause
                     |  UsingParamClause
 DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
 DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
