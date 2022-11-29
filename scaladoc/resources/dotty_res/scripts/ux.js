@@ -355,6 +355,18 @@ window.addEventListener("DOMContentLoaded", () => {
 
 const elements = document.querySelectorAll(".documentableElement");
 
+document
+  .querySelectorAll(".documentableElement .signature")
+  .forEach((signature) => {
+    const extender = document.createElement("span");
+    const extenderDots = document.createTextNode("...");
+    extender.appendChild(extenderDots);
+    extender.classList.add("extender");
+    if (signature.children[1].hasChildNodes()) {
+      signature.children[0].append(extender);
+    }
+  });
+
 // show/hide side menu on mobile view
 const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
 sideMenuToggler.addEventListener("click", (_e) => {

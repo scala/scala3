@@ -133,6 +133,7 @@
 
 #content h1:first-of-type {
   line-height: normal;
+  word-break: break-word;
 }
 
 #content h1 {
