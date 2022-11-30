@@ -383,7 +383,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 if sym1.isTerm then
                   sym1.isStableMember &&
                   sym2.isStableMember &&
-                  sym1.owner.thisType.select(name, sym1) =:= sym2.owner.thisType.select(name, sym2)
+                  sym1.termRef =:= sym2.termRef
                 else
                   (sym1.isAliasType || sym2.isAliasType) && d1.info =:= d2.info
               }
