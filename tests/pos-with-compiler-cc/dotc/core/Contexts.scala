@@ -45,6 +45,8 @@ import language.experimental.pureFunctions
 
 object Contexts {
 
+  //@sharable var nextId = 0
+
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
   private val (printerFnLoc,        store3) = store2.newLocation[DetachedContext -> Printer](new RefinedPrinter(_))
@@ -130,6 +132,10 @@ object Contexts {
    *      classes (which should be short-lived).
    */
   abstract class ContextCls(val base: ContextBase) {
+
+    //val id = nextId
+    //nextId += 1
+    //assert(id != 35599)
 
     protected given Context = this
 
@@ -266,7 +272,34 @@ object Contexts {
     final def withPhase(phase: Phase): Context = ctx.fresh.setPhase(phase.id)
     final def withPhase(pid: PhaseId): Context = ctx.fresh.setPhase(pid)
 
-    final def withSource(source: SourceFile): Context = ctx.fresh.setSource(source)
+    private var related: SimpleIdentityMap[SourceFile, DetachedContext] | Null = null
+
+    private def lookup(key: SourceFile): DetachedContext | Null =
+      util.Stats.record("Context.related.lookup")
+      if related == null then
+        related = SimpleIdentityMap.empty
+        null
+      else
+        related.nn(key)
+
+    final def withSource(source: SourceFile): Context =
+      util.Stats.record("Context.withSource")
+      if this.source eq source then
+        this
+      else
+        var ctx1 = lookup(source)
+        if ctx1 == null then
+          util.Stats.record("Context.withSource.new")
+          val ctx2 = fresh.setSource(source)
+          if ctx2.compilationUnit eq NoCompilationUnit then
+            // `source` might correspond to a file not necessarily
+            // in the current project (e.g. when inlining library code),
+            // so set `mustExist` to false.
+            ctx2.setCompilationUnit(CompilationUnit(source, mustExist = false))
+          val dctx = ctx2.detach
+          ctx1 = dctx
+          related = related.nn.updated(source, dctx)
+        ctx1
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
     // call to `setCreationTrace()` in this file.
@@ -439,17 +472,22 @@ object Contexts {
     }
 
     override def toString: String =
-      def iinfo(using Context) =
-        val info = ctx.importInfo
-        if (info == null) "" else i"${info.selectors}%, %"
-      def cinfo(using Context) =
-        val core = s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = $iinfo"
-        if (ctx ne NoContext) && (ctx.implicits ne ctx.outer.implicits) then
-          s"$core, implicits = ${ctx.implicits}"
-        else
-          core
-      s"""Context(
-         |${outersIterator.map(ctx => cinfo(using ctx)).mkString("\n\n")})""".stripMargin
+      //if true then
+      //  outersIterator.map { ctx =>
+      //    i"${ctx.id} / ${ctx.owner} / ${ctx.moreProperties.valuesIterator.map(_.getClass).toList.mkString(", ")}"
+      //  }.mkString("\n")
+      //else
+        def iinfo(using Context) =
+          val info = ctx.importInfo
+          if (info == null) "" else i"${info.selectors}%, %"
+        def cinfo(using Context) =
+          val core = s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = $iinfo"
+          if (ctx ne NoContext) && (ctx.implicits ne ctx.outer.implicits) then
+            s"$core, implicits = ${ctx.implicits}"
+          else
+            core
+        s"""Context(
+          |${outersIterator.map(ctx => cinfo(using ctx)).mkString("\n\n")})""".stripMargin
 
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions
@@ -462,6 +500,7 @@ object Contexts {
 
     protected def resetCaches(): Unit =
       implicitsCache = null
+      related = null
 
     /** Reuse this context as a fresh context nested inside `outer` */
     def reuseIn(outer: Context): this.type

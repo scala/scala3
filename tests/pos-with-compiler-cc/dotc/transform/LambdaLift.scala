@@ -33,7 +33,7 @@ object LambdaLift:
     /** Buffers for lifted out classes and methods, indexed by owner */
     val liftedDefs: HashMap[Symbol, ListBuffer[Tree]] = new HashMap
 
-    class Deps(tree: Tree, ctx: DetachedContext) extends Dependencies(tree, ctx):
+    class Deps(tree: Tree, ictx: DetachedContext) extends Dependencies(tree, ictx):
       def isExpr(sym: Symbol)(using Context): Boolean = sym.is(Method)
       def enclosure(using Context) = ctx.owner.enclosingMethod
 

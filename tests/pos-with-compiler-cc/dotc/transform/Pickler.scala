@@ -100,14 +100,14 @@ class Pickler extends Phase {
           pickled
         }(using ExecutionContext.global)
       }
-      def force(): Array[Byte] =
+      def force()(using Context): Array[Byte] =
         val result = Await.result(pickledF, Duration.Inf)
         positionWarnings.foreach(report.warning(_))
         result
 
       if !Pickler.ParallelPickling || ctx.settings.YtestPickler.value then force()
 
-      unit.pickled += (cls -> force)
+      unit.pickled += inDetachedContext(cls -> force)
     end for
   }
 

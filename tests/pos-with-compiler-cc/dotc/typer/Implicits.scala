@@ -1870,34 +1870,33 @@ end SearchRoot
 
 /** A set of term references where equality is =:= */
 sealed class TermRefSet(using DetachedContext) extends caps.Pure:
-  private val elems = new java.util.LinkedHashMap[TermSymbol, Type | List[Type]]
+  private val elemsMap = new util.HashMap[TermSymbol, Type | List[Type]]
+  private val elemsBuf = new mutable.ListBuffer[TermSymbol]
 
-  def isEmpty = elems.size == 0
+  def isEmpty = elemsBuf.isEmpty
 
   def += (ref: TermRef): Unit =
-    val pre = ref.prefix
     if ref.symbol.exists then
+      val pre = ref.prefix
       val sym = ref.symbol.asTerm
-      elems.get(sym) match
+      elemsMap.lookup(sym) match
         case null =>
-          elems.put(sym, pre)
+          elemsMap(sym) = pre
+          elemsBuf += sym
         case prefix: Type =>
-          if !(prefix =:= pre) then elems.put(sym, pre :: prefix :: Nil)
+          if !(prefix =:= pre) then elemsMap(sym) = pre :: prefix :: Nil
         case prefixes: List[Type] =>
-          if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
+          if !prefixes.exists(_ =:= pre) then elemsMap(sym) = pre :: prefixes
 
   def ++= (that: TermRefSet): Unit =
     if !that.isEmpty then that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
-    def handle(sym: TermSymbol | Null, prefixes: Type | List[Type] | Null): Unit =
-      // We cannot use `.nn` here due to inference issue.
-      val prefixes0: Type | List[Type] = prefixes.uncheckedNN
-      prefixes0 match
-        case prefix: Type => f(TermRef(prefix, sym.uncheckedNN))
-        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym.uncheckedNN)))
-    elems.forEach(handle.asInstanceOf)
-      // !cc! cast is needed to circumvent problematic interaction of box and Java wildcards
+    for sym <- elemsBuf do
+      elemsMap(sym) match
+        case prefix: Type => f(TermRef(prefix, sym))
+        case prefixes: List[Type] =>
+          for prefix <- prefixes do f(TermRef(prefix, sym))
 
   // used only for debugging
   def showAsList: List[TermRef] = {
