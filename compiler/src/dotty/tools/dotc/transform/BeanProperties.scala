@@ -34,7 +34,10 @@ class BeanProperties(thisPhase: DenotTransformer):
         info = MethodType(Nil, valDef.denot.info),
         coord = annot.tree.span
       ).enteredAfter(thisPhase).asTerm
-      meth.addAnnotations(valDef.symbol.annotations)
+      val annots = valDef.symbol.annotations.filter { a =>
+        a.hasOneOfMetaAnnotation(defn.BeanGetterMetaAnnot) | !a.hasOneOfMetaAnnotation(defn.BeanSetterMetaAnnot)
+      }
+      meth.addAnnotations(annots)
       val body: Tree = ref(valDef.symbol)
       DefDef(meth, body)
 
@@ -48,9 +51,11 @@ class BeanProperties(thisPhase: DenotTransformer):
           info = MethodType(valDef.name :: Nil, valDef.denot.info :: Nil, defn.UnitType),
           coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm
-        meth.addAnnotations(valDef.symbol.annotations)
-        def body(params: List[List[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
-        DefDef(meth, body)
+        val annots = valDef.symbol.annotations.filter { a =>
+          a.hasOneOfMetaAnnotation(defn.BeanSetterMetaAnnot) | !a.hasOneOfMetaAnnotation(defn.BeanGetterMetaAnnot)
+        }
+        meth.addAnnotations(annots)
+        DefDef(meth, (params: List[List[Tree]]) => Assign(ref(valDef.symbol), params.head.head))
       }
 
     def prefixedName(prefix: String, valName: Name) =
