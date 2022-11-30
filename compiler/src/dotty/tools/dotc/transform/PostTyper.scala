@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
@@ -186,12 +187,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private def removeUnwantedAnnotations(sym: Symbol, metaAnnotSym: Symbol,
         metaAnnotSymBackup: Symbol, keepIfNoRelevantAnnot: Boolean)(using Context): Unit =
       def shouldKeep(annot: Annotation): Boolean =
-        val annotSym = annot.symbol
-        annotSym.hasAnnotation(metaAnnotSym)
-          || annotSym.hasAnnotation(metaAnnotSymBackup)
-          || (keepIfNoRelevantAnnot && {
-            !annotSym.annotations.exists(metaAnnot => defn.FieldAccessorMetaAnnots.contains(metaAnnot.symbol))
-          })
+        annot.hasOneOfMetaAnnotation(metaAnnotSym, metaAnnotSymBackup)
+        || keepIfNoRelevantAnnot && !annot.hasOneOfMetaAnnotation(defn.FieldAccessorMetaAnnots.toList*)
       if sym.annotations.nonEmpty then
         sym.filterAnnotations(shouldKeep(_))
 

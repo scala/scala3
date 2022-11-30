@@ -1,0 +1,9 @@
+inspecting field brandName
+@MyColumnBase(name="BRAND_NAME")
+inspecting field companyName
+@MyColumnBase(name="COMPANY_NAME")
+inspecting method brandName
+inspecting method companyName
+inspecting constructor MyTable
+inspecting param brandName
+inspecting param companyName
