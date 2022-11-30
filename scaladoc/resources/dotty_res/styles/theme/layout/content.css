@@ -150,18 +150,18 @@
 
 #content .cover > h2 {
   color: var(--text-secondary);
-  margin: 8px 0 0;
-  padding: 12px var(--base-spacing);
-}
-
-#content .cover > h2 {
-  color: var(--text-secondary);
   margin: 0;
   padding: 12px var(--base-spacing);
 }
 
 #content .cover > h2:first-of-type {
   margin: 8px 0 0;
+}
+
+@media (max-width: 1376px) {
+  #content .cover > h2 {
+    padding-left: 0;
+  }
 }
 
 /* content first paragraph */
