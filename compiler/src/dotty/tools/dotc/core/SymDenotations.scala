@@ -1074,6 +1074,7 @@ object SymDenotations {
               case tp: Symbol => sourceOfSelf(tp.info)
               case tp: RefinedType => sourceOfSelf(tp.parent)
               case tp: AnnotatedType => sourceOfSelf(tp.parent)
+              case tp: ThisType => tp.cls
             }
             sourceOfSelf(selfType)
           case info: LazyType =>
