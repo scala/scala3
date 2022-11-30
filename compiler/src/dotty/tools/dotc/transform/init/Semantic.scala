@@ -1663,9 +1663,13 @@ object Semantic:
           // term arguments to B. That can only be done in a concrete class.
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
           val ctor = tref.classSymbol.primaryConstructor
-          if ctor.exists then extendTrace(superParent) {
-            superCall(tref, ctor, Nil, tasks)
-          }
+          if ctor.exists && ctor.paramSymss.isEmpty then
+            // The parameter check of traits comes late in the mixin phase.
+            // To avoid crash we ignore the initialization check for erroneous
+            // parent call code. See tests/neg/i16438.scala.
+            extendTrace(superParent) {
+              superCall(tref, ctor, args = Nil, tasks)
+            }
       }
 
       // initialize super classes after outers are set
