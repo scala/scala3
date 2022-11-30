@@ -110,6 +110,7 @@ trait ClassLikeSupport:
       modifiers = modifiers,
       graph = graph,
       deprecated = classDef.symbol.isDeprecated(),
+      experimental = classDef.symbol.isExperimental()
     ).copy(
       directParents = classDef.getParentsAsLinkToTypes,
       parents = supertypes,
@@ -382,7 +383,16 @@ trait ClassLikeSupport:
         .filterNot(m => m == Modifier.Lazy || m == Modifier.Final)
       case _ => methodSymbol.getExtraModifiers()
 
-    mkMember(methodSymbol, methodKind, method.returnTpt.tpe.asSignature)(modifiers = modifiers, origin = origin, deprecated = methodSymbol.isDeprecated())
+    mkMember(
+      methodSymbol,
+      methodKind,
+      method.returnTpt.tpe.asSignature
+    )(
+      modifiers = modifiers,
+      origin = origin,
+      deprecated = methodSymbol.isDeprecated(),
+      experimental = methodSymbol.isExperimental()
+    )
 
   def mkParameter(
     argument: ValDef,
@@ -450,7 +460,11 @@ trait ClassLikeSupport:
           Some(Link(l.tpe.typeSymbol.owner.name, l.tpe.typeSymbol.owner.dri))
         case _ => None
       }
-      mkMember(typeDef.symbol, Kind.Exported(kind), tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated(), origin = Origin.ExportedFrom(origin))
+      mkMember(typeDef.symbol, Kind.Exported(kind), tpeTree.asSignature)(
+        deprecated = typeDef.symbol.isDeprecated(),
+        origin = Origin.ExportedFrom(origin),
+        experimental = typeDef.symbol.isExperimental()
+      )
     }
     else mkMember(typeDef.symbol, kind, tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated())
 
@@ -468,7 +482,11 @@ trait ClassLikeSupport:
         .filterNot(m => m == Modifier.Lazy || m == Modifier.Final)
       case _ => valDef.symbol.getExtraModifiers()
 
-    mkMember(valDef.symbol, kind, memberInfo.res.asSignature)(modifiers = modifiers, deprecated = valDef.symbol.isDeprecated())
+    mkMember(valDef.symbol, kind, memberInfo.res.asSignature)(
+      modifiers = modifiers,
+      deprecated = valDef.symbol.isDeprecated(),
+      experimental = valDef.symbol.isExperimental()
+    )
 
   def mkMember(symbol: Symbol, kind: Kind, signature: DSignature)(
     modifiers: Seq[Modifier] = symbol.getExtraModifiers(),
@@ -476,6 +494,7 @@ trait ClassLikeSupport:
     inheritedFrom: Option[InheritedFrom] = None,
     graph: HierarchyGraph = HierarchyGraph.empty,
     deprecated: Option[Annotation] = None,
+    experimental: Option[Annotation] = None
   ) = Member(
     name = symbol.normalizedName,
     fullName = symbol.fullName,
@@ -490,7 +509,8 @@ trait ClassLikeSupport:
     inheritedFrom = inheritedFrom,
     graph = graph,
     docs = symbol.documentation,
-    deprecated = deprecated
+    deprecated = deprecated,
+    experimental = experimental
   )
 
   object EvidenceOnlyParameterList

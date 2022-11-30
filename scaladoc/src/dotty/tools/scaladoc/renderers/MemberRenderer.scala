@@ -98,6 +98,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     tableRow("Deprecated", content*)
   }
 
+  def experimental(m: Member) = m.experimental.fold(Nil)(_ => tableRow("Experimental", Seq("true")))
+
   def typeParams(m: Member): Seq[AppliedTag] = m.docs.fold(Nil)(d => flattenedDocPart(d.typeParams))
   def valueParams(m: Member): Seq[AppliedTag] = m.docs.fold(Nil)(d => flattenedDocPart(d.valueParams))
 
@@ -113,6 +115,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       docAttributes(m),
       companion(m),
       deprecation(m),
+      experimental(m),
       defintionClasses(m),
       inheritedFrom(m),
       source(m),
@@ -304,6 +307,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case m: Member => m.deprecated.nonEmpty
     case g: MGroup => g.members.exists(isDeprecated)
 
+  private def isExperimental(m: Member | MGroup): Boolean = m match
+    case m: Member => m.experimental.nonEmpty
+    case g: MGroup => g.members.exists(isExperimental)
+
   private def isInherited(m: Member | MGroup): Boolean = m match
     case m: Member => m.inheritedFrom.nonEmpty
     case g: MGroup => g.members.exists(isInherited)
@@ -315,7 +322,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   private type SubGroup = (String, Seq[Member | MGroup])
   private def buildGroup(name: String, subgroups: Seq[SubGroup]): Tab =
     val all = subgroups.map { case (name, members) =>
-      val (allInherited, allDefined) = members.partition(isInherited)
+      val (experimental, nonExperimental) = members.partition(isExperimental)
+      val (allInherited, allDefined) = nonExperimental.partition(isInherited)
       val (depDefined, defined) = allDefined.partition(isDeprecated)
       val (depInherited, inherited) = allInherited.partition(isDeprecated)
       val normalizedName = name.toLowerCase
@@ -331,7 +339,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       definedWithGroup ++ List(
         actualGroup(s"Deprecated ${normalizedName}", depDefined),
         actualGroup(s"Inherited ${normalizedName}", inherited),
-        actualGroup(s"Deprecated and Inherited ${normalizedName}", depInherited)
+        actualGroup(s"Deprecated and Inherited ${normalizedName}", depInherited),
+        actualGroup(name = s"Experimental ${normalizedName}", experimental)
       )
     }
 
