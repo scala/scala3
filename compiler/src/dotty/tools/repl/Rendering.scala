@@ -165,11 +165,14 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       Nil
     try load()
     catch
-      case e: ExceptionInInitializerError => List(renderError(e.getCause, sym.denot))
+      case e: ExceptionInInitializerError => List(renderError(e, sym.denot))
       case NonFatal(e) => List(renderError(e, sym.denot))
 
   /** Render the stack trace of the underlying exception. */
-  def renderError(cause: Throwable, d: Denotation)(using Context): Diagnostic =
+  def renderError(thr: Throwable, d: Denotation)(using Context): Diagnostic =
+    val cause = thr.getCause match
+      case e: ExceptionInInitializerError => e.getCause
+      case e => e
     // detect
     //at repl$.rs$line$2$.<clinit>(rs$line$2:1)
     //at repl$.rs$line$2.res1(rs$line$2)
