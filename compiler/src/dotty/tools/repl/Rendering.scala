@@ -6,16 +6,12 @@ import scala.language.unsafeNulls
 import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 
-import dotc.core.Contexts._
-import dotc.core.Denotations.Denotation
-import dotc.core.Flags
-import dotc.core.Flags._
-import dotc.core.NameOps.*
-import dotc.core.Symbols.{Symbol, defn}
-import dotc.core.StdNames.{nme, str}
-import dotc.printing.ReplPrinter
-import dotc.reporting.Diagnostic
-import dotc.transform.ValueClasses
+import dotc.*, core.*
+import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
+import printing.ReplPrinter
+import reporting.Diagnostic
+import transform.ValueClasses
+import util.StackTraceOps.*
 
 import scala.util.control.NonFatal
 
@@ -109,7 +105,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol)(using Context): Option[String] = try
+  private def valueOf(sym: Symbol)(using Context): Option[String] =
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val symValue = resObj
@@ -126,9 +122,6 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         else
           s
       }
-  catch
-    case e: InvocationTargetException    => throw e
-    case e: ReflectiveOperationException => throw InvocationTargetException(e)
 
   /** Rewrap value class to their Wrapper class
    *
@@ -160,7 +153,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     infoDiagnostic(d.symbol.showUser, d)
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(using Context): Either[InvocationTargetException, Option[Diagnostic]] =
+  def renderVal(d: Denotation)(using Context): Either[ReflectiveOperationException, Option[Diagnostic]] =
     val dcl = d.symbol.showUser
     def msg(s: String) = infoDiagnostic(s, d)
     try
@@ -168,7 +161,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         if d.symbol.is(Flags.Lazy) then Some(msg(dcl))
         else valueOf(d.symbol).map(value => msg(s"$dcl = $value"))
       )
-    catch case e: InvocationTargetException => Left(e)
+    catch case e: ReflectiveOperationException => Left(e)
   end renderVal
 
   /** Force module initialization in the absence of members. */
@@ -179,15 +172,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       Nil
     try load()
     catch
-      case e: ExceptionInInitializerError => List(renderError(e, sym.denot))
-      case NonFatal(e) => List(renderError(InvocationTargetException(e), sym.denot))
+      case e: ExceptionInInitializerError => List(renderError(e.getCause, sym.denot))
+      case NonFatal(e) => List(renderError(e, sym.denot))
 
   /** Render the stack trace of the underlying exception. */
-  def renderError(ite: InvocationTargetException | ExceptionInInitializerError, d: Denotation)(using Context): Diagnostic =
-    import dotty.tools.dotc.util.StackTraceOps._
-    val cause = ite.getCause match
-      case e: ExceptionInInitializerError => e.getCause
-      case e => e
+  def renderError(cause: Throwable, d: Denotation)(using Context): Diagnostic =
     // detect
     //at repl$.rs$line$2$.<clinit>(rs$line$2:1)
     //at repl$.rs$line$2.res1(rs$line$2)
