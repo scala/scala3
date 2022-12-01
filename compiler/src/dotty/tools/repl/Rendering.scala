@@ -3,9 +3,6 @@ package repl
 
 import scala.language.unsafeNulls
 
-import java.lang.{ ClassLoader, ExceptionInInitializerError }
-import java.lang.reflect.InvocationTargetException
-
 import dotc.*, core.*
 import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
@@ -170,9 +167,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Render the stack trace of the underlying exception. */
   def renderError(thr: Throwable, d: Denotation)(using Context): Diagnostic =
-    val cause = thr.getCause match
-      case e: ExceptionInInitializerError => e.getCause
-      case e => e
+    val cause = rootCause(thr)
     // detect
     //at repl$.rs$line$2$.<clinit>(rs$line$2:1)
     //at repl$.rs$line$2.res1(rs$line$2)
@@ -186,7 +181,6 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =
     new Diagnostic.Info(msg, d.symbol.sourcePos)
 
-
 object Rendering:
   final val REPL_WRAPPER_NAME_PREFIX = str.REPL_SESSION_LINE
 
@@ -196,3 +190,12 @@ object Rendering:
       val text = printer.dclText(s)
       text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
     }
+
+  def rootCause(x: Throwable): Throwable = x match
+    case _: ExceptionInInitializerError |
+         _: java.lang.reflect.InvocationTargetException |
+         _: java.lang.reflect.UndeclaredThrowableException |
+         _: java.util.concurrent.ExecutionException
+        if x.getCause != null =>
+      rootCause(x.getCause)
+    case _ => x
