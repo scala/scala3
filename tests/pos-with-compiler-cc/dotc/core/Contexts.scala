@@ -65,6 +65,9 @@ object Contexts {
 
   @sharable private var ctxStack: List[ContextCls] = Nil
   @sharable private var level: Int = 0
+  @sharable var totalContexts: Int = 0
+  @sharable var totalScoped: Int = 0
+  @sharable var totalDetached: Int = 0
 
   def popTo(savedLevel: Int): Unit =
     if savedLevel != level then
@@ -475,6 +478,7 @@ object Contexts {
       val c = fresh
       ctxStack = c :: ctxStack
       level += 1
+      totalScoped += 1
       c
 
     /** A fresh clone of this context embedded in the specified `outer` context. */
@@ -540,6 +544,7 @@ object Contexts {
     inline def apply(c: ContextCls): DetachedContext =
       var cc = c
       while cc != null && cc.status != Status_detached do
+        totalDetached += 1
         cc.status = Status_detached
         cc = cc.outer
       c
@@ -563,6 +568,8 @@ object Contexts {
    *  of its attributes using the with... methods.
    */
   class FreshContext(base: ContextBase) extends ContextCls(base) { thiscontext =>
+
+    totalContexts += 1
 
     def checkValid() =
       assert(status != Status_invalid, this)
