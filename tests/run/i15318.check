@@ -1,7 +1,7 @@
 inspecting field value
-@JsonProperty(value="REAL_VALUE")
+interface JsonProperty
 inspecting method getValue
-@JsonProperty(value="REAL_VALUE")
+interface JsonProperty
 inspecting method setValue
 inspecting method value
 inspecting method value_$eq

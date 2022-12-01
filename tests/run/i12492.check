@@ -1,7 +1,7 @@
 inspecting field brandName
-@MyColumnBase(name="BRAND_NAME")
+interface MyColumnBase
 inspecting field companyName
-@MyColumnBase(name="COMPANY_NAME")
+interface MyColumnBase
 inspecting method brandName
 inspecting method companyName
 inspecting constructor MyTable

@@ -1,6 +1,6 @@
 object Test:
   def main(args: Array[String]): Unit =
-    val cls = classOf[TestBeanProperty]
+    val cls = classOf[MyTable]
 
     for (m <- cls.getDeclaredFields.sortBy(_.getName)) {
       m.setAccessible(true)
