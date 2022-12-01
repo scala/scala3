@@ -62,7 +62,7 @@ object Synthetics:
    */
   private def addCaptureDeps(info: Type)(using Context): Type = info match
     case info: MethodType =>
-      val trackedParams = info.paramRefs.filter(atPhase(checkCapturesPhase)(_.isTracked))
+      val trackedParams = atPhase(checkCapturesPhase)(info.paramRefs.filter(_.isTracked))
       def augmentResult(tp: Type): Type = tp match
         case tp: MethodOrPoly =>
           tp.derivedLambdaType(resType = augmentResult(tp.resType))

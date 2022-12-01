@@ -45,7 +45,7 @@ import language.experimental.pureFunctions
 
 object Contexts {
 
-  //@sharable var nextId = 0
+  @sharable var nextId = 0
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
@@ -63,21 +63,35 @@ object Contexts {
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
 
+  @sharable private var ctxStack: List[ContextCls] = Nil
+  @sharable private var level: Int = 0
+
+  def popTo(savedLevel: Int): Unit =
+    if savedLevel != level then
+      assert(savedLevel == level - 1)
+      val popped = ctxStack.head
+      if popped.status == Status_initial then popped.status = Status_invalid
+      ctxStack = ctxStack.tail
+      level = savedLevel
+
   /** Run `op` with given context */
   inline def inContext[T](c: Context)(inline op: Context ?-> T): T =
     op(using c)
 
-  /** Execute `op` at given period */
-  inline def atPeriod[T](pd: Period)(inline op: Context ?-> T)(using Context): T =
-    op(using ctx.fresh.setPeriod(pd))
+  inline def atPeriod[T](pd: Period)(inline op: Context ?=> T)(using Context): T =
+    val saved = level
+    try op(using if ctx.period == pd then ctx else ctx.nextFresh.setPeriod(pd))
+    finally popTo(saved)
 
   /** Execute `op` at given phase id */
   inline def atPhase[T](pid: PhaseId)(inline op: Context ?-> T)(using Context): T =
-    op(using ctx.withPhase(pid))
+    val saved = level
+    try op(using if ctx.phaseId == pid then ctx else ctx.nextFresh.setPhase(pid))
+    finally popTo(saved)
 
   /** Execute `op` at given phase */
   inline def atPhase[T](phase: Phase)(inline op: Context ?-> T)(using Context): T =
-    op(using ctx.withPhase(phase))
+    atPhase(phase.id)(op)
 
   inline def atNextPhase[T](inline op: Context ?-> T)(using Context): T =
     atPhase(ctx.phase.next)(op)
@@ -93,13 +107,15 @@ object Contexts {
     atPhaseNoLater(firstTransformPhase.prev)(op)
 
   inline def atPhaseNoLater[T](limit: Phase)(inline op: Context ?-> T)(using Context): T =
-    op(using if !limit.exists || ctx.phase <= limit then ctx else ctx.withPhase(limit))
+    atPhase(if !limit.exists || ctx.phase <= limit then ctx.phase else limit)(op)
 
   inline def atPhaseNoEarlier[T](limit: Phase)(inline op: Context ?-> T)(using Context): T =
-    op(using if !limit.exists || limit <= ctx.phase then ctx else ctx.withPhase(limit))
+    atPhase(if !limit.exists || limit <= ctx.phase then ctx.phase else limit)(op)
 
   inline def inMode[T](mode: Mode)(inline op: Context ?-> T)(using ctx: Context): T =
-    op(using if mode != ctx.mode then ctx.fresh.setMode(mode) else ctx)
+    val saved = level
+    try op(using if mode == ctx.mode then ctx else ctx.nextFresh.setMode(mode))
+    finally popTo(saved)
 
   inline def withMode[T](mode: Mode)(inline op: Context ?-> T)(using ctx: Context): T =
     inMode(ctx.mode | mode)(op)
@@ -107,8 +123,14 @@ object Contexts {
   inline def withoutMode[T](mode: Mode)(inline op: Context ?-> T)(using ctx: Context): T =
     inMode(ctx.mode &~ mode)(op)
 
+  inline def withOwner[T](owner: Symbol)(inline op: Context ?-> T)(using ctx: Context): T =
+    val saved = level
+    try op(using if ctx.owner == owner then ctx else ctx.nextFresh.setOwner(owner))
+    finally popTo(saved)
+
   inline def inDetachedContext[T](inline op: DetachedContext ?-> T)(using ctx: Context): T =
     op(using ctx.detach)
+
 
   type Context = ContextCls @retains(caps.*)
 
@@ -133,9 +155,10 @@ object Contexts {
    */
   abstract class ContextCls(val base: ContextBase) {
 
-    //val id = nextId
-    //nextId += 1
-    //assert(id != 35599)
+    val id = nextId
+    nextId += 1
+
+    var status = Status_initial
 
     protected given Context = this
 
@@ -269,8 +292,11 @@ object Contexts {
     /** AbstractFile with given path, memoized */
     def getFile(name: String): AbstractFile = getFile(name.toTermName)
 
-    final def withPhase(phase: Phase): Context = ctx.fresh.setPhase(phase.id)
-    final def withPhase(pid: PhaseId): Context = ctx.fresh.setPhase(pid)
+    final def withPhase(phase: Phase): Context =
+      if phaseId == phase.id then ctx else ctx.fresh.setPhase(phase.id)
+
+    final def withPhase(pid: PhaseId): Context =
+      if phaseId == pid then ctx else ctx.fresh.setPhase(pid)
 
     private var related: SimpleIdentityMap[SourceFile, DetachedContext] | Null = null
 
@@ -445,6 +471,12 @@ object Contexts {
     /** A fresh clone of this context embedded in this context. */
     def fresh: FreshContext = freshOver(this)
 
+    def nextFresh: FreshContext =
+      val c = fresh
+      ctxStack = c :: ctxStack
+      level += 1
+      c
+
     /** A fresh clone of this context embedded in the specified `outer` context. */
     def freshOver(outer: Context): FreshContext =
       util.Stats.record("Context.fresh")
@@ -472,22 +504,17 @@ object Contexts {
     }
 
     override def toString: String =
-      //if true then
-      //  outersIterator.map { ctx =>
-      //    i"${ctx.id} / ${ctx.owner} / ${ctx.moreProperties.valuesIterator.map(_.getClass).toList.mkString(", ")}"
-      //  }.mkString("\n")
-      //else
-        def iinfo(using Context) =
-          val info = ctx.importInfo
-          if (info == null) "" else i"${info.selectors}%, %"
-        def cinfo(using Context) =
-          val core = s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = $iinfo"
-          if (ctx ne NoContext) && (ctx.implicits ne ctx.outer.implicits) then
-            s"$core, implicits = ${ctx.implicits}"
-          else
-            core
-        s"""Context(
-          |${outersIterator.map(ctx => cinfo(using ctx)).mkString("\n\n")})""".stripMargin
+      def iinfo(using Context) =
+        val info = ctx.importInfo
+        if (info == null) "" else i"${info.selectors}%, %"
+      def cinfo(using Context) =
+        val core = s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = $iinfo"
+        if (ctx ne NoContext) && (ctx.implicits ne ctx.outer.implicits) then
+          s"$core, implicits = ${ctx.implicits}"
+        else
+          core
+      s"""Context(
+        |${outersIterator.map(ctx => cinfo(using ctx)).mkString("\n\n")})""".stripMargin
 
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions
@@ -510,7 +537,12 @@ object Contexts {
 
   object detached:
     opaque type DetachedContext <: ContextCls = ContextCls
-    inline def apply(c: ContextCls): DetachedContext = c
+    inline def apply(c: ContextCls): DetachedContext =
+      var cc = c
+      while cc != null && cc.status != Status_detached do
+        cc.status = Status_detached
+        cc = cc.outer
+      c
 
   type DetachedContext = detached.DetachedContext
 
@@ -522,13 +554,21 @@ object Contexts {
   }
   */
 
+
+  inline val Status_initial = 0
+  inline val Status_detached = 1
+  inline val Status_invalid = 2
+
   /** A fresh context allows selective modification
    *  of its attributes using the with... methods.
    */
   class FreshContext(base: ContextBase) extends ContextCls(base) { thiscontext =>
 
+    def checkValid() =
+      assert(status != Status_invalid, this)
+
     private var _outer: DetachedContext = uninitialized
-    def outer: DetachedContext = _outer
+    def outer: DetachedContext = { checkValid(); _outer }
 
     def outersIterator: Iterator[ContextCls] = new Iterator[ContextCls] {
       var current: ContextCls = thiscontext
@@ -537,37 +577,37 @@ object Contexts {
     }
 
     private var _period: Period = uninitialized
-    final def period: Period = _period
+    final def period: Period = { checkValid(); _period }
 
     private var _mode: Mode = uninitialized
-    final def mode: Mode = _mode
+    final def mode: Mode = { checkValid(); _mode }
 
     private var _owner: Symbol = uninitialized
-    final def owner: Symbol = _owner
+    final def owner: Symbol = { checkValid(); _owner }
 
-    private var _tree: Tree[?]= _
-    final def tree: Tree[?] = _tree
+    private var _tree: Tree[?]= uninitialized
+    final def tree: Tree[?] = { checkValid(); _tree }
 
     private var _scope: Scope = uninitialized
-    final def scope: Scope = _scope
+    final def scope: Scope = { checkValid(); _scope }
 
     private var _typerState: TyperState = uninitialized
-    final def typerState: TyperState = _typerState
+    final def typerState: TyperState = { checkValid(); _typerState }
 
     private var _gadt: GadtConstraint = uninitialized
-    final def gadt: GadtConstraint = _gadt
+    final def gadt: GadtConstraint = { checkValid(); _gadt }
 
     private var _searchHistory: SearchHistory = uninitialized
-    final def searchHistory: SearchHistory = _searchHistory
+    final def searchHistory: SearchHistory = { checkValid(); _searchHistory }
 
     private var _source: SourceFile = uninitialized
-    final def source: SourceFile = _source
+    final def source: SourceFile = { checkValid(); _source }
 
     private var _moreProperties: Map[Key[Any], Any] = uninitialized
-    final def moreProperties: Map[Key[Any], Any] = _moreProperties
+    final def moreProperties: Map[Key[Any], Any] = { checkValid(); _moreProperties }
 
     private var _store: Store = uninitialized
-    final def store: Store = _store
+    final def store: Store = { checkValid(); _store }
 
    /** Initialize all context fields, except typerState, which has to be set separately
      *  @param  outer   The outer context
@@ -716,6 +756,14 @@ object Contexts {
       setSettings(setting.updateIn(settingsState, value))
 
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
+
+    override def toString: String =
+      val sb = new mutable.StringBuilder()
+      var c = this
+      while c ne NoContext do
+        sb ++= s"${c.id} / ${c._owner}\n"
+        c = c._outer.asInstanceOf[FreshContext]
+      sb.toString
   }
 
   object FreshContext:
@@ -737,6 +785,7 @@ object Contexts {
           .updated(compilationUnitLoc, NoCompilationUnit)
       c._searchHistory = new SearchRoot
       c._gadt = GadtConstraint.empty
+      c.status = Status_detached
       c
   end FreshContext
 
@@ -859,6 +908,7 @@ object Contexts {
 
   @sharable val NoContext: DetachedContext = detached(
     new FreshContext((null: ContextBase | Null).uncheckedNN) {
+      status = Status_detached
       override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(detached(this: @unchecked))
       setSource(NoSource)
     }

@@ -2659,6 +2659,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         errorTree(exp, em"exports are only allowed from objects and classes, they can not belong to local blocks")
 
   def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
+    //Test to check that runtime capture validation flags escaping contexts
+    //val escape = withMode(Mode.InPackageClauseName)(c ?=> c.asInstanceOf[Object])
+    //val out = escape.asInstanceOf[DetachedContext].outer
     val pid1 = withMode(Mode.InPackageClauseName)(typedExpr(tree.pid, AnySelectionProto))
     val pkg = pid1.symbol
     pid1 match
