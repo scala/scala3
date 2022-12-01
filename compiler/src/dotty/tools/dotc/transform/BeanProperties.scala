@@ -39,7 +39,7 @@ class BeanProperties(thisPhase: DenotTransformer):
       }
       meth.addAnnotations(annots)
       val body: Tree = ref(valDef.symbol)
-      DefDef(meth, body)
+      DefDef(meth, body).withSpan(meth.span)
 
     def maybeGenerateSetter(valDef: ValDef, annot: Annotation)(using Context): Option[Tree] =
       Option.when(valDef.denot.asSymDenotation.flags.is(Mutable)) {
@@ -55,7 +55,7 @@ class BeanProperties(thisPhase: DenotTransformer):
           a.hasOneOfMetaAnnotation(defn.BeanSetterMetaAnnot) | !a.hasOneOfMetaAnnotation(defn.BeanGetterMetaAnnot)
         }
         meth.addAnnotations(annots)
-        DefDef(meth, (params: List[List[Tree]]) => Assign(ref(valDef.symbol), params.head.head))
+        DefDef(meth, (params: List[List[Tree]]) => Assign(ref(valDef.symbol), params.head.head)).withSpan(meth.span)
       }
 
     def prefixedName(prefix: String, valName: Name) =
