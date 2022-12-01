@@ -200,12 +200,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
     }
     else {
       // nested object in an object
-      val className = {
-        val pack = sym.topLevelClass.owner
-        if (pack == defn.RootPackage || pack == defn.EmptyPackageClass) sym.flatName.toString
-        else pack.showFullName + "." + sym.flatName
-      }
-      val clazz = loadClass(className)
+      val clazz = loadClass(sym.binaryClassName)
       clazz.getConstructor().newInstance().asInstanceOf[Object]
     }
 

@@ -130,14 +130,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    */
   private def rewrapValueClass(sym: Symbol, value: Object)(using Context): Option[Object] =
     if ValueClasses.isDerivedValueClass(sym) then
-      val pkg = sym.enclosingPackageClass
-      val pkgName = if pkg.isEmptyPackage then "" else s"${pkg.fullName.mangledString}."
-      val clsFlatName = if sym.isOneOf(JavaDefined | ConstructorProxy) then
-        // See ExtractDependencies.recordDependency
-        sym.flatName.stripModuleClassSuffix
-      else sym.flatName
-      val valueClassName = pkgName + clsFlatName.mangledString
-      val valueClass = Class.forName(valueClassName, true, classLoader())
+      val valueClass = Class.forName(sym.binaryClassName, true, classLoader())
       valueClass.getConstructors.headOption.map(_.newInstance(value))
     else
       Some(value)
