@@ -32,6 +32,20 @@ class ShadowingBatchTests extends ErrorMessagesTest:
     ictx.setSetting(classpath, classpath.value + File.pathSeparator + dir.jpath.toAbsolutePath)
   }
 
+  @Test def io =
+    val lib = """|package io.foo
+                 |
+                 |object Bar {
+                 |  def baz: Int = 42
+                 |}
+                 |""".stripMargin
+    val app = """|object Main:
+                 |  def main(args: Array[String]): Unit =
+                 |    println(io.foo.Bar.baz)
+                 |""".stripMargin
+    checkMessages(lib).expectNoErrors
+    checkMessages(app).expectNoErrors
+
   @Test def file =
     checkMessages("class C(val c: Int)").expectNoErrors
     checkMessages("object rsline1 {\n  def line1 = new C().c\n}").expect { (_, msgs) =>

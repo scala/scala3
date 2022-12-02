@@ -16,5 +16,10 @@ class Anonymous/*<-example::Anonymous#*/ {
   }
 
   trait Foo/*<-example::Anonymous#Foo#*/
-  val foo/*<-example::Anonymous#foo.*/ = new Foo/*->example::Anonymous#Foo#*/ {}
+  val foo/*<-example::Anonymous#foo.*/ = /*<-local1*/new Foo/*->example::Anonymous#Foo#*/ {}
+
+  trait Bar/*<-example::Anonymous#Bar#*/:
+    def bar/*<-example::Anonymous#Bar#bar().*/: String/*->scala::Predef.String#*/
+  val bar1/*<-example::Anonymous#bar1.*/: Bar/*->example::Anonymous#Bar#*/ = /*<-local4*/new Bar/*->example::Anonymous#Bar#*/ { def bar/*<-local3*/: String/*->scala::Predef.String#*/ = ???/*->scala::Predef.`???`().*/ }
+  val bar2/*<-example::Anonymous#bar2.*/: Bar/*->example::Anonymous#Bar#*/ = /*<-local7*/new { def bar/*<-local6*/: String/*->scala::Predef.String#*/ = ???/*->scala::Predef.`???`().*/ }
 }

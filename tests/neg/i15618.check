@@ -1,4 +1,4 @@
--- Error: tests/neg/i15618.scala:17:44 ---------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i15618.scala:17:44 ---------------------------------------------------------------------
 17 |  def toArray: Array[ScalaType[T]] = Array() // error
    |                                            ^
    |                                            No ClassTag available for ScalaType[T]

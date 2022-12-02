@@ -4,18 +4,18 @@ title: "Changes in Compiler Plugins"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/compiler-plugins.html
 ---
 
-Compiler plugins are supported by Dotty (and Scala 3) since 0.9. There are two notable changes
-compared to `scalac`:
+Compiler plugins are supported in Scala 3 since Dotty 0.9. There are two notable changes
+compared to Scala 2:
 
 - No support for analyzer plugins
 - Added support for research plugins
 
-[Analyzer plugins][1] in `scalac` run during type checking and may influence
+[Analyzer plugins][1] run in Scala 2 during type checking and may influence
 normal type checking. This is a very powerful feature but for production usages,
 a predictable and consistent type checker is more important.
 
 For experimentation and research, Scala 3 introduces _research plugin_. Research plugins
-are more powerful than `scalac` analyzer plugins as they let plugin authors customize
+are more powerful than Scala 2 analyzer plugins as they let plugin authors customize
 the whole compiler pipeline. One can easily replace the standard typer by a custom one or
 create a parser for a domain-specific language. However, research plugins are only
 enabled for nightly or snaphot releases of Scala 3.
@@ -26,7 +26,7 @@ _standard plugins_ in Scala 3. In terms of features, they are similar to
 
 ## Using Compiler Plugins
 
-Both standard and research plugins can be used with `scalac` by adding the `-Xplugin:` option:
+In Scala 3, both standard and research plugins can be used with `scalac` by adding the `-Xplugin:` option:
 
 ```shell
 scalac -Xplugin:pluginA.jar -Xplugin:pluginB.jar Test.scala
@@ -40,7 +40,7 @@ the fully qualified plugin class name. The format of a property file is as follo
 pluginClass=dividezero.DivideZero
 ```
 
-This is different from `scalac` plugins that required a `scalac-plugin.xml` file.
+This is different from Scala 2 plugins that require a `scalac-plugin.xml` file.
 
 Starting from 1.1.5, `sbt` also supports Scala 3 compiler plugins. Please refer to the
 [`sbt` documentation][2] for more information.

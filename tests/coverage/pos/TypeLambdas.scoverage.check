@@ -25,23 +25,6 @@ TypeLambdas$
 Object
 covtest.TypeLambdas$
 test
-310
-318
-13
-->
-Apply
-false
-0
-false
-1 -> "1"
-
-1
-TypeLambdas.scala
-covtest
-TypeLambdas$
-Object
-covtest.TypeLambdas$
-test
 306
 319
 13
@@ -52,7 +35,41 @@ false
 false
 Map(1 -> "1")
 
+1
+TypeLambdas.scala
+covtest
+TypeLambdas$
+Object
+covtest.TypeLambdas$
+test
+306
+309
+13
+Map
+Ident
+false
+0
+false
+Map
+
 2
+TypeLambdas.scala
+covtest
+TypeLambdas$
+Object
+covtest.TypeLambdas$
+test
+310
+318
+13
+->
+Apply
+false
+0
+false
+1 -> "1"
+
+3
 TypeLambdas.scala
 covtest
 TypeLambdas$
@@ -69,7 +86,7 @@ false
 false
 println(m)
 
-3
+4
 TypeLambdas.scala
 covtest
 TypeLambdas$
@@ -86,7 +103,7 @@ false
 false
 println(tuple)
 
-4
+5
 TypeLambdas.scala
 covtest
 TypeLambdas$

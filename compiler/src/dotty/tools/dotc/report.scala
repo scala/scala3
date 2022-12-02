@@ -18,26 +18,26 @@ object report:
     if ctx.settings.verbose.value then echo(msg, pos)
 
   def echo(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
-    ctx.reporter.report(new Info(msg, pos.sourcePos))
+    ctx.reporter.report(new Info(msg.toMessage, pos.sourcePos))
 
   private def issueWarning(warning: Warning)(using Context): Unit =
     ctx.reporter.report(warning)
 
-  def deprecationWarning(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def deprecationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new DeprecationWarning(msg, pos.sourcePos))
 
-  def migrationWarning(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def migrationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new MigrationWarning(msg, pos.sourcePos))
 
-  def uncheckedWarning(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def uncheckedWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new UncheckedWarning(msg, pos.sourcePos))
 
-  def featureWarning(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def featureWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new FeatureWarning(msg, pos.sourcePos))
 
   def featureWarning(feature: String, featureDescription: => String,
-      featureUseSite: Symbol, required: Boolean, pos: SrcPos)(using Context): Unit = {
-    val req = if (required) "needs to" else "should"
+      featureUseSite: Symbol, required: Boolean, pos: SrcPos)(using Context): Unit =
+    val req = if required then "needs to" else "should"
     val fqname = s"scala.language.$feature"
 
     val explain =
@@ -48,31 +48,44 @@ object report:
            |See the Scala docs for value $fqname for a discussion
            |why the feature $req be explicitly enabled.""".stripMargin
 
-    def msg = s"""$featureDescription $req be enabled
-                 |by adding the import clause 'import $fqname'
-                 |or by setting the compiler option -language:$feature.$explain""".stripMargin
-    if (required) error(msg, pos)
+    def msg = em"""$featureDescription $req be enabled
+                  |by adding the import clause 'import $fqname'
+                  |or by setting the compiler option -language:$feature.$explain"""
+    if required then error(msg, pos)
     else issueWarning(new FeatureWarning(msg, pos.sourcePos))
-  }
+  end featureWarning
 
-  def warning(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def warning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new Warning(msg, addInlineds(pos)))
 
-  def error(msg: Message, pos: SrcPos = NoSourcePosition, sticky: Boolean = false)(using Context): Unit =
+  def warning(msg: Message)(using Context): Unit =
+    warning(msg, NoSourcePosition)
+
+  def warning(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+    warning(msg.toMessage, pos)
+
+  def error(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     val fullPos = addInlineds(pos)
-    ctx.reporter.report(if (sticky) new StickyError(msg, fullPos) else new Error(msg, fullPos))
+    ctx.reporter.report(new Error(msg, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
 
-  def error(ex: TypeError, pos: SrcPos)(using Context): Unit =
-    error(ex.toMessage, pos, sticky = true)
-    if ctx.settings.YdebugTypeError.value then ex.printStackTrace()
+  def error(msg: => String, pos: SrcPos)(using Context): Unit =
+    error(msg.toMessage, pos)
 
-  def errorOrMigrationWarning(msg: Message, pos: SrcPos = NoSourcePosition, from: SourceVersion)(using Context): Unit =
+  def error(msg: => String)(using Context): Unit =
+    error(msg, NoSourcePosition)
+
+  def error(ex: TypeError, pos: SrcPos)(using Context): Unit =
+    val fullPos = addInlineds(pos)
+    ctx.reporter.report(new StickyError(ex.toMessage, fullPos))
+    if ctx.settings.YdebugError.value then Thread.dumpStack()
+
+  def errorOrMigrationWarning(msg: Message, pos: SrcPos, from: SourceVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(from) then
       if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then migrationWarning(msg, pos)
       else error(msg, pos)
 
-  def gradualErrorOrMigrationWarning(msg: Message, pos: SrcPos = NoSourcePosition, warnFrom: SourceVersion, errorFrom: SourceVersion)(using Context): Unit =
+  def gradualErrorOrMigrationWarning(msg: Message, pos: SrcPos, warnFrom: SourceVersion, errorFrom: SourceVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(errorFrom) then errorOrMigrationWarning(msg, pos, errorFrom)
     else if sourceVersion.isAtLeast(warnFrom) then warning(msg, pos)
 

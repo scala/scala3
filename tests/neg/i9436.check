@@ -4,7 +4,7 @@
   |          method f1 must be called with () argument
   |
   | longer explanation available when compiling with `-explain`
--- Error: tests/neg/i9436.scala:9:14 -----------------------------------------------------------------------------------
+-- [E171] Type Error: tests/neg/i9436.scala:9:14 -----------------------------------------------------------------------
 9 |  println(x.f2(1)) // error
   |          ^^^^^^^
   |          missing argument for parameter y of method f2: (x: Int, y: Int): Int

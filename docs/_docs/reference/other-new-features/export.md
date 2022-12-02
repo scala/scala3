@@ -201,16 +201,16 @@ Consider the following example:
 
 ```scala
 class B { val c: Int }
-object a { val b = new B }
-export a.*
+object A { val b = new B }
+export A.*
 export b.*
 ```
 
-Is the `export b.*` clause legal? If yes, what does it export? Is it equivalent to `export a.b.*`? What about if we swap the last two clauses?
+Is the `export b.*` clause legal? If yes, what does it export? Is it equivalent to `export A.b.*`? What about if we swap the last two clauses?
 
 ```
 export b.*
-export a.*
+export A.*
 ```
 
 To avoid tricky questions like these, we fix the elaboration order of exports as follows.

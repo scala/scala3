@@ -4,13 +4,13 @@ import org.junit.Test
 import org.junit.AfterClass
 import org.junit.Assert.*
 import org.junit.experimental.categories.Category
-
 import dotty.{BootstrappedOnlyTests, Properties}
 import dotty.tools.vulpix.*
 import dotty.tools.vulpix.TestConfiguration.*
 import dotty.tools.dotc.Main
+import dotty.tools.dotc.reporting.TestReporter
 
-import java.nio.file.{Files, FileSystems, Path, Paths, StandardCopyOption}
+import java.nio.file.{FileSystems, Files, Path, Paths, StandardCopyOption}
 import scala.jdk.CollectionConverters.*
 import scala.util.Properties.userDir
 import scala.language.unsafeNulls
@@ -33,11 +33,12 @@ class CoverageTests:
     checkCoverageIn(rootSrc.resolve("run"), true)
 
   def checkCoverageIn(dir: Path, run: Boolean)(using TestGroup): Unit =
-    /** Converts \ to / on windows, to make the tests pass without changing the serialization. */
+    /** Converts \\ (escaped \) to / on windows, to make the tests pass without changing the serialization. */
     def fixWindowsPaths(lines: Buffer[String]): Buffer[String] =
       val separator = java.io.File.separatorChar
-      if separator != '/' then
-        lines.map(_.replace(separator, '/'))
+      if separator == '\\' then
+        val escapedSep = "\\\\"
+        lines.map(_.replace(escapedSep, "/"))
       else
         lines
     end fixWindowsPaths
@@ -84,6 +85,7 @@ object CoverageTests extends ParallelTesting:
   def testFilter = Properties.testsFilter
   def isInteractive = SummaryReport.isInteractive
   def updateCheckFiles = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   given summaryReport: SummaryReporting = SummaryReport()
   @AfterClass def tearDown(): Unit =

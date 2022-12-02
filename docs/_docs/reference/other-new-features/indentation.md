@@ -186,6 +186,60 @@ Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
 Packaging         ::=  ‘package’ QualId :<<< TopStats >>>
 ```
 
+## Optional Braces for Method Arguments
+
+Starting with Scala 3.3, a `<colon>` token is also recognized where a function argument would be expected. Examples:
+
+```scala
+times(10):
+  println("ah")
+  println("ha")
+```
+
+or
+
+```scala
+credentials `++`:
+  val file = Path.userHome / ".credentials"
+  if file.exists
+  then Seq(Credentials(file))
+  else Seq()
+```
+
+or
+
+```scala
+xs.map:
+  x =>
+    val y = x - 1
+    y * y
+```
+What's more, a `:` in these settings can also be followed on the same line by the parameter part and arrow of a lambda. So the last example could be compressed to this:
+
+```scala
+xs.map: x =>
+  val y = x - 1
+  y * y
+```
+and the following would also be legal:
+```scala
+xs.foldLeft(0): (x, y) =>
+  x + y
+```
+
+The grammar changes for optional braces around arguments are as follows.
+
+```
+SimpleExpr       ::=  ...
+                   |  SimpleExpr ColonArgument
+InfixExpr        ::=  ...
+                   |  InfixExpr id ColonArgument
+ColonArgument    ::=  colon [LambdaStart]
+                      indent (CaseClauses | Block) outdent
+LambdaStart      ::=  FunParams (‘=>’ | ‘?=>’)
+                   |  HkTypeParamClause ‘=>’
+```
+
 ## Spaces vs Tabs
 
 Indentation prefixes can consist of spaces and/or tabs. Indentation widths are the indentation prefixes themselves, ordered by the string prefix relation. So, so for instance "2 tabs, followed by 4 spaces" is strictly less than "2 tabs, followed by 5 spaces", but "2 tabs, followed by 4 spaces" is incomparable to "6 tabs" or to "4 spaces, followed by 2 tabs". It is an error if the indentation width of some line is incomparable with the indentation width of the region that's current at that point. To avoid such errors, it is a good idea not to mix spaces and tabs in the same source file.
@@ -448,62 +502,3 @@ indented regions where possible. When invoked with options `-rewrite -no-indent`
 The `-indent` option only works on [new-style syntax](./control-syntax.md). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
 `-rewrite -indent`. To go in the opposite direction, from indented code to old-style syntax, it's `-rewrite -no-indent`, followed by `-rewrite -old-syntax`.
 
-## Variant: Indentation Marker `:` for Arguments
-
-Generally, the possible indentation regions coincide with those regions where braces `{...}` are also legal, no matter whether the braces enclose an expression or a set of definitions. There is one exception, though: Arguments to functions can be enclosed in braces but they cannot be simply indented instead. Making indentation always significant for function arguments would be too restrictive and fragile.
-
-To allow such arguments to be written without braces, a variant of the indentation scheme is implemented under language import
-```scala
-import language.experimental.fewerBraces
-```
-In this variant, a `<colon>` token is also recognized where function argument would be expected. Examples:
-
-```scala
-times(10):
-  println("ah")
-  println("ha")
-```
-
-or
-
-```scala
-credentials `++`:
-  val file = Path.userHome / ".credentials"
-  if file.exists
-  then Seq(Credentials(file))
-  else Seq()
-```
-
-or
-
-```scala
-xs.map:
-  x =>
-    val y = x - 1
-    y * y
-```
-What's more, a `:` in these settings can also be followed on the same line by the parameter part and arrow of a lambda. So the last example could be compressed to this:
-
-```scala
-xs.map: x =>
-  val y = x - 1
-  y * y
-```
-and the following would also be legal:
-```scala
-xs.foldLeft(0): (x, y) =>
-  x + y
-```
-
-The grammar changes for this variant are as follows.
-
-```
-SimpleExpr       ::=  ...
-                   |  SimpleExpr ColonArgument
-InfixExpr        ::=  ...
-                   |  InfixExpr id ColonArgument
-ColonArgument    ::=  colon [LambdaStart]
-                      indent (CaseClauses | Block) outdent
-LambdaStart      ::=  FunParams (‘=>’ | ‘?=>’)
-                   |  HkTypeParamClause ‘=>’
-```

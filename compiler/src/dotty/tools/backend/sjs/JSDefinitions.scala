@@ -162,10 +162,6 @@ final class JSDefinitions()(using Context) {
 
   @threadUnsafe lazy val RuntimePackageVal = requiredPackage("scala.scalajs.runtime")
   @threadUnsafe lazy val RuntimePackageClass = RuntimePackageVal.moduleClass.asClass
-    @threadUnsafe lazy val RuntimePackage_wrapJavaScriptExceptionR = RuntimePackageClass.requiredMethodRef("wrapJavaScriptException")
-    def Runtime_wrapJavaScriptException(using Context) = RuntimePackage_wrapJavaScriptExceptionR.symbol
-    @threadUnsafe lazy val Runtime_unwrapJavaScriptExceptionR = RuntimePackageClass.requiredMethodRef("unwrapJavaScriptException")
-    def Runtime_unwrapJavaScriptException(using Context) = Runtime_unwrapJavaScriptExceptionR.symbol
     @threadUnsafe lazy val Runtime_toScalaVarArgsR = RuntimePackageClass.requiredMethodRef("toScalaVarArgs")
     def Runtime_toScalaVarArgs(using Context) = Runtime_toScalaVarArgsR.symbol
     @threadUnsafe lazy val Runtime_toJSVarArgsR = RuntimePackageClass.requiredMethodRef("toJSVarArgs")
@@ -206,6 +202,14 @@ final class JSDefinitions()(using Context) {
     def Special_instanceof(using Context) = Special_instanceofR.symbol
     @threadUnsafe lazy val Special_strictEqualsR = SpecialPackageClass.requiredMethodRef("strictEquals")
     def Special_strictEquals(using Context) = Special_strictEqualsR.symbol
+    @threadUnsafe lazy val Special_throwR = SpecialPackageClass.requiredMethodRef("throw")
+    def Special_throw(using Context) = Special_throwR.symbol
+    @threadUnsafe lazy val Special_tryCatchR = SpecialPackageClass.requiredMethodRef("tryCatch")
+    def Special_tryCatch(using Context) = Special_tryCatchR.symbol
+    @threadUnsafe lazy val Special_wrapAsThrowableR = SpecialPackageClass.requiredMethodRef("wrapAsThrowable")
+    def Special_wrapAsThrowable(using Context) = Special_wrapAsThrowableR.symbol
+    @threadUnsafe lazy val Special_unwrapFromThrowableR = SpecialPackageClass.requiredMethodRef("unwrapFromThrowable")
+    def Special_unwrapFromThrowable(using Context) = Special_unwrapFromThrowableR.symbol
 
   @threadUnsafe lazy val WrappedArrayType: TypeRef = requiredClassRef("scala.scalajs.js.WrappedArray")
   def WrappedArrayClass(using Context) = WrappedArrayType.symbol.asClass

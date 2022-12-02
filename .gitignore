@@ -35,6 +35,9 @@ metals.sbt
 .idea_modules
 /.worksheet/
 
+# scala-cli
+.scala-build
+
 # Partest
 dotty.jar
 dotty-lib.jar

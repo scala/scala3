@@ -1,0 +1,7 @@
+-- [E134] Type Error: tests/neg/i15287.scala:4:19 ----------------------------------------------------------------------
+4 |@main def Test() = f('c')(2) // error
+  |                   ^
+  |                   None of the overloaded alternatives of method f with types
+  |                    (x: Char)(min: Boolean, max: Int): String
+  |                    (x: Char)(someParam: String): String
+  |                   match arguments (('c' : Char))((2 : Int))

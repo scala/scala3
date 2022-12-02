@@ -1,4 +1,4 @@
--- Error: tests/neg/missing-implicit4.scala:14:4 -----------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/missing-implicit4.scala:14:4 -----------------------------------------------------------
 14 |  ff // error
    |    ^
    |    No given instance of type Zip[Option] was found for parameter xs of method ff
@@ -16,7 +16,7 @@
    |
    |    import instances.traverseList
    |
--- Error: tests/neg/missing-implicit4.scala:20:42 ----------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/missing-implicit4.scala:20:42 ----------------------------------------------------------
 20 |    List(1, 2, 3).traverse(x => Option(x)) // error
    |                                          ^
    |  No given instance of type Zip[Option] was found for an implicit parameter of method traverse in trait Traverse

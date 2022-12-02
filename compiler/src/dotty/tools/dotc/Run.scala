@@ -163,6 +163,16 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Actions that need to be performed at the end of the current compilation run */
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
+  /** Will be set to true if any of the compiled compilation units contains
+   *  a pureFunctions language import.
+   */
+  var pureFunsImportEncountered = false
+
+  /** Will be set to true if any of the compiled compilation units contains
+   *  a captureChecking language import.
+   */
+  var ccImportEncountered = false
+
   def compile(files: List[AbstractFile]): Unit =
     try
       val sources = files.map(runContext.getSource(_))
@@ -224,6 +234,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     def runPhases(using Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
       val profiler = ctx.profiler
+      var phasesWereAdjusted = false
 
       for (phase <- ctx.base.allPhases)
         if (phase.isRunnable)
@@ -242,6 +253,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
             ctx.typerState.gc()
           }
+          if !phasesWereAdjusted then
+            phasesWereAdjusted = true
+            if !Feature.ccEnabledSomewhere then
+              ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase.prev)
+              ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase)
 
       profiler.finished()
     }

@@ -15,8 +15,8 @@ import scala.annotation.internal.sharable
 object Names {
   import NameKinds._
 
-  /** Things that can be turned into names with `totermName` and `toTypeName`
-   *  Decorators defines implements these as extension methods for strings.
+  /** Things that can be turned into names with `toTermName` and `toTypeName`.
+   *  Decorators implements these as extension methods for strings.
    */
   type PreName = Name | String
 

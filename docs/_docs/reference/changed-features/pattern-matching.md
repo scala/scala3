@@ -13,26 +13,38 @@ Scala 3 supports a superset of Scala 2 [extractors](https://www.scala-lang.org/f
 Extractors are objects that expose a method `unapply` or `unapplySeq`:
 
 ```scala
-def unapply[A](x: T)(implicit x: B): U
-def unapplySeq[A](x: T)(implicit x: B): U
+def unapply(x: T): U
+def unapplySeq(x: T): U
+```
+
+Where `T` is an arbitrary type, if it is a subtype of the scrutinee's type `Scrut`, a [type test](../other-new-features/type-test.md) is performed before calling the method.
+`U` follows rules described in [Fixed Arity Extractors](#fixed-arity-extractors) and [Variadic Extractors](#variadic-extractors).
+
+**Note:** `U` can be the type of the extractor object.
+
+`unapply` and `unapplySeq` can actually have a more general signature, allowing for a leading type clause, as well as arbitrarily many using clauses, both before and after the regular term clause, and at most one implicit clause at the end, for example:
+
+```scala
+def unapply[A, B](using C)(using D)(x: T)(using E)(using F)(implicit y: G): U = ???
 ```
 
 Extractors that expose the method `unapply` are called fixed-arity extractors, which
 work with patterns of fixed arity. Extractors that expose the method `unapplySeq` are
 called variadic extractors, which enables variadic patterns.
 
-### Fixed-Arity Extractors
+## Fixed-Arity Extractors
 
-Fixed-arity extractors expose the following signature:
+Fixed-arity extractors expose the following signature (with potential type, using and implicit clauses):
+
 
 ```scala
-def unapply[A](x: T)(implicit x: B): U
+def unapply(x: T): U
 ```
 
 The type `U` conforms to one of the following matches:
 
-- Boolean match
-- Product match
+- [Boolean match](#boolean-match)
+- [Product match](#product-match)
 
 Or `U` conforms to the type `R`:
 
@@ -45,53 +57,24 @@ type R = {
 
 and `S` conforms to one of the following matches:
 
-- single match
-- name-based match
+- [single match](#single-match)
+- [name-based match](#name-based-match)
 
 The former form of `unapply` has higher precedence, and _single match_ has higher
 precedence over _name-based match_.
+
+**Note:** the `S` in `R` can be `U`.
 
 A usage of a fixed-arity extractor is irrefutable if one of the following condition holds:
 
 - `U = true`
 - the extractor is used as a product match
-- `U = Some[T]` (for Scala 2 compatibility)
 - `U <: R` and `U <: { def isEmpty: false }`
+- `U = Some[T]`
 
-### Variadic Extractors
+**Note:** The last rule is necessary because, for compatibility reasons, `isEmpty` on `Some` has return type `Boolean` rather than `false`, even though it always returns `false`.
 
-Variadic extractors expose the following signature:
-
-```scala
-def unapplySeq[A](x: T)(implicit x: B): U
-```
-
-The type `U` conforms to one of the following matches:
-
-- sequence match
-- product-sequence match
-
-Or `U` conforms to the type `R`:
-
-```scala
-type R = {
-  def isEmpty: Boolean
-  def get: S
-}
-```
-
-and `S` conforms to one of the two matches above.
-
-The former form of `unapplySeq` has higher priority, and _sequence match_ has higher
-precedence over _product-sequence match_.
-
-A usage of a variadic extractor is irrefutable if one of the following conditions holds:
-
-- the extractor is used directly as a sequence match or product-sequence match
-- `U = Some[T]` (for Scala 2 compatibility)
-- `U <: R` and `U <: { def isEmpty: false }`
-
-## Boolean Match
+### Boolean Match
 
 - `U =:= Boolean`
 - Pattern-matching on exactly `0` patterns
@@ -111,10 +94,10 @@ object Even:
 // even has an even number of characters
 ```
 
-## Product Match
+### Product Match
 
 - `U <: Product`
-- `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
+- `N > 0` is the maximum number of consecutive (`val` or parameterless `def`) `_1: P1` ... `_N: PN` members in `U`
 - Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
 
 For example:
@@ -141,9 +124,11 @@ object FirstChars:
 // First: H; Second: i
 ```
 
-## Single Match
+### Single Match
 
-- If there is exactly `1` pattern, pattern-matching on `1` pattern with type `U`
+- Pattern-matching on `1` pattern with type `S`
+
+For example, where `Nat <: R`, `S = Int`:
 
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
@@ -162,27 +147,72 @@ object Nat:
 // 5 is a natural number
 ```
 
-## Name-based Match
+### Name-based Match
 
-- `N > 1` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1 ... _N: PN` members in `U`
+- `S` has `N > 1` members such that they are each `val`s or parameterless `def`s, and named from `_1` with type `P1` to `_N` with type `PN`
+- `S` doesn't have `N+1` members satisfying the previous point, i.e. `N` is maximal
 - Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
 
+For example, where `U = AlwaysEmpty.type <: R`, `S = NameBased`:
 ```scala
-object ProdEmpty:
+object MyPatternMatcher:
+  def unapply(s: String) = AlwaysEmpty
+
+object AlwaysEmpty:
+  def isEmpty = true
+  def get = NameBased
+
+object NameBased:
   def _1: Int = ???
   def _2: String = ???
-  def isEmpty = true
-  def unapply(s: String): this.type = this
-  def get = this
 
 "" match
-  case ProdEmpty(_, _) => ???
+  case MyPatternMatcher(_, _) => ???
   case _ => ()
 ```
 
-## Sequence Match
+## Variadic Extractors
 
-- `U <: X`, `T2` and `T3` conform to `T1`
+Variadic extractors expose the following signature (with potential type, using and implicit clauses):
+
+```scala
+def unapplySeq(x: T): U
+```
+
+Where `U` has to fullfill the following:
+
+1. Set `V := U`
+2. `V` is valid if `V` conforms to one of the following matches:
+- [sequence match](#sequence-match)
+- [product-sequence match](#product-sequence-match)
+3. Otherwise `U` has to conform to the type `R`:
+```scala
+type R = {
+  def isEmpty: Boolean
+  def get: S
+}
+```
+4. Set `V := S`, and reattempt 2., if it fails `U` is not valid.
+
+The `V := U` form of `unapplySeq` has higher priority, and _sequence match_ has higher
+precedence over _product-sequence match_.
+
+**Note:** This means `isEmpty` is disregarded if the `V := U` form is valid
+
+A usage of a variadic extractor is irrefutable if one of the following conditions holds:
+
+- the extractor is used directly as a sequence match or product-sequence match
+- `U <: R` and `U <: { def isEmpty: false }`
+- `U = Some[T]`
+
+**Note:** The last rule is necessary because, for compatibility reasons, `isEmpty` on `Some` has return type `Boolean` rather than `false`, even though it always returns `false`.
+
+**Note:** Be careful, by the first condition and the note above, it is possible to define an irrefutable extractor with a `def isEmpty: true`.
+This is strongly discouraged and, if found in the wild, is almost certainly a bug.
+
+### Sequence Match
+
+- `V <: X`
 
 ```scala
 type X = {
@@ -192,9 +222,11 @@ type X = {
   def toSeq: scala.Seq[T3]
 }
 ```
-
+- `T2` and `T3` conform to `T1`
 - Pattern-matching on _exactly_ `N` simple patterns with types `T1, T1, ..., T1`, where `N` is the runtime size of the sequence, or
 - Pattern-matching on `>= N` simple patterns and _a vararg pattern_ (e.g., `xs: _*`) with types `T1, T1, ..., T1, Seq[T1]`, where `N` is the minimum size of the sequence.
+
+For example, where `V = S`, `U = Option[S] <: R`, `S = Seq[Char]`
 
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
@@ -211,13 +243,15 @@ object CharList:
 // e,x,a,m
 ```
 
-## Product-Sequence Match
+### Product-Sequence Match
 
-- `U <: Product`
-- `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
+- `V <: Product`
+- `N > 0` is the maximum number of consecutive (`val` or parameterless `def`) `_1: P1` ... `_N: PN` members in `V`
 - `PN` conforms to the signature `X` defined in Seq Pattern
 - Pattern-matching on exactly `>= N` patterns, the first `N - 1` patterns have types `P1, P2, ... P(N-1)`,
   the type of the remaining patterns are determined as in Seq Pattern.
+
+For example, where `V = S`, `U = Option[S] <: R`, `S = (String, PN) <: Product`, `PN = Seq[Int]`
 
 ```scala
 class Foo(val name: String, val children: Int*)
@@ -227,7 +261,7 @@ object Foo:
 
 def foo(f: Foo) = f match
   case Foo(name, x, y, ns*) => ">= two children."
-  case Foo(name, ns*) =>    => "< two children."
+  case Foo(name, ns*)       => "< two children."
 ```
 
 There are plans for further simplification, in particular to factor out _product match_

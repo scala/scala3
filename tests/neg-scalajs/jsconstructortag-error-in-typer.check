@@ -1,4 +1,4 @@
--- Error: tests/neg-scalajs/jsconstructortag-error-in-typer.scala:9:39 -------------------------------------------------
+-- [E172] Type Error: tests/neg-scalajs/jsconstructortag-error-in-typer.scala:9:39 -------------------------------------
 9 |  val a = js.constructorTag[ScalaClass] // error
   |                                       ^
   |No given instance of type scala.scalajs.js.ConstructorTag[ScalaClass] was found for parameter tag of method constructorTag in package scala.scalajs.js.
@@ -7,7 +7,7 @@
   |    scala.scalajs.js.ConstructorTag.materialize[T]
   |
   |But method materialize in object ConstructorTag does not match type scala.scalajs.js.ConstructorTag[ScalaClass].
--- Error: tests/neg-scalajs/jsconstructortag-error-in-typer.scala:10:39 ------------------------------------------------
+-- [E172] Type Error: tests/neg-scalajs/jsconstructortag-error-in-typer.scala:10:39 ------------------------------------
 10 |  val b = js.constructorTag[ScalaTrait] // error
    |                                       ^
    |No given instance of type scala.scalajs.js.ConstructorTag[ScalaTrait] was found for parameter tag of method constructorTag in package scala.scalajs.js.
@@ -16,7 +16,7 @@
    |    scala.scalajs.js.ConstructorTag.materialize[T]
    |
    |But method materialize in object ConstructorTag does not match type scala.scalajs.js.ConstructorTag[ScalaTrait].
--- Error: tests/neg-scalajs/jsconstructortag-error-in-typer.scala:11:45 ------------------------------------------------
+-- [E172] Type Error: tests/neg-scalajs/jsconstructortag-error-in-typer.scala:11:45 ------------------------------------
 11 |  val c = js.constructorTag[ScalaObject.type] // error
    |                                             ^
    |No given instance of type scala.scalajs.js.ConstructorTag[ScalaObject.type] was found for parameter tag of method constructorTag in package scala.scalajs.js.

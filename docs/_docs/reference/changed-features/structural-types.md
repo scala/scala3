@@ -35,19 +35,41 @@ configure how fields and methods should be resolved.
 Here's an example of a structural type `Person`:
 
 ```scala
-  class Record(elems: (String, Any)*) extends Selectable:
-    private val fields = elems.toMap
-    def selectDynamic(name: String): Any = fields(name)
+type Person = Record { val name: String; val age: Int }
+```
 
-  type Person = Record { val name: String; val age: Int }
- ```
+The type `Person` adds a _refinement_ to its parent type `Record` that defines the two fields `name` and `age`. We say the refinement is _structural_ since  `name` and `age` are not defined in the parent type. But they exist nevertheless as members of type `Person`.
 
-The type `Person` adds a _refinement_ to its parent type `Record` that defines the two fields `name` and `age`. We say the refinement is _structural_ since  `name` and `age` are not defined in the parent type. But they exist nevertheless as members of class `Person`. For instance, the following
-program would print  "Emma is 42 years old.":
+This allows us to check at compiletime if accesses are valid:
 
 ```scala
-  val person = Record("name" -> "Emma", "age" -> 42).asInstanceOf[Person]
-  println(s"${person.name} is ${person.age} years old.")
+val person: Person = ???
+println(s"${person.name} is ${person.age} years old.") // works
+println(person.email) // error: value email is not a member of Person
+```
+How is `Record` defined, and how does `person.name` resolve ?
+
+`Record` is a class that extends the marker trait [`scala.Selectable`](https://scala-lang.org/api/3.x/scala/Selectable.html) and defines
+a method `selectDynamic`, which maps a field name to its value.
+Selecting a member of a structural type is syntactic sugar for a call to this method.
+The selections `person.name` and `person.age` are translated by
+the Scala compiler to:
+
+```scala
+person.selectDynamic("name").asInstanceOf[String]
+person.selectDynamic("age").asInstanceOf[Int]
+```
+
+For example, `Record` could be defined as follows:
+
+```scala
+class Record(elems: (String, Any)*) extends Selectable:
+  private val fields = elems.toMap
+  def selectDynamic(name: String): Any = fields(name)
+```
+Which allows us to create instances of `Person` like so:
+```scala
+val person = Record("name" -> "Emma", "age" -> 42).asInstanceOf[Person]
 ```
 
 The parent type `Record` in this example is a generic class that can represent arbitrary records in its `elems` argument. This argument is a
@@ -59,52 +81,45 @@ help from the user. In practice, the connection between a structural type
 and its underlying generic representation would most likely be done by
 a database layer, and therefore would not be a concern of the end user.
 
-`Record` extends the marker trait [`scala.Selectable`](https://scala-lang.org/api/3.x/scala/Selectable.html) and defines
-a method `selectDynamic`, which maps a field name to its value.
-Selecting a structural type member is done by calling this method.
-The `person.name` and `person.age` selections are translated by
-the Scala compiler to:
-
-```scala
-  person.selectDynamic("name").asInstanceOf[String]
-  person.selectDynamic("age").asInstanceOf[Int]
-```
-
 Besides `selectDynamic`, a `Selectable` class sometimes also defines a method `applyDynamic`. This can then be used to translate function calls of structural members. So, if `a` is an instance of `Selectable`, a structural call like `a.f(b, c)` would translate to
 
 ```scala
-  a.applyDynamic("f")(b, c)
+a.applyDynamic("f")(b, c)
 ```
 
 ## Using Java Reflection
 
-Structural types can also be accessed using [Java reflection](https://www.oracle.com/technical-resources/articles/java/javareflection.html). Example:
+Using `Selectable` and [Java reflection](https://www.oracle.com/technical-resources/articles/java/javareflection.html), we can select a member from unrelated classes.
+
+> Before resorting to structural calls with Java reflection one should consider alternatives. For instance, sometimes a more a modular _and_ efficient architecture can be obtained using [type classes](../contextual/type-classes.md).
+
+For example, we would like to provide behavior for both [`FileInputStream`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/FileInputStream.html#%3Cinit%3E(java.io.File)) and [`Channel`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/channels/Channel.html) classes by calling their `close` method, however, these classes are unrelated, i.e. have no common supertype with a `close` method. Therefore, below we define a structural type `Closeable` that defines a `close` method.
 
 ```scala
-  type Closeable = { def close(): Unit }
+type Closeable = { def close(): Unit }
 
-  class FileInputStream:
-    def close(): Unit
+class FileInputStream:
+  def close(): Unit
 
-  class Channel:
-    def close(): Unit
+class Channel:
+  def close(): Unit
 ```
 
-Here, we define a structural type `Closeable` that defines a `close` method. There are various classes that have `close` methods, we just list [`FileInputStream`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/FileInputStream.html#%3Cinit%3E(java.io.File)) and [`Channel`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/channels/Channel.html) as two examples. It would be easiest if the two classes shared a common interface that factors out the `close` method. But such factorings are often not possible if different libraries are combined in one application. Yet, we can still have methods that work on
-all classes with a `close` method by using the `Closeable` type. For instance,
+Ideally we would add a common interface to both these classes to define the `close` method, however they are defined in libraries outside of our control. As a compromise we can use the structural type to define a single implementation for an `autoClose` method:
+
+
 
 ```scala
-  import scala.reflect.Selectable.reflectiveSelectable
+import scala.reflect.Selectable.reflectiveSelectable
 
-  def autoClose(f: Closeable)(op: Closeable => Unit): Unit =
-    try op(f) finally f.close()
+def autoClose(f: Closeable)(op: Closeable => Unit): Unit =
+  try op(f) finally f.close()
 ```
 
-The call `f.close()` has to use Java reflection to identify and call the `close` method in the receiver `f`. This needs to be enabled by an import
-of `reflectiveSelectable` shown above. What happens "under the hood" is then the following:
+The call `f.close()` requires `Closeable` to extend `Selectable` to identify and call the `close` method in the receiver `f`. A universal implicit conversion to `Selectable` is enabled by an import
+of `reflectiveSelectable` shown above, based on [Java reflection](https://www.oracle.com/technical-resources/articles/java/javareflection.html). What happens "under the hood" is then the following:
 
- - The import makes available an implicit conversion that turns any type into a
-   `Selectable`. `f` is wrapped in this conversion.
+ - The implicit conversion wraps `f` in an instance of `scala.reflect.Selectable` (which is a subtype of `Selectable`).
 
  - The compiler then transforms the `close` call on the wrapped `f`
    to an `applyDynamic` call. The end result is:
@@ -113,15 +128,13 @@ of `reflectiveSelectable` shown above. What happens "under the hood" is then the
      reflectiveSelectable(f).applyDynamic("close")()
    ```
  - The implementation of `applyDynamic` in `reflectiveSelectable`'s result
-uses Java reflection to find and call a method `close` with zero parameters in the value referenced by `f` at runtime.
+uses [Java reflection](https://www.oracle.com/technical-resources/articles/java/javareflection.html) to find and call a method `close` with zero parameters in the value referenced by `f` at runtime.
 
 Structural calls like this tend to be much slower than normal method calls. The mandatory import of `reflectiveSelectable` serves as a signpost that something inefficient is going on.
 
 **Note:** In Scala 2, Java reflection is the only mechanism available for structural types and it is automatically enabled without needing the
 `reflectiveSelectable` conversion. However, to warn against inefficient
 dispatch, Scala 2 requires a language import `import scala.language.reflectiveCalls`.
-
-Before resorting to structural calls with Java reflection one should consider alternatives. For instance, sometimes a more a modular _and_ efficient architecture can be obtained using type classes.
 
 ## Extensibility
 
@@ -179,13 +192,10 @@ differences.
   is, as long as the correspondence of the structural type with the
   underlying value is as stated.
 
-- [`Dynamic`](https://scala-lang.org/api/3.x/scala/Dynamic.html) is just a marker trait, which gives more leeway where and
-  how to define reflective access operations. By contrast
-  `Selectable` is a trait which declares the access operations.
-
 - Two access operations, `selectDynamic` and `applyDynamic` are shared
   between both approaches. In `Selectable`, `applyDynamic` also may also take
   [`java.lang.Class`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Class.html) arguments indicating the method's formal parameter types.
-  [`Dynamic`](https://scala-lang.org/api/3.x/scala/Dynamic.html) comes with `updateDynamic`.
+
+- `updateDynamic` is unique to [`Dynamic`](https://scala-lang.org/api/3.x/scala/Dynamic.html) but as mentionned before, this fact is subject to change, and shouldn't be used as an assumption.
 
 [More details](structural-types-spec.md)

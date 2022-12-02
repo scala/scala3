@@ -2619,13 +2619,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case sym if sym.isType => sym.asType
           }.toList
 
-        def memberType(name: String): Symbol = typeMember(name)
+        def memberType(name: String): Symbol =
+          self.typeRef.decls.find(sym => sym.name == name.toTypeName)
         def typeMember(name: String): Symbol =
-          self.unforcedDecls.find(sym => sym.name == name.toTypeName)
+          lookupPrefix.member(name.toTypeName).symbol
 
-        def memberTypes: List[Symbol] = typeMembers
+        def memberTypes: List[Symbol] =
+          self.typeRef.decls.filter(_.isType)
         def typeMembers: List[Symbol] =
-          self.unforcedDecls.filter(_.isType)
+          lookupPrefix.typeMembers.map(_.symbol).toList
 
         def declarations: List[Symbol] =
           self.typeRef.info.decls.toList
@@ -2765,6 +2767,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def Invisible: Flags = dotc.core.Flags.Invisible
       def JavaDefined: Flags = dotc.core.Flags.JavaDefined
       def JavaStatic: Flags = dotc.core.Flags.JavaStatic
+      def JavaAnnotation: Flags = dotc.core.Flags.JavaAnnotation
       def Lazy: Flags = dotc.core.Flags.Lazy
       def Local: Flags = dotc.core.Flags.Local
       def Macro: Flags = dotc.core.Flags.Macro

@@ -1,6 +1,10 @@
 -- [E104] Syntax Error: tests/neg/i6778.scala:3:27 ---------------------------------------------------------------------
-3 |class Bar extends Foo with A(10) // error
+3 |class Bar extends Foo with A(10) // error // error
   |                           ^^^^^
   |                           class A is not a trait
   |
   | longer explanation available when compiling with `-explain`
+-- [E171] Type Error: tests/neg/i6778.scala:3:6 ------------------------------------------------------------------------
+3 |class Bar extends Foo with A(10) // error // error
+  |      ^
+  |      missing argument for parameter x of constructor A in class A: (x: Int): A

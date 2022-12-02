@@ -55,10 +55,11 @@ subsection:
           - page: reference/metaprogramming/macros.md
           - page: reference/metaprogramming/macros-spec.md
             hidden: true
+          - page: reference/metaprogramming/simple-smp.md # description of a simplified metaprogramming language, this might not be the best place for it
+            hidden: true
           - page: reference/metaprogramming/staging.md
           - page: reference/metaprogramming/reflection.md
           - page: reference/metaprogramming/tasty-inspect.md
-          - page: reference/metaprogramming/simple-smp.md
       - title: Other New Features
         index: reference/other-new-features/other-new-features.md
         subsection:
@@ -150,7 +151,9 @@ subsection:
           - page: reference/experimental/numeric-literals.md
           - page: reference/experimental/explicit-nulls.md
           - page: reference/experimental/main-annotation.md
+          - page: reference/experimental/into-modifier.md
           - page: reference/experimental/cc.md
+          - page: reference/experimental/purefuns.md
           - page: reference/experimental/tupled-function.md
       - page: reference/syntax.md
       - title: Language Versions

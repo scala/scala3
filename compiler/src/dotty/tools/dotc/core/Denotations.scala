@@ -300,9 +300,9 @@ object Denotations {
         case NoDenotation | _: NoQualifyingRef | _: MissingRef =>
           def argStr = if (args.isEmpty) "" else i" matching ($args%, %)"
           val msg =
-            if (site.exists) i"$site does not have a member $kind $name$argStr"
-            else i"missing: $kind $name$argStr"
-          throw new TypeError(msg)
+            if site.exists then em"$site does not have a member $kind $name$argStr"
+            else em"missing: $kind $name$argStr"
+          throw TypeError(msg)
         case denot =>
           denot.symbol
       }
@@ -644,15 +644,19 @@ object Denotations {
 
     def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
       val situated = if site == NoPrefix then this else asSeenFrom(site)
-      val sigMatches = sig.matchDegree(situated.signature) match
-        case FullMatch =>
-          true
-        case MethodNotAMethodMatch =>
-          // See comment in `matches`
-          relaxed && !symbol.is(JavaDefined)
-        case ParamMatch =>
-          relaxed
-        case noMatch =>
+      val sigMatches =
+        try
+          sig.matchDegree(situated.signature) match
+            case FullMatch =>
+              true
+            case MethodNotAMethodMatch =>
+              // See comment in `matches`
+              relaxed && !symbol.is(JavaDefined)
+            case ParamMatch =>
+              relaxed
+            case noMatch =>
+              false
+        catch case ex: MissingType =>
           false
       if sigMatches && symbol.hasTargetName(targetName) then this else NoDenotation
 
@@ -1076,6 +1080,7 @@ object Denotations {
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T = f(this)
 
     type AsSeenFromResult = SingleDenotation
+
     protected def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = {
       val symbol = this.symbol
       val owner = this match {
@@ -1120,10 +1125,31 @@ object Denotations {
       then this
       else if symbol.isAllOf(ClassTypeParam) then
         val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
-        if arg.exists then derivedSingleDenotation(symbol, arg.bounds, pre)
+        if arg.exists
+        then derivedSingleDenotation(symbol, normalizedArgBounds(arg.bounds), pre)
         else derived(symbol.info)
       else derived(symbol.info)
     }
+
+    /** The argument bounds, possibly intersected with the parameter's info TypeBounds,
+     *  if the latter is not F-bounded and does not refer to other type parameters
+     *  of the same class, and the intersection is provably nonempty.
+     */
+    private def normalizedArgBounds(argBounds: TypeBounds)(using Context): TypeBounds =
+      if symbol.isCompleted && !hasBoundsDependingOnParamsOf(symbol.owner) then
+        val combined @ TypeBounds(lo, hi) = symbol.info.bounds & argBounds
+        if (lo frozen_<:< hi) then combined
+        else argBounds
+      else argBounds
+
+    private def hasBoundsDependingOnParamsOf(cls: Symbol)(using Context): Boolean =
+      val acc = new TypeAccumulator[Boolean]:
+        def apply(x: Boolean, tp: Type): Boolean = tp match
+          case _: LazyRef => true
+          case tp: TypeRef
+          if tp.symbol.isAllOf(ClassTypeParam) && tp.symbol.owner == cls => true
+          case _ => foldOver(x, tp)
+      acc(false, symbol.info)
   }
 
   abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type) extends SingleDenotation(symbol, initInfo) {

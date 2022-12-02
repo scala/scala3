@@ -46,7 +46,7 @@ class C12/*<-classes::C12#*/ {
 }
 
 object N/*<-classes::N.*/ {
-  val anonClass/*<-classes::N.anonClass.*/ = new C7/*->classes::C7#*/(42) {
+  val anonClass/*<-classes::N.anonClass.*/ = /*<-local1*/new C7/*->classes::C7#*/(42) {
     val local/*<-local0*/ = ???/*->scala::Predef.`???`().*/
   }
   val anonFun/*<-classes::N.anonFun.*/ = List/*->scala::package.List.*/(1).map/*->scala::collection::immutable::List#map().*/ { i/*<-local3*/ =>

@@ -9,10 +9,7 @@
 10 |  class C2(val x: () => Int): // error
    |               ^
    |        reference (C2.this.x : () => Int) is not included in allowed capture set {} of the self type of class C2
--- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this.scala:17:8 ---------------------------------------
+-- Error: tests/neg-custom-args/captures/cc-this.scala:17:8 ------------------------------------------------------------
 17 |  class C4(val f: () => Int) extends C3 // error
-   |        ^
-   |        illegal inheritance: self type {C4.this.f} C4 of class C4 does not conform to self type C3
-   |        of parent class C3
-   |
-   | longer explanation available when compiling with `-explain`
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  reference (C4.this.f : () => Int) is not included in allowed capture set {} of pure base class class C3

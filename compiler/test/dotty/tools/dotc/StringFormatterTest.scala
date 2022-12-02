@@ -22,6 +22,7 @@ class StringFormatterTest extends AbstractStringFormatterTest:
   @Test def flagsSeq   = check("<static>, final", i"${Seq(JavaStatic, Final)}%, %")
   @Test def flagsTup   = check("(<static>,final)", i"${(JavaStatic, Final)}")
   @Test def seqOfTup2  = check("(final,given), (private,lazy)", i"${Seq((Final, Given), (Private, Lazy))}%, %")
+  @Test def seqOfTup3  = check("(Foo,given, (right is approximated))", i"${Seq((Foo, Given, TypeComparer.ApproxState.None.addHigh))}%, %")
 
   class StorePrinter extends Printer:
     var string: String = "<never set>"
@@ -38,51 +39,11 @@ class StringFormatterTest extends AbstractStringFormatterTest:
     assertEquals("flags=private final <static>", store.string)
 end StringFormatterTest
 
-class EmStringFormatterTest extends AbstractStringFormatterTest:
-  @Test def seq        = check("[Any, String]", em"${Seq(defn.AnyType, defn.StringType)}")
-  @Test def seqSeq     = check("Any; String", em"${Seq(defn.AnyType, defn.StringType)}%; %")
-  @Test def ellipsis   = assert(em"$Big".contains("..."))
-  @Test def err        = check("<nonsensical>type Err</nonsensical>", em"$Err")
-  @Test def ambig      = check("Foo vs Foo", em"$Foo vs $Foo")
-  @Test def cstrd      = check("Foo; Bar", em"$mkCstrd%; %")
-  @Test def seqErr     = check("[class Any, <nonsensical>type Err</nonsensical>]", em"${Seq(defn.AnyClass, Err)}")
-  @Test def seqSeqErr  = check("class Any; <nonsensical>type Err</nonsensical>", em"${Seq(defn.AnyClass, Err)}%; %")
-  @Test def tupleErr   = check("(1,<nonsensical>type Err</nonsensical>)", em"${(1, Err)}")
-  @Test def tupleAmb   = check("(Foo,Foo)", em"${(Foo, Foo)}")
-  @Test def tupleFlags = check("(Foo,abstract)", em"${(Foo, Abstract)}")
-  @Test def seqOfTupleFlags = check("[(Foo,abstract)]", em"${Seq((Foo, Abstract))}")
-end EmStringFormatterTest
-
-class ExStringFormatterTest extends AbstractStringFormatterTest:
-  @Test def seq        = check("[Any, String]", ex"${Seq(defn.AnyType, defn.StringType)}")
-  @Test def seqSeq     = check("Any; String", ex"${Seq(defn.AnyType, defn.StringType)}%; %")
-  @Test def ellipsis   = assert(ex"$Big".contains("..."))
-  @Test def err        = check("<nonsensical>type Err</nonsensical>", ex"$Err")
-  @Test def ambig      = check("""Foo vs Foo²
-                                   |
-                                   |where:    Foo  is a type
-                                   |          Foo² is a type
-                                   |""".stripMargin, ex"$Foo vs $Foo")
-  @Test def cstrd      = check("""Foo; Bar
-                                   |
-                                   |where:    Bar is a type variable with constraint <: String
-                                   |          Foo is a type variable with constraint <: Int
-                                   |""".stripMargin, ex"$mkCstrd%; %")
-  @Test def seqErr     = check("[class Any, <nonsensical>type Err</nonsensical>]", ex"${Seq(defn.AnyClass, Err)}")
-  @Test def seqSeqErr  = check("class Any; <nonsensical>type Err</nonsensical>", ex"${Seq(defn.AnyClass, Err)}%; %")
-  @Test def tupleErr   = check("(1,<nonsensical>type Err</nonsensical>)", ex"${(1, Err)}")
-  @Test def tupleAmb   = check("""(Foo,Foo²)
-                                  |
-                                  |where:    Foo  is a type
-                                  |          Foo² is a type
-                                  |""".stripMargin, ex"${(Foo, Foo)}")
-end ExStringFormatterTest
-
 abstract class AbstractStringFormatterTest extends DottyTest:
   override def initializeCtx(fc: FreshContext) = super.initializeCtx(fc.setSetting(fc.settings.color, "never"))
 
   def Foo = newSymbol(defn.RootClass, typeName("Foo"), EmptyFlags, TypeBounds.empty).typeRef
-  def Err = newErrorSymbol(defn.RootClass, typeName("Err"), "")
+  def Err = newErrorSymbol(defn.RootClass, typeName("Err"), "".toMessage)
   def Big = (1 to 120).foldLeft(defn.StringType)((tp, i) => RefinedType(tp, typeName("A" * 69 + i), TypeAlias(defn.IntType)))
 
   def mkCstrd =
