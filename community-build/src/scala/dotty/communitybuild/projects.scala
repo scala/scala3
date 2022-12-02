@@ -487,7 +487,8 @@ object projects:
     sbtTestCommand = "ciJVM",
     sbtPublishCommand = "publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
-    dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
+    dependencies   = List(cats, coop, disciplineSpecs2, scalacheck),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init")
   )
 
   lazy val scalaParallelCollections = SbtCommunityProject(
