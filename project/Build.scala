@@ -804,6 +804,35 @@ object Build {
 
     repl := (Compile / console).value,
     Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
+    Compile / console / scalacOptions ++= {
+      val report = updateClassifiers.value
+      val scalaLibrarySourceJar = report.select(
+          configuration = configurationFilter("sourcedeps"),
+          module = (_: ModuleID).name == "scala-library",
+          artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+        sys.error(s"Could not fetch scala-library")
+      }
+
+      val `scala-library-path` = scalaLibrarySourceJar.getAbsolutePath().stripSuffix("-sources.jar")+ ".jar"
+      val `scala3-library-bootstrappedJS-path` = (`scala3-library-bootstrappedJS`/ Compile / packageBin).value.getAbsolutePath()
+      val `scalajs-library-path` = 
+        `scala-library-path`.split("/org").head + "/org" + File.separator + "scala-js" + File.separator + 
+        "scalajs-library_2.13" + File.separator + 
+        "1.11.0" + File.separator + 
+        "scalajs-library_2.13-1.11.0.jar"
+      val `scalajs-javalib-path` = 
+        `scala-library-path`.split("/org").head + "/org" + File.separator + "scala-js" + File.separator + 
+        "scalajs-javalib" + File.separator + 
+        "1.11.0" + File.separator + 
+        "scalajs-javalib-1.11.0.jar"
+      Seq(
+        "-bootclasspath", 
+        `scala3-library-bootstrappedJS-path` + 
+        ":" + `scala-library-path` + 
+        ":" + `scalajs-library-path` + 
+        ":" + `scalajs-javalib-path`
+      )
+    }
   )
 
   def dottyCompilerSettings(implicit mode: Mode): sbt.Def.SettingsDefinition =
