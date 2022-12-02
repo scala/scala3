@@ -816,24 +816,13 @@ object Build {
         sys.error(s"Could not fetch scala-library")
       }
 
-      val `scala-library-path` = scalaLibrarySourceJar.getAbsolutePath().stripSuffix("-sources.jar")+ ".jar"
       val `scala3-library-bootstrappedJS-path` = (`scala3-library-bootstrappedJS`/ Compile / packageBin).value.getAbsolutePath()
-      val `scalajs-library-path` = 
-        `scala-library-path`.split("/org").head + "/org" + File.separator + "scala-js" + File.separator + 
-        "scalajs-library_2.13" + File.separator + 
-        "1.11.0" + File.separator + 
-        "scalajs-library_2.13-1.11.0.jar"
-      val `scalajs-javalib-path` = 
-        `scala-library-path`.split("/org").head + "/org" + File.separator + "scala-js" + File.separator + 
-        "scalajs-javalib" + File.separator + 
-        "1.11.0" + File.separator + 
-        "scalajs-javalib-1.11.0.jar"
+      val `scalajs-dependency-path` = (`scala3-library-bootstrappedJS` / Compile / dependencyClasspath).value.map(_.data.getAbsolutePath).mkString(":")
+
       Seq(
         "-bootclasspath", 
         `scala3-library-bootstrappedJS-path` + 
-        ":" + `scala-library-path` + 
-        ":" + `scalajs-library-path` + 
-        ":" + `scalajs-javalib-path`
+        ":" + `scalajs-dependency-path`,
       )
     }
   )
