@@ -759,7 +759,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
       constrs.forall { case (tp1, tp2) => typeParamMap(tp1) <:< typeParamMap(tp2) }
     }
 
-    checkConstraint(genConstraint(sp))(using ctx.fresh.setNewTyperState())
+    withExploreTyperState:
+      checkConstraint(genConstraint(sp))
   }
 
   def show(ss: Seq[Space]): String = ss.map(show).mkString(", ")

@@ -59,14 +59,14 @@ object ProtoTypes {
       if keepConstraint then
         tp.widenSingleton match
           case poly: PolyType =>
-            val newctx = ctx.fresh.setNewTyperState()
-            val result = testCompat(using newctx)
+            val newTS = ctx.typerState.fresh(committable = true)
+            val result = withTyperState(newTS)(testCompat)
             typr.println(
                 i"""normalizedCompatible for $poly, $pt = $result
                    |constraint was: ${ctx.typerState.constraint}
-                   |constraint now: ${newctx.typerState.constraint}""")
-            if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
-              newctx.typerState.commit()
+                   |constraint now: ${newTS.constraint}""")
+            if result && (ctx.typerState.constraint ne newTS.constraint) then
+              newTS.commit()
             result
           case _ => testCompat
       else explore(testCompat)
@@ -439,45 +439,45 @@ object ProtoTypes {
       else
         val passedCtx = ctx
         val passedTyperState = ctx.typerState
-        inContext(protoCtx.withUncommittedTyperState) {
-          val protoTyperState = ctx.typerState
-          val oldConstraint = protoTyperState.constraint
-          val args1 = args.mapWithIndexConserve((arg, idx) =>
-            cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
-          val newConstraint = protoTyperState.constraint
+        inContext(protoCtx):
+          withTyperState(protoCtx.typerState.uncommittedAncestor):
+            val protoTyperState = ctx.typerState
+            val oldConstraint = protoTyperState.constraint
+            val args1 = args.mapWithIndexConserve((arg, idx) =>
+              cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
+            val newConstraint = protoTyperState.constraint
 
-          if !args1.exists(arg => isUndefined(arg.tpe)) then state.typedArgs = args1
+            if !args1.exists(arg => isUndefined(arg.tpe)) then state.typedArgs = args1
 
-          // We only need to propagate constraints if we typed the arguments in a different
-          // TyperState and if that created additional constraints.
-          if (passedTyperState ne protoTyperState) && (oldConstraint ne newConstraint) then
-            // To respect the pre-condition of `mergeConstraintWith` and keep
-            // `protoTyperState` committable we must ensure that it does not
-            // contain any type variable which don't already exist in the passed
-            // TyperState. This is achieved by instantiating any such type
-            // variable. NOTE: this does not suffice to discard type variables
-            // in ancestors of `protoTyperState`, if this situation ever
-            // comes up, an assertion in TyperState will trigger and this code
-            // will need to be generalized.
-            if protoTyperState.isCommittable then
-              val passedConstraint = passedTyperState.constraint
-              val newLambdas = newConstraint.domainLambdas.filter(tl =>
-                !passedConstraint.contains(tl) || passedConstraint.hasConflictingTypeVarsFor(tl, newConstraint))
-              val newTvars = newLambdas.flatMap(_.paramRefs).map(newConstraint.typeVarOfParam)
+            // We only need to propagate constraints if we typed the arguments in a different
+            // TyperState and if that created additional constraints.
+            if (passedTyperState ne protoTyperState) && (oldConstraint ne newConstraint) then
+              // To respect the pre-condition of `mergeConstraintWith` and keep
+              // `protoTyperState` committable we must ensure that it does not
+              // contain any type variable which don't already exist in the passed
+              // TyperState. This is achieved by instantiating any such type
+              // variable. NOTE: this does not suffice to discard type variables
+              // in ancestors of `protoTyperState`, if this situation ever
+              // comes up, an assertion in TyperState will trigger and this code
+              // will need to be generalized.
+              if protoTyperState.isCommittable then
+                val passedConstraint = passedTyperState.constraint
+                val newLambdas = newConstraint.domainLambdas.filter(tl =>
+                  !passedConstraint.contains(tl) || passedConstraint.hasConflictingTypeVarsFor(tl, newConstraint))
+                val newTvars = newLambdas.flatMap(_.paramRefs).map(newConstraint.typeVarOfParam)
 
-              args1.foreach(arg => Inferencing.instantiateSelected(arg.tpe, newTvars))
+                args1.foreach(arg => Inferencing.instantiateSelected(arg.tpe, newTvars))
 
-              // `instantiateSelected` can leave some type variables uninstantiated,
-              // so we maximize them in a second pass.
-              newTvars.foreach {
-                case tvar: TypeVar if !tvar.isInstantiated =>
-                  tvar.instantiate(fromBelow = false)
-                case _ =>
-              }
-            passedTyperState.mergeConstraintWith(protoTyperState)(using passedCtx)
-          end if
-          args1
-        }
+                // `instantiateSelected` can leave some type variables uninstantiated,
+                // so we maximize them in a second pass.
+                newTvars.foreach {
+                  case tvar: TypeVar if !tvar.isInstantiated =>
+                    tvar.instantiate(fromBelow = false)
+                  case _ =>
+                }
+              passedTyperState.mergeConstraintWith(protoTyperState)(using passedCtx)
+            end if
+            args1
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
      *  used to avoid repeated typings of trees when backtracking.

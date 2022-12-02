@@ -19,14 +19,14 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
   def transformSelf(vd: ValDef)(using Context): ValDef =
     cpy.ValDef(vd)(tpt = transform(vd.tpt))
 
-  private def nestedScopeCtx(defs: List[Tree])(using Context): Context = {
-    val nestedCtx = ctx.fresh.setNewScope
-    defs foreach {
-      case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) => nestedCtx.enter(d.symbol)
-      case _ =>
-    }
-    nestedCtx
-  }
+  private inline def inNestedScopeCtx(defs: List[Tree])(inline op: Context ?-> Tree)(using Context): Tree =
+    inMappedContext(ctx =>
+        val nestedCtx = ctx.nextFresh.setNewScope
+        defs.foreach:
+          case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) => nestedCtx.enter(d.symbol)
+          case _ =>
+        nestedCtx
+      )(op)
 
   private def patternScopeCtx(pattern: Tree)(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
@@ -46,15 +46,14 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
   override def transform(tree: Tree)(using Context): Tree = {
     try tree match {
       case Block(stats, expr) =>
-        super.transform(tree)(using nestedScopeCtx(stats))
+        inNestedScopeCtx(stats)(super.transform(tree))
       case tree: DefDef =>
-        inContext(localCtx(tree)) {
+        inLocalCtx(tree):
           cpy.DefDef(tree)(
             tree.name,
             transformParamss(tree.paramss),
             transform(tree.tpt),
-            transform(tree.rhs)(using nestedScopeCtx(tree.paramss.flatten)))
-        }
+            inNestedScopeCtx(tree.paramss.flatten)(transform(tree.rhs)))
       case impl @ Template(constr, parents, self, _) =>
         cpy.Template(tree)(
           transformSub(constr),

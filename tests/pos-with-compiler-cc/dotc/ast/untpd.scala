@@ -555,7 +555,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
-  def localCtx(tree: Tree)(using Context): Context = ctx
+  protected def localCtxAttached(tree: Tree)(using ctx: Context): Context = ctx
 
   override val cpy: UntypedTreeCopier = UntypedTreeCopier()
 

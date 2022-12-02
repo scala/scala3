@@ -748,9 +748,8 @@ object TypeOps:
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds.addMode(Mode.GadtConstraintInference)) {
+    inMappedContext(_.nextFresh.setExploreTyperState().setFreshGADTBounds.addMode(Mode.GadtConstraintInference)):
       instantiateToSubType(childTp, parent).dealias
-    }
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`

@@ -270,7 +270,7 @@ object Interactive {
     case Nil =>
       ctx.detach
     case first :: _ if first eq stat =>
-      ctx.exprContext(stat, exprOwner).detach
+      ctx.exprContext(stat, exprOwner)
     case (imp: Import) :: rest =>
       contextOfStat(rest, stat, exprOwner, ctx.importContext(imp, inContext(ctx){imp.symbol}))
     case _ :: rest =>
@@ -289,14 +289,14 @@ object Interactive {
           else contextOfStat(stats, nested, pkg.symbol.moduleClass, outer.packageContext(tree, tree.symbol))
         case tree: DefDef =>
           assert(tree.symbol.exists)
-          val localCtx = outer.localContext(tree, tree.symbol).setNewScope.detach
+          val localCtx = outer.localContext(tree, tree.symbol, newScope = true)
           for params <- tree.paramss; param <- params do localCtx.enter(param.symbol)
             // Note: this overapproximates visibility a bit, since value parameters are only visible
             // in subsequent parameter sections
           localCtx
         case tree: MemberDef =>
           if (tree.symbol.exists)
-            outer.localContext(tree, tree.symbol).detach
+            outer.localContext(tree, tree.symbol)
           else
             outer
         case tree @ Block(stats, expr) =>

@@ -230,7 +230,7 @@ object Erasure {
   def expandedMethodType(mt: MethodType, origFun: Tree)(using Context): MethodType =
     mt.paramInfos match
       case JavaArrayType(elemType) :: Nil if elemType.isRef(defn.ObjectClass) =>
-        val origArity = totalParamCount(origFun.symbol)(using preErasureCtx)
+        val origArity = atPreErasure(totalParamCount(origFun.symbol))
         if origArity > MaxImplementedFunctionArity then
           MethodType(List.fill(origArity)(defn.ObjectType), mt.resultType)
         else mt
@@ -526,12 +526,12 @@ object Erasure {
             implType.derivedLambdaType(resType = samResultType)
         val bridge = newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method | Flags.Bridge, bridgeType)
         Closure(bridge, bridgeParamss =>
-          inContext(ctx.withOwner(bridge)) {
+          withOwner(bridge):
             val List(bridgeParams) = bridgeParamss
             assert(ctx.typer.isInstanceOf[Erasure.Typer])
             val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)))
             ctx.typer.adapt(rhs, bridgeType.resultType)
-          },
+          ,
           targetType = functionalInterface).withSpan(tree.span)
       else
         tree
@@ -675,13 +675,12 @@ object Erasure {
           // We cannot simply call `erasure` on the qualifier because its erasure might be
           // `Object` due to how we erase intersections (see pos/i13950.scala).
           // Instead, we manually lookup the type of `apply` in the qualifier.
-          inContext(preErasureCtx) {
+          atPreErasure:
             val qualTp = tree.qualifier.typeOpt.widen
             if qualTp.derivesFrom(defn.PolyFunctionClass) then
               erasePolyFunctionApply(qualTp.select(nme.apply).widen).classSymbol
             else
               NoSymbol
-          }
         else
           val owner = sym.maybeOwner
           if defn.specialErasure.contains(owner) then
@@ -708,7 +707,7 @@ object Erasure {
         // Therefore, we apply the fix to use the pre-erasure symbol, but only
         // for constructors, in order not to mask other possible bugs that would
         // trigger the assert(sym.exists, ...) below.
-        val prevSym = tree.symbol(using preErasureCtx)
+        val prevSym = atPreErasure(tree.symbol)
         if prevSym.isConstructor then sym = prevSym
 
       assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
@@ -748,7 +747,7 @@ object Erasure {
         !cls.is(Flags.JavaDefined) || {
           // We can't rely on `isContainedWith` here because packages are
           // not nested from the JVM point of view.
-          val boundary = cls.accessBoundary(cls.owner)(using preErasureCtx)
+          val boundary = atPreErasure(cls.accessBoundary(cls.owner))
           (boundary eq defn.RootClass) ||
           (ctx.owner.enclosingPackageClass eq boundary)
         }
@@ -801,8 +800,8 @@ object Erasure {
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
       val ntree = atPhase(erasurePhase){
         // Use erased-type semantic to intercept TypeApply in explicit nulls
-        val interceptCtx = if ctx.explicitNulls then ctx.retractMode(Mode.SafeNulls) else ctx
-        interceptTypeApply(tree.asInstanceOf[TypeApply])(using interceptCtx)
+        inMode(if ctx.explicitNulls then ctx.mode &~ Mode.SafeNulls else ctx.mode):
+          interceptTypeApply(tree.asInstanceOf[TypeApply])
       }.withSpan(tree.span)
 
       ntree match {
@@ -824,7 +823,7 @@ object Erasure {
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
-      val origFunType = origFun.tpe.widen(using preErasureCtx)
+      val origFunType = atPreErasure(origFun.tpe.widen)
       val ownArgs = if origFunType.isErasedMethod then Nil else args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match
@@ -1038,7 +1037,8 @@ object Erasure {
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], DetachedContext) = {
       // discard Imports first, since Bridges will use tree's symbol
-      val stats0 = addRetainedInlineBodies(stats.filter(!_.isInstanceOf[untpd.Import]))(using preErasureCtx)
+      val stats0 = atPreErasure:
+          addRetainedInlineBodies(stats.filter(!_.isInstanceOf[untpd.Import]))
       val stats1 =
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats0)
         else stats0

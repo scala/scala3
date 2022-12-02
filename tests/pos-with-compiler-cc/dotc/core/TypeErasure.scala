@@ -169,28 +169,27 @@ object TypeErasure {
   private def erasureFn(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, isSymbol: Boolean, wildcardOK: Boolean): TypeErasure =
     erasures(erasureIdx(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, wildcardOK))
 
-  /** The current context with a phase no later than erasure */
-  def preErasureCtx(using Context) =
-    if (ctx.erasedTypes) ctx.withPhase(erasurePhase) else ctx
+  def atPreErasure[T](op: Context ?-> T)(using Context) =
+    atPhase(if ctx.erasedTypes then erasurePhase else ctx.phase)(op)
 
   /** The standard erasure of a Scala type. Value classes are erased as normal classes.
    *
    *  @param tp            The type to erase.
   */
-  def erasure(tp: Type)(using Context): Type =
-    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = false, isConstructor = false, isSymbol = false, wildcardOK = false)(tp)(using preErasureCtx)
+  def erasure(tp: Type)(using Context): Type = atPreErasure:
+    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = false, isConstructor = false, isSymbol = false, wildcardOK = false)(tp)
 
   /** The value class erasure of a Scala type, where value classes are semi-erased to
    *  ErasedValueType (they will be fully erased in [[ElimErasedValueType]]).
    *
    *  @param tp            The type to erase.
    */
-  def valueErasure(tp: Type)(using Context): Type =
-    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = true, isConstructor = false, isSymbol = false, wildcardOK = false)(tp)(using preErasureCtx)
+  def valueErasure(tp: Type)(using Context): Type = atPreErasure:
+    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = true, isConstructor = false, isSymbol = false, wildcardOK = false)(tp)
 
   /** The erasure that Scala 2 would use for this type. */
-  def scala2Erasure(tp: Type)(using Context): Type =
-    erasureFn(sourceLanguage = SourceLanguage.Scala2, semiEraseVCs = true, isConstructor = false, isSymbol = false, wildcardOK = false)(tp)(using preErasureCtx)
+  def scala2Erasure(tp: Type)(using Context): Type = atPreErasure:
+    erasureFn(sourceLanguage = SourceLanguage.Scala2, semiEraseVCs = true, isConstructor = false, isSymbol = false, wildcardOK = false)(tp)
 
   /** Like value class erasure, but value classes erase to their underlying type erasure */
   def fullErasure(tp: Type)(using Context): Type =
@@ -201,7 +200,7 @@ object TypeErasure {
   def sigName(tp: Type, sourceLanguage: SourceLanguage)(using Context): TypeName = {
     val normTp = tp.translateFromRepeated(toArray = sourceLanguage.isJava)
     val erase = erasureFn(sourceLanguage, semiEraseVCs = !sourceLanguage.isJava, isConstructor = false, isSymbol = false, wildcardOK = true)
-    erase.sigName(normTp)(using preErasureCtx)
+    atPreErasure(erase.sigName(normTp))
   }
 
   /** The erasure of a top-level reference. Differs from normal erasure in that
@@ -239,9 +238,9 @@ object TypeErasure {
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if sym.is(ConstructorProxy) then NoType
-    else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(using preErasureCtx))
-    else if (sym.is(Label)) erase.eraseResult(sym.info)(using preErasureCtx)
-    else erase.eraseInfo(tp, sym)(using preErasureCtx) match {
+    else if (sym.isConstructor) outer.addParam(sym.owner.asClass, atPreErasure(erase(tp)))
+    else if (sym.is(Label)) atPreErasure(erase.eraseResult(sym.info))
+    else atPreErasure(erase.eraseInfo(tp, sym)) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
           MethodType(Nil, defn.BoxedUnitClass.typeRef)

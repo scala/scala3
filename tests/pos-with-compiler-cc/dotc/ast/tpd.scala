@@ -592,7 +592,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     (if sym.is(PackageVal) then sym.moduleClass else sym).orElse(ctx.owner)
 
   /** The local context to use when traversing trees */
-  def localCtx(tree: Tree)(using Context): Context = ctx.withOwner(localOwner(tree))
+  protected def localCtxAttached(tree: Tree)(using ctx: Context): Context =
+    val newOwner = localOwner(tree)
+    if newOwner eq ctx.owner then ctx else ctx.nextFresh.setOwner(newOwner)
 
   override val cpy: TypedTreeCopier = // Type ascription needed to pick up any new members in TreeCopier (currently there are none)
     TypedTreeCopier()
@@ -1182,16 +1184,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      */
     inline def mapStatements[T](
         exprOwner: Symbol,
-        inline op: Tree => Context ?=> Tree,
-        inline wrapResult: List[Tree] => Context ?=> T)(using Context): T =
+        inline op: Tree -> Context ?-> Tree,
+        inline wrapResult: List[Tree] -> Context ?-> T)(using Context): T =
       @tailrec
       def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): T =
         pending match
           case stat :: rest =>
-            val statCtx = stat match
-              case _: DefTree | _: ImportOrExport => ctx
-              case _ => ctx.exprContext(stat, exprOwner)
-            val stat1 = op(stat)(using statCtx)
+            val stat1 = inStatContext(stat, exprOwner)(op(stat))
             val restCtx = stat match
               case stat: Import => ctx.importContext(stat, stat.symbol)
               case _ => ctx

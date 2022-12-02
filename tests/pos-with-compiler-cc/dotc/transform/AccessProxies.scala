@@ -48,11 +48,11 @@ abstract class AccessProxies {
           if (accessor.name.isSetterName &&
               forwardedArgss.nonEmpty && forwardedArgss.head.nonEmpty) // defensive conditions
             accessRef.becomes(forwardedArgss.head.head)
-          else
+          else withOwner(accessor):
             accessRef
               .appliedToTypeTrees(forwardedTpts)
               .appliedToArgss(forwardedArgss)
-              .etaExpandCFT(using ctx.withOwner(accessor))
+              .etaExpandCFT
         rhs.withSpan(accessed.span)
       })
 

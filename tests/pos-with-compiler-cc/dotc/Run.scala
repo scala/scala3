@@ -353,7 +353,8 @@ class Run(comp: Compiler, @constructorOnly ictx0: Context) extends ImplicitRunIn
     if true || ctx.settings.YdetailedStats.value then
       println(s"""total contexts   : $totalContexts
                  |scoped contexts  : $totalScoped
-                 |detached contexts: $totalDetached""".stripMargin)
+                 |detached contexts: $totalDetached
+                 |of which in scope: $totalScopedDetached""".stripMargin)
     val r = runContext.reporter
     if !r.errorsReported then
       profile.printSummary()

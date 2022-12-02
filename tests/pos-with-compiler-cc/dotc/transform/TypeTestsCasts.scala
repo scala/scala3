@@ -72,63 +72,63 @@ object TypeTestsCasts {
     }.apply(tp)
 
     /** Returns true if the type arguments of `P` can be determined from `X` */
-    def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
-      val AppliedType(tycon, _) = P
+    def typeArgsTrivial(X: Type, P: AppliedType)(using Context) =
+      inMappedContext(_.nextFresh.setExploreTyperState().setFreshGADTBounds):
+        val AppliedType(tycon, _) = P
 
-      def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {
-        case tp: TypeLambda => tp
-        case tp: TypeProxy => underlyingLambda(tp.superType)
-      }
-      val typeLambda = underlyingLambda(tycon)
-      val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
-      val P1 = tycon.appliedTo(tvars)
+        def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {
+          case tp: TypeLambda => tp
+          case tp: TypeProxy => underlyingLambda(tp.superType)
+        }
+        val typeLambda = underlyingLambda(tycon)
+        val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
+        val P1 = tycon.appliedTo(tvars)
 
-      debug.println("before " + ctx.typerState.constraint.show)
-      debug.println("P : " + P.show)
-      debug.println("P1 : " + P1.show)
-      debug.println("X : " + X.show)
+        debug.println("before " + ctx.typerState.constraint.show)
+        debug.println("P : " + P.show)
+        debug.println("P1 : " + P1.show)
+        debug.println("X : " + X.show)
 
-      // It does not matter whether P1 is a subtype of X or not.
-      // It just tries to infer type arguments of P1 from X if the value x
-      // conforms to the type skeleton pre.F[_]. Then it goes on to check
-      // if P1 <: P, which means the type arguments in P are trivial,
-      // thus no runtime checks are needed for them.
-      withMode(Mode.GadtConstraintInference) {
-        // Why not widen type arguments here? Given the following program
-        //
-        //    trait Tree[-T] class Ident[-T] extends Tree[T]
-        //
-        //    def foo1(tree: Tree[Int]) = tree.isInstanceOf[Ident[Int]]
-        //
-        // In checking whether the test tree.isInstanceOf[Ident[Int]]
-        // is realizable, we want to constrain Ident[X] <: Tree[Int],
-        // such that we can infer X = Int and Ident[X] <:< Ident[Int].
-        //
-        // If we perform widening, we will get X = Nothing, and we don't have
-        // Ident[X] <:< Ident[Int] any more.
-        TypeComparer.constrainPatternType(P1, X, forceInvariantRefinement = true)
-        debug.println(
-          TypeComparer.explained(_.constrainPatternType(P1, X, forceInvariantRefinement = true))
-        )
-      }
+        // It does not matter whether P1 is a subtype of X or not.
+        // It just tries to infer type arguments of P1 from X if the value x
+        // conforms to the type skeleton pre.F[_]. Then it goes on to check
+        // if P1 <: P, which means the type arguments in P are trivial,
+        // thus no runtime checks are needed for them.
+        withMode(Mode.GadtConstraintInference) {
+          // Why not widen type arguments here? Given the following program
+          //
+          //    trait Tree[-T] class Ident[-T] extends Tree[T]
+          //
+          //    def foo1(tree: Tree[Int]) = tree.isInstanceOf[Ident[Int]]
+          //
+          // In checking whether the test tree.isInstanceOf[Ident[Int]]
+          // is realizable, we want to constrain Ident[X] <: Tree[Int],
+          // such that we can infer X = Int and Ident[X] <:< Ident[Int].
+          //
+          // If we perform widening, we will get X = Nothing, and we don't have
+          // Ident[X] <:< Ident[Int] any more.
+          TypeComparer.constrainPatternType(P1, X, forceInvariantRefinement = true)
+          debug.println(
+            TypeComparer.explained(_.constrainPatternType(P1, X, forceInvariantRefinement = true))
+          )
+        }
 
-      // Maximization of the type means we try to cover all possible values
-      // which conform to the skeleton pre.F[_] and X. Then we have to make
-      // sure all of them are actually of the type P, which implies that the
-      // type arguments in P are trivial (no runtime check needed).
-      maximizeType(P1, span)
+        // Maximization of the type means we try to cover all possible values
+        // which conform to the skeleton pre.F[_] and X. Then we have to make
+        // sure all of them are actually of the type P, which implies that the
+        // type arguments in P are trivial (no runtime check needed).
+        maximizeType(P1, span)
 
-      debug.println("after " + ctx.typerState.constraint.show)
+        debug.println("after " + ctx.typerState.constraint.show)
 
-      val res = P1 <:< P
+        val res = P1 <:< P
 
-      debug.println(TypeComparer.explained(_.isSubType(P1, P)))
-      debug.println("P1 : " + P1.show)
-      debug.println("P1 <:< P = " + res)
+        debug.println(TypeComparer.explained(_.isSubType(P1, P)))
+        debug.println("P1 : " + P1.show)
+        debug.println("P1 <:< P = " + res)
 
-      res
-
-    }
+        res
+    end typeArgsTrivial
 
     def recur(X: Type, P: Type): String = (X <:< P) ||| (P.dealias match {
       case _: SingletonType     => ""
@@ -254,13 +254,13 @@ object TypeTestsCasts {
           else {
             if expr.tpe.isBottomType then
               report.warning(TypeTestAlwaysDiverges(expr.tpe, testType), tree.srcPos)
-            val nestedCtx = ctx.fresh.setNewTyperState()
+            val nestedTS = ctx.typerState.fresh(committable = true)
             val foundClsSyms = foundClasses(expr.tpe.widen)
-            val sensical = checkSensical(foundClsSyms)(using nestedCtx)
-            if (!sensical) {
-              nestedCtx.typerState.commit()
+            val sensical = withTyperState(nestedTS):
+              checkSensical(foundClsSyms)
+            if !sensical then
+              nestedTS.commit()
               constant(expr, Literal(Constant(false)))
-            }
             else if (testCls.isPrimitiveValueClass)
               foundClsSyms match
                 case List(cls) if cls.isPrimitiveValueClass =>

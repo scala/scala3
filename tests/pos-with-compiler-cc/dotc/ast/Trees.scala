@@ -1374,29 +1374,37 @@ object Trees {
      */
     protected def inlineContext(call: tpd.Tree)(using Context): Context = ctx
 
-    /** The context to use when mapping or accumulating over a tree */
-    def localCtx(tree: Tree)(using Context): Context
+    /** The context to use when mapping or accumulating over a tree
+     *  Thos might be an attachec ontext, so it should only be used from
+     *  scope-delimited operations.
+     */
+    protected def localCtxAttached(tree: Tree)(using ctx: Context): Context
 
-    /** The context to use when transforming a tree.
+    /** Run `op` in context to use when transforming a tree.
       * It ensures that the source is correct, and that the local context is used if
       * that's necessary for transforming the whole tree.
       * TODO: ensure transform is always called with the correct context as argument
       * @see https://github.com/lampepfl/dotty/pull/13880#discussion_r836395977
       */
-    def transformCtx(tree: Tree)(using Context): Context =
-      val sourced =
-        if tree.source.exists && tree.source != ctx.source
-        then ctx.withSource(tree.source)
-        else ctx
-      tree match
-        case t: (MemberDef | PackageDef | LambdaTypeTree | TermLambdaTypeTree) =>
-          localCtx(t)(using sourced)
-        case _ =>
-          sourced
+    inline def inTransformCtx[T](tree: Tree)(inline op: Context ?-> T)(using Context): T =
+      inMappedContext(ctx =>
+        val sourced =
+          if tree.source.exists && tree.source != ctx.source
+          then ctx.withSource(tree.source)
+          else ctx
+        tree match
+          case t: (MemberDef | PackageDef | LambdaTypeTree | TermLambdaTypeTree) =>
+            localCtxAttached(t)(using sourced)
+          case _ =>
+            sourced
+      )(op)
+
+    inline def inLocalCtx[T](tree: Tree)(inline op: Context ?-> T)(using Context): T =
+      inMappedContext(ctx => localCtxAttached(tree))(op)
 
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self: TreeMap @retains(caps.*) =>
       def transform(tree: Tree)(using Context): Tree = {
-        inContext(transformCtx(tree)) {
+        inTransformCtx(tree) {
           Stats.record(s"TreeMap.transform/$getClass")
           if (skipTransform(tree)) tree
           else tree match {
@@ -1589,11 +1597,11 @@ object Trees {
             case AppliedTypeTree(tpt, args) =>
               this(this(x, tpt), args)
             case LambdaTypeTree(tparams, body) =>
-              inContext(localCtx(tree)) {
+              inLocalCtx(tree) {
                 this(this(x, tparams), body)
               }
             case TermLambdaTypeTree(params, body) =>
-              inContext(localCtx(tree)) {
+              inLocalCtx(tree) {
                 this(this(x, params), body)
               }
             case MatchTypeTree(bound, selector, cases) =>
@@ -1609,15 +1617,15 @@ object Trees {
             case UnApply(fun, implicits, patterns) =>
               this(this(this(x, fun), implicits), patterns)
             case tree @ ValDef(_, tpt, _) =>
-              inContext(localCtx(tree)) {
+              inLocalCtx(tree) {
                 this(this(x, tpt), tree.rhs)
               }
             case tree @ DefDef(_, paramss, tpt, _) =>
-              inContext(localCtx(tree)) {
+              inLocalCtx(tree) {
                 this(this(paramss.foldLeft(x)(apply), tpt), tree.rhs)
               }
             case TypeDef(_, rhs) =>
-              inContext(localCtx(tree)) {
+              inLocalCtx(tree) {
                 this(x, rhs)
               }
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
@@ -1627,7 +1635,8 @@ object Trees {
             case Export(expr, _) =>
               this(x, expr)
             case PackageDef(pid, stats) =>
-              this(this(x, pid), stats)(using localCtx(tree))
+              val x1 = this(x, pid)
+              inLocalCtx(tree)(this(x1, stats))
             case Annotated(arg, annot) =>
               this(this(x, arg), annot)
             case Thicket(ts) =>

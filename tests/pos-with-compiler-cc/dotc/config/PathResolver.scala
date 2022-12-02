@@ -131,7 +131,7 @@ object PathResolver {
 
   def fromPathString(path: String)(using Context): ClassPath = {
     val settings = ctx.settings.classpath.update(path)
-    inContext(ctx.fresh.setSettings(settings)) {
+    inMappedContext(_.nextFresh.setSettings(settings)) {
       new PathResolver().result
     }
   }
@@ -149,7 +149,7 @@ object PathResolver {
       val ArgsSummary(sstate, rest, errors, warnings) =
         ctx.settings.processArguments(args.toList, true, ctx.settingsState)
       errors.foreach(println)
-      val pr = inContext(ctx.fresh.setSettings(sstate)) {
+      val pr = inMappedContext(_.nextFresh.setSettings(sstate)) {
         new PathResolver()
       }
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))

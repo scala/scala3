@@ -409,11 +409,10 @@ abstract class Recheck extends Phase, SymTransformer:
       stats.foreach(recheck(_))
 
     def recheckDef(tree: ValOrDefDef, sym: Symbol)(using Context): Unit =
-      inContext(ctx.localContext(tree, sym)) {
+      inLocalContext(tree, sym):
         tree match
           case tree: ValDef => recheckValDef(tree, sym)
           case tree: DefDef => recheckDefDef(tree, sym)
-      }
 
     /** Recheck tree without adapting it, returning its new type.
      *  @param tree        the original tree
@@ -439,9 +438,11 @@ abstract class Recheck extends Phase, SymTransformer:
             // TODO: Should we allow for completers as for ValDefs or DefDefs?
             tree.rhs match
               case impl: Template =>
-                recheckClassDef(tree, impl, sym.asClass)(using ctx.localContext(tree, sym))
+                inLocalContext(tree, sym):
+                  recheckClassDef(tree, impl, sym.asClass)
               case _ =>
-                recheckTypeDef(tree, sym)(using ctx.localContext(tree, sym))
+                inLocalContext(tree, sym):
+                  recheckTypeDef(tree, sym)
           case tree: Labeled => recheckLabeled(tree, pt)
 
       def recheckUnnamed(tree: Tree, pt: Type): Type = tree match

@@ -99,8 +99,9 @@ class TreeTypeMap(
           constr = tmap.transformSub(constr),
           parents = parents.mapconserve(transform),
           self = tmap.transformSub(self),
-          body = impl.body mapconserve
-            (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner))))
+          body = impl.body.mapconserve: stat =>
+            withOwner(mapOwner(impl.symbol.owner)):
+              tmap.transform(stat)
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {

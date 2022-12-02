@@ -816,9 +816,8 @@ trait Implicits:
     && ctx.mode.is(Mode.ImplicitsEnabled)
     && from.isValueType
     && (  from.isValueSubType(to)
-       || inferView(dummyTreeOfType(from), to)
-            (using ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
-          // TODO: investigate why we can't TyperState#test here
+       || inMappedContext(_.nextFresh.addMode(Mode.ImplicitExploration).setExploreTyperState()):
+            inferView(dummyTreeOfType(from), to).isSuccess
        )
 
   /** Find an implicit conversion to apply to given tree `from` so that the
@@ -1115,16 +1114,16 @@ trait Implicits:
                 converted
 
               if cand.isExtension && cand.isConversion then
-                val extensionCtx, conversionCtx = ctx.fresh.setNewTyperState()
-                val extensionResult = tryExtension(using extensionCtx)
-                val conversionResult = tryConversionForSelection(using conversionCtx)
-                if !extensionCtx.reporter.hasErrors then
-                  extensionCtx.typerState.commit()
-                  if !conversionCtx.reporter.hasErrors then
+                val extensionTS, conversionTS = ctx.typerState.fresh(committable = true)
+                val extensionResult = withTyperState(extensionTS)(tryExtension)
+                val conversionResult = withTyperState(conversionTS)(tryConversionForSelection)
+                if !extensionTS.reporter.hasErrors then
+                  extensionTS.commit()
+                  if !conversionTS.reporter.hasErrors then
                     report.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
                   extensionResult
                 else
-                  conversionCtx.typerState.commit()
+                  conversionTS.commit()
                   conversionResult
               else if cand.isExtension then tryExtension
               else tryConversionForSelection
@@ -1155,9 +1154,6 @@ trait Implicits:
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(using Context):
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         em"found: $argument: ${argument.tpe}, expected: $pt")
-
-    private def nestedContext() =
-      ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
     private def isCoherent = pt.isRef(defn.CanEqualClass)
 
@@ -1200,9 +1196,13 @@ trait Implicits:
         ImplicitSearchTooLargeFailure
       else
         val history = ctx.searchHistory.nest(cand, pt)
-        val typingCtx =
-          nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history)
-        val result = typedImplicit(cand, pt, argument, span)(using typingCtx)
+        val localTS = ctx.typerState.fresh(committable = true)
+        val result = inMappedContext(_.nextFresh
+            .retractMode(Mode.ImplicitsEnabled)
+            .setTyperState(localTS)
+            .setFreshGADTBounds
+            .setSearchHistory(history)):
+          typedImplicit(cand, pt, argument, span)
         result match
           case res: SearchSuccess =>
             ctx.searchHistory.defineBynameImplicit(wideProto, res)
@@ -1213,7 +1213,7 @@ trait Implicits:
             // make sure we don't forget their instantiation. This leads to more
             // precise error messages in tests/neg/missing-implicit3.check and
             // tests/neg/implicitSearch.check
-            typingCtx.typerState.gc()
+            localTS.gc()
             result
 
     /** Search a list of eligible implicit references */
@@ -1228,7 +1228,8 @@ trait Implicits:
       def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
-        else explore(compare(alt1.ref, alt2.ref))(using nestedContext())
+        else withoutMode(Mode.ImplicitsEnabled):
+          explore(compare(alt1.ref, alt2.ref))
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an
@@ -1263,9 +1264,8 @@ trait Implicits:
                   else
                     ctx.typerState
 
-                diff = inContext(ctx.withTyperState(comparisonState)) {
+                diff = withTyperState(comparisonState):
                   compare(ref1, ref2)
-                }
               case _ =>
           if diff < 0 then alt2
           else if diff > 0 then alt1

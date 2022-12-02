@@ -28,7 +28,7 @@ object MatchTypeTrace:
    */
   def record(op: Context ?=> Any)(using Context): String =
     val trace = new MatchTrace
-    inContext(ctx.fresh.setProperty(MatchTrace, trace)) {
+    inMappedContext(_.nextFresh.setProperty(MatchTrace, trace)) {
       op
       if trace.entries.isEmpty then ""
       else

@@ -220,40 +220,38 @@ class TyperState() {
 
     that.ensureNotConflicting(constraint)
 
-    val comparingCtx = ctx.withTyperState(this)
-
-    inContext(comparingCtx)(comparing(typeComparer =>
-      val other = that.constraint
-      val res = other.domainLambdas.forall(tl =>
-        // Integrate the type lambdas from `other`
-        constraint.contains(tl) || other.isRemovable(tl) || {
-          val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
-          if this.isCommittable then
-            tvars.foreach(tvar =>
-              if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
-          typeComparer.addToConstraint(tl, tvars)
-        }) &&
-        // Integrate the additional constraints on type variables from `other`
-        // and merge hardness markers
-        constraint.uninstVars.forall(tv =>
-          if other.isHard(tv) then constraint = constraint.withHard(tv)
-          val p = tv.origin
-          val otherLos = other.lower(p)
-          val otherHis = other.upper(p)
-          val otherEntry = other.entry(p)
-          (  (otherLos eq constraint.lower(p)) || otherLos.forall(_ <:< p)) &&
-          (  (otherHis eq constraint.upper(p)) || otherHis.forall(p <:< _)) &&
-          ((otherEntry eq constraint.entry(p)) || otherEntry.match
-            case NoType =>
-              true
-            case tp: TypeBounds =>
-              tp.contains(tv)
-            case tp =>
-              tv =:= tp
+    withTyperState(this):
+      comparing: typeComparer =>
+        val other = that.constraint
+        val res = other.domainLambdas.forall(tl =>
+          // Integrate the type lambdas from `other`
+          constraint.contains(tl) || other.isRemovable(tl) || {
+            val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
+            if this.isCommittable then
+              tvars.foreach(tvar =>
+                if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
+            typeComparer.addToConstraint(tl, tvars)
+          }) &&
+          // Integrate the additional constraints on type variables from `other`
+          // and merge hardness markers
+          constraint.uninstVars.forall(tv =>
+            if other.isHard(tv) then constraint = constraint.withHard(tv)
+            val p = tv.origin
+            val otherLos = other.lower(p)
+            val otherHis = other.upper(p)
+            val otherEntry = other.entry(p)
+            (  (otherLos eq constraint.lower(p)) || otherLos.forall(_ <:< p)) &&
+            (  (otherHis eq constraint.upper(p)) || otherHis.forall(p <:< _)) &&
+            ((otherEntry eq constraint.entry(p)) || otherEntry.match
+              case NoType =>
+                true
+              case tp: TypeBounds =>
+                tp.contains(tv)
+              case tp =>
+                tv =:= tp
+            )
           )
-        )
-      assert(res || ctx.reporter.errorsReported, i"cannot merge $constraint with $other.")
-    ))
+        assert(res || ctx.reporter.errorsReported, i"cannot merge $constraint with $other.")
 
     for tl <- constraint.domainLambdas do
       if constraint.isRemovable(tl) then constraint = constraint.remove(tl)

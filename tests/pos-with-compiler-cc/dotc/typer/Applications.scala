@@ -1282,11 +1282,11 @@ trait Applications extends Compatibility {
     def followTypeAlias(tree: untpd.Tree): untpd.Tree = {
       tree match {
         case tree: untpd.RefTree =>
-          val nestedCtx = ctx.fresh.setNewTyperState()
-          val ttree =
-            typedType(untpd.rename(tree, tree.name.toTypeName))(using nestedCtx)
+          val nestedTS = ctx.typerState.fresh(committable = true) // maybe committable = `false`? there is not commit.
+          val ttree = withTyperState(nestedTS):
+              typedType(untpd.rename(tree, tree.name.toTypeName))
           ttree.tpe match {
-            case alias: TypeRef if alias.info.isTypeAlias && !nestedCtx.reporter.hasErrors =>
+            case alias: TypeRef if alias.info.isTypeAlias && !nestedTS.reporter.hasErrors =>
               Inferencing.companionRef(alias) match {
                 case companion: TermRef => return untpd.ref(companion).withSpan(tree.span)
                 case _ =>
@@ -1636,7 +1636,7 @@ trait Applications extends Compatibility {
               isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
           }
         case tp1: PolyType => // (2)
-          inContext(ctx.fresh.setExploreTyperState()) {
+          withExploreTyperState {
             // Fully define the PolyType parameters so that the infos of the
             // tparams created below never contain TypeRefs whose underling types
             // contain uninstantiated TypeVars, this could lead to cycles in
@@ -2385,17 +2385,16 @@ trait Applications extends Compatibility {
     val methodRefTree = ref(methodRef, needLoad = false)
     val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
     val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
-    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
 
     try
-      val appliedTree = inContext(newCtx) {
-        // Introducing an auxiliary symbol in a temporary scope.
-        // Entering the symbol indirectly by `newCtx.enter`
-        // could instead add the symbol to the enclosing class
-        // which could break the REPL.
-        newCtx.scope.openForMutations.enter(truncatedSym)
-        newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
-      }
+      val appliedTree =
+        inMappedContext(_.nextFresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))):
+          // Introducing an auxiliary symbol in a temporary scope.
+          // Entering the symbol indirectly by `ctx.enter`
+          // could instead add the symbol to the enclosing class
+          // which could break the REPL.
+          ctx.scope.openForMutations.enter(truncatedSym)
+          ctx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
       if appliedTree.tpe.exists && !appliedTree.tpe.isError then
         Some(replaceCallee(appliedTree, methodRefTree))
       else

@@ -68,18 +68,28 @@ object Contexts {
   @sharable var totalContexts: Int = 0
   @sharable var totalScoped: Int = 0
   @sharable var totalDetached: Int = 0
+  @sharable var totalScopedDetached = 0
 
   def popTo(savedLevel: Int): Unit =
     if savedLevel != level then
       assert(savedLevel == level - 1)
       val popped = ctxStack.head
       if popped.status == Status_initial then popped.status = Status_invalid
+      else if popped.status == Status_detached then totalScopedDetached += 1
       ctxStack = ctxStack.tail
       level = savedLevel
 
   /** Run `op` with given context */
   inline def inContext[T](c: Context)(inline op: Context ?-> T): T =
     op(using c)
+
+  inline def inMappedContext[T]
+      (inline transform: Context -> Context)
+      (inline op: Context ?-> T)
+      (using Context): T =
+    val saved = level
+    try op(using transform(ctx))
+    finally popTo(saved)
 
   inline def atPeriod[T](pd: Period)(inline op: Context ?=> T)(using Context): T =
     val saved = level
@@ -131,9 +141,39 @@ object Contexts {
     try op(using if ctx.owner == owner then ctx else ctx.nextFresh.setOwner(owner))
     finally popTo(saved)
 
+  inline def withTyperState[T](ts: TyperState)(inline op: Context ?-> T)(using ctx: Context): T =
+    val saved = level
+    try op(using if ctx.typerState eq ts then ctx else ctx.nextFresh.setTyperState(ts))
+    finally popTo(saved)
+
+  inline def withExploreTyperState[T](inline op: Context ?-> T)(using ctx: Context): T =
+    withTyperState(ctx.typerState.fresh(committable = false))(op)
+
+  inline def inStatContext[T](stat: Tree[?], exprOwner: Symbol)
+      (inline op: Context ?-> T)(using ctx: Context): T =
+    val saved = level
+    try op(using ctx.statContextAttached(stat, exprOwner))
+    finally popTo(saved)
+
+  inline def inNewScope[T](inline op: Context ?-> T)(using ctx: Context): T =
+    val saved = level
+    try op(using ctx.nextFresh.setNewScope)
+    finally popTo(saved)
+
+  inline def inLocalContext[T](tree: untpd.Tree, owner: Symbol, newScope: Boolean = false, typer: Typer | Null = null)(op: Context ?-> T)(using Context): T =
+    val saved = level
+    val freshCtx = ctx.nextFresh.setTree(tree)
+    if owner.exists then freshCtx.setOwner(owner)
+    if typer != null then freshCtx.setTyper(typer)
+    try op(using freshCtx)
+    finally popTo(saved)
+
+  inline def withSource[T](source: SourceFile)(inline op: Context ?-> T)(using ctx: Context): T =
+    // can't scope source context, since it is cached in Context
+    op(using ctx.withSource(source))
+
   inline def inDetachedContext[T](inline op: DetachedContext ?-> T)(using ctx: Context): T =
     op(using ctx.detach)
-
 
   type Context = ContextCls @retains(caps.*)
 
@@ -418,10 +458,7 @@ object Contexts {
      *    context see the constructor parameters instead, but then we'd need a final substitution step
      *    from constructor parameters to class parameter accessors.
      */
-    def superCallContext: Context = {
-      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
-      superOrThisCallContext(owner.primaryConstructor, locals)
-    }
+    def superCallContext: Context
 
     /** The context for the arguments of a this(...) constructor call.
      *  The context is computed from the local auxiliary constructor context.
@@ -431,28 +468,16 @@ object Contexts {
      *   - as outer context: The context enclosing the enclosing class context
      *   - as scope: The parameters of the auxiliary constructor.
      */
-    def thisCallArgContext: Context = {
-      val constrCtx = detach.outersIterator.dropWhile(_.outer.owner == owner).next()
-      superOrThisCallContext(owner, constrCtx.scope)
-        .setTyperState(typerState)
-        .setGadt(gadt)
-        .fresh
-        .setScope(this.scope)
-    }
+    def thisCallArgContext: Context
 
-    /** The super- or this-call context with given owner and locals. */
-    private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
-      var classCtx = detach.outersIterator.dropWhile(!_.isClassDefContext).next()
-      classCtx.outer.fresh.setOwner(owner)
-        .setScope(locals)
-        .setMode(classCtx.mode)
-    }
+    //private[Contexts] // !cc! Cannot restrict visibility since Capture annotations don't work with inline accessors
+    // A possibly arena-allocated context for statement `stat`. Should be used only
+    // from operations that run code in local scopes.
+    def statContextAttached(stat: Tree[?], exprOwner: Symbol): FreshContext
 
     /** The context of expression `expr` seen as a member of a statement sequence */
-    def exprContext(stat: Tree[?], exprOwner: Symbol): Context =
-      if (exprOwner == this.owner) this
-      else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
-      else fresh.setOwner(exprOwner)
+    def exprContext(expr: Tree[?], exprOwner: Symbol): DetachedContext =
+      statContextAttached(expr, exprOwner).detach
 
     /** A new context that summarizes an import statement */
     def importContext(imp: Import[?], sym: Symbol): FreshContext =
@@ -488,12 +513,6 @@ object Contexts {
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
-
-    final def withTyperState(typerState: TyperState): Context =
-      if typerState ne this.typerState then fresh.setTyperState(typerState) else this
-
-    final def withUncommittedTyperState: Context =
-      withTyperState(typerState.uncommittedAncestor)
 
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
@@ -763,6 +782,33 @@ object Contexts {
       setSettings(setting.updateIn(settingsState, value))
 
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
+
+    def statContextAttached(stat: Tree[?], exprOwner: Symbol): FreshContext =
+      stat match
+        case _: DefTree[?] | _: ImportOrExport[?] => this
+        case _ =>
+          if exprOwner == this.owner then this
+          else if untpd.isSuperConstrCall(stat) && this.owner.isClass then superCallContext
+          else nextFresh.setOwner(exprOwner)
+
+    def superCallContext: FreshContext =
+      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
+      superOrThisCallContext(owner.primaryConstructor, locals)
+
+    def thisCallArgContext: FreshContext =
+      val constrCtx = detach.outersIterator.dropWhile(_.outer.owner == owner).next()
+      superOrThisCallContext(owner, constrCtx.scope)
+        .setTyperState(typerState)
+        .setGadt(gadt)
+        .fresh
+        .setScope(this.scope)
+
+   /** The super- or this-call context with given owner and locals. */
+    private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext =
+      var classCtx = detach.outersIterator.dropWhile(!_.isClassDefContext).next()
+      classCtx.outer.fresh.setOwner(owner)
+        .setScope(locals)
+        .setMode(classCtx.mode)
 
     override def toString: String =
       val sb = new mutable.StringBuilder()

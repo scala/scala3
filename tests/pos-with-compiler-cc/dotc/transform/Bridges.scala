@@ -144,7 +144,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
                     .select(nme.primitive.arrayApply)
                     .appliedTo(Literal(Constant(n))))
               case refs1 => refs1
-            expand(args ::: expandedRefs, resType, n - 1)(using ctx.withOwner(anonFun))
+            withOwner(anonFun):
+              expand(args ::: expandedRefs, resType, n - 1)
 
           val unadapted = Closure(anonFun, lambdaBody)
           cpy.Block(unadapted)(unadapted.stats,
@@ -153,7 +154,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
       val otherCount = contextResultCount(other)
       val start = contextFunctionResultTypeAfter(member, otherCount)(using preErasureCtx)
-      expand(args, start, memberCount - otherCount)(using ctx.withOwner(bridge))
+      withOwner(bridge):
+        expand(args, start, memberCount - otherCount)
     end etaExpand
 
     def bridgeRhs(argss: List[List[Tree]]) =

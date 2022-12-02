@@ -296,7 +296,7 @@ trait Deriving {
           else errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
       end typeclassInstance
 
-      def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
+      def syntheticDef(sym: Symbol): Tree = inMappedContext(_.nextFresh.setOwner(sym).setNewScope) {
         if sym.is(Method) then tpd.DefDef(sym.asTerm, typeclassInstance(sym))
         else tpd.ValDef(sym.asTerm, typeclassInstance(sym)(Nil))
       }

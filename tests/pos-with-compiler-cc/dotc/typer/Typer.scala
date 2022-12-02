@@ -1337,8 +1337,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     args match {
       case ValDef(_, _, _) :: _ =>
-        typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
-          using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
+        inMappedContext(_.nextFresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope):
+          typedDependent(args.asInstanceOf[List[untpd.ValDef]])
       case _ =>
         propagateErased(
           typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ body), pt))
@@ -1422,14 +1422,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               expr1.tpe
             case _ =>
               val outerCtx = ctx
-              val nestedCtx = outerCtx.fresh.setNewTyperState()
-              inContext(nestedCtx) {
+              val nestedTS = outerCtx.typerState.fresh(committable = true)
+              withTyperState(nestedTS) {
                 val protoArgs = args map (_ withType WildcardType)
                 val callProto = FunProto(protoArgs, WildcardType)(this, app.applyKind)
                 val expr1 = typedExpr(expr, callProto)
-                if nestedCtx.reporter.hasErrors then NoType
+                if nestedTS.reporter.hasErrors then NoType
                 else inContext(outerCtx) {
-                  nestedCtx.typerState.commit()
+                  nestedTS.commit()
                   fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
                   expr1.tpe
                 }
@@ -1599,8 +1599,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case (pat: untpd.Typed, pt) =>
                 // To check that pattern types correspond we need to type
                 // check `pat` here and throw away the result.
-                val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
-                val pat1 = typedPattern(pat, selType)(using gadtCtx)
+                val pat1 = inMappedContext(_.nextFresh.setFreshGADTBounds):
+                  typedPattern(pat, selType)
                 val Typed(_, tpt) = tpd.unbind(tpd.unsplice(pat1)): @unchecked
                 instantiateMatchTypeProto(pat1, pt) match {
                   case defn.MatchCase(patternTp, _) => tpt.tpe frozen_=:= patternTp
@@ -1739,7 +1739,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Type a case. */
   def typedCase(tree: untpd.CaseDef, sel: Tree, wideSelType: Type, pt: Type)(using Context): CaseDef = {
     val originalCtx = ctx
-    val gadtCtx: Context = ctx.fresh.setFreshGADTBounds.setNewScope
 
     def caseRest(pat: Tree)(using Context) = {
       val pt1 = instantiateMatchTypeProto(pat, pt) match {
@@ -1761,10 +1760,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
     }
 
-    val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
-    caseRest(pat1)(
-      using Nullables.caseContext(sel, pat1)(
-        using gadtCtx))
+    inMappedContext(_.nextFresh.setFreshGADTBounds.setNewScope):
+      val pat1 = typedPattern(tree.pat, wideSelType)
+      caseRest(pat1)(using Nullables.caseContext(sel, pat1))
   }
 
   def typedLabeled(tree: untpd.Labeled)(using Context): Labeled = {
@@ -1790,7 +1788,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         body1 = TypeTree(errorType(em"<error: not a type>", cdef.srcPos))
       assignType(cpy.CaseDef(cdef)(pat2, EmptyTree, body1), pat2, body1)
     }
-    caseRest(using ctx.fresh.setFreshGADTBounds.setNewScope)
+    inMappedContext(_.nextFresh.setFreshGADTBounds.setNewScope):
+      caseRest
   }
 
   def typedReturn(tree: untpd.Return)(using Context): Return =
@@ -2217,13 +2216,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedAlternative(tree: untpd.Alternative, pt: Type)(using Context): Alternative = {
-    val nestedCtx = ctx.addMode(Mode.InPatternAlternative)
     def ensureValueTypeOrWildcard(tree: Tree) =
       if tree.tpe.isValueTypeOrWildcard then tree
       else
         assert(ctx.reporter.errorsReported)
         tree.withType(defn.AnyType)
-    val trees1 = tree.trees.mapconserve(typed(_, pt)(using nestedCtx))
+    val trees1 = withMode(Mode.InPatternAlternative)(tree.trees.mapconserve(typed(_, pt)))
       .mapconserve(ensureValueTypeOrWildcard)
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
@@ -2239,7 +2237,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def isInner(owner: Symbol) = owner == sym || sym.is(Param) && owner == sym.owner
     val outer = ctx.detach.outersIterator.dropWhile(c => isInner(c.owner)).next().detach
     var adjusted: DetachedContext = outer.property(ExprOwner) match {
-      case Some(exprOwner) if outer.owner.isClass => outer.exprContext(mdef, exprOwner).detach
+      case Some(exprOwner) if outer.owner.isClass => outer.exprContext(mdef, exprOwner)
       case _ => outer
     }
     sym.owner.infoOrCompleter match
@@ -2733,12 +2731,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(using Context): Tree = {
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
-    val nestedCtx = ctx.fresh.setNewTyperState()
-    val res = typed(qual, pt1)(using nestedCtx)
+    val nestedTS = ctx.typerState.fresh(committable = true)
+    val res = withTyperState(nestedTS)(typed(qual, pt1))
     res match {
       case closure(_, _, _) =>
       case _ =>
-        val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
+        val recovered = withExploreTyperState(typed(qual))
         report.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen), tree.srcPos, from = `3.0`)
         if (migrateTo3) {
           // Under -rewrite, patch `x _` to `(() => x)`
@@ -2747,7 +2745,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           return typed(untpd.Function(Nil, qual), pt)
         }
     }
-    nestedCtx.typerState.commit()
+    nestedTS.commit()
     if sourceVersion.isAtLeast(future) then
       lazy val (prefix, suffix) = res match {
         case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
@@ -2880,10 +2878,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case tree: untpd.Bind => typedBind(tree, pt)
             case tree: untpd.ValDef =>
               if (tree.isEmpty) tpd.EmptyValDef
-              else typedValDef(tree, sym)(using ctx.localContext(tree, sym))
+              else inLocalContext(tree, sym)(typedValDef(tree, sym))
             case tree: untpd.DefDef =>
               val typer1 = localTyper(sym)
-              typer1.typedDefDef(tree, sym)(using ctx.localContext(tree, sym).setTyper(typer1))
+              inLocalContext(tree, sym, typer = typer1):
+                typer1.typedDefDef(tree, sym)
             case tree: untpd.TypeDef =>
               // separate method to keep dispatching method `typedNamed` short which might help the JIT
               def typedTypeOrClassDef: Tree =
@@ -2895,9 +2894,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   report.errorOrMigrationWarning(
                     em"`?` is not a valid type name$addendum", namePos, from = `3.0`)
                 if tree.isClassDef then
-                  typedClassDef(tree, sym.asClass)(using ctx.localContext(tree, sym))
+                  inLocalContext(tree, sym):
+                    typedClassDef(tree, sym.asClass)
                 else
-                  typedTypeDef(tree, sym)(using ctx.localContext(tree, sym).setNewScope)
+                  inLocalContext(tree, sym, newScope = true):
+                    typedTypeDef(tree, sym)
 
               typedTypeOrClassDef
             case tree: untpd.Labeled => typedLabeled(tree)
@@ -2915,7 +2916,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.Typed => typedTyped(tree, pt)
           case tree: untpd.NamedArg => typedNamedArg(tree, pt)
           case tree: untpd.Assign => typedAssign(tree, pt)
-          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(using ctx.fresh.setNewScope)
+          case tree: untpd.Block => inNewScope(typedBlock(desugar.block(tree), pt))
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
@@ -2934,8 +2935,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
-          case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(using ctx.localContext(tree, NoSymbol).setNewScope)
-          case tree: untpd.TermLambdaTypeTree => typedTermLambdaTypeTree(tree)(using ctx.localContext(tree, NoSymbol).setNewScope)
+          case tree: untpd.LambdaTypeTree => inLocalContext(tree, NoSymbol, newScope = true)(typedLambdaTypeTree(tree))
+          case tree: untpd.TermLambdaTypeTree => inLocalContext(tree, NoSymbol, newScope = true)(typedTermLambdaTypeTree(tree))
           case tree: untpd.MatchTypeTree => typedMatchTypeTree(tree, pt)
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree, pt)
@@ -3090,7 +3091,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val xtree = stat.removeAttachment(ExpandedTree).get
         traverse(xtree :: rest)
       case stat :: rest =>
-        val stat1 = typed(stat)(using ctx.exprContext(stat, exprOwner))
+        val stat1 = inStatContext(stat, exprOwner)(typed(stat))
         checkStatementPurity(stat1)(stat, exprOwner)
         buf += stat1
         traverse(rest)(using stat1.nullableContext)
@@ -3180,15 +3181,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     withMode(Mode.Pattern)(typed(tree, selType))
 
   def tryEither[T](op: Context ?-> T)(fallBack: (T, TyperState) => T)(using Context): T = {
-    val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = op(using nestedCtx)
-    if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
+    val nestedTS = ctx.typerState.fresh(committable = true)
+    val result = withTyperState(nestedTS)(op)
+    if (nestedTS.reporter.hasErrors && !nestedTS.reporter.hasStickyErrors) {
       record("tryEither.fallBack")
-      fallBack(result, nestedCtx.typerState)
+      fallBack(result, nestedTS)
     }
     else {
       record("tryEither.commit")
-      nestedCtx.typerState.commit()
+      nestedTS.commit()
       result
     }
   }
@@ -3341,12 +3342,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     // try an extension method in scope
     try
-      val nestedCtx = ctx.fresh.setNewTyperState()
-      val app = tryExtension(using nestedCtx)
-      if !app.isEmpty && !nestedCtx.reporter.hasErrors then
-        nestedCtx.typerState.commit()
+      val nestedTS = ctx.typerState.fresh(committable = true)
+      val app = withTyperState(nestedTS)(tryExtension)
+      if !app.isEmpty && !nestedTS.reporter.hasErrors then
+        nestedTS.commit()
         return app
-      val errs = nestedCtx.reporter.allErrors
+      val errs = nestedTS.reporter.allErrors
       val remembered = // report AmbiguousReferences as priority, otherwise last error
         (errs.filter(_.msg.isInstanceOf[AmbiguousReference]) ++ errs).take(1)
       for err <- remembered do
@@ -3821,7 +3822,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 adaptToSubType(wtp)
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
-             && !inContext(ctx.fresh.setGadt(GadtConstraint.empty)) {
+             && !inMappedContext(_.nextFresh.setGadt(GadtConstraint.empty)) {
                val res = (tree.tpe.widenExpr frozen_<:< pt)
                if res then
                  // we overshot; a cast is not needed, after all.

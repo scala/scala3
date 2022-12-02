@@ -27,9 +27,10 @@ object Inferencing {
    *  Variables that are successfully minimized do not count as uninstantiated.
    */
   def isFullyDefined(tp: Type, force: ForceDegree.Value)(using Context): Boolean = {
-    val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
-    if (result) nestedCtx.typerState.commit()
+    val nestedTS = ctx.typerState.fresh(committable = true)
+    val result = withTyperState(nestedTS):
+      new IsFullyDefinedAccumulator(force).process(tp)
+    if result then nestedTS.commit()
     result
   }
 

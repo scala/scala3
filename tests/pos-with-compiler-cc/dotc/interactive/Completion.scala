@@ -376,7 +376,7 @@ object Completion {
       if qual.tpe.isExactlyNothing || qual.tpe.isNullType then
         Map.empty
       else
-        implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState())
+        withExploreTyperState(implicitConversionTargets(qual))
           .flatMap(accessibleMembers)
           .toSeq
           .groupByName

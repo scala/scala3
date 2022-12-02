@@ -84,10 +84,8 @@ object ContextOps:
     *  Owner might not exist (can happen for self valdefs), in which case
     *  no owner is set in result context
     */
-    def localContext(tree: untpd.Tree, owner: Symbol): FreshContext = inContext(ctx) {
-      val freshCtx = ctx.fresh.setTree(tree)
-      if owner.exists then freshCtx.setOwner(owner) else freshCtx
-    }
+    def localContext(tree: untpd.Tree, owner: Symbol, newScope: Boolean = false): DetachedContext =
+      inLocalContext(tree, owner, newScope)(c ?=> c.detach)(using ctx)
 
     /** Context where `sym` is defined, assuming we are in a nested context. */
     def defContext(sym: Symbol): Context = inContext(ctx) {

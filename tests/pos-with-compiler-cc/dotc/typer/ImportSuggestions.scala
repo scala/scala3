@@ -323,7 +323,7 @@ trait ImportSuggestions:
     if ctx.phase == Phases.checkCapturesPhase then
       return "" // it's too late then to look for implicits
     val (fullMatches, headMatches) =
-      importSuggestions(pt)(using ctx.fresh.setExploreTyperState())
+      withExploreTyperState(importSuggestions(pt))
     implicits.println(i"suggestions for $pt in ${ctx.owner} = ($fullMatches%, %, $headMatches%, %)")
     val (suggestedRefs, help) =
       if fullMatches.nonEmpty then (fullMatches, "fix")

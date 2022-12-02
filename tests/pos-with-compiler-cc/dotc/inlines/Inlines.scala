@@ -211,7 +211,8 @@ object Inlines:
 
       val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
       val unapply = DefDef(unapplySym.asTerm, argss =>
-        inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unapplySym))
+        withOwner(unapplySym):
+          inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))
       )
       unapplySym1 = unapplySym
       List(unapply)
@@ -242,9 +243,9 @@ object Inlines:
       coord = mdef.rhs.span.startPos).asTerm
     retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))
     DefDef(retainer, prefss =>
-      inlineCall(
-        ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos))(
-        using ctx.withOwner(retainer)))
+        withOwner(retainer):
+          inlineCall(ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos))
+      )
     .showing(i"retainer for $meth: $result", inlining)
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
@@ -312,7 +313,9 @@ object Inlines:
   def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(using Context): Tree = {
     assert(ctx.source == pos.source)
     val topLevelCls = callSym.topLevelClass
-    if (callSym.is(Macro)) ref(topLevelCls.owner).select(topLevelCls.name)(using ctx.withOwner(topLevelCls.owner)).withSpan(pos.span)
+    if callSym.is(Macro) then
+      withOwner(topLevelCls.owner):
+        ref(topLevelCls.owner).select(topLevelCls.name).withSpan(pos.span)
     else Ident(topLevelCls.typeRef).withSpan(pos.span)
   }
 
@@ -339,7 +342,7 @@ object Inlines:
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
-          inContext(ctx.fresh.setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)) {
+          inMappedContext(_.nextFresh.setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)) {
             val tree2 = new Parser(source2).block()
             if ctx.reporter.allErrors.nonEmpty then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))

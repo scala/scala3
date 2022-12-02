@@ -14,15 +14,14 @@ class CookComments extends MegaPhase.MiniPhase {
   override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree = {
     if (ctx.settings.YcookComments.value && tree.isClassDef) {
       val cls = tree.symbol
-      val cookingCtx = ctx.localContext(tree, cls).setNewScope
       val template = tree.rhs.asInstanceOf[tpd.Template]
       val owner = template.self.symbol.orElse(cls)
 
-      template.body.foreach { stat =>
-        Docstrings.cookComment(stat.symbol, owner)(using cookingCtx)
-      }
+      inLocalContext(tree, cls, newScope = true):
+        template.body.foreach: stat =>
+          Docstrings.cookComment(stat.symbol, owner)
 
-      Docstrings.cookComment(cls, cls)(using cookingCtx)
+        Docstrings.cookComment(cls, cls)
     }
 
     tree

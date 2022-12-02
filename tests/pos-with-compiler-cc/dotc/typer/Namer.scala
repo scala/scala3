@@ -1856,21 +1856,23 @@ class Namer { typer: Typer =>
         case _ =>
           approxTp
 
-    var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
-    if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
-    if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
-    val typeParams = paramss.collectCC { case TypeSymbols(tparams) => tparams }.flatten
-    if (typeParams.nonEmpty) {
-      // we'll be typing an expression from a polymorphic definition's body,
-      // so we must allow constraining its type parameters
-      // compare with typedDefDef, see tests/pos/gadt-inference.scala
-      rhsCtx.setFreshGADTBounds
-      rhsCtx.gadt.addToConstraint(typeParams)
-    }
+    extension (ctx: FreshContext) def rhsCtx: Context =
+      var rhsc = ctx.addMode(Mode.InferringReturnType)
+      if sym.isInlineMethod then rhsc = rhsc.addMode(Mode.InlineableBody)
+      if sym.is(ExtensionMethod) then rhsc = rhsc.addMode(Mode.InExtensionMethod)
+      val typeParams = paramss.collectCC { case TypeSymbols(tparams) => tparams }.flatten
+      if typeParams.nonEmpty then
+        // we'll be typing an expression from a polymorphic definition's body,
+        // so we must allow constraining its type parameters
+        // compare with typedDefDef, see tests/pos/gadt-inference.scala
+        rhsc.setFreshGADTBounds
+        rhsc.gadt.addToConstraint(typeParams)
+      rhsc
 
     def typedAheadRhs(pt: Type) =
       PrepareInlineable.dropInlineIfError(sym,
-        typedAheadExpr(mdef.rhs, pt)(using rhsCtx))
+        inMappedContext(_.nextFresh.rhsCtx):
+          typedAheadExpr(mdef.rhs, pt))
 
     def rhsType =
       // For default getters, we use the corresponding parameter type as an

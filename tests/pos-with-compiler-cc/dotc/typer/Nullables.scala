@@ -532,12 +532,12 @@ object Nullables:
                 case _ => super.typedUnadapted(t, pt, locked)
 
             def postProcess(formal: Type, arg: Tree): Tree =
-              val nestedCtx = ctx.fresh.setNewTyperState()
-              val arg1 = dropNotNull.transform(arg)(using nestedCtx)
+              val nestedTS = ctx.typerState.fresh()
+              val arg1 = withTyperState(nestedTS)(dropNotNull.transform(arg))
               if !dropNotNull.dropped then arg
               else
-                val arg2 = retyper.typed(arg1, formal)(using nestedCtx)
-                if nestedCtx.reporter.hasErrors || !(arg2.tpe <:< formal) then
+                val arg2 = withTyperState(nestedTS)(retyper.typed(arg1, formal))
+                if nestedTS.reporter.hasErrors || !(arg2.tpe <:< formal) then
                   report.error(em"""This argument was typed using flow assumptions about mutable variables
                                 |but it is passed to a by-name parameter where such flow assumptions are unsound.
                                 |Wrapping the argument in `byName(...)` fixes the problem by disabling the flow assumptions.
@@ -546,7 +546,7 @@ object Nullables:
                             arg.srcPos)
                   arg
                 else
-                  nestedCtx.typerState.commit()
+                  nestedTS.commit()
                   arg2
 
             def recur(formals: List[Type], args: List[Tree]): List[Tree] = (formals, args) match

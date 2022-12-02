@@ -191,7 +191,9 @@ object LiftCoverage extends LiftImpure {
 
   def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
     val liftedFun = liftApp(defs, tree.fun)
-    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
+    val liftedArgs =
+      inMappedContext(_.nextFresh.setProperty(LiftingArgs, true)):
+        liftArgs(defs, tree.fun.tpe, tree.args)
     tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
   }
 }

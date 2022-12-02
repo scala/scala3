@@ -135,10 +135,11 @@ class TreeUnpickler(reader: TastyReader,
               |Run with -Ydebug-unpickling to see full stack trace.""")
       treeAtAddr(currentAddr) =
         try
-          atPhaseBeforeTransforms {
-            new TreeReader(reader).readIndexedDef()(
-              using ctx.withOwner(owner).withModeBits(mode).withSource(source))
-          }
+          withSource(source):
+            atPhaseBeforeTransforms:
+              withOwner(owner):
+                inMode(mode):
+                  new TreeReader(reader).readIndexedDef()
         catch
           case ex: AssertionError => fail(ex)
           case ex: Exception => fail(ex)
@@ -267,7 +268,8 @@ class TreeUnpickler(reader: TastyReader,
       case Some(sym) =>
         sym
       case None =>
-        val sym = forkAt(addr).createSymbol()(using ctx.withOwner(ownerTree.findOwner(addr)))
+        val sym = withOwner(ownerTree.findOwner(addr)):
+          forkAt(addr).createSymbol()
         report.log(i"forward reference to $sym")
         sym
     }
@@ -968,7 +970,6 @@ class TreeUnpickler(reader: TastyReader,
         else NoType
       cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()
-      val parentCtx = ctx.withOwner(localDummy)
       assert(readByte() == TEMPLATE)
       val end = readEnd()
       val tparams = readIndexedParams[TypeDef](TYPEPARAM)
@@ -981,12 +982,11 @@ class TreeUnpickler(reader: TastyReader,
         while (bodyIndexer.reader.nextByte != DEFDEF) bodyIndexer.skipTree()
         bodyIndexer.indexStats(end)
       }
-      val parents = collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
-        nextUnsharedTag match {
-          case APPLY | TYPEAPPLY | BLOCK => readTerm()(using parentCtx)
-          case _ => readTpt()(using parentCtx)
-        }
-      }
+      val parents = collectWhile(nextByte != SELFDEF && nextByte != DEFDEF):
+        withOwner(localDummy):
+          nextUnsharedTag match
+            case APPLY | TYPEAPPLY | BLOCK => readTerm()
+            case _ => readTpt()
       val parentTypes = parents.map(_.tpe.dealias)
       val self =
         if (nextByte == SELFDEF) {
@@ -1441,9 +1441,9 @@ class TreeUnpickler(reader: TastyReader,
       collectWhile((nextUnsharedTag == CASEDEF) && currentAddr != end) {
         if (nextByte == SHAREDterm) {
           readByte()
-          forkAt(readAddr()).readCase()(using ctx.fresh.setNewScope)
+          inNewScope(forkAt(readAddr()).readCase())
         }
-        else readCase()(using ctx.fresh.setNewScope)
+        else inNewScope(readCase())
       }
 
     def readCase()(using Context): CaseDef = {
@@ -1529,17 +1529,14 @@ class TreeUnpickler(reader: TastyReader,
 
   class LazyReader[T <: AnyRef](
       reader: TreeReader, owner: Symbol, mode: Mode, source: SourceFile,
-      op: TreeReader => Context ?=> T) extends Trees.Lazy[T] {
-    def complete(using Context): T = {
+      op: TreeReader => Context ?=> T) extends Trees.Lazy[T]:
+    def complete(using Context): T =
       pickling.println(i"starting to read at ${reader.reader.currentAddr} with owner $owner")
-      atPhaseBeforeTransforms {
-        op(reader)(using ctx
-          .withOwner(owner)
-          .withModeBits(mode)
-          .withSource(source))
-      }
-    }
-  }
+      withSource(source):
+        atPhaseBeforeTransforms:
+          withOwner(owner):
+            inMode(mode):
+              op(reader)
 
   /** A lazy datastructure that records how definitions are nested in TASTY data.
    *  The structure is lazy because it needs to be computed only for forward references

@@ -831,7 +831,8 @@ class Inliner(val call: tpd.Tree)(using DetachedContext):
       val tree1 =
         if tree.isInline then
           // TODO this might not be useful if we do not support #11291
-          val sel1 = typedExpr(tree.selector)(using ctx.addMode(Mode.ForceInline))
+          val sel1 = withMode(Mode.ForceInline):
+              typedExpr(tree.selector)
           untpd.cpy.Match(tree)(sel1, tree.cases)
         else tree
       super.typedMatch(tree1, pt)
