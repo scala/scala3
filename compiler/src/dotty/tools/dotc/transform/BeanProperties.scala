@@ -35,7 +35,7 @@ class BeanProperties(thisPhase: DenotTransformer):
         coord = annot.tree.span
       ).enteredAfter(thisPhase).asTerm
       val annots = valDef.symbol.annotations.filter { a =>
-        a.hasOneOfMetaAnnotation(defn.BeanGetterMetaAnnot) | !a.hasOneOfMetaAnnotation(defn.BeanSetterMetaAnnot)
+        a.hasOneOfMetaAnnotation(defn.BeanGetterMetaAnnot) || !a.hasOneOfMetaAnnotation(defn.BeanSetterMetaAnnot)
       }
       meth.addAnnotations(annots)
       val body: Tree = ref(valDef.symbol)
@@ -52,7 +52,7 @@ class BeanProperties(thisPhase: DenotTransformer):
           coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm
         val annots = valDef.symbol.annotations.filter { a =>
-          a.hasOneOfMetaAnnotation(defn.BeanSetterMetaAnnot) | !a.hasOneOfMetaAnnotation(defn.BeanGetterMetaAnnot)
+          a.hasOneOfMetaAnnotation(defn.BeanSetterMetaAnnot) || !a.hasOneOfMetaAnnotation(defn.BeanGetterMetaAnnot)
         }
         meth.addAnnotations(annots)
         DefDef(meth, (params: List[List[Tree]]) => Assign(ref(valDef.symbol), params.head.head)).withSpan(meth.span)
