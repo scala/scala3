@@ -1340,11 +1340,16 @@ object Parsers {
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && p(in.next.token)) newLineOpt()
 
-    def colonAtEOLOpt(): Unit = {
+    def acceptIndent() =
+      if in.token != INDENT then
+        syntaxErrorOrIncomplete(em"indented definitions expected, ${in} found")
+
+    def colonAtEOLOpt(): Unit =
       possibleColonOffset = in.lastOffset
       in.observeColonEOL(inTemplate = false)
-      if in.token == COLONeol then in.nextToken()
-    }
+      if in.token == COLONeol then
+        in.nextToken()
+        acceptIndent()
 
     def argumentStart(): Unit =
       colonAtEOLOpt()
@@ -1364,8 +1369,7 @@ object Parsers {
         if in.lookahead.token == END then in.token = NEWLINE
         else
           in.nextToken()
-          if in.token != INDENT && in.token != LBRACE then
-            syntaxErrorOrIncomplete(em"indented definitions expected, ${in} found")
+          if in.token != LBRACE then acceptIndent()
       else
         newLineOptWhenFollowedBy(LBRACE)
 
