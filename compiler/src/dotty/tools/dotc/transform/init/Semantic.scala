@@ -855,7 +855,7 @@ object Semantic:
       // init "fake" param fields for parameters of primary and secondary constructors
       def addParamsAsFields(args: List[Value], ref: Ref, ctorDef: DefDef) =
         val params = ctorDef.termParamss.flatten.map(_.symbol)
-        assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size + ", ctro = " + ctor.show)
+        assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size + ", ctor = " + ctor.show)
         for (param, value) <- params.zip(args) do
           ref.updateField(param, value)
           printer.println(param.show + " initialized with " + value)
