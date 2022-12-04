@@ -215,7 +215,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
     inline def inLocalContext[T](inline op: Context ?=> T)(using Context): T =
       val sym = tree.symbol
-      runWithOwner(if (sym.is(PackageVal)) sym.moduleClass else sym)(op)
+      withOwner(if (sym.is(PackageVal)) sym.moduleClass else sym)(op)
 
     def transformNamed(tree: Tree, start: Int, outerCtx: Context): Tree = tree match {
       case tree: Ident =>

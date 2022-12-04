@@ -351,10 +351,11 @@ class Run(comp: Compiler, @constructorOnly ictx0: Context) extends ImplicitRunIn
   def printSummary(): Unit = {
     printMaxConstraint()
     if true || ctx.settings.YdetailedStats.value then
-      println(s"""total contexts   : $totalContexts
-                 |scoped contexts  : $totalScoped
-                 |detached contexts: $totalDetached
-                 |of which in scope: $totalScopedDetached""".stripMargin)
+      println(s"""total contexts   : ${runContext.base.totalContexts}
+                 |scoped contexts  : ${runContext.base.totalScoped}
+                 |detached contexts: ${runContext.base.totalDetached}
+                 |of which in scope: ${runContext.base.totalScopedDetached}
+                 |typer states     : ${TyperState.nextId}""".stripMargin)
     val r = runContext.reporter
     if !r.errorsReported then
       profile.printSummary()

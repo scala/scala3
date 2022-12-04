@@ -45,6 +45,8 @@ import language.experimental.pureFunctions
 
 object Contexts {
 
+  inline val reuseContexts = true
+
   @sharable var nextId = 0
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
@@ -63,22 +65,6 @@ object Contexts {
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
 
-  @sharable private var ctxStack: List[ContextCls] = Nil
-  @sharable private var level: Int = 0
-  @sharable var totalContexts: Int = 0
-  @sharable var totalScoped: Int = 0
-  @sharable var totalDetached: Int = 0
-  @sharable var totalScopedDetached = 0
-
-  def popTo(savedLevel: Int): Unit =
-    if savedLevel != level then
-      assert(savedLevel == level - 1)
-      val popped = ctxStack.head
-      if popped.status == Status_initial then popped.status = Status_invalid
-      else if popped.status == Status_detached then totalScopedDetached += 1
-      ctxStack = ctxStack.tail
-      level = savedLevel
-
   /** Run `op` with given context */
   inline def inContext[T](c: Context)(inline op: Context ?-> T): T =
     op(using c)
@@ -87,20 +73,20 @@ object Contexts {
       (inline transform: Context -> Context)
       (inline op: Context ?-> T)
       (using Context): T =
-    val saved = level
+    val saved = ctx.base.curLevel
     try op(using transform(ctx))
-    finally popTo(saved)
+    finally ctx.base.popTo(saved)
 
   inline def atPeriod[T](pd: Period)(inline op: Context ?=> T)(using Context): T =
-    val saved = level
+    val saved = ctx.base.curLevel
     try op(using if ctx.period == pd then ctx else ctx.nextFresh.setPeriod(pd))
-    finally popTo(saved)
+    finally ctx.base.popTo(saved)
 
   /** Execute `op` at given phase id */
   inline def atPhase[T](pid: PhaseId)(inline op: Context ?-> T)(using Context): T =
-    val saved = level
+    val saved = ctx.base.curLevel
     try op(using if ctx.phaseId == pid then ctx else ctx.nextFresh.setPhase(pid))
-    finally popTo(saved)
+    finally ctx.base.popTo(saved)
 
   /** Execute `op` at given phase */
   inline def atPhase[T](phase: Phase)(inline op: Context ?-> T)(using Context): T =
@@ -126,9 +112,9 @@ object Contexts {
     atPhase(if !limit.exists || limit <= ctx.phase then ctx.phase else limit)(op)
 
   inline def inMode[T](mode: Mode)(inline op: Context ?-> T)(using ctx: Context): T =
-    val saved = level
+    val saved = ctx.base.curLevel
     try op(using if mode == ctx.mode then ctx else ctx.nextFresh.setMode(mode))
-    finally popTo(saved)
+    finally ctx.base.popTo(saved)
 
   inline def withMode[T](mode: Mode)(inline op: Context ?-> T)(using ctx: Context): T =
     inMode(ctx.mode | mode)(op)
@@ -137,36 +123,36 @@ object Contexts {
     inMode(ctx.mode &~ mode)(op)
 
   inline def withOwner[T](owner: Symbol)(inline op: Context ?-> T)(using ctx: Context): T =
-    val saved = level
+    val saved = ctx.base.curLevel
     try op(using if ctx.owner == owner then ctx else ctx.nextFresh.setOwner(owner))
-    finally popTo(saved)
+    finally ctx.base.popTo(saved)
 
   inline def withTyperState[T](ts: TyperState)(inline op: Context ?-> T)(using ctx: Context): T =
-    val saved = level
+    val saved = ctx.base.curLevel
     try op(using if ctx.typerState eq ts then ctx else ctx.nextFresh.setTyperState(ts))
-    finally popTo(saved)
+    finally ctx.base.popTo(saved)
 
   inline def withExploreTyperState[T](inline op: Context ?-> T)(using ctx: Context): T =
     withTyperState(ctx.typerState.fresh(committable = false))(op)
 
   inline def inStatContext[T](stat: Tree[?], exprOwner: Symbol)
       (inline op: Context ?-> T)(using ctx: Context): T =
-    val saved = level
+    val saved = ctx.base.curLevel
     try op(using ctx.statContextAttached(stat, exprOwner))
-    finally popTo(saved)
+    finally ctx.base.popTo(saved)
 
   inline def inNewScope[T](inline op: Context ?-> T)(using ctx: Context): T =
-    val saved = level
+    val saved = ctx.base.curLevel
     try op(using ctx.nextFresh.setNewScope)
-    finally popTo(saved)
+    finally ctx.base.popTo(saved)
 
   inline def inLocalContext[T](tree: untpd.Tree, owner: Symbol, newScope: Boolean = false, typer: Typer | Null = null)(op: Context ?-> T)(using Context): T =
-    val saved = level
+    val saved = ctx.base.curLevel
     val freshCtx = ctx.nextFresh.setTree(tree)
     if owner.exists then freshCtx.setOwner(owner)
     if typer != null then freshCtx.setTyper(typer)
     try op(using freshCtx)
-    finally popTo(saved)
+    finally ctx.base.popTo(saved)
 
   inline def withSource[T](source: SourceFile)(inline op: Context ?-> T)(using ctx: Context): T =
     // can't scope source context, since it is cached in Context
@@ -201,7 +187,9 @@ object Contexts {
     val id = nextId
     nextId += 1
 
-    var status = Status_initial
+    def isNoContext = base eqn null
+
+    private[Contexts] var level: Int = uninitialized
 
     protected given Context = this
 
@@ -499,17 +487,12 @@ object Contexts {
     /** A fresh clone of this context embedded in this context. */
     def fresh: FreshContext = freshOver(this)
 
-    def nextFresh: FreshContext =
-      val c = fresh
-      ctxStack = c :: ctxStack
-      level += 1
-      totalScoped += 1
-      c
+    def nextFresh: FreshContext = base.freshOver(this)
 
     /** A fresh clone of this context embedded in the specified `outer` context. */
     def freshOver(outer: Context): FreshContext =
       util.Stats.record("Context.fresh")
-      FreshContext(base).init(outer, this).setTyperState(this.typerState)
+      FreshContext(base, Status_initial).init(outer, this).setTyperState(this.typerState)
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
@@ -560,12 +543,8 @@ object Contexts {
 
   object detached:
     opaque type DetachedContext <: ContextCls = ContextCls
-    inline def apply(c: ContextCls): DetachedContext =
-      var cc = c
-      while cc != null && cc.status != Status_detached do
-        totalDetached += 1
-        cc.status = Status_detached
-        cc = cc.outer
+    def apply(c: ContextCls): DetachedContext =
+      c.base.detach(c)
       c
 
   type DetachedContext = detached.DetachedContext
@@ -579,19 +558,21 @@ object Contexts {
   */
 
 
-  inline val Status_initial = 0
-  inline val Status_detached = 1
-  inline val Status_invalid = 2
+  inline val Status_initial = -1
+  inline val Status_detached = -2
+  inline val Status_invalid = -3
 
   /** A fresh context allows selective modification
    *  of its attributes using the with... methods.
    */
-  class FreshContext(base: ContextBase) extends ContextCls(base) { thiscontext =>
+  class FreshContext(base: ContextBase, initLevel: Int) extends ContextCls(base) { thiscontext =>
 
-    totalContexts += 1
+    if base != null then base.totalContexts += 1
+    level = initLevel
 
     def checkValid() =
-      assert(status != Status_invalid, this)
+      if !reuseContexts then
+        assert(level != Status_invalid, this)
 
     private var _outer: DetachedContext = uninitialized
     def outer: DetachedContext = { checkValid(); _outer }
@@ -822,7 +803,7 @@ object Contexts {
   object FreshContext:
     /** Defines an initial context with given context base and possible settings. */
     def initial(base: ContextBase, settingsGroup: SettingGroup): Context =
-      val c = new FreshContext(base)
+      val c = new FreshContext(base, Status_detached)
       c._outer = NoContext
       c._period = InitialPeriod
       c._mode = Mode.None
@@ -838,7 +819,6 @@ object Contexts {
           .updated(compilationUnitLoc, NoCompilationUnit)
       c._searchHistory = new SearchRoot
       c._gadt = GadtConstraint.empty
-      c.status = Status_detached
       c
   end FreshContext
 
@@ -884,7 +864,7 @@ object Contexts {
         val ts = TyperState()
           .setReporter(ExploringReporter())
           .setCommittable(false)
-        val c = FreshContext(ctx.base).init(ctx, ctx).setTyperState(ts)
+        val c = FreshContext(ctx.base, Status_initial).init(ctx, ctx).setTyperState(ts)
         exploreContexts += c
         c
     exploresInUse += 1
@@ -903,28 +883,6 @@ object Contexts {
   inline def exploreInFreshCtx[T](inline op: FreshContext ?=> T)(using Context): T =
     val ectx = exploreCtx
     try op(using ectx) finally wrapUpExplore(ectx)
-
-  private def changeOwnerCtx(owner: Symbol)(using Context): Context =
-    val base = ctx.base
-    import base._
-    val nestedCtx =
-      if changeOwnersInUse < changeOwnerContexts.size then
-        changeOwnerContexts(changeOwnersInUse).reuseIn(ctx)
-      else
-        val c = FreshContext(ctx.base).init(ctx, ctx)
-        changeOwnerContexts += c
-        c
-    changeOwnersInUse += 1
-    nestedCtx.setOwner(owner).setTyperState(ctx.typerState)
-
-  /** Run `op` in current context, with a mode is temporarily set as specified.
-   */
-  inline def runWithOwner[T](owner: Symbol)(inline op: Context ?=> T)(using Context): T =
-    if Config.reuseOwnerContexts then
-      try op(using changeOwnerCtx(owner))
-      finally ctx.base.changeOwnersInUse -= 1
-    else
-      op(using ctx.fresh.setOwner(owner))
 
   /** The type comparer of the kind created by `maker` to be used.
    *  This is the currently active type comparer CMP if
@@ -959,13 +917,12 @@ object Contexts {
     finally ctx.base.comparersInUse = saved
   end comparing
 
-  @sharable val NoContext: DetachedContext = detached(
-    new FreshContext((null: ContextBase | Null).uncheckedNN) {
-      status = Status_detached
-      override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(detached(this: @unchecked))
+  @sharable val NoContext: DetachedContext =
+    new FreshContext((null: ContextBase | Null).uncheckedNN, Status_detached) {
+      override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(
+        (this: @unchecked).asInstanceOf[DetachedContext])
       setSource(NoSource)
-    }
-  )
+    }.asInstanceOf[DetachedContext]
 
   /** A context base defines state and associated methods that exist once per
    *  compiler run.
@@ -1015,6 +972,50 @@ object Contexts {
 
     def fusedContaining(p: Phase): Phase =
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
+
+    private[Contexts] var arena = Array.tabulate(32)(FreshContext(this, _))
+    private[Contexts] var curLevel: Int = 0
+
+    var totalContexts: Int = 0
+    var totalScoped: Int = 0
+    var totalDetached: Int = 0
+    var totalScopedDetached = 0
+
+    private def ensureArenaCapacity(): Unit =
+      if curLevel == arena.length then
+        val prev = arena
+        arena = new Array[FreshContext](curLevel * 2)
+        prev.copyToArray(arena)
+        for i <- curLevel until arena.length do
+          arena(i) = FreshContext(this, i)
+
+    def freshOver(outer: Context): FreshContext =
+      ensureArenaCapacity()
+      val res = arena(curLevel).reuseIn(outer).setTyperState(outer.typerState)
+      totalScoped += 1
+      curLevel += 1
+      res
+
+    def detach(c: ContextCls): Unit =
+      var cc = c
+      while cc != null && cc.level != Status_detached do
+        totalDetached += 1
+        val level = cc.level
+        if level >= 0 && (arena(level) eq cc) then
+          if reuseContexts then arena(level) = FreshContext(this, level)
+          totalScopedDetached += 1
+        cc.level = Status_detached
+        cc = cc.outer
+
+    def popTo(level: Int) =
+      if reuseContexts then
+        curLevel = level
+      else if level != curLevel then
+        assert(level == curLevel - 1, s"level = $level, curLevel = $curLevel")
+        val popped = arena(level)
+        arena(level) = FreshContext(this, level)
+        if popped.level != Status_detached then popped.level = Status_invalid
+        curLevel = level
   }
 
   /** The essential mutable state of a context base, collected into a common class */
@@ -1101,9 +1102,6 @@ object Contexts {
 
     private[Contexts] val exploreContexts = new mutable.ArrayBuffer[FreshContext]
     private[Contexts] var exploresInUse: Int = 0
-
-    private[Contexts] val changeOwnerContexts = new mutable.ArrayBuffer[FreshContext]
-    private[Contexts] var changeOwnersInUse: Int = 0
 
     private[Contexts] val comparers = new mutable.ArrayBuffer[TypeComparer]
     private[Contexts] var comparersInUse: Int = 0

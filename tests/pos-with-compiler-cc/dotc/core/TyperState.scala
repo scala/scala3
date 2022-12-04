@@ -16,7 +16,7 @@ import Decorators._
 import scala.annotation.internal.sharable
 
 object TyperState {
-  @sharable private var nextId: Int = 0
+  @sharable var nextId: Int = 0
   def initialState() =
     TyperState()
       .init(null, OrderingConstraint.empty)

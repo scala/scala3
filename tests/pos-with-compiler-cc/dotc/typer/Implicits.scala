@@ -86,7 +86,7 @@ object Implicits:
    */
   abstract class ImplicitRefs(initctx: DetachedContext) extends caps.Pure {
     val irefCtx: DetachedContext =
-      if (initctx eq NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled).detach
+      if initctx.isNoContext then initctx else initctx.retractMode(Mode.ImplicitsEnabled).detach
     protected given Context = irefCtx
 
     /** The nesting level of this context. Non-zero only in ContextialImplicits */
