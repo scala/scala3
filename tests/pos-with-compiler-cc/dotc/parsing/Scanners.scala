@@ -90,7 +90,7 @@ object Scanners {
       token == ARROW || token == CTXARROW
   }
 
-  abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
+  abstract class ScannerCommon(source: SourceFile)(using DetachedContext) extends CharArrayReader with TokenData {
     val buf: Array[Char] = source.content
     def nextToken(): Unit
 
@@ -166,7 +166,7 @@ object Scanners {
         errorButContinue(em"trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using ictx: DetachedContext) extends ScannerCommon(source) {
     val keepComments = !ctx.settings.YdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
@@ -199,15 +199,15 @@ object Scanners {
         error(em"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
     }
 
-    private var myLanguageImportContext: Context = ctx
+    private var myLanguageImportContext: DetachedContext = ictx
     def languageImportContext = myLanguageImportContext
-    final def languageImportContext_=(c: Context) = myLanguageImportContext = c
+    final def languageImportContext_=(c: DetachedContext) = myLanguageImportContext = c
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
 
     private var postfixOpsEnabledCache = false
-    private var postfixOpsEnabledCtx: Context = NoContext
+    private var postfixOpsEnabledCtx: DetachedContext = NoContext
 
     def postfixOpsEnabled =
       if postfixOpsEnabledCtx ne myLanguageImportContext then

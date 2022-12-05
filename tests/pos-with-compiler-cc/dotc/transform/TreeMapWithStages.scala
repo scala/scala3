@@ -158,7 +158,7 @@ object TreeMapWithStages {
   private val LevelOfKey = new Property.Key[mutable.HashMap[Symbol, Int]]
 
   /** Initial context for a StagingTransformer transformation. */
-  def freshStagingContext(using Context): Context =
-    ctx.fresh.setProperty(LevelOfKey, new mutable.HashMap[Symbol, Int])
+  def freshStagingContext(using Context): DetachedContext =
+    ctx.fresh.setProperty(LevelOfKey, new mutable.HashMap[Symbol, Int]).detach
 
 }

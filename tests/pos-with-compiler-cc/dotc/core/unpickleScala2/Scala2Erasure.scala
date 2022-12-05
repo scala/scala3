@@ -224,7 +224,7 @@ object Scala2Erasure:
     val psyms = parents.map(pseudoSymbol)
     if (psyms.contains(defn.ArrayClass)) {
       defn.ArrayOf(
-        intersectionDominator(parents.collect { case defn.ArrayOf(arg) => arg }))
+        intersectionDominator(parents.collectCC { case defn.ArrayOf(arg) => arg }))
     } else {
       def isUnshadowed(psym: PseudoSymbol) =
         !(psyms.exists(qsym => !psym.sameSymbol(qsym) && qsym.isNonBottomSubClass(psym)))

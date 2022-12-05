@@ -17,13 +17,13 @@ import scala.annotation.switch
 import config.{Config, Feature}
 import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
 
-class PlainPrinter(_ctx: Context) extends Printer {
+class PlainPrinter(_ctx: DetachedContext) extends Printer {
 
   /** The context of all public methods in Printer and subclasses.
    *  Overridden in RefinedPrinter.
    */
-  def printerContext: Context = _ctx.addMode(Mode.Printing)
-  protected given [DummyToEnforceDef]: Context = printerContext
+  def printerContext: DetachedContext = _ctx.addMode(Mode.Printing).detach
+  protected given [DummyToEnforceDef]: DetachedContext = printerContext
 
   protected def printDebug = ctx.settings.YprintDebug.value
 

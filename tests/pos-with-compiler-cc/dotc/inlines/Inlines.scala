@@ -398,7 +398,7 @@ object Inlines:
    *  @param  call         the original call to an inlineable method
    *  @param  rhsToInline  the body of the inlineable method that replaces the call.
    */
-  private class InlineCall(call: tpd.Tree)(using Context) extends Inliner(call):
+  private class InlineCall(call: tpd.Tree)(using DetachedContext) extends Inliner(call):
     import tpd._
     import Inlines.*
 

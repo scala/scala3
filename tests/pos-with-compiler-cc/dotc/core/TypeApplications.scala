@@ -107,7 +107,7 @@ object TypeApplications {
    *  result type. Using this mode, we can guarantee that `appliedTo` will never
    *  produce a higher-kinded application with a type lambda as type constructor.
    */
-  class Reducer(tycon: TypeLambda, args: List[Type])(using Context) extends TypeMap {
+  class Reducer(tycon: TypeLambda, args: List[Type])(using DetachedContext) extends TypeMap {
     private var available = (0 until args.length).toSet
     var allReplaced: Boolean = true
     def hasWildcardArg(p: TypeParamRef): Boolean =

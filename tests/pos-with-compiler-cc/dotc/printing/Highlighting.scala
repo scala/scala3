@@ -28,7 +28,7 @@ object Highlighting {
       else mod + super.show
   }
 
-  case class HighlightBuffer(hl: Highlight)(using Context) {
+  case class HighlightBuffer(hl: Highlight)(using DetachedContext) extends caps.Pure {
     private val buffer = new mutable.ListBuffer[String]
 
     buffer += hl.show

@@ -463,7 +463,9 @@ object Symbols {
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = associatedFile
         if file != null && file.extension != "class" then
-          mySource = ctx.getSource(file)
+          mySource = inDetachedContext:
+            ctx.getSource(file, scala.io.Codec(ctx.settings.encoding.value))
+            // !cc! default arguments can't be handled
         else
           mySource = defn.patchSource(this)
           if !mySource.exists then

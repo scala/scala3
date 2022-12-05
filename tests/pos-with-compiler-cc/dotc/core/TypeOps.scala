@@ -24,6 +24,7 @@ import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 import language.experimental.pureFunctions
+import annotation.retains
 
 object TypeOps:
 
@@ -127,7 +128,7 @@ object TypeOps:
     pre.isStable || !ctx.phase.isTyper
 
   /** Implementation of Types#simplified */
-  def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = {
+  def simplify(tp: Type, theMap: SimplifyMap @retains(caps.*) | Null)(using Context): Type = {
     def mapOver = (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
     tp match {
       case tp: NamedType =>
@@ -527,7 +528,7 @@ object TypeOps:
    *  does not update `ctx.nestingLevel` when entering a block so I'm leaving
    *  this as Future Work™.
    */
-  def avoid(tp: Type, symsToAvoid: -> List[Symbol])(using Context): Type = {
+  def avoid(tp: Type, symsToAvoid: Context ?-> List[Symbol])(using Context): Type = {
     val widenMap = new AvoidMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) =
@@ -641,7 +642,7 @@ object TypeOps:
     def checkOverlapsBounds(lo: Type, hi: Type, arg: Tree, bounds: TypeBounds): Unit = {
       //println(i" = ${instantiate(bounds.hi, argTypes)}")
 
-      var checkCtx = ctx  // the context to be used for bounds checking
+      var checkCtx = ctx.detach  // the context to be used for bounds checking
       if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
 
         /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
@@ -656,7 +657,7 @@ object TypeOps:
         /** The argument types of the form `TypeRef(_, sym)` which appear as a LazyRef in `bounds`.
          *  This indicates that the application is used as an F-bound for the symbol referred to in the LazyRef.
          */
-        val lazyRefs = skolemizedArgTypes collect {
+        val lazyRefs = skolemizedArgTypes collectCC {
           case tp: TypeRef if isLazyIn(tp.symbol, bounds) => tp.symbol
         }
 
@@ -680,7 +681,7 @@ object TypeOps:
           def narrowBound(bound: Type, fromBelow: Boolean): Unit = {
             val bound1 = massage(bound)
             if (bound1 ne bound) {
-              if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds
+              if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds.detach
               if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addToConstraint(sym)
               checkCtx.gadt.addBound(sym, bound1, fromBelow)
               typr.println("install GADT bound $bound1 for when checking F-bounded $sym")

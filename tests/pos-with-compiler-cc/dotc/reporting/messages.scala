@@ -44,46 +44,46 @@ import language.experimental.pureFunctions
   *  ```
   */
 
-abstract class SyntaxMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+abstract class SyntaxMsg(errorId: ErrorMessageID)(using DetachedContext) extends Message(errorId):
   def kind = MessageKind.Syntax
 
-abstract class TypeMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+abstract class TypeMsg(errorId: ErrorMessageID)(using DetachedContext) extends Message(errorId):
   def kind = MessageKind.Type
 
-trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
+trait ShowMatchTrace(tps: Type*)(using DetachedContext) extends Message:
   override def msgPostscript(using Context): String =
     super.msgPostscript ++ matchReductionAddendum(tps*)
 
-abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using DetachedContext)
 extends Message(errorId), ShowMatchTrace(found, expected):
   def kind = MessageKind.TypeMismatch
   def explain(using Context) = err.whyNoMatchStr(found, expected)
   override def canExplain = true
 
-abstract class NamingMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId), NoDisambiguation:
+abstract class NamingMsg(errorId: ErrorMessageID)(using DetachedContext) extends Message(errorId), NoDisambiguation:
   def kind = MessageKind.Naming
 
-abstract class DeclarationMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+abstract class DeclarationMsg(errorId: ErrorMessageID)(using DetachedContext) extends Message(errorId):
   def kind = MessageKind.Declaration
 
 /** A simple not found message (either for idents, or member selection.
  *  Messages of this class are sometimes dropped in favor of other, more
  *  specific messages.
  */
-abstract class NotFoundMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+abstract class NotFoundMsg(errorId: ErrorMessageID)(using DetachedContext) extends Message(errorId):
   def kind = MessageKind.NotFound
   def name: Name
 
-abstract class PatternMatchMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+abstract class PatternMatchMsg(errorId: ErrorMessageID)(using DetachedContext) extends Message(errorId):
   def kind = MessageKind.PatternMatch
 
-abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+abstract class CyclicMsg(errorId: ErrorMessageID)(using DetachedContext) extends Message(errorId):
   def kind = MessageKind.Cyclic
 
-abstract class ReferenceMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+abstract class ReferenceMsg(errorId: ErrorMessageID)(using DetachedContext) extends Message(errorId):
   def kind = MessageKind.Reference
 
-abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
+abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using DetachedContext)
 extends SyntaxMsg(errNo) {
   def explain(using Context) = {
     val tryString = tryBody match {
@@ -119,21 +119,21 @@ extends SyntaxMsg(errNo) {
   }
 }
 
-class EmptyCatchBlock(tryBody: untpd.Tree)(using Context)
+class EmptyCatchBlock(tryBody: untpd.Tree)(using DetachedContext)
 extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
   def msg(using Context) =
     i"""|The ${hl("catch")} block does not contain a valid expression, try
         |adding a case like - ${hl("case e: Exception =>")} to the block"""
 }
 
-class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(using Context)
+class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(using DetachedContext)
 extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchAndFinallyBlockID) {
   def msg(using Context) =
     i"""|A ${hl("try")} without ${hl("catch")} or ${hl("finally")} is equivalent to putting
         |its body in a block; no exceptions are handled."""
 }
 
-class DeprecatedWithOperator()(using Context)
+class DeprecatedWithOperator()(using DetachedContext)
 extends SyntaxMsg(DeprecatedWithOperatorID) {
   def msg(using Context) =
     i"""${hl("with")} as a type operator has been deprecated; use ${hl("&")} instead"""
@@ -143,7 +143,7 @@ extends SyntaxMsg(DeprecatedWithOperatorID) {
         |semantics between intersection types and using ${hl("with")}."""
 }
 
-class CaseClassMissingParamList(cdef: untpd.TypeDef)(using Context)
+class CaseClassMissingParamList(cdef: untpd.TypeDef)(using DetachedContext)
 extends SyntaxMsg(CaseClassMissingParamListID) {
   def msg(using Context) =
     i"""|A ${hl("case class")} must have at least one parameter list"""
@@ -157,7 +157,7 @@ extends SyntaxMsg(CaseClassMissingParamListID) {
 class AnonymousFunctionMissingParamType(param: untpd.ValDef,
                                         tree: untpd.Function,
                                         pt: Type)
-                                        (using Context)
+                                        (using DetachedContext)
 extends TypeMsg(AnonymousFunctionMissingParamTypeID) {
   def msg(using Context) = {
     val ofFun =
@@ -178,7 +178,7 @@ extends TypeMsg(AnonymousFunctionMissingParamTypeID) {
   def explain(using Context) = ""
 }
 
-class WildcardOnTypeArgumentNotAllowedOnNew()(using Context)
+class WildcardOnTypeArgumentNotAllowedOnNew()(using DetachedContext)
 extends SyntaxMsg(WildcardOnTypeArgumentNotAllowedOnNewID) {
   def msg(using Context) = "Type argument must be fully defined"
   def explain(using Context) =
@@ -210,7 +210,7 @@ extends SyntaxMsg(WildcardOnTypeArgumentNotAllowedOnNewID) {
 
 
 // Type Errors ------------------------------------------------------------ //
-class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(using Context)
+class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(using DetachedContext)
 extends NamingMsg(DuplicateBindID) {
   def msg(using Context) = i"duplicate pattern variable: ${bind.name}"
 
@@ -235,7 +235,7 @@ extends NamingMsg(DuplicateBindID) {
   }
 }
 
-class MissingIdent(tree: untpd.Ident, treeKind: String, val name: Name)(using Context)
+class MissingIdent(tree: untpd.Ident, treeKind: String, val name: Name)(using DetachedContext)
 extends NotFoundMsg(MissingIdentID) {
   def msg(using Context) = i"Not found: $treeKind$name"
   def explain(using Context) = {
@@ -246,7 +246,7 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: -> String*)(using Context)
+class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: -> String*)(using DetachedContext)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
   def msg(using Context) =
@@ -301,7 +301,7 @@ class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  ad
 
 end TypeMismatch
 
-class NotAMember(site: Type, val name: Name, selected: String, addendum: -> String = "")(using Context)
+class NotAMember(site: Type, val name: Name, selected: String, addendum: -> String = "")(using DetachedContext)
 extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
   //println(i"site = $site, decls = ${site.decls}, source = ${site.typeSymbol.sourceFile}") //DEBUG
 
@@ -377,7 +377,7 @@ extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
   def explain(using Context) = ""
 }
 
-class EarlyDefinitionsNotSupported()(using Context)
+class EarlyDefinitionsNotSupported()(using DetachedContext)
 extends SyntaxMsg(EarlyDefinitionsNotSupportedID) {
   def msg(using Context) = "Early definitions are not supported; use trait parameters instead"
 
@@ -422,7 +422,7 @@ extends SyntaxMsg(EarlyDefinitionsNotSupportedID) {
   }
 }
 
-class TopLevelImplicitClass(cdef: untpd.TypeDef)(using Context)
+class TopLevelImplicitClass(cdef: untpd.TypeDef)(using DetachedContext)
 extends SyntaxMsg(TopLevelImplicitClassID) {
   def msg(using Context) = i"""An ${hl("implicit class")} may not be top-level"""
 
@@ -450,7 +450,7 @@ extends SyntaxMsg(TopLevelImplicitClassID) {
   }
 }
 
-class ImplicitCaseClass(cdef: untpd.TypeDef)(using Context)
+class ImplicitCaseClass(cdef: untpd.TypeDef)(using DetachedContext)
 extends SyntaxMsg(ImplicitCaseClassID) {
   def msg(using Context) = i"""A ${hl("case class")} may not be defined as ${hl("implicit")}"""
 
@@ -462,7 +462,7 @@ extends SyntaxMsg(ImplicitCaseClassID) {
         |"""
 }
 
-class ImplicitClassPrimaryConstructorArity()(using Context)
+class ImplicitClassPrimaryConstructorArity()(using DetachedContext)
 extends SyntaxMsg(ImplicitClassPrimaryConstructorArityID){
   def msg(using Context) = "Implicit classes must accept exactly one primary constructor parameter"
   def explain(using Context) = {
@@ -477,7 +477,7 @@ extends SyntaxMsg(ImplicitClassPrimaryConstructorArityID){
   }
 }
 
-class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(using Context)
+class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(using DetachedContext)
 extends SyntaxMsg(ObjectMayNotHaveSelfTypeID) {
   def msg(using Context) = i"""${hl("object")}s must not have a self ${hl("type")}"""
 
@@ -494,7 +494,7 @@ extends SyntaxMsg(ObjectMayNotHaveSelfTypeID) {
   }
 }
 
-class RepeatedModifier(modifier: String)(implicit ctx:Context)
+class RepeatedModifier(modifier: String)(using DetachedContext)
 extends SyntaxMsg(RepeatedModifierID) {
   def msg(using Context) = i"""Repeated modifier $modifier"""
 
@@ -515,7 +515,7 @@ extends SyntaxMsg(RepeatedModifierID) {
   }
 }
 
-class InterpolatedStringError()(implicit ctx:Context)
+class InterpolatedStringError()(using DetachedContext)
 extends SyntaxMsg(InterpolatedStringErrorID) {
   def msg(using Context) = "Error in interpolated string: identifier or block expected"
   def explain(using Context) = {
@@ -532,7 +532,7 @@ extends SyntaxMsg(InterpolatedStringErrorID) {
   }
 }
 
-class UnboundPlaceholderParameter()(implicit ctx:Context)
+class UnboundPlaceholderParameter()(using DetachedContext)
 extends SyntaxMsg(UnboundPlaceholderParameterID) {
   def msg(using Context) = i"""Unbound placeholder parameter; incorrect use of ${hl("_")}"""
   def explain(using Context) =
@@ -578,7 +578,7 @@ extends SyntaxMsg(UnboundPlaceholderParameterID) {
         |"""
 }
 
-class IllegalStartSimpleExpr(illegalToken: String)(using Context)
+class IllegalStartSimpleExpr(illegalToken: String)(using DetachedContext)
 extends SyntaxMsg(IllegalStartSimpleExprID) {
   def msg(using Context) = i"expression expected but ${Red(illegalToken)} found"
   def explain(using Context) = {
@@ -586,7 +586,7 @@ extends SyntaxMsg(IllegalStartSimpleExprID) {
   }
 }
 
-class MissingReturnType()(implicit ctx:Context)
+class MissingReturnType()(using DetachedContext)
 extends SyntaxMsg(MissingReturnTypeID) {
   def msg(using Context) = "Missing return type"
   def explain(using Context) =
@@ -596,7 +596,7 @@ extends SyntaxMsg(MissingReturnTypeID) {
         |  ${hl("def area: Double")} // abstract declaration returning a Double"""
 }
 
-class MissingReturnTypeWithReturnStatement(method: Symbol)(using Context)
+class MissingReturnTypeWithReturnStatement(method: Symbol)(using DetachedContext)
 extends SyntaxMsg(MissingReturnTypeWithReturnStatementID) {
   def msg(using Context) = i"$method has a return statement; it needs a result type"
   def explain(using Context) =
@@ -606,7 +606,7 @@ extends SyntaxMsg(MissingReturnTypeWithReturnStatementID) {
         |${hl("def good: Int /* explicit return type */ = return 1")}"""
 }
 
-class YieldOrDoExpectedInForComprehension()(using Context)
+class YieldOrDoExpectedInForComprehension()(using DetachedContext)
 extends SyntaxMsg(YieldOrDoExpectedInForComprehensionID) {
   def msg(using Context) = i"${hl("yield")} or ${hl("do")} expected"
 
@@ -638,7 +638,7 @@ extends SyntaxMsg(YieldOrDoExpectedInForComprehensionID) {
         |"""
 }
 
-class ProperDefinitionNotFound()(using Context)
+class ProperDefinitionNotFound()(using DetachedContext)
 extends Message(ProperDefinitionNotFoundID) {
   def kind = MessageKind.DocComment
   def msg(using Context) = i"""Proper definition was not found in ${hl("@usecase")}"""
@@ -677,7 +677,7 @@ extends Message(ProperDefinitionNotFoundID) {
   }
 }
 
-class ByNameParameterNotSupported(tpe: untpd.Tree)(using Context)
+class ByNameParameterNotSupported(tpe: untpd.Tree)(using DetachedContext)
 extends SyntaxMsg(ByNameParameterNotSupportedID) {
   def msg(using Context) = i"By-name parameter type ${tpe} not allowed here."
 
@@ -700,7 +700,7 @@ extends SyntaxMsg(ByNameParameterNotSupportedID) {
         |"""
 }
 
-class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree])(using Context)
+class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree])(using DetachedContext)
 extends SyntaxMsg(WrongNumberOfTypeArgsID) {
 
   private val expectedCount = expectedArgs.length
@@ -741,7 +741,7 @@ extends SyntaxMsg(WrongNumberOfTypeArgsID) {
   }
 }
 
-class IllegalVariableInPatternAlternative(name: Name)(using Context)
+class IllegalVariableInPatternAlternative(name: Name)(using DetachedContext)
 extends SyntaxMsg(IllegalVariableInPatternAlternativeID) {
   def msg(using Context) = i"Illegal variable $name in pattern alternative"
   def explain(using Context) = {
@@ -769,7 +769,7 @@ extends SyntaxMsg(IllegalVariableInPatternAlternativeID) {
   }
 }
 
-class IdentifierExpected(identifier: String)(using Context)
+class IdentifierExpected(identifier: String)(using DetachedContext)
 extends SyntaxMsg(IdentifierExpectedID) {
   def msg(using Context) = "identifier expected"
   def explain(using Context) = {
@@ -789,7 +789,7 @@ extends SyntaxMsg(IdentifierExpectedID) {
   }
 }
 
-class AuxConstructorNeedsNonImplicitParameter()(implicit ctx:Context)
+class AuxConstructorNeedsNonImplicitParameter()(using DetachedContext)
 extends SyntaxMsg(AuxConstructorNeedsNonImplicitParameterID) {
   def msg(using Context) = "Auxiliary constructor needs non-implicit parameter list"
   def explain(using Context) =
@@ -804,7 +804,7 @@ extends SyntaxMsg(AuxConstructorNeedsNonImplicitParameterID) {
         |"""
 }
 
-class IllegalLiteral()(using Context)
+class IllegalLiteral()(using DetachedContext)
 extends SyntaxMsg(IllegalLiteralID) {
   def msg(using Context) = "Illegal literal"
   def explain(using Context) =
@@ -818,14 +818,14 @@ extends SyntaxMsg(IllegalLiteralID) {
         |"""
 }
 
-class LossyWideningConstantConversion(sourceType: Type, targetType: Type)(using Context)
+class LossyWideningConstantConversion(sourceType: Type, targetType: Type)(using DetachedContext)
 extends Message(LossyWideningConstantConversionID):
   def kind = MessageKind.LossyConversion
   def msg(using Context) = i"""|Widening conversion from $sourceType to $targetType loses precision.
                 |Write `.to$targetType` instead."""
   def explain(using Context) = ""
 
-class PatternMatchExhaustivity(uncoveredFn: -> String, hasMore: Boolean)(using Context)
+class PatternMatchExhaustivity(uncoveredFn: -> String, hasMore: Boolean)(using DetachedContext)
 extends Message(PatternMatchExhaustivityID) {
   def kind = MessageKind.PatternMatchExhaustivity
   lazy val uncovered = uncoveredFn
@@ -845,7 +845,7 @@ extends Message(PatternMatchExhaustivityID) {
         |"""
 }
 
-class UncheckedTypePattern(msgFn: -> String)(using Context)
+class UncheckedTypePattern(msgFn: -> String)(using DetachedContext)
   extends PatternMatchMsg(UncheckedTypePatternID) {
   def msg(using Context) = msgFn
   def explain(using Context) =
@@ -856,20 +856,20 @@ class UncheckedTypePattern(msgFn: -> String)(using Context)
         |"""
 }
 
-class MatchCaseUnreachable()(using Context)
+class MatchCaseUnreachable()(using DetachedContext)
 extends Message(MatchCaseUnreachableID) {
   def kind = MessageKind.MatchCaseUnreachable
   def msg(using Context) = "Unreachable case"
   def explain(using Context) = ""
 }
 
-class MatchCaseOnlyNullWarning()(using Context)
+class MatchCaseOnlyNullWarning()(using DetachedContext)
 extends PatternMatchMsg(MatchCaseOnlyNullWarningID) {
   def msg(using Context) = i"""Unreachable case except for ${hl("null")} (if this is intentional, consider writing ${hl("case null =>")} instead)."""
   def explain(using Context) = ""
 }
 
-class MatchableWarning(tp: Type, pattern: Boolean)(using Context)
+class MatchableWarning(tp: Type, pattern: Boolean)(using DetachedContext)
 extends TypeMsg(MatchableWarningID) {
   def msg(using Context) =
     val kind = if pattern then "pattern selector" else "value"
@@ -895,7 +895,7 @@ extends TypeMsg(MatchableWarningID) {
          |`asMatchable` needs to be imported from scala.compiletime."""
 }
 
-class SeqWildcardPatternPos()(using Context)
+class SeqWildcardPatternPos()(using DetachedContext)
 extends SyntaxMsg(SeqWildcardPatternPosID) {
   def msg(using Context) = i"""${hl("*")} can be used only for last argument"""
   def explain(using Context) = {
@@ -918,7 +918,7 @@ extends SyntaxMsg(SeqWildcardPatternPosID) {
   }
 }
 
-class IllegalStartOfSimplePattern()(using Context)
+class IllegalStartOfSimplePattern()(using DetachedContext)
 extends SyntaxMsg(IllegalStartOfSimplePatternID) {
   def msg(using Context) = "pattern expected"
   def explain(using Context) = {
@@ -997,13 +997,13 @@ extends SyntaxMsg(IllegalStartOfSimplePatternID) {
   }
 }
 
-class PkgDuplicateSymbol(existing: Symbol)(using Context)
+class PkgDuplicateSymbol(existing: Symbol)(using DetachedContext)
 extends NamingMsg(PkgDuplicateSymbolID) {
   def msg(using Context) = i"Trying to define package with same name as $existing"
   def explain(using Context) = ""
 }
 
-class ExistentialTypesNoLongerSupported()(using Context)
+class ExistentialTypesNoLongerSupported()(using DetachedContext)
 extends SyntaxMsg(ExistentialTypesNoLongerSupportedID) {
   def msg(using Context) =
     i"""|Existential types are no longer supported -
@@ -1025,7 +1025,7 @@ extends SyntaxMsg(ExistentialTypesNoLongerSupportedID) {
         |"""
 }
 
-class UnboundWildcardType()(using Context)
+class UnboundWildcardType()(using DetachedContext)
 extends SyntaxMsg(UnboundWildcardTypeID) {
   def msg(using Context) = "Unbound wildcard type"
   def explain(using Context) =
@@ -1069,7 +1069,7 @@ extends SyntaxMsg(UnboundWildcardTypeID) {
         |"""
 }
 
-class OverridesNothing(member: Symbol)(using Context)
+class OverridesNothing(member: Symbol)(using DetachedContext)
 extends DeclarationMsg(OverridesNothingID) {
   def msg(using Context) = i"""${member} overrides nothing"""
 
@@ -1080,7 +1080,7 @@ extends DeclarationMsg(OverridesNothingID) {
         |"""
 }
 
-class OverridesNothingButNameExists(member: Symbol, existing: List[Denotations.SingleDenotation])(using Context)
+class OverridesNothingButNameExists(member: Symbol, existing: List[Denotations.SingleDenotation])(using DetachedContext)
 extends DeclarationMsg(OverridesNothingButNameExistsID) {
   def msg(using Context) =
     val what =
@@ -1104,7 +1104,7 @@ extends DeclarationMsg(OverridesNothingButNameExistsID) {
 class OverrideError(
     core: Context ?-> String, base: Type,
     member: Symbol, other: Symbol,
-    memberTp: Type, otherTp: Type)(using Context)
+    memberTp: Type, otherTp: Type)(using DetachedContext)
 extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
   def msg(using Context) =
     val isConcreteOverAbstract =
@@ -1122,7 +1122,7 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
   def explain(using Context) =
     if canExplain then err.whyNoMatchStr(memberTp, otherTp) else ""
 
-class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(using Context)
+class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(using DetachedContext)
 extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
   def msg(using Context) = i"${definition.name} is a forward reference extending over the definition of ${value.name}"
 
@@ -1140,7 +1140,7 @@ extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
         |"""
 }
 
-class ExpectedTokenButFound(expected: Token, found: Token)(using Context)
+class ExpectedTokenButFound(expected: Token, found: Token)(using DetachedContext)
 extends SyntaxMsg(ExpectedTokenButFoundID) {
 
   private def foundText = Tokens.showToken(found)
@@ -1159,7 +1159,7 @@ extends SyntaxMsg(ExpectedTokenButFoundID) {
       ""
 }
 
-class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(using Context)
+class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(using DetachedContext)
 extends SyntaxMsg(MixedLeftAndRightAssociativeOpsID) {
   def msg(using Context) =
     val op1Asso: String = if (op2LeftAssoc) "which is right-associative" else "which is left-associative"
@@ -1193,7 +1193,7 @@ extends SyntaxMsg(MixedLeftAndRightAssociativeOpsID) {
         |""".stripMargin
 }
 
-class CantInstantiateAbstractClassOrTrait(cls: Symbol, isTrait: Boolean)(using Context)
+class CantInstantiateAbstractClassOrTrait(cls: Symbol, isTrait: Boolean)(using DetachedContext)
 extends TypeMsg(CantInstantiateAbstractClassOrTraitID) {
   private val traitOrAbstract = if (isTrait) "a trait" else "abstract"
   def msg(using Context) = i"""${cls.name} is ${traitOrAbstract}; it cannot be instantiated"""
@@ -1211,14 +1211,14 @@ extends TypeMsg(CantInstantiateAbstractClassOrTraitID) {
         |"""
 }
 
-class UnreducibleApplication(tycon: Type)(using Context) extends TypeMsg(UnreducibleApplicationID):
+class UnreducibleApplication(tycon: Type)(using DetachedContext) extends TypeMsg(UnreducibleApplicationID):
   def msg(using Context) = i"unreducible application of higher-kinded type $tycon to wildcard arguments"
   def explain(using Context) =
     i"""|An abstract type constructor cannot be applied to wildcard arguments.
         |Such applications are equivalent to existential types, which are not
         |supported in Scala 3."""
 
-class OverloadedOrRecursiveMethodNeedsResultType(cycleSym: Symbol)(using Context)
+class OverloadedOrRecursiveMethodNeedsResultType(cycleSym: Symbol)(using DetachedContext)
 extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
   def msg(using Context) = i"""Overloaded or recursive $cycleSym needs return type"""
   def explain(using Context) =
@@ -1232,7 +1232,7 @@ extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
         |"""
 }
 
-class RecursiveValueNeedsResultType(cycleSym: Symbol)(using Context)
+class RecursiveValueNeedsResultType(cycleSym: Symbol)(using DetachedContext)
 extends CyclicMsg(RecursiveValueNeedsResultTypeID) {
   def msg(using Context) = i"""Recursive $cycleSym needs type"""
   def explain(using Context) =
@@ -1240,7 +1240,7 @@ extends CyclicMsg(RecursiveValueNeedsResultTypeID) {
         |"""
 }
 
-class CyclicReferenceInvolving(denot: SymDenotation)(using Context)
+class CyclicReferenceInvolving(denot: SymDenotation)(using DetachedContext)
 extends CyclicMsg(CyclicReferenceInvolvingID) {
   def msg(using Context) =
     val where = if denot.exists then s" involving $denot" else ""
@@ -1252,7 +1252,7 @@ extends CyclicMsg(CyclicReferenceInvolvingID) {
         |"""
 }
 
-class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(using Context)
+class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(using DetachedContext)
 extends CyclicMsg(CyclicReferenceInvolvingImplicitID) {
   def msg(using Context) = i"""Cyclic reference involving implicit $cycleSym"""
   def explain(using Context) =
@@ -1263,7 +1263,7 @@ extends CyclicMsg(CyclicReferenceInvolvingImplicitID) {
         |"""
 }
 
-class SkolemInInferred(tree: tpd.Tree, pt: Type, argument: tpd.Tree)(using Context)
+class SkolemInInferred(tree: tpd.Tree, pt: Type, argument: tpd.Tree)(using DetachedContext)
 extends TypeMsg(SkolemInInferredID):
   def msg(using Context) =
     def argStr =
@@ -1282,7 +1282,7 @@ extends TypeMsg(SkolemInInferredID):
         |To trouble-shoot the problem, try to supply an explicit expression instead of
         |relying on implicit search at this point."""
 
-class SuperQualMustBeParent(qual: untpd.Ident, cls: ClassSymbol)(using Context)
+class SuperQualMustBeParent(qual: untpd.Ident, cls: ClassSymbol)(using DetachedContext)
 extends ReferenceMsg(SuperQualMustBeParentID) {
   def msg(using Context) = i"""|$qual does not name a parent of $cls"""
   def explain(using Context) =
@@ -1295,7 +1295,7 @@ extends ReferenceMsg(SuperQualMustBeParentID) {
         |"""
 }
 
-class VarArgsParamMustComeLast()(using Context)
+class VarArgsParamMustComeLast()(using DetachedContext)
 extends SyntaxMsg(VarArgsParamMustComeLastID) {
   def msg(using Context) = i"""${hl("varargs")} parameter must come last"""
   def explain(using Context) =
@@ -1306,14 +1306,14 @@ extends SyntaxMsg(VarArgsParamMustComeLastID) {
 
 import typer.Typer.BindingPrec
 
-class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(using Context)
+class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: DetachedContext)(using DetachedContext)
   extends ReferenceMsg(AmbiguousReferenceID), NoDisambiguation {
 
   /** A string which explains how something was bound; Depending on `prec` this is either
     *      imported by <tree>
     *  or  defined in <symbol>
     */
-  private def bindingString(prec: BindingPrec, whereFound: Context, qualifier: String = "")(using Context) = {
+  private def bindingString(prec: BindingPrec, whereFound: Context, qualifier: String = "")(using DetachedContext) = {
     val howVisible = prec match {
       case BindingPrec.Definition => "defined"
       case BindingPrec.Inheritance => "inherited"
@@ -1347,7 +1347,7 @@ class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec
         |"""
 }
 
-class MethodDoesNotTakeParameters(tree: tpd.Tree)(using Context)
+class MethodDoesNotTakeParameters(tree: tpd.Tree)(using DetachedContext)
 extends TypeMsg(MethodDoesNotTakeParametersId) {
   def methodSymbol(using Context): Symbol =
     def recur(t: tpd.Tree): Symbol =
@@ -1378,7 +1378,7 @@ extends TypeMsg(MethodDoesNotTakeParametersId) {
 }
 
 class AmbiguousOverload(tree: tpd.Tree, val alternatives: List[SingleDenotation], pt: Type, addendum: String = "")(
-  implicit ctx: Context)
+  using DetachedContext)
 extends ReferenceMsg(AmbiguousOverloadID), NoDisambiguation {
   private def all = if (alternatives.length == 2) "both" else "all"
   def msg(using Context) =
@@ -1393,7 +1393,7 @@ extends ReferenceMsg(AmbiguousOverloadID), NoDisambiguation {
         |"""
 }
 
-class ReassignmentToVal(name: Name)(using Context)
+class ReassignmentToVal(name: Name)(using DetachedContext)
   extends TypeMsg(ReassignmentToValID) {
   def msg(using Context) = i"""Reassignment to val $name"""
   def explain(using Context) =
@@ -1406,7 +1406,7 @@ class ReassignmentToVal(name: Name)(using Context)
         |"""
 }
 
-class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
+class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using DetachedContext)
   extends TypeMsg(TypeDoesNotTakeParametersID) {
   private def fboundsAddendum(using Context) =
     if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
@@ -1422,7 +1422,7 @@ class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Conte
         |"""
 }
 
-class VarValParametersMayNotBeCallByName(name: TermName, mutable: Boolean)(using Context)
+class VarValParametersMayNotBeCallByName(name: TermName, mutable: Boolean)(using DetachedContext)
   extends SyntaxMsg(VarValParametersMayNotBeCallByNameID) {
   def varOrVal = if mutable then hl("var") else hl("val")
   def msg(using Context) = s"$varOrVal parameters may not be call-by-name"
@@ -1436,7 +1436,7 @@ class VarValParametersMayNotBeCallByName(name: TermName, mutable: Boolean)(using
         |"""
 }
 
-class MissingTypeParameterFor(tpe: Type)(using Context)
+class MissingTypeParameterFor(tpe: Type)(using DetachedContext)
   extends SyntaxMsg(MissingTypeParameterForID) {
   def msg(using Context) =
     if tpe.derivesFrom(defn.AnyKindClass)
@@ -1445,7 +1445,7 @@ class MissingTypeParameterFor(tpe: Type)(using Context)
   def explain(using Context) = ""
 }
 
-class MissingTypeParameterInTypeApp(tpe: Type)(using Context)
+class MissingTypeParameterInTypeApp(tpe: Type)(using DetachedContext)
   extends TypeMsg(MissingTypeParameterInTypeAppID) {
   def numParams = tpe.typeParams.length
   def parameters = if (numParams == 1) "parameter" else "parameters"
@@ -1453,14 +1453,14 @@ class MissingTypeParameterInTypeApp(tpe: Type)(using Context)
   def explain(using Context) = i"A fully applied type is expected but $tpe takes $numParams $parameters"
 }
 
-class MissingArgument(pname: Name, methString: String)(using Context)
+class MissingArgument(pname: Name, methString: String)(using DetachedContext)
   extends TypeMsg(MissingArgumentID):
   def msg(using Context) =
     if pname.firstPart contains '$' then s"not enough arguments for $methString"
     else s"missing argument for parameter $pname of $methString"
   def explain(using Context) = ""
 
-class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
+class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using DetachedContext)
   extends TypeMismatchMsg(
     if which == "lower" then bound else tpe,
     if which == "lower" then tpe else bound)(DoesNotConformToBoundID):
@@ -1476,19 +1476,19 @@ class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context
 
 class DoesNotConformToSelfType(category: String, selfType: Type, cls: Symbol,
                                 otherSelf: Type, relation: String, other: Symbol)(
-  implicit ctx: Context)
+  using DetachedContext)
   extends TypeMismatchMsg(selfType, otherSelf)(DoesNotConformToSelfTypeID) {
   def msg(using Context) = i"""$category: self type $selfType of $cls does not conform to self type $otherSelf
                 |of $relation $other"""
 }
 
 class DoesNotConformToSelfTypeCantBeInstantiated(tp: Type, selfType: Type)(
-  implicit ctx: Context)
+  using DetachedContext)
   extends TypeMismatchMsg(tp, selfType)(DoesNotConformToSelfTypeCantBeInstantiatedID) {
   def msg(using Context) = i"""$tp does not conform to its self type $selfType; cannot be instantiated"""
 }
 
-class IllegalParameterInit(found: Type, expected: Type, param: Symbol, cls: Symbol)(using Context)
+class IllegalParameterInit(found: Type, expected: Type, param: Symbol, cls: Symbol)(using DetachedContext)
   extends TypeMismatchMsg(found, expected)(IllegalParameterInitID):
   def msg(using Context) =
     i"""illegal parameter initialization of $param.
@@ -1497,34 +1497,34 @@ class IllegalParameterInit(found: Type, expected: Type, param: Symbol, cls: Symb
         |  but $cls expects $param to have type: $expected"""
 
 class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
-  implicit ctx: Context)
+  using DetachedContext)
   extends SyntaxMsg(AbstractMemberMayNotHaveModifierID) {
   def msg(using Context) = i"""${hl("abstract")} $sym may not have `${flag.flagsString}` modifier"""
   def explain(using Context) = ""
 }
 
-class TypesAndTraitsCantBeImplicit()(using Context)
+class TypesAndTraitsCantBeImplicit()(using DetachedContext)
   extends SyntaxMsg(TypesAndTraitsCantBeImplicitID) {
   def msg(using Context) = i"""${hl("implicit")} modifier cannot be used for types or traits"""
   def explain(using Context) = ""
 }
 
 class OnlyClassesCanBeAbstract(sym: Symbol)(
-  implicit ctx: Context)
+  using DetachedContext)
   extends SyntaxMsg(OnlyClassesCanBeAbstractID) {
   def explain(using Context) = ""
   def msg(using Context) = i"""${hl("abstract")} modifier can be used only for classes; it should be omitted for abstract members"""
 }
 
 class AbstractOverrideOnlyInTraits(sym: Symbol)(
-  implicit ctx: Context)
+  using DetachedContext)
   extends SyntaxMsg(AbstractOverrideOnlyInTraitsID) {
   def msg(using Context) = i"""${hl("abstract override")} modifier only allowed for members of traits"""
   def explain(using Context) = ""
 }
 
 class TraitsMayNotBeFinal(sym: Symbol)(
-  implicit ctx: Context)
+  using DetachedContext)
   extends SyntaxMsg(TraitsMayNotBeFinalID) {
   def msg(using Context) = i"""$sym may not be ${hl("final")}"""
   def explain(using Context) =
@@ -1532,21 +1532,21 @@ class TraitsMayNotBeFinal(sym: Symbol)(
 }
 
 class NativeMembersMayNotHaveImplementation(sym: Symbol)(
-  implicit ctx: Context)
+  using DetachedContext)
   extends SyntaxMsg(NativeMembersMayNotHaveImplementationID) {
   def msg(using Context) = i"""${hl("@native")} members may not have an implementation"""
   def explain(using Context) = ""
 }
 
 class TraitMayNotDefineNativeMethod(sym: Symbol)(
-  implicit ctx: Context)
+  using DetachedContext)
   extends SyntaxMsg(TraitMayNotDefineNativeMethodID) {
   def msg(using Context) = i"""A trait cannot define a ${hl("@native")} method."""
   def explain(using Context) = ""
 }
 
 class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
-  implicit ctx: Context)
+  using DetachedContext)
   extends SyntaxMsg(OnlyClassesCanHaveDeclaredButUndefinedMembersID) {
 
   def msg(using Context) = i"""Declaration of $sym not allowed here: only classes can have declared but undefined members"""
@@ -1555,7 +1555,7 @@ class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
     else ""
 }
 
-class CannotExtendAnyVal(sym: Symbol)(using Context)
+class CannotExtendAnyVal(sym: Symbol)(using DetachedContext)
   extends SyntaxMsg(CannotExtendAnyValID) {
   def msg(using Context) = i"""$sym cannot extend ${hl("AnyVal")}"""
   def explain(using Context) =
@@ -1565,25 +1565,25 @@ class CannotExtendAnyVal(sym: Symbol)(using Context)
         |"""
 }
 
-class CannotExtendJavaEnum(sym: Symbol)(using Context)
+class CannotExtendJavaEnum(sym: Symbol)(using DetachedContext)
   extends SyntaxMsg(CannotExtendJavaEnumID) {
     def msg(using Context) = i"""$sym cannot extend ${hl("java.lang.Enum")}: only enums defined with the ${hl("enum")} syntax can"""
     def explain(using Context) = ""
   }
 
-class CannotExtendContextFunction(sym: Symbol)(using Context)
+class CannotExtendContextFunction(sym: Symbol)(using DetachedContext)
   extends SyntaxMsg(CannotExtendFunctionID) {
     def msg(using Context) = i"""$sym cannot extend a context function class"""
     def explain(using Context) = ""
   }
 
-class JavaEnumParentArgs(parent: Type)(using Context)
+class JavaEnumParentArgs(parent: Type)(using DetachedContext)
   extends TypeMsg(JavaEnumParentArgsID) {
     def msg(using Context) = i"""not enough arguments for constructor Enum: ${hl("(name: String, ordinal: Int)")}: ${hl(parent.show)}"""
     def explain(using Context) = ""
   }
 
-class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(using Context)
+class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(using DetachedContext)
   extends NamingMsg(CannotHaveSameNameAsID) {
   import CannotHaveSameNameAs._
   def reasonMessage(using Context): String = reason match {
@@ -1603,75 +1603,75 @@ object CannotHaveSameNameAs {
   case class DefinedInSelf(self: tpd.ValDef) extends Reason
 }
 
-class ValueClassesMayNotDefineInner(valueClass: Symbol, inner: Symbol)(using Context)
+class ValueClassesMayNotDefineInner(valueClass: Symbol, inner: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassesMayNotDefineInnerID) {
   def msg(using Context) = i"""Value classes may not define an inner class"""
   def explain(using Context) = ""
 }
 
-class ValueClassesMayNotDefineNonParameterField(valueClass: Symbol, field: Symbol)(using Context)
+class ValueClassesMayNotDefineNonParameterField(valueClass: Symbol, field: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassesMayNotDefineNonParameterFieldID) {
   def msg(using Context) = i"""Value classes may not define non-parameter field"""
   def explain(using Context) = ""
 }
 
-class ValueClassesMayNotDefineASecondaryConstructor(valueClass: Symbol, constructor: Symbol)(using Context)
+class ValueClassesMayNotDefineASecondaryConstructor(valueClass: Symbol, constructor: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassesMayNotDefineASecondaryConstructorID) {
   def msg(using Context) = i"""Value classes may not define a secondary constructor"""
   def explain(using Context) = ""
 }
 
-class ValueClassesMayNotContainInitalization(valueClass: Symbol)(using Context)
+class ValueClassesMayNotContainInitalization(valueClass: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassesMayNotContainInitalizationID) {
   def msg(using Context) = i"""Value classes may not contain initialization statements"""
   def explain(using Context) = ""
 }
 
-class ValueClassesMayNotBeAbstract(valueClass: Symbol)(using Context)
+class ValueClassesMayNotBeAbstract(valueClass: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassesMayNotBeAbstractID) {
   def msg(using Context) = i"""Value classes may not be ${hl("abstract")}"""
   def explain(using Context) = ""
 }
 
-class ValueClassesMayNotBeContainted(valueClass: Symbol)(using Context)
+class ValueClassesMayNotBeContainted(valueClass: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassesMayNotBeContaintedID) {
   private def localOrMember = if (valueClass.owner.isTerm) "local class" else "member of another class"
   def msg(using Context) = s"""Value classes may not be a $localOrMember"""
   def explain(using Context) = ""
 }
 
-class ValueClassesMayNotWrapAnotherValueClass(valueClass: Symbol)(using Context)
+class ValueClassesMayNotWrapAnotherValueClass(valueClass: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassesMayNotWrapAnotherValueClassID) {
   def msg(using Context) = """A value class may not wrap another user-defined value class"""
   def explain(using Context) = ""
 }
 
-class ValueClassParameterMayNotBeAVar(valueClass: Symbol, param: Symbol)(using Context)
+class ValueClassParameterMayNotBeAVar(valueClass: Symbol, param: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassParameterMayNotBeAVarID) {
   def msg(using Context) = i"""A value class parameter may not be a ${hl("var")}"""
   def explain(using Context) =
     i"""A value class must have exactly one ${hl("val")} parameter."""
 }
 
-class ValueClassNeedsOneValParam(valueClass: Symbol)(using Context)
+class ValueClassNeedsOneValParam(valueClass: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassNeedsExactlyOneValParamID) {
   def msg(using Context) = i"""Value class needs one ${hl("val")} parameter"""
   def explain(using Context) = ""
 }
 
-class ValueClassParameterMayNotBeCallByName(valueClass: Symbol, param: Symbol)(using Context)
+class ValueClassParameterMayNotBeCallByName(valueClass: Symbol, param: Symbol)(using DetachedContext)
   extends SyntaxMsg(ValueClassParameterMayNotBeCallByNameID) {
   def msg(using Context) = s"Value class parameter `${param.name}` may not be call-by-name"
   def explain(using Context) = ""
 }
 
-class SuperCallsNotAllowedInlineable(symbol: Symbol)(using Context)
+class SuperCallsNotAllowedInlineable(symbol: Symbol)(using DetachedContext)
   extends SyntaxMsg(SuperCallsNotAllowedInlineableID) {
   def msg(using Context) = i"Super call not allowed in inlineable $symbol"
   def explain(using Context) = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
 }
 
-class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathID):
+class NotAPath(tp: Type, usage: String)(using DetachedContext) extends TypeMsg(NotAPathID):
   def msg(using Context) = i"$tp is not a valid $usage, since it is not an immutable path"
   def explain(using Context) =
     i"""An immutable path is
@@ -1679,27 +1679,27 @@ class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathI
         | - a reference to `this`, or
         | - a selection of an immutable path with an immutable value."""
 
-class WrongNumberOfParameters(expected: Int)(using Context)
+class WrongNumberOfParameters(expected: Int)(using DetachedContext)
   extends SyntaxMsg(WrongNumberOfParametersID) {
   def msg(using Context) = s"Wrong number of parameters, expected: $expected"
   def explain(using Context) = ""
 }
 
-class DuplicatePrivateProtectedQualifier()(using Context)
+class DuplicatePrivateProtectedQualifier()(using DetachedContext)
   extends SyntaxMsg(DuplicatePrivateProtectedQualifierID) {
   def msg(using Context) = "Duplicate private/protected qualifier"
   def explain(using Context) =
     i"It is not allowed to combine `private` and `protected` modifiers even if they are qualified to different scopes"
 }
 
-class ExpectedStartOfTopLevelDefinition()(using Context)
+class ExpectedStartOfTopLevelDefinition()(using DetachedContext)
   extends SyntaxMsg(ExpectedStartOfTopLevelDefinitionID) {
   def msg(using Context) = "Expected start of definition"
   def explain(using Context) =
     i"You have to provide either ${hl("class")}, ${hl("trait")}, ${hl("object")}, or ${hl("enum")} definitions after qualifiers"
 }
 
-class NoReturnFromInlineable(owner: Symbol)(using Context)
+class NoReturnFromInlineable(owner: Symbol)(using DetachedContext)
   extends SyntaxMsg(NoReturnFromInlineableID) {
   def msg(using Context) = i"No explicit ${hl("return")} allowed from inlineable $owner"
   def explain(using Context) =
@@ -1709,7 +1709,7 @@ class NoReturnFromInlineable(owner: Symbol)(using Context)
         |"""
 }
 
-class ReturnOutsideMethodDefinition(owner: Symbol)(using Context)
+class ReturnOutsideMethodDefinition(owner: Symbol)(using DetachedContext)
   extends SyntaxMsg(ReturnOutsideMethodDefinitionID) {
   def msg(using Context) = i"${hl("return")} outside method definition"
   def explain(using Context) =
@@ -1718,14 +1718,14 @@ class ReturnOutsideMethodDefinition(owner: Symbol)(using Context)
         |"""
 }
 
-class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(using Context)
+class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(using DetachedContext)
   extends SyntaxMsg(ExtendFinalClassID) {
   def msg(using Context) = i"$clazz cannot extend ${hl("final")} $finalClazz"
   def explain(using Context) =
     i"""A class marked with the ${hl("final")} keyword cannot be extended"""
 }
 
-class ExpectedTypeBoundOrEquals(found: Token)(using Context)
+class ExpectedTypeBoundOrEquals(found: Token)(using DetachedContext)
   extends SyntaxMsg(ExpectedTypeBoundOrEqualsID) {
   def msg(using Context) = i"${hl("=")}, ${hl(">:")}, or ${hl("<:")} expected, but ${Tokens.showToken(found)} found"
 
@@ -1742,7 +1742,7 @@ class ExpectedTypeBoundOrEquals(found: Token)(using Context)
         |"""
 }
 
-class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(using Context)
+class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(using DetachedContext)
   extends NamingMsg(ClassAndCompanionNameClashID) {
   def msg(using Context) =
     val name = cls.name.stripModuleClassSuffix
@@ -1753,7 +1753,7 @@ class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(using Context)
         |  - ${other.owner} defines ${other}"""
 }
 
-class TailrecNotApplicable(symbol: Symbol)(using Context)
+class TailrecNotApplicable(symbol: Symbol)(using DetachedContext)
   extends SyntaxMsg(TailrecNotApplicableID) {
   def msg(using Context) = {
     val reason =
@@ -1767,7 +1767,7 @@ class TailrecNotApplicable(symbol: Symbol)(using Context)
   def explain(using Context) = ""
 }
 
-class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using Context)
+class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using DetachedContext)
   extends Message(FailureToEliminateExistentialID) {
   def kind = MessageKind.Compatibility
   def msg(using Context) =
@@ -1786,7 +1786,7 @@ class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: L
         |are only approximated in a best-effort way."""
 }
 
-class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type)(using Context)
+class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type)(using DetachedContext)
   extends SyntaxMsg(OnlyFunctionsCanBeFollowedByUnderscoreID) {
   def msg(using Context) = i"Only function types can be followed by ${hl("_")} but the current expression has type $tp"
   def explain(using Context) =
@@ -1794,7 +1794,7 @@ class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type)(using Context)
         |To convert to a function value, you need to explicitly write ${hl("() => x")}"""
 }
 
-class MissingEmptyArgumentList(method: String)(using Context)
+class MissingEmptyArgumentList(method: String)(using DetachedContext)
   extends SyntaxMsg(MissingEmptyArgumentListID) {
   def msg(using Context) = i"$method must be called with ${hl("()")} argument"
   def explain(using Context) = {
@@ -1811,19 +1811,19 @@ class MissingEmptyArgumentList(method: String)(using Context)
   }
 }
 
-class DuplicateNamedTypeParameter(name: Name)(using Context)
+class DuplicateNamedTypeParameter(name: Name)(using DetachedContext)
   extends SyntaxMsg(DuplicateNamedTypeParameterID) {
   def msg(using Context) = i"Type parameter $name was defined multiple times."
   def explain(using Context) = ""
 }
 
-class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(using Context)
+class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(using DetachedContext)
   extends SyntaxMsg(UndefinedNamedTypeParameterID) {
   def msg(using Context) = i"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
   def explain(using Context) = ""
 }
 
-class IllegalStartOfStatement(what: String, isModifier: Boolean, isStat: Boolean)(using Context) extends SyntaxMsg(IllegalStartOfStatementID) {
+class IllegalStartOfStatement(what: String, isModifier: Boolean, isStat: Boolean)(using DetachedContext) extends SyntaxMsg(IllegalStartOfStatementID) {
   def msg(using Context) =
     if isStat then
       "this kind of statement is not allowed here"
@@ -1835,7 +1835,7 @@ class IllegalStartOfStatement(what: String, isModifier: Boolean, isStat: Boolean
         |Some statements are only allowed in certain contexts"""
 }
 
-class TraitIsExpected(symbol: Symbol)(using Context) extends SyntaxMsg(TraitIsExpectedID) {
+class TraitIsExpected(symbol: Symbol)(using DetachedContext) extends SyntaxMsg(TraitIsExpectedID) {
   def msg(using Context) = i"$symbol is not a trait"
   def explain(using Context) = {
     val errorCodeExample =
@@ -1862,12 +1862,12 @@ class TraitIsExpected(symbol: Symbol)(using Context) extends SyntaxMsg(TraitIsEx
   }
 }
 
-class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(using Context) extends SyntaxMsg(TraitRedefinedFinalMethodFromAnyRefID) {
+class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(using DetachedContext) extends SyntaxMsg(TraitRedefinedFinalMethodFromAnyRefID) {
   def msg(using Context) = i"Traits cannot redefine final $method from ${hl("class AnyRef")}."
   def explain(using Context) = ""
 }
 
-class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context)
+class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using DetachedContext)
 extends NamingMsg(AlreadyDefinedID):
   def msg(using Context) =
     def where: String =
@@ -1885,7 +1885,7 @@ extends NamingMsg(AlreadyDefinedID):
       i"$name is already defined as $conflicting$where$note"
   def explain(using Context) = ""
 
-class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
+class PackageNameAlreadyDefined(pkg: Symbol)(using DetachedContext) extends NamingMsg(PackageNameAlreadyDefinedID) {
   def msg(using Context) =
     def where = if pkg.associatedFile == null then "" else s" in ${pkg.associatedFile}"
     i"""${pkg.name} is the name of $pkg$where.
@@ -1896,7 +1896,7 @@ class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(Pa
         |Rename either one of them$or."""
 }
 
-class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(using Context)
+class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(using DetachedContext)
   extends SyntaxMsg(UnapplyInvalidNumberOfArgumentsID) {
   def msg(using Context) = i"Wrong number of argument patterns for $qual; expected: ($argTypes%, %)"
   def explain(using Context) =
@@ -1908,7 +1908,7 @@ class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(us
         |"""
 }
 
-class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Name)(using Context)
+class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Name)(using DetachedContext)
   extends DeclarationMsg(UnapplyInvalidReturnTypeID) {
   def msg(using Context) =
     val addendum =
@@ -1963,13 +1963,13 @@ class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Name)(using Con
       """
 }
 
-class StaticFieldsOnlyAllowedInObjects(member: Symbol)(using Context) extends SyntaxMsg(StaticFieldsOnlyAllowedInObjectsID) {
+class StaticFieldsOnlyAllowedInObjects(member: Symbol)(using DetachedContext) extends SyntaxMsg(StaticFieldsOnlyAllowedInObjectsID) {
   def msg(using Context) = i"${hl("@static")} $member in ${member.owner} must be defined inside a static ${hl("object")}."
   def explain(using Context) =
     i"${hl("@static")} members are only allowed inside objects."
 }
 
-class StaticFieldsShouldPrecedeNonStatic(member: Symbol, defns: List[tpd.Tree])(using Context) extends SyntaxMsg(StaticFieldsShouldPrecedeNonStaticID) {
+class StaticFieldsShouldPrecedeNonStatic(member: Symbol, defns: List[tpd.Tree])(using DetachedContext) extends SyntaxMsg(StaticFieldsShouldPrecedeNonStaticID) {
   def msg(using Context) = i"${hl("@static")} $member in ${member.owner} must be defined before non-static fields."
   def explain(using Context) = {
     val nonStatics = defns.takeWhile(_.symbol != member).take(3).filter(_.isInstanceOf[tpd.ValDef])
@@ -1989,7 +1989,7 @@ class StaticFieldsShouldPrecedeNonStatic(member: Symbol, defns: List[tpd.Tree])(
   }
 }
 
-class CyclicInheritance(symbol: Symbol, addendum: -> String)(using Context) extends SyntaxMsg(CyclicInheritanceID) {
+class CyclicInheritance(symbol: Symbol, addendum: -> String)(using DetachedContext) extends SyntaxMsg(CyclicInheritanceID) {
   def msg(using Context) = i"Cyclic inheritance: $symbol extends itself$addendum"
   def explain(using Context) = {
     val codeExample = "class A extends A"
@@ -2005,7 +2005,7 @@ class CyclicInheritance(symbol: Symbol, addendum: -> String)(using Context) exte
   }
 }
 
-class BadSymbolicReference(denot: SymDenotation)(using Context)
+class BadSymbolicReference(denot: SymDenotation)(using DetachedContext)
 extends ReferenceMsg(BadSymbolicReferenceID) {
   def msg(using Context) = {
     val denotationOwner = denot.owner
@@ -2024,12 +2024,12 @@ extends ReferenceMsg(BadSymbolicReferenceID) {
   def explain(using Context) = ""
 }
 
-class UnableToExtendSealedClass(pclazz: Symbol)(using Context) extends SyntaxMsg(UnableToExtendSealedClassID) {
+class UnableToExtendSealedClass(pclazz: Symbol)(using DetachedContext) extends SyntaxMsg(UnableToExtendSealedClassID) {
   def msg(using Context) = i"Cannot extend ${hl("sealed")} $pclazz in a different source file"
   def explain(using Context) = "A sealed class or trait can only be extended in the same file as its declaration"
 }
 
-class SymbolHasUnparsableVersionNumber(symbol: Symbol, errorMessage: String)(using Context)
+class SymbolHasUnparsableVersionNumber(symbol: Symbol, errorMessage: String)(using DetachedContext)
 extends SyntaxMsg(SymbolHasUnparsableVersionNumberID) {
   def msg(using Context) = i"${symbol.showLocated} has an unparsable version number: $errorMessage"
   def explain(using Context) =
@@ -2042,7 +2042,7 @@ class SymbolChangedSemanticsInVersion(
   symbol: Symbol,
   migrationVersion: ScalaVersion,
   migrationMessage: String
-)(using Context) extends SyntaxMsg(SymbolChangedSemanticsInVersionID) {
+)(using DetachedContext) extends SyntaxMsg(SymbolChangedSemanticsInVersionID) {
   def msg(using Context) = i"${symbol.showLocated} has changed semantics in version $migrationVersion: $migrationMessage"
   def explain(using Context) =
     i"""The ${symbol.showLocated} is marked with ${hl("@migration")} indicating it has changed semantics
@@ -2050,7 +2050,7 @@ class SymbolChangedSemanticsInVersion(
         |whose behavior may have changed since version change."""
 }
 
-class UnableToEmitSwitch()(using Context)
+class UnableToEmitSwitch()(using DetachedContext)
 extends SyntaxMsg(UnableToEmitSwitchID) {
   def msg(using Context) = i"Could not emit switch for ${hl("@switch")} annotated match"
   def explain(using Context) = {
@@ -2078,14 +2078,14 @@ extends SyntaxMsg(UnableToEmitSwitchID) {
   }
 }
 
-class MissingCompanionForStatic(member: Symbol)(using Context)
+class MissingCompanionForStatic(member: Symbol)(using DetachedContext)
 extends SyntaxMsg(MissingCompanionForStaticID) {
   def msg(using Context) = i"${member.owner} does not have a companion class"
   def explain(using Context) =
     i"An object that contains ${hl("@static")} members must have a companion class."
 }
 
-class PolymorphicMethodMissingTypeInParent(rsym: Symbol, parentSym: Symbol)(using Context)
+class PolymorphicMethodMissingTypeInParent(rsym: Symbol, parentSym: Symbol)(using DetachedContext)
 extends SyntaxMsg(PolymorphicMethodMissingTypeInParentID) {
   def msg(using Context) = i"Polymorphic refinement $rsym without matching type in parent $parentSym is no longer allowed"
   def explain(using Context) =
@@ -2094,13 +2094,13 @@ extends SyntaxMsg(PolymorphicMethodMissingTypeInParentID) {
         |polymorphic methods."""
 }
 
-class ParamsNoInline(owner: Symbol)(using Context)
+class ParamsNoInline(owner: Symbol)(using DetachedContext)
   extends SyntaxMsg(ParamsNoInlineID) {
   def msg(using Context) = i"""${hl("inline")} modifier can only be used for parameters of inline methods"""
   def explain(using Context) = ""
 }
 
-class JavaSymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(JavaSymbolIsNotAValueID) {
+class JavaSymbolIsNotAValue(symbol: Symbol)(using DetachedContext) extends TypeMsg(JavaSymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
       if symbol is Package then i"$symbol"
@@ -2109,7 +2109,7 @@ class JavaSymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(JavaS
   def explain(using Context) = ""
 }
 
-class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using Context)
+class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using DetachedContext)
 extends NamingMsg(DoubleDefinitionID) {
   def msg(using Context) = {
     def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
@@ -2170,19 +2170,19 @@ extends NamingMsg(DoubleDefinitionID) {
   def explain(using Context) = ""
 }
 
-class ImportRenamedTwice(ident: untpd.Ident)(using Context) extends SyntaxMsg(ImportRenamedTwiceID) {
+class ImportRenamedTwice(ident: untpd.Ident)(using DetachedContext) extends SyntaxMsg(ImportRenamedTwiceID) {
   def msg(using Context) = s"${ident.show} is renamed twice on the same import line."
   def explain(using Context) = ""
 }
 
-class TypeTestAlwaysDiverges(scrutTp: Type, testTp: Type)(using Context) extends SyntaxMsg(TypeTestAlwaysDivergesID) {
+class TypeTestAlwaysDiverges(scrutTp: Type, testTp: Type)(using DetachedContext) extends SyntaxMsg(TypeTestAlwaysDivergesID) {
   def msg(using Context) =
     s"This type test will never return a result since the scrutinee type ${scrutTp.show} does not contain any value."
   def explain(using Context) = ""
 }
 
 // Relative of CyclicReferenceInvolvingImplicit and RecursiveValueNeedsResultType
-class TermMemberNeedsResultTypeForImplicitSearch(cycleSym: Symbol)(using Context)
+class TermMemberNeedsResultTypeForImplicitSearch(cycleSym: Symbol)(using DetachedContext)
   extends CyclicMsg(TermMemberNeedsNeedsResultTypeForImplicitSearchID) {
   def msg(using Context) = i"""$cycleSym needs result type because its right-hand side attempts implicit search"""
   def explain(using Context) =
@@ -2191,12 +2191,12 @@ class TermMemberNeedsResultTypeForImplicitSearch(cycleSym: Symbol)(using Context
         |"""
 }
 
-class ClassCannotExtendEnum(cls: Symbol, parent: Symbol)(using Context) extends SyntaxMsg(ClassCannotExtendEnumID) {
+class ClassCannotExtendEnum(cls: Symbol, parent: Symbol)(using DetachedContext) extends SyntaxMsg(ClassCannotExtendEnumID) {
   def msg(using Context) = i"""$cls in ${cls.owner} extends enum ${parent.name}, but extending enums is prohibited."""
   def explain(using Context) = ""
 }
 
-class NotAnExtractor(tree: untpd.Tree)(using Context) extends SyntaxMsg(NotAnExtractorID) {
+class NotAnExtractor(tree: untpd.Tree)(using DetachedContext) extends SyntaxMsg(NotAnExtractorID) {
   def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method"
   def explain(using Context) =
     i"""|An ${hl("unapply")} method should be defined in an ${hl("object")} as follow:
@@ -2209,13 +2209,13 @@ class NotAnExtractor(tree: untpd.Tree)(using Context) extends SyntaxMsg(NotAnExt
         |This mechanism is used for instance in pattern ${hl("case List(x1, ..., xn)")}"""
 }
 
-class MemberWithSameNameAsStatic()(using Context)
+class MemberWithSameNameAsStatic()(using DetachedContext)
   extends SyntaxMsg(MemberWithSameNameAsStaticID) {
   def msg(using Context) = i"Companion classes cannot define members with same name as a ${hl("@static")} member"
   def explain(using Context) = ""
 }
 
-class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)(using Context)
+class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)(using DetachedContext)
   extends Message(PureExpressionInStatementPositionID) {
   def kind = MessageKind.PotentialIssue
   def msg(using Context) = "A pure expression does nothing in statement position; you may be omitting necessary parentheses"
@@ -2224,25 +2224,25 @@ class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)
         |It can be removed without changing the semantics of the program. This may indicate an error."""
 }
 
-class TraitCompanionWithMutableStatic()(using Context)
+class TraitCompanionWithMutableStatic()(using DetachedContext)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
   def msg(using Context) = i"Companion of traits cannot define mutable @static fields"
   def explain(using Context) = ""
 }
 
-class LazyStaticField()(using Context)
+class LazyStaticField()(using DetachedContext)
   extends SyntaxMsg(LazyStaticFieldID) {
   def msg(using Context) = i"Lazy @static fields are not supported"
   def explain(using Context) = ""
 }
 
-class StaticOverridingNonStaticMembers()(using Context)
+class StaticOverridingNonStaticMembers()(using DetachedContext)
   extends SyntaxMsg(StaticOverridingNonStaticMembersID) {
   def msg(using Context) = i"${hl("@static")} members cannot override or implement non-static ones"
   def explain(using Context) = ""
 }
 
-class OverloadInRefinement(rsym: Symbol)(using Context)
+class OverloadInRefinement(rsym: Symbol)(using DetachedContext)
   extends DeclarationMsg(OverloadInRefinementID) {
   def msg(using Context) = "Refinements cannot introduce overloaded definitions"
   def explain(using Context) =
@@ -2250,14 +2250,14 @@ class OverloadInRefinement(rsym: Symbol)(using Context)
         |Refinements cannot contain overloaded definitions."""
 }
 
-class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using Context)
+class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using DetachedContext)
   extends TypeMsg(NoMatchingOverloadID) {
   def msg(using Context) =
     i"""None of the ${err.overloadedAltsStr(alternatives)}
         |match ${err.expectedTypeStr(pt)}"""
   def explain(using Context) = ""
 }
-class StableIdentPattern(tree: untpd.Tree, pt: Type)(using Context)
+class StableIdentPattern(tree: untpd.Tree, pt: Type)(using DetachedContext)
   extends TypeMsg(StableIdentPatternID) {
   def msg(using Context) =
     i"""Stable identifier required, but $tree found"""
@@ -2266,7 +2266,7 @@ class StableIdentPattern(tree: untpd.Tree, pt: Type)(using Context)
 
 class IllegalSuperAccessor(base: Symbol, memberName: Name, targetName: Name,
     acc: Symbol, accTp: Type,
-    other: Symbol, otherTp: Type)(using Context) extends DeclarationMsg(IllegalSuperAccessorID) {
+    other: Symbol, otherTp: Type)(using DetachedContext) extends DeclarationMsg(IllegalSuperAccessorID) {
   def msg(using Context) = {
     // The mixin containing a super-call that requires a super-accessor
     val accMixin = acc.owner
@@ -2320,7 +2320,7 @@ class IllegalSuperAccessor(base: Symbol, memberName: Name, targetName: Name,
   def explain(using Context) = ""
 }
 
-class TraitParameterUsedAsParentPrefix(cls: Symbol)(using Context)
+class TraitParameterUsedAsParentPrefix(cls: Symbol)(using DetachedContext)
   extends DeclarationMsg(TraitParameterUsedAsParentPrefixID) {
   def msg(using Context) =
     s"${cls.show} cannot extend from a parent that is derived via its own parameters"
@@ -2335,7 +2335,7 @@ class TraitParameterUsedAsParentPrefix(cls: Symbol)(using Context)
        |"""
 }
 
-class UnknownNamedEnclosingClassOrObject(name: TypeName)(using Context)
+class UnknownNamedEnclosingClassOrObject(name: TypeName)(using DetachedContext)
   extends ReferenceMsg(UnknownNamedEnclosingClassOrObjectID) {
   def msg(using Context) =
     i"""no enclosing class or object is named '${hl(name.show)}'"""
@@ -2348,7 +2348,7 @@ class UnknownNamedEnclosingClassOrObject(name: TypeName)(using Context)
     """
   }
 
-class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(using Context)
+class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(using DetachedContext)
   extends CyclicMsg(IllegalCyclicTypeReferenceID) {
   def msg(using Context) =
     val lastCheckedStr =
@@ -2358,13 +2358,13 @@ class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(
   def explain(using Context) = ""
 }
 
-class ErasedTypesCanOnlyBeFunctionTypes()(using Context)
+class ErasedTypesCanOnlyBeFunctionTypes()(using DetachedContext)
   extends SyntaxMsg(ErasedTypesCanOnlyBeFunctionTypesID) {
   def msg(using Context) = "Types with erased keyword can only be function types `(erased ...) => ...`"
   def explain(using Context) = ""
 }
 
-class CaseClassMissingNonImplicitParamList(cdef: untpd.TypeDef)(using Context)
+class CaseClassMissingNonImplicitParamList(cdef: untpd.TypeDef)(using DetachedContext)
   extends SyntaxMsg(CaseClassMissingNonImplicitParamListID) {
   def msg(using Context) =
     i"""|A ${hl("case class")} must have at least one leading non-implicit parameter list"""
@@ -2375,7 +2375,7 @@ class CaseClassMissingNonImplicitParamList(cdef: untpd.TypeDef)(using Context)
         | add an explicit ${hl("()")} as the first parameter list to ${cdef.name}."""
 }
 
-class EnumerationsShouldNotBeEmpty(cdef: untpd.TypeDef)(using Context)
+class EnumerationsShouldNotBeEmpty(cdef: untpd.TypeDef)(using DetachedContext)
   extends SyntaxMsg(EnumerationsShouldNotBeEmptyID) {
   def msg(using Context) = "Enumerations must contain at least one case"
 
@@ -2388,7 +2388,7 @@ class EnumerationsShouldNotBeEmpty(cdef: untpd.TypeDef)(using Context)
         |"""
 }
 
-class TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef: Symbol, caseDef: untpd.TypeDef)(using Context)
+class TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef: Symbol, caseDef: untpd.TypeDef)(using DetachedContext)
   extends SyntaxMsg(TypedCaseDoesNotExplicitlyExtendTypedEnumID) {
   def msg(using Context) = i"explicit extends clause needed because both enum case and enum class have type parameters"
 
@@ -2402,7 +2402,7 @@ class TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef: Symbol, caseDef: untpd.
         |"""
 }
 
-class IllegalRedefinitionOfStandardKind(kindType: String, name: Name)(using Context)
+class IllegalRedefinitionOfStandardKind(kindType: String, name: Name)(using DetachedContext)
   extends SyntaxMsg(IllegalRedefinitionOfStandardKindID) {
   def msg(using Context) = i"illegal redefinition of standard $kindType $name"
   def explain(using Context) =
@@ -2411,7 +2411,7 @@ class IllegalRedefinitionOfStandardKind(kindType: String, name: Name)(using Cont
         |"""
 }
 
-class NoExtensionMethodAllowed(mdef: untpd.DefDef)(using Context)
+class NoExtensionMethodAllowed(mdef: untpd.DefDef)(using DetachedContext)
   extends SyntaxMsg(NoExtensionMethodAllowedID) {
   def msg(using Context) = i"No extension method allowed here, since collective parameters are given"
   def explain(using Context) =
@@ -2421,7 +2421,7 @@ class NoExtensionMethodAllowed(mdef: untpd.DefDef)(using Context)
         |"""
 }
 
-class ExtensionMethodCannotHaveTypeParams(mdef: untpd.DefDef)(using Context)
+class ExtensionMethodCannotHaveTypeParams(mdef: untpd.DefDef)(using DetachedContext)
   extends SyntaxMsg(ExtensionMethodCannotHaveTypeParamsID) {
   def msg(using Context) = i"Extension method cannot have type parameters since some were already given previously"
 
@@ -2433,7 +2433,7 @@ class ExtensionMethodCannotHaveTypeParams(mdef: untpd.DefDef)(using Context)
         |"""
 }
 
-class ExtensionCanOnlyHaveDefs(mdef: untpd.Tree)(using Context)
+class ExtensionCanOnlyHaveDefs(mdef: untpd.Tree)(using DetachedContext)
   extends SyntaxMsg(ExtensionCanOnlyHaveDefsID) {
   def msg(using Context) = i"Only methods allowed here, since collective parameters are given"
   def explain(using Context) =
@@ -2442,7 +2442,7 @@ class ExtensionCanOnlyHaveDefs(mdef: untpd.Tree)(using Context)
         |"""
 }
 
-class UnexpectedPatternForSummonFrom(tree: Tree[_])(using Context)
+class UnexpectedPatternForSummonFrom(tree: Tree[_])(using DetachedContext)
   extends SyntaxMsg(UnexpectedPatternForSummonFromID) {
   def msg(using Context) = i"Unexpected pattern for summonFrom. Expected ${hl("`x: T`")} or ${hl("`_`")}"
   def explain(using Context) =
@@ -2461,7 +2461,7 @@ class UnexpectedPatternForSummonFrom(tree: Tree[_])(using Context)
         |"""
 }
 
-class AnonymousInstanceCannotBeEmpty(impl:  untpd.Template)(using Context)
+class AnonymousInstanceCannotBeEmpty(impl:  untpd.Template)(using DetachedContext)
   extends SyntaxMsg(AnonymousInstanceCannotBeEmptyID) {
   def msg(using Context) = i"anonymous instance must implement a type or have at least one extension method"
   def explain(using Context) =
@@ -2470,19 +2470,19 @@ class AnonymousInstanceCannotBeEmpty(impl:  untpd.Template)(using Context)
         |"""
 }
 
-class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
+class ModifierNotAllowedForDefinition(flag: Flag)(using DetachedContext)
   extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
   def msg(using Context) = i"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
   def explain(using Context) = ""
 }
 
-class RedundantModifier(flag: Flag)(using Context)
+class RedundantModifier(flag: Flag)(using DetachedContext)
   extends SyntaxMsg(RedundantModifierID) {
   def msg(using Context) = i"Modifier ${hl(flag.flagsString)} is redundant for this definition"
   def explain(using Context) = ""
 }
 
-class InvalidReferenceInImplicitNotFoundAnnotation(typeVar: String, owner: String)(using Context)
+class InvalidReferenceInImplicitNotFoundAnnotation(typeVar: String, owner: String)(using DetachedContext)
   extends ReferenceMsg(InvalidReferenceInImplicitNotFoundAnnotationID) {
   def msg(using Context) = i"""|Invalid reference to a type variable ${hl(typeVar)} found in the annotation argument.
                 |The variable does not occur as a parameter in the scope of ${hl(owner)}.
@@ -2490,7 +2490,7 @@ class InvalidReferenceInImplicitNotFoundAnnotation(typeVar: String, owner: Strin
   def explain(using Context) = ""
 }
 
-class CaseClassInInlinedCode(tree: tpd.Tree)(using Context)
+class CaseClassInInlinedCode(tree: tpd.Tree)(using DetachedContext)
   extends SyntaxMsg(CaseClassInInlinedCodeID) {
 
   def defKind = if tree.symbol.is(Module) then "object" else "class"
@@ -2501,10 +2501,10 @@ class CaseClassInInlinedCode(tree: tpd.Tree)(using Context)
         |"""
 }
 
-class ImplicitSearchTooLargeWarning(limit: Int, openSearchPairs: List[(Candidate, Type)])(using Context)
+class ImplicitSearchTooLargeWarning(limit: Int, openSearchPairs: List[(Candidate, Type)])(using DetachedContext)
   extends TypeMsg(ImplicitSearchTooLargeID):
   override def showAlways = true
-  def showQuery(query: (Candidate, Type))(using Context): String =
+  def showQuery(query: (Candidate, Type))(using DetachedContext): String =
     i"  ${query._1.ref.symbol.showLocated}  for  ${query._2}}"
   def msg(using Context) =
     i"""Implicit search problem too large.
@@ -2524,7 +2524,7 @@ class ImplicitSearchTooLargeWarning(limit: Int, openSearchPairs: List[(Candidate
         |${openSearchPairs.reverse.map(showQuery)}%\n%
       """
 
-class TargetNameOnTopLevelClass(symbol: Symbol)(using Context)
+class TargetNameOnTopLevelClass(symbol: Symbol)(using DetachedContext)
 extends SyntaxMsg(TargetNameOnTopLevelClassID):
   def msg(using Context) = i"${hl("@targetName")} annotation not allowed on top-level $symbol"
   def explain(using Context) =
@@ -2545,7 +2545,7 @@ extends SyntaxMsg(TargetNameOnTopLevelClassID):
         |
         |${hl("export")} Wrapper.${symbol.name}  ${hl("// optional")}"""
 
-class NotClassType(tp: Type)(using Context)
+class NotClassType(tp: Type)(using DetachedContext)
 extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
   def msg(using Context) = i"$tp is not a class type"
   def explain(using Context) = ""
@@ -2556,7 +2556,7 @@ class MissingImplicitArgument(
     where: String,
     paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
     ignoredInstanceNormalImport: -> Option[SearchSuccess]
-  )(using Context) extends TypeMsg(MissingImplicitArgumentID), ShowMatchTrace(pt):
+  )(using DetachedContext) extends TypeMsg(MissingImplicitArgumentID), ShowMatchTrace(pt):
 
   arg.tpe match
     case ambi: AmbiguousImplicits => withoutDisambiguation()
@@ -2624,7 +2624,7 @@ class MissingImplicitArgument(
         case p: PolyType => p.paramNames.map(_.toString)
         case _           => Nil
       }
-      def resolveTypes(targs: List[tpd.Tree])(using Context) =
+      def resolveTypes(targs: List[tpd.Tree])(using DetachedContext) =
         targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
 
       // We can extract type arguments from:
@@ -2640,7 +2640,7 @@ class MissingImplicitArgument(
 
       val call = tpd.closureBody(alt.tree) // the tree itself if not a closure
       val targs = tpd.typeArgss(call).flatten
-      val args = resolveTypes(targs)(using ctx.fresh.setTyperState(alt.tstate))
+      val args = resolveTypes(targs)(using ctx.fresh.setTyperState(alt.tstate).detach)
       userDefinedErrorString(raw, params, args)
     }
 
@@ -2751,7 +2751,7 @@ class MissingImplicitArgument(
   def explain(using Context) = ""
 end MissingImplicitArgument
 
-class CannotBeAccessed(tpe: NamedType, superAccess: Boolean)(using Context)
+class CannotBeAccessed(tpe: NamedType, superAccess: Boolean)(using DetachedContext)
 extends ReferenceMsg(CannotBeAccessedID):
   def msg(using Context) =
     val pre = tpe.prefix

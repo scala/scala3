@@ -469,7 +469,7 @@ object Semantic:
 // ----- Checker State -----------------------------------
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Context, Trace, Promoted, Cache, Reporter) ?=> T
+  type Contextual[T] = (DetachedContext, Trace, Promoted, Cache, Reporter) ?=> T
 
 // ----- Error Handling -----------------------------------
 

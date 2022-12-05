@@ -65,7 +65,7 @@ case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, purpos
   def retainedHeapMB: Double = toMegaBytes(end.heapBytes - start.heapBytes)
 }
 
-sealed trait Profiler {
+sealed trait Profiler extends caps.Pure {
 
   def finished(): Unit
 
@@ -93,7 +93,7 @@ private [profile] object RealProfiler {
   private val idGen = new AtomicInteger()
 }
 
-private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) extends Profiler with NotificationListener {
+private [profile] class RealProfiler(reporter : ProfileReporter)(using DetachedContext) extends Profiler with NotificationListener {
   def completeBackground(threadRange: ProfileRange): Unit =
     reporter.reportBackground(this, threadRange)
 

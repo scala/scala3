@@ -24,17 +24,18 @@ import typer.Checking.checkNonCyclic
 import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
 import language.experimental.pureFunctions
+import annotation.retains
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
-  trait Embedded
+  trait Embedded extends caps.Pure
 
   /** Indicate that there is nothing to unpickle and the corresponding symbols can
     * be invalidated. */
   object NoEmbedded extends Embedded
 
   /** Replace raw types with wildcard applications */
-  def cook(using Context): TypeMap = new TypeMap {
+  def cook(using Context): TypeMap = (new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.typeParams.nonEmpty =>
         AppliedType(tp, tp.symbol.typeParams.map(Function.const(TypeBounds.empty)))
@@ -50,13 +51,13 @@ object ClassfileParser {
       case _ =>
         mapOver(tp)
     }
-  }
+  }).detach
 }
 
 class ClassfileParser(
     classfile: AbstractFile,
     classRoot: ClassDenotation,
-    moduleRoot: ClassDenotation)(ictx: Context) {
+    moduleRoot: ClassDenotation)(ictx: DetachedContext) {
 
   import ClassfileConstants._
   import ClassfileParser._
@@ -80,7 +81,7 @@ class ClassfileParser(
   private def mismatchError(className: SimpleName) =
     throw new IOException(s"class file '${classfile.canonicalPath}' has location not matching its contents: contains class $className")
 
-  def run()(using Context): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
+  def run()(using DetachedContext): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
     implicit val reader2 = reader.reset(classfile)
     report.debuglog("[class] >> " + classRoot.fullName)
     parseHeader()
@@ -877,7 +878,7 @@ class ClassfileParser(
    *  Restores the old `bp`.
    *  @return Some(unpickler) iff classfile is from Scala, so no Java info needs to be read.
    */
-  def unpickleOrParseInnerClasses()(using ctx: Context, in: DataReader): Option[Embedded] = {
+  def unpickleOrParseInnerClasses()(using ctx: DetachedContext, in: DataReader): Option[Embedded] = {
     val oldbp = in.bp
     try {
       skipSuperclasses()

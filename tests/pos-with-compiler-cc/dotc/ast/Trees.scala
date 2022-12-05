@@ -1394,7 +1394,7 @@ object Trees {
         case _ =>
           sourced
 
-    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
+    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self: TreeMap @retains(caps.*) =>
       def transform(tree: Tree)(using Context): Tree = {
         inContext(transformCtx(tree)) {
           Stats.record(s"TreeMap.transform/$getClass")

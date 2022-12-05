@@ -31,7 +31,7 @@ import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting._
-import annotation.tailrec
+import annotation.{tailrec, retains}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -84,9 +84,9 @@ object Implicits:
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
-  abstract class ImplicitRefs(initctx: Context) {
-    val irefCtx =
-      if (initctx eq NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled)
+  abstract class ImplicitRefs(initctx: DetachedContext) extends caps.Pure {
+    val irefCtx: DetachedContext =
+      if (initctx eq NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled).detach
     protected given Context = irefCtx
 
     /** The nesting level of this context. Non-zero only in ContextialImplicits */
@@ -266,7 +266,7 @@ object Implicits:
    *  @param tp              the type determining the implicit scope
    *  @param companionRefs   the companion objects in the implicit scope.
    */
-  class OfTypeImplicits(tp: Type, override val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
+  class OfTypeImplicits(tp: Type, override val companionRefs: TermRefSet)(initctx: DetachedContext) extends ImplicitRefs(initctx) {
     implicits.println(i"implicit scope of type $tp = ${companionRefs.showAsList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
@@ -298,7 +298,7 @@ object Implicits:
   class ContextualImplicits(
       val refs: List[ImplicitRef],
       val outerImplicits: ContextualImplicits | Null,
-      isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
+      isImport: Boolean)(initctx: DetachedContext) extends ImplicitRefs(initctx) {
     private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
@@ -419,7 +419,8 @@ object Implicits:
     def apply(tpe: SearchFailureType, span: Span)(using Context): SearchFailure = {
       val id = tpe match
         case tpe: (AmbiguousImplicits | TooUnspecific) =>
-          untpd.SearchFailureIdent(nme.AMBIGUOUS, s"/* ambiguous: ${tpe.explanation} */")
+          val explanation = tpe.explanation
+          untpd.SearchFailureIdent(nme.AMBIGUOUS, s"/* ambiguous: $explanation */")
         case _ =>
           untpd.SearchFailureIdent(nme.MISSING, "/* missing */")
       SearchFailure(id.withTypeUnchecked(tpe).withSpan(span))
@@ -901,29 +902,28 @@ trait Implicits:
     where: String,
     paramSymWithMethodCallTree: Option[(Symbol, Tree)] = None
   )(using Context): Message = {
-    def findHiddenImplicitsCtx(c: Context): Context =
-      if c == NoContext then c
-      else c.freshOver(findHiddenImplicitsCtx(c.outer)).addMode(Mode.FindHiddenImplicits)
-
-    def ignoredInstanceNormalImport = arg.tpe match
-      case fail: SearchFailureType =>
-        if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
-          inferImplicit(fail.expectedType, fail.argument, arg.span)(
-            using findHiddenImplicitsCtx(ctx)) match {
-            case s: SearchSuccess => Some(s)
-            case f: SearchFailure =>
-              f.reason match {
-                case ambi: AmbiguousImplicits => Some(ambi.alt1)
-                case r => None
-              }
-          }
-        else
-          // It's unsafe to search for parts of the expected type if they are not fully defined,
-          // since these come with nested contexts that are lost at this point. See #7249 for an
-          // example where searching for a nested type causes an infinite loop.
-          None
-
-    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport)
+    inDetachedContext:
+      def findHiddenImplicitsCtx(c: Context): Context =
+        if c == NoContext then c
+        else c.freshOver(findHiddenImplicitsCtx(c.outer)).addMode(Mode.FindHiddenImplicits)
+      def ignoredInstanceNormalImport = arg.tpe match
+        case fail: SearchFailureType =>
+          if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
+            inferImplicit(fail.expectedType, fail.argument, arg.span)(
+              using findHiddenImplicitsCtx(ctx)) match {
+              case s: SearchSuccess => Some(s)
+              case f: SearchFailure =>
+                f.reason match {
+                  case ambi: AmbiguousImplicits => Some(ambi.alt1)
+                  case r => None
+                }
+            }
+          else
+            // It's unsafe to search for parts of the expected type if they are not fully defined,
+            // since these come with nested contexts that are lost at this point. See #7249 for an
+            // example where searching for a nested type causes an infinite loop.
+            None
+      MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport)
   }
 
   /** A string indicating the formal parameter corresponding to a  missing argument */
@@ -1012,12 +1012,15 @@ trait Implicits:
         // context. Without that precaution, an eligible implicit in the current scope
         // would cause a cyclic reference error (if the import is named) or cause a
         // spurious import skip (if the import is a wildcard import). See i12802 for a test case.
-        var searchCtx = ctx
-        if ctx.owner.isImport then
-          while
-            searchCtx = searchCtx.outer
-            (searchCtx.scope eq ctx.scope) && (searchCtx.owner eq ctx.owner.owner)
-          do ()
+
+        val searchCtx =
+          if ctx.owner.isImport then
+            def nextDifferent(searchCtx: Context): Context =
+              if (searchCtx.scope eq ctx.scope) && (searchCtx.owner eq ctx.owner.owner)
+              then nextDifferent(searchCtx.outer)
+              else searchCtx
+            nextDifferent(ctx.outer)
+          else ctx
 
         try ImplicitSearch(pt, argument, span)(using searchCtx).bestImplicit
         catch case ce: CyclicReference =>
@@ -1179,9 +1182,10 @@ trait Implicits:
         val nestedSearches = h.root.nestedSearches
         val result = nestedSearches > limit
         if result then
-          var c = ctx
-          while c.outer.typer eq ctx.typer do c = c.outer
-          report.warning(ImplicitSearchTooLargeWarning(limit, h.openSearchPairs), srcPos)(using c)
+          def warnIn(c: Context): Unit =
+            if c.outer.typer eq ctx.typer then warnIn(c.outer)
+            else report.warning(ImplicitSearchTooLargeWarning(limit, h.openSearchPairs), srcPos)(using c)
+          warnIn(ctx)
         else
           h.root.nestedSearches = nestedSearches + 1
         result
@@ -1368,7 +1372,7 @@ trait Implicits:
        *  and therefore only induces a partial ordering, meaning it cannot be used
        *  as a sorting function (see `java.util.Comparator#compare`).
        */
-      def compareBaseClassesLength(sym1: Symbol, sym2: Symbol): Int =
+      def compareBaseClassesLength(sym1: Symbol, sym2: Symbol)(using Context): Int =
         def len(sym: Symbol) =
           if sym.is(ModuleClass) && sym.companionClass.exists then
             Math.max(sym.asClass.baseClassesLength, sym.companionClass.asClass.baseClassesLength)
@@ -1388,7 +1392,7 @@ trait Implicits:
        *  is underconstrained. So we look for "small" goals first, because that
        *  will give an ambiguity quickly.
        */
-      def compareEligibles(e1: Candidate, e2: Candidate): Int =
+      def compareEligibles(e1: Candidate, e2: Candidate)(using Context): Int =
         if e1 eq e2 then return 0
         val cmpLevel = e1.level - e2.level
         if cmpLevel != 0 then return -cmpLevel // 1.
@@ -1459,13 +1463,14 @@ trait Implicits:
           if compareEligibles(e2, e1) < 0 then e2 :: e1 :: Nil
           else eligible
         case _ =>
-          val ord: Ordering[Candidate] = (a, b) => compareEligibles(a, b)
-          try eligible.sorted(using ord)
-          catch case ex: IllegalArgumentException =>
-            // This exception being thrown probably means that our comparison
-            // function is broken, check if that's the case
-            validateOrdering(ord)
-            throw ex
+            val ord: Ordering[Candidate] = inDetachedContext:
+              (a, b) => compareEligibles(a, b)
+            try eligible.sorted(using ord)
+            catch case ex: IllegalArgumentException =>
+              // This exception being thrown probably means that our comparison
+              // function is broken, check if that's the case
+              validateOrdering(ord)
+              throw ex
 
       rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
     end searchImplicit
@@ -1674,7 +1679,7 @@ abstract class SearchHistory extends caps.Pure:
   override def toString: String = s"SearchHistory(open = $openSearchPairs, byname = $byname)"
 end SearchHistory
 
-case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory)(using Context) extends SearchHistory:
+case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory)(using DetachedContext) extends SearchHistory:
   val root = outer.root
   val byname = outer.byname || pt.isByName
   def openSearchPairs = (cand, pt) :: outer.openSearchPairs
@@ -1830,7 +1835,7 @@ final class SearchRoot extends SearchHistory:
 
             val rhss = pruned.map(_._2)
             // Substitute dictionary references into dictionary entry RHSs
-            val rhsMap = new TreeTypeMap(treeMap = {
+            val rhsMap = new TreeTypeMap(treeMap = inDetachedContext {
               case id: Ident if vsymMap.contains(id.symbol) =>
                 tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)
               case tree => tree
@@ -1848,7 +1853,7 @@ final class SearchRoot extends SearchHistory:
             val inst = ValDef(valSym, New(classSym.typeRef, Nil))
 
             // Substitute dictionary references into outermost result term.
-            val resMap = new TreeTypeMap(treeMap = {
+            val resMap = new TreeTypeMap(treeMap = inDetachedContext {
               case id: Ident if vsymMap.contains(id.symbol) =>
                 Select(tpd.ref(valSym), id.name)
               case tree => tree
@@ -1864,35 +1869,34 @@ final class SearchRoot extends SearchHistory:
 end SearchRoot
 
 /** A set of term references where equality is =:= */
-sealed class TermRefSet(using Context):
-  private val elems = new java.util.LinkedHashMap[TermSymbol, Type | List[Type]]
+sealed class TermRefSet(using DetachedContext) extends caps.Pure:
+  private val elemsMap = new util.HashMap[TermSymbol, Type | List[Type]]
+  private val elemsBuf = new mutable.ListBuffer[TermSymbol]
 
-  def isEmpty = elems.size == 0
+  def isEmpty = elemsBuf.isEmpty
 
   def += (ref: TermRef): Unit =
-    val pre = ref.prefix
     if ref.symbol.exists then
+      val pre = ref.prefix
       val sym = ref.symbol.asTerm
-      elems.get(sym) match
+      elemsMap.lookup(sym) match
         case null =>
-          elems.put(sym, pre)
+          elemsMap(sym) = pre
+          elemsBuf += sym
         case prefix: Type =>
-          if !(prefix =:= pre) then elems.put(sym, pre :: prefix :: Nil)
+          if !(prefix =:= pre) then elemsMap(sym) = pre :: prefix :: Nil
         case prefixes: List[Type] =>
-          if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
+          if !prefixes.exists(_ =:= pre) then elemsMap(sym) = pre :: prefixes
 
   def ++= (that: TermRefSet): Unit =
     if !that.isEmpty then that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
-    def handle(sym: TermSymbol | Null, prefixes: Type | List[Type] | Null): Unit =
-      // We cannot use `.nn` here due to inference issue.
-      val prefixes0: Type | List[Type] = prefixes.uncheckedNN
-      prefixes0 match
-        case prefix: Type => f(TermRef(prefix, sym.uncheckedNN))
-        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym.uncheckedNN)))
-    elems.forEach(handle.asInstanceOf)
-      // !cc! cast is needed to circumvent problematic interaction of box and Java wildcards
+    for sym <- elemsBuf do
+      elemsMap(sym) match
+        case prefix: Type => f(TermRef(prefix, sym))
+        case prefixes: List[Type] =>
+          for prefix <- prefixes do f(TermRef(prefix, sym))
 
   // used only for debugging
   def showAsList: List[TermRef] = {

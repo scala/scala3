@@ -133,7 +133,7 @@ object Scala2Unpickler {
  *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
  *  @param filename   filename associated with bytearray, only used for error messages
  */
-class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
+class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: DetachedContext)
   extends PickleBuffer(bytes, 0, -1) with ClassfileParser.Embedded {
 
   def showPickled(): Unit =

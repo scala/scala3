@@ -81,7 +81,7 @@ object Parsers {
   private val InCond: Region => Region = Scanners.InParens(LPAREN, _)
   private val InFor : Region => Region = Scanners.InBraces(_)
 
-  abstract class ParserCommon(val source: SourceFile)(using Context) {
+  abstract class ParserCommon(val source: SourceFile)(using DetachedContext) {
 
     val in: ScannerCommon
 
@@ -169,7 +169,7 @@ object Parsers {
     }
   }
 
-  class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
+  class Parser(source: SourceFile)(using DetachedContext) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source, profile = Profile.current)
     // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
@@ -3305,7 +3305,7 @@ object Parsers {
       val imp = Import(tree, selectors)
       languageImport(tree) match
         case Some(prefix) =>
-          in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
+          in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol).detach
           for case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors do
             if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost then
               syntaxError(em"this language import is only allowed at the toplevel", id.span)
@@ -4248,7 +4248,7 @@ object Parsers {
   /** OutlineParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
    *  must only have balanced braces). This is used to map class names to defining sources.
    */
-  class OutlineParser(source: SourceFile)(using Context) extends Parser(source) with OutlineParserCommon {
+  class OutlineParser(source: SourceFile)(using DetachedContext) extends Parser(source) with OutlineParserCommon {
 
     def skipBracesHook(): Option[Tree] =
       if (in.token == XMLSTART) Some(xmlLiteral()) else None

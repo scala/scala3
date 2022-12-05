@@ -35,11 +35,12 @@ trait Plugins {
     val maybes = Plugin.loadAllFrom(paths, dirs, ctx.settings.disable.value)
     val (goods, errors) = maybes partition (_.isSuccess)
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
-    errors foreach (_.recover[Any] {
-      // legacy behavior ignores altogether, so at least warn devs
-      case e: MissingPluginException => report.warning(e.getMessage.nn)
-      case e: Exception              => report.inform(e.getMessage.nn)
-    })
+    inDetachedContext:
+      errors foreach (_.recover[Any] {
+        // legacy behavior ignores altogether, so at least warn devs
+        case e: MissingPluginException => report.warning(e.getMessage.nn)
+        case e: Exception              => report.inform(e.getMessage.nn)
+      })
 
     goods map (_.get)
   }

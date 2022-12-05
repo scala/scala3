@@ -482,7 +482,7 @@ trait ConstraintHandling {
    */
   private def fixLevels(tp: Type, fromBelow: Boolean, maxLevel: Int, param: TypeParamRef)(using Context) =
 
-    def needsFix(tp: NamedType) =
+    def needsFix(tp: NamedType)(using Context) =
       (tp.prefix eq NoPrefix) && tp.symbol.nestingLevel > maxLevel
 
     /** An accumulator that determines whether levels need to be fixed
@@ -624,8 +624,9 @@ trait ConstraintHandling {
 
   /** Widen inferred type `inst` with upper `bound`, according to the following rules:
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
-   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`.
-   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
+   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`
+   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint) and
+   *      is not transparent according to `isTransparent`.
    *   2a. If `inst` is a union type and `widenUnions` is true, approximate the union type
    *      from above by an intersection of all common base types, provided the result
    *      is a subtype of `bound`.
@@ -647,7 +648,7 @@ trait ConstraintHandling {
     def widenOr(tp: Type) =
       if widenUnions then
         val tpw = tp.widenUnion
-        if (tpw ne tp) && (tpw <:< bound) then tpw else tp
+        if (tpw ne tp) && !isTransparent(tpw, traitOnly = false) && (tpw <:< bound) then tpw else tp
       else tp.hardenUnions
 
     def widenSingle(tp: Type) =
@@ -663,11 +664,7 @@ trait ConstraintHandling {
       else
         val widenedFromSingle = widenSingle(inst)
         val widenedFromUnion = widenOr(widenedFromSingle)
-        val widened =
-          if (widenedFromUnion ne widenedFromSingle) && isTransparent(widenedFromUnion, traitOnly = false) then
-            widenedFromSingle
-          else
-            dropTransparentTraits(widenedFromUnion, bound)
+        val widened = dropTransparentTraits(widenedFromUnion, bound)
         widenIrreducible(widened)
 
     wideInst match

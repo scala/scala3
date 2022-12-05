@@ -15,7 +15,7 @@ import ast.untpd
 import config.Printers.cyclicErrors
 import language.experimental.pureFunctions
 
-abstract class TypeError(using creationContext: Context) extends Exception(""), caps.Pure:
+abstract class TypeError(using creationContext: DetachedContext) extends Exception(""), caps.Pure:
 
   /** Convert to message. This takes an additional Context, so that we
    *  use the context when the message is first produced, i.e. when the TypeError
@@ -31,14 +31,14 @@ abstract class TypeError(using creationContext: Context) extends Exception(""), 
   override def getMessage: String = toMessage.message
 
 object TypeError:
-  def apply(msg: Message)(using Context) = new TypeError:
+  def apply(msg: Message)(using DetachedContext) = new TypeError:
     def toMessage(using Context) = msg
 end TypeError
 
-class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])(using Context) extends TypeError:
+class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])(using DetachedContext) extends TypeError:
   def toMessage(using Context) = em"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
 
-class MissingType(pre: Type, name: Name)(using Context) extends TypeError:
+class MissingType(pre: Type, name: Name)(using DetachedContext) extends TypeError:
   private def otherReason(pre: Type)(using Context): String = pre match {
     case pre: ThisType if pre.cls.givenSelfType.exists =>
       i"\nor the self type of $pre might not contain all transitive dependencies"
@@ -51,7 +51,7 @@ class MissingType(pre: Type, name: Name)(using Context) extends TypeError:
         |the classfile defining the type might be missing from the classpath${otherReason(pre)}"""
 end MissingType
 
-class RecursionOverflow(val op: String, details: -> String, val previous: Throwable, val weight: Int)(using Context)
+class RecursionOverflow(val op: String, details: -> String, val previous: Throwable, val weight: Int)(using DetachedContext)
 extends TypeError:
 
   def explanation: String = s"$op $details"
@@ -98,17 +98,20 @@ end RecursionOverflow
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
 object handleRecursive {
-  def apply(op: String, details: -> String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
+  def apply(op: String, details: Context ?-> String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
     if (ctx.settings.YnoDecodeStacktraces.value)
       throw exc
     else
       exc match {
         case _: RecursionOverflow =>
-          throw new RecursionOverflow(op, details, exc, weight)
+          inDetachedContext:
+            throw new RecursionOverflow(op, details, exc, weight)
         case _ =>
           var e: Throwable | Null = exc
           while (e != null && !e.isInstanceOf[StackOverflowError]) e = e.getCause
-          if (e != null) throw new RecursionOverflow(op, details, e, weight)
+          if e != null then
+            inDetachedContext:
+              throw new RecursionOverflow(op, details, e, weight)
           else throw exc
       }
 }
@@ -118,7 +121,7 @@ object handleRecursive {
  * so it requires knowing denot already.
  * @param denot
  */
-class CyclicReference private (val denot: SymDenotation)(using Context) extends TypeError:
+class CyclicReference private (val denot: SymDenotation)(using DetachedContext) extends TypeError:
   var inImplicitSearch: Boolean = false
 
   override def toMessage(using Context): Message =

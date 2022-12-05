@@ -54,9 +54,10 @@ object Checking {
    */
   private def showInferred(msg: Message, app: Type, tpt: Tree)(using Context): Message =
     if tpt.isInstanceOf[TypeTree] then
-      def subPart = if app eq tpt.tpe then "" else i" subpart $app of"
-      msg.append(i" in$subPart inferred type ${tpt}")
-        .appendExplanation("\n\nTo fix the problem, provide an explicit type.")
+      inDetachedContext:
+        def subPart = if app eq tpt.tpe then "" else i" subpart $app of"
+        msg.append(i" in$subPart inferred type ${tpt}")
+          .appendExplanation("\n\nTo fix the problem, provide an explicit type.")
     else msg
 
   /** A general checkBounds method that can be used for TypeApply nodes as
@@ -236,7 +237,7 @@ object Checking {
   /** A type map which checks that the only cycles in a type are F-bounds
    *  and that protects all F-bounded references by LazyRefs.
    */
-  class CheckNonCyclicMap(sym: Symbol, reportErrors: Boolean)(using Context) extends TypeMap {
+  class CheckNonCyclicMap(sym: Symbol, reportErrors: Boolean)(using DetachedContext) extends TypeMap {
 
     /** Set of type references whose info is currently checked */
     private val locked = mutable.Set[TypeRef]()
@@ -365,7 +366,7 @@ object Checking {
           && !sym.getAnnotation(defn.TargetNameAnnot).isDefined
           && !sym.is(Synthetic) =>
           report.warning(
-            i"$sym has an operator name; it should come with an @targetName annotation", sym.srcPos)
+            em"$sym has an operator name; it should come with an @targetName annotation", sym.srcPos)
         case _ =>
 
   /** Check that `info` of symbol `sym` is not cyclic.
@@ -396,7 +397,7 @@ object Checking {
   def checkRefinementNonCyclic(refinement: Tree, refineCls: ClassSymbol, seen: mutable.Set[Symbol])
     (using Context): Unit = {
     def flag(what: String, tree: Tree) =
-      report.warning(i"$what reference in refinement is deprecated", tree.srcPos)
+      report.warning(em"$what reference in refinement is deprecated", tree.srcPos)
     def forwardRef(tree: Tree) = flag("forward", tree)
     def selfRef(tree: Tree) = flag("self", tree)
     val checkTree = new TreeAccumulator[Unit] {
@@ -732,10 +733,10 @@ object Checking {
       (p1, p2) <- sym.paramSymss.flatten.lazyZip(sym2.paramSymss.flatten)
       if p1.is(Inline) != p2.is(Inline)
     do
-      report.error(
-          if p2.is(Inline) then "Cannot override inline parameter with a non-inline parameter"
-          else "Cannot override non-inline parameter with an inline parameter",
-          p1.srcPos)
+      if p2.is(Inline) then
+        report.error("Cannot override inline parameter with a non-inline parameter", p1.srcPos)
+      else
+        report.error("Cannot override non-inline parameter with an inline parameter", p1.srcPos)
 
   def checkValue(tree: Tree)(using Context): Unit =
     val sym = tree.tpe.termSymbol
@@ -783,16 +784,17 @@ object Checking {
       languageImport(qual) match
         case Some(nme.experimental)
         if !ctx.owner.isInExperimentalScope && !selectors.forall(isAllowedImport) =>
-          def check(stable: -> String) =
-            Feature.checkExperimentalFeature("features", imp.srcPos,
-              s"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
-          if ctx.owner.is(Package) then
-            // allow top-level experimental imports if all definitions are @experimental
-            nonExperimentalStat(trees) match
-              case EmptyTree =>
-              case tree: MemberDef => check(i"${tree.symbol}")
-              case tree => check(i"expression ${tree}")
-          else Feature.checkExperimentalFeature("features", imp.srcPos)
+          inDetachedContext:
+            def check(stable: -> String) =
+              Feature.checkExperimentalFeature("features", imp.srcPos,
+                i"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
+            if ctx.owner.is(Package) then
+              // allow top-level experimental imports if all definitions are @experimental
+              nonExperimentalStat(trees) match
+                case EmptyTree =>
+                case tree: MemberDef => check(i"${tree.symbol}")
+                case tree => check(i"expression ${tree}")
+            else Feature.checkExperimentalFeature("features", imp.srcPos)
         case _ =>
   end checkExperimentalImports
 }
@@ -862,14 +864,15 @@ trait Checking {
           case NonConforming => sel.srcPos
           case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
         else pat.srcPos
-      def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
-      report.gradualErrorOrMigrationWarning(
-        message.append(
-          i"""|
-              |
-              |If $usage is intentional, this can be communicated by $fix,
-              |which $addendum.$rewriteMsg"""),
-        pos, warnFrom = `3.2`, errorFrom = `future`)
+      inDetachedContext:
+        def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
+        report.gradualErrorOrMigrationWarning(
+            message.append(
+              i"""|
+                  |
+                  |If $usage is intentional, this can be communicated by $fix,
+                  |which $addendum.$rewriteMsg"""),
+          pos, warnFrom = `3.2`, errorFrom = `future`)
       false
     }
 
@@ -974,11 +977,12 @@ trait Checking {
    */
   def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit =
     if sym.isOldStyleImplicitConversion(directOnly = true) then
-      checkFeature(
-        nme.implicitConversions,
-        i"Definition of implicit conversion $sym",
-        ctx.owner.topLevelClass,
-        sym.srcPos)
+      inDetachedContext:
+        checkFeature(
+          nme.implicitConversions,
+          i"Definition of implicit conversion $sym",
+          ctx.owner.topLevelClass,
+          sym.srcPos)
 
   /** If `tree` is an application of a new-style implicit conversion (using the apply
    *  method of a `scala.Conversion` instance), check that the expected type is
@@ -991,11 +995,12 @@ trait Checking {
        && !sym.info.isErroneous
        && !expected.isConvertibleParam
     then
-      def conv = methPart(tree) match
-        case Select(qual, _) => qual.symbol.orElse(sym.owner)
-        case _ => sym.owner
-      checkFeature(nme.implicitConversions,
-        i"Use of implicit conversion ${conv.showLocated}", NoSymbol, tree.srcPos)
+      inDetachedContext:
+        def conv = methPart(tree) match
+          case Select(qual, _) => qual.symbol.orElse(sym.owner)
+          case _ => sym.owner
+        checkFeature(nme.implicitConversions,
+          i"Use of implicit conversion ${conv.showLocated}", NoSymbol, tree.srcPos)
 
   private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
     case _: untpd.Block | _: untpd.Match => true
@@ -1049,7 +1054,7 @@ trait Checking {
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
    *  argument is infeasible, issue and error and continue with upper bound.
    */
-  def checkFeasibleParent(tp: Type, pos: SrcPos, where: -> String = "")(using Context): Type = {
+  def checkFeasibleParent(tp: Type, pos: SrcPos, where: Context ?-> String = "")(using Context): Type = {
     def checkGoodBounds(tp: Type) = tp match {
       case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
         report.error(em"no type exists between low bound $lo and high bound $hi$where", pos)
@@ -1540,7 +1545,7 @@ trait NoChecking extends ReChecking {
   override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit = ()
-  override def checkFeasibleParent(tp: Type, pos: SrcPos, where: -> String = "")(using Context): Type = tp
+  override def checkFeasibleParent(tp: Type, pos: SrcPos, where: Context ?-> String = "")(using Context): Type = tp
   override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()

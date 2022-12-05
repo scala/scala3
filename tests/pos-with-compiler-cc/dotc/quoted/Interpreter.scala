@@ -32,7 +32,7 @@ import dotty.tools.dotc.reporting.Message
 import dotty.tools.repl.AbstractFileClassLoader
 
 /** Tree interpreter for metaprogramming constructs */
-abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
+abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using DetachedContext):
   import Interpreter._
   import tpd._
 

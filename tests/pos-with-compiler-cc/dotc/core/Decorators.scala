@@ -11,6 +11,7 @@ import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
 import language.experimental.pureFunctions
+import annotation.retains
 
 /** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
@@ -83,6 +84,8 @@ object Decorators {
    *  on lists that avoid duplication of list nodes where feasible.
    */
   extension [T](xs: List[T])
+    final def collectCC[U](pf: PartialFunction[T, U] @retains(caps.*)): List[U] =
+      xs.collect(pf.asInstanceOf)
 
     final def mapconserve[U](f: T => U): List[U] = {
       @tailrec
@@ -225,6 +228,14 @@ object Decorators {
       case xs :: xss1 => xs.exists(p) || xss1.nestedExists(p)
       case nil => false
   end extension
+
+  extension [T](xs: Seq[T])
+    final def collectCC[U](pf: PartialFunction[T, U] @retains(caps.*)): Seq[U] =
+      xs.collect(pf.asInstanceOf)
+
+  extension [A, B](f: PartialFunction[A, B] @retains(caps.*))
+    def orElseCC(g: PartialFunction[A, B] @retains(caps.*)): PartialFunction[A, B] @retains(f, g) =
+      f.orElse(g.asInstanceOf).asInstanceOf
 
   extension (text: Text)
     def show(using Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)

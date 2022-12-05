@@ -25,6 +25,7 @@ import reporting.trace
 import annotation.constructorOnly
 import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
 import language.experimental.pureFunctions
+import caps.unsafe.*
 
 /** Provides methods to compare types.
  */
@@ -32,17 +33,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   import TypeComparer._
   Stats.record("TypeComparer")
 
-  private var myContext: Context = initctx
-  def comparerContext: Context = myContext
+  private var myContext: Context = initctx.unsafeBox
+  def comparerContext: Context = myContext.unsafeUnbox
 
-  protected given [DummySoItsADef]: Context = myContext
+  protected given [DummySoItsADef]: Context = myContext.unsafeUnbox
 
   protected var state: TyperState = compiletime.uninitialized
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
 
   def init(c: Context): Unit =
-    myContext = c
+    myContext = c.unsafeBox
     state = c.typerState
     monitored = false
     GADTused = false
@@ -2404,8 +2405,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         NoType
     }
 
-  private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) -> Type,
-      original: (Type, Type) -> Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"andTypeGen(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+  private def andTypeGen(tp1: Type, tp2: Type,
+      op: (Type, Type) -> Context ?-> Type,
+      original: (Type, Type) -> Context ?-> Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"andTypeGen(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
@@ -2466,7 +2468,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *    [X1, ..., Xn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
    */
   def liftIfHK(tp1: Type, tp2: Type,
-      op: (Type, Type) -> Type, original: (Type, Type) -> Type, combineVariance: (Variance, Variance) -> Variance) = {
+      op: (Type, Type) -> Context ?-> Type, original: (Type, Type) -> Context ?-> Type, combineVariance: (Variance, Variance) -> Context ?-> Variance) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
     def applied(tp: Type) = tp.appliedTo(tp.typeParams.map(_.paramInfoAsSeenFrom(tp)))
@@ -2851,8 +2853,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
   }
 
-  protected def explainingTypeComparer = ExplainingTypeComparer(comparerContext)
-  protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)
+  protected def explainingTypeComparer = ExplainingTypeComparer(comparerContext.detach)
+  protected def trackingTypeComparer = TrackingTypeComparer(comparerContext.detach)
 
   private def inSubComparer[T, Cmp <: TypeComparer](comparer: Cmp)(op: Cmp => T): T =
     val saved = myInstance
@@ -2981,8 +2983,8 @@ object TypeComparer {
     comparing(_.provablyDisjoint(tp1, tp2))
 
   def liftIfHK(tp1: Type, tp2: Type,
-      op: (Type, Type) -> Type, original: (Type, Type) -> Type,
-      combineVariance: (Variance, Variance) -> Variance)(using Context): Type =
+      op: (Type, Type) -> Context ?-> Type, original: (Type, Type) -> Context ?-> Type,
+      combineVariance: (Variance, Variance) -> Context ?-> Variance)(using Context): Type =
     comparing(_.liftIfHK(tp1, tp2, op, original, combineVariance))
 
   def constValue(tp: Type)(using Context): Option[Constant] =
@@ -3042,7 +3044,7 @@ object TrackingTypeComparer:
       case Stuck             => "Stuck"
       case NoInstance(fails) => "NoInstance(" ~ Text(fails.map(p.toText(_) ~ p.toText(_)), ", ") ~ ")"
 
-class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+class TrackingTypeComparer(initctx: DetachedContext) extends TypeComparer(initctx) {
   import TrackingTypeComparer.*
 
   init(initctx)
@@ -3129,7 +3131,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             instantiateParams(instances)(body) match
               case Range(lo, hi) =>
                 MatchResult.NoInstance {
-                  caseLambda.paramNames.zip(instances).collect {
+                  caseLambda.paramNames.zip(instances).collectCC {
                     case (name, Range(lo, hi)) => (name, TypeBounds(lo, hi))
                   }
                 }
@@ -3191,7 +3193,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 }
 
 /** A type comparer that can record traces of subtype operations */
-class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+class ExplainingTypeComparer(initctx: DetachedContext) extends TypeComparer(initctx) {
   import TypeComparer._
 
   init(initctx)

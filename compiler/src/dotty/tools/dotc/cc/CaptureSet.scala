@@ -222,7 +222,7 @@ sealed abstract class CaptureSet extends Showable:
   /** The largest subset (via <:<) of this capture set that only contains elements
    *  for which `p` is true.
    */
-  def filter(p: CaptureRef => Boolean)(using Context): CaptureSet =
+  def filter(p: Context ?=> CaptureRef => Boolean)(using Context): CaptureSet =
     if this.isConst then
       val elems1 = elems.filter(p)
       if elems1 == elems then this
@@ -613,7 +613,7 @@ object CaptureSet:
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
-    (val source: Var, p: CaptureRef => Boolean)(using @constructorOnly ctx: Context)
+    (val source: Var, p: Context ?=> CaptureRef => Boolean)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.elems.filter(p)):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =

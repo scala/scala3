@@ -189,7 +189,7 @@ object ExtractDependencies {
     sym.fullName.stripModuleClassSuffix.toString
 
   /** Report an internal error in incremental compilation. */
-  def internalError(msg: -> String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def internalError(msg: Context ?-> String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     report.error(em"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
 }
 

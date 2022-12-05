@@ -188,7 +188,7 @@ object PickledQuotes {
               mapOver(tp)
           }
         }
-        val expansion2 = new TreeTypeMap(new ReplaceSplicedTyped).transform(expr1)
+        val expansion2 = new TreeTypeMap((new ReplaceSplicedTyped).detach).transform(expr1)
         quotePickling.println(i"**** typed quote\n${expansion2.show}")
         expansion2
       case _ =>

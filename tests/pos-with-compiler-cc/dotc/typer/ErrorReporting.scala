@@ -13,6 +13,7 @@ import config.Feature
 import reporting._
 import collection.mutable
 import language.experimental.pureFunctions
+import annotation.retains
 
 object ErrorReporting {
 
@@ -167,12 +168,13 @@ object ErrorReporting {
         // use normalized types if that also shows an error, and both sides stripped
         // the same number of context functions. Use original types otherwise.
 
-      def missingElse = tree match
-        case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
-          "\nMaybe you are missing an else part for the conditional?"
-        case _ => ""
+      inDetachedContext:
+        val missingElse = tree match
+          case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
+            "\nMaybe you are missing an else part for the conditional?"
+          case _ => ""
 
-      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), implicitFailure.whyNoConversion, missingElse))
+        errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), implicitFailure.whyNoConversion, missingElse))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
@@ -266,9 +268,9 @@ object ErrorReporting {
       ownerSym.typeRef.nonClassTypeMembers.map(_.symbol)
     }.toList
 
-  def dependentMsg =
+  def dependentMsg: Message =
     """Term-dependent types are experimental,
       |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin.toMessage
 
-  def err(using Context): Errors = new Errors
+  def err(using ctx: Context): Errors @retains(ctx) = new Errors
 }

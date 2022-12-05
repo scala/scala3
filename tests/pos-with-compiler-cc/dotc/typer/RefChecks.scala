@@ -206,7 +206,8 @@ object RefChecks {
   // Override checking ------------------------------------------------------------
 
   /** A class for checking all overriding pairs of `class` with a given check function */
-  class OverridingPairsChecker(clazz: ClassSymbol, self: Type)(using Context) extends OverridingPairs.Cursor(clazz):
+  class OverridingPairsChecker(clazz: ClassSymbol, self: Type)(using DetachedContext)
+  extends OverridingPairs.Cursor(clazz):
 
     override def matches(sym1: Symbol, sym2: Symbol): Boolean =
       isOverridingPair(sym1, sym2, self)
@@ -308,13 +309,12 @@ object RefChecks {
           report.error(msg, clazz.srcPos)
         case MixinOverrideError(member, msg) :: others =>
           val others1 = others.map(_.member).filter(_.name != member.name).distinct
-          def othersMsg = {
+          val othersMsg = // !cc! need to make a val
             val others1 = others.map(_.member)
               .filter(_.name != member.name)
               .map(_.show).distinct
             if (others1.isEmpty) ""
             else i";\nother members with override errors are:: $others1%, %"
-          }
           report.error(msg.append(othersMsg), clazz.srcPos)
       }
 

@@ -1104,7 +1104,7 @@ object SymDenotations {
       if (is(Accessor)) accessedFieldOrGetter orElse symbol else symbol
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
-    final def ownersIterator(using Context): Iterator[Symbol] = new Iterator[Symbol] {
+    final def ownersIterator(using DetachedContext): Iterator[Symbol] = new Iterator[Symbol] {
       private var current = symbol
       def hasNext = current.exists
       def next: Symbol = {
@@ -1278,7 +1278,7 @@ object SymDenotations {
       else if (ctx.scope.lookup(this.name) == symbol)
         ctx.scope.lookup(name)
       else
-        companionNamed(name)(using ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next())
+        companionNamed(name)(using ctx.detach.outersIterator.dropWhile(_.scope eq ctx.scope).next())
 
     /** Is this symbol the same or a linked class of `sym`? */
     final def isLinkedWith(sym: Symbol)(using Context): Boolean =
@@ -1657,7 +1657,7 @@ object SymDenotations {
           completeChildrenIn(companionClass)
           setFlag(ChildrenQueried)
 
-      annotations.collect { case Annotation.Child(child) => child }.reverse
+      annotations.collectCC { case Annotation.Child(child) => child }.reverse
     end children
 
     /** Recursively assemble all children of this symbol, Preserves order of insertion.
@@ -2643,7 +2643,8 @@ object SymDenotations {
   /** Possibly accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation)(using Context): Boolean =
     staleOK && {
-      report.debugwarn(denot.staleSymbolMsg)
+      inDetachedContext:
+        report.debugwarn(denot.staleSymbolMsg)
       true
     }
 

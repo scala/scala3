@@ -5,6 +5,7 @@ import Contexts._, Symbols._, Types._, Flags._
 import Denotations._, SymDenotations._
 import Names.Name, StdNames.nme
 import ast.untpd
+import caps.unsafe.unsafeBoxFunArg
 
 /** Extension methods for contexts where we want to keep the ctx.<methodName> syntax */
 object ContextOps:
@@ -91,20 +92,21 @@ object ContextOps:
     /** Context where `sym` is defined, assuming we are in a nested context. */
     def defContext(sym: Symbol): Context = inContext(ctx) {
       ctx.outersIterator
-        .dropWhile(_.owner != sym)
-        .dropWhile(_.owner == sym)
+        .dropWhile(((ctx: Context) => ctx.owner != sym).unsafeBoxFunArg)
+        .dropWhile(((ctx: Context) => ctx.owner == sym).unsafeBoxFunArg)
         .next()
     }
 
     /** A new context for the interior of a class */
-    def inClassContext(selfInfo: TypeOrSymbol): Context = inContext(ctx) {
-      val localCtx: Context = ctx.fresh.setNewScope
-      selfInfo match {
-        case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
-        case _ =>
-      }
-      localCtx
-    }
+    def inClassContext(selfInfo: TypeOrSymbol): Context =
+      inline def op(using Context): Context =
+        val localCtx: Context = ctx.fresh.setNewScope
+        selfInfo match {
+          case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
+          case _ =>
+        }
+        localCtx
+      op(using ctx)
 
     def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context = inContext(ctx) {
       if (pkg.is(Package)) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
