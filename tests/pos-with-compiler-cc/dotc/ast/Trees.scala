@@ -1390,7 +1390,7 @@ object Trees {
       inMappedContext(ctx =>
         val sourced =
           if tree.source.exists && tree.source != ctx.source
-          then ctx.withSource(tree.source)
+          then ctx.withSourceAttached(tree.source)
           else ctx
         tree match
           case t: (MemberDef | PackageDef | LambdaTypeTree | TermLambdaTypeTree) =>
@@ -1540,7 +1540,7 @@ object Trees {
 
       def foldOver(x: X, tree: Tree)(using Context): X =
         if (tree.source != ctx.source && tree.source.exists)
-          foldOver(x, tree)(using ctx.withSource(tree.source))
+          withSource(tree.source)(foldOver(x, tree))
         else {
           Stats.record(s"TreeAccumulator.foldOver/$getClass")
           tree match {

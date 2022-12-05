@@ -474,7 +474,7 @@ object Checking {
     def checkWithDeferred(flag: FlagSet) =
       if (sym.isOneOf(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
-    def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: Message) =
+    inline def checkNoConflict(flag1: FlagSet, flag2: FlagSet, inline msg: Message) =
       if (sym.isAllOf(flag1 | flag2)) fail(msg)
     def checkCombination(flag1: FlagSet, flag2: FlagSet) =
       if sym.isAllOf(flag1 | flag2) then

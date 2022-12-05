@@ -420,7 +420,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
     // try
       if (tree.source != ctx.source && tree.source.exists)
-        transformTree(tree, start)(using ctx.withSource(tree.source))
+        withSource(tree.source)(transformTree(tree, start))
       else if (tree.isInstanceOf[NameTree])
         transformNamed(tree, start, ctx)
       else

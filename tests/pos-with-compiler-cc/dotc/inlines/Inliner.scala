@@ -543,7 +543,8 @@ class Inliner(val call: tpd.Tree)(using DetachedContext):
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope.detach
 
     def inlinedFromOutside(tree: Tree)(span: Span)(using Context): Tree =
-      Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
+      withSource(inlinedMethod.topLevelClass.source):
+        Inlined(EmptyTree, Nil, tree).withSpan(span)
 
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to
@@ -581,7 +582,6 @@ class Inliner(val call: tpd.Tree)(using DetachedContext):
             if (tree.name == nme.WILDCARD) tree.span // From type match
             else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
             else paramSpan(tree.name)
-          val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
               val inlinedSingleton = singleton(t).withSpan(argSpan)

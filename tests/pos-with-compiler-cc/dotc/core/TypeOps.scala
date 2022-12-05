@@ -25,6 +25,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 import language.experimental.pureFunctions
 import annotation.retains
+import caps.unsafe.*
 
 object TypeOps:
 
@@ -642,7 +643,7 @@ object TypeOps:
     def checkOverlapsBounds(lo: Type, hi: Type, arg: Tree, bounds: TypeBounds): Unit = {
       //println(i" = ${instantiate(bounds.hi, argTypes)}")
 
-      var checkCtx = ctx.detach  // the context to be used for bounds checking
+      var checkCtx = ctx.unsafeBox  // the context to be used for bounds checking
       if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
 
         /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
@@ -681,9 +682,9 @@ object TypeOps:
           def narrowBound(bound: Type, fromBelow: Boolean): Unit = {
             val bound1 = massage(bound)
             if (bound1 ne bound) {
-              if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds.detach
-              if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addToConstraint(sym)
-              checkCtx.gadt.addBound(sym, bound1, fromBelow)
+              if (checkCtx.unsafeUnbox eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds.detach
+              if (!checkCtx.unsafeUnbox.gadt.contains(sym)) checkCtx.unsafeUnbox.gadt.addToConstraint(sym)
+              checkCtx.unsafeUnbox.gadt.addBound(sym, bound1, fromBelow)
               typr.println("install GADT bound $bound1 for when checking F-bounded $sym")
             }
           }
@@ -698,7 +699,7 @@ object TypeOps:
         if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
         if (!(loBound <:< hi)) violations += ((arg, "lower", loBound))
       }
-      check(using checkCtx)
+      check(using checkCtx.unsafeUnbox)
     }
 
     def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match

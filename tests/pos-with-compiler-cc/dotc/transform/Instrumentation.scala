@@ -71,7 +71,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
       tree
 
   private def ok(using Context) =
-    !ctx.owner.ownersIterator.exists(_.name.toString.startsWith("Stats"))
+    !ctx.owner.hasOwnerWith(_.name.toString.startsWith("Stats"))
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
     val sym = tree.symbol

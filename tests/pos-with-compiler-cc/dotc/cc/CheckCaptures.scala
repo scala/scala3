@@ -225,7 +225,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def capturedVars(sym: Symbol)(using Context) =
       myCapturedVars.getOrElseUpdate(sym,
-        if sym.ownersIterator.exists(_.isTerm) then CaptureSet.Var()
+        if sym.hasOwnerWith(_.isTerm) then CaptureSet.Var()
         else CaptureSet.empty)
 
     /** For all nested environments up to `limit` perform `op` */
@@ -983,7 +983,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if t.tpt.isInstanceOf[InferredTypeTree] && !Synthetics.isExcluded(t.symbol) =>
           val sym = t.symbol
           val isLocal =
-            sym.owner.ownersIterator.exists(_.isTerm)
+            sym.owner.hasOwnerWith(_.isTerm)
             || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
           def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
             sym.is(Private)                   // private symbols can always have inferred types

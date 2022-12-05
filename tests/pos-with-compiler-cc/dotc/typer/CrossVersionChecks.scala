@@ -61,7 +61,7 @@ class CrossVersionChecks extends MiniPhase:
      *   module that declares `sym`.
      */
     def skipWarning(using Context) =
-      ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
+      ctx.owner.hasOwnerWith(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
 
     for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
       if !skipWarning then

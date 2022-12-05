@@ -88,7 +88,7 @@ object SymUtils:
        */
       def canAccessCtor: Boolean =
         def isAccessible(sym: Symbol): Boolean = ctx.owner.isContainedIn(sym)
-        def isSub(sym: Symbol): Boolean = ctx.owner.ownersIterator.exists(_.derivesFrom(sym))
+        def isSub(sym: Symbol): Boolean = ctx.owner.hasOwnerWith(_.derivesFrom(sym))
         val ctor = self.primaryConstructor
         (!ctor.isOneOf(Private | Protected) || isSub(self)) // we cant access the ctor because we do not extend cls
         && (!ctor.privateWithin.exists || isAccessible(ctor.privateWithin)) // check scope is compatible
@@ -363,7 +363,7 @@ object SymUtils:
       self.hasAnnotation(defn.ExperimentalAnnot)
       || isDefaultArgumentOfExperimentalMethod
       || (!self.is(Package) && self.owner.isInExperimentalScope)
-      || self.topLevelClass.ownersIterator.exists(p =>
+      || self.topLevelClass.hasOwnerWith(p =>
           p.is(Package) && p.owner.isRoot && p.name == tpnme.dotty)
 
     /** The declared self type of this class, as seen from `site`, stripping

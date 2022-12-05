@@ -44,7 +44,7 @@ object Inlines:
 
   /** Are we in an inline method body? */
   def inInlineMethod(using Context): Boolean =
-    ctx.owner.ownersIterator.exists(_.isInlineMethod)
+    ctx.owner.hasOwnerWith(_.isInlineMethod)
 
   /** Can a call to method `meth` be inlined? */
   def isInlineable(meth: Symbol)(using Context): Boolean =
@@ -284,7 +284,7 @@ object Inlines:
         def finalize(copied: untpd.Tree) =
           fixSpan(copied).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
 
-        inContext(ctx.withSource(curSource)) {
+        withSource(curSource) {
           tree match
             case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
             case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))

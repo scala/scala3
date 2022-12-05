@@ -172,9 +172,8 @@ class InlineReducer(inliner: Inliner)(using Context):
                 arg.tpe.dealias match {
                   case ref @ TermRef(NoPrefix, _) => ref.symbol
                   case _ =>
-                    paramBindingDef(name, paramtp, arg, bindingsBuf)(
-                      using ctx.withSource(cl.source)
-                    ).symbol
+                    withSource(cl.source):
+                      paramBindingDef(name, paramtp, arg, bindingsBuf).symbol
                 }
               }
               val expander = new TreeTypeMap(

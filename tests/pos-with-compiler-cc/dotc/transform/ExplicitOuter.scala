@@ -17,7 +17,7 @@ import SymUtils._
 import dotty.tools.dotc.ast.tpd
 
 import collection.mutable
-import scala.annotation.tailrec
+import scala.annotation.{tailrec, retains}
 
 /** This phase adds outer accessors to classes and traits that need them.
  *  Compared to Scala 2.x, it tries to minimize the set of classes
@@ -377,7 +377,7 @@ object ExplicitOuter {
   extension (sym: Symbol) def isOuterParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor) && sym.name == nme.OUTER
 
-  def outer(using Context): OuterOps = new OuterOps(ctx.detach)
+  def outer(using ctx: Context): OuterOps @retains(ctx) = new OuterOps(ctx)
 
   /** The operations in this class
    *   - add outer parameters
@@ -396,7 +396,7 @@ object ExplicitOuter {
    *     get erased during erasure. Therefore, outer arguments have to be passed
    *     no later than erasure.
    */
-  class OuterOps(val ictx: DetachedContext) extends AnyVal {
+  class OuterOps(ictx: Context) {//extends AnyVal { !cc! AnyVal classes cannot capture
     /** The context of all operations of this class */
     given [Dummy]: Context = ictx
 

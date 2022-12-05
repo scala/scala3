@@ -27,7 +27,8 @@ import transform.TypeUtils._
 import cc.{CapturingType, derivedCapturingType}
 import language.experimental.pureFunctions
 
-import scala.annotation.internal.sharable
+import annotation.tailrec
+import annotation.internal.sharable
 
 object SymDenotations {
 
@@ -1113,6 +1114,10 @@ object SymDenotations {
         result
       }
     }
+
+    @tailrec
+    final def hasOwnerWith(p: Symbol -> Context ?-> Boolean)(using Context): Boolean =
+      exists && (p(symbol) || owner.hasOwnerWith(p))
 
     /** If this is a weak owner, its owner, otherwise the denoting symbol. */
     final def skipWeakOwner(using Context): Symbol =

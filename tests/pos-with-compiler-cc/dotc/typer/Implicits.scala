@@ -240,7 +240,6 @@ object Implicits:
         ckind
       }
 
-
       if refs.isEmpty && (!considerExtension || companionRefs.isEmpty) then
         Nil
       else
@@ -1837,7 +1836,7 @@ final class SearchRoot extends SearchHistory:
             // Substitute dictionary references into dictionary entry RHSs
             val rhsMap = new TreeTypeMap(treeMap = inDetachedContext {
               case id: Ident if vsymMap.contains(id.symbol) =>
-                tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)
+                withSource(id.source)(tpd.ref(vsymMap(id.symbol))).withSpan(id.span)
               case tree => tree
             })
             val nrhss = rhss.map(rhsMap(_))

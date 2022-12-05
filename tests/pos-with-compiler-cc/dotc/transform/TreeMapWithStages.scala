@@ -73,7 +73,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
 
   override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
-      transform(tree)(using ctx.withSource(tree.source))
+      withSource(tree.source)(transform(tree))
     else reporting.trace(i"StagingTransformer.transform $tree at $level", staging, show = true) {
       def mapOverTree(lastEntered: List[Symbol]) =
         try super.transform(tree)

@@ -121,7 +121,7 @@ object Splicer {
             traverseChildren(tree)
       private def isEscapedVariable(sym: Symbol)(using Context): Boolean =
         sym.exists && !sym.is(Package)
-        && sym.owner.ownersIterator.exists(x =>
+        && sym.owner.hasOwnerWith(x =>
           x == expansionOwner || // symbol was generated within this macro expansion
           x.is(Macro, butNot = Method) && x.name == nme.MACROkw // symbol was generated within another macro expansion
         )

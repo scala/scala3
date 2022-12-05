@@ -245,7 +245,7 @@ class Splicing extends MacroTransform:
               cpy.Apply(tree)(cpy.Select(sel)(cpy.Apply(app)(fn, newArgs), nme.apply), quotesArgs)
         case Apply(TypeApply(_, List(tpt)), List(quotes))
         if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
-          ref(capturedType(tpt))(using ctx.withSource(tree.source)).withSpan(tree.span)
+          withSource(tree.source)(ref(capturedType(tpt))).withSpan(tree.span)
         case CapturedApplication(fn, argss) =>
           transformCapturedApplication(tree, fn, argss)
         case _ =>

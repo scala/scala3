@@ -166,7 +166,7 @@ class VarianceChecker(using Context) {
               ""
           em"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym$enumAddendum"
         if (migrateTo3 &&
-            (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
+            (sym.owner.isConstructor || sym.hasOwnerWith(_.isAllOf(ProtectedLocal))))
           report.migrationWarning(
             msg.prepend("According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance\n"),
             pos)

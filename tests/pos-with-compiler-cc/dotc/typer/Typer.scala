@@ -3035,7 +3035,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if ctx.phase.isTyper then
         assertPositioned(tree)
       if tree.source != ctx.source && tree.source.exists then
-        typed(tree, pt, locked)(using ctx.withSource(tree.source))
+        withSource(tree.source)(typed(tree, pt, locked))
       else if ctx.run.nn.isCancelled then
         tree.withType(WildcardType)
       else adapt(typedUnadapted(tree, pt, locked), pt, locked)

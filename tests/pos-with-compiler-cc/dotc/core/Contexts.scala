@@ -156,7 +156,9 @@ object Contexts {
 
   inline def withSource[T](source: SourceFile)(inline op: Context ?-> T)(using ctx: Context): T =
     // can't scope source context, since it is cached in Context
-    op(using ctx.withSource(source))
+    val saved = ctx.base.curLevel
+    try op(using ctx.withSourceAttached(source))
+    finally ctx.base.popTo(saved)
 
   inline def inDetachedContext[T](inline op: DetachedContext ?-> T)(using ctx: Context): T =
     op(using ctx.detach)
@@ -329,34 +331,12 @@ object Contexts {
     final def withPhase(pid: PhaseId): Context =
       if phaseId == pid then ctx else ctx.fresh.setPhase(pid)
 
-    private var related: SimpleIdentityMap[SourceFile, DetachedContext] | Null = null
-
-    private def lookup(key: SourceFile): DetachedContext | Null =
-      util.Stats.record("Context.related.lookup")
-      if related == null then
-        related = SimpleIdentityMap.empty
-        null
-      else
-        related.nn(key)
-
     final def withSource(source: SourceFile): Context =
       util.Stats.record("Context.withSource")
-      if this.source eq source then
-        this
-      else
-        var ctx1 = lookup(source)
-        if ctx1 == null then
-          util.Stats.record("Context.withSource.new")
-          val ctx2 = fresh.setSource(source)
-          if ctx2.compilationUnit eq NoCompilationUnit then
-            // `source` might correspond to a file not necessarily
-            // in the current project (e.g. when inlining library code),
-            // so set `mustExist` to false.
-            ctx2.setCompilationUnit(CompilationUnit(source, mustExist = false))
-          val dctx = ctx2.detach
-          ctx1 = dctx
-          related = related.nn.updated(source, dctx)
-        ctx1
+      if this.source eq source then this else ctx.fresh.setSource(source)
+
+    final def withSourceAttached(source: SourceFile): Context =
+      if this.source eq source then this else ctx.nextFresh.setSource(source)
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
     // call to `setCreationTrace()` in this file.
@@ -533,19 +513,29 @@ object Contexts {
 
     protected def resetCaches(): Unit =
       implicitsCache = null
-      related = null
 
     /** Reuse this context as a fresh context nested inside `outer` */
     def reuseIn(outer: Context): this.type
 
-    def detach: DetachedContext
+    def detach: DetachedContext =
+      val loc =
+        if util.Stats.enabled && ctx.settings.YdetailedStats.value && ctx.level != Status_detached then
+          val strace = new Error().getStackTrace
+          var i = 0
+          while i < strace.length && strace(i).getMethodName.contains("detach") do
+            i += 1
+          if i < strace.length then
+            i"DETACH ${strace(i).getClassName}.${strace(i).getMethodName}:${strace(i).getLineNumber} in ${strace(i).getFileName}"
+          else null
+        else null
+      detached(this, loc)
   }
 
   object detached:
     opaque type DetachedContext <: ContextCls = ContextCls
-    def apply(c: ContextCls): DetachedContext =
-      c.base.detach(c)
-      c
+    def apply(c: Context, loc: String): DetachedContext =
+      c.base.detach(c, loc)
+      c.asInstanceOf[DetachedContext]
 
   type DetachedContext = detached.DetachedContext
 
@@ -574,8 +564,8 @@ object Contexts {
       if !reuseContexts then
         assert(level != Status_invalid, this)
 
-    private var _outer: DetachedContext = uninitialized
-    def outer: DetachedContext = { checkValid(); _outer }
+    private var _outer: ContextCls = uninitialized
+    def outer: ContextCls = { checkValid(); _outer }
 
     def outersIterator: Iterator[ContextCls] = new Iterator[ContextCls] {
       var current: ContextCls = thiscontext
@@ -638,8 +628,6 @@ object Contexts {
     def reuseIn(outer: Context): this.type =
       resetCaches()
       init(outer, outer)
-
-    def detach: DetachedContext = detached(this)
 
     def setPeriod(period: Period): this.type =
       util.Stats.record("Context.setPeriod")
@@ -996,10 +984,11 @@ object Contexts {
       curLevel += 1
       res
 
-    def detach(c: ContextCls): Unit =
-      var cc = c
+    def detach(c: Context, loc: String | Null): Unit =
+      var cc = c.asInstanceOf[ContextCls]
       while cc != null && cc.level != Status_detached do
         totalDetached += 1
+        if loc != null then util.Stats.record(loc)
         val level = cc.level
         if level >= 0 && (arena(level) eq cc) then
           if reuseContexts then arena(level) = FreshContext(this, level)

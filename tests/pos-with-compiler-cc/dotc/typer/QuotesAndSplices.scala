@@ -168,7 +168,7 @@ trait QuotesAndSplices {
     assignType(tree, tpt)
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
-    if (level == 0 && !ctx.owner.ownersIterator.exists(_.isInlineMethod))
+    if (level == 0 && !ctx.owner.hasOwnerWith(_.isInlineMethod))
       report.error("Splice ${...} outside quotes '{...} or inline method", tree.srcPos)
     else if (level < 0)
       report.error(

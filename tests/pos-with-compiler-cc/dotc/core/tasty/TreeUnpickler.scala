@@ -788,7 +788,7 @@ class TreeUnpickler(reader: TastyReader,
      */
     def processPackage[T](op: (RefTree, Addr) => Context ?=> T)(using Context): T = {
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return processPackage(op)(using sctx)
+      if (sctx.source ne ctx.source) return processPackage(op)(using sctx)
       readByte()
       val end = readEnd()
       val pid = ref(readTermRef()).asInstanceOf[RefTree]
@@ -832,7 +832,7 @@ class TreeUnpickler(reader: TastyReader,
 
     private def readNewDef()(using Context): Tree = {
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return readNewDef()(using sctx)
+      if (sctx.source ne ctx.source) return readNewDef()(using sctx)
       val start = currentAddr
       val sym = symAtAddr(start)
       val tag = readByte()
@@ -1116,7 +1116,7 @@ class TreeUnpickler(reader: TastyReader,
 
     def readTerm()(using Context): Tree = {  // TODO: rename to readTree
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return readTerm()(using sctx)
+      if (sctx.source ne ctx.source) return readTerm()(using sctx)
       val start = currentAddr
       val tag = readByte()
       pickling.println(s"reading term ${astTagToString(tag)} at $start, ${ctx.source}")
@@ -1405,7 +1405,7 @@ class TreeUnpickler(reader: TastyReader,
 
     def readTpt()(using Context): Tree = {
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return readTpt()(using sctx)
+      if (sctx.source ne ctx.source) return readTpt()(using sctx)
       val start = currentAddr
       val tree = nextByte match {
         case SHAREDterm =>
@@ -1448,7 +1448,7 @@ class TreeUnpickler(reader: TastyReader,
 
     def readCase()(using Context): CaseDef = {
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return readCase()(using sctx)
+      if (sctx.source ne ctx.source) return readCase()(using sctx)
       val start = currentAddr
       assert(readByte() == CASEDEF)
       val end = readEnd()

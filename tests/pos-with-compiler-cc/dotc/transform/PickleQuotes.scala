@@ -109,7 +109,8 @@ class PickleQuotes extends MacroTransform {
           tpt match
             case Select(t, _) if tpt.symbol == defn.QuotedType_splice =>
               // `Type.of[t.Underlying](quotes)`  --> `t`
-              ref(t.symbol)(using ctx.withSource(tpt.source)).withSpan(tpt.span)
+              withSource(tpt.source):
+                ref(t.symbol).withSpan(tpt.span)
             case _ =>
               val (contents, tptWithHoles) = makeHoles(tpt)
               PickleQuotes(quotes, tptWithHoles, contents, tpt.tpe, true)

@@ -81,7 +81,7 @@ extends tpd.TreeTraverser:
     *
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
-  private def mapInferred(using DetachedContext) = new TypeMap:
+  private def mapInferred(using Context) = new TypeMap:
 
     /** Drop @retains annotations everywhere */
     object cleanup extends TypeMap:
@@ -257,7 +257,7 @@ extends tpd.TreeTraverser:
       defn.FunctionOf(defn.CanThrowClass.typeRef.appliedTo(exc) :: Nil, res, isContextual = true, isErased = true)
     case _ => tp
 
-  private def expandThrowsAliases(using DetachedContext) = new TypeMap:
+  private def expandThrowsAliases(using Context) = new TypeMap:
     def apply(t: Type) = t match
       case _: AppliedType =>
         val t1 = expandThrowsAlias(t)
@@ -281,7 +281,7 @@ extends tpd.TreeTraverser:
    *
    *  TODO: Should we also propagate capture sets to the left?
    */
-  private def expandAbbreviations(using DetachedContext) = new TypeMap:
+  private def expandAbbreviations(using Context) = new TypeMap:
 
     /** Propagate `outerCs` as well as all tracked parameters as capture set to the result type
      *  of the dependent function type `tp`.

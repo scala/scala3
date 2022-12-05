@@ -55,7 +55,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: DetachedContext) extends TreeMapWit
 
   override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
-      transform(tree)(using ctx.withSource(tree.source))
+      withSource(tree.source)(transform(tree))
     else if !isInQuoteOrSplice then
       checkAnnotations(tree)
       super.transform(tree)
