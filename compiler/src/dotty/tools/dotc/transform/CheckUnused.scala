@@ -356,7 +356,7 @@ object CheckUnused:
       /** Given an import and accessibility, return an option of selector that match import<->symbol */
       def isInImport(imp: tpd.Import, isAccessible: Boolean)(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
-        val qualHasSymbol = qual.tpe.member(sym.name).symbol == sym
+        val qualHasSymbol = qual.tpe.member(sym.name).alternatives.map(_.symbol).contains(sym)
         def selector = sels.find(sel => sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name)
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
         if qualHasSymbol && !isAccessible && sym.exists then
