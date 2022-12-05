@@ -203,3 +203,14 @@ object testAnnotatedType:
   import annotation.switch // OK
   val a = (??? : @switch) match
     case _ => ???
+
+
+//-------------------------------------
+package testImportsInImports:
+  package a:
+    package b:
+      val x = 1
+  package c:
+    import a.b // OK
+    import b.x // OK
+    val y = x

@@ -69,6 +69,7 @@ class CheckUnused extends Phase:
       tree match
         case imp:tpd.Import =>
           unusedDataApply(_.registerImport(imp))
+          traverseChildren(tree)(using newCtx)
         case ident: Ident =>
           unusedDataApply(_.registerUsed(ident.symbol))
           traverseChildren(tree)(using newCtx)
