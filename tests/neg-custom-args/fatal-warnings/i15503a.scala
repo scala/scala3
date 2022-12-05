@@ -188,3 +188,18 @@ object Scala2ImplicitsGiven:
   object G:
     import A.x  // error
     val b = 1
+
+// -------------------------------------
+object TestNewKeyword:
+  object Foo:
+    class Aa[T](val x: T)
+  object Bar:
+    import Foo.Aa // OK
+    val v = 1
+    val a = new Aa(v)
+
+// -------------------------------------
+object testAnnotatedType:
+  import annotation.switch // OK
+  val a = (??? : @switch) match
+    case _ => ???

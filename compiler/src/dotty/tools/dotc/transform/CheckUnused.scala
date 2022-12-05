@@ -16,6 +16,11 @@ import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.transform.CheckUnused.UnusedData.UnusedResult
 import dotty.tools.dotc.core.Mode
+import dotty.tools.dotc.core.Types.TypeTraverser
+import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.Types.AnnotatedType
+import dotty.tools.dotc.core.Flags.flagsString
+import dotty.tools.dotc.core.Flags
 
 
 
@@ -83,10 +88,18 @@ class CheckUnused extends Phase:
         case t: tpd.Bind =>
           unusedDataApply(_.registerPatVar(t))
           traverseChildren(tree)(using newCtx)
+        case t@tpd.TypeTree() =>
+          typeTraverser(unusedDataApply).traverse(t.tpe)
+          traverseChildren(tree)(using newCtx)
         case _ =>
           traverseChildren(tree)(using newCtx)
     end traverse
   end traverser
+
+  private def typeTraverser(dt: (UnusedData => Any) => Unit)(using Context) = new TypeTraverser:
+    override def traverse(tp: Type): Unit = tp match
+      case AnnotatedType(_, annot) => dt(_.registerUsed(annot.symbol))
+      case _ => traverseChildren(tp)
 
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
     import CheckUnused.WarnTypes
@@ -185,6 +198,8 @@ object CheckUnused:
       if !isConstructorOfSynth(sym) then
         usedInScope.top += sym -> sym.isAccessibleAsIdent
         usedDef += sym
+        if sym.isConstructor && sym.exists then
+          registerUsed(sym.owner) // constructor are "implicitly" imported with the class
 
     /** Register a list of found (used) symbols */
     def registerUsed(syms: Seq[Symbol])(using Context): Unit =
@@ -343,7 +358,7 @@ object CheckUnused:
         val qualHasSymbol = qual.tpe.member(sym.name).symbol == sym
         def selector = sels.find(sel => sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name)
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
-        if qualHasSymbol && !isAccessible then
+        if qualHasSymbol && !isAccessible && sym.exists then
           selector.orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
