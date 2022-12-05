@@ -944,7 +944,7 @@ object Parsers {
         lookahead.isArrow
         && {
           lookahead.nextToken()
-          lookahead.token == INDENT
+          lookahead.token == INDENT || lookahead.token == EOF
         }
       lookahead.nextToken()
       if lookahead.isIdent || lookahead.token == USCORE then
