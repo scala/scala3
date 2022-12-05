@@ -76,7 +76,7 @@ class CheckUnused extends Phase:
         case sel: Select =>
           unusedDataApply(_.registerUsed(sel.symbol))
           traverseChildren(tree)(using newCtx)
-        case _: (tpd.Block | tpd.Template) =>
+        case _: (tpd.Block | tpd.Template | tpd.PackageDef) =>
           unusedDataApply { ud =>
             ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree)(using newCtx))
           }

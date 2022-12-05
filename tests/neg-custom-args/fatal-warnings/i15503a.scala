@@ -214,3 +214,26 @@ package testImportsInImports:
     import a.b // OK
     import b.x // OK
     val y = x
+
+//-------------------------------------
+package testOnOverloadedMethodsImports:
+  package a:
+    trait A
+    trait B
+    trait C:
+      def foo(x: A):A = ???
+      def foo(x: B):B = ???
+  package b:
+    object D extends a.C
+  package c:
+    import b.D.foo // error
+  package d:
+    import b.D.foo // OK
+    def bar = foo((??? : a.A))
+  package e:
+    import b.D.foo // OK
+    def bar = foo((??? : a.B))
+  package f:
+    import b.D.foo // OK
+    def bar = foo((??? : a.A))
+    def baz = foo((??? : a.B))
