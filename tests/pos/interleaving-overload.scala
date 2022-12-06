@@ -1,8 +1,8 @@
 
 class A{
 
-    def f1[T][U](x: Any) = ???
-    def f1[T][U](x: Int) = ???
+    def f1[T](x: Any)[U] = ???
+    def f1[T](x: Int)[U] = ???
 
     f1(1)
     f1("hello")

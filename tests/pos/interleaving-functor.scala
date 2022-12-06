@@ -10,7 +10,7 @@ object functorInterweaving:
     def map[A](x: List[A])[B](f: A => B): List[B] =
       x.map(f)
 
-  def assertTransformation[F[_]: Functor][A](original: F[A])[B](expected: F[B])(mapping: A => B): Unit =
+  def assertTransformation[F[_]: Functor, A](original: F[A])[B](expected: F[B])(mapping: A => B): Unit =
     assert(expected == summon[Functor[F]].map(original)(mapping))
 
   @main def testInterweaving =

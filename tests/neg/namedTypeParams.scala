@@ -17,7 +17,6 @@ object Test {
   def f[X, Y](x: X, y: Y): Int = ???
 
   f[X = Int, String](1, "") // error // error
-  /* Conflicts with Clause Interweaving, stems from named type parameters assuming one type clause
   f[X = Int][X = Int][Y = String](1, "") // error: illegal repeated type application
 
   f[X = Int][Y = String](1, "") // error: illegal repeated type application
@@ -25,5 +24,9 @@ object Test {
 
   f[Y = String][X = Int](1, "") // error: illegal repeated type application
   f[Y = String][Int](1, "") // error: illegal repeated type application
-  */
+
+  def f2[X](using DummyImplicit)[Y](x: X, y: Y): Int = ???
+
+  f2[Y = String][X = Int](1, "") // error: Y is undefined
+  f2[Y = String](1, "") // error: Y is undefined
 }

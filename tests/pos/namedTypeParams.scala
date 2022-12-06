@@ -9,4 +9,10 @@ object Test {
   f[Y = String](1, "")
 
 
+  def f2[X](using DummyImplicit)[Y](x: X, y: Y): Int = ???
+
+  f2[X = Int][Y = String](1, "")
+  f2[X = Int](1, "")
+
+
 }
