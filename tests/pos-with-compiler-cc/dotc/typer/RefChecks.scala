@@ -1159,7 +1159,7 @@ class RefChecks extends MiniPhase { thisPhase =>
 
 // Comparison checking -------------------------------------------------------
 
-    object normalizeAll extends TypeMap {
+    object normalizeAll extends TypeMap() {
       def apply(tp: Type) = mapOver(tp).normalize
     }
 

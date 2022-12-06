@@ -237,7 +237,7 @@ object Checking {
   /** A type map which checks that the only cycles in a type are F-bounds
    *  and that protects all F-bounded references by LazyRefs.
    */
-  class CheckNonCyclicMap(sym: Symbol, reportErrors: Boolean)(using DetachedContext) extends TypeMap {
+  class CheckNonCyclicMap(sym: Symbol, reportErrors: Boolean)(using DetachedContext) extends TypeMap() {
 
     /** Set of type references whose info is currently checked */
     private val locked = mutable.Set[TypeRef]()
@@ -601,7 +601,7 @@ object Checking {
    *  @return The `info` of `sym`, with problematic aliases expanded away.
    */
   def checkNoPrivateLeaks(sym: Symbol)(using Context): Type = {
-    class NotPrivate extends TypeMap {
+    class NotPrivate extends TypeMap() {
       var errors: List[Message] = Nil
       private var inCaptureSet: Boolean = false
 

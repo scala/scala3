@@ -229,7 +229,7 @@ object Inferencing {
   }
 
   /** Approximates a type to get rid of as many GADT-constrained abstract types as possible. */
-  private class ApproximateGadtAccumulator(using Context) extends TypeMap {
+  private class ApproximateGadtAccumulator(using Context) extends TypeMap() {
 
     var failed = false
 

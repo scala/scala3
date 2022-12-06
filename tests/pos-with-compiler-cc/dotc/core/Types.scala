@@ -44,6 +44,7 @@ import scala.annotation.internal.sharable
 import dotty.tools.dotc.transform.SymUtils._
 import language.experimental.pureFunctions
 import annotation.retains
+import caps.unsafe.unsafeUnbox
 
 object Types {
 
@@ -3748,7 +3749,7 @@ object Types {
 
     override def resultType(using Context): Type =
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
-        val dealiasMap = new TypeMap with IdentityCaptRefMap {
+        val dealiasMap = new TypeMap() with IdentityCaptRefMap {
           def apply(tp: Type) = tp match {
             case tp @ TypeRef(pre, _) =>
               tp.info match {
@@ -4173,7 +4174,7 @@ object Types {
      */
     def flatten(using Context): PolyType = resType match {
       case that: PolyType =>
-        val shiftedSubst = (x: PolyType) => new TypeMap {
+        val shiftedSubst = (x: PolyType) => new TypeMap() {
           def apply(t: Type) = t match {
             case TypeParamRef(`that`, n) => x.paramRefs(n + paramNames.length)
             case t => mapOver(t)
@@ -5573,11 +5574,17 @@ object Types {
       case result: CaptureRef if result.canBeTracked => result
   end BiTypeMap
 
-  abstract class TypeMap(using protected val mapCtx: Context)
-  extends VariantTraversal with (Type -> Type) { thisMap: TypeMap @retains(mapCtx) =>
+  abstract class TypeMap private (ictx: Context, dummy: AnyRef | Null)
+  extends VariantTraversal with (Type -> Type) { thisMap: TypeMap @retains(ictx) =>
+
+    private var curCtx = ictx
+
+    protected given mapCtx: Context = curCtx.unsafeUnbox
+
+    def this()(using ictx: Context) = this(ictx, null)
 
     def detach: TypeMap =
-      mapCtx.detach
+      curCtx = curCtx.unsafeUnbox.detach
       this.asInstanceOf[TypeMap]
 
     def apply(tp: Type): Type
@@ -5787,7 +5794,7 @@ object Types {
     }
   }
 
-  @sharable object IdentityTypeMap extends TypeMap(using NoContext) {
+  @sharable object IdentityTypeMap extends TypeMap()(using NoContext) {
     def apply(tp: Type): Type = tp
   }
 

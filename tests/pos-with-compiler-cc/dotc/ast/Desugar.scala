@@ -110,7 +110,7 @@ object desugar {
      */
     def derivedTree(sym: Symbol)(using Context): tpd.TypeTree = {
       val dctx = ctx.detach
-      val relocate = new TypeMap(using dctx) {
+      val relocate = new TypeMap()(using dctx) {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>

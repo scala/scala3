@@ -95,7 +95,7 @@ object JavaNullInterop {
    *                                       This is useful for e.g. constructors, and also so that `A & B` is nullified
    *                                       to `(A & B) | Null`, instead of `(A | Null & B | Null) | Null`.
    */
-  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(using Context) extends TypeMap {
+  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(using Context) extends TypeMap() {
     /** Should we nullify `tp` at the outermost level? */
     def needsNull(tp: Type): Boolean =
       !outermostLevelAlreadyNullable && (tp match {

@@ -838,7 +838,7 @@ object TypeOps:
     // Note: we need to strip ThisType in `p` recursively.
     //
     // See tests/patmat/i3938.scala
-    class InferPrefixMap extends TypeMap {
+    class InferPrefixMap extends TypeMap() {
       var prefixTVar: Type | Null = null
       def apply(tp: Type): Type = tp match {
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
@@ -896,7 +896,7 @@ object TypeOps:
   def nestedPairs(ts: List[Type])(using Context): Type =
     ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 
-  class StripTypeVarsMap(using Context) extends TypeMap:
+  class StripTypeVarsMap(using Context) extends TypeMap():
     def apply(tp: Type) = mapOver(tp).stripTypeVar
 
   /** Apply [[Type.stripTypeVar]] recursively. */

@@ -500,7 +500,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *          Otherwise, `tp` itself
      */
     def widenSkolems(tp: Type)(using Context): Type =
-      object widenSkolems extends TypeMap, IdempotentCaptRefMap:
+      object widenSkolems extends TypeMap(), IdempotentCaptRefMap:
         var didWiden: Boolean = false
         def apply(t: Type): Type = t match
           case t: SkolemType if variance >= 0 =>

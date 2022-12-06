@@ -232,7 +232,7 @@ sealed trait GadtConstraint (
     case tp: TypeAlias       => tp.derivedAlias(externalize(tp.alias, theMap))
     case tp                  => (if theMap == null then ExternalizeMap() else theMap).mapOver(tp)
 
-  private class ExternalizeMap(using Context) extends TypeMap:
+  private class ExternalizeMap(using Context) extends TypeMap():
     def apply(tp: Type): Type = externalize(tp, this)(using mapCtx)
 
   private def tvarOrError(sym: Symbol)(using Context): TypeVar =

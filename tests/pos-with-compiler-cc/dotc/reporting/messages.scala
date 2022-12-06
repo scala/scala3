@@ -256,7 +256,7 @@ class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  ad
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
     // these are usually easier to analyze. We exclude F-bounds since these would
     // lead to a recursive infinite expansion.
-    object reported extends TypeMap, IdentityCaptRefMap:
+    object reported extends TypeMap(), IdentityCaptRefMap:
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
       var fbounded = false

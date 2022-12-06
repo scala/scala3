@@ -45,7 +45,7 @@ import language.experimental.pureFunctions
 
 object Contexts {
 
-  inline val reuseContexts = true
+  inline val reuseContexts = false
 
   @sharable var nextId = 0
 
@@ -962,7 +962,8 @@ object Contexts {
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
 
     private[Contexts] var arena = Array.tabulate(32)(FreshContext(this, _))
-    private[Contexts] var curLevel: Int = 0
+    //private[Contexts]
+    var curLevel: Int = 0
 
     var totalContexts: Int = 0
     var totalScoped: Int = 0
@@ -1001,10 +1002,10 @@ object Contexts {
         curLevel = level
       else if level != curLevel then
         assert(level == curLevel - 1, s"level = $level, curLevel = $curLevel")
+        curLevel = level
         val popped = arena(level)
         arena(level) = FreshContext(this, level)
         if popped.level != Status_detached then popped.level = Status_invalid
-        curLevel = level
   }
 
   /** The essential mutable state of a context base, collected into a common class */

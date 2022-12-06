@@ -1387,17 +1387,14 @@ object Trees {
       * @see https://github.com/lampepfl/dotty/pull/13880#discussion_r836395977
       */
     inline def inTransformCtx[T](tree: Tree)(inline op: Context ?-> T)(using Context): T =
-      inMappedContext(ctx =>
-        val sourced =
-          if tree.source.exists && tree.source != ctx.source
-          then ctx.withSourceAttached(tree.source)
-          else ctx
-        tree match
-          case t: (MemberDef | PackageDef | LambdaTypeTree | TermLambdaTypeTree) =>
-            localCtxAttached(t)(using sourced)
-          case _ =>
-            sourced
-      )(op)
+      withSource(tree.source):
+        inMappedContext(ctx =>
+            tree match
+              case t: (MemberDef | PackageDef | LambdaTypeTree | TermLambdaTypeTree) =>
+                localCtxAttached(t)
+              case _ =>
+                ctx
+          )(op)
 
     inline def inLocalCtx[T](tree: Tree)(inline op: Context ?-> T)(using Context): T =
       inMappedContext(ctx => localCtxAttached(tree))(op)

@@ -84,7 +84,7 @@ extends tpd.TreeTraverser:
   private def mapInferred(using Context) = new TypeMap:
 
     /** Drop @retains annotations everywhere */
-    object cleanup extends TypeMap:
+    object cleanup extends TypeMap():
       def apply(t: Type) = t match
         case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
           apply(parent)
