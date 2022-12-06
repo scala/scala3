@@ -7,7 +7,9 @@ class useInlinedIdentity extends MacroAnnotation {
     import quotes.reflect.*
     tree match
       case DefDef(name, params, tpt, Some(rhs)) =>
-        val newRhs = '{ inlinedIdentity(${rhs.asExpr}) }.asTerm
+        val newRhs =
+          given Quotes = tree.symbol.asQuotes
+          '{ inlinedIdentity(${rhs.asExpr}) }.asTerm
         List(DefDef.copy(tree)(name, params, tpt, Some(newRhs)))
 }
 

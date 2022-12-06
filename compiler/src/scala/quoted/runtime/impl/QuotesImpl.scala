@@ -2662,7 +2662,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def show(using printer: Printer[Symbol]): String = printer.show(self)
 
-        def asQuotes: Nested = new QuotesImpl(using ctx.withOwner(self))
+        def asQuotes: Nested =
+          assert(self.ownersIterator.contains(ctx.owner), s"$self is not owned by ${ctx.owner}")
+          new QuotesImpl(using ctx.withOwner(self))
 
       end extension
 

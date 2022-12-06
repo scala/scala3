@@ -4,6 +4,13 @@ class Bar:
     println(s"compute fib of $n")
     if n <= 1 then n
     else fib(n - 1) + fib(n - 2)
+  //> private val fibCache$macro$1: mutable.Map[Int, Int] = mutable.Map.empty[Int, Int]
+  //> @memoize def fib(n: Int): Int =
+  //>  fibCache$macro$1.getOrElseUpdate(n, {
+  //>     println(s"compute fib of $n")
+  //>     if n <= 1 then n
+  //>     else fib(n - 1) + fib(n - 2)
+  //>   })
 
   @memoize
   def fib(n: Long): Long =

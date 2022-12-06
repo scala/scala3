@@ -7,6 +7,7 @@ class hello extends MacroAnnotation {
     import quotes.reflect._
     tree match
       case DefDef(name, params, tpt, Some(t)) =>
+        given Quotes = tree.symbol.asQuotes
         val rhs = '{
           ${t.asExprOf[String]} + "hello"
         }.asTerm

@@ -91,7 +91,7 @@ class MacroAnnotations(thisPhase: DenotTransformer):
     // TODO: Remove when scala.annaotaion.MacroAnnotation is no longer experimental
     assert(annotInstance.getClass.getClassLoader.loadClass("scala.annotation.MacroAnnotation").isInstance(annotInstance))
 
-    val quotes = QuotesImpl()(using SpliceScope.contextWithNewSpliceScope(tree.symbol.sourcePos)(using MacroExpansion.context(tree)).withOwner(tree.symbol))
+    val quotes = QuotesImpl()(using SpliceScope.contextWithNewSpliceScope(tree.symbol.sourcePos)(using MacroExpansion.context(tree)).withOwner(tree.symbol.owner))
     annotInstance.transform(using quotes)(tree.asInstanceOf[quotes.reflect.Definition])
 
   /** Check that this tree can be added by the macro annotation and enter it if needed */
