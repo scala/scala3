@@ -3,7 +3,7 @@ package renderers
 
 import scala.collection.immutable.SortedMap
 import scala.util.chaining.*
-import util.HTML.*
+import util.HTML.{div, *}
 
 import scala.jdk.CollectionConverters.*
 import dotty.tools.scaladoc.translators.FilterAttributes
@@ -384,7 +384,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             members.map(member)
           ))
       }
-      Tab("Grouped members", "custom_groups", content, "expand")
+      Tab("Grouped members", "grouped_members",
+        Seq(
+          div(cls := "member-group-header")(
+            h3(tabAttr("grouped_members"), cls := "h400")("Grouped members")
+          )
+        ) ++ content,
+        "expand")
 
   def buildMembers(s: Member): AppliedTag =
     def partitionIntoGroups(members: Seq[Member]) =
