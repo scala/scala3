@@ -5,7 +5,7 @@ on:
       - 'language-reference-stable'
   push:
     branches:
-      - 'language-reference-backport'
+      - 'language-reference-stable'
 permissions:
   contents: write
   pull-requests: write
