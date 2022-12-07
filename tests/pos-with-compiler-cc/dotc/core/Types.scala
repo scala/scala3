@@ -5579,7 +5579,7 @@ object Types {
 
     private var curCtx = ictx
 
-    protected given mapCtx: Context = curCtx.unsafeUnbox
+    protected given mapCtx[DummySoItsADef]: Context = curCtx.unsafeUnbox
 
     def this()(using ictx: Context) = this(ictx, null)
 
@@ -5717,16 +5717,22 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          val mapCtx1 = mapCtx.asInstanceOf[FreshContext]
+          detach
+          assert(mapCtx.level != Status_invalid)
           LazyRef { refCtx =>
+            assert(refCtx.level != Status_invalid)
+            given Context = refCtx
             val ref1 = tp.ref(using refCtx)
-            if refCtx.runId == mapCtx1.runId then this(ref1)
+            assert(refCtx.level != Status_invalid)
+            if refCtx.runId == mapCtx.runId then this(ref1)
             else // splice in new run into map context
-              val savedPeriod = mapCtx1.period
-              val savedRun = mapCtx1.run
-              mapCtx1.setPeriod(Period(refCtx.runId, mapCtx1.phaseId)).setRun(refCtx.run)
-              try this(ref1)
-              finally mapCtx1.setPeriod(savedPeriod).setRun(savedRun)
+              //println(i"NEEED SPLICE")
+              val saved = mapCtx
+              curCtx = mapCtx.fresh
+                .setPeriod(Period(refCtx.runId, mapCtx.phaseId))
+                .setRun(refCtx.run)
+                .detach
+              try this(ref1) finally curCtx = saved
           }
 
         case tp: ClassInfo =>

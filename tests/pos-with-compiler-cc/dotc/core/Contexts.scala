@@ -45,7 +45,7 @@ import language.experimental.pureFunctions
 
 object Contexts {
 
-  inline val reuseContexts = false
+  inline val reuseContexts = true
 
   @sharable var nextId = 0
 
@@ -191,7 +191,8 @@ object Contexts {
 
     def isNoContext = base eqn null
 
-    private[Contexts] var level: Int = uninitialized
+    //private[Contexts]
+    var level: Int = uninitialized
 
     protected given Context = this
 
@@ -534,8 +535,7 @@ object Contexts {
   object detached:
     opaque type DetachedContext <: ContextCls = ContextCls
     def apply(c: Context, loc: String): DetachedContext =
-      c.base.detach(c, loc)
-      c.asInstanceOf[DetachedContext]
+      c.base.detach(c, loc).asInstanceOf[DetachedContext]
 
   type DetachedContext = detached.DetachedContext
 
@@ -564,7 +564,7 @@ object Contexts {
       if !reuseContexts then
         assert(level != Status_invalid, this)
 
-    private var _outer: ContextCls = uninitialized
+    private[Contexts] var _outer: ContextCls = uninitialized
     def outer: ContextCls = { checkValid(); _outer }
 
     def outersIterator: Iterator[ContextCls] = new Iterator[ContextCls] {
@@ -611,7 +611,7 @@ object Contexts {
      *  @param  origin  The context from which fields are copied
      */
     private[Contexts] def init(outer: Context, origin: Context): this.type = {
-      _outer = outer.asInstanceOf[DetachedContext]
+      _outer = outer.asInstanceOf[ContextCls]
       _period = origin.period
       _mode = origin.mode
       _owner = origin.owner
@@ -961,7 +961,7 @@ object Contexts {
     def fusedContaining(p: Phase): Phase =
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
 
-    private[Contexts] var arena = Array.tabulate(32)(FreshContext(this, _))
+    private[Contexts] var arena = Array.tabulate(128)(FreshContext(this, _))
     //private[Contexts]
     var curLevel: Int = 0
 
@@ -972,6 +972,7 @@ object Contexts {
 
     private def ensureArenaCapacity(): Unit =
       if curLevel == arena.length then
+        println(s"ARENA $curLevel")
         val prev = arena
         arena = new Array[FreshContext](curLevel * 2)
         prev.copyToArray(arena)
@@ -985,17 +986,21 @@ object Contexts {
       curLevel += 1
       res
 
-    def detach(c: Context, loc: String | Null): Unit =
-      var cc = c.asInstanceOf[ContextCls]
-      while cc != null && cc.level != Status_detached do
+    def detach(c: Context, loc: String | Null): Context =
+      //val cc = c.asInstanceOf[ContextCls]
+      if c != null && c.level != Status_detached then
         totalDetached += 1
         if loc != null then util.Stats.record(loc)
-        val level = cc.level
-        if level >= 0 && (arena(level) eq cc) then
-          if reuseContexts then arena(level) = FreshContext(this, level)
+        val outer1 = detach(c.outer, loc)
+        val level = c.level
+        if level >= 0 && (arena(level) eq c) then
           totalScopedDetached += 1
-        cc.level = Status_detached
-        cc = cc.outer
+          new FreshContext(this, Status_detached).init(outer1, c).setTyperState(c.typerState)
+        else
+          c.asInstanceOf[FreshContext]._outer = outer1.asInstanceOf[ContextCls]
+          c.level = Status_detached
+          c
+      else c
 
     def popTo(level: Int) =
       if reuseContexts then

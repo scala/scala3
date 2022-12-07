@@ -13,6 +13,8 @@ import scala.annotation.internal.sharable
  */
 object Bench extends Driver:
 
+  println("arena")
+
   @sharable private var numRuns = 1
 
   private def ntimes(n: Int)(op: => Reporter): Reporter =

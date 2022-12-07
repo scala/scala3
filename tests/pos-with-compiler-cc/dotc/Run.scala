@@ -350,7 +350,7 @@ class Run(comp: Compiler, @constructorOnly ictx0: Context) extends ImplicitRunIn
   /** Print summary of warnings and errors encountered */
   def printSummary(): Unit = {
     printMaxConstraint()
-    if true || ctx.settings.YdetailedStats.value then
+    if ctx.settings.YdetailedStats.value then
       println(s"""total contexts   : ${runContext.base.totalContexts}
                  |scoped contexts  : ${runContext.base.totalScoped}
                  |detached contexts: ${runContext.base.totalDetached}

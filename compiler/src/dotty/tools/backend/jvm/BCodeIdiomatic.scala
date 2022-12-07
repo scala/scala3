@@ -49,12 +49,12 @@ trait BCodeIdiomatic {
     case "12" => asm.Opcodes.V12
     case "13" => asm.Opcodes.V13
     case "14" => asm.Opcodes.V14
-    case "15" => asm.Opcodes.V15
+    case "15" => asm.Opcodes.V15/*
     case "16" => asm.Opcodes.V16
     case "17" => asm.Opcodes.V17
     case "18" => asm.Opcodes.V18
     case "19" => asm.Opcodes.V19
-    case "20" => asm.Opcodes.V20
+    case "20" => asm.Opcodes.V20*/
   }
 
   lazy val majorVersion: Int = (classfileVersion & 0xFF)
