@@ -7,8 +7,6 @@ on:
     tags:
       - '**'
   pull_request:
-    branches-ignore:
-      - 'language-reference-stable'
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
@@ -256,6 +254,7 @@ jobs:
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip community_build]')
+           && !contains(github.event.pull_request.body, '[skip community_build_a]')
          )
          || (
            github.event_name == 'workflow_dispatch'
@@ -303,6 +302,7 @@ jobs:
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip community_build]')
+           && !contains(github.event.pull_request.body, '[skip community_build_b]')
          )
          || (
            github.event_name == 'workflow_dispatch'
@@ -350,6 +350,7 @@ jobs:
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip community_build]')
+           && !contains(github.event.pull_request.body, '[skip community_build_c]')
          )
          || (
            github.event_name == 'workflow_dispatch'
