@@ -200,7 +200,9 @@ object Inlines:
       // and its type parameters are instantiated.
       val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, fun.tpe.widen, coord = sym.coord).entered
       val unapply = DefDef(unapplySym.asTerm, argss =>
-        inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unapplySym))
+        val body = fun.appliedToArgss(argss).withSpan(unapp.span)
+        if body.symbol.is(Transparent) then inlineCall(body)(using ctx.withOwner(unapplySym))
+        else body
       )
       unapplySym1 = unapplySym
       List(unapply)
