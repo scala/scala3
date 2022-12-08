@@ -141,7 +141,7 @@ class ReplDriver(settings: Array[String],
     
     val jsEnv: JSEnv = new NodeJSEnv()
     val path = Paths.get(jsToRun)
-    val script = Input.Script(path)
+    val script = Input.CommonJSModule(path)
     val input = Seq(script)
     val config = RunConfig()
     val askableRun = new AskableJSComRun(jsEnv, config, input)      
