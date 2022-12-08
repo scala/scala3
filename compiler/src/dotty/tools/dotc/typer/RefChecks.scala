@@ -290,8 +290,13 @@ object RefChecks {
    *  TODO check that classes are not overridden
    *  TODO This still needs to be cleaned up; the current version is a straight port of what was there
    *       before, but it looks too complicated and method bodies are far too large.
+   *
+   *   @param isSubType  A function used for checking the subtype relationship between
+   *                     two types `tp1` and `tp2` when checking the compatibility
+   *                     between overriding pairs, with possible adaptations applied
+   *                     (e.g. box adaptation in capture checking).
    */
-  def checkAllOverrides(clazz: ClassSymbol)(using Context): Unit = {
+  def checkAllOverrides(clazz: ClassSymbol, isSubType: Context ?=> Symbol => (Type, Type) => Boolean = _ => (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Unit = {
     val self = clazz.thisType
     val upwardsSelf = upwardsThisType(clazz)
     var hasErrors = false
@@ -344,7 +349,8 @@ object RefChecks {
           isOverridingPair(member, memberTp, other, otherTp,
             fallBack = warnOnMigration(
               overrideErrorMsg("no longer has compatible type"),
-              (if (member.owner == clazz) member else clazz).srcPos, version = `3.0`))
+              (if (member.owner == clazz) member else clazz).srcPos, version = `3.0`),
+            isSubType = isSubType(member))
         catch case ex: MissingType =>
           // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
           // because in that case we might access types that are not members of the qualifier.
