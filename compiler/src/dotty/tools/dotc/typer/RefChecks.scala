@@ -362,7 +362,16 @@ object RefChecks {
        *  Type members are always assumed to match.
        */
       def trueMatch: Boolean =
-        member.isType || memberTp(self).matches(otherTp(self))
+        member.isType || withMode(Mode.IgnoreCaptures) {
+          // `matches` does not perform box adaptation so the result here would be
+          // spurious during capture checking.
+          //
+          // Instead of parameterizing `matches` with the function for subtype checking
+          // with box adaptation, we simply ignore capture annotations here.
+          // This should be safe since the compatibility under box adaptation is already
+          // checked.
+          memberTp(self).matches(otherTp(self))
+        }
 
       def emitOverrideError(fullmsg: Message) =
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
