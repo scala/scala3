@@ -235,7 +235,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(GlobalPrec) {
           "("
           ~ keywordText("using ").provided(tp.isContextualMethod)
-          ~ keywordText("erased ").provided(tp.isErasedMethod)
           ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
           ~ paramsText(tp)
           ~ ")"

@@ -1851,8 +1851,7 @@ object Types {
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
           result1, isContextual, erasedParams)
-        if alwaysDependent || mt.isResultDependent then
-          RefinedType(funType, nme.apply, mt)
+        if alwaysDependent || mt.isResultDependent then RefinedType(funType, nme.apply, mt)
         else funType
     }
 
@@ -3702,7 +3701,7 @@ object Types {
             val params = if (hasErasedParams)
               tp.paramInfos
                 .zip(tp.erasedParams)
-                .flatMap((p, e) => if e then None else Some(p))
+                .collect { case (param, isErased) if !isErased => param }
             else tp.paramInfos
             resultSignature.prependTermParams(params, sourceLanguage)
           case tp: PolyType =>
@@ -4053,7 +4052,7 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, erasedParams: List[Boolean] = List()): MethodTypeCompanion =
+    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, erasedParams: List[Boolean] = Nil): MethodTypeCompanion =
       val hasErased = erasedParams.contains(true)
       if (isContextual)
         if (hasErased) ErasedContextualMethodType(erasedParams) else ContextualMethodType

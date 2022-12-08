@@ -1832,7 +1832,7 @@ object desugar {
             cpy.ByNameTypeTree(parent)(annotate(tpnme.retainsByName, restpt))
           case _ =>
             annotate(tpnme.retains, parent)
-      case f: FunctionWithMods if f.erasedParams.contains(true) => makeFunctionWithValDefs(f, pt)
+      case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
     }
     desugared.withSpan(tree.span)
   }

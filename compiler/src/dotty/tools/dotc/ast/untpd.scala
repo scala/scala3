@@ -80,6 +80,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers, val erasedParams: List[Boolean])(implicit @constructorOnly src: SourceFile)
     extends Function(args, body) {
       assert(args.length == erasedParams.length)
+
+      def hasErasedParams = erasedParams.contains(true)
     }
 
   /** A polymorphic function type */

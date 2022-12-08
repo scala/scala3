@@ -290,7 +290,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
         "[applied to ("
         ~ keywordText("using ").provided(tp.isContextualMethod)
-        ~ keywordText("erased ").provided(tp.isErasedMethod)
         ~ argsText
         ~ ") returning "
         ~ toText(resultType)
