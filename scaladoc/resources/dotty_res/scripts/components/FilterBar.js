@@ -89,7 +89,7 @@ class FilterBar extends Component {
     const noResultContainer = document.querySelector("#no-results-container");
     if (elementsDisplayed.length === 0 && !noResultContainer) {
       const emptySpace = document.querySelector("#Value-members");
-      emptySpace.insertAdjacentHTML(
+        emptySpace.insertAdjacentHTML(
         "beforeend",
         `<div id='no-results-container'>
           <div class="no-result-icon" ></div>
@@ -98,6 +98,9 @@ class FilterBar extends Component {
           <button class='clearButton label-only-button'>Clear all filters</button>
         </div>`,
       );
+    }
+    if(noResultContainer && elementsDisplayed.length !== 0) {
+      noResultContainer.remove();
     }
   };
 
