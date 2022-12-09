@@ -4,24 +4,23 @@
   padding-bottom: calc(1.5 * var(--base-spacing));
   overflow-x: scroll;
   position: relative;
+   border-radius: 4px;
 }
 
-.subtypes > span {
-  position: absolute;
-  top: calc(1 * var(--base-spacing));
-  right: calc(1 * var(--base-spacing));
+.subtypes > div {
+  display: block;
 }
 
 .subtypes > div {
   display: none;
-  margin-bottom: 6px;
 }
 
+
+.subtypes > div:nth-child(1),
 .subtypes > div:nth-child(2),
 .subtypes > div:nth-child(3),
 .subtypes > div:nth-child(4),
-.subtypes > div:nth-child(5),
-.subtypes > div:nth-child(6) {
+.subtypes > div:nth-child(5) {
   display: block;
 }
 

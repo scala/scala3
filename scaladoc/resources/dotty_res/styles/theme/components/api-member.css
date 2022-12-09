@@ -1,14 +1,13 @@
 .documentableElement {
-  background-color: var(--action-primary-background-default-solid);
-  padding: calc(3 * var(--base-spacing));
-  border-radius: 4px;
-  margin-bottom: calc(3 * var(--base-spacing));
+  padding: 13px 0 12px;
   color: var(--text-primary);
   position: relative;
+  border-top: 1px solid var(--border-default);
 }
 
 .documentableElement:last-child {
   margin-bottom: 0;
+  border-top: 1px solid var(--border-default);
 }
 
 .documentableElement .signature {
@@ -16,12 +15,31 @@
   line-height: 1.5;
 }
 
-.documentableElement:hover {
+.documentableElement .signature-long {
+  display: none;
+}
+
+.documentableElement:not(.expand):hover,
+.documentableElement-expander {
   cursor: pointer;
 }
 
 .documentableElement .documentableBrief {
   color: var(--text-secondary);
+}
+
+.documentableElement .documentableBrief p:first-of-type,
+.documentableElement.expand > div .cover .doc p:first-of-type {
+  margin-block: calc(.5 * var(--base-spacing)) 0;
+}
+
+.documentableElement .doc p,
+.documentableElement .doc .snippet  {
+  margin-block: calc(2 * var(--base-spacing));
+}
+
+.documentableElement.expand .doc > :last-child {
+  margin-block-end: 0;
 }
 
 .documentableElement .annotations {
@@ -32,8 +50,28 @@
   display: none;
 }
 
+.documentableElement.expand {
+color: var(--text-secondary);
+}
+
 .documentableElement.expand > div .cover {
   display: block;
+}
+
+.attributes.attributes-small > dt {
+  padding-block: calc(1.5 * var(--base-spacing));
+}
+
+.attributes.attributes-small > dd {
+  padding-block: calc(1 * var(--base-spacing));
+}
+
+.documentableElement.expand {
+  padding-block-end: calc(4 * var(--base-spacing));
+}
+
+.documentableElement.expand > div .cover dd {
+  color: var(--text-primary);
 }
 
 .documentableElement.expand .annotations {
@@ -44,15 +82,38 @@
   display: none;
 }
 
-.documentableElement .icon-button {
-  position: absolute;
-  top: calc(3 * var(--base-spacing));
-  right: calc(3 * var(--base-spacing));
+.documentableElement.expand .signature {
+  color: var(--text-primary);
+}
+
+.documentableElement.expand .signature-long {
+  display: inline;
+}
+
+.documentableElement.expand .extender {
   display: none;
 }
 
+.documentableElement .icon-button {
+  position: absolute;
+  left: calc(3.5 * var(--base-spacing) / -1);
+  top: calc(2 * var(--base-spacing));
+}
+
+@media (max-width: 480px) {
+
+  .documentableElement .icon-button {
+    left: calc(3 * var(--base-spacing) / -1);
+  }
+
+}
+
 .documentableElement:hover .icon-button {
-  display: block;
+  display: inline;
+}
+
+.documentableElement .attributes {
+  margin-bottom: 0;
 }
 
 [t="k"] {

@@ -1,5 +1,7 @@
 package dotty.tools.scaladoc
 
+import scala.concurrent.{ Future, ExecutionContext }
+import concurrent.ExecutionContext.Implicits.global
 import utils.HTML._
 
 import scala.scalajs.js.Date
@@ -8,20 +10,20 @@ import org.scalajs.dom.ext._
 import org.scalajs.dom.html.Input
 import scala.scalajs.js.timers._
 import scala.concurrent.duration.{span => dspan, _}
-
 import scala.util.chaining._
 
 import java.net.URI
 
-class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
+class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val initialChunkSize = 5
   val resultsChunkSize = 20
+  def pathToRoot() = window.document.documentElement.getAttribute("data-pathToRoot")
   extension (p: PageEntry)
     def toHTML(boldChars: Set[Int]) =
       val location = if (p.isLocationExternal) {
         p.location
       } else {
-        Globals.pathToRoot + p.location
+        pathToRoot() + p.location
       }
 
       val extensionTargetMessage = if (p.extensionTarget.isEmpty()) {
@@ -30,27 +32,32 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         " extension on " + p.extensionTarget
       }
 
-      div(cls := "scaladoc-searchbar-row mono-small-inline", "result" := "")(
-        a(href := location)(
-          p.fullName.zipWithIndex.map((c, i) => if boldChars.contains(i) then b(c.toString) else c.toString),
-          span(i(extensionTargetMessage)),
-          span(cls := "pull-right scaladoc-searchbar-location")(p.description)
-        ).tap { _.onclick = (event: Event) =>
-          if (document.body.contains(rootDiv)) {
-            document.body.removeChild(rootDiv)
-          }
+      a(cls := "scaladoc-searchbar-row mono-small-inline", href := location)(
+        p.fullName.zipWithIndex.map((c, i) =>
+          if c == ' ' then aRaw("&nbsp;")
+          else if boldChars.contains(i) then b(c.toString)
+          else c.toString),
+        span(i(extensionTargetMessage)),
+        span(cls := "pull-right scaladoc-searchbar-location")(p.description),
+        if p.extraDescription == "" then ""
+        else div(cls := "scaladoc-searchbar-extra-info")(p.extraDescription)
+      ).tap { _.onclick = (event: Event) =>
+        if (document.body.contains(rootDiv)) {
+          document.body.removeChild(rootDiv)
         }
-      ).tap { wrapper => wrapper.addEventListener("mouseover", {
+      }.tap { wrapper =>
+        wrapper.addEventListener("mouseover", {
           case e: MouseEvent => handleHover(wrapper)
         })
       }
+
 
   extension (m: InkuireMatch)
     def toHTML =
       val location = if (m.pageLocation(0) == 'e') {
           m.pageLocation.substring(1)
         } else {
-          Globals.pathToRoot + m.pageLocation.substring(1)
+          pathToRoot() + m.pageLocation.substring(1)
         }
 
       div(cls := "scaladoc-searchbar-row mono-small-inline", "result" := "", "inkuire-result" := "", "mq" := m.mq.toString)(
@@ -91,48 +98,81 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       span(cls := s"micon ${kind.take(2)} $customClass"),
       span(kind)
     )
-
-  def handleNewFluffQuery(matchers: List[Matchers]) =
-    val result: List[(PageEntry, Set[Int])] = engine.query(matchers)
-    val fragment = document.createDocumentFragment()
-    def createLoadMoreElement =
-      div(cls := "scaladoc-searchbar-row mono-small-inline", "loadmore" := "")(
-        a(
-          span("Load more")
+  def handleNewFluffQuery(query: NameAndKindQuery) =
+    val searchTask: Future[List[MatchResult]] = Future(engine.query(query))
+    searchTask.map { result =>
+      if result.isEmpty then
+        val noResultsDiv = div(id := "no-results-container")(
+          div(cls := "no-result-icon"),
+          h2(cls := "h200 no-result-header")("No results match your filter criteria."),
+          p(cls := "body-small no-result-content")("Try adjusting or clearing your filters", p("to display better result")),
+          button(id := "searchbar-clear-button", cls := "clearButton label-only-button")("Clear all filters").tap(_.addEventListener("click", _ => {
+            inputElem.value = ""
+            inputElem.dispatchEvent(new Event("input"))
+          }))
         )
-      ).tap { loadMoreElement => loadMoreElement
-        .addEventListener("mouseover", _ => handleHover(loadMoreElement))
-      }
+        resultsDiv.scrollTop = 0
+        resultsDiv.appendChild(noResultsDiv)
+      else
+        val resultWithDocBonus = result
+          .map(entry =>
+          // add bonus score for static pages when in documentation section
+          if entry.pageEntry.kind == "static" && !window.location.href.contains("api") then
+            entry.copy(score = entry.score + 7)
+          else entry
+        )
+        val fragment = document.createDocumentFragment()
 
-    result.groupBy(_._1.kind).map {
-      case (kind, entries) =>
-        val kindSeparator = createKindSeparator(kind)
-        val htmlEntries = entries.map((p, set) => p.toHTML(set))
-        val loadMoreElement = createLoadMoreElement
-        def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
-          loadMoreElement.onclick = (event: Event) => {
-            entries.take(resultsChunkSize).foreach(_.classList.remove("hidden"))
-            val nextElems = entries.drop(resultsChunkSize)
-            if nextElems.nonEmpty then loadMoreResults(nextElems) else loadMoreElement.classList.add("hidden")
+        def createLoadMoreElement =
+          div(cls := "scaladoc-searchbar-row mono-small-inline", "loadmore" := "")(
+            a(
+              span("Load more")
+            )
+          ).tap { loadMoreElement =>
+            loadMoreElement
+              .addEventListener("mouseover", _ => handleHover(loadMoreElement))
           }
+
+        val groupedResults = resultWithDocBonus.groupBy(_.pageEntry.kind)
+        val groupedResultsSortedByScore = groupedResults.map {
+          case (kind, results) => (kind, results.maxByOption(_.score).map(_.score), results)
+        }.toList.sortBy {
+          case (_, topScore, _) => -topScore.getOrElse(0)
+        }.map {
+          case (kind, _, results) => (kind, results.take(40)) // limit to 40 results per category
         }
 
-        fragment.appendChild(kindSeparator)
-        htmlEntries.foreach(fragment.appendChild)
-        fragment.appendChild(loadMoreElement)
+        groupedResultsSortedByScore.map {
+          case (kind, results) =>
+            val kindSeparator = createKindSeparator(kind)
+            val htmlEntries = results.map(result => result.pageEntry.toHTML(result.indices))
+            val loadMoreElement = createLoadMoreElement
 
-        val nextElems = htmlEntries.drop(initialChunkSize)
-        if nextElems.nonEmpty then {
-          nextElems.foreach(_.classList.add("hidden"))
-          loadMoreResults(nextElems)
-        } else {
-          loadMoreElement.classList.add("hidden")
+            def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
+              loadMoreElement.onclick = (event: Event) => {
+                entries.take(resultsChunkSize).foreach(_.classList.remove("hidden"))
+                val nextElems = entries.drop(resultsChunkSize)
+                if nextElems.nonEmpty then loadMoreResults(nextElems) else loadMoreElement.classList.add("hidden")
+              }
+            }
+
+            fragment.appendChild(kindSeparator)
+            htmlEntries.foreach(fragment.appendChild)
+            fragment.appendChild(loadMoreElement)
+
+            val nextElems = htmlEntries.drop(initialChunkSize)
+            if nextElems.nonEmpty then {
+              nextElems.foreach(_.classList.add("hidden"))
+              loadMoreResults(nextElems)
+            } else {
+              loadMoreElement.classList.add("hidden")
+            }
+
         }
 
+        resultsDiv.scrollTop = 0
+        resultsDiv.appendChild(fragment)
     }
-
-    resultsDiv.scrollTop = 0
-    resultsDiv.appendChild(fragment)
 
   def handleRecentQueries(query: String) = {
     val recentQueries = RecentQueryStorage.getData
@@ -167,13 +207,13 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     resultsDiv.scrollTop = 0
     resultsDiv.onscroll = (event: Event) => { }
     val fragment = document.createDocumentFragment()
-    timeoutHandle = setTimeout(600.millisecond) {
+    timeoutHandle = setTimeout(300.millisecond) {
       clearResults()
       handleRecentQueries(query)
       parser.parse(query) match {
-        case EngineMatchersQuery(matchers) =>
-            handleNewFluffQuery(matchers)
-        case BySignature(signature) =>
+        case query: NameAndKindQuery =>
+            handleNewFluffQuery(query)
+        case SignatureQuery(signature) =>
             val loading = createLoadingAnimation
             val kindSeparator = createKindSeparator("inkuire")
             resultsDiv.appendChild(loading)
@@ -257,7 +297,11 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       inputContainer,
       resultsDiv
     ).tap { elem =>
-      elem.addEventListener("mousedown", (e: Event) => e.stopPropagation())
+      elem.addEventListener("mousedown", (e: Event) =>
+        val evTargetId = e.target.asInstanceOf[html.Element].id
+
+        if evTargetId != "scaladoc-searchbar" then
+          e.stopPropagation())
       elem.addEventListener("keydown", {
         case e: KeyboardEvent =>
           if e.keyCode == 40 then handleArrowDown()
@@ -270,8 +314,8 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     val searchbarFooter = div(id := "searchbar-footer", cls := "body-small")(
       span(cls := "searchbar-footer-left-container")(
         span("Smart search:"),
-        span(b("CC "), "to find CamcelCase phrases"),
-        span(b("A=>B "), "to find CamcelCase signatures"),
+        span(b("CC "), "to find CamelCase phrases"),
+        span(b("A=>B "), "to find CamelCase signatures"),
       ),
       span(cls := "searchbar-footer-right-container")(
         span(b("Esc "), "to close"),

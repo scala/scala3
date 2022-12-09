@@ -172,6 +172,7 @@ case class Member(
   knownChildren: Seq[LinkToType] = Nil,
   companion: Option[(Kind, DRI)] = None,
   deprecated: Option[Annotation] = None,
+  experimental: Option[Annotation] = None
 ):
   def needsOwnPage: Boolean =
     def properKind(kind: Kind): Boolean = kind match

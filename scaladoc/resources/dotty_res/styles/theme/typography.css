@@ -1,3 +1,8 @@
+* {
+  /*text-rendering: geometricPrecision;*/
+  font-weight: initial;
+}
+
 @font-face {
   font-family: "Inter-Bold";
   src: url("../../fonts/Inter-Bold.ttf") format("truetype");
@@ -33,6 +38,10 @@
   font-size: 32px;
   line-height: 40px;
   font-family: "Inter-SemiBold";
+}
+
+.h600 .single {
+  padding-left: 16px;
 }
 
 .h500 {
@@ -73,7 +82,7 @@
 
 .body-large {
   font-size: 20px;
-  line-height: 24px;
+  line-height: 32px;
   font-family: "Inter-Regular";
 }
 
@@ -102,7 +111,7 @@
 }
 
 .mono-small-block {
-  font-size: 15px;
+  font-size: 13px;
   line-height: 20px;
   font-family: "FiraCode-Regular";
 }

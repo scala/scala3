@@ -48,7 +48,7 @@ For example, continuing with the previous definitions,
   g((ctx: ExecutionContext) ?=> f(3)(using ctx)) // is left as it is
 ```
 
-### Example: Builder Pattern
+## Example: Builder Pattern
 
 Context function types have considerable expressive power. For
 instance, here is how they can support the "builder pattern", where
@@ -112,7 +112,7 @@ With that setup, the table construction code above compiles and expands to:
     }(using $t)
   }
 ```
-### Example: Postconditions
+## Example: Postconditions
 
 As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque type aliases, context function types, and extension methods to provide a zero-overhead abstraction.
 
@@ -146,7 +146,7 @@ val s =
   assert(result == 6)
   result
 ```
-### Reference
+## Reference
 
 For more information, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
 (which uses a different syntax that has been superseded).

@@ -56,7 +56,6 @@ subsection:
           - page: reference/metaprogramming/macros-spec.md
             hidden: true
           - page: reference/metaprogramming/simple-smp.md # description of a simplified metaprogramming language, this might not be the best place for it
-            hidden: true
           - page: reference/metaprogramming/staging.md
           - page: reference/metaprogramming/reflection.md
           - page: reference/metaprogramming/tasty-inspect.md
@@ -172,11 +171,13 @@ subsection:
       - page: contributing/debugging.md
       - title: IDEs and Tools
         directory: tools
+        index: contributing/tools/index.md
         subsection:
           - page: contributing/tools/ide.md
           - page: contributing/tools/mill.md
           - page: contributing/tools/scalafix.md
       - title: Procedures
+        index: contributing/procedures/index.md
         subsection:
           - page: contributing/procedures/release.md
           - page: contributing/procedures/vulpix.md

@@ -20,7 +20,7 @@ val circle = Circle(0, 0, 1)
 circle.circumference
 ```
 
-### Translation of Extension Methods
+## Translation of Extension Methods
 
 An extension method translates to a specially labelled method that takes the leading parameter section as its first argument list. The label, expressed
 as `<extension>` here, is compiler-internal. So, the definition of `circumference` above translates to the following method, and can also be invoked as such:
@@ -31,7 +31,7 @@ as `<extension>` here, is compiler-internal. So, the definition of `circumferenc
 assert(circle.circumference == circumference(circle))
 ```
 
-### Operators
+## Operators
 
 The extension method syntax can also be used to define operators. Examples:
 
@@ -63,7 +63,7 @@ compiler preprocesses an infix operation `x +: xs` to `xs.+:(x)`, so the extensi
 method ends up being applied to the sequence as first argument (in other words, the
 two swaps cancel each other out). See [here for details](./right-associative-extension-methods.md).
 
-### Generic Extensions
+## Generic Extensions
 
 It is also possible to extend generic types by adding type parameters to an extension. For instance:
 
@@ -109,7 +109,7 @@ extension [T](x: T)(using n: Numeric[T])
   def + (y: T): T = n.plus(x, y)
 ```
 
-### Collective Extensions
+## Collective Extensions
 
 Sometimes, one wants to define several extension methods that share the same
 left-hand parameter type. In this case one can "pull out" the common parameters into
@@ -166,7 +166,7 @@ extension [T](xs: List[T])(using Ordering[T])
     xs.zipWithIndex.collect { case (x, i) if x <= limit => i }
 ```
 
-### Translation of Calls to Extension Methods
+## Translation of Calls to Extension Methods
 
 To convert a reference to an extension method, the compiler has to know about the extension
 method. We say in this case that the extension method is _applicable_ at the point of reference.
@@ -280,7 +280,7 @@ def position(s: String)(ch: Char, n: Int): Int =
   else n
 ```
 
-### Syntax
+## Syntax
 
 Here are the syntax changes for extension methods and collective extensions relative
 to the [current syntax](../syntax.md).

@@ -1,13 +1,18 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--background-default);
+  background-color: var(--background-main);
   height: 100%;
   overflow: hidden;
+  scroll-behavior: smooth;;
+}
+
+p {
+  margin-block: calc(3 * var(--base-spacing));
 }
 
 [id] {
-  scroll-margin-top: calc(10 * var(--base-spacing));
+  scroll-margin-top: calc(18 * var(--base-spacing));
 }
 
 #container {

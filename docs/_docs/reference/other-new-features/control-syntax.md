@@ -41,7 +41,7 @@ The rules in detail are:
  - A `catch` can be followed by a single case on the same line.
    If there are multiple cases, these have to appear within braces (just like in Scala 2)
    or an indented block.
-### Rewrites
+## Rewrites
 
 The Scala 3 compiler can rewrite source code from old syntax to new syntax and back.
 When invoked with options `-rewrite -new-syntax` it will rewrite from old to new syntax, dropping parentheses and braces in conditions and enumerators. When invoked with options `-rewrite -old-syntax` it will rewrite in the reverse direction, inserting parentheses and braces as needed.

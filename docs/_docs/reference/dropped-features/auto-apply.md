@@ -84,13 +84,13 @@ class B extends A:
 Methods overriding Java or Scala 2 methods are again exempted from this
 requirement.
 
-### Migrating code
+## Migrating code
 
 Existing Scala code with inconsistent parameters can still be compiled
 in Scala 3 under `-source 3.0-migration`. When paired with the `-rewrite`
 option, the code will be automatically rewritten to conform to Scala 3's
 stricter checking.
 
-### Reference
+## Reference
 
 For more information, see [Issue #2570](https://github.com/lampepfl/dotty/issues/2570) and [PR #2716](https://github.com/lampepfl/dotty/pull/2716).

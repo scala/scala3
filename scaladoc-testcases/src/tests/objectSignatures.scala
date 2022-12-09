@@ -13,7 +13,7 @@ trait C
 
 object Base
 
-object A2 extends A[String] with C
+object A2 extends A[String], C
 
 object <
 

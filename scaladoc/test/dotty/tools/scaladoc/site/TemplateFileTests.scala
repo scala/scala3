@@ -139,7 +139,7 @@ class TemplateFileTests:
         |<h1 class="h500"><a href="#test-page" class="anchor"></a>Test page</h1>
         |<p>Hello world!!</p>
         |</section><section id="test-page-end">
-        |<h2 class="h300"><a href="#test-page-end" class="anchor"></a>Test page end</h2>
+        |<h2 class="h500"><a href="#test-page-end" class="anchor"></a>Test page end</h2>
         |</section>
         |</div>""".stripMargin
 

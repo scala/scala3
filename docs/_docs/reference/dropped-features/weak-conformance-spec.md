@@ -38,7 +38,7 @@ assigning a type to a constant expression. The new rule is:
     - an `Int -> Short` conversion of a constant
     `c` if `c.toShort.toInt != c`.
 
-### Examples
+## Examples
 
 ```scala
 inline val b = 33

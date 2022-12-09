@@ -1,4 +1,9 @@
-# GADTs - Broad overview
+---
+layout: doc-page
+title: "GADTs - Broad overview"
+---
+
+## Introduction
 
 There are multiple levels to the implementation. They deal with slightly different problems. The most important levels are the following ones:
 
@@ -18,9 +23,9 @@ There are also other parts to supporting GADTs. Roughly in order of importance, 
     1.  Attachment key is named `inferredGadtConstraints`.
 4.  When we select members on a type that may have GADT constraints, we perform special "healing" by approximating the type using those constraints. We cannot take the constraints into account because member lookup is cached, and GADT constraints are only valid for specific scopes.
 
-# Useful widgets
+## Useful widgets
 
-## Expr
+### Expr
 
 This is the classical GADT example:
 
@@ -36,7 +41,7 @@ enum Expr[T] {
 }
 ```
 
-## EQ
+### EQ
 
 The following enum will result in an equality constraint between `S` and `T` if we match on it:
 
@@ -46,7 +51,7 @@ enum EQ[S, T] {
 }
 ```
 
-## SUB
+### SUB
 
 The following enum will result in a subtyping constraint `S <: T` if we match on it:
 
@@ -56,9 +61,9 @@ enum SUB[-S, +T] {
 }
 ```
 
-# Details of above
+## Details of above
 
-## What abstract types can have GADT constraints
+### What abstract types can have GADT constraints
 
 Right now, we record GADT constraints for:
 
@@ -67,9 +72,9 @@ Right now, we record GADT constraints for:
 
 There is a branch on the way which will also record them for type members (so path-dependent types) and singleton types. It has a paper associated: "Implementing path-depepdent GADTs for Scala 3".
 
-## What are necessary relationships? Any examples?
+### What are necessary relationships? Any examples?
 
-### Covariance means no constraint is necessary
+#### Covariance means no constraint is necessary
 
 Standard (non-case) classes allow "strange" inheritance which means that we cannot infer any information from covariant type parameters.
 
@@ -90,7 +95,7 @@ class Weird(list: List[String]) extends IntList with Expr[Nothing]
 
 Case classes have a special check which disallows inheritance like `Weird`. This means we can infer extra information from them.
 
-## Breaking down the constraints
+### Breaking down the constraints
 
 ```scala
 class Expr[A]
@@ -113,9 +118,9 @@ def foo[T](e: Expr[List[T]]): T =
   }
 ```
 
-## Relation betweeen GadtConstraint and OrderingConstraint
+### Relation betweeen GadtConstraint and OrderingConstraint
 
-### Internal and external types
+#### Internal and external types
 
 GadtConstraint uses OrderingConstraint as the datastructure to record information about GADT constraints.
 
@@ -127,9 +132,9 @@ To solve this, GadtConstraint internally creates TypeParamRefs which it adds to 
 
 The TypeParamRefs and TypeVars registered in one constraint cannot ever be present in types mentioned in the other type constraint. The internal TypeParamRefs and TypeVars cannot ever leak out of the GadtConstraint. We cannot ever record a bound in GadtConstraint which mentions TypeParamRefs used for type inference. (That part is ensured by the way TypeComparer is organised &#x2013; we will always try to record bounds in the "normal" constraint before recording a GADT bound.)
 
-# Other details
+## Other details
 
-## TypeComparer approximations
+### TypeComparer approximations
 
 TypeComparer sometimes approximates the types it compares. Let's see an example based on these definitions:
 
@@ -142,11 +147,11 @@ when comparing if `IntList <: Expr[Int]`, `TypeComparer` will approximate `IntLi
 
 The variables which TypeComparer sets are `approxState` and `frozenGadt`.
 
-## Necessary/sufficient either
+### Necessary/sufficient either
 
 TypeComparer sometimes needs to approximate some constraints, specifically when dealing with intersection and union types. The way this approximation works changes if we're currently inferring GADT constraints. This is hopefully documented well in TypeComparer in doc comments for `necessaryEither` and `sufficientEither`.
 
-## Types bound in patterns
+### Types bound in patterns
 
 ```scala
 (list : List[Int]) match {
@@ -161,7 +166,7 @@ TypeComparer sometimes needs to approximate some constraints, specifically when 
 }
 ```
 
-## Internal structure of OrderingConstraint
+### Internal structure of OrderingConstraint
 
 Imagine we have two type parameters in scope, `A` and `B`.
 
@@ -184,19 +189,19 @@ B <: A
 
 The first two constraints are "entries" &#x2013; they are easy to look up whenever we ask for bounds of `A` or `B`. The third constraint is an ordering &#x2013; it helps with correctly propagating the bounds we record.
 
-# Possible broad improvements
+## Possible broad improvements
 
-## Allow OrderingConstraint to record bounds for things other than TypeParamRefs
+### Allow OrderingConstraint to record bounds for things other than TypeParamRefs
 
 This would mean we no longer need to keep the bidirectional mapping in GadtConstraint.
 
-## Not mixing OrderingConstraint and ConstraintHandling in GadtConstraint
+### Not mixing OrderingConstraint and ConstraintHandling in GadtConstraint
 
 GadtConstraint right now mixes OrderingConstraint and ConstraintHandling. The first one is supposed to be the immutable constraint datastructure. The second one implements mutable functionality around a variable containing the immutable datastructure.
 
 GadtConstraint mixes them both. Things would be better organised if GadtConstraint was split like the normal constraint.
 
-## Creating a separate TypeComparer for breaking down types into GADT constraints
+### Creating a separate TypeComparer for breaking down types into GADT constraints
 
 TypeComparer is biased towards one specific way of approximating constraints. When we infer types, it's ok to be "optimistic". When inferring GADT constraints, we should be as pessimistic as possible, in order to only infer constraints which are necessary.
 

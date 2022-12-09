@@ -1319,6 +1319,7 @@ object Build {
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
+  val generateStableScala3Documentation  = inputKey[Unit]("Generate documentation for stable dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
 
   val generateReferenceDocumentation = inputKey[Unit]("Generate language reference documentation for Scala 3")
@@ -1460,6 +1461,12 @@ object Build {
         }
 
         writeAdditionalFiles.dependsOn(generateDocumentation(config))
+      }.evaluated,
+
+      generateStableScala3Documentation := Def.inputTaskDyn {
+        val extraArgs = spaceDelimited("<version>").parsed
+        val config = stableScala3(extraArgs.head)
+        generateDocumentation(config)
       }.evaluated,
 
       generateTestcasesDocumentation := Def.taskDyn {
@@ -1857,22 +1864,22 @@ object ScaladocConfigs {
       case None => s"${sourcesPrefix}github://lampepfl/dotty/$v$outputPrefix"
     }
 
-  lazy val DefaultGenerationConfig = Def.task {
-    def distLocation = (dist / pack).value
-    def projectVersion = version.value
+  def defaultSourceLinks(version: String = dottyNonBootstrappedVersion, refVersion: String = dottyVersion) = Def.task {
     def stdLibVersion = stdlibVersion(NonBootstrapped)
-    def scalaLib = findArtifactPath(externalCompilerClasspathTask.value, "scala-library")
-    def dottyLib = (`scala3-library` / Compile / classDirectory).value
     def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
-
-    def defaultSourceLinks: SourceLinks = SourceLinks(
+    SourceLinks(
       List(
-        scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
-        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
-        dottySrcLink(referenceVersion),
+        scalaSrcLink(stdLibVersion, srcManaged(version, "scala") + "="),
+        dottySrcLink(refVersion, srcManaged(version, "dotty") + "=", "#library/src"),
+        dottySrcLink(refVersion),
         "docs=github://lampepfl/dotty/main#docs"
       )
     )
+  }
+
+  lazy val DefaultGenerationConfig = Def.task {
+    def distLocation = (dist / pack).value
+    def projectVersion = version.value
     def socialLinks = SocialLinks(List(
       "github::https://github.com/lampepfl/dotty",
       "discord::https://discord.com/invite/scala",
@@ -1890,7 +1897,7 @@ object ScaladocConfigs {
       List(),
       ProjectVersion(projectVersion),
       GenerateInkuire(true),
-      defaultSourceLinks,
+      defaultSourceLinks().value,
       skipByRegex,
       skipById,
       projectLogo,
@@ -1980,5 +1987,32 @@ object ScaladocConfigs {
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
       .withTargets(roots)
+  }
+
+  def stableScala3(version: String) = Def.task {
+    Scala3.value
+      .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped", version).value)
+      .add(ProjectVersion(version))
+      .add(SnippetCompiler(
+        List(
+          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/quoted=compile",
+          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/compiletime=compile"
+        )
+      ))
+      .add(CommentSyntax(List(
+        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src=markdown",
+        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src=wiki",
+        "wiki"
+      )))
+      .add(DocRootContent(s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src/rootdoc.txt"))
+      .withTargets(
+        Seq(
+          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
+          s"tmp/interfaces/target/classes",
+          s"out/bootstrap/tasty-core-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes"
+        )
+      )
+      .remove[SiteRoot]
+      .remove[ApiSubdirectory]
   }
 }
