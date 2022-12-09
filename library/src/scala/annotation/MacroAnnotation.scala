@@ -34,7 +34,8 @@ trait MacroAnnotation extends StaticAnnotation:
    *        case DefDef(name, TermParamClause(param  :: Nil) :: Nil, tpt, Some(rhsTree)) =>
    *          (param.tpt.tpe.asType, tpt.tpe.asType) match
    *            case ('[t], '[u]) =>
-   *              val cacheSymbol = Symbol.newUniqueVal(Symbol.spliceOwner, name + "Cache", TypeRepr.of[mutable.Map[t, u]], Flags.Private, Symbol.noSymbol)
+   *              val cacheName = Symbol.freshName(name + "Cache")
+   *              val cacheSymbol = Symbol.newVal(Symbol.spliceOwner, cacheName, TypeRepr.of[mutable.Map[t, u]], Flags.Private, Symbol.noSymbol)
    *              val cacheRhs =
    *                given Quotes = cacheSymbol.asQuotes
    *                '{ mutable.Map.empty[t, u] }.asTerm
@@ -60,10 +61,10 @@ trait MacroAnnotation extends StaticAnnotation:
    *  ```
    *  and the macro will modify the definition to create
    *  ```scala
-   *   val fibCache =
+   *   val fibCache$macro$1 =
    *     scala.collection.mutable.Map.empty[Int, Int]
    *   def fib(n: Int): Int =
-   *     fibCache.getOrElseUpdate(
+   *     fibCache$macro$1.getOrElseUpdate(
    *       n,
    *       {
    *         println(s"compute fib of $n")

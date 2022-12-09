@@ -8,7 +8,8 @@ class memoize extends MacroAnnotation {
     import quotes.reflect._
     tree match
       case DefDef(name, params, tpt, Some(fibTree)) =>
-        val cacheSymbol = Symbol.newUniqueVal(Symbol.spliceOwner, name + "Cache", TypeRepr.of[Map[Int, Int]], Flags.EmptyFlags, Symbol.noSymbol)
+        val cacheName = Symbol.freshName(name + "Cache")
+        val cacheSymbol = Symbol.newVal(Symbol.spliceOwner, cacheName, TypeRepr.of[Map[Int, Int]], Flags.EmptyFlags, Symbol.noSymbol)
         val cacheRhs =
           given Quotes = cacheSymbol.asQuotes
           '{Map.empty[Int, Int]}.asTerm
