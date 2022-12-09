@@ -174,6 +174,6 @@ val z = l2(3.1)
 l1.mul(x, y) // type checks
 l1.mul(x, z) // error: found l2.Logarithm, required l1.Logarithm
 ```
-In general, one can think of an opaque type as being only transparent in the scope of `private[this]`.
+In general, one can think of an opaque type as being only transparent in the scope of `private[this]` (unless the type is a top level definition - in this case, it's transparent only within the file it's defined in).
 
 [More details](opaques-details.md)
