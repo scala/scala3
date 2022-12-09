@@ -7,4 +7,4 @@ trait B extends A
 
 trait C(a: Int)
 
-trait D(b: Double) extends C with A
+trait D(b: Double) extends C, A
