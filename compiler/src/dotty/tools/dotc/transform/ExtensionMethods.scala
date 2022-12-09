@@ -188,9 +188,17 @@ object ExtensionMethods {
       val companion = imeth.owner.companionModule
       val companionInfo = companion.info
       val candidates = companionInfo.decl(extensionName(imeth)).alternatives
-      val matching =
-        // See the documentation of `memberSignature` to understand why `.stripPoly.ensureMethodic` is needed here.
-        candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.info.stripPoly.ensureMethodic.signature)
+      def matches(candidate: SingleDenotation) =
+        FullParameterization.memberSignature(candidate.info) == imeth.info.stripPoly.ensureMethodic.signature
+          // See the documentation of `memberSignature` to understand why `.stripPoly.ensureMethodic` is needed here.
+        && (if imeth.targetName == imeth.name then
+              // imeth does not have a @targetName annotation, candidate should not have one either
+              candidate.symbol.targetName == candidate.symbol.name
+            else
+              // imeth has a @targetName annotation, candidate's target name must match
+              imeth.targetName == candidate.symbol.targetName
+           )
+      val matching = candidates.filter(matches)
       assert(matching.nonEmpty,
        i"""no extension method found for:
           |
@@ -203,6 +211,9 @@ object ExtensionMethods {
           | Candidates (signatures normalized):
           |
           | ${candidates.map(c => s"${c.name}:${c.info.signature}:${FullParameterization.memberSignature(c.info)}").mkString("\n")}""")
+      if matching.tail.nonEmpty then
+        // this case will report a "have the same erasure" error later at erasure pahse
+        report.log(i"mutiple extension methods match $imeth: ${candidates.map(c => i"${c.name}:${c.info}")}")
       matching.head.symbol.asTerm
     }
 }
