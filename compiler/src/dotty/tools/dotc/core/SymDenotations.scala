@@ -506,6 +506,30 @@ object SymDenotations {
     /** `fullName` where `.' is the separator character */
     def fullName(using Context): Name = fullNameSeparated(QualifiedName)
 
+    /** The fully qualified name on the JVM of the class corresponding to this symbol. */
+    def binaryClassName(using Context): String =
+      val builder = new StringBuilder
+      val pkg = enclosingPackageClass
+      if !pkg.isEffectiveRoot then
+        builder.append(pkg.fullName.mangledString)
+        builder.append(".")
+      val flatName = this.flatName
+      // Some companion objects are fake (that is, they're a compiler fiction
+      // that doesn't correspond to a class that exists at runtime), this
+      // can happen in two cases:
+      // - If a Java class has static members.
+      // - If we create constructor proxies for a class (see NamerOps#addConstructorProxies).
+      //
+      // In both cases it's may be vital that we don't return the object name.
+      // For instance, sending it to zinc: when sbt is restarted, zinc will inspect the binary
+      // dependencies to see if they're still on the classpath, if it
+      // doesn't find them it will invalidate whatever referenced them, so
+      // any reference to a fake companion will lead to extra recompilations.
+      // Instead, use the class name since it's guaranteed to exist at runtime.
+      val clsFlatName = if isOneOf(JavaDefined | ConstructorProxy) then flatName.stripModuleClassSuffix else flatName
+      builder.append(clsFlatName.mangledString)
+      builder.toString
+
     private var myTargetName: Name | Null = null
 
     private def computeTargetName(targetNameAnnot: Option[Annotation])(using Context): Name =
