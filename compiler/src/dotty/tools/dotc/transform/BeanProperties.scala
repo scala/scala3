@@ -55,7 +55,8 @@ class BeanProperties(thisPhase: DenotTransformer):
           a.hasOneOfMetaAnnotation(defn.BeanSetterMetaAnnot) || !a.hasOneOfMetaAnnotation(defn.BeanGetterMetaAnnot)
         }
         meth.addAnnotations(annots)
-        DefDef(meth, (params: List[List[Tree]]) => Assign(ref(valDef.symbol), params.head.head)).withSpan(meth.span)
+        def body(params: List[List[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
+        DefDef(meth, body).withSpan(meth.span)
       }
 
     def prefixedName(prefix: String, valName: Name) =

@@ -4,7 +4,7 @@ package transform
 import core._
 import DenotTransformers._
 import Contexts._
-import Phases.phaseOf
+import Phases.*
 import SymDenotations.SymDenotation
 import Denotations._
 import Symbols._
@@ -130,7 +130,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     def removeUnwantedAnnotations(denot: SymDenotation, metaAnnotSym: ClassSymbol): Unit =
       if (sym.annotations.nonEmpty) {
         val cpy = sym.copySymDenotation()
-        cpy.filterAnnotations(_.symbol.hasAnnotation(metaAnnotSym))
+        cpy.filterAnnotations(annot => atPhase(typerPhase)(annot.hasOneOfMetaAnnotation(metaAnnotSym)))
         cpy.installAfter(thisPhase)
       }
 

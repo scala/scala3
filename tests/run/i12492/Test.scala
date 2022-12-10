@@ -5,22 +5,25 @@ object Test:
 
     for (m <- cls.getDeclaredFields.sortBy(_.getName)) {
       m.setAccessible(true)
-      println(s"inspecting field ${m.getName}")
+      print(s"inspecting field ${m.getName}")
       for a <- m.getAnnotations().sortBy(_.annotationType.toString) do
-        println(a.annotationType)
+        print(s" @${a.annotationType.getName}")
+      println()
     }
 
     for (m <- cls.getDeclaredMethods.sortBy(_.getName)) {
       m.setAccessible(true)
-      println(s"inspecting method ${m.getName}")
+      print(s"inspecting method ${m.getName}")
       for a <- m.getAnnotations().sortBy(_.annotationType.toString) do
-        println(a.annotationType)
+        print(s" @${a.annotationType.getName}")
+      println()
     }
 
     for c <- cls.getDeclaredConstructors.sortBy(_.getName) do
       c.setAccessible(true)
       println(s"inspecting constructor ${c.getName}")
       for p <- c.getParameters.sortBy(_.getName) do
-        println(s"inspecting param ${p.getName}")
+        print(s"inspecting param ${p.getName}")
         for a <- p.getAnnotations.sortBy(_.annotationType.toString) do
-          println(a.annotationType)
+          print(s" @${a.annotationType.getName}")
+        println()

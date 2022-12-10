@@ -1,9 +1,13 @@
-inspecting field brandName
-interface MyColumnBase
-inspecting field companyName
-interface MyColumnBase
-inspecting method brandName
-inspecting method companyName
+inspecting field fieldName1 @MyColumnBase
+inspecting field fieldName2 @MyColumnBase
+inspecting field getterName1 @MyColumnBase
+inspecting field getterName2 @MyColumnBase
+inspecting method fieldName1
+inspecting method fieldName2
+inspecting method getterName1 @MyColumnBase
+inspecting method getterName2 @MyColumnBase
 inspecting constructor MyTable
-inspecting param brandName
-inspecting param companyName
+inspecting param fieldName1
+inspecting param fieldName2
+inspecting param getterName1
+inspecting param getterName2
