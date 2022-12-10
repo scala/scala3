@@ -2374,6 +2374,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if sym.isInlineMethod then
       if StagingContext.level > 0 then
         report.error("inline def cannot be within quotes", sym.sourcePos)
+      if sym.is(Given) && ddef.rhs.isInstanceOf[untpd.Function] then
+        report.error(InlineGivenCannotBeFunction(), ddef.rhs.srcPos)
       val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 

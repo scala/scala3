@@ -2769,4 +2769,23 @@ extends ReferenceMsg(CannotBeAccessedID):
     i"$whatCanNot be accessed as a member of $pre$where.$whyNot"
   def explain(using Context) = ""
 
+class InlineGivenCannotBeFunction()(using Context)
+extends SyntaxMsg(InlineGivenCannotBeFunctionID):
+  def msg(using Context) =
+    i"""inline given alias cannot have a function value as right-hand side.
+       |Either drop `inline` or rewrite the given with an explicit `apply` method."""
+  def explain(using Context) =
+    i"""A function value on the right-hand side of an inline given alias would expand to
+       |an anonymous class. Each application of the inline given would then create a
+       |fresh copy of that class, which can increase code size in surprising ways.
+       |For that reason, functions are disallowed as right hand sides of inline given aliases.
+       |You should either drop `inline` or rewrite to an explicit `apply` method. E.g.
+       |
+       |    inline given Conversion[A, B] = x => x.toB // error
+       |
+       |should be re-formulated as
+       |
+       |    inline given Conversion[A, B] with
+       |      def apply(x: A) = x.toB
+     """
 
