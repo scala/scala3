@@ -3,8 +3,8 @@ import scala.annotation.targetName
 opaque type Inlined[T] = T
 object Inlined:
   extension [T](inlined: Inlined[T]) def value: T = inlined
-  inline given fromValue[T <: Singleton]: Conversion[T, Inlined[T]] =
-    value => value
+  inline given fromValue[T <: Singleton]: Conversion[T, Inlined[T]] with
+    def apply(value: T) = value
   @targetName("fromValueWide")
   given fromValue[Wide]: Conversion[Wide, Inlined[Wide]] = value => value
 

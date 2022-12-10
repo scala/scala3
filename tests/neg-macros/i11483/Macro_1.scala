@@ -17,8 +17,8 @@ trait CpsMonad[F[_]]:
 @compileTimeOnly("await should be inside async block")
 def await[F[_],T](f:F[T])(using am:CpsMonad[F]):T = ???
 
-inline given conversion[F[_],T](using CpsMonad[F]): Conversion[F[T],T] =
-           x => await(x)
+inline given conversion[F[_],T](using CpsMonad[F]): Conversion[F[T],T] with
+  inline def apply(x: F[T]) = await(x)
 
 
 object X {
