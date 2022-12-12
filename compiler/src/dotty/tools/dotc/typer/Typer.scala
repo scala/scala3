@@ -1962,7 +1962,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         completeTypeTree(InferredTypeTree(), pt, tree)
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): SingletonTypeTree = {
-    val ref1 = typedExpr(tree.ref)
+    val ref1 = typedExpr(tree.ref, SingletonTypeProto)
     checkStable(ref1.tpe, tree.srcPos, "singleton type")
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
@@ -3773,20 +3773,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             true
           }
 
-      if ((implicitFun || caseCompanion) &&
-          !isApplyProto(pt) &&
-          pt != AssignProto &&
-          !ctx.mode.is(Mode.Pattern) &&
-          !ctx.isAfterTyper &&
-          !ctx.isInlineContext) {
+      if (implicitFun || caseCompanion)
+          && !isApplyProto(pt)
+          && pt != SingletonTypeProto
+          && pt != AssignProto
+          && !ctx.mode.is(Mode.Pattern)
+          && !ctx.isAfterTyper
+          && !ctx.isInlineContext
+      then
         typr.println(i"insert apply on implicit $tree")
         val sel = untpd.Select(untpd.TypedSplice(tree), nme.apply).withAttachment(InsertedApply, ())
         try typed(sel, pt, locked) finally sel.removeAttachment(InsertedApply)
-      }
-      else if (ctx.mode is Mode.Pattern) {
+      else if ctx.mode is Mode.Pattern then
         checkEqualityEvidence(tree, pt)
         tree
-      }
       else
         val meth = methPart(tree).symbol
         if meth.isAllOf(DeferredInline) && !Inlines.inInlineMethod then
