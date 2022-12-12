@@ -1,7 +1,7 @@
 inspecting field fieldName1 @MyColumnBase
 inspecting field fieldName2 @MyColumnBase
-inspecting field getterName1 @MyColumnBase
-inspecting field getterName2 @MyColumnBase
+inspecting field getterName1
+inspecting field getterName2
 inspecting method fieldName1
 inspecting method fieldName2
 inspecting method getterName1 @MyColumnBase

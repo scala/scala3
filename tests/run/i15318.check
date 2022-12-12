@@ -1,5 +1,5 @@
-inspecting field value @JsonProperty
-inspecting field value2 @JsonProperty
+inspecting field value
+inspecting field value2
 inspecting method getValue @JsonProperty
 inspecting method getValue2 @JsonProperty
 inspecting method setValue
