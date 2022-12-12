@@ -195,7 +195,7 @@ object Settings:
         case s:String => s == choice.toString()
         case _ => false
       override def toString(): String =
-        s"\n\t- $choice${if description.isBlank() then "" else s"\t: $description"}"
+        s"\n\t- $choice${if description.isEmpty() then "" else s"\t: $description"}"
   end Setting
 
   class SettingGroup {
