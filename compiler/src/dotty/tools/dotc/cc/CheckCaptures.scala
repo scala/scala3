@@ -736,7 +736,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             else
               ((parent, cs, tp.isBoxed), reconstruct)
           case actual =>
-            ((actual, CaptureSet(), false), reconstruct)
+            val res = if tp.isFromJavaObject then tp else actual
+            ((res, CaptureSet(), false), reconstruct)
 
       def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true) {
         if expected.isInstanceOf[WildcardType] then actual
