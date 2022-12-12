@@ -30,6 +30,7 @@ object VulpixMetaTests extends ParallelTesting {
   def isInteractive = false // Don't beautify output for interactive use.
   def testFilter = Nil // Run all the tests.
   def updateCheckFiles: Boolean = false
+  def failedTests = None
 
   @AfterClass
   def tearDown() = this.cleanup()

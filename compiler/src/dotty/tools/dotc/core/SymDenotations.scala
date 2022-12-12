@@ -768,7 +768,7 @@ object SymDenotations {
 
     /** Is this a getter? */
     final def isGetter(using Context): Boolean =
-      this.is(Accessor) && !originalName.isSetterName && !originalName.isScala2LocalSuffix
+      this.is(Accessor) && !originalName.isSetterName && !(originalName.isScala2LocalSuffix && symbol.owner.is(Scala2x))
 
     /** Is this a setter? */
     final def isSetter(using Context): Boolean =
@@ -808,7 +808,7 @@ object SymDenotations {
 
     /** Is this a Scala or Java annotation ? */
     def isAnnotation(using Context): Boolean =
-      isClass && derivesFrom(defn.AnnotationClass)
+      isClass && (derivesFrom(defn.AnnotationClass) || is(JavaAnnotation))
 
     /** Is this symbol a class that extends `java.io.Serializable` ? */
     def isSerializable(using Context): Boolean =
@@ -1151,9 +1151,9 @@ object SymDenotations {
     final def isEffectivelySealed(using Context): Boolean =
       isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
-    final def isTransparentTrait(using Context): Boolean =
-      isAllOf(TransparentTrait)
-      || defn.assumedTransparentTraits.contains(symbol)
+    final def isTransparentClass(using Context): Boolean =
+      is(TransparentType)
+      || defn.isAssumedTransparent(symbol)
       || isClass && hasAnnotation(defn.TransparentTraitAnnot)
 
     /** The class containing this denotation which has the given effective name. */

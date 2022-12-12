@@ -4,7 +4,9 @@
    |            value id is not a member of testcode.A.
    |            An extension method was tried, but could not be fully constructed:
    |
-   |                testcode.ExtensionA.id(a)    failed with
+   |                testcode.ExtensionA.id(a)
+   |
+   |                failed with:
    |
    |                    Reference to id is ambiguous,
    |                    it is both imported by import testcode.ExtensionB._
@@ -15,7 +17,9 @@
    |            value id is not a member of testcode.A.
    |            An extension method was tried, but could not be fully constructed:
    |
-   |                testcode.ExtensionB.id(a)    failed with
+   |                testcode.ExtensionB.id(a)
+   |
+   |                failed with:
    |
    |                    Reference to id is ambiguous,
    |                    it is both imported by import testcode.ExtensionA._

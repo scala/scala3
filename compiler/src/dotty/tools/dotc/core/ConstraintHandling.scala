@@ -58,6 +58,12 @@ trait ConstraintHandling {
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
+  /** Used for match type reduction: If false, we don't recognize an abstract type
+   *  to be a subtype type of any of its base classes. This is in place only at the
+   *  toplevel; it is turned on again when we add parts of the scrutinee to the constraint.
+   */
+  protected var canWidenAbstract: Boolean = true
+
   protected var myNecessaryConstraintsOnly = false
   /** When collecting the constraints needed for a particular subtyping
    *  judgment to be true, we sometimes need to approximate the constraint
@@ -550,6 +556,13 @@ trait ConstraintHandling {
         inst
   end approximation
 
+  private def isTransparent(tp: Type, traitOnly: Boolean)(using Context): Boolean = tp match
+    case AndType(tp1, tp2) =>
+      isTransparent(tp1, traitOnly) && isTransparent(tp2, traitOnly)
+    case _ =>
+      val cls = tp.underlyingClassRef(refinementOK = false).typeSymbol
+      cls.isTransparentClass && (!traitOnly || cls.is(Trait))
+
   /** If `tp` is an intersection such that some operands are transparent trait instances
    *  and others are not, replace as many transparent trait instances as possible with Any
    *  as long as the result is still a subtype of `bound`. But fall back to the
@@ -562,18 +575,17 @@ trait ConstraintHandling {
     var dropped: List[Type] = List() // the types dropped so far, last one on top
 
     def dropOneTransparentTrait(tp: Type): Type =
-      val tpd = tp.dealias
-      if tpd.typeSymbol.isTransparentTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
-        dropped = tpd :: dropped
+      if isTransparent(tp, traitOnly = true) && !kept.contains(tp) then
+        dropped = tp :: dropped
         defn.AnyType
-      else tpd match
+      else tp match
         case AndType(tp1, tp2) =>
           val tp1w = dropOneTransparentTrait(tp1)
           if tp1w ne tp1 then tp1w & tp2
           else
             val tp2w = dropOneTransparentTrait(tp2)
             if tp2w ne tp2 then tp1 & tp2w
-            else tpd
+            else tp
         case _ =>
           tp
 
@@ -648,7 +660,16 @@ trait ConstraintHandling {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else dropTransparentTraits(widenIrreducible(widenOr(widenSingle(inst))), bound)
+      else
+        val widenedFromSingle = widenSingle(inst)
+        val widenedFromUnion = widenOr(widenedFromSingle)
+        val widened =
+          if (widenedFromUnion ne widenedFromSingle) && isTransparent(widenedFromUnion, traitOnly = false) then
+            widenedFromSingle
+          else
+            dropTransparentTraits(widenedFromUnion, bound)
+        widenIrreducible(widened)
+
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
@@ -839,13 +860,17 @@ trait ConstraintHandling {
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
+      val saved = canWidenAbstract
+      canWidenAbstract = true
       try bound match
         case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
         case _ =>
           val pbound = avoidLambdaParams(bound)
           kindCompatible(param, pbound) && addBoundTransitively(param, pbound, !fromBelow)
-      finally addConstraintInvocations -= 1
+      finally
+        canWidenAbstract = saved
+        addConstraintInvocations -= 1
     }
   end addConstraint
 

@@ -10,10 +10,10 @@
    |                       pattern expected
    |
    | longer explanation available when compiling with `-explain`
--- [E040] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:13:23 ---------------------------------------------------
+-- [E040] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:13:22 ---------------------------------------------------
 13 |      case List(1, _*3:) =>  // error // error
-   |                       ^
-   |                       an identifier expected, but ')' found
+   |                      ^
+   |                      ')' expected, but ':' found
 -- [E032] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:15:18 ---------------------------------------------------
 15 |      case List(x*, 1) => // error: pattern expected
    |                  ^

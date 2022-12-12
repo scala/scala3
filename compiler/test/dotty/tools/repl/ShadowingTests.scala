@@ -80,7 +80,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     shadowed = "class C(val c: Int)",
     script =
       """|scala> new C().c
-         |-- Error: ----------------------------------------------------------------------
+         |-- [E171] Type Error: ----------------------------------------------------------
          |1 | new C().c
          |  | ^^^^^^^
          |  | missing argument for parameter c of constructor C in class C: (c: Int): C
@@ -122,7 +122,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |val y: String = foo
          |
          |scala> if (true) x else y
-         |val res0: Matchable = 42
+         |val res0: Int | String = 42
          |""".stripMargin.linesIterator.toList
     )
 

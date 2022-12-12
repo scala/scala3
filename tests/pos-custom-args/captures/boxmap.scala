@@ -1,5 +1,5 @@
 import annotation.retains
-type Top = Any @retains(*)
+type Top = Any @retains(caps.*)
 
 type Box[+T <: Top] = ([K <: Top] -> (T => K) -> K)
 
@@ -9,7 +9,7 @@ def box[T <: Top](x: T): Box[T] =
 def map[A <: Top, B <: Top](b: Box[A])(f: A => B): Box[B] =
   b[Box[B]]((x: A) => box(f(x)))
 
-def lazymap[A <: Top, B <: Top](b: Box[A])(f: A => B): (() -> Box[B]) =
+def lazymap[A <: Top, B <: Top](b: Box[A])(f: A => B): {f} (() -> Box[B]) =
   () => b[Box[B]]((x: A) => box(f(x)))
 
 def test[A <: Top, B <: Top] =

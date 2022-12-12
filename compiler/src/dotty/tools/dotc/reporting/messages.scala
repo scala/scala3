@@ -1390,7 +1390,7 @@ import cc.CaptureSet.IdentityCaptRefMap
            |""".stripMargin
   }
 
-  class TypeDoesNotTakeParameters(tpe: Type, params: List[Trees.Tree[Trees.Untyped]])(using Context)
+  class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
     extends TypeMsg(TypeDoesNotTakeParametersID) {
     private def fboundsAddendum =
       if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
@@ -1404,15 +1404,6 @@ import cc.CaptureSet.IdentityCaptRefMap
       i"""You specified ${NoColor(ps)} for ${em"$tpe"}, which is not
          |declared to take any.
          |"""
-  }
-
-  class ParameterizedTypeLacksArguments(psym: Symbol)(using Context)
-    extends TypeMsg(ParameterizedTypeLacksArgumentsID) {
-    def msg = em"Parameterized $psym lacks argument list"
-    def explain =
-      em"""The $psym is declared with non-implicit parameters, you may not leave
-          |out the parameter list when extending it.
-          |"""
   }
 
   class VarValParametersMayNotBeCallByName(name: TermName, mutable: Boolean)(using Context)
@@ -1444,6 +1435,13 @@ import cc.CaptureSet.IdentityCaptRefMap
     def msg = em"Missing type $parameters for $tpe"
     def explain = em"A fully applied type is expected but $tpe takes $numParams $parameters"
   }
+
+  class MissingArgument(pname: Name, methString: String)(using Context)
+    extends TypeMsg(MissingArgumentID):
+    def msg =
+      if pname.firstPart contains '$' then s"not enough arguments for $methString"
+      else s"missing argument for parameter $pname of $methString"
+    def explain = ""
 
   class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
     extends TypeMismatchMsg(
@@ -2535,3 +2533,4 @@ import cc.CaptureSet.IdentityCaptRefMap
   extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
     def msg = ex"$tp is not a class type"
     def explain = ""
+

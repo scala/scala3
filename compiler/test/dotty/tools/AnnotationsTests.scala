@@ -89,3 +89,9 @@ class AnnotationsTest:
           s"A missing annotation while parsing a Java class should be silently ignored but: ${ctx.reporter.summary}")
       }
     }
+
+  @Test def hasNativeAnnot: Unit =
+    inCompilerContext(TestConfiguration.basicClasspath) {
+      val term: TermSymbol = requiredClass("java.lang.invoke.MethodHandle").requiredMethod("invokeExact")
+      assert(term.hasAnnotation(defn.NativeAnnot), i"${term.annotations}")
+    }

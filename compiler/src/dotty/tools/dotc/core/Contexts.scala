@@ -156,9 +156,9 @@ object Contexts {
     final def owner: Symbol = _owner
 
     /** The current tree */
-    private var _tree: Tree[? >: Untyped]= _
-    protected def tree_=(tree: Tree[? >: Untyped]): Unit = _tree = tree
-    final def tree: Tree[? >: Untyped] = _tree
+    private var _tree: Tree[?]= _
+    protected def tree_=(tree: Tree[?]): Unit = _tree = tree
+    final def tree: Tree[?] = _tree
 
     /** The current scope */
     private var _scope: Scope = _
@@ -469,7 +469,7 @@ object Contexts {
     }
 
     /** The context of expression `expr` seen as a member of a statement sequence */
-    def exprContext(stat: Tree[? >: Untyped], exprOwner: Symbol): Context =
+    def exprContext(stat: Tree[?], exprOwner: Symbol): Context =
       if (exprOwner == this.owner) this
       else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
       else fresh.setOwner(exprOwner)
@@ -592,7 +592,7 @@ object Contexts {
       assert(owner != NoSymbol)
       this.owner = owner
       this
-    def setTree(tree: Tree[? >: Untyped]): this.type =
+    def setTree(tree: Tree[?]): this.type =
       util.Stats.record("Context.setTree")
       this.tree = tree
       this
@@ -814,7 +814,7 @@ object Contexts {
       .updated(notNullInfosLoc, Nil)
       .updated(compilationUnitLoc, NoCompilationUnit)
     searchHistory = new SearchRoot
-    gadt = EmptyGadtConstraint
+    gadt = GadtConstraint.empty
   }
 
   @sharable object NoContext extends Context((null: ContextBase | Null).uncheckedNN) {

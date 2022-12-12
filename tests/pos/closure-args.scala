@@ -1,4 +1,4 @@
-import language.experimental.fewerBraces
+import language.`3.3`
 
 object Test1:
   val xs = List(1, 2, 3)

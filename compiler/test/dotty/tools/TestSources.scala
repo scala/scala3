@@ -13,21 +13,26 @@ object TestSources {
 
   def posFromTastyBlacklistFile: String = "compiler/test/dotc/pos-from-tasty.blacklist"
   def posTestPicklingBlacklistFile: String = "compiler/test/dotc/pos-test-pickling.blacklist"
-  def posTestRecheckExcludesFile = "compiler/test/dotc/pos-test-recheck.excludes"
+  def posTestRecheckExcludesFile: String = "compiler/test/dotc/pos-test-recheck.excludes"
+  def posLazyValsAllowlistFile: String = "compiler/test/dotc/pos-lazy-vals-tests.allowlist"
 
   def posFromTastyBlacklisted: List[String] = loadList(posFromTastyBlacklistFile)
   def posTestPicklingBlacklisted: List[String] = loadList(posTestPicklingBlacklistFile)
-  def posTestRecheckExcluded = loadList(posTestRecheckExcludesFile)
+  def posTestRecheckExcluded: List[String] = loadList(posTestRecheckExcludesFile)
+  def posLazyValsAllowlist: List[String] = loadList(posLazyValsAllowlistFile)
 
   // run tests lists
 
   def runFromTastyBlacklistFile: String = "compiler/test/dotc/run-from-tasty.blacklist"
   def runTestPicklingBlacklistFile: String = "compiler/test/dotc/run-test-pickling.blacklist"
-  def runTestRecheckExcludesFile = "compiler/test/dotc/run-test-recheck.excludes"
+  def runTestRecheckExcludesFile: String = "compiler/test/dotc/run-test-recheck.excludes"
+  def runLazyValsAllowlistFile: String = "compiler/test/dotc/run-lazy-vals-tests.allowlist"
+
 
   def runFromTastyBlacklisted: List[String] = loadList(runFromTastyBlacklistFile)
   def runTestPicklingBlacklisted: List[String] = loadList(runTestPicklingBlacklistFile)
-  def runTestRecheckExcluded = loadList(runTestRecheckExcludesFile)
+  def runTestRecheckExcluded: List[String] = loadList(runTestRecheckExcludesFile)
+  def runLazyValsAllowlist: List[String] = loadList(runLazyValsAllowlistFile)
 
   // load lists
 

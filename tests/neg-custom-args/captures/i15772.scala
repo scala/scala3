@@ -15,16 +15,16 @@ class C(val arg: {*} C) {
 }
 
 def main1(x: {*} C) : () -> Int =
-  () => // error
+  () =>
     val c : {x} C = new C(x)
-    val boxed1 : (({*} C) => Unit) -> Unit = box1(c)
+    val boxed1 : (({*} C) => Unit) -> Unit = box1(c)  // error
     boxed1((cap: {*} C) => unsafe(c))
     0
 
 def main2(x: {*} C) : () -> Int =
-  () => // error
+  () =>
     val c : {x} C = new C(x)
-    val boxed2 : Observe[{*} C] = box2(c)
+    val boxed2 : Observe[{*} C] = box2(c)  // error
     boxed2((cap: {*} C) => unsafe(c))
     0
 

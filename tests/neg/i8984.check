@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/i8984.scala:36:52 -------------------------------------------------------------
+36 |            case Cat(_, "red", rest) => dropRedCats(rest)  // error
+   |                                                    ^^^^
+   |                               Found:    (rest : Any)
+   |                               Required: Fix.T[F]
+   |
+   |                               where:    F is a type in method dropRedCats with bounds >: Cat and <: [a] =>> Any
+   |
+   | longer explanation available when compiling with `-explain`

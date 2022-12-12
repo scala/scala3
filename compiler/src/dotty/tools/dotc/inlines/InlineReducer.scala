@@ -269,12 +269,21 @@ class InlineReducer(inliner: Inliner)(using Context):
           }
         }
 
-        // Extractors contain Bind nodes in type parameter lists, the tree looks like this:
+        // Extractors can contain Bind nodes in type parameter lists,
+        // for that case tree looks like this:
         //   UnApply[t @ t](pats)(implicits): T[t]
         // Test case is pos/inline-caseclass.scala.
+        // Alternatively, for explicitly specified type binds in type annotations like in
+        //   case A(B): A[t]
+        // the tree will look like this:
+        //   Unapply[t](pats)(implicits) : T[t @ t]
+        // and the binds will be found in the type tree instead
+        // Test case is pos-macros/i15971
+        val tptBinds = getBinds(Set.empty[TypeSymbol], tpt)
         val binds: Set[TypeSymbol] = pat match {
-          case UnApply(TypeApply(_, tpts), _, _) => getBinds(Set.empty[TypeSymbol], tpts)
-          case _ => getBinds(Set.empty[TypeSymbol], tpt)
+          case UnApply(TypeApply(_, tpts), _, _) => 
+            getBinds(Set.empty[TypeSymbol], tpts) ++ tptBinds
+          case _ => tptBinds
         }
 
         val extractBindVariance = new TypeAccumulator[TypeBindsMap] {

@@ -16,6 +16,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
 import TestSources.sources
+import reporting.TestReporter
 import vulpix._
 
 class CompilationTests {
@@ -40,9 +41,11 @@ class CompilationTests {
       compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")),
       compileFilesInDir("tests/new", defaultOptions.and("-source", "3.2")), // just to see whether 3.2 works
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
-      compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-Ycc")),
+      compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
       compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init")),
+      // Run tests for experimental lightweight lazy vals
+      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylightweight-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/pos-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
@@ -140,7 +143,7 @@ class CompilationTests {
       compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings),
       compileFilesInDir("tests/neg-custom-args/allow-deep-subtypes", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
-      compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-Ycc")),
+      compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
       compileDir("tests/neg-custom-args/impl-conv", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileDir("tests/neg-custom-args/i13946", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/avoid-warn-deprecation.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
@@ -185,7 +188,7 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/deptypes.scala", defaultOptions.and("-language:experimental.dependent")),
       compileFile("tests/neg-custom-args/matchable.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
       compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
-      compileFile("tests/neg-custom-args/capt-wf.scala", defaultOptions.and("-Ycc", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/capt-wf.scala", defaultOptions.and("-language:experimental.captureChecking", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/feature-shadowing.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileDir("tests/neg-custom-args/hidden-type-errors", defaultOptions.and("-explain")),
       compileFile("tests/neg-custom-args/i13026.scala", defaultOptions.and("-print-lines")),
@@ -213,9 +216,11 @@ class CompilationTests {
       compileFilesInDir("tests/run-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),
       compileDir("tests/run-custom-args/Xmacro-settings/simple", defaultOptions.and("-Xmacro-settings:one,two,three")),
       compileDir("tests/run-custom-args/Xmacro-settings/compileTimeEnv", defaultOptions.and("-Xmacro-settings:a,b=1,c.b.a=x.y.z=1,myLogger.level=INFO")),
-      compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-Ycc")),
+      compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init"))
+      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init"), FileFilter.exclude("serialization-new.scala")),
+      // Run tests for experimental lightweight lazy vals and stable lazy vals.
+      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init", "-Ylightweight-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ).checkRuns()
   }
 
@@ -237,7 +242,8 @@ class CompilationTests {
     ).checkCompile()
   }
 
-  @Test def recheck: Unit =
+  //@Test disabled in favor of posWithCompilerCC to save time.
+  def recheck: Unit =
     given TestGroup = TestGroup("recheck")
     aggregateTests(
       compileFilesInDir("tests/new", recheckOptions),
@@ -313,6 +319,7 @@ object CompilationTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {

@@ -91,7 +91,7 @@ class TreeChecker extends Phase with SymTransformer {
     if (ctx.phaseId <= erasurePhase.id) {
       val initial = symd.initial
       assert(symd == initial || symd.signature == initial.signature,
-        i"""Signature of ${sym.showLocated} changed at phase ${ctx.phase.prevMega}
+        i"""Signature of ${sym} in ${sym.ownersIterator.toList}%, % changed at phase ${ctx.phase.prevMega}
            |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
            |Current info: ${symd.info}
@@ -305,9 +305,26 @@ class TreeChecker extends Phase with SymTransformer {
     override def excludeFromDoubleDeclCheck(sym: Symbol)(using Context): Boolean =
       sym.isEffectivelyErased && sym.is(Private) && !sym.initial.is(Private)
 
+    /** Check that all invariants related to Super and SuperType are met */
+    def checkSuper(tree: Tree)(implicit ctx: Context): Unit = tree match
+      case Super(qual, mix) =>
+        tree.tpe match
+          case tp @ SuperType(thistpe, supertpe) =>
+            if (!mix.isEmpty)
+              assert(supertpe.isInstanceOf[TypeRef],
+                s"Precondition of pickling violated: the supertpe in $tp is not a TypeRef even though $tree has a non-empty mix")
+          case tp =>
+            assert(false, s"The type of a Super tree must be a SuperType, but $tree has type $tp")
+      case _ =>
+        tree.tpe match
+          case tp: SuperType =>
+            assert(false, s"The type of a non-Super tree must not be a SuperType, but $tree has type $tp")
+          case _ =>
+
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = {
       val tpdTree = super.typed(tree, pt)
       Typer.assertPositioned(tree)
+      checkSuper(tpdTree)
       if (ctx.erasedTypes)
         // Can't be checked in earlier phases since `checkValue` is only run in
         // Erasure (because running it in Typer would force too much)
@@ -359,7 +376,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
-      assert(tree.isType || ctx.mode.is(Mode.Pattern) && untpd.isWildcardArg(tree) || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
+      assert(tree.isType || ctx.mode.is(Mode.Pattern) && untpd.isWildcardArg(tree) || !needsSelect(tree.typeOpt), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
       assertDefined(tree)
 
       checkNotRepeated(super.typedIdent(tree, pt))
@@ -385,7 +402,7 @@ class TreeChecker extends Phase with SymTransformer {
 
       val sym = tree.symbol
       val symIsFixed = tpe match {
-        case tpe: TermRef => ctx.erasedTypes || !tpe.isMemberRef
+        case tpe: TermRef => ctx.erasedTypes || !tpe.isPrefixDependentMemberRef
         case _ => false
       }
       if (sym.exists && !sym.is(Private) &&

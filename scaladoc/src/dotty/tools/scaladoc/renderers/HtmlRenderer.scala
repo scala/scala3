@@ -218,12 +218,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
     val (apiNavOpt, docsNavOpt): (Option[(Boolean, Seq[AppliedTag])], Option[(Boolean, Seq[AppliedTag])]) = buildNavigation(link)
 
-    def textFooter: String | AppliedTag =
-      args.projectFooter.fold("") { f =>
-        span(id := "footer-text")(
-          raw(f)
-        )
-      }
+    def textFooter: String =
+      args.projectFooter.getOrElse("")
 
     def quickLinks(mobile: Boolean = false): TagArg =
       val className = if mobile then "mobile-menu-item" else "text-button"
@@ -294,13 +290,9 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         ),
         div(cls := "right-container")(
           socialLinks,
-          div(cls := "text")(
-            "© 2002-2021 · LAMP/EPFL"
-          )
+          div(cls := "text")(textFooter)
         ),
-        div(cls := "text-mobile")(
-          "© 2002-2021 · LAMP/EPFL"
-        )
+        div(cls := "text-mobile")(textFooter)
       ),
       div(id := "scaladoc-searchBar"),
       div(id := "main")(
@@ -333,13 +325,9 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             a(href := "https://gitter.im/scala/scala") (
               button(cls := "icon-button gitter"),
             ),
-            div(cls := "text")(
-              "© 2002-2021 · LAMP/EPFL"
-            )
+            div(cls := "text")(textFooter)
           ),
-          div(cls := "text-mobile")(
-            "© 2002-2021 · LAMP/EPFL"
-          )
+          div(cls := "text-mobile")(textFooter)
         ),
       ),
     )

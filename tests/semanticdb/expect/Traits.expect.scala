@@ -6,7 +6,7 @@ trait T/*<-traits::T#*/ {
 
 sealed trait U/*<-traits::U#*/
 object U/*<-traits::U.*/ {
-  def u/*<-traits::U.u().*/: U/*->traits::U#*/ = new U/*->traits::U#*/ {}
+  def u/*<-traits::U.u().*/: U/*->traits::U#*/ = /*<-local0*/new U/*->traits::U#*/ {}
 }
 
 class C/*<-traits::C#*/

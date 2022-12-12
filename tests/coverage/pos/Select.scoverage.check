@@ -75,23 +75,6 @@ covtest
 B
 Class
 covtest.B
-<init>
-134
-135
-9
-<init>
-Apply
-false
-0
-false
-A
-
-4
-Select.scala
-covtest
-B
-Class
-covtest.B
 print
 166
 179
@@ -102,6 +85,23 @@ false
 0
 false
 super.print()
+
+4
+Select.scala
+covtest
+B
+Class
+covtest.B
+print
+184
+206
+12
+println
+Apply
+false
+0
+false
+println(this.instance)
 
 5
 Select.scala
@@ -127,23 +127,6 @@ B
 Class
 covtest.B
 print
-184
-206
-12
-println
-Apply
-false
-0
-false
-println(this.instance)
-
-7
-Select.scala
-covtest
-B
-Class
-covtest.B
-print
 139
 157
 10
@@ -154,7 +137,7 @@ false
 false
 override def print
 
-8
+7
 Select.scala
 covtest
 Select$package$
@@ -171,7 +154,7 @@ false
 false
 A()
 
-9
+8
 Select.scala
 covtest
 Select$package$
@@ -187,6 +170,23 @@ false
 0
 false
 new A
+
+9
+Select.scala
+covtest
+Select$package$
+Object
+covtest.Select$package$
+test
+263
+281
+18
+print
+Apply
+false
+0
+false
+a.instance.print()
 
 10
 Select.scala
@@ -212,23 +212,6 @@ Select$package$
 Object
 covtest.Select$package$
 test
-263
-281
-18
-print
-Apply
-false
-0
-false
-a.instance.print()
-
-12
-Select.scala
-covtest
-Select$package$
-Object
-covtest.Select$package$
-test
 345
 354
 19
@@ -239,7 +222,7 @@ false
 false
 a.print()
 
-13
+12
 Select.scala
 covtest
 Select$package$

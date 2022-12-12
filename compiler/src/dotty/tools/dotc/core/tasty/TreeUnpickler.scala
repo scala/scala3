@@ -32,7 +32,7 @@ import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
 import transform.SymUtils._
-import cc.adaptFunctionTypeUnderCC
+import cc.{adaptFunctionTypeUnderPureFuns, adaptByNameArgUnderPureFuns}
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
@@ -87,8 +87,8 @@ class TreeUnpickler(reader: TastyReader,
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = _
 
-  /** Was unpickled class compiled with -Ycc? */
-  private var wasCaptureChecked: Boolean = false
+  /** Was unpickled class compiled with pureFunctions? */
+  private var knowsPureFuns: Boolean = false
 
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
@@ -455,7 +455,8 @@ class TreeUnpickler(reader: TastyReader,
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
         case BYNAMEtype =>
-          ExprType(readType())
+          val arg = readType()
+          ExprType(if knowsPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
         case _ =>
           ConstantType(readConstant(tag))
       }
@@ -489,11 +490,11 @@ class TreeUnpickler(reader: TastyReader,
     def readTermRef()(using Context): TermRef =
       readType().asInstanceOf[TermRef]
 
-    /** Under -Ycc, map all function types to impure function types,
-     *  unless the unpickled class was also compiled with -Ycc.
+    /** Under pureFunctions, map all function types to impure function types,
+     *  unless the unpickled class was also compiled with pureFunctions.
      */
     private def postProcessFunction(tp: Type)(using Context): Type =
-      if wasCaptureChecked then tp else tp.adaptFunctionTypeUnderCC
+      if knowsPureFuns then tp else tp.adaptFunctionTypeUnderPureFuns
 
 // ------ Reading definitions -----------------------------------------------------
 
@@ -624,7 +625,7 @@ class TreeUnpickler(reader: TastyReader,
             else
               newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }
-      val annots =  annotFns.map(_(sym.owner))
+      val annots = annotFns.map(_(sym.owner))
       sym.annotations = annots
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
@@ -642,8 +643,8 @@ class TreeUnpickler(reader: TastyReader,
       }
       registerSym(start, sym)
       if (isClass) {
-        if sym.owner.is(Package) && annots.exists(_.symbol == defn.CaptureCheckedAnnot) then
-          wasCaptureChecked = true
+        if sym.owner.is(Package) && annots.exists(_.hasSymbol(defn.WithPureFunsAnnot)) then
+          knowsPureFuns = true
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(using localContext(sym))
       }
@@ -737,7 +738,15 @@ class TreeUnpickler(reader: TastyReader,
       val tp = readType()
       val lazyAnnotTree = readLaterWithOwner(end, _.readTerm())
       owner =>
-        Annotation.deferredSymAndTree(tp.typeSymbol)(lazyAnnotTree(owner).complete)
+        new DeferredSymAndTree(tp.typeSymbol, lazyAnnotTree(owner).complete):
+          // Only force computation of symbol if it has the right name. This added
+          // amount of laziness is sometimes necessary to avid cycles. Test case pos/i15980.
+          override def hasSymbol(sym: Symbol)(using Context) = tp match
+            case tp: TypeRef =>
+              tp.designator match
+                case name: Name => name == sym.name && tp.symbol == sym
+                case _ => tp.symbol == sym
+            case _ => this.symbol == sym
 
     /** Create symbols for the definitions in the statement sequence between
      *  current address and `end`.
@@ -1170,7 +1179,8 @@ class TreeUnpickler(reader: TastyReader,
         case SINGLETONtpt =>
           SingletonTypeTree(readTerm())
         case BYNAMEtpt =>
-          ByNameTypeTree(readTpt())
+          val arg = readTpt()
+          ByNameTypeTree(if knowsPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
         case NAMEDARG =>
           NamedArg(readName(), readTerm())
         case _ =>

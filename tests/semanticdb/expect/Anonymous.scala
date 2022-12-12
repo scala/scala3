@@ -17,4 +17,9 @@ class Anonymous {
 
   trait Foo
   val foo = new Foo {}
+
+  trait Bar:
+    def bar: String
+  val bar1: Bar = new Bar { def bar: String = ??? }
+  val bar2: Bar = new { def bar: String = ??? }
 }

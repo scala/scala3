@@ -42,7 +42,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** mods object name impl */
   case class ModuleDef(name: TermName, impl: Template)(implicit @constructorOnly src: SourceFile)
     extends MemberDef {
-    type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
+    type ThisTree[+T <: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
     def withName(name: Name)(using Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
@@ -145,7 +145,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case Floating
   }
 
-  /** {x1, ..., xN} T   (only relevant under -Ycc) */
+  /** {x1, ..., xN} T   (only relevant under captureChecking) */
   case class CapturingTypeTree(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
 
   /** Short-lived usage in typer, does not need copy/transform/fold infrastructure */
@@ -217,7 +217,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Infix()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Infix)
 
-    /** Used under -Ycc to mark impure function types `A => B` in `FunctionWithMods` */
+    /** Used under pureFunctions to mark impure function types `A => B` in `FunctionWithMods` */
     case class Impure()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Impure)
   }
 
@@ -491,6 +491,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
   def javaDotLangDot(name: Name)(implicit src: SourceFile): Select = Select(Select(Ident(nme.java), nme.lang), name)
+
+  def captureRoot(using Context): Select =
+    Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)

@@ -386,7 +386,7 @@ object Erasure {
       case _: FunProto | AnyFunctionProto => tree
       case _ => tree.tpe.widen match
         case mt: MethodType if tree.isTerm =>
-          assert(mt.paramInfos.isEmpty)//, i"bad adapt for $tree: $mt")
+          assert(mt.paramInfos.isEmpty, i"bad adapt for $tree: $mt")
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
           if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
@@ -614,7 +614,7 @@ object Erasure {
      *  are handled separately by [[typedDefDef]], [[typedValDef]] and [[typedTyped]].
      */
     override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
-      checkNotErasedClass(tree.withType(erasure(tree.tpe)))
+      checkNotErasedClass(tree.withType(erasure(tree.typeOpt)))
 
     /** This override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =

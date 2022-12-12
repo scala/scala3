@@ -51,6 +51,7 @@ object language:
     /** Experimental support for using indentation for arguments
      */
     @compileTimeOnly("`fewerBraces` can only be used at compile time in import statements")
+    @deprecated("`fewerBraces` is now standard, no language import is needed", since = "3.3")
     object fewerBraces
 
     /** Experimental support for typechecked exception capabilities
@@ -60,6 +61,19 @@ object language:
     @compileTimeOnly("`saferExceptions` can only be used at compile time in import statements")
     object saferExceptions
 
+    /** Experimental support for pure function type syntax
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/purefuns]]
+     */
+    @compileTimeOnly("`pureFunctions` can only be used at compile time in import statements")
+    object pureFunctions
+
+    /** Experimental support for capture checking; implies support for pureFunctions
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     */
+    @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
+    object captureChecking
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
@@ -179,7 +193,6 @@ object language:
   @compileTimeOnly("`3.2` can only be used at compile time in import statements")
   object `3.2`
 
-/* This can be added when we go to 3.3
   /** Set source version to 3.3-migration.
     *
     * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
@@ -193,5 +206,5 @@ object language:
     */
   @compileTimeOnly("`3.3` can only be used at compile time in import statements")
   object `3.3`
-*/
+
 end language

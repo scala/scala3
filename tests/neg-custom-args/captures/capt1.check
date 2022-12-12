@@ -40,14 +40,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:32:24 ----------------------------------------
 32 |  val z2 = h[() -> Cap](() => x) // error
    |                        ^^^^^^^
-   |                        Found:    {x} () -> {*} C
+   |                        Found:    {x} () -> Cap
    |                        Required: () -> box {*} C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:33:5 -----------------------------------------
 33 |    (() => C())  // error
    |     ^^^^^^^^^
-   |     Found:    ? () -> {*} C
+   |     Found:    ? () -> Cap
    |     Required: () -> box {*} C
    |
    | longer explanation available when compiling with `-explain`

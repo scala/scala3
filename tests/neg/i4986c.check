@@ -25,11 +25,11 @@
 -- Error: tests/neg/i4986c.scala:45:87 ---------------------------------------------------------------------------------
 45 |  implicitly[Outer[Option[String] | List[Iterable[Char]]] { type MyType = BigDecimal }] // error
    |                                                                                       ^
-   |Missing Outer[Option[String] | List[Iterable[Char]]] with OuterMember = pkg.Outer[Option[String] | List[Iterable[Char]]]{MyType = BigDecimal}#OuterMember
+   |Missing Outer[Option[String] | List[Iterable[Char]]] with OuterMember = pkg.Outer[Option[String] | List[Iterable[Char]]]{type MyType = BigDecimal}#OuterMember
 -- Error: tests/neg/i4986c.scala:46:106 --------------------------------------------------------------------------------
 46 |  implicitly[(Outer[Option[String] | List[Iterable[Char]]] { type MyType = BigDecimal })#Inner[Byte, Seq]] // error
    |                                                                                                          ^
-   |Missing Inner[Byte, Seq] with InnerMember = pkg.Outer[Option[String] | List[Iterable[Char]]]{MyType = BigDecimal}#Inner[Byte, Seq]#InnerMember from Outer[Option[String] | List[Iterable[Char]]] with OuterMember = pkg.Outer[Option[String] | List[Iterable[Char]]]{MyType = BigDecimal}#OuterMember
+   |Missing Inner[Byte, Seq] with InnerMember = pkg.Outer[Option[String] | List[Iterable[Char]]]{type MyType = BigDecimal}#Inner[Byte, Seq]#InnerMember from Outer[Option[String] | List[Iterable[Char]]] with OuterMember = pkg.Outer[Option[String] | List[Iterable[Char]]]{type MyType = BigDecimal}#OuterMember
 -- Error: tests/neg/i4986c.scala:47:33 ---------------------------------------------------------------------------------
 47 |  implicitly[Outer[Int] @myAnnot] // error
    |                                 ^

@@ -14,10 +14,7 @@ import scala.collection.mutable
 
 import scala.annotation.tailrec
 
-trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
-
-  // Note: the <: Type constraint looks necessary (and is needed to make the file compile in dotc).
-  // But Scalac accepts the program happily without it. Need to find out why.
+trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
   def unsplice(tree: Trees.Tree[T]): Trees.Tree[T] = tree
 
@@ -195,11 +192,11 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case arg => arg.typeOpt.widen.isRepeatedParam
   }
 
-  /** Is tree a type tree of the form `=> T` or (under -Ycc) `{refs}-> T`? */
+  /** Is tree a type tree of the form `=> T` or (under pureFunctions) `{refs}-> T`? */
   def isByNameType(tree: Tree)(using Context): Boolean =
     stripByNameType(tree) ne tree
 
-  /** Strip `=> T` to `T` and (under -Ycc) `{refs}-> T` to `T` */
+  /** Strip `=> T` to `T` and (under pureFunctions) `{refs}-> T` to `T` */
   def stripByNameType(tree: Tree)(using Context): Tree = unsplice(tree) match
     case ByNameTypeTree(t1) => t1
     case untpd.CapturingTypeTree(_, parent) =>
@@ -400,18 +397,18 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     }
   }
 
-  /** Under -Ycc: A builder and extractor for `=> T`, which is an alias for `{*}-> T`.
+  /** Under pureFunctions: A builder and extractor for `=> T`, which is an alias for `{*}-> T`.
    *  Only trees of the form `=> T` are matched; trees written directly as `{*}-> T`
    *  are ignored by the extractor.
    */
   object ImpureByNameTypeTree:
-  
+
     def apply(tp: ByNameTypeTree)(using Context): untpd.CapturingTypeTree =
       untpd.CapturingTypeTree(
-        Ident(nme.CAPTURE_ROOT).withSpan(tp.span.startPos) :: Nil, tp)
+        untpd.captureRoot.withSpan(tp.span.startPos) :: Nil, tp)
 
     def unapply(tp: Tree)(using Context): Option[ByNameTypeTree] = tp match
-      case untpd.CapturingTypeTree(id @ Ident(nme.CAPTURE_ROOT) :: Nil, bntp: ByNameTypeTree)
+      case untpd.CapturingTypeTree(id @ Select(_, nme.CAPTURE_ROOT) :: Nil, bntp: ByNameTypeTree)
       if id.span == bntp.span.startPos => Some(bntp)
       case _ => None
   end ImpureByNameTypeTree
@@ -512,7 +509,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       sym.owner.isPrimitiveValueClass
       || sym.owner == defn.StringClass
       || defn.pureMethods.contains(sym)
-    tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
+    tree.tpe.isInstanceOf[ConstantType] && tree.symbol != NoSymbol && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
     || fn.symbol.isStableMember && !fn.symbol.is(Lazy)  // constructors of no-inits classes are stable
 
   /** The purity level of this reference.

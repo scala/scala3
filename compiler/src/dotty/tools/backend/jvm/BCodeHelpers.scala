@@ -61,7 +61,6 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   @threadUnsafe lazy val AnnotationRetentionSourceAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
   @threadUnsafe lazy val AnnotationRetentionClassAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
   @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
-  @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = requiredClass("java.lang.annotation.Annotation")
 
   val bCodeAsmCommon: BCodeAsmCommon[int.type] = new BCodeAsmCommon(int)
 
@@ -415,7 +414,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
             arrAnnotV.visitEnd()
           }          // for the lazy val in ScalaSigBytes to be GC'ed, the invoker of emitAnnotations() should hold the ScalaSigBytes in a method-local var that doesn't escape.
   */
-        case t @ Apply(constr, args) if t.tpe.derivesFrom(JavaAnnotationClass) =>
+        case t @ Apply(constr, args) if t.tpe.classSymbol.is(JavaAnnotation) =>
           val typ = t.tpe.classSymbol.denot.info
           val assocs = assocsFromApply(t)
           val desc = innerClasesStore.typeDescriptor(typ) // the class descriptor of the nested annotation class

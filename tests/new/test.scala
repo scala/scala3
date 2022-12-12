@@ -1,3 +1,2 @@
 object Test:
-
-  def test = ???
+  def test = 0

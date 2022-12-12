@@ -1,6 +1,6 @@
 import annotation.retains
 class C
-type Cap = C @retains(*)
+type Cap = C @retains(caps.*)
 
 type T = (x: Cap) -> String @retains(x)
 
@@ -8,7 +8,7 @@ type ID[X] = X
 
 val aa: ((x: Cap) -> String @retains(x)) = (x: Cap) => ""
 
-def f(y: Cap, z: Cap): String @retains(*) =
+def f(y: Cap, z: Cap): String @retains(caps.*) =
   val a: ((x: Cap) -> String @retains(x)) = (x: Cap) => ""
   val b = a(y)
   val c: String @retains(y) = b

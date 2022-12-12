@@ -6,6 +6,7 @@ import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
+import reporting.TestReporter
 import vulpix._
 
 @Category(Array(classOf[ScalaJSCompilationTests]))
@@ -23,6 +24,7 @@ class ScalaJSCompilationTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   // Negative tests ------------------------------------------------------------
 

@@ -833,7 +833,7 @@ class Namer { typer: Typer =>
           if (cls eq sym)
             report.error("An annotation class cannot be annotated with iself", annotTree.srcPos)
           else {
-            val ann = Annotation.deferred(cls)(typedAheadAnnotation(annotTree)(using annotCtx))
+            val ann = Annotation.deferred(cls)(typedAheadExpr(annotTree)(using annotCtx))
             sym.addAnnotation(ann)
           }
         }
@@ -1617,9 +1617,6 @@ class Namer { typer: Typer =>
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
     typedAhead(tree, typer.typedExpr(_, pt))
-
-  def typedAheadAnnotation(tree: Tree)(using Context): tpd.Tree =
-    typedAheadExpr(tree, defn.AnnotationClass.typeRef)
 
   def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match {
     case Apply(fn, _) => typedAheadAnnotationClass(fn)

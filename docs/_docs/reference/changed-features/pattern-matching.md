@@ -253,7 +253,7 @@ object CharList:
 
 For example, where `V = S`, `U = Option[S] <: R`, `S = (String, PN) <: Product`, `PN = Seq[Int]`
 
-```Scala
+```scala
 class Foo(val name: String, val children: Int*)
 object Foo:
   def unapplySeq(f: Foo): Option[(String, Seq[Int])] =

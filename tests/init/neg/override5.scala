@@ -25,9 +25,3 @@ trait Base {
 
   val message = "hello, " + name
 }
-
-class Derived(val name: String) extends Base
-
-class Derived2 extends Derived("hello") {
-  override val name: String = "ok"         // error
-}

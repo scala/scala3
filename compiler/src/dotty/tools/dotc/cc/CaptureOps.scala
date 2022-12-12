@@ -9,6 +9,7 @@ import Decorators.*, NameOps.*
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
+import config.Feature
 
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()
@@ -39,6 +40,22 @@ extension (tree: Tree)
           .showing(i"toCaptureSet $tree --> $result", capt)
         tree.putAttachment(Captures, refs)
         refs
+
+  /** Under pureFunctions, add a @retainsByName(*)` annotation to the argument of
+   *  a by name parameter type, turning the latter into an impure by name parameter type.
+   */
+  def adaptByNameArgUnderPureFuns(using Context): Tree =
+    if Feature.pureFunsEnabledSomewhere then
+      val rbn = defn.RetainsByNameAnnot
+      Annotated(tree,
+        New(rbn.typeRef).select(rbn.primaryConstructor).appliedTo(
+          Typed(
+            SeqLiteral(ref(defn.captureRoot) :: Nil, TypeTree(defn.AnyType)),
+            TypeTree(defn.RepeatedParamType.appliedTo(defn.AnyType))
+          )
+        )
+      )
+    else tree
 
 extension (tp: Type)
 
@@ -96,6 +113,19 @@ extension (tp: Type)
   /** Is the boxedCaptureSet of this type nonempty? */
   def isBoxedCapturing(using Context) = !tp.boxedCaptureSet.isAlwaysEmpty
 
+  /** If this type is a capturing type, the version with boxed statues as given by `boxed`.
+   *  If it is a TermRef of a capturing type, and the box status flips, widen to a capturing
+   *  type that captures the TermRef.
+   */
+  def forceBoxStatus(boxed: Boolean)(using Context): Type = tp.widenDealias match
+    case tp @ CapturingType(parent, refs) if tp.isBoxed != boxed =>
+      val refs1 = tp match
+        case ref: CaptureRef if ref.isTracked => ref.singletonCaptureSet
+        case _ => refs
+      CapturingType(parent, refs1, boxed)
+    case _ =>
+      tp
+
   /** Map capturing type to their parents. Capturing types accessible
    *  via dealising are also stripped.
    */
@@ -107,11 +137,11 @@ extension (tp: Type)
     case _ =>
       tp
 
-  /** Under -Ycc, map regular function type to impure function type
+  /** Under pureFunctions, map regular function type to impure function type
    */
-  def adaptFunctionTypeUnderCC(using Context): Type = tp match
+  def adaptFunctionTypeUnderPureFuns(using Context): Type = tp match
     case AppliedType(fn, args)
-    if ctx.settings.Ycc.value && defn.isFunctionClass(fn.typeSymbol) =>
+    if Feature.pureFunsEnabledSomewhere && defn.isFunctionClass(fn.typeSymbol) =>
       val fname = fn.typeSymbol.name
       defn.FunctionType(
         fname.functionArity,
@@ -121,7 +151,63 @@ extension (tp: Type)
     case _ =>
       tp
 
+  /** Under pureFunctions, add a @retainsByName(*)` annotation to the argument of
+   *  a by name parameter type, turning the latter into an impure by name parameter type.
+   */
+  def adaptByNameArgUnderPureFuns(using Context): Type =
+    if Feature.pureFunsEnabledSomewhere then
+      AnnotatedType(tp,
+        CaptureAnnotation(CaptureSet.universal, boxed = false)(defn.RetainsByNameAnnot))
+    else
+      tp
+
+  def isCapturingType(using Context): Boolean =
+    tp match
+      case CapturingType(_, _) => true
+      case _ => false
+
+  /** Is type known to be always pure by its class structure,
+   *  so that adding a capture set to it would not make sense?
+   */
+  def isAlwaysPure(using Context): Boolean = tp.dealias match
+    case tp: (TypeRef | AppliedType) =>
+      val sym = tp.typeSymbol
+      if sym.isClass then sym.isPureClass
+      else tp.superType.isAlwaysPure
+    case CapturingType(parent, refs) =>
+      parent.isAlwaysPure || refs.isAlwaysEmpty
+    case tp: TypeProxy =>
+      tp.superType.isAlwaysPure
+    case tp: AndType =>
+      tp.tp1.isAlwaysPure || tp.tp2.isAlwaysPure
+    case tp: OrType =>
+      tp.tp1.isAlwaysPure && tp.tp2.isAlwaysPure
+    case _ =>
+      false
+
+extension (cls: ClassSymbol)
+
+  def pureBaseClass(using Context): Option[Symbol] =
+    cls.baseClasses.find(bc =>
+      defn.pureBaseClasses.contains(bc)
+      || {
+        val selfType = bc.givenSelfType
+        selfType.exists && selfType.captureSet.isAlwaysEmpty
+      })
+
 extension (sym: Symbol)
+
+  /** A class is pure if:
+   *   - one its base types has an explicitly declared self type with an empty capture set
+   *   - or it is a value class
+   *   - or it is an exception
+   *   - or it is one of Nothing, Null, or String
+   */
+  def isPureClass(using Context): Boolean = sym match
+    case cls: ClassSymbol =>
+      cls.pureBaseClass.isDefined || defn.pureSimpleClasses.contains(cls)
+    case _ =>
+      false
 
   /** Does this symbol allow results carrying the universal capability?
    *  Currently this is true only for function type applies (since their
@@ -150,6 +236,8 @@ extension (sym: Symbol)
       case _ => false
     containsEnclTypeParam(sym.info.finalResultType)
     && !sym.allowsRootCapture
+    && sym != defn.Caps_unsafeBox
+    && sym != defn.Caps_unsafeUnbox
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
