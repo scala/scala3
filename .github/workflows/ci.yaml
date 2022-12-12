@@ -2,8 +2,6 @@ name: Dotty
 
 on:
   push:
-    branches-ignore:
-      - 'language-reference-stable'
     tags:
       - '**'
   pull_request:
