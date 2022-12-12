@@ -156,14 +156,27 @@ private sealed trait VerboseSettings:
  */
 private sealed trait WarningSettings:
   self: SettingGroup =>
+  import Setting.ChoiceWithHelp
+
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
 
-  val Wunused: Setting[List[String]] = MultiChoiceSetting(
+  val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     name = "-Wunused",
     helpArg = "warning",
     descr = "Enable or disable specific `unused` warnings",
-    choices = List("nowarn", "all", "imports", "locals", "privates", "patvars", "explicits", "implicits", "params", "linted"),
+    choices = List(
+      ChoiceWithHelp("nowarn", ""),
+      ChoiceWithHelp("all",""),
+      ChoiceWithHelp("imports","Warn if an import selector is not referenced."),
+      ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused."),
+      ChoiceWithHelp("privates","Warn if a private member is unused."),
+      ChoiceWithHelp("locals","Warn if a local definition is unused."),
+      ChoiceWithHelp("explicits","Warn if an explicit parameter is unused."),
+      ChoiceWithHelp("implicits","Warn if an implicit parameter is unused."),
+      ChoiceWithHelp("params","Enable -Wunused:explicits,implicits."),
+      ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits.")
+    ),
     default = Nil
   )
   object WunusedHas:
