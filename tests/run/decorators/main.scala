@@ -51,7 +51,7 @@ class main extends EntryPoint.Annotation:
           case Some(t) => () => t
           case None => error(s"invalid argument for $argName: $arg")
 
-      def nextArgGetter[T](argName: String, p: ArgumentParser[T], defaultValue: Option[T] = None): () => T =
+      def nextArgGetter[T](argName: String, p: ArgumentParser[T], defaultValue: Option[T]): () => T =
         argInfos += ((argName, if defaultValue.isDefined then "?" else ""))
         val idx = args.indexOf(s"--$argName")
         val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()

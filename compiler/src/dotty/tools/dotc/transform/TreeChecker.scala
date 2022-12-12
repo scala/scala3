@@ -321,7 +321,7 @@ class TreeChecker extends Phase with SymTransformer {
             assert(false, s"The type of a non-Super tree must not be a SuperType, but $tree has type $tp")
           case _ =>
 
-    override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = {
+    override def typed(tree: untpd.Tree, pt: Type)(using Context): Tree = {
       val tpdTree = super.typed(tree, pt)
       Typer.assertPositioned(tree)
       checkSuper(tpdTree)

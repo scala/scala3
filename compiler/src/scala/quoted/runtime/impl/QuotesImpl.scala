@@ -2730,7 +2730,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def NoneModule: Symbol = dotc.core.Symbols.defn.NoneModule
       def SomeModule: Symbol = dotc.core.Symbols.defn.SomeClass.companionModule
       def ProductClass: Symbol = dotc.core.Symbols.defn.ProductClass
-      def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
+      def FunctionClass(arity: Int, isImplicit: Boolean, isErased: Boolean): Symbol =
         dotc.core.Symbols.defn.FunctionSymbol(arity, isImplicit, isErased)
       def TupleClass(arity: Int): Symbol =
         dotc.core.Symbols.defn.TupleType(arity).nn.classSymbol.asClass

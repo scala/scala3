@@ -757,13 +757,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(using Context): If =
+    override def If(tree: If)(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If =
       If(tree: Tree)(cond, thenp, elsep)
-    override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
+    override def Closure(tree: Closure)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
-    override def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(using Context): CaseDef =
+    override def CaseDef(tree: CaseDef)(pat: Tree, guard: Tree, body: Tree)(using Context): CaseDef =
       CaseDef(tree: Tree)(pat, guard, body)
-    override def Try(tree: Try)(expr: Tree = tree.expr, cases: List[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(using Context): Try =
+    override def Try(tree: Try)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(using Context): Try =
       Try(tree: Tree)(expr, cases, finalizer)
   }
 
@@ -790,7 +790,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
             ta.assignType(untpdCpy.Closure(tree)(env, meth, tpt), meth, tpt)
 
-    override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
+    override def Closure(tree: Closure)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
   }
 

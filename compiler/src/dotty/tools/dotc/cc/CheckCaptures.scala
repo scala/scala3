@@ -559,7 +559,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  Otherwise, if the result type is boxed, simulate an unboxing by
      *  adding all references in the boxed capture set to the current environment.
      */
-    override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
+    override def recheck(tree: Tree, pt: Type)(using Context): Type =
       if tree.isTerm && pt.isBoxedCapturing then
         val saved = curEnv
 

@@ -14,7 +14,7 @@ class Bar1[+A] extends Foo[A] {
 }
 
 class Bar2[+A] extends Foo[A] {
-  override def count(f: A => Boolean = _ => true): Unit = {}
+  override def count(f: A => Boolean): Unit = {}
   // ... including overrides which also override the default getter:
   override def count2(f: A => Boolean): Unit = {}
   override def count2(): Unit = count(_ => true)
