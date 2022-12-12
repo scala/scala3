@@ -847,19 +847,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
   private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): Option[String] = {
     if (needsGenericSignature(sym)) {
-      val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
-      if (erasedTypeSym.isPrimitiveValueClass) {
-        // Suppress signatures for symbols whose types erase in the end to primitive
-        // value types. This is needed to fix #7416.
-        None
-      } else {
-        val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
-        if (ctx.settings.XverifySignatures.value) {
-          jsOpt.foreach(verifySignature(sym, _))
-        }
-
-        jsOpt
+      val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
+      if (ctx.settings.XverifySignatures.value) {
+        jsOpt.foreach(verifySignature(sym, _))
       }
+
+      jsOpt
     } else {
       None
     }
