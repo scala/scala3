@@ -1,6 +1,11 @@
 inspecting field value @JsonProperty
+inspecting field value2 @JsonProperty
 inspecting method getValue @JsonProperty
+inspecting method getValue2 @JsonProperty
 inspecting method setValue
+inspecting method setValue2
 inspecting method value
+inspecting method value2
+inspecting method value2_$eq
 inspecting method value_$eq
 inspecting constructor TestBeanProperty
