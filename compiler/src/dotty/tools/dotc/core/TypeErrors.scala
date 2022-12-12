@@ -96,21 +96,23 @@ end RecursionOverflow
   */
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
-object handleRecursive {
+object handleRecursive:
+  inline def underlyingStackOverflowOrNull(exc: Throwable): Throwable | Null =
+    var e: Throwable | Null = exc
+    while e != null && !e.isInstanceOf[StackOverflowError] do e = e.getCause
+    e
+
   def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
-    if (ctx.settings.YnoDecodeStacktraces.value)
+    if ctx.settings.YnoDecodeStacktraces.value then
       throw exc
-    else
-      exc match {
-        case _: RecursionOverflow =>
-          throw new RecursionOverflow(op, details, exc, weight)
-        case _ =>
-          var e: Throwable | Null = exc
-          while (e != null && !e.isInstanceOf[StackOverflowError]) e = e.getCause
-          if (e != null) throw new RecursionOverflow(op, details, e, weight)
-          else throw exc
-      }
-}
+    else exc match
+      case _: RecursionOverflow =>
+        throw new RecursionOverflow(op, details, exc, weight)
+      case _ =>
+        val so = underlyingStackOverflowOrNull(exc)
+        if so != null then throw new RecursionOverflow(op, details, so, weight)
+        else throw exc
+end handleRecursive
 
 /**
  * This TypeError signals that completing denot encountered a cycle: it asked for denot.info (or similar),
