@@ -41,12 +41,19 @@ final public class Problem implements xsbti.Problem {
   }
 
   public Optional<xsbti.DiagnosticCode> diagnosticCode() {
-    // NOTE: It's important for compatibility that we only construct a
-    // DiagnosticCode here to maintain compatibility with older versions of
-    // zinc while using this newer version of the compiler. If we would
-    // contstruct it earlier, you'd end up with ClassNotFoundExceptions for
-    // DiagnosticCode.
-    return Optional.of(new DiagnosticCode(_diagnosticCode, Optional.empty()));
+    // We don't forward the code if it's -1 since some tools will assume that this is actually
+    // the diagnostic code and show it or attempt to use it. This will ensure tools consuming
+    // this don't all have to be adding checks for -1.
+    if (_diagnosticCode == "-1") {
+      return Optional.empty();
+    } else {
+      // NOTE: It's important for compatibility that we only construct a
+      // DiagnosticCode here to maintain compatibility with older versions of
+      // zinc while using this newer version of the compiler. If we would
+      // contstruct it earlier, you'd end up with ClassNotFoundExceptions for
+      // DiagnosticCode.
+      return Optional.of(new DiagnosticCode(_diagnosticCode, Optional.empty()));
+    }
   }
 
   @Override
