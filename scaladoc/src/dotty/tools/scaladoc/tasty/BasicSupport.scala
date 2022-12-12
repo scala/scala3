@@ -66,5 +66,10 @@ trait BasicSupport:
         a.symbol.packageName == "java.lang" && a.symbol.className.contains("Deprecated")
       }.map(parseAnnotation)
 
+    def isExperimental(): Option[Annotation] =
+      sym.annotations.find { a =>
+        a.symbol.packageName == "scala.annotation" && a.symbol.className.contains("experimental")
+      }.map(parseAnnotation)
+
     def isLeftAssoc: Boolean = !sym.name.endsWith(":")
   end extension

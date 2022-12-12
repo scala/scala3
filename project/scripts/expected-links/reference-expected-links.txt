@@ -40,7 +40,6 @@
 ./contextual/type-classes.html
 ./contextual/using-clauses.html
 ./docs/reference/other-new-features/named-typeargs.html
-./docsScalaLangResources/scaladoc-assets.html
 ./dropped-features.html
 ./dropped-features/auto-apply.html
 ./dropped-features/class-shadowing-spec.html

@@ -284,7 +284,7 @@ Note the following properties of `Mirror` types,
 + The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
   which is obtained from `MirroredType` by wildcarding its type parameters.
 
-### Implementing `derived` with `Mirror`
+## Implementing `derived` with `Mirror`
 
 As seen before, the signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary, but we expect it to typically be of the following form:
 
@@ -484,7 +484,7 @@ The framework described here enables all three of these approaches without manda
 For a brief discussion on how to use macros to write a type class `derived`
 method please read more at [How to write a type class `derived` method using macros](./derivation-macro.md).
 
-### Syntax
+## Syntax
 
 ```
 Template          ::=  InheritClauses [TemplateBody]
