@@ -3441,19 +3441,20 @@ object Types {
       val tp2w = tp2.widenSingletons
       if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
 
-    private def ensureAtomsComputed()(using Context): Unit =
+    private def ensureAtomsComputed()(using Context): Boolean =
       if atomsRunId != ctx.runId && !isProvisional then
         myAtoms = computeAtoms()
         myWidened = computeWidenSingletons()
         atomsRunId = ctx.runId
+        true
+      else
+        false
 
     override def atoms(using Context): Atoms =
-      ensureAtomsComputed()
-      if isProvisional then computeAtoms() else myAtoms
+      if ensureAtomsComputed() then myAtoms else computeAtoms()
 
     override def widenSingletons(using Context): Type =
-      ensureAtomsComputed()
-      if isProvisional then computeWidenSingletons() else myWidened
+      if ensureAtomsComputed() then myWidened else computeWidenSingletons()
 
     def derivedOrType(tp1: Type, tp2: Type, soft: Boolean = isSoft)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2) && soft == isSoft) this
