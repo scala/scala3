@@ -3669,13 +3669,32 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       def newMethod(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
 
+      /** Generates a new method symbol with the given parent, name and type.
+       *
+       *  To define a member method of a class, use the `newMethod` within the `decls` function of `newClass`.
+       *
+       *  @param parent The owner of the method
+       *  @param name The name of the method
+       *  @param tpe The type of the method (MethodType, PolyType, ByNameType)
+       *  @param flags extra flags to with which the symbol should be constructed
+       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+       *
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to the DefDef constructor.
+       *
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
+       */
+      @experimental def newUniqueMethod(parent: Symbol, namePrefix: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
+
       /** Generates a new val/var/lazy val symbol with the given parent, name and type.
       *
       *  This symbol starts without an accompanying definition.
       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
       *  this symbol to the ValDef constructor.
       *
-      *  Note: Also see reflect.let
+      *  Note: Also see ValDef.let
       *
       *  @param parent The owner of the val/var/lazy val
       *  @param name The name of the val/var/lazy val
@@ -3686,6 +3705,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *        direct or indirect children of the reflection context's owner.
       */
       def newVal(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
+
+      /** Generates a new val/var/lazy val symbol with the given parent, name prefix and type.
+       *
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to the ValDef constructor.
+       *
+       *  Note: Also see newVal
+       *  Note: Also see ValDef.let
+       *
+       *  @param parent The owner of the val/var/lazy val
+       *  @param name The name of the val/var/lazy val
+       *  @param tpe The type of the val/var/lazy val
+       *  @param flags extra flags to with which the symbol should be constructed
+       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
+       */
+      @experimental def newUniqueVal(parent: Symbol, namePrefix: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
 
       /** Generates a pattern bind symbol with the given parent, name and type.
       *

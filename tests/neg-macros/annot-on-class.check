@@ -1,0 +1,17 @@
+
+-- Error: tests/neg-macros/annot-on-class/Test_2.scala:2:6 -------------------------------------------------------------
+1 |@voidAnnot
+2 |class A // error
+  |^
+  |macro annotations are not supported on class
+-- Error: tests/neg-macros/annot-on-class/Test_2.scala:6:8 -------------------------------------------------------------
+5 |  @voidAnnot
+6 |  class C // error
+  |  ^
+  |  macro annotations are not supported on class
+-- Error: tests/neg-macros/annot-on-class/Test_2.scala:10:10 -----------------------------------------------------------
+ 9 |    @voidAnnot
+10 |    class D // error
+   |    ^
+   |    macro annotations are not supported on class
+11 |    ()

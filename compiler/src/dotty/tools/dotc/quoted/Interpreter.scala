@@ -32,7 +32,7 @@ import dotty.tools.dotc.reporting.Message
 import dotty.tools.repl.AbstractFileClassLoader
 
 /** Tree interpreter for metaprogramming constructs */
-abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
+class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
   import Interpreter._
   import tpd._
 
@@ -68,7 +68,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
 
     // TODO disallow interpreted method calls as arguments
     case Call(fn, args) =>
-      if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package))
+      if (fn.symbol.isConstructor)
         interpretNew(fn.symbol, args.flatten.map(interpretTree))
       else if (fn.symbol.is(Module))
         interpretModuleAccess(fn.symbol)
@@ -185,8 +185,9 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
   private def interpretModuleAccess(fn: Symbol): Object =
     loadModule(fn.moduleClass)
 
-  private def interpretNew(fn: Symbol, args: => List[Object]): Object = {
-    val clazz = loadClass(fn.owner.fullName.toString)
+  private def interpretNew(fn: Symbol, args: List[Object]): Object = {
+    val className = fn.owner.fullName.mangledString.replaceAll("\\$\\.", "\\$")
+    val clazz = loadClass(className)
     val constr = clazz.getConstructor(paramsSig(fn): _*)
     constr.newInstance(args: _*).asInstanceOf[Object]
   }
@@ -214,10 +215,6 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
   private def loadClass(name: String): Class[?] =
     try classLoader.loadClass(name)
     catch {
-      case _: ClassNotFoundException if ctx.compilationUnit.isSuspendable  =>
-        if (ctx.settings.XprintSuspension.value)
-          report.echo(i"suspension triggered by a dependency on $name", pos)
-        ctx.compilationUnit.suspend()
       case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
         if (ctx.settings.XprintSuspension.value)
           report.echo(i"suspension triggered by a dependency on $sym", pos)
@@ -272,13 +269,15 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
     }
 
   private object MissingClassDefinedInCurrentRun {
-    def unapply(targetException: NoClassDefFoundError)(using Context): Option[Symbol] = {
-      val className = targetException.getMessage
-      if (className eq null) None
-      else {
-        val sym = staticRef(className.toTypeName).symbol
-        if (sym.isDefinedInCurrentRun) Some(sym) else None
-      }
+    def unapply(targetException: Throwable)(using Context): Option[Symbol] = {
+      targetException match
+        case _: NoClassDefFoundError | _: ClassNotFoundException =>
+          val className = targetException.getMessage
+          if className eq null then None
+          else
+            val sym = staticRef(className.toTypeName).symbol
+            if (sym.isDefinedInCurrentRun) Some(sym) else None
+        case _ => None
     }
   }
 

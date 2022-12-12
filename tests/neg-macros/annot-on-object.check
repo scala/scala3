@@ -1,0 +1,16 @@
+
+-- Error: tests/neg-macros/annot-on-object/Test_2.scala:2:7 ------------------------------------------------------------
+1 |@voidAnnot
+2 |object A // error
+  |^
+  |macro annotations are not supported on object
+-- Error: tests/neg-macros/annot-on-object/Test_2.scala:6:9 ------------------------------------------------------------
+5 |  @voidAnnot
+6 |  object C // error
+  |  ^
+  |  macro annotations are not supported on object
+-- Error: tests/neg-macros/annot-on-object/Test_2.scala:10:11 ----------------------------------------------------------
+ 9 |    @voidAnnot
+10 |    object D // error
+   |    ^
+   |    macro annotations are not supported on object
