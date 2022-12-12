@@ -168,14 +168,14 @@ private sealed trait WarningSettings:
     choices = List(
       ChoiceWithHelp("nowarn", ""),
       ChoiceWithHelp("all",""),
-      ChoiceWithHelp("imports","Warn if an import selector is not referenced."),
-      ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused."),
-      ChoiceWithHelp("privates","Warn if a private member is unused."),
-      ChoiceWithHelp("locals","Warn if a local definition is unused."),
-      ChoiceWithHelp("explicits","Warn if an explicit parameter is unused."),
-      ChoiceWithHelp("implicits","Warn if an implicit parameter is unused."),
-      ChoiceWithHelp("params","Enable -Wunused:explicits,implicits."),
-      ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits.")
+      ChoiceWithHelp("imports","Warn if an import selector is not referenced"),
+      ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
+      ChoiceWithHelp("privates","Warn if a private member is unused"),
+      ChoiceWithHelp("locals","Warn if a local definition is unused"),
+      ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
+      ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
+      ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
+      ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits")
     ),
     default = Nil
   )
