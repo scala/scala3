@@ -1,16 +1,27 @@
-import scala.annotation.meta.*
+import scala.annotation.meta.{ field as fld, getter as get, param as par }
 
-type FieldColumn = MyColumnBase @field
-type GetterColumn = MyColumnBase @getter
+type FldColumn = MyColumnBase @fld
+type GetColumn = MyColumnBase @get
+type ParColumn = MyColumnBase @par
 
 class MyTable(
-  @(MyColumnBase @field)(name="FIELD_NAME1")
-  val fieldName1: String,
-  @FieldColumn(name="FIELD_NAME2")
-  val fieldName2: String,
+  @(MyColumnBase     ) val aaaParam1: String,
+  @(MyColumnBase @fld) val fldParam1: String,
+  @(MyColumnBase @get) val getParam1: String,
+  @(MyColumnBase @par) val parParam1: String,
+) {
+  @(MyColumnBase     ) val aaaField1: String = ""
+  @(MyColumnBase @fld) val fldField1: String = ""
+  @(MyColumnBase @get) val getField1: String = ""
+  @(MyColumnBase @par) val parField1: String = ""
+}
 
-  @(MyColumnBase @getter)(name="GETTER_NAME1")
-  val getterName1: String,
-  @GetterColumn(name="GETTER_NAME2")
-  val getterName2: String,
-)
+class MyTable2(
+  @FldColumn val fldParam2: String,
+  @GetColumn val getParam2: String,
+  @ParColumn val parParam2: String,
+) {
+  @FldColumn val fldField2: String = ""
+  @GetColumn val getField2: String = ""
+  @ParColumn val parField2: String = ""
+}

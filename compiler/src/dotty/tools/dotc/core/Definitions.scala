@@ -1041,6 +1041,8 @@ class Definitions {
   // A list of meta-annotations that are relevant for fields and accessors
   @tu lazy val FieldAccessorMetaAnnots: Set[Symbol] =
     Set(FieldMetaAnnot, GetterMetaAnnot, ParamMetaAnnot, SetterMetaAnnot)
+  @tu lazy val ExtFieldAccessorMetaAnnots: Set[Symbol] =
+    FieldAccessorMetaAnnots + BeanGetterMetaAnnot + BeanSetterMetaAnnot
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to

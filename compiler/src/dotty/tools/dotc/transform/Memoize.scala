@@ -122,7 +122,10 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       denot match {
         case fieldDenot: SymDenotation if sym.annotations.nonEmpty =>
           val cpy = fieldDenot.copySymDenotation()
-          cpy.annotations = atPhase(typerPhase)(sym.annotationsCarrying(defn.FieldMetaAnnot))
+          cpy.annotations = atPhase(typerPhase)(sym.annotations.filterConserve { annot =>
+            annot.hasOneOfMetaAnnotation(defn.FieldMetaAnnot)
+            || !annot.hasOneOfMetaAnnotation(defn.ExtFieldAccessorMetaAnnots.toList*)
+          })
           cpy.installAfter(thisPhase)
         case _ => ()
       }

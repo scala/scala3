@@ -2,6 +2,4 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 @Retention(RetentionPolicy.RUNTIME)
-public @interface JsonProperty {
-    String value() default "";
-}
+public @interface JsonProperty {}
