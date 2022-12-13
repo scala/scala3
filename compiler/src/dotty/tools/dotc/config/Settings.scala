@@ -190,12 +190,12 @@ object Settings:
      *
      * NOTE : `equals` and `toString` have special behaviors
      */
-    case class ChoiceWithHelp[T](choice: T, description: String):
+    case class ChoiceWithHelp[T](name: T, description: String):
       override def equals(x: Any): Boolean = x match
-        case s:String => s == choice.toString()
+        case s:String => s == name.toString()
         case _ => false
       override def toString(): String =
-        s"\n\t- $choice${if description.isEmpty() then "" else s"\t: $description"}"
+        s"\n- $name${if description.isEmpty() then "" else s" :\n\t${description.replace("\n","\n\t")}"}"
   end Setting
 
   class SettingGroup {

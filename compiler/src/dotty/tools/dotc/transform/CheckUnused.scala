@@ -211,7 +211,9 @@ object CheckUnused:
     def registerImport(imp: tpd.Import)(using Context): Unit =
       if !tpd.languageImport(imp.expr).nonEmpty then
         impInScope.top += imp
-        unusedImport ++= imp.selectors.filter(s => !isImportExclusion(s))
+        unusedImport ++= imp.selectors.filter { s =>
+          !shouldSelectorBeReported(imp, s) && !isImportExclusion(s)
+        }
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
     def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
@@ -273,7 +275,7 @@ object CheckUnused:
     def getUnused(using Context): UnusedResult =
       popScope()
       val sortedImp =
-        if ctx.settings.WunusedHas.imports then
+        if ctx.settings.WunusedHas.imports || ctx.settings.WunusedHas.strictNoImplicitWarn then
           unusedImport.map(d => d.srcPos -> WarnTypes.Imports).toList
         else
           Nil
@@ -341,6 +343,18 @@ object CheckUnused:
     private def isImportExclusion(sel: ImportSelector): Boolean = sel.renamed match
       case untpd.Ident(name) => name == StdNames.nme.WILDCARD
       case _ => false
+
+    /**
+     * If -Wunused:strict-no-implicit-warn import and this import selector could potentially import implicit.
+     * return true
+     */
+    private def shouldSelectorBeReported(imp: tpd.Import, sel: ImportSelector)(using Context): Boolean =
+      if ctx.settings.WunusedHas.strictNoImplicitWarn then
+        sel.isWildcard ||
+        imp.expr.tpe.member(sel.name.toTermName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit)) ||
+        imp.expr.tpe.member(sel.name.toTypeName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit))
+      else
+        false
 
     extension (sym: Symbol)
       /** is accessible without import in current context */

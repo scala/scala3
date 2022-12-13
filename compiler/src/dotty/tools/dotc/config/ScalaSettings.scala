@@ -168,23 +168,33 @@ private sealed trait WarningSettings:
     choices = List(
       ChoiceWithHelp("nowarn", ""),
       ChoiceWithHelp("all",""),
-      ChoiceWithHelp("imports","Warn if an import selector is not referenced"),
+      ChoiceWithHelp(
+        name = "imports",
+        description = "Warn if an import selector is not referenced.\n" +
+        "NOTE : overrided by -Wunused:strict-no-implicit-warn"),
       ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
       ChoiceWithHelp("privates","Warn if a private member is unused"),
       ChoiceWithHelp("locals","Warn if a local definition is unused"),
       ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
       ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
       ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
-      ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits")
+      ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits"),
+      ChoiceWithHelp(
+        name = "strict-no-implicit-warn",
+        description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
+        "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
+      )
     ),
     default = Nil
   )
   object WunusedHas:
+    def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
     def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
     def nowarn(using Context) = allOr("nowarn")
 
+    // overrided by strict-no-implicit-warn
     def imports(using Context) =
-      allOr("imports") || allOr("linted")
+      (allOr("imports") || allOr("linted")) && !(strictNoImplicitWarn)
     def locals(using Context) =
       allOr("locals") || allOr("linted")
     /** -Wunused:explicits OR -Wunused:params */
@@ -196,8 +206,12 @@ private sealed trait WarningSettings:
     def params(using Context) = allOr("params")
     def privates(using Context) =
       allOr("privates") || allOr("linted")
-    def patvars(using Context) = allOr("patvars")
-    def linted(using Context) = allOr("linted")
+    def patvars(using Context) =
+      allOr("patvars")
+    def linted(using Context) =
+      allOr("linted")
+    def strictNoImplicitWarn(using Context) =
+      isChoiceSet("strict-no-implicit-warn")
 
   val Wconf: Setting[List[String]] = MultiStringSetting(
     "-Wconf",
