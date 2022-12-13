@@ -1277,7 +1277,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (ctx.mode is Mode.Type) typedFunctionType(tree, pt)
     else typedFunctionValue(tree, pt)
 
-  // TODO HR : Change this function to infer the return type before desugaring a throws clause
   def typedFunctionType(tree: untpd.Function, pt: Type)(using Context): Tree = {
     val untpd.Function(args, body) = tree
     var funFlags = tree match {
@@ -1343,7 +1342,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
   }
 
-  // TODO HR : Change this function to infer the return type before desugaring a throws clause
   def typedFunctionValue(tree: untpd.Function, pt: Type)(using Context): Tree = {
     val untpd.Function(params: List[untpd.ValDef] @unchecked, _) = tree: @unchecked
 
@@ -1859,7 +1857,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val capabilityProof = caughtExceptions.reduce(OrType(_, _, true))
       untpd.Block(makeCanThrow(capabilityProof), expr)
 
-  // TODO HR : Change this to infer all the CanThrow capabilities instead of the desugar
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {
     val expr2 :: cases2x = harmonic(harmonize, pt) {
       val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)
@@ -1871,7 +1868,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2)
   }
 
-    // TODO HR : Change this to infer all the CanThrow capabilities instead of the desugar
   def typedTry(tree: untpd.ParsedTry, pt: Type)(using Context): Try =
     val cases: List[untpd.CaseDef] = tree.handler match
       case Match(EmptyTree, cases) => cases
@@ -1881,7 +1877,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         desugar.makeTryCase(handler1) :: Nil
     typedTry(untpd.Try(tree.expr, cases, tree.finalizer).withSpan(tree.span), pt)
 
-  // TODO HR : Maybe change it if we want to infer the throws annotation
   def typedThrow(tree: untpd.Throw)(using Context): Tree =
     val expr1 = typed(tree.expr, defn.ThrowableType)
     val cap = checkCanThrow(expr1.tpe.widen, tree.span)
@@ -1987,7 +1982,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
-    // TODO HR : Remove anything related to the infix type $throws
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(using Context): Tree = {
     tree.args match
       case arg :: _ if arg.isTerm =>
@@ -2312,8 +2306,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     vdef1.setDefTree
   }
 
-  // TODO HR : Should we modifiy this function,
-  // TODO HR : Yes, if we want to infer the throws clauses too
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree = {
     if (!sym.info.exists) { // it's a discarded synthetic case class method, drop it
       assert(sym.is(Synthetic) && desugar.isRetractableCaseClassMethodName(sym.name))
