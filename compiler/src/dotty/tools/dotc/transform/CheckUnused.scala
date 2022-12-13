@@ -21,6 +21,7 @@ import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Types.AnnotatedType
 import dotty.tools.dotc.core.Flags.flagsString
 import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Names.Name
 
 
 
@@ -71,10 +72,10 @@ class CheckUnused extends Phase:
           unusedDataApply(_.registerImport(imp))
           traverseChildren(tree)(using newCtx)
         case ident: Ident =>
-          unusedDataApply(_.registerUsed(ident.symbol))
+          unusedDataApply(_.registerUsed(ident.symbol, Some(ident.name)))
           traverseChildren(tree)(using newCtx)
         case sel: Select =>
-          unusedDataApply(_.registerUsed(sel.symbol))
+          unusedDataApply(_.registerUsed(sel.symbol, Some(sel.name)))
           traverseChildren(tree)(using newCtx)
         case _: (tpd.Block | tpd.Template | tpd.PackageDef) =>
           unusedDataApply { ud =>
@@ -99,7 +100,7 @@ class CheckUnused extends Phase:
 
   private def typeTraverser(dt: (UnusedData => Any) => Unit)(using Context) = new TypeTraverser:
     override def traverse(tp: Type): Unit = tp match
-      case AnnotatedType(_, annot) => dt(_.registerUsed(annot.symbol))
+      case AnnotatedType(_, annot) => dt(_.registerUsed(annot.symbol, None))
       case _ => traverseChildren(tp)
 
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
@@ -156,7 +157,7 @@ object CheckUnused:
      *
      * See the `isAccessibleAsIdent` extension method below in the file
      */
-    private val usedInScope = MutStack(MutSet[(Symbol,Boolean)]())
+    private val usedInScope = MutStack(MutSet[(Symbol,Boolean, Option[Name])]())
     /* unused import collected during traversal */
     private val unusedImport = MutSet[ImportSelector]()
 
@@ -195,17 +196,15 @@ object CheckUnused:
       registerUsed(annotSym)
 
     /** Register a found (used) symbol */
-    def registerUsed(sym: Symbol)(using Context): Unit =
+    def registerUsed(sym: Symbol, name: Option[Name])(using Context): Unit =
       if !isConstructorOfSynth(sym) then
-        usedInScope.top += sym -> sym.isAccessibleAsIdent
-        usedDef += sym
+        usedInScope.top += ((sym, sym.isAccessibleAsIdent, name))
         if sym.isConstructor && sym.exists then
-          registerUsed(sym.owner) // constructor are "implicitly" imported with the class
+          registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
 
     /** Register a list of found (used) symbols */
     def registerUsed(syms: Seq[Symbol])(using Context): Unit =
-      usedInScope.top ++= syms.filterNot(isConstructorOfSynth).map(s => s -> s.isAccessibleAsIdent)
-      usedDef ++= syms
+      usedInScope.top ++= syms.filterNot(isConstructorOfSynth).map(s => (s, s.isAccessibleAsIdent, None))
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
@@ -248,10 +247,10 @@ object CheckUnused:
       // used imports in this scope
       val imports = impInScope.pop().toSet
       val kept = used.filter { t =>
-        val (sym, isAccessible) = t
+        val (sym, isAccessible, optName) = t
         // keep the symbol for outer scope, if it matches **no** import
         !imports.exists { imp =>
-          sym.isInImport(imp, isAccessible) match
+          sym.isInImport(imp, isAccessible, optName) match
             case None => false
             case Some(sel) =>
               unusedImport -= sel
@@ -368,10 +367,10 @@ object CheckUnused:
           }
 
       /** Given an import and accessibility, return an option of selector that match import<->symbol */
-      def isInImport(imp: tpd.Import, isAccessible: Boolean)(using Context): Option[ImportSelector] =
+      def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name])(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
         val qualHasSymbol = qual.tpe.member(sym.name).alternatives.map(_.symbol).contains(sym)
-        def selector = sels.find(sel => sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name)
+        def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
         if qualHasSymbol && !isAccessible && sym.exists then
           selector.orElse(wildcard) // selector with name or wildcard (or given)

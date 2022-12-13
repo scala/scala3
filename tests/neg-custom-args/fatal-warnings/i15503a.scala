@@ -237,3 +237,11 @@ package testOnOverloadedMethodsImports:
     import b.D.foo // OK
     def bar = foo((??? : a.A))
     def baz = foo((??? : a.B))
+
+//-------------------------------------
+package foo.testing.rename.imports:
+  import collection.mutable.{Set => MutSet1} // OK
+  import collection.mutable.{Set => MutSet2} // OK
+  import collection.mutable.{Set => MutSet3} // error
+  type A[X] = MutSet1[X]
+  val a = MutSet2(1)
