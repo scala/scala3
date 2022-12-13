@@ -108,27 +108,19 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         if (sym.isGetter) sym.info.resultType
         else /*sym.isSetter*/ sym.info.firstParamTypes.head
 
-      newSymbol(
+      val fieldSym = newSymbol(
         owner = ctx.owner,
         name  = sym.name.asTermName.fieldName,
         flags = Private | (if (sym.is(StableRealizable)) EmptyFlags else Mutable),
         info  = fieldType,
         coord = tree.span
-      ).withAnnotationsCarrying(sym, defn.FieldMetaAnnot)
-       .enteredAfter(thisPhase)
-    }
-
-    def addAnnotations(denot: Denotation): Unit =
-      denot match {
-        case fieldDenot: SymDenotation if sym.annotations.nonEmpty =>
-          val cpy = fieldDenot.copySymDenotation()
-          cpy.annotations = atPhase(typerPhase)(sym.annotations.filterConserve { annot =>
-            annot.hasOneOfMetaAnnotation(defn.FieldMetaAnnot)
-            || !annot.hasOneOfMetaAnnotation(defn.ExtFieldAccessorMetaAnnots.toList*)
-          })
-          cpy.installAfter(thisPhase)
-        case _ => ()
+      )
+      fieldSym.annotations = sym.annotations.filterConserve { annot =>
+        annot.hasOneOfMetaAnnotation(defn.FieldMetaAnnot)
+        || !annot.hasOneOfMetaAnnotation(defn.ExtFieldAccessorMetaAnnots.toList*)
       }
+      fieldSym.enteredAfter(thisPhase)
+    }
 
     def removeUnwantedAnnotations(denot: SymDenotation, metaAnnotSym: ClassSymbol): Unit =
       if (sym.annotations.nonEmpty) {
@@ -186,7 +178,6 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             if isErasableBottomField(field, rhsClass) then erasedBottomTree(rhsClass)
             else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
           val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
-          addAnnotations(fieldDef.denot)
           removeUnwantedAnnotations(sym, defn.GetterMetaAnnot)
           Thicket(fieldDef, getterDef)
       else if sym.isSetter then
