@@ -2,39 +2,41 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast.{Trees, tpd, untpd, desugar}
+import core.*
+import ast.{Trees, desugar, tpd, untpd}
 import util.Stats.record
-import util.{SrcPos, NoSourcePosition}
-import Contexts._
-import Flags._
-import Symbols._
+import util.{NoSourcePosition, SrcPos}
+import Contexts.*
+import dotty.tools.dotc.config.Printers.saferExceptions
+import Flags.*
+import Symbols.*
 import Denotations.Denotation
-import Types._
-import Decorators._
-import ErrorReporting._
-import Trees._
-import Names._
-import StdNames._
-import ContextOps._
+import Types.*
+import Decorators.*
+import ErrorReporting.*
+import Trees.*
+import Names.*
+import StdNames.*
+import ContextOps.*
 import NameKinds.DefaultGetterName
-import ProtoTypes._
-import Inferencing._
-import reporting._
-import transform.TypeUtils._
-import transform.SymUtils._
-import Nullables._
+import ProtoTypes.*
+import Inferencing.*
+import reporting.*
+import transform.TypeUtils.*
+import transform.SymUtils.*
+import Nullables.*
+import Checking.*
 import config.Feature
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
-import TypeApplications._
-import Annotations.Annotation
-
+import TypeApplications.*
+import Annotations.{Annotation, ThrownException, ThrowsAnnotation}
 import Constants.{Constant, IntTag}
 import Denotations.SingleDenotation
-import annotation.threadUnsafe
+import dotty.tools.dotc.typer.Implicits.{SearchFailure, SearchSuccess}
 
+import annotation.threadUnsafe
 import scala.util.control.NonFatal
 
 object Applications {
@@ -929,21 +931,22 @@ trait Applications extends Compatibility {
         case _ => IgnoredProto(pt)
           // Do ignore other expected result types, since there might be an implicit conversion
           // on the result. We could drop this if we disallow unrestricted implicit conversions.
-      val originalProto =
-        new FunProto(tree.args, resultProto)(this, tree.applyKind)(using argCtx(tree))
+      val originalProto = FunProto(tree.args, resultProto)(this, tree.applyKind)(using argCtx(tree))
       record("typedApply")
       val fun1 = typedExpr(tree.fun, originalProto)
-      // TODO HR : Add this point, we can fetch the denotation from fun1
-      // TODO HR : If it has as annotations the ThrowsAnnotation, then request
-      // TODO HR : a given instance.Otherwise, continue processing
-      // TODO HR : Weird thing, How overloading is handled ??
-      if fun1.symbol.is(JavaDefined) && Feature.enabled(Feature.saferExceptions) then
-        // TODO HR : What's the difference between i and em interpolator. (I know that i uses the the show method, how about em ?)
-        report.warning(
-          em""" A Java function was called (${fun1.symbol.name}) in a context where safer exceptions is enabled.
-              | This function might throw an exception.
-              | Handling of Java method is yet to be implemented.
-              |""".stripMargin, tree.srcPos)
+      if Feature.enabled(Feature.saferExceptions) then {
+        val sym: Symbol = fun1.symbol
+        val annot = sym.annotations
+        val throwsAnnot = annot.filter(ThrownException.unapply(_).isDefined)
+        val exceptions = throwsAnnot.map(ThrownException.unapply(_).get)
+        val capabities = for e <- exceptions yield checkCanThrow(e, tree.span)
+        if exceptions.nonEmpty then
+          report.warning(
+            i""" A function was called (${sym.name}) in a context where safer exceptions is enabled.
+                | This function throws an exception.
+                | ${exceptions zip capabities}
+                |""".stripMargin, tree.srcPos)
+      }
       // If adaptation created a tupled dual of `originalProto`, pick the right version
       // (tupled or not) of originalProto to proceed.
       val proto =
