@@ -2,12 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Constants._
-import dotty.tools.dotc.ast.tpd, tpd.*
+import Symbols._, Types._, Contexts._, Constants._, Phases.*
+import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}
 import printing.Texts.Text
-import annotation.internal.sharable
+
+import scala.annotation.internal.sharable
 
 object Annotations {
 
@@ -87,7 +88,7 @@ object Annotations {
     def sameAnnotation(that: Annotation)(using Context): Boolean =
       symbol == that.symbol && tree.sameTree(that.tree)
 
-    def hasOneOfMetaAnnotation(metaSyms: Symbol*)(using Context): Boolean =
+    def hasOneOfMetaAnnotation(metaSyms: Symbol*)(using Context): Boolean = atPhaseNoLater(erasurePhase) {
       def recTp(tp: Type): Boolean = tp.dealiasKeepAnnots match
         case AnnotatedType(parent, metaAnnot) => metaSyms.exists(metaAnnot.matches) || recTp(parent)
         case _ => false
@@ -99,6 +100,7 @@ object Annotations {
         case Typed(expr, _) => rec(expr)
         case _ => false
       metaSyms.exists(symbol.hasAnnotation) || rec(tree)
+    }
 
     /** Operations for hash-consing, can be overridden */
     def hash: Int = System.identityHashCode(this)
