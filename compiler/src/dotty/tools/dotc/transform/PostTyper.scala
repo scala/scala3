@@ -188,7 +188,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         metaAnnotSymBackup: Symbol, keepIfNoRelevantAnnot: Boolean)(using Context): Unit =
       def shouldKeep(annot: Annotation): Boolean =
         annot.hasOneOfMetaAnnotation(metaAnnotSym, metaAnnotSymBackup)
-        || keepIfNoRelevantAnnot && !annot.hasOneOfMetaAnnotation(defn.FieldAccessorMetaAnnots.toList*)
+        || keepIfNoRelevantAnnot && !annot.hasOneOfMetaAnnotation(defn.NonBeanMetaAnnots.toList*)
       if sym.annotations.nonEmpty then
         sym.filterAnnotations(shouldKeep(_))
 

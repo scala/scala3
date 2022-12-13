@@ -117,7 +117,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       )
       fieldSym.annotations = sym.annotations.filterConserve { annot =>
         annot.hasOneOfMetaAnnotation(defn.FieldMetaAnnot)
-        || !annot.hasOneOfMetaAnnotation(defn.ExtFieldAccessorMetaAnnots.toList*)
+        || !annot.hasOneOfMetaAnnotation(defn.MetaAnnots.toList*)
       }
       fieldSym.enteredAfter(thisPhase)
     }
