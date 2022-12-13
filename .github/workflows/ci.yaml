@@ -26,9 +26,6 @@ env:
 # `java` (we could use the `_JAVA_OPTIONS` environment variable, but this prints
 # text on stderr and so can break tests which check the output of a program).
 
-permissions:
-  contents: read # to fetch code (actions/checkout)
-
 jobs:
   test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
@@ -530,9 +527,6 @@ jobs:
           ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
 
   nightly_documentation:
-    permissions:
-      contents: write # to push pages branch (peaceiris/actions-gh-pages)
-
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2021-03-22
@@ -711,10 +705,6 @@ jobs:
 
 
   open_issue_on_failure:
-    permissions:
-      contents: read # to fetch code (actions/checkout)
-      issues: write # to create new issues (jasonetco/create-an-issue)
-
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2021-03-22
