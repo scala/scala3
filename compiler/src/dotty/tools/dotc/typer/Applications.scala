@@ -1923,7 +1923,9 @@ trait Applications extends Compatibility {
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
-        defn.FunctionOf(args map Function.const(defn.AnyType), typeShape(body))
+        defn.FunctionOf(
+          args.map(Function.const(defn.AnyType)), typeShape(body),
+          isContextual = untpd.isContextualClosure(tree))
       case Match(EmptyTree, _) =>
         defn.PartialFunctionClass.typeRef.appliedTo(defn.AnyType :: defn.NothingType :: Nil)
       case _ =>
@@ -2232,7 +2234,7 @@ trait Applications extends Compatibility {
               false
           val commonFormal =
             if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
-            else defn.FunctionOf(commonParamTypes, WildcardType)
+            else defn.FunctionOf(commonParamTypes, WildcardType, isContextual = untpd.isContextualClosure(arg))
           overload.println(i"pretype arg $arg with expected type $commonFormal")
           if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
             withMode(Mode.ImplicitsEnabled) {
