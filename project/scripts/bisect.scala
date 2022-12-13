@@ -13,10 +13,17 @@ import java.io.File
 
 val usageMessage = """
   |Usage:
-  |  > scala-cli project/scripts/bisect.scala -- <validation-script>
+  |  > scala-cli project/scripts/bisect.scala -- <validation-script-path> [versions-range]
   |
   |The validation script should be executable and accept a single parameter, which will be the scala version to validate.
   |Look at bisect-cli-example.sh and bisect-expect-example.exp for reference.
+  |The optional versions range specifies which releases should be taken into account while bisecting.
+  |The range format is <first>...<last>, where both <first> and <last> are optional, e.g.
+  |* 3.1.0-RC1-bin-20210827-427d313-NIGHTLY..3.2.1-RC1-bin-20220716-bb9c8ff-NIGHTLY
+  |* 3.2.1-RC1-bin-20220620-de3a82c-NIGHTLY..
+  |* ..3.3.0-RC1-bin-20221124-e25362d-NIGHTLY
+  |The ranges are treated as inclusive.
+  |
   |Don't use the example scripts modified in place as they might disappear from the repo during a checkout.
   |Instead copy them to a different location first.
   |
@@ -26,9 +33,11 @@ val usageMessage = """
 """.stripMargin
 
 @main def dottyCompileBisect(args: String*): Unit =
-  val validationScriptPath = args match
+  val (validationScriptRawPath, versionsRange) = args match
     case Seq(path) =>
-      (new File(path)).getAbsolutePath.toString
+      (path, VersionsRange.all)
+    case Seq(path, ParsedVersionsRange(range)) =>
+      (path, range)
     case _ =>
       println("Wrong script parameters.")
       println()
@@ -36,8 +45,11 @@ val usageMessage = """
       System.exit(1)
       null
 
+  val validationScriptPath = (new File(validationScriptRawPath)).getAbsolutePath.toString
+  given releases: Releases = Releases.fromRange(versionsRange)
+
   val releaseBisect = ReleaseBisect(validationScriptPath)
-  val bisectedBadRelease = releaseBisect.bisectedBadRelease(Releases.allReleases)
+  val bisectedBadRelease = releaseBisect.bisectedBadRelease(releases.releases)
   println("\nFinished bisecting releases\n")
 
   bisectedBadRelease match
@@ -53,9 +65,37 @@ val usageMessage = """
     case None =>
       println(s"No bad release found")
 
+case class VersionsRange(first: Option[String], last: Option[String]):
+  def filter(versions: Seq[String]) =
+    def versionIndex(version: String) =
+      val lastMatchingNightly =
+        if version.contains("-bin-") then version else
+          versions.filter(_.startsWith(version)).last
+      versions.indexOf(lastMatchingNightly)
+
+    val startIdx = first.map(versionIndex(_)).getOrElse(0)
+    assert(startIdx >= 0, s"${first} is not a nightly compiler release")
+    val endIdx = last.map(versionIndex(_) + 1).getOrElse(versions.length)
+    assert(endIdx > 0, s"${endIdx} is not a nightly compiler release")
+    val filtered = versions.slice(startIdx, endIdx).toVector
+    assert(filtered.nonEmpty, "No matching releases")
+    filtered
+
+
+object VersionsRange:
+  def all = VersionsRange(None, None)
+
+object ParsedVersionsRange:
+  def unapply(range: String): Option[VersionsRange] = range match
+    case s"${first}...${last}" => Some(VersionsRange(
+      Some(first).filter(_.nonEmpty),
+      Some(last).filter(_.nonEmpty)
+    ))
+    case _ => None
+
 class ReleaseBisect(validationScriptPath: String):
   def bisectedBadRelease(releases: Vector[Release]): Option[Release] =
-    Some(bisect(releases: Vector[Release]))
+    Some(bisect(releases))
       .filter(!isGoodRelease(_))
 
   def bisect(releases: Vector[Release]): Release =
@@ -75,11 +115,15 @@ class ReleaseBisect(validationScriptPath: String):
     println(s"Test result: ${release.version} is a ${if isGood then "good" else "bad"} release\n")
     isGood
 
+class Releases(val releases: Vector[Release])
+
 object Releases:
-  lazy val allReleases: Vector[Release] =
-    val re = raw"(?<=title=$")(.+-bin-\d{8}-\w{7}-NIGHTLY)(?=/$")".r
+  private lazy val allReleases: Vector[String] =
+    val re = raw"""(?<=title=")(.+-bin-\d{8}-\w{7}-NIGHTLY)(?=/")""".r
     val html = Source.fromURL("https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/")
-    re.findAllIn(html.mkString).map(Release.apply).toVector
+    re.findAllIn(html.mkString).toVector
+
+  def fromRange(range: VersionsRange): Releases = Releases(range.filter(allReleases).map(Release(_)))
 
   case class Release(version: String):
     private val re = raw".+-bin-(\d{8})-(\w{7})-NIGHTLY".r
@@ -92,10 +136,10 @@ object Releases:
         case re(_, hash) => hash
         case _ => sys.error(s"Could not extract hash from version $version")
 
-    def previous: Option[Release] =
-      val idx = allReleases.indexOf(this)
+    def previous(using r: Releases): Option[Release] =
+      val idx = r.releases.indexOf(this)
       if idx == 0 then None
-      else Some(allReleases(idx - 1))
+      else Some(r.releases(idx - 1))
 
     override def toString: String = version
 
