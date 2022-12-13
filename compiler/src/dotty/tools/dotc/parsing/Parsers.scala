@@ -3599,7 +3599,7 @@ object Parsers {
         if(isIdent(nme.throws))
           in.nextToken()
           val except = commaSeparated(() => toplevelTyp())
-          Printers.saferExceptions.println(i"exceptions thrown are : $except")
+          Printers.saferExceptions.println(i"Parser will add a throws clause for the given exceptions : $except")
           except
         else
           Nil

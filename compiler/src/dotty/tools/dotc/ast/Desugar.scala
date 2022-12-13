@@ -1768,8 +1768,9 @@ object desugar {
       case ThrowsReturn(exceptions, rteTpe) =>
         val r = exceptions.reduce((left, right) => InfixOp(left, Ident(tpnme.OR), right))
         val args = AppliedTypeTree(Ident(defn.CanThrowClass.name), r)
-        Printers.saferExceptions.println(i"$args")
-        FunctionWithMods(args :: Nil, rteTpe, Modifiers(Flags.Given))
+        val fn = FunctionWithMods(args :: Nil, rteTpe, Modifiers(Flags.Given))
+        Printers.saferExceptions.println(i"throws clased desugared to $fn")
+        fn
       case PolyFunction(targs, body) =>
         makePolyFunction(targs, body, pt) orElse tree
       case SymbolLit(str) =>
