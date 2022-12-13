@@ -108,26 +108,15 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         if (sym.isGetter) sym.info.resultType
         else /*sym.isSetter*/ sym.info.firstParamTypes.head
 
-      val fieldSym = newSymbol(
+      newSymbol(
         owner = ctx.owner,
         name  = sym.name.asTermName.fieldName,
         flags = Private | (if (sym.is(StableRealizable)) EmptyFlags else Mutable),
         info  = fieldType,
         coord = tree.span
-      )
-      fieldSym.annotations = sym.annotations.filterConserve { annot =>
-        annot.hasOneOfMetaAnnotation(defn.FieldMetaAnnot)
-        || !annot.hasOneOfMetaAnnotation(defn.MetaAnnots.toList*)
-      }
-      fieldSym.enteredAfter(thisPhase)
+      ).withAnnotationsCarrying(sym, defn.FieldMetaAnnot, orNoneOf = defn.MetaAnnots)
+       .enteredAfter(thisPhase)
     }
-
-    def removeUnwantedAnnotations(denot: SymDenotation, metaAnnotSym: ClassSymbol): Unit =
-      if (sym.annotations.nonEmpty) {
-        val cpy = sym.copySymDenotation()
-        cpy.filterAnnotations(_.hasOneOfMetaAnnotation(metaAnnotSym))
-        cpy.installAfter(thisPhase)
-      }
 
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | Inline
 
@@ -178,7 +167,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             if isErasableBottomField(field, rhsClass) then erasedBottomTree(rhsClass)
             else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
           val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
-          removeUnwantedAnnotations(sym, defn.GetterMetaAnnot)
+          sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot))
           Thicket(fieldDef, getterDef)
       else if sym.isSetter then
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs: @unchecked } // This is intended as an assertion
@@ -204,7 +193,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             then Literal(Constant(()))
             else Assign(ref(field), adaptToField(field, ref(tree.termParamss.head.head.symbol)))
           val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(using ctx.withOwner(sym)))
-          removeUnwantedAnnotations(sym, defn.SetterMetaAnnot)
+          sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
           setterDef
       else
         // Curiously, some accessors from Scala2 have ' ' suffixes.

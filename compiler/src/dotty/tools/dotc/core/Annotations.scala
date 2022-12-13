@@ -88,18 +88,20 @@ object Annotations {
     def sameAnnotation(that: Annotation)(using Context): Boolean =
       symbol == that.symbol && tree.sameTree(that.tree)
 
-    def hasOneOfMetaAnnotation(metaSyms: Symbol*)(using Context): Boolean = atPhaseNoLater(erasurePhase) {
-      def recTp(tp: Type): Boolean = tp.dealiasKeepAnnots match
-        case AnnotatedType(parent, metaAnnot) => metaSyms.exists(metaAnnot.matches) || recTp(parent)
-        case _ => false
-      def rec(tree: Tree): Boolean = methPart(tree) match
-        case New(tpt) => rec(tpt)
-        case Select(qual, _) => rec(qual)
-        case Annotated(arg, metaAnnot) => metaSyms.exists(metaAnnot.tpe.classSymbol.derivesFrom) || rec(arg)
-        case t @ Ident(_) => recTp(t.tpe)
-        case Typed(expr, _) => rec(expr)
-        case _ => false
-      metaSyms.exists(symbol.hasAnnotation) || rec(tree)
+    def hasOneOfMetaAnnotation(metaSyms: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Boolean = atPhaseNoLater(erasurePhase) {
+      def go(metaSyms: Set[Symbol]) =
+        def recTp(tp: Type): Boolean = tp.dealiasKeepAnnots match
+          case AnnotatedType(parent, metaAnnot) => metaSyms.exists(metaAnnot.matches) || recTp(parent)
+          case _ => false
+        def rec(tree: Tree): Boolean = methPart(tree) match
+          case New(tpt) => rec(tpt)
+          case Select(qual, _) => rec(qual)
+          case Annotated(arg, metaAnnot) => metaSyms.exists(metaAnnot.tpe.classSymbol.derivesFrom) || rec(arg)
+          case t @ Ident(_) => recTp(t.tpe)
+          case Typed(expr, _) => rec(expr)
+          case _ => false
+        metaSyms.exists(symbol.hasAnnotation) || rec(tree)
+      go(metaSyms) || orNoneOf.nonEmpty && !go(orNoneOf)
     }
 
     /** Operations for hash-consing, can be overridden */

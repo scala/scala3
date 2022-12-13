@@ -5,7 +5,7 @@ import core._
 import ast.tpd._
 import Annotations._
 import Contexts._
-import Symbols.newSymbol
+import Symbols.*
 import SymUtils.*
 import Decorators._
 import Flags._
@@ -24,8 +24,6 @@ class BeanProperties(thisPhase: DenotTransformer):
     } ::: origBody)
 
   def generateAccessors(valDef: ValDef)(using Context): List[Tree] =
-    import Symbols.defn
-
     def generateGetter(valDef: ValDef, annot: Annotation)(using Context) : Tree =
       val prefix = if annot matches defn.BooleanBeanPropertyAnnot then "is" else "get"
       val meth = newSymbol(
