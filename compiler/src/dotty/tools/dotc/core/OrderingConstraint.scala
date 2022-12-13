@@ -693,7 +693,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       def replaceParamIn(other: TypeParamRef) =
         val oldEntry = current.entry(other)
         val newEntry = oldEntry.substParam(param, replacement) match
-          case tp: TypeBounds => validBoundsFor(other, tp)
+          case tp: TypeBounds => current.validBoundsFor(other, tp)
           case tp => tp
         current = boundsLens.update(this, current, other, newEntry)
         var oldDepEntry = oldEntry
