@@ -918,6 +918,12 @@ trait Applications extends Compatibility {
    *  Block node.
    */
   def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = {
+
+    def splitOr(tpe: Type): List[Type] =
+      tpe match
+        case OrType(lhs, rhs) => splitOr(lhs) ::: splitOr(rhs)
+        case _ => tpe :: Nil
+
     def realApply(using Context): Tree = {
       val resultProto = tree.fun match
         case Select(New(tpt), _) if pt.isInstanceOf[ValueType] =>
@@ -938,7 +944,7 @@ trait Applications extends Compatibility {
         val sym: Symbol = fun1.symbol
         val annot = sym.annotations
         val throwsAnnot = annot.filter(ThrownException.unapply(_).isDefined)
-        val exceptions = throwsAnnot.map(ThrownException.unapply(_).get)
+        val exceptions = throwsAnnot.map(ThrownException.unapply(_).get).flatMap(splitOr)
         val capabities = for e <- exceptions yield checkCanThrow(e, tree.span)
         if exceptions.nonEmpty then
           report.warning(
