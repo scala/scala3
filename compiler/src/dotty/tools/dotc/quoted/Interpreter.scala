@@ -166,10 +166,8 @@ class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
           (inst, inst.getClass)
         }
       catch
-        case MissingClassDefinedInCurrentRun(sym)  if ctx.compilationUnit.isSuspendable =>
-          if (ctx.settings.XprintSuspension.value)
-            report.echo(i"suspension triggered by a dependency on $sym", pos)
-          ctx.compilationUnit.suspend() // this throws a SuspendException
+        case MissingClassDefinedInCurrentRun(sym) =>
+          suspendOnMissing(sym, pos)
 
     val name = fn.name.asTermName
     val method = getMethod(clazz, name, paramsSig(fn))
@@ -214,12 +212,10 @@ class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
 
   private def loadClass(name: String): Class[?] =
     try classLoader.loadClass(name)
-    catch {
-      case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
-        if (ctx.settings.XprintSuspension.value)
-          report.echo(i"suspension triggered by a dependency on $sym", pos)
-        ctx.compilationUnit.suspend() // this throws a SuspendException
-    }
+    catch
+      case MissingClassDefinedInCurrentRun(sym) =>
+        suspendOnMissing(sym, pos)
+
 
   private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
     try clazz.getMethod(name.toString, paramClasses: _*)
@@ -227,10 +223,8 @@ class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
       case _: NoSuchMethodException =>
         val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
         throw new StopInterpretation(msg, pos)
-      case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
-          if (ctx.settings.XprintSuspension.value)
-            report.echo(i"suspension triggered by a dependency on $sym", pos)
-          ctx.compilationUnit.suspend() // this throws a SuspendException
+      case MissingClassDefinedInCurrentRun(sym) =>
+        suspendOnMissing(sym, pos)
     }
 
   private def stopIfRuntimeException[T](thunk: => T, method: JLRMethod): T =
@@ -248,10 +242,8 @@ class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
         ex.getTargetException match {
           case ex: scala.quoted.runtime.StopMacroExpansion =>
             throw ex
-          case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
-            if (ctx.settings.XprintSuspension.value)
-              report.echo(i"suspension triggered by a dependency on $sym", pos)
-            ctx.compilationUnit.suspend() // this throws a SuspendException
+          case MissingClassDefinedInCurrentRun(sym) =>
+            suspendOnMissing(sym, pos)
           case targetException =>
             val sw = new StringWriter()
             sw.write("Exception occurred while executing macro expansion.\n")
@@ -267,19 +259,6 @@ class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
             throw new StopInterpretation(sw.toString.toMessage, pos)
         }
     }
-
-  private object MissingClassDefinedInCurrentRun {
-    def unapply(targetException: Throwable)(using Context): Option[Symbol] = {
-      targetException match
-        case _: NoClassDefFoundError | _: ClassNotFoundException =>
-          val className = targetException.getMessage
-          if className eq null then None
-          else
-            val sym = staticRef(className.toTypeName).symbol
-            if (sym.isDefinedInCurrentRun) Some(sym) else None
-        case _ => None
-    }
-  }
 
   /** List of classes of the parameters of the signature of `sym` */
   private def paramsSig(sym: Symbol): List[Class[?]] = {
@@ -364,3 +343,22 @@ object Interpreter:
       }
     }
   end Call
+
+  object MissingClassDefinedInCurrentRun {
+    def unapply(targetException: Throwable)(using Context): Option[Symbol] = {
+      if !ctx.compilationUnit.isSuspendable then None
+      else targetException match
+        case _: NoClassDefFoundError | _: ClassNotFoundException =>
+          val className = targetException.getMessage
+          if className eq null then None
+          else
+            val sym = staticRef(className.toTypeName).symbol
+            if (sym.isDefinedInCurrentRun) Some(sym) else None
+        case _ => None
+    }
+  }
+
+  def suspendOnMissing(sym: Symbol, pos: SrcPos)(using Context): Nothing =
+    if ctx.settings.XprintSuspension.value then
+      report.echo(i"suspension triggered by a dependency on $sym", pos)
+    ctx.compilationUnit.suspend() // this throws a SuspendException
