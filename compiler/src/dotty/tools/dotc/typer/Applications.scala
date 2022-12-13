@@ -945,7 +945,9 @@ trait Applications extends Compatibility {
         val annot = sym.annotations
         val throwsAnnot = annot.filter(ThrownException.unapply(_).isDefined)
         val exceptions = throwsAnnot.map(ThrownException.unapply(_).get).flatMap(splitOr)
+        saferExceptions.println(i"symbol $sym throws $exceptions")
         val capabities = for e <- exceptions yield checkCanThrow(e, tree.span)
+        saferExceptions.println(i"fetch capabilities $capabities to satisfy conditions of $sym")
         if exceptions.nonEmpty then
           report.warning(
             em""" A function was called (${sym.name}) in a context where safer exceptions is enabled.
