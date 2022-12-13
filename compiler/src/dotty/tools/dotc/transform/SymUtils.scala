@@ -271,7 +271,7 @@ object SymUtils:
       self.isAllOf(EnumCase, butNot = JavaDefined)
 
     def annotationsCarrying(meta: ClassSymbol)(using Context): List[Annotation] =
-      self.annotations.filter(_.hasOneOfMetaAnnotation(meta))
+      self.annotations.filterConserve(_.hasOneOfMetaAnnotation(meta))
 
     def withAnnotationsCarrying(from: Symbol, meta: ClassSymbol)(using Context): self.type = {
       self.addAnnotations(from.annotationsCarrying(meta))

@@ -125,7 +125,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     def removeUnwantedAnnotations(denot: SymDenotation, metaAnnotSym: ClassSymbol): Unit =
       if (sym.annotations.nonEmpty) {
         val cpy = sym.copySymDenotation()
-        cpy.filterAnnotations(annot => annot.hasOneOfMetaAnnotation(metaAnnotSym))
+        cpy.filterAnnotations(_.hasOneOfMetaAnnotation(metaAnnotSym))
         cpy.installAfter(thisPhase)
       }
 

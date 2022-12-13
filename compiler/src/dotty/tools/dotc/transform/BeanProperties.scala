@@ -6,6 +6,7 @@ import ast.tpd._
 import Annotations._
 import Contexts._
 import Symbols.newSymbol
+import SymUtils.*
 import Decorators._
 import Flags._
 import Names._
@@ -34,10 +35,7 @@ class BeanProperties(thisPhase: DenotTransformer):
         info = MethodType(Nil, valDef.denot.info),
         coord = annot.tree.span
       ).enteredAfter(thisPhase).asTerm
-      val annots = valDef.symbol.annotations.filterConserve { a =>
-        a.hasOneOfMetaAnnotation(defn.BeanGetterMetaAnnot)
-      }
-      meth.addAnnotations(annots)
+       .withAnnotationsCarrying(valDef.symbol, defn.BeanGetterMetaAnnot)
       val body: Tree = ref(valDef.symbol)
       DefDef(meth, body).withSpan(meth.span)
 
@@ -51,10 +49,7 @@ class BeanProperties(thisPhase: DenotTransformer):
           info = MethodType(valDef.name :: Nil, valDef.denot.info :: Nil, defn.UnitType),
           coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm
-        val annots = valDef.symbol.annotations.filterConserve { a =>
-          a.hasOneOfMetaAnnotation(defn.BeanSetterMetaAnnot)
-        }
-        meth.addAnnotations(annots)
+         .withAnnotationsCarrying(valDef.symbol, defn.BeanSetterMetaAnnot)
         def body(params: List[List[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
         DefDef(meth, body).withSpan(meth.span)
       }
