@@ -948,7 +948,7 @@ trait Applications extends Compatibility {
         val capabities = for e <- exceptions yield checkCanThrow(e, tree.span)
         if exceptions.nonEmpty then
           report.warning(
-            i""" A function was called (${sym.name}) in a context where safer exceptions is enabled.
+            em""" A function was called (${sym.name}) in a context where safer exceptions is enabled.
                 | This function throws an exception.
                 | ${exceptions zip capabities}
                 |""".stripMargin, tree.srcPos)
