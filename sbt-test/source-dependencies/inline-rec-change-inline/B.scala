@@ -1,5 +1,5 @@
 object B {
 
-  inline def inlinedAny(x: String): x.type = x
+  inline def inlinedAny(x: String): String = x
 
 }
