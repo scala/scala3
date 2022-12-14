@@ -92,3 +92,6 @@ i4176-gadt.scala
 i13974a.scala
 
 java-inherited-type1
+
+# new expression with safe zone difference
+new-expr-with-safe-zone

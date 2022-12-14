@@ -5,6 +5,7 @@ package typer
 import backend.sjs.JSDefinitions
 import core._
 import ast._
+import ast.untpd.CapturingTypeTree
 import Trees._
 import Constants._
 import StdNames._
@@ -49,7 +50,7 @@ import transform.TypeUtils._
 import reporting._
 import Nullables._
 import NullOpsDecorator._
-import cc.CheckCaptures
+import cc.{CheckCaptures, EventuallyCapturingType}
 import config.Config
 
 import scala.annotation.constructorOnly
@@ -863,7 +864,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               report.error(WildcardOnTypeArgumentNotAllowedOnNew(), targ.srcPos)
           case _ =>
         }
-
+        tpt1.tpe match {
+          case EventuallyCapturingType(parents, cs) =>
+            // Note that `cs.elems.size` must be 1 (ensured by parser).
+            assert(cs.elems.size == 1,
+              i"New-expr-with-safe-zone syntax accepts exactly one instance of SafeZone.")
+            val head = cs.elems.toList.head
+            if !TypeComparer.isSubType(head, defn.NativeSafeZoneType) then
+              val CapturingTypeTree(List(sz), _) = tree.tpt: @unchecked
+              report.error(
+                TypeMismatch(head, defn.NativeSafeZoneType, Some(tree),
+                "\nNote that new-expr-with-safe-zone syntax is only supported in Scala Native environment."), sz.srcPos)
+          case _ =>
+        }
         assignType(cpy.New(tree)(tpt1), tpt1)
     }
 

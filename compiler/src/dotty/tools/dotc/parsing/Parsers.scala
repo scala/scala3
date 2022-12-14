@@ -2508,21 +2508,37 @@ object Parsers {
 
     /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                  |  ‘new’ TemplateBody
+     *                  |  ‘new’ `{` CaptureRef `}` ConstrApp
      */
     def newExpr(): Tree =
       val start = in.skipToken()
       def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
-      possibleTemplateStart()
-      val parents =
-        if in.isNestedStart then Nil
-        else constrApps(exclude = COMMA)
-      possibleTemplateStart(isNew = true)
-      parents match {
-        case parent :: Nil if !in.isNestedStart =>
-          reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
-        case _ =>
-          New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
-      }
+      if in.token == LBRACE && followingIsCaptureSet() then
+        /** New expression with a specified safe zone.
+         *  Form:      ‘new’ `{` CaptureRef `}` ConstrApp
+         *  Equals to: ‘new’ `{` CaptureRef `}` SimpleType1 {Annotation} {ParArgumentExprs}
+         *  The new instance will be stored in the specified safe zone. Example:
+         *  ```
+         *  val sz: {*} SafeZone = ???
+         *  val x: {sz} A = new {sz} A(0, "abc") // x is stored in SafeZone sz.
+         *  ```
+         *  Note that this new-expr-with-safe-zone syntax is only supported in Scala Native environment.
+         */
+        val ctt = CapturingTypeTree(List(inBraces(captureRef())), annotSimpleType1())
+        val parent = if in.token == LPAREN then parArgumentExprss(wrapNew(ctt)) else ctt
+        reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
+      else
+        possibleTemplateStart()
+        val parents =
+          if in.isNestedStart then Nil
+          else constrApps(exclude = COMMA)
+        possibleTemplateStart(isNew = true)
+        parents match {
+          case parent :: Nil if !in.isNestedStart =>
+            reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
+          case _ =>
+            New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
+        }
 
     /**   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
      *    Bindings          ::=  Binding {`,' Binding}
@@ -3902,11 +3918,15 @@ object Parsers {
 
 /* -------- TEMPLATES ------------------------------------------- */
 
+    /** SimpleType1 {Annotation}
+     */
+    val annotSimpleType1: () => Tree = () =>
+      rejectWildcardType(annotTypeRest(simpleType1()), fallbackTree = Ident(tpnme.ERROR))
+
     /** ConstrApp  ::=  SimpleType1 {Annotation} {ParArgumentExprs}
      */
     val constrApp: () => Tree = () =>
-      val t = rejectWildcardType(annotTypeRest(simpleType1()),
-        fallbackTree = Ident(tpnme.ERROR))
+      val t = annotSimpleType1()
         // Using Ident(tpnme.ERROR) to avoid causing cascade errors on non-user-written code
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
 

@@ -1083,6 +1083,11 @@ class Definitions {
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
   def methOfAnyRef(tp: Type): MethodType = MethodType(List(ObjectType), tp)
 
+  // Native types
+
+  def NativeSafeZoneClass: ClassSymbol = requiredClass("scala.scalanative.safe.SafeZone")
+  def NativeSafeZoneType: TypeRef = NativeSafeZoneClass.typeRef
+
   // Derived types
 
   def RepeatedParamType: TypeRef = RepeatedParamClass.typeRef
