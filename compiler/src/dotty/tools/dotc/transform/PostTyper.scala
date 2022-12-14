@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
@@ -156,12 +157,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           checkInferredWellFormed(tree.tpt)
           if sym.is(Method) then
             if sym.isSetter then
-              removeUnwantedAnnotations(sym, defn.SetterMetaAnnot, NoSymbol, keepIfNoRelevantAnnot = false)
+              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
           else
             if sym.is(Param) then
-              removeUnwantedAnnotations(sym, defn.ParamMetaAnnot, NoSymbol, keepIfNoRelevantAnnot = true)
+              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+            else if sym.is(ParamAccessor) then
+              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
             else
-              removeUnwantedAnnotations(sym, defn.GetterMetaAnnot, defn.FieldMetaAnnot, keepIfNoRelevantAnnot = !sym.is(ParamAccessor))
+              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature)
                // Allow scala.reflect.materializeClassTag to be able to compile scala/reflect/package.scala
@@ -183,17 +186,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
 
-    private def removeUnwantedAnnotations(sym: Symbol, metaAnnotSym: Symbol,
-        metaAnnotSymBackup: Symbol, keepIfNoRelevantAnnot: Boolean)(using Context): Unit =
-      def shouldKeep(annot: Annotation): Boolean =
-        val annotSym = annot.symbol
-        annotSym.hasAnnotation(metaAnnotSym)
-          || annotSym.hasAnnotation(metaAnnotSymBackup)
-          || (keepIfNoRelevantAnnot && {
-            !annotSym.annotations.exists(metaAnnot => defn.FieldAccessorMetaAnnots.contains(metaAnnot.symbol))
-          })
-      if sym.annotations.nonEmpty then
-        sym.filterAnnotations(shouldKeep(_))
 
     private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
       val qual = tree.qualifier

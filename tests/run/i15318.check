@@ -1,0 +1,30 @@
+inspecting constructor Bean
+inspecting field beanAaa @JsonProperty
+inspecting field beanGet
+inspecting field beanSet
+inspecting field normAaa @JsonProperty
+inspecting field normFld @JsonProperty
+inspecting field normGet
+inspecting field normSet
+inspecting method beanAaa
+inspecting method beanGet
+inspecting method beanSet
+inspecting method beanSet_$eq
+inspecting method getBeanAaa
+inspecting method getBeanGet @JsonProperty
+inspecting method getBeanSet
+inspecting method normAaa
+inspecting method normFld
+inspecting method normGet @JsonProperty
+inspecting method normSet
+inspecting method normSet_$eq @JsonProperty
+inspecting method setBeanSet @JsonProperty
+inspecting constructor Bean2
+inspecting field beanGet
+inspecting field beanSet
+inspecting method beanGet
+inspecting method beanSet
+inspecting method beanSet_$eq
+inspecting method getBeanGet @JsonProperty
+inspecting method getBeanSet
+inspecting method setBeanSet @JsonProperty

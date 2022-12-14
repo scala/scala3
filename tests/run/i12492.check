@@ -1,0 +1,37 @@
+inspecting constructor MyTable
+inspecting param aaaParam1 @MyColumnBase
+inspecting param fldParam1
+inspecting param getParam1
+inspecting param parParam1 @MyColumnBase
+inspecting field aaaField1 @MyColumnBase
+inspecting field aaaParam1
+inspecting field fldField1 @MyColumnBase
+inspecting field fldParam1 @MyColumnBase
+inspecting field getField1
+inspecting field getParam1
+inspecting field parField1
+inspecting field parParam1
+inspecting method aaaField1
+inspecting method aaaParam1
+inspecting method fldField1
+inspecting method fldParam1
+inspecting method getField1 @MyColumnBase
+inspecting method getParam1 @MyColumnBase
+inspecting method parField1
+inspecting method parParam1
+inspecting constructor MyTable2
+inspecting param fldParam2
+inspecting param getParam2
+inspecting param parParam2 @MyColumnBase
+inspecting field fldField2 @MyColumnBase
+inspecting field fldParam2 @MyColumnBase
+inspecting field getField2
+inspecting field getParam2
+inspecting field parField2
+inspecting field parParam2
+inspecting method fldField2
+inspecting method fldParam2
+inspecting method getField2 @MyColumnBase
+inspecting method getParam2 @MyColumnBase
+inspecting method parField2
+inspecting method parParam2

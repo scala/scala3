@@ -1023,6 +1023,8 @@ class Definitions {
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val WithPureFunsAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WithPureFuns")
+  @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
+  @tu lazy val BeanSetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanSetter")
   @tu lazy val FieldMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.field")
   @tu lazy val GetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.getter")
   @tu lazy val ParamMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.param")
@@ -1039,8 +1041,10 @@ class Definitions {
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
   // A list of meta-annotations that are relevant for fields and accessors
-  @tu lazy val FieldAccessorMetaAnnots: Set[Symbol] =
+  @tu lazy val NonBeanMetaAnnots: Set[Symbol] =
     Set(FieldMetaAnnot, GetterMetaAnnot, ParamMetaAnnot, SetterMetaAnnot)
+  @tu lazy val MetaAnnots: Set[Symbol] =
+    NonBeanMetaAnnots + BeanGetterMetaAnnot + BeanSetterMetaAnnot
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to

@@ -252,6 +252,15 @@ object SymDenotations {
     final def filterAnnotations(p: Annotation => Boolean)(using Context): Unit =
       annotations = annotations.filterConserve(p)
 
+    def annotationsCarrying(meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): List[Annotation] =
+      annotations.filterConserve(_.hasOneOfMetaAnnotation(meta, orNoneOf = orNoneOf))
+
+    def copyAndKeepAnnotationsCarrying(phase: DenotTransformer, meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Unit =
+      if annotations.nonEmpty then
+        val cpy = copySymDenotation()
+        cpy.annotations = annotationsCarrying(meta, orNoneOf = orNoneOf)
+        cpy.installAfter(phase)
+
     /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(using Context): Option[Annotation] =
       dropOtherAnnotations(annotations, cls) match {
