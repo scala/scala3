@@ -2786,7 +2786,7 @@ extends SyntaxMsg(InlineGivenShouldNotBeFunctionID):
        |
        |should be re-formulated as
        |
-       |    inline given Conversion[A, B] with
-       |      def apply(x: A) = x.toB
+       |    given Conversion[A, B] with
+       |      inline def apply(x: A) = x.toB
      """
 
