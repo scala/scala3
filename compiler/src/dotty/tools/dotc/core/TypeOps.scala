@@ -881,10 +881,6 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
-      // if there's a change in variance in type parameters (between subtype tp1 and supertype tp2)
-      // then we don't want to maximise the type variables in the wrong direction.
-      // For instance 15967, A[-Z] and B[Y] extends A[Y], we don't want to maximise Y to Any
-      maximizeType(protoTp1.baseType(tp2.classSymbol), NoSpan)
       maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }
