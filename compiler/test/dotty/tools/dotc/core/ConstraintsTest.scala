@@ -77,3 +77,17 @@ class ConstraintsTest:
       assert(lo =:= defn.NothingType, i"Unexpected lower bound $lo for $t: ${ctx.typerState.constraint}")
       assert(hi =:= (defn.StringType | defn.IntType), i"Unexpected upper bound $hi for $t: ${ctx.typerState.constraint}")
   }
+
+  @Test def validBoundsReplace: Unit = inCompilerContext(
+    TestConfiguration.basicClasspath,
+    scalaSources = "trait X; trait A { def foo[S <: U | X, T, U]: Any }") {
+      val tvarTrees = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda], EmptyTree, alwaysAddTypeVars = true)._2
+      val tvars @ List(s, t, u) = tvarTrees.tpes.asInstanceOf[List[TypeVar]]
+      s =:= t
+      t =:= u
+
+      for tvar <- tvars do
+        val entry = ctx.typerState.constraint.entry(tvar.origin)
+        assert(!ctx.typerState.constraint.occursAtToplevel(tvar.origin, entry),
+          i"cyclic bound for ${tvar.origin}: ${entry} in ${ctx.typerState.constraint}")
+  }
