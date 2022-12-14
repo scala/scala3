@@ -13,7 +13,7 @@ import core._
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, Symbols._, StdNames._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
-import NameKinds.ExtMethName
+import NameKinds.{ExtMethName, BodyRetainerName}
 import Decorators._
 import TypeUtils._
 
@@ -79,7 +79,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           // because it adds extension methods before pickling.
           if (!(valueClass.is(Scala2x)))
             for (decl <- valueClass.classInfo.decls)
-              if (isMethodWithExtension(decl))
+              if isMethodWithExtension(decl) then
                 enterInModuleClass(createExtensionMethod(decl, moduleClassSym.symbol))
 
           // Create synthetic methods to cast values between the underlying type
@@ -179,7 +179,10 @@ object ExtensionMethods {
 
   /** Name of the extension method that corresponds to given instance method `meth`. */
   def extensionName(imeth: Symbol)(using Context): TermName =
-    ExtMethName(imeth.name.asTermName)
+    ExtMethName(
+      imeth.name.asTermName match
+        case BodyRetainerName(name) => name
+        case name => name)
 
   /** Return the extension method that corresponds to given instance method `meth`. */
   def extensionMethod(imeth: Symbol)(using Context): TermSymbol =

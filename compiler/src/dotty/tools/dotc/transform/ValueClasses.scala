@@ -29,6 +29,7 @@ object ValueClasses {
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
       !d.symbol.isSuperAccessor &&
+      !d.isInlineMethod &&
       !d.is(Macro)
     }
 
