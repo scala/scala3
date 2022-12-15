@@ -287,7 +287,7 @@ object Decorators {
       case _ => String.valueOf(x).nn
 
     /** Returns the simple class name of `x`. */
-    def className: String = getClass.getSimpleName.nn
+    def className: String = x.getClass.getSimpleName.nn
 
   extension [T](x: T)
     def assertingErrorsReported(using Context): T = {
