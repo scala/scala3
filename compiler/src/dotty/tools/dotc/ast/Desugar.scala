@@ -1464,7 +1464,10 @@ object desugar {
     val param = makeSyntheticParameter(
       tpt =
         if params.exists(_.tpt.isEmpty) then TypeTree()
-        else Tuple(params.map(_.tpt)))
+        else Tuple(params.map(_.tpt)),
+      flags =
+        if params.nonEmpty && params.head.mods.is(Given) then SyntheticTermParam | Given
+        else SyntheticTermParam)
     def selector(n: Int) =
       if (isGenericTuple) Apply(Select(refOfDef(param), nme.apply), Literal(Constant(n)))
       else Select(refOfDef(param), nme.selectorName(n))
