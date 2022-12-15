@@ -157,7 +157,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   type This = OrderingConstraint
 
   /** A new constraint with given maps and given set of hard typevars */
-  def newConstraint( // !!! Dotty problem: Making newConstraint `private` causes -Ytest-pickler failure.
+  private def newConstraint(
     boundsMap: ParamBounds = this.boundsMap,
     lowerMap: ParamOrdering = this.lowerMap,
     upperMap: ParamOrdering = this.upperMap,

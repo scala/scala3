@@ -272,6 +272,7 @@ object Applications {
     else
       def selectGetter(qual: Tree): Tree =
         val getterDenot = qual.tpe.member(getterName)
+          .accessibleFrom(qual.tpe.widenIfUnstable) // to reset Local
         if (getterDenot.exists) qual.select(TermRef(qual.tpe, getterName, getterDenot))
         else EmptyTree
       if !meth.isClassConstructor then
