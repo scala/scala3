@@ -417,7 +417,7 @@ object Inferencing {
         if safeToInstantiate then tvar.instantiate(fromBelow = v == -1)
         else {
           val bounds = TypeComparer.fullBounds(tvar.origin)
-          if bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) then
+          if (bounds.hi frozen_<:< bounds.lo) || bounds.hi.classSymbol.is(Final) then
             tvar.instantiate(fromBelow = false)
           else {
             // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
