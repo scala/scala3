@@ -206,7 +206,7 @@ object OverridingPairs:
    *                    between term fields.
    */
   def isOverridingPair(member: Symbol, memberTp: Type, other: Symbol, otherTp: Type, fallBack: => Boolean = false,
-                       isSubType: Context ?=> (Type, Type) => Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean =
+                       isSubType: (Type, Type) => Context ?=> Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean =
     if member.isType then // intersection of bounds to refined types must be nonempty
       memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi)
       && (

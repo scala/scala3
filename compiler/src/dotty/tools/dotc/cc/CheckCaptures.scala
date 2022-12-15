@@ -10,7 +10,7 @@ import config.Printers.{capt, recheckr}
 import config.{Config, Feature}
 import ast.{tpd, untpd, Trees}
 import Trees.*
-import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents}
+import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import transform.SymUtils.*
@@ -824,37 +824,44 @@ class CheckCaptures extends Recheck, SymTransformer:
     *  But maybe we can then elide the check during the RefChecks phase under captureChecking?
     */
     def checkOverrides = new TreeTraverser:
-      /** Check subtype with box adaptation.
-       *  This function is passed to RefChecks to check the compatibility of overriding pairs.
-       *  @param sym  symbol of the field definition that is being checked
-       */
-      def checkSubtype(sym: Symbol)(tree: Tree, actual: Type, expected: Type)(using Context): Boolean =
-        val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
-        val actual1 =
-          val saved = curEnv
-          try
-            curEnv = Env(sym, nestedInOwner = false, CaptureSet.Var(), isBoxed = false, outer0 = curEnv)
-            adaptBoxed(actual, expected1, tree.srcPos, alwaysConst = true) match
-              case tp @ CapturingType(parent, refs) =>
-                CapturingType(parent, CaptureSet(refs.elems))
-              case tp => tp
-          finally curEnv = saved
-        actual1 frozen_<:< expected1
+      class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, srcPos: SrcPos)(using Context) extends OverridingPairsChecker(clazz, self) {
+        /** Check subtype with box adaptation.
+        *  This function is passed to RefChecks to check the compatibility of overriding pairs.
+        *  @param sym  symbol of the field definition that is being checked
+        */
+        override def checkSubType(actual: Type, expected: Type)(using Context): Boolean =
+          val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
+          val actual1 =
+            val saved = curEnv
+            try
+              curEnv = Env(clazz, nestedInOwner = true, capturedVars(clazz), isBoxed = false, outer0 = curEnv)
+              val adapted = adaptBoxed(actual, expected1, srcPos, alwaysConst = true)
+              actual match
+                case _: MethodType =>
+                  // We remove the capture set resulted from box adaptation for method types,
+                  // since class methods are always treated as pure, and their captured variables
+                  // are charged to the capture set of the class (which is already done during
+                  // box adaptation).
+                  adapted.stripCapturing
+                case _ => adapted
+            finally curEnv = saved
+          actual1 frozen_<:< expected1
+      }
 
       def traverse(t: Tree)(using Context) =
         t match
           case t: Template =>
-            checkAllOverrides(ctx.owner.asClass, isSubType = sym => (tp1, tp2) => checkSubtype(sym)(t, tp1, tp2))
+            checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))
           case _ =>
         traverseChildren(t)
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      checkOverrides.traverse(unit.tpdTree)
       Setup(preRecheckPhase, thisPhase, recheckDef)
         .traverse(ctx.compilationUnit.tpdTree)
       //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
       withCaptureSetsExplained {
         super.checkUnit(unit)
+        checkOverrides.traverse(unit.tpdTree)
         checkSelfTypes(unit.tpdTree)
         postCheck(unit.tpdTree)
         if ctx.settings.YccDebug.value then

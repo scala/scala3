@@ -1075,7 +1075,7 @@ object Types {
      *  @param isSubType      a function used for checking subtype relationships.
      */
     final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true,
-                        isSubType: Context ?=> (Type, Type) => Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean = {
+                        isSubType: (Type, Type) => Context ?=> Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean = {
       val overrideCtx = if relaxedCheck then ctx.relaxedOverrideContext else ctx
       inContext(overrideCtx) {
         !checkClassInfo && this.isInstanceOf[ClassInfo]
