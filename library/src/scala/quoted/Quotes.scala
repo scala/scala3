@@ -3641,6 +3641,66 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // TODO: add flags and privateWithin
       @experimental def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
 
+      /** Generates a new module symbol with an associated module class symbol.
+       *  This returns the module symbol. The module class can be accessed calling `moduleClass` on this symbol.
+       *
+       *  Example usage:
+       *  ```scala
+       *  //{
+       *  given Quotes = ???
+       *  import quotes.reflect._
+       *  //}
+       *  val moduleName: String = Symbol.freshName("MyModule")
+       *  val parents = List(TypeTree.of[Object])
+       *  def decls(cls: Symbol): List[Symbol] =
+       *    List(Symbol.newMethod(cls, "run", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit]), Flags.EmptyFlags, Symbol.noSymbol))
+       *
+       *  val mod = Symbol.newModule(Symbol.spliceOwner, moduleName, Flags.EmptyFlags, Flags.EmptyFlags, parents.map(_.tpe), decls, Symbol.noSymbol)
+       *  val cls = mod.moduleClass
+       *  val runSym = cls.declaredMethod("run").head
+       *
+       *  val runDef = DefDef(runSym, _ => Some('{ println("run") }.asTerm))
+       *  val clsDef = ClassDef(cls, parents, body = List(runDef))
+       *  val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
+       *  val modVal = ValDef(mod, Some(newCls))
+       *  val modDef = List(modVal, clsDef)
+       *
+       *  val callRun = Apply(Select(Ref(mod), runSym), Nil)
+       *
+       *  Block(modDef, callRun)
+       *  ```
+       *  constructs the equivalent to
+       *  ```scala
+       *  //{
+       *  given Quotes = ???
+       *  import quotes.reflect._
+       *  //}
+       *  '{
+       *    object MyModule$macro$1 extends Object:
+       *      def run(): Unit = println("run")
+       *    MyModule$macro$1.run()
+       *  }
+       *  ```
+       *
+       *  @param parent The owner of the class
+       *  @param name The name of the class
+       *  @param modFlags extra flags to with which the module symbol should be constructed
+       *  @param clsFlags extra flags to with which the module class symbol should be constructed
+       *  @param parents The parent classes of the class. The first parent must not be a trait.
+       *  @param decls The member declarations of the module provided the symbol of this class
+       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+       *
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to the ClassDef and ValDef constructor.
+       *
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
+       *
+       *  @syntax markdown
+       */
+      @experimental def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol
+
       /** Generates a new method symbol with the given parent, name and type.
        *
        *  To define a member method of a class, use the `newMethod` within the `decls` function of `newClass`.

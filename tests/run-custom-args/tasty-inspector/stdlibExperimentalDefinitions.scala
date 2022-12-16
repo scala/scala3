@@ -74,6 +74,7 @@ val experimentalDefinitionInLibrary = Set(
   // Need experimental annotation macros to check that design works.
   "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
+  "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
   "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
   "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
 

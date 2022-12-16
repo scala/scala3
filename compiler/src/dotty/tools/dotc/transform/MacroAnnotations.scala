@@ -127,7 +127,7 @@ class MacroAnnotations(thisPhase: DenotTransformer):
       report.error(i"macro annotation $annot added $sym with an inconsistent owner. Expected it to be owned by ${annotated.owner} but was owned by ${sym.owner}.", annot.tree)
     else if annotated.isClass && annotated.owner.is(Package) /*&& !sym.isClass*/ then
       report.error(i"macro annotation can not add top-level ${sym.showKind}. $annot tried to add $sym.", annot.tree)
-    else
+    else if !sym.is(Module) then // To avoid entering it twice
       sym.enteredAfter(thisPhase)
 
 object MacroAnnotations:
