@@ -15,6 +15,7 @@ The issue supervisor is responsible for:
   - Modifying issue labels to best capture information about the issues
     - Attempting to reproduce the issue (or label “stat:cannot reproduce”)
     - Further minimizing the issue or asking the reporter of the issue to minimize it correctly (or label “stat:needs minimization”)
+  - Identifying which issues are of considerable importance and bringing them to the attention of the team during the Dotty meeting, where they can be filtered and added to the [Future Versions](https://github.com/lampepfl/dotty/milestone/46) milestone.
 
 Other core teammates are responsible for providing information to the issue supervisor in a timely manner when it is requested if they have that information.
 
@@ -54,6 +55,7 @@ At the end of their supervision period, the supervisor reports to the team durin
 - How many new issues were opened during their supervision period? Were there any areas that got a lot of issues? How many regressions from a prior Scala 3 release were there? Which were designated for an MSc project or an Issue Spree?
 - If new labels were created or old ones were removed, or there is any other feedback on how to improve the issue supervision, mention that.
 - Unassigned PRs and issues that the team failed to classify: bring them one by one so that the team can make a decision on them.
+- Issues of importance – candidates for the Future Versions milestone.
 
 ## Maintenance List
 
