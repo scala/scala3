@@ -13,11 +13,15 @@ import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.MacroClassLoader
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.util.SrcPos
 import scala.quoted.runtime.impl.{QuotesImpl, SpliceScope}
 
 import scala.quoted.Quotes
+import scala.util.control.NonFatal
+
+import java.lang.reflect.InvocationTargetException
 
 class MacroAnnotations(thisPhase: DenotTransformer):
   import tpd.*
@@ -53,7 +57,31 @@ class MacroAnnotations(thisPhase: DenotTransformer):
           debug.println(i"Expanding macro annotation: ${annot}")
 
           // Interpret call to `new myAnnot(..).transform(using <Quotes>)(<tree>)`
-          val transformedTrees = callMacro(macroInterpreter, tree, annot)
+          val transformedTrees =
+            try callMacro(macroInterpreter, tree, annot)
+            catch
+              // TODO: Replace this case when scala.annaotaion.MacroAnnotation is no longer experimental and reflectiveSelectable is not used
+              //       Replace this case with the nested cases.
+              case ex0: InvocationTargetException =>
+                ex0.getCause match
+                  case ex: scala.quoted.runtime.StopMacroExpansion =>
+                    if !ctx.reporter.hasErrors then
+                      report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.", annot.tree)
+                    List(tree)
+                  case Interpreter.MissingClassDefinedInCurrentRun(sym) =>
+                    Interpreter.suspendOnMissing(sym, annot.tree)
+                  case NonFatal(ex) =>
+                    val stack0 = ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.MacroAnnotations")
+                    val stack = stack0.take(1 + stack0.lastIndexWhere(_.getMethodName == "transform"))
+                    val msg =
+                      em"""Failed to evaluate macro.
+                          |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
+                          |    ${stack.mkString("\n    ")}
+                          |"""
+                    report.error(msg, annot.tree)
+                    List(tree)
+                  case _ =>
+                    throw ex0
           transformedTrees.span(_.symbol != tree.symbol) match
             case (prefixed, newTree :: suffixed) =>
               allTrees ++= prefixed
