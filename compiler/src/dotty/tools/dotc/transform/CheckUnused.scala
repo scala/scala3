@@ -21,6 +21,7 @@ import dotty.tools.dotc.core.Types.AnnotatedType
 import dotty.tools.dotc.core.Flags.flagsString
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 
 
@@ -30,7 +31,7 @@ import dotty.tools.dotc.core.Names.Name
  * Basically, it gathers definition/imports and their usage. If a
  * definition/imports does not have any usage, then it is reported.
  */
-class CheckUnused extends Phase:
+class CheckUnused extends MiniPhase:
   import CheckUnused.UnusedData
 
   /**
@@ -38,6 +39,13 @@ class CheckUnused extends Phase:
    * from the compilation `Context`
    */
   private val _key = Property.Key[UnusedData]
+
+  extension (k: Property.Key[UnusedData])
+    private def unusedDataApply[U](f: UnusedData => U)(using Context): Context =
+      ctx.property(_key).foreach(f)
+      ctx
+    private def getUnusedData(using Context): Option[UnusedData] =
+      ctx.property(_key)
 
   override def phaseName: String = CheckUnused.phaseName
 
@@ -47,12 +55,84 @@ class CheckUnused extends Phase:
     ctx.settings.Wunused.value.nonEmpty &&
     !ctx.isJava
 
-  override def run(using Context): Unit =
+  // ========== SETUP ============
+
+  override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
     val tree = ctx.compilationUnit.tpdTree
     val data = UnusedData()
     val fresh = ctx.fresh.setProperty(_key, data)
-    traverser.traverse(tree)(using fresh)
-    reportUnused(data.getUnused)
+    fresh
+
+  // ========== END + REPORTING ==========
+
+  override def transformUnit(tree: tpd.Tree)(using Context): tpd.Tree =
+    _key.unusedDataApply(ud => reportUnused(ud.getUnused))
+    tree
+
+  // ========== MiniPhase Prepare ==========
+  override def prepareForOther(tree: tpd.Tree)(using Context): Context =
+    // A standard tree traverser covers cases not handled by the Mega/MiniPhase
+    traverser.traverse(tree)
+    ctx
+
+  override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
+    _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+
+  override def prepareForSelect(tree: tpd.Select)(using Context): Context =
+    _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+
+  override def prepareForBlock(tree: tpd.Block)(using Context): Context =
+    pushInBlockTemplatePackageDef(tree)
+
+  override def prepareForTemplate(tree: tpd.Template)(using Context): Context =
+    pushInBlockTemplatePackageDef(tree)
+
+  override def prepareForPackageDef(tree: tpd.PackageDef)(using Context): Context =
+    pushInBlockTemplatePackageDef(tree)
+
+  override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
+    _key.unusedDataApply(_.registerDef(tree))
+
+  override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
+    _key.unusedDataApply(_.registerDef(tree))
+
+  override def prepareForBind(tree: tpd.Bind)(using Context): Context =
+    _key.unusedDataApply(_.registerPatVar(tree))
+
+  override def prepareForTypeTree(tree: tpd.TypeTree)(using Context): Context =
+    typeTraverser(_key.unusedDataApply).traverse(tree.tpe)
+    ctx
+
+  // ========== MiniPhase Transform ==========
+
+  override def transformBlock(tree: tpd.Block)(using Context): tpd.Tree =
+    popOutBlockTemplatePackageDef()
+    tree
+
+  override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
+    popOutBlockTemplatePackageDef()
+    tree
+
+  override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
+    popOutBlockTemplatePackageDef()
+    tree
+
+  // ---------- MiniPhase HELPERS -----------
+
+  private def pushInBlockTemplatePackageDef(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context =
+    _key.unusedDataApply { ud =>
+      ud.pushScope(UnusedData.ScopeType.fromTree(tree))
+    }
+    ctx
+
+  private def popOutBlockTemplatePackageDef()(using Context): Context =
+    _key.unusedDataApply { ud =>
+      ud.popScope()
+    }
+    ctx
+
+  private def newCtx(tree: tpd.Tree)(using Context) =
+    if tree.symbol.exists then ctx.withOwner(tree.symbol) else ctx
 
   /**
    * This traverse is the **main** component of this phase
@@ -66,37 +146,37 @@ class CheckUnused extends Phase:
 
     /* Register every imports, definition and usage */
     override def traverse(tree: tpd.Tree)(using Context): Unit =
-      val unusedDataApply = ctx.property(_key).foreach
       val newCtx = if tree.symbol.exists then ctx.withOwner(tree.symbol) else ctx
-      if tree.isDef then // register the annotations for usage
-        unusedDataApply(_.registerUsedAnnotation(tree.symbol))
       tree match
         case imp:tpd.Import =>
-          unusedDataApply(_.registerImport(imp))
+          _key.unusedDataApply(_.registerImport(imp))
           traverseChildren(tree)(using newCtx)
         case ident: Ident =>
-          unusedDataApply(_.registerUsed(ident.symbol, Some(ident.name)))
+          prepareForIdent(ident)
           traverseChildren(tree)(using newCtx)
         case sel: Select =>
-          unusedDataApply(_.registerUsed(sel.symbol, Some(sel.name)))
+          prepareForSelect(sel)
           traverseChildren(tree)(using newCtx)
         case _: (tpd.Block | tpd.Template | tpd.PackageDef) =>
-          unusedDataApply { ud =>
+          //! DIFFERS FROM MINIPHASE
+          _key.unusedDataApply { ud =>
             ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree)(using newCtx))
           }
         case t:tpd.ValDef =>
-          unusedDataApply(_.registerDef(t))
+          prepareForValDef(t)
           traverseChildren(tree)(using newCtx)
         case t:tpd.DefDef =>
-          unusedDataApply(_.registerDef(t))
+          prepareForDefDef(t)
           traverseChildren(tree)(using newCtx)
         case t: tpd.Bind =>
-          unusedDataApply(_.registerPatVar(t))
+          prepareForBind(t)
           traverseChildren(tree)(using newCtx)
         case t@tpd.TypeTree() =>
-          typeTraverser(unusedDataApply).traverse(t.tpe)
+          //! DIFFERS FROM MINIPHASE
+          typeTraverser(_key.unusedDataApply).traverse(t.tpe)
           traverseChildren(tree)(using newCtx)
         case _ =>
+          //! DIFFERS FROM MINIPHASE
           traverseChildren(tree)(using newCtx)
     end traverse
   end traverser
@@ -153,7 +233,7 @@ object CheckUnused:
     import UnusedData.ScopeType
 
     /** The current scope during the tree traversal */
-    var currScopeType: ScopeType = ScopeType.Other
+    var currScopeType: MutStack[ScopeType] = MutStack(ScopeType.Other)
 
     /* IMPORTS */
     private val impInScope = MutStack(MutSet[tpd.Import]())
@@ -190,11 +270,9 @@ object CheckUnused:
      */
     def inNewScope(newScope: ScopeType)(execInNewScope: => Unit)(using Context): Unit =
       val prev = currScopeType
-      currScopeType = newScope
-      pushScope()
+      pushScope(newScope)
       execInNewScope
       popScope()
-      currScopeType = prev
 
     /** Register all annotations of this symbol's denotation */
     def registerUsedAnnotation(sym: Symbol)(using Context): Unit =
@@ -227,23 +305,27 @@ object CheckUnused:
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
     def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
+      // register the annotations for usage
+      registerUsedAnnotation(valOrDef.symbol)
       if valOrDef.symbol.is(Param) && !isSyntheticMainParam(valOrDef.symbol) then
         if valOrDef.symbol.isOneOf(GivenOrImplicit) then
           implicitParamInScope += valOrDef
         else
           explicitParamInScope += valOrDef
-      else if currScopeType == ScopeType.Local then
+      else if currScopeType.top == ScopeType.Local then
         localDefInScope += valOrDef
-      else if currScopeType == ScopeType.Template && valOrDef.symbol.is(Private, butNot = SelfName) then
+      else if currScopeType.top == ScopeType.Template && valOrDef.symbol.is(Private, butNot = SelfName) then
         privateDefInScope += valOrDef
 
     /** Register pattern variable */
     def registerPatVar(patvar: tpd.Bind)(using Context): Unit =
+      registerUsedAnnotation(patvar.symbol)
       patVarsInScope += patvar
 
     /** enter a new scope */
-    def pushScope(): Unit =
+    def pushScope(newScopeType: ScopeType): Unit =
       // unused imports :
+      currScopeType.push(newScopeType)
       impInScope.push(MutSet())
       usedInScope.push(MutSet())
 
@@ -275,6 +357,8 @@ object CheckUnused:
         usedInScope.top ++= kept
       // register usage in this scope for other warnings at the end of the phase
       usedDef ++= used.map(_._1)
+      // retrieve previous scope type
+      currScopeType.pop
     end popScope
 
     /**
