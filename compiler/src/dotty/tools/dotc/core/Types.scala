@@ -3965,9 +3965,9 @@ object Types {
      *   - wrap types of parameters that have an @allowConversions annotation with Into[_]
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
-      def addAnnotation(tp: Type, cls: ClassSymbol): Type = tp match
-        case ExprType(resType) => ExprType(addAnnotation(resType, cls))
-        case _ => AnnotatedType(tp, Annotation(cls))
+      def addAnnotation(tp: Type, cls: ClassSymbol, param: Symbol): Type = tp match
+        case ExprType(resType) => ExprType(addAnnotation(resType, cls, param))
+        case _ => AnnotatedType(tp, Annotation(cls, param.span))
 
       def wrapConvertible(tp: Type) =
         AppliedType(defn.IntoType.typeRef, tp :: Nil)
@@ -3992,9 +3992,9 @@ object Types {
       def paramInfo(param: Symbol) =
         var paramType = param.info.annotatedToRepeated
         if param.is(Inline) then
-          paramType = addAnnotation(paramType, defn.InlineParamAnnot)
+          paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
         if param.is(Erased) then
-          paramType = addAnnotation(paramType, defn.ErasedParamAnnot)
+          paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
         if param.hasAnnotation(defn.AllowConversionsAnnot) then
           paramType = addInto(paramType)
         paramType

@@ -1663,7 +1663,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
                 // skip exhaustivity check in later phase
                 // TODO: move the check above to patternMatcher phase
-                val uncheckedTpe = AnnotatedType(sel.tpe.widen, Annotation(defn.UncheckedAnnot))
+                val uncheckedTpe = AnnotatedType(sel.tpe.widen, Annotation(defn.UncheckedAnnot, tree.selector.span))
                 tpd.cpy.Match(result)(
                   selector = tpd.Typed(sel, tpd.TypeTree(uncheckedTpe)),
                   cases = result.cases
@@ -1898,7 +1898,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       Typed(res,
         TypeTree(
           AnnotatedType(res.tpe,
-            Annotation(defn.RequiresCapabilityAnnot, cap))))
+            Annotation(defn.RequiresCapabilityAnnot, cap, tree.span))))
     else res
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
@@ -4297,7 +4297,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // this is needed for -Ycheck. Without the annotation Ycheck will
           // skolemize the result type which will lead to different types before
           // and after checking. See i11955.scala.
-          AnnotatedType(conj, Annotation(defn.UncheckedStableAnnot))
+          AnnotatedType(conj, Annotation(defn.UncheckedStableAnnot, tree.symbol.span))
         else conj
       else pt
     gadts.println(i"insert GADT cast from $tree to $target")

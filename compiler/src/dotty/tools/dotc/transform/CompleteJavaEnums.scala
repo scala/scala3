@@ -110,7 +110,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     yield {
       def forwarderSym(flags: FlagSet, info: Type): Symbol { type ThisName = TermName } =
         val sym = newSymbol(clazz, enumValue.name.asTermName, flags, info)
-        sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
+        sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot, sym.span))
         sym
       val body = moduleRef.select(enumValue)
       if ctx.settings.scalajs.value then

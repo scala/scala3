@@ -175,7 +175,7 @@ object desugar {
       case Into(tpt1) =>
         mods1 = vdef.mods.withAddedAnnotation(
           TypedSplice(
-            Annotation(defn.AllowConversionsAnnot).tree.withSpan(tpt.span.startPos)))
+            Annotation(defn.AllowConversionsAnnot, tpt.span.startPos).tree))
         tpt1
       case ByNameTypeTree(tpt1) =>
         cpy.ByNameTypeTree(tpt)(dropInto(tpt1))
