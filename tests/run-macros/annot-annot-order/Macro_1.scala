@@ -7,6 +7,7 @@ class print(msg: String) extends MacroAnnotation:
     import quotes.reflect._
     tree match
       case DefDef(name, params, tpt, Some(rhsTree)) =>
+        given Quotes = tree.symbol.asQuotes
         rhsTree.asExpr match
           case '{ $rhsExpr: t } =>
             val newRhs = '{ println(${Expr(msg)}); $rhsExpr }.asTerm

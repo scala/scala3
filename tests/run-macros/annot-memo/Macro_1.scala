@@ -7,14 +7,20 @@ class memoize extends MacroAnnotation:
   def transform(using Quotes)(tree: quotes.reflect.Definition): List[quotes.reflect.Definition] =
     import quotes.reflect._
     tree match
-      case DefDef(name, TermParamClause(param :: Nil) :: Nil, tpt, Some(rhsTree)) =>
-        (Ref(param.symbol).asExpr, rhsTree.asExpr) match
-          case ('{ $paramRefExpr: t }, '{ $rhsExpr: u }) =>
-            val cacheSymbol = Symbol.newUniqueVal(tree.symbol.owner, name + "Cache", TypeRepr.of[mutable.Map[t, u]], Flags.Private, Symbol.noSymbol)
-            val cacheRhs = '{ mutable.Map.empty[t, u] }.asTerm
+      case DefDef(name, TermParamClause(param  :: Nil) :: Nil, tpt, Some(rhsTree)) =>
+        (param.tpt.tpe.asType, tpt.tpe.asType) match
+          case ('[t], '[u]) =>
+            val cacheSymbol = Symbol.newUniqueVal(Symbol.spliceOwner, name + "Cache", TypeRepr.of[mutable.Map[t, u]], Flags.Private, Symbol.noSymbol)
+            val cacheRhs =
+              given Quotes = cacheSymbol.asQuotes
+              '{ mutable.Map.empty[t, u] }.asTerm
             val cacheVal = ValDef(cacheSymbol, Some(cacheRhs))
-            val cacheRefExpr = Ref(cacheSymbol).asExprOf[mutable.Map[t, u]]
-            val newRhs = '{ $cacheRefExpr.getOrElseUpdate($paramRefExpr, $rhsExpr) }.asTerm
+            val newRhs =
+              given Quotes = tree.symbol.asQuotes
+              val cacheRefExpr = Ref(cacheSymbol).asExprOf[mutable.Map[t, u]]
+              val paramRefExpr = Ref(param.symbol).asExprOf[t]
+              val rhsExpr = rhsTree.asExprOf[u]
+              '{ $cacheRefExpr.getOrElseUpdate($paramRefExpr, $rhsExpr) }.asTerm
             val newTree = DefDef.copy(tree)(name, TermParamClause(param :: Nil) :: Nil, tpt, Some(newRhs))
             List(cacheVal, newTree)
       case _ =>
