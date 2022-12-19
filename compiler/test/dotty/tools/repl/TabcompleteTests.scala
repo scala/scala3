@@ -228,4 +228,9 @@ class TabcompleteTests extends ReplTest {
       tabComplete(":d")
     )
   }
+
+  @Test def `i16551 typer phase for implicits` = initially {
+    val comp = tabComplete("BigInt(1).")
+    assertTrue(comp.distinct.nonEmpty)
+  }
 }
