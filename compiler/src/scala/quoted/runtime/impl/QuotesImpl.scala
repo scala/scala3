@@ -2485,17 +2485,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         newMethod(owner, name, tpe, Flags.EmptyFlags, noSymbol)
       def newMethod(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin)
-      def newUniqueMethod(owner: Symbol, namePrefix: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
-        val name = NameKinds.UniqueName.fresh(namePrefix.toTermName)
-        dotc.core.Symbols.newSymbol(owner, name, dotc.core.Flags.PrivateMethod | flags, tpe, privateWithin)
       def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags, tpe, privateWithin)
-      def newUniqueVal(owner: Symbol, namePrefix: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
-        val name = NameKinds.UniqueName.fresh(namePrefix.toTermName)
-        dotc.core.Symbols.newSymbol(owner, name, flags, tpe, privateWithin)
       def newBind(owner: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | Case, tpe)
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
+
+      def freshName(prefix: String): String =
+        NameKinds.MacroNames.fresh(prefix.toTermName).toString
     end Symbol
 
     given SymbolMethods: SymbolMethods with
@@ -2518,6 +2515,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def name: String = self.denot.name.toString
         def fullName: String = self.denot.fullName.toString
+
+        def info: TypeRepr = self.denot.info
 
         def pos: Option[Position] =
           if self.exists then Some(self.sourcePos) else None

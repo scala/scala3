@@ -7,7 +7,7 @@ class bind(str: String) extends MacroAnnotation:
     import quotes.reflect._
     tree match
       case ValDef(name, tpt, Some(rhsTree)) =>
-        val valSym = Symbol.newUniqueVal(Symbol.spliceOwner, str, tpt.tpe, Flags.Private, Symbol.noSymbol)
+        val valSym = Symbol.newVal(Symbol.spliceOwner, Symbol.freshName(str), tpt.tpe, Flags.Private, Symbol.noSymbol)
         val valDef = ValDef(valSym, Some(rhsTree))
         val newRhs = Ref(valSym)
         val newTree = ValDef.copy(tree)(name, tpt, Some(newRhs))

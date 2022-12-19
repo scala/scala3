@@ -10,7 +10,8 @@ class memoize extends MacroAnnotation:
       case DefDef(name, TermParamClause(param  :: Nil) :: Nil, tpt, Some(rhsTree)) =>
         (param.tpt.tpe.asType, tpt.tpe.asType) match
           case ('[t], '[u]) =>
-            val cacheSymbol = Symbol.newUniqueVal(Symbol.spliceOwner, name + "Cache", TypeRepr.of[mutable.Map[t, u]], Flags.Private, Symbol.noSymbol)
+            val cacheName = Symbol.freshName(name + "Cache")
+            val cacheSymbol = Symbol.newVal(Symbol.spliceOwner, cacheName, TypeRepr.of[mutable.Map[t, u]], Flags.Private, Symbol.noSymbol)
             val cacheRhs =
               given Quotes = cacheSymbol.asQuotes
               '{ mutable.Map.empty[t, u] }.asTerm
