@@ -2,9 +2,13 @@ package scala.quoted
 package runtime.impl
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Contexts.Context
 
 /** Quoted type (or kind) `T` backed by a tree */
-final class TypeImpl(val typeTree: tpd.Tree, val scope: Scope) extends Type[?] {
+final class TypeImpl(val typeTree: tpd.Tree)(using val ctx: Context) extends Type[?]:
+
+  def scope: Scope = SpliceScope.getCurrent
+
   override def equals(that: Any): Boolean = that match {
     case that: TypeImpl => typeTree ==
       // TastyTreeExpr are wrappers around trees, therefore they are equals if their trees are equal.
@@ -15,5 +19,4 @@ final class TypeImpl(val typeTree: tpd.Tree, val scope: Scope) extends Type[?] {
 
   override def hashCode(): Int = typeTree.hashCode()
 
-  override def toString: String = "Type.of[...]"
-}
+  override def toString: String = QuotesImpl.showDecompiledTree(typeTree)

@@ -241,11 +241,11 @@ object Splicer {
           case Inlined(EmptyTree, _, quoted) => quoted
           case _ => quoted
         }
-        new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(quoted1, ctx.owner)).withSpan(quoted1.span), SpliceScope.getCurrent)
+        new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(quoted1, ctx.owner)).withSpan(quoted1.span))(using ctx.detach)
 
       // Interpret level -1 `Type.of[T]`
       case Apply(TypeApply(fn, quoted :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of =>
-        new TypeImpl(QuoteUtils.changeOwnerOfTree(quoted, ctx.owner), SpliceScope.getCurrent)
+        new TypeImpl(QuoteUtils.changeOwnerOfTree(quoted, ctx.owner))(using ctx.detach)
 
       case _ =>
         super.interpretTree(tree)

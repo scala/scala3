@@ -462,7 +462,7 @@ object QuoteMatcher {
     val matched: Matching = Some(Tuple())
 
     def matched(tree: Tree)(using Context): Matching =
-      Some(Tuple1(new ExprImpl(tree, SpliceScope.getCurrent)))
+      Some(Tuple1(new ExprImpl(tree)))
 
     extension (self: Matching)
       def asOptionOfTuple: Option[Tuple] = self

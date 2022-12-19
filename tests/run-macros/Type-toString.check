@@ -1,0 +1,7 @@
+1
+"abc"
+scala.Int
+scala.collection.immutable.List[scala.Int]
+java.lang.Object {
+  def foo: scala.Int
+}

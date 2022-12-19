@@ -105,7 +105,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => false
         def asExpr: scala.quoted.Expr[Any] =
           if self.isExpr then
-            new ExprImpl(self, SpliceScope.getCurrent)
+            new ExprImpl(self)
           else self match
             case TermTypeTest(self) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
             case _ => throw new Exception("Expected a Term but was: " + Printer.TreeStructure.show(self))
@@ -377,11 +377,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given TermMethods: TermMethods with
       extension (self: Term)
         def seal: scala.quoted.Expr[Any] =
-          if self.isExpr then new ExprImpl(self, SpliceScope.getCurrent)
+          if self.isExpr then new ExprImpl(self)
           else throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
 
         def sealOpt: Option[scala.quoted.Expr[Any]] =
-          if self.isExpr then Some(new ExprImpl(self, SpliceScope.getCurrent))
+          if self.isExpr then Some(new ExprImpl(self))
           else None
 
         def tpe: TypeRepr = self.tpe.widenSkolem
@@ -1722,7 +1722,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def seal: scala.quoted.Type[_] = self.asType
 
         def asType: scala.quoted.Type[?] =
-          new TypeImpl(Inferred(self), SpliceScope.getCurrent)
+          new TypeImpl(Inferred(self))
 
         def =:=(that: TypeRepr): Boolean = self =:= that
         def <:<(that: TypeRepr): Boolean = self <:< that
@@ -3048,19 +3048,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
     val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V1(typeHole), PickledQuotes.ExprHole.V1(termHole))
-    new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
+    new ExprImpl(tree).asInstanceOf[scala.quoted.Expr[T]]
 
   def unpickleExprV2[T](pickled: String | List[String], types: Seq[Type[?]], termHole: Null | ((Int, Seq[Type[?] | Expr[Any]], Quotes) => Expr[?])): scala.quoted.Expr[T] =
     val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V2(types), PickledQuotes.ExprHole.V2(termHole))
-    new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
+    new ExprImpl(tree).asInstanceOf[scala.quoted.Expr[T]]
 
   def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Type[T] =
     val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V1(typeHole))
-    new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
+    new TypeImpl(tree).asInstanceOf[scala.quoted.Type[T]]
 
   def unpickleTypeV2[T <: AnyKind](pickled: String | List[String], types: Seq[Type[?]]): scala.quoted.Type[T] =
     val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V2(types))
-    new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
+    new TypeImpl(tree).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =

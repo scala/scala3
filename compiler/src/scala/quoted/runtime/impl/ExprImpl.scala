@@ -2,6 +2,7 @@ package scala.quoted
 package runtime.impl
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Contexts.Context
 
 /** An Expr backed by a tree. Only the current compiler trees are allowed.
  *
@@ -10,7 +11,10 @@ import dotty.tools.dotc.ast.tpd
  *
  *  May contain references to code defined outside this Expr instance.
  */
-final class ExprImpl(val tree: tpd.Tree, val scope: Scope) extends Expr[Any] {
+final class ExprImpl(val tree: tpd.Tree)(using val ctx: Context) extends Expr[Any]:
+
+  def scope: Scope = SpliceScope.getCurrent
+
   override def equals(that: Any): Boolean = that match {
     case that: ExprImpl =>
       // Expr are wrappers around trees, therefore they are equals if their trees are equal.
@@ -21,5 +25,4 @@ final class ExprImpl(val tree: tpd.Tree, val scope: Scope) extends Expr[Any] {
 
   override def hashCode(): Int = tree.hashCode()
 
-  override def toString: String = "'{ ... }"
-}
+  override def toString(): String = QuotesImpl.showDecompiledTree(tree)

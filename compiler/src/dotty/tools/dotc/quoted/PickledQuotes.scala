@@ -197,18 +197,18 @@ object PickledQuotes {
   }
 
   def reifyTypeHoleArgs(args: List[Tree])(using Context): List[scala.quoted.Type[?]] =
-    args.map(arg => new TypeImpl(arg, SpliceScope.getCurrent))
+    args.map(arg => new TypeImpl(arg))
 
   def reifyExprHoleV1Args(args: List[Tree])(using Context): List[ExprHole.ArgV1] =
     args.map { arg =>
-      if arg.isTerm then (q: Quotes) ?=> new ExprImpl(arg, SpliceScope.getCurrent)
-      else new TypeImpl(arg, SpliceScope.getCurrent)
+      if arg.isTerm then (q: Quotes) ?=> new ExprImpl(arg)
+      else new TypeImpl(arg)
     }
 
   def reifyExprHoleV2Args(args: List[Tree])(using Context): List[ExprHole.ArgV2] =
     args.map { arg =>
-      if arg.isTerm then new ExprImpl(arg, SpliceScope.getCurrent)
-      else new TypeImpl(arg, SpliceScope.getCurrent)
+      if arg.isTerm then new ExprImpl(arg)
+      else new TypeImpl(arg)
     }
 
   // TASTY picklingtests/pos/quoteTest.scala
