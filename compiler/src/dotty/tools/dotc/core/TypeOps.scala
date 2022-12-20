@@ -504,7 +504,7 @@ object TypeOps:
     override def derivedSelect(tp: NamedType, pre: Type) =
       if (pre eq tp.prefix)
         tp
-      else tryWiden(tp, tp.prefix).orElse {
+      else (if pre.isSingleton then NoType else tryWiden(tp, tp.prefix)).orElse {
         if (tp.isTerm && variance > 0 && !pre.isSingleton)
           apply(tp.info.widenExpr)
         else if (upper(pre).member(tp.name).exists)
