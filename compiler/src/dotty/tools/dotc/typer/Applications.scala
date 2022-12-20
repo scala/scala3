@@ -1002,7 +1002,10 @@ trait Applications extends Compatibility {
             case TypeApply(fun, _) => !fun.isInstanceOf[Select]
             case _ => false
           }
-          typedDynamicApply(tree, isInsertedApply, pt)
+          val tree1 = fun1 match
+            case Select(_, nme.apply) => tree
+            case _ => untpd.Apply(fun1, tree.args)
+          typedDynamicApply(tree1, isInsertedApply, pt)
         case _ =>
           if (originalProto.isDropped) fun1
           else if (fun1.symbol == defn.Compiletime_summonFrom)
