@@ -212,17 +212,22 @@ extends tpd.TreeTraverser:
           val tycon1 = this(tycon)
           if defn.isNonRefinedFunction(tp) then
             // Convert toplevel generic function types to dependent functions
-            val args0 = args.init
-            var res0 = args.last
-            val args1 = mapNested(args0)
-            val res1 = this(res0)
-            if isTopLevel then
-              depFun(tycon1, args1, res1)
-                .showing(i"add function refinement $tp --> $result", capt)
-            else if (tycon1 eq tycon) && (args1 eq args0) && (res1 eq res0) then
-              tp
+            if !defn.isFunctionSymbol(tp.typeSymbol) && (tp.dealias ne tp) then
+              // This type is a function after dealiasing, so we dealias and recurse.
+              // See #15925.
+              this(tp.dealias)
             else
-              tp.derivedAppliedType(tycon1, args1 :+ res1)
+              val args0 = args.init
+              var res0 = args.last
+              val args1 = mapNested(args0)
+              val res1 = this(res0)
+              if isTopLevel then
+                depFun(tycon1, args1, res1)
+                  .showing(i"add function refinement $tp ($tycon1, $args1, $res1) (${tp.dealias}) --> $result", capt)
+              else if (tycon1 eq tycon) && (args1 eq args0) && (res1 eq res0) then
+                tp
+              else
+                tp.derivedAppliedType(tycon1, args1 :+ res1)
           else
             tp.derivedAppliedType(tycon1, args.mapConserve(arg => this(arg)))
         case tp @ RefinedType(core, rname, rinfo) if defn.isFunctionType(tp) =>
