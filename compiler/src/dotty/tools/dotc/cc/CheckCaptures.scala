@@ -856,8 +856,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         traverseChildren(t)
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      Setup(preRecheckPhase, thisPhase, recheckDef)
-        .traverse(ctx.compilationUnit.tpdTree)
+      Setup(preRecheckPhase, thisPhase, recheckDef)(ctx.compilationUnit.tpdTree)
       //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
       withCaptureSetsExplained {
         super.checkUnit(unit)

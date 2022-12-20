@@ -166,6 +166,11 @@ extension (tp: Type)
       case CapturingType(_, _) => true
       case _ => false
 
+  def isEventuallyCapturingType(using Context): Boolean =
+    tp match
+      case EventuallyCapturingType(_, _) => true
+      case _ => false
+
   /** Is type known to be always pure by its class structure,
    *  so that adding a capture set to it would not make sense?
    */

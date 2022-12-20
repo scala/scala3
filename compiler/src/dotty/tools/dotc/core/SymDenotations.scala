@@ -24,7 +24,7 @@ import config.Config
 import reporting._
 import collection.mutable
 import transform.TypeUtils._
-import cc.{CapturingType, derivedCapturingType}
+import cc.{CapturingType, derivedCapturingType, Setup, EventuallyCapturingType, isEventuallyCapturingType}
 
 import scala.annotation.internal.sharable
 
@@ -2140,6 +2140,7 @@ object SymDenotations {
     final def baseTypeOf(tp: Type)(using Context): Type = {
       val btrCache = baseTypeCache
       def inCache(tp: Type) = tp match
+        case EventuallyCapturingType(_, _) => false
         case tp: CachedType => btrCache.contains(tp)
         case _ => false
       def record(tp: CachedType, baseTp: Type) = {
@@ -2147,7 +2148,7 @@ object SymDenotations {
           Stats.record("basetype cache entries")
           if (!baseTp.exists) Stats.record("basetype cache NoTypes")
         }
-        if (!tp.isProvisional)
+        if (!tp.isProvisional && !tp.isEventuallyCapturingType && !Setup.isDuringSetup)
           btrCache(tp) = baseTp
         else
           btrCache.remove(tp) // Remove any potential sentinel value
@@ -2161,8 +2162,9 @@ object SymDenotations {
       def recur(tp: Type): Type = try {
         tp match {
           case tp: CachedType =>
-            val baseTp = btrCache.lookup(tp)
-            if (baseTp != null) return ensureAcyclic(baseTp)
+            val baseTp: Type | Null = btrCache.lookup(tp)
+            if (baseTp != null)
+              return ensureAcyclic(baseTp)
           case _ =>
         }
         if (Stats.monitored) {
