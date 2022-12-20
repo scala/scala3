@@ -242,9 +242,11 @@ object RefChecks {
     // compatibility checking.
     def checkSubType(tp1: Type, tp2: Type)(using Context): Boolean = tp1 frozen_<:< tp2
 
+    private val subtypeChecker: (Type, Type) => Context ?=> Boolean = this.checkSubType
+
     def checkAll(checkOverride: ((Type, Type) => Context ?=> Boolean, Symbol, Symbol) => Unit) =
       while hasNext do
-        checkOverride(checkSubType, overriding, overridden)
+        checkOverride(subtypeChecker, overriding, overridden)
         next()
 
       // The OverridingPairs cursor does assume that concrete overrides abstract
