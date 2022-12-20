@@ -12,34 +12,40 @@ class data extends MacroAnnotation:
         val classPatches = ArrayBuffer[String]()
 
         val cls = tree.symbol
-        val expectedBody = s"data.generated[${cls.name}]()" // FIXME: handle type parameters
+        val typeParams = cdef.body.map(_.symbol).filter(_.isType)
+        val clsTpe =
+          if typeParams.isEmpty then cls.typeRef
+          else AppliedType(cls.typeRef, typeParams.map(_.typeRef))
+        clsTpe.asType match
+          case '[t] =>
+            val expectedBody = '{ data.generated[t]() }.show
 
-        val params = paramNames(cls)
-        for param <- params do
-          val withParam = With(param)
-          val paramType = cls.declaredField(param).info
-          val existingOpt =
-            cdef.body.find(stat =>
-              val paramss = stat.symbol.paramSymss
-              stat.symbol.name == withParam
-              && paramss.size == 1 && paramss(0).size == 1
-              && paramss(0)(0).name == param // FIXME: if the parameter name is incorrect, propose rewriting it
-              && paramss(0)(0).info == paramType // FIXME: if the parameter type changed, propose rewriting it
-            )
-          existingOpt match
-            case Some(tree: DefDef) =>
-              tree.rhs match
-                case Some(rhs) => rhs.asExpr match
-                  case '{data.generated[t]()} =>
-                    // The correct method is already present, nothing to do
-                  case _ =>
-                    report.error(s"Replace the underline code by:\n$expectedBody", rhs.pos)
+            val params = paramNames(cls)
+            for param <- params do
+              val withParam = With(param)
+              val paramType = cls.declaredField(param).info
+              val existingOpt =
+                cdef.body.find(stat =>
+                  val paramss = stat.symbol.paramSymss
+                  stat.symbol.name == withParam
+                  && paramss.size == 1 && paramss(0).size == 1
+                  && paramss(0)(0).name == param // FIXME: if the parameter name is incorrect, propose rewriting it
+                  && paramss(0)(0).info == paramType // FIXME: if the parameter type changed, propose rewriting it
+                )
+              existingOpt match
+                case Some(tree: DefDef) =>
+                  tree.rhs match
+                    case Some(rhs) => rhs.asExpr match
+                      case '{data.generated[`t`]()} =>
+                        // The correct method is already present, nothing to do
+                      case _ =>
+                        report.error(s"Replace the underline code by:\n$expectedBody", rhs.pos)
+                    case _ =>
+                      report.error(s"Replace the underline code by:\n${tree.show} = $expectedBody", tree.pos)
                 case _ =>
-                  report.error(s"Replace the underline code by:\n${tree.show} = $expectedBody", tree.pos)
-            case _ =>
-              // The method is not present
-              classPatches +=
-                s"def $withParam($param: ${paramType.show}): ${cls.name} = $expectedBody"
+                  // The method is not present
+                  classPatches +=
+                    s"def $withParam($param: ${paramType.show}): ${Type.show[t]} = $expectedBody"
 
 
         val ctr = cdef.constructor
@@ -53,6 +59,7 @@ class data extends MacroAnnotation:
     List(tree)
 
 object data:
+  // TODO: Is T necessary? Could this be transparent?
   inline def generated[T](): T = ${generatedImpl[T]}
   private def generatedImpl[T: Type](using Quotes): Expr[T] =
     import quotes.reflect.*
@@ -62,7 +69,7 @@ object data:
     meth.name match
       case With(paramName) =>
         val localParam = meth.paramSymss(0)(0)
-        val body =
+        val body = // FIXME handle type parameters
           Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor),
             params.map(p => if p == paramName then Ref(localParam) else Ref(cls.declaredField(p))))
         body.asExprOf[T]
@@ -70,7 +77,7 @@ object data:
         report.errorAndAbort("@data.generated used in invalid context")
 
   def paramNames(using Quotes)(cls: quotes.reflect.Symbol): List[String] =
-    cls.primaryConstructor.paramSymss.head.map(_.name)
+    cls.primaryConstructor.paramSymss.dropWhile(_.headOption.exists(_.isType)).head.map(_.name)
 
 private object With:
   def apply(paramName: String): String =
