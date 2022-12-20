@@ -19,24 +19,23 @@ class data extends MacroAnnotation:
           val withParam = With(param)
           val paramType = cls.declaredField(param).info
           val existingOpt =
-            cls.declaredMethod(withParam).find(o =>
-              val paramss = o.paramSymss
-              paramss.size == 1 && paramss(0).size == 1
+            cdef.body.find(stat =>
+              val paramss = stat.symbol.paramSymss
+              stat.symbol.name == withParam
+              && paramss.size == 1 && paramss(0).size == 1
               && paramss(0)(0).name == param // FIXME: if the parameter name is incorrect, propose rewriting it
               && paramss(0)(0).info == paramType // FIXME: if the parameter type changed, propose rewriting it
             )
           existingOpt match
-            case Some(existing) => existing.tree match
-              case tree: DefDef =>
-                tree.rhs match
+            case Some(tree: DefDef) =>
+              tree.rhs match
                 case Some(rhs) => rhs.asExpr match
                   case '{data.generated[t]()} =>
                     // The correct method is already present, nothing to do
                   case _ =>
                     report.error(s"Replace the underline code by:\n$expectedBody", rhs.pos)
                 case _ =>
-                  report.error("FIXME: Passing -Yretain-trees is currently needed for this macro to work")
-              case _ =>
+                  report.error(s"Replace the underline code by:\n${tree.show} = $expectedBody", tree.pos)
             case _ =>
               // The method is not present
               classPatches +=

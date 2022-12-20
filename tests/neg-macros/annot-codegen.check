@@ -1,11 +1,11 @@
 
--- Error: tests/neg-macros/annot-codegen/Test_2.scala:9:4 --------------------------------------------------------------
-9 |    new Bar("", two, 1, 1.0) // error: body needs to be replaced
+-- Error: tests/neg-macros/annot-codegen/Test_2.scala:7:4 --------------------------------------------------------------
+7 |    new Bar("", two, 1, 1.0) // error: body needs to be replaced
   |    ^^^^^^^^^^^^^^^^^^^^^^^^
   |    Replace the underline code by:
   |    data.generated[Bar]()
--- Error: tests/neg-macros/annot-codegen/Test_2.scala:3:80 -------------------------------------------------------------
-3 |@data class Bar(val one: String, val two: Int, val three: Int, val four: Double): // error: additional methods needed
+-- Error: tests/neg-macros/annot-codegen/Test_2.scala:1:80 -------------------------------------------------------------
+1 |@data class Bar(val one: String, val two: Int, val three: Int, val four: Double): // error: additional methods needed
   |                                                                                ^
   |                                                     @data requires the following additional method(s):
   |
