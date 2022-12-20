@@ -4,25 +4,41 @@ package annotation
 
 import scala.quoted._
 
-/** Base trait for macro annotation that will transform a definition */
+/** Base trait for macro annotation implementation.
+ *  Macro annotations can transform definitions and add new definitions.
+ *
+ *  See: `MacroAnnotation.transform`
+ *
+ *  @syntax markdown
+ */
 @experimental
 trait MacroAnnotation extends StaticAnnotation:
 
-  /** Transform the `tree` definition and add other definitions
+  /** Transform the `tree` definition and add new definitions
    *
    *  This method takes as argument the annotated definition.
    *  It returns a non-empty list containing the modified version of the annotated definition.
    *  The new tree for the definition must use the original symbol.
    *  New definitions can be added to the list before or after the transformed definitions, this order
-   *  will be retained.
+   *  will be retained. New definitions will not be visible from outside the macro expansion.
    *
-   *  All definitions in the result must have the same owner. The owner can be recovered from `tree.symbol.owner`.
+   *  #### Restrictions
+   *   - All definitions in the result must have the same owner. The owner can be recovered from `Symbol.spliceOwner`.
+   *     - Special case: an annotated top-level `def`, `val`, `var`, `lazy val` can return a `class`/`object`
+definition that is owned by the package or package object.
+   *   - Can not return a `type`.
+   *   - Annotated top-level `class`/`object` can not return top-level `def`, `val`, `var`, `lazy val`.
+   *   - Can not see new definition in user written code.
    *
-   *  The result cannot add new `class`, `object` or `type` definition. This limitation will be relaxed in the future.
+   *  #### Good practices
+   *   - Make your new definitions private if you can.
+   *   - New definitions added as class members should use a fresh name (`Symbol.freshName`) to avoid collisions.
+   *   - New top-level definitions should use a fresh name (`Symbol.freshName`) that includes the name of the annotated
+   *     member as a prefix to avoid collisions of definitions added in other files.
    *
-   *  IMPORTANT: When developing and testing a macro annotation, you must enable `-Xcheck-macros` and `-Ycheck:all`.
+   *  **IMPORTANT**: When developing and testing a macro annotation, you must enable `-Xcheck-macros` and `-Ycheck:all`.
    *
-   *  Example 1:
+   *  #### Example 1
    *  This example shows how to modify a `def` and add a `val` next to it using a macro annotation.
    *  ```scala
    *  import scala.quoted.*
@@ -54,7 +70,10 @@ trait MacroAnnotation extends StaticAnnotation:
    *          List(tree)
    *  ```
    *  with this macro annotation a user can write
-   *  ```scala sc:nocompile
+   *  ```scala
+   *  //{
+   *  class memoize extends scala.annotation.StaticAnnotation
+   *  //}
    *  @memoize
    *  def fib(n: Int): Int =
    *    println(s"compute fib of $n")
@@ -74,7 +93,7 @@ trait MacroAnnotation extends StaticAnnotation:
    *     )
    *  ```
    *
-   *  Example 2:
+   *  #### Example 2
    *  This example shows how to modify a `class` using a macro annotation.
    *  It shows how to override inherited members and add new ones.
    *  ```scala
@@ -164,7 +183,10 @@ trait MacroAnnotation extends StaticAnnotation:
    *      }
    *  ```
    *  with this macro annotation a user can write
-   *  ```scala sc:nocompile
+   *  ```scala
+   *  //{
+   *  class equals extends scala.annotation.StaticAnnotation
+   *  //}
    *  @equals class User(val name: String, val id: Int)
    *  ```
    *  and the macro will modify the class definition to generate the following code
@@ -184,5 +206,7 @@ trait MacroAnnotation extends StaticAnnotation:
    *
    *  @param Quotes Implicit instance of Quotes used for tree reflection
    *  @param tree   Tree that will be transformed
+   *
+   *  @syntax markdown
    */
   def transform(using Quotes)(tree: quotes.reflect.Definition): List[quotes.reflect.Definition]
