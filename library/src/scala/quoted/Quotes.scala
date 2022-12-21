@@ -3785,9 +3785,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  @param parent The owner of the method
       *  @param name The name of the method
       *  @param tpe The type of the method (MethodType, PolyType, ByNameType)
-      *  @param flags extra flags to with which the symbol should be constructed
+      *  @param flags extra flags to with which the symbol should be constructed. `Method` flag will be added. Can be `Private | Protected | Override | Deferred | Final | Method | Implicit | Given | Local | JavaStatic`
       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
       */
+      // Keep: `flags` doc aligned with QuotesImpl's `validMethodFlags`
       def newMethod(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
 
       /** Generates a new val/var/lazy val symbol with the given parent, name and type.
@@ -3801,11 +3802,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  @param parent The owner of the val/var/lazy val
       *  @param name The name of the val/var/lazy val
       *  @param tpe The type of the val/var/lazy val
-      *  @param flags extra flags to with which the symbol should be constructed
+      *  @param flags extra flags to with which the symbol should be constructed. Can be `Private | Protected | Override | Deferred | Final | Param | Implicit | Lazy | Mutable | Local | ParamAccessor | Module | Package | Case | CaseAccessor | Given | Enum | JavaStatic`
       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
       *        direct or indirect children of the reflection context's owner.
       */
+      // Keep: `flags` doc aligned with QuotesImpl's `validValFlags`
       def newVal(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
 
       /** Generates a pattern bind symbol with the given parent, name and type.
@@ -3816,11 +3818,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *
       *  @param parent The owner of the binding
       *  @param name The name of the binding
-      *  @param flags extra flags to with which the symbol should be constructed
+      *  @param flags extra flags to with which the symbol should be constructed. `Case` flag will be added. Can be `Case`
       *  @param tpe The type of the binding
       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
       *        direct or indirect children of the reflection context's owner.
       */
+      // Keep: `flags` doc aligned with QuotesImpl's `validBindFlags`
       def newBind(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol
 
       /** Definition not available */
@@ -4373,15 +4376,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is this symbol `abstract` */
       def Abstract: Flags
 
-      /** Is this symbol is labeled with of abstract & override
+      /** Is this an abstract override method?
        *
-       *  The override modifier has an additional significance when combined with the abstract modifier.
-       *  That modifier combination is only allowed for value members of traits.
-       *
-       *  We call a member MM of a template incomplete if it is either abstract (i.e. defined by a declaration), or it is labeled abstract and override and every member overridden by MM is again incomplete.
-       *
-       *  Note that the abstract override modifier combination does not influence the concept whether a member is concrete or abstract.
-       *  A member is abstract if only a declaration is given for it; it is concrete if a full definition is given.
+       *  This corresponds to a definition declared as "abstract override def" in the source.
+       * See https://stackoverflow.com/questions/23645172/why-is-abstract-override-required-not-override-alone-in-subtrait for examples.
        */
       @experimental def AbsOverride: Flags
 
