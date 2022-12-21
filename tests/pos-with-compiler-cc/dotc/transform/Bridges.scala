@@ -22,7 +22,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   private val preErasureCtx = ctx.withPhase(erasurePhase)
   private lazy val elimErasedCtx = ctx.withPhase(elimErasedValueTypePhase.next)
 
-  private class BridgesCursor(using Context) extends OverridingPairs.Cursor(root) {
+  private class BridgesCursor(using DetachedContext) extends OverridingPairs.Cursor(root) {
 
     override def isSubParent(parent: Symbol, bc: Symbol)(using Context) =
       true

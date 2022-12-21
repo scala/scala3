@@ -16,6 +16,7 @@ import core.Decorators._
 import config.{SourceVersion, Feature}
 import StdNames.nme
 import scala.annotation.internal.sharable
+import language.experimental.pureFunctions
 
 class CompilationUnit protected (val source: SourceFile) {
 
@@ -32,7 +33,7 @@ class CompilationUnit protected (val source: SourceFile) {
   var sourceVersion: Option[SourceVersion] = None
 
   /** Pickled TASTY binaries, indexed by class. */
-  var pickled: Map[ClassSymbol, () => Array[Byte]] = Map()
+  var pickled: Map[ClassSymbol, () -> Array[Byte]] = Map()
 
   /** The fresh name creator for the current unit.
    *  FIXME(#7661): This is not fine-grained enough to enable reproducible builds,
@@ -131,11 +132,11 @@ object CompilationUnit {
       if (!mustExist)
         source
       else if (source.file.isDirectory) {
-        report.error(s"expected file, received directory '${source.file.path}'")
+        report.error(em"expected file, received directory '${source.file.path}'")
         NoSource
       }
       else if (!source.file.exists) {
-        report.error(s"source file not found: ${source.file.path}")
+        report.error(em"source file not found: ${source.file.path}")
         NoSource
       }
       else source

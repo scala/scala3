@@ -301,9 +301,9 @@ object Denotations {
         case NoDenotation | _: NoQualifyingRef | _: MissingRef =>
           def argStr = if (args.isEmpty) "" else i" matching ($args%, %)"
           val msg =
-            if (site.exists) i"$site does not have a member $kind $name$argStr"
-            else i"missing: $kind $name$argStr"
-          throw new TypeError(msg)
+            if site.exists then em"$site does not have a member $kind $name$argStr"
+            else em"missing: $kind $name$argStr"
+          throw TypeError(msg)
         case denot =>
           denot.symbol
       }
@@ -956,7 +956,8 @@ object Denotations {
     }
 
     def staleSymbolError(using Context): Nothing =
-      throw new StaleSymbol(staleSymbolMsg)
+      inDetachedContext:
+        throw new StaleSymbol(staleSymbolMsg)
 
     def staleSymbolMsg(using Context): String = {
       def ownerMsg = this match {
@@ -1180,7 +1181,7 @@ object Denotations {
       new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
   }
 
-  class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
+  class ErrorDenotation(using DetachedContext) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
@@ -1191,7 +1192,7 @@ object Denotations {
   /** An error denotation that provides more info about the missing reference.
    *  Produced by staticRef, consumed by requiredSymbol.
    */
-  case class MissingRef(val owner: SingleDenotation, name: Name)(using Context) extends ErrorDenotation {
+  case class MissingRef(val owner: SingleDenotation, name: Name)(using DetachedContext) extends ErrorDenotation {
     val ex: Exception = new Exception // DEBUG
   }
 
@@ -1199,7 +1200,7 @@ object Denotations {
    *  that were found but that do not qualify.
    *  Produced by staticRef, consumed by requiredSymbol.
    */
-  case class NoQualifyingRef(alts: List[SingleDenotation])(using Context) extends ErrorDenotation
+  case class NoQualifyingRef(alts: List[SingleDenotation])(using DetachedContext) extends ErrorDenotation
 
   /** A double definition
    */

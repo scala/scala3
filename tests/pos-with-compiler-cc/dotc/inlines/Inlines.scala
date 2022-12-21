@@ -85,7 +85,10 @@ object Inlines:
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
-    CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
+    if ctx.isAfterTyper then
+      // During typer we wait with cross version checks until PostTyper, in order
+      // not to provoke cyclic references. See i16116 for a test case.
+      CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
 
     if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
 
@@ -153,9 +156,9 @@ object Inlines:
           else ("successive inlines", ctx.settings.XmaxInlines)
         errorTree(
           tree,
-          i"""|Maximal number of $reason (${setting.value}) exceeded,
-              |Maybe this is caused by a recursive inline method?
-              |You can use ${setting.name} to change the limit.""".toMessage,
+          em"""|Maximal number of $reason (${setting.value}) exceeded,
+               |Maybe this is caused by a recursive inline method?
+               |You can use ${setting.name} to change the limit.""",
           (tree :: enclosingInlineds).last.srcPos
         )
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then
@@ -395,7 +398,7 @@ object Inlines:
    *  @param  call         the original call to an inlineable method
    *  @param  rhsToInline  the body of the inlineable method that replaces the call.
    */
-  private class InlineCall(call: tpd.Tree)(using Context) extends Inliner(call):
+  private class InlineCall(call: tpd.Tree)(using DetachedContext) extends Inliner(call):
     import tpd._
     import Inlines.*
 
@@ -439,8 +442,7 @@ object Inlines:
               val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
               evidence.tpe match
                 case fail: Implicits.SearchFailureType =>
-                  val msg = evTyper.missingArgMsg(evidence, tpt.tpe, "")
-                  errorTree(call, em"$msg")
+                  errorTree(call, evTyper.missingArgMsg(evidence, tpt.tpe, ""))
                 case _ =>
                   evidence
             }

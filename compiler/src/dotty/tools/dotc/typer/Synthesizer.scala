@@ -28,13 +28,25 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
+    def instArg(tp: Type): Type = tp.stripTypeVar match
+      // Special case to avoid instantiating `Int & S` to `Int & Nothing` in
+      // i16328.scala. The intersection comes from an earlier instantiation
+      // to an upper bound.
+      // The dual situation with unions is harder to trigger because lower
+      // bounds are usually widened during instantiation.
+      case tp: AndOrType if tp.tp1 =:= tp.tp2 =>
+        instArg(tp.tp1)
+      case _ =>
+        if isFullyDefined(tp, ForceDegree.all) then tp
+        else NoType // this happens in tests/neg/i15372.scala
+
     val tag = formal.argInfos match
-      case arg :: Nil if isFullyDefined(arg, ForceDegree.all) =>
-        arg match
+      case arg :: Nil =>
+        instArg(arg) match
           case defn.ArrayOf(elemTp) =>
             val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
             if etag.tpe.isError then EmptyTree else etag.select(nme.wrap)
-          case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
+          case tp if hasStableErasure(tp) && !tp.isBottomTypeAfterErasure =>
             val sym = tp.typeSymbol
             val classTagModul = ref(defn.ClassTagModule)
             if defn.SpecialClassTagClasses.contains(sym) then

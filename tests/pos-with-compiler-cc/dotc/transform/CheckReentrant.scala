@@ -67,8 +67,8 @@ class CheckReentrant extends MiniPhase {
           if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
             if (sym.is(Mutable)) {
               report.error(
-                i"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
-                   |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
+                em"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
+                    |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
               shared += sym
             }
             else if (!sym.is(Method) || sym.isOneOf(Accessor | ParamAccessor))

@@ -29,7 +29,7 @@ class ReadTasty extends Phase {
       val className = unit.className.toTypeName
 
       def cannotUnpickle(reason: String): None.type = {
-        report.error(s"class $className cannot be unpickled because $reason")
+        report.error(em"class $className cannot be unpickled because $reason")
         None
       }
 

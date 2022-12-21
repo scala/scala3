@@ -2188,7 +2188,7 @@ object Types {
     def designator: Designator
     protected def designator_=(d: Designator): Unit
 
-    assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
+    assert(NamedType.validPrefix(prefix), s"invalid prefix $prefix")
 
     private var myName: Name | Null = null
     private var lastDenotation: Denotation | Null = null
@@ -2698,7 +2698,7 @@ object Types {
         this
 
     /** A reference like this one, but with the given prefix. */
-    final def withPrefix(prefix: Type)(using Context): NamedType = {
+    final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
         val lastSym = lastSymbol.nn
         val allowPrivate = !lastSym.exists || lastSym.is(Private)
@@ -2711,6 +2711,7 @@ object Types {
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this
+      else if !NamedType.validPrefix(prefix) then UnspecifiedErrorType
       else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
         case sym: Symbol =>
@@ -2902,6 +2903,8 @@ object Types {
     def apply(prefix: Type, designator: Name, denot: Denotation)(using Context): NamedType =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
+
+    def validPrefix(prefix: Type): Boolean = prefix.isValueType || (prefix eq NoPrefix)
   }
 
   object TermRef {
@@ -3438,19 +3441,20 @@ object Types {
       val tp2w = tp2.widenSingletons
       if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
 
-    private def ensureAtomsComputed()(using Context): Unit =
+    private def ensureAtomsComputed()(using Context): Boolean =
       if atomsRunId != ctx.runId && !isProvisional then
         myAtoms = computeAtoms()
         myWidened = computeWidenSingletons()
         atomsRunId = ctx.runId
+        true
+      else
+        false
 
     override def atoms(using Context): Atoms =
-      ensureAtomsComputed()
-      if isProvisional then computeAtoms() else myAtoms
+      if ensureAtomsComputed() then myAtoms else computeAtoms()
 
     override def widenSingletons(using Context): Type =
-      ensureAtomsComputed()
-      if isProvisional then computeWidenSingletons() else myWidened
+      if ensureAtomsComputed() then myWidened else computeWidenSingletons()
 
     def derivedOrType(tp1: Type, tp2: Type, soft: Boolean = isSoft)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2) && soft == isSoft) this

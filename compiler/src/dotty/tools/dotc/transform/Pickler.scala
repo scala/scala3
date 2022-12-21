@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -147,6 +148,7 @@ class Pickler extends Phase {
     if unequal then
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
+      //sys.process.Process("diff -u before-pickling.txt after-pickling.txt").!
       report.error(em"""pickling difference for $cls in ${cls.source}, for details:
                     |
                     |  diff before-pickling.txt after-pickling.txt""")

@@ -20,6 +20,8 @@ import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
 
+object TreePickler:
+  class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
 
 class TreePickler(pickler: TastyPickler) {
   val buf: TreeBuffer = new TreeBuffer
@@ -27,6 +29,7 @@ class TreePickler(pickler: TastyPickler) {
   import buf._
   import pickler.nameBuffer.nameIndex
   import tpd._
+  import TreePickler.*
 
   private val symRefs = Symbols.MutableSymbolMap[Addr](256)
   private val forwardSymRefs = Symbols.MutableSymbolMap[List[Addr]]()
@@ -53,7 +56,7 @@ class TreePickler(pickler: TastyPickler) {
   def docString(tree: untpd.MemberDef): Option[Comment] =
     Option(docStrings.lookup(tree))
 
-  private def withLength(op: => Unit) = {
+  private inline def withLength(inline op: Unit) = {
     val lengthAddr = reserveRef(relative = true)
     op
     fillRef(lengthAddr, currentAddr, relative = true)
@@ -328,16 +331,24 @@ class TreePickler(pickler: TastyPickler) {
     registerDef(sym)
     writeByte(tag)
     val addr = currentAddr
-    withLength {
-      pickleName(sym.name)
-      pickleParams
-      tpt match {
-        case _: Template | _: Hole => pickleTree(tpt)
-        case _ if tpt.isType => pickleTpt(tpt)
+    try
+      withLength {
+        pickleName(sym.name)
+        pickleParams
+        tpt match {
+          case _: Template | _: Hole => pickleTree(tpt)
+          case _ if tpt.isType => pickleTpt(tpt)
+        }
+        pickleTreeUnlessEmpty(rhs)
+        pickleModifiers(sym, mdef)
       }
-      pickleTreeUnlessEmpty(rhs)
-      pickleModifiers(sym, mdef)
-    }
+    catch
+      case ex: Throwable =>
+        if !ctx.settings.YnoDecodeStacktraces.value
+          && handleRecursive.underlyingStackOverflowOrNull(ex) != null then
+          throw StackSizeExceeded(mdef)
+        else
+          throw ex
     if sym.is(Method) && sym.owner.isClass then
       profile.recordMethodSize(sym, currentAddr.index - addr.index, mdef.span)
     for
@@ -784,7 +795,17 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickle(trees: List[Tree])(using Context): Unit = {
     profile = Profile.current
-    trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
+    for tree <- trees do
+      try
+        if !tree.isEmpty then pickleTree(tree)
+      catch case ex: StackSizeExceeded =>
+        report.error(
+          em"""Recursion limit exceeded while pickling ${ex.mdef}
+              |in ${ex.mdef.symbol.showLocated}.
+              |You could try to increase the stacksize using the -Xss JVM option.
+              |For the unprocessed stack trace, compile with -Yno-decode-stacktraces.""",
+          ex.mdef.srcPos)
+
     def missing = forwardSymRefs.keysIterator
       .map(sym => i"${sym.showLocated} (line ${sym.srcPos.line}) #${sym.id}")
       .toList

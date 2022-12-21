@@ -31,6 +31,7 @@ object Feature:
   val saferExceptions = experimental("saferExceptions")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
+  val into = experimental("into")
 
   val globalOnlyImports: Set[TermName] = Set(pureFunctions, captureChecking)
 
@@ -130,7 +131,7 @@ object Feature:
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos, note: -> String = "")(using Context) =
     if !isExperimentalEnabled then
-      report.error(i"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
+      report.error(em"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     if !isExperimentalEnabled then
@@ -141,7 +142,7 @@ object Feature:
           i"${sym.owner} is marked @experimental"
         else
           i"$sym inherits @experimental"
-      report.error(s"$symMsg and therefore may only be used in an experimental scope.", srcPos)
+      report.error(em"$symMsg and therefore may only be used in an experimental scope.", srcPos)
 
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
   def checkExperimentalSettings(using Context): Unit =

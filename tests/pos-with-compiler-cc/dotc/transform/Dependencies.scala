@@ -12,7 +12,7 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 /** Exposes the dependencies of the `root` tree in three functions or maps:
  *  `freeVars`, `tracked`, and `logicalOwner`.
  */
-abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Context):
+abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: DetachedContext):
   import ast.tpd._
 
   /** The symbol is a method or a lazy val that will be mapped to a method */

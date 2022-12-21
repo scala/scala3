@@ -137,7 +137,7 @@ object ExtractAPI:
  *  without going through an intermediate representation, see
  *  http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html#Hashing+an+API+representation
  */
-private class ExtractAPICollector(using Context) extends ThunkHolder {
+private class ExtractAPICollector(using DetachedContext) extends ThunkHolder {
   import tpd._
   import xsbti.api
 

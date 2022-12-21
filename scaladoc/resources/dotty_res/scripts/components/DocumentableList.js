@@ -5,67 +5,85 @@
  */
 
  class DocumentableList extends Component {
-  constructor(props) {
-    super(props);
+   constructor(props) {
+     super(props);
 
-    this.refs = {
-      tabs: findRefs(".names .tab[data-togglable]", findRef(".membersList")).concat(
-        findRefs(".contents h2[data-togglable]", findRef(".membersList"))
-      ),
-      sections: findRefs(".contents .tab[data-togglable]", findRef(".membersList")),
-    };
+     this.refs = {
+       tabs: findRefs(
+         ".names .tab[data-togglable]",
+         findRef(".membersList"),
+       ).concat(
+         findRefs(".contents h2[data-togglable]", findRef(".membersList")),
+       ),
+       sections: findRefs(
+         ".contents .tab[data-togglable]",
+         findRef(".membersList"),
+       ),
+     };
 
-    this.state = {
-      list: new List(this.refs.tabs, this.refs.sections),
-    };
+     this.state = {
+       list: new List(this.refs.tabs, this.refs.sections),
+     };
 
-    this.render(this.props);
-  }
+     this.render(this.props);
+   }
 
-  toggleElementDatasetVisibility(isVisible, ref) {
-    ref.dataset.visibility = isVisible
-  }
+   toggleElementDatasetVisibility(isVisible, ref) {
+     ref.dataset.visibility = isVisible;
+   }
 
-  toggleDisplayStyles(condition, ref) {
-    ref.style.display = condition ? null : 'none'
-  }
+   toggleDisplayStyles(condition, ref) {
+     ref.style.display = condition ? null : "none";
+   }
 
-  render({ filter }) {
-    this.state.list.sectionsRefs.map(sectionRef => {
-      const isTabVisible = this.state.list
-        .getSectionListRefs(sectionRef)
-        .filter((listRef) => {
-          const isListVisible = this.state.list
-            .getSectionListElementsRefs(listRef)
-            .map(elementRef => this.state.list.toListElement(elementRef))
-            .filter(elementData => {
-              const isElementVisible = this.state.list.isElementVisible(elementData, filter);
+   render({ filter }) {
+     this.state.list.sectionsRefs.map((sectionRef) => {
+       const isTabVisible = this.state.list
+         .getSectionListRefs(sectionRef)
+         .filter((listRef) => {
+           const isListVisible = this.state.list
+             .getSectionListElementsRefs(listRef)
+             .map((elementRef) => this.state.list.toListElement(elementRef))
+             .filter((elementData) => {
+               const isElementVisible = this.state.list.isElementVisible(
+                 elementData,
+                 filter,
+               );
 
-              this.toggleDisplayStyles(isElementVisible, elementData.ref);
-              this.toggleElementDatasetVisibility(isElementVisible, elementData.ref);
+               this.toggleDisplayStyles(isElementVisible, elementData.ref);
+               this.toggleElementDatasetVisibility(
+                 isElementVisible,
+                 elementData.ref,
+               );
 
-              return isElementVisible;
-            }).length;
+               return isElementVisible;
+             }).length;
 
-          findRefs("span.groupHeader", listRef).forEach(h => {
-            const headerSiblings = this.state.list.getSectionListElementsRefs(h.parentNode).map(ref => this.state.list.toListElement(ref))
-            const isHeaderVisible = headerSiblings.filter(s => this.state.list.isElementVisible(s, filter)) != 0
+           findRefs("span.groupHeader", listRef).forEach((h) => {
+             const headerSiblings = this.state.list
+               .getSectionListElementsRefs(h.parentNode)
+               .map((ref) => this.state.list.toListElement(ref));
+             const isHeaderVisible =
+               headerSiblings.filter((s) =>
+                 this.state.list.isElementVisible(s, filter),
+               ) != 0;
 
-            this.toggleDisplayStyles(isHeaderVisible, h)
-          })
+             this.toggleDisplayStyles(isHeaderVisible, h);
+           });
 
-          this.toggleDisplayStyles(isListVisible, listRef);
+           this.toggleDisplayStyles(isListVisible, listRef);
+           return isListVisible;
+         }).length;
 
-          return isListVisible;
-        }).length;
-
-        const outerThis = this
-        this.state.list.getTabRefFromSectionRef(sectionRef).forEach(function(tabRef){
-          outerThis.toggleDisplayStyles(isTabVisible, tabRef);
-        })
-    });
-  }
-}
+       const outerThis = this;
+       this.state.list
+         .getTabRefFromSectionRef(sectionRef)
+         .forEach(function (tabRef) {
+           outerThis.toggleDisplayStyles(isTabVisible, tabRef);
+         });
+     });
+   }
+ }
 
 class List {
   /**

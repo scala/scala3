@@ -266,7 +266,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val comparisons = sortedAccessors.map { accessor =>
         This(clazz).withSpan(ctx.owner.span.focus).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
       var rhs = // this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
-        if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
+        if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceBalanced(_ and _)
       val canEqualMeth = existingDef(defn.Product_canEqual, clazz)
       if !clazz.is(Final) || canEqualMeth.exists && !canEqualMeth.is(Synthetic) then
         rhs = rhs.and(

@@ -270,11 +270,8 @@ object SymUtils:
     def isEnumCase(using Context): Boolean =
       self.isAllOf(EnumCase, butNot = JavaDefined)
 
-    def annotationsCarrying(meta: ClassSymbol)(using Context): List[Annotation] =
-      self.annotations.filter(_.symbol.hasAnnotation(meta))
-
-    def withAnnotationsCarrying(from: Symbol, meta: ClassSymbol)(using Context): self.type = {
-      self.addAnnotations(from.annotationsCarrying(meta))
+    def withAnnotationsCarrying(from: Symbol, meta: Symbol, orNoneOf: Set[Symbol] = Set.empty)(using Context): self.type = {
+      self.addAnnotations(from.annotationsCarrying(Set(meta), orNoneOf))
       self
     }
 

@@ -69,7 +69,7 @@ class Driver {
    *  this method returns a list of files to compile and an updated Context.
    *  If compilation should be interrupted, this method returns None.
    */
-  def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] = {
+  def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], DetachedContext)] = {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
@@ -83,7 +83,7 @@ class Driver {
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
       fileNamesOrNone.map { fileNames =>
         val files = fileNames.map(ctx.getFile)
-        (files, fromTastySetup(files))
+        (files, fromTastySetup(files).detach)
       }
     }
   }
@@ -94,7 +94,7 @@ class Driver {
       val newEntries: List[String] = files
         .flatMap { file =>
           if !file.exists then
-            report.error(s"File does not exist: ${file.path}")
+            report.error(em"File does not exist: ${file.path}")
             None
           else file.extension match
             case "jar" => Some(file.path)
@@ -102,10 +102,10 @@ class Driver {
               TastyFileUtil.getClassPath(file) match
                 case Some(classpath) => Some(classpath)
                 case _ =>
-                  report.error(s"Could not load classname from: ${file.path}")
+                  report.error(em"Could not load classname from: ${file.path}")
                   None
             case _ =>
-              report.error(s"File extension is not `tasty` or `jar`: ${file.path}")
+              report.error(em"File extension is not `tasty` or `jar`: ${file.path}")
               None
         }
         .distinct

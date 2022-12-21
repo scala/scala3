@@ -1,0 +1,16 @@
+-- [E006] Not Found Error: tests/neg/yimports-order.scala:9:16 ---------------------------------------------------------
+9 |      def f() = Map("hello" -> "world") // error // error
+  |                ^^^
+  |                Not found: Map
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg/yimports-order.scala:9:28 ---------------------------------------------------------
+9 |      def f() = Map("hello" -> "world") // error // error
+  |                    ^^^^^^^^^^
+  |                    value -> is not a member of String
+-- [E006] Not Found Error: tests/neg/yimports-order.scala:10:16 --------------------------------------------------------
+10 |      def g() = println(f()) // error
+   |                ^^^^^^^
+   |                Not found: println
+   |
+   | longer explanation available when compiling with `-explain`

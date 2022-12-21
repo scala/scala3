@@ -4,6 +4,7 @@ package core
 
 import Types._, Contexts._
 import printing.Showable
+import util.{SimpleIdentitySet, SimpleIdentityMap}
 
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:
@@ -128,7 +129,7 @@ abstract class Constraint extends Showable {
 
   /** Is `tv` marked as hard in the constraint? */
   def isHard(tv: TypeVar): Boolean
-  
+
   /** The same as this constraint, but with `tv` marked as hard. */
   def withHard(tv: TypeVar)(using Context): This
 
@@ -165,14 +166,31 @@ abstract class Constraint extends Showable {
    */
   def hasConflictingTypeVarsFor(tl: TypeLambda, that: Constraint): Boolean
 
-  /** Check that no constrained parameter contains itself as a bound */
-  def checkNonCyclic()(using Context): this.type
-
   /** Does `param` occur at the toplevel in `tp` ?
    *  Toplevel means: the type itself or a factor in some
    *  combination of `&` or `|` types.
    */
   def occursAtToplevel(param: TypeParamRef, tp: Type)(using Context): Boolean
+
+  /** A string that shows the reverse dependencies maintained by this constraint
+   *  (coDeps and contraDeps for OrderingConstraints).
+   */
+  def depsToString(using Context): String
+
+  /** Does the constraint restricted to variables outside `except` depend on `tv`
+   *  in the given direction `co`?
+   *  @param `co`  If true, test whether the constraint would change if the variable is made larger
+   *               otherwise, test whether the constraint would change if the variable is made smaller.
+   */
+  def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean
+
+  /** Depending on Config settngs:
+   *   - Under `checkConstraintsNonCyclic`, check that no constrained
+   *     parameter contains itself as a bound.
+   *   - Under `checkConstraintDeps`, check hat reverse dependencies in
+   *     constraints are correct and complete.
+   */
+  def checkWellFormed()(using Context): this.type
 
   /** Check that constraint only refers to TypeParamRefs bound by itself */
   def checkClosed()(using Context): Unit

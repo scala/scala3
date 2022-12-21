@@ -644,15 +644,19 @@ object Denotations {
 
     def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
       val situated = if site == NoPrefix then this else asSeenFrom(site)
-      val sigMatches = sig.matchDegree(situated.signature) match
-        case FullMatch =>
-          true
-        case MethodNotAMethodMatch =>
-          // See comment in `matches`
-          relaxed && !symbol.is(JavaDefined)
-        case ParamMatch =>
-          relaxed
-        case noMatch =>
+      val sigMatches =
+        try
+          sig.matchDegree(situated.signature) match
+            case FullMatch =>
+              true
+            case MethodNotAMethodMatch =>
+              // See comment in `matches`
+              relaxed && !symbol.is(JavaDefined)
+            case ParamMatch =>
+              relaxed
+            case noMatch =>
+              false
+        catch case ex: MissingType =>
           false
       if sigMatches && symbol.hasTargetName(targetName) then this else NoDenotation
 

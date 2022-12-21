@@ -32,18 +32,21 @@ import dotty.tools.dotc.reporting.Message
 import dotty.tools.repl.AbstractFileClassLoader
 
 /** Tree interpreter for metaprogramming constructs */
-abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
+class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
   import Interpreter._
   import tpd._
 
+  /** Local variable environment */
   type Env = Map[Symbol, Object]
+  def emptyEnv: Env = Map.empty
+  inline def env(using e: Env): e.type = e
 
   /** Returns the result of interpreting the code in the tree.
    *  Return Some of the result or None if the result type is not consistent with the expected type.
    *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception ocurred.
    */
-  final def interpret[T](tree: Tree)(implicit ct: ClassTag[T]): Option[T] =
-    interpretTree(tree)(Map.empty) match {
+  final def interpret[T](tree: Tree)(using ct: ClassTag[T]): Option[T] =
+    interpretTree(tree)(using emptyEnv) match {
       case obj: T => Some(obj)
       case obj =>
         // TODO upgrade to a full type tag check or something similar
@@ -54,7 +57,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
   /** Returns the result of interpreting the code in the tree.
    *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception ocurred.
    */
-  protected def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
+  protected def interpretTree(tree: Tree)(using Env): Object = tree match {
     case Literal(Constant(value)) =>
       interpretLiteral(value)
 
@@ -65,13 +68,12 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
 
     // TODO disallow interpreted method calls as arguments
     case Call(fn, args) =>
-      if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package))
+      if (fn.symbol.isConstructor)
         interpretNew(fn.symbol, args.flatten.map(interpretTree))
       else if (fn.symbol.is(Module))
         interpretModuleAccess(fn.symbol)
       else if (fn.symbol.is(Method) && fn.symbol.isStatic) {
-        val staticMethodCall = interpretedStaticMethodCall(fn.symbol.owner, fn.symbol)
-        staticMethodCall(interpretArgs(args, fn.symbol.info))
+        interpretedStaticMethodCall(fn.symbol.owner, fn.symbol, interpretArgs(args, fn.symbol.info))
       }
       else if fn.symbol.isStatic then
         assert(args.isEmpty)
@@ -80,8 +82,7 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
         if (fn.name == nme.asInstanceOfPM)
           interpretModuleAccess(fn.qualifier.symbol)
         else {
-          val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)
-          staticMethodCall(interpretArgs(args, fn.symbol.info))
+          interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol, interpretArgs(args, fn.symbol.info))
         }
       else if (env.contains(fn.symbol))
         env(fn.symbol)
@@ -136,26 +137,26 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
         Nil
   }
 
-  private def interpretBlock(stats: List[Tree], expr: Tree)(implicit env: Env) = {
+  private def interpretBlock(stats: List[Tree], expr: Tree)(using Env) = {
     var unexpected: Option[Object] = None
-    val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
+    val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match
       case stat: ValDef =>
-        accEnv.updated(stat.symbol, interpretTree(stat.rhs)(accEnv))
+        accEnv.updated(stat.symbol, interpretTree(stat.rhs)(using accEnv))
       case stat =>
         if (unexpected.isEmpty)
           unexpected = Some(unexpectedTree(stat))
         accEnv
-    })
-    unexpected.getOrElse(interpretTree(expr)(newEnv))
+    )
+    unexpected.getOrElse(interpretTree(expr)(using newEnv))
   }
 
-  private def interpretLiteral(value: Any)(implicit env: Env): Object =
+  private def interpretLiteral(value: Any): Object =
     value.asInstanceOf[Object]
 
-  private def interpretVarargs(args: List[Object])(implicit env: Env): Object =
+  private def interpretVarargs(args: List[Object]): Object =
     args.toSeq
 
-  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol)(implicit env: Env): List[Object] => Object = {
+  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object = {
     val (inst, clazz) =
       try
         if (moduleClass.name.startsWith(str.REPL_SESSION_LINE))
@@ -165,32 +166,31 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
           (inst, inst.getClass)
         }
       catch
-        case MissingClassDefinedInCurrentRun(sym)  if ctx.compilationUnit.isSuspendable =>
-          if (ctx.settings.XprintSuspension.value)
-            report.echo(i"suspension triggered by a dependency on $sym", pos)
-          ctx.compilationUnit.suspend() // this throws a SuspendException
+        case MissingClassDefinedInCurrentRun(sym) =>
+          suspendOnMissing(sym, pos)
 
     val name = fn.name.asTermName
     val method = getMethod(clazz, name, paramsSig(fn))
-    (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args: _*), method)
+    stopIfRuntimeException(method.invoke(inst, args: _*), method)
   }
 
-  private def interpretedStaticFieldAccess(sym: Symbol)(implicit env: Env): Object = {
+  private def interpretedStaticFieldAccess(sym: Symbol): Object = {
     val clazz = loadClass(sym.owner.fullName.toString)
     val field = clazz.getField(sym.name.toString)
     field.get(null)
   }
 
-  private def interpretModuleAccess(fn: Symbol)(implicit env: Env): Object =
+  private def interpretModuleAccess(fn: Symbol): Object =
     loadModule(fn.moduleClass)
 
-  private def interpretNew(fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
-    val clazz = loadClass(fn.owner.fullName.toString)
+  private def interpretNew(fn: Symbol, args: List[Object]): Object = {
+    val className = fn.owner.fullName.mangledString.replaceAll("\\$\\.", "\\$")
+    val clazz = loadClass(className)
     val constr = clazz.getConstructor(paramsSig(fn): _*)
     constr.newInstance(args: _*).asInstanceOf[Object]
   }
 
-  private def unexpectedTree(tree: Tree)(implicit env: Env): Object =
+  private def unexpectedTree(tree: Tree): Object =
     throw new StopInterpretation(em"Unexpected tree could not be interpreted: ${tree.toString}", tree.srcPos)
 
   private def loadModule(sym: Symbol): Object =
@@ -201,32 +201,21 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
     }
     else {
       // nested object in an object
-      val className = {
-        val pack = sym.topLevelClass.owner
-        if (pack == defn.RootPackage || pack == defn.EmptyPackageClass) sym.flatName.toString
-        else pack.showFullName + "." + sym.flatName
-      }
-      val clazz = loadClass(className)
+      val clazz = loadClass(sym.binaryClassName)
       clazz.getConstructor().newInstance().asInstanceOf[Object]
     }
 
-  private def loadReplLineClass(moduleClass: Symbol)(implicit env: Env): Class[?] = {
+  private def loadReplLineClass(moduleClass: Symbol): Class[?] = {
     val lineClassloader = new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader)
     lineClassloader.loadClass(moduleClass.name.firstPart.toString)
   }
 
   private def loadClass(name: String): Class[?] =
     try classLoader.loadClass(name)
-    catch {
-      case _: ClassNotFoundException if ctx.compilationUnit.isSuspendable  =>
-        if (ctx.settings.XprintSuspension.value)
-          report.echo(i"suspension triggered by a dependency on $name", pos)
-        ctx.compilationUnit.suspend()
-      case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
-        if (ctx.settings.XprintSuspension.value)
-          report.echo(i"suspension triggered by a dependency on $sym", pos)
-        ctx.compilationUnit.suspend() // this throws a SuspendException
-    }
+    catch
+      case MissingClassDefinedInCurrentRun(sym) =>
+        suspendOnMissing(sym, pos)
+
 
   private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
     try clazz.getMethod(name.toString, paramClasses: _*)
@@ -234,10 +223,8 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
       case _: NoSuchMethodException =>
         val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
         throw new StopInterpretation(msg, pos)
-      case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
-          if (ctx.settings.XprintSuspension.value)
-            report.echo(i"suspension triggered by a dependency on $sym", pos)
-          ctx.compilationUnit.suspend() // this throws a SuspendException
+      case MissingClassDefinedInCurrentRun(sym) =>
+        suspendOnMissing(sym, pos)
     }
 
   private def stopIfRuntimeException[T](thunk: => T, method: JLRMethod): T =
@@ -255,10 +242,8 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
         ex.getTargetException match {
           case ex: scala.quoted.runtime.StopMacroExpansion =>
             throw ex
-          case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
-            if (ctx.settings.XprintSuspension.value)
-              report.echo(i"suspension triggered by a dependency on $sym", pos)
-            ctx.compilationUnit.suspend() // this throws a SuspendException
+          case MissingClassDefinedInCurrentRun(sym) =>
+            suspendOnMissing(sym, pos)
           case targetException =>
             val sw = new StringWriter()
             sw.write("Exception occurred while executing macro expansion.\n")
@@ -274,17 +259,6 @@ abstract class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context)
             throw new StopInterpretation(sw.toString.toMessage, pos)
         }
     }
-
-  private object MissingClassDefinedInCurrentRun {
-    def unapply(targetException: NoClassDefFoundError)(using Context): Option[Symbol] = {
-      val className = targetException.getMessage
-      if (className eq null) None
-      else {
-        val sym = staticRef(className.toTypeName).symbol
-        if (sym.isDefinedInCurrentRun) Some(sym) else None
-      }
-    }
-  }
 
   /** List of classes of the parameters of the signature of `sym` */
   private def paramsSig(sym: Symbol): List[Class[?]] = {
@@ -369,3 +343,22 @@ object Interpreter:
       }
     }
   end Call
+
+  object MissingClassDefinedInCurrentRun {
+    def unapply(targetException: Throwable)(using Context): Option[Symbol] = {
+      if !ctx.compilationUnit.isSuspendable then None
+      else targetException match
+        case _: NoClassDefFoundError | _: ClassNotFoundException =>
+          val className = targetException.getMessage
+          if className eq null then None
+          else
+            val sym = staticRef(className.toTypeName).symbol
+            if (sym.isDefinedInCurrentRun) Some(sym) else None
+        case _ => None
+    }
+  }
+
+  def suspendOnMissing(sym: Symbol, pos: SrcPos)(using Context): Nothing =
+    if ctx.settings.XprintSuspension.value then
+      report.echo(i"suspension triggered by a dependency on $sym", pos)
+    ctx.compilationUnit.suspend() // this throws a SuspendException

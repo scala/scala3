@@ -855,7 +855,7 @@ object Semantic:
       // init "fake" param fields for parameters of primary and secondary constructors
       def addParamsAsFields(args: List[Value], ref: Ref, ctorDef: DefDef) =
         val params = ctorDef.termParamss.flatten.map(_.symbol)
-        assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
+        assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size + ", ctor = " + ctor.show)
         for (param, value) <- params.zip(args) do
           ref.updateField(param, value)
           printer.println(param.show + " initialized with " + value)
@@ -1663,9 +1663,14 @@ object Semantic:
           // term arguments to B. That can only be done in a concrete class.
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
           val ctor = tref.classSymbol.primaryConstructor
-          if ctor.exists then extendTrace(superParent) {
-            superCall(tref, ctor, Nil, tasks)
-          }
+          if ctor.exists then
+            // The parameter check of traits comes late in the mixin phase.
+            // To avoid crash we supply hot values for erroneous parent calls.
+            // See tests/neg/i16438.scala.
+            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, Trace.empty))
+            extendTrace(superParent) {
+              superCall(tref, ctor, args, tasks)
+            }
       }
 
       // initialize super classes after outers are set

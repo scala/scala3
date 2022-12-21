@@ -209,7 +209,7 @@ object TypeOps:
 
   /** Approximate union type by intersection of its dominators.
    *  That is, replace a union type Tn | ... | Tn
-   *  by the smallest intersection type of base-class instances of T1,...,Tn.
+   *  by the smallest intersection type of accessible base-class instances of T1,...,Tn.
    *  Example: Given
    *
    *      trait C[+T]
@@ -370,8 +370,14 @@ object TypeOps:
         }
       }
 
+      def isAccessible(cls: ClassSymbol) =
+        if cls.isOneOf(AccessFlags) || cls.privateWithin.exists then
+          cls.isAccessibleFrom(tp.baseType(cls).normalizedPrefix)
+        else true
+
       // Step 3: Intersect base classes of both sides
-      val commonBaseClasses = orBaseClasses(tp)
+      val commonBaseClasses = orBaseClasses(tp).filterConserve(isAccessible)
+
       val doms = dominators(commonBaseClasses, Nil)
       def baseTp(cls: ClassSymbol): Type =
         tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
@@ -875,10 +881,6 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
-      // if there's a change in variance in type parameters (between subtype tp1 and supertype tp2)
-      // then we don't want to maximise the type variables in the wrong direction.
-      // For instance 15967, A[-Z] and B[Y] extends A[Y], we don't want to maximise Y to Any
-      maximizeType(protoTp1.baseType(tp2.classSymbol), NoSpan)
       maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }

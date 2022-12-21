@@ -3,13 +3,14 @@ package core
 
 import Types._, Symbols._, Contexts._
 import cc.CaptureSet.IdempotentCaptRefMap
+import annotation.retains
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
  */
 object Substituters:
 
-  final def subst(tp: Type, from: BindingType, to: BindingType, theMap: SubstBindingMap | Null)(using Context): Type =
+  final def subst(tp: Type, from: BindingType, to: BindingType, theMap: SubstBindingMap @retains(caps.*) | Null)(using Context): Type =
     tp match {
       case tp: BoundType =>
         if (tp.binder eq from) tp.copyBoundType(to.asInstanceOf[tp.BT]) else tp
@@ -25,7 +26,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def subst1(tp: Type, from: Symbol, to: Type, theMap: Subst1Map | Null)(using Context): Type =
+  final def subst1(tp: Type, from: Symbol, to: Type, theMap: Subst1Map @retains(caps.*) | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -39,7 +40,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def subst2(tp: Type, from1: Symbol, to1: Type, from2: Symbol, to2: Type, theMap: Subst2Map  | Null)(using Context): Type =
+  final def subst2(tp: Type, from1: Symbol, to1: Type, from2: Symbol, to2: Type, theMap: Subst2Map @retains(caps.*)  | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -54,7 +55,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def subst(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstMap | Null)(using Context): Type =
+  final def subst(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstMap @retains(caps.*) | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -74,7 +75,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], theMap: SubstSymMap | Null)(using Context): Type =
+  final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], theMap: SubstSymMap @retains(caps.*) | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -105,7 +106,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substThis(tp: Type, from: ClassSymbol, to: Type, theMap: SubstThisMap | Null)(using Context): Type =
+  final def substThis(tp: Type, from: ClassSymbol, to: Type, theMap: SubstThisMap @retains(caps.*) | Null)(using Context): Type =
     tp match {
       case tp: ThisType =>
         if (tp.cls eq from) to else tp
@@ -119,7 +120,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substRecThis(tp: Type, from: Type, to: Type, theMap: SubstRecThisMap | Null)(using Context): Type =
+  final def substRecThis(tp: Type, from: Type, to: Type, theMap: SubstRecThisMap @retains(caps.*) | Null)(using Context): Type =
     tp match {
       case tp @ RecThis(binder) =>
         if (binder eq from) to else tp
@@ -133,7 +134,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substParam(tp: Type, from: ParamRef, to: Type, theMap: SubstParamMap | Null)(using Context): Type =
+  final def substParam(tp: Type, from: ParamRef, to: Type, theMap: SubstParamMap @retains(caps.*) | Null)(using Context): Type =
     tp match {
       case tp: BoundType =>
         if (tp == from) to else tp
@@ -147,7 +148,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap | Null)(using Context): Type =
+  final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap @retains(caps.*) | Null)(using Context): Type =
     tp match {
       case tp: ParamRef =>
         if (tp.binder == from) to(tp.paramNum) else tp

@@ -212,6 +212,17 @@ object Decorators {
     /** Union on lists seen as sets */
     def setUnion (ys: List[T]): List[T] = xs ::: ys.filterNot(xs contains _)
 
+    /** Reduce left with `op` as long as list `xs` is not longer than `seqLimit`.
+     *  Otherwise, split list in two half, reduce each, and combine with `op`.
+     */
+    def reduceBalanced(op: (T, T) => T, seqLimit: Int = 100): T =
+      val len = xs.length
+      if len > seqLimit then
+        val (leading, trailing) = xs.splitAt(len / 2)
+        op(leading.reduceBalanced(op, seqLimit), trailing.reduceBalanced(op, seqLimit))
+      else
+        xs.reduceLeft(op)
+
   extension [T, U](xss: List[List[T]])
     def nestedMap(f: T => U): List[List[U]] = xss match
       case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)
@@ -276,7 +287,7 @@ object Decorators {
       case _ => String.valueOf(x).nn
 
     /** Returns the simple class name of `x`. */
-    def className: String = getClass.getSimpleName.nn
+    def className: String = x.getClass.getSimpleName.nn
 
   extension [T](x: T)
     def assertingErrorsReported(using Context): T = {

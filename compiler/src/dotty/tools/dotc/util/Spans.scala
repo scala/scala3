@@ -182,6 +182,7 @@ object Spans {
       assert(isSpan)
       if (this == NoCoord) NoSpan else Span(-1 - encoding)
     }
+    override def toString = if isSpan then s"$toSpan" else s"Coord(idx=$toIndex)"
   }
 
   /** An index coordinate */

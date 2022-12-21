@@ -9,6 +9,7 @@ import Symbols._
 import util.{SimpleIdentitySet, SimpleIdentityMap}
 import collection.mutable
 import printing._
+import annotation.retains
 
 object GadtConstraint:
   def apply(): GadtConstraint = empty
@@ -88,7 +89,7 @@ sealed trait GadtConstraint (
 
     // The replaced symbols are picked up here.
     addToConstraint(poly1, tvars)
-      .showing(i"added to constraint: [$poly1] $params%, % gadt = $this", gadts)
+      .showing(i"added to constraint: [$poly1] $params%, % gadt = $this", gadts)(using null)
   }
 
   /** Further constrain a symbol already present in the constraint. */
@@ -224,7 +225,7 @@ sealed trait GadtConstraint (
 
   // ---- Private ----------------------------------------------------------
 
-  private def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match
+  private def externalize(tp: Type, theMap: TypeMap @retains(caps.*) | Null = null)(using Context): Type = tp match
     case param: TypeParamRef => reverseMapping(param) match
       case sym: Symbol => sym.typeRef
       case null        => param

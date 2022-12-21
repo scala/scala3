@@ -10,6 +10,7 @@ import dotty.tools.dotc.util.SourcePosition
 import java.util.regex.PatternSyntaxException
 import scala.annotation.internal.sharable
 import scala.util.matching.Regex
+import core.Decorators.em
 
 enum MessageFilter:
   def matches(message: Diagnostic): Boolean = this match
@@ -18,7 +19,7 @@ enum MessageFilter:
     case Feature => message.isInstanceOf[Diagnostic.FeatureWarning]
     case Unchecked => message.isInstanceOf[Diagnostic.UncheckedWarning]
     case MessagePattern(pattern) =>
-      val noHighlight = message.msg.rawMessage.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
+      val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
       pattern.findFirstIn(noHighlight).nonEmpty
     case MessageID(errorId) => message.msg.errorId == errorId
     case None => false
@@ -100,7 +101,7 @@ object WConf:
               |Note: for multiple filters, use `-Wconf:filter1:action1,filter2:action2`
               |      or alternatively          `-Wconf:filter1:action1 -Wconf:filter2:action2`""".stripMargin
           else ""
-        report.warning(s"Failed to parse `-Wconf` configuration: ${ctx.settings.Wconf.value.mkString(",")}\n${msgs.mkString("\n")}$multiHelp"))
+        report.warning(em"Failed to parse `-Wconf` configuration: ${ctx.settings.Wconf.value.mkString(",")}\n${msgs.mkString("\n")}$multiHelp"))
     cached._2
 
   def fromSettings(settings: List[String]): Either[List[String], WConf] =

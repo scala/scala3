@@ -19,11 +19,33 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
   extends Renderer(rootPackage, members, extension = "html"):
 
   override def pageContent(page: Page, parents: Vector[Link]): AppliedTag =
-    html(
-      mkHead(page),
+    val PageContent(content, toc) = renderContent(page)
+    val contentStr =
+      content.toString.stripPrefix("\n").stripPrefix("<div>").stripSuffix("\n").stripSuffix("</div>")
+    val document = Jsoup.parse(contentStr)
+    val docHead = raw(document.head().html())
+    val docBody = raw(document.body().html())
+
+    val attrs: List[AppliedAttr] = (page.content match
+      case ResolvedTemplate(loadedTemplate, _) =>
+        val path = loadedTemplate.templateFile.file.toPath
+        ctx.sourceLinks.repoSummary(path) match
+          case Some(DefinedRepoSummary("github", org, repo)) =>
+            ctx.sourceLinks.fullPath(relativePath(path)).fold(Nil) { contributorsFilename =>
+              List[AppliedAttr](
+                Attr("data-githubContributorsUrl") := s"https://api.github.com/repos/$org/$repo",
+                Attr("data-githubContributorsFilename") := s"$contributorsFilename",
+              )
+            }
+          case _ => Nil
+      case _ => Nil)
+      :+ (Attr("data-pathToRoot") := pathToRoot(page.link.dri))
+
+    html(attrs: _*)(
+      head((mkHead(page) :+ docHead):_*),
       body(
-        if !page.hasFrame then renderContent(page).content
-        else mkFrame(page.link, parents, renderContent(page))
+        if !page.hasFrame then docBody
+        else mkFrame(page.link, parents, docBody, toc)
       )
     )
 
@@ -56,7 +78,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     val resources = staticSiteResources ++ allResources(allPages) ++ onlyRenderedResources
     resources.flatMap(renderResource)
 
-  def mkHead(page: Page): AppliedTag =
+  def mkHead(page: Page): Seq[TagArg] =
     val resources = page.content match
       case t: ResolvedTemplate =>
         t.resolved.resources ++ (if t.hasFrame then commonResourcesPaths ++ staticSiteOnlyResourcesPaths else Nil)
@@ -67,7 +89,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       case t: ResolvedTemplate => if t.hasFrame then earlyCommonResourcePaths else Nil
       case _ => earlyCommonResourcePaths
 
-    head(
+    Seq(
       meta(charset := "utf-8"),
       meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1, maximum-scale=1"),
       title(page.link.name),
@@ -80,20 +102,6 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       linkResources(page.link.dri, earlyResources, deferJs = false).toList,
       linkResources(page.link.dri, resources, deferJs = true).toList,
       script(raw(s"""var pathToRoot = "${pathToRoot(page.link.dri)}";""")),
-      (page.content match
-        case ResolvedTemplate(loadedTemplate, _) =>
-          val path = loadedTemplate.templateFile.file.toPath
-          ctx.sourceLinks.repoSummary(path) match
-            case Some(DefinedRepoSummary("github", org, repo)) =>
-              val tag: TagArg = ctx.sourceLinks.fullPath(relativePath(path)).fold("") { githubContributors =>
-                Seq(
-                  script(raw(s"""var githubContributorsUrl = "https://api.github.com/repos/$org/$repo";""")),
-                  script(raw(s"""var githubContributorsFilename = "$githubContributors";"""))
-                )
-              }
-              tag // for some reason inference fails so had to state the type explicitly
-            case _ => ""
-        case _ => ""),
       ctx.args.versionsDictionaryUrl match
         case Some(url) => script(raw(s"""var versionsDictionaryUrl = "$url";"""))
         case None => ""
@@ -105,10 +113,16 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       case _ => Nil
     }
 
-    def renderNested(nav: Page, nestLevel: Int): (Boolean, AppliedTag) =
+    def renderNested(nav: Page, nestLevel: Int, prefix: String = ""): (Boolean, AppliedTag) =
       val isApi = nav.content.isInstanceOf[Member]
       val isSelected = nav.link.dri == pageLink.dri
       val isTopElement = nestLevel == 0
+      val name = nav.content match {
+        case m: Member if m.kind == Kind.Package =>
+          m.name.stripPrefix(prefix).stripPrefix(".")
+        case _ => nav.link.name
+      }
+      val newPrefix = if prefix == "" then name else s"$prefix.$name"
 
       def linkHtml(expanded: Boolean = false, withArrow: Boolean = false) =
         val attrs: Seq[String] = Seq(
@@ -124,14 +138,14 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         Seq(
           span(cls := s"nh " + attrs.mkString(" "))(
             if withArrow then Seq(button(cls := s"ar icon-button ${if isSelected || expanded then "expanded" else ""}")) else Nil,
-            a(href := pathToPage(pageLink.dri, nav.link.dri))(icon, span(nav.link.name))
+            a(href := (if isSelected then "#" else pathToPage(pageLink.dri, nav.link.dri)))(icon, span(name))
           )
         )
 
       nav.children.filterNot(_.hidden) match
         case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected then "expanded" else ""}")(linkHtml())
         case children =>
-          val nested = children.map(renderNested(_, nestLevel + 1))
+          val nested = children.map(renderNested(_, nestLevel + 1, newPrefix))
           val expanded = nested.exists(_._1)
           val attr =
             if expanded || isSelected then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
@@ -174,10 +188,13 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           li(ul(renderTocRec(level + 1, prefix))) +: renderTocRec(level, suffix)
       }
 
-    renderTocRec(1, toc).headOption.map(toc => nav(cls := "toc-nav")(ul(cls := "toc-list")(toc)))
+    if toc.nonEmpty then
+      val minLevel = toc.minBy(_.level).level
+      Some(nav(cls := "toc-nav")(ul(cls := "toc-list")(renderTocRec(minLevel, toc))))
+    else None
 
 
-  private def mkFrame(link: Link, parents: Vector[Link], content: => PageContent): AppliedTag =
+  private def mkFrame(link: Link, parents: Vector[Link], content: AppliedTag, toc: Seq[TocEntry]): AppliedTag =
     val projectLogoElem =
       projectLogo.flatMap {
         case Resource.File(path, _) =>
@@ -281,15 +298,15 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       div(id := "main")(
         parentsHtml,
         div(id := "content", cls := "body-medium")(
-          content.content,
-          renderTableOfContents(content.toc).fold(Nil) { toc =>
-            div(id := "toc", cls:="body-small")(
-            div(id := "toc-container") (
-              span(cls := "toc-title h200")("In this article"),
-              toc
-            ),
-          )
-          },
+          div(content),
+          div(id := "toc", cls:="body-small")(
+            renderTableOfContents(toc).fold(Nil) { toc =>
+              div(id := "toc-container")(
+                span(cls := "toc-title h200")("In this article"),
+                toc,
+              )
+            },
+          ),
         ),
         div(id := "footer", cls := "body-small mobile-footer")(
           div(cls := "left-container")(

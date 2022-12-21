@@ -14,6 +14,7 @@ import core._
 import Annotations._, Decorators._
 import collection.mutable
 import util.Spans._
+import reporting.Message
 
 class PositionPickler(
     pickler: TastyPickler,
@@ -33,7 +34,7 @@ class PositionPickler(
     (addrDelta << 3) | (toInt(hasStartDelta) << 2) | (toInt(hasEndDelta) << 1) | toInt(hasPoint)
   }
 
-  def picklePositions(source: SourceFile, roots: List[Tree], warnings: mutable.ListBuffer[String]): Unit = {
+  def picklePositions(source: SourceFile, roots: List[Tree], warnings: mutable.ListBuffer[Message]): Unit = {
     /** Pickle the number of lines followed by the length of each line */
     def pickleLineOffsets(): Unit = {
       val content = source.content()

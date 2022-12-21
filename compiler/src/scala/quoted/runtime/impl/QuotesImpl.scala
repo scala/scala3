@@ -2490,6 +2490,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def newBind(owner: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | Case, tpe)
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
+
+      def freshName(prefix: String): String =
+        NameKinds.MacroNames.fresh(prefix.toTermName).toString
     end Symbol
 
     given SymbolMethods: SymbolMethods with
@@ -2512,6 +2515,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def name: String = self.denot.name.toString
         def fullName: String = self.denot.fullName.toString
+
+        def info: TypeRepr = self.denot.info
 
         def pos: Option[Position] =
           if self.exists then Some(self.sourcePos) else None
@@ -2656,7 +2661,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def show(using printer: Printer[Symbol]): String = printer.show(self)
 
-        def asQuotes: Nested = new QuotesImpl(using ctx.withOwner(self))
+        def asQuotes: Nested =
+          assert(self.ownersIterator.contains(ctx.owner), s"$self is not owned by ${ctx.owner}")
+          new QuotesImpl(using ctx.withOwner(self))
 
       end extension
 

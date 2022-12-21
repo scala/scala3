@@ -48,7 +48,7 @@ import scala.annotation.constructorOnly
  *     }
  *
  */
-class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) with Checking {
+class PCPCheckAndHeal(@constructorOnly ictx: DetachedContext) extends TreeMapWithStages(ictx), Checking, caps.Pure {
   import tpd._
 
   private val InAnnotation = Property.Key[Unit]()
@@ -246,13 +246,16 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         checkStable(tp, pos, "type witness")
         getQuoteTypeTags.getTagRef(tp)
       case _: SearchFailureType =>
-        report.error(i"""Reference to $tp within quotes requires a given $reqType in scope.
-                     |${ctx.typer.missingArgMsg(tag, reqType, "")}
-                     |
-                     |""", pos)
+        val tpStr = tp.show
+        val reqTypeStr = reqType.show
+        report.error(
+          ctx.typer.missingArgMsg(tag, reqType, "")
+            .prepend(s"Reference to $tpStr within quotes requires a given $reqTypeStr in scope.\n")
+            .append("\n"),
+            pos)
         tp
       case _ =>
-        report.error(i"""Reference to $tp within quotes requires a given $reqType in scope.
+        report.error(em"""Reference to $tp within quotes requires a given $reqType in scope.
                      |
                      |""", pos)
         tp
@@ -275,7 +278,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 object PCPCheckAndHeal {
   import tpd._
 
-  class QuoteTypeTags(span: Span)(using Context) {
+  class QuoteTypeTags(span: Span)(using DetachedContext) extends caps.Pure {
 
     private val tags = collection.mutable.LinkedHashMap.empty[Symbol, TypeDef]
 

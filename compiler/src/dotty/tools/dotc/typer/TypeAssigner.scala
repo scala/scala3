@@ -226,7 +226,7 @@ trait TypeAssigner {
     val cls = qualifyingClass(tree, tree.qual.name, packageOK = false)
     tree.withType(
         if (cls.isClass) cls.thisType
-        else errorType("not a legal qualifying class for this", tree.srcPos))
+        else errorType(em"not a legal qualifying class for this", tree.srcPos))
   }
 
   def superType(qualType: Type, mix: untpd.Ident, mixinClass: Symbol, pos: SrcPos)(using Context) =
@@ -240,7 +240,7 @@ trait TypeAssigner {
           case Nil =>
             errorType(SuperQualMustBeParent(mix, cls), pos)
           case p :: q :: _ =>
-            errorType("ambiguous parent class qualifier", pos)
+            errorType(em"ambiguous parent class qualifier", pos)
         }
         val owntype =
           if (mixinClass.exists) mixinClass.typeRef
@@ -288,16 +288,16 @@ trait TypeAssigner {
         if (fntpe.paramInfos.hasSameLengthAs(args) || ctx.phase.prev.relaxedTyping)
           safeSubstMethodParams(fntpe, args.tpes)
         else
-          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
+          errorType(em"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
-        errorType(err.takesNoParamsStr(fn, ""), tree.srcPos)
+        errorType(err.takesNoParamsMsg(fn, ""), tree.srcPos)
     }
     ConstFold.Apply(tree.withType(ownType))
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(using Context): TypeApply = {
-    def fail = tree.withType(errorType(err.takesNoParamsStr(fn, "type "), tree.srcPos))
+    def fail = tree.withType(errorType(err.takesNoParamsMsg(fn, "type "), tree.srcPos))
     ConstFold(fn.tpe.widen match {
       case pt: TypeLambda =>
         tree.withType {
