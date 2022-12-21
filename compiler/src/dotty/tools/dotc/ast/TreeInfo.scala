@@ -110,6 +110,24 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ => 0
   }
 
+  /** The type arguments of a possibly curried call */
+  def typeArgss(tree: Tree): List[List[Tree]] =
+    @tailrec
+    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
+      case TypeApply(fn, args) => loop(fn, args :: argss)
+      case Apply(fn, args) => loop(fn, argss)
+      case _ => argss
+    loop(tree, Nil)
+
+  /** The term arguments of a possibly curried call */
+  def termArgss(tree: Tree): List[List[Tree]] =
+    @tailrec
+    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
+      case Apply(fn, args) => loop(fn, args :: argss)
+      case TypeApply(fn, args) => loop(fn, argss)
+      case _ => argss
+    loop(tree, Nil)
+
   /** All term arguments of an application in a single flattened list */
   def allArguments(tree: Tree): List[Tree] = unsplice(tree) match {
     case Apply(fn, args) => allArguments(fn) ::: args
@@ -342,26 +360,19 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
    *      * callee = foo
    *      * core = foo
    *      * targs = Nil
-   *      * argss = List(List(arg11, arg12...), List(arg21, arg22, ...))
+   *      * argss = List(List(arg21, arg22, ...), List(arg11, arg12, ...))
    *
    *    Apply(Apply(TypeApply(foo, List(targs1, targs2, ...)), List(arg21, arg22, ...)), List(arg11, arg12...))
    *      * callee = TypeApply(foo, List(targs1, targs2, ...))
    *      * core = foo
    *      * targs = Nil
-   *      * argss = List(List(arg11, arg12...), List(arg21, arg22, ...))
+   *      * argss = List(List(arg21, arg22, ...), List(arg11, arg12, ...))
    */
   final class Applied(val tree: Tree) {
     /** The tree stripped of the possibly nested applications.
      *  The original tree if it's not an application.
      */
-    def callee: Tree = {
-      @tailrec
-      def loop(tree: Tree): Tree = tree match {
-        case Apply(fn, _) => loop(fn)
-        case tree         => tree
-      }
-      loop(tree)
-    }
+    def callee: Tree = stripApply(tree)
 
     /** The `callee` unwrapped from type applications.
      *  The original `callee` if it's not a type application.
@@ -384,28 +395,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     /** (Possibly multiple lists of) value arguments of an application.
      *  `Nil` if the `callee` is not an application.
      */
-    def argss: List[List[Tree]] = {
-      def loop(tree: Tree): List[List[Tree]] = tree match {
-        case Apply(fn, args) => loop(fn) :+ args
-        case _               => Nil
-      }
-      loop(tree)
-    }
-  }
-
-  /** Returns a wrapper that knows how to destructure and analyze applications.
-   */
-  final def dissectApplied(tree: Tree) = new Applied(tree)
-
-  /** Equivalent ot disectApplied(tree).core, but more efficient */
-  @scala.annotation.tailrec
-  final def dissectCore(tree: Tree): Tree = tree match {
-    case TypeApply(fun, _) =>
-      dissectCore(fun)
-    case Apply(fun, _) =>
-      dissectCore(fun)
-    case t =>
-      t
+    def argss: List[List[Tree]] = termArgss(tree)
   }
 
   /** Destructures applications into important subparts described in `Applied` class,
@@ -424,7 +414,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
       Some((applied.core, applied.targs, applied.argss))
 
     def unapply(tree: Tree): Some[(Tree, List[Tree], List[List[Tree]])] =
-      unapply(dissectApplied(tree))
+      unapply(new Applied(tree))
   }
 
   /** Is tree an application with result `this.type`?
@@ -442,8 +432,9 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
           def checkSingle(sym: Symbol): Boolean =
             (sym == receiver.symbol) || {
               receiver match {
-                case Apply(_, _) => op.isOpAssignmentName                     // xs(i) += x
-                case _ => receiver.symbol.isGetter || receiver.symbol.isField // xs.addOne(x) for var xs
+                case Apply(_, _) => op.isOpAssignmentName                    // xs(i) += x
+                case _ => receiver.symbol != NoSymbol &&
+                  (receiver.symbol.isGetter || receiver.symbol.isField)      // xs.addOne(x) for var xs
               }
             }
           @tailrec def loop(mt: Type): Boolean = mt match {
@@ -456,7 +447,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
             case PolyType(_, restpe) => loop(restpe)
             case _ => false
           }
-          loop(fun.symbol.info)
+          fun.symbol != NoSymbol && loop(fun.symbol.info)
       }
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
@@ -835,24 +826,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         t
     }
   }
-
-  /** The type arguments of a possibly curried call */
-  def typeArgss(tree: Tree): List[List[Tree]] =
-    @tailrec
-    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
-      case TypeApply(fn, args) => loop(fn, args :: argss)
-      case Apply(fn, args) => loop(fn, argss)
-      case _ => argss
-    loop(tree, Nil)
-
-  /** The term arguments of a possibly curried call */
-  def termArgss(tree: Tree): List[List[Tree]] =
-    @tailrec
-    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
-      case Apply(fn, args) => loop(fn, args :: argss)
-      case TypeApply(fn, args) => loop(fn, argss)
-      case _ => argss
-    loop(tree, Nil)
 
   /** The type and term arguments of a possibly curried call, in the order they are given */
   def allArgss(tree: Tree): List[List[Tree]] =
