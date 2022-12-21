@@ -2800,6 +2800,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Flags extends FlagsModule:
       def Abstract: Flags = dotc.core.Flags.Abstract
+      def AbsOverride: Flags = dotc.core.Flags.AbsOverride
       def Artifact: Flags = dotc.core.Flags.Artifact
       def Case: Flags = dotc.core.Flags.Case
       def CaseAccessor: Flags = dotc.core.Flags.CaseAccessor
