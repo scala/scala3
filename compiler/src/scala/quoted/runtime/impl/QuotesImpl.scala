@@ -2794,7 +2794,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def Scala2x: Flags = dotc.core.Flags.Scala2x
       def Sealed: Flags = dotc.core.Flags.Sealed
       def StableRealizable: Flags = dotc.core.Flags.StableRealizable
-      def Static: Flags = dotc.core.Flags.JavaStatic
+      @deprecated("Use JavaStatic instead", "3.3.0") def Static: Flags = dotc.core.Flags.JavaStatic
       def Synthetic: Flags = dotc.core.Flags.Synthetic
       def Trait: Flags = dotc.core.Flags.Trait
       def Transparent: Flags = dotc.core.Flags.Transparent

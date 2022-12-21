@@ -4355,7 +4355,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def StableRealizable: Flags
 
       /** Is this symbol marked as static. Mapped to static Java member */
-      def Static: Flags
+      @deprecated("Use JavaStatic instead", "3.3.0") def Static: Flags
 
       /** Is this symbol to be tagged Java Synthetic */
       def Synthetic: Flags

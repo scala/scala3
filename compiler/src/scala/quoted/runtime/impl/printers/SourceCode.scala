@@ -57,7 +57,6 @@ object SourceCode {
     if (flags.is(Flags.Scala2x)) flagList += "scala2x"
     if (flags.is(Flags.Sealed)) flagList += "sealed"
     if (flags.is(Flags.StableRealizable)) flagList += "stableRealizable"
-    if (flags.is(Flags.Static)) flagList += "javaStatic"
     if (flags.is(Flags.Synthetic)) flagList += "synthetic"
     if (flags.is(Flags.Trait)) flagList += "trait"
     if (flags.is(Flags.Transparent)) flagList += "transparent"
