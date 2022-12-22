@@ -1443,10 +1443,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else if tp1 eq tp2 then true
     else
       val saved = constraint
-      val savedGadt = ctx.gadt.fresh
+      val savedGadtConstr = ctx.gadt.getConstraint
+      val savedMapping = ctx.gadt.getMapping
+      val savedReverseMapping = ctx.gadt.getReverseMapping
+      val savedWasConstrained = ctx.gadt.getWasConstrained
       inline def restore() =
         state.constraint = saved
-        ctx.gadt.restore(savedGadt)
+        ctx.gadt.restore(savedGadtConstr, savedMapping, savedReverseMapping, savedWasConstrained)
       val savedSuccessCount = successCount
       try
         recCount += 1
@@ -2050,10 +2053,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
       else
-        val savedGadt = ctx.gadt.fresh
-        val success = gadtAddBound(tparam, bound, isUpper)
-        if !success then ctx.gadt.restore(savedGadt)
-        success
+        ctx.gadt.rollbackGadtUnless(gadtAddBound(tparam, bound, isUpper))
     }
   }
 
