@@ -461,7 +461,7 @@ class Namer { typer: Typer =>
         val isProvisional = parents.exists(!_.baseType(defn.AnyClass).exists)
         if isProvisional then
           typr.println(i"provisional superclass $first for $cls")
-          first = AnnotatedType(first, Annotation(defn.ProvisionalSuperClassAnnot))
+          first = AnnotatedType(first, Annotation(defn.ProvisionalSuperClassAnnot, cls.span))
         checkFeasibleParent(first, cls.srcPos, i" in inferred superclass $first") :: parents
   end ensureFirstIsClass
 
@@ -1883,7 +1883,7 @@ class Namer { typer: Typer =>
         // larger choice of overrides (see `default-getter.scala`).
         // For justification on the use of `@uncheckedVariance`, see
         // `default-getter-variance.scala`.
-        AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot))
+        AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot, sym.span))
       else
         // don't strip @uncheckedVariance annot for default getters
         TypeOps.simplify(tp.widenTermRefExpr,

@@ -45,7 +45,7 @@ class RepeatableAnnotations extends MiniPhase:
               Nil
             else
               val aggregated = JavaSeqLiteral(anns.map(_.tree).toList, TypeTree(sym.typeRef))
-              Annotation(containerTpe, NamedArg("value".toTermName, aggregated)) :: Nil
+              Annotation(containerTpe, NamedArg("value".toTermName, aggregated), sym.span) :: Nil
           case _ =>
             val pos = anns.head.tree.srcPos
             report.error("Not repeatable annotation repeated", pos)

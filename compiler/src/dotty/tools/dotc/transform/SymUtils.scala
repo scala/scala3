@@ -381,7 +381,7 @@ object SymUtils:
       if original.hasAnnotation(defn.TargetNameAnnot) then
         self.addAnnotation(
           Annotation(defn.TargetNameAnnot,
-            Literal(Constant(nameFn(original.targetName).toString)).withSpan(original.span)))
+            Literal(Constant(nameFn(original.targetName).toString)).withSpan(original.span), original.span))
 
     /** The return type as seen from the body of this definition. It is
      *  computed from the symbol's type by replacing param refs by param symbols.

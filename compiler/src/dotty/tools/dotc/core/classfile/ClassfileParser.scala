@@ -764,7 +764,7 @@ class ClassfileParser(
               res.namedParams += (i -> name.name)
 
         case tpnme.AnnotationDefaultATTR =>
-          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil))
+          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
 
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR

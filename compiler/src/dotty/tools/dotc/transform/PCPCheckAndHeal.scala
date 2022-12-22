@@ -297,7 +297,7 @@ object PCPCheckAndHeal {
         flags = Synthetic,
         info = TypeAlias(splicedTree.tpe.select(tpnme.Underlying)),
         coord = span).asType
-      local.addAnnotation(Annotation(defn.QuotedRuntime_SplicedTypeAnnot))
+      local.addAnnotation(Annotation(defn.QuotedRuntime_SplicedTypeAnnot, span))
       ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
     }
 

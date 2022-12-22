@@ -283,7 +283,7 @@ object SymDenotations {
 
     /** Add the given annotation without parameters to the annotations of this denotation */
     final def addAnnotation(cls: ClassSymbol)(using Context): Unit =
-      addAnnotation(Annotation(cls))
+      addAnnotation(Annotation(cls, symbol.span))
 
     /** Remove annotation with given class from this denotation */
     final def removeAnnotation(cls: Symbol)(using Context): Unit =
