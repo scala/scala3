@@ -738,7 +738,7 @@ object TypeOps:
    *  If the subtyping is true, the instantiated type `p.child[Vs]` is
    *  returned. Otherwise, `NoType` is returned.
    */
-  def refineUsingParent(parent: Type, child: Symbol)(using Context): Type = {
+  def refineUsingParent(parent: Type, child: Symbol, mixins: List[Type] = Nil)(using Context): Type = {
     // <local child> is a place holder from Scalac, it is hopeless to instantiate it.
     //
     // Quote from scalac (from nsc/symtab/classfile/Pickler.scala):
@@ -753,7 +753,7 @@ object TypeOps:
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
     inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds.addMode(Mode.GadtConstraintInference)) {
-      instantiateToSubType(childTp, parent).dealias
+      instantiateToSubType(childTp, parent, mixins).dealias
     }
   }
 
@@ -764,7 +764,7 @@ object TypeOps:
    *
    *  Otherwise, return NoType.
    */
-  private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
+  private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = {
     // In order for a child type S to qualify as a valid subtype of the parent
     // T, we need to test whether it is possible S <: T.
     //
@@ -881,6 +881,7 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
+      for tp <- mixins.reverseIterator do protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }
