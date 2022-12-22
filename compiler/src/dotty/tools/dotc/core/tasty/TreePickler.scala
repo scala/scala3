@@ -71,15 +71,12 @@ class TreePickler(pickler: TastyPickler) {
     case _ =>
   }
 
-  def registerDef(sym: Symbol): Unit = {
+  def registerDef(sym: Symbol): Unit =
     symRefs(sym) = currentAddr
-    forwardSymRefs.get(sym) match {
-      case Some(refs) =>
-        refs.foreach(fillRef(_, currentAddr, relative = false))
-        forwardSymRefs -= sym
-      case None =>
-    }
-  }
+    val refs = forwardSymRefs.lookup(sym)
+    if refs != null then
+      refs.foreach(fillRef(_, currentAddr, relative = false))
+      forwardSymRefs -= sym
 
   def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
 
@@ -88,17 +85,19 @@ class TreePickler(pickler: TastyPickler) {
       if (sig eq Signature.NotAMethod) name
       else SignedName(name.toTermName, sig, target.asTermName))
 
-  private def pickleSymRef(sym: Symbol)(using Context) = symRefs.get(sym) match {
-    case Some(label) =>
-      if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
-    case None =>
+  private def pickleSymRef(sym: Symbol)(using Context) =
+    val label: Addr | Null = symRefs.lookup(sym)
+    if label == null then
       // See pos/t1957.scala for an example where this can happen.
       // I believe it's a bug in typer: the type of an implicit argument refers
       // to a closure parameter outside the closure itself. TODO: track this down, so that we
       // can eliminate this case.
       report.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.srcPos)
       pickleForwardSymRef(sym)
-  }
+    else if label == NoAddr then
+      pickleForwardSymRef(sym)
+    else
+      writeRef(label.uncheckedNN) // !!! Dotty problem: Not clear why nn or uncheckedNN is needed here
 
   private def pickleForwardSymRef(sym: Symbol)(using Context) = {
     val ref = reserveRef(relative = false)
@@ -351,11 +350,10 @@ class TreePickler(pickler: TastyPickler) {
           throw ex
     if sym.is(Method) && sym.owner.isClass then
       profile.recordMethodSize(sym, currentAddr.index - addr.index, mdef.span)
-    for
-      docCtx <- ctx.docCtx
-      comment <- docCtx.docstring(sym)
-    do
-      docStrings(mdef) = comment
+    for docCtx <- ctx.docCtx do
+      val comment = docCtx.docstrings.lookup(sym)
+      if comment != null then
+        docStrings(mdef) = comment
   }
 
   def pickleParam(tree: Tree)(using Context): Unit = {
