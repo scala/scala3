@@ -2140,7 +2140,7 @@ trait Applications extends Compatibility {
     val reverseMapping = alts.flatMap { alt =>
       val t = f(alt)
       if t.exists then
-        val (trimmed, skipped) = trimParamss(t, alt.symbol.rawParamss)
+        val (trimmed, skipped) = trimParamss(t.stripPoly, alt.symbol.rawParamss)
         val mappedSym = alt.symbol.asTerm.copy(info = t)
         mappedSym.rawParamss = trimmed
         val (pre, totalSkipped) = mappedAltInfo(alt.symbol) match
