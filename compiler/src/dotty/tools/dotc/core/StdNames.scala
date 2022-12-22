@@ -826,7 +826,7 @@ object StdNames {
 
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString
 
-    def selectorName(n: Int): TermName = "_" + (n + 1)
+    def selectorName(n: Int): TermName = productAccessorName(n + 1)
 
     object primitive {
       val arrayApply: TermName  = "[]apply"
