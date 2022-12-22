@@ -518,8 +518,8 @@ class Definitions {
     def staticsMethod(name: PreName): TermSymbol = ScalaStaticsModule.requiredMethod(name)
 
   @tu lazy val DottyArraysModule: Symbol = requiredModule("scala.runtime.Arrays")
-    def newGenericArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
-    def newArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
+    lazy val newGenericArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
+    lazy val newArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
   def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
