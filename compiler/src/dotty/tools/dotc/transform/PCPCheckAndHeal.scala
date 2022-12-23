@@ -264,10 +264,16 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show
       else i"${sym.name}.this"
+    val hint =
+      if sym.is(Inline) && levelOf(sym) < level then
+        "\n\n" +
+        "Hint: Staged references to inline definition in quotes are only inlined after the quote is spliced into level 0 code by a macro. " +
+        "Try moving this inline definition in a statically accessible location such as an object (this definition can be private)."
+      else ""
     report.error(
       em"""access to $symStr from wrong staging level:
           | - the definition is at level ${levelOf(sym)},
-          | - but the access is at level $level.""", pos)
+          | - but the access is at level $level.$hint""", pos)
     tp
   }
 
