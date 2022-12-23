@@ -194,9 +194,6 @@ object Denotations {
      */
     def infoOrCompleter: Type
 
-    /** The period during which this denotation is valid. */
-    def validFor: Period
-
     /** Is this a reference to a type symbol? */
     def isType: Boolean
 
@@ -228,6 +225,15 @@ object Denotations {
      *  at its first point of definition.
      */
     def current(using Context): Denotation
+
+    /** The period during which this denotation is valid. */
+    private var myValidFor: Period = Nowhere
+
+    final def validFor: Period = myValidFor
+    final def validFor_=(p: Period): Unit = {
+      myValidFor = p
+      symbol.invalidateDenotCache()
+    }
 
     /** Is this denotation different from NoDenotation or an ErrorDenotation? */
     def exists: Boolean = true
@@ -664,14 +670,6 @@ object Denotations {
 
     // ------ Transformations -----------------------------------------
 
-    private var myValidFor: Period = Nowhere
-
-    def validFor: Period = myValidFor
-    def validFor_=(p: Period): Unit = {
-      myValidFor = p
-      symbol.invalidateDenotCache()
-    }
-
     /** The next SingleDenotation in this run, with wrap-around from last to first.
      *
      *  There may be several `SingleDenotation`s with different validity
@@ -695,7 +693,7 @@ object Denotations {
       if (validFor.firstPhaseId <= 1) this
       else {
         var current = nextInRun
-        while (current.validFor.code > this.myValidFor.code) current = current.nextInRun
+        while (current.validFor.code > this.validFor.code) current = current.nextInRun
         current
       }
 
@@ -776,7 +774,7 @@ object Denotations {
      *  are otherwise undefined.
      */
     def skipRemoved(using Context): SingleDenotation =
-      if (myValidFor.code <= 0) nextDefined else this
+      if (validFor.code <= 0) nextDefined else this
 
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
@@ -793,7 +791,7 @@ object Denotations {
     def current(using Context): SingleDenotation =
       util.Stats.record("current")
       val currentPeriod = ctx.period
-      val valid = myValidFor
+      val valid = validFor
 
       def assertNotPackage(d: SingleDenotation, transformer: DenotTransformer) = d match
         case d: ClassDenotation =>
@@ -963,7 +961,7 @@ object Denotations {
         case denot: SymDenotation => s"in ${denot.owner}"
         case _ => ""
       }
-      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${ctx.period}"
+      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${validFor}, is referred to in run ${ctx.period}"
     }
 
     /** The period (interval of phases) for which there exists
@@ -1248,8 +1246,9 @@ object Denotations {
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
   case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType) with MultiPreDenotation {
+    validFor = denot1.validFor & denot2.validFor
+    
     final def infoOrCompleter: Type = multiHasNot("info")
-    final def validFor: Period = denot1.validFor & denot2.validFor
     final def isType: Boolean = false
     final def hasUniqueSym: Boolean = false
     final def name(using Context): Name = denot1.name
