@@ -986,6 +986,11 @@ object Contexts {
     /** Flag to suppress inlining, set after overflow */
     private[dotc] var stopInlining: Boolean = false
 
+    /** Cached -Yno-double-bindings setting. This is accessed from `setDenot`, which
+     *  is fairly hot, so we don't want to lookup the setting each time it is called.
+     */
+    private[dotc] var checkNoDoubleBindings = false
+
     /** A variable that records that some error was reported in a globally committable context.
      *  The error will not necessarlily be emitted, since it could still be that
      *  the enclosing context will be aborted. The variable is used as a smoke test

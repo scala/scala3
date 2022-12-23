@@ -2443,9 +2443,8 @@ object Types {
       setDenot(memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
 
     private def setDenot(denot: Denotation)(using Context): Unit = {
-      if (Config.checkNoDoubleBindings)
-        if (ctx.settings.YnoDoubleBindings.value)
-          checkSymAssign(denot.symbol)
+      if ctx.base.checkNoDoubleBindings then
+        checkSymAssign(denot.symbol)
 
       lastDenotation = denot
       lastSymbol = denot.symbol
