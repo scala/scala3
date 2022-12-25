@@ -1144,35 +1144,38 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       expand(tree, tree.tpe.widen)
   }
 
-  inline val MapRecursionLimit = 10
-
   extension (trees: List[Tree])
 
-    /** A map that expands to a recursive function. It's equivalent to
+    /** Equivalent (but faster) to
      *
      *    flatten(trees.mapConserve(op))
      *
-     *  and falls back to it after `MaxRecursionLimit` recursions.
-     *  Before that it uses a simpler method that uses stackspace
-     *  instead of heap.
-     *  Note `op` is duplicated in the generated code, so it should be
-     *  kept small.
+     *  assuming that `trees` does not contain `Thicket`s to start with.
      */
-    inline def mapInline(inline op: Tree => Tree): List[Tree] =
-      def recur(trees: List[Tree], count: Int): List[Tree] =
-        if count > MapRecursionLimit then
-          // use a slower implementation that avoids stack overflows
-          flatten(trees.mapConserve(op))
-        else trees match
-          case tree :: rest =>
-            val tree1 = op(tree)
-            val rest1 = recur(rest, count + 1)
-            if (tree1 eq tree) && (rest1 eq rest) then trees
-            else tree1 match
-              case Thicket(elems1) => elems1 ::: rest1
-              case _ => tree1 :: rest1
-          case nil => nil
-      recur(trees, 0)
+    inline def flattenedMapConserve(inline f: Tree => Tree): List[Tree] =
+      @tailrec
+      def loop(mapped: ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree]): List[Tree] =
+        if pending.isEmpty then
+          if mapped == null then unchanged
+          else mapped.prependToList(unchanged)
+        else
+          val head0 = pending.head
+          val head1 = f(head0)
+
+          if head1 eq head0 then
+            loop(mapped, unchanged, pending.tail)
+          else
+            val buf = if mapped == null then new ListBuffer[Tree] else mapped
+            var xc = unchanged
+            while xc ne pending do
+              buf += xc.head
+              xc = xc.tail
+            head1 match
+              case Thicket(elems1) => buf ++= elems1
+              case _ => buf += head1
+            val tail0 = pending.tail
+            loop(buf, tail0, tail0)
+      loop(null, trees, trees)
 
     /** Transform statements while maintaining import contexts and expression contexts
      *  in the same way as Typer does. The code addresses additional concerns:
