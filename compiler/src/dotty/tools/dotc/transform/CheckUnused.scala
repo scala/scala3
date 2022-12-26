@@ -24,6 +24,7 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Definitions
+import dotty.tools.dotc.core.Types.ConstantType
 
 
 
@@ -96,7 +97,11 @@ class CheckUnused extends MiniPhase:
     _key.unusedDataApply(_.registerDef(tree))
 
   override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
-    _key.unusedDataApply(_.registerDef(tree))
+    _key.unusedDataApply{ ud =>
+      import ud.registerTrivial
+      tree.registerTrivial
+      ud.registerDef(tree)
+    }
 
   override def prepareForBind(tree: tpd.Bind)(using Context): Context =
     _key.unusedDataApply(_.registerPatVar(tree))
@@ -266,6 +271,9 @@ object CheckUnused:
     /** All used symbols */
     private val usedDef = MutSet[Symbol]()
 
+    /** Trivial definitions, avoid registering params */
+    private val trivialDefs = MutSet[Symbol]()
+
     /**
      * Push a new Scope of the given type, executes the given Unit and
      * pop it back to the original type.
@@ -310,7 +318,7 @@ object CheckUnused:
       // register the annotations for usage
       registerUsedAnnotation(valOrDef.symbol)
       if !valOrDef.symbol.isUnusedAnnot then
-        if valOrDef.symbol.is(Param) && !isSyntheticMainParam(valOrDef.symbol) then
+        if valOrDef.symbol.is(Param) && !isSyntheticMainParam(valOrDef.symbol) && !valOrDef.symbol.ownerIsTrivial then
           if valOrDef.symbol.isOneOf(GivenOrImplicit) then
             implicitParamInScope += valOrDef
           else
@@ -486,6 +494,22 @@ object CheckUnused:
       /** Annotated with @unused */
       def isUnusedAnnot(using Context): Boolean =
         sym.annotations.exists(a => a.symbol == ctx.definitions.UnusedAnnot)
+
+      def ownerIsTrivial(using Context): Boolean =
+        sym.exists && trivialDefs(sym.owner)
+
+    extension (defdef: tpd.DefDef)
+      // so trivial that it never consumes params
+      private def isTrivial(using Context): Boolean =
+        val rhs = defdef.rhs
+        rhs.symbol == ctx.definitions.Predef_undefined || rhs.tpe =:= ctx.definitions.NothingType || (rhs match {
+          case _: tpd.Literal => true
+          case _ => rhs.tpe.isInstanceOf[ConstantType]
+        })
+      def registerTrivial(using Context): Unit =
+        if defdef.isTrivial then
+          trivialDefs += defdef.symbol
+
   end UnusedData
 
   private object UnusedData:

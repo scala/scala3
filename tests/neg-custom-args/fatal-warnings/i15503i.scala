@@ -7,16 +7,20 @@ class A {
   import collection.mutable.{Map => MutMap} // OK
   private val a = 1 // error
   val b = 2 // OK
+
+  /* This goes around the trivial method detection */
+  val default_int = 12
+
   val someMap = MutMap()
 
   private def c1 = 2 // error
   private def c2 = 2 // OK
   def c3 = c2
 
-  def d1(using x:Int): Int = 1 // error
+  def d1(using x:Int): Int = default_int // error
   def d2(using x:Int): Int = x // OK
 
-  def e1(x: Int) = 1 // error
+  def e1(x: Int) = default_int // error
   def e2(x: Int) = x // OK
   def f =
     val x = 1 // error
@@ -35,9 +39,12 @@ class A {
 package foo.test.scala.annotation:
   import annotation.unused // OK
 
+  /* This goes around the trivial method detection */
+  val default_int = 12
+
   def a1(a: Int) = a // OK
-  def a2(a: Int) = 1 // error
-  def a3(@unused a: Int) = 1 //OK
+  def a2(a: Int) = default_int // error
+  def a3(@unused a: Int) = default_int //OK
 
   def b1 =
     def f = 1 // error
