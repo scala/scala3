@@ -11,8 +11,8 @@ object boundary:
   transparent inline def apply[T <: R, R](inline body: Label[T] ?=> R): R =
     val local = Label[T]()
     try body(using local)
-    catch case ex: Break[_] if ex.label eq local =>
-      ex.value.asInstanceOf[T]
+    catch case ex: Break[T] @unchecked if ex.label eq local =>
+      ex.value
 
 end boundary
 
