@@ -22,6 +22,8 @@ import dotty.tools.dotc.core.Flags.flagsString
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
+import dotty.tools.dotc.core.Annotations
+import dotty.tools.dotc.core.Definitions
 
 
 
@@ -307,20 +309,22 @@ object CheckUnused:
     def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
       // register the annotations for usage
       registerUsedAnnotation(valOrDef.symbol)
-      if valOrDef.symbol.is(Param) && !isSyntheticMainParam(valOrDef.symbol) then
-        if valOrDef.symbol.isOneOf(GivenOrImplicit) then
-          implicitParamInScope += valOrDef
-        else
-          explicitParamInScope += valOrDef
-      else if currScopeType.top == ScopeType.Local then
-        localDefInScope += valOrDef
-      else if currScopeType.top == ScopeType.Template && valOrDef.symbol.is(Private, butNot = SelfName) then
-        privateDefInScope += valOrDef
+      if !valOrDef.symbol.isUnusedAnnot then
+        if valOrDef.symbol.is(Param) && !isSyntheticMainParam(valOrDef.symbol) then
+          if valOrDef.symbol.isOneOf(GivenOrImplicit) then
+            implicitParamInScope += valOrDef
+          else
+            explicitParamInScope += valOrDef
+        else if currScopeType.top == ScopeType.Local then
+          localDefInScope += valOrDef
+        else if currScopeType.top == ScopeType.Template && valOrDef.symbol.is(Private, butNot = SelfName) then
+          privateDefInScope += valOrDef
 
     /** Register pattern variable */
     def registerPatVar(patvar: tpd.Bind)(using Context): Unit =
       registerUsedAnnotation(patvar.symbol)
-      patVarsInScope += patvar
+      if !patvar.symbol.isUnusedAnnot then
+        patVarsInScope += patvar
 
     /** enter a new scope */
     def pushScope(newScopeType: ScopeType): Unit =
@@ -478,6 +482,10 @@ object CheckUnused:
           selector.orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
+
+      /** Annotated with @unused */
+      def isUnusedAnnot(using Context): Boolean =
+        sym.annotations.exists(a => a.symbol == ctx.definitions.UnusedAnnot)
   end UnusedData
 
   private object UnusedData:
