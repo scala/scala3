@@ -112,3 +112,4 @@ class CommitBisect(validationScriptPath: String):
     s"git bisect bad $fistBadHash".!
     s"git bisect good $lastGoodHash".!
     Seq("git", "bisect", "run", "sh", "-c", bisectRunScript).!
+    s"git bisect reset".!
