@@ -14,8 +14,8 @@ import Symbols._
 import Flags.Module
 import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
-import scala.concurrent.{Future, Await, ExecutionContext}
-import scala.concurrent.duration.Duration
+import util.concurrent.{Executor, Future}
+import compiletime.uninitialized
 
 object Pickler {
   val name: String = "pickler"
@@ -70,6 +70,11 @@ class Pickler extends Phase {
         body(scratch)
       }
 
+  private val executor = Executor[Array[Byte]]()
+
+  private def useExecutor(using Context) =
+    Pickler.ParallelPickling && !ctx.settings.YtestPickler.value
+
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
@@ -123,10 +128,10 @@ class Pickler extends Phase {
        *  function value.
        */
       val demandPickled: () => Array[Byte] =
-        if Pickler.ParallelPickling && !ctx.settings.YtestPickler.value then
-          val futurePickled = Future(computePickled())(using ExecutionContext.global)
+        if useExecutor then
+          val futurePickled = executor.schedule(computePickled)
           () =>
-            try Await.result(futurePickled, Duration.Inf)
+            try futurePickled.force.get
             finally reportPositionWarnings()
         else
           val pickled = computePickled()
@@ -139,7 +144,13 @@ class Pickler extends Phase {
   }
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
-    val result = super.runOn(units)
+    val result =
+      if useExecutor then
+        executor.start()
+        try super.runOn(units)
+        finally executor.close()
+      else
+        super.runOn(units)
     if ctx.settings.YtestPickler.value then
       val ctx2 = ctx.fresh.setSetting(ctx.settings.YreadComments, true)
       testUnpickler(
