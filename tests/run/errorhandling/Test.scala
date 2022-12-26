@@ -56,10 +56,12 @@ def sumRoots(xs: List[String]) = // inferred: Result[Double, String]
 
 def resultTest() =
   println("resultTest")
+  def assertFail(value: Any, s: String) = value match
+    case Err(msg: String) => assert(msg.contains(s))
   assert(sumRoots(List("1", "4", "9")) == Ok(6))
-  assert(sumRoots(List("1", "-2", "4")) == Err(s"cannot take sqrt of negative -2.0"))
-  assert(sumRoots(List()) == Err("list is empty"))
-  assert(sumRoots(List("1", "3ab")) == Err("java.lang.NumberFormatException: For input string: \"3ab\""))
+  assertFail(sumRoots(List("1", "-2", "4")), "cannot take sqrt of negative")
+  assertFail(sumRoots(List()), "list is empty")
+  assertFail(sumRoots(List("1", "3ab")), "NumberFormatException")
 
 @main def Test =
   breakTest()
