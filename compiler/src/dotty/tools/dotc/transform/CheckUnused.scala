@@ -61,7 +61,6 @@ class CheckUnused extends MiniPhase:
   // ========== SETUP ============
 
   override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
-    val tree = ctx.compilationUnit.tpdTree
     val data = UnusedData()
     val fresh = ctx.fresh.setProperty(_key, data)
     fresh
@@ -94,13 +93,23 @@ class CheckUnused extends MiniPhase:
     pushInBlockTemplatePackageDef(tree)
 
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
-    _key.unusedDataApply(_.registerDef(tree))
+    _key.unusedDataApply{ud =>
+      ud.registerDef(tree)
+      if tree.symbol.is(Flags.Module) then
+        ud.addIgnoredUsage(tree.symbol)
+    }
 
   override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
     _key.unusedDataApply{ ud =>
       import ud.registerTrivial
       tree.registerTrivial
       ud.registerDef(tree)
+    }
+
+  override def prepareForTypeDef(tree: tpd.TypeDef)(using Context): Context =
+    _key.unusedDataApply{ ud =>
+      ud.registerDef(tree)
+      ud.addIgnoredUsage(tree.symbol)
     }
 
   override def prepareForBind(tree: tpd.Bind)(using Context): Context =
@@ -112,6 +121,11 @@ class CheckUnused extends MiniPhase:
 
   // ========== MiniPhase Transform ==========
 
+  override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
+    if tree.symbol.is(Flags.Module) then
+      _key.unusedDataApply(_.removeIgnoredUsage(tree.symbol))
+    tree
+
   override def transformBlock(tree: tpd.Block)(using Context): tpd.Tree =
     popOutBlockTemplatePackageDef()
     tree
@@ -122,6 +136,10 @@ class CheckUnused extends MiniPhase:
 
   override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
     popOutBlockTemplatePackageDef()
+    tree
+
+  override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree =
+    _key.unusedDataApply(_.removeIgnoredUsage(tree.symbol))
     tree
 
   // ---------- MiniPhase HELPERS -----------
@@ -174,6 +192,9 @@ class CheckUnused extends MiniPhase:
           traverseChildren(tree)(using newCtx)
         case t:tpd.DefDef =>
           prepareForDefDef(t)
+          traverseChildren(tree)(using newCtx)
+        case t:tpd.TypeDef =>
+          prepareForTypeDef(t)
           traverseChildren(tree)(using newCtx)
         case t: tpd.Bind =>
           prepareForBind(t)
@@ -255,21 +276,23 @@ object CheckUnused:
     private val unusedImport = MutSet[ImportSelector]()
 
     /* LOCAL DEF OR VAL / Private Def or Val / Pattern variables */
-    private val localDefInScope = MutSet[tpd.ValOrDefDef]()
-    private val privateDefInScope = MutSet[tpd.ValOrDefDef]()
-    private val explicitParamInScope = MutSet[tpd.ValOrDefDef]()
-    private val implicitParamInScope = MutSet[tpd.ValOrDefDef]()
+    private val localDefInScope = MutSet[tpd.MemberDef]()
+    private val privateDefInScope = MutSet[tpd.MemberDef]()
+    private val explicitParamInScope = MutSet[tpd.MemberDef]()
+    private val implicitParamInScope = MutSet[tpd.MemberDef]()
     private val patVarsInScope = MutSet[tpd.Bind]()
 
     /* Unused collection collected at the end */
-    private val unusedLocalDef = MutSet[tpd.ValOrDefDef]()
-    private val unusedPrivateDef = MutSet[tpd.ValOrDefDef]()
-    private val unusedExplicitParams = MutSet[tpd.ValOrDefDef]()
-    private val unusedImplicitParams = MutSet[tpd.ValOrDefDef]()
+    private val unusedLocalDef = MutSet[tpd.MemberDef]()
+    private val unusedPrivateDef = MutSet[tpd.MemberDef]()
+    private val unusedExplicitParams = MutSet[tpd.MemberDef]()
+    private val unusedImplicitParams = MutSet[tpd.MemberDef]()
     private val unusedPatVars = MutSet[tpd.Bind]()
 
     /** All used symbols */
     private val usedDef = MutSet[Symbol]()
+    /** Do not register as used */
+    private val doNotRegister = MutSet[Symbol]()
 
     /** Trivial definitions, avoid registering params */
     private val trivialDefs = MutSet[Symbol]()
@@ -296,14 +319,30 @@ object CheckUnused:
      * as the same element can be imported with different renaming
      */
     def registerUsed(sym: Symbol, name: Option[Name])(using Context): Unit =
-      if !isConstructorOfSynth(sym) then
+      if !isConstructorOfSynth(sym) && !doNotRegister(sym) then
         usedInScope.top += ((sym, sym.isAccessibleAsIdent, name))
         if sym.isConstructor && sym.exists then
           registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
 
     /** Register a list of found (used) symbols */
     def registerUsed(syms: Seq[Symbol])(using Context): Unit =
-      usedInScope.top ++= syms.filterNot(isConstructorOfSynth).map(s => (s, s.isAccessibleAsIdent, None))
+      usedInScope.top ++=
+        syms
+          .filterNot(s => isConstructorOfSynth(s) || doNotRegister(s))
+          .map(s => (s, s.isAccessibleAsIdent, None))
+
+    /** Register a symbol that should be ignored */
+    def addIgnoredUsage(sym: Symbol)(using Context): Unit =
+      doNotRegister += sym
+      if sym.is(Flags.Module) then
+        doNotRegister += sym.moduleClass
+
+    /** Remove a symbol that shouldn't be ignored anymore */
+    def removeIgnoredUsage(sym: Symbol)(using Context): Unit =
+      doNotRegister -= sym
+      if sym.is(Flags.Module) then
+        doNotRegister -= sym.moduleClass
+
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
@@ -314,19 +353,19 @@ object CheckUnused:
         }
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
-    def registerDef(valOrDef: tpd.ValOrDefDef)(using Context): Unit =
+    def registerDef(memDef: tpd.MemberDef)(using Context): Unit =
       // register the annotations for usage
-      registerUsedAnnotation(valOrDef.symbol)
-      if !valOrDef.symbol.isUnusedAnnot then
-        if valOrDef.symbol.is(Param) && !isSyntheticMainParam(valOrDef.symbol) && !valOrDef.symbol.ownerIsTrivial then
-          if valOrDef.symbol.isOneOf(GivenOrImplicit) then
-            implicitParamInScope += valOrDef
+      registerUsedAnnotation(memDef.symbol)
+      if !memDef.symbol.isUnusedAnnot then
+        if memDef.symbol.is(Param) && !isSyntheticMainParam(memDef.symbol) && !memDef.symbol.ownerIsTrivial then
+          if memDef.symbol.isOneOf(GivenOrImplicit) then
+            implicitParamInScope += memDef
           else
-            explicitParamInScope += valOrDef
+            explicitParamInScope += memDef
         else if currScopeType.top == ScopeType.Local then
-          localDefInScope += valOrDef
-        else if currScopeType.top == ScopeType.Template && valOrDef.symbol.is(Private, butNot = SelfName) then
-          privateDefInScope += valOrDef
+          localDefInScope += memDef
+        else if currScopeType.top == ScopeType.Template && memDef.symbol.is(Private, butNot = SelfName) then
+          privateDefInScope += memDef
 
     /** Register pattern variable */
     def registerPatVar(patvar: tpd.Bind)(using Context): Unit =

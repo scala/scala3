@@ -47,3 +47,43 @@ class Foo {
     def f2 = f1 // OK
     f2
 }
+
+// ---- SCALA 2 tests ----
+
+package foo.scala2.tests:
+  class Outer {
+    class Inner
+  }
+
+  trait Locals {
+    def f0 = {
+      var x = 1 // error
+      var y = 2 // OK
+      y = 3
+      y + y
+    }
+    def f1 = {
+      val a = new Outer // OK
+      val b = new Outer // error
+      new a.Inner
+    }
+    def f2 = {
+      var x = 100
+      x
+    }
+  }
+
+  object Types {
+    def l1() = {
+      object HiObject { def f = this } // error
+      class Hi { // error
+        def f1: Hi = new Hi
+        def f2(x: Hi) = x
+      }
+      class DingDongDoobie // error
+      class Bippy // OK
+      type Something = Bippy // OK
+      type OtherThing = String // error
+      (new Bippy): Something
+    }
+  }
