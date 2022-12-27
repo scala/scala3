@@ -95,8 +95,7 @@ class CheckUnused extends MiniPhase:
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
     _key.unusedDataApply{ud =>
       ud.registerDef(tree)
-      if tree.symbol.is(Flags.Module) then
-        ud.addIgnoredUsage(tree.symbol)
+      ud.addIgnoredUsage(tree.symbol)
     }
 
   override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
@@ -104,6 +103,7 @@ class CheckUnused extends MiniPhase:
       import ud.registerTrivial
       tree.registerTrivial
       ud.registerDef(tree)
+      ud.addIgnoredUsage(tree.symbol)
     }
 
   override def prepareForTypeDef(tree: tpd.TypeDef)(using Context): Context =
@@ -121,11 +121,6 @@ class CheckUnused extends MiniPhase:
 
   // ========== MiniPhase Transform ==========
 
-  override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
-    if tree.symbol.is(Flags.Module) then
-      _key.unusedDataApply(_.removeIgnoredUsage(tree.symbol))
-    tree
-
   override def transformBlock(tree: tpd.Block)(using Context): tpd.Tree =
     popOutBlockTemplatePackageDef()
     tree
@@ -136,6 +131,14 @@ class CheckUnused extends MiniPhase:
 
   override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
     popOutBlockTemplatePackageDef()
+    tree
+
+  override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
+    _key.unusedDataApply(_.removeIgnoredUsage(tree.symbol))
+    tree
+
+  override def transformDefDef(tree: tpd.DefDef)(using Context): tpd.Tree =
+    _key.unusedDataApply(_.removeIgnoredUsage(tree.symbol))
     tree
 
   override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree =
