@@ -356,7 +356,7 @@ object CheckUnused:
     def registerDef(memDef: tpd.MemberDef)(using Context): Unit =
       // register the annotations for usage
       registerUsedAnnotation(memDef.symbol)
-      if !memDef.symbol.isUnusedAnnot then
+      if !memDef.symbol.isUnusedAnnot && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags) then
         if memDef.symbol.is(Param) && !isSyntheticMainParam(memDef.symbol) && !memDef.symbol.ownerIsTrivial then
           if memDef.symbol.isOneOf(GivenOrImplicit) then
             implicitParamInScope += memDef
