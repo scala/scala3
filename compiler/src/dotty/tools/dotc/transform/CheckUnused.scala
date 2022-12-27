@@ -351,16 +351,29 @@ object CheckUnused:
       val used = usedInScope.pop().toSet
       // used imports in this scope
       val imports = impInScope.pop().toSet
-      val kept = used.filter { t =>
+      val kept = used.filterNot { t =>
         val (sym, isAccessible, optName) = t
         // keep the symbol for outer scope, if it matches **no** import
-        !imports.exists { imp =>
+
+        // This is the first matching wildcard selector
+        var selWildCard: Option[ImportSelector] = None
+
+        val exists = imports.exists { imp =>
           sym.isInImport(imp, isAccessible, optName) match
             case None => false
+            case optSel@Some(sel) if sel.isWildcard =>
+              if selWildCard.isEmpty then selWildCard = optSel
+              // We keep wildcard symbol for the end as they have the least precedence
+              false
             case Some(sel) =>
               unusedImport -= sel
               true
         }
+        if !exists && selWildCard.isDefined then
+          unusedImport -= selWildCard.get
+          true // a matching import exists so the symbol won't be kept for outer scope
+        else
+          exists
       }
       // if there's an outer scope
       if usedInScope.nonEmpty then

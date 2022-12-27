@@ -245,3 +245,9 @@ package foo.testing.rename.imports:
   import collection.mutable.{Set => MutSet3} // error
   type A[X] = MutSet1[X]
   val a = MutSet2(1)
+
+//-------------------------------------
+package foo.testing.imports.precedence:
+  import scala.collection.immutable.{BitSet => _, _} // error
+  import scala.collection.immutable.BitSet // OK
+  def t = BitSet.empty
