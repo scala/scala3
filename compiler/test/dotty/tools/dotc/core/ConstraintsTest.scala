@@ -1,18 +1,15 @@
 package dotty.tools
-package dotc.core
+package dotc
+package core
 
 import vulpix.TestConfiguration
 
-import dotty.tools.dotc.core.Contexts.{*, given}
-import dotty.tools.dotc.core.Decorators.{*, given}
-import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.ast.tpd.*
-import dotty.tools.dotc.typer.ProtoTypes.constrained
+import Contexts.{*, given}, Decorators.{*, given}, Symbols.*, Types.*
+import ast.tpd.*
+import typer.ProtoTypes.*
+import util.SimpleIdentitySet
 
 import org.junit.Test
-
-import dotty.tools.DottyTest
 
 class ConstraintsTest:
 
@@ -90,4 +87,20 @@ class ConstraintsTest:
         val entry = ctx.typerState.constraint.entry(tvar.origin)
         assert(!ctx.typerState.constraint.occursAtToplevel(tvar.origin, entry),
           i"cyclic bound for ${tvar.origin}: ${entry} in ${ctx.typerState.constraint}")
+  }
+
+  @Test def splitIntersectedBounds: Unit = inCompilerContext(TestConfiguration.basicClasspath) {
+    val Foo = newTypeVar(TypeBounds.empty, "Foo".toTypeName)
+    val Bar = newTypeVar(TypeBounds.empty, "Bar".toTypeName)
+    val Int = defn.IntType
+
+    val tp1 = Foo & Int
+    val tp2 = Bar & Int
+    val log = TypeComparer.explained(_.isSameType(tp1, tp2))
+    //println(i"$log")
+    //println(i"${ctx.typerState.constraint}")
+
+    val tree = ref(newAnonFun(defn.RootClass, MethodType(Nil, defn.UnitType))).appliedToNone
+    ctx.typer.interpolateTypeVars(tree, WildcardType, SimpleIdentitySet.empty)
+    assert(Foo =:= Int && Bar =:= Int, i"Foo=$Foo Bar=$Bar")
   }

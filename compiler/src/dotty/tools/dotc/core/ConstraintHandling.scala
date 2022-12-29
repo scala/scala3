@@ -861,12 +861,24 @@ trait ConstraintHandling {
       addConstraintInvocations += 1
       val saved = canWidenAbstract
       canWidenAbstract = true
-      try bound match
+
+      def contains(bound: Type) = bound match
+        case tpr: TypeParamRef => constraint.contains(tpr)
+        case tv: TypeVar       => constraint.contains(tv)
+        case _                 => false
+
+      def add(bound: Type): Boolean = bound match
+        case AndType(bound1, bound2) if contains(bound1) ^ contains(bound2) =>
+          add(bound1) && add(bound2)
         case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
+        case bound: TypeVar if constraint.contains(bound) =>
+          addParamBound(bound.origin)
         case _ =>
           val pbound = avoidLambdaParams(bound)
           kindCompatible(param, pbound) && addBoundTransitively(param, pbound, !fromBelow)
+
+      try add(bound)
       finally
         canWidenAbstract = saved
         addConstraintInvocations -= 1
