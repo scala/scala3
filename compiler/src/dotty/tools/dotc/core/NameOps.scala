@@ -86,11 +86,17 @@ object NameOps {
     def isVarPattern: Boolean =
       testSimple { n =>
         n.length > 0 && {
+          def isLowerLetterSupplementary: Boolean =
+            import Character.{isHighSurrogate, isLowSurrogate, isLetter, isLowerCase, isValidCodePoint, toCodePoint}
+            isHighSurrogate(n(0)) && n.length > 1 && isLowSurrogate(n(1)) && {
+              val codepoint = toCodePoint(n(0), n(1))
+              isValidCodePoint(codepoint) && isLetter(codepoint) && isLowerCase(codepoint)
+            }
           val first = n.head
-          (((first.isLower && first.isLetter) || first == '_')
-            && (n != false_)
-            && (n != true_)
-            && (n != null_))
+          ((first.isLower && first.isLetter || first == '_' || isLowerLetterSupplementary)
+            && n != false_
+            && n != true_
+            && n != null_)
         }
       } || name.is(PatMatGivenVarName)
 
@@ -98,7 +104,7 @@ object NameOps {
       case raw.NE | raw.LE | raw.GE | EMPTY =>
         false
       case name: SimpleName =>
-        name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
+        name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.firstCodePoint)
       case _ =>
         false
     }
@@ -352,6 +358,14 @@ object NameOps {
       val unmangled = kinds.foldLeft(name)(_.unmangle(_))
       if (unmangled eq name) name else unmangled.unmangle(kinds)
     }
+
+    def firstCodePoint: Int =
+      val first = name.firstPart
+      import Character.{isHighSurrogate, isLowSurrogate, isValidCodePoint, toCodePoint}
+      if isHighSurrogate(first(0)) && first.length > 1 && isLowSurrogate(first(1)) then
+        val codepoint = toCodePoint(first(0), first(1))
+        if isValidCodePoint(codepoint) then codepoint else first(0)
+      else first(0)
   }
 
   extension (name: TermName) {
