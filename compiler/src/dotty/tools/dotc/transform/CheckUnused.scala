@@ -7,7 +7,7 @@ import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.{em, i}
-import dotty.tools.dotc.core.Flags.{Given, Implicit, GivenOrImplicit, Param, Private, SelfName, Synthetic}
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
@@ -25,6 +25,7 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Types.ConstantType
+import dotty.tools.dotc.core.NameKinds.WildcardParamName
 
 
 
@@ -108,8 +109,9 @@ class CheckUnused extends MiniPhase:
 
   override def prepareForTypeDef(tree: tpd.TypeDef)(using Context): Context =
     _key.unusedDataApply{ ud =>
-      ud.registerDef(tree)
-      ud.addIgnoredUsage(tree.symbol)
+      if !tree.symbol.is(Param) then // Ignore type parameter (as Scala 2)
+        ud.registerDef(tree)
+        ud.addIgnoredUsage(tree.symbol)
     }
 
   override def prepareForBind(tree: tpd.Bind)(using Context): Context =
@@ -313,7 +315,7 @@ object CheckUnused:
     /** Register all annotations of this symbol's denotation */
     def registerUsedAnnotation(sym: Symbol)(using Context): Unit =
       val annotSym = sym.denot.annotations.map(_.symbol)
-      registerUsed(annotSym)
+      annotSym.foreach(s => registerUsed(s, None))
 
     /**
      * Register a found (used) symbol along with its name
@@ -326,13 +328,6 @@ object CheckUnused:
         usedInScope.top += ((sym, sym.isAccessibleAsIdent, name))
         if sym.isConstructor && sym.exists then
           registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
-
-    /** Register a list of found (used) symbols */
-    def registerUsed(syms: Seq[Symbol])(using Context): Unit =
-      usedInScope.top ++=
-        syms
-          .filterNot(s => isConstructorOfSynth(s) || doNotRegister(s))
-          .map(s => (s, s.isAccessibleAsIdent, None))
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
@@ -359,8 +354,8 @@ object CheckUnused:
     def registerDef(memDef: tpd.MemberDef)(using Context): Unit =
       // register the annotations for usage
       registerUsedAnnotation(memDef.symbol)
-      if !memDef.symbol.isUnusedAnnot && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags) then
-        if memDef.symbol.is(Param) && !isSyntheticMainParam(memDef.symbol) && !memDef.symbol.ownerIsTrivial then
+      if memDef.isValidMemberDef then
+        if memDef.isValidParam then
           if memDef.symbol.isOneOf(GivenOrImplicit) then
             implicitParamInScope += memDef
           else
@@ -526,7 +521,7 @@ object CheckUnused:
 
     extension (sym: Symbol)
       /** is accessible without import in current context */
-      def isAccessibleAsIdent(using Context): Boolean =
+      private def isAccessibleAsIdent(using Context): Boolean =
         sym.exists &&
           ctx.outersIterator.exists{ c =>
             c.owner == sym.owner
@@ -536,7 +531,7 @@ object CheckUnused:
           }
 
       /** Given an import and accessibility, return an option of selector that match import<->symbol */
-      def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name])(using Context): Option[ImportSelector] =
+      private def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name])(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
         val qualHasSymbol = qual.tpe.member(sym.name).alternatives.map(_.symbol).contains(sym)
         def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
@@ -547,23 +542,54 @@ object CheckUnused:
           None
 
       /** Annotated with @unused */
-      def isUnusedAnnot(using Context): Boolean =
+      private def isUnusedAnnot(using Context): Boolean =
         sym.annotations.exists(a => a.symbol == ctx.definitions.UnusedAnnot)
 
-      def ownerIsTrivial(using Context): Boolean =
+      private def shouldNotReportParamOwner(using Context): Boolean =
+        if sym.exists then
+          val owner = sym.owner
+          trivialDefs(owner) ||
+          owner.is(Flags.Override) ||
+          owner.isPrimaryConstructor ||
+          owner.annotations.exists (
+            _.symbol == ctx.definitions.DeprecatedAnnot
+          )
+        else
+          false
+
+      private def ownerIsTrivial(using Context): Boolean =
         sym.exists && trivialDefs(sym.owner)
 
     extension (defdef: tpd.DefDef)
       // so trivial that it never consumes params
       private def isTrivial(using Context): Boolean =
         val rhs = defdef.rhs
-        rhs.symbol == ctx.definitions.Predef_undefined || rhs.tpe =:= ctx.definitions.NothingType || (rhs match {
+        rhs.symbol == ctx.definitions.Predef_undefined ||
+        rhs.tpe =:= ctx.definitions.NothingType ||
+        defdef.symbol.is(Deferred) ||
+        (rhs match {
           case _: tpd.Literal => true
           case _ => rhs.tpe.isInstanceOf[ConstantType]
         })
       def registerTrivial(using Context): Unit =
         if defdef.isTrivial then
           trivialDefs += defdef.symbol
+
+    extension (memDef: tpd.MemberDef)
+      private def isValidMemberDef(using Context): Boolean =
+        !memDef.symbol.isUnusedAnnot && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags) && !memDef.name.isWildcard
+
+      private def isValidParam(using Context): Boolean =
+        val sym = memDef.symbol
+        (sym.is(Param) || sym.isAllOf(PrivateParamAccessor)) &&
+        !isSyntheticMainParam(sym)  &&
+        !sym.shouldNotReportParamOwner
+
+
+    extension (thisName: Name)
+      private def isWildcard: Boolean =
+        thisName == StdNames.nme.WILDCARD || thisName.is(WildcardParamName)
+
 
   end UnusedData
 
