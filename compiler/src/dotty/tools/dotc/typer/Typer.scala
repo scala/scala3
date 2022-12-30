@@ -1782,7 +1782,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // see tests/pos/i12226 and issue #12226. It might be possible that this
         // will end up taking too much memory. If it does, we should just limit
         // how much GADT constraints we infer - it's always sound to infer less.
-        pat1.putAttachment(InferredGadtConstraints, ctx.gadt)
+        pat1.putAttachment(InferredGadtConstraints, ctx.gadt.gadt)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
@@ -3835,7 +3835,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 adaptToSubType(wtp)
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
-             && !inContext(ctx.fresh.setGadt(GadtConstraint.empty)) {
+             && !inContext(ctx.fresh.setGadt(GadtConstraintHandling(GadtConstraint.empty))) {
                val res = (tree.tpe.widenExpr frozen_<:< pt)
                if res then
                  // we overshot; a cast is not needed, after all.

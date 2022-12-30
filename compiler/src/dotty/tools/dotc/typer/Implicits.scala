@@ -1030,7 +1030,7 @@ trait Implicits:
           case result: SearchSuccess =>
             if result.tstate ne ctx.typerState then
               result.tstate.commit()
-            if result.gstate ne ctx.gadt then
+            if result.gstate ne ctx.gadt.gadt then
               ctx.gadt.restore(result.gstate)
             if hasSkolem(false, result.tree) then
               report.error(SkolemInInferred(result.tree, pt, argument), ctx.source.atSpan(span))
@@ -1145,7 +1145,7 @@ trait Implicits:
               SearchFailure(adapted.withType(new MismatchedImplicit(ref, pt, argument)))
         }
       else
-        SearchSuccess(adapted, ref, cand.level, cand.isExtension)(ctx.typerState, ctx.gadt)
+        SearchSuccess(adapted, ref, cand.level, cand.isExtension)(ctx.typerState, ctx.gadt.gadt)
     }
 
   /** An implicit search; parameters as in `inferImplicit` */
@@ -1343,7 +1343,7 @@ trait Implicits:
             case _: SearchFailure =>
               SearchSuccess(ref(defn.NotGiven_value), defn.NotGiven_value.termRef, 0)(
                 ctx.typerState.fresh().setCommittable(true),
-                ctx.gadt
+                ctx.gadt.gadt
               )
             case _: SearchSuccess =>
               NoMatchingImplicitsFailure
@@ -1526,7 +1526,7 @@ trait Implicits:
       // other candidates need to be considered.
       recursiveRef match
         case ref: TermRef =>
-          SearchSuccess(tpd.ref(ref).withSpan(span.startPos), ref, 0)(ctx.typerState, ctx.gadt)
+          SearchSuccess(tpd.ref(ref).withSpan(span.startPos), ref, 0)(ctx.typerState, ctx.gadt.gadt)
         case _ =>
           searchImplicit(contextual = true)
     end bestImplicit
