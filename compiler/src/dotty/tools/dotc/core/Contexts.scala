@@ -141,7 +141,7 @@ object Contexts {
     def tree: Tree[?]
     def scope: Scope
     def typerState: TyperState
-    def gadt: GadtConstraint
+    def gadt: GadtConstraintHandling
     def searchHistory: SearchHistory
     def source: SourceFile
 
@@ -541,8 +541,8 @@ object Contexts {
     private var _typerState: TyperState = uninitialized
     final def typerState: TyperState = _typerState
 
-    private var _gadt: GadtConstraint = uninitialized
-    final def gadt: GadtConstraint = _gadt
+    private var _gadt: GadtConstraintHandling = uninitialized
+    final def gadt: GadtConstraintHandling = _gadt
 
     private var _searchHistory: SearchHistory = uninitialized
     final def searchHistory: SearchHistory = _searchHistory
@@ -624,7 +624,7 @@ object Contexts {
       this._scope = typer.scope
       setTypeAssigner(typer)
 
-    def setGadt(gadt: GadtConstraint): this.type =
+    def setGadt(gadt: GadtConstraintHandling): this.type =
       util.Stats.record("Context.setGadt")
       this._gadt = gadt
       this
@@ -721,7 +721,7 @@ object Contexts {
           .updated(notNullInfosLoc, Nil)
           .updated(compilationUnitLoc, NoCompilationUnit)
       c._searchHistory = new SearchRoot
-      c._gadt = GadtConstraint.empty
+      c._gadt = GadtConstraintHandling(GadtConstraint.empty)
       c
   end FreshContext
 

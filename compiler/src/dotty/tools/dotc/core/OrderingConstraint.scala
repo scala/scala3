@@ -224,6 +224,17 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def exclusiveUpper(param: TypeParamRef, butNot: TypeParamRef): List[TypeParamRef] =
     upper(param).filterNot(isLess(butNot, _))
 
+  def bounds(param: TypeParamRef)(using Context): TypeBounds = {
+    val e = entry(param)
+    if (e.exists) e.bounds
+    else {
+      // TODO: should we change the type of paramInfos to nullable?
+      val pinfos: List[param.binder.PInfo] | Null = param.binder.paramInfos
+      if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
+      else TypeBounds.empty
+    }
+  }
+
 // ---------- Info related to TypeParamRefs -------------------------------------------
 
   def isLess(param1: TypeParamRef, param2: TypeParamRef): Boolean =
