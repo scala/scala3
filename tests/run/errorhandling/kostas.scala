@@ -17,7 +17,7 @@ object PersonCsvParserIgnoreErrors:
   def parse(csv: Seq[String]): Seq[Person] =
     for
       line <- csv
-      columns = line.split(",")x
+      columns = line.split(",")
       parsed <- parseColumns(columns)
     yield
       parsed

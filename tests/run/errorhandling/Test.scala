@@ -62,6 +62,14 @@ def resultTest() =
   assertFail(sumRoots(List("1", "-2", "4")), "cannot take sqrt of negative")
   assertFail(sumRoots(List()), "list is empty")
   assertFail(sumRoots(List("1", "3ab")), "NumberFormatException")
+  val xs = sumRoots(List("1", "-2", "4")) *: sumRoots(List()) *: sumRoots(List("1", "3ab")) *: Result.empty
+  xs match
+    case Err(msgs) => assert(msgs.length == 3)
+    case _ => assert(false)
+  val ys = sumRoots(List("1", "2", "4")) *: sumRoots(List("1")) *: sumRoots(List("2")) *: Result.empty
+  ys match
+    case Ok((a, b, c)) => // ok
+    case _ => assert(false)
 
 @main def Test =
   breakTest()
