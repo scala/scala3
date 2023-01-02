@@ -90,7 +90,7 @@ class DropBreaks extends MiniPhase:
      *
      *      { val local: Label[...] = ...; <LabelTry(local, body)> }
      */
-    def unapply(tree: Tree)(using Context): Option[(Symbol, Tree)] = tree match
+    def unapply(tree: Tree)(using Context): Option[(Symbol, Tree)] = stripTyped(tree) match
       case Block((vd @ ValDef(nme.local, _, _)) :: Nil, LabelTry(caughtAndRhs))
       if vd.symbol.info.isRef(defn.LabelClass) && vd.symbol == caughtAndRhs._1 =>
         Some(caughtAndRhs)

@@ -30,7 +30,7 @@ object boundary:
    *  breaks associated with that label and return their results instead of
    *  `body`'s result.
    */
-  transparent inline def apply[T <: R, R](inline body: Label[T] ?=> R): R =
+  inline def apply[T <: R, R](inline body: Label[T] ?=> R): R =
     val local = Label[T]()
     try body(using local)
     catch case ex: Break[T] @unchecked =>
