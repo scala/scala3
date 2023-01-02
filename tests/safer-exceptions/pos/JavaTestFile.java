@@ -1,9 +1,10 @@
 package test.saferExceptions.pos;
+import scala.language.experimental.captureChecking;
 
 import java.io.IOException;
 
 public class JavaTestFile {
 
-    public static void test() throws IOException {}
+    public static void javatest() throws IOException {}
 
 }

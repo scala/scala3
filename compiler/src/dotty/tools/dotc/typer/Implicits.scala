@@ -3,36 +3,37 @@ package dotc
 package typer
 
 import backend.sjs.JSDefinitions
-import core._
-import ast.{TreeTypeMap, untpd, tpd}
-import util.Spans._
-import util.Stats.{record, monitored}
-import printing.{Showable, Printer}
-import printing.Texts._
-import Contexts._
-import Types._
-import Flags._
+import core.*
+import ast.{TreeTypeMap, tpd, untpd}
+import util.Spans.*
+import util.Stats.{monitored, record}
+import printing.{Printer, Showable}
+import printing.Texts.*
+import Contexts.*
+import Types.*
+import Flags.*
 import Mode.ImplicitsEnabled
-import NameKinds.{LazyImplicitName, EvidenceParamName}
-import Symbols._
-import Types._
-import Decorators._
-import Names._
-import StdNames._
-import ProtoTypes._
-import ErrorReporting._
+import NameKinds.{EvidenceParamName, LazyImplicitName}
+import Symbols.*
+import Types.*
+import Decorators.*
+import Names.*
+import StdNames.*
+import ProtoTypes.*
+import ErrorReporting.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
-import transform.TypeUtils._
-import Hashable._
+import transform.TypeUtils.*
+import Hashable.*
 import util.{EqHashMap, Stats}
 import config.{Config, Feature}
 import Feature.migrateTo3
-import config.Printers.{implicits, implicitsDetailed}
-import collection.mutable
-import reporting._
-import annotation.tailrec
+import config.Printers.{implicits, implicitsDetailed, saferExceptions}
 
+import collection.mutable
+import reporting.*
+
+import annotation.tailrec
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
@@ -874,7 +875,21 @@ trait Implicits:
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
   def inferImplicitArg(formal: Type, span: Span)(using Context): Tree =
-    inferImplicit(formal, EmptyTree, span) match
+    // TODO HR : Split the CanThrow capability here in case of a union type
+    // TODO HR : Still need to combine them all into one CanThrow clause
+    // If trying to infer a CanThrow capability, split it in case of a UnionType
+    val a = formal match
+        case AppliedType(base, args) if base.isRef(defn.CanThrowClass.asType) =>
+          val t =
+            for arg <- args yield
+              arg match
+                case OrType(lhs, rhs) => lhs :: rhs :: Nil // Splitting or type should be done recursively
+                case _ => arg :: Nil
+          saferExceptions.println(i"${t.flatten}")
+          (for a <- t.flatten yield inferImplicit(defn.CanThrowClass.typeRef.appliedTo(a), EmptyTree, span)).head
+        case _ =>
+          inferImplicit(formal, EmptyTree, span)
+    a match
       case SearchSuccess(arg, _, _, _) => arg
       case fail @ SearchFailure(failed) =>
         if fail.isAmbiguous then failed
@@ -889,6 +904,7 @@ trait Implicits:
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {
+    saferExceptions.println(i"Trying to find given instance of type $formal")
     val arg = inferImplicitArg(formal, span)
     if (arg.tpe.isInstanceOf[SearchFailureType])
       report.error(missingArgMsg(arg, formal, ""), ctx.source.atSpan(span))

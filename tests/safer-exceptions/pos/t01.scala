@@ -7,7 +7,10 @@ import java.io.FileNotFoundException
 
 class ScalaException extends Exception
 
+@throws[IOException | ScalaException]
 def test() throws ScalaException :Unit = throw new ScalaException
+
+def tt throws ScalaException, IOException: Unit = test()
 /*
 -- Warning: tests\safer-exceptions\pos\t01.scala:8:29 --------------------------
 8 |class ScalaException extends Exception
@@ -23,7 +26,7 @@ def test() throws ScalaException :Unit = throw new ScalaException
 //  test
 
 trait AFoo :
-  def foo(x : Int) throws Exception : Int
+  def foo(x : Int) throws Exception : Unit = tt
 
 class Foo extends AFoo :
-  def foo(x : Int) throws IOException, FileNotFoundException : Int = x
+  override def foo(x : Int) throws Exception : Unit = ???
