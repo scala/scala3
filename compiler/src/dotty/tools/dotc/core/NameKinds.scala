@@ -325,6 +325,8 @@ object NameKinds {
 
   val LocalOptInlineLocalObj: UniqueNameKind = new UniqueNameKind("ilo")
 
+  val BoundaryName: UniqueNameKind           = new UniqueNameKind("boundary")
+
   /** The kind of names of default argument getters */
   val DefaultGetterName: NumberedNameKind = new NumberedNameKind(DEFAULTGETTER, "DefaultGetter") {
     def mkString(underlying: TermName, info: ThisInfo) = {
