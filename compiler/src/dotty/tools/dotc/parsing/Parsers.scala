@@ -3079,35 +3079,13 @@ object Parsers {
 
  /* -------- PARAMETERS ------------------------------------------- */
 
-    /** DefParamClause ::= DefTypeParamClause 
-     *                   | DefTermParamClause 
-     *                   | UsingParamClause
-     */
-    def typeOrTermParamClause(
-                    ownerKind: ParamOwner,
-                    nparams: Int,                    // number of parameters preceding this clause
-                    ofClass: Boolean = false,        // owner is a class
-                    ofCaseClass: Boolean = false,    // owner is a case class
-                    prefix: Boolean = false,         // clause precedes name of an extension method
-                    givenOnly: Boolean = false,      // only given parameters allowed
-                    firstClause: Boolean = false     // clause is the first in regular list of clauses
-                   ): List[TypeDef] | List[ValDef] =
-      if (in.token == LPAREN)
-        termParamClause(nparams, ofClass, ofCaseClass, prefix, givenOnly, firstClause)
-      else if (in.token == LBRACKET)
-        typeParamClause(ownerKind)
-      else
-        Nil
-      
-    end typeOrTermParamClause
-    
     /** DefParamClauses       ::= DefParamClause { DefParamClause }  -- and two DefTypeParamClause cannot be adjacent
+     *  DefParamClause        ::= DefTypeParamClause 
+     *                          | DefTermParamClause 
+     *                          | UsingParamClause
      */
     def typeOrTermParamClauses(
       ownerKind: ParamOwner,
-      ofClass: Boolean = false,
-      ofCaseClass: Boolean = false,
-      givenOnly: Boolean = false,
       numLeadParams: Int = 0
     ): List[List[TypeDef] | List[ValDef]] =
 
@@ -3118,9 +3096,6 @@ object Parsers {
           val paramsStart = in.offset
           val params = termParamClause(
               numLeadParams,
-              ofClass = ofClass,
-              ofCaseClass = ofCaseClass,
-              givenOnly = givenOnly,
               firstClause = firstClause)
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
           params :: (
