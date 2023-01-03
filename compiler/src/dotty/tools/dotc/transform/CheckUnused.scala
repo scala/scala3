@@ -26,6 +26,7 @@ import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Types.ConstantType
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
+import dotty.tools.dotc.core.Types.TermRef
 
 
 
@@ -569,7 +570,13 @@ object CheckUnused:
         defdef.symbol.is(Deferred) ||
         (rhs match {
           case _: tpd.Literal => true
-          case _ => rhs.tpe.isInstanceOf[ConstantType]
+          case _ => rhs.tpe match
+            case ConstantType(_) => true
+            case tp: TermRef =>
+              // Detect Scala 2 SingleType
+              tp.underlying.classSymbol.is(Flags.Module)
+            case _ =>
+              false
         })
       def registerTrivial(using Context): Unit =
         if defdef.isTrivial then
@@ -589,7 +596,6 @@ object CheckUnused:
     extension (thisName: Name)
       private def isWildcard: Boolean =
         thisName == StdNames.nme.WILDCARD || thisName.is(WildcardParamName)
-
 
   end UnusedData
 
