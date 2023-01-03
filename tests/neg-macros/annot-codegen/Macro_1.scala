@@ -16,36 +16,34 @@ class data extends MacroAnnotation:
         val clsTpe =
           if typeParams.isEmpty then cls.typeRef
           else AppliedType(cls.typeRef, typeParams.map(_.typeRef))
-        clsTpe.asType match
-          case '[t] =>
-            val expectedBody = '{ data.generated[t]() }.show
+        val expectedBody =
+          clsTpe.asType match
+            case '[t] => '{ data.generated[t]() }
 
-            val params = paramNames(cls)
-            for param <- params do
-              val withParam = With(param)
-              val paramType = cls.declaredField(param).info
-              val existingOpt =
-                cdef.body.find(stat =>
-                  val paramss = stat.symbol.paramSymss
-                  stat.symbol.name == withParam
-                  && paramss.size == 1 && paramss(0).size == 1
-                  && paramss(0)(0).name == param // FIXME: if the parameter name is incorrect, propose rewriting it
-                  && paramss(0)(0).info == paramType // FIXME: if the parameter type changed, propose rewriting it
-                )
-              existingOpt match
-                case Some(tree: DefDef) =>
-                  tree.rhs match
-                    case Some(rhs) => rhs.asExpr match
-                      case '{data.generated[`t`]()} =>
-                        // The correct method is already present, nothing to do
-                      case _ =>
-                        report.error(s"Replace the underline code by:\n$expectedBody", rhs.pos)
-                    case _ =>
-                      report.error(s"Replace the underline code by:\n${tree.show} = $expectedBody", tree.pos)
+        val params = paramNames(cls)
+        for param <- params do
+          val withParam = With(param)
+          val paramType = cls.declaredField(param).info
+          val existingOpt =
+            cdef.body.find(stat =>
+              val paramss = stat.symbol.paramSymss
+              stat.symbol.name == withParam
+              && paramss.size == 1 && paramss(0).size == 1
+              && paramss(0)(0).name == param // FIXME: if the parameter name is incorrect, propose rewriting it
+              && paramss(0)(0).info == paramType // FIXME: if the parameter type changed, propose rewriting it
+            )
+          existingOpt match
+            case Some(tree: DefDef) =>
+              tree.rhs match
+                case Some(rhs) =>
+                  if !rhs.asExpr.matches(expectedBody) then
+                    report.error(s"Replace the underline code by:\n${expectedBody.show}", rhs.pos)
                 case _ =>
-                  // The method is not present
-                  classPatches +=
-                    s"def $withParam($param: ${paramType.show}): ${Type.show[t]} = $expectedBody"
+                  report.error(s"Replace the underline code by:\n${tree.show} = ${expectedBody.show}", tree.pos)
+            case _ =>
+              // The method is not present
+              classPatches +=
+                s"def $withParam($param: ${paramType.show}): ${clsTpe.show} = ${expectedBody.show}"
 
 
         val ctr = cdef.constructor
