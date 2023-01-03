@@ -186,7 +186,7 @@ object TypeOps:
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>
         // See documentation of `Types#simplified`
-        val addTypeVars = new TypeMap:
+        val addTypeVars = new TypeMap with IdempotentCaptRefMap:
           val constraint = ctx.typerState.constraint
           def apply(t: Type): Type = t match
             case t: TypeParamRef => constraint.typeVarOfParam(t).orElse(t)
@@ -209,7 +209,7 @@ object TypeOps:
 
   /** Approximate union type by intersection of its dominators.
    *  That is, replace a union type Tn | ... | Tn
-   *  by the smallest intersection type of base-class instances of T1,...,Tn.
+   *  by the smallest intersection type of accessible base-class instances of T1,...,Tn.
    *  Example: Given
    *
    *      trait C[+T]
@@ -370,8 +370,14 @@ object TypeOps:
         }
       }
 
+      def isAccessible(cls: ClassSymbol) =
+        if cls.isOneOf(AccessFlags) || cls.privateWithin.exists then
+          cls.isAccessibleFrom(tp.baseType(cls).normalizedPrefix)
+        else true
+
       // Step 3: Intersect base classes of both sides
-      val commonBaseClasses = orBaseClasses(tp)
+      val commonBaseClasses = orBaseClasses(tp).filterConserve(isAccessible)
+
       val doms = dominators(commonBaseClasses, Nil)
       def baseTp(cls: ClassSymbol): Type =
         tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
@@ -498,7 +504,7 @@ object TypeOps:
     override def derivedSelect(tp: NamedType, pre: Type) =
       if (pre eq tp.prefix)
         tp
-      else tryWiden(tp, tp.prefix).orElse {
+      else (if pre.isSingleton then NoType else tryWiden(tp, tp.prefix)).orElse {
         if (tp.isTerm && variance > 0 && !pre.isSingleton)
           apply(tp.info.widenExpr)
         else if (upper(pre).member(tp.name).exists)
@@ -615,7 +621,7 @@ object TypeOps:
       boundss: List[TypeBounds],
       instantiate: (Type, List[Type]) => Type,
       app: Type)(
-      using Context): List[BoundsViolation] = withMode(Mode.CheckBounds) {
+      using Context): List[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
     val argTypes = args.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
@@ -732,7 +738,7 @@ object TypeOps:
    *  If the subtyping is true, the instantiated type `p.child[Vs]` is
    *  returned. Otherwise, `NoType` is returned.
    */
-  def refineUsingParent(parent: Type, child: Symbol)(using Context): Type = {
+  def refineUsingParent(parent: Type, child: Symbol, mixins: List[Type] = Nil)(using Context): Type = {
     // <local child> is a place holder from Scalac, it is hopeless to instantiate it.
     //
     // Quote from scalac (from nsc/symtab/classfile/Pickler.scala):
@@ -747,7 +753,7 @@ object TypeOps:
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
     inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds.addMode(Mode.GadtConstraintInference)) {
-      instantiateToSubType(childTp, parent).dealias
+      instantiateToSubType(childTp, parent, mixins).dealias
     }
   }
 
@@ -758,7 +764,7 @@ object TypeOps:
    *
    *  Otherwise, return NoType.
    */
-  private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
+  private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = {
     // In order for a child type S to qualify as a valid subtype of the parent
     // T, we need to test whether it is possible S <: T.
     //
@@ -875,6 +881,7 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
+      for tp <- mixins.reverseIterator do protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }

@@ -6,7 +6,7 @@ import scala.annotation.*
 import scala.math.{Pi, max}
 import example.level2.Documentation
 
-abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c2: List[T]) extends Seq[T] with Product with Serializable
+abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c2: List[T]) extends Seq[T], Product, Serializable
 {
     def this(ac: String)
     = this(ac, Nil)

@@ -17,7 +17,7 @@ package object parsing {
   def precedence(operator: Name): Int =
     if (operator eq nme.ERROR) -1
     else {
-      val firstCh = operator.firstPart.head
+      val firstCh = operator.firstCodePoint
       if (isScalaLetter(firstCh)) 1
       else if (operator.isOpAssignmentName) 0
       else firstCh match {

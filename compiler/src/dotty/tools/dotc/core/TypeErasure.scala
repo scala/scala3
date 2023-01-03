@@ -591,9 +591,9 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       tp
     case tp: TypeRef =>
       val sym = tp.symbol
-      if (!sym.isClass) this(tp.translucentSuperType)
-      else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClass(tp)
-      else if (defn.isSyntheticFunctionClass(sym)) defn.functionTypeErasure(sym)
+      if !sym.isClass then this(checkedSuperType(tp))
+      else if semiEraseVCs && isDerivedValueClass(sym) then eraseDerivedValueClass(tp)
+      else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
       val tycon = tp.tycon
@@ -601,7 +601,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       else if (tycon.isRef(defn.PairClass)) erasePair(tp)
       else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
       else if (semiEraseVCs && isDerivedValueClass(tycon.classSymbol)) eraseDerivedValueClass(tp)
-      else apply(tp.translucentSuperType)
+      else this(checkedSuperType(tp))
     case tp: TermRef =>
       this(underlyingOfTermRef(tp))
     case _: ThisType =>
@@ -688,6 +688,18 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     case tp if (tp `eq` NoType) || (tp `eq` NoPrefix) =>
       tp
   }
+
+  /** Like translucentSuperType, but issue a fatal error if it does not exist. */
+  private def checkedSuperType(tp: TypeProxy)(using Context): Type =
+    val tp1 = tp.translucentSuperType
+    if !tp1.exists then
+      val msg = tp.typeConstructor match
+        case tycon: TypeRef =>
+          MissingType(tycon.prefix, tycon.name).toMessage.message
+        case _ =>
+          i"Cannot resolve reference to $tp"
+      throw FatalError(msg)
+    tp1
 
   /** Widen term ref, skipping any `()` parameter of an eventual getter. Used to erase a TermRef.
    *  Since getters are introduced after erasure, one would think that erasing a TermRef
@@ -815,7 +827,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           throw new MissingType(tp.prefix, tp.name)
         val sym = tp.symbol
         if (!sym.isClass) {
-          val info = tp.translucentSuperType
+          val info = checkedSuperType(tp)
           if (!info.exists) assert(false, i"undefined: $tp with symbol $sym")
           return sigName(info)
         }
@@ -841,7 +853,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         sigName( // todo: what about repeatedParam?
           if (erasureDependsOnArgs(sym)) this(tp)
           else if (sym.isClass) tp.underlying
-          else tp.translucentSuperType)
+          else checkedSuperType(tp))
       case ErasedValueType(_, underlying) =>
         sigName(underlying)
       case JavaArrayType(elem) =>

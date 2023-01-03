@@ -533,6 +533,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     case JavaArrayType(elemtp) => elemtp
     case tp: OrType if tp.tp1.isBottomType => tp.tp2.elemType
     case tp: OrType if tp.tp2.isBottomType => tp.tp1.elemType
-    case _ => self.baseType(defn.SeqClass).argInfos.headOption.getOrElse(NoType)
+    case _ =>
+      self.baseType(defn.SeqClass)
+      .orElse(self.baseType(defn.ArrayClass))
+      .argInfos.headOption.getOrElse(NoType)
   }
 }

@@ -1,4 +1,4 @@
-import language.experimental.fewerBraces
+import language.`3.3`
 class A:
   def f(x: Int)(y: Int): Int = x + y
 

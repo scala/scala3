@@ -28,8 +28,8 @@ class QueryParserTest:
 
   @Test
   def queryParserTests() = {
-    kinds.foreach(k => testCase(s"$k ", EngineMatchersQuery(List(ByKind(k), ByName("")))))
-    testCase("trait", EngineMatchersQuery(List(ByName("trait"))))
-    testCase("trait A", EngineMatchersQuery(List(ByKind("trait"), ByName("A"))))
-    testCase("`trait A`", EngineMatchersQuery(List(ByName("trait A"))))
+    kinds.foreach(k => testCase(s"$k ", NameAndKindQuery(Some(""), Some(k))))
+    testCase("trait", NameAndKindQuery(Some("trait"), None))
+    testCase("trait A", NameAndKindQuery(Some("A"), Some("trait")))
+    testCase("`trait A`", NameAndKindQuery(Some("trait A"), None))
   }

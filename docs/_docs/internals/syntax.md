@@ -211,7 +211,8 @@ FunArgType        ::=  Type
                     |  ‘=>’ Type                                                PrefixOp(=>, t)
 FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
-ParamValueType    ::=  Type [‘*’]                                               PostfixOp(t, "*")
+ParamValueType    ::=  [‘into’] ExactParamType                                  Into(t)
+ExactParamType    ::=  ParamValueType [‘*’]                                     PostfixOp(t, "*")
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
@@ -318,7 +319,10 @@ TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
 TypeCaseClause    ::=  ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
-Pattern1          ::=  Pattern2 [‘:’ RefinedType]                               Bind(name, Typed(Ident(wildcard), tpe))
+Pattern1          ::=  PatVar ‘:’ RefinedType                                   Bind(name, Typed(Ident(wildcard), tpe))
+                    | [‘-’] integerLiteral ‘:’ RefinedType                      Typed(pat, tpe)
+                    | [‘-’] floatingPointLiteral ‘:’ RefinedType                Typed(pat, tpe)
+                    |  Pattern2
 Pattern2          ::=  [id ‘@’] InfixPattern [‘*’]                              Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)

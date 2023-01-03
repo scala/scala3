@@ -11,11 +11,13 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
+import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Scopes._
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeError
+import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, RefinedType, TermRef, Type, TypeProxy}
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.util.Chars
@@ -45,7 +47,7 @@ object Completion {
    */
   def completions(pos: SourcePosition)(using Context): (Int, List[Completion]) = {
     val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
-    computeCompletions(pos, path)(using Interactive.contextOfPath(path))
+    computeCompletions(pos, path)(using Interactive.contextOfPath(path).withPhase(Phases.typerPhase))
   }
 
   /**

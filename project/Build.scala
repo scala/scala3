@@ -80,7 +80,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.2.2-RC1"
+  val referenceVersion = "3.2.2-RC2"
 
   val baseVersion = "3.3.0-RC1"
 
@@ -1192,6 +1192,9 @@ object Build {
             "isFullOpt" -> (stage == FullOptStage),
             "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
             "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+            "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
+            "compliantNegativeArraySizes" -> (sems.negativeArraySizes == CheckedBehavior.Compliant),
+            "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
             "strictFloats" -> sems.strictFloats,
             "productionMode" -> sems.productionMode,
@@ -1268,6 +1271,14 @@ object Build {
         )
       },
 
+      /* For some reason, in Scala 3, the implementation of IterableDefaultTest
+       * resolves to `scala.collection.ArrayOps.ArrayIterator`, whose `next()`
+       * method is not compliant when called past the last element on Scala.js.
+       * It relies on catching an `ArrayIndexOutOfBoundsException`.
+       * We have to ignore it here.
+       */
+      Test / testOptions := Seq(Tests.Filter(_ != "org.scalajs.testsuite.javalib.lang.IterableDefaultTest")),
+
       Test / managedResources ++= {
         val testDir = fetchScalaJSSource.value / "test-suite/js/src/test"
 
@@ -1303,6 +1314,7 @@ object Build {
 
         Seq(
           "-Ddotty.tests.classes.dottyLibraryJS=" + dottyLibraryJSJar,
+          "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
@@ -1322,6 +1334,7 @@ object Build {
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
+  val generateStableScala3Documentation  = inputKey[Unit]("Generate documentation for stable dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
 
   val generateReferenceDocumentation = inputKey[Unit]("Generate language reference documentation for Scala 3")
@@ -1465,6 +1478,12 @@ object Build {
         writeAdditionalFiles.dependsOn(generateDocumentation(config))
       }.evaluated,
 
+      generateStableScala3Documentation := Def.inputTaskDyn {
+        val extraArgs = spaceDelimited("<version>").parsed
+        val config = stableScala3(extraArgs.head)
+        generateDocumentation(config)
+      }.evaluated,
+
       generateTestcasesDocumentation := Def.taskDyn {
         generateDocumentation(Testcases)
       }.value,
@@ -1501,7 +1520,7 @@ object Build {
             .add(OutputDir("scaladoc/output/reference"))
             .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
             .add(ProjectName("Scala 3 Reference"))
-            .add(ProjectVersion("3.2.0")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
+            .add(ProjectVersion(baseVersion))
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
               s"${temp.getAbsolutePath}=github://lampepfl/dotty/language-reference-stable"
@@ -1816,9 +1835,10 @@ object Build {
       settings(disableDocSetting).
       settings(
         versionScheme := Some("semver-spec"),
-        if (mode == Bootstrapped) {
-          commonMiMaSettings
-        } else {
+        if (mode == Bootstrapped) Def.settings(
+          commonMiMaSettings,
+          mimaBinaryIssueFilters ++= MiMaFilters.TastyCore,
+        ) else {
           Nil
         }
       )
@@ -1860,22 +1880,22 @@ object ScaladocConfigs {
       case None => s"${sourcesPrefix}github://lampepfl/dotty/$v$outputPrefix"
     }
 
-  lazy val DefaultGenerationConfig = Def.task {
-    def distLocation = (dist / pack).value
-    def projectVersion = version.value
+  def defaultSourceLinks(version: String = dottyNonBootstrappedVersion, refVersion: String = dottyVersion) = Def.task {
     def stdLibVersion = stdlibVersion(NonBootstrapped)
-    def scalaLib = findArtifactPath(externalCompilerClasspathTask.value, "scala-library")
-    def dottyLib = (`scala3-library` / Compile / classDirectory).value
     def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
-
-    def defaultSourceLinks: SourceLinks = SourceLinks(
+    SourceLinks(
       List(
-        scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
-        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
-        dottySrcLink(referenceVersion),
+        scalaSrcLink(stdLibVersion, srcManaged(version, "scala") + "="),
+        dottySrcLink(refVersion, srcManaged(version, "dotty") + "=", "#library/src"),
+        dottySrcLink(refVersion),
         "docs=github://lampepfl/dotty/main#docs"
       )
     )
+  }
+
+  lazy val DefaultGenerationConfig = Def.task {
+    def distLocation = (dist / pack).value
+    def projectVersion = version.value
     def socialLinks = SocialLinks(List(
       "github::https://github.com/lampepfl/dotty",
       "discord::https://discord.com/invite/scala",
@@ -1893,7 +1913,7 @@ object ScaladocConfigs {
       List(),
       ProjectVersion(projectVersion),
       GenerateInkuire(true),
-      defaultSourceLinks,
+      defaultSourceLinks().value,
       skipByRegex,
       skipById,
       projectLogo,
@@ -1983,5 +2003,32 @@ object ScaladocConfigs {
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
       .withTargets(roots)
+  }
+
+  def stableScala3(version: String) = Def.task {
+    Scala3.value
+      .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped", version).value)
+      .add(ProjectVersion(version))
+      .add(SnippetCompiler(
+        List(
+          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/quoted=compile",
+          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/compiletime=compile"
+        )
+      ))
+      .add(CommentSyntax(List(
+        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src=markdown",
+        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src=wiki",
+        "wiki"
+      )))
+      .add(DocRootContent(s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src/rootdoc.txt"))
+      .withTargets(
+        Seq(
+          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
+          s"tmp/interfaces/target/classes",
+          s"out/bootstrap/tasty-core-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes"
+        )
+      )
+      .remove[SiteRoot]
+      .remove[ApiSubdirectory]
   }
 }

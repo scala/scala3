@@ -4,15 +4,15 @@ package <empty> {
   class ann(x: Seq[Any] @Repeated) extends annotation.Annotation() {
     private[this] val x: Seq[Any] @Repeated
   }
-  final lazy module val dependent-annot$package: dependent-annot$package = 
+  final lazy module val dependent-annot$package: dependent-annot$package =
     new dependent-annot$package()
-  final module class dependent-annot$package() extends Object() { 
+  final module class dependent-annot$package() extends Object() {
     this: dependent-annot$package.type =>
-    def f(y: C, z: C): Unit = 
+    def f(y: C, z: C): Unit =
       {
         def g(): C @ann([y,z : Any]*) = ???
-        val ac: 
-          (C => Array[String]) 
+        val ac:
+          (C => Array[String])
             {
               def apply(x: C): Array[String @ann([x : Any]*)]
             }

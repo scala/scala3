@@ -14,7 +14,7 @@ import dotty.tools.dotc.util.NoSourcePosition
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
 import scala.collection.mutable
-import core.Decorators.toMessage
+import core.Decorators.em
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -218,8 +218,8 @@ abstract class Reporter extends interfaces.ReporterResult {
   def summarizeUnreportedWarnings()(using Context): Unit =
     for (settingName, count) <- unreportedWarnings do
       val were = if count == 1 then "was" else "were"
-      val msg = s"there $were ${countString(count, settingName.tail + " warning")}; re-run with $settingName for details"
-      report(Warning(msg.toMessage, NoSourcePosition))
+      val msg = em"there $were ${countString(count, settingName.tail + " warning")}; re-run with $settingName for details"
+      report(Warning(msg, NoSourcePosition))
 
   /** Print the summary of warnings and errors */
   def printSummary()(using Context): Unit = {

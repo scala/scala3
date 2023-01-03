@@ -61,7 +61,6 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   @threadUnsafe lazy val AnnotationRetentionSourceAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
   @threadUnsafe lazy val AnnotationRetentionClassAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
   @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
-  @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = requiredClass("java.lang.annotation.Annotation")
 
   val bCodeAsmCommon: BCodeAsmCommon[int.type] = new BCodeAsmCommon(int)
 
@@ -80,7 +79,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       outputDirectory
     } catch {
       case ex: Throwable =>
-        report.error(s"Couldn't create file for class $cName\n${ex.getMessage}", ctx.source.atSpan(csym.span))
+        report.error(em"Couldn't create file for class $cName\n${ex.getMessage}", ctx.source.atSpan(csym.span))
         null
     }
   }
@@ -415,7 +414,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
             arrAnnotV.visitEnd()
           }          // for the lazy val in ScalaSigBytes to be GC'ed, the invoker of emitAnnotations() should hold the ScalaSigBytes in a method-local var that doesn't escape.
   */
-        case t @ Apply(constr, args) if t.tpe.derivesFrom(JavaAnnotationClass) =>
+        case t @ Apply(constr, args) if t.tpe.classSymbol.is(JavaAnnotation) =>
           val typ = t.tpe.classSymbol.denot.info
           val assocs = assocsFromApply(t)
           val desc = innerClasesStore.typeDescriptor(typ) // the class descriptor of the nested annotation class
@@ -423,7 +422,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           emitAssocs(nestedVisitor, assocs, bcodeStore)(innerClasesStore)
 
         case t =>
-          report.error(ex"Annotation argument is not a constant", t.sourcePos)
+          report.error(em"Annotation argument is not a constant", t.sourcePos)
       }
     }
 
@@ -872,10 +871,11 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       try body
       catch {
         case ex: Throwable =>
-          report.error(i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
-                      |signature: $sig
-                      |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
-                  """.trim, sym.sourcePos)
+          report.error(
+            em"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+                 |signature: $sig
+                 |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
+               """, sym.sourcePos)
           throw  ex
       }
     }

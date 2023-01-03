@@ -36,6 +36,12 @@ class BootstrappedOnlyCompilationTests {
     ).checkCompile()
   }
 
+  @Test def posWithCompilerCC: Unit =
+    implicit val testGroup: TestGroup = TestGroup("compilePosWithCompilerCC")
+    aggregateTests(
+      compileDir("tests/pos-with-compiler-cc/dotc", withCompilerOptions.and("-language:experimental.captureChecking"))
+    ).checkCompile()
+
   @Test def posWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosWithCompiler")
     aggregateTests(

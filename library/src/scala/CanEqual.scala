@@ -1,7 +1,7 @@
 package scala
 
 import annotation.implicitNotFound
-import scala.collection.{Seq, Set}
+import scala.collection.{Seq, Set, Map}
 
 /** A marker trait indicating that values of type `L` can be compared to values of type `R`. */
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
@@ -26,13 +26,17 @@ object CanEqual {
   given canEqualNumber: CanEqual[Number, Number] = derived
   given canEqualString: CanEqual[String, String] = derived
 
-  // The next 6 definitions can go into the companion objects of their corresponding
+  // The following definitions can go into the companion objects of their corresponding
   // classes. For now they are here in order not to have to touch the
   // source code of these classes
   given canEqualSeqs[T, U](using eq: CanEqual[T, U]): CanEqual[Seq[T], Seq[U]] = derived
   given canEqualSeq[T](using eq: CanEqual[T, T]): CanEqual[Seq[T], Seq[T]] = derived // for `case Nil` in pattern matching
 
   given canEqualSet[T, U](using eq: CanEqual[T, U]): CanEqual[Set[T], Set[U]] = derived
+
+  given canEqualMap[K1, V1, K2, V2](
+    using eqK: CanEqual[K1, K2], eqV: CanEqual[V1, V2]
+  ): CanEqual[Map[K1, V1], Map[K2, V2]] = derived
 
   given canEqualOptions[T, U](using eq: CanEqual[T, U]): CanEqual[Option[T], Option[U]] = derived
   given canEqualOption[T](using eq: CanEqual[T, T]): CanEqual[Option[T], Option[T]] = derived // for `case None` in pattern matching

@@ -300,6 +300,7 @@ object NameKinds {
   val UniqueInlineName: UniqueNameKind       = new UniqueNameKind("$i")
   val InlineScrutineeName: UniqueNameKind    = new UniqueNameKind("$scrutinee")
   val InlineBinderName: UniqueNameKind       = new UniqueNameKind("$proxy")
+  val MacroNames: UniqueNameKind             = new UniqueNameKind("$macro$")
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.

@@ -11,11 +11,13 @@ trait PageEntryJS extends js.Object {
   val l: String  = js.native
   val e: Boolean = js.native
   val k: String  = js.native
+  val x: String  = js.native
 }
 
 case class PageEntry(
   fullName: String,
   description: String,
+  extraDescription: String,
   extensionTarget: String,
   location: String,
   isLocationExternal: Boolean,
@@ -37,6 +39,7 @@ object PageEntry {
   def apply(jsObj: PageEntryJS): PageEntry = PageEntry(
       jsObj.t,
       jsObj.d,
+      jsObj.x,
       jsObj.i,
       jsObj.l,
       jsObj.e,

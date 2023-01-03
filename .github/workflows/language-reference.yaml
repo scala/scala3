@@ -1,4 +1,4 @@
-name: language-reference-documentation
+name: Language reference documentation
 
 on:
   push:
@@ -14,14 +14,14 @@ permissions:
 
 jobs:
   build-and-push:
+    name: Build reference documentation and push it
     permissions:
       contents: write  # for Git to git push
-      pull-requests: write  # for peter-evans/create-pull-request to create a PR
     runs-on: ubuntu-latest
     steps:
       - name: Get current date
         id: date
-        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Git Checkout
         uses: actions/checkout@v3
@@ -67,26 +67,22 @@ jobs:
           fi
           cd ..
 
-      - name: Merge changes to main
-        if: github.event_name == 'push'
-        run: |
-          cd dotty
-          git fetch origin main:main
-          git checkout main
-          git config user.name gh-actions
-          git config user.email actions@github.com
-          git merge language-reference-stable
-          cd ..
-
-      - name: Create pull request with backport to main
-        if: github.event_name == 'push'
-        uses: peter-evans/create-pull-request@v4
+  backport-to-main:
+    name: Create pull request with backport to main
+    permissions:
+      pull-requests: write  # for repo-sync/pull-request to create a PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: repo-sync/pull-request@v2
         with:
-          path: dotty
-          branch: language-reference-backport
-          labels: area:documentation
-          title: Backport changes from stable documentation branch
-          body: This pull request is created automatically after push to stable documentation branch and backports the changes
-          reviewers: pikinier20,julienrf
-          assignees: pikinier20
+          destination_branch: main
+          pr_label: area:documentation
+          pr_title: Sync with the stable documentation branch
+          pr_body: |
+            This pull request is syncing the main with changes from language-reference-stable.
+
+            It was created automatically after ${{ github.event.head_commit.id }} by @${{ github.event.head_commit.author.username }}
+          pr_assignee: ${{ github.event.head_commit.author.username }}
 

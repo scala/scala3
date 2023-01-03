@@ -2,7 +2,7 @@ import scala.compiletime.erasedValue
 import scala.deriving.Mirror
 
 object Test extends App {
-  inline def checkElems[A, T](using inline A: Mirror.SumOf[A]): Unit =
+  inline def checkElems[A, T](using A: Mirror.SumOf[A]): Unit = // removed inline from parameter to avoid unsound path selection
     inline erasedValue[A.MirroredElemTypes] match {
       case _: T => ()
     }

@@ -23,5 +23,5 @@
 /* version dropdown */
 #version-dropdown {
   top: calc(6 * var(--base-spacing));
-  left: calc(34.25 * var(--base-spacing));
+  left: calc(19 * var(--base-spacing));
 }

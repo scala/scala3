@@ -64,7 +64,6 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions.")
   val indent: Setting[Boolean] = BooleanSetting("-indent", "Together with -rewrite, remove {...} syntax when possible due to significant indentation.")
   val noindent: Setting[Boolean] = BooleanSetting("-no-indent", "Require classical {...} syntax, indentation is not significant.", aliases = List("-noindent"))
-  val YindentColons: Setting[Boolean] = BooleanSetting("-Yindent-colons", "(disabled: use -language:experimental.fewerBraces instead)")
 
   /* Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.", aliases = List("--print-tasty"))
@@ -325,6 +324,7 @@ private sealed trait YSettings:
   val Yscala2Unpickler: Setting[String] = StringSetting("-Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
 
   val YnoImports: Setting[Boolean] = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
+  val Yimports: Setting[List[String]] = MultiStringSetting("-Yimports", helpArg="", "Custom root imports. If set, none of scala.*, java.lang.*, or Predef.* will be imported unless explicitly included.")
   val YnoGenericSig: Setting[Boolean] = BooleanSetting("-Yno-generic-signatures", "Suppress generation of generic signatures for Java.")
   val YnoPredef: Setting[Boolean] = BooleanSetting("-Yno-predef", "Compile without importing Predef.")
   val Yskip: Setting[List[String]] = PhasesSetting("-Yskip", "Skip")

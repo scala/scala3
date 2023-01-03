@@ -9,6 +9,7 @@
 .label-only-button:hover {
   background-color: var(--action-primary-background-hover);
   color: var(--action-primary-content-hover);
+  cursor: pointer;
 }
 
 .label-only-button:active {

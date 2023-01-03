@@ -1,0 +1,12 @@
+-- [E006] Not Found Error: tests/neg/yimports-nojava.scala:5:16 --------------------------------------------------------
+5 |  def g() = new Integer(42) // error
+  |                ^^^^^^^
+  |                Not found: type Integer
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/yimports-nojava.scala:6:16 --------------------------------------------------------
+6 |  def sleep() = Thread.sleep(42000L) // error
+  |                ^^^^^^
+  |                Not found: Thread
+  |
+  | longer explanation available when compiling with `-explain`

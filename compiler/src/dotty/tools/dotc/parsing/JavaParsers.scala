@@ -71,10 +71,10 @@ object JavaParsers {
       }
     }
 
-    def syntaxError(msg: String, skipIt: Boolean): Unit =
+    def syntaxError(msg: Message, skipIt: Boolean): Unit =
       syntaxError(in.offset, msg, skipIt)
 
-    def syntaxError(offset: Int, msg: String, skipIt: Boolean): Unit = {
+    def syntaxError(offset: Int, msg: Message, skipIt: Boolean): Unit = {
       if (offset > lastErrorOffset) {
         syntaxError(msg, offset)
         // no more errors on this token.
@@ -178,9 +178,7 @@ object JavaParsers {
       if (in.token != token) {
         val offsetToReport = in.offset
         val msg =
-          tokenString(token) + " expected but " +
-            tokenString(in.token) + " found."
-
+          em"${tokenString(token)} expected but ${tokenString(in.token)} found."
         syntaxError(offsetToReport, msg, skipIt = true)
       }
       if (in.token == token) in.nextToken()
@@ -271,7 +269,7 @@ object JavaParsers {
           case FLOAT   => in.nextToken(); TypeTree(FloatType)
           case DOUBLE  => in.nextToken(); TypeTree(DoubleType)
           case BOOLEAN => in.nextToken(); TypeTree(BooleanType)
-          case _       => syntaxError("illegal start of type", skipIt = true); errorTypeTree
+          case _       => syntaxError(em"illegal start of type", skipIt = true); errorTypeTree
         }
       }
 
@@ -762,7 +760,7 @@ object JavaParsers {
       accept(SEMI)
       val names = buf.toList
       if (names.length < 2) {
-        syntaxError(start, "illegal import", skipIt = false)
+        syntaxError(start, em"illegal import", skipIt = false)
         List()
       }
       else {
@@ -822,7 +820,7 @@ object JavaParsers {
       val iface = atSpan(start, nameOffset) {
         TypeDef(
           name,
-          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.Trait | Flags.JavaInterface | Flags.Abstract)
+          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.JavaInterface)
       }
       addCompanionObject(statics, iface)
     }
@@ -858,10 +856,9 @@ object JavaParsers {
       }
       (statics.toList, members.toList)
     }
-    def annotationParents: List[Select] = List(
-      scalaAnnotationDot(tpnme.Annotation),
-      Select(javaLangDot(nme.annotation), tpnme.Annotation),
-      scalaAnnotationDot(tpnme.ClassfileAnnotation)
+    def annotationParents: List[Tree] = List(
+      javaLangObject(),
+      Select(javaLangDot(nme.annotation), tpnme.Annotation)
     )
     def annotationDecl(start: Offset, mods: Modifiers): List[Tree] = {
       accept(AT)
@@ -877,7 +874,7 @@ object JavaParsers {
         List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
       val templ = makeTemplate(annotationParents, constr :: body, List(), true)
       val annot = atSpan(start, nameOffset) {
-        TypeDef(name, templ).withMods(mods | Flags.Abstract)
+        TypeDef(name, templ).withMods(mods | Flags.JavaInterface | Flags.JavaAnnotation)
       }
       addCompanionObject(statics, annot)
     }
@@ -955,7 +952,7 @@ object JavaParsers {
       case INTERFACE => interfaceDecl(start, mods)
       case AT        => annotationDecl(start, mods)
       case CLASS     => classDecl(start, mods)
-      case _         => in.nextToken(); syntaxError("illegal start of type declaration", skipIt = true); List(errorTypeTree)
+      case _         => in.nextToken(); syntaxError(em"illegal start of type declaration", skipIt = true); List(errorTypeTree)
     }
 
     def tryConstant: Option[Constant] = {

@@ -2,11 +2,11 @@
 
 .switcher-container {
   display: flex;
-  flex-flow: row;
-  width: 100%;
-  height: calc(4.5 * var(--base-spacing));
-  gap: 1px;
-  margin-bottom: calc(3.75 * var(--base-spacing));
+    flex-flow: row;
+    width: 100%;
+    height: calc(4.5 * var(--base-spacing));
+    gap: 1px;
+    padding: calc(3 * var(--base-spacing)) 0;
 }
 
 .switcher {

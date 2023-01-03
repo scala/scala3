@@ -14,7 +14,7 @@ import scala.reflect.TypeTest
  *  }
  *  ```
  */
-transparent inline def quotes(using inline q: Quotes): q.type = q
+transparent inline def quotes(using q: Quotes): q.type = q
 
 /** Quotation context provided by a macro expansion or in the scope of `scala.quoted.staging.run`.
  *  Used to perform all operations on quoted `Expr` or `Type`.
@@ -3675,7 +3675,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
       *  this symbol to the ValDef constructor.
       *
-      *  Note: Also see reflect.let
+      *  Note: Also see ValDef.let
       *
       *  @param parent The owner of the val/var/lazy val
       *  @param name The name of the val/var/lazy val
@@ -3704,6 +3704,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Definition not available */
       def noSymbol: Symbol
+
+      /** A fresh name for class or member symbol names.
+       *
+       *  Fresh names are constructed using the following format `prefix + "$macro$" + freshIndex`.
+       *  The `freshIndex` are unique within the current source file.
+       *
+       *  Examples: See `scala.annotation.MacroAnnotation`
+       *
+       *  @param prefix Prefix of the fresh name
+       */
+      @experimental
+      def freshName(prefix: String): String
     }
 
     /** Makes extension methods on `Symbol` available without any imports */
@@ -3733,6 +3745,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** The full name of this symbol up to the root package */
         def fullName: String
+
+        /** Type of the definition */
+        @experimental
+        def info: TypeRepr
 
         /** The position of this symbol */
         def pos: Option[Position]
@@ -3879,17 +3895,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
-        @deprecated("Use typeMember", "3.1.0")
+        @deprecated("Use declaredType or typeMember", "3.1.0")
         def memberType(name: String): Symbol
 
-        /** Type member with the given name directly declared in the class */
+        /** Type member with the given name declared or inherited in the class */
         def typeMember(name: String): Symbol
 
         /** Type member directly declared in the class */
-        @deprecated("Use typeMembers", "3.1.0")
+        @deprecated("Use declaredTypes or typeMembers", "3.1.0")
         def memberTypes: List[Symbol]
 
-        /** Type member directly declared in the class */
+        /** Type member directly declared or inherited in the class */
         def typeMembers: List[Symbol]
 
         /** All members directly declared in the class */
@@ -4278,6 +4294,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is implemented as a Java static */
       def JavaStatic: Flags
 
+      /** Is this an annotation defined in Java */
+      @experimental def JavaAnnotation: Flags
+
       /** Is this symbol `lazy` */
       def Lazy: Flags
 
@@ -4336,7 +4355,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def StableRealizable: Flags
 
       /** Is this symbol marked as static. Mapped to static Java member */
-      def Static: Flags
+      @deprecated("Use JavaStatic instead", "3.3.0") def Static: Flags
 
       /** Is this symbol to be tagged Java Synthetic */
       def Synthetic: Flags
@@ -4369,6 +4388,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       end extension
     }
+
 
     ///////////////
     // POSITIONS //

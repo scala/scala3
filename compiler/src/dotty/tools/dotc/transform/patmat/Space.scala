@@ -187,7 +187,7 @@ trait SpaceLogic {
       case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
         isSubType(tp1, tp2)
         && covers(fun, tp1, ss.length)
-        && isSubspace(Prod(tp2, fun, signature(fun, tp2, ss.length).map(Typ(_, false))), b)
+        && isSubspace(Prod(tp2, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
       case (Prod(_, fun1, ss1), Prod(_, fun2, ss2)) =>
         isSameUnapply(fun1, fun2) && ss1.zip(ss2).forall((isSubspace _).tupled)
     }
@@ -597,11 +597,11 @@ class SpaceEngine(using Context) extends SpaceLogic {
     }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
-  def decompose(tp: Type): List[Typ] =
-    tp.dealias match {
+  def decompose(tp: Type): List[Typ] = trace(i"decompose($tp)", debug, show(_: Seq[Space])) {
+    def rec(tp: Type, mixins: List[Type]): List[Typ] = tp.dealias match {
       case AndType(tp1, tp2) =>
         def decomposeComponent(tpA: Type, tpB: Type): List[Typ] =
-          decompose(tpA).flatMap {
+          rec(tpA, tpB :: mixins).flatMap {
             case Typ(tp, _) =>
               if tp <:< tpB then
                 Typ(tp, decomposed = true) :: Nil
@@ -642,7 +642,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
-          val refined = TypeOps.refineUsingParent(tp, sym1)
+          val refined = TypeOps.refineUsingParent(tp, sym1, mixins)
 
           debug.println(sym1.show + " refined to " + refined.show)
 
@@ -663,6 +663,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
         parts.map(Typ(_, true))
     }
+    rec(tp, Nil)
+  }
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean =
