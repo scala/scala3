@@ -11,7 +11,7 @@ package scala.util.control
  *  Instances of `ControlException` should not normally have a cause.
  *  Legacy subclasses may set a cause using `initCause`.
  */
-abstract class ControlException(message: String | Null) extends Throwable(
+abstract class ControlException(message: String | Null) extends RuntimeException(
   message, /*cause*/ null, /*enableSuppression=*/ false, /*writableStackTrace*/ false):
 
   def this() = this(message = null)
