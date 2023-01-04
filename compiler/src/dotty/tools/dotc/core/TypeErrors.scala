@@ -12,9 +12,21 @@ import Denotations._
 import Decorators._
 import reporting._
 import ast.untpd
-import config.Printers.cyclicErrors
+import config.Printers.{cyclicErrors, noPrinter}
+
+import scala.annotation.constructorOnly
 
 abstract class TypeError(using creationContext: Context) extends Exception(""):
+
+  /** Will the stack trace of this exception be filled in?
+   *  This is expensive and only useful for debugging purposes.
+   */
+  def computeStackTrace: Boolean =
+    ctx.debug || (cyclicErrors != noPrinter && this.isInstanceOf[CyclicReference] && !(ctx.mode is Mode.CheckCyclic))
+
+  override def fillInStackTrace(): Throwable =
+    if computeStackTrace then super.fillInStackTrace().nn
+    else this
 
   /** Convert to message. This takes an additional Context, so that we
    *  use the context when the message is first produced, i.e. when the TypeError
@@ -164,7 +176,7 @@ class CyclicReference private (val denot: SymDenotation)(using Context) extends 
 object CyclicReference:
   def apply(denot: SymDenotation)(using Context): CyclicReference =
     val ex = new CyclicReference(denot)
-    if !(ctx.mode is Mode.CheckCyclic) || ctx.settings.Ydebug.value then
+    if ex.computeStackTrace then
       cyclicErrors.println(s"Cyclic reference involving! $denot")
       val sts = ex.getStackTrace.asInstanceOf[Array[StackTraceElement]]
       for (elem <- sts take 200)
