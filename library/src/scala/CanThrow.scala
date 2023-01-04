@@ -11,6 +11,11 @@ import annotation.{implicitNotFound, experimental, capability}
 erased class CanThrow[-E <: Exception]
 
 @experimental
+object CanThrow:
+  def apply[A <: Exception, B <: Exception](ct1: CanThrow[A], ct2: CanThrow[B]): CanThrow[A | B] =
+    compiletime.erasedValue
+
+@experimental
 object unsafeExceptions:
   given canThrowAny: CanThrow[Exception] = compiletime.erasedValue
 

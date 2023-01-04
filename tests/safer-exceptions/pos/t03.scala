@@ -1,13 +1,16 @@
 import language.experimental.saferExceptions
-import java.io.*
 
-def multipleErrors() throws IOException, SecurityException : Int = ???
+class A extends Exception
+class B extends Exception
+class C extends Exception
+def multipleErrors() throws A, B, C : Int = ???
 
-@main def main : Int =
+def main : Int =
   try
     try
       multipleErrors()
     catch
-      case _: IOException => ???
+      case _: A => ???
   catch
-    case _: SecurityException => ???
+    case _: B => ???
+    case _: C => ???

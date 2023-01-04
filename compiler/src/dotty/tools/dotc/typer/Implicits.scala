@@ -871,27 +871,65 @@ trait Implicits:
 
   private var synthesizer: Synthesizer | Null = null
 
+  // =============================== Implicit Search of a CanThrow Capability =====================
+
+  /**
+   * Combain results of a CanThrow capability search
+   */
+  def resolveCanThrow(results: List[SearchResult], acc: SearchResult | Null = null)(using Context): SearchResult =
+    (results, acc) match
+      case (Nil, _) => acc
+      case (x :: xs, null) => resolveCanThrow(xs, x)
+      case (SearchFailure(f) :: xs, SearchFailure(fcc)) =>
+        // TODO : We should merge both failure together
+        resolveCanThrow(xs, acc)
+      case ((failure@SearchFailure(_)) :: xs, _: SearchSuccess) =>
+        // Check the remaining of the list for other failures, success will be ignored
+        resolveCanThrow(xs, failure)
+      case ((_: SearchSuccess) :: xs, failure@SearchFailure(_)) =>
+        // Ignore success and propagate the failure
+        resolveCanThrow(xs, failure)
+      case (SearchSuccess(arg, _, _, _) :: xs, SearchSuccess(argAcc, a, b, c)) =>
+        // Merge both success together
+        // TODO HR : Still have a problem with the inference here
+        val capability = typed {
+          untpd.Apply(
+            untpd.Select(untpd.Ident(defn.CanThrowClass.name.toTermName), nme.apply.toTermName),
+            arg :: argAcc :: Nil
+          )
+        }
+        // TODO HR : Resolve fix parameters a, b & c to reflect the merge
+        resolveCanThrow(xs, SearchSuccess(capability, a, b, c)(ctx.typerState, ctx.gadt))
+
+
+  /**
+   * Find all implicit parameters for a CanThrow capability and combain them into one SearchResult
+   */
+  def inferImplicitCanThrow(formal: AppliedType, span: Span)(using Context) : SearchResult =
+    val AppliedType(base, args) = formal
+    assert(base.isRef(defn.CanThrowClass.asType))
+    val types = (for arg <- args yield OrType.split(arg)).flatten.filter(_.isCheckedException)
+    saferExceptions.println(i"implicit search for a CanThrow for each type in $types")
+    val results =
+      for t <- types
+      yield
+        inferImplicit(defn.CanThrowClass.typeRef.appliedTo(t), EmptyTree, span)
+    saferExceptions.println(i"capabilities $results")
+    resolveCanThrow(results)
+
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
   def inferImplicitArg(formal: Type, span: Span)(using Context): Tree =
-    // TODO HR : Split the CanThrow capability here in case of a union type
-    // TODO HR : Still need to combine them all into one CanThrow clause
     // If trying to infer a CanThrow capability, split it in case of a UnionType
-    val a = formal match
-        case AppliedType(base, args) if base.isRef(defn.CanThrowClass.asType) =>
-          val t =
-            for arg <- args yield
-              arg match
-                case OrType(lhs, rhs) => lhs :: rhs :: Nil // Splitting or type should be done recursively
-                case _ => arg :: Nil
-          saferExceptions.println(i"${t.flatten}")
-          (for a <- t.flatten yield inferImplicit(defn.CanThrowClass.typeRef.appliedTo(a), EmptyTree, span)).head
-        case _ =>
-          inferImplicit(formal, EmptyTree, span)
-    a match
+    val result = formal match
+      case f@AppliedType(base, _) if base.isRef(defn.CanThrowClass.asType) =>
+        inferImplicitCanThrow(f, span)
+      case _ => inferImplicit(formal, EmptyTree, span)
+    result match
       case SearchSuccess(arg, _, _, _) => arg
       case fail @ SearchFailure(failed) =>
+        println(s"$failed")
         if fail.isAmbiguous then failed
         else
           if synthesizer == null then synthesizer = Synthesizer(this)
@@ -904,7 +942,6 @@ trait Implicits:
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {
-    saferExceptions.println(i"Trying to find given instance of type $formal")
     val arg = inferImplicitArg(formal, span)
     if (arg.tpe.isInstanceOf[SearchFailureType])
       report.error(missingArgMsg(arg, formal, ""), ctx.source.atSpan(span))
