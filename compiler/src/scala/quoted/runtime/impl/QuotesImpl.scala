@@ -2487,8 +2487,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val mod = dotc.core.Symbols.newCompleteModuleSymbol(
           owner,
           name.toTermName,
-          modFlags | Flags.Final | Flags.Lazy | Flags.Module,
-          clsFlags | Flags.Final | Flags.Module,
+          modFlags | dotc.core.Flags.ModuleValCreationFlags,
+          clsFlags | dotc.core.Flags.ModuleClassCreationFlags,
           parents.asInstanceOf, // FIXME
           dotc.core.Scopes.newScope,
           privateWithin)
