@@ -79,6 +79,7 @@ object report:
     val fullPos = addInlineds(pos)
     ctx.reporter.report(new StickyError(ex.toMessage, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
+    if ctx.settings.YdebugTypeError.value then ex.printStackTrace()
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, from: SourceVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(from) then
