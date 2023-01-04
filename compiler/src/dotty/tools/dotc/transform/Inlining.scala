@@ -65,7 +65,7 @@ class Inlining extends MacroTransform with IdentityDenotTransformer {
   private class InliningTreeMap extends TreeMapWithImplicits {
 
     /** List of top level classes added by macro annotation in a package object.
-     *  These are added the PackageDef that owns this particular package object.
+     *  These are added to the PackageDef that owns this particular package object.
      */
     private val topClasses = new collection.mutable.ListBuffer[Tree]
 

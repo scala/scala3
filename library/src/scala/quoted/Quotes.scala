@@ -3641,7 +3641,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // TODO: add flags and privateWithin
       @experimental def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
 
-      /** Generates a new module symbol with an associated module class symbol.
+      /** Generates a new module symbol with an associated module class symbol,
        *  This returns the module symbol. The module class can be accessed calling `moduleClass` on this symbol.
        *
        *  Example usage:
@@ -3684,10 +3684,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param parent The owner of the class
        *  @param name The name of the class
-       *  @param modFlags extra flags to with which the module symbol should be constructed
-       *  @param clsFlags extra flags to with which the module class symbol should be constructed
+       *  @param modFlags extra flags with which the module symbol should be constructed
+       *  @param clsFlags extra flags with which the module class symbol should be constructed
        *  @param parents The parent classes of the class. The first parent must not be a trait.
-       *  @param decls The member declarations of the module provided the symbol of this class
+       *  @param decls A function that takes the symbol of the module class as input and return the symbols of its declared members
        *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
        *
        *  This symbol starts without an accompanying definition.
