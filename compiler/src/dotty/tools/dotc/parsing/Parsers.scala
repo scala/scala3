@@ -3595,13 +3595,20 @@ object Parsers {
      * @return A List of all the exceptions allowed to be thrown
      */
     def throwsClauseOpt : List[Tree] =
-      if in.featureEnabled(Feature.saferExceptions) then
-        if(isIdent(nme.throws))
-          in.nextToken()
-          val except = commaSeparated(() => toplevelTyp())
-          Printers.saferExceptions.println(i"Parser will add a throws clause for the given exceptions : $except")
+      val startOffset = in.offset
+      if (isIdent(nme.throws))
+        in.nextToken()
+        val except = commaSeparated(() => toplevelTyp())
+        Printers.saferExceptions.println(i"Parser will add a throws clause for the given exceptions : $except")
+        if in.featureEnabled(Feature.saferExceptions) then
           except
         else
+          report.error(
+            em"""
+                |This syntax is part of the 'safer exceptions' project. To enable it, please add
+                |the following import :
+                |   import scala.language.experimental.saferExceptions
+                |""".stripMargin, source.atSpan(Span(startOffset, in.offset)))
           Nil
       else
         Nil

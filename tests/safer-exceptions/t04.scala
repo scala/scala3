@@ -1,10 +1,10 @@
-import scala.language.experimental.saferExceptions
+//import scala.language.experimental.saferExceptions
 
-@throws[Exception]
-def test : Int = ???
+//@throws[Exception]
+def test throws Exception : Int = ???
 
 def main : Int =
-  //try
-  test
-  //catch
-  //  case _: Exception => ???
+  try
+    test
+  catch
+    case _: Exception => ???
