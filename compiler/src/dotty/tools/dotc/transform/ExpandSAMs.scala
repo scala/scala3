@@ -48,7 +48,7 @@ class ExpandSAMs extends MiniPhase:
       tpt.tpe match {
         case NoType =>
           tree // it's a plain function
-        case tpe if defn.isContextFunctionType(tpe) =>
+        case tpe if defn.isFunctionOrPolyType(tpe) =>
           tree
         case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
           val tpe1 = checkRefinements(tpe, fn)

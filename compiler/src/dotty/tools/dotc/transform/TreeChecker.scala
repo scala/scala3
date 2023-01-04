@@ -670,6 +670,9 @@ object TreeChecker {
       else assert(tpt.typeOpt =:= pt)
 
       // Check that the types of the args conform to the types of the contents of the hole
+      val typeArgsTypes = args.collect { case arg if arg.isType =>
+        arg.typeOpt
+      }
       val argQuotedTypes = args.map { arg =>
         if arg.isTerm then
           val tpe = arg.typeOpt.widenTermRefExpr match
@@ -687,7 +690,29 @@ object TreeChecker {
       val contextualResult =
         defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =
-        defn.FunctionOf(argQuotedTypes, contextualResult)
+        if typeArgsTypes.isEmpty then defn.FunctionOf(argQuotedTypes, contextualResult)
+        else RefinedType(defn.PolyFunctionType, nme.apply, PolyType(typeArgsTypes.map(_ => TypeBounds.empty))(pt =>
+          val tpParamMap = new TypeMap {
+            private val mapping = typeArgsTypes.map(_.typeSymbol).zip(pt.paramRefs).toMap
+            def apply(tp: Type): Type = tp match
+              case tp: TypeRef => mapping.getOrElse(tp.typeSymbol, tp)
+              case tp => mapOver(tp)
+          }
+          MethodType(
+            args.zipWithIndex.map { case (arg, idx) =>
+              if arg.isTerm then
+                val tpe = arg.typeOpt.widenTermRefExpr match
+                  case _: MethodicType =>
+                    // Special erasure for captured function references
+                    // See `SpliceTransformer.transformCapturedApplication`
+                    defn.AnyType
+                  case tpe => tpe
+                defn.QuotedExprClass.typeRef.appliedTo(tpParamMap(tpe))
+              else defn.QuotedTypeClass.typeRef.appliedTo(tpParamMap(arg.typeOpt))
+            },
+            tpParamMap(contextualResult))
+          )
+        )
       assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")
 
       tree1

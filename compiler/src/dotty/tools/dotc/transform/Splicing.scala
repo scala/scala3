@@ -24,6 +24,7 @@ import dotty.tools.dotc.config.ScalaRelease.*
 import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags
+import dotty.tools.dotc.staging.DirectTypeOf
 
 import scala.annotation.constructorOnly
 
@@ -44,12 +45,13 @@ object Splicing:
  *  contains the quotes with references to all cross-quote references. There are some special rules
  *  for references in the LHS of assignments and cross-quote method references.
  *
- *  In the following code example `x1` and `x2` are cross-quote references.
+ *  In the following code example `x1`, `x2` and `U` are cross-quote references.
  *  ```
  *  '{ ...
- *    val x1: T1 = ???
- *    val x2: T2 = ???
- *    ${ (q: Quotes) ?=> f('{ g(x1, x2) }) }: T3
+ *    type U
+ *    val x1: T = ???
+ *    val x2: U = ???
+ *    ${ (q: Quotes) ?=> f('{ g[U](x1, x2) }) }: T3
  *  }
  *  ```
  *
@@ -60,15 +62,15 @@ object Splicing:
  *  '{ ...
  *     val x1: T1 = ???
  *     val x2: T2 = ???
- *     {{{ 0 | T3 | x1, x2 |
- *       (x1$: Expr[T1], x2$: Expr[T2]) => // body of this lambda does not contain references to x1 or x2
- *         (q: Quotes) ?=> f('{ g(${x1$}, ${x2$}) })
+ *     {{{ 0 | T3 | U, x1, x2 |
+ *       [U$1] => (U$2: Type[U$1], x1$: Expr[T], x2$: Expr[U$1]) => // body of this lambda does not contain references to U, x1 or x2
+ *         (q: Quotes) ?=> f('{ @SplicedType type U$3 = [[[ 0 | U$2 | | U$1 ]]]; g[U$3](${x1$}, ${x2$}) })
  *
  *     }}}
  *   }
  *   ```
  *
- *  and then performs the same transformation on `'{ g(${x1$}, ${x2$}) }`.
+ *  and then performs the same transformation on `'{ @SplicedType type U$3 = [[[ 0 | U$2 | | U$1 ]]]; g[U$3](${x1$}, ${x2$}) }`.
  *
  */
 class Splicing extends MacroTransform:
@@ -132,7 +134,7 @@ class Splicing extends MacroTransform:
             case None =>
               val holeIdx = numHoles
               numHoles += 1
-              val hole = tpd.Hole(false, holeIdx, Nil, ref(qual), TypeTree(tp))
+              val hole = tpd.Hole(false, holeIdx, Nil, ref(qual), TypeTree(tp.dealias))
               typeHoles.put(qual.symbol, hole)
               hole
           cpy.TypeDef(tree)(rhs = hole)
@@ -154,7 +156,7 @@ class Splicing extends MacroTransform:
 
     private def transformAnnotations(tree: DefTree)(using Context): Unit =
       tree.symbol.annotations = tree.symbol.annotations.mapconserve { annot =>
-        val newAnnotTree = transform(annot.tree)(using ctx.withOwner(tree.symbol))
+        val newAnnotTree = transform(annot.tree)
         if (annot.tree == newAnnotTree) annot
         else ConcreteAnnotation(newAnnotTree)
       }
@@ -198,10 +200,57 @@ class Splicing extends MacroTransform:
       val newTree = transform(tree)
       val (refs, bindings) = refBindingMap.values.toList.unzip
       val bindingsTypes = bindings.map(_.termRef.widenTermRefExpr)
-      val methType = MethodType(bindingsTypes, newTree.tpe)
+      val types = bindingsTypes.collect {
+        case AppliedType(tycon, List(arg: TypeRef)) if tycon.derivesFrom(defn.QuotedTypeClass) => arg
+      }
+      val newTypeParams = types.map { tpe =>
+        newSymbol(
+          spliceOwner,
+          UniqueName.fresh(tpe.symbol.name.toTypeName),
+          Param,
+          TypeBounds.empty
+        )
+      }
+      val methType =
+        if types.nonEmpty then
+          PolyType(types.map(tp => UniqueName.fresh(tp.symbol.name.toTypeName)))(
+            pt => types.map(_ => TypeBounds.empty),
+            pt => {
+               val tpParamMap = new TypeMap {
+                private val mapping = types.map(_.typeSymbol).zip(pt.paramRefs).toMap
+                def apply(tp: Type): Type = tp match
+                  case tp: TypeRef => mapping.getOrElse(tp.typeSymbol, tp)
+                  case tp => mapOver(tp)
+               }
+               MethodType(bindingsTypes.map(tpParamMap), tpParamMap(newTree.tpe))
+            }
+          )
+        else MethodType(bindingsTypes, newTree.tpe)
       val meth = newSymbol(spliceOwner, nme.ANON_FUN, Synthetic | Method, methType)
-      val ddef = DefDef(meth, List(bindings), newTree.tpe, newTree.changeOwner(ctx.owner, meth))
-      val fnType = defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes :+ newTree.tpe)
+
+      def substituteTypes(tree: Tree): Tree =
+        if types.nonEmpty then
+          val typeIndex = types.zipWithIndex.toMap
+          TreeTypeMap(
+            typeMap = new TypeMap {
+              def apply(tp: Type): Type = tp match
+                case tp @ TypeRef(x: TermRef, _) if tp.symbol == defn.QuotedType_splice => tp
+                case tp: TypeRef if tp.typeSymbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) => tp
+                case tp: TypeRef =>
+                  typeIndex.get(tp) match
+                    case Some(idx) => newTypeParams(idx).typeRef
+                    case None => mapOver(tp)
+                case _ => mapOver(tp)
+            }
+          ).transform(tree)
+        else tree
+      val paramss =
+        if types.nonEmpty then List(newTypeParams, bindings)
+        else List(bindings)
+      val ddef = substituteTypes(DefDef(meth, paramss, newTree.tpe, newTree.changeOwner(ctx.owner, meth)))
+      val fnType =
+        if types.isEmpty then defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes :+ newTree.tpe)
+        else RefinedType(defn.PolyFunctionType, nme.apply, methType)
       val closure = Block(ddef :: Nil, Closure(Nil, ref(meth), TypeTree(fnType)))
       tpd.Hole(true, holeIdx, refs, closure, TypeTree(tpe))
 
@@ -255,6 +304,9 @@ class Splicing extends MacroTransform:
         if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
           val newContent = capturedPartTypes(tpt)
           newContent match
+            case DirectTypeOf.Healed(termRef) =>
+              // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
+              tpd.ref(termRef).withSpan(tpt.span)
             case block: Block =>
               inContext(ctx.withSource(tree.source)) {
                 Apply(TypeApply(typeof, List(newContent)), List(quotes)).withSpan(tree.span)
@@ -354,7 +406,7 @@ class Splicing extends MacroTransform:
     private def newQuotedTypeClassBinding(tpe: Type)(using Context) =
       newSymbol(
         spliceOwner,
-        UniqueName.fresh(nme.Type).toTermName,
+        UniqueName.fresh(tpe.typeSymbol.name.toTermName),
         Param,
         defn.QuotedTypeClass.typeRef.appliedTo(tpe),
       )

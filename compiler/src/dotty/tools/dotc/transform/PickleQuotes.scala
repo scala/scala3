@@ -319,17 +319,28 @@ object PickleQuotes {
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = termSplices.map { case (splice, idx) =>
-                val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
+                val (typeParamCount, argTypes, quotesType) = splice.tpe match
+                  case defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _), _) => (0, argTypes, quotesType)
+                  case RefinedType(polyFun, nme.apply, pt @ PolyType(tparams, _)) if polyFun.typeSymbol.derivesFrom(defn.PolyFunctionClass) =>
+                    pt.instantiate(pt.paramInfos.map(_.hi)) match
+                      case MethodTpe(_, argTypes, defn.FunctionOf(quotesType :: _, _, _)) =>
+                        (tparams.size, argTypes, quotesType)
+
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)
                   }
                   val Block(List(ddef: DefDef), _) = splice: @unchecked
-                  // TODO: beta reduce inner closure? Or wait until BetaReduce phase?
-                  BetaReduce(
-                    splice
-                      .select(nme.apply).appliedToArgs(spliceArgs))
-                      .select(nme.apply).appliedTo(args(2).asInstance(quotesType))
+
+                  val typeArgs = ddef.symbol.info match
+                    case pt: PolyType => pt.paramInfos
+                    case _ => Nil
+
+                  val sel1 = splice.changeOwner(ddef.symbol.owner, ctx.owner).select(nme.apply)
+                  val appTpe = if typeParamCount == 0 then sel1 else sel1.appliedToTypes(List.fill(typeParamCount)(defn.AnyType))
+                  val app1 = appTpe.appliedToArgs(spliceArgs)
+                  val sel2 = app1.select(nme.apply)
+                  sel2.appliedTo(args(2).asInstance(quotesType))
                 }
                 CaseDef(Literal(Constant(idx)), EmptyTree, rhs)
               }
@@ -338,8 +349,20 @@ object PickleQuotes {
                 case _ => Match(args(0).annotated(New(ref(defn.UncheckedAnnot.typeRef))), cases)
           )
 
+      def dealiasSplicedTypes(tp: Type) = new TypeMap {
+        def apply(tp: Type): Type = tp match
+          case tp: TypeRef if tp.typeSymbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
+            val TypeAlias(alias) = tp.info: @unchecked
+            alias
+          case tp1 => mapOver(tp)
+      }.apply(tp)
+
+      val adaptedType =
+        if isType then dealiasSplicedTypes(originalTp)
+        else originalTp
+
       val quoteClass = if isType then defn.QuotedTypeClass else defn.QuotedExprClass
-      val quotedType = quoteClass.typeRef.appliedTo(originalTp)
+      val quotedType = quoteClass.typeRef.appliedTo(adaptedType)
       val lambdaTpe = MethodType(defn.QuotesClass.typeRef :: Nil, quotedType)
       val unpickleMeth =
         if isType then defn.QuoteUnpickler_unpickleTypeV2
@@ -347,9 +370,10 @@ object PickleQuotes {
       val unpickleArgs =
         if isType then List(pickledQuoteStrings, types)
         else List(pickledQuoteStrings, types, termHoles)
+
       quotes
         .asInstance(defn.QuoteUnpicklerClass.typeRef)
-        .select(unpickleMeth).appliedToType(originalTp)
+        .select(unpickleMeth).appliedToType(adaptedType)
         .appliedToArgs(unpickleArgs).withSpan(body.span)
     }
 
