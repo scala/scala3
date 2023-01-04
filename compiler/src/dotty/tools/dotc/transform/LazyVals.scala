@@ -448,10 +448,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   def transformMemberDefThreadSafe(x: ValOrDefDef)(using Context): Thicket = {
     assert(!(x.symbol is Mutable))
-    if ctx.settings.YlightweightLazyVals.value then
-      transformMemberDefThreadSafeNew(x)
-    else
+    if ctx.settings.YlegacyLazyVals.value then
       transformMemberDefThreadSafeLegacy(x)
+    else
+      transformMemberDefThreadSafeNew(x)
   }
 
   def transformMemberDefThreadSafeNew(x: ValOrDefDef)(using Context): Thicket = {
