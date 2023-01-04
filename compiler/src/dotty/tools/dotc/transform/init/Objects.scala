@@ -33,7 +33,7 @@ import scala.annotation.tailrec
  *
  *  In the code above, the initialization of object `A` depends on `B` and vice
  *  versa. There is no correct way to initialize the code above. The current
- *  check issue a warning for the code above.
+ *  checker issues a warning for the code above.
  *
  *  At the high-level, the analysis has the following characteristics:
  *
@@ -42,28 +42,14 @@ import scala.annotation.tailrec
  *  2. It is modular with respect to separate compilation, even incremental
  *     compilation.
  *
- *     When a value leaks the boundary of analysis, we approximate by calling
- *     all methods of the value that overridding a method outside of the
- *     boundary.
- *
- *     Reflection will break soundness, thus is discouraged in programming.
+ *     When a value leaks beyond the boundary of analysis, we approximate by
+ *     calling all methods of the value that overridding a method outside of
+ *     the boundary.
  *
  *  3. It is receiver-sensitive but not heap-sensitive nor parameter-sensitive.
  *
  *     Fields and parameters are always abstracted by their types.
  *
- *  4. If the target of a virtual method call cannot be determined by its
- *     receiver, the target is approximated by all methods of classes currently
- *     being compiled and are instantiated. This is similar to RTA (rapid type
- *     analysis).
- *
- *     However, a class type is only added to the list when it leaks:
- *
- *     - A value of OfClass is used as method argument.
- *     - A value of OfClass is alised to a field.
- *
- *     When a value of OfClass is aliased to a local variable, the RHS will be
- *     re-evaluated when it is accessed (caching is used for optimization).
  */
 object Objects:
 
@@ -73,12 +59,23 @@ object Objects:
     def show(using Context): String
 
   /**
+   * Represents an external value
+   *
+   * An external value is usually an instance of a class of another project,
+   * therefore it may not refer to objects defined in the current project. The
+   * only possibility is that an internal value leaks to an external value. Such
+   * leaking is strictly checked by the algorithm.
+   */
+  case object Ext extends Value:
+    def show(using Context) = "Ext"
+
+  /**
    * Rerepsents values that are instances of the specified class
    *
    * `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass(tp: Type, numInstantiations: Int) extends Value:
-    def show(using Context) = "OfClass(" + tp.show + ", " + numInstantiations + ")"
+  case class OfClass(tp: Type) extends Value:
+    def show(using Context) = "OfClass(" + tp.show + ")"
 
   /**
    * Rerepsents values that are of the given type
@@ -96,7 +93,8 @@ object Objects:
   case class Fun(expr: Tree, thisV: OfClass, klass: ClassSymbol) extends Value:
     def show(using Context) = "Fun(" + expr.show + ", " + thisV.show + ", " + klass.show + ")"
 
-  /** A value which represents a set of addresses
+  /**
+   * Represents a set of values
    *
    * It comes from `if` expressions.
    */
@@ -120,10 +118,6 @@ object Objects:
     opaque type Rep = Data
 
     def currentObject(using rep: Rep): ClassSymbol = rep.checkingObjects.last
-
-    def instantiatedCount(using rep: Rep): Int =
-      val obj = currentObject
-      rep.instantiatedTypes(obj).size + rep.instantiatedFuncs(obj).size
 
     def init(classes: List[ClassSymbol])(using Context): Rep =
       val concreteClasses = classes.filter(Semantic.isConcreteClass).toSet
@@ -179,7 +173,7 @@ object Objects:
    */
   private def checkObject(classSym: ClassSymbol): Contextual[Unit] =
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-    init(tpl, OfClass(classSym.typeRef, State.instantiatedCount), classSym)
+    init(tpl, OfClass(classSym.typeRef), classSym)
 
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given State.Rep = State.init(classes)
@@ -453,7 +447,7 @@ object Objects:
    */
   def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] =
     thisV match
-    case OfClass(tp, _) =>
+    case OfClass(tp) =>
       ???
 
     case OfType(tp) =>
