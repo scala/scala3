@@ -941,6 +941,7 @@ trait Applications extends Compatibility {
         val throwsAnnot = annot.filter(ThrownException.unapply(_).isDefined)
         val exceptions = throwsAnnot.map(ThrownException.unapply(_).get).flatMap(OrType.split)
         saferExceptions.println(i"symbol $sym throws $exceptions")
+        // TODO HR : Still need to add those capabilities in the capture set
         val capabities = for e <- exceptions yield checkCanThrow(e, tree.span)
         saferExceptions.println(i"fetch capabilities $capabities to satisfy conditions of $sym")
         if exceptions.nonEmpty then
