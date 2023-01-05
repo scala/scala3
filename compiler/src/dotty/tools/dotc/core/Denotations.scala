@@ -830,9 +830,6 @@ object Denotations {
                 // creations that way, and also avoid phase caches in contexts to get large.
                 // To work correctly, we need to demand that the context with the new phase
                 // is not retained in the result.
-            catch case ex: CyclicReference =>
-              // println(s"error while transforming $this")
-              throw ex
             finally
               mutCtx.setPeriod(savedPeriod)
             if next eq cur then
