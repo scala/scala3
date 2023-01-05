@@ -244,15 +244,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         imp.importSym.info match
           case ImportType(expr) =>
             val pre = expr.tpe
-            var denot = pre.memberBasedOnFlags(name, required, excluded)
+            val denot0 = pre.memberBasedOnFlags(name, required, excluded)
               .accessibleFrom(pre)(using refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the context of the import scope
-            if denot.exists then
-              if checkBounds then
-                denot = denot.filterWithPredicate { mbr =>
-                  mbr.matchesImportBound(if mbr.symbol.is(Given) then imp.givenBound else imp.wildcardBound)
-                }
+            if denot0.exists then
+              val denot =
+                if checkBounds then
+                  denot0.filterWithPredicate { mbr =>
+                    mbr.matchesImportBound(if mbr.symbol.is(Given) then imp.givenBound else imp.wildcardBound)
+                  }
+                else denot0
               def isScalaJsPseudoUnion =
                 denot.name == tpnme.raw.BAR && ctx.settings.scalajs.value && denot.symbol == JSDefinitions.jsdefn.PseudoUnionClass
               // Just like Scala2Unpickler reinterprets Scala.js pseudo-unions

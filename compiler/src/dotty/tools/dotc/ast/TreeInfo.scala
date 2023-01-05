@@ -830,10 +830,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** The symbols defined locally in a statement list */
   def localSyms(stats: List[Tree])(using Context): List[Symbol] =
-    val locals = new mutable.ListBuffer[Symbol]
-    for stat <- stats do
-      if stat.isDef && stat.symbol.exists then locals += stat.symbol
-    locals.toList
+    if stats.isEmpty then Nil
+    else
+      val locals = new mutable.ListBuffer[Symbol]
+      for stat <- stats do
+        if stat.isDef && stat.symbol.exists then locals += stat.symbol
+      locals.toList
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */
   def definedSym(tree: Tree)(using Context): Symbol =
