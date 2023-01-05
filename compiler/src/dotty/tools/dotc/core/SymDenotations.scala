@@ -39,7 +39,7 @@ object SymDenotations {
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol, initInfo) {
+    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol, initInfo, name.isTypeName) {
 
     //assert(symbol.id != 4940, name)
 
@@ -575,9 +575,6 @@ object SymDenotations {
       myTargetName.nn
 
     // ----- Tests -------------------------------------------------
-
-    /** Is this denotation a type? */
-    override def isType: Boolean = name.isTypeName
 
     /** Is this denotation a class? */
     final def isClass: Boolean = isInstanceOf[ClassDenotation]
@@ -2574,7 +2571,6 @@ object SymDenotations {
 
   @sharable object NoDenotation
   extends SymDenotation(NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
-    override def isType: Boolean = false
     override def isTerm: Boolean = false
     override def exists: Boolean = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")

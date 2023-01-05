@@ -175,7 +175,7 @@ object Denotations {
    *
    *  @param symbol  The referencing symbol, or NoSymbol is none exists
    */
-  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type) extends PreDenotation with printing.Showable {
+  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean) extends PreDenotation with printing.Showable {
     type AsSeenFromResult <: Denotation
 
     /** The type info.
@@ -193,9 +193,6 @@ object Denotations {
      *  is not yet completed, the completer
      */
     def infoOrCompleter: Type
-
-    /** Is this a reference to a type symbol? */
-    def isType: Boolean
 
     /** Is this a reference to a term symbol? */
     def isTerm: Boolean = !isType
@@ -577,7 +574,7 @@ object Denotations {
   end infoMeet
 
   /** A non-overloaded denotation */
-  abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
+  abstract class SingleDenotation(symbol: Symbol, initInfo: Type, isType: Boolean) extends Denotation(symbol, initInfo, isType) {
     protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
 
     final def name(using Context): Name = symbol.name
@@ -1147,9 +1144,9 @@ object Denotations {
       acc(false, symbol.info)
   }
 
-  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type) extends SingleDenotation(symbol, initInfo) {
+  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type)
+  extends SingleDenotation(symbol, initInfo, initInfo.isInstanceOf[TypeType]) {
     def infoOrCompleter: Type = initInfo
-    def isType: Boolean = infoOrCompleter.isInstanceOf[TypeType]
   }
 
   class UniqueRefDenotation(
@@ -1245,11 +1242,10 @@ object Denotations {
 
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
-  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType) with MultiPreDenotation {
+  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType, isType = false) with MultiPreDenotation {
     validFor = denot1.validFor & denot2.validFor
-    
+
     final def infoOrCompleter: Type = multiHasNot("info")
-    final def isType: Boolean = false
     final def hasUniqueSym: Boolean = false
     final def name(using Context): Name = denot1.name
     final def signature(using Context): Signature = Signature.OverloadedSignature
