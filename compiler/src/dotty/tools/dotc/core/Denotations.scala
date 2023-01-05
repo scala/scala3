@@ -795,8 +795,6 @@ object Denotations {
           assert(!d.is(Package), s"illegal transformation of package denotation by transformer $transformer")
         case _ =>
 
-      def escapeToNext = nextDefined.ensuring(_.validFor != Nowhere)
-
       def toNewRun =
         util.Stats.record("current.bringForward")
         if exists then initial.bringForward().current else this
@@ -871,7 +869,7 @@ object Denotations {
         // can happen if we sit on a stale denotation which has been replaced
         // wholesale by an installAfter; in this case, proceed to the next
         // denotation and try again.
-        escapeToNext
+        nextDefined
       else if valid.runId != currentPeriod.runId then
         toNewRun
       else if currentPeriod.code > valid.code then
