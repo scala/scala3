@@ -19,13 +19,10 @@ class addClass extends MacroAnnotation:
 
         val runDef = DefDef(runSym, _ => Some(rhs))
 
-        val clsDef = ClassDef(cls, parents, body = List(runDef))
-
-        val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
-        val modVal = ValDef(mod, Some(newCls))
+        val modDef = ClassDef.module(mod, parents, body = List(runDef))
 
         val newDef = DefDef.copy(tree)(name, List(TermParamClause(Nil)), tpt, Some(Apply(Select(Ref(mod), runSym), Nil)))
-        List(modVal, clsDef, newDef)
+        modDef.toList ::: newDef :: Nil
       case _ =>
         report.error("Annotation only supports `def` with one argument")
         List(tree)

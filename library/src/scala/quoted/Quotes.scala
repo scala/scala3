@@ -467,9 +467,33 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *                 otherwise the can be `Term` containing the `New` applied to the parameters of the extended class.
        *  @param body List of members of the class. The members must align with the members of `cls`.
        */
+      // TODO add selfOpt: Option[ValDef]?
       @experimental def apply(cls: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): ClassDef
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
+
+
+      /** Create the ValDef and ClassDef of a module.
+       *
+       *  Equivalent to
+       *  ```
+       *  def module(module: Symbol, parents: List[Tree], body: List[Statement]): (ValDef, ClassDef) =
+       *    val modCls = module.moduleClass
+       *    val modClassDef = ClassDef(modCls, parents, body)
+       *    val modValDef = ValDef(module, Some(Apply(Select(New(TypeIdent(modCls)), cls.primaryConstructor), Nil)))
+       *    List(modValDef, modClassDef)
+       *  ```
+       *
+       *  @param module the module symbol (of the module lazy val)
+       *  @param parents parents of the module class
+       *  @param body body of the module class
+       *  @return The module lazy val definition and module class definition.
+       *          These should be added one after the other (in that order) in the body of a class or statements of a block.
+       *
+       *  @syntax markdown
+       */
+      // TODO add selfOpt: Option[ValDef]?
+      @experimental def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef)
     }
 
     /** Makes extension methods on `ClassDef` available without any imports */
@@ -3660,14 +3684,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  val runSym = cls.declaredMethod("run").head
        *
        *  val runDef = DefDef(runSym, _ => Some('{ println("run") }.asTerm))
-       *  val clsDef = ClassDef(cls, parents, body = List(runDef))
-       *  val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
-       *  val modVal = ValDef(mod, Some(newCls))
-       *  val modDef = List(modVal, clsDef)
+       *  val modDef = ClassDef.module(mod, parents, body = List(runDef))
        *
        *  val callRun = Apply(Select(Ref(mod), runSym), Nil)
        *
-       *  Block(modDef, callRun)
+       *  Block(modDef.toList, callRun)
        *  ```
        *  constructs the equivalent to
        *  ```scala

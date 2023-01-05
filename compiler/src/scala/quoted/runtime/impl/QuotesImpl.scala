@@ -243,6 +243,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement]) =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
         (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
+
+      def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef) = {
+        val cls = module.moduleClass
+        val clsDef = ClassDef(cls, parents, body)
+        val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
+        val modVal = ValDef(module, Some(newCls))
+        (modVal, clsDef)
+      }
     end ClassDef
 
     given ClassDefMethods: ClassDefMethods with

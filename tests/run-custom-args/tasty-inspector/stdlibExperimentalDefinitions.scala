@@ -73,6 +73,7 @@ val experimentalDefinitionInLibrary = Set(
   // Need newClass variant that can add constructor parameters.
   // Need experimental annotation macros to check that design works.
   "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
+  "scala.quoted.Quotes.reflectModule.ClassDefModule.module",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
   "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
