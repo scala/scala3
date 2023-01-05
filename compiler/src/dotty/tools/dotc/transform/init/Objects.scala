@@ -98,7 +98,8 @@ object Objects:
    *
    * It comes from `if` expressions.
    */
-  case class RefSet(refs: List[Fun | OfClass]) extends Value:
+  case class RefSet(refs: List[Value]) extends Value:
+    assert(refs.forall(!_.isInstanceOf[RefSet]))
     def show(using Context) = refs.map(_.show).mkString("[", ",", "]")
 
   object State:
@@ -108,16 +109,21 @@ object Objects:
     class Data(allConcreteClasses: Set[ClassSymbol]):
       // objects under check
       val checkingObjects = new mutable.ArrayBuffer[ClassSymbol]
-
-      // object -> (class, types of the class)
-      val instantiatedTypes = mutable.Map.empty[ClassSymbol, Map[ClassSymbol, List[Type]]]
-
-      // object -> (fun type, fun values)
-      val instantiatedFuncs = mutable.Map.empty[ClassSymbol, Map[Type, List[Fun]]]
+      val checkedObjects = new mutable.ArrayBuffer[ClassSymbol]
 
     opaque type Rep = Data
 
-    def currentObject(using rep: Rep): ClassSymbol = rep.checkingObjects.last
+    def checkObject(clazz: ClassSymbol)(work: => Unit)(using rep: Rep, ctx: Context) =
+      val index = rep.checkingObjects.indexOf(clazz)
+
+      if index != -1 then
+        val cycle = rep.checkingObjects.slice(index, rep.checkingObjects.size - 1)
+        report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + clazz.show, clazz.defTree)
+      else if rep.checkedObjects.indexOf(clazz) == -1 then
+        rep.checkingObjects += clazz
+        work
+        assert(rep.checkingObjects.last == clazz, "Expect = " + clazz.show + ", found = " + rep.checkingObjects.last)
+        rep.checkedObjects += rep.checkingObjects.remove(rep.checkingObjects.size - 1)
 
     def init(classes: List[ClassSymbol])(using Context): Rep =
       val concreteClasses = classes.filter(Semantic.isConcreteClass).toSet
@@ -152,10 +158,15 @@ object Objects:
   type ArgInfo = TraceValue[Value]
 
   extension (a: Value)
-    def join(b: Value): Value = ???
+    def join(b: Value): Value =
+      (a, b) match
+      case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
+      case (a, RefSet(refs))                  => RefSet(a :: refs)
+      case (RefSet(refs), b)                  => RefSet(b :: refs)
+      case (a, b)                             => RefSet(a :: b :: Nil)
 
   extension (values: Seq[Value])
-    def join: Value = ???
+    def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
 
   def call(thisV: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = ???
 
@@ -173,7 +184,9 @@ object Objects:
    */
   private def checkObject(classSym: ClassSymbol): Contextual[Unit] =
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-    init(tpl, OfClass(classSym.typeRef), classSym)
+    State.checkObject(classSym) {
+      init(tpl, OfClass(classSym.typeRef), classSym)
+    }
 
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given State.Rep = State.init(classes)
