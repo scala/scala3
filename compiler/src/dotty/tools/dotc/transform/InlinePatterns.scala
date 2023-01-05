@@ -51,11 +51,12 @@ class InlinePatterns extends MiniPhase:
         case Apply(App(fn, argss), args) => (fn, argss :+ args)
         case _ => (app, Nil)
 
+  // TODO merge with BetaReduce.scala
   private def betaReduce(tree: Apply, fn: Tree, name: Name, args: List[Tree])(using Context): Tree =
     fn match
       case Block(TypeDef(_, template: Template) :: Nil, Apply(Select(New(_),_), Nil)) if template.constr.rhs.isEmpty =>
         template.body match
-          case List(ddef @ DefDef(`name`, _, _, _)) => BetaReduce(ddef, args)
+          case List(ddef @ DefDef(`name`, _, _, _)) => BetaReduce(ddef, List(args))
           case _ => tree
       case _ => tree
 

@@ -322,7 +322,7 @@ object PickleQuotes {
                   }
                   val Block(List(ddef: DefDef), _) = splice: @unchecked
                   // TODO: beta reduce inner closure? Or wait until BetaReduce phase?
-                  BetaReduce(ddef, spliceArgs).select(nme.apply).appliedTo(args(2).asInstance(quotesType))
+                  BetaReduce(ddef, List(spliceArgs)).select(nme.apply).appliedTo(args(2).asInstance(quotesType))
                 }
                 CaseDef(Literal(Constant(idx)), EmptyTree, rhs)
               }

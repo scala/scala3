@@ -40,12 +40,15 @@ class BetaReduce extends MiniPhase:
 
   override def transformApply(app: Apply)(using Context): Tree = app.fun match
     case Select(fn, nme.apply) if defn.isFunctionType(fn.tpe) =>
-      val app1 = BetaReduce(app, fn, app.args)
+      val app1 = BetaReduce(app, fn, List(app.args))
+      if app1 ne app then report.log(i"beta reduce $app -> $app1")
+      app1
+    case TypeApply(Select(fn, nme.apply), targs) if fn.tpe.typeSymbol eq defn.PolyFunctionClass =>
+      val app1 = BetaReduce(app, fn, List(targs, app.args))
       if app1 ne app then report.log(i"beta reduce $app -> $app1")
       app1
     case _ =>
       app
-
 
 object BetaReduce:
   import ast.tpd._
@@ -54,18 +57,24 @@ object BetaReduce:
   val description: String = "reduce closure applications"
 
   /** Beta-reduces a call to `fn` with arguments `argSyms` or returns `tree` */
-  def apply(original: Tree, fn: Tree, args: List[Tree])(using Context): Tree =
+  def apply(original: Tree, fn: Tree, argss: List[List[Tree]])(using Context): Tree =
     fn match
       case Typed(expr, _) =>
-        BetaReduce(original, expr, args)
+        BetaReduce(original, expr, argss)
       case Block((anonFun: DefDef) :: Nil, closure: Closure) =>
-        BetaReduce(anonFun, args)
+        BetaReduce(anonFun, argss)
+      case Block((TypeDef(_, template: Template)) :: Nil, Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
+        template.body match
+          case (anonFun: DefDef) :: Nil =>
+            BetaReduce(anonFun, argss)
+          case _ =>
+            original
       case Block(stats, expr) =>
-        val tree = BetaReduce(original, expr, args)
+        val tree = BetaReduce(original, expr, argss)
         if tree eq original then original
         else cpy.Block(fn)(stats, tree)
       case Inlined(call, bindings, expr) =>
-        val tree = BetaReduce(original, expr, args)
+        val tree = BetaReduce(original, expr, argss)
         if tree eq original then original
         else cpy.Inlined(fn)(call, bindings, tree)
       case _ =>
@@ -73,16 +82,32 @@ object BetaReduce:
   end apply
 
   /** Beta-reduces a call to `ddef` with arguments `args` */
-  def apply(ddef: DefDef, args: List[Tree])(using Context) =
-    val bindings = new ListBuffer[ValDef]()
-    val expansion1 = reduceApplication(ddef, args, bindings)
+  def apply(ddef: DefDef, argss: List[List[Tree]])(using Context) =
+    val bindings = new ListBuffer[DefTree]()
+    val expansion1 = reduceApplication(ddef, argss, bindings)
     val bindings1 = bindings.result()
     seq(bindings1, expansion1)
 
   /** Beta-reduces a call to `ddef` with arguments `args` and registers new bindings */
-  def reduceApplication(ddef: DefDef, args: List[Tree], bindings: ListBuffer[ValDef])(using Context): Tree =
-    val vparams = ddef.termParamss.iterator.flatten.toList
+  def reduceApplication(ddef: DefDef, argss: List[List[Tree]], bindings: ListBuffer[DefTree])(using Context): Tree =
+    assert(argss.size == 1 || argss.size == 2)
+    val targs = if argss.size == 2 then argss.head else Nil
+    val args = argss.last
+    val tparams = ddef.leadingTypeParams
+    val vparams = ddef.termParamss.flatten
+    assert(targs.hasSameLengthAs(tparams))
     assert(args.hasSameLengthAs(vparams))
+
+    val targSyms =
+      for (targ, tparam) <- targs.zip(tparams) yield
+        targ.tpe.dealias match
+          case ref @ TypeRef(NoPrefix, _) =>
+            ref.symbol
+          case _ =>
+            val binding = TypeDef(newSymbol(ctx.owner, tparam.name, EmptyFlags, targ.tpe, coord = targ.span)).withSpan(targ.span)
+            bindings += binding
+            binding.symbol
+
     val argSyms =
       for (arg, param) <- args.zip(vparams) yield
         arg.tpe.dealias match
@@ -99,8 +124,8 @@ object BetaReduce:
     val expansion = TreeTypeMap(
       oldOwners = ddef.symbol :: Nil,
       newOwners = ctx.owner :: Nil,
-      substFrom = vparams.map(_.symbol),
-      substTo = argSyms
+      substFrom = (tparams ::: vparams).map(_.symbol),
+      substTo = targSyms ::: argSyms
     ).transform(ddef.rhs)
 
     val expansion1 = new TreeMap {

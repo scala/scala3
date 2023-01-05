@@ -165,12 +165,13 @@ class InlineReducer(inliner: Inliner)(using Context):
     */
   def betaReduce(tree: Tree)(using Context): Tree = tree match {
     case Apply(Select(cl, nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-      val bindingsBuf = new mutable.ListBuffer[ValDef]
+      val bindingsBuf = new mutable.ListBuffer[DefTree]
       def recur(cl: Tree): Option[Tree] = cl match
         case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
           ddef.tpe.widen match
             case mt: MethodType if ddef.paramss.head.length == args.length =>
-              Some(BetaReduce.reduceApplication(ddef, args, bindingsBuf))
+              // TODO beta reduce PolyType
+              Some(BetaReduce.reduceApplication(ddef, List(args), bindingsBuf))
             case _ => None
         case Block(stats, expr) if stats.forall(isPureBinding) =>
           recur(expr).map(cpy.Block(cl)(stats, _))
