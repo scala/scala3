@@ -3,6 +3,7 @@ package core
 
 import scala.collection.mutable
 import scala.annotation.switch
+import scala.annotation.internal.sharable
 import Names._
 import Symbols._
 import Contexts._
@@ -40,7 +41,9 @@ object StdNames {
     inline val Tuple                      = "Tuple"
     inline val Product                    = "Product"
 
-    def sanitize(str: String): String = str.replaceAll("""[<>]""", """\$""").nn
+    @sharable
+    private val disallowed = java.util.regex.Pattern.compile("""[<>]""").nn
+    def sanitize(str: String): String = disallowed.matcher(str).nn.replaceAll("""\$""").nn
   }
 
   abstract class DefinedNames[N <: Name] {
