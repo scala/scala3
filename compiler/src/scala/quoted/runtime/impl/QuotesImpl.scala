@@ -2484,12 +2484,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
         assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
-        val mod = dotc.core.Symbols.newCompleteModuleSymbol(
+        val mod = dotc.core.Symbols.newNormalizedModuleSymbol(
           owner,
           name.toTermName,
           modFlags | dotc.core.Flags.ModuleValCreationFlags,
           clsFlags | dotc.core.Flags.ModuleClassCreationFlags,
-          parents.asInstanceOf, // FIXME
+          parents,
           dotc.core.Scopes.newScope,
           privateWithin)
         val cls = mod.moduleClass.asClass
