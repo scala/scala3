@@ -89,7 +89,7 @@ class Diagnostic(
   val msg: Message,
   val pos: SourcePosition,
   val level: Int
-) extends Exception with interfaces.Diagnostic:
+) extends interfaces.Diagnostic:
   private var verbose: Boolean = false
   def isVerbose: Boolean = verbose
   def setVerbose(): this.type =
@@ -104,5 +104,4 @@ class Diagnostic(
     Collections.emptyList()
 
   override def toString: String = s"$getClass at $pos: $message"
-  override def getMessage(): String = message
 end Diagnostic
