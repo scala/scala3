@@ -360,7 +360,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
       adjuster.variance = if isLower then 1 else -1
       adjuster.add = add
-      adjuster.seen.clear()
+      adjuster.seen.clear(resetToInitial = false)
       adjuster.traverse(bound)
 
     /** Use an optimized strategy to adjust dependencies to account for the delta

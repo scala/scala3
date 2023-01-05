@@ -630,7 +630,7 @@ trait ImplicitRunInfo:
 
       def apply(tp: Type): collection.Set[Type] =
         parts = mutable.LinkedHashSet()
-        partSeen.clear()
+        partSeen.clear(resetToInitial = false)
         traverse(tp)
         parts
     end collectParts
