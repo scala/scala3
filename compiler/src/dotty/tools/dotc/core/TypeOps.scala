@@ -13,6 +13,7 @@ import ast.tpd._
 import reporting.trace
 import config.Printers.typr
 import config.Feature
+import transform.SymUtils.*
 import typer.ProtoTypes._
 import typer.ForceDegree
 import typer.Inferencing._
@@ -846,13 +847,15 @@ object TypeOps:
       var prefixTVar: Type | Null = null
       def apply(tp: Type): Type = tp match {
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
-          if (tref.symbol.is(Module))
-            TermRef(this(tref.prefix), tref.symbol.sourceModule)
+          val symbol = tref.symbol
+          if (symbol.is(Module))
+            TermRef(this(tref.prefix), symbol.sourceModule)
           else if (prefixTVar != null)
             this(tref)
           else {
             prefixTVar = WildcardType  // prevent recursive call from assigning it
-            val tref2 = this(tref.applyIfParameterized(tref.typeParams.map(_ => TypeBounds.empty)))
+            val tvars = tref.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
+            val tref2 = this(tref.applyIfParameterized(tvars))
             prefixTVar = newTypeVar(TypeBounds.upper(tref2))
             prefixTVar.uncheckedNN
           }
