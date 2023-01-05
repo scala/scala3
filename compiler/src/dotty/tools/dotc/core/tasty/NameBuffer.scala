@@ -6,7 +6,7 @@ package tasty
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer._
 
-import collection.mutable
+import collection.mutable.ArrayBuffer
 import Names.{Name, chrs, SimpleName, DerivedName, TypeName}
 import NameKinds._
 import NameOps._
@@ -16,42 +16,43 @@ import NameTags.{SIGNED, TARGETSIGNED}
 class NameBuffer extends TastyBuffer(10000) {
   import NameBuffer._
 
-  private val nameRefs = new mutable.LinkedHashMap[Name, NameRef]
+  private val nameRefs = new util.EqHashMap[Name, NameRef]
+  private val nameBuf = new ArrayBuffer[Name]
 
-  def nameIndex(name: Name): NameRef = {
+  def nameIndex(name: Name): NameRef =
     val name1 = name.toTermName
-    nameRefs.get(name1) match {
-      case Some(ref) =>
-        ref
-      case None =>
-        name1 match {
-          case SignedName(original, Signature(params, result), target) =>
-            nameIndex(original)
-            if !original.matchesTargetName(target) then nameIndex(target)
-            nameIndex(result)
-            params.foreach {
-              case param: TypeName =>
-                nameIndex(param)
-              case _ =>
-            }
-          case AnyQualifiedName(prefix, name) =>
-            nameIndex(prefix); nameIndex(name)
-          case AnyUniqueName(original, separator, num) =>
-            nameIndex(separator)
-            if (!original.isEmpty) nameIndex(original)
-          case DerivedName(original, _) =>
-            nameIndex(original)
-          case _ =>
-        }
-        val ref = NameRef(nameRefs.size)
-        nameRefs(name1) = ref
-        ref
-    }
-  }
+    val ref: NameRef | Null = nameRefs.lookup(name1)
+    if ref != null then ref.uncheckedNN
+    else
+      name1 match
+        case SignedName(original, Signature(params, result), target) =>
+          nameIndex(original)
+          if !original.matchesTargetName(target) then nameIndex(target)
+          nameIndex(result)
+          params.foreach {
+            case param: TypeName =>
+              nameIndex(param)
+            case _ =>
+          }
+        case AnyQualifiedName(prefix, name) =>
+          nameIndex(prefix); nameIndex(name)
+        case AnyUniqueName(original, separator, num) =>
+          nameIndex(separator)
+          if (!original.isEmpty) nameIndex(original)
+        case DerivedName(original, _) =>
+          nameIndex(original)
+        case _ =>
+      val ref1 = NameRef(nameRefs.size)
+      nameRefs(name1) = ref1
+      nameBuf += name1
+      ref1
 
-  private def withLength(op: => Unit, lengthWidth: Int = 1): Unit = {
+  private inline def withLength(inline op: Unit, lengthWidth: Int = 1): Unit = {
     val lengthAddr = currentAddr
-    for (i <- 0 until lengthWidth) writeByte(0)
+    var i = 0
+    while i < lengthWidth do
+      writeByte(0)
+      i += 1
     op
     val length = currentAddr.index - lengthAddr.index - lengthWidth
     putNat(lengthAddr, length, lengthWidth)
@@ -111,11 +112,11 @@ class NameBuffer extends TastyBuffer(10000) {
 
   override def assemble(): Unit = {
     var i = 0
-    for ((name, ref) <- nameRefs) {
+    for name <- nameBuf do
+      val ref = nameRefs(name)
       assert(ref.index == i)
       i += 1
       pickleNameContents(name)
-    }
   }
 }
 

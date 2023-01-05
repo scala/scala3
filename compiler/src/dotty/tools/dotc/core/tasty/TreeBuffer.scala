@@ -109,10 +109,11 @@ class TreeBuffer extends TastyBuffer(50000) {
 
   /** Adjust all offsets according to previously computed deltas */
   private def adjustOffsets(): Unit =
-    for (i <- 0 until numOffsets) {
+    var i = 0
+    while i < numOffsets do
       val corrected = adjustedOffset(i)
       fillAddr(offset(i), corrected)
-    }
+      i += 1
 
   /** Adjust deltas to also take account references that will shrink (and thereby
    *  generate additional zeroes that can be skipped) due to previously
@@ -122,12 +123,11 @@ class TreeBuffer extends TastyBuffer(50000) {
     val delta1 = new Array[Int](delta.length)
     var lastDelta = 0
     var i = 0
-    while (i < numOffsets) {
+    while i < numOffsets do
       val corrected = adjustedOffset(i)
       lastDelta += AddrWidth - TastyBuffer.natSize(corrected.index)
       delta1(i) = lastDelta
       i += 1
-    }
     val saved =
       if (numOffsets == 0) 0
       else delta1(numOffsets - 1) - delta(numOffsets - 1)

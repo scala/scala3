@@ -816,7 +816,18 @@ class TreePickler(pickler: TastyPickler) {
     buf.compactify()
 
     def updateMapWithDeltas(mp: MutableSymbolMap[Addr]) =
-      for (key <- mp.keysIterator.toBuffer[Symbol]) mp(key) = adjusted(mp(key))
+      val keys = new Array[Symbol](mp.size)
+      val it = mp.keysIterator
+      var i = 0
+      while i < keys.length do
+        keys(i) = it.next
+        i += 1
+      assert(!it.hasNext)
+      i = 0
+      while i < keys.length do
+        val key = keys(i)
+        mp(key) = adjusted(mp(key))
+        i += 1
 
     updateMapWithDeltas(symRefs)
   }
