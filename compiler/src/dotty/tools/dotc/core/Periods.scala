@@ -118,7 +118,8 @@ object Periods {
       apply(rid, 0, PhaseMask)
   }
 
-  final val Nowhere: Period = new Period(0)
+  inline val NowhereCode = 0
+  final val Nowhere: Period = new Period(NowhereCode)
 
   final val InitialPeriod: Period = Period(InitialRunId, FirstPhaseId)
 
