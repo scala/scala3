@@ -103,6 +103,8 @@ object Objects:
     assert(refs.forall(!_.isInstanceOf[RefSet]))
     def show(using Context) = refs.map(_.show).mkString("[", ",", "]")
 
+  val Bottom = RefSet(Nil)
+
   object State:
     /**
      * Remembers the instantiated types during instantiation of a static object.
@@ -164,7 +166,7 @@ object Objects:
           last.get(value, sym) match
           case Some(value) => value
           case None =>
-            val default = OfType(defn.NothingType)
+            val default = Bottom
             this.last = last.updatedNested(value, sym, default)
             default
 
@@ -216,6 +218,8 @@ object Objects:
   extension (a: Value)
     def join(b: Value): Value =
       (a, b) match
+      case (Bottom, b)                        => b
+      case (a, Bottom)                        => a
       case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
       case (a, RefSet(refs))                  => RefSet(a :: refs)
       case (RefSet(refs), b)                  => RefSet(b :: refs)
@@ -301,7 +305,7 @@ object Objects:
     expr match
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
-        OfType(defn.NothingType)
+        Bottom
 
       case id @ Ident(name) if !id.symbol.is(Flags.Method)  =>
         assert(name.isTermName, "type trees should not reach here")
@@ -362,11 +366,11 @@ object Objects:
         evalType(expr.tpe, thisV, klass)
 
       case Literal(_) =>
-        OfType(defn.NothingType)
+        Bottom
 
       case Typed(expr, tpt) =>
         if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot))
-          OfType(defn.NothingType)
+          Bottom
         else
           eval(expr, thisV, klass)
 
@@ -395,7 +399,7 @@ object Objects:
         evalExprs(cond :: thenp :: elsep :: Nil, thisV, klass).join
 
       case Annotated(arg, annot) =>
-        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) OfType(defn.NothingType)
+        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Bottom
         else eval(arg, thisV, klass)
 
       case Match(selector, cases) =>
@@ -407,7 +411,7 @@ object Objects:
 
       case WhileDo(cond, body) =>
         evalExprs(cond :: body :: Nil, thisV, klass)
-        OfType(defn.NothingType)
+        Bottom
 
       case Labeled(_, expr) =>
         eval(expr, thisV, klass)
@@ -427,7 +431,7 @@ object Objects:
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
-        OfType(defn.NothingType)
+        Bottom
 
       case vdef : ValDef =>
         // local val definition
@@ -435,14 +439,14 @@ object Objects:
 
       case ddef : DefDef =>
         // local method
-        OfType(defn.NothingType)
+        Bottom
 
       case tdef: TypeDef =>
         // local type definition
-        OfType(defn.NothingType)
+        Bottom
 
       case _: Import | _: Export =>
-        OfType(defn.NothingType)
+        Bottom
 
       case _ =>
         report.error("[Internal error] unexpected tree" + Trace.show, expr)
@@ -559,7 +563,7 @@ object Objects:
 
     case _ =>
       report.error("[Internal error] unexpected this value " + thisV + Trace.show, Trace.position)
-      OfType(defn.NothingType)
+      Bottom
 
   /** Compute the outer value that correspond to `tref.prefix`
    *
@@ -574,5 +578,5 @@ object Objects:
       val outerV = resolveThis(enclosing, thisV, klass)
       outerV
     else
-      if cls.isAllOf(Flags.JavaInterface) then OfType(defn.NothingType)
+      if cls.isAllOf(Flags.JavaInterface) then Bottom
       else evalType(tref.prefix, thisV, klass)
