@@ -30,7 +30,7 @@ import classfile.ReusableDataReader
 import StdNames.nme
 import compiletime.uninitialized
 
-import scala.annotation.internal.sharable
+import annotation.internal.sharable
 
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
@@ -124,19 +124,11 @@ object Contexts {
    *      of all class fields of type context; allow them only in whitelisted
    *      classes (which should be short-lived).
    */
-  abstract class ContextCls(val base: ContextBase) { thiscontext =>
+  abstract class ContextCls(val base: ContextBase) {
 
     protected given Context = this
 
     def outer: Context
-
-    /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
-    def outersIterator: Iterator[Context] = new Iterator[Context] {
-      var current = thiscontext
-      def hasNext = current != NoContext
-      def next = { val c = current; current = current.outer; c }
-    }
-
     def period: Period
     def mode: Mode
     def owner: Symbol
@@ -146,6 +138,9 @@ object Contexts {
     def gadt: GadtConstraint
     def searchHistory: SearchHistory
     def source: SourceFile
+
+    /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
+    def outersIterator: Iterator[Context]
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
@@ -518,10 +513,16 @@ object Contexts {
   /** A fresh context allows selective modification
    *  of its attributes using the with... methods.
    */
-  class FreshContext(base: ContextBase) extends ContextCls(base) {
+  class FreshContext(base: ContextBase) extends ContextCls(base) { thiscontext =>
 
     private var _outer: Context = uninitialized
     def outer: Context = _outer
+
+    def outersIterator: Iterator[ContextCls] = new Iterator[ContextCls] {
+      var current: ContextCls = thiscontext
+      def hasNext = current != NoContext
+      def next = { val c = current; current = current.outer; c }
+    }
 
     private var _period: Period = uninitialized
     final def period: Period = _period
@@ -727,10 +728,10 @@ object Contexts {
 
   given ops: AnyRef with
     extension (c: Context)
-      def addNotNullInfo(info: NotNullInfo) =
+      def addNotNullInfo(info: NotNullInfo): Context =
         c.withNotNullInfos(c.notNullInfos.extendWith(info))
 
-      def addNotNullRefs(refs: Set[TermRef]) =
+      def addNotNullRefs(refs: Set[TermRef]): Context =
         c.addNotNullInfo(NotNullInfo(refs, Set()))
 
       def withNotNullInfos(infos: List[NotNullInfo]): Context =

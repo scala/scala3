@@ -102,7 +102,7 @@ object handleRecursive:
     while e != null && !e.isInstanceOf[StackOverflowError] do e = e.getCause
     e
 
-  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
+  def apply(op: String, details: Context ?=> String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
     if ctx.settings.YnoDecodeStacktraces.value then
       throw exc
     else exc match
