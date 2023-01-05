@@ -171,18 +171,24 @@ private sealed trait WarningSettings:
         name = "imports",
         description = "Warn if an import selector is not referenced.\n" +
         "NOTE : overrided by -Wunused:strict-no-implicit-warn"),
-      ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
-      ChoiceWithHelp("privates","Warn if a private member is unused"),
-      ChoiceWithHelp("locals","Warn if a local definition is unused"),
-      ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
-      ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
-      ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
-      ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits"),
-      ChoiceWithHelp(
-        name = "strict-no-implicit-warn",
-        description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
-        "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
-      )
+        ChoiceWithHelp("privates","Warn if a private member is unused"),
+        ChoiceWithHelp("locals","Warn if a local definition is unused"),
+        ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
+        ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
+        ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
+        ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits"),
+        ChoiceWithHelp(
+          name = "strict-no-implicit-warn",
+          description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
+          "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
+        ),
+        // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
+        ChoiceWithHelp(
+          name = "unsafe-warn-patvars",
+          description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
+          "This warning can generate false positive, as warning cannot be\n" +
+          "suppressed yet."
+        )
     ),
     default = Nil
   )
@@ -206,7 +212,8 @@ private sealed trait WarningSettings:
     def privates(using Context) =
       allOr("privates") || allOr("linted")
     def patvars(using Context) =
-      allOr("patvars")
+      isChoiceSet("unsafe-warn-patvars") // not with "all"
+      // allOr("patvars") // todo : rename once fixed
     def linted(using Context) =
       allOr("linted")
     def strictNoImplicitWarn(using Context) =
