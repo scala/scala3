@@ -558,9 +558,6 @@ object CheckUnused:
         else
           false
 
-      private def ownerIsTrivial(using Context): Boolean =
-        sym.exists && trivialDefs(sym.owner)
-
     extension (defdef: tpd.DefDef)
       // so trivial that it never consumes params
       private def isTrivial(using Context): Boolean =
