@@ -254,10 +254,7 @@ object Objects:
 
   // -------------------------------- algorithm --------------------------------
 
-  /** Check an individual class
-   *
-   *  The class to be checked must be an instantiable concrete class.
-   */
+  /** Check an individual object */
   private def checkObject(classSym: ClassSymbol)(using Context, State.Rep): Unit =
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
@@ -285,8 +282,7 @@ object Objects:
     given State.Rep = State.init(classes)
 
     for
-      classSym <- classes
-      if classSym.is(Flags.Module) && classSym.isStaticOwner
+      classSym <- classes  if classSym.isStaticObject
     do
       checkObject(classSym)
 
@@ -461,7 +457,51 @@ object Objects:
    * @param klass   The enclosing class where the type `tp` is located.
    */
   def evalType(tp: Type, thisV: OfClass, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
-    ???
+    // TODO: identify aliasing of object & object field
+    tp match
+      case _: ConstantType =>
+        Bottom
+
+      case tmref: TermRef if tmref.prefix == NoPrefix =>
+        // - params and var definitions are abstract by its type
+        // - evaluate the rhs of the local definition for val definitions
+        val sym = tmref.symbol
+        if sym.isOneOf(Flags.Param | Flags.Mutable) then
+          OfType(sym.info)
+        else if sym.is(Flags.Package) then
+          Bottom
+        else if sym.hasSource then
+          val rhs = sym.defTree.asInstanceOf[ValDef].rhs
+          eval(rhs, thisV, klass)
+        else
+          // pattern-bound variables
+          OfType(sym.info)
+
+      case tmref: TermRef =>
+        val sym = tmref.symbol
+        if sym.isStaticObject then
+          // TODO: check immutability
+          checkObject(sym.moduleClass.asClass)
+          OfClass(sym.moduleClass.typeRef)
+        else
+          // TODO: check object field access
+          val value = evalType(tmref.prefix, thisV, klass)
+          select(value, tmref.symbol, tmref.prefix)
+
+      case tp @ ThisType(tref) =>
+        val sym = tref.symbol
+        if sym.is(Flags.Package) then
+          Bottom
+        else if sym.isStaticObject && sym != klass then
+          // TODO: check immutability
+          checkObject(sym.moduleClass.asClass)
+          OfClass(sym.moduleClass.typeRef)
+
+        else
+          resolveThis(tref.classSymbol.asClass, thisV, klass)
+
+      case _ =>
+        throw new Exception("unexpected type: " + tp)
   }
 
   /** Evaluate arguments of methods */
@@ -551,19 +591,7 @@ object Objects:
    * @param klass   The enclosing class where the type `C.this` is located.
    */
   def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] =
-    thisV match
-    case OfClass(tp) =>
-      ???
-
-    case OfType(tp) =>
-      ???
-
-    case RefSet(refs) =>
-      ???
-
-    case _ =>
-      report.error("[Internal error] unexpected this value " + thisV + Trace.show, Trace.position)
-      Bottom
+    OfType(target.typeRef)
 
   /** Compute the outer value that correspond to `tref.prefix`
    *
@@ -580,3 +608,7 @@ object Objects:
     else
       if cls.isAllOf(Flags.JavaInterface) then Bottom
       else evalType(tref.prefix, thisV, klass)
+
+  extension (sym: Symbol)
+    def isStaticObject(using Context) =
+      sym.is(Flags.Module, butNot = Flags.Package) && sym.isStatic
