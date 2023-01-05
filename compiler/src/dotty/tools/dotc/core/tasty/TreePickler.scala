@@ -812,8 +812,8 @@ class TreePickler(pickler: TastyPickler) {
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 
-  def compactify(): Unit = {
-    buf.compactify()
+  def compactify(scratch: ScratchData = new ScratchData): Unit = {
+    buf.compactify(scratch)
 
     def updateMapWithDeltas(mp: MutableSymbolMap[Addr]) =
       val keys = new Array[Symbol](mp.size)
@@ -826,7 +826,7 @@ class TreePickler(pickler: TastyPickler) {
       i = 0
       while i < keys.length do
         val key = keys(i)
-        mp(key) = adjusted(mp(key))
+        mp(key) = adjusted(mp(key), scratch)
         i += 1
 
     updateMapWithDeltas(symRefs)
