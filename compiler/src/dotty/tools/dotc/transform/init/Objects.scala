@@ -12,6 +12,7 @@ import NameKinds.SuperAccessorName
 
 import ast.tpd.*
 import config.Printers.init as printer
+import reporting.StoreReporter
 import reporting.trace as log
 
 import Errors.*
@@ -257,20 +258,24 @@ object Objects:
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
     @tailrec
-    def iterate(): Unit =
+    def iterate()(using Context): Unit =
       given cache: Cache.Data = new Cache.Data
       given Trace = Trace.empty
 
       init(tpl, OfClass(classSym.typeRef), classSym)
 
-      val hasError = false // TODO
+      val hasError = ctx.reporter.pendingMessages.nonEmpty
       if cache.hasChanged && !hasError then
-        // code to prepare cache and heap for next iteration
         cache.prepareForNextIteration()
         iterate()
+      else
+        ctx.reporter.flush()
     end iterate
 
-    State.checkObject(classSym) { iterate() }
+    State.checkObject(classSym) {
+      val reporter = new StoreReporter(ctx.reporter)
+      iterate()(using ctx.fresh.setReporter(reporter))
+    }
 
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given State.Rep = State.init(classes)
