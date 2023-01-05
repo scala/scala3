@@ -16,8 +16,7 @@ import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
-class Inlining extends MacroTransform with IdentityDenotTransformer {
-  thisPhase =>
+class Inlining extends MacroTransform {
 
   import tpd._
 
@@ -79,7 +78,7 @@ class Inlining extends MacroTransform with IdentityDenotTransformer {
             && StagingContext.level == 0
             && MacroAnnotations.hasMacroAnnotation(tree.symbol)
           then
-            val trees = new MacroAnnotations(thisPhase).expandAnnotations(tree)
+            val trees = (new MacroAnnotations).expandAnnotations(tree)
             val trees1 = trees.map(super.transform)
 
             // Find classes added to the top level from a package object
