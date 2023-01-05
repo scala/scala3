@@ -857,7 +857,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     /** After phase `trans`, set the owner of every definition in this tree that was formerly
-     *  owner by `from` to `to`.
+     *  owned by `from` to `to`.
      */
     def changeOwnerAfter(from: Symbol, to: Symbol, trans: DenotTransformer)(using Context): ThisTree =
       if (ctx.phase == trans.next) {

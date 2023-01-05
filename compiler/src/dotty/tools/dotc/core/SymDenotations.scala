@@ -848,13 +848,8 @@ object SymDenotations {
     def isSerializable(using Context): Boolean =
       isClass && derivesFrom(defn.JavaSerializableClass)
 
-    /** Is this symbol a class that extends `AnyVal`? */
-    final def isValueClass(using Context): Boolean =
-      val di = initial
-      di.isClass
-      && atPhase(di.validFor.firstPhaseId)(di.derivesFrom(defn.AnyValClass))
-        // We call derivesFrom at the initial phase both because AnyVal does not exist
-        // after Erasure and to avoid cyclic references caused by forcing denotations
+    /** Is this symbol a class that extends `AnyVal`? Overridden in ClassDenotation */
+    def isValueClass(using Context): Boolean = false
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
@@ -2005,6 +2000,17 @@ object SymDenotations {
 
     /** Hook to do a pre-enter test. Overridden in PackageDenotation */
     protected def proceedWithEnter(sym: Symbol, mscope: MutableScope)(using Context): Boolean = true
+
+    final override def isValueClass(using Context): Boolean =
+      val di = initial.asClass
+      val anyVal = defn.AnyValClass
+      if di.baseDataCache.isValid && !ctx.erasedTypes then
+        // fast path that does not demand time travel
+        (symbol eq anyVal) || di.baseClassSet.contains(anyVal)
+      else
+        // We call derivesFrom at the initial phase both because AnyVal does not exist
+        // after Erasure and to avoid cyclic references caused by forcing denotations
+        atPhase(di.validFor.firstPhaseId)(di.derivesFrom(anyVal))
 
     /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time
