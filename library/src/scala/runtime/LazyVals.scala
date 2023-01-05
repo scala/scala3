@@ -59,6 +59,10 @@ object LazyVals {
    */
   object Evaluating extends LazyValControlState
 
+  /**
+   * Used to indicate the state of a lazy val that has been evaluated to
+   * `null`.
+   */
   object NullValue extends LazyValControlState
 
   final val BITS_PER_LAZY_VAL = 2L

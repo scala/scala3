@@ -44,7 +44,7 @@ class CompilationTests {
       compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
       compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init")),
-      // Run tests for experimental lightweight lazy vals
+      // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/pos-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
@@ -212,7 +212,7 @@ class CompilationTests {
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init"), FileFilter.exclude("serialization-new.scala")),
-      // Run tests for experimental lightweight lazy vals and stable lazy vals.
+      // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ).checkRuns()
   }
