@@ -1,3 +1,5 @@
+package mymacro
+
 import scala.annotation.{experimental, MacroAnnotation}
 import scala.quoted._
 import scala.collection.mutable
