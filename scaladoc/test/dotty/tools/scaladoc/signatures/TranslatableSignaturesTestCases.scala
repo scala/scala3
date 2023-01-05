@@ -41,6 +41,8 @@ class MergedPackageSignatures extends SignatureTest("mergedPackage", SignatureTe
 
 class ExtensionMethodSignature extends SignatureTest("extensionMethodSignatures", SignatureTest.all)
 
+class ExtensionMethodParamsSignature extends SignatureTest("extensionParams", SignatureTest.all)
+
 class ClassModifiers extends SignatureTest("classModifiers", SignatureTest.classlikeKinds)
 
 class EnumSignatures extends SignatureTest("enumSignatures", SignatureTest.all)

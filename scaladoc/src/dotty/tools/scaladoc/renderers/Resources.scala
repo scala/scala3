@@ -177,7 +177,15 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
     def extensionTarget(member: Member): String =
       member.kind match
-        case Kind.Extension(on, _) => flattenToText(on.signature)
+        case Kind.Extension(on, _) =>
+          val typeSig = SignatureBuilder()
+            .keyword("extension ")
+            .generics(on.typeParams)
+            .content
+          val argsSig = SignatureBuilder()
+            .functionParameters(on.argsLists)
+            .content
+          flattenToText(typeSig ++ argsSig)
         case _ => ""
 
     def docPartRenderPlain(d: DocPart): String =
