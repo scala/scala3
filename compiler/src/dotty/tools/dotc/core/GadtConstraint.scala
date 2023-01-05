@@ -209,7 +209,7 @@ sealed trait GadtConstraint (
     this.reverseMapping = revMapping
     this.wasConstrained = wasConstrained
 
-  def rollbackGadtUnless(op: => Boolean): Boolean =
+  inline def rollbackGadtUnless(inline op: Boolean): Boolean =
     val savedConstr = myConstraint
     val savedMapping = mapping
     val savedReverseMapping = reverseMapping
