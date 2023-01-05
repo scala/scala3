@@ -103,8 +103,7 @@ class Inlining extends MacroTransform with IdentityDenotTransformer {
         case _: PackageDef =>
           super.transform(tree) match
             case tree1: PackageDef if !topClasses.isEmpty =>
-              topClasses ++= tree1.stats
-              val newStats = topClasses.result()
+              val newStats = tree1.stats ::: topClasses.result()
               topClasses.clear()
               cpy.PackageDef(tree1)(tree1.pid, newStats)
             case tree1 => tree1
