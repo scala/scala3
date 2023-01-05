@@ -129,28 +129,83 @@ object Objects:
       val concreteClasses = classes.filter(Semantic.isConcreteClass).toSet
       new Data(concreteClasses)
 
-  type Contextual[T] = (Context, State.Rep, Cache.Cache, Trace) ?=> T
+  type Contextual[T] = (Context, State.Rep, Cache.Data, Trace) ?=> T
 
   object Cache:
     /** Cache for method calls and lazy values
      *
      *  Symbol -> ThisValue -> ReturnValue
      */
-    opaque type Cache = Map[Symbol, Map[OfClass, Value]]
+    private type Cache = Map[Symbol, Map[Value, Value]]
 
-    def get(thisV: OfClass, sym: Symbol)(fun: => Value)(using cache: Cache): Value =
-      cache.get(sym).flatMap(_.get(thisV)) match
-      case None =>
-        val res = fun
-        store(thisV, sym, res)
-        res
-      case Some(value) =>
-        value
+    class Data:
+      /** The cache from last iteration */
+      private var last: Cache =  Map.empty
 
-    private def store(thisV: OfClass, sym: Symbol, result: Value)(using cache: Cache): Unit =
-      cache.updated(sym, cache.getOrElse(sym, Map.empty).updated(thisV, result))
+      /** The output cache
+       *
+       *  The output cache is computed based on the cache values `last` from the
+       *  last iteration.
+       *
+       *  Both `last` and `current` are required to make sure evaluation happens
+       *  once in each iteration.
+       */
+      private var current: Cache = Map.empty
 
-    def fresh(): Cache = Map.empty
+      /** Whether the current heap is different from the last heap?
+       *
+       *  `changed == false` implies that the fixed point has been reached.
+       */
+      private var changed: Boolean = false
+
+      def assume(value: Value, sym: Symbol)(fun: => Value): Contextual[Value] =
+        val assumeValue: Value =
+          last.get(value, sym) match
+          case Some(value) => value
+          case None =>
+            val default = OfType(defn.NothingType)
+            this.last = last.updatedNested(value, sym, default)
+            default
+
+        this.current = current.updatedNested(value, sym, assumeValue)
+
+        val actual = fun
+        if actual != assumeValue then
+          this.changed = true
+          this.current = this.current.updatedNested(value, sym, actual)
+        end if
+
+        actual
+      end assume
+
+      def hasChanged = changed
+
+      /** Prepare cache for the next iteration
+       *
+       *  1. Reset changed flag.
+       *
+       *  2. Use current cache as last cache and set current cache to be empty.
+       *
+       */
+      def prepareForNextIteration()(using Context) =
+        this.changed = false
+        this.last = this.current
+        this.current = Map.empty
+    end Data
+
+    extension (cache: Cache)
+      private def get(value: Value, sym: Symbol): Option[Value] =
+        cache.get(sym).flatMap(_.get(value))
+
+      private def removed(value: Value, sym: Symbol) =
+        val innerMap2 = cache(sym).removed(value)
+        cache.updated(sym, innerMap2)
+
+      private def updatedNested(value: Value, sym: Symbol, result: Value): Cache =
+        val innerMap = cache.getOrElse(sym, Map.empty[Value, Value])
+        val innerMap2 = innerMap.updated(value, result)
+        cache.updated(sym, innerMap2)
+    end extension
   end Cache
 
   // --------------------------- domain operations -----------------------------
@@ -168,7 +223,23 @@ object Objects:
   extension (values: Seq[Value])
     def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
 
-  def call(thisV: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = ???
+  def call(thisV: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] =
+    thisV match
+    case Ext =>
+      // TODO: promotion of values
+      Ext
+
+    case OfClass(tp) =>
+      ???
+
+    case OfType(tp) =>
+      ???
+
+    case Fun(expr, thisV, klass) =>
+      ???
+
+    case RefSet(vs) =>
+      ???
 
   def callConstructor(thisV: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = ???
 
@@ -182,22 +253,34 @@ object Objects:
    *
    *  The class to be checked must be an instantiable concrete class.
    */
-  private def checkObject(classSym: ClassSymbol): Contextual[Unit] =
+  private def checkObject(classSym: ClassSymbol)(using Context, State.Rep): Unit =
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-    State.checkObject(classSym) {
+
+    @tailrec
+    def iterate(): Unit =
+      given cache: Cache.Data = new Cache.Data
+      given Trace = Trace.empty
+
       init(tpl, OfClass(classSym.typeRef), classSym)
-    }
+
+      val hasError = false // TODO
+      if cache.hasChanged && !hasError then
+        // code to prepare cache and heap for next iteration
+        cache.prepareForNextIteration()
+        iterate()
+    end iterate
+
+    State.checkObject(classSym) { iterate() }
 
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given State.Rep = State.init(classes)
-    given Cache.Cache = Cache.fresh()
-    given Trace = Trace.empty
 
     for
       classSym <- classes
       if classSym.is(Flags.Module) && classSym.isStaticOwner
     do
       checkObject(classSym)
+
 
   /** Evaluate a list of expressions */
   def evalExprs(exprs: List[Tree], thisV: OfClass, klass: ClassSymbol): Contextual[List[Value]] =
