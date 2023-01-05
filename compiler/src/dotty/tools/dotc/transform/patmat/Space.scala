@@ -116,15 +116,15 @@ trait SpaceLogic {
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
   def simplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, show)(space match {
     case Prod(tp, fun, spaces) =>
-      val sps = spaces.map(simplify(_))
+      val sps = spaces.mapconserve(simplify)
       if (sps.contains(Empty)) Empty
       else if (canDecompose(tp) && decompose(tp).isEmpty) Empty
-      else Prod(tp, fun, sps)
+      else if sps eq spaces then space else Prod(tp, fun, sps)
     case Or(spaces) =>
-      val spaces2 = spaces.map(simplify(_)).filter(_ != Empty)
+      val spaces2 = spaces.map(simplify).filter(_ != Empty)
       if spaces2.isEmpty then Empty
-      else if spaces2.lengthCompare(1) == 0 then spaces2.head
-      else Or(spaces2)
+      else if spaces2.lengthIs == 1 then spaces2.head
+      else if spaces2.corresponds(spaces)(_ eq _) then space else Or(spaces2)
     case Typ(tp, _) =>
       if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else space
@@ -164,12 +164,15 @@ trait SpaceLogic {
       List(space)
   }
 
-  /** Is `a` a subspace of `b`? Equivalent to `a - b == Empty`, but faster */
+  /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
   def isSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"isSubspace(${show(a)}, ${show(b)})", debug) {
     def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
 
-    (simplify(a), simplify(b)) match {
+    val a2 = simplify(a)
+    val b2 = simplify(b)
+    if (a ne a2) || (b ne b2) then isSubspace(a2, b2)
+    else (a, b) match {
       case (Empty, _) => true
       case (_, Empty) => false
       case (Or(ss), _) =>
@@ -266,9 +269,11 @@ trait SpaceLogic {
           tryDecompose2(tp2)
         else
           a
+      case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
+        if (!isSameUnapply(fun1, fun2)) => a
+      case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
+        if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) => a
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-        if (!isSameUnapply(fun1, fun2)) return a
-        if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) return a
 
         val range = (0 until ss1.size).toList
         val cache = Array.fill[Space | Null](ss2.length)(null)
