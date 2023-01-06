@@ -40,14 +40,7 @@ import scala.annotation.tailrec
  *
  *  1. It is inter-procedural and flow-insensitive.
  *
- *  2. It is modular with respect to separate compilation, even incremental
- *     compilation.
- *
- *     When a value leaks beyond the boundary of analysis, we approximate by
- *     calling all methods of the value that overridding a method outside of
- *     the boundary.
- *
- *  3. It is receiver-sensitive but not heap-sensitive nor parameter-sensitive.
+ *  2. It is receiver-sensitive but not heap-sensitive nor parameter-sensitive.
  *
  *     Fields and parameters are always abstracted by their types.
  *
@@ -59,27 +52,28 @@ object Objects:
   sealed abstract class Value:
     def show(using Context): String
 
+
   /**
-   * Represents an external value
-   *
-   * An external value is usually an instance of a class of another project,
-   * therefore it may not refer to objects defined in the current project. The
-   * only possibility is that an internal value leaks to an external value. Such
-   * leaking is strictly checked by the algorithm.
+   * A reference caches the current value.
    */
-  case object Ext extends Value:
-    def show(using Context) = "Ext"
+  sealed abstract class Ref extends Value:
+    val fields: mutable.Map[Symbol, Value] = mutable.Map.empty
+    val outers: mutable.Map[Symbol, Value] = mutable.Map.empty
+
+  /** A reference to a static object */
+  case class ObjectRef(klass: ClassSymbol) extends Ref:
+    def show(using Context) = "ObjectRef(" + klass.show + ")"
 
   /**
    * Rerepsents values that are instances of the specified class
    *
    * `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass(tp: Type) extends Value:
+  case class OfClass(tp: Type, outer: Value) extends Ref:
     def show(using Context) = "OfClass(" + tp.show + ")"
 
   /**
-   * Rerepsents values that are of the given type
+   * Rerepsents values of a specific type
    *
    * `OfType` is just a short-cut referring to currently instantiated sub-types.
    *
@@ -91,7 +85,7 @@ object Objects:
   /**
    * Represents a lambda expression
    */
-  case class Fun(expr: Tree, thisV: OfClass, klass: ClassSymbol) extends Value:
+  case class Fun(expr: Tree, thisV: Ref, klass: ClassSymbol) extends Value:
     def show(using Context) = "Fun(" + expr.show + ", " + thisV.show + ", " + klass.show + ")"
 
   /**
@@ -109,30 +103,30 @@ object Objects:
     /**
      * Remembers the instantiated types during instantiation of a static object.
      */
-    class Data(allConcreteClasses: Set[ClassSymbol]):
+    class Data:
       // objects under check
-      val checkingObjects = new mutable.ArrayBuffer[ClassSymbol]
-      val checkedObjects = new mutable.ArrayBuffer[ClassSymbol]
+      private[State] val checkingObjects = new mutable.ArrayBuffer[ClassSymbol]
+      private[State] val checkedObjects = new mutable.ArrayBuffer[ClassSymbol]
 
-    opaque type Rep = Data
+      // object -> (class, types of the class)
+      private[State] val instantiatedTypes = mutable.Map.empty[ClassSymbol, Map[ClassSymbol, List[Type]]]
 
-    def checkObject(clazz: ClassSymbol)(work: => Unit)(using rep: Rep, ctx: Context) =
-      val index = rep.checkingObjects.indexOf(clazz)
+      // object -> (fun type, fun values)
+      private[State] val instantiatedFuncs = mutable.Map.empty[ClassSymbol, Map[Type, List[Fun]]]
+
+    def checkObject(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context) =
+      val index = data.checkingObjects.indexOf(clazz)
 
       if index != -1 then
-        val cycle = rep.checkingObjects.slice(index, rep.checkingObjects.size - 1)
+        val cycle = data.checkingObjects.slice(index, data.checkingObjects.size - 1)
         report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + clazz.show, clazz.defTree)
-      else if rep.checkedObjects.indexOf(clazz) == -1 then
-        rep.checkingObjects += clazz
+      else if data.checkedObjects.indexOf(clazz) == -1 then
+        data.checkingObjects += clazz
         work
-        assert(rep.checkingObjects.last == clazz, "Expect = " + clazz.show + ", found = " + rep.checkingObjects.last)
-        rep.checkedObjects += rep.checkingObjects.remove(rep.checkingObjects.size - 1)
+        assert(data.checkingObjects.last == clazz, "Expect = " + clazz.show + ", found = " + data.checkingObjects.last)
+        data.checkedObjects += data.checkingObjects.remove(data.checkingObjects.size - 1)
 
-    def init(classes: List[ClassSymbol])(using Context): Rep =
-      val concreteClasses = classes.filter(Semantic.isConcreteClass).toSet
-      new Data(concreteClasses)
-
-  type Contextual[T] = (Context, State.Rep, Cache.Data, Trace) ?=> T
+  type Contextual[T] = (Context, State.Data, Cache.Data, Trace) ?=> T
 
   object Cache:
     /** Cache for method calls and lazy values
@@ -230,11 +224,11 @@ object Objects:
 
   def call(thisV: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] =
     thisV match
-    case Ext =>
-      // TODO: promotion of values
-      Ext
 
-    case OfClass(tp) =>
+    case ObjectRef(klass) =>
+      ???
+
+    case OfClass(tp, outer) =>
       ???
 
     case OfType(tp) =>
@@ -255,7 +249,7 @@ object Objects:
   // -------------------------------- algorithm --------------------------------
 
   /** Check an individual object */
-  private def checkObject(classSym: ClassSymbol)(using Context, State.Rep): Unit =
+  private def checkObject(classSym: ClassSymbol)(using Context, State.Data): Unit =
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
     @tailrec
@@ -263,7 +257,7 @@ object Objects:
       given cache: Cache.Data = new Cache.Data
       given Trace = Trace.empty
 
-      init(tpl, OfClass(classSym.typeRef), classSym)
+      init(tpl, ObjectRef(classSym), classSym)
 
       val hasError = ctx.reporter.pendingMessages.nonEmpty
       if cache.hasChanged && !hasError then
@@ -279,7 +273,7 @@ object Objects:
     }
 
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
-    given State.Rep = State.init(classes)
+    given State.Data = new State.Data
 
     for
       classSym <- classes  if classSym.isStaticObject
@@ -288,7 +282,7 @@ object Objects:
 
 
   /** Evaluate a list of expressions */
-  def evalExprs(exprs: List[Tree], thisV: OfClass, klass: ClassSymbol): Contextual[List[Value]] =
+  def evalExprs(exprs: List[Tree], thisV: Ref, klass: ClassSymbol): Contextual[List[Value]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Handles the evaluation of different expressions
@@ -297,7 +291,7 @@ object Objects:
    * @param thisV  The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass  The enclosing class where the expression `expr` is located.
    */
-  def eval(expr: Tree, thisV: OfClass, klass: ClassSymbol): Contextual[Value] =
+  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol): Contextual[Value] =
     expr match
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -456,7 +450,7 @@ object Objects:
    * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass   The enclosing class where the type `tp` is located.
    */
-  def evalType(tp: Type, thisV: OfClass, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
+  def evalType(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
     // TODO: identify aliasing of object & object field
     tp match
       case _: ConstantType =>
@@ -482,7 +476,7 @@ object Objects:
         if sym.isStaticObject then
           // TODO: check immutability
           checkObject(sym.moduleClass.asClass)
-          OfClass(sym.moduleClass.typeRef)
+          ObjectRef(sym.moduleClass.asClass)
         else
           // TODO: check object field access
           val value = evalType(tmref.prefix, thisV, klass)
@@ -495,7 +489,7 @@ object Objects:
         else if sym.isStaticObject && sym != klass then
           // TODO: check immutability
           checkObject(sym.moduleClass.asClass)
-          OfClass(sym.moduleClass.typeRef)
+          ObjectRef(sym.moduleClass.asClass)
 
         else
           resolveThis(tref.classSymbol.asClass, thisV, klass)
@@ -505,7 +499,7 @@ object Objects:
   }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: OfClass, klass: ClassSymbol): Contextual[List[ArgInfo]] =
+  def evalArgs(args: List[Arg], thisV: Ref, klass: ClassSymbol): Contextual[List[ArgInfo]] =
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
     args.foreach { arg =>
       val res =
@@ -518,7 +512,7 @@ object Objects:
     }
     argInfos.toList
 
-  def init(tpl: Template, thisV: OfClass, klass: ClassSymbol): Contextual[Unit] =
+  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Unit] =
     def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo]): Unit =
       val cls = tref.classSymbol.asClass
 
@@ -599,7 +593,7 @@ object Objects:
    * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass   The enclosing class where the type `tref` is located.
    */
-  def outerValue(tref: TypeRef, thisV: OfClass, klass: ClassSymbol): Contextual[Value] =
+  def outerValue(tref: TypeRef, thisV: Ref, klass: ClassSymbol): Contextual[Value] =
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
