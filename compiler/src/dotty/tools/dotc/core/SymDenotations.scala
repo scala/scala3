@@ -2666,7 +2666,7 @@ object SymDenotations {
             if (!traceInvalid(owner)) explainSym("owner is invalid")
             else if (!owner.isClass || owner.isRefinementClass || denot.isSelfSym) true
             else if (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol) true
-            else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList}, do not contain ${denot.symbol}")
+            else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList.map(show(_))}, do not contain ${denot.symbol}")
           }
           catch {
             case ex: StaleSymbol => explainSym(s"$ex was thrown")

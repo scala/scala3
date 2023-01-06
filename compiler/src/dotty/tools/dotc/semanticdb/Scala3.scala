@@ -5,14 +5,13 @@ import core.Symbols.{ Symbol , defn, NoSymbol }
 import core.Contexts._
 import core.Names
 import core.Names.Name
-import core.Types.{Type, TypeBounds}
+import core.Types.{Type, TypeBounds, Designator}
 import core.Flags._
 import core.NameKinds
 import core.StdNames.nme
 import SymbolInformation.{Kind => k}
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.core.Names.Designator
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 

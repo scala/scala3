@@ -9,6 +9,7 @@ import scala.collection.mutable
 import core._
 import Texts._, Types._, Flags._, Symbols._, Contexts._
 import Decorators._
+import Names.Name
 import reporting.Message
 import util.DiffUtil
 import Highlighting._
@@ -22,7 +23,7 @@ object Formatting {
      *  interpolator's correct context, that is with non-sensical tagging, message limiting, explanations, etc. */
     opaque type Shown = Any
     object Shown:
-      given [A: Show]: Conversion[A, Shown] = Show[A].show(_)
+      given toShown[A: Show]: Conversion[A, Shown] = Show[A].show(_)
 
     sealed abstract class Show[-T]:
       /** Show a value T by returning a "shown" result. */
@@ -48,7 +49,6 @@ object Formatting {
 
     class ShowImplicits1 extends ShowImplicits2:
       given Show[ImplicitRef]      = ShowAny
-      given Show[Names.Designator] = ShowAny
       given Show[util.SrcPos]      = ShowAny
 
     object Show extends ShowImplicits1:
@@ -90,6 +90,8 @@ object Formatting {
       given Show[util.SourceFile]                     = ShowAny
       given Show[util.Spans.Span]                     = ShowAny
       given Show[tasty.TreeUnpickler#OwnerTree]       = ShowAny
+      given Show[Name]                                = ShowAny
+      given Show[Symbol]                              = ShowAny
 
       private def show1[A: Show](x: A)(using Context) = show2(Show[A].show(x).ctxShow)
       private def show2(x: Shown)(using Context): String = x match

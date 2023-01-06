@@ -2182,6 +2182,8 @@ object Types {
 
 // --- NamedTypes ------------------------------------------------------------------
 
+  type Designator = Name | Symbol
+
   abstract class NamedType extends CachedProxyType, ValueType { self =>
 
     type ThisType >: this.type <: NamedType
@@ -2447,11 +2449,12 @@ object Types {
         checkSymAssign(denot.symbol)
 
       lastDenotation = denot
-      lastSymbol = denot.symbol
+      val lastSym = denot.symbol.asInstanceOf[Symbol]
+      lastSymbol = lastSym
       checkedPeriod = if (prefix.isProvisional) Nowhere else ctx.period
       designator match {
-        case sym: Symbol if designator ne lastSymbol.nn =>
-          designator = lastSymbol.asInstanceOf[Designator{ type ThisName = self.ThisName }]
+        case sym: Symbol if designator ne lastSym =>
+          designator = lastSym
         case _ =>
       }
       checkDenot()
