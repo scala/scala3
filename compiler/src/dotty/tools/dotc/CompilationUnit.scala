@@ -16,6 +16,7 @@ import core.Decorators._
 import config.{SourceVersion, Feature}
 import StdNames.nme
 import scala.annotation.internal.sharable
+import scala.util.control.NoStackTrace
 import transform.MacroAnnotations
 
 class CompilationUnit protected (val source: SourceFile) {
@@ -105,7 +106,7 @@ class CompilationUnit protected (val source: SourceFile) {
 
 object CompilationUnit {
 
-  class SuspendException extends Exception
+  class SuspendException extends Exception with NoStackTrace
 
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
