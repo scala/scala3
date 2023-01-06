@@ -17,7 +17,8 @@ import Trees.Literal
 import Variances.Variance
 import annotation.tailrec
 import util.SimpleIdentityMap
-import util.Stats
+import util.{SrcPos, SourcePosition, Stats}
+import util.Spans.*
 import java.util.WeakHashMap
 import scala.util.control.NonFatal
 import config.Config
@@ -39,7 +40,8 @@ object SymDenotations {
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol, initInfo, name.isTypeName) {
+    initPrivateWithin: Symbol = NoSymbol)
+  extends SingleDenotation(symbol, initInfo, name.isTypeName), ParamInfo, SrcPos {
 
     //assert(symbol.id != 4940, name)
 
@@ -1744,6 +1746,31 @@ object SymDenotations {
     /** Same as `sealedStrictDescendants` but prepends this symbol as well.
      */
     final def sealedDescendants(using Context): List[Symbol] = this.symbol :: sealedStrictDescendants
+
+    // ---- ParamInfo bindings -------------------------------------
+
+    type ThisName <: Name
+
+    def isTypeParam(using Context): Boolean = is(TypeParam)
+    def paramName(using Context): ThisName = name.asInstanceOf[ThisName]
+    def paramInfo(using Context): Type = info
+    def paramInfoAsSeenFrom(pre: Type)(using Context): Type = pre.memberInfo(symbol)
+    def paramInfoOrCompleter(using Context): Type = infoOrCompleter
+    def paramVariance(using Context): Variance = variance
+    def paramRef(using Context): TypeRef = typeRef
+
+    // ---- SrcPos bindings -------------------------------------
+
+    /** The position of this symbol, or NoSpan if the symbol was not loaded
+     *  from source or from TASTY. This is always a zero-extent position.
+     */
+    final def span: Span = if symbol.coord.isSpan then symbol.coord.toSpan else NoSpan
+
+    final def sourcePos(using Context): SourcePosition = {
+      val src = symbol.source
+      (if src.exists then src else ctx.source).atSpan(span)
+    }
+
   }
 
   /** The contents of a class definition during a period
@@ -1758,6 +1785,8 @@ object SymDenotations {
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.EqHashMap
+
+    type ThisName = TypeName
 
     // ----- caches -------------------------------------------------------
 
