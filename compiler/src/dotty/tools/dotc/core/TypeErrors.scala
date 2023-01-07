@@ -12,39 +12,58 @@ import Denotations._
 import Decorators._
 import reporting._
 import ast.untpd
-import config.Printers.cyclicErrors
+import config.Printers.{cyclicErrors, noPrinter}
 
-class TypeError(msg: String) extends Exception(msg) {
-  def this() = this("")
-  final def toMessage(using Context): Message =
-    withMode(Mode.Printing)(produceMessage)
-  def produceMessage(using Context): Message = super.getMessage.nn.toMessage
-  override def getMessage: String = super.getMessage.nn
-}
+import scala.annotation.constructorOnly
 
-class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name]) extends TypeError {
-  override def produceMessage(using Context): Message =
-    i"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
-      .toMessage
-}
+abstract class TypeError(using creationContext: Context) extends Exception(""):
 
-class MissingType(pre: Type, name: Name) extends TypeError {
+  /** Will the stack trace of this exception be filled in?
+   *  This is expensive and only useful for debugging purposes.
+   */
+  def computeStackTrace: Boolean =
+    ctx.debug || (cyclicErrors != noPrinter && this.isInstanceOf[CyclicReference] && !(ctx.mode is Mode.CheckCyclic))
+
+  override def fillInStackTrace(): Throwable =
+    if computeStackTrace then super.fillInStackTrace().nn
+    else this
+
+  /** Convert to message. This takes an additional Context, so that we
+   *  use the context when the message is first produced, i.e. when the TypeError
+   *  is handled. This makes a difference for CyclicErrors since we need to know
+   *  the context where the completed symbol is referenced, but the creation
+   *  context of the CyclicReference is the completion context for the symbol.
+   *  See i2887b for a test case, where we want to see
+   *  "recursive or overloaded method needs result type".
+   */
+  def toMessage(using Context): Message
+
+  /** Uses creationContext to produce the message */
+  override def getMessage: String = toMessage.message
+
+object TypeError:
+  def apply(msg: Message)(using Context) = new TypeError:
+    def toMessage(using Context) = msg
+end TypeError
+
+class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])(using Context) extends TypeError:
+  def toMessage(using Context) = em"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
+
+class MissingType(pre: Type, name: Name)(using Context) extends TypeError:
   private def otherReason(pre: Type)(using Context): String = pre match {
     case pre: ThisType if pre.cls.givenSelfType.exists =>
       i"\nor the self type of $pre might not contain all transitive dependencies"
     case _ => ""
   }
 
-  override def produceMessage(using Context): Message = {
-    if (ctx.debug) printStackTrace()
-    i"""cannot resolve reference to type $pre.$name
-       |the classfile defining the type might be missing from the classpath${otherReason(pre)}"""
-      .toMessage
-  }
-}
+  override def toMessage(using Context): Message =
+    if ctx.debug then printStackTrace()
+    em"""cannot resolve reference to type $pre.$name
+        |the classfile defining the type might be missing from the classpath${otherReason(pre)}"""
+end MissingType
 
-class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)
-extends TypeError {
+class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)(using Context)
+extends TypeError:
 
   def explanation: String = s"$op $details"
 
@@ -71,50 +90,51 @@ extends TypeError {
       (rs.map(_.explanation): List[String]).mkString("\n  ", "\n|  ", "")
   }
 
-  override def produceMessage(using Context): Message = NoExplanation {
+  override def toMessage(using Context): Message =
     val mostCommon = recursions.groupBy(_.op).toList.maxBy(_._2.map(_.weight).sum)._2.reverse
-    s"""Recursion limit exceeded.
-       |Maybe there is an illegal cyclic reference?
-       |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
-       |For the unprocessed stack trace, compile with -Yno-decode-stacktraces.
-       |A recurring operation is (inner to outer):
-       |${opsString(mostCommon)}""".stripMargin
-  }
+    em"""Recursion limit exceeded.
+        |Maybe there is an illegal cyclic reference?
+        |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
+        |For the unprocessed stack trace, compile with -Yno-decode-stacktraces.
+        |A recurring operation is (inner to outer):
+        |${opsString(mostCommon).stripMargin}"""
 
   override def fillInStackTrace(): Throwable = this
   override def getStackTrace(): Array[StackTraceElement] = previous.getStackTrace().asInstanceOf
-}
+end RecursionOverflow
 
 /** Post-process exceptions that might result from StackOverflow to add
   * tracing information while unwalking the stack.
   */
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
-object handleRecursive {
+object handleRecursive:
+  inline def underlyingStackOverflowOrNull(exc: Throwable): Throwable | Null =
+    var e: Throwable | Null = exc
+    while e != null && !e.isInstanceOf[StackOverflowError] do e = e.getCause
+    e
+
   def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
-    if (ctx.settings.YnoDecodeStacktraces.value)
+    if ctx.settings.YnoDecodeStacktraces.value then
       throw exc
-    else
-      exc match {
-        case _: RecursionOverflow =>
-          throw new RecursionOverflow(op, details, exc, weight)
-        case _ =>
-          var e: Throwable | Null = exc
-          while (e != null && !e.isInstanceOf[StackOverflowError]) e = e.getCause
-          if (e != null) throw new RecursionOverflow(op, details, e, weight)
-          else throw exc
-      }
-}
+    else exc match
+      case _: RecursionOverflow =>
+        throw new RecursionOverflow(op, details, exc, weight)
+      case _ =>
+        val so = underlyingStackOverflowOrNull(exc)
+        if so != null then throw new RecursionOverflow(op, details, so, weight)
+        else throw exc
+end handleRecursive
 
 /**
  * This TypeError signals that completing denot encountered a cycle: it asked for denot.info (or similar),
  * so it requires knowing denot already.
  * @param denot
  */
-class CyclicReference private (val denot: SymDenotation) extends TypeError {
+class CyclicReference private (val denot: SymDenotation)(using Context) extends TypeError:
   var inImplicitSearch: Boolean = false
 
-  override def produceMessage(using Context): Message = {
+  override def toMessage(using Context): Message =
     val cycleSym = denot.symbol
 
     // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
@@ -151,19 +171,16 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
         CyclicReferenceInvolving(denot)
 
     errorMsg(ctx)
-  }
-}
+  end toMessage
 
-object CyclicReference {
-  def apply(denot: SymDenotation)(using Context): CyclicReference = {
+object CyclicReference:
+  def apply(denot: SymDenotation)(using Context): CyclicReference =
     val ex = new CyclicReference(denot)
-    if (!(ctx.mode is Mode.CheckCyclic) || ctx.settings.Ydebug.value) {
+    if ex.computeStackTrace then
       cyclicErrors.println(s"Cyclic reference involving! $denot")
       val sts = ex.getStackTrace.asInstanceOf[Array[StackTraceElement]]
       for (elem <- sts take 200)
         cyclicErrors.println(elem.toString)
-    }
     ex
-  }
-}
+end CyclicReference
 

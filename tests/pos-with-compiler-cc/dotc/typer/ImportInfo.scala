@@ -34,12 +34,12 @@ object ImportInfo {
     ImportInfo(sym, selectors, untpd.EmptyTree, isRootImport = true)
 
   extension (c: Context)
-    def withRootImports(rootRefs: List[RootRef])(using Context): Context =
-      rootRefs.foldLeft(c)((ctx, ref) => ctx.fresh.setImportInfo(rootImport(ref)))
+    def withRootImports(rootRefs: List[RootRef])(using Context): DetachedContext =
+      rootRefs.foldLeft(c)((ctx, ref) => ctx.fresh.setImportInfo(rootImport(ref))).detach
 
-    def withRootImports: Context =
-      given Context = c
-      c.withRootImports(defn.rootImportFns)
+    def withRootImports: DetachedContext =
+      given DetachedContext = c.detach
+      c.withRootImports(defn.rootImportFns).detach
 }
 
 /** Info relating to an import clause
@@ -218,10 +218,12 @@ class ImportInfo(symf: Context ?-> Symbol,
         mentionsFeature(feature) match
           case Some(bv) => bv
           case None =>
-            var c = ctx.outer
-            while c.importInfo eqn ctx.importInfo do c = c.outer
-            val cinfo = c.importInfo
-            (cinfo != null) && cinfo.featureImported(feature)(using c)
+            def recur(c: Context): Boolean =
+              if c.importInfo eqn ctx.importInfo then recur(c.outer)
+              else
+                val cinfo = c.importInfo
+                (cinfo != null) && cinfo.featureImported(feature)(using c)
+            recur(ctx.outer)
       )
     featureCache(feature).nn
 

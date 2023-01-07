@@ -9,14 +9,16 @@ import Texts.Text
 import StdNames.str
 import config.Config
 import util.{LinearMap, HashSet}
+import Decorators.orElseCC
 
 import scala.annotation.internal.sharable
+import annotation.retains
 
 object Names {
   import NameKinds._
 
-  /** Things that can be turned into names with `totermName` and `toTypeName`
-   *  Decorators defines implements these as extension methods for strings.
+  /** Things that can be turned into names with `toTermName` and `toTypeName`.
+   *  Decorators implements these as extension methods for strings.
    */
   type PreName = Name | String
 
@@ -72,11 +74,11 @@ object Names {
      *  Stops at DerivedNames with infos of kind QualifiedInfo.
      *  If `f` does not apply to any part, return name unchanged.
      */
-    def replace(f: PartialFunction[Name, Name]): ThisName
+    def replace(f: PartialFunction[Name, Name] @retains(caps.*)): ThisName
 
     /** Same as replace, but does not stop at DerivedNames with infos of kind QualifiedInfo. */
-    def replaceDeep(f: PartialFunction[Name, Name]): ThisName =
-      replace(f.orElse {
+    def replaceDeep(f: PartialFunction[Name, Name] @retains(caps.*)): ThisName =
+      replace(f.orElseCC {
         case DerivedName(underlying, info: QualifiedInfo) =>
           underlying.replaceDeep(f).derived(info)
       })
@@ -338,7 +340,7 @@ object Names {
     override def toSimpleName: SimpleName = this
     override final def mangle: SimpleName = encode
 
-    override def replace(f: PartialFunction[Name, Name]): ThisName =
+    override def replace(f: PartialFunction[Name, Name] @retains(caps.*)): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this)) else this
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = f.lift(this)
     override def mapLast(f: SimpleName => SimpleName): SimpleName = f(this)
@@ -438,7 +440,7 @@ object Names {
     override def mangled: TypeName = toTermName.mangled.toTypeName
     override def mangledString: String = toTermName.mangledString
 
-    override def replace(f: PartialFunction[Name, Name]): ThisName = toTermName.replace(f).toTypeName
+    override def replace(f: PartialFunction[Name, Name] @retains(caps.*)): ThisName = toTermName.replace(f).toTypeName
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
     override def mapLast(f: SimpleName => SimpleName): TypeName = toTermName.mapLast(f).toTypeName
     override def mapParts(f: SimpleName => SimpleName): TypeName = toTermName.mapParts(f).toTypeName
@@ -471,7 +473,7 @@ object Names {
     override def toSimpleName: SimpleName = termName(toString)
     override final def mangle: SimpleName = encode.toSimpleName
 
-    override def replace(f: PartialFunction[Name, Name]): ThisName =
+    override def replace(f: PartialFunction[Name, Name] @retains(caps.*)): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this))
       else info match {
         case qual: QualifiedInfo => this

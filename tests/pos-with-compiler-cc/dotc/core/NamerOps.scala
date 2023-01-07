@@ -70,7 +70,7 @@ object NamerOps:
   def findModuleBuddy(name: Name, scope: Scope)(using Context) = {
     val it = scope.lookupAll(name).filter(_.is(Module))
     if (it.hasNext) it.next()
-    else NoSymbol.assertingErrorsReported(s"no companion $name in $scope")
+    else NoSymbol.assertingErrorsReported(em"no companion $name in $scope")
   }
 
   /** If a class has one of these flags, it does not get a constructor companion */
@@ -101,7 +101,7 @@ object NamerOps:
     && underlyingStableClassRef(sym.info.loBound).exists
 
   /** The completer of a constructor proxy apply method */
-  class ApplyProxyCompleter(constr: Symbol)(using Context) extends LazyType:
+  class ApplyProxyCompleter(constr: Symbol)(using DetachedContext) extends LazyType:
     def complete(denot: SymDenotation)(using Context): Unit =
       denot.info = constr.info
 
@@ -137,6 +137,7 @@ object NamerOps:
         cls.owner, cls.name.toTermName,
         ConstructorCompanionFlags, ConstructorCompanionFlags,
         constructorCompanionCompleter(cls),
+        privateWithin = cls.privateWithin,
         coord = cls.coord,
         assocFile = cls.assocFile)
     companion.moduleClass.registerCompanion(cls)

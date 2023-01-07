@@ -28,6 +28,7 @@ h1#main {
 /* navigation */
 header {
   font-size: 24px;
+  margin-block-end: calc(2* var(--base-spacing));
 }
 
 header .nav-item i {

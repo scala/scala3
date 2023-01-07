@@ -12,7 +12,7 @@ object SJSPlatform {
     ctx.platform.asInstanceOf[SJSPlatform]
 }
 
-class SJSPlatform()(using Context) extends JavaPlatform {
+class SJSPlatform()(using DetachedContext) extends JavaPlatform {
 
   /** Scala.js-specific definitions. */
   val jsDefinitions: JSDefinitions = new JSDefinitions()

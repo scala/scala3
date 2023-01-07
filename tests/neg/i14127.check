@@ -1,4 +1,4 @@
--- Error: tests/neg/i14127.scala:6:55 ----------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i14127.scala:6:55 ----------------------------------------------------------------------
 6 |    *: Int *: Int *: Int *: Int *: Int *: EmptyTuple)]] // error
   |                                                       ^
   |No given instance of type deriving.Mirror.Of[(Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int,

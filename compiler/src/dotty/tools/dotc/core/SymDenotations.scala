@@ -168,7 +168,8 @@ object SymDenotations {
           }
         }
         else {
-          if (myFlags.is(Touched)) throw CyclicReference(this)
+          if (myFlags.is(Touched))
+            throw CyclicReference(this)(using ctx.withOwner(symbol))
           myFlags |= Touched
           atPhase(validFor.firstPhaseId)(completer.complete(this))
         }
@@ -251,6 +252,15 @@ object SymDenotations {
     final def filterAnnotations(p: Annotation => Boolean)(using Context): Unit =
       annotations = annotations.filterConserve(p)
 
+    def annotationsCarrying(meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): List[Annotation] =
+      annotations.filterConserve(_.hasOneOfMetaAnnotation(meta, orNoneOf = orNoneOf))
+
+    def copyAndKeepAnnotationsCarrying(phase: DenotTransformer, meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Unit =
+      if annotations.nonEmpty then
+        val cpy = copySymDenotation()
+        cpy.annotations = annotationsCarrying(meta, orNoneOf = orNoneOf)
+        cpy.installAfter(phase)
+
     /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(using Context): Option[Annotation] =
       dropOtherAnnotations(annotations, cls) match {
@@ -273,7 +283,7 @@ object SymDenotations {
 
     /** Add the given annotation without parameters to the annotations of this denotation */
     final def addAnnotation(cls: ClassSymbol)(using Context): Unit =
-      addAnnotation(Annotation(cls))
+      addAnnotation(Annotation(cls, symbol.span))
 
     /** Remove annotation with given class from this denotation */
     final def removeAnnotation(cls: Symbol)(using Context): Unit =
@@ -504,6 +514,30 @@ object SymDenotations {
 
     /** `fullName` where `.' is the separator character */
     def fullName(using Context): Name = fullNameSeparated(QualifiedName)
+
+    /** The fully qualified name on the JVM of the class corresponding to this symbol. */
+    def binaryClassName(using Context): String =
+      val builder = new StringBuilder
+      val pkg = enclosingPackageClass
+      if !pkg.isEffectiveRoot then
+        builder.append(pkg.fullName.mangledString)
+        builder.append(".")
+      val flatName = this.flatName
+      // Some companion objects are fake (that is, they're a compiler fiction
+      // that doesn't correspond to a class that exists at runtime), this
+      // can happen in two cases:
+      // - If a Java class has static members.
+      // - If we create constructor proxies for a class (see NamerOps#addConstructorProxies).
+      //
+      // In both cases it's may be vital that we don't return the object name.
+      // For instance, sending it to zinc: when sbt is restarted, zinc will inspect the binary
+      // dependencies to see if they're still on the classpath, if it
+      // doesn't find them it will invalidate whatever referenced them, so
+      // any reference to a fake companion will lead to extra recompilations.
+      // Instead, use the class name since it's guaranteed to exist at runtime.
+      val clsFlatName = if isOneOf(JavaDefined | ConstructorProxy) then flatName.stripModuleClassSuffix else flatName
+      builder.append(clsFlatName.mangledString)
+      builder.toString
 
     private var myTargetName: Name | Null = null
 
@@ -748,7 +782,7 @@ object SymDenotations {
       * So the first call to a stable member might fail and/or produce side effects.
       */
     final def isStableMember(using Context): Boolean = {
-      def isUnstableValue = isOneOf(UnstableValueFlags) || info.isInstanceOf[ExprType]
+      def isUnstableValue = isOneOf(UnstableValueFlags) || info.isInstanceOf[ExprType] || isAllOf(InlineParam)
       isType || is(StableRealizable) || exists && !isUnstableValue
     }
 
@@ -960,6 +994,26 @@ object SymDenotations {
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
+    // Java language spec: https://docs.oracle.com/javase/specs/jls/se11/html/jls-15.html#jls-15.12.3
+    // Scala 2 spec: https://scala-lang.org/files/archive/spec/2.13/06-expressions.html#signature-polymorphic-methods
+    def isSignaturePolymorphic(using Context): Boolean =
+      containsSignaturePolymorphic
+      && is(JavaDefined)
+      && hasAnnotation(defn.NativeAnnot)
+      && atPhase(typerPhase)(symbol.denot).paramSymss.match
+        case List(List(p)) => p.info.isRepeatedParam
+        case _             => false
+
+    def containsSignaturePolymorphic(using Context): Boolean =
+      maybeOwner == defn.MethodHandleClass
+      || maybeOwner == defn.VarHandleClass
+
+    def originalSignaturePolymorphic(using Context): Denotation =
+      if containsSignaturePolymorphic && !isSignaturePolymorphic then
+        val d = owner.info.member(name)
+        if d.symbol.isSignaturePolymorphic then d else NoDenotation
+      else NoDenotation
+
     def isInlineMethod(using Context): Boolean =
       isAllOf(InlineMethod, butNot = Accessor)
 
@@ -1053,6 +1107,7 @@ object SymDenotations {
               case tp: Symbol => sourceOfSelf(tp.info)
               case tp: RefinedType => sourceOfSelf(tp.parent)
               case tp: AnnotatedType => sourceOfSelf(tp.parent)
+              case tp: ThisType => tp.cls
             }
             sourceOfSelf(selfType)
           case info: LazyType =>
@@ -2438,13 +2493,13 @@ object SymDenotations {
             val youngest = assocFiles.filter(_.lastModified == lastModDate)
             val chosen = youngest.head
             def ambiguousFilesMsg(f: AbstractFile) =
-              em"""Toplevel definition $name is defined in
-                  |  $chosen
-                  |and also in
-                  |  $f"""
+              i"""Toplevel definition $name is defined in
+                 |  $chosen
+                 |and also in
+                 |  $f"""
             if youngest.size > 1 then
-              throw TypeError(i"""${ambiguousFilesMsg(youngest.tail.head)}
-                                 |One of these files should be removed from the classpath.""")
+              throw TypeError(em"""${ambiguousFilesMsg(youngest.tail.head)}
+                                  |One of these files should be removed from the classpath.""")
 
             // Warn if one of the older files comes from a different container.
             // In that case picking the youngest file is not necessarily what we want,
@@ -2454,8 +2509,8 @@ object SymDenotations {
               try f.container == chosen.container catch case NonFatal(ex) => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
-                report.warning(i"""${ambiguousFilesMsg(conflicting.nn)}
-                               |Keeping only the definition in $chosen""")
+                report.warning(em"""${ambiguousFilesMsg(conflicting.nn)}
+                                   |Keeping only the definition in $chosen""")
                 ambiguityWarningIssued = true
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
       end dropStale

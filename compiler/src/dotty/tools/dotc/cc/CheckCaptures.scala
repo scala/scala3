@@ -203,7 +203,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos)(using Context) =
       val res = elem.singletonCaptureSet.subCaptures(cs, frozen = false)
       if !res.isOK then
-        report.error(i"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking}", pos)
+        report.error(em"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking}", pos)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos)(using Context) =
@@ -212,7 +212,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         def header =
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
           else i"references $cs1 are not all"
-        report.error(i"$header included in allowed capture set ${res.blocking}", pos)
+        report.error(em"$header included in allowed capture set ${res.blocking}", pos)
 
     /** The current environment */
     private var curEnv: Env = Env(NoSymbol, nestedInOwner = false, CaptureSet.empty, isBoxed = false, null)
@@ -606,10 +606,27 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Massage `actual` and `expected` types using the methods below before checking conformance */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
-      val expected1 = addOuterRefs(expected, actual)
+      val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
       val actual1 = adaptBoxed(actual, expected1, tree.srcPos)
       //println(i"check conforms $actual1 <<< $expected1")
       super.checkConformsExpr(actual1, expected1, tree)
+
+    private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean, isErased: Boolean)(using Context): Type =
+      MethodType.companion(isContextual = isContextual, isErased = isErased)(args, resultType)
+        .toFunctionType(isJava = false, alwaysDependent = true)
+
+    /** Turn `expected` into a dependent function when `actual` is dependent. */
+    private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
+      def recur(expected: Type): Type = expected.dealias match
+        case expected @ CapturingType(eparent, refs) =>
+          CapturingType(recur(eparent), refs, boxed = expected.isBoxed)
+        case expected @ defn.FunctionOf(args, resultType, isContextual, isErased)
+          if defn.isNonRefinedFunction(expected) && defn.isFunctionType(actual) && !defn.isNonRefinedFunction(actual) =>
+          val expected1 = toDepFun(args, resultType, isContextual, isErased)
+          expected1
+        case _ =>
+          expected
+      recur(expected)
 
     /** For the expected type, implement the rule outlined in #14390:
      *   - when checking an expression `a: Ca Ta` against an expected type `Ce Te`,
@@ -866,14 +883,80 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // Forbid inferred self types unless they are already implied by an explicit
                 // self type in a parent.
                 report.error(
-                  i"""$root needs an explicitly declared self type since its
-                     |inferred self type $selfType
-                     |is not visible in other compilation units that define subclasses.""",
+                  em"""$root needs an explicitly declared self type since its
+                      |inferred self type $selfType
+                      |is not visible in other compilation units that define subclasses.""",
                   root.srcPos)
               case _ =>
           parentTrees -= root
           capt.println(i"checked $root with $selfType")
     end checkSelfTypes
+
+    /** Heal ill-formed capture sets in the type parameter.
+     *
+     *  We can push parameter refs into a capture set in type parameters
+     *  that this type parameter can't see.
+     *  For example, when capture checking the following expression:
+     *
+     *    def usingLogFile[T](op: (f: {*} File) => T): T = ...
+     *
+     *    usingLogFile[box ?1 () -> Unit] { (f: {*} File) => () => { f.write(0) } }
+     *
+     *  We may propagate `f` into ?1, making ?1 ill-formed.
+     *  This also causes soundness issues, since `f` in ?1 should be widened to `*`,
+     *  giving rise to an error that `*` cannot be included in a boxed capture set.
+     *
+     *  To solve this, we still allow ?1 to capture parameter refs like `f`, but
+     *  compensate this by pushing the widened capture set of `f` into ?1.
+     *  This solves the soundness issue caused by the ill-formness of ?1.
+     */
+    private def healTypeParam(tree: Tree)(using Context): Unit =
+      val checker = new TypeTraverser:
+        private def isAllowed(ref: CaptureRef): Boolean = ref match
+          case ref: TermParamRef => allowed.contains(ref)
+          case _ => true
+
+        // Widen the given term parameter refs x₁ : C₁ S₁ , ⋯ , xₙ : Cₙ Sₙ to their capture sets C₁ , ⋯ , Cₙ.
+        //
+        // If in these capture sets there are any capture references that are term parameter references we should avoid,
+        // we will widen them recursively.
+        private def widenParamRefs(refs: List[TermParamRef]): List[CaptureSet] =
+          @scala.annotation.tailrec
+          def recur(todos: List[TermParamRef], acc: List[CaptureSet]): List[CaptureSet] =
+            todos match
+              case Nil => acc
+              case ref :: rem =>
+                val cs = ref.captureSetOfInfo
+                val nextAcc = cs.filter(isAllowed(_)) :: acc
+                val nextRem: List[TermParamRef] = (cs.elems.toList.filter(!isAllowed(_)) ++ rem).asInstanceOf
+                recur(nextRem, nextAcc)
+          recur(refs, Nil)
+
+        private def healCaptureSet(cs: CaptureSet): Unit =
+          val toInclude = widenParamRefs(cs.elems.toList.filter(!isAllowed(_)).asInstanceOf)
+          toInclude.foreach(checkSubset(_, cs, tree.srcPos))
+
+        private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
+
+        def traverse(tp: Type) =
+          tp match
+            case CapturingType(parent, refs) =>
+              healCaptureSet(refs)
+              traverse(parent)
+            case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
+              traverse(rinfo)
+            case tp: TermLambda =>
+              val saved = allowed
+              try
+                tp.paramRefs.foreach(allowed += _)
+                traverseChildren(tp)
+              finally allowed = saved
+            case _ =>
+              traverseChildren(tp)
+
+      if tree.isInstanceOf[InferredTypeTree] then
+        checker.traverse(tree.knownType)
+    end healTypeParam
 
     /** Perform the following kinds of checks
      *   - Check all explicitly written capturing types for well-formedness using `checkWellFormedPost`.
@@ -881,6 +964,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *     suggest an explicit type. This is so that separate compilation (where external
      *     symbols have empty capture sets) gives the same results as joint compilation.
      *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
+     *   - Heal ill-formed capture sets of type parameters. See `healTypeParam`.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       unit.foreachSubTree {
@@ -921,7 +1005,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                   em"""Non-local $sym cannot have an inferred$resultStr type
                       |$inferred
                       |with non-empty capture set $refs.
-                      |The type needs to be declared explicitly.""", t.srcPos)
+                      |The type needs to be declared explicitly.""".withoutDisambiguation(),
+                  t.srcPos)
               case _ =>
             inferred.foreachPart(checkPure, StopAt.Static)
         case t @ TypeApply(fun, args) =>
@@ -933,6 +1018,8 @@ class CheckCaptures extends Recheck, SymTransformer:
               }
               checkBounds(normArgs, tl)
             case _ =>
+
+          args.foreach(healTypeParam(_))
         case _ =>
       }
       if !ctx.reporter.errorsReported then

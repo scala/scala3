@@ -17,6 +17,7 @@ import util.common.alwaysTrue
 import scala.collection.mutable
 import config.Config.ccAllowUnsoundMaps
 import language.experimental.pureFunctions
+import annotation.retains
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -176,7 +177,7 @@ sealed abstract class CaptureSet extends Showable, caps.Pure:
       case Nil =>
         addDependent(that)
     recur(elems.toList)
-      .showing(i"subcaptures $this <:< $that = ${result.show}", capt)
+      .showing(i"subcaptures $this <:< $that = $result", capt)(using null)
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
    *  in a frozen state.
@@ -223,7 +224,7 @@ sealed abstract class CaptureSet extends Showable, caps.Pure:
   /** The largest subset (via <:<) of this capture set that only contains elements
    *  for which `p` is true.
    */
-  def filter(p: CaptureRef -> Boolean)(using Context): CaptureSet =
+  def filter(p: (c: Context) ?-> (CaptureRef -> Boolean) @retains(c))(using Context): CaptureSet =
     if this.isConst then
       val elems1 = elems.filter(p)
       if elems1 == elems then this
@@ -269,7 +270,7 @@ sealed abstract class CaptureSet extends Showable, caps.Pure:
 
   /** A mapping resulting from substituting parameters of a BindingType to a list of types */
   def substParams(tl: BindingType, to: List[Type])(using Context) =
-    map(Substituters.SubstParamsMap(tl, to))
+    map(Substituters.SubstParamsMap(tl, to).detach)
 
   /** Invoke handler if this set has (or later aquires) the root capability `*` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
@@ -549,7 +550,7 @@ object CaptureSet:
           else CompareResult.fail(this)
         }
         .andAlso {
-          if (origin ne source) && mapIsIdempotent then
+          if (origin ne source) && (origin ne initial) && mapIsIdempotent then
             // `tm` is idempotent, propagate back elems from image set.
             // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
             // `r` is _one_ possible solution in `source` that would make an `r` appear in this set.
@@ -562,7 +563,7 @@ object CaptureSet:
             // elements from variable sources in contra- and non-variant positions. In essence,
             // we approximate types resulting from such maps by returning a possible super type
             // from the actual type. But this is neither sound nor complete.
-            report.warning(i"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
+            report.warning(em"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
             CompareResult.fail(this)
           else
             CompareResult.OK
@@ -596,7 +597,7 @@ object CaptureSet:
         super.addNewElems(newElems, origin)
           .andAlso {
             source.tryInclude(newElems.map(bimap.backward), this)
-              .showing(i"propagating new elems ${CaptureSet(newElems)} backward from $this to $source", capt)
+              .showing(i"propagating new elems ${CaptureSet(newElems)} backward from $this to $source", capt)(using null)
           }
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
@@ -608,7 +609,7 @@ object CaptureSet:
      */
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       val supApprox = super.computeApprox(this)
-      if source eq origin then supApprox.map(bimap.inverseTypeMap)
+      if source eq origin then supApprox.map(bimap.inverseTypeMap.detach)
       else source.upperApprox(this).map(bimap) ** supApprox
 
     override def toString = s"BiMapped$id($source, elems = $elems)"
@@ -616,7 +617,7 @@ object CaptureSet:
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
-    (val source: Var, p: CaptureRef -> Boolean)(using @constructorOnly ctx: Context)
+    (val source: Var, p: (c: Context) ?-> (CaptureRef -> Boolean) @retains(c))(using @constructorOnly ctx: Context)
   extends DerivedVar(source.elems.filter(p)):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
@@ -644,10 +645,10 @@ object CaptureSet:
   end Filtered
 
   /** A variable with elements given at any time as { x <- source.elems | !other.accountsFor(x) } */
-  class Diff(source: Var, other: Const)(using Context)
+  class Diff(source: Var, other: Const)(using @constructorOnly ctx: Context)
   extends Filtered(source, !other.accountsFor(_))
 
-  class Intersected(cs1: CaptureSet, cs2: CaptureSet)(using Context)
+  class Intersected(cs1: CaptureSet, cs2: CaptureSet)(using @constructorOnly ctx: Context)
   extends Var(elemIntersection(cs1, cs2)):
     addAsDependentTo(cs1)
     addAsDependentTo(cs2)

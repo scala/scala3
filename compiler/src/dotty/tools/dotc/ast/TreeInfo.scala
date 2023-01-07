@@ -743,8 +743,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         Some(meth)
       case Block(Nil, expr) =>
         unapply(expr)
-      case Inlined(_, bindings, expr) if bindings.forall(isPureBinding) =>
-        unapply(expr)
       case _ =>
         None
     }

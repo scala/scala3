@@ -39,7 +39,7 @@ object ContextFunctionResults:
     val count = contextResultCount(mdef.rhs, mdef.tpt.tpe)
 
     if Config.flattenContextFunctionResults && count != 0 && !disabled then
-      val countAnnot = Annotation(defn.ContextResultCountAnnot, Literal(Constant(count)))
+      val countAnnot = Annotation(defn.ContextResultCountAnnot, Literal(Constant(count)), mdef.symbol.span)
       mdef.symbol.addAnnotation(countAnnot)
   end annotateContextResults
 

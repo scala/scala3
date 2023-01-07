@@ -28,13 +28,25 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
+    def instArg(tp: Type): Type = tp.stripTypeVar match
+      // Special case to avoid instantiating `Int & S` to `Int & Nothing` in
+      // i16328.scala. The intersection comes from an earlier instantiation
+      // to an upper bound.
+      // The dual situation with unions is harder to trigger because lower
+      // bounds are usually widened during instantiation.
+      case tp: AndOrType if tp.tp1 =:= tp.tp2 =>
+        instArg(tp.tp1)
+      case _ =>
+        if isFullyDefined(tp, ForceDegree.all) then tp
+        else NoType // this happens in tests/neg/i15372.scala
+
     val tag = formal.argInfos match
-      case arg :: Nil if isFullyDefined(arg, ForceDegree.all) =>
-        arg match
+      case arg :: Nil =>
+        instArg(arg) match
           case defn.ArrayOf(elemTp) =>
             val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
             if etag.tpe.isError then EmptyTree else etag.select(nme.wrap)
-          case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
+          case tp if hasStableErasure(tp) && !tp.isBottomTypeAfterErasure =>
             val sym = tp.typeSymbol
             val classTagModul = ref(defn.ClassTagModule)
             if defn.SpecialClassTagClasses.contains(sym) then
@@ -476,8 +488,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def internalError(msg: => String)(using Context): Unit =
-        report.error(i"""Internal error when synthesizing sum mirror for $cls:
-                        |$msg""".stripMargin, ctx.source.atSpan(span))
+        report.error(em"""Internal error when synthesizing sum mirror for $cls:
+                         |$msg""", ctx.source.atSpan(span))
 
       def childPrefix(child: Symbol)(using Context): Type =
         val symPre = TypeOps.childPrefix(pre, cls, child)
@@ -691,10 +703,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         val manifest = synthesize(fullyDefinedType(arg, "Manifest argument", ctx.source.atSpan(span)), kind, topLevel = true)
         if manifest != EmptyTree then
           report.deprecationWarning(
-            i"""Compiler synthesis of Manifest and OptManifest is deprecated, instead
-               |replace with the type `scala.reflect.ClassTag[$arg]`.
-               |Alternatively, consider using the new metaprogramming features of Scala 3,
-               |see https://docs.scala-lang.org/scala3/reference/metaprogramming.html""", ctx.source.atSpan(span))
+            em"""Compiler synthesis of Manifest and OptManifest is deprecated, instead
+                |replace with the type `scala.reflect.ClassTag[$arg]`.
+                |Alternatively, consider using the new metaprogramming features of Scala 3,
+                |see https://docs.scala-lang.org/scala3/reference/metaprogramming.html""",
+            ctx.source.atSpan(span))
         withNoErrors(manifest)
       case _ =>
         EmptyTreeNoError

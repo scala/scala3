@@ -128,6 +128,7 @@ object StdNames {
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPORT: N                     = "<import>"
+    val INTO: N                       = "<into>"
     val MODULE_SUFFIX: N              = str.MODULE_SUFFIX
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
@@ -500,6 +501,7 @@ object StdNames {
     val info: N                 = "info"
     val inlinedEquals: N        = "inlinedEquals"
     val internal: N             = "internal"
+    val into: N                 = "into"
     val isArray: N              = "isArray"
     val isDefinedAt: N          = "isDefinedAt"
     val isDefinedAtImpl: N      = "$isDefinedAt"

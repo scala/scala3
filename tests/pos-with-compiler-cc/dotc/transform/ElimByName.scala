@@ -98,6 +98,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
     val meth = newAnonFun(ctx.owner, MethodType(Nil, argType), coord = arg.span)
     Closure(meth,
         _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase),
+        targs = Nil, // !cc! default argument needed
         targetType = defn.ByNameFunction(argType)
       ).withSpan(arg.span)
 

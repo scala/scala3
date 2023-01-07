@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.report
-
+import dotty.tools.dotc.reporting.Message
 
 import scala.quoted.Quotes
 import scala.quoted.runtime.impl._
@@ -188,7 +188,7 @@ object PickledQuotes {
               mapOver(tp)
           }
         }
-        val expansion2 = new TreeTypeMap(new ReplaceSplicedTyped).transform(expr1)
+        val expansion2 = new TreeTypeMap((new ReplaceSplicedTyped).detach).transform(expr1)
         quotePickling.println(i"**** typed quote\n${expansion2.show}")
         expansion2
       case _ =>
@@ -220,7 +220,7 @@ object PickledQuotes {
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then
-      val positionWarnings = new mutable.ListBuffer[String]()
+      val positionWarnings = new mutable.ListBuffer[Message]()
       val reference = ctx.settings.sourceroot.value
       new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference)
         .picklePositions(ctx.compilationUnit.source, tree :: Nil, positionWarnings)

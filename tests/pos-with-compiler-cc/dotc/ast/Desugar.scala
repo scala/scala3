@@ -6,6 +6,7 @@ import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._, ContextOps._
 import Decorators._, transform.SymUtils._
+import Annotations.Annotation
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition, Chars}
@@ -108,16 +109,17 @@ object desugar {
      *  from subclasses.
      */
     def derivedTree(sym: Symbol)(using Context): tpd.TypeTree = {
-      val relocate = new TypeMap {
+      val dctx = ctx.detach
+      val relocate = new TypeMap(using dctx) {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
-            val defctx = mapCtx.outersIterator.dropWhile(_.scope eq mapCtx.scope).next()
+            val defctx = mapCtx.detach.outersIterator.dropWhile(_.scope eq mapCtx.scope).next()
             var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
               def msg =
-                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
+                em"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
               ErrorType(msg).assertingErrorsReported(msg)
             }
           case _ =>
@@ -165,32 +167,41 @@ object desugar {
    *
    *  Generate setter where needed
    */
-  def valDef(vdef0: ValDef)(using Context): Tree = {
+  def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
-    val mods = vdef.mods
-
     val valName = normalizeName(vdef, tpt).asTermName
-    val vdef1 = cpy.ValDef(vdef)(name = valName)
+    var mods1 = vdef.mods
 
-    if (isSetterNeeded(vdef)) {
-      // TODO: copy of vdef as getter needed?
-      // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
-      // right now vdef maps via expandedTree to a thicket which concerns itself.
-      // I don't see a problem with that but if there is one we can avoid it by making a copy here.
+    def dropInto(tpt: Tree): Tree = tpt match
+      case Into(tpt1) =>
+        mods1 = vdef.mods.withAddedAnnotation(
+          TypedSplice(
+            Annotation(defn.AllowConversionsAnnot).tree.withSpan(tpt.span.startPos)))
+        tpt1
+      case ByNameTypeTree(tpt1) =>
+        cpy.ByNameTypeTree(tpt)(dropInto(tpt1))
+      case PostfixOp(tpt1, op) if op.name == tpnme.raw.STAR =>
+        cpy.PostfixOp(tpt)(dropInto(tpt1), op)
+      case _ =>
+        tpt
+
+    val vdef1 = cpy.ValDef(vdef)(name = valName, tpt = dropInto(tpt))
+      .withMods(mods1)
+
+    if isSetterNeeded(vdef) then
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef)(
-        name    = valName.setterName,
-        paramss = (setterParam :: Nil) :: Nil,
-        tpt     = TypeTree(defn.UnitType),
-        rhs     = setterRhs
-      ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
-       .dropEndMarker() // the end marker should only appear on the getter definition
+          name    = valName.setterName,
+          paramss = (setterParam :: Nil) :: Nil,
+          tpt     = TypeTree(defn.UnitType),
+          rhs     = setterRhs
+        ).withMods((vdef.mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
+        .dropEndMarker() // the end marker should only appear on the getter definition
       Thicket(vdef1, setter)
-    }
     else vdef1
-  }
+  end valDef
 
   def makeImplicitParameters(tpts: List[Tree], implicitFlag: FlagSet, forPrimaryConstructor: Boolean = false)(using Context): List[ValDef] =
     for (tpt <- tpts) yield {
@@ -911,7 +922,7 @@ object desugar {
             case params :: paramss1 => // `params` must have a single parameter and without `given` flag
 
               def badRightAssoc(problem: String) =
-                report.error(i"right-associative extension method $problem", mdef.srcPos)
+                report.error(em"right-associative extension method $problem", mdef.srcPos)
                 extParamss ++ mdef.paramss
 
               params match
@@ -1137,7 +1148,7 @@ object desugar {
       def errorOnGivenBinding(bind: Bind)(using Context): Boolean =
         report.error(
           em"""${hl("given")} patterns are not allowed in a ${hl("val")} definition,
-              |please bind to an identifier and use an alias given.""".stripMargin, bind)
+              |please bind to an identifier and use an alias given.""", bind)
         false
 
       def isTuplePattern(arity: Int): Boolean = pat match {
@@ -1237,7 +1248,7 @@ object desugar {
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
     def check(rhs: Tree): MemberDef = rhs match
       case bounds: TypeBoundsTree if bounds.alias.isEmpty =>
-        report.error(i"opaque type must have a right-hand side", tree.srcPos)
+        report.error(em"opaque type must have a right-hand side", tree.srcPos)
         tree.withMods(tree.mods.withoutFlags(Opaque))
       case LambdaTypeTree(_, body) => check(body)
       case _ => tree
@@ -1378,7 +1389,7 @@ object desugar {
    */
   def packageDef(pdef: PackageDef)(using Context): PackageDef = {
     checkPackageName(pdef)
-    val wrappedTypeNames = pdef.stats.collect {
+    val wrappedTypeNames = pdef.stats.collectCC {
       case stat: TypeDef if isTopLevelDef(stat) => stat.name
     }
     def inPackageObject(stat: Tree) =

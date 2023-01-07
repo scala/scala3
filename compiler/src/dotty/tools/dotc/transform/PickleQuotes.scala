@@ -113,12 +113,10 @@ class PickleQuotes extends MacroTransform {
             case _ =>
               val (contents, tptWithHoles) = makeHoles(tpt)
               PickleQuotes(quotes, tptWithHoles, contents, tpt.tpe, true)
-        case tree: DefDef if tree.symbol.is(Macro) =>
+        case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           // Shrink size of the tree. The methods have already been inlined.
           // TODO move to FirstTransform to trigger even without quotes
           cpy.DefDef(tree)(rhs = defaultValue(tree.rhs.tpe))
-        case _: DefDef if tree.symbol.isInlineMethod =>
-          tree
         case _ =>
           super.transform(tree)
   }

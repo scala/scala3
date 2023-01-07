@@ -201,7 +201,7 @@ class Namer { typer: Typer =>
           case tree: MemberDef => SymDenotations.canBeLocal(tree.name, flags)
           case _ => false
         if !ok then
-          report.error(i"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.srcPos)
+          report.error(em"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.srcPos)
         if adapted.is(Private) && canBeLocal then adapted | Local else adapted
       }
 
@@ -246,7 +246,7 @@ class Namer { typer: Typer =>
         val name = checkNoConflict(tree.name, flags.is(Private), tree.span).asTypeName
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
-            cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
+            cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx.detach), tree),
             newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
@@ -283,7 +283,8 @@ class Namer { typer: Typer =>
         // Don't do this for Java constructors because they need to see the import
         // of the companion object, and it is not necessary for them because they
         // have no implementation.
-        val cctx = if (tree.name == nme.CONSTRUCTOR && !flags.is(JavaDefined)) ctx.outer else ctx
+        val cctx = (if (tree.name == nme.CONSTRUCTOR && !flags.is(JavaDefined)) ctx.outer else ctx)
+          .detach
 
         val completer = tree match
           case tree: TypeDef => TypeDefCompleter(tree)(cctx)
@@ -292,7 +293,7 @@ class Namer { typer: Typer =>
         createOrRefine[Symbol](tree, name, flags, ctx.owner, _ => info,
           (fs, _, pwithin) => newSymbol(ctx.owner, name, fs, info, pwithin, tree.nameSpan))
       case tree: Import =>
-        recordSym(newImportSymbol(ctx.owner, Completer(tree)(ctx), tree.span), tree)
+        recordSym(newImportSymbol(ctx.owner, Completer(tree)(ctx.detach), tree.span), tree)
       case _ =>
         NoSymbol
     }
@@ -376,7 +377,7 @@ class Namer { typer: Typer =>
   }
 
   /** Expand tree and create top-level symbols for statement and enter them into symbol table */
-  def index(stat: Tree)(using Context): Context = {
+  def index(stat: Tree)(using Context): DetachedContext = {
     expand(stat)
     indexExpanded(stat)
   }
@@ -384,8 +385,8 @@ class Namer { typer: Typer =>
   /** Create top-level symbols for all statements in the expansion of this statement and
    *  enter them into symbol table
    */
-  def indexExpanded(origStat: Tree)(using Context): Context = {
-    def recur(stat: Tree): Context = stat match {
+  def indexExpanded(origStat: Tree)(using ctx: DetachedContext): DetachedContext = {
+    def recur(stat: Tree): DetachedContext = stat match {
       case pcl: PackageDef =>
         val pkg = createPackageSymbol(pcl.pid)
         index(pcl.stats)(using ctx.fresh.setOwner(pkg.moduleClass))
@@ -393,7 +394,7 @@ class Namer { typer: Typer =>
         setDocstring(pkg, stat)
         ctx
       case imp: Import =>
-        ctx.importContext(imp, createSymbol(imp))
+        ctx.importContext(imp, createSymbol(imp)).detach
       case mdef: DefTree =>
         val sym = createSymbol(mdef)
         enterSymbol(sym)
@@ -462,7 +463,7 @@ class Namer { typer: Typer =>
         if isProvisional then
           typr.println(i"provisional superclass $first for $cls")
           first = AnnotatedType(first, Annotation(defn.ProvisionalSuperClassAnnot))
-        checkFeasibleParent(first, cls.srcPos, em" in inferred superclass $first") :: parents
+        checkFeasibleParent(first, cls.srcPos, i" in inferred superclass $first") :: parents
   end ensureFirstIsClass
 
   /** Add child annotation for `child` to annotations of `cls`. The annotation
@@ -702,7 +703,7 @@ class Namer { typer: Typer =>
 
     stats.foreach(expand)
     mergeCompanionDefs()
-    val ctxWithStats = stats.foldLeft(ctx)((ctx, stat) => indexExpanded(stat)(using ctx))
+    val ctxWithStats = stats.foldLeft(ctx.detach)((ctx, stat) => indexExpanded(stat)(using ctx.detach))
     inContext(ctxWithStats) {
       createCompanionLinks()
       addAbsentCompanions()
@@ -722,10 +723,10 @@ class Namer { typer: Typer =>
     val unit = ctx.compilationUnit
 
     /** Index symbols in unit.untpdTree with lateCompile flag = true */
-    def lateEnter()(using Context): Context =
+    def lateEnter()(using Context): DetachedContext =
       val saved = lateCompile
       lateCompile = true
-      try index(unit.untpdTree :: Nil) finally lateCompile = saved
+      try index(unit.untpdTree :: Nil).detach finally lateCompile = saved
 
     /** Set the tpdTree and root tree of the compilation unit */
     def lateTypeCheck()(using Context) =
@@ -762,12 +763,12 @@ class Namer { typer: Typer =>
     }
 
   def missingType(sym: Symbol, modifier: String)(using Context): Unit = {
-    report.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.srcPos)
+    report.error(em"${modifier}type of implicit definition needs to be given explicitly", sym.srcPos)
     sym.resetFlag(GivenOrImplicit)
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(val original: Tree)(ictx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
+  class Completer(val original: Tree)(ictx: DetachedContext) extends LazyType with SymbolLoaders.SecondCompleter {
 
     protected def localContext(owner: Symbol): FreshContext = ctx.fresh.setOwner(owner).setTree(original)
 
@@ -827,11 +828,11 @@ class Namer { typer: Typer =>
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
       case original: untpd.MemberDef =>
-        lazy val annotCtx = annotContext(original, sym)
+        lazy val annotCtx = annotContext(original, sym).detach
         for (annotTree <- original.mods.annotations) {
           val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
           if (cls eq sym)
-            report.error("An annotation class cannot be annotated with iself", annotTree.srcPos)
+            report.error(em"An annotation class cannot be annotated with iself", annotTree.srcPos)
           else {
             val ann = Annotation.deferred(cls)(typedAheadExpr(annotTree)(using annotCtx))
             sym.addAnnotation(ann)
@@ -926,7 +927,7 @@ class Namer { typer: Typer =>
     }
   }
 
-  class TypeDefCompleter(original: TypeDef)(ictx: Context)
+  class TypeDefCompleter(original: TypeDef)(ictx: DetachedContext)
   extends Completer(original)(ictx) with TypeParamsCompleter {
     private var myTypeParams: List[TypeSymbol] | Null = null
     private var nestedCtx: Context | Null = null
@@ -1051,12 +1052,12 @@ class Namer { typer: Typer =>
     end typeSig
   }
 
-  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
+  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: DetachedContext) extends Completer(original)(ictx) {
     withDecls(newScope(using ictx))
 
     protected implicit val completerCtx: Context = localContext(cls)
 
-    private var localCtx: Context = _
+    private var localCtx: DetachedContext = _
 
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
     private var tempInfo: TempClassInfo | Null = null
@@ -1246,10 +1247,10 @@ class Namer { typer: Typer =>
         val mbrs = List(name, name.toTypeName).flatMap(pathType.member(_).alternatives)
         mbrs.foreach(addForwarder(alias, _, span))
         if buf.size == size then
-          val reason = mbrs.map(canForward(_, alias)).collect {
+          val reason = mbrs.map(canForward(_, alias)).collectCC {
             case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
           }.headOption.getOrElse("")
-          report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
+          report.error(em"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
         else
           targets += alias
 
@@ -1314,7 +1315,7 @@ class Namer { typer: Typer =>
                 case _ => 0
               if cmp == 0 then
                 report.error(
-                  ex"""Clashing exports: The exported
+                  em"""Clashing exports: The exported
                       |     ${forwarder.rhs.symbol}: ${alt1.widen}
                       |and  ${forwarder1.rhs.symbol}: ${alt2.widen}
                       |have the same signature after erasure and overloading resolution could not disambiguate.""",
@@ -1428,7 +1429,7 @@ class Namer { typer: Typer =>
       val savedInfo = denot.infoOrCompleter
       denot.info = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
 
-      localCtx = completerCtx.inClassContext(selfInfo)
+      localCtx = completerCtx.inClassContext(selfInfo).detach
 
       index(constr)
       index(rest)(using localCtx)
@@ -1437,7 +1438,7 @@ class Namer { typer: Typer =>
         case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
           // See issue #8073 for background
           report.error(
-              i"""Implementation restriction: case classes cannot have dependencies between parameters""",
+              em"""Implementation restriction: case classes cannot have dependencies between parameters""",
               cls.srcPos)
         case _ =>
 
@@ -1618,12 +1619,14 @@ class Namer { typer: Typer =>
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
     typedAhead(tree, typer.typedExpr(_, pt))
 
-  def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match {
+  def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match
     case Apply(fn, _) => typedAheadAnnotationClass(fn)
     case TypeApply(fn, _) => typedAheadAnnotationClass(fn)
     case Select(qual, nme.CONSTRUCTOR) => typedAheadAnnotationClass(qual)
     case New(tpt) => typedAheadType(tpt).tpe.classSymbol
-  }
+    case TypedSplice(_) =>
+      val sym = tree.symbol
+      if sym.isConstructor then sym.owner else sym
 
   /** Enter and typecheck parameter list */
   def completeParams(params: List[MemberDef])(using Context): Unit = {
@@ -1653,7 +1656,7 @@ class Namer { typer: Typer =>
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
     def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
-    lazy val termParamss = paramss.collect { case TermSymbols(vparams) => vparams }
+    lazy val termParamss = paramss.collectCC { case TermSymbols(vparams) => vparams }
 
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>
@@ -1687,8 +1690,10 @@ class Namer { typer: Typer =>
             if !Config.checkLevelsOnConstraints then
               val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
-                report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
-                  i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
+                report.error(
+                  em"""return type ${tpt.tpe} of lambda cannot be made hygienic
+                      |it is not a supertype of the hygienic type $hygienicType""",
+                  mdef.srcPos)
             //println(i"lifting $rhsType over $termParamss -> $hygienicType = ${tpt.tpe}")
             //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>
@@ -1854,7 +1859,7 @@ class Namer { typer: Typer =>
     var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
     if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
-    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
+    val typeParams = paramss.collectCC { case TypeSymbols(tparams) => tparams }.flatten
     if (typeParams.nonEmpty) {
       // we'll be typing an expression from a polymorphic definition's body,
       // so we must allow constraining its type parameters

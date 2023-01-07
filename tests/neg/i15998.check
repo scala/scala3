@@ -11,7 +11,7 @@
   |            must be more specific than CC[A]
   |
   | longer explanation available when compiling with `-explain`
--- Error: tests/neg/i15998.scala:11:11 ---------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i15998.scala:11:11 ---------------------------------------------------------------------
 11 |val _ = bar  // error
    |           ^
    |           No implicit search was attempted for parameter x of method bar

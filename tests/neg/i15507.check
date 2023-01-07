@@ -1,0 +1,40 @@
+-- Error: tests/neg/i15507.scala:2:40 ----------------------------------------------------------------------------------
+2 |  type _NestedSet1[X] = Set[_NestedSet1[?]] // error
+  |                                        ^
+  |                                        no wildcard type allowed here
+-- Error: tests/neg/i15507.scala:3:41 ----------------------------------------------------------------------------------
+3 |  type _NestedSet2[X] <: Set[_NestedSet2[?]] // error
+  |                                         ^
+  |                                         no wildcard type allowed here
+-- [E140] Cyclic Error: tests/neg/i15507.scala:5:7 ---------------------------------------------------------------------
+5 |  type _NestedSet4[X] >: Set[_NestedSet4[X]] // error
+  |       ^
+  |       illegal cyclic type reference: lower bound ... of type _NestedSet4 refers back to the type itself
+-- [E140] Cyclic Error: tests/neg/i15507.scala:6:7 ---------------------------------------------------------------------
+6 |  type _NestedSet5[X] = Set[_NestedSet5[X]] // error
+  |       ^
+  |       illegal cyclic type reference: alias ... of type _NestedSet5 refers back to the type itself
+-- [E140] Cyclic Error: tests/neg/i15507.scala:7:7 ---------------------------------------------------------------------
+7 |  type _NestedSet6[X] = Set[_NestedSet6[Int]] // error
+  |       ^
+  |       illegal cyclic type reference: alias ... of type _NestedSet6 refers back to the type itself
+-- Error: tests/neg/i15507.scala:9:43 ----------------------------------------------------------------------------------
+9 |  type _NestedList1[X] = List[_NestedList1[?]] // error
+  |                                           ^
+  |                                           no wildcard type allowed here
+-- Error: tests/neg/i15507.scala:10:44 ---------------------------------------------------------------------------------
+10 |  type _NestedList2[X] <: List[_NestedList2[?]] // error
+   |                                            ^
+   |                                            no wildcard type allowed here
+-- [E140] Cyclic Error: tests/neg/i15507.scala:12:7 --------------------------------------------------------------------
+12 |  type _NestedList4[X] >: List[_NestedList4[X]] // error
+   |       ^
+   |       illegal cyclic type reference: lower bound ... of type _NestedList4 refers back to the type itself
+-- [E140] Cyclic Error: tests/neg/i15507.scala:13:7 --------------------------------------------------------------------
+13 |  type _NestedList5[X] = List[_NestedList5[X]] // error
+   |       ^
+   |       illegal cyclic type reference: alias ... of type _NestedList5 refers back to the type itself
+-- [E140] Cyclic Error: tests/neg/i15507.scala:14:7 --------------------------------------------------------------------
+14 |  type _NestedList6[X] = List[_NestedList6[Int]] // error
+   |       ^
+   |       illegal cyclic type reference: alias ... of type _NestedList6 refers back to the type itself

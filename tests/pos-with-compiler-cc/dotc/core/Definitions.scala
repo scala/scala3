@@ -44,8 +44,8 @@ object Definitions {
 class Definitions {
   import Definitions._
 
-  private var initCtx: Context = _
-  private given currentContext[Dummy_so_its_a_def]: Context = initCtx
+  private var initCtx: DetachedContext = _
+  private given currentContext[Dummy_so_its_a_def]: DetachedContext = initCtx
 
   private def newPermanentSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type) =
     newSymbol(owner, name, flags | Permanent, info)
@@ -645,6 +645,8 @@ class Definitions {
 
   @tu lazy val RepeatedParamClass: ClassSymbol = enterSpecialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
 
+  @tu lazy val IntoType: TypeSymbol = enterAliasType(tpnme.INTO, HKTypeLambda(TypeBounds.empty :: Nil)(_.paramRefs(0)))
+
   // fundamental classes
   @tu lazy val StringClass: ClassSymbol = requiredClass("java.lang.String")
   def StringType: Type = StringClass.typeRef
@@ -732,6 +734,10 @@ class Definitions {
     }
   }
   def JavaEnumType = JavaEnumClass.typeRef
+
+  @tu lazy val MethodHandleClass: ClassSymbol        = requiredClass("java.lang.invoke.MethodHandle")
+  @tu lazy val MethodHandlesLookupClass: ClassSymbol = requiredClass("java.lang.invoke.MethodHandles.Lookup")
+  @tu lazy val VarHandleClass: ClassSymbol           = requiredClass("java.lang.invoke.VarHandle")
 
   @tu lazy val StringBuilderClass: ClassSymbol = requiredClass("scala.collection.mutable.StringBuilder")
   @tu lazy val MatchErrorClass   : ClassSymbol = requiredClass("scala.MatchError")
@@ -974,6 +980,7 @@ class Definitions {
   @tu lazy val RefiningAnnotationClass: ClassSymbol = requiredClass("scala.annotation.RefiningAnnotation")
 
   // Annotation classes
+  @tu lazy val AllowConversionsAnnot: ClassSymbol = requiredClass("scala.annotation.allowConversions")
   @tu lazy val AnnotationDefaultAnnot: ClassSymbol = requiredClass("scala.annotation.internal.AnnotationDefault")
   @tu lazy val BeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BeanProperty")
   @tu lazy val BooleanBeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BooleanBeanProperty")
@@ -2006,6 +2013,7 @@ class Definitions {
       orType,
       RepeatedParamClass,
       ByNameParamClass2x,
+      IntoType,
       AnyValClass,
       NullClass,
       NothingClass,
@@ -2023,7 +2031,7 @@ class Definitions {
 
   private var isInitialized = false
 
-  def init()(using Context): Unit = {
+  def init()(using ctx: DetachedContext): Unit = {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
@@ -2033,6 +2041,12 @@ class Definitions {
     }
     addSyntheticSymbolsComments
   }
+
+  /** Definitions used in Lazy Vals implementation */
+  val LazyValsModuleName = "scala.runtime.LazyVals"
+  @tu lazy val LazyValsModule = requiredModule(LazyValsModuleName)
+  @tu lazy val LazyValsWaitingState = requiredClass(s"$LazyValsModuleName.Waiting")
+  @tu lazy val LazyValsControlState = requiredClass(s"$LazyValsModuleName.LazyValControlState")
 
   def addSyntheticSymbolsComments(using Context): Unit =
     def add(sym: Symbol, doc: String) = ctx.docCtx.foreach(_.addDocstring(sym, Some(Comment(NoSpan, doc))))

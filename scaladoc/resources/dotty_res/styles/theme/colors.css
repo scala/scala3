@@ -3,18 +3,32 @@
 */
 :root {
   /* grey colors */
-  --grey1: #ffffff;
-  --grey2: #f9f8f9;
-  --grey3: #f4f2f4;
-  --grey4: #eeedef;
-  --grey5: #e9e8ea;
-  --grey6: #e4e2e4;
-  --grey7: #dcdbdd;
-  --grey8: #c8c7cb;
-  --grey9: #908e96;
-  --grey10: #86848d;
-  --grey11: #6f6e77;
-  --grey12: #1a1523;
+  --grey1: #fcfcfc;
+  --grey2: #f8f8f8;
+  --grey3: #f3f3f3;
+  --grey4: #ededed;
+  --grey5: #e8e8e8;
+  --grey6: #e2e2e2;
+  --grey7: #dbdbdb;
+  --grey8: #c7c7c7;
+  --grey9: #8f8f8f;
+  --grey10: #858585;
+  --grey11: #6f6f6f;
+  --grey12: #171717;
+
+    /* mauve colors */
+  --mauve1: #ffffff;
+  --mauve2: #f9f8f9;
+  --mauve3: #f4f2f4;
+  --mauve4: #eeedef;
+  --mauve5: #e9e8ea;
+  --mauve6: #e4e2e4;
+  --mauve7: #dcdbdd;
+  --mauve8: #c8c7cb;
+  --mauve9: #908e96;
+  --mauve10: #86848d;
+  --mauve11: #6f6e77;
+  --mauve12: #1a1523;
 
   /* red colors */
   --red1: #fffcfc;
@@ -165,18 +179,32 @@
     dark theme
 */
 :root.theme-dark {
-  --grey1: #161618;
-  --grey2: #1c1c1f;
-  --grey3: #232326;
-  --grey4: #28282c;
-  --grey5: #2e2e32;
-  --grey6: #34343a;
-  --grey7: #3e3e44;
-  --grey8: #504f57;
-  --grey9: #706f78;
-  --grey10: #7e7d86;
-  --grey11: #a09fa6;
-  --grey12: #ededef;
+  --grey1: #161616;
+  --grey2: #1c1c1c;
+  --grey3: #232323;
+  --grey4: #282828;
+  --grey5: #2e2e2e;
+  --grey6: #343434;
+  --grey7: #3e3e3e;
+  --grey8: #505050;
+  --grey9: #707070;
+  --grey10: #7e7e7e;
+  --grey11: #a0a0a0;
+  --grey12: #ededed;
+
+  /* muave colors */
+  --mauve1: #161618;
+  --mauve2: #1c1c1f;
+  --mauve3: #232326;
+  --mauve4: #28282c;
+  --mauve5: #2e2e32;
+  --mauve6: #34343a;
+  --mauve7: #3e3e44;
+  --mauve8: #504f57;
+  --mauve9: #706f78;
+  --mauve10: #7e7d86;
+  --mauve11: #a09fa6;
+  --mauve12: #ededef;
 
   /* red colors */
   --red1: #1f1315;

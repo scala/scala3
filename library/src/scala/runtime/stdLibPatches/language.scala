@@ -74,6 +74,14 @@ object language:
      */
     @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
     object captureChecking
+
+    /** Experimental support for automatic conversions of arguments, without requiring
+     *  a langauge import `import scala.language.implicitConversions`.
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/into-modifier]]
+     */
+    @compileTimeOnly("`into` can only be used at compile time in import statements")
+    object into
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

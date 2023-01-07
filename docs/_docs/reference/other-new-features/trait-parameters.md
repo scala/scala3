@@ -79,7 +79,7 @@ The definition of `F` in the last line is implicitly expanded to
 class F(using iname: ImpliedName) extends
   Object,
   ImpliedGreeting(using iname),
-  ImpliedFormalGreeting(using iname)
+  ImpliedFormalGreeting
 ```
 Note the inserted reference to the super trait `ImpliedGreeting`, which was not mentioned explicitly.
 

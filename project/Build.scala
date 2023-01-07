@@ -80,7 +80,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.2.2-RC1"
+  val referenceVersion = "3.2.2-RC2"
 
   val baseVersion = "3.3.0-RC1"
 
@@ -1192,6 +1192,9 @@ object Build {
             "isFullOpt" -> (stage == FullOptStage),
             "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
             "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+            "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
+            "compliantNegativeArraySizes" -> (sems.negativeArraySizes == CheckedBehavior.Compliant),
+            "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
             "strictFloats" -> sems.strictFloats,
             "productionMode" -> sems.productionMode,
@@ -1268,6 +1271,14 @@ object Build {
         )
       },
 
+      /* For some reason, in Scala 3, the implementation of IterableDefaultTest
+       * resolves to `scala.collection.ArrayOps.ArrayIterator`, whose `next()`
+       * method is not compliant when called past the last element on Scala.js.
+       * It relies on catching an `ArrayIndexOutOfBoundsException`.
+       * We have to ignore it here.
+       */
+      Test / testOptions := Seq(Tests.Filter(_ != "org.scalajs.testsuite.javalib.lang.IterableDefaultTest")),
+
       Test / managedResources ++= {
         val testDir = fetchScalaJSSource.value / "test-suite/js/src/test"
 
@@ -1303,6 +1314,7 @@ object Build {
 
         Seq(
           "-Ddotty.tests.classes.dottyLibraryJS=" + dottyLibraryJSJar,
+          "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
@@ -1823,9 +1835,10 @@ object Build {
       settings(disableDocSetting).
       settings(
         versionScheme := Some("semver-spec"),
-        if (mode == Bootstrapped) {
-          commonMiMaSettings
-        } else {
+        if (mode == Bootstrapped) Def.settings(
+          commonMiMaSettings,
+          mimaBinaryIssueFilters ++= MiMaFilters.TastyCore,
+        ) else {
           Nil
         }
       )

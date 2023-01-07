@@ -62,8 +62,8 @@ class ReplCompiler extends Compiler:
         }
 
         val rootCtx = super.rootContext.fresh
-          .setOwner(defn.EmptyPackageClass)
           .withRootImports
+          .fresh.setOwner(defn.EmptyPackageClass): Context
         (state.validObjectIndexes).foldLeft(rootCtx)((ctx, id) =>
           importPreviousRun(id)(using ctx))
       }

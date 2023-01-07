@@ -5,7 +5,8 @@ import core._
 import ast.tpd._
 import Annotations._
 import Contexts._
-import Symbols.newSymbol
+import Symbols.*
+import SymUtils.*
 import Decorators._
 import Flags._
 import Names._
@@ -23,8 +24,6 @@ class BeanProperties(thisPhase: DenotTransformer):
     } ::: origBody)
 
   def generateAccessors(valDef: ValDef)(using Context): List[Tree] =
-    import Symbols.defn
-
     def generateGetter(valDef: ValDef, annot: Annotation)(using Context) : Tree =
       val prefix = if annot matches defn.BooleanBeanPropertyAnnot then "is" else "get"
       val meth = newSymbol(
@@ -34,9 +33,9 @@ class BeanProperties(thisPhase: DenotTransformer):
         info = MethodType(Nil, valDef.denot.info),
         coord = annot.tree.span
       ).enteredAfter(thisPhase).asTerm
-      meth.addAnnotations(valDef.symbol.annotations)
+       .withAnnotationsCarrying(valDef.symbol, defn.BeanGetterMetaAnnot)
       val body: Tree = ref(valDef.symbol)
-      DefDef(meth, body)
+      DefDef(meth, body).withSpan(meth.span)
 
     def maybeGenerateSetter(valDef: ValDef, annot: Annotation)(using Context): Option[Tree] =
       Option.when(valDef.denot.asSymDenotation.flags.is(Mutable)) {
@@ -48,9 +47,9 @@ class BeanProperties(thisPhase: DenotTransformer):
           info = MethodType(valDef.name :: Nil, valDef.denot.info :: Nil, defn.UnitType),
           coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm
-        meth.addAnnotations(valDef.symbol.annotations)
+         .withAnnotationsCarrying(valDef.symbol, defn.BeanSetterMetaAnnot)
         def body(params: List[List[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
-        DefDef(meth, body)
+        DefDef(meth, body).withSpan(meth.span)
       }
 
     def prefixedName(prefix: String, valName: Name) =

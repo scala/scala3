@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
+import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Scopes._
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
 import dotty.tools.dotc.core.StdNames.nme

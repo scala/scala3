@@ -429,7 +429,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else
         val res = Select(TypeTree(pre), tp)
         if needLoad && !res.symbol.isStatic then
-          throw new TypeError(em"cannot establish a reference to $res")
+          throw TypeError(em"cannot establish a reference to $res")
         res
 
   def ref(sym: Symbol)(using Context): Tree =
@@ -438,7 +438,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   private def followOuterLinks(t: Tree)(using Context) = t match {
     case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
       // after erasure outer paths should be respected
-      ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.classSymbol)
+      ExplicitOuter.OuterOps(ctx.detach).path(toCls = t.tpe.classSymbol)
     case t =>
       t
   }
@@ -1297,7 +1297,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else if (tree.tpe.widen isRef numericCls)
       tree
     else {
-      report.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
+      report.warning(em"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
       Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)).withSpan(tree.span)
     }
   }

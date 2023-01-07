@@ -147,28 +147,43 @@ object SymOps:
 
     def extendedSymbol: Option[reflect.ValDef] =
       import reflect.*
-      Option.when(sym.isExtensionMethod){
-        val termParamss = sym.tree.asInstanceOf[DefDef].termParamss
-        if sym.isLeftAssoc || termParamss.size == 1 then termParamss(0).params(0)
-        else termParamss(1).params(0)
+      if sym.isExtensionMethod then
+        sym.extendedTermParamLists.find(param => !param.isImplicit && !param.isGiven).flatMap(_.params.headOption)
+      else None
+
+    def splitExtensionParamList: (List[reflect.ParamClause], List[reflect.ParamClause]) =
+      import reflect.*
+
+      def getPositionStartOption(pos: Option[Position]): Option[Int] = pos.flatMap {
+        case dotty.tools.dotc.util.NoSourcePosition => None
+        case pos: Position => Some(pos.start)
       }
+
+      def comparePositionStarts(posA: Option[Position], posB: Option[Position]): Option[Boolean] =
+        for {
+          startA <- getPositionStartOption(posA)
+          startB <- getPositionStartOption(posB)
+        } yield startA < startB
+
+      sym.tree match
+        case tree: DefDef =>
+          tree.paramss.partition(_.params.headOption.flatMap(param =>
+            comparePositionStarts(param.symbol.pos, tree.symbol.pos)).getOrElse(false)
+          )
+        case _ => Nil -> Nil
 
     def extendedTypeParams: List[reflect.TypeDef] =
       import reflect.*
-      val method = sym.tree.asInstanceOf[DefDef]
-      method.leadingTypeParams
+      sym.tree match
+        case tree: DefDef =>
+          tree.leadingTypeParams
+        case _ => Nil
 
     def extendedTermParamLists: List[reflect.TermParamClause] =
       import reflect.*
-      if sym.nonExtensionLeadingTypeParams.nonEmpty then
-        sym.nonExtensionParamLists.takeWhile {
-          case _: TypeParamClause => false
-          case _ => true
-        }.collect {
-          case tpc: TermParamClause => tpc
-        }
-      else
-        List.empty
+      sym.splitExtensionParamList._1.collect {
+        case tpc: TermParamClause => tpc
+      }
 
     def nonExtensionTermParamLists: List[reflect.TermParamClause] =
       import reflect.*
@@ -185,14 +200,7 @@ object SymOps:
         }
 
     def nonExtensionParamLists: List[reflect.ParamClause] =
-      import reflect.*
-      val method = sym.tree.asInstanceOf[DefDef]
-      if sym.isExtensionMethod then
-        val params = method.paramss
-        val toDrop = if method.leadingTypeParams.nonEmpty then 2 else 1
-        if sym.isLeftAssoc || params.size == 1 then params.drop(toDrop)
-        else params.head :: params.tail.drop(toDrop)
-      else method.paramss
+      sym.splitExtensionParamList._2
 
     def nonExtensionLeadingTypeParams: List[reflect.TypeDef] =
       import reflect.*

@@ -1,0 +1,13 @@
+
+-- Error: tests/neg-macros/annot-empty-result/Test_2.scala:5:2 ---------------------------------------------------------
+5 |  @nilAnnot // error
+  |  ^^^^^^^^^
+  |  Unexpected `Nil` returned by `(new nilAnnot()).transform(..)` during macro expansion
+-- Error: tests/neg-macros/annot-empty-result/Test_2.scala:9:4 ---------------------------------------------------------
+9 |    @nilAnnot // error
+  |    ^^^^^^^^^
+  |    Unexpected `Nil` returned by `(new nilAnnot()).transform(..)` during macro expansion
+-- Error: tests/neg-macros/annot-empty-result/Test_2.scala:1:0 ---------------------------------------------------------
+1 |@nilAnnot // error
+  |^^^^^^^^^
+  |Unexpected `Nil` returned by `(new nilAnnot()).transform(..)` during macro expansion

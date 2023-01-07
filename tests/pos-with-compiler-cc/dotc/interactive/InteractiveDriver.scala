@@ -30,7 +30,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   override def sourcesRequired: Boolean = false
 
-  private val myInitCtx: Context = {
+  private val myInitCtx: DetachedContext = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
@@ -39,11 +39,11 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       case Some((_, ctx)) => ctx
       case None => rootCtx
     ctx.initialize()(using ctx)
-    ctx
+    ctx.detach
   }
 
-  private var myCtx: Context = myInitCtx
-  def currentCtx: Context = myCtx
+  private var myCtx: DetachedContext = myInitCtx
+  def currentCtx: DetachedContext = myCtx
 
   private val compiler: Compiler = new InteractiveCompiler
 
@@ -156,7 +156,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
         new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
       val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter))
-      myCtx = run.runContext.withRootImports
+      myCtx = run.runContext.withRootImports.detach
 
       given Context = myCtx
 
@@ -170,7 +170,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       cleanup(t)
       myOpenedTrees(uri) = topLevelTrees(t, source)
       myCompilationUnits(uri) = unit
-      myCtx = myCtx.fresh.setPhase(myInitCtx.base.typerPhase)
+      myCtx = myCtx.fresh.setPhase(myInitCtx.base.typerPhase).detach
 
       reporter.removeBufferedMessages
     }

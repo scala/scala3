@@ -5,6 +5,7 @@ import scala.language.unsafeNulls
 
 import core._
 import Contexts._
+import Decorators.em
 import config.{ PathResolver, Feature }
 import dotty.tools.io._
 import Phases._
@@ -34,11 +35,12 @@ trait Plugins {
     val maybes = Plugin.loadAllFrom(paths, dirs, ctx.settings.disable.value)
     val (goods, errors) = maybes partition (_.isSuccess)
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
-    errors foreach (_.recover[Any] {
-      // legacy behavior ignores altogether, so at least warn devs
-      case e: MissingPluginException => report.warning(e.getMessage.nn)
-      case e: Exception              => report.inform(e.getMessage.nn)
-    })
+    inDetachedContext:
+      errors foreach (_.recover[Any] {
+        // legacy behavior ignores altogether, so at least warn devs
+        case e: MissingPluginException => report.warning(e.getMessage.nn)
+        case e: Exception              => report.inform(e.getMessage.nn)
+      })
 
     goods map (_.get)
   }
@@ -83,14 +85,14 @@ trait Plugins {
 
     // Verify required plugins are present.
     for (req <- ctx.settings.require.value ; if !(plugs exists (_.name == req)))
-      report.error("Missing required plugin: " + req)
+      report.error(em"Missing required plugin: $req")
 
     // Verify no non-existent plugin given with -P
     for {
       opt <- ctx.settings.pluginOptions.value
       if !(plugs exists (opt startsWith _.name + ":"))
     }
-    report.error("bad option: -P:" + opt)
+    report.error(em"bad option: -P:$opt")
 
     plugs
   }

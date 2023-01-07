@@ -88,6 +88,8 @@ abstract class Constraint extends Showable {
    *   - Another type, indicating a solution for the parameter
    *
    * @pre  `this contains param`.
+   * @pre  `tp` does not contain top-level references to `param`
+   *       (see `validBoundsFor`)
    */
   def updateEntry(param: TypeParamRef, tp: Type)(using Context): This
 
@@ -171,6 +173,23 @@ abstract class Constraint extends Showable {
    *  combination of `&` or `|` types.
    */
   def occursAtToplevel(param: TypeParamRef, tp: Type)(using Context): Boolean
+
+  /** Sanitize `bound` to make it either a valid upper or lower bound for
+   *  `param` depending on `isUpper`.
+   *
+   *  Toplevel references to `param`, are replaced by `Any` if `isUpper` is true
+   *  and `Nothing` otherwise.
+   *
+   *  @see `occursAtTopLevel` for a definition of "toplevel"
+   *  @see `validBoundsFor` to sanitize both the lower and upper bound at once.
+   */
+  def validBoundFor(param: TypeParamRef, bound: Type, isUpper: Boolean)(using Context): Type
+
+  /** Sanitize `bounds` to make them valid constraints for `param`.
+   *
+   *  @see `validBoundFor` for details.
+   */
+  def validBoundsFor(param: TypeParamRef, bounds: TypeBounds)(using Context): Type
 
   /** A string that shows the reverse dependencies maintained by this constraint
    *  (coDeps and contraDeps for OrderingConstraints).

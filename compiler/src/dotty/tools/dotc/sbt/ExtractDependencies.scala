@@ -143,34 +143,7 @@ class ExtractDependencies extends Phase {
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
       if (depFile.extension == "class") {
         // Dependency is external -- source is undefined
-
-        // The fully qualified name on the JVM of the class corresponding to `dep.to`
-        val binaryClassName = {
-          val builder = new StringBuilder
-          val pkg = dep.to.enclosingPackageClass
-          if (!pkg.isEffectiveRoot) {
-            builder.append(pkg.fullName.mangledString)
-            builder.append(".")
-          }
-          val flatName = dep.to.flatName
-          // Some companion objects are fake (that is, they're a compiler fiction
-          // that doesn't correspond to a class that exists at runtime), this
-          // can happen in two cases:
-          // - If a Java class has static members.
-          // - If we create constructor proxies for a class (see NamerOps#addConstructorProxies).
-          //
-          // In both cases it's vital that we don't send the object name to
-          // zinc: when sbt is restarted, zinc will inspect the binary
-          // dependencies to see if they're still on the classpath, if it
-          // doesn't find them it will invalidate whatever referenced them, so
-          // any reference to a fake companion will lead to extra recompilations.
-          // Instead, use the class name since it's guaranteed to exist at runtime.
-          val clsFlatName = if (dep.to.isOneOf(JavaDefined | ConstructorProxy)) flatName.stripModuleClassSuffix else flatName
-          builder.append(clsFlatName.mangledString)
-          builder.toString
-        }
-
-        processExternalDependency(depFile, binaryClassName)
+        processExternalDependency(depFile, dep.to.binaryClassName)
       } else if (allowLocal || depFile.file != sourceFile) {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
@@ -190,7 +163,7 @@ object ExtractDependencies {
 
   /** Report an internal error in incremental compilation. */
   def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
-    report.error(s"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
+    report.error(em"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
 }
 
 private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)

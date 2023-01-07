@@ -75,8 +75,8 @@ object DesugarEnums {
         def problem =
           if (!tparam.isOneOf(VarianceFlags)) "is invariant"
           else "has bounds that depend on a type parameter in the same parameter list"
-        errorType(i"""cannot determine type argument for enum parent $enumClass,
-                     |type parameter $tparam $problem""", ctx.source.atSpan(span))
+        errorType(em"""cannot determine type argument for enum parent $enumClass,
+                      |type parameter $tparam $problem""", ctx.source.atSpan(span))
       }
     }
     TypeTree(enumClass.typeRef.appliedTo(targs)).withSpan(span)
@@ -216,7 +216,7 @@ object DesugarEnums {
           case Ident(name) =>
             val matches = tparamNames.contains(name)
             if (matches && (caseTypeParams.nonEmpty || vparamss.isEmpty))
-              report.error(i"illegal reference to type parameter $name from enum case", tree.srcPos)
+              report.error(em"illegal reference to type parameter $name from enum case", tree.srcPos)
             matches
           case LambdaTypeTree(lambdaParams, body) =>
             underBinders(lambdaParams, foldOver(x, tree))

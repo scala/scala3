@@ -5,8 +5,11 @@ scala> object bar { class Foo }
 scala> implicit def eqFoo: CanEqual[foo.Foo, foo.Foo] = CanEqual.derived
 def eqFoo: CanEqual[foo.Foo, foo.Foo]
 scala> object Bar { new foo.Foo == new bar.Foo }
--- Error: ----------------------------------------------------------------------
+-- [E172] Type Error: ----------------------------------------------------------
 1 | object Bar { new foo.Foo == new bar.Foo }
   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |      Values of types foo.Foo and bar.Foo cannot be compared with == or !=
+  |     Values of types foo.Foo and bar.Foo² cannot be compared with == or !=
+  |
+  |     where:    Foo  is a class in object foo
+  |               Foo² is a class in object bar
 1 error found

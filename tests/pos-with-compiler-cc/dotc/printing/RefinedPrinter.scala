@@ -30,20 +30,20 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 import cc.{CaptureSet, toCaptureSet, IllegalCaptureRef}
 
-class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
+class RefinedPrinter(_ctx: DetachedContext) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
   private var enclosingDef: untpd.Tree = untpd.EmptyTree
-  private var myCtx: Context = super.printerContext
+  private var myCtx: DetachedContext = super.printerContext
   private var printPos = ctx.settings.YprintPos.value
   private val printLines = ctx.settings.printLines.value
 
-  override def printerContext: Context = myCtx
+  override def printerContext: DetachedContext = myCtx
 
   def withEnclosingDef(enclDef: Tree[?])(op: => Text): Text = {
     val savedCtx = myCtx
     if (enclDef.hasType && enclDef.symbol.exists)
-      myCtx = ctx.withOwner(enclDef.symbol)
+      myCtx = ctx.withOwner(enclDef.symbol).detach
     val savedDef = enclosingDef
     enclosingDef = enclDef
     try op finally {
@@ -54,7 +54,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   def inPattern(op: => Text): Text = {
     val savedCtx = myCtx
-    myCtx = ctx.addMode(Mode.Pattern)
+    myCtx = ctx.addMode(Mode.Pattern).detach
     try op finally myCtx = savedCtx
   }
 
@@ -223,6 +223,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ =>
             val tsym = tycon.typeSymbol
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
+            else if tp.isConvertibleParam then "into " ~ toText(args.head)
             else if defn.isFunctionSymbol(tsym) then
               toTextFunction(args, tsym.name.isContextFunction, tsym.name.isErasedFunction,
                 isPure = Feature.pureFunsEnabled && !tsym.name.isImpureFunction)
@@ -523,9 +524,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SeqLiteral(elems, elemtpt) =>
         "[" ~ toTextGlobal(elems, ",") ~ " : " ~ toText(elemtpt) ~ "]"
       case tree @ Inlined(call, bindings, body) =>
-        (("/* inlined from " ~ (if (call.isEmpty) "outside" else toText(call)) ~ " */ ") `provided`
-          !homogenizedView && ctx.settings.XprintInline.value) ~
-          (if bindings.isEmpty then toText(body) else blockText(bindings :+ body))
+        val bodyText = if bindings.isEmpty then toText(body) else blockText(bindings :+ body)
+        if homogenizedView || !ctx.settings.XprintInline.value then bodyText
+        else if call.isEmpty then stringText("{{") ~ stringText("/* inlined from outside */") ~ bodyText ~ stringText("}}")
+        else keywordText("{{") ~ keywordText("/* inlined from ") ~ toText(call) ~ keywordText(" */") ~ bodyText ~ keywordText("}}")
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ tpt.watched.showSummary() ~ ">"
       case TypeTree() =>
@@ -605,7 +607,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
         recur(rhs, "", true)
       case tree @ Import(expr, selectors) =>
-        myCtx = myCtx.importContext(tree, tree.symbol)
+        myCtx = myCtx.importContext(tree, tree.symbol).detach
         keywordText("import ") ~ importText(expr, selectors)
       case Export(expr, selectors) =>
         keywordText("export ") ~ importText(expr, selectors)
@@ -1060,7 +1062,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (sym.isImport)
       sym.infoOrCompleter match {
         case info: Namer#Completer => return info.original.show
-        case info: ImportType => return s"import $info.expr.show"
+        case info: ImportType => return s"import ${info.expr.show}"
         case _ =>
       }
     def name =
