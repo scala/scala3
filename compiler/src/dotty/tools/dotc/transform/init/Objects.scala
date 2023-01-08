@@ -57,8 +57,22 @@ object Objects:
    * A reference caches the current value.
    */
   sealed abstract class Ref extends Value:
-    val fields: mutable.Map[Symbol, Value] = mutable.Map.empty
-    val outers: mutable.Map[Symbol, Value] = mutable.Map.empty
+    private val fields: mutable.Map[Symbol, Value] = mutable.Map.empty
+    private val outers: mutable.Map[ClassSymbol, Value] = mutable.Map.empty
+
+    def fieldValue(sym: Symbol): Value = fields(sym)
+
+    def outerValue(cls: ClassSymbol): Value = outers(cls)
+
+    def hasOuter(cls: ClassSymbol): Boolean = outers.contains(cls)
+
+    def updateField(field: Symbol, value: Value) =
+      assert(!fields.contains(field), "Field already set " + field)
+      fields(field) = value
+
+    def updateOuter(cls: ClassSymbol, value: Value) =
+      assert(!outers.contains(cls), "Outer already set " + cls)
+      outers(cls) = value
 
   /** A reference to a static object */
   case class ObjectRef(klass: ClassSymbol) extends Ref:
@@ -114,7 +128,7 @@ object Objects:
       // object -> (fun type, fun values)
       private[State] val instantiatedFuncs = mutable.Map.empty[ClassSymbol, Map[Type, List[Fun]]]
 
-    def checkObject(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context) =
+    def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context) =
       val index = data.checkingObjects.indexOf(clazz)
 
       if index != -1 then
@@ -219,6 +233,11 @@ object Objects:
       case (RefSet(refs), b)                  => RefSet(b :: refs)
       case (a, b)                             => RefSet(a :: b :: Nil)
 
+    def widen(using Context): Value = a.match
+      case RefSet(refs) => refs.map(_.widen).join
+      case OfClass(tp, _: OfClass) => OfType(tp)
+      case _ => a
+
   extension (values: Seq[Value])
     def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
 
@@ -249,7 +268,7 @@ object Objects:
   // -------------------------------- algorithm --------------------------------
 
   /** Check an individual object */
-  private def checkObject(classSym: ClassSymbol)(using Context, State.Data): Unit =
+  private def accessObject(classSym: ClassSymbol)(using Context, State.Data): Value =
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
     @tailrec
@@ -267,10 +286,12 @@ object Objects:
         ctx.reporter.flush()
     end iterate
 
-    State.checkObject(classSym) {
+    State.checkCycle(classSym) {
       val reporter = new StoreReporter(ctx.reporter)
       iterate()(using ctx.fresh.setReporter(reporter))
     }
+
+    ObjectRef(classSym)
 
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given State.Data = new State.Data
@@ -278,7 +299,7 @@ object Objects:
     for
       classSym <- classes  if classSym.isStaticObject
     do
-      checkObject(classSym)
+      accessObject(classSym)
 
 
   /** Evaluate a list of expressions */
@@ -447,10 +468,14 @@ object Objects:
    * For leaf nodes, their semantics is determined by their types.
    *
    * @param tp      The type to be evaluated.
-   * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param thisV   The value for `C.this` where `C` is represented by `klass`.
    * @param klass   The enclosing class where the type `tp` is located.
+   * @param elideObjectAccess Whether object access should be omitted.
+   *
+   * Object access elission happens when the object access is used as a prefix
+   * in `new o.C` and `C` does not need an outer.
    */
-  def evalType(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
+  def evalType(tp: Type, thisV: Ref, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
     // TODO: identify aliasing of object & object field
     tp match
       case _: ConstantType =>
@@ -475,8 +500,10 @@ object Objects:
         val sym = tmref.symbol
         if sym.isStaticObject then
           // TODO: check immutability
-          checkObject(sym.moduleClass.asClass)
-          ObjectRef(sym.moduleClass.asClass)
+          if elideObjectAccess then
+            ObjectRef(sym.moduleClass.asClass)
+          else
+            accessObject(sym.moduleClass.asClass)
         else
           // TODO: check object field access
           val value = evalType(tmref.prefix, thisV, klass)
@@ -488,8 +515,10 @@ object Objects:
           Bottom
         else if sym.isStaticObject && sym != klass then
           // TODO: check immutability
-          checkObject(sym.moduleClass.asClass)
-          ObjectRef(sym.moduleClass.asClass)
+          if elideObjectAccess then
+            ObjectRef(sym.moduleClass.asClass)
+          else
+            accessObject(sym.moduleClass.asClass)
 
         else
           resolveThis(tref.classSymbol.asClass, thisV, klass)
@@ -513,44 +542,74 @@ object Objects:
     argInfos.toList
 
   def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Unit] =
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo]): Unit =
+    val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
+      vdef.name -> thisV.fieldValue(vdef.symbol)
+    }.toMap
+
+    // init param fields
+    klass.paramGetters.foreach { acc =>
+      val value = paramsMap(acc.name.toTermName)
+      thisV.updateField(acc, value)
+      printer.println(acc.show + " initialized with " + value)
+    }
+
+    // Tasks is used to schedule super constructor calls.
+    // Super constructor calls are delayed until all outers are set.
+    type Tasks = mutable.ArrayBuffer[() => Unit]
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], tasks: Tasks): Unit =
       val cls = tref.classSymbol.asClass
+      // update outer for super class
+      val res = outerValue(tref, thisV, klass)
+      thisV.updateOuter(cls, res)
 
       // follow constructor
-      if cls.hasSource then callConstructor(thisV, ctor, args)
+      if cls.hasSource then
+        tasks.append { () =>
+          printer.println("init super class " + cls.show)
+          callConstructor(thisV, ctor, args)
+          ()
+        }
 
     // parents
-    def initParent(parent: Tree) =
+    def initParent(parent: Tree, tasks: Tasks) =
       parent match
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         evalExprs(stats, thisV, klass)
         val args = evalArgs(argss.flatten, thisV, klass)
-        superCall(tref, ctor, args)
+        superCall(tref, ctor, args, tasks)
 
       case tree @ NewExpr(tref, New(tpt), ctor, argss) =>       // extends A(args)
         val args = evalArgs(argss.flatten, thisV, klass)
-        superCall(tref, ctor, args)
+        superCall(tref, ctor, args, tasks)
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
-        superCall(tref, tref.classSymbol.primaryConstructor, Nil)
+        superCall(tref, tref.classSymbol.primaryConstructor, Nil, tasks)
 
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
     if !klass.is(Flags.Trait) then
+      // outers are set first
+      val tasks = new mutable.ArrayBuffer[() => Unit]
+
       // 1. first init parent class recursively
       // 2. initialize traits according to linearization order
       val superParent = tpl.parents.head
       val superCls = superParent.tpe.classSymbol.asClass
-      initParent(superParent)
+      extendTrace(superParent) { initParent(superParent, tasks) }
 
       val parents = tpl.parents.tail
       val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
 
+      // The interesting case is the outers for traits.  The compiler
+      // synthesizes proxy accessors for the outers in the class that extends
+      // the trait. As those outers must be stable values, they are initialized
+      // immediately following class parameters and before super constructor
+      // calls and user code in the class body.
       mixins.reverse.foreach { mixin =>
         parents.find(_.tpe.classSymbol == mixin) match
         case Some(parent) =>
-          initParent(parent)
+          extendTrace(parent) { initParent(parent, tasks) }
         case None =>
           // According to the language spec, if the mixin trait requires
           // arguments, then the class must provide arguments to it explicitly
@@ -562,15 +621,24 @@ object Objects:
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
           val ctor = tref.classSymbol.primaryConstructor
           if ctor.exists then
-            superCall(tref, ctor, Nil)
+            // The parameter check of traits comes late in the mixin phase.
+            // To avoid crash we supply hot values for erroneous parent calls.
+            // See tests/neg/i16438.scala.
+            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Bottom, Trace.empty))
+            extendTrace(superParent) {
+              superCall(tref, ctor, args, tasks)
+            }
       }
+
+      // initialize super classes after outers are set
+      tasks.foreach(task => task())
     end if
 
     // class body
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
-        // Throw the field value away, as the analysis is not heap-sensitive
-        eval(vdef.rhs, thisV, klass)
+        val res = eval(vdef.rhs, thisV, klass)
+        thisV.updateField(vdef.symbol, res)
 
       case _: MemberDef =>
 
@@ -578,14 +646,44 @@ object Objects:
         eval(tree, thisV, klass)
     }
 
+
   /** Resolve C.this that appear in `klass`
    *
    * @param target  The class symbol for `C` for which `C.this` is to be resolved.
    * @param thisV   The value for `D.this` where `D` is represented by the parameter `klass`.
    * @param klass   The enclosing class where the type `C.this` is located.
+   * @param elideObjectAccess Whether object access should be omitted.
+   *
+   * Object access elission happens when the object access is used as a prefix
+   * in `new o.C` and `C` does not need an outer.
    */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] =
-    OfType(target.typeRef)
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] =
+    if target == klass then
+      thisV
+    else if target.is(Flags.Package) then
+      Bottom
+    else if target.isStaticObject then
+      val res = ObjectRef(target.moduleClass.asClass)
+      if target == klass || elideObjectAccess then res
+      else accessObject(target)
+    else
+      thisV match
+        case Bottom => Bottom
+        case ref: Ref =>
+          val outerCls = klass.owner.lexicallyEnclosingClass.asClass
+          if !ref.hasOuter(klass) then
+            val error = "[Internal error] outer not yet initialized, target = " + target + ", klass = " + klass + Trace.show
+            report.error(error, Trace.position)
+            Bottom
+          else
+            resolveThis(target, ref.outerValue(klass), outerCls)
+        case RefSet(refs) =>
+          refs.map(ref => resolveThis(target, ref, klass)).join
+        case fun: Fun =>
+          report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
+          Bottom
+        case OfType(tp) =>
+          OfType(target.appliedRef)
 
   /** Compute the outer value that correspond to `tref.prefix`
    *
@@ -597,11 +695,10 @@ object Objects:
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
-      val outerV = resolveThis(enclosing, thisV, klass)
-      outerV
+      resolveThis(enclosing, thisV, klass, elideObjectAccess = cls.isStatic)
     else
       if cls.isAllOf(Flags.JavaInterface) then Bottom
-      else evalType(tref.prefix, thisV, klass)
+      else evalType(tref.prefix, thisV, klass, elideObjectAccess = cls.isStatic)
 
   extension (sym: Symbol)
     def isStaticObject(using Context) =
