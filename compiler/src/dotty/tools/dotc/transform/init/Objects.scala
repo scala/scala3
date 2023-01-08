@@ -19,7 +19,7 @@ import Errors.*
 
 import Semantic.{ NewExpr, Call, TraceValue, Trace, PolyFun, Arg, ByNameArg }
 
-import Semantic.{ typeRefOf, hasSource, extendTrace, withTrace, trace }
+import Semantic.{ typeRefOf, hasSource, extendTrace, withTrace, trace, resolve }
 
 import scala.collection.mutable
 import scala.annotation.tailrec
@@ -60,9 +60,13 @@ object Objects:
     private val fields: mutable.Map[Symbol, Value] = mutable.Map.empty
     private val outers: mutable.Map[ClassSymbol, Value] = mutable.Map.empty
 
+    def klass: ClassSymbol
+
     def fieldValue(sym: Symbol): Value = fields(sym)
 
     def outerValue(cls: ClassSymbol): Value = outers(cls)
+
+    def hasField(sym: Symbol): Boolean = fields.contains(sym)
 
     def hasOuter(cls: ClassSymbol): Boolean = outers.contains(cls)
 
@@ -83,7 +87,7 @@ object Objects:
    *
    * `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass(tp: Type, outer: Value) extends Ref:
+  case class OfClass(tp: Type, klass: ClassSymbol, outer: Value) extends Ref:
     def show(using Context) = "OfClass(" + tp.show + ")"
 
   /**
@@ -99,7 +103,7 @@ object Objects:
   /**
    * Represents a lambda expression
    */
-  case class Fun(expr: Tree, thisV: Ref, klass: ClassSymbol) extends Value:
+  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value:
     def show(using Context) = "Fun(" + expr.show + ", " + thisV.show + ", " + klass.show + ")"
 
   /**
@@ -235,29 +239,91 @@ object Objects:
 
     def widen(using Context): Value = a.match
       case RefSet(refs) => refs.map(_.widen).join
-      case OfClass(tp, _: OfClass) => OfType(tp)
+      case OfClass(tp, _, _: OfClass) => OfType(tp)
       case _ => a
 
   extension (values: Seq[Value])
     def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
 
-  def call(thisV: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] =
-    thisV match
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] =
+    def checkArgs() =
+      // TODO: check aliasing of static objects
+      for
+        arg <- args
+      do
+        arg.value match
+        case ObjectRef(obj) =>
+          report.warning("Aliasing object " + obj.show, Trace.position)
 
-    case ObjectRef(klass) =>
-      ???
+        case _ =>
 
-    case OfClass(tp, outer) =>
-      ???
+    value match
+
+    case ref: Ref =>
+      checkArgs()
+
+      val isLocal = !meth.owner.isClass
+      val target =
+        if !needResolve then
+          meth
+        else if superType.exists then
+          meth
+        else if meth.name.is(SuperAccessorName) then
+          ResolveSuper.rebindSuper(ref.klass, meth)
+        else
+          resolve(ref.klass, meth)
+
+      if target.isOneOf(Flags.Method) then
+        if target.hasSource then
+          val cls = target.owner.enclosingClass.asClass
+          val ddef = target.defTree.asInstanceOf[DefDef]
+          extendTrace(ddef) {
+            eval(ddef.rhs, ref, cls)
+          }
+        else
+          Bottom
+      else if target.exists then
+        if ref.hasField(target) then
+          ref.fieldValue(target)
+        else
+          select(ref, target, receiver, needResolve = false)
+      else
+        if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
+          report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
+          Bottom
+        else
+          // This is possible due to incorrect type cast.
+          // See tests/init/pos/Type.scala
+          Bottom
 
     case OfType(tp) =>
-      ???
+      checkArgs()
+
+      if meth.exists && meth.isEffectivelyFinal then
+        if meth.hasSource then
+          val isLocal = meth.owner.isClass
+          val ddef = meth.defTree.asInstanceOf[DefDef]
+          extendTrace(ddef) {
+            eval(ddef.rhs, value, meth.owner.enclosingClass.asClass)
+          }
+        else
+          Bottom
+      else
+        // TODO: approximate call with instantiated types
+        report.warning("Virtual method call ", Trace.position)
+        Bottom
 
     case Fun(expr, thisV, klass) =>
-      ???
+      checkArgs()
+
+      // meth == NoSymbol for poly functions
+      if meth.name.toString == "tupled" then
+        value // a call like `fun.tupled`
+      else
+        eval(expr, thisV, klass)
 
     case RefSet(vs) =>
-      ???
+      vs.map(v => call(v, meth, args, receiver, superType)).join
 
   def callConstructor(thisV: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = ???
 
@@ -303,7 +369,7 @@ object Objects:
 
 
   /** Evaluate a list of expressions */
-  def evalExprs(exprs: List[Tree], thisV: Ref, klass: ClassSymbol): Contextual[List[Value]] =
+  def evalExprs(exprs: List[Tree], thisV: Value, klass: ClassSymbol): Contextual[List[Value]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Handles the evaluation of different expressions
@@ -312,7 +378,7 @@ object Objects:
    * @param thisV  The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass  The enclosing class where the expression `expr` is located.
    */
-  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol): Contextual[Value] =
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Value] =
     expr match
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -475,8 +541,7 @@ object Objects:
    * Object access elission happens when the object access is used as a prefix
    * in `new o.C` and `C` does not need an outer.
    */
-  def evalType(tp: Type, thisV: Ref, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
-    // TODO: identify aliasing of object & object field
+  def evalType(tp: Type, thisV: Value, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
     tp match
       case _: ConstantType =>
         Bottom
@@ -499,13 +564,11 @@ object Objects:
       case tmref: TermRef =>
         val sym = tmref.symbol
         if sym.isStaticObject then
-          // TODO: check immutability
           if elideObjectAccess then
             ObjectRef(sym.moduleClass.asClass)
           else
             accessObject(sym.moduleClass.asClass)
         else
-          // TODO: check object field access
           val value = evalType(tmref.prefix, thisV, klass)
           select(value, tmref.symbol, tmref.prefix)
 
@@ -514,7 +577,6 @@ object Objects:
         if sym.is(Flags.Package) then
           Bottom
         else if sym.isStaticObject && sym != klass then
-          // TODO: check immutability
           if elideObjectAccess then
             ObjectRef(sym.moduleClass.asClass)
           else
@@ -528,7 +590,7 @@ object Objects:
   }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Ref, klass: ClassSymbol): Contextual[List[ArgInfo]] =
+  def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol): Contextual[List[ArgInfo]] =
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
     args.foreach { arg =>
       val res =
@@ -691,7 +753,7 @@ object Objects:
    * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass   The enclosing class where the type `tref` is located.
    */
-  def outerValue(tref: TypeRef, thisV: Ref, klass: ClassSymbol): Contextual[Value] =
+  def outerValue(tref: TypeRef, thisV: Value, klass: ClassSymbol): Contextual[Value] =
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
