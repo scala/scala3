@@ -325,7 +325,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 // Check the constructor type as well; it could be an illegal singleton type
                 // which would not be reflected as `tree.tpe`
                 ctx.typer.checkClassType(nu.tpe, tree.srcPos, traitReq = false, stablePrefixReq = false)
-              Checking.checkInstantiable(nu.tpe, nu.srcPos)
+              Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>
               app1
@@ -413,7 +413,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             Checking.checkGoodBounds(tree.symbol)
           super.transform(tree)
         case tree: New if isCheckable(tree) =>
-          Checking.checkInstantiable(tree.tpe, tree.srcPos)
+          Checking.checkInstantiable(tree.tpe, tree.tpe, tree.srcPos)
           super.transform(tree)
         case tree: Closure if !tree.tpt.isEmpty =>
           Checking.checkRealizable(tree.tpt.tpe, tree.srcPos, "SAM type")
