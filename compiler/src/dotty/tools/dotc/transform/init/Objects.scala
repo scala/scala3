@@ -359,7 +359,45 @@ object Objects:
       Bottom
 
 
-  def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = ???
+  def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] =
+    thisV match
+    case ref: Ref =>
+      val target = if needResolve then resolve(ref.klass, field) else field
+      if target.is(Flags.Lazy) then
+        val rhs = target.defTree.asInstanceOf[ValDef].rhs
+        eval(rhs, ref, target.owner.asClass)
+      else if target.exists then
+        if ref.hasField(target) then
+          ref.fieldValue(target)
+        else
+          // initialization error, reported by the initialization checker
+          Bottom
+      else
+        if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
+          report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
+          Bottom
+        else
+          // This is possible due to incorrect type cast.
+          // See tests/init/pos/Type.scala
+          Bottom
+
+    case OfType(tp) =>
+      if field.isEffectivelyFinal then
+        if field.hasSource then
+          val vdef = field.defTree.asInstanceOf[ValDef]
+          eval(vdef.rhs, thisV, field.owner.enclosingClass.asClass)
+        else
+          Bottom
+      else
+        val fieldType = tp.memberInfo(field)
+        OfType(fieldType)
+
+    case fun: Fun =>
+      report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show + Trace.show, fun.expr)
+      Bottom
+
+    case RefSet(refs) =>
+      refs.map(ref => select(ref, field, receiver)).join
 
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = ???
 
