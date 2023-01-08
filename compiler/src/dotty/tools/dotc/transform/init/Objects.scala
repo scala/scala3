@@ -399,7 +399,29 @@ object Objects:
     case RefSet(refs) =>
       refs.map(ref => select(ref, field, receiver)).join
 
-  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = ???
+  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] =
+    outer match
+
+    case Fun(body, thisV, klass) =>
+      report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show + Trace.show, Trace.position)
+      Bottom
+
+    case RefSet(refs) =>
+      refs.map(ref => instantiate(ref, klass, ctor, args)).join
+
+    case value: (ObjectRef | OfClass | OfType) =>
+      // widen the outer to finitize the domain
+      val outerWidened = outer.widenArg
+      val argsWidened = args.map(_.value).widenArgs
+      val tp = value match
+        case v: ObjectRef => v.klass.typeRef.memberInfo(klass)
+        case v: OfClass   => v.tp.memberInfo(klass)
+        case v: OfType    => v.tp.memberInfo(klass)
+
+      val instance = OfClass(tp, klass, outerWidened, ctor, argsWidened)
+      val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
+      callConstructor(instance, ctor, argInfos2)
+      instance
 
   // -------------------------------- algorithm --------------------------------
 
