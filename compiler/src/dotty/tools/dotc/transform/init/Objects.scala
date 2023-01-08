@@ -87,8 +87,8 @@ object Objects:
    *
    * `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass(tp: Type, klass: ClassSymbol, outer: Value) extends Ref:
-    def show(using Context) = "OfClass(" + tp.show + ")"
+  case class OfClass(tp: Type, klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref:
+    def show(using Context) = "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ")"
 
   /**
    * Rerepsents values of a specific type
@@ -237,13 +237,16 @@ object Objects:
       case (RefSet(refs), b)                  => RefSet(b :: refs)
       case (a, b)                             => RefSet(a :: b :: Nil)
 
-    def widen(using Context): Value = a.match
-      case RefSet(refs) => refs.map(_.widen).join
-      case OfClass(tp, _, _: OfClass) => OfType(tp)
+    def widenArg(using Context): Value =
+      a match
+      case RefSet(refs) => refs.map(_.widenArg).join
+      case OfClass(tp, _, _: OfClass, _, _) => OfType(tp)
       case _ => a
 
   extension (values: Seq[Value])
     def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
+
+    def widenArgs: Contextual[List[Value]] = values.map(_.widenArg).toList
 
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] =
     def checkArgs() =
@@ -325,7 +328,36 @@ object Objects:
     case RefSet(vs) =>
       vs.map(v => call(v, meth, args, receiver, superType)).join
 
-  def callConstructor(thisV: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = ???
+  def callConstructor(thisV: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] =
+    // init "fake" param fields for parameters of primary and secondary constructors
+    def addParamsAsFields(args: List[Value], ref: Ref, ctorDef: DefDef) =
+      val params = ctorDef.termParamss.flatten.map(_.symbol)
+      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size + ", ctor = " + ctor.show)
+      for (param, value) <- params.zip(args) do
+        ref.updateField(param, value)
+        printer.println(param.show + " initialized with " + value)
+
+    thisV match
+    case ref: Ref =>
+      if ctor.hasSource then
+        val cls = ctor.owner.enclosingClass.asClass
+        val ddef = ctor.defTree.asInstanceOf[DefDef]
+        val args2 = args.map(_.value).widenArgs
+        addParamsAsFields(args2, ref, ddef)
+        if ctor.isPrimaryConstructor then
+          val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+          extendTrace(cls.defTree) { eval(tpl, ref, cls) }
+          ref
+        else
+          extendTrace(ddef) { eval(ddef.rhs, ref, cls) }
+      else
+        // no source code available
+        Bottom
+
+    case _ =>
+      report.error("[Internal error] unexpected constructor call, meth = " + ctor + ", this = " + thisV + Trace.show, Trace.position)
+      Bottom
+
 
   def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = ???
 
