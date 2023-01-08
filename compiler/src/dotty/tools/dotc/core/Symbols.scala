@@ -91,11 +91,11 @@ object Symbols {
       denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
       ctx.settings.YcheckInit.value        // initialization check
 
-    /** The last denotation of this symbol */
-    private var lastDenot: SymDenotation = _
-    private var checkedPeriod: Period = Nowhere
+    private def lastDenot: SymDenotation = initialDenot.lastDenot
+    private def lastDenot_=(d: SymDenotation): Unit = initialDenot.lastDenot = d
 
-    private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
+    private def checkedPeriod: Period = initialDenot.checkedPeriod
+    private def checkedPeriod_=(p: Period): Unit = initialDenot.checkedPeriod = p
 
     /** Set the denotation of this symbol
      *  `denot` should always be initialized when a new Symbol is created.

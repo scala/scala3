@@ -1784,6 +1784,10 @@ object SymDenotations {
 
     // ----- Symbol ops --------------------------------------------
 
+    /** The last denotation of this symbol */
+    var lastDenot: SymDenotation = _
+    var checkedPeriod: Period = Nowhere
+
     override def hashCode = common.id // for debugging
 
     // ---- ParamInfo bindings -------------------------------------
