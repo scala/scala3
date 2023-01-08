@@ -379,9 +379,6 @@ object Symbols {
 
 // -------- Printing --------------------------------------------------------
 
-    /** The prefix string to be used when displaying this symbol without denotation */
-    protected def prefixString: String = "Symbol"
-
     override def toString: String =
       lastDenot.toString // + "#" + id // !!! DEBUG
 
@@ -482,8 +479,6 @@ object Symbols {
 
     final def classDenot(using Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]
-
-    override protected def prefixString: String = "ClassSymbol"
   }
 
   @sharable object NoSymbol extends Symbol {

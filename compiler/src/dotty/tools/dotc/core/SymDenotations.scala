@@ -613,6 +613,8 @@ object SymDenotations {
 
     // ----- Symbol ops --------------------------------------------
 
+    override def hashCode = common.id // for debugging
+
     // ----- Tests -------------------------------------------------
 
     /** Is this denotation a class? */
