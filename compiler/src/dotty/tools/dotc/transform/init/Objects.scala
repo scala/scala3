@@ -132,6 +132,8 @@ object Objects:
       // object -> (fun type, fun values)
       private[State] val instantiatedFuncs = mutable.Map.empty[ClassSymbol, Map[Type, List[Fun]]]
 
+    def currentObject(using data: Data) = data.checkingObjects.last
+
     def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context) =
       val index = data.checkingObjects.indexOf(clazz)
 
@@ -248,7 +250,7 @@ object Objects:
 
     def widenArgs: Contextual[List[Value]] = values.map(_.widenArg).toList
 
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] =
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     def checkArgs() =
       // TODO: check aliasing of static objects
       for
@@ -261,6 +263,8 @@ object Objects:
         case _ =>
 
     value match
+    case Bottom =>
+      Bottom
 
     case ref: Ref =>
       checkArgs()
@@ -327,8 +331,9 @@ object Objects:
 
     case RefSet(vs) =>
       vs.map(v => call(v, meth, args, receiver, superType)).join
+  }
 
-  def callConstructor(thisV: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] =
+  def callConstructor(thisV: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     // init "fake" param fields for parameters of primary and secondary constructors
     def addParamsAsFields(args: List[Value], ref: Ref, ctorDef: DefDef) =
       val params = ctorDef.termParamss.flatten.map(_.symbol)
@@ -357,9 +362,9 @@ object Objects:
     case _ =>
       report.error("[Internal error] unexpected constructor call, meth = " + ctor + ", this = " + thisV + Trace.show, Trace.position)
       Bottom
+  }
 
-
-  def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] =
+  def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + thisV, printer, (_: Value).show) {
     thisV match
     case ref: Ref =>
       val target = if needResolve then resolve(ref.klass, field) else field
@@ -367,11 +372,25 @@ object Objects:
         val rhs = target.defTree.asInstanceOf[ValDef].rhs
         eval(rhs, ref, target.owner.asClass)
       else if target.exists then
-        if ref.hasField(target) then
-          ref.fieldValue(target)
-        else
-          // initialization error, reported by the initialization checker
-          Bottom
+        ref match
+        case obj: ObjectRef if State.currentObject != obj.klass =>
+          if target.isOneOf(Flags.Mutable) then
+            report.warning("Reading mutable state of " + obj.klass + " during initialization of " + State.currentObject + " is discouraged as it breaks initialization-time irrelevance", Trace.position)
+            Bottom
+          else
+            if ref.hasField(target) then
+              // TODO:  check immutability
+              ref.fieldValue(target)
+            else
+              // initialization error, reported by the initialization checker
+              Bottom
+
+        case _ =>
+          if ref.hasField(target) then
+            ref.fieldValue(target)
+          else
+            // initialization error, reported by the initialization checker
+            Bottom
       else
         if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
           report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
@@ -398,8 +417,9 @@ object Objects:
 
     case RefSet(refs) =>
       refs.map(ref => select(ref, field, receiver)).join
+  }
 
-  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] =
+  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     outer match
 
     case Fun(body, thisV, klass) =>
@@ -422,17 +442,18 @@ object Objects:
       val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
       callConstructor(instance, ctor, argInfos2)
       instance
+  }
 
   // -------------------------------- algorithm --------------------------------
 
   /** Check an individual object */
-  private def accessObject(classSym: ClassSymbol)(using Context, State.Data): Value =
+  private def accessObject(classSym: ClassSymbol)(using Context, State.Data): Value = log("accessing object " + classSym.show, printer, (_: Value).show) {
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
     @tailrec
     def iterate()(using Context): Unit =
       given cache: Cache.Data = new Cache.Data
-      given Trace = Trace.empty
+      given Trace = Trace.empty.add(tpl)
 
       init(tpl, ObjectRef(classSym), classSym)
 
@@ -440,16 +461,17 @@ object Objects:
       if cache.hasChanged && !hasError then
         cache.prepareForNextIteration()
         iterate()
-      else
-        ctx.reporter.flush()
     end iterate
 
     State.checkCycle(classSym) {
       val reporter = new StoreReporter(ctx.reporter)
       iterate()(using ctx.fresh.setReporter(reporter))
+      for warning <- reporter.pendingMessages do
+        ctx.reporter.report(warning)
     }
 
     ObjectRef(classSym)
+  }
 
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given State.Data = new State.Data
@@ -470,7 +492,7 @@ object Objects:
    * @param thisV  The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass  The enclosing class where the expression `expr` is located.
    */
-  def eval(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Value] =
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
     expr match
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -619,7 +641,8 @@ object Objects:
 
       case _ =>
         report.error("[Internal error] unexpected tree" + Trace.show, expr)
-        OfType(expr.tpe)
+        Bottom
+  }
 
   /** Handle semantics of leaf nodes
    *
@@ -695,7 +718,7 @@ object Objects:
     }
     argInfos.toList
 
-  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Unit] =
+  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show) {
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> thisV.fieldValue(vdef.symbol)
     }.toMap
@@ -799,6 +822,9 @@ object Objects:
       case tree =>
         eval(tree, thisV, klass)
     }
+
+    thisV
+  }
 
 
   /** Resolve C.this that appear in `klass`
