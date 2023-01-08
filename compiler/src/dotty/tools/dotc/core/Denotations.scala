@@ -750,7 +750,9 @@ object Denotations {
           if acceptStale(symd) && symd.initial.validFor.firstPhaseId <= ctx.lastPhaseId then
             // New run might have fewer phases than old, so symbol might no longer be
             // visible at all. TabCompleteTests have examples where this happens.
-            return symd.currentSymbol.denot.orElse(symd).updateValidity()
+            val newd = symd.currentSymbol.denot.orElse(symd).updateValidity()
+            if newd ne symd then symd.common.reset() // to avoid memory leaks
+            return newd
         case _ =>
       }
       if (!symbol.exists) return updateValidity()

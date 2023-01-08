@@ -45,6 +45,9 @@ object SymDenotations {
     var defTree: tpd.Tree | Null = null
     //private[SymDenotations]
     def asClass: ClassCommon = asInstanceOf[ClassCommon]
+
+    def reset() =
+      defTree = null
   end SymCommon
 
   class ClassCommon(coord: Coord, id: Int, nestingLevel: Int,
@@ -55,6 +58,12 @@ object SymDenotations {
     var treeOrProvider: TreeOrProvider = tpd.EmptyTree
     //private[SymDenotations]
     var source: SourceFile = NoSource
+
+    override def reset() =
+      super.reset()
+      treeOrProvider = tpd.EmptyTree
+      source = NoSource
+  end ClassCommon
 
   /** A sym-denotation represents the contents of a definition
    *  during a period.
@@ -1788,6 +1797,11 @@ object SymDenotations {
     var lastDenot: SymDenotation = _
     var checkedPeriod: Period = Nowhere
 
+    /** Overridden in NoSymbol */
+    //private[SymDenotations]
+    def currentSymDenot(using Context): SymDenotation =
+      current.asInstanceOf[SymDenotation]
+
     override def hashCode = common.id // for debugging
 
     // ---- ParamInfo bindings -------------------------------------
@@ -2661,6 +2675,7 @@ object SymDenotations {
     override def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(using Context): SingleDenotation = this
     override def asSeenFrom(pre: Type)(using Context): AsSeenFromResult = this
+    override def currentSymDenot(using Context): SymDenotation = this
 
     override def matches(other: SingleDenotation)(using Context): Boolean = false
     override def targetName(using Context): Name = EmptyTermName

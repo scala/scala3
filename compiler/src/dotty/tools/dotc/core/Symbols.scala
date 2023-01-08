@@ -58,7 +58,7 @@ object Symbols {
     def nestingLevel = initialDenot.common.nestingLevel
 
     /** The coordinates of the symbol (a position or an index) */
-    def coord: Coord = initialDenot.common.coord
+    def coord: Coord = lastDenot.common.coord
 
     /** Set the coordinate of this class, this is only useful when the coordinate is
      *  not known at symbol creation. This is the case for root symbols
@@ -67,19 +67,19 @@ object Symbols {
      *  @pre coord == NoCoord
      */
     private[core] def coord_=(c: Coord): Unit =
-      // assert(myCoord == NoCoord)
+      //assert(myCoord == NoCoord)
         // This assertion fails for CommentPickling test.
         // TODO: figure out what's wrong in the setup of CommentPicklingTest and re-enable assertion.
-      initialDenot.common.coord = c
+      lastDenot.common.coord = c
 
     /** The tree defining the symbol at pickler time, EmptyTree if none was retained */
     def defTree: Tree =
-      val dt = initialDenot.common.defTree
+      val dt = lastDenot.common.defTree
       if dt == null then tpd.EmptyTree else dt.nn
 
     /** Set defining tree if this symbol retains its definition tree */
     def defTree_=(tree: Tree)(using Context): Unit =
-      if retainsDefTree then initialDenot.common.defTree = tree
+      if retainsDefTree then lastDenot.common.defTree = tree
 
     /** Does this symbol retain its definition tree?
      *  A good policy for this needs to balance costs and benefits, where
@@ -121,12 +121,11 @@ object Symbols {
     }
 
     /** Overridden in NoSymbol */
-    protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
+    protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation =
       util.Stats.record("Symbol.recomputeDenot")
-      val newd = lastd.current.asInstanceOf[SymDenotation]
+      val newd = lastd.currentSymDenot
       lastDenot = newd
       newd
-    }
 
     /** The original denotation of this symbol, without forcing anything */
     final def originDenotation: SymDenotation =
@@ -421,10 +420,10 @@ object Symbols {
       }
     }
 
-    def rootTreeOrProvider: TreeOrProvider = initialDenot.common.asClass.treeOrProvider
+    def rootTreeOrProvider: TreeOrProvider = lastKnownDenotation.common.asClass.treeOrProvider
 
     private[dotc] def rootTreeOrProvider_=(t: TreeOrProvider)(using Context): Unit =
-      initialDenot.common.asClass.treeOrProvider = t
+      lastKnownDenotation.common.asClass.treeOrProvider = t
 
     private def mightContain(tree: Tree, id: String)(using Context): Boolean = {
       val ids = tree.getAttachment(Ids) match {
@@ -446,7 +445,7 @@ object Symbols {
     def assocFile: AbstractFile | Null = initialDenot.common.asClass.assocFile
 
     final def sourceOfClass(using Context): SourceFile = {
-      val common = initialDenot.common.asClass
+      val common = lastKnownDenotation.common.asClass
       if !common.source.exists && !denot.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = associatedFile
