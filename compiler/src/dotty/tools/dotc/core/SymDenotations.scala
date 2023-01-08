@@ -17,7 +17,7 @@ import Trees.Literal
 import Variances.Variance
 import annotation.tailrec
 import util.SimpleIdentityMap
-import util.{SrcPos, SourcePosition, Stats}
+import util.{SrcPos, SourcePosition, SourceFile, NoSource, Stats}
 import util.Spans.*
 import java.util.WeakHashMap
 import scala.util.control.NonFatal
@@ -31,11 +31,37 @@ import scala.annotation.internal.sharable
 
 object SymDenotations {
 
+  type TreeOrProvider = tpd.TreeProvider | tpd.Tree
+
+  class SymCommon(
+    //private[SymDenotations]
+    var coord: Coord,
+    //private[SymDenotations]
+    val id: Int,
+    //private[SymDenotations]
+    val nestingLevel: Int):
+
+    //private[SymDenotations]
+    var defTree: tpd.Tree | Null = null
+    //private[SymDenotations]
+    def asClass: ClassCommon = asInstanceOf[ClassCommon]
+  end SymCommon
+
+  class ClassCommon(coord: Coord, id: Int, nestingLevel: Int,
+    //private[SymDenotations]
+    val assocFile: AbstractFile | Null = null)
+  extends SymCommon(coord, id, nestingLevel):
+    //private[SymDenotations]
+    var treeOrProvider: TreeOrProvider = tpd.EmptyTree
+    //private[SymDenotations]
+    var source: SourceFile = NoSource
+
   /** A sym-denotation represents the contents of a definition
    *  during a period.
    */
   class SymDenotation private[SymDenotations] (
     symbol: Symbol,
+    final val common: SymCommon,
     final val maybeOwner: Symbol,
     final val name: Name,
     initFlags: FlagSet,
@@ -575,6 +601,17 @@ object SymDenotations {
           myTargetName = myTargetName.nn.unmangle(List(ExpandedName, SuperAccessorName, ExpandPrefixName))
 
       myTargetName.nn
+
+    /** The source or class file from which this class or
+     *  the class containing this symbol was generated, null if not applicable.
+     *  Note that this the returned classfile might be the top-level class
+     *  containing this symbol instead of the directly enclosing class.
+     *  Overridden in ClassSymbol
+     */
+    def associatedFile(using Context): AbstractFile | Null =
+      topLevelClass.associatedFile
+
+    // ----- Symbol ops --------------------------------------------
 
     // ----- Tests -------------------------------------------------
 
@@ -1606,7 +1643,7 @@ object SymDenotations {
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
       val rawParamss1 = if rawParamss != null then rawParamss else this.rawParamss
-      val d = SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
+      val d = SymDenotation(symbol, symbol.lastKnownDenotation.common, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
       d.rawParamss = rawParamss1
       d.registeredCompanion = registeredCompanion
@@ -1777,12 +1814,13 @@ object SymDenotations {
    */
   class ClassDenotation private[SymDenotations] (
     symbol: Symbol,
+    common: ClassCommon,
     maybeOwner: Symbol,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol)
-    extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
+    extends SymDenotation(symbol, common, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.EqHashMap
 
@@ -2423,6 +2461,12 @@ object SymDenotations {
 
     override def registeredCompanion_=(c: Symbol) =
       myCompanion = c
+
+    /** The source or class file from which this class was generated, null if not applicable. */
+    override def associatedFile(using Context): AbstractFile | Null =
+      val af = common.assocFile
+      if af != null || this.is(Package) || this.owner.is(Package) then af
+      else super.associatedFile
   }
 
   /** The denotation of a package class.
@@ -2430,12 +2474,13 @@ object SymDenotations {
    */
   final class PackageClassDenotation private[SymDenotations] (
     symbol: Symbol,
+    common: ClassCommon,
     ownerIfExists: Symbol,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol)
-    extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
+    extends ClassDenotation(symbol, common, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
     private var packageObjsCache: List[ClassDenotation] = _
     private var packageObjsRunId: RunId = NoRunId
@@ -2599,7 +2644,7 @@ object SymDenotations {
   }
 
   @sharable object NoDenotation
-  extends SymDenotation(NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
+  extends SymDenotation(NoSymbol, SymCommon(NoCoord, 0, 0), NoSymbol, "<none>".toTermName, Permanent, NoType) {
     override def isTerm: Boolean = false
     override def exists: Boolean = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
@@ -2613,6 +2658,7 @@ object SymDenotations {
     override def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation = this
     override def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation = this
     override def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation = this
+    override def associatedFile(using Context): AbstractFile | Null = NoSource.file
 
     NoSymbol.denot = this
     validFor = Period.allInRun(NoRunId)
@@ -2634,16 +2680,20 @@ object SymDenotations {
    */
   def SymDenotation(
     symbol: Symbol,
+    common: SymCommon,
     owner: Symbol,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol)(using Context): SymDenotation = {
     val result =
-      if (symbol.isClass)
-        if (initFlags.is(Package)) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-      else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+      if symbol.isClass then
+        if initFlags.is(Package) then
+          new PackageClassDenotation(symbol, common.asClass, owner, name, initFlags, initInfo, initPrivateWithin)
+        else
+          new ClassDenotation(symbol, common.asClass, owner, name, initFlags, initInfo, initPrivateWithin)
+      else
+        new SymDenotation(symbol, common, owner, name, initFlags, initInfo, initPrivateWithin)
     result.validFor = currentStablePeriod
     result
   }

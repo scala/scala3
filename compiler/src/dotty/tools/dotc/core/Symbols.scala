@@ -43,14 +43,24 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (private var myCoord: Coord, val id: Int, val nestingLevel: Int)
+  class Symbol private[Symbols] ()
     extends ParamInfo, SrcPos, printing.Showable {
 
     type ThisName <: Name
 
+    util.Stats.record(s"new ${getClass}")
+
+    var initialDenot: SymDenotation = _
+
     //assert(id != 723)
 
-    def coord: Coord = myCoord
+    /** A unique identifier of the symbol (unique per ContextBase) */
+    def id = initialDenot.common.id
+
+    def nestingLevel = initialDenot.common.nestingLevel
+
+    /** The coordinates of the symbol (a position or an index) */
+    def coord: Coord = initialDenot.common.coord
 
     /** Set the coordinate of this class, this is only useful when the coordinate is
      *  not known at symbol creation. This is the case for root symbols
@@ -58,22 +68,20 @@ object Symbols {
      *
      *  @pre coord == NoCoord
      */
-    private[core] def coord_=(c: Coord): Unit = {
+    private[core] def coord_=(c: Coord): Unit =
       // assert(myCoord == NoCoord)
         // This assertion fails for CommentPickling test.
         // TODO: figure out what's wrong in the setup of CommentPicklingTest and re-enable assertion.
-      myCoord = c
-    }
-
-    private var myDefTree: Tree | Null = null
+      initialDenot.common.coord = c
 
     /** The tree defining the symbol at pickler time, EmptyTree if none was retained */
     def defTree: Tree =
-      if (myDefTree == null) tpd.EmptyTree else myDefTree.nn
+      val dt = initialDenot.common.defTree
+      if dt == null then tpd.EmptyTree else dt.nn
 
     /** Set defining tree if this symbol retains its definition tree */
     def defTree_=(tree: Tree)(using Context): Unit =
-      if (retainsDefTree) myDefTree = tree
+      if retainsDefTree then initialDenot.common.defTree = tree
 
     /** Does this symbol retain its definition tree?
      *  A good policy for this needs to balance costs and benefits, where
@@ -266,7 +274,7 @@ object Symbols {
      *  Overridden in ClassSymbol
      */
     def associatedFile(using Context): AbstractFile | Null =
-      lastDenot.topLevelClass.associatedFile
+      lastDenot.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(using Context): AbstractFile | Null = {
@@ -392,14 +400,13 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile | Null, id: Int, nestingLevel: Int)
-    extends Symbol(coord, id, nestingLevel) {
+  class ClassSymbol private[Symbols] extends Symbol {
+
+    util.Stats.record("ClassSymbol")
 
     type ThisName = TypeName
 
     type TreeOrProvider = tpd.TreeProvider | tpd.Tree
-
-    private var myTree: TreeOrProvider = tpd.EmptyTree
 
     /** If this is a top-level class and `-Yretain-trees` (or `-from-tasty`) is set.
       * Returns the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
@@ -407,7 +414,7 @@ object Symbols {
       */
     def rootTree(using Context): Tree = rootTreeContaining("")
 
-    /** Same as `tree` but load tree only if `id == ""` or the tree might contain `id`.
+    /** Same as `rootTree` but load tree only if `id == ""` or the tree might contain `id`.
      *  For Tasty trees this means consulting whether the name table defines `id`.
      *  For already loaded trees, we maintain the referenced ids in an attachment.
      */
@@ -416,11 +423,11 @@ object Symbols {
         case _: NoCompleter =>
         case _ => denot.ensureCompleted()
       }
-      myTree match {
+      rootTreeOrProvider match {
         case fn: TreeProvider =>
           if (id.isEmpty || fn.mightContain(id)) {
             val tree = fn.tree
-            myTree = tree
+            rootTreeOrProvider = tree
             tree
           }
           else tpd.EmptyTree
@@ -429,10 +436,10 @@ object Symbols {
       }
     }
 
-    def rootTreeOrProvider: TreeOrProvider = myTree
+    def rootTreeOrProvider: TreeOrProvider = initialDenot.common.asClass.treeOrProvider
 
     private[dotc] def rootTreeOrProvider_=(t: TreeOrProvider)(using Context): Unit =
-      myTree = t
+      initialDenot.common.asClass.treeOrProvider = t
 
     private def mightContain(tree: Tree, id: String)(using Context): Boolean = {
       val ids = tree.getAttachment(Ids) match {
@@ -451,30 +458,26 @@ object Symbols {
       ids.binarySearch(id) >= 0
     }
 
-    /** The source or class file from which this class was generated, null if not applicable. */
-    override def associatedFile(using Context): AbstractFile | Null =
-      if assocFile != null || this.is(Package) || this.owner.is(Package) then assocFile
-      else super.associatedFile
-
-    private var mySource: SourceFile = NoSource
+    def assocFile: AbstractFile | Null = initialDenot.common.asClass.assocFile
 
     final def sourceOfClass(using Context): SourceFile = {
-      if !mySource.exists && !denot.is(Package) then
+      val common = initialDenot.common.asClass
+      if !common.source.exists && !denot.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = associatedFile
         if file != null && file.extension != "class" then
-          mySource = ctx.getSource(file)
+          common.source = ctx.getSource(file)
         else
-          mySource = defn.patchSource(this)
-          if !mySource.exists then
-            mySource = atPhaseNoLater(flattenPhase) {
+          common.source = defn.patchSource(this)
+          if !common.source.exists then
+            common.source = atPhaseNoLater(flattenPhase) {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
                 case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match
                   case Some(Constant(path: String)) => ctx.getSource(path)
                   case none => NoSource
                 case none => NoSource
             }
-      mySource
+      common.source
     }
 
     final def classDenot(using Context): ClassDenotation =
@@ -483,7 +486,11 @@ object Symbols {
     override protected def prefixString: String = "ClassSymbol"
   }
 
-  @sharable object NoSymbol extends Symbol(NoCoord, 0, 0) {
+  @sharable object NoSymbol extends Symbol {
+    override def coord = NoCoord
+    override def id = 0
+    override def nestingLevel = 0
+    override def defTree = tpd.EmptyTree
     override def associatedFile(using Context): AbstractFile | Null = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
   }
@@ -517,8 +524,9 @@ object Symbols {
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
       nestingLevel: Int = ctx.nestingLevel): Symbol { type ThisName = N } = {
-    val sym = new Symbol(coord, ctx.base.nextSymId, nestingLevel).asInstanceOf[Symbol { type ThisName = N }]
-    val denot = SymDenotation(sym, owner, name, flags, info, privateWithin)
+    val sym = new Symbol().asInstanceOf[Symbol { type ThisName = N }]
+    val denot = SymDenotation(sym, SymCommon(coord, ctx.base.nextSymId, nestingLevel), owner, name, flags, info, privateWithin)
+    sym.initialDenot = denot
     sym.denot = denot
     sym
   }
@@ -535,9 +543,11 @@ object Symbols {
       coord: Coord = NoCoord,
       assocFile: AbstractFile | Null = null)(using Context): ClassSymbol
   = {
-    val cls = new ClassSymbol(coord, assocFile, ctx.base.nextSymId, ctx.nestingLevel)
-    val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
+    val cls = new ClassSymbol()
+    val denot = SymDenotation(cls, ClassCommon(coord, ctx.base.nextSymId, ctx.nestingLevel, assocFile), owner, name, flags, NoType, privateWithin)
+    cls.initialDenot = denot
     cls.denot = denot
+    denot.info = infoFn(cls)
     cls
   }
 
