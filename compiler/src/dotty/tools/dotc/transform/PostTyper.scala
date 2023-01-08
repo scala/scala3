@@ -325,7 +325,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 // Check the constructor type as well; it could be an illegal singleton type
                 // which would not be reflected as `tree.tpe`
                 ctx.typer.checkClassType(nu.tpe, tree.srcPos, traitReq = false, stablePrefixReq = false)
-              Checking.checkInstantiable(tree.tpe, nu.srcPos)
+              Checking.checkInstantiable(nu.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>
               app1
