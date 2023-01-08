@@ -44,9 +44,7 @@ object Symbols {
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
   class Symbol private[Symbols] ()
-    extends ParamInfo, SrcPos, printing.Showable {
-
-    type ThisName <: Name
+    extends ParamInfo, SrcPos, Named, printing.Showable {
 
     util.Stats.record(s"new ${getClass}")
 
@@ -332,29 +330,19 @@ object Symbols {
         denot.owner.sourceSymbol
       else this
 
-    /** The position of this symbol, or NoSpan if the symbol was not loaded
-     *  from source or from TASTY. This is always a zero-extent position.
-     */
-    final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
-
-    final def sourcePos(using Context): SourcePosition = {
-      val src = source
-      (if (src.exists) src else ctx.source).atSpan(span)
-    }
-
-    /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
-     *  position, typically for error reporting.
-     */
-    final def srcPos: SrcPos = this
+    // SrcPos types and methods
+    final def span: Span = initialDenot.span
+    final def sourcePos(using Context): SourcePosition = initialDenot.sourcePos
+    final def srcPos: SrcPos = initialDenot.srcPos
 
     // ParamInfo types and methods
     def isTypeParam(using Context): Boolean = denot.is(TypeParam)
-    def paramName(using Context): ThisName = name.asInstanceOf[ThisName]
+    def paramName(using Context): ThisName = denot.paramName.asInstanceOf
     def paramInfo(using Context): Type = denot.info
-    def paramInfoAsSeenFrom(pre: Type)(using Context): Type = pre.memberInfo(this)
-    def paramInfoOrCompleter(using Context): Type = denot.infoOrCompleter
-    def paramVariance(using Context): Variance = denot.variance
-    def paramRef(using Context): TypeRef = denot.typeRef
+    def paramInfoAsSeenFrom(pre: Type)(using Context): Type = denot.paramInfoAsSeenFrom(pre)
+    def paramInfoOrCompleter(using Context): Type = denot.paramInfoOrCompleter
+    def paramVariance(using Context): Variance = denot.paramVariance
+    def paramRef(using Context): TypeRef = denot.paramRef
 
     /** Copy a symbol, overriding selective fields.
      *  Note that `coord` and `associatedFile` will be set from the fields in `owner`, not

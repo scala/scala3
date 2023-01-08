@@ -72,6 +72,10 @@ object Denotations {
 
   implicit def eqDenotation: CanEqual[Denotation, Denotation] = CanEqual.derived
 
+  trait Named:
+    type ThisName <: Name
+    def name(using Context): ThisName
+
   /** A PreDenotation represents a group of single denotations or a single multi-denotation
    *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
    */
@@ -175,7 +179,8 @@ object Denotations {
    *
    *  @param symbol  The referencing symbol, or NoSymbol is none exists
    */
-  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean) extends PreDenotation with printing.Showable {
+  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean)
+  extends PreDenotation, Named, printing.Showable {
     type AsSeenFromResult <: Denotation
 
     /** The type info.
@@ -206,7 +211,7 @@ object Denotations {
     def hasUniqueSym: Boolean
 
     /** The name of the denotation */
-    def name(using Context): Name
+    def name(using Context): ThisName
 
     /** The signature of the denotation. */
     def signature(using Context): Signature
@@ -577,7 +582,7 @@ object Denotations {
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type, isType: Boolean) extends Denotation(symbol, initInfo, isType) {
     protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
 
-    final def name(using Context): Name = symbol.name
+    final def name(using Context): ThisName = symbol.name.asInstanceOf[ThisName]
 
     /** For SymDenotation, this is NoPrefix. For other denotations this is the prefix
      *  under which the denotation was constructed.
@@ -1242,7 +1247,7 @@ object Denotations {
 
     final def infoOrCompleter: Type = multiHasNot("info")
     final def hasUniqueSym: Boolean = false
-    final def name(using Context): Name = denot1.name
+    final def name(using Context): ThisName = denot1.name.asInstanceOf[ThisName]
     final def signature(using Context): Signature = Signature.OverloadedSignature
     def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): Denotation =
       if (sig eq Signature.OverloadedSignature) this

@@ -67,7 +67,7 @@ object SymDenotations {
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol)
-  extends SingleDenotation(symbol, initInfo, name.isTypeName), ParamInfo, SrcPos {
+  extends SingleDenotation(symbol, initInfo, name.isTypeName), ParamInfo, SrcPos, Named {
 
     //assert(symbol.id != 4940, name)
 
@@ -601,19 +601,6 @@ object SymDenotations {
           myTargetName = myTargetName.nn.unmangle(List(ExpandedName, SuperAccessorName, ExpandPrefixName))
 
       myTargetName.nn
-
-    /** The source or class file from which this class or
-     *  the class containing this symbol was generated, null if not applicable.
-     *  Note that this the returned classfile might be the top-level class
-     *  containing this symbol instead of the directly enclosing class.
-     *  Overridden in ClassSymbol
-     */
-    def associatedFile(using Context): AbstractFile | Null =
-      topLevelClass.associatedFile
-
-    // ----- Symbol ops --------------------------------------------
-
-    override def hashCode = common.id // for debugging
 
     // ----- Tests -------------------------------------------------
 
@@ -1786,6 +1773,19 @@ object SymDenotations {
      */
     final def sealedDescendants(using Context): List[Symbol] = this.symbol :: sealedStrictDescendants
 
+    /** The source or class file from which this class or
+     *  the class containing this symbol was generated, null if not applicable.
+     *  Note that this the returned classfile might be the top-level class
+     *  containing this symbol instead of the directly enclosing class.
+     *  Overridden in ClassSymbol
+     */
+    def associatedFile(using Context): AbstractFile | Null =
+      topLevelClass.associatedFile
+
+    // ----- Symbol ops --------------------------------------------
+
+    override def hashCode = common.id // for debugging
+
     // ---- ParamInfo bindings -------------------------------------
 
     type ThisName <: Name
@@ -1810,6 +1810,10 @@ object SymDenotations {
       (if src.exists then src else ctx.source).atSpan(span)
     }
 
+    /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
+     *  position, typically for error reporting.
+     */
+    final def srcPos: SrcPos = this
   }
 
   /** The contents of a class definition during a period
@@ -2662,6 +2666,7 @@ object SymDenotations {
     override def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation = this
     override def associatedFile(using Context): AbstractFile | Null = NoSource.file
 
+    NoSymbol.initialDenot = this
     NoSymbol.denot = this
     validFor = Period.allInRun(NoRunId)
   }
