@@ -2790,3 +2790,8 @@ extends SyntaxMsg(InlineGivenShouldNotBeFunctionID):
        |      inline def apply(x: A) = x.toB
      """
 
+class ValueDiscarding(tp: Type)(using Context)
+  extends Message(ValueDiscardingID):
+    def kind = MessageKind.PotentialIssue
+    def msg(using Context) = i"discarded non-Unit value of type $tp"
+    def explain(using Context) = ""
