@@ -190,8 +190,12 @@ object Checking {
       case tref: TypeRef =>
         val cls = tref.symbol
         if (cls.isOneOf(AbstractOrTrait)) {
-          val srcCls = srcTp.underlyingClassRef(refinementOK = false).asInstanceOf[TypeRef].symbol
-          report.error(CantInstantiateAbstractClassOrTrait(srcCls, isTrait = srcCls.is(Trait)), pos)
+          srcTp.underlyingClassRef(refinementOK = false) match 
+            case tref0: TypeRef => 
+              val srcCls = tref0.symbol
+              report.error(CantInstantiateAbstractClassOrTrait(srcCls, isTrait = srcCls.is(Trait)), pos)
+            case _ => 
+              report.error(CantInstantiateAbstractClassOrTrait(cls, isTrait = cls.is(Trait)), pos)
         }
         if !cls.is(Module) then
           // Create a synthetic singleton type instance, and check whether
