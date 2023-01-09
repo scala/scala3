@@ -433,6 +433,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.srcPos)
           super.transform(tree)
+        case tree: TypeBoundsTree =>
+          val TypeBoundsTree(lo, hi, alias) = tree
+          if !alias.isEmpty then
+            val bounds = TypeBounds(lo.tpe, hi.tpe)
+            if !bounds.contains(alias.tpe) then
+              report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
+          super.transform(tree)
         case tree: TypeTree =>
           tree.withType(
             tree.tpe match {

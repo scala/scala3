@@ -2164,10 +2164,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val alias1 = typed(alias)
     val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(defn.NothingType)) else lo1
     val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(defn.AnyType)) else hi1
-    if !alias1.isEmpty then
-      val bounds = TypeBounds(lo2.tpe, hi2.tpe)
-      if !bounds.contains(alias1.tpe) then
-        report.error(em"type ${alias1.tpe} outside bounds $bounds", tree.srcPos)
     assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
 
   def typedBind(tree: untpd.Bind, pt: Type)(using Context): Tree = {
