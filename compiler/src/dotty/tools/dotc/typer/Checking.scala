@@ -185,12 +185,14 @@ object Checking {
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
    */
-  def checkInstantiable(tp: Type, pos: SrcPos)(using Context): Unit =
+  def checkInstantiable(tp: Type, srcTp: Type, pos: SrcPos)(using Context): Unit =
     tp.underlyingClassRef(refinementOK = false) match
       case tref: TypeRef =>
         val cls = tref.symbol
-        if (cls.isOneOf(AbstractOrTrait))
-          report.error(CantInstantiateAbstractClassOrTrait(cls, isTrait = cls.is(Trait)), pos)
+        if (cls.isOneOf(AbstractOrTrait)) {
+          val srcCls = srcTp.underlyingClassRef(refinementOK = false).typeSymbol
+          report.error(CantInstantiateAbstractClassOrTrait(srcCls, isTrait = srcCls.is(Trait)), pos)
+        }
         if !cls.is(Module) then
           // Create a synthetic singleton type instance, and check whether
           // it conforms to the self type of the class as seen from that instance.
