@@ -121,8 +121,9 @@ object Objects:
      */
     class Data:
       // objects under check
-      private[State] val checkingObjects = new mutable.ArrayBuffer[ClassSymbol]
+      private[State] val checkingObjects = new mutable.ListBuffer[ClassSymbol]
       private[State] val checkedObjects = new mutable.ArrayBuffer[ClassSymbol]
+      private[State] val pendingTraces = new mutable.ListBuffer[Trace]
 
       // object -> (class, types of the class)
       private[State] val instantiatedTypes = mutable.Map.empty[ClassSymbol, Map[ClassSymbol, List[Type]]]
@@ -132,16 +133,20 @@ object Objects:
 
     def currentObject(using data: Data) = data.checkingObjects.last
 
-    def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context) =
+    def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context, pendingTrace: Trace) =
       val index = data.checkingObjects.indexOf(clazz)
 
       if index != -1 then
+        val joinedTrace = data.pendingTraces.slice(index + 1, data.checkingObjects.size).foldLeft(pendingTrace) { (a, b) => a ++ b }
+        val callTrace = Trace.buildStacktrace(joinedTrace, "Calling trace:\n")
         val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
-        report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show, clazz.defTree)
+        report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, clazz.defTree)
       else if data.checkedObjects.indexOf(clazz) == -1 then
+        data.pendingTraces += pendingTrace
         data.checkingObjects += clazz
         work
         assert(data.checkingObjects.last == clazz, "Expect = " + clazz.show + ", found = " + data.checkingObjects.last)
+        data.pendingTraces.remove(data.pendingTraces.size - 1)
         data.checkedObjects += data.checkingObjects.remove(data.checkingObjects.size - 1)
 
   type Contextual[T] = (Context, State.Data, Cache.Data, Trace) ?=> T
@@ -414,6 +419,10 @@ object Objects:
       report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show + Trace.show, fun.expr)
       Bottom
 
+    case Bottom =>
+      if field.isStaticObject then ObjectRef(field.asClass)
+      else Bottom
+
     case RefSet(refs) =>
       refs.map(ref => select(ref, field, receiver)).join
   }
@@ -449,7 +458,7 @@ object Objects:
   // -------------------------------- algorithm --------------------------------
 
   /** Check an individual object */
-  private def accessObject(classSym: ClassSymbol)(using Context, State.Data): Value = log("accessing " + classSym.show, printer, (_: Value).show) {
+  private def accessObject(classSym: ClassSymbol)(using Context, State.Data, Trace): Value = log("accessing " + classSym.show, printer, (_: Value).show) {
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
     @tailrec
@@ -475,8 +484,10 @@ object Objects:
     ObjectRef(classSym)
   }
 
+
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given State.Data = new State.Data
+    given Trace = Trace.empty
 
     for
       classSym <- classes  if classSym.isStaticObject
