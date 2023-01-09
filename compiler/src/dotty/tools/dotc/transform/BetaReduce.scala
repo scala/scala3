@@ -38,17 +38,10 @@ class BetaReduce extends MiniPhase:
 
   override def description: String = BetaReduce.description
 
-  override def transformApply(app: Apply)(using Context): Tree = app.fun match
-    case Select(fn, nme.apply) if defn.isFunctionType(fn.tpe) =>
-      val app1 = BetaReduce(app, fn, List(app.args))
-      if app1 ne app then report.log(i"beta reduce $app -> $app1")
-      app1
-    case TypeApply(Select(fn, nme.apply), targs) if fn.tpe.typeSymbol eq defn.PolyFunctionClass =>
-      val app1 = BetaReduce(app, fn, List(targs, app.args))
-      if app1 ne app then report.log(i"beta reduce $app -> $app1")
-      app1
-    case _ =>
-      app
+  override def transformApply(app: Apply)(using Context): Tree =
+    val app1 = BetaReduce(app)
+    if app1 ne app then report.log(i"beta reduce $app -> $app1")
+    app1
 
 object BetaReduce:
   import ast.tpd._
@@ -117,31 +110,6 @@ object BetaReduce:
             tree
       case _ =>
         tree
-
-  /** Beta-reduces a call to `fn` with arguments `argSyms` or returns `tree` */
-  def apply(original: Tree, fn: Tree, argss: List[List[Tree]])(using Context): Tree =
-    fn match
-      case Typed(expr, _) =>
-        BetaReduce(original, expr, argss)
-      case Block((anonFun: DefDef) :: Nil, closure: Closure) =>
-        BetaReduce(anonFun, argss)
-      case Block((TypeDef(_, template: Template)) :: Nil, Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
-        template.body match
-          case (anonFun: DefDef) :: Nil =>
-            BetaReduce(anonFun, argss)
-          case _ =>
-            original
-      case Block(stats, expr) =>
-        val tree = BetaReduce(original, expr, argss)
-        if tree eq original then original
-        else cpy.Block(fn)(stats, tree)
-      case Inlined(call, bindings, expr) =>
-        val tree = BetaReduce(original, expr, argss)
-        if tree eq original then original
-        else cpy.Inlined(fn)(call, bindings, tree)
-      case _ =>
-        original
-  end apply
 
   /** Beta-reduces a call to `ddef` with arguments `args` */
   def apply(ddef: DefDef, argss: List[List[Tree]])(using Context) =
