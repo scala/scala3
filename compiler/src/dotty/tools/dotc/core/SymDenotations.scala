@@ -2140,7 +2140,6 @@ object SymDenotations {
     final def baseTypeOf(tp: Type)(using Context): Type = {
       val btrCache = baseTypeCache
       def inCache(tp: Type) = tp match
-        case EventuallyCapturingType(_, _) => false
         case tp: CachedType => btrCache.contains(tp)
         case _ => false
       def record(tp: CachedType, baseTp: Type) = {
@@ -2148,7 +2147,7 @@ object SymDenotations {
           Stats.record("basetype cache entries")
           if (!baseTp.exists) Stats.record("basetype cache NoTypes")
         }
-        if (!tp.isProvisional && !tp.isEventuallyCapturingType && !Setup.isDuringSetup)
+        if (!tp.isProvisional && !CapturingType.isUncachable(tp))
           btrCache(tp) = baseTp
         else
           btrCache.remove(tp) // Remove any potential sentinel value
