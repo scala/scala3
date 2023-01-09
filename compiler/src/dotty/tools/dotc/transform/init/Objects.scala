@@ -16,10 +16,8 @@ import reporting.StoreReporter
 import reporting.trace as log
 
 import Errors.*
-
-import Semantic.{ NewExpr, Call, TraceValue, Trace, PolyFun, Arg, ByNameArg }
-
-import Semantic.{ typeRefOf, hasSource, extendTrace, withTrace, trace, resolve }
+import Trace.*
+import Util.*
 
 import scala.collection.mutable
 import scala.annotation.tailrec
@@ -138,8 +136,8 @@ object Objects:
       val index = data.checkingObjects.indexOf(clazz)
 
       if index != -1 then
-        val cycle = data.checkingObjects.slice(index, data.checkingObjects.size - 1)
-        report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + clazz.show, clazz.defTree)
+        val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
+        report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show, clazz.defTree)
       else if data.checkedObjects.indexOf(clazz) == -1 then
         data.checkingObjects += clazz
         work
@@ -879,7 +877,3 @@ object Objects:
     else
       if cls.isAllOf(Flags.JavaInterface) then Bottom
       else evalType(tref.prefix, thisV, klass, elideObjectAccess = cls.isStatic)
-
-  extension (sym: Symbol)
-    def isStaticObject(using Context) =
-      sym.is(Flags.Module, butNot = Flags.Package) && sym.isStatic
