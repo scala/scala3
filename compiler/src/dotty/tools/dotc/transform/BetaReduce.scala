@@ -13,13 +13,14 @@ import scala.collection.mutable.ListBuffer
 
 /** Rewrite an application
  *
- *    (((x1, ..., xn) => b): T)(y1, ..., yn)
+ *    (([X1, ..., Xm] => (x1, ..., xn) => b): T)[T1, ..., Tm](y1, ..., yn)
  *
  *  where
  *
  *    - all yi are pure references without a prefix
  *    - the closure can also be contextual or erased, but cannot be a SAM type
- *    _ the type ascription ...: T is optional
+ *    - the type parameters Xi and type arguments Ti are optional
+ *    - the type ascription ...: T is optional
  *
  *  to
  *
