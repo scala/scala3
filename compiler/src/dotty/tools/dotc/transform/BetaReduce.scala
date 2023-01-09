@@ -75,19 +75,10 @@ object BetaReduce:
     val bindingsBuf = new ListBuffer[DefTree]
     def recur(fn: Tree, argss: List[List[Tree]]): Option[Tree] = fn match
       case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
-        ddef.tpe.widen match // TODO can these guards be removed?
-          case mt: MethodType if ddef.paramss.head.length == argss.head.length =>
-            Some(reduceApplication(ddef, argss, bindingsBuf))
-          case _ => None
+        Some(reduceApplication(ddef, argss, bindingsBuf))
       case Block((TypeDef(_, template: Template)) :: Nil, Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
         template.body match
-          case (ddef: DefDef) :: Nil =>
-            ddef.tpe.widen match // TODO can these guards be removed?
-              case mt: MethodType if ddef.paramss.head.length == argss.head.length =>
-                Some(reduceApplication(ddef, argss, bindingsBuf))
-              case mt: PolyType if ddef.paramss.head.length == argss.head.length && ddef.paramss.last.length == argss.last.length =>
-                Some(reduceApplication(ddef, argss, bindingsBuf))
-              case _ => None
+          case (ddef: DefDef) :: Nil => Some(reduceApplication(ddef, argss, bindingsBuf))
           case _ => None
       case Block(stats, expr) if stats.forall(isPureBinding) =>
         recur(expr, argss).map(cpy.Block(fn)(stats, _))
