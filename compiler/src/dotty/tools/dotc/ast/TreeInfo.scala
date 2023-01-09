@@ -327,102 +327,20 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ => p(tree)
   }
 
-  /** Applications in Scala can have one of the following shapes:
-   *
-   *    1) naked core: Ident(_) or Select(_, _) or basically anything else
-   *    2) naked core with targs: TypeApply(core, targs) or AppliedTypeTree(core, targs)
-   *    3) apply or several applies wrapping a core: Apply(core, _), or Apply(Apply(core, _), _), etc
-   *
-   *  This class provides different ways to decompose applications and simplifies their analysis.
-   *
-   *  ***Examples***
-   *  (TypeApply in the examples can be replaced with AppliedTypeTree)
-   *
-   *    Ident(foo):
-   *      * callee = Ident(foo)
-   *      * core = Ident(foo)
-   *      * targs = Nil
-   *      * argss = Nil
-   *
-   *    TypeApply(foo, List(targ1, targ2...))
-   *      * callee = TypeApply(foo, List(targ1, targ2...))
-   *      * core = foo
-   *      * targs = List(targ1, targ2...)
-   *      * argss = Nil
-   *
-   *    Apply(foo, List(arg1, arg2...))
-   *      * callee = foo
-   *      * core = foo
-   *      * targs = Nil
-   *      * argss = List(List(arg1, arg2...))
-   *
-   *    Apply(Apply(foo, List(arg21, arg22, ...)), List(arg11, arg12...))
-   *      * callee = foo
-   *      * core = foo
-   *      * targs = Nil
-   *      * argss = List(List(arg21, arg22, ...), List(arg11, arg12, ...))
-   *
-   *    Apply(Apply(TypeApply(foo, List(targs1, targs2, ...)), List(arg21, arg22, ...)), List(arg11, arg12...))
-   *      * callee = TypeApply(foo, List(targs1, targs2, ...))
-   *      * core = foo
-   *      * targs = Nil
-   *      * argss = List(List(arg21, arg22, ...), List(arg11, arg12, ...))
-   */
-  final class Applied(val tree: Tree) {
-    /** The tree stripped of the possibly nested applications.
-     *  The original tree if it's not an application.
-     */
-    def callee: Tree = stripApply(tree)
-
-    /** The `callee` unwrapped from type applications.
-     *  The original `callee` if it's not a type application.
-     */
-    def core: Tree = callee match {
-      case TypeApply(fn, _)       => fn
-      case AppliedTypeTree(fn, _) => fn
-      case tree                   => tree
-    }
-
-    /** The type arguments of the `callee`.
-     *  `Nil` if the `callee` is not a type application.
-     */
-    def targs: List[Tree] = callee match {
-      case TypeApply(_, args)       => args
-      case AppliedTypeTree(_, args) => args
-      case _                        => Nil
-    }
-
-    /** (Possibly multiple lists of) value arguments of an application.
-     *  `Nil` if the `callee` is not an application.
-     */
-    def argss: List[List[Tree]] = termArgss(tree)
-  }
-
-  /** Destructures applications into important subparts described in `Applied` class,
-   *  namely into: core, targs and argss (in the specified order).
-   *
-   *  Trees which are not applications are also accepted. Their callee and core will
-   *  be equal to the input, while targs and argss will be Nil.
-   *
-   *  The provided extractors don't expose all the API of the `Applied` class.
-   *  For advanced use, call `dissectApplied` explicitly and use its methods instead of pattern matching.
-   */
-  object Applied {
-    def apply(tree: Tree): Applied = new Applied(tree)
-
-    def unapply(applied: Applied): Some[(Tree, List[Tree], List[List[Tree]])] =
-      Some((applied.core, applied.targs, applied.argss))
-
-    def unapply(tree: Tree): Some[(Tree, List[Tree], List[List[Tree]])] =
-      unapply(new Applied(tree))
+  def appliedCore(tree: Tree): Tree = tree match {
+    case Apply(fn, _) => appliedCore(fn)
+    case TypeApply(fn, _)       => appliedCore(fn)
+    case AppliedTypeTree(fn, _) => appliedCore(fn)
+    case tree                   => tree
   }
 
   /** Is tree an application with result `this.type`?
    *  Accept `b.addOne(x)` and also `xs(i) += x`
    *  where the op is an assignment operator.
    */
-  def isThisTypeResult(tree: Tree)(using Context): Boolean = tree match {
-    case Applied(fun @ Select(receiver, op), _, argss) =>
+  def isThisTypeResult(tree: Tree)(using Context): Boolean = appliedCore(tree) match {
+    case fun @ Select(receiver, op) =>
+      val argss = termArgss(tree)
       tree.tpe match {
         case ThisType(tref) =>
           tref.symbol == receiver.symbol
