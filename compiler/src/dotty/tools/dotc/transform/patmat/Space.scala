@@ -187,25 +187,19 @@ object SpaceEngine {
         else if (isSubType(tp2, tp1)) b
         else if (canDecompose(tp1)) tryDecompose1(tp1)
         else if (canDecompose(tp2)) tryDecompose2(tp2)
-        else intersectUnrelatedAtomicTypes(tp1, tp2)
+        else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
       case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
         if (isSubType(tp2, tp1)) b
         else if (canDecompose(tp1)) tryDecompose1(tp1)
         else if (isSubType(tp1, tp2)) a // problematic corner case: inheriting a case class
-        else intersectUnrelatedAtomicTypes(tp1, tp2) match
-          case Typ(tp, _) => Prod(tp, fun, ss)
-          case sp         => sp
+        else intersectUnrelatedAtomicTypes(tp1, tp2)(b)
       case (Prod(tp1, fun, ss), Typ(tp2, _)) =>
         if (isSubType(tp1, tp2)) a
         else if (canDecompose(tp2)) tryDecompose2(tp2)
         else if (isSubType(tp2, tp1)) a  // problematic corner case: inheriting a case class
-        else intersectUnrelatedAtomicTypes(tp1, tp2) match
-          case Typ(tp, _) => Prod(tp, fun, ss)
-          case sp         => sp
+        else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-        if (!isSameUnapply(fun1, fun2)) intersectUnrelatedAtomicTypes(tp1, tp2) match
-          case Typ(tp, _) => Prod(tp, fun1, ss1)
-          case sp         => sp
+        if (!isSameUnapply(fun1, fun2)) intersectUnrelatedAtomicTypes(tp1, tp2)(a)
         else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) Empty
         else Prod(tp1, fun1, ss1.zip(ss2).map((intersect _).tupled))
     }
@@ -323,13 +317,15 @@ object SpaceEngine {
    * The types should be atomic (non-decomposable) and unrelated (neither
    * should be a subtype of the other).
    */
-  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(using Context): Space = trace(i"atomic intersection: ${AndType(tp1, tp2)}", debug) {
+  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(sp: Space)(using Context): Space = trace(i"atomic intersection: ${AndType(tp1, tp2)}", debug) {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
     if !ctx.mode.is(Mode.SafeNulls) && (tp1.isNullType || tp2.isNullType) then
       // Since projections of types don't include null, intersection with null is empty.
       Empty
     else
-      val intersection = Typ(AndType(tp1, tp2), decomposed = false)
+      val intersection = sp match
+        case sp: Prod => sp.copy(AndType(tp1, tp2))
+        case _        => Typ(AndType(tp1, tp2), decomposed = false)
       // unrelated numeric value classes can equal each other, so let's not consider type space intersection empty
       if tp1.classSymbol.isNumericValueClass && tp2.classSymbol.isNumericValueClass then intersection
       else if isPrimToBox(tp1, tp2) || isPrimToBox(tp2, tp1) then intersection
