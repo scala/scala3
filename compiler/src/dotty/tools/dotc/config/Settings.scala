@@ -11,6 +11,7 @@ import annotation.tailrec
 import collection.mutable.ArrayBuffer
 import reflect.ClassTag
 import scala.util.{Success, Failure}
+import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 
 object Settings:
 
@@ -189,6 +190,19 @@ object Settings:
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
 
+    /**
+     * A choice with help description.
+     *
+     * NOTE : `equals` and `toString` have special behaviors
+     */
+    case class ChoiceWithHelp[T](name: T, description: String):
+      override def equals(x: Any): Boolean = x match
+        case s:String => s == name.toString()
+        case _ => false
+      override def toString(): String =
+        s"\n- $name${if description.isEmpty() then "" else s" :\n\t${description.replace("\n","\n\t")}"}"
+  end Setting
+
   class SettingGroup {
 
     private val _allSettings = new ArrayBuffer[Setting[?]]
@@ -268,6 +282,9 @@ object Settings:
       publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
 
     def MultiChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
+
+    def MultiChoiceHelpSetting(name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
       publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
 
     def IntSetting(name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =

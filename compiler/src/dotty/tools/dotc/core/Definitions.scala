@@ -1001,6 +1001,7 @@ class Definitions {
   @tu lazy val MappedAlternativeAnnot: ClassSymbol = requiredClass("scala.annotation.internal.MappedAlternative")
   @tu lazy val MigrationAnnot: ClassSymbol = requiredClass("scala.annotation.migration")
   @tu lazy val NowarnAnnot: ClassSymbol = requiredClass("scala.annotation.nowarn")
+  @tu lazy val UnusedAnnot: ClassSymbol = requiredClass("scala.annotation.unused")
   @tu lazy val TransparentTraitAnnot: ClassSymbol = requiredClass("scala.annotation.transparentTrait")
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
