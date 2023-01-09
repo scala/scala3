@@ -8,6 +8,8 @@ import Symbols._, Contexts._, Types._, Decorators._
 import NameOps._
 import Names._
 
+import scala.collection.mutable.ListBuffer
+
 /** Rewrite an application
  *
  *    {new { def unapply(x0: X0)(x1: X1,..., xn: Xn) = b }}.unapply(y0)(y1, ..., yn)
@@ -38,7 +40,7 @@ class InlinePatterns extends MiniPhase:
     if app.symbol.name.isUnapplyName && !app.tpe.isInstanceOf[MethodicType] then
       app match
         case App(Select(fn, name), argss) =>
-          val app1 = betaReduce(app, fn, name, argss.flatten)
+          val app1 = betaReduce(app, fn, name, argss)
           if app1 ne app then report.log(i"beta reduce $app -> $app1")
           app1
         case _ =>
@@ -52,11 +54,15 @@ class InlinePatterns extends MiniPhase:
         case _ => (app, Nil)
 
   // TODO merge with BetaReduce.scala
-  private def betaReduce(tree: Apply, fn: Tree, name: Name, args: List[Tree])(using Context): Tree =
+  private def betaReduce(tree: Apply, fn: Tree, name: Name, argss: List[List[Tree]])(using Context): Tree =
     fn match
       case Block(TypeDef(_, template: Template) :: Nil, Apply(Select(New(_),_), Nil)) if template.constr.rhs.isEmpty =>
         template.body match
-          case List(ddef @ DefDef(`name`, _, _, _)) => BetaReduce(ddef, List(args))
+          case List(ddef @ DefDef(`name`, _, _, _)) =>
+            val bindings = new ListBuffer[DefTree]()
+            val expansion1 = BetaReduce.reduceApplication(ddef, argss, bindings)
+            val bindings1 = bindings.result()
+            seq(bindings1, expansion1)
           case _ => tree
       case _ => tree
 

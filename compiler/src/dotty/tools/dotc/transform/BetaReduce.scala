@@ -111,22 +111,11 @@ object BetaReduce:
       case _ =>
         tree
 
-  /** Beta-reduces a call to `ddef` with arguments `args` */
-  def apply(ddef: DefDef, argss: List[List[Tree]])(using Context) =
-    val bindings = new ListBuffer[DefTree]()
-    val expansion1 = reduceApplication(ddef, argss, bindings)
-    val bindings1 = bindings.result()
-    seq(bindings1, expansion1)
-
   /** Beta-reduces a call to `ddef` with arguments `args` and registers new bindings */
   def reduceApplication(ddef: DefDef, argss: List[List[Tree]], bindings: ListBuffer[DefTree])(using Context): Tree =
-    assert(argss.size == 1 || argss.size == 2)
-    val targs = if argss.size == 2 then argss.head else Nil
-    val args = argss.last
+    val (targs, args) = argss.flatten.partition(_.isType)
     val tparams = ddef.leadingTypeParams
     val vparams = ddef.termParamss.flatten
-    assert(targs.hasSameLengthAs(tparams))
-    assert(args.hasSameLengthAs(vparams))
 
     val targSyms =
       for (targ, tparam) <- targs.zip(tparams) yield
