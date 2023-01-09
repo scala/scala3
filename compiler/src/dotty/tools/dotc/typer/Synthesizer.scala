@@ -18,10 +18,11 @@ import util.Property
 import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
 import ast.tpd._
-import Synthesizer._
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
+
+  import Synthesizer.*
 
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context ?=> TreeWithErrors
@@ -594,7 +595,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
    *  where `T` is a generic sum or product or singleton type.
    */
   val synthesizedMirror: SpecialHandler = (formal, span) =>
-    orElse(synthesizedProductMirror(formal, span), synthesizedSumMirror(formal, span))
+    synthesizedProductMirror(formal, span).orElse(synthesizedSumMirror(formal, span))
 
   private def escapeJavaArray(tp: Type)(using Context): Type = tp match
     case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
@@ -737,7 +738,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             // With the subtype test we enforce that the searched type `formal` is of the right form
             handler(base, span)
           else EmptyTreeNoError
-        orElse(result, recur(rest))
+        result.orElse(recur(rest))
       case Nil =>
         EmptyTreeNoError
     val result = recur(specialHandlers)
@@ -754,11 +755,12 @@ object Synthesizer:
 
   private val EmptyTreeNoError: TreeWithErrors = withNoErrors(EmptyTree)
 
-  private def orElse(treeWithErrors1: TreeWithErrors, treeWithErrors2: => TreeWithErrors): TreeWithErrors = treeWithErrors1 match
-    case (tree, errors) if tree eq genericEmptyTree =>
-      val (tree2, errors2) = treeWithErrors2
-      (tree2, errors ::: errors2)
-    case _ => treeWithErrors1
+  extension (treeWithErrors1: TreeWithErrors)
+    private def orElse(treeWithErrors2: => TreeWithErrors): TreeWithErrors = treeWithErrors1 match
+      case (tree, errors) if tree eq genericEmptyTree =>
+        val (tree2, errors2) = treeWithErrors2
+        (tree2, errors ::: errors2)
+      case _ => treeWithErrors1
 
   private def clearErrorsIfNotEmpty(treeWithErrors: TreeWithErrors) = treeWithErrors match
     case (tree, _) if tree eq genericEmptyTree => treeWithErrors

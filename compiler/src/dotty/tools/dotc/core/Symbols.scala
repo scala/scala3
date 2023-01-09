@@ -21,7 +21,7 @@ import NameOps._
 import transform.SymUtils._
 import NameKinds.LazyImplicitName
 import ast.tpd
-import tpd.{Tree, TreeProvider, TreeOps}
+import tpd.{Tree, TreeProvider, TreeOps, EmptyTree, NameTree}
 import ast.TreeTypeMap
 import Constants.Constant
 import Variances.Variance
@@ -31,6 +31,7 @@ import io.AbstractFile
 import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
 import scala.annotation.internal.sharable
 import config.Printers.typr
+import annotation.tailrec
 
 object Symbols {
 
@@ -38,6 +39,12 @@ object Symbols {
 
   /** Tree attachment containing the identifiers in a tree as a sorted array */
   val Ids: Property.Key[Array[String]] = new Property.Key
+
+  opaque type Symbl <: ParamInfo & SrcPos & Named & printing.Showable
+    = SymDenotation
+
+  opaque type ClassSymbl <: Symbl
+    = ClassDenotation
 
   /** A Symbol represents a Scala definition/declaration or a package.
    *  @param coord  The coordinates of the symbol (a position or an index)
@@ -50,12 +57,43 @@ object Symbols {
 
     var initialDenot: SymDenotation = _
 
-    //assert(id != 723)
+    def isClass: Boolean = isInstanceOf[ClassSymbol]
+
+    // SrcPos types and methods
+    final def span: Span = initialDenot.span
+    final def sourcePos(using Context): SourcePosition = initialDenot.sourcePos
+    final def srcPos: SrcPos = initialDenot.srcPos
+
+    // ParamInfo types and methods
+    def isTypeParam(using Context): Boolean = this.denot.is(TypeParam)
+    def paramName(using Context): ThisName = this.denot.paramName.asInstanceOf
+    def paramInfo(using Context): Type = this.denot.info
+    def paramInfoAsSeenFrom(pre: Type)(using Context): Type = this.denot.paramInfoAsSeenFrom(pre)
+    def paramInfoOrCompleter(using Context): Type = this.denot.paramInfoOrCompleter
+    def paramVariance(using Context): Variance = this.denot.paramVariance
+    def paramRef(using Context): TypeRef = this.denot.paramRef
+
+    def toText(printer: Printer): Text = printer.toText(this)
+
+    override def toString: String =
+      Symbols.lastDenot(this).toString // + "#" + id // !!! DEBUG
+
+    override def hashCode(): Int = Symbols.id(this) // for debugging.
+  }
+
+  type TermSymbol = Symbol { type ThisName = TermName }
+  type TypeSymbol = Symbol { type ThisName = TypeName }
+
+  extension (_self: Symbol)
+    def self = _self.initialDenot
+
+    private def lastDenot: SymDenotation = self.lastDenot
+    private def lastDenot_=(d: SymDenotation): Unit = self.lastDenot = d
 
     /** A unique identifier of the symbol (unique per ContextBase) */
-    def id = initialDenot.common.id
+    def id: Int = self.common.id
 
-    def nestingLevel = initialDenot.common.nestingLevel
+    def nestingLevel: Int = self.common.nestingLevel
 
     /** The coordinates of the symbol (a position or an index) */
     def coord: Coord = lastDenot.common.coord
@@ -75,7 +113,7 @@ object Symbols {
     /** The tree defining the symbol at pickler time, EmptyTree if none was retained */
     def defTree: Tree =
       val dt = lastDenot.common.defTree
-      if dt == null then tpd.EmptyTree else dt.nn
+      if dt == null then EmptyTree else dt.nn
 
     /** Set defining tree if this symbol retains its definition tree */
     def defTree_=(tree: Tree)(using Context): Unit =
@@ -91,154 +129,141 @@ object Symbols {
       denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
       ctx.settings.YcheckInit.value        // initialization check
 
-    private def lastDenot: SymDenotation = initialDenot.lastDenot
-    private def lastDenot_=(d: SymDenotation): Unit = initialDenot.lastDenot = d
-
-    private def checkedPeriod: Period = initialDenot.checkedPeriod
-    private def checkedPeriod_=(p: Period): Unit = initialDenot.checkedPeriod = p
-
     /** Set the denotation of this symbol
      *  `denot` should always be initialized when a new Symbol is created.
      */
-    private[core] def denot_=(d: SymDenotation): Unit = {
+    private[core] def denot_=(d: SymDenotation): Unit =
       util.Stats.record("Symbol.denot_=")
       lastDenot = d
-      checkedPeriod = Nowhere
-    }
+      self.checkedPeriod = Nowhere
 
     /** The current denotation of this symbol */
-    final def denot(using Context): SymDenotation = {
+    def denot(using Context): SymDenotation =
       util.Stats.record("Symbol.denot")
-      if checkedPeriod.code == ctx.period.code then lastDenot
-      else computeDenot(lastDenot)
-    }
+      val lastd = lastDenot
+      if self.checkedPeriod.code == ctx.period.code then lastd
+      else computeDenot(lastd)
 
-    private def computeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
+    def computeDenot(lastd: SymDenotation)(using Context): SymDenotation =
       util.Stats.record("Symbol.computeDenot")
       val now = ctx.period
-      checkedPeriod = now
-      if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
-    }
+      self.checkedPeriod = now
+      if lastd.validFor contains now then lastd else recomputeDenot(lastd)
 
-    /** Overridden in NoSymbol */
-    protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation =
+    private def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation =
       util.Stats.record("Symbol.recomputeDenot")
       val newd = lastd.currentSymDenot
       lastDenot = newd
       newd
 
     /** The original denotation of this symbol, without forcing anything */
-    final def originDenotation: SymDenotation =
-      lastDenot.initial
+    def originDenotation: SymDenotation = self
 
     /** The last known denotation of this symbol, without going through `current` */
-    final def lastKnownDenotation: SymDenotation =
-      lastDenot
+    def lastKnownDenotation: SymDenotation = lastDenot
 
     private[core] def defRunId: RunId =
       lastDenot.validFor.runId
 
-    private inline def associatedFileMatches(inline filter: AbstractFile => Boolean)(using Context): Boolean =
-      try
-        val file = associatedFile
-        file != null && filter(file)
-      catch case ex: StaleSymbol =>
-        // can happen for constructor proxy companions. Test case is pos-macros/i9484.
-        false
-
     /** Does this symbol come from a currently compiled source file? */
-    final def isDefinedInCurrentRun(using Context): Boolean =
-      span.exists && defRunId == ctx.runId && associatedFileMatches(ctx.run.nn.files.contains)
+    def isDefinedInCurrentRun(using Context): Boolean =
+      self.span.exists
+      && defRunId == ctx.runId
+      && lastDenot.associatedFileMatches(ctx.run.nn.files.contains)
 
     /** Is this symbol valid in the current run and has an associated file that is
       * not a binary file. e.g. This will return true for
       * symbols defined by the user in a prior run of the REPL, that are still valid.
       */
-    final def isDefinedInSource(using Context): Boolean =
-      span.exists && isValidInCurrentRun && associatedFileMatches(_.extension != "class")
+    def isDefinedInSource(using Context): Boolean =
+      self.span.exists
+      && isValidInCurrentRun
+      && lastDenot.associatedFileMatches(_.extension != "class")
 
-    /** Is symbol valid in current run? */
-    final def isValidInCurrentRun(using Context): Boolean =
-      (lastDenot.validFor.runId == ctx.runId || stillValid(lastDenot)) &&
-      (lastDenot.symbol eq this)
+    def isValidInCurrentRun(using Context): Boolean =
+      val d = lastDenot
+      (d.validFor.runId == ctx.runId || stillValid(d))
+      && (d.symbol eq _self)
         // the last condition is needed because under ctx.staleOK overwritten
         // members keep denotations pointing to the new symbol, so the validity
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
-    final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
-    final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
-    final def asTerm(using Context): TermSymbol = {
-      assert(isTerm, s"asTerm called on not-a-Term $this" );
-      asInstanceOf[TermSymbol]
-    }
-    final def asType(using Context): TypeSymbol = {
-      assert(isType, s"isType called on not-a-Type $this");
-      asInstanceOf[TypeSymbol]
-    }
+    def isTerm(using Context): Boolean =
+      val lastd = lastDenot
+      (if lastd.validFor.runId == ctx.runId then lastd else denot).isTerm
 
-    final def isClass: Boolean = isInstanceOf[ClassSymbol]
-    final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
+    def isType(using Context): Boolean =
+      val lastd = lastDenot
+      (if lastd.validFor.runId == ctx.runId then lastd else denot).isType
 
-    /** Test whether symbol is private. This
-     *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
-     *  is a class that is not yet read.
+    def asTerm(using Context): TermSymbol =
+      assert(self.isTerm, s"asTerm called on not-a-Term $this" )
+      _self.asInstanceOf[TermSymbol]
+
+    def asType(using Context): TypeSymbol =
+      assert(self.isType, s"isType called on not-a-Type $this");
+      _self.asInstanceOf[TypeSymbol]
+
+    def isClass: Boolean = self.isClass
+
+    def asClass: ClassSymbol = _self.asInstanceOf[ClassSymbol]
+
+    /** Test whether symbol is private. This conservatively returns `false`
+     *  if symbol's denotation is a class that is not yet read.
      */
-    final def isPrivate(using Context): Boolean =
+    def isPrivate(using Context): Boolean =
       lastDenot.flagsUNSAFE.is(Private)
 
-    /** Is the symbol a pattern bound symbol?
-     */
-    final def isPatternBound(using Context): Boolean =
-      !isClass && this.is(Case, butNot = Enum | Module)
+    /** Is the symbol a pattern bound symbol? */
+    def isPatternBound(using Context): Boolean =
+      !isClass && denot.is(Case, butNot = Enum | Module)
 
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
-    final def signature(using Context): Signature =
-      if lastDenot.uncheckedNN.isCompleted || lastDenot.uncheckedNN.is(Method) then
+    def signature(using Context): Signature =
+      if lastDenot.isCompleted || lastDenot.is(Method) then
         denot.signature
       else
         Signature.NotAMethod
 
-    /** Special cased here, because it may be used on naked symbols in substituters */
-    final def isStatic(using Context): Boolean =
-      lastDenot.initial.isStatic
+    def isStatic(using Context): Boolean =
+      self.isStatic
 
     /** This symbol entered into owner's scope (owner must be a class). */
-    final def entered(using Context): this.type = {
-      if (this.owner.isClass) {
-        this.owner.asClass.enter(this)
-        if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
-      }
-      this
-    }
+    final def entered(using Context): _self.type =
+      val d = denot
+      if d.owner.isClass then
+        d.owner.asClass.enter(_self)
+        if d.is(Module) then d.owner.asClass.enter(d.moduleClass)
+      _self
+
 
     /** Enter this symbol in its class owner after given `phase`. Create a fresh
      *  denotation for its owner class if the class does not already have one
      *  that starts being valid after `phase`.
      *  @pre  Symbol is a class member
      */
-    def enteredAfter(phase: DenotTransformer)(using Context): this.type =
+    def enteredAfter(phase: DenotTransformer)(using Context): _self.type =
       if ctx.phaseId != phase.next.id then
         atPhase(phase.next)(enteredAfter(phase))
-      else this.owner match {
-        case owner: ClassSymbol =>
-          if (owner.is(Package)) {
-            denot.validFor |= InitialPeriod
-            if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
-          }
-          else owner.ensureFreshScopeAfter(phase)
-          assert(isPrivate || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
-          entered
-        case _ => this
-      }
+      else
+        val d = denot
+        d.owner match
+          case owner: ClassSymbol =>
+            if owner.is(Package) then
+              d.validFor |= InitialPeriod
+              if d.is(Module) then d.moduleClass.validFor |= InitialPeriod
+            else
+              owner.ensureFreshScopeAfter(phase)
+            assert(isPrivate || phase.changesMembers, i"$_self entered in $owner at undeclared phase $phase")
+            _self.entered
+          case _ => _self
 
     /** Remove symbol from scope of owning class */
-    final def drop()(using Context): Unit = {
-      this.owner.asClass.delete(this)
-      if (this.is(Module)) this.owner.asClass.delete(this.moduleClass)
-    }
+    final def drop()(using Context): Unit =
+      val d = denot
+      d.owner.asClass.delete(_self)
+      if d.is(Module) then d.owner.asClass.delete(d.moduleClass)
 
     /** Remove symbol from scope of owning class after given `phase`. Create a fresh
      *  denotation for its owner class if the class does not already have one that starts being valid after `phase`.
@@ -247,22 +272,22 @@ object Symbols {
     def dropAfter(phase: DenotTransformer)(using Context): Unit =
       if ctx.phaseId != phase.next.id then
         atPhase(phase.next)(dropAfter(phase))
-      else {
-        assert (!this.owner.is(Package))
-        this.owner.asClass.ensureFreshScopeAfter(phase)
-        assert(isPrivate || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
+      else
+        val d = denot
+        assert(!d.owner.is(Package))
+        d.owner.asClass.ensureFreshScopeAfter(phase)
+        assert(isPrivate || phase.changesMembers, i"$_self deleted in ${d.owner} at undeclared phase $phase")
         drop()
-      }
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
     inline def orElse(inline that: Symbol)(using Context): Symbol =
-      if (this.exists) this else that
+      if denot.exists then _self else that
 
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
-    def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
+    def filter(p: Symbol => Boolean): Symbol = if p(_self) then _self else NoSymbol
 
     /** The current name of this symbol */
-    final def name(using Context): ThisName = denot.name.asInstanceOf[ThisName]
+    def name(using Context): _self.ThisName = denot.name.asInstanceOf[_self.ThisName]
 
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
@@ -274,69 +299,62 @@ object Symbols {
       lastDenot.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
-    final def binaryFile(using Context): AbstractFile | Null = {
+    final def binaryFile(using Context): AbstractFile | Null =
       val file = associatedFile
-      if (file != null && file.extension == "class") file else null
-    }
+      if file != null && file.extension == "class" then file else null
 
-    /** A trap to avoid calling x.symbol on something that is already a symbol.
+   /** A trap to avoid calling x.symbol on something that is already a symbol.
      *  This would be expanded to `toDenot(x).symbol` which is guaraneteed to be
      *  the same as `x`.
-     *  With the given setup, all such calls will give implicit-not found errors
+     *  With the given setup, all such calls will produce `Nothing`
      */
-    final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
-    type DontUseSymbolOnSymbol
+    final def symbol: Nothing = unsupported("symbol")
 
-    final def source(using Context): SourceFile = {
+    final def source(using Context): SourceFile =
       def valid(src: SourceFile): SourceFile =
-        if (src.exists && src.file.extension != "class") src
+        if src.exists && src.file.extension != "class" then src
         else NoSource
 
-      if (!denot.exists) NoSource
-      else
-        valid(defTree.source) match {
-          case NoSource =>
-            valid(denot.owner.source) match {
-              case NoSource =>
-                this match {
-                  case cls: ClassSymbol      => valid(cls.sourceOfClass)
-                  case _ if denot.is(Module) => valid(denot.moduleClass.source)
-                  case _ => NoSource
-                }
-              case src => src
-            }
-          case src => src
-        }
-    }
+      val d = denot
+      if !d.exists then NoSource
+      else valid(defTree.source) match
+        case NoSource =>
+          valid(d.owner.source) match
+            case NoSource =>
+              _self match
+                case cls: ClassSymbol  => valid(cls.sourceOfClass)
+                case _ if d.is(Module) => valid(d.moduleClass.source)
+                case _ => NoSource
+            case src => src
+        case src => src
 
     /** A symbol related to `sym` that is defined in source code.
      *
      *  @see enclosingSourceSymbols
      */
-    @annotation.tailrec final def sourceSymbol(using Context): Symbol =
-      if (!denot.exists)
-        this
-      else if (denot.is(ModuleVal))
-        this.moduleClass.sourceSymbol // The module val always has a zero-extent position
-      else if (denot.is(Synthetic)) {
-        val linked = denot.linkedClass
-        if (linked.exists && !linked.is(Synthetic))
-          linked
-        else
-          denot.owner.sourceSymbol
-      }
-      else if (denot.isPrimaryConstructor)
-        denot.owner.sourceSymbol
-      else this
+    @tailrec final def sourceSymbol(using Context): Symbol =
+      val d = denot
+      if !d.exists then
+        _self
+      else if d.is(ModuleVal) then
+        d.moduleClass.sourceSymbol // The module val always has a zero-extent position
+      else if d.is(Synthetic) then
+        val linked = d.linkedClass
+        if linked.exists && !linked.is(Synthetic) then linked
+        else d.owner.sourceSymbol
+      else if d.isPrimaryConstructor then
+        d.owner.sourceSymbol
+      else
+        _self
 
-    // SrcPos types and methods
-    final def span: Span = initialDenot.span
-    final def sourcePos(using Context): SourcePosition = initialDenot.sourcePos
-    final def srcPos: SrcPos = initialDenot.srcPos
+    // SrcPos types and methods // !!! make them use lastDenot?
+    def span: Span = self.span
+    def sourcePos(using Context): SourcePosition = self.sourcePos
+    def srcPos: SrcPos = self.srcPos
 
     // ParamInfo types and methods
     def isTypeParam(using Context): Boolean = denot.is(TypeParam)
-    def paramName(using Context): ThisName = denot.paramName.asInstanceOf
+    def paramName(using Context): _self.ThisName = denot.paramName.asInstanceOf
     def paramInfo(using Context): Type = denot.info
     def paramInfoAsSeenFrom(pre: Type)(using Context): Type = denot.paramInfoAsSeenFrom(pre)
     def paramInfoOrCompleter(using Context): Type = denot.paramInfoOrCompleter
@@ -345,52 +363,49 @@ object Symbols {
 
     /** Copy a symbol, overriding selective fields.
      *  Note that `coord` and `associatedFile` will be set from the fields in `owner`, not
-     *  the fields in `sym`. */
+     *  the fields in `sym`.
+     */
     def copy(using Context)(
-        owner: Symbol = this.owner,
-        name: ThisName = name,
-        flags: FlagSet = this.flags,
-        info: Type = this.info,
-        privateWithin: Symbol = this.privateWithin,
+        owner: Symbol = _self.denot.owner,
+        name: _self.ThisName = _self.denot.name.asInstanceOf[_self.ThisName],
+        flags: FlagSet = _self.denot.flags,
+        info: Type = _self.denot.info,
+        privateWithin: Symbol = _self.denot.privateWithin,
         coord: Coord = NoCoord, // Can be `= owner.coord` once we bootstrap
         associatedFile: AbstractFile | Null = null // Can be `= owner.associatedFile` once we bootstrap
-    ): Symbol = {
-      val coord1 = if (coord == NoCoord) owner.coord else coord
-      val associatedFile1 = if (associatedFile == null) owner.associatedFile else associatedFile
+    ): Symbol =
+      val coord1 = if coord == NoCoord then owner.coord else coord
+      val associatedFile1 = if associatedFile == null then owner.associatedFile else associatedFile
 
       if isClass then
         newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, associatedFile1)
       else
         newSymbol(owner, name, flags, info, privateWithin, coord1)
-    }
 
-// -------- Printing --------------------------------------------------------
+    // -------- Printing --------------------------------------------------------
 
-    override def toString: String =
-      lastDenot.toString // + "#" + id // !!! DEBUG
+    def toText(printer: Printer): Text = printer.toText(_self)
 
-    def toText(printer: Printer): Text = printer.toText(this)
+    def showLocated(using Context): String = ctx.printer.locatedText(_self).show
+    def showExtendedLocation(using Context): String = ctx.printer.extendedLocationText(_self).show
+    def showDcl(using Context): String = ctx.printer.dclText(_self).show
+    def showKind(using Context): String = ctx.printer.kindString(_self)
+    def showName(using Context): String = ctx.printer.nameString(_self)
+    def showFullName(using Context): String = ctx.printer.fullNameString(_self)
 
-    def showLocated(using Context): String = ctx.printer.locatedText(this).show
-    def showExtendedLocation(using Context): String = ctx.printer.extendedLocationText(this).show
-    def showDcl(using Context): String = ctx.printer.dclText(this).show
-    def showKind(using Context): String = ctx.printer.kindString(this)
-    def showName(using Context): String = ctx.printer.nameString(this)
-    def showFullName(using Context): String = ctx.printer.fullNameString(this)
+  end extension
 
-    override def hashCode(): Int = id // for debugging.
-  }
-
-  type TermSymbol = Symbol { type ThisName = TermName }
-  type TypeSymbol = Symbol { type ThisName = TypeName }
+  type TreeOrProvider = TreeProvider | Tree
 
   class ClassSymbol private[Symbols] extends Symbol {
 
     util.Stats.record("ClassSymbol")
 
     type ThisName = TypeName
+  }
 
-    type TreeOrProvider = tpd.TreeProvider | tpd.Tree
+  extension (_self: ClassSymbol)
+    def self = _self.initialDenot
 
     /** If this is a top-level class and `-Yretain-trees` (or `-from-tasty`) is set.
       * Returns the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
@@ -402,31 +417,28 @@ object Symbols {
      *  For Tasty trees this means consulting whether the name table defines `id`.
      *  For already loaded trees, we maintain the referenced ids in an attachment.
      */
-    def rootTreeContaining(id: String)(using Context): Tree = {
-      denot.infoOrCompleter match {
+    def rootTreeContaining(id: String)(using Context): Tree =
+      _self.denot.infoOrCompleter match
         case _: NoCompleter =>
-        case _ => denot.ensureCompleted()
-      }
-      rootTreeOrProvider match {
+        case _ => _self.denot.ensureCompleted()
+      rootTreeOrProvider match
         case fn: TreeProvider =>
-          if (id.isEmpty || fn.mightContain(id)) {
+          if id.isEmpty || fn.mightContain(id) then
             val tree = fn.tree
             rootTreeOrProvider = tree
             tree
-          }
-          else tpd.EmptyTree
+          else EmptyTree
         case tree: Tree @ unchecked =>
-          if (id.isEmpty || mightContain(tree, id)) tree else tpd.EmptyTree
-      }
-    }
+          if id.isEmpty || mightContain(tree, id) then tree else EmptyTree
 
-    def rootTreeOrProvider: TreeOrProvider = lastKnownDenotation.common.asClass.treeOrProvider
+    def rootTreeOrProvider: TreeOrProvider =
+      _self.lastKnownDenotation.common.asClass.treeOrProvider
 
     private[dotc] def rootTreeOrProvider_=(t: TreeOrProvider)(using Context): Unit =
-      lastKnownDenotation.common.asClass.treeOrProvider = t
+      _self.lastKnownDenotation.common.asClass.treeOrProvider = t
 
-    private def mightContain(tree: Tree, id: String)(using Context): Boolean = {
-      val ids = tree.getAttachment(Ids) match {
+    private def mightContain(tree: Tree, id: String)(using Context): Boolean =
+      val ids = tree.getAttachment(Ids) match
         case Some(ids) => ids
         case None =>
           val idSet = mutable.SortedSet[String]()
@@ -438,43 +450,41 @@ object Symbols {
           val ids = idSet.toArray
           tree.putAttachment(Ids, ids)
           ids
-      }
       ids.binarySearch(id) >= 0
-    }
 
-    def assocFile: AbstractFile | Null = initialDenot.common.asClass.assocFile
+    def assocFile: AbstractFile | Null = self.common.asClass.assocFile
 
-    final def sourceOfClass(using Context): SourceFile = {
-      val common = lastKnownDenotation.common.asClass
-      if !common.source.exists && !denot.is(Package) then
+    def sourceOfClass(using Context): SourceFile =
+      val common = _self.lastKnownDenotation.common.asClass
+      if !common.source.exists && !_self.denot.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
-        val file = associatedFile
+        val file = _self.associatedFile
         if file != null && file.extension != "class" then
           common.source = ctx.getSource(file)
         else
-          common.source = defn.patchSource(this)
+          common.source = defn.patchSource(_self)
           if !common.source.exists then
             common.source = atPhaseNoLater(flattenPhase) {
-              denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
+              _self.denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
                 case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match
                   case Some(Constant(path: String)) => ctx.getSource(path)
                   case none => NoSource
                 case none => NoSource
             }
       common.source
-    }
 
-    final def classDenot(using Context): ClassDenotation =
-      denot.asInstanceOf[ClassDenotation]
-  }
+    def classDenot(using Context): ClassDenotation =
+      _self.denot.asInstanceOf[ClassDenotation]
+
+  end extension
 
   @sharable object NoSymbol extends Symbol {
-    override def coord = NoCoord
-    override def id = 0
-    override def nestingLevel = 0
-    override def defTree = tpd.EmptyTree
-    override def associatedFile(using Context): AbstractFile | Null = NoSource.file
-    override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
+    //override def coord = NoCoord
+    //override def id = 0
+    //override def nestingLevel = 0
+    //override def defTree = tpd.EmptyTree
+    //override def associatedFile(using Context): AbstractFile | Null = NoSource.file
+    //override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
   }
 
   NoDenotation // force it in order to set `denot` field of NoSymbol
@@ -509,7 +519,7 @@ object Symbols {
     val sym = new Symbol().asInstanceOf[Symbol { type ThisName = N }]
     val denot = SymDenotation(sym, SymCommon(coord, ctx.base.nextSymId, nestingLevel), owner, name, flags, info, privateWithin)
     sym.initialDenot = denot
-    sym.denot = denot
+    sym.denot_=(denot)
     sym
   }
 
@@ -528,7 +538,7 @@ object Symbols {
     val cls = new ClassSymbol()
     val denot = SymDenotation(cls, ClassCommon(coord, ctx.base.nextSymId, ctx.nestingLevel, assocFile), owner, name, flags, NoType, privateWithin)
     cls.initialDenot = denot
-    cls.denot = denot
+    cls.denot_=(denot)
     denot.info = infoFn(cls)
     cls
   }

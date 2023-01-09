@@ -77,7 +77,7 @@ object Scala3:
   given SemanticSymbolOps : AnyRef with
     extension (sym: SemanticSymbol)
       def name(using Context): Name = sym match
-        case s: Symbol => s.name
+        case s: Symbol => core.Symbols.name(s)
         case s: WildcardTypeSymbol => nme.WILDCARD
         case s: TermParamRefSymbol => s.name
         case s: TypeParamRefSymbol => s.name

@@ -74,7 +74,6 @@ object Denotations {
 
   trait Named:
     type ThisName <: Name
-    def name(using Context): ThisName
 
   /** A PreDenotation represents a group of single denotations or a single multi-denotation
    *  It is used as an optimization to avoid forming MultiDenotations too eagerly.

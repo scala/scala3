@@ -13,7 +13,7 @@ class SnippetCompilerDataCollector[Q <: Quotes](val qctx: Q):
   def getSourceFile(sym: Symbol): CSourceFile =
     given ctx: Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     sym match
-      case csym: Symbols.Symbol => csym.source(using ctx)
+      case csym: Symbols.Symbol => Symbols.source(csym)(using ctx)
       case _ =>
         report.warning(s"Can't cast symbol $sym to compiler symbol. This is a bug of snippet compiler, please create an issue on dotty repository.")
         NoSource

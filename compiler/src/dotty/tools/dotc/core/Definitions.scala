@@ -1319,7 +1319,7 @@ class Definitions {
           // Inline symbols contain trees in annotations, which is coupled
           // with the underlying symbol.
           // Changing owner for inline symbols is a simple workaround.
-          patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
+          patch.denot_=(patch.denot.copySymDenotation(owner = denot.symbol))
           patch
         else
           // change `info` which might contain reference to the patch

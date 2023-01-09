@@ -110,7 +110,7 @@ object SymDenotations {
     final def flagsString(using Context): String = flags.flagsString
 
     /** Adapt flag set to this denotation's term or type nature */
-    private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
+    private def adaptFlags(flags: FlagSet) = if isType then flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
     final def flags_=(flags: FlagSet): Unit =
@@ -186,7 +186,7 @@ object SymDenotations {
     final def completeFrom(completer: LazyType)(using Context): Unit =
       if completer.needsCompletion(this) then
         if (Config.showCompletions) {
-          println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
+          println(i"${"  " * indent}completing ${if isType then "type" else "val"} $name")
           indent += 1
 
           if (myFlags.is(Touched)) throw CyclicReference(this)
@@ -1791,6 +1791,14 @@ object SymDenotations {
     def associatedFile(using Context): AbstractFile | Null =
       topLevelClass.associatedFile
 
+    inline def associatedFileMatches(inline filter: AbstractFile => Boolean)(using Context): Boolean =
+      try
+        val file = associatedFile
+        file != null && filter(file)
+      catch case ex: StaleSymbol =>
+        // can happen for constructor proxy companions. Test case is pos-macros/i9484.
+        false
+
     // ----- Symbol ops --------------------------------------------
 
     /** The last denotation of this symbol */
@@ -2686,7 +2694,7 @@ object SymDenotations {
     override def associatedFile(using Context): AbstractFile | Null = NoSource.file
 
     NoSymbol.initialDenot = this
-    NoSymbol.denot = this
+    NoSymbol.denot_=(this)
     validFor = Period.allInRun(NoRunId)
   }
 

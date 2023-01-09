@@ -18,6 +18,7 @@ import dotty.tools.dotc.NoCompilationUnit
 import dotty.tools.dotc.quoted.MacroExpansion
 import dotty.tools.dotc.quoted.PickledQuotes
 import dotty.tools.dotc.quoted.reflect._
+import dotty.tools.dotc.core.Symbols
 
 import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
 import scala.quoted.runtime.impl.printers._
@@ -2583,8 +2584,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isAnonymousFunction: Boolean = self.denot.isAnonymousFunction
         def isAbstractType: Boolean = self.denot.isAbstractType
         def isClassConstructor: Boolean = self.denot.isClassConstructor
-        def isType: Boolean = self.isType
-        def isTerm: Boolean = self.isTerm
+        def isType: Boolean = Symbols.isType(self)
+        def isTerm: Boolean = Symbols.isTerm(self)
         def isPackageDef: Boolean = self.is(dotc.core.Flags.Package)
         def isClassDef: Boolean = self.isClass
         def isTypeDef: Boolean =
@@ -2598,7 +2599,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def exists: Boolean = self != Symbol.noSymbol
 
         def declaredField(name: String): Symbol =
-          val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
+          val sym = self.unforcedDecls.find(sym => Symbols.name(sym) == name.toTermName)
           if (isField(sym)) sym else dotc.core.Symbols.NoSymbol
 
         def declaredFields: List[Symbol] = self.unforcedDecls.filter(isField)
@@ -2655,7 +2656,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           }.toList
 
         def memberType(name: String): Symbol =
-          self.typeRef.decls.find(sym => sym.name == name.toTypeName)
+          self.typeRef.decls.find(sym => Symbols.name(sym) == name.toTypeName)
         def typeMember(name: String): Symbol =
           lookupPrefix.member(name.toTypeName).symbol
 
@@ -2681,7 +2682,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           }
 
         def isTypeParam: Boolean = self.isTypeParam
-        def signature: Signature = self.signature
+        def signature: Signature = Symbols.signature(self)
         def moduleClass: Symbol = self.denot.moduleClass
         def companionClass: Symbol = self.denot.companionClass
         def companionModule: Symbol = self.denot.companionModule
