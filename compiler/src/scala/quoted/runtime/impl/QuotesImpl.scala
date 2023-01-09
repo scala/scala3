@@ -362,9 +362,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Term extends TermModule:
       def betaReduce(tree: Term): Option[Term] =
         tree match
-          // TODO support TypeApply. Would fix #15968.
           case app @ tpd.Apply(tpd.Select(fn, nme.apply), args) if dotc.core.Symbols.defn.isFunctionType(fn.tpe) =>
             val app1 = dotc.transform.BetaReduce(app, fn, List(args))
+            if app1 eq app then None
+            else Some(app1.withSpan(tree.span))
+          case app @ tpd.Apply(tpd.TypeApply(tpd.Select(fn, nme.apply), targs), args) if fn.tpe.typeSymbol eq dotc.core.Symbols.defn.PolyFunctionClass =>
+            val app1 = dotc.transform.BetaReduce(app, fn, List(targs, app.args))
             if app1 eq app then None
             else Some(app1.withSpan(tree.span))
           case tpd.Block(Nil, expr) =>
