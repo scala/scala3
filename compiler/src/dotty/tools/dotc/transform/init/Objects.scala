@@ -449,7 +449,7 @@ object Objects:
   // -------------------------------- algorithm --------------------------------
 
   /** Check an individual object */
-  private def accessObject(classSym: ClassSymbol)(using Context, State.Data): Value = log("accessing object " + classSym.show, printer, (_: Value).show) {
+  private def accessObject(classSym: ClassSymbol)(using Context, State.Data): Value = log("accessing " + classSym.show, printer, (_: Value).show) {
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
     @tailrec
