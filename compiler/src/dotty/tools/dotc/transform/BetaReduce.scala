@@ -56,6 +56,68 @@ object BetaReduce:
   val name: String = "betaReduce"
   val description: String = "reduce closure applications"
 
+  /** Rewrite an application
+   *
+   *    ((x1, ..., xn) => b)(e1, ..., en)
+   *
+   *  to
+   *
+   *    val/def x1 = e1; ...; val/def xn = en; b
+   *
+   *  where `def` is used for call-by-name parameters. However, we shortcut any NoPrefix
+   *  refs among the ei's directly without creating an intermediate binding.
+   *
+   *  Similarly, rewrites type applications
+   *
+   *    ([X1, ..., Xm] => (x1, ..., xn) => b).apply[T1, .., Tm](e1, ..., en)
+   *
+   *  to
+   *
+   *    type X1 = T1; ...; type Xm = Tm;val/def x1 = e1; ...; val/def xn = en; b
+   *
+   *  This beta-reduction preserves the integrity of `Inlined` tree nodes.
+   */
+  def apply(tree: Tree)(using Context): Tree =
+    val bindingsBuf = new ListBuffer[DefTree]
+    def recur(fn: Tree, argss: List[List[Tree]]): Option[Tree] = fn match
+      case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
+        ddef.tpe.widen match // TODO can these guards be removed?
+          case mt: MethodType if ddef.paramss.head.length == argss.head.length =>
+            Some(reduceApplication(ddef, argss, bindingsBuf))
+          case _ => None
+      case Block((TypeDef(_, template: Template)) :: Nil, Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
+        template.body match
+          case (ddef: DefDef) :: Nil =>
+            ddef.tpe.widen match // TODO can these guards be removed?
+              case mt: MethodType if ddef.paramss.head.length == argss.head.length =>
+                Some(reduceApplication(ddef, argss, bindingsBuf))
+              case mt: PolyType if ddef.paramss.head.length == argss.head.length && ddef.paramss.last.length == argss.last.length =>
+                Some(reduceApplication(ddef, argss, bindingsBuf))
+              case _ => None
+          case _ => None
+      case Block(stats, expr) if stats.forall(isPureBinding) =>
+        recur(expr, argss).map(cpy.Block(fn)(stats, _))
+      case Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
+        recur(expr, argss).map(cpy.Inlined(fn)(call, bindings, _))
+      case Typed(expr, tpt) =>
+        recur(expr, argss)
+      case _ => None
+    tree match
+      case Apply(Select(fn, nme.apply), args) if defn.isFunctionType(fn.tpe) =>
+        recur(fn, List(args)) match
+          case Some(reduced) =>
+            seq(bindingsBuf.result(), reduced).withSpan(tree.span)
+          case None =>
+            tree
+      case Apply(TypeApply(Select(fn, nme.apply), targs), args) if fn.tpe.typeSymbol eq dotc.core.Symbols.defn.PolyFunctionClass =>
+        recur(fn, List(targs, args)) match
+          case Some(reduced) =>
+            seq(bindingsBuf.result(), reduced).withSpan(tree.span)
+          case None =>
+            tree
+      case _ =>
+        tree
+
   /** Beta-reduces a call to `fn` with arguments `argSyms` or returns `tree` */
   def apply(original: Tree, fn: Tree, argss: List[List[Tree]])(using Context): Tree =
     fn match
