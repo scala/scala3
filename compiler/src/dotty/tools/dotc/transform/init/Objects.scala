@@ -239,6 +239,7 @@ object Objects:
 
     def widenArg(using Context): Value =
       a match
+      case Bottom => Bottom
       case RefSet(refs) => refs.map(_.widenArg).join
       case OfClass(tp, _, _: OfClass, _, _) => OfType(tp)
       case _ => a
@@ -424,22 +425,25 @@ object Objects:
       report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show + Trace.show, Trace.position)
       Bottom
 
-    case RefSet(refs) =>
-      refs.map(ref => instantiate(ref, klass, ctor, args)).join
-
-    case value: (ObjectRef | OfClass | OfType) =>
+    case value: (Bottom.type | ObjectRef | OfClass | OfType) =>
       // widen the outer to finitize the domain
       val outerWidened = outer.widenArg
       val argsWidened = args.map(_.value).widenArgs
+
+      // TODO: type arguments
       val tp = value match
         case v: ObjectRef => v.klass.typeRef.memberInfo(klass)
         case v: OfClass   => v.tp.memberInfo(klass)
         case v: OfType    => v.tp.memberInfo(klass)
+        case Bottom       => klass.typeRef
 
       val instance = OfClass(tp, klass, outerWidened, ctor, argsWidened)
       val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
       callConstructor(instance, ctor, argInfos2)
       instance
+
+    case RefSet(refs) =>
+      refs.map(ref => instantiate(ref, klass, ctor, args)).join
   }
 
   // -------------------------------- algorithm --------------------------------
@@ -637,8 +641,11 @@ object Objects:
       case _: Import | _: Export =>
         Bottom
 
+      case tpl: Template =>
+        init(tpl, thisV.asInstanceOf[Ref], klass)
+
       case _ =>
-        report.error("[Internal error] unexpected tree" + Trace.show, expr)
+        report.error("[Internal error] unexpected tree: " + expr + "\n" + Trace.show, expr)
         Bottom
   }
 
