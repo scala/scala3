@@ -176,11 +176,16 @@ object Denotations {
    *
    *  Then the denotation of `y` is `SingleDenotation(NoSymbol, A | B)`.
    *
-   *  @param symbol  The referencing symbol, or NoSymbol is none exists
+   *  @param symbolHint The referencing symbol, or NoSymbol is none exists,
+   *                    or null, if the Denotation itself is the symbol.
    */
-  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean)
+  abstract class Denotation(symbolHint: Symbol | Null, protected var myInfo: Type, val isType: Boolean)
   extends PreDenotation, Named, printing.Showable {
     type AsSeenFromResult <: Denotation
+
+    val symbol: Symbol =
+      if symbolHint != null then symbolHint
+      else this.asInstanceOf[Symbol]
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
@@ -579,7 +584,7 @@ object Denotations {
   end infoMeet
 
   /** A non-overloaded denotation */
-  abstract class SingleDenotation(symbol: Symbol, initInfo: Type, isType: Boolean) extends Denotation(symbol, initInfo, isType) {
+  abstract class SingleDenotation(symbolHint: Symbol | Null, initInfo: Type, isType: Boolean) extends Denotation(symbolHint, initInfo, isType) {
     protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
 
     final def name(using Context): ThisName = symbol.name.asInstanceOf[ThisName]

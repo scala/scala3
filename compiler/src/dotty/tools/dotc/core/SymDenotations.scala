@@ -43,7 +43,8 @@ object SymDenotations {
 
     //private[SymDenotations]
     var defTree: tpd.Tree | Null = null
-    //private[SymDenotations]
+    //private[SymDenotations
+    def isClass: Boolean = isInstanceOf[ClassCommon]
     def asClass: ClassCommon = asInstanceOf[ClassCommon]
 
     def reset() =
@@ -69,14 +70,14 @@ object SymDenotations {
    *  during a period.
    */
   class SymDenotation private[SymDenotations] (
-    symbol: Symbol,
+    symbolHint: Symbol | Null,
     final val common: SymCommon,
     final val maybeOwner: Symbol,
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol)
-  extends SingleDenotation(symbol, initInfo, name.isTypeName), ParamInfo, SrcPos, Named {
+  extends SingleDenotation(symbolHint, initInfo, name.isTypeName), ParamInfo, SrcPos, Named {
 
     //assert(symbol.id != 4940, name)
 
@@ -1845,14 +1846,14 @@ object SymDenotations {
   /** The contents of a class definition during a period
    */
   class ClassDenotation private[SymDenotations] (
-    symbol: Symbol,
+    symbolHint: Symbol | Null,
     common: ClassCommon,
     maybeOwner: Symbol,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol)
-    extends SymDenotation(symbol, common, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
+    extends SymDenotation(symbolHint, common, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.EqHashMap
 
@@ -2505,14 +2506,14 @@ object SymDenotations {
    *  It overrides ClassDenotation to take account of package objects when looking for members
    */
   final class PackageClassDenotation private[SymDenotations] (
-    symbol: Symbol,
+    symbolHint: Symbol | Null,
     common: ClassCommon,
     ownerIfExists: Symbol,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol)
-    extends ClassDenotation(symbol, common, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
+    extends ClassDenotation(symbolHint, common, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
     private var packageObjsCache: List[ClassDenotation] = _
     private var packageObjsRunId: RunId = NoRunId
@@ -2713,7 +2714,7 @@ object SymDenotations {
    *  should be done via this method.
    */
   def SymDenotation(
-    symbol: Symbol,
+    symbolHint: Symbol | Null,
     common: SymCommon,
     owner: Symbol,
     name: Name,
@@ -2721,13 +2722,13 @@ object SymDenotations {
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol)(using Context): SymDenotation = {
     val result =
-      if symbol.isClass then
+      if common.isClass then
         if initFlags.is(Package) then
-          new PackageClassDenotation(symbol, common.asClass, owner, name, initFlags, initInfo, initPrivateWithin)
+          new PackageClassDenotation(symbolHint, common.asClass, owner, name, initFlags, initInfo, initPrivateWithin)
         else
-          new ClassDenotation(symbol, common.asClass, owner, name, initFlags, initInfo, initPrivateWithin)
+          new ClassDenotation(symbolHint, common.asClass, owner, name, initFlags, initInfo, initPrivateWithin)
       else
-        new SymDenotation(symbol, common, owner, name, initFlags, initInfo, initPrivateWithin)
+        new SymDenotation(symbolHint, common, owner, name, initFlags, initInfo, initPrivateWithin)
     result.validFor = currentStablePeriod
     result
   }
