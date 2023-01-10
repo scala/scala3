@@ -394,7 +394,7 @@ object StringContextTestUtils:
   private val decimalSeparator: Char = new DecimalFormat().getDecimalFormatSymbols().getDecimalSeparator()
   private val numberPattern = """(\d+)\.(\d+.*)""".r
   private def applyProperLocale(number: String): String =
-    val numberPattern(intPart, fractionalPartAndSuffix) = number
+    val numberPattern(intPart, fractionalPartAndSuffix) = number: @unchecked
     s"$intPart$decimalSeparator$fractionalPartAndSuffix"
 
   extension (sc: StringContext)

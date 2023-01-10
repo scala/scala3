@@ -923,7 +923,7 @@ trait Checking {
               |
               |If $usage is intentional, this can be communicated by $fix,
               |which $addendum.$rewriteMsg"""),
-        pos, warnFrom = `3.2`, errorFrom = `future`)
+        pos, warnFrom = `3.2`, errorFrom = `3.4`)
       false
     }
 
