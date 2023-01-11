@@ -5,7 +5,7 @@ inline def showParamSyms(inline x: Any): String =
 
 def showParamSymsExpr(using Quotes)(x: Expr[Any]): Expr[String] =
   import quotes.reflect.*
-  val '{ $y: Any } = x // Drop Inlined not to access the symbol
+  val '{ $y: Any } = x: @unchecked // Drop Inlined not to access the symbol
   val sym = y.asTerm.symbol
   Expr(
     s"""sym: ${sym.fullName}

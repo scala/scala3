@@ -7,7 +7,7 @@ object Test {
   }
 
   def main(args: Array[String]): Unit = {
-    val q"class $_ extends $_parent" = new Object
+    val q"class $_ extends $_parent" = new Object: @unchecked
     println(_parent)
   }
 }

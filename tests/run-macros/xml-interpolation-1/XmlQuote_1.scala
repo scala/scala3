@@ -53,7 +53,7 @@ object XmlQuote {
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(args0, _), _) = args.asTerm.underlyingArgument
+    val Typed(Repeated(args0, _), _) = args.asTerm.underlyingArgument: @unchecked
 
     val string = parts.mkString("??")
     '{new Xml(${Expr(string)}, ${liftListOfAny(args0)})}

@@ -4,6 +4,6 @@ object Test {
 
   val c: Any = C(1)
 
-  val C(x) = c
+  val C(x) = c: @unchecked
 
 }

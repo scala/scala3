@@ -5,7 +5,7 @@ import scala.reflect.ClassTag
 object Test {
   given Compiler = Compiler.make(this.getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
-    val '[List[Int]] = Type.of[List[Int]]
+    val '[List[Int]] = Type.of[List[Int]]: @unchecked
 
     Type.of[List[Int]] match
       case '[List[int]] =>

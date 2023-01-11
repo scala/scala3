@@ -19,7 +19,7 @@ package p1.p2:
       this()
       if x > 0 then
         val a :: b =
-          x :: Nil
+          (x :: Nil): @unchecked
         end val
         var y =
           x

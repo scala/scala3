@@ -6,7 +6,7 @@ object Test {
         def unapply[T](x: Any): Option[B[T]] = None
       }
       try {
-        val B(_) = null
+        val B(_) = null: @unchecked
       } catch {
         case e: MatchError => println("match error")
       }

@@ -23,7 +23,7 @@ trait FunTypeParamClause { def f[A, B, ] } // error // error
 trait SimpleType { def f: (Int, String, ) } // error
 trait FunctionArgTypes { def f: (Int, String, ) => Boolean } // error
 
-trait SimplePattern { val (foo, bar, ) = null: Any } // error
+trait SimplePattern { val (foo, bar, ) = null: Any @unchecked } // error
 
 trait ImportSelectors { import foo.{ Ev0, Ev1, } } // error
 

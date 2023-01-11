@@ -30,7 +30,7 @@ object TailrecAfterTryCatch {
 
   @annotation.tailrec
   final def good3(): Unit = {
-    val 1 = 2
+    val 1 = 2: @unchecked
     try {
       return
     } catch {

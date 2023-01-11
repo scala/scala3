@@ -123,7 +123,7 @@ trait SimplePattern {
   val (
     foo,
     bar,
-    ) = null: Any
+    ) = null: Any @unchecked
 
   // test '@' syntax in patterns
   Some(1) match {
@@ -139,7 +139,7 @@ trait SimplePattern {
 
   // test varargs in patterns
   val List(x, y, z*,
-  ) = 42 :: 17 :: Nil
+  ) = (42 :: 17 :: Nil): @unchecked
 }
 
 trait ImportSelectors {

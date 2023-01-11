@@ -1,12 +1,12 @@
 package p1 {
   object Ex  { def unapply(p: Any): Option[_ <: Int] = null }
-  object Foo { val Ex(_) = null }
+  object Foo { val Ex(_) = null: @unchecked }
 }
 // a.scala:2: error: error during expansion of this match (this is a scalac bug).
 // The underlying error was: type mismatch;
 //  found   : Some[_$1(in value x$1)] where type _$1(in value x$1)
 //  required: Some[_$1(in method unapply)]
-// object Foo { val Ex(_) = null }
+// object Foo { val Ex(_) = null: @unchecked }
 //                    ^
 // one error found
 

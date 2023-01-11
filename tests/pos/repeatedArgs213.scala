@@ -12,7 +12,7 @@ class repeatedArgs {
     Paths.get("Hello", "World")
     Paths.get("Hello", xs*)
 
-    val List(_, others*) = xs.toList // toList should not be needed, see #4790
+    val List(_, others*) = xs.toList: @unchecked // toList should not be needed, see #4790
     val x: immutable.Seq[String] = others
   }
 
@@ -23,7 +23,7 @@ class repeatedArgs {
     Paths.get("Hello", "World")
     Paths.get("Hello", xs*)
 
-    val List(_, others*) = xs.toList // toList should not be needed, see #4790
+    val List(_, others*) = xs.toList: @unchecked // toList should not be needed, see #4790
     val x: immutable.Seq[String] = others
   }
 }

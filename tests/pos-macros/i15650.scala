@@ -12,7 +12,7 @@ object meta:
     def unapply(using Quotes)(using TC)(tr: quotes.reflect.TypeRepr): Option[Rational] = ???
 
   def foo(using Quotes)(p: quotes.reflect.TypeRepr): Unit =
-    val rationalTE(e) = p  // warn: pattern binding uses refutable extractor `meta.rationalTE`
+    val rationalTE(e) = p: @unchecked
 
   def bar(using Quotes)(using TC)(p: quotes.reflect.TypeRepr): Unit =
-    val rationalTC(c) = p  // warn: pattern binding uses refutable extractor `meta.rationalTC`
+    val rationalTC(c) = p: @unchecked

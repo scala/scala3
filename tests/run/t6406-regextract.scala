@@ -20,10 +20,10 @@ object Test extends App {
   val t = "Last modified 2011-07-15"
   val p1 = """(\d\d\d\d)-(\d\d)-(\d\d)""".r
   val y1: Option[String] = for {
-    p1(year, month, day) <- p1 findFirstIn t
+    case p1(year, month, day) <- p1 findFirstIn t
   } yield year
   val y2: Option[String] = for {
-    p1(year, month, day) <- p1 findFirstMatchIn t
+    case p1(year, month, day) <- p1 findFirstMatchIn t
   } yield year
   println(s"$y1 $y2")
 

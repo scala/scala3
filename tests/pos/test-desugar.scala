@@ -36,11 +36,11 @@ object desugar {
 
     val xs: List[Int] = Cons(1, Cons(2, Nil))
 
-    val Cons(y, ys) = xs
-    val Cons(z, _) = xs
-    val Cons(_, _) = xs
+    val Cons(y, ys) = xs: @unchecked
+    val Cons(z, _) = xs: @unchecked
+    val Cons(_, _) = xs: @unchecked
 
-    val (cons: Cons[Int]) = xs
+    val (cons: Cons[Int]) = xs: @unchecked
 
     val x1, y1, z1: Int = 1
   }
@@ -49,7 +49,7 @@ object desugar {
 
     x :: y :: Nil
 
-    val x :: y :: Nil = list
+    val x :: y :: Nil = list: @unchecked
 
   }
 

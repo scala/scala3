@@ -8,6 +8,6 @@ extension [T] (inline ctx: Macro.StrCtx) inline def unapplySeq[U](inline input: 
   Some(Seq(input))
 
 @main def Test: Unit =
-  val mac"$x" = 1
+  val mac"$x" = 1: @unchecked
   val y: Int = x
   assert(x == 1)

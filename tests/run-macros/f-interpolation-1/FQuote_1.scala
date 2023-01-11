@@ -43,7 +43,7 @@ object FQuote {
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(allArgs, _), _) = args.asTerm.underlyingArgument
+    val Typed(Repeated(allArgs, _), _) = args.asTerm.underlyingArgument: @unchecked
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< TypeRepr.of[Int])) {

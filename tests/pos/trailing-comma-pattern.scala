@@ -1,3 +1,3 @@
 object Test:
   val List(x, y, _*,
-  ) = List(1, 2, 3)
+  ) = List(1, 2, 3): @unchecked

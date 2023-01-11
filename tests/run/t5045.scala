@@ -15,22 +15,22 @@ object Test extends App {
   def test(msg: String)(strs: Seq[String]): Unit = println("%40s  %s".format(msg, strs mkString " "))
 
   test("extract an exact match") {
-    val dateP1(y,m,d) = dateStr
+    val dateP1(y,m,d) = dateStr: @unchecked
     Seq(List(y,m,d).mkString("-"), dateStr)
   }
 
   test("extract from middle of string") {
-    val dateP1(y,m,d) = "Tested on "+dateStr+"."
+    val dateP1(y,m,d) = "Tested on "+dateStr+".": @unchecked
     Seq(List(y,m,d).mkString("-"), dateStr)
   }
 
   test("extract from middle of string (P2)") {
-    val dateP2(y,m,d) = "Tested on "+dateStr+"."
+    val dateP2(y,m,d) = "Tested on "+dateStr+".": @unchecked
     Seq(List(y,m,d).mkString("-"), dateStr)
   }
 
   test("extract from middle of string (P3)") {
-    val dateP2(y,m,d) = "Tested on "+dateStr+"."
+    val dateP2(y,m,d) = "Tested on "+dateStr+".": @unchecked
     Seq(List(y,m,d).mkString("-"), dateStr)
   }
 

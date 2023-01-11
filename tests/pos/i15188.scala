@@ -4,6 +4,6 @@ extension [T] (ctx: O.type) inline def unapplySeq(input: T): Option[Seq[T]] = So
 
 @main
 def Main = {
-  val O(x) = 3
+  val O(x) = 3: @unchecked
   println(s"x: $x")
 }

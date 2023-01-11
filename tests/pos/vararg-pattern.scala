@@ -5,5 +5,5 @@ object Test {
       println(ys)
   }
 
-  val List(1, 2, x*) = List(1, 2, 3, 4)
+  val List(1, 2, x*) = List(1, 2, 3, 4): @unchecked
 }

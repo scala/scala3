@@ -29,16 +29,16 @@
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/t5702-neg-bad-and-wild.scala:23:16 -----------------------------------------------------------------
-23 |    val K(ns @ _*, xx) = k // error: pattern expected
+23 |    val K(ns @ _*, xx) = k: @unchecked // error: pattern expected
    |                ^
    |                spread operator `*` not allowed here; must come last in a parameter list
 -- Error: tests/neg/t5702-neg-bad-and-wild.scala:25:14 -----------------------------------------------------------------
-25 |    val (b, _ * ) = (5,6) // error: bad use of `*`
+25 |    val (b, _ * ) = (5,6): @unchecked // error: bad use of `*`
    |              ^
    |              bad use of `*` - sequence pattern not allowed here
 -- [E161] Naming Error: tests/neg/t5702-neg-bad-and-wild.scala:24:10 ---------------------------------------------------
-24 |    val K(x) = k // error: x is already defined as value x
-   |    ^^^^^^^^^^^^
+24 |    val K(x) = k: @unchecked // error: x is already defined as value x
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^
    |    x is already defined as value x
    |
    |    Note that overloaded methods must all be defined in the same group of toplevel definitions
@@ -61,11 +61,3 @@
    |                    * variable pattern, e.g. `case x: String =>`
    |                    * number literal pattern, e.g. `case 10.5: Double =>`
    |                  are no longer supported. Remove the type ascription or move it to a separate variable pattern.
--- Warning: tests/neg/t5702-neg-bad-and-wild.scala:22:20 ---------------------------------------------------------------
-22 |    val K(x @ _*) = k
-   |                    ^
-   |        pattern's type Int* does not match the right hand side expression's type Int
-   |
-   |        If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
-   |        which may result in a MatchError at runtime.
-   |        This patch can be rewritten automatically under -rewrite -source 3.2-migration.

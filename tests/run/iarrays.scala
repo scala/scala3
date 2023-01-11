@@ -59,7 +59,7 @@ object Test extends App {
   val is = IArray.iterate(0, 4)(_ + 1)
   assert(reduce(is, 0, _ + _) == 6)
 
-  val IArray(1, 2, 3) = xs
+  val IArray(1, 2, 3) = xs: @unchecked
 
   val as: IArray[Any] = IArray(1, "hello")
   assert(as(as.length - 1) == "hello")

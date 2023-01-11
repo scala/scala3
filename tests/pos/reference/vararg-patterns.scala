@@ -1,8 +1,8 @@
 package varargPatterns
 object t1 extends App {
-  val List(1, 2, xs *) = List(1, 2, 3)
+  val List(1, 2, xs *) = List(1, 2, 3): @unchecked
   println(xs)
-  val List(1, 2, _ *) = List(1, 2, 3)
+  val List(1, 2, _ *) = List(1, 2, 3): @unchecked
 }
 @main def Test =
   val arr = Array(0, 1, 2, 3)

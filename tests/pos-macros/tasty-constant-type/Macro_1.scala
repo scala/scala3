@@ -9,8 +9,8 @@ object Macro {
   def impl[A <: Int : Type, B <: Int : Type](using Quotes) : Expr[AddInt[A, B]] = {
     import quotes.reflect.*
 
-    val ConstantType(IntConstant(v1)) = TypeRepr.of[A]
-    val ConstantType(IntConstant(v2)) = TypeRepr.of[B]
+    val ConstantType(IntConstant(v1)) = TypeRepr.of[A]: @unchecked
+    val ConstantType(IntConstant(v2)) = TypeRepr.of[B]: @unchecked
 
     Literal(IntConstant(v1 + v2)).tpe.asType match
       case '[t] => '{ null: AddInt[A, B] { type Out = t } }

@@ -5,5 +5,5 @@ def main: Unit =
   extension [T] (inline ctx: Macro.StrCtx) inline def unapplySeq(inline input: T): Option[Seq[T]] =
     ${ implUnapply('ctx, 'input) }
 
-  val mac"$x" = 1
+  val mac"$x" = 1: @unchecked
   assert(x == 1)

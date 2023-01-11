@@ -70,7 +70,7 @@ object UnsafeExpr {
   }
   private def paramsAndBody[R](using Quotes)(f: Expr[Any]): (List[quotes.reflect.ValDef], Expr[R]) = {
     import quotes.reflect.*
-    val Block(List(DefDef("$anonfun", List(TermParamClause(params)), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.asTerm.etaExpand(Symbol.spliceOwner)
+    val Block(List(DefDef("$anonfun", List(TermParamClause(params)), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.asTerm.etaExpand(Symbol.spliceOwner): @unchecked
     (params, body.asExpr.asInstanceOf[Expr[R]])
   }
 
