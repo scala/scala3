@@ -251,3 +251,8 @@ package foo.testing.imports.precedence:
   import scala.collection.immutable.{BitSet => _, _} // error
   import scala.collection.immutable.BitSet // OK
   def t = BitSet.empty
+
+package foo.test.enums:
+  enum A: // OK
+    case B extends A // OK
+    case C extends A // OK
