@@ -1079,7 +1079,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         case Inlined(_, Nil, expr) => unapply(expr)
         case Block(Nil, expr) => unapply(expr)
         case _ =>
-          tree.tpe.widenTermRefExpr.normalized match
+          tree.tpe.widenTermRefExpr.dealias.normalized match
             case ConstantType(Constant(x)) => Some(x)
             case _ => None
   }
