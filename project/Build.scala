@@ -1054,15 +1054,13 @@ object Build {
   // with the bootstrapped library on the classpath.
   lazy val `scala3-sbt-bridge-tests` = project.in(file("sbt-bridge/test")).
     dependsOn(dottyCompiler(Bootstrapped) % Test).
+    dependsOn(`scala3-sbt-bridge`).
     settings(commonBootstrappedSettings).
     settings(
       Compile / sources := Seq(),
       Test / scalaSource := baseDirectory.value,
       Test / javaSource := baseDirectory.value,
-
-      // Tests disabled until zinc-api-info cross-compiles with 2.13,
-      // alternatively we could just copy in sources the part of zinc-api-info we need.
-      Test / sources := Seq()
+      libraryDependencies += ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13)
     )
 
   lazy val `scala3-language-server` = project.in(file("language-server")).

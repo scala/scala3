@@ -147,9 +147,8 @@ class ExtractAPISpecification {
         |""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis =
-      compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = false)(List(src1, src2),
-                                                                            List(src2))
-    val _ :: src2Api1 :: src2Api2 :: Nil = apis.toList
+      compilerForTesting.extractApisFromSrcs(List(src1, src2), List(src2))
+    val _ :: src2Api1 :: src2Api2 :: Nil = apis.toList: @unchecked 
     val namerApi1 = selectNamer(src2Api1)
     val namerApi2 = selectNamer(src2Api2)
     assertTrue(SameAPI(namerApi1, namerApi2))
@@ -202,7 +201,7 @@ class ExtractAPISpecification {
     val srcC8 = "class C8 { self => }"
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting
-      .extractApisFromSrcs(reuseCompilerInstance = true)(
+      .extractApisFromSrcs(
         List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC8)
       )
       .map(_.head)
