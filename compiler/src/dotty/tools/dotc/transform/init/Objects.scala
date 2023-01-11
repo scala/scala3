@@ -100,6 +100,8 @@ object Objects:
 
   /**
    * Represents a lambda expression
+   *
+   * TODO: add concrete type of lambdas
    */
   case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value:
     def show(using Context) = "Fun(" + expr.show + ", " + thisV.show + ", " + klass.show + ")"
@@ -116,6 +118,12 @@ object Objects:
   val Bottom = RefSet(Nil)
 
   object State:
+    /** Record leaked instantiated types and lambdas.
+     *
+     *  For more fine-grained approximation, the values are distinguished by their types.
+     */
+    class LeakedInstances(classes: Map[ClassSymbol, List[Type]], funs: Map[Type, List[Fun]])
+
     /**
      * Remembers the instantiated types during instantiation of a static object.
      */
@@ -125,13 +133,12 @@ object Objects:
       private[State] val checkedObjects = new mutable.ArrayBuffer[ClassSymbol]
       private[State] val pendingTraces = new mutable.ListBuffer[Trace]
 
-      // object -> (class, types of the class)
-      private[State] val instantiatedTypes = mutable.Map.empty[ClassSymbol, Map[ClassSymbol, List[Type]]]
+      private[State] val leakedInstancesByObject = mutable.Map.empty[ClassSymbol, LeakedInstances]
+    end Data
 
-      // object -> (fun type, fun values)
-      private[State] val instantiatedFuncs = mutable.Map.empty[ClassSymbol, Map[Type, List[Fun]]]
+    def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last
 
-    def currentObject(using data: Data) = data.checkingObjects.last
+    def leakedInstances(using data: Data): LeakedInstances = data.leakedInstancesByObject(currentObject)
 
     def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context, pendingTrace: Trace) =
       val index = data.checkingObjects.indexOf(clazz)
@@ -148,85 +155,28 @@ object Objects:
         assert(data.checkingObjects.last == clazz, "Expect = " + clazz.show + ", found = " + data.checkingObjects.last)
         data.pendingTraces.remove(data.pendingTraces.size - 1)
         data.checkedObjects += data.checkingObjects.remove(data.checkingObjects.size - 1)
-
-  type Contextual[T] = (Context, State.Data, Cache.Data, Trace) ?=> T
+    end checkCycle
+  end State
 
   object Cache:
-    /** Cache for method calls and lazy values
-     *
-     *  Symbol -> ThisValue -> ReturnValue
-     */
-    private type Cache = Map[Symbol, Map[Value, Value]]
+    case class Config(value: Value, leakedInstances: State.LeakedInstances)
 
-    class Data:
-      /** The cache from last iteration */
-      private var last: Cache =  Map.empty
+    class Data extends Cache[Config]:
+      def get(thisV: Value, expr: Tree)(using State.Data): Option[Value] =
+        val config = Config(thisV, State.leakedInstances)
+        super.get(config, expr).map(_.value)
 
-      /** The output cache
-       *
-       *  The output cache is computed based on the cache values `last` from the
-       *  last iteration.
-       *
-       *  Both `last` and `current` are required to make sure evaluation happens
-       *  once in each iteration.
-       */
-      private var current: Cache = Map.empty
-
-      /** Whether the current heap is different from the last heap?
-       *
-       *  `changed == false` implies that the fixed point has been reached.
-       */
-      private var changed: Boolean = false
-
-      def assume(value: Value, sym: Symbol)(fun: => Value): Contextual[Value] =
-        val assumeValue: Value =
-          last.get(value, sym) match
-          case Some(value) => value
-          case None =>
-            val default = Bottom
-            this.last = last.updatedNested(value, sym, default)
-            default
-
-        this.current = current.updatedNested(value, sym, assumeValue)
-
-        val actual = fun
-        if actual != assumeValue then
-          this.changed = true
-          this.current = this.current.updatedNested(value, sym, actual)
-        end if
-
-        actual
-      end assume
-
-      def hasChanged = changed
-
-      /** Prepare cache for the next iteration
-       *
-       *  1. Reset changed flag.
-       *
-       *  2. Use current cache as last cache and set current cache to be empty.
-       *
-       */
-      def prepareForNextIteration()(using Context) =
-        this.changed = false
-        this.last = this.current
-        this.current = Map.empty
-    end Data
-
-    extension (cache: Cache)
-      private def get(value: Value, sym: Symbol): Option[Value] =
-        cache.get(sym).flatMap(_.get(value))
-
-      private def removed(value: Value, sym: Symbol) =
-        val innerMap2 = cache(sym).removed(value)
-        cache.updated(sym, innerMap2)
-
-      private def updatedNested(value: Value, sym: Symbol, result: Value): Cache =
-        val innerMap = cache.getOrElse(sym, Map.empty[Value, Value])
-        val innerMap2 = innerMap.updated(value, result)
-        cache.updated(sym, innerMap2)
-    end extension
+      def assume(thisV: Value, expr: Tree, cacheResult: Boolean)(fun: => Value)(using State.Data): Value =
+        val config = Config(thisV, State.leakedInstances)
+        val result = super.assume(config, expr, cacheResult, default = Config(Bottom, State.leakedInstances)) {
+          Config(fun, State.leakedInstances)
+        }
+        result.value
   end Cache
+
+  inline def cache(using c: Cache.Data): Cache.Data = c
+
+  type Contextual[T] = (Context, State.Data, Cache.Data, Trace) ?=> T
 
   // --------------------------- domain operations -----------------------------
 
@@ -289,7 +239,7 @@ object Objects:
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
           extendTrace(ddef) {
-            eval(ddef.rhs, ref, cls)
+            eval(ddef.rhs, ref, cls, cacheResult = true)
           }
         else
           Bottom
@@ -315,7 +265,7 @@ object Objects:
           val isLocal = meth.owner.isClass
           val ddef = meth.defTree.asInstanceOf[DefDef]
           extendTrace(ddef) {
-            eval(ddef.rhs, value, meth.owner.enclosingClass.asClass)
+            eval(ddef.rhs, value, meth.owner.enclosingClass.asClass, cacheResult = true)
           }
         else
           Bottom
@@ -331,7 +281,7 @@ object Objects:
       if meth.name.toString == "tupled" then
         value // a call like `fun.tupled`
       else
-        eval(expr, thisV, klass)
+        eval(expr, thisV, klass, cacheResult = true)
 
     case RefSet(vs) =>
       vs.map(v => call(v, meth, args, receiver, superType)).join
@@ -355,10 +305,10 @@ object Objects:
         addParamsAsFields(args2, ref, ddef)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-          extendTrace(cls.defTree) { eval(tpl, ref, cls) }
+          extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
           ref
         else
-          extendTrace(ddef) { eval(ddef.rhs, ref, cls) }
+          extendTrace(ddef) { eval(ddef.rhs, ref, cls, cacheResult = true) }
       else
         // no source code available
         Bottom
@@ -374,7 +324,7 @@ object Objects:
       val target = if needResolve then resolve(ref.klass, field) else field
       if target.is(Flags.Lazy) then
         val rhs = target.defTree.asInstanceOf[ValDef].rhs
-        eval(rhs, ref, target.owner.asClass)
+        eval(rhs, ref, target.owner.asClass, cacheResult = true)
       else if target.exists then
         ref match
         case obj: ObjectRef if State.currentObject != obj.klass =>
@@ -408,7 +358,7 @@ object Objects:
       if field.isEffectivelyFinal then
         if field.hasSource then
           val vdef = field.defTree.asInstanceOf[ValDef]
-          eval(vdef.rhs, thisV, field.owner.enclosingClass.asClass)
+          eval(vdef.rhs, thisV, field.owner.enclosingClass.asClass, cacheResult = true)
         else
           Bottom
       else
@@ -494,6 +444,33 @@ object Objects:
     do
       accessObject(classSym)
 
+  /** Evaluate an expression with the given value for `this` in a given class `klass`
+   *
+   *  Note that `klass` might be a super class of the object referred by `thisV`.
+   *  The parameter `klass` is needed for `this` resolution. Consider the following code:
+   *
+   *  class A {
+   *    A.this
+   *    class B extends A { A.this }
+   *  }
+   *
+   *  As can be seen above, the meaning of the expression `A.this` depends on where
+   *  it is located.
+   *
+   *  This method only handles cache logic and delegates the work to `cases`.
+   *
+   * @param expr        The expression to be evaluated.
+   * @param thisV       The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass       The enclosing class where the expression is located.
+   * @param cacheResult It is used to reduce the size of the cache.
+   */
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
+    cache.get(thisV, expr) match
+    case Some(value) => value
+    case None =>
+      cache.assume(thisV, expr, cacheResult) { cases(expr, thisV, klass) }
+  }
+
 
   /** Evaluate a list of expressions */
   def evalExprs(exprs: List[Tree], thisV: Value, klass: ClassSymbol): Contextual[List[Value]] =
@@ -501,11 +478,13 @@ object Objects:
 
   /** Handles the evaluation of different expressions
    *
+   *  Note: Recursive call should go to `eval` instead of `cases`.
+   *
    * @param expr   The expression to be evaluated.
    * @param thisV  The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass  The enclosing class where the expression `expr` is located.
    */
-  def eval(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
+  def cases(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
     expr match
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
