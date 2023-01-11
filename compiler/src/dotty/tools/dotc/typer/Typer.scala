@@ -1000,8 +1000,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def lhs1 = adapt(lhsCore, AssignProto, locked)
 
         def reassignmentToVal =
-          errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
-            ReassignmentToVal(lhsCore.symbol.name))
+          report.error(ReassignmentToVal(lhsCore.symbol.name), tree.srcPos)
+          cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
           sym.is(Mutable, butNot = Accessor) ||
