@@ -57,6 +57,21 @@ object breakOpt:
         if x == 0 then break()
     y
 
+  def test7(x0: Int): Option[Int] =
+    boundary:
+      Some(
+        if x0 < 0 then break(None) // no jump possible, since stacksize changes
+        else x0 + 1
+      )
+
+
+  def test8(x0: Int): Option[Int] =
+    boundary:
+      lazy val x =
+        if x0 < 0 then break(None) // no jump possible, since stacksize changes
+        else x0 + 1
+      Some(x)
+
 @main def Test =
   import breakOpt.*
   assert(test1(0) == 0)
@@ -68,5 +83,7 @@ object breakOpt:
   test4(-1)
   assert(test5(2) == 1)
   assert(test6(3) == 18)
+  assert(test7(3) == Some(4))
+  assert(test7(-3) == None)
 
 

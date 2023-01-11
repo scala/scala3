@@ -28,7 +28,7 @@ object DropBreaks:
     var otherRefs: Int = 0
 
   private val LabelUsages = new Property.Key[Map[Symbol, LabelUsage]]
-  private val LabelsShadowedByTry = new Property.Key[Set[Symbol]]
+  private val ShadowedLabels = new Property.Key[Set[Symbol]]
 
 /** Rewrites local Break throws to labeled returns.
  *  Drops `try` statements on breaks if no other uses of its label remain.
@@ -38,7 +38,7 @@ object DropBreaks:
  *    - the throw and the boundary are in the same method, and
  *    - there is no try expression inside the boundary that encloses the throw.
  */
-class DropBreaks extends MiniPhase:
+class DropBreaks extends MiniPhase, RecordStackChange:
   import DropBreaks.*
 
   import tpd._
@@ -99,6 +99,31 @@ class DropBreaks extends MiniPhase:
         None
   end BreakBoundary
 
+  private object Break:
+
+    private def isBreak(sym: Symbol)(using Context): Boolean =
+      sym.name == nme.apply && sym.owner == defn.breakModule.moduleClass
+
+    /** `(local, arg)` provided `tree` matches
+     *
+     *     break[...](arg)(local)
+     *
+     *  or `(local, ())` provided `tree` matches
+     *
+     *     break()(local)
+     */
+    def unapply(tree: Tree)(using Context): Option[(Symbol, Tree)] = tree match
+      case Apply(Apply(fn, args), id :: Nil)
+      if isBreak(fn.symbol) =>
+        stripInlined(id) match
+          case id: Ident =>
+            val arg = (args: @unchecked) match
+              case arg :: Nil => arg
+              case Nil => Literal(Constant(())).withSpan(tree.span)
+            Some((id.symbol, arg))
+          case _ => None
+      case _ => None
+
   /** The LabelUsage data associated with `lbl` in the current context */
   private def labelUsage(lbl: Symbol)(using Context): Option[LabelUsage] =
     for
@@ -117,17 +142,33 @@ class DropBreaks extends MiniPhase:
     case _ =>
       ctx
 
-  /** If `tree` is not a LabeledTry, include all enclosing labels in the
-   *  `LabelsShadowedByTry` context property. This means that breaks to these
-   *  labels will not be translated to labeled returns in the body of the try.
+  /** Include all enclosing labels in the `ShadowedLabels` context property.
+   *  This means that breaks to these labels will not be translated to labeled
+   *  returns while this context is valid.
+   */
+  private def shadowLabels(using Context): Context =
+    ctx.property(LabelUsages) match
+      case Some(usesMap) =>
+        val setSoFar = ctx.property(ShadowedLabels).getOrElse(Set.empty)
+        ctx.fresh.setProperty(ShadowedLabels, setSoFar ++ usesMap.keysIterator)
+      case _ => ctx
+
+  /** Need to suppress labeled returns if the stack can change between
+   *  source and target of the jump
+   */
+  protected def stackChange(using Context) = shadowLabels
+
+  /** Need to suppress labeled returns if there is an intervening try
    */
   override def prepareForTry(tree: Try)(using Context): Context = tree match
     case LabelTry(_, _) => ctx
-    case _ => ctx.property(LabelUsages) match
-      case Some(usesMap) =>
-        val setSoFar = ctx.property(LabelsShadowedByTry).getOrElse(Set.empty)
-        ctx.fresh.setProperty(LabelsShadowedByTry, setSoFar ++ usesMap.keysIterator)
-      case _ => ctx
+    case _ => shadowLabels
+
+  override def prepareForApply(tree: Apply)(using Context): Context = tree match
+    case Break(_, _) => ctx
+    case _ => stackChange
+    
+  // other stack changing operations are handled in RecordStackChange
 
   /** If `tree` is a BreakBoundary, transform it as follows:
    *   - Wrap it in a labeled block if its label has local uses
@@ -147,29 +188,9 @@ class DropBreaks extends MiniPhase:
     case _ =>
       tree
 
-  private def isBreak(sym: Symbol)(using Context): Boolean =
-    sym.name == nme.apply && sym.owner == defn.breakModule.moduleClass
-
-  private def transformBreak(tree: Tree, arg: Tree, lbl: Symbol)(using Context): Tree =
-    report.log(i"transform break $tree/$arg/$lbl")
-    labelUsage(lbl) match
-      case Some(uses: LabelUsage)
-      if uses.enclMeth == ctx.owner.enclosingMethod
-          && !ctx.property(LabelsShadowedByTry).getOrElse(Set.empty).contains(lbl)
-        =>
-        uses.otherRefs -= 1
-        uses.returnRefs += 1
-        Return(arg, ref(uses.goto)).withSpan(arg.span)
-      case _ =>
-        tree
-
-
-  /** Rewrite a break call
-   *
-   *     break.apply[...](value)(using lbl)
-   *
+  /** Rewrite a break with argument `arg` and label `lbl`
    *  where `lbl` is a label defined in the current method and is not included in
-   *  LabelsShadowedByTry to
+   *  ShadowedLabels to
    *
    *     return[target] arg
    *
@@ -179,22 +200,29 @@ class DropBreaks extends MiniPhase:
    *  binding containing `local` is dropped.
    */
   override def transformApply(tree: Apply)(using Context): Tree = tree match
-    case Apply(Apply(fn, args), (id: Ident) :: Nil) if isBreak(fn.symbol) =>
-      val arg = (args: @unchecked) match
-        case arg :: Nil => arg
-        case Nil => Literal(Constant(())).withSpan(tree.span)
-      transformBreak(tree, arg, id.symbol)
-    case _ =>
-      tree
+    case Break(lbl, arg) =>
+      labelUsage(lbl) match
+        case Some(uses: LabelUsage)
+        if uses.enclMeth == ctx.owner.enclosingMethod
+            && !ctx.property(ShadowedLabels).getOrElse(Set.empty).contains(lbl)
+          =>
+          uses.otherRefs -= 1
+          uses.returnRefs += 1
+          Return(arg, ref(uses.goto)).withSpan(arg.span)
+        case _ => tree
+    case _ => tree
 
   /** If `tree` refers to an enclosing label, increase its non local recount.
    *  This increase is corrected in `transformInlined` if the reference turns
    *  out to be part of a BreakThrow to a local, non-shadowed label.
    */
   override def transformIdent(tree: Ident)(using Context): Tree =
-    if tree.symbol.name == nme.local then
-      for uses <- labelUsage(tree.symbol) do
-        uses.otherRefs += 1
+    for uses <- labelUsage(tree.symbol) do
+      uses.otherRefs += 1
     tree
+
+  //override def transformReturn(tree: Return)(using Context): Tree =
+  //  if !tree.from.isEmpty && tree.expr.tpe.isExactlyNothing then tree.expr
+  //  else tree
 
 end DropBreaks
