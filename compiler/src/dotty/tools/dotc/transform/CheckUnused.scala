@@ -27,6 +27,7 @@ import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Types.ConstantType
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
 import dotty.tools.dotc.core.Types.TermRef
+import dotty.tools.dotc.core.Types.NameFilter
 
 
 
@@ -326,9 +327,10 @@ object CheckUnused:
      */
     def registerUsed(sym: Symbol, name: Option[Name])(using Context): Unit =
       if !isConstructorOfSynth(sym) && !doNotRegister(sym) then
-        usedInScope.top += ((sym, sym.isAccessibleAsIdent, name))
         if sym.isConstructor && sym.exists then
           registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
+        else
+          usedInScope.top += ((sym, sym.isAccessibleAsIdent, name))
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
