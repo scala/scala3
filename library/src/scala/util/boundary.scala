@@ -19,12 +19,12 @@ object boundary:
   /** User code should call `break.apply` instead of throwing this exception
    *  directly.
    */
-  class Break[T](val label: Label[T], val value: T) extends ControlException
+  class Break[T] private[boundary](val label: Label[T], val value: T) extends ControlException
 
   /** Labels are targets indicating which boundary will be exited by a `break`.
    */
   class Label[T]:
-    transparent inline def break(value: T): Nothing = throw Break(this, value)
+    def break(value: T): Nothing = throw Break(this, value)
 
   /** Run `body` with freshly generated label as implicit argument. Catch any
    *  breaks associated with that label and return their results instead of

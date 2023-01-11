@@ -10,6 +10,7 @@ import MegaPhase._
 import Types._, Contexts._, Flags._, DenotTransformers._
 import Symbols._, StdNames._, Trees._
 import util.Property
+import Constants.Constant
 import Flags.MethodOrLazy
 
 object DropBreaks:
@@ -98,26 +99,6 @@ class DropBreaks extends MiniPhase:
         None
   end BreakBoundary
 
-  private object BreakThrow:
-
-    /** `(local, arg)` provided `tree` matches inlined
-     *
-     *    val Label_this: ... = local
-     *    throw new Break[...](Label_this, arg)
-     */
-    def unapply(tree: Tree)(using Context): Option[(Symbol, Tree)] = tree match
-      case Inlined(_,
-        (vd @ ValDef(label_this1, _, id: Ident)):: Nil,
-        Apply(throww, Apply(constr, Inlined(_, _, Ident(label_this2)) :: arg :: Nil) :: Nil))
-      if throww.symbol == defn.throwMethod
-          && label_this1 == nme.Label_this && label_this2 == nme.Label_this
-          && id.symbol.name == nme.local
-          && constr.symbol.isClassConstructor && constr.symbol.owner == defn.BreakClass =>
-        Some((id.symbol, arg))
-      case _ =>
-        None
-  end BreakThrow
-
   /** The LabelUsage data associated with `lbl` in the current context */
   private def labelUsage(lbl: Symbol)(using Context): Option[LabelUsage] =
     for
@@ -166,13 +147,29 @@ class DropBreaks extends MiniPhase:
     case _ =>
       tree
 
-  /** Rewrite a BreakThrow
+  private def isBreak(sym: Symbol)(using Context): Boolean =
+    sym.name == nme.apply && sym.owner == defn.breakModule.moduleClass
+
+  private def transformBreak(tree: Tree, arg: Tree, lbl: Symbol)(using Context): Tree =
+    report.log(i"transform break $tree/$arg/$lbl")
+    labelUsage(lbl) match
+      case Some(uses: LabelUsage)
+      if uses.enclMeth == ctx.owner.enclosingMethod
+          && !ctx.property(LabelsShadowedByTry).getOrElse(Set.empty).contains(lbl)
+        =>
+        uses.otherRefs -= 1
+        uses.returnRefs += 1
+        Return(arg, ref(uses.goto)).withSpan(arg.span)
+      case _ =>
+        tree
+
+
+  /** Rewrite a break call
    *
-   *     val Label_this: ... = local
-   *     throw new Break[...](Label_this, arg)
+   *     break.apply[...](value)(using lbl)
    *
-   *  where `local` is defined in the current method and is not included in
-   *  LabeldShowedByTry to
+   *  where `lbl` is a label defined in the current method and is not included in
+   *  LabelsShadowedByTry to
    *
    *     return[target] arg
    *
@@ -181,22 +178,12 @@ class DropBreaks extends MiniPhase:
    *  and the non-local refcount is decreased, since `local` the `Label_this`
    *  binding containing `local` is dropped.
    */
-  override def transformInlined(tree: Inlined)(using Context): Tree = tree match
-    case BreakThrow(lbl, arg) =>
-      report.log(i"trans inlined $arg, ${arg.source}, ${ctx.outer.source}, ${tree.source}")
-      labelUsage(lbl) match
-        case Some(uses: LabelUsage)
-        if uses.enclMeth == ctx.owner.enclosingMethod
-            && !ctx.property(LabelsShadowedByTry).getOrElse(Set.empty).contains(lbl)
-          =>
-          uses.otherRefs -= 1
-          uses.returnRefs += 1
-          cpy.Inlined(tree)(tree.call, Nil,
-            inContext(ctx.withSource(tree.expansion.source)) {
-              Return(arg, ref(uses.goto)).withSpan(arg.span)
-            })
-        case _ =>
-          tree
+  override def transformApply(tree: Apply)(using Context): Tree = tree match
+    case Apply(Apply(fn, args), (id: Ident) :: Nil) if isBreak(fn.symbol) =>
+      val arg = (args: @unchecked) match
+        case arg :: Nil => arg
+        case Nil => Literal(Constant(())).withSpan(tree.span)
+      transformBreak(tree, arg, id.symbol)
     case _ =>
       tree
 
