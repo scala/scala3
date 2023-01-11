@@ -808,7 +808,7 @@ trait Checking {
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit =
-    if !tp.isStable then report.error(NotAPath(tp, kind), pos)
+    if !tp.isStable && !tp.isErroneous then report.error(NotAPath(tp, kind), pos)
 
   /** Check that all type members of `tp` have realizable bounds */
   def checkRealizableBounds(cls: Symbol, pos: SrcPos)(using Context): Unit = {
@@ -904,7 +904,7 @@ trait Checking {
   private def checkLegalImportOrExportPath(path: Tree, kind: String)(using Context): Unit = {
     checkStable(path.tpe, path.srcPos, kind)
     if (!ctx.isAfterTyper) Checking.checkRealizable(path.tpe, path.srcPos)
-    if !isIdempotentExpr(path) then
+    if !isIdempotentExpr(path) && !path.tpe.isErroneous then
       report.error(em"import prefix is not a pure expression", path.srcPos)
   }
 
