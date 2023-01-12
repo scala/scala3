@@ -497,7 +497,7 @@ object Objects:
 
       case id @ Ident(name) if !id.symbol.is(Flags.Method)  =>
         assert(name.isTermName, "type trees should not reach here")
-        evalType(expr.tpe, thisV, klass)
+        extendTrace(expr) { evalType(expr.tpe, thisV, klass) }
 
       case NewExpr(tref, New(tpt), ctor, argss) =>
         // check args
