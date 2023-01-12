@@ -1,11 +1,11 @@
-import scala.util.control.{ControlException, NonFatal}
+import scala.util.control.NonFatal
 import scala.util.*
 
 object lib:
   extension [T](op: => T) inline def rescue (fallback: => T) =
     try op
     catch
-      case ex: ControlException => throw ex
+      case ex: boundary.Break => throw ex
       case NonFatal(_) => fallback
 
   extension [T, E <: Throwable](op: => T) inline def rescue (fallback: PartialFunction[E, T]) =
