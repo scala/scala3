@@ -846,6 +846,10 @@ trait Checking {
               case _ => EmptyTree
           if extractor.isEmpty then
             em"pattern binding uses refutable extractor"
+          else if extractor.symbol eq defn.QuoteMatching_ExprMatch then
+            em"pattern binding uses refutable extractor `'{...}`"
+          else if extractor.symbol eq defn.QuoteMatching_TypeMatch then
+            em"pattern binding uses refutable extractor `'[...]`"
           else
             em"pattern binding uses refutable extractor `$extractor`"
 
