@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
 
 import java.lang.reflect.InvocationTargetException
 
-class MacroAnnotations(thisPhase: DenotTransformer):
+class MacroAnnotations:
   import tpd.*
   import MacroAnnotations.*
 
@@ -82,8 +82,8 @@ class MacroAnnotations(thisPhase: DenotTransformer):
             case (prefixed, newTree :: suffixed) =>
               allTrees ++= prefixed
               insertedAfter = suffixed :: insertedAfter
-              prefixed.foreach(checkAndEnter(_, tree.symbol, annot))
-              suffixed.foreach(checkAndEnter(_, tree.symbol, annot))
+              prefixed.foreach(checkMacroDef(_, tree.symbol, annot))
+              suffixed.foreach(checkMacroDef(_, tree.symbol, annot))
               newTree
             case (Nil, Nil) =>
               report.error(i"Unexpected `Nil` returned by `(${annot.tree}).transform(..)` during macro expansion", annot.tree.srcPos)
@@ -118,19 +118,15 @@ class MacroAnnotations(thisPhase: DenotTransformer):
     val quotes = QuotesImpl()(using SpliceScope.contextWithNewSpliceScope(tree.symbol.sourcePos)(using MacroExpansion.context(tree)).withOwner(tree.symbol.owner))
     annotInstance.transform(using quotes)(tree.asInstanceOf[quotes.reflect.Definition])
 
-  /** Check that this tree can be added by the macro annotation and enter it if needed */
-  private def checkAndEnter(newTree: Tree, annotated: Symbol, annot: Annotation)(using Context) =
+  /** Check that this tree can be added by the macro annotation */
+  private def checkMacroDef(newTree: DefTree, annotated: Symbol, annot: Annotation)(using Context) =
     val sym = newTree.symbol
-    if sym.isClass then
-      report.error(i"macro annotation returning a `class` is not yet supported. $annot tried to add $sym", annot.tree)
-    else if sym.isType then
+    if sym.isType && !sym.isClass then
       report.error(i"macro annotation cannot return a `type`. $annot tried to add $sym", annot.tree)
-    else if sym.owner != annotated.owner then
+    else if sym.owner != annotated.owner && !(annotated.owner.isPackageObject && (sym.isClass || sym.is(Module)) && sym.owner == annotated.owner.owner) then
       report.error(i"macro annotation $annot added $sym with an inconsistent owner. Expected it to be owned by ${annotated.owner} but was owned by ${sym.owner}.", annot.tree)
     else if annotated.isClass && annotated.owner.is(Package) /*&& !sym.isClass*/ then
       report.error(i"macro annotation can not add top-level ${sym.showKind}. $annot tried to add $sym.", annot.tree)
-    else
-      sym.enteredAfter(thisPhase)
 
 object MacroAnnotations:
 

@@ -630,6 +630,32 @@ object Symbols {
           owner.thisType, modcls, parents, decls, TermRef(owner.thisType, module)),
         privateWithin, coord, assocFile)
 
+  /** Same as `newCompleteModuleSymbol` except that `parents` can be a list of arbitrary
+   *  types which get normalized into type refs and parameter bindings.
+   */
+  def newNormalizedModuleSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
+      parentTypes: List[Type],
+      decls: Scope,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile | Null = null)(using Context): TermSymbol = {
+    def completer(module: Symbol) = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls, TermRef(owner.thisType, module))
+      }
+    }
+    newModuleSymbol(
+        owner, name, modFlags, clsFlags,
+        (module, modcls) => completer(module),
+        privateWithin, coord, assocFile)
+  }
+
   /** Create a package symbol with associated package class
    *  from its non-info fields and a lazy type for loading the package's members.
    */

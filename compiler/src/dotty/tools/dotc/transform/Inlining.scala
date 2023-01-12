@@ -14,10 +14,10 @@ import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 
+import scala.collection.mutable.ListBuffer
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
-class Inlining extends MacroTransform with IdentityDenotTransformer {
-  thisPhase =>
+class Inlining extends MacroTransform {
 
   import tpd._
 
@@ -63,6 +63,12 @@ class Inlining extends MacroTransform with IdentityDenotTransformer {
   }
 
   private class InliningTreeMap extends TreeMapWithImplicits {
+
+    /** List of top level classes added by macro annotation in a package object.
+     *  These are added to the PackageDef that owns this particular package object.
+     */
+    private val newTopClasses = MutableSymbolMap[ListBuffer[Tree]]()
+
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
         case tree: MemberDef =>
@@ -73,8 +79,17 @@ class Inlining extends MacroTransform with IdentityDenotTransformer {
             && StagingContext.level == 0
             && MacroAnnotations.hasMacroAnnotation(tree.symbol)
           then
-            val trees = new MacroAnnotations(thisPhase).expandAnnotations(tree)
-            flatTree(trees.map(super.transform))
+            val trees = (new MacroAnnotations).expandAnnotations(tree)
+            val trees1 = trees.map(super.transform)
+
+            // Find classes added to the top level from a package object
+            val (topClasses, trees2) =
+              if ctx.owner.isPackageObject then trees1.partition(_.symbol.owner == ctx.owner.owner)
+              else (Nil, trees1)
+            if topClasses.nonEmpty then
+              newTopClasses.getOrElseUpdate(ctx.owner.owner, new ListBuffer) ++= topClasses
+
+            flatTree(trees2)
           else super.transform(tree)
         case _: Typed | _: Block =>
           super.transform(tree)
@@ -86,6 +101,16 @@ class Inlining extends MacroTransform with IdentityDenotTransformer {
           super.transform(tree)(using StagingContext.quoteContext)
         case _: GenericApply if tree.symbol.isExprSplice =>
           super.transform(tree)(using StagingContext.spliceContext)
+        case _: PackageDef =>
+          super.transform(tree) match
+            case tree1: PackageDef  =>
+              newTopClasses.get(tree.symbol.moduleClass) match
+                case Some(topClasses) =>
+                  newTopClasses.remove(tree.symbol.moduleClass)
+                  val newStats = tree1.stats ::: topClasses.result()
+                  cpy.PackageDef(tree1)(tree1.pid, newStats)
+                case _ => tree1
+            case tree1 => tree1
         case _ =>
           super.transform(tree)
     }

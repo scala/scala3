@@ -8,15 +8,16 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Types
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds
+import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.quoted.reflect._
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.NoCompilationUnit
-
-import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes}
+import dotty.tools.dotc.quoted.MacroExpansion
+import dotty.tools.dotc.quoted.PickledQuotes
+import dotty.tools.dotc.quoted.reflect._
 
 import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
 import scala.quoted.runtime.impl.printers._
@@ -242,6 +243,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement]) =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
         (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
+
+      def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef) = {
+        val cls = module.moduleClass
+        val clsDef = ClassDef(cls, parents, body)
+        val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
+        val modVal = ValDef(module, Some(newCls))
+        (modVal, clsDef)
+      }
     end ClassDef
 
     given ClassDefMethods: ClassDefMethods with
@@ -2480,6 +2489,21 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
         for sym <- decls(cls) do cls.enter(sym)
         cls
+
+      def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
+        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+        val mod = dotc.core.Symbols.newNormalizedModuleSymbol(
+          owner,
+          name.toTermName,
+          modFlags | dotc.core.Flags.ModuleValCreationFlags,
+          clsFlags | dotc.core.Flags.ModuleClassCreationFlags,
+          parents,
+          dotc.core.Scopes.newScope,
+          privateWithin)
+        val cls = mod.moduleClass.asClass
+        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
+        for sym <- decls(cls) do cls.enter(sym)
+        mod
 
       def newMethod(owner: Symbol, name: String, tpe: TypeRepr): Symbol =
         newMethod(owner, name, tpe, Flags.EmptyFlags, noSymbol)
