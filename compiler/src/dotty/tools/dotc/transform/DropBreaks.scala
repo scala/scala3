@@ -50,6 +50,9 @@ class DropBreaks extends MiniPhase, RecordStackChange:
   override def runsAfterGroupsOf: Set[String] = Set(ElimByName.name)
     // we want by-name parameters to be converted to closures
 
+  /** The number of boundary nodes enclosing the currently analized tree. */
+  var enclosingBoundaries: Int = 0
+
   private object LabelTry:
 
     object GuardedThrow:
@@ -136,6 +139,7 @@ class DropBreaks extends MiniPhase, RecordStackChange:
   /** If `tree` is a BreakBoundary, associate a fresh `LabelUsage` with its label. */
   override def prepareForBlock(tree: Block)(using Context): Context = tree match
     case BreakBoundary(label, _) =>
+      enclosingBoundaries += 1
       val mapSoFar = ctx.property(LabelUsages).getOrElse(Map.empty)
       val goto = newSymbol(ctx.owner, BoundaryName.fresh(), Synthetic | Label, tree.tpe)
       ctx.fresh.setProperty(LabelUsages,
@@ -157,17 +161,22 @@ class DropBreaks extends MiniPhase, RecordStackChange:
   /** Need to suppress labeled returns if the stack can change between
    *  source and target of the jump
    */
-  protected def stackChange(using Context) = shadowLabels
+  protected def stackChange(using Context) =
+    if enclosingBoundaries == 0 then ctx else shadowLabels
 
   /** Need to suppress labeled returns if there is an intervening try
    */
-  override def prepareForTry(tree: Try)(using Context): Context = tree match
-    case LabelTry(_, _) => ctx
-    case _ => shadowLabels
+  override def prepareForTry(tree: Try)(using Context): Context =
+    if enclosingBoundaries == 0 then ctx
+    else tree match
+      case LabelTry(_, _) => ctx
+      case _ => shadowLabels
 
-  override def prepareForApply(tree: Apply)(using Context): Context = tree match
-    case Break(_, _) => ctx
-    case _ => stackChange
+  override def prepareForApply(tree: Apply)(using Context): Context =
+    if enclosingBoundaries == 0 then ctx
+    else tree match
+      case Break(_, _) => ctx
+      case _ => stackChange
 
   // other stack changing operations are handled in RecordStackChange
 
@@ -177,6 +186,7 @@ class DropBreaks extends MiniPhase, RecordStackChange:
    */
   override def transformBlock(tree: Block)(using Context): Tree = tree match
     case BreakBoundary(label, expr) =>
+      enclosingBoundaries -= 1
       val uses = ctx.property(LabelUsages).get(label)
       val tree1 =
         if uses.otherRefs > 1 then
@@ -200,26 +210,29 @@ class DropBreaks extends MiniPhase, RecordStackChange:
    *  and the non-local refcount is decreased, since `local` the `Label_this`
    *  binding containing `local` is dropped.
    */
-  override def transformApply(tree: Apply)(using Context): Tree = tree match
-    case Break(lbl, arg) =>
-      labelUsage(lbl) match
-        case Some(uses: LabelUsage)
-        if uses.enclMeth == ctx.owner.enclosingMethod
-            && !ctx.property(ShadowedLabels).getOrElse(Set.empty).contains(lbl)
-          =>
-          uses.otherRefs -= 1
-          uses.returnRefs += 1
-          Return(arg, ref(uses.goto)).withSpan(arg.span)
-        case _ => tree
-    case _ => tree
+  override def transformApply(tree: Apply)(using Context): Tree =
+    if enclosingBoundaries == 0 then tree
+    else tree match
+      case Break(lbl, arg) =>
+        labelUsage(lbl) match
+          case Some(uses: LabelUsage)
+          if uses.enclMeth == ctx.owner.enclosingMethod
+              && !ctx.property(ShadowedLabels).getOrElse(Set.empty).contains(lbl)
+            =>
+            uses.otherRefs -= 1
+            uses.returnRefs += 1
+            Return(arg, ref(uses.goto)).withSpan(arg.span)
+          case _ => tree
+      case _ => tree
 
   /** If `tree` refers to an enclosing label, increase its non local recount.
    *  This increase is corrected in `transformInlined` if the reference turns
    *  out to be part of a BreakThrow to a local, non-shadowed label.
    */
   override def transformIdent(tree: Ident)(using Context): Tree =
-    for uses <- labelUsage(tree.symbol) do
-      uses.otherRefs += 1
+    if enclosingBoundaries != 0 then
+      for uses <- labelUsage(tree.symbol) do
+        uses.otherRefs += 1
     tree
 
 end DropBreaks
