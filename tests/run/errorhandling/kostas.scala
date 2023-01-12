@@ -1,5 +1,5 @@
 package optionMockup:
-  import dotty.util.boundary
+  import scala.util.boundary
   object optional:
     transparent inline def apply[T](inline body: boundary.Label[None.type] ?=> T): Option[T] =
       boundary(Some(body))

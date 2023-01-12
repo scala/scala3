@@ -24,7 +24,7 @@ object DropBreaks:
   class LabelUsage(val goto: TermSymbol, val enclMeth: Symbol):
     /** The number of references to associated label that come from labeled returns */
     var returnRefs: Int = 0
-    /** The number of other references to assocated label */
+    /** The number of other references to associated label */
     var otherRefs: Int = 0
 
   private val LabelUsages = new Property.Key[Map[Symbol, LabelUsage]]
@@ -167,7 +167,7 @@ class DropBreaks extends MiniPhase, RecordStackChange:
   override def prepareForApply(tree: Apply)(using Context): Context = tree match
     case Break(_, _) => ctx
     case _ => stackChange
-    
+
   // other stack changing operations are handled in RecordStackChange
 
   /** If `tree` is a BreakBoundary, transform it as follows:
@@ -220,9 +220,5 @@ class DropBreaks extends MiniPhase, RecordStackChange:
     for uses <- labelUsage(tree.symbol) do
       uses.otherRefs += 1
     tree
-
-  //override def transformReturn(tree: Return)(using Context): Tree =
-  //  if !tree.from.isEmpty && tree.expr.tpe.isExactlyNothing then tree.expr
-  //  else tree
 
 end DropBreaks

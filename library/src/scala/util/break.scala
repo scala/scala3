@@ -8,13 +8,13 @@ object break:
   /** Abort current computation and instead return `value` as the value of
    *  the enclosing `boundary` call that created `label`.
    */
-  def apply[T](value: T)(using l: boundary.Label[T]): Nothing =
-    l.break(value)
+  def apply[T](value: T)(using label: boundary.Label[T]): Nothing =
+    label.break(value)
 
   /** Abort current computation and instead continue after the `boundary` call that
    *  created `label`.
    */
-  def apply()(using l: boundary.Label[Unit]): Nothing =
-    apply(())
+  def apply()(using label: boundary.Label[Unit]): Nothing =
+    label.break(())
 
 end break
