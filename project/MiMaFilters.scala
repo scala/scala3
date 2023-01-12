@@ -3,19 +3,8 @@ import com.typesafe.tools.mima.core._
 
 object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
-    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.MappedAlternative"),
-
-    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.into"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$into$"),
-    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.pureFunctions"),
-    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.captureChecking"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$pureFunctions$"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$captureChecking$"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.caps"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.caps$Pure"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.caps$unsafe$"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.unsafeBox"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.unsafeUnbox"),
   )
-  val TastyCore: Seq[ProblemFilter] = Seq(
-    ProblemFilters.exclude[MissingMethodProblem]("dotty.tools.tasty.TastyFormat.APPLYsigpoly"),
-  )
+  val TastyCore: Seq[ProblemFilter] = Seq()
 }
