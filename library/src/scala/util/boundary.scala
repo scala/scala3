@@ -23,14 +23,14 @@ object boundary:
 
   /** Labels are targets indicating which boundary will be exited by a `break`.
    */
-  class Label[T]:
+  class Label[-T]:
     def break(value: T): Nothing = throw Break(this, value)
 
   /** Run `body` with freshly generated label as implicit argument. Catch any
    *  breaks associated with that label and return their results instead of
    *  `body`'s result.
    */
-  inline def apply[T <: R, R](inline body: Label[T] ?=> R): R =
+  inline def apply[T](inline body: Label[T] ?=> T): T =
     val local = Label[T]()
     try body(using local)
     catch case ex: Break[T] @unchecked =>
