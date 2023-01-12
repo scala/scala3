@@ -6,8 +6,8 @@ import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
 import core.Types._
-import core.Decorators._
 import core.Flags._
+import core.Decorators._
 import core.NameKinds.LiftedTreeName
 import NonLocalReturns._
 import util.Store
@@ -27,7 +27,7 @@ import util.Store
  *  after an exception, so the fact that values on the stack are 'lost' does not matter
  *  (copied from https://github.com/scala/scala/pull/922).
  */
-class LiftTry extends MiniPhase, IdentityDenotTransformer, RecordStackChange { thisPhase =>
+class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = LiftTry.name
@@ -40,13 +40,34 @@ class LiftTry extends MiniPhase, IdentityDenotTransformer, RecordStackChange { t
   override def initContext(ctx: FreshContext): Unit =
     NeedLift = ctx.addLocation(false)
 
-  private def liftingCtx(p: Boolean)(using Context): Context =
+  private def liftingCtx(p: Boolean)(using Context) =
     if (needLift == p) ctx else ctx.fresh.updateStore(NeedLift, p)
 
-  protected def stackChange(using Context): Context = liftingCtx(true)
+  override def prepareForApply(tree: Apply)(using Context): Context =
+    liftingCtx(true)
 
   override def prepareForDefDef(tree: DefDef)(using Context): Context =
     liftingCtx(false)
+
+  override def prepareForValDef(tree: ValDef)(using Context): Context =
+    if !tree.symbol.exists
+       || tree.symbol.isSelfSym
+       || tree.symbol.owner == ctx.owner.enclosingMethod
+          && !tree.symbol.is(Lazy)
+            // The current implementation wraps initializers of lazy vals in
+            // calls to an initialize method, which means that a `try` in the
+            // initializer needs to be lifted. Note that the new scheme proposed
+            // in #6979 would avoid this.
+    then ctx
+    else liftingCtx(true)
+
+  override def prepareForAssign(tree: Assign)(using Context): Context =
+    if (tree.lhs.symbol.maybeOwner == ctx.owner.enclosingMethod) ctx
+    else liftingCtx(true)
+
+  override def prepareForReturn(tree: Return)(using Context): Context =
+    if (!isNonLocalReturn(tree)) ctx
+    else liftingCtx(true)
 
   override def prepareForTemplate(tree: Template)(using Context): Context =
     liftingCtx(false)

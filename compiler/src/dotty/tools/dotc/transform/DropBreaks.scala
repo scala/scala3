@@ -38,7 +38,7 @@ object DropBreaks:
  *    - the throw and the boundary are in the same method, and
  *    - there is no try expression inside the boundary that encloses the throw.
  */
-class DropBreaks extends MiniPhase, RecordStackChange:
+class DropBreaks extends MiniPhase:
   import DropBreaks.*
 
   import tpd._
@@ -158,12 +158,6 @@ class DropBreaks extends MiniPhase, RecordStackChange:
         ctx.fresh.setProperty(ShadowedLabels, setSoFar ++ usesMap.keysIterator)
       case _ => ctx
 
-  /** Need to suppress labeled returns if the stack can change between
-   *  source and target of the jump
-   */
-  protected def stackChange(using Context) =
-    ctx // if enclosingBoundaries == 0 then ctx else shadowLabels
-
   /** Need to suppress labeled returns if there is an intervening try
    */
   override def prepareForTry(tree: Try)(using Context): Context =
@@ -172,17 +166,12 @@ class DropBreaks extends MiniPhase, RecordStackChange:
       case LabelTry(_, _) => ctx
       case _ => shadowLabels
 
-  override def prepareForApply(tree: Apply)(using Context): Context =
-    if enclosingBoundaries == 0 then ctx
-    else tree match
-      case Break(_, _) => ctx
-      case _ => stackChange
-
   override def prepareForValDef(tree: ValDef)(using Context): Context =
-    if tree.symbol.is(Lazy) && tree.symbol.owner == ctx.owner.enclosingMethod then shadowLabels
+    if enclosingBoundaries != 0
+        && tree.symbol.is(Lazy)
+        && tree.symbol.owner == ctx.owner.enclosingMethod
+    then shadowLabels // RHS be converted to a lambda
     else ctx
-
-  // other stack changing operations are handled in RecordStackChange
 
   /** If `tree` is a BreakBoundary, transform it as follows:
    *   - Wrap it in a labeled block if its label has local uses
@@ -203,7 +192,27 @@ class DropBreaks extends MiniPhase, RecordStackChange:
     case _ =>
       tree
 
-  /** Rewrite a break with argument `arg` and label `lbl`
+  private def isBreak(sym: Symbol)(using Context): Boolean =
+    sym.name == nme.apply && sym.owner == defn.breakModule.moduleClass
+
+  private def transformBreak(tree: Tree, arg: Tree, lbl: Symbol)(using Context): Tree =
+    report.log(i"transform break $tree/$arg/$lbl")
+    labelUsage(lbl) match
+      case Some(uses: LabelUsage)
+      if uses.enclMeth == ctx.owner.enclosingMethod
+          && !ctx.property(ShadowedLabels).getOrElse(Set.empty).contains(lbl)
+        =>
+        uses.otherRefs -= 1
+        uses.returnRefs += 1
+        Return(arg, ref(uses.goto)).withSpan(arg.span)
+      case _ =>
+        tree
+
+
+  /** Rewrite a break call
+   *
+   *     break.apply[...](value)(using lbl)
+   *
    *  where `lbl` is a label defined in the current method and is not included in
    *  ShadowedLabels to
    *
