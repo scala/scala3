@@ -473,7 +473,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
 
 
-      /** Create the ValDef and ClassDef of a module.
+      /** Create the ValDef and ClassDef of a module (equivalent to an `object` declaration in source code).
        *
        *  Equivalent to
        *  ```
@@ -484,7 +484,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *    List(modValDef, modClassDef)
        *  ```
        *
-       *  @param module the module symbol (of the module lazy val)
+       *  @param module the module symbol (created using `Symbol.newModule`)
        *  @param parents parents of the module class
        *  @param body body of the module class
        *  @return The module lazy val definition and module class definition.
@@ -3713,7 +3713,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  This symbol starts without an accompanying definition.
        *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
-       *  this symbol to the ClassDef and ValDef constructor.
+       *  this symbol to `ClassDef.module`.
        *
        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
        *        direct or indirect children of the reflection context's owner.
