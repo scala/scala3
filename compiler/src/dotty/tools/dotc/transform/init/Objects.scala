@@ -419,11 +419,12 @@ object Objects:
 
       var count = 0
       given Cache.Data = new Cache.Data
-      given Trace = Trace.empty.add(tpl)
 
       @tailrec
       def iterate()(using Context): Unit =
         count += 1
+
+        given Trace = Trace.empty.add(tpl)
 
         log("Iteration " + count) {
           init(tpl, ObjectRef(classSym), classSym)
@@ -497,6 +498,8 @@ object Objects:
    * @param klass  The enclosing class where the expression `expr` is located.
    */
   def cases(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
+    val trace2 = trace.add(expr)
+
     expr match
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -504,15 +507,17 @@ object Objects:
 
       case id @ Ident(name) if !id.symbol.is(Flags.Method)  =>
         assert(name.isTermName, "type trees should not reach here")
-        extendTrace(expr) { evalType(expr.tpe, thisV, klass) }
+        withTrace(trace2) { evalType(expr.tpe, thisV, klass) }
 
       case NewExpr(tref, New(tpt), ctor, argss) =>
         // check args
         val args = evalArgs(argss.flatten, thisV, klass)
 
         val cls = tref.classSymbol.asClass
-        val outer = outerValue(tref, thisV, klass)
-        instantiate(outer, cls, ctor, args)
+        withTrace(trace2) {
+          val outer = outerValue(tref, thisV, klass)
+          instantiate(outer, cls, ctor, args)
+        }
 
       case Call(ref, argss) =>
         // check args
@@ -522,14 +527,14 @@ object Objects:
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe: @unchecked
           val thisValue2 = extendTrace(ref) { resolveThis(thisTp.classSymbol.asClass, thisV, klass) }
-          call(thisValue2, ref.symbol, args, thisTp, superTp)
+          withTrace(trace2) { call(thisValue2, ref.symbol, args, thisTp, superTp) }
 
         case Select(qual, _) =>
           val receiver = eval(qual, thisV, klass)
           if ref.symbol.isConstructor then
-            callConstructor(receiver, ref.symbol, args)
+            withTrace(trace2) { callConstructor(receiver, ref.symbol, args) }
           else
-            call(receiver, ref.symbol, args, receiver = qual.tpe, superType = NoType)
+            withTrace(trace2) { call(receiver, ref.symbol, args, receiver = qual.tpe, superType = NoType) }
 
         case id: Ident =>
           id.tpe match
@@ -538,13 +543,13 @@ object Objects:
             val enclosingClass = id.symbol.owner.enclosingClass.asClass
             val thisValue2 = extendTrace(ref) { resolveThis(enclosingClass, thisV, klass) }
             // local methods are not a member, but we can reuse the method `call`
-            call(thisValue2, id.symbol, args, receiver = NoType, superType = NoType, needResolve = false)
+            withTrace(trace2) { call(thisValue2, id.symbol, args, receiver = NoType, superType = NoType, needResolve = false) }
           case TermRef(prefix, _) =>
-            val receiver = evalType(prefix, thisV, klass)
+            val receiver = withTrace(trace2) { evalType(prefix, thisV, klass) }
             if id.symbol.isConstructor then
-              callConstructor(receiver, id.symbol, args)
+              withTrace(trace2) { callConstructor(receiver, id.symbol, args) }
             else
-              call(receiver, id.symbol, args, receiver = prefix, superType = NoType)
+              withTrace(trace2) { call(receiver, id.symbol, args, receiver = prefix, superType = NoType) }
 
       case Select(qualifier, name) =>
         val qual = eval(qualifier, thisV, klass)
@@ -553,9 +558,9 @@ object Objects:
           case OuterSelectName(_, _) =>
             val current = qualifier.tpe.classSymbol
             val target = expr.tpe.widenSingleton.classSymbol.asClass
-            resolveThis(target, qual, current.asClass)
+            withTrace(trace2) { resolveThis(target, qual, current.asClass) }
           case _ =>
-            select(qual, expr.symbol, receiver = qualifier.tpe)
+            withTrace(trace2) { select(qual, expr.symbol, receiver = qualifier.tpe) }
 
       case _: This =>
         evalType(expr.tpe, thisV, klass)
