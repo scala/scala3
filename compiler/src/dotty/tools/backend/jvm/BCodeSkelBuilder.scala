@@ -45,7 +45,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /** The value is put on the stack, and control flows through to the next opcode. */
     case FallThrough
     /** The value is put on the stack, and control flow is transferred to the given `label`. */
-    case Jump(label: asm.Label)
+    case Jump(label: asm.Label, targetStackHeight: Int)
     /** The value is RETURN'ed from the enclosing method. */
     case Return
     /** The value is ATHROW'n. */
@@ -368,6 +368,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     // used by genLoadTry() and genSynchronized()
     var earlyReturnVar: Symbol     = null
     var shouldEmitCleanup          = false
+    // stack tracking
+    var stackHeight                = 0
     // line numbers
     var lastEmittedLineNr          = -1
 
@@ -504,6 +506,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         loc
       }
 
+      def makeTempLocal(tk: BType): Local =
+        assert(nxtIdx != -1, "not a valid start index")
+        assert(tk.size > 0, "makeLocal called for a symbol whose type is Unit.")
+        val loc = Local(tk, "temp", nxtIdx, isSynth = true)
+        nxtIdx += tk.size
+        loc
+
       // not to be confused with `fieldStore` and `fieldLoad` which also take a symbol but a field-symbol.
       def store(locSym: Symbol): Unit = {
         val Local(tk, _, idx, _) = slots(locSym)
@@ -573,6 +582,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(cleanups == Nil, "Previous invocation of genDefDef didn't unregister as many cleanups as it registered.")
       earlyReturnVar      = null
       shouldEmitCleanup   = false
+
+      stackHeight = 0
 
       lastEmittedLineNr = -1
     }

@@ -621,6 +621,16 @@ trait BCodeIdiomatic {
     final def drop(tk: BType): Unit = { emit(if (tk.isWideType) Opcodes.POP2 else Opcodes.POP) }
 
     // can-multi-thread
+    final def dropMany(size: Int): Unit = {
+      var s = size
+      while s >= 2 do
+        emit(Opcodes.POP2)
+        s -= 2
+      if s > 0 then
+        emit(Opcodes.POP)
+    }
+
+    // can-multi-thread
     final def dup(tk: BType): Unit =  { emit(if (tk.isWideType) Opcodes.DUP2 else Opcodes.DUP) }
 
     // ---------------- type checks and casts ----------------
