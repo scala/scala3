@@ -27,6 +27,7 @@ import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Types.ConstantType
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
 import dotty.tools.dotc.core.Types.TermRef
+import dotty.tools.dotc.core.Types.NameFilter
 
 
 
@@ -326,9 +327,12 @@ object CheckUnused:
      */
     def registerUsed(sym: Symbol, name: Option[Name])(using Context): Unit =
       if !isConstructorOfSynth(sym) && !doNotRegister(sym) then
-        usedInScope.top += ((sym, sym.isAccessibleAsIdent, name))
         if sym.isConstructor && sym.exists then
           registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
+        else
+          usedInScope.top += ((sym, sym.isAccessibleAsIdent, name))
+          usedInScope.top += ((sym.companionModule, sym.isAccessibleAsIdent, name))
+          usedInScope.top += ((sym.companionClass, sym.isAccessibleAsIdent, name))
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
@@ -345,7 +349,7 @@ object CheckUnused:
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
-      if !tpd.languageImport(imp.expr).nonEmpty then
+      if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum then
         impInScope.top += imp
         unusedImport ++= imp.selectors.filter { s =>
           !shouldSelectorBeReported(imp, s) && !isImportExclusion(s)
@@ -589,6 +593,10 @@ object CheckUnused:
         !isSyntheticMainParam(sym)  &&
         !sym.shouldNotReportParamOwner
 
+    extension (imp: tpd.Import)
+      /** Enum generate an import for its cases (but outside them), which should be ignored */
+      def isGeneratedByEnum(using Context): Boolean =
+        imp.symbol.exists && imp.symbol.owner.is(Flags.Enum, butNot = Flags.Case)
 
     extension (thisName: Name)
       private def isWildcard: Boolean =

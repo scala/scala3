@@ -65,3 +65,12 @@ package foo.test.scala.annotation:
     @unused private def c = 3 // OK
 
     def other = b
+
+package foo.test.companionprivate:
+  class A:
+    import A.b // OK
+    def a = b // OK
+
+  object A:
+    private def b = c // OK
+    def c = List(1,2,3) // OK
