@@ -2,8 +2,18 @@ name: Dotty
 
 on:
   push:
-    tags:
-      - '**'
+    ## Be careful if you add or remove something here! Quoting from
+    ## <https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onpushbranchestagsbranches-ignoretags-ignore>:
+    ##
+    ## > If you define only tags/tags-ignore or only branches/branches-ignore, the
+    ## > workflow won't run for events affecting the undefined Git ref. If you
+    ## > define neither tags/tags-ignore or branches/branches-ignore, the workflow
+    ## > will run for events affecting either branches or tags.
+    ##
+    ## We want the CI to run on both branches and tags, so we should either have:
+    ## - both (tags or tags-ignore) and (branches or branches-ignore),
+    ## - or neither of them.
+    ## But it's important to not have only one or the other.
   pull_request:
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
