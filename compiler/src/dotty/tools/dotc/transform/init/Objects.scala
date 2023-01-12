@@ -124,6 +124,9 @@ object Objects:
      */
     class LeakedInstances(classes: Map[ClassSymbol, List[Type]], funs: Map[Type, List[Fun]])
 
+    object LeakedInstances:
+      val empty = LeakedInstances(Map.empty, Map.empty)
+
     /**
      * Remembers the instantiated types during instantiation of a static object.
      */
@@ -138,7 +141,8 @@ object Objects:
 
     def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last
 
-    def leakedInstances(using data: Data): LeakedInstances = data.leakedInstancesByObject(currentObject)
+    def leakedInstances(using data: Data): LeakedInstances =
+      data.leakedInstancesByObject.getOrElseUpdate(currentObject, LeakedInstances.empty)
 
     def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context, pendingTrace: Trace) =
       val index = data.checkingObjects.indexOf(clazz)
@@ -159,17 +163,18 @@ object Objects:
   end State
 
   object Cache:
-    case class Config(value: Value, leakedInstances: State.LeakedInstances)
+    case class Config(thisV: Value, leakedInstances: State.LeakedInstances)
+    case class Res(value: Value, leakedInstances: State.LeakedInstances)
 
-    class Data extends Cache[Config]:
+    class Data extends Cache[Config, Res]:
       def get(thisV: Value, expr: Tree)(using State.Data): Option[Value] =
         val config = Config(thisV, State.leakedInstances)
         super.get(config, expr).map(_.value)
 
       def assume(thisV: Value, expr: Tree, cacheResult: Boolean)(fun: => Value)(using State.Data): Value =
         val config = Config(thisV, State.leakedInstances)
-        val result = super.assume(config, expr, cacheResult, default = Config(Bottom, State.leakedInstances)) {
-          Config(fun, State.leakedInstances)
+        val result = super.assume(config, expr, cacheResult, default = Res(Bottom, State.leakedInstances)) {
+          Res(fun, State.leakedInstances)
         }
         result.value
   end Cache
