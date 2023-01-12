@@ -6,7 +6,7 @@
 set scalaVersion [lindex $argv 0] ;# Get the script argument
 
 set timeout 30 ;# Give scala-cli some time to download the compiler
-spawn scala-cli repl -S "$scalaVersion" ;# Start the REPL
+spawn scala-cli repl -S "$scalaVersion" --server=false ;# Start the REPL
 expect "scala>" ;# REPL has started
 set timeout 5
 send -- "Seq.empty.len\t" ;# Tab pressed to trigger code completion
