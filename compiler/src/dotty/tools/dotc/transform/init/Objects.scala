@@ -414,27 +414,34 @@ object Objects:
 
   /** Check an individual object */
   private def accessObject(classSym: ClassSymbol)(using Context, State.Data, Trace): Value = log("accessing " + classSym.show, printer, (_: Value).show) {
-    val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+    if classSym.hasSource then
+      val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
-    @tailrec
-    def iterate()(using Context): Unit =
-      given cache: Cache.Data = new Cache.Data
+      var count = 0
+      given Cache.Data = new Cache.Data
       given Trace = Trace.empty.add(tpl)
 
-      init(tpl, ObjectRef(classSym), classSym)
+      @tailrec
+      def iterate()(using Context): Unit =
+        count += 1
 
-      val hasError = ctx.reporter.pendingMessages.nonEmpty
-      if cache.hasChanged && !hasError then
-        cache.prepareForNextIteration()
-        iterate()
-    end iterate
+        log("Iteration " + count) {
+          init(tpl, ObjectRef(classSym), classSym)
+        }
 
-    State.checkCycle(classSym) {
-      val reporter = new StoreReporter(ctx.reporter)
-      iterate()(using ctx.fresh.setReporter(reporter))
-      for warning <- reporter.pendingMessages do
-        ctx.reporter.report(warning)
-    }
+        val hasError = ctx.reporter.pendingMessages.nonEmpty
+        if cache.hasChanged && !hasError then
+          cache.prepareForNextIteration()
+          iterate()
+      end iterate
+
+      State.checkCycle(classSym) {
+        val reporter = new StoreReporter(ctx.reporter)
+        iterate()(using ctx.fresh.setReporter(reporter))
+        for warning <- reporter.pendingMessages do
+          ctx.reporter.report(warning)
+      }
+    end if
 
     ObjectRef(classSym)
   }
