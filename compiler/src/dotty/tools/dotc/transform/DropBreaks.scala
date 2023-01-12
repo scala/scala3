@@ -162,7 +162,7 @@ class DropBreaks extends MiniPhase, RecordStackChange:
    *  source and target of the jump
    */
   protected def stackChange(using Context) =
-    if enclosingBoundaries == 0 then ctx else shadowLabels
+    ctx // if enclosingBoundaries == 0 then ctx else shadowLabels
 
   /** Need to suppress labeled returns if there is an intervening try
    */
@@ -177,6 +177,10 @@ class DropBreaks extends MiniPhase, RecordStackChange:
     else tree match
       case Break(_, _) => ctx
       case _ => stackChange
+
+  override def prepareForValDef(tree: ValDef)(using Context): Context =
+    if tree.symbol.is(Lazy) && tree.symbol.owner == ctx.owner.enclosingMethod then shadowLabels
+    else ctx
 
   // other stack changing operations are handled in RecordStackChange
 
