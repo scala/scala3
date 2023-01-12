@@ -855,16 +855,30 @@ object Trees {
    *                            if this is of class untpd.DerivingTemplate.
    *                            Typed templates only have parents.
    */
-  case class Template[+T <: Untyped] private[ast] (constr: DefDef[T], parentsOrDerived: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList[T])(implicit @constructorOnly src: SourceFile)
+  case class Template[+T <: Untyped] private[ast] (constr: DefDef[T], private var myParentsOrDerived: LazyTreeList[T], self: ValDef[T], private var preBody: LazyTreeList[T])(implicit @constructorOnly src: SourceFile)
     extends DefTree[T] with WithLazyField[List[Tree[T]]] {
     type ThisTree[+T <: Untyped] = Template[T]
     def unforcedBody: LazyTreeList[T] = unforced
     def unforced: LazyTreeList[T] = preBody
+
     protected def force(x: List[Tree[T @uncheckedVariance]]): Unit = preBody = x
+
+    // The post-condition of forceIfLazy is that all lazy fields are trees, so
+    // we need to force parentsAndDerived as well as body.
+    override def forceIfLazy(using Context) =
+      parentsOrDerived
+      super.forceIfLazy
+
     def body(using Context): List[Tree[T]] = forceIfLazy
 
-    def parents: List[Tree[T]] = parentsOrDerived // overridden by DerivingTemplate
-    def derived: List[untpd.Tree] = Nil           // overridden by DerivingTemplate
+    def parentsOrDerived(using Context): List[Tree[T]] = myParentsOrDerived match
+      case latePs: Lazy[List[Tree[T]]] @unchecked =>
+        myParentsOrDerived = latePs.complete
+        parentsOrDerived
+      case ps: List[Tree[T]] @unchecked => ps
+
+    def parents(using Context): List[Tree[T]] = parentsOrDerived // overridden by DerivingTemplate
+    def derived: List[untpd.Tree] = Nil // overridden by DerivingTemplate
   }
 
 
@@ -1355,7 +1369,7 @@ object Trees {
         DefDef(tree: Tree)(name, paramss, tpt, rhs)
       def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs)(using Context): TypeDef =
         TypeDef(tree: Tree)(name, rhs)
-      def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody)(using Context): Template =
+      def Template(tree: Template)(using Context)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody): Template =
         Template(tree: Tree)(constr, parents, derived, self, body)
       def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
         Hole(tree: Tree)(isTerm, idx, args, content, tpt)
@@ -1618,8 +1632,8 @@ object Trees {
               inContext(localCtx(tree)) {
                 this(x, rhs)
               }
-            case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
-              this(this(this(this(x, constr), parents), self), tree.body)
+            case tree @ Template(constr, _, self, _) if tree.derived.isEmpty =>
+              this(this(this(this(x, constr), tree.parents), self), tree.body)
             case Import(expr, _) =>
               this(x, expr)
             case Export(expr, _) =>

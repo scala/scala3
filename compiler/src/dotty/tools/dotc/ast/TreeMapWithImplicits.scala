@@ -55,10 +55,10 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
             transform(tree.tpt),
             transform(tree.rhs)(using nestedScopeCtx(tree.paramss.flatten)))
         }
-      case impl @ Template(constr, parents, self, _) =>
+      case impl @ Template(constr, _, self, _) =>
         cpy.Template(tree)(
           transformSub(constr),
-          transform(parents)(using ctx.superCallContext),
+          transform(impl.parents)(using ctx.superCallContext),
           Nil,
           transformSelf(self),
           transformStats(impl.body, tree.symbol))
