@@ -3666,7 +3666,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       @experimental def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
 
       /** Generates a new module symbol with an associated module class symbol,
-       *  This returns the module symbol. The module class can be accessed calling `moduleClass` on this symbol.
+       *  this is equivalent to an `object` declaration in source code.
+       *  This method returns the module symbol. The module class can be accessed calling `moduleClass` on this symbol.
        *
        *  Example usage:
        *  ```scala
