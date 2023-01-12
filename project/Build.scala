@@ -1490,6 +1490,8 @@ object Build {
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
+            -- "ArrayTest.scala" // refutable pattern match
+            -- "UTF16Test.scala" // refutable pattern match
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
@@ -1499,6 +1501,8 @@ object Build {
           ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
+            -- "ObjectTest.scala" // refutable pattern match
+            -- "TupleTest.scala" // refutable pattern match
             )).get
 
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
