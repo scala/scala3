@@ -4,6 +4,6 @@ trait Bar[X] {
   def foo: X = ???
 }
 // same for `class Foo(...)...`
-trait Foo(val a: A) extends Bar[a.type] {
+trait Foo(val a: A) extends Bar[a.type] { // error
   val same: a.type = foo
 }

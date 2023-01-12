@@ -390,6 +390,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case impl: Template =>
                 for parent <- impl.parents do
                   Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
+                  // Constructor parameters are in scope when typing a parent.
+                  // While they can safely appear in a parent tree, to preserve
+                  // soundness we need to ensure they don't appear in a parent
+                  // type (#16270).
+                  val illegalRefs = parent.tpe.namedPartsWith(p => p.symbol.is(ParamAccessor) && (p.symbol.owner eq sym))
+                  if illegalRefs.nonEmpty then
+                    report.error(
+                      em"The type of a class parent cannot refer to constructor parameters, but ${parent.tpe} refers to ${illegalRefs.map(_.name.show).mkString(",")}", parent.srcPos)
             // Add SourceFile annotation to top-level classes
             if sym.owner.is(Package) then
               if ctx.compilationUnit.source.exists && sym != defn.SourceFileAnnot then
