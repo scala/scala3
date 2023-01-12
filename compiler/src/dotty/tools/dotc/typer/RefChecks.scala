@@ -102,18 +102,15 @@ object RefChecks {
     withMode(Mode.CheckBoundsOrSelfType) {
       val cinfo = cls.classInfo
 
-      def checkSelfConforms(other: ClassSymbol, category: String, relation: String) =
+      def checkSelfConforms(other: ClassSymbol) =
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
         if otherSelf.exists then
           if !(cinfo.selfType <:< otherSelf) then
-            report.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other),
+            report.error(DoesNotConformToSelfType("illegal inheritance", cinfo.selfType, cls, otherSelf, "parent", other),
               cls.srcPos)
 
       for psym <- parents do
-        checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
-      for reqd <- cls.asClass.givenSelfType.classSymbols do
-        if reqd != cls then
-          checkSelfConforms(reqd, "missing requirement", "required")
+        checkSelfConforms(psym.asClass)
     }
   end checkSelfAgainstParents
 

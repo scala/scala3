@@ -610,16 +610,13 @@ object Denotations {
      */
     def signature(sourceLanguage: SourceLanguage)(using Context): Signature =
       if (isType) Signature.NotAMethod // don't force info if this is a type denotation
-      else info match {
+      else info match
         case info: MethodOrPoly =>
           try info.signature(sourceLanguage)
-          catch { // !!! DEBUG
-            case scala.util.control.NonFatal(ex) =>
-              report.echo(s"cannot take signature of $info")
-              throw ex
-          }
+          catch case ex: Exception =>
+            if ctx.debug then report.echo(s"cannot take signature of $info")
+            throw ex
         case _ => Signature.NotAMethod
-      }
 
     def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix, isRefinedMethod: Boolean = this.isRefinedMethod)(using Context): SingleDenotation =
       if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix) && (isRefinedMethod == this.isRefinedMethod)) this
