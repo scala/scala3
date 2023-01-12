@@ -1,5 +1,4 @@
 package scala.util
-import control.ControlException
 
 /** A boundary that can be exited by `break` calls.
  *  `boundary` and `break` represent a unified and superior alternative for the
@@ -9,8 +8,8 @@ import control.ControlException
  *    - Unified names: `boundary` to establish a scope, `break` to leave it.
  *      `break` can optionally return a value.
  *    - Integration with exceptions. `break`s are logically non-fatal exceptions.
- *      The `Break` exception class extends `ControlException` which is a regular
- *      `RuntimeException`, optimized so that stack trace generation is suppressed.
+ *      The `Break` exception class extends `RuntimeException` and is optimized so
+ *      that stack trace generation is suppressed.
  *    - Better performance: breaks to enclosing scopes in the same method can
  *      be rwritten to jumps.
  */
@@ -19,7 +18,9 @@ object boundary:
   /** User code should call `break.apply` instead of throwing this exception
    *  directly.
    */
-  class Break[T] private[boundary](val label: Label[T], val value: T) extends ControlException
+  class Break[T] private[boundary](val label: Label[T], val value: T)
+  extends RuntimeException(
+    /*message*/ null, /*cause*/ null, /*enableSuppression=*/ false, /*writableStackTrace*/ false)
 
   /** Labels are targets indicating which boundary will be exited by a `break`.
    */
