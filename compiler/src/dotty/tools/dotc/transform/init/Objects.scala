@@ -375,7 +375,7 @@ object Objects:
       Bottom
 
     case Bottom =>
-      if field.isStaticObject then ObjectRef(field.asClass)
+      if field.isStaticObject then ObjectRef(field.moduleClass.asClass)
       else Bottom
 
     case RefSet(refs) =>
