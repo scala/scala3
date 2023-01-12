@@ -123,6 +123,7 @@ class DropBreaks extends MiniPhase, RecordStackChange:
             Some((id.symbol, arg))
           case _ => None
       case _ => None
+  end Break
 
   /** The LabelUsage data associated with `lbl` in the current context */
   private def labelUsage(lbl: Symbol)(using Context): Option[LabelUsage] =

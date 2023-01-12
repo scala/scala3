@@ -23,7 +23,7 @@ object boundary:
 
   /** Labels are targets indicating which boundary will be exited by a `break`.
    */
-  class Label[-T]:
+  final class Label[-T]:
     def break(value: T): Nothing = throw Break(this, value)
 
   /** Run `body` with freshly generated label as implicit argument. Catch any
