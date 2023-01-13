@@ -687,6 +687,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       tp
     case tp if (tp `eq` NoType) || (tp `eq` NoPrefix) =>
       tp
+    case tp =>
+      unreachable(i"TypeErasure applied to $tp (of class ${tp.className})")
   }
 
   /** Like translucentSuperType, but issue a fatal error if it does not exist. */

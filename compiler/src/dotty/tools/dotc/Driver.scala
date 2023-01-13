@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 
 import dotty.tools.FatalError
 import config.CompilerCommand
@@ -30,18 +31,20 @@ class Driver {
 
   protected def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
     if files.nonEmpty then
+      var run1 = ctx.run
       try
         val run = compiler.newRun
+        run1 = run
         run.compile(files)
         finish(compiler, run)
       catch
         case ex: FatalError =>
-          report.error(ex.getMessage.nn) // signals that we should fail compilation.
-        case ex: TypeError =>
-          println(s"${ex.toMessage} while compiling ${files.map(_.path).mkString(", ")}")
+          report.error(run1.enrichErrorMessage(ex.getMessage.nn)) // signals that we should fail compilation.
+        case ex: TypeError if !run1.enrichedErrorMessage =>
+          println(run1.enrichErrorMessage(s"TypeError while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex
-        case ex: Throwable =>
-          println(s"$ex while compiling ${files.map(_.path).mkString(", ")}")
+        case NonFatal(ex) if !run1.enrichedErrorMessage =>
+          println(run1.enrichErrorMessage(s"Exception while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex
     ctx.reporter
 

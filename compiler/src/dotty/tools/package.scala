@@ -39,12 +39,27 @@ package object tools {
   def unreachable(x: Any = "<< this case was declared unreachable >>"): Nothing =
     throw new MatchError(x)
 
-  transparent inline def assertShort(inline assertion: Boolean, inline message: Any = null): Unit =
-    if !assertion then
-      val msg = message
-      val e = if msg == null then AssertionError() else AssertionError("assertion failed: " + msg)
-      e.setStackTrace(Array())
-      throw e
+  transparent inline def assertShort(inline assertion: Boolean, inline message: Any | Null = null): Unit =
+    if !assertion then throwAssertionShortError(message)
+
+  private def throwAssertionShortError(msg: Any): Nothing =
+    val e = AssertionError("assertion failed: " + String.valueOf(msg))
+    e.setStackTrace(Array())
+    throw e
+
+  import dotty.tools.dotc.core.Contexts.*
+
+  transparent inline def assert(inline assertion: Boolean, inline message: Any | Null = null)(using inline ctx: Context | Null = null): Unit =
+    if !assertion then throwAssertionError(message)
+
+  // extracted from `assert` to make it as small (and inlineable) as possible
+  private def throwAssertionError(message: Any | Null)(using ctx: Context | Null): Nothing =
+    val msg = String.valueOf(message).nn
+    if ctx == null then
+      throw AssertionError("assertion failed: " + msg)
+    else inContext(ctx) {
+      throw AssertionError("assertion failed: " + ctx.run.enrichErrorMessage(msg))
+    }
 
   // Ensure this object is already classloaded, since it's only actually used
   // when handling stack overflows and every operation (including class loading)
