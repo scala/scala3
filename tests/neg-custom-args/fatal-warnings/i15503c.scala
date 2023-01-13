@@ -25,3 +25,16 @@ package foo.test.contructors:
   class C private (private val x: Int) // error
   class D private (private val x: Int): // OK
     def y = x
+
+
+package test.foo.i16682:
+  object myPackage:
+    private object IntExtractor: // OK
+        def unapply(s: String): Option[Int] = s.toIntOption
+
+    def isInt(s: String) = s match {
+        case IntExtractor(i) => println(s"Number $i")
+        case _ => println("NaN")
+    }
+
+  def f = myPackage.isInt("42")

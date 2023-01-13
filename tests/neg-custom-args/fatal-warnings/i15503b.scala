@@ -87,3 +87,16 @@ package foo.scala2.tests:
       (new Bippy): Something
     }
   }
+
+package test.foo.twisted.i16682:
+  def myPackage = 
+    object IntExtractor: // OK
+      def unapply(s: String): Option[Int] = s.toIntOption
+
+    def isInt(s: String) = s match { // OK
+      case IntExtractor(i) => println(s"Number $i")
+      case _ => println("NaN")
+    }
+    isInt
+
+  def f = myPackage("42")
