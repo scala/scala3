@@ -1,5 +1,4 @@
 
-
 object BA {
     given String = ""
     given Double = 0

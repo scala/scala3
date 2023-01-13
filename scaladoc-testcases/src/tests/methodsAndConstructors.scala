@@ -62,4 +62,3 @@ class Methods:
 
  def clauseInterleaving[T](x: T)[U](y: U)(using (T, U)): (T, U)
  = ???
-

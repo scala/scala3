@@ -53,7 +53,6 @@ class B extends A[Int] {
   override def b[T <: Int](x: Int)(y: String) = true // error
 
   override def next(): Int = ???    // error: incompatible type
-
 }
 
 class C extends A[String] {
@@ -115,4 +114,3 @@ class C extends A {
   override def m: Int = 42 // error: has incompatible type
 }
 }
-

@@ -56,4 +56,3 @@ extension (using String)(using Unit)(a: Animal)(using Int)(using Number)
   = ???
   def f14[D](b: D)[T](c: T): T
   = ???
-
