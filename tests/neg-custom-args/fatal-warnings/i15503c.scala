@@ -18,3 +18,10 @@ class A:
     val x = 1 // OK
     def y = 2 // OK
     def z = g // OK
+
+package foo.test.contructors:
+  case class A private (x:Int) // OK
+  class B private (val x: Int) // OK
+  class C private (private val x: Int) // error
+  class D private (private val x: Int): // OK
+    def y = x

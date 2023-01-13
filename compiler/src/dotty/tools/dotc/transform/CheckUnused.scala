@@ -367,7 +367,7 @@ object CheckUnused:
             explicitParamInScope += memDef
         else if currScopeType.top == ScopeType.Local then
           localDefInScope += memDef
-        else if currScopeType.top == ScopeType.Template && memDef.symbol.is(Private, butNot = SelfName) then
+        else if memDef.shouldReportPrivateDef then
           privateDefInScope += memDef
 
     /** Register pattern variable */
@@ -589,9 +589,12 @@ object CheckUnused:
 
       private def isValidParam(using Context): Boolean =
         val sym = memDef.symbol
-        (sym.is(Param) || sym.isAllOf(PrivateParamAccessor)) &&
+        (sym.is(Param) || sym.isAllOf(PrivateParamAccessor | Local, butNot = CaseAccessor)) &&
         !isSyntheticMainParam(sym)  &&
         !sym.shouldNotReportParamOwner
+
+      private def shouldReportPrivateDef(using Context): Boolean = 
+        currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
 
     extension (imp: tpd.Import)
       /** Enum generate an import for its cases (but outside them), which should be ignored */
