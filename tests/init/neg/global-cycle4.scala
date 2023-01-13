@@ -14,6 +14,6 @@ class D(x: Int) {
   def bar(): A = if x > 0 then new B else new C
 }
 
-object O {
-  val a: Int = D(5).bar().foo()    // error
+object O {                       // error
+  val a: Int = D(5).bar().foo()
 }

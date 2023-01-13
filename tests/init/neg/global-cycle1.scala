@@ -1,9 +1,9 @@
-object A {
-  val a: Int = B.b     // error
+object A {             // error
+  val a: Int = B.b
 }
 
 object B {
-  val b: Int = A.a     // error
+  val b: Int = A.a
 }
 
 @main

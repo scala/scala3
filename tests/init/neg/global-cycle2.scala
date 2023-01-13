@@ -1,5 +1,5 @@
-object A {
-  val a: Int = B.foo()      // error
+object A {        // error
+  val a: Int = B.foo()
 }
 
 object B {
