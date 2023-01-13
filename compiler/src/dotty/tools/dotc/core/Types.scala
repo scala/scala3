@@ -1071,12 +1071,15 @@ object Types {
      *  @param relaxedCheck   if true type `Null` becomes a subtype of non-primitive value types in TypeComparer.
      *  @param matchLoosely   if true the types `=> T` and `()T` are seen as overriding each other.
      *  @param checkClassInfo if true we check that ClassInfos are within bounds of abstract types
+     * 
+     *  @param isSubType      a function used for checking subtype relationships.
      */
-    final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(using Context): Boolean = {
+    final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true,
+                        isSubType: (Type, Type) => Context ?=> Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean = {
       val overrideCtx = if relaxedCheck then ctx.relaxedOverrideContext else ctx
       inContext(overrideCtx) {
         !checkClassInfo && this.isInstanceOf[ClassInfo]
-        || (this.widenExpr frozen_<:< that.widenExpr)
+        || isSubType(this.widenExpr, that.widenExpr)
         || matchLoosely && {
             val this1 = this.widenNullaryMethod
             val that1 = that.widenNullaryMethod

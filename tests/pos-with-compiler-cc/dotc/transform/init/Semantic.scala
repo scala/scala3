@@ -515,7 +515,7 @@ object Semantic:
   object Reporter:
     class BufferedReporter extends Reporter:
       private val buf = new mutable.ArrayBuffer[Error]
-      def errors = buf.toList
+      def errors: List[Error] = buf.toList
       def report(err: Error) = buf += err
 
     class TryBufferedReporter(backup: Cache) extends BufferedReporter with TryReporter:

@@ -10,6 +10,7 @@ import Decorators.*
 import config.Printers.capt
 import printing.Printer
 import printing.Texts.Text
+import annotation.retains
 
 /** An annotation representing a capture set and whether it is boxed.
  *  It simulates a normal @retains annotation except that it is more efficient,
@@ -50,7 +51,7 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
       this.refs == refs && this.boxed == boxed && this.symbol == that.symbol
     case _ => false
 
-  override def mapWith(tm: TypeMap)(using Context) =
+  override def mapWith(tm: TypeMap @retains(caps.*))(using Context) =
     val elems = refs.elems.toList
     val elems1 = elems.mapConserve(tm)
     if elems1 eq elems then this

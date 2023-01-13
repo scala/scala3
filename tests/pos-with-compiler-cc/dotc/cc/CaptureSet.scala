@@ -273,7 +273,7 @@ sealed abstract class CaptureSet extends Showable, caps.Pure:
     map(Substituters.SubstParamsMap(tl, to).detach)
 
   /** Invoke handler if this set has (or later aquires) the root capability `*` */
-  def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
+  def disallowRootCapability(handler: () -> Context ?-> Unit)(using Context): this.type =
     if isUniversal then handler()
     this
 
