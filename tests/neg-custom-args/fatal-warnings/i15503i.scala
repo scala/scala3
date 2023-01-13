@@ -74,3 +74,13 @@ package foo.test.companionprivate:
   object A:
     private def b = c // OK
     def c = List(1,2,3) // OK
+
+package foo.test.i16678:
+  def foo(func: Int => String, value: Int): String = func(value) // OK
+
+  def run = 
+    println(foo(number => number.toString, value = 5)) // OK
+    println(foo(number => "<number>", value = 5)) // error
+    println(foo(func = number => "<number>", value = 5)) // error
+    println(foo(func = number => number.toString, value = 5)) // OK
+    println(foo(func = _.toString, value = 5)) // OK
