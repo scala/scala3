@@ -256,3 +256,13 @@ package foo.test.enums:
   enum A: // OK
     case B extends A // OK
     case C extends A // OK
+
+package foo.test.typeapply.hklamdba.i16680:
+  package foo:
+    trait IO[A]
+
+  package bar:
+    import foo.IO // OK
+
+    def f[F[_]]: String = "hello"
+    def go = f[IO]
