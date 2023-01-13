@@ -2515,9 +2515,12 @@ object SymDenotations {
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
       end dropStale
 
-      if symbol eq defn.ScalaPackageClass then
+      if name == nme.CONSTRUCTOR then
+        NoDenotation // packages don't have constructors, even if package objects do.
+      else if symbol eq defn.ScalaPackageClass then
+        // revert order: search package first, then nested package objects
         val denots = super.computeMembersNamed(name)
-        if denots.exists || name == nme.CONSTRUCTOR then denots
+        if denots.exists then denots
         else recur(packageObjs, NoDenotation)
       else recur(packageObjs, NoDenotation)
     end computeMembersNamed
