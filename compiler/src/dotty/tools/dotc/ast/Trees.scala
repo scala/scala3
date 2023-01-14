@@ -407,12 +407,12 @@ object Trees {
   }
 
   /** A ValDef or DefDef tree */
-  abstract class ValOrDefDef[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends MemberDef[T] with WithLazyField[Tree[T]] {
+  abstract class ValOrDefDef[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends MemberDef[T], WithLazyFields {
     type ThisTree[+T <: Untyped] <: ValOrDefDef[T]
     def name: TermName
     def tpt: Tree[T]
-    def unforcedRhs: LazyTree[T] = unforced
-    def rhs(using Context): Tree[T] = forceIfLazy
+    def unforcedRhs: LazyTree[T]
+    def rhs(using Context): Tree[T]
   }
 
   trait ValOrTypeDef[+T <: Untyped] extends MemberDef[T]:
@@ -808,8 +808,10 @@ object Trees {
     extends ValOrDefDef[T], ValOrTypeDef[T] {
     type ThisTree[+T <: Untyped] = ValDef[T]
     assert(isEmpty || (tpt ne genericEmptyTree))
-    def unforced: LazyTree[T] = preRhs
-    protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
+
+    def unforcedRhs: LazyTree[T] = preRhs
+    def forceFields()(using Context): Unit = preRhs = force(preRhs)
+    def rhs(using Context): Tree[T] = { forceFields(); preRhs.asInstanceOf[Tree[T]] }
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
@@ -818,8 +820,10 @@ object Trees {
     extends ValOrDefDef[T] {
     type ThisTree[+T <: Untyped] = DefDef[T]
     assert(tpt ne genericEmptyTree)
-    def unforced: LazyTree[T] = preRhs
-    protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
+
+    def unforcedRhs: LazyTree[T] = preRhs
+    def forceFields()(using Context): Unit = preRhs = force(preRhs)
+    def rhs(using Context): Tree[T] = { forceFields(); preRhs.asInstanceOf[Tree[T]] }
 
     def leadingTypeParams(using Context): List[TypeDef[T]] = paramss match
       case (tparams @ (tparam: TypeDef[_]) :: _) :: _ => tparams.asInstanceOf[List[TypeDef[T]]]
@@ -855,27 +859,17 @@ object Trees {
    *                            if this is of class untpd.DerivingTemplate.
    *                            Typed templates only have parents.
    */
-  case class Template[+T <: Untyped] private[ast] (constr: DefDef[T], private var myParentsOrDerived: LazyTreeList[T], self: ValDef[T], private var preBody: LazyTreeList[T])(implicit @constructorOnly src: SourceFile)
-    extends DefTree[T] with WithLazyField[List[Tree[T]]] {
+  case class Template[+T <: Untyped] private[ast] (constr: DefDef[T], private var preParentsOrDerived: LazyTreeList[T], self: ValDef[T], private var preBody: LazyTreeList[T])(implicit @constructorOnly src: SourceFile)
+    extends DefTree[T] with WithLazyFields {
     type ThisTree[+T <: Untyped] = Template[T]
-    def unforcedBody: LazyTreeList[T] = unforced
-    def unforced: LazyTreeList[T] = preBody
 
-    protected def force(x: List[Tree[T @uncheckedVariance]]): Unit = preBody = x
+    def forceFields()(using Context): Unit =
+      preParentsOrDerived = force(preParentsOrDerived)
+      preBody = force(preBody)
 
-    // The post-condition of forceIfLazy is that all lazy fields are trees, so
-    // we need to force parentsAndDerived as well as body.
-    override def forceIfLazy(using Context) =
-      parentsOrDerived
-      super.forceIfLazy
-
-    def body(using Context): List[Tree[T]] = forceIfLazy
-
-    def parentsOrDerived(using Context): List[Tree[T]] = myParentsOrDerived match
-      case latePs: Lazy[List[Tree[T]]] @unchecked =>
-        myParentsOrDerived = latePs.complete
-        parentsOrDerived
-      case ps: List[Tree[T]] @unchecked => ps
+    def unforcedBody: LazyTreeList[T] = preBody
+    def body(using Context): List[Tree[T]] = { forceFields(); preBody.asInstanceOf[List[Tree[T]]] }
+    def parentsOrDerived(using Context): List[Tree[T]] = { forceFields(); preParentsOrDerived.asInstanceOf[List[Tree[T]]] }
 
     def parents(using Context): List[Tree[T]] = parentsOrDerived // overridden by DerivingTemplate
     def derived: List[untpd.Tree] = Nil // overridden by DerivingTemplate
@@ -1027,17 +1021,11 @@ object Trees {
    *  accessed by `unforced` and `force`. Forcing the field will
    *  set the `var` to the underlying value.
    */
-  trait WithLazyField[+T <: AnyRef] {
-    def unforced: T | Lazy[T]
-    protected def force(x: T @uncheckedVariance): Unit
-    def forceIfLazy(using Context): T = unforced match {
-      case lzy: Lazy[T @unchecked] =>
-        val x = lzy.complete
-        force(x)
-        x
-      case x: T @ unchecked => x
-    }
-  }
+  trait WithLazyFields:
+    protected def force[T <: AnyRef](x: T | Lazy[T])(using Context): T = x match
+      case x: Lazy[T] @unchecked => x.complete
+      case x: T @unchecked => x
+    def forceFields()(using Context): Unit
 
   /** A base trait for lazy tree fields.
    *  These can be instantiated with Lazy instances which

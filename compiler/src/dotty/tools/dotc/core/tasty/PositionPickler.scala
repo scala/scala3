@@ -8,7 +8,7 @@ import dotty.tools.tasty.TastyBuffer
 import TastyBuffer._
 
 import ast._
-import Trees.WithLazyField
+import Trees.WithLazyFields
 import util.{SourceFile, NoSource}
 import core._
 import Annotations._, Decorators._
@@ -80,7 +80,7 @@ class PositionPickler(
     def alwaysNeedsPos(x: Positioned) = x match {
       case
           // initialSpan is inaccurate for trees with lazy field
-          _: WithLazyField[?]
+          _: WithLazyFields
 
           // A symbol is created before the corresponding tree is unpickled,
           // and its position cannot be changed afterwards.
