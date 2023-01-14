@@ -13,7 +13,7 @@ import NameKinds.SuperAccessorName
 import ast.tpd.*
 import config.Printers.init as printer
 import reporting.StoreReporter
-import reporting.trace.force as log
+import reporting.trace as log
 
 import Errors.*
 import Trace.*
