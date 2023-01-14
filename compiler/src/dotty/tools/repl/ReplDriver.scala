@@ -37,6 +37,7 @@ import org.jline.reader._
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have
@@ -241,7 +242,7 @@ class ReplDriver(settings: Array[String],
           unit.tpdTree = tree
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
-          val (_, completions) = Completion.completions(srcPos)
+          val completions = try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
           completions.map(_.label).distinct.map(makeCandidate)
         }
         .getOrElse(Nil)

@@ -233,4 +233,8 @@ class TabcompleteTests extends ReplTest {
     val comp = tabComplete("BigInt(1).")
     assertTrue(comp.distinct.nonEmpty)
   }
+
+  @Test def i9334 = initially {
+    assertEquals(Nil, tabComplete("class Foo[T]; classOf[Foo]."))
+  }
 }
