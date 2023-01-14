@@ -249,11 +249,18 @@ object Objects:
 
       if target.isOneOf(Flags.Method) then
         if target.hasSource then
-          val cls = target.owner.enclosingClass.asClass
-          val ddef = target.defTree.asInstanceOf[DefDef]
-          extendTrace(ddef) {
-            eval(ddef.rhs, ref, cls, cacheResult = true)
-          }
+          println("ref = " + ref)
+          ref match
+          case obj: ObjectRef if obj.klass != State.currentObject && target.isOneOf(Flags.Mutable) =>
+            errorMutateOtherStaticObject(State.currentObject, obj.klass)
+            Bottom
+
+          case _ =>
+            val cls = target.owner.enclosingClass.asClass
+            val ddef = target.defTree.asInstanceOf[DefDef]
+            extendTrace(ddef) {
+              eval(ddef.rhs, ref, cls, cacheResult = true)
+            }
         else
           Bottom
       else if target.exists then
@@ -342,7 +349,7 @@ object Objects:
         ref match
         case obj: ObjectRef if State.currentObject != obj.klass =>
           if target.isOneOf(Flags.Mutable) then
-            report.warning("Reading mutable state of " + obj.klass + " during initialization of " + State.currentObject + " is discouraged as it breaks initialization-time irrelevance", Trace.position)
+            report.warning("Reading mutable state of " + obj.klass + " during initialization of " + State.currentObject + " is discouraged as it breaks initialization-time irrelevance. Calling trace: " + Trace.show, Trace.position)
             Bottom
           else
             if ref.hasField(target) then
@@ -589,9 +596,17 @@ object Objects:
         lhs match
         case Select(qual, _) =>
           eval(qual, thisV, klass)
-          eval(rhs, thisV, klass)
         case id: Ident =>
-          eval(rhs, thisV, klass)
+          id.tpe match
+          case TermRef(NoPrefix, _) =>
+          case TermRef(prefix, _) =>
+            extendTrace(id) { evalType(prefix, thisV, klass) }
+
+        eval(rhs, thisV, klass)
+        if lhs.symbol.owner.isStaticObject && lhs.symbol.owner != State.currentObject then
+          withTrace(trace2) { errorMutateOtherStaticObject(State.currentObject, lhs.symbol.owner.asClass) }
+        end if
+        Bottom
 
       case closureDef(ddef) =>
         Fun(ddef.rhs, thisV, klass)
@@ -900,3 +915,11 @@ object Objects:
     else
       if cls.isAllOf(Flags.JavaInterface) then Bottom
       else evalType(tref.prefix, thisV, klass, elideObjectAccess = cls.isStatic)
+
+  def errorMutateOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
+    val msg =
+      s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
+      "Mutating other static objects during the initialization of one static object is discouraged. " +
+      "Calling trace:\n" + Trace.show
+
+    report.warning(msg, Trace.position)
