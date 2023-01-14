@@ -13,7 +13,7 @@ import NameKinds.SuperAccessorName
 import ast.tpd.*
 import config.Printers.init as printer
 import reporting.StoreReporter
-import reporting.trace as log
+import reporting.trace.force as log
 
 import Errors.*
 import Trace.*
@@ -68,13 +68,15 @@ object Objects:
 
     def hasOuter(cls: ClassSymbol): Boolean = outers.contains(cls)
 
-    def updateField(field: Symbol, value: Value) =
+    def updateField(field: Symbol, value: Value)(using Context) = log("Update field " + field + " = " + value + " for " + this, printer) {
       assert(!fields.contains(field), "Field already set " + field)
       fields(field) = value
+    }
 
-    def updateOuter(cls: ClassSymbol, value: Value) =
+    def updateOuter(cls: ClassSymbol, value: Value)(using Context) = log("Update outer " + cls + " = " + value + " for " + this, printer) {
       assert(!outers.contains(cls), "Outer already set " + cls)
       outers(cls) = value
+    }
 
   /** A reference to a static object */
   case class ObjectRef(klass: ClassSymbol) extends Ref:
@@ -85,8 +87,14 @@ object Objects:
    *
    * `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass(tp: Type, klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref:
+  case class OfClass private(tp: Type, klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref:
     def show(using Context) = "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ")"
+
+  object OfClass:
+    def apply(tp: Type, klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using Context): OfClass =
+      val instance = new OfClass(tp, klass, outer, ctor, args)
+      instance.updateOuter(klass, outer)
+      instance
 
   /**
    * Rerepsents values of a specific type
@@ -849,7 +857,7 @@ object Objects:
    * Object access elission happens when the object access is used as a prefix
    * in `new o.C` and `C` does not need an outer.
    */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] =
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] = log("resolveThis target = " + target.show + ", this = " + thisV.show, printer, (_: Value).show) {
     if target == klass then
       thisV
     else if target.is(Flags.Package) then
@@ -876,6 +884,7 @@ object Objects:
           Bottom
         case OfType(tp) =>
           OfType(target.appliedRef)
+  }
 
   /** Compute the outer value that correspond to `tref.prefix`
    *
