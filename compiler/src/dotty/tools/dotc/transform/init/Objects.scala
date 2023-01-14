@@ -213,7 +213,7 @@ object Objects:
       case _ => a
 
   extension (values: Seq[Value])
-    def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
+    def join: Value = if values.isEmpty then Bottom else values.reduce { (v1, v2) => v1.join(v2) }
 
     def widenArgs: Contextual[List[Value]] = values.map(_.widenArg).toList
 
