@@ -249,7 +249,6 @@ object Objects:
 
       if target.isOneOf(Flags.Method) then
         if target.hasSource then
-          println("ref = " + ref)
           ref match
           case obj: ObjectRef if obj.klass != State.currentObject && target.isOneOf(Flags.Mutable) =>
             errorMutateOtherStaticObject(State.currentObject, obj.klass)
