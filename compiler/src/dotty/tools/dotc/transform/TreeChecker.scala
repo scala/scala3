@@ -302,12 +302,9 @@ object TreeChecker {
       // case tree: untpd.Ident =>
       // case tree: untpd.Select =>
       // case tree: untpd.Bind =>
-      case vd : ValDef =>
-        vd.forceFields()
-        assertIdentNotJavaClass(vd)
-      case dd : DefDef =>
-        dd.forceFields()
-        assertIdentNotJavaClass(dd)
+      case md: ValOrDefDef =>
+        md.forceFields()
+        assertIdentNotJavaClass(md)
       // case tree: untpd.TypeDef =>
       case Apply(fun, args) =>
         assertIdentNotJavaClass(fun)
