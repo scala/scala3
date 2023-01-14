@@ -1,10 +1,10 @@
 abstract class Base {
+  val msg: String = "hello"
   def foo(): Unit
   foo()
 }
 
 object O extends Base {              // error
-  val msg: String = "hello"
 
   class Inner {
     println(msg)

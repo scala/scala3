@@ -14,5 +14,5 @@ abstract class TokensCommon {
 
 object JavaTokens extends TokensCommon {
   final def maxToken: Int = DOUBLE
-  final val DOUBLE = 188                   // error: but constant folding avoided the issue
+  final val DOUBLE = 188
 }

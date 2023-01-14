@@ -1,6 +1,6 @@
 import scala.collection.mutable
 
-object NameKinds {
+object NameKinds { // error
   private val qualifiedNameKinds = mutable.HashMap[Int, QualifiedNameKind]()
 
   val QualifiedName: QualifiedNameKind = new QualifiedNameKind(2, ".")
@@ -11,12 +11,4 @@ object NameKinds {
   extends NameKind(tag) {
     qualifiedNameKinds(tag) = this
   }
-}
-
-object A {              // error
-  val n: Int = B.m
-}
-
-object B {
-  val m: Int = A.n
 }
