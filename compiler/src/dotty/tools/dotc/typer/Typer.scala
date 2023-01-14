@@ -2238,25 +2238,23 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  since classes defined in a such arguments should not be entered into the
    *  enclosing class.
    */
-  def annotContext(mdef: untpd.Tree, sym: Symbol)(using Context): Context = {
+  def annotContext(mdef: untpd.Tree, sym: Symbol)(using Context): Context =
     def isInner(owner: Symbol) = owner == sym || sym.is(Param) && owner == sym.owner
     val outer = ctx.outersIterator.dropWhile(c => isInner(c.owner)).next()
-    var adjusted = outer.property(ExprOwner) match {
+    val adjusted = outer.property(ExprOwner) match {
       case Some(exprOwner) if outer.owner.isClass => outer.exprContext(mdef, exprOwner)
       case _ => outer
     }
+    def local: FreshContext = adjusted.fresh.setOwner(newLocalDummy(sym.owner))
     sym.owner.infoOrCompleter match
-      case completer: Namer#Completer if sym.is(Param) =>
-        val tparams = completer.completerTypeParams(sym)
-        if tparams.nonEmpty then
-          // Create a new local context with a dummy owner and a scope containing the
-          // type parameters of the enclosing method or class. Thus annotations can see
-          // these type parameters. See i12953.scala for a test case.
-          val dummyOwner = newLocalDummy(sym.owner)
-          adjusted = adjusted.fresh.setOwner(dummyOwner).setScope(newScopeWith(tparams*))
+      case completer: Namer#Completer
+      if sym.is(Param) && completer.completerTypeParams(sym).nonEmpty =>
+        // Create a new local context with a dummy owner and a scope containing the
+        // type parameters of the enclosing method or class. Thus annotations can see
+        // these type parameters. See i12953.scala for a test case.
+        local.setScope(newScopeWith(completer.completerTypeParams(sym)*))
       case _ =>
-    adjusted
-  }
+        if outer.owner.isClass then local else adjusted
 
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = {
     // necessary to force annotation trees to be computed.
