@@ -66,6 +66,12 @@ sealed trait Space:
     else trace(s"isSubspace(${show(this)}, ${show(b)})", debug) {
       isSubspaceCache.getOrElseUpdate(b, computeIsSubspace(this, b))
     }
+
+  private var mySimplified: Space = _
+
+  def simplify(using Context): Space =
+    if mySimplified == null then mySimplified = SpaceEngine.computeSimplify(this)
+    mySimplified
 end Space
 
 /** Empty space */
@@ -98,8 +104,13 @@ case class Or(spaces: Seq[Space]) extends Space
 object SpaceEngine {
   import tpd._
 
+  def simplify(space: Space)(using Context): Space           = space.simplify
+  def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)
+  def canDecompose(typ: Typ)(using Context): Boolean         = typ.canDecompose
+  def decompose(typ: Typ)(using Context): List[Typ]          = typ.decompose
+
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
-  def simplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, show)(space match {
+  def computeSimplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, show)(space match {
     case Prod(tp, fun, spaces) =>
       val sps = spaces.mapconserve(simplify)
       if sps.contains(Empty) then Empty
@@ -150,8 +161,6 @@ object SpaceEngine {
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
-  def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)
-
   def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = {
     val a2 = simplify(a)
     val b2 = simplify(b)
@@ -577,9 +586,6 @@ object SpaceEngine {
       val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
-
-  def canDecompose(typ: Typ)(using Context): Boolean = typ.canDecompose
-  def decompose(typ: Typ)(using Context): List[Typ]  = typ.decompose
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
   def decompose(tp: Type)(using Context): List[Type] = trace(i"decompose($tp)", debug) {
