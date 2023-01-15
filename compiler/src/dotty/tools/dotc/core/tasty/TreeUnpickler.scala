@@ -625,7 +625,9 @@ class TreeUnpickler(reader: TastyReader,
             else
               newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }
-      val annots = annotFns.map(_(sym.owner))
+      val annotOwner =
+        if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
+      val annots = annotFns.map(_(annotOwner))
       sym.annotations = annots
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
