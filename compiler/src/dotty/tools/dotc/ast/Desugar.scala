@@ -1807,38 +1807,44 @@ object desugar {
      *
      *  1.
      *
-     *    for (P <- G) E   ==>   G.foreach (P => E)
+     *      for (P <- G) E   ==>   G.foreach (P => E)
      *
-     *     Here and in the following (P => E) is interpreted as the function (P => E)
-     *     if P is a variable pattern and as the partial function { case P => E } otherwise.
+     *    Here and in the following (P => E) is interpreted as the function (P => E)
+     *    if P is a variable pattern and as the partial function { case P => E } otherwise.
      *
      *  2.
      *
-     *    for (P <- G) yield E  ==>  G.map (P => E)
+     *      for (P <- G) yield P  ==>  G
+     *
+     *    if P is a variable or a tuple of variables and G is not a withFilter.
+     *
+     *      for (P <- G) yield E  ==>  G.map (P => E)
+     *
+     *    otherwise
      *
      *  3.
      *
-     *    for (P_1 <- G_1; P_2 <- G_2; ...) ...
-     *      ==>
-     *    G_1.flatMap (P_1 => for (P_2 <- G_2; ...) ...)
+     *      for (P_1 <- G_1; P_2 <- G_2; ...) ...
+     *        ==>
+     *      G_1.flatMap (P_1 => for (P_2 <- G_2; ...) ...)
      *
      *  4.
      *
-     *    for (P <- G; E; ...) ...
-     *      =>
-     *    for (P <- G.filter (P => E); ...) ...
+     *      for (P <- G; E; ...) ...
+     *        =>
+     *      for (P <- G.filter (P => E); ...) ...
      *
      *  5. For any N:
      *
-     *    for (P_1 <- G; P_2 = E_2; val P_N = E_N; ...)
-     *      ==>
-     *    for (TupleN(P_1, P_2, ... P_N) <-
-     *      for (x_1 @ P_1 <- G) yield {
-     *        val x_2 @ P_2 = E_2
-     *        ...
-     *        val x_N & P_N = E_N
-     *        TupleN(x_1, ..., x_N)
-     *      } ...)
+     *      for (P_1 <- G; P_2 = E_2; val P_N = E_N; ...)
+     *        ==>
+     *      for (TupleN(P_1, P_2, ... P_N) <-
+     *        for (x_1 @ P_1 <- G) yield {
+     *          val x_2 @ P_2 = E_2
+     *          ...
+     *          val x_N & P_N = E_N
+     *          TupleN(x_1, ..., x_N)
+     *        } ...)
      *
      *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i` is not generated
      *    and the variable constituting P_i is used instead of x_i
@@ -1951,7 +1957,7 @@ object desugar {
         case GenCheckMode.FilterAlways => false  // pattern was prefixed by `case`
         case GenCheckMode.FilterNow | GenCheckMode.CheckAndFilter => isVarBinding(gen.pat) || isIrrefutable(gen.pat, gen.expr)
         case GenCheckMode.Check => true
-        case GenCheckMode.Ignore => true
+        case GenCheckMode.Ignore | GenCheckMode.Filtered => true
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
@@ -1961,9 +1967,18 @@ object desugar {
         Select(rhs, name)
       }
 
+      def deepEquals(t1: Tree, t2: Tree): Boolean =
+        (unsplice(t1), unsplice(t2)) match
+          case (Ident(n1), Ident(n2)) => n1 == n2
+          case (Tuple(ts1), Tuple(ts2)) => ts1.corresponds(ts2)(deepEquals)
+          case _ => false
+
       enums match {
         case (gen: GenFrom) :: Nil =>
-          Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
+          if gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
+            && deepEquals(gen.pat, body)
+          then gen.expr  // avoid a redundant map with identity
+          else Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
         case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
@@ -1985,7 +2000,7 @@ object desugar {
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
         case (gen: GenFrom) :: test :: rest =>
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
-          val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Ignore)
+          val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Filtered)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case _ =>
           EmptyTree //may happen for erroneous input
