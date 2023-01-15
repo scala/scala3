@@ -4,6 +4,8 @@
 
 //############################################################################
 
+import annotation.tailrec
+
 object Test extends App {
   val xs = List(1, 2, 3)
   val ys = List(Symbol("a"), Symbol("b"), Symbol("c"))
@@ -108,6 +110,17 @@ object Test extends App {
     for case (x, y) <- xs do print(s"${(y, x)} "); println()
   }
 
+  /////////////////// elimination of map ///////////////////
+
+  @tailrec
+  def pair[B](xs: List[Int], ys: List[B], n: Int): List[(Int, B)] =
+    if n == 0 then xs.zip(ys)
+    else for (x, y) <- pair(xs.map(_ + 1), ys, n - 1) yield (x, y)
+
+  def testTailrec() =
+    println("\ntestTailrec")
+    println(pair(xs, ys, 3))
+
   def testGivens(): Unit = {
     println("\ntestGivens")
 
@@ -141,5 +154,6 @@ object Test extends App {
   testOld()
   testNew()
   testFiltering()
+  testTailrec()
   testGivens()
 }
