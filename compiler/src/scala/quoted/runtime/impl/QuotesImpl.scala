@@ -307,7 +307,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ValDef extends ValDefModule:
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef =
-        tpd.ValDef(symbol.asTerm, xCheckMacroedOwners(xCheckMacroValidExpr(rhs), symbol).getOrElse(tpd.EmptyTree))
+        withDefaultPos(tpd.ValDef(symbol.asTerm, xCheckMacroedOwners(xCheckMacroValidExpr(rhs), symbol).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
         tpd.cpy.ValDef(original)(name.toTermName, tpt, xCheckMacroedOwners(xCheckMacroValidExpr(rhs), original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
@@ -1483,7 +1483,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Bind extends BindModule:
       def apply(sym: Symbol, pattern: Tree): Bind =
-        tpd.Bind(sym, pattern)
+        withDefaultPos(tpd.Bind(sym, pattern))
       def copy(original: Tree)(name: String, pattern: Tree): Bind =
         withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
       def unapply(pattern: Bind): (String, Tree) =
@@ -2404,7 +2404,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Implicits extends ImplicitsModule:
       def search(tpe: TypeRepr): ImplicitSearchResult =
-        ctx.typer.inferImplicitArg(tpe, Position.ofMacroExpansion.span)
+        import tpd.TreeOps
+        val implicitTree = ctx.typer.inferImplicitArg(tpe, Position.ofMacroExpansion.span)
+        // Make sure that we do not have any uninstantiated type variables.
+        // See tests/pos-macros/i16636.
+        // See tests/pos-macros/exprSummonWithTypeVar with -Xcheck-macros.
+        dotc.typer.Inferencing.fullyDefinedType(implicitTree.tpe, "", implicitTree)
+        implicitTree
     end Implicits
 
     type ImplicitSearchResult = Tree
