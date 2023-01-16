@@ -17,6 +17,7 @@ package scala.util.control
  *  performant, since returns within the scope of the same method can be
  *  rewritten by the compiler to jumps.
  */
+@deprecated("Use scala.util.boundary and scala.util.break instead", "3.3")
 object NonLocalReturns {
   @deprecated("Use scala.util.boundary.Break instead", "3.3")
   class ReturnThrowable[T] extends ControlThrowable {
