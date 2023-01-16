@@ -105,18 +105,6 @@ class TreeChecker extends Phase with SymTransformer {
     else if (ctx.phase.prev.isCheckable)
       check(ctx.base.allPhases.toIndexedSeq, ctx)
 
-  private def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
-    case (phase: MegaPhase) :: phases1 =>
-      val subPhases = phase.miniPhases
-      val previousSubPhases = previousPhases(subPhases.toList)
-      if (previousSubPhases.length == subPhases.length) previousSubPhases ::: previousPhases(phases1)
-      else previousSubPhases
-    case phase :: phases1 if phase ne ctx.phase =>
-      phase :: previousPhases(phases1)
-    case _ =>
-      Nil
-  }
-
   def check(phasesToRun: Seq[Phase], ctx: Context): Tree = {
     val fusedPhase = ctx.phase.prevMega(using ctx)
     report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
@@ -219,7 +207,7 @@ object TreeChecker {
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
     import ast.tpd._
 
-    private val nowDefinedSyms = util.HashSet[Symbol]()
+    protected val nowDefinedSyms = util.HashSet[Symbol]()
     private val patBoundSyms = util.HashSet[Symbol]()
     private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
@@ -723,5 +711,53 @@ object TreeChecker {
     }
 
     override def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type = tree
+  }
+
+  /** Tree checker that can be applied to a local tree. */
+  class LocalChecker(phasesToCheck: Seq[Phase]) extends Checker(phasesToCheck: Seq[Phase]):
+    override def assertDefined(tree: untpd.Tree)(using Context): Unit =
+      // Only check definitions nested in the local tree
+      if nowDefinedSyms.contains(tree.symbol.maybeOwner) then
+        super.assertDefined(tree)
+
+  def checkMacroGeneratedTree(original: tpd.Tree, expansion: tpd.Tree)(using Context): Unit =
+    if ctx.settings.XcheckMacros.value then
+      val checkingCtx = ctx
+        .fresh
+        .addMode(Mode.ImplicitsEnabled)
+        .setReporter(new ThrowingReporter(ctx.reporter))
+      val phases = ctx.base.allPhases.toList
+      val treeChecker = new LocalChecker(previousPhases(phases))
+
+      try treeChecker.typed(expansion)(using checkingCtx)
+      catch
+        case err: java.lang.AssertionError =>
+          report.error(
+            s"""Malformed tree was found while expanding macro with -Xcheck-macros.
+               |The tree does not conform to the compiler's tree invariants.
+               |
+               |Macro was:
+               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(original)}
+               |
+               |The macro returned:
+               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(expansion)}
+               |
+               |Error:
+               |${err.getMessage}
+               |
+               |""",
+            original
+          )
+
+  private[TreeChecker] def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
+    case (phase: MegaPhase) :: phases1 =>
+      val subPhases = phase.miniPhases
+      val previousSubPhases = previousPhases(subPhases.toList)
+      if (previousSubPhases.length == subPhases.length) previousSubPhases ::: previousPhases(phases1)
+      else previousSubPhases
+    case phase :: phases1 if phase ne ctx.phase =>
+      phase :: previousPhases(phases1)
+    case _ =>
+      Nil
   }
 }
