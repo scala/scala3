@@ -242,8 +242,6 @@ object Semantic:
      *  that could be reused to check other classes. We employ this trick to
      *  improve performance of the analysis.
      */
-    private type Config = Value
-    private type Res = Value
 
     /** The heap for abstract objects
      *
@@ -257,14 +255,14 @@ object Semantic:
     private type Heap = Map[Ref, Objekt]
 
 
-    class Data extends Cache[Config, Res]:
+    class Data extends Cache[Value, Value]:
       /** Global cached values for expressions
        *
        *  The values are only added when a fixed point is reached.
        *
        *  It is intended to improve performance for computation related to warm values.
        */
-      private var stable: ExprValueCache[Config, Res] = Map.empty
+      private var stable: ExprValueCache[Value, Value] = Map.empty
 
       /** Abstract heap stores abstract objects
        *
