@@ -81,7 +81,12 @@ class CheckUnused extends MiniPhase:
     ctx
 
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
-    _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+    if tree.symbol.exists then 
+      _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+    else if tree.hasType then
+      _key.unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
+    else
+      ctx
 
   override def prepareForSelect(tree: tpd.Select)(using Context): Context =
     _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
