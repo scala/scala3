@@ -1016,24 +1016,27 @@ object Trees {
 
   // ----- Lazy trees and tree sequences
 
-  /** A tree that can have a lazy field
-   *  The field is represented by some private `var` which is
-   *  accessed by `unforced` and `force`. Forcing the field will
-   *  set the `var` to the underlying value.
-   */
-  trait WithLazyFields:
-    protected def force[T <: AnyRef](x: T | Lazy[T])(using Context): T = x match
-      case x: Lazy[T] @unchecked => x.complete
-      case x: T @unchecked => x
-    def forceFields()(using Context): Unit
-
   /** A base trait for lazy tree fields.
    *  These can be instantiated with Lazy instances which
    *  can delay tree construction until the field is first demanded.
    */
-  trait Lazy[+T <: AnyRef] {
+  trait Lazy[+T <: AnyRef]:
     def complete(using Context): T
-  }
+
+  /** A tree that can have a lazy fields.
+   *  Such fields are variables of type `T | Lazy[T]`, for some tyope `T`.
+   */
+  trait WithLazyFields:
+
+    /** If `x` is lazy, computes the underlying value */
+    protected def force[T <: AnyRef](x: T | Lazy[T])(using Context): T = x match
+      case x: Lazy[T] @unchecked => x.complete
+      case x: T @unchecked => x
+
+    /** Assigns all lazy fields their underlying non-lazy value. */
+    def forceFields()(using Context): Unit
+
+  end WithLazyFields
 
   // ----- Generic Tree Instances, inherited from `tpt` and `untpd`.
 
