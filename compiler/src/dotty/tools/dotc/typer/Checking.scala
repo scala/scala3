@@ -1394,9 +1394,9 @@ trait Checking {
 
       if (stat.symbol.isAllOf(EnumCase))
         stat match {
-          case TypeDef(_, Template(DefDef(_, paramss, _, _), parents, _, _)) =>
+          case TypeDef(_, impl @ Template(DefDef(_, paramss, _, _), _, _, _)) =>
             paramss.foreach(_.foreach(check))
-            parents.foreach(check)
+            impl.parents.foreach(check)
           case vdef: ValDef =>
             vdef.rhs match {
               case Block((clsDef @ TypeDef(_, impl: Template)) :: Nil, _)

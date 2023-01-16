@@ -185,17 +185,17 @@ object TreeChecker {
   object TreeNodeChecker extends untpd.TreeTraverser:
     import untpd._
     def traverse(tree: Tree)(using Context) = tree match
-      case t: TypeTree                             => assert(assertion = false, i"TypeTree not expected: $t")
-      case t @ TypeApply(fun, _targs)              => traverse(fun)
-      case t @ New(_tpt)                           =>
-      case t @ Typed(expr, _tpt)                   => traverse(expr)
-      case t @ Closure(env, meth, _tpt)            => traverse(env); traverse(meth)
-      case t @ SeqLiteral(elems, _elemtpt)         => traverse(elems)
-      case t @ ValDef(_, _tpt, _)                  => traverse(t.rhs)
-      case t @ DefDef(_, paramss, _tpt, _)         => for params <- paramss do traverse(params); traverse(t.rhs)
-      case t @ TypeDef(_, _rhs)                    =>
-      case t @ Template(constr, parents, self, _)  => traverse(constr); traverse(parents); traverse(self); traverse(t.body)
-      case t                                       => traverseChildren(t)
+      case t: TypeTree                      => assert(assertion = false, i"TypeTree not expected: $t")
+      case t @ TypeApply(fun, _targs)       => traverse(fun)
+      case t @ New(_tpt)                    =>
+      case t @ Typed(expr, _tpt)            => traverse(expr)
+      case t @ Closure(env, meth, _tpt)     => traverse(env); traverse(meth)
+      case t @ SeqLiteral(elems, _elemtpt)  => traverse(elems)
+      case t @ ValDef(_, _tpt, _)           => traverse(t.rhs)
+      case t @ DefDef(_, paramss, _tpt, _)  => for params <- paramss do traverse(params); traverse(t.rhs)
+      case t @ TypeDef(_, _rhs)             =>
+      case t @ Template(constr, _, self, _) => traverse(constr); traverse(t.parentsOrDerived); traverse(self); traverse(t.body)
+      case t                                => traverseChildren(t)
     end traverse
 
   private[TreeChecker] def isValidJVMName(name: Name): Boolean = name.toString.forall(isValidJVMChar)
@@ -302,10 +302,9 @@ object TreeChecker {
       // case tree: untpd.Ident =>
       // case tree: untpd.Select =>
       // case tree: untpd.Bind =>
-      case vd : ValDef =>
-        assertIdentNotJavaClass(vd.forceIfLazy)
-      case dd : DefDef =>
-        assertIdentNotJavaClass(dd.forceIfLazy)
+      case md: ValOrDefDef =>
+        md.forceFields()
+        assertIdentNotJavaClass(md)
       // case tree: untpd.TypeDef =>
       case Apply(fun, args) =>
         assertIdentNotJavaClass(fun)

@@ -313,7 +313,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
    */
   def parentsKind(parents: List[Tree])(using Context): FlagSet = parents match {
     case Nil => NoInitsInterface
-    case Apply(_, _ :: _) :: _ => EmptyFlags
+    case Apply(_, _ :: _) :: _ | Block(_, _) :: _ => EmptyFlags
     case _ :: parents1 => parentsKind(parents1)
   }
 

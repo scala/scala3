@@ -59,8 +59,8 @@ class DeSugarTest extends ParserTest {
           cpy.DefDef(tree1)(name, transformParamss(paramss), transform(tpt, Type), transform(tree1.rhs))
         case tree1 @ TypeDef(name, rhs) =>
           cpy.TypeDef(tree1)(name, transform(rhs, Type))
-        case impl @ Template(constr, parents, self, _) =>
-          cpy.Template(tree1)(transformSub(constr), transform(parents), Nil, transformSub(self), transform(impl.body, Expr))
+        case impl @ Template(constr, _, self, _) =>
+          cpy.Template(tree1)(transformSub(constr), transform(impl.parentsOrDerived), Nil, transformSub(self), transform(impl.body, Expr))
         case Thicket(trees) =>
           Thicket(flatten(trees mapConserve super.transform))
         case tree1 =>
