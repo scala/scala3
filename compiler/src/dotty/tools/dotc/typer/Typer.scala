@@ -616,11 +616,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val superAccess = qual.isInstanceOf[Super]
     val rawType = selectionType(tree, qual)
     val checkedType = accessibleType(rawType, superAccess)
-    if checkedType.exists then
+
+    def finish(tree: untpd.Select, qual: Tree, checkedType: Type): Tree =
       val select = toNotNullTermRef(assignType(tree, checkedType), pt)
       if selName.isTypeName then checkStable(qual.tpe, qual.srcPos, "type prefix")
       checkLegalValue(select, pt)
       ConstFold(select)
+
+    if checkedType.exists then
+      finish(tree, qual, checkedType)
     else if selName == nme.apply && qual.tpe.widen.isInstanceOf[MethodType] then
       // Simplify `m.apply(...)` to `m(...)`
       qual
@@ -632,6 +636,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else
       val tree1 = tryExtensionOrConversion(
           tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true)
+        .orElse {
+          if ctx.gadt.isNarrowing then
+            // try GADT approximation if we're trying to select a member
+            // Member lookup cannot take GADTs into account b/c of cache, so we
+            // approximate types based on GADT constraints instead. For an example,
+            // see MemberHealing in gadt-approximation-interaction.scala.
+            val wtp = qual.tpe.widen
+            gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
+            val gadtApprox = Inferencing.approximateGADT(wtp)
+            gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
+            val qual1 = qual.cast(gadtApprox)
+            val tree1 = cpy.Select(tree0)(qual1, selName)
+            val checkedType1 = accessibleType(selectionType(tree1, qual1), superAccess = false)
+            if checkedType1.exists then
+              gadts.println(i"Member selection healed by GADT approximation")
+              finish(tree1, qual1, checkedType1)
+            else
+              tryExtensionOrConversion(tree1, pt, IgnoredProto(pt), qual1, ctx.typerState.ownedVars, this, inSelect = true)
+          else EmptyTree
+        }
       if !tree1.isEmpty then
         tree1
       else if canDefineFurther(qual.tpe.widen) then
@@ -3969,19 +3993,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       pt match
         case pt: SelectionProto =>
-          if ctx.gadt.isNarrowing then
-            // try GADT approximation if we're trying to select a member
-            // Member lookup cannot take GADTs into account b/c of cache, so we
-            // approximate types based on GADT constraints instead. For an example,
-            // see MemberHealing in gadt-approximation-interaction.scala.
-            gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
-            val gadtApprox = Inferencing.approximateGADT(wtp)
-            gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
-            if pt.isMatchedBy(gadtApprox) then
-              gadts.println(i"Member selection healed by GADT approximation")
-              tree.cast(gadtApprox)
-            else tree
-          else if tree.tpe.derivesFrom(defn.PairClass) && !defn.isTupleNType(tree.tpe.widenDealias) then
+          if tree.tpe.derivesFrom(defn.PairClass) && !defn.isTupleNType(tree.tpe.widenDealias) then
             // If this is a generic tuple we need to cast it to make the TupleN/ members accessible.
             // This works only for generic tuples of known size up to 22.
             defn.tupleTypes(tree.tpe.widenTermRefExpr) match
