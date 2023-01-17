@@ -74,7 +74,7 @@ object ContextFunctionResults:
         tp.derivedLambdaType(resType = integrateContextResults(tp.resType, crCount))
       case defn.ContextFunctionType(argTypes, resType, erasedParams) =>
         val methodType: MethodTypeCompanion =
-          if erasedParams.contains(true) then ErasedMethodType(erasedParams) else MethodType
+          if erasedParams.contains(true) then ErasedMethodType else MethodType
         methodType(argTypes, integrateContextResults(resType, crCount - 1))
 
   /** The total number of parameters of method `sym`, not counting

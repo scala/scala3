@@ -3619,7 +3619,7 @@ object Types {
 
     def companion: LambdaTypeCompanion[ThisName, PInfo, This]
 
-    def erasedParams = List.fill(paramInfos.size)(false)
+    def erasedParams(using Context) = List.fill(paramInfos.size)(false)
 
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
@@ -3910,16 +3910,16 @@ object Types {
 
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) ||
-      companion.isInstanceOf[ErasedImplicitMethodType] ||
+      companion.eq(ErasedImplicitMethodType) ||
       isContextualMethod
     final override def hasErasedParams: Boolean =
       companion.isInstanceOf[ErasedMethodCompanion]
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType) ||
-      companion.isInstanceOf[ErasedContextualMethodType]
+      companion.eq(ErasedContextualMethodType)
 
-    override def erasedParams: List[Boolean] = companion match
-      case c: ErasedMethodCompanion => c.erasedParams
+    override def erasedParams(using Context): List[Boolean] = companion match
+      case c: ErasedMethodCompanion => c.erasedParams(paramInfos)
       case _ => super.erasedParams
 
     // Mark erased classes as erased parameters as well.
@@ -3927,8 +3927,9 @@ object Types {
       val isErasedClass = paramInfos.map(_.isErasedClass)
       if isErasedClass.contains(true) then companion match
         case c: ErasedMethodCompanion =>
-          val erasedParams = c.erasedParams.zipWithConserve(isErasedClass) { (a, b) => a || b }
-          if erasedParams == c.erasedParams then this
+          val baseErasedParams = c.erasedParams(paramInfos)
+          val erasedParams = baseErasedParams.zipWithConserve(isErasedClass) { (a, b) => a || b }
+          if erasedParams == baseErasedParams then this
           else MethodType.companion(
               isContextual = isContextualMethod,
               isImplicit = isImplicitMethod,
@@ -4055,22 +4056,24 @@ object Types {
     def companion(isContextual: Boolean = false, isImplicit: Boolean = false, erasedParams: List[Boolean] = Nil): MethodTypeCompanion =
       val hasErased = erasedParams.contains(true)
       if (isContextual)
-        if (hasErased) ErasedContextualMethodType(erasedParams) else ContextualMethodType
+        if (hasErased) ErasedContextualMethodType else ContextualMethodType
       else if (isImplicit)
-        if (hasErased) ErasedImplicitMethodType(erasedParams) else ImplicitMethodType
+        if (hasErased) ErasedImplicitMethodType else ImplicitMethodType
       else
-        if (hasErased) ErasedMethodType(erasedParams) else MethodType
+        if (hasErased) ErasedMethodType else MethodType
   }
-  private def erasedMt(t: String, erasedParams: List[Boolean]) =
-    s"Erased${t}(${erasedParams.map(if _ then "erased _" else "_").mkString(", ")})"
-  sealed abstract class ErasedMethodCompanion(prefixString: String, val erasedParams: List[Boolean])
-    extends MethodTypeCompanion(erasedMt(prefixString, erasedParams))
+  sealed abstract class ErasedMethodCompanion(prefixString: String)
+    extends MethodTypeCompanion("Erased" + prefixString) {
 
-  class ErasedMethodType(erasedParams: List[Boolean]) extends ErasedMethodCompanion("MethodType", erasedParams)
+    def erasedParams(paramsInfo: List[Type])(using Context) =
+      paramsInfo.map(_.hasAnnotation(defn.ErasedParamAnnot))
+  }
+
+  object ErasedMethodType extends ErasedMethodCompanion("MethodType")
   object ContextualMethodType extends MethodTypeCompanion("ContextualMethodType")
-  class ErasedContextualMethodType(erasedParams: List[Boolean]) extends ErasedMethodCompanion("ContextualMethodType", erasedParams)
+  object ErasedContextualMethodType extends ErasedMethodCompanion("ContextualMethodType")
   object ImplicitMethodType extends MethodTypeCompanion("ImplicitMethodType")
-  class ErasedImplicitMethodType(erasedParams: List[Boolean]) extends ErasedMethodCompanion("ImplicitMethodType", erasedParams)
+  object ErasedImplicitMethodType extends ErasedMethodCompanion("ImplicitMethodType")
 
   /** A ternary extractor for MethodType */
   object MethodTpe {

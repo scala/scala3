@@ -19,7 +19,6 @@ import config.Config
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
-import dotty.tools.dotc.transform.TypeUtils.isErasedClass
 
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
@@ -304,10 +303,7 @@ class TreePickler(pickler: TastyPickler) {
       tpe.paramNames.lazyZip(tpe.paramInfos).foreach { (name, tpe) =>
         pickleType(tpe); pickleName(name)
       }
-      if (mods != EmptyFlags) pickleFlags(mods &~ Flags.Erased, tpe.isTermLambda)
-      if mods.is(Erased) then
-        writeByte(ERASED)
-        writeBits(tpe.erasedParams)
+      if (mods != EmptyFlags) pickleFlags(mods, tpe.isTermLambda)
     }
   }
 

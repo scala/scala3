@@ -63,15 +63,6 @@ class TastyBuffer(initialSize: Int) {
     length += n
   }
 
-  /** Write a list of bits, packed into an array of bytes, prefixed by its length. */
-  def writeBits(data: List[Boolean]): Unit = {
-    val bytes = data.grouped(8)
-      .map(bits => bits.zipWithIndex.collect { case (true, i) => (1<<i).toByte }.sum)
-      .toArray
-    writeInt(data.length)
-    writeBytes(bytes, bytes.length)
-  }
-
   /** Write a natural number in big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */
