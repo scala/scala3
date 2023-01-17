@@ -229,8 +229,8 @@ object Inlines:
 
     val retainer = meth.copy(
       name = BodyRetainerName(meth.name),
-      flags = meth.flags &~ (Inline | Macro | Override) | Private,
-      coord = mdef.rhs.span.startPos).asTerm
+      flags = (meth.flags &~ (Inline | Macro | Override | AbsOverride)) | Private,
+      coord = mdef.rhs.span.startPos).asTerm.entered
     retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))
     DefDef(retainer, prefss =>
       inlineCall(
