@@ -2433,6 +2433,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
 
     postProcessInfo(sym)
+    if !(sym eq defn.Compiletime_erasedValue) && sym.is(Erased, butNot = Inline) then
+      report.error("erased methods must be inline", sym.sourcePos)
     ddef2.setDefTree
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
