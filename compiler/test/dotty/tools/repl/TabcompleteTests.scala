@@ -235,6 +235,6 @@ class TabcompleteTests extends ReplTest {
   }
 
   @Test def i9334 = initially {
-    assertEquals(Nil, tabComplete("class Foo[T]; classOf[Foo]."))
+    assert(tabComplete("class Foo[T]; classOf[Foo].").contains("getName"))
   }
 }
