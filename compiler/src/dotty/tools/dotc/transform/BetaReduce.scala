@@ -86,6 +86,8 @@ object BetaReduce:
         recur(expr, argss).map(cpy.Inlined(fn)(call, bindings, _))
       case Typed(expr, tpt) =>
         recur(expr, argss)
+      case TypeApply(Select(expr, nme.asInstanceOfPM), List(tpt)) =>
+        recur(expr, argss)
       case _ => None
     tree match
       case Apply(Select(fn, nme.apply), args) if defn.isFunctionType(fn.tpe) =>
