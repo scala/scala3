@@ -1071,7 +1071,7 @@ object Types {
      *  @param relaxedCheck   if true type `Null` becomes a subtype of non-primitive value types in TypeComparer.
      *  @param matchLoosely   if true the types `=> T` and `()T` are seen as overriding each other.
      *  @param checkClassInfo if true we check that ClassInfos are within bounds of abstract types
-     * 
+     *
      *  @param isSubType      a function used for checking subtype relationships.
      */
     final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true,
