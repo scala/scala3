@@ -73,12 +73,6 @@ object Typer {
   /** An attachment for GADT constraints that were inferred for a pattern. */
   val InferredGadtConstraints = new Property.StickyKey[core.GadtConstraint]
 
-  /** A context property that indicates the owner of any expressions to be typed in the context
-   *  if that owner is different from the context's owner. Typically, a context with a class
-   *  as owner would have a local dummy as ExprOwner value.
-   */
-  private val ExprOwner = new Property.Key[Symbol]
-
   /** An attachment on a Select node with an `apply` field indicating that the `apply`
    *  was inserted by the Typer.
    */
@@ -622,11 +616,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val superAccess = qual.isInstanceOf[Super]
     val rawType = selectionType(tree, qual)
     val checkedType = accessibleType(rawType, superAccess)
-    if checkedType.exists then
+
+    def finish(tree: untpd.Select, qual: Tree, checkedType: Type): Tree =
       val select = toNotNullTermRef(assignType(tree, checkedType), pt)
       if selName.isTypeName then checkStable(qual.tpe, qual.srcPos, "type prefix")
       checkLegalValue(select, pt)
       ConstFold(select)
+
+    if checkedType.exists then
+      finish(tree, qual, checkedType)
     else if selName == nme.apply && qual.tpe.widen.isInstanceOf[MethodType] then
       // Simplify `m.apply(...)` to `m(...)`
       qual
@@ -638,6 +636,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else
       val tree1 = tryExtensionOrConversion(
           tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true)
+        .orElse {
+          if ctx.gadt.isNarrowing then
+            // try GADT approximation if we're trying to select a member
+            // Member lookup cannot take GADTs into account b/c of cache, so we
+            // approximate types based on GADT constraints instead. For an example,
+            // see MemberHealing in gadt-approximation-interaction.scala.
+            val wtp = qual.tpe.widen
+            gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
+            val gadtApprox = Inferencing.approximateGADT(wtp)
+            gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
+            val qual1 = qual.cast(gadtApprox)
+            val tree1 = cpy.Select(tree0)(qual1, selName)
+            val checkedType1 = accessibleType(selectionType(tree1, qual1), superAccess = false)
+            if checkedType1.exists then
+              gadts.println(i"Member selection healed by GADT approximation")
+              finish(tree1, qual1, checkedType1)
+            else
+              tryExtensionOrConversion(tree1, pt, IgnoredProto(pt), qual1, ctx.typerState.ownedVars, this, inSelect = true)
+          else EmptyTree
+        }
       if !tree1.isEmpty then
         tree1
       else if canDefineFurther(qual.tpe.widen) then
@@ -2234,29 +2252,23 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** The context to be used for an annotation of `mdef`.
    *  This should be the context enclosing `mdef`, or if `mdef` defines a parameter
    *  the context enclosing the owner of `mdef`.
-   *  Furthermore, we need to evaluate annotation arguments in an expression context,
-   *  since classes defined in a such arguments should not be entered into the
-   *  enclosing class.
+   *  Furthermore, we need to make sure that annotation trees are evaluated
+   *  with an owner that is not the enclosing class since otherwise locally
+   *  defined symbols would be entered as class members.
    */
-  def annotContext(mdef: untpd.Tree, sym: Symbol)(using Context): Context = {
+  def annotContext(mdef: untpd.Tree, sym: Symbol)(using Context): Context =
     def isInner(owner: Symbol) = owner == sym || sym.is(Param) && owner == sym.owner
     val outer = ctx.outersIterator.dropWhile(c => isInner(c.owner)).next()
-    var adjusted = outer.property(ExprOwner) match {
-      case Some(exprOwner) if outer.owner.isClass => outer.exprContext(mdef, exprOwner)
-      case _ => outer
-    }
+    def local: FreshContext = outer.fresh.setOwner(newLocalDummy(sym.owner))
     sym.owner.infoOrCompleter match
-      case completer: Namer#Completer if sym.is(Param) =>
-        val tparams = completer.completerTypeParams(sym)
-        if tparams.nonEmpty then
-          // Create a new local context with a dummy owner and a scope containing the
-          // type parameters of the enclosing method or class. Thus annotations can see
-          // these type parameters. See i12953.scala for a test case.
-          val dummyOwner = newLocalDummy(sym.owner)
-          adjusted = adjusted.fresh.setOwner(dummyOwner).setScope(newScopeWith(tparams*))
+      case completer: Namer#Completer
+      if sym.is(Param) && completer.completerTypeParams(sym).nonEmpty =>
+        // Create a new local context with a dummy owner and a scope containing the
+        // type parameters of the enclosing method or class. Thus annotations can see
+        // these type parameters. See i12953.scala for a test case.
+        local.setScope(newScopeWith(completer.completerTypeParams(sym)*))
       case _ =>
-    adjusted
-  }
+        if outer.owner.isClass then local else outer
 
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = {
     // necessary to force annotation trees to be computed.
@@ -3101,10 +3113,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case nil =>
         (buf.toList, ctx)
     }
-    val localCtx = {
-      val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
-      ctx.withProperty(ExprOwner, exprOwnerOpt)
-    }
     def finalize(stat: Tree)(using Context): Tree = stat match {
       case stat: TypeDef if stat.symbol.is(Module) =>
         val enumContext = enumContexts(stat.symbol.linkedClass)
@@ -3117,7 +3125,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         stat
     }
-    val (stats0, finalCtx) = traverse(stats)(using localCtx)
+    val (stats0, finalCtx) = traverse(stats)
     val stats1 = stats0.mapConserve(finalize)
     if ctx.owner == exprOwner then checkNoTargetNameConflict(stats1)
     (stats1, finalCtx)
@@ -3985,19 +3993,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       pt match
         case pt: SelectionProto =>
-          if ctx.gadt.isNarrowing then
-            // try GADT approximation if we're trying to select a member
-            // Member lookup cannot take GADTs into account b/c of cache, so we
-            // approximate types based on GADT constraints instead. For an example,
-            // see MemberHealing in gadt-approximation-interaction.scala.
-            gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
-            val gadtApprox = Inferencing.approximateGADT(wtp)
-            gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
-            if pt.isMatchedBy(gadtApprox) then
-              gadts.println(i"Member selection healed by GADT approximation")
-              tree.cast(gadtApprox)
-            else tree
-          else if tree.tpe.derivesFrom(defn.PairClass) && !defn.isTupleNType(tree.tpe.widenDealias) then
+          if tree.tpe.derivesFrom(defn.PairClass) && !defn.isTupleNType(tree.tpe.widenDealias) then
             // If this is a generic tuple we need to cast it to make the TupleN/ members accessible.
             // This works only for generic tuples of known size up to 22.
             defn.tupleTypes(tree.tpe.widenTermRefExpr) match

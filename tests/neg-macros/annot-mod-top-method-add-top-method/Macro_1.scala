@@ -9,5 +9,5 @@ class addTopLevelMethodOutsidePackageObject extends MacroAnnotation:
     import quotes.reflect._
     val methType = MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Int])
     val methSym = Symbol.newMethod(Symbol.spliceOwner.owner, Symbol.freshName("toLevelMethod"), methType, Flags.EmptyFlags, Symbol.noSymbol)
-    val methDef = ValDef(methSym, Some(Literal(IntConstant(1))))
+    val methDef = DefDef(methSym, _ => Some(Literal(IntConstant(1))))
     List(methDef, tree)

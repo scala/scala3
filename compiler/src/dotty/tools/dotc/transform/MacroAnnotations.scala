@@ -82,8 +82,9 @@ class MacroAnnotations:
             case (prefixed, newTree :: suffixed) =>
               allTrees ++= prefixed
               insertedAfter = suffixed :: insertedAfter
-              prefixed.foreach(checkMacroDef(_, tree.symbol, annot))
-              suffixed.foreach(checkMacroDef(_, tree.symbol, annot))
+              prefixed.foreach(checkMacroDef(_, tree, annot))
+              suffixed.foreach(checkMacroDef(_, tree, annot))
+              transform.TreeChecker.checkMacroGeneratedTree(tree, newTree)
               newTree
             case (Nil, Nil) =>
               report.error(i"Unexpected `Nil` returned by `(${annot.tree}).transform(..)` during macro expansion", annot.tree.srcPos)
@@ -119,8 +120,10 @@ class MacroAnnotations:
     annotInstance.transform(using quotes)(tree.asInstanceOf[quotes.reflect.Definition])
 
   /** Check that this tree can be added by the macro annotation */
-  private def checkMacroDef(newTree: DefTree, annotated: Symbol, annot: Annotation)(using Context) =
+  private def checkMacroDef(newTree: DefTree, annotatedTree: Tree, annot: Annotation)(using Context) =
+    transform.TreeChecker.checkMacroGeneratedTree(annotatedTree, newTree)
     val sym = newTree.symbol
+    val annotated = annotatedTree.symbol
     if sym.isType && !sym.isClass then
       report.error(i"macro annotation cannot return a `type`. $annot tried to add $sym", annot.tree)
     else if sym.owner != annotated.owner && !(annotated.owner.isPackageObject && (sym.isClass || sym.is(Module)) && sym.owner == annotated.owner.owner) then

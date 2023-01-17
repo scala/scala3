@@ -11,6 +11,7 @@ import ast.tpd
 import transform.Recheck.*
 import CaptureSet.IdentityCaptRefMap
 import Synthetics.isExcluded
+import util.Property
 
 /** A tree traverser that prepares a compilation unit to be capture checked.
  *  It does the following:
@@ -484,4 +485,14 @@ extends tpd.TreeTraverser:
               capt.println(i"update info of ${tree.symbol} from $info to $newInfo")
       case _ =>
   end traverse
+
+  def apply(tree: Tree)(using Context): Unit =
+    traverse(tree)(using ctx.withProperty(Setup.IsDuringSetupKey, Some(())))
 end Setup
+
+object Setup:
+  val IsDuringSetupKey = new Property.Key[Unit]
+
+  def isDuringSetup(using Context): Boolean =
+    ctx.property(IsDuringSetupKey).isDefined
+

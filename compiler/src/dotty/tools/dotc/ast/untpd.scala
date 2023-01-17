@@ -54,7 +54,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   class DerivingTemplate(constr: DefDef, parentsOrDerived: List[Tree], self: ValDef, preBody: LazyTreeList, derivedCount: Int)(implicit @constructorOnly src: SourceFile)
   extends Template(constr, parentsOrDerived, self, preBody) {
-    override val parents = parentsOrDerived.dropRight(derivedCount)
+    private val myParents = parentsOrDerived.dropRight(derivedCount)
+    override def parents(using Context) = myParents
     override val derived = parentsOrDerived.takeRight(derivedCount)
   }
 
@@ -415,6 +416,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Template(constr: DefDef, parents: List[Tree], derived: List[Tree], self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template =
     if (derived.isEmpty) new Template(constr, parents, self, body)
     else new DerivingTemplate(constr, parents ++ derived, self, body, derived.length)
+  def Template(constr: DefDef, parents: LazyTreeList, self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template =
+    new Template(constr, parents, self, body)
   def Import(expr: Tree, selectors: List[ImportSelector])(implicit src: SourceFile): Import = new Import(expr, selectors)
   def Export(expr: Tree, selectors: List[ImportSelector])(implicit src: SourceFile): Export = new Export(expr, selectors)
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit src: SourceFile): PackageDef = new PackageDef(pid, stats)

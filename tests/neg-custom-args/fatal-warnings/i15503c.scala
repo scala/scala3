@@ -18,3 +18,23 @@ class A:
     val x = 1 // OK
     def y = 2 // OK
     def z = g // OK
+
+package foo.test.contructors:
+  case class A private (x:Int) // OK
+  class B private (val x: Int) // OK
+  class C private (private val x: Int) // error
+  class D private (private val x: Int): // OK
+    def y = x
+
+
+package test.foo.i16682:
+  object myPackage:
+    private object IntExtractor: // OK
+        def unapply(s: String): Option[Int] = s.toIntOption
+
+    def isInt(s: String) = s match {
+        case IntExtractor(i) => println(s"Number $i")
+        case _ => println("NaN")
+    }
+
+  def f = myPackage.isInt("42")

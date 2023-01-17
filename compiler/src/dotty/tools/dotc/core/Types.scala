@@ -1071,12 +1071,15 @@ object Types {
      *  @param relaxedCheck   if true type `Null` becomes a subtype of non-primitive value types in TypeComparer.
      *  @param matchLoosely   if true the types `=> T` and `()T` are seen as overriding each other.
      *  @param checkClassInfo if true we check that ClassInfos are within bounds of abstract types
+     * 
+     *  @param isSubType      a function used for checking subtype relationships.
      */
-    final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(using Context): Boolean = {
+    final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true,
+                        isSubType: (Type, Type) => Context ?=> Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean = {
       val overrideCtx = if relaxedCheck then ctx.relaxedOverrideContext else ctx
       inContext(overrideCtx) {
         !checkClassInfo && this.isInstanceOf[ClassInfo]
-        || (this.widenExpr frozen_<:< that.widenExpr)
+        || isSubType(this.widenExpr, that.widenExpr)
         || matchLoosely && {
             val this1 = this.widenNullaryMethod
             val that1 = that.widenNullaryMethod
@@ -3441,20 +3444,19 @@ object Types {
       val tp2w = tp2.widenSingletons
       if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
 
-    private def ensureAtomsComputed()(using Context): Boolean =
-      if atomsRunId != ctx.runId && !isProvisional then
+    private def ensureAtomsComputed()(using Context): Unit =
+      if atomsRunId != ctx.runId then
         myAtoms = computeAtoms()
         myWidened = computeWidenSingletons()
-        atomsRunId = ctx.runId
-        true
-      else
-        false
+        if !isProvisional then atomsRunId = ctx.runId
 
     override def atoms(using Context): Atoms =
-      if ensureAtomsComputed() then myAtoms else computeAtoms()
+      ensureAtomsComputed()
+      myAtoms
 
     override def widenSingletons(using Context): Type =
-      if ensureAtomsComputed() then myWidened else computeWidenSingletons()
+      ensureAtomsComputed()
+      myWidened
 
     def derivedOrType(tp1: Type, tp2: Type, soft: Boolean = isSoft)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2) && soft == isSoft) this

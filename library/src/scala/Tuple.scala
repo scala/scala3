@@ -83,7 +83,7 @@ sealed trait Tuple extends Product {
 object Tuple {
 
   /** Type of a tuple with an element appended */
-  type Append[X <: Tuple, Y] <: Tuple = X match {
+  type Append[X <: Tuple, Y] <: NonEmptyTuple = X match {
     case EmptyTuple => Y *: EmptyTuple
     case x *: xs => x *: Append[xs, Y]
   }

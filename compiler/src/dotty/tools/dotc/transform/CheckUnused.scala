@@ -81,7 +81,12 @@ class CheckUnused extends MiniPhase:
     ctx
 
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
-    _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+    if tree.symbol.exists then 
+      _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+    else if tree.hasType then
+      _key.unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
+    else
+      ctx
 
   override def prepareForSelect(tree: tpd.Select)(using Context): Context =
     _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
@@ -97,7 +102,9 @@ class CheckUnused extends MiniPhase:
 
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
     _key.unusedDataApply{ud =>
-      ud.registerDef(tree)
+      // do not register the ValDef generated for `object`
+      if !tree.symbol.is(Module) then 
+        ud.registerDef(tree)
       ud.addIgnoredUsage(tree.symbol)
     }
 
@@ -339,15 +346,11 @@ object CheckUnused:
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
-      doNotRegister += sym
-      if sym.is(Flags.Module) then
-        doNotRegister += sym.moduleClass
+      doNotRegister ++= sym.everySymbol
 
     /** Remove a symbol that shouldn't be ignored anymore */
     def removeIgnoredUsage(sym: Symbol)(using Context): Unit =
-      doNotRegister -= sym
-      if sym.is(Flags.Module) then
-        doNotRegister -= sym.moduleClass
+      doNotRegister --= sym.everySymbol
 
 
     /** Register an import */
@@ -370,7 +373,7 @@ object CheckUnused:
             explicitParamInScope += memDef
         else if currScopeType.top == ScopeType.Local then 
           localDefInScope += memDef
-        else if currScopeType.top == ScopeType.Template && memDef.symbol.is(Private, butNot = SelfName) then
+        else if memDef.shouldReportPrivateDef then
           privateDefInScope += memDef
 
     /** Register pattern variable */
@@ -445,27 +448,37 @@ object CheckUnused:
           Nil
       val sortedLocalDefs =
         if ctx.settings.WunusedHas.locals then
-          localDefInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.LocalDefs).toList
+          localDefInScope
+            .filterNot(d => d.symbol.usedDefContains)
+            .map(d => d.namePos -> WarnTypes.LocalDefs).toList
         else
           Nil
       val sortedExplicitParams =
         if ctx.settings.WunusedHas.explicits then
-          explicitParamInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.ExplicitParams).toList
+          explicitParamInScope
+            .filterNot(d => d.symbol.usedDefContains)
+            .map(d => d.namePos -> WarnTypes.ExplicitParams).toList
         else
           Nil
       val sortedImplicitParams =
         if ctx.settings.WunusedHas.implicits then
-          implicitParamInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.ImplicitParams).toList
+          implicitParamInScope
+            .filterNot(d => d.symbol.usedDefContains)
+            .map(d => d.namePos -> WarnTypes.ImplicitParams).toList
         else
           Nil
       val sortedPrivateDefs =
         if ctx.settings.WunusedHas.privates then
-          privateDefInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.PrivateMembers).toList
+          privateDefInScope
+            .filterNot(d => d.symbol.usedDefContains)
+            .map(d => d.namePos -> WarnTypes.PrivateMembers).toList
         else
           Nil
       val sortedPatVars =
         if ctx.settings.WunusedHas.patvars then
-          patVarsInScope.filter(d => !usedDef(d.symbol)).map(d => d.namePos -> WarnTypes.PatVars).toList
+          patVarsInScope
+            .filterNot(d => d.symbol.usedDefContains)
+            .map(d => d.namePos -> WarnTypes.PatVars).toList
         else
           Nil
       val warnings = List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams, sortedPrivateDefs, sortedPatVars).flatten.sortBy { s =>
@@ -565,6 +578,14 @@ object CheckUnused:
         else
           false
 
+      private def usedDefContains(using Context): Boolean = 
+        sym.everySymbol.exists(usedDef.apply)
+
+      private def everySymbol(using Context): List[Symbol] = 
+        List(sym, sym.companionClass, sym.companionModule, sym.moduleClass).filter(_.exists)
+
+    end extension
+
     extension (defdef: tpd.DefDef)
       // so trivial that it never consumes params
       private def isTrivial(using Context): Boolean =
@@ -592,9 +613,12 @@ object CheckUnused:
 
       private def isValidParam(using Context): Boolean =
         val sym = memDef.symbol
-        (sym.is(Param) || sym.isAllOf(PrivateParamAccessor)) &&
+        (sym.is(Param) || sym.isAllOf(PrivateParamAccessor | Local, butNot = CaseAccessor)) &&
         !isSyntheticMainParam(sym)  &&
         !sym.shouldNotReportParamOwner
+
+      private def shouldReportPrivateDef(using Context): Boolean = 
+        currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
 
     extension (imp: tpd.Import)
       /** Enum generate an import for its cases (but outside them), which should be ignored */

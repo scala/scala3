@@ -489,7 +489,8 @@ object Build {
     settings(commonJavaSettings).
     settings(commonMiMaSettings).
     settings(
-      versionScheme := Some("semver-spec")
+      versionScheme := Some("semver-spec"),
+      mimaBinaryIssueFilters ++= MiMaFilters.Interfaces
     )
 
   /** Find an artifact with the given `name` in `classpath` */

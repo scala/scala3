@@ -84,3 +84,50 @@ package foo.test.i16678:
     println(foo(func = number => "<number>", value = 5)) // error
     println(foo(func = number => number.toString, value = 5)) // OK
     println(foo(func = _.toString, value = 5)) // OK
+    
+package foo.test.possibleclasses:
+  case class AllCaseClass(
+    k: Int, // OK
+    private val y: Int // OK /* Kept as it can be taken from pattern */
+  )(
+    s: Int, // error /* But not these */
+    val t: Int, // OK
+    private val z: Int // error
+  )       
+
+  case class AllCaseUsed(
+    k: Int, // OK
+    private val y: Int // OK
+  )(
+    s: Int, // OK
+    val t: Int, // OK
+    private val z: Int // OK
+  ) {
+    def a = k + y + s + t + z
+  }
+
+  class AllClass(
+    k: Int, // error
+    private val y: Int // error
+  )(
+    s: Int, // error
+    val t: Int, // OK
+    private val z: Int // error
+  )      
+
+  class AllUsed(
+    k: Int, // OK
+    private val y: Int // OK
+  )(
+    s: Int, // OK
+    val t: Int, // OK
+    private val z: Int // OK
+  ) {
+    def a = k + y + s + t + z
+  } 
+
+package foo.test.from.i16675:
+  case class PositiveNumber private (i: Int) // OK
+  object PositiveNumber:
+    def make(i: Int): Option[PositiveNumber] = //OK 
+      Option.when(i >= 0)(PositiveNumber(i)) // OK

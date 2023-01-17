@@ -115,7 +115,7 @@ object Types {
     private def testProvisional(using Context): Boolean =
       class ProAcc extends TypeAccumulator[Boolean]:
         override def apply(x: Boolean, t: Type) = x || test(t, this)
-      def test(t: Type, theAcc: TypeAccumulator[Boolean] | Null): Boolean =
+      def test(t: Type, theAcc: TypeAccumulator[Boolean] @retains(caps.*) | Null): Boolean =
         if t.mightBeProvisional then
           t.mightBeProvisional = t match
             case t: TypeRef =>
@@ -3773,7 +3773,7 @@ object Types {
         val status = (x & StatusMask) max (y & StatusMask)
         val provisional = (x | y) & Provisional
         (if status == TrueDeps then status else status | provisional).toByte
-      def compute(status: DependencyStatus, tp: Type, theAcc: TypeAccumulator[DependencyStatus] | Null): DependencyStatus =
+      def compute(status: DependencyStatus, tp: Type, theAcc: TypeAccumulator[DependencyStatus] @retains(caps.*) | Null): DependencyStatus =
         def applyPrefix(tp: NamedType) =
           if tp.isInstanceOf[SingletonType] && tp.currentSymbol.isStatic
           then status // Note: a type ref with static symbol can still be dependent since the symbol might be refined in the enclosing type. See pos/15331.scala.
@@ -4351,7 +4351,7 @@ object Types {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
-    def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
+    def isGround(acc: TypeAccumulator[Boolean] @retains(caps.*))(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
 
@@ -5750,7 +5750,7 @@ object Types {
       }
     }
 
-    private def treeTypeMap = new TreeTypeMap(typeMap = this)
+    private def treeTypeMap = new TreeTypeMap(typeMap = this.detach)
 
     def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
 

@@ -1,10 +1,3 @@
--- [E164] Declaration Error: tests/neg-custom-args/captures/lazylist.scala:22:6 ----------------------------------------
-22 |  def tail: {*} LazyList[Nothing] = ???  // error overriding
-   |      ^
-   |      error overriding method tail in class LazyList of type -> lazylists.LazyList[Nothing];
-   |        method tail of type -> {*} lazylists.LazyList[Nothing] has incompatible type
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:17:15 -------------------------------------
 17 |  def tail = xs() // error
    |             ^^^^
@@ -38,5 +31,12 @@
    |                                                ^^^^
    |                                             Found:    (ref4 : {cap3, cap2, ref1, cap1} lazylists.LazyList[Int])
    |                                             Required: {cap1, ref3, cap3} lazylists.LazyList[Int]
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E164] Declaration Error: tests/neg-custom-args/captures/lazylist.scala:22:6 ----------------------------------------
+22 |  def tail: {*} LazyList[Nothing] = ???  // error overriding
+   |      ^
+   |      error overriding method tail in class LazyList of type -> lazylists.LazyList[Nothing];
+   |        method tail of type -> {*} lazylists.LazyList[Nothing] has incompatible type
    |
    | longer explanation available when compiling with `-explain`
