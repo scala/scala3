@@ -24,8 +24,19 @@ object boundary:
 
   /** Labels are targets indicating which boundary will be exited by a `break`.
    */
-  final class Label[-T]:
-    private[util] def break(value: T): Nothing = throw Break(this, value)
+  final class Label[-T]
+
+  /** Abort current computation and instead return `value` as the value of
+   *  the enclosing `boundary` call that created `label`.
+   */
+  def break[T](value: T)(using label: Label[T]): Nothing =
+    throw Break(label, value)
+
+  /** Abort current computation and instead continue after the `boundary` call that
+   *  created `label`.
+   */
+  def break()(using label: Label[Unit]): Nothing =
+    throw Break(label, ())
 
   /** Run `body` with freshly generated label as implicit argument. Catch any
    *  breaks associated with that label and return their results instead of

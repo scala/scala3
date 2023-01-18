@@ -105,7 +105,7 @@ class DropBreaks extends MiniPhase:
   private object Break:
 
     private def isBreak(sym: Symbol)(using Context): Boolean =
-      sym.name == nme.apply && sym.owner == defn.breakModule.moduleClass
+      sym.name == nme.break && sym.owner == defn.boundaryModule.moduleClass
 
     /** `(local, arg)` provided `tree` matches
      *
@@ -193,7 +193,7 @@ class DropBreaks extends MiniPhase:
       tree
 
   private def isBreak(sym: Symbol)(using Context): Boolean =
-    sym.name == nme.apply && sym.owner == defn.breakModule.moduleClass
+    sym.name == nme.break && sym.owner == defn.boundaryModule.moduleClass
 
   private def transformBreak(tree: Tree, arg: Tree, lbl: Symbol)(using Context): Tree =
     report.log(i"transform break $tree/$arg/$lbl")

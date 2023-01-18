@@ -968,9 +968,9 @@ class Definitions {
   def TupledFunctionClass(using Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
   def RuntimeTupleFunctionsModule(using Context): Symbol = requiredModule("scala.runtime.TupledFunctions")
 
+  @tu lazy val boundaryModule: Symbol = requiredModule("scala.util.boundary")
   @tu lazy val LabelClass: Symbol = requiredClass("scala.util.boundary.Label")
   @tu lazy val BreakClass: Symbol = requiredClass("scala.util.boundary.Break")
-  @tu lazy val breakModule: Symbol = requiredModule("scala.util.break")
 
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
     @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("*")

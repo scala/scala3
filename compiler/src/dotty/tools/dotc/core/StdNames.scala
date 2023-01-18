@@ -421,6 +421,7 @@ object StdNames {
     val assert_ : N             = "assert"
     val assume_ : N             = "assume"
     val box: N                  = "box"
+    val break: N                = "break"
     val build : N               = "build"
     val bundle: N               = "bundle"
     val bytes: N                = "bytes"
