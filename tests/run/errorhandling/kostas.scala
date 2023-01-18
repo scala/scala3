@@ -1,5 +1,5 @@
 package optionMockup:
-  import scala.util.boundary
+  import scala.util.{boundary, break}
   object optional:
     transparent inline def apply[T](inline body: boundary.Label[None.type] ?=> T): Option[T] =
       boundary(Some(body))
@@ -7,7 +7,7 @@ package optionMockup:
   extension [T](r: Option[T])
     transparent inline def ? (using label: boundary.Label[None.type]): T = r match
       case Some(x) => x
-      case None => label.break(None)
+      case None => break(None)
 
 import optionMockup.*
 
