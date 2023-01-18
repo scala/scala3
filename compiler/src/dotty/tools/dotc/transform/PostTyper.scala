@@ -238,15 +238,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         }
     }
 
-    private object dropInlines extends TreeMap {
-      override def transform(tree: Tree)(using Context): Tree = tree match {
-        case Inlined(call, _, expansion) =>
-          val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
-          cpy.Inlined(tree)(call, Nil, newExpansion)
-        case _ => super.transform(tree)
-      }
-    }
-
     def checkNoConstructorProxy(tree: Tree)(using Context): Unit =
       if tree.symbol.is(ConstructorProxy) then
         report.error(em"constructor proxy ${tree.symbol} cannot be used as a value", tree.srcPos)
@@ -297,22 +288,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val methType = tree.fun.tpe.widen.asInstanceOf[MethodType]
           val app =
             if (methType.hasErasedParams)
-              tpd.cpy.Apply(tree)(
-                tree.fun,
-                tree.args.zip(methType.erasedParams).map((arg, isErased) =>
-                  if !isErased then arg
-                  else
-                    if methType.isResultDependent then
+                tree.args.zip(methType.erasedParams).foreach((arg, isErased) =>
+                  if isErased && methType.isResultDependent then
                       Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
-                    if (methType.isImplicitMethod && arg.span.isSynthetic)
-                      arg match
-                        case _: RefTree | _: Apply | _: TypeApply if arg.symbol.is(Erased) =>
-                          dropInlines.transform(arg)
-                        case _ =>
-                          PruneErasedDefs.trivialErasedTree(arg)
-                    else dropInlines.transform(arg)))
-            else
-              tree
+                )
+            tree
           def app1 =
    		    	// reverse order of transforming args and fun. This way, we get a chance to see other
    			    // well-formedness errors before reporting errors in possible inferred type args of fun.
@@ -371,16 +351,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: ValDef =>
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
-          val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
-          if tree1.removeAttachment(desugar.UntupledParam).isDefined then
+          if tree.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
-          processValOrDefDef(super.transform(tree1))
+          processValOrDefDef(super.transform(tree))
         case tree: DefDef =>
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           annotateContextResults(tree)
-          val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
-          processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
+          processValOrDefDef(superAcc.wrapDefDef(tree)(super.transform(tree).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           registerIfHasMacroAnnotations(tree)
           val sym = tree.symbol
@@ -489,12 +467,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =
       try super.transformStats(trees, exprOwner, wrapResult)
       finally Checking.checkExperimentalImports(trees)
-
-    /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
-     *  Performed to shrink the tree that is known to be erased later.
-     */
-    private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
-      if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
 
     /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */
     private def registerIfHasMacroAnnotations(tree: DefTree)(using Context) =

@@ -39,22 +39,6 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
     if !sym.isEffectivelyErased || !sym.isTerm || sym.is(Private) || !sym.owner.isClass then sym
     else sym.copySymDenotation(initFlags = sym.flags | Private)
 
-  override def transformApply(tree: Apply)(using Context): Tree =
-    if !tree.fun.tpe.widen.hasErasedParams then tree
-    else
-      val erasedParams = tree.fun.tpe.widen.asInstanceOf[MethodType].erasedParams
-      cpy.Apply(tree)(tree.fun, tree.args.zip(erasedParams).map((a, e) => if e then trivialErasedTree(a) else a))
-
-  override def transformValDef(tree: ValDef)(using Context): Tree =
-    checkErasedInExperimental(tree.symbol)
-    if !tree.symbol.isEffectivelyErased || tree.rhs.isEmpty then tree
-    else cpy.ValDef(tree)(rhs = trivialErasedTree(tree.rhs))
-
-  override def transformDefDef(tree: DefDef)(using Context): Tree =
-    checkErasedInExperimental(tree.symbol)
-    if !tree.symbol.isEffectivelyErased || tree.rhs.isEmpty then tree
-    else cpy.DefDef(tree)(rhs = trivialErasedTree(tree.rhs))
-
   override def transformTypeDef(tree: TypeDef)(using Context): Tree =
     checkErasedInExperimental(tree.symbol)
     tree
@@ -70,7 +54,4 @@ object PruneErasedDefs {
 
   val name: String = "pruneErasedDefs"
   val description: String = "drop erased definitions and simplify erased expressions"
-
-  def trivialErasedTree(tree: Tree)(using Context): Tree =
-    ref(defn.Compiletime_erasedValue).appliedToType(tree.tpe).withSpan(tree.span)
 }
