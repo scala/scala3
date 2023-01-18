@@ -1340,7 +1340,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val appDef0 = untpd.DefDef(nme.apply, List(params3), body, EmptyTree).withSpan(tree.span)
       index(appDef0 :: Nil)
       val appDef = typed(appDef0).asInstanceOf[DefDef]
-      val mt = appDef.symbol.info.asInstanceOf[MethodType].markErasedClasses
+      val mt = appDef.symbol.info.asInstanceOf[MethodType]
       if (mt.isParamDependent)
         report.error(em"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
       val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)

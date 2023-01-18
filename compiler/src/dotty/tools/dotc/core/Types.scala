@@ -3922,26 +3922,13 @@ object Types {
       case c: ErasedMethodCompanion => c.erasedParams(paramInfos)
       case _ => super.erasedParams
 
-    // Mark erased classes as erased parameters as well.
-    def markErasedClasses(using Context): MethodType =
-      val isErasedClass = paramInfos.map(_.isErasedClass)
-      if isErasedClass.contains(true) then companion match
-        case c: ErasedMethodCompanion =>
-          val baseErasedParams = c.erasedParams(paramInfos)
-          val erasedParams = baseErasedParams.zipWithConserve(isErasedClass) { (a, b) => a || b }
-          if erasedParams == baseErasedParams then this
-          else MethodType.companion(
-              isContextual = isContextualMethod,
-              isImplicit = isImplicitMethod,
-              erasedParams = erasedParams
-            )(paramNames)(paramInfosExp, resultTypeExp)
-        case _ =>
-          MethodType.companion(
-              isContextual = isContextualMethod,
-              isImplicit = isImplicitMethod,
-              erasedParams = isErasedClass
-            )(paramNames)(paramInfosExp, resultTypeExp)
-      else this
+    /** Returns the corresponding companion, but without erased parameters */
+    final def companionWithoutErased = companion match
+      case ErasedImplicitMethodType => ImplicitMethodType
+      case ErasedContextualMethodType => ContextualMethodType
+      case ErasedMethodType => MethodType
+      case actual => actual
+
 
     protected def prefixString: String = companion.prefixString
   }
@@ -4038,7 +4025,7 @@ object Types {
          tl => tl.integrate(params, resultType))
     end fromSymbols
 
-    final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
+    def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
       checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
 
     def checkValid(mt: MethodType)(using Context): mt.type = {
@@ -4062,18 +4049,24 @@ object Types {
       else
         if (hasErased) ErasedMethodType else MethodType
   }
-  sealed abstract class ErasedMethodCompanion(prefixString: String)
-    extends MethodTypeCompanion("Erased" + prefixString) {
+  sealed abstract class ErasedMethodCompanion(withoutErased: MethodTypeCompanion)
+    extends MethodTypeCompanion("Erased" + withoutErased.prefixString) {
+
+    override def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
+      val mt = super.apply(paramNames)(paramInfosExp, resultTypeExp)
+      // assert(erasedParams(mt.paramInfos).contains(true), s"$mt must contain an erased parameter")
+      if erasedParams(mt.paramInfos).contains(true) then mt
+      else withoutErased(paramNames)(paramInfosExp, resultTypeExp)
 
     def erasedParams(paramsInfo: List[Type])(using Context) =
-      paramsInfo.map(_.hasAnnotation(defn.ErasedParamAnnot))
+      paramsInfo.map(p => p.hasAnnotation(defn.ErasedParamAnnot) || p.isErasedClass)
   }
 
-  object ErasedMethodType extends ErasedMethodCompanion("MethodType")
+  object ErasedMethodType extends ErasedMethodCompanion(MethodType)
   object ContextualMethodType extends MethodTypeCompanion("ContextualMethodType")
-  object ErasedContextualMethodType extends ErasedMethodCompanion("ContextualMethodType")
+  object ErasedContextualMethodType extends ErasedMethodCompanion(ContextualMethodType)
   object ImplicitMethodType extends MethodTypeCompanion("ImplicitMethodType")
-  object ErasedImplicitMethodType extends ErasedMethodCompanion("ImplicitMethodType")
+  object ErasedImplicitMethodType extends ErasedMethodCompanion(ImplicitMethodType)
 
   /** A ternary extractor for MethodType */
   object MethodTpe {
