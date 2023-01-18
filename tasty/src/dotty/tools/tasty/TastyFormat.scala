@@ -377,6 +377,8 @@ object TastyFormat {
     final val DEFAULTGETTER = 11     // The name `<meth-name>$default$<param-num>`
                                      // of a default getter that returns a default argument.
 
+    final val CAPBASECLASS = 19      // The name of the base class for the capability `<name>_$base`
+
     final val SUPERACCESSOR = 20     // The name of a super accessor `super$name` created by SuperAccesors.
 
     final val INLINEACCESSOR = 21    // The name of an inline accessor `inline$name`
@@ -414,6 +416,7 @@ object TastyFormat {
       case INLINEACCESSOR => "INLINEACCESSOR"
       case BODYRETAINER => "BODYRETAINER"
       case OBJECTCLASS => "OBJECTCLASS"
+      case CAPBASECLASS => "CAPBASECLASS"
       case SIGNED => "SIGNED"
       case TARGETSIGNED => "TARGETSIGNED"
       case id => s"NotANameTag($id)"

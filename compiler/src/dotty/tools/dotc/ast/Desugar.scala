@@ -1274,11 +1274,25 @@ object desugar {
       tree
   }
 
+  def capabilityClassDef(cdef: TypeDef, desugarBase: Boolean = true)(using Context): Tree =
+    val name1 = cdef.name.derived(NameKinds.CapabilityBaseClassName).toTypeName
+    val tdef = TypeDef(cdef.name, CapturingTypeTree(List(captureRoot), Ident(name1)))
+      .withSpan(cdef.span)
+    val cdef1 = cpy.TypeDef(cdef)(name = name1)
+    if desugarBase then
+      flatTree(tdef :: classDef(cdef1) :: Nil)
+    else
+      Thicket(tdef :: cdef1 :: Nil)
+
   def defTree(tree: Tree)(using Context): Tree =
     checkModifiers(tree) match {
       case tree: ValDef => valDef(tree)
       case tree: TypeDef =>
-        if (tree.isClassDef) classDef(tree)
+        if (tree.isClassDef)
+          if tree.mods.is(Capability) && !tree.name.is(NameKinds.CapabilityBaseClassName) then
+            capabilityClassDef(tree)
+          else
+            classDef(tree)
         else if (ctx.mode.is(Mode.QuotedPattern)) quotedPatternTypeDef(tree)
         else tree
       case tree: DefDef =>
@@ -1388,7 +1402,14 @@ object desugar {
    */
   def packageDef(pdef: PackageDef)(using Context): PackageDef = {
     checkPackageName(pdef)
-    val wrappedTypeNames = pdef.stats.collect {
+
+    val stats1 = pdef.stats.flatMap {
+      case tree: TypeDef if tree.isClassDef && tree.mods.is(Capability) =>
+        capabilityClassDef(tree, desugarBase = false).toList
+      case tree => tree :: Nil
+    }
+
+    val wrappedTypeNames = stats1.collect {
       case stat: TypeDef if isTopLevelDef(stat) => stat.name
     }
     def inPackageObject(stat: Tree) =
@@ -1399,7 +1420,7 @@ object desugar {
           case _ =>
             false
       }
-    val (nestedStats, topStats) = pdef.stats.partition(inPackageObject)
+    val (nestedStats, topStats) = stats1.partition(inPackageObject)
     if (nestedStats.isEmpty) pdef
     else {
       val name = packageObjectName(ctx.source)

@@ -377,6 +377,7 @@ object NameKinds {
   val DirectMethName: SuffixNameKind = new SuffixNameKind(DIRECT, "$direct")
   val AdaptedClosureName: SuffixNameKind = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }
   val SyntheticSetterName: SuffixNameKind = new SuffixNameKind(SETTER, "_$eq")
+  val CapabilityBaseClassName: SuffixNameKind = new SuffixNameKind(CAPBASECLASS, "_$base")
 
   /** A name together with a signature. Used in Tasty trees. */
   object SignedName extends NameKind(SIGNED) {

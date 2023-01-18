@@ -190,6 +190,7 @@ object Parsers {
     def isPureArrow(name: Name): Boolean = isIdent(name) && Feature.pureFunsEnabled
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
+    def isCapability = isIdent(nme.capability) && Feature.ccEnabled
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -2959,6 +2960,7 @@ object Parsers {
       case IDENTIFIER =>
         name match {
           case nme.erased if in.erasedEnabled => Mod.Erased()
+          case nme.capability if Feature.ccEnabled => Mod.Capability()
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()

@@ -377,6 +377,9 @@ object Flags {
   /** Symbol cannot be found as a member during typer */
   val (Invisible @ _, _, _) = newFlags(45, "<invisible>")
 
+  /** Labeled with `capability` modifier (capability class)  */
+  val (Capability @ _, _, _) = newFlags(46, "capability")
+
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
@@ -449,7 +452,7 @@ object Flags {
     commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent, Erased)
 
   val TypeSourceModifierFlags: FlagSet =
-    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
+    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open | Capability
 
   val TermSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy
