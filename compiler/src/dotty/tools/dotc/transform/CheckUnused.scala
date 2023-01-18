@@ -204,12 +204,15 @@ class CheckUnused extends MiniPhase:
         case t:tpd.ValDef =>
           prepareForValDef(t)
           traverseChildren(tree)(using newCtx)
+          transformValDef(t)
         case t:tpd.DefDef =>
           prepareForDefDef(t)
           traverseChildren(tree)(using newCtx)
+          transformDefDef(t)
         case t:tpd.TypeDef =>
           prepareForTypeDef(t)
           traverseChildren(tree)(using newCtx)
+          transformTypeDef(t)
         case t: tpd.Bind =>
           prepareForBind(t)
           traverseChildren(tree)(using newCtx)
@@ -332,7 +335,7 @@ object CheckUnused:
      * The optional name will be used to target the right import
      * as the same element can be imported with different renaming
      */
-    def registerUsed(sym: Symbol, name: Option[Name])(using Context): Unit =
+    def registerUsed(sym: Symbol, name: Option[Name])(using Context): Unit =      
       if !isConstructorOfSynth(sym) && !doNotRegister(sym) then
         if sym.isConstructor && sym.exists then
           registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
@@ -368,7 +371,7 @@ object CheckUnused:
             implicitParamInScope += memDef
           else
             explicitParamInScope += memDef
-        else if currScopeType.top == ScopeType.Local then
+        else if currScopeType.top == ScopeType.Local then 
           localDefInScope += memDef
         else if memDef.shouldReportPrivateDef then
           privateDefInScope += memDef
