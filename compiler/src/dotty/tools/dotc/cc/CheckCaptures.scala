@@ -729,12 +729,14 @@ class CheckCaptures extends Recheck, SymTransformer:
        *  reconstructed with the returned function.
        */
       def destructCapturingType(tp: Type, reconstruct: Type => Type = x => x): ((Type, CaptureSet, Boolean), Type => Type) =
-        tp.dealias match
+        tp.dealiasKeepAnnots match
           case tp @ CapturingType(parent, cs) =>
             if parent.dealias.isCapturingType then
               destructCapturingType(parent, res => reconstruct(tp.derivedCapturingType(res, cs)))
             else
               ((parent, cs, tp.isBoxed), reconstruct)
+          case AnnotatedType(parent, annot) =>
+            destructCapturingType(parent, res => reconstruct(AnnotatedType(res, annot)))
           case actual =>
             val res = if tp.isFromJavaObject then tp else actual
             ((res, CaptureSet(), false), reconstruct)
