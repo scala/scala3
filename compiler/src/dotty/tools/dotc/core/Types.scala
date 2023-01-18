@@ -1071,7 +1071,7 @@ object Types {
      *  @param relaxedCheck   if true type `Null` becomes a subtype of non-primitive value types in TypeComparer.
      *  @param matchLoosely   if true the types `=> T` and `()T` are seen as overriding each other.
      *  @param checkClassInfo if true we check that ClassInfos are within bounds of abstract types
-     * 
+     *
      *  @param isSubType      a function used for checking subtype relationships.
      */
     final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true,
@@ -3322,11 +3322,11 @@ object Types {
   final class CachedAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
 
   object AndType {
-    def apply(tp1: Type, tp2: Type)(using Context): AndType = {
-      assert(tp1.isValueTypeOrWildcard &&
-             tp2.isValueTypeOrWildcard, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
+    def apply(tp1: Type, tp2: Type)(using Context): AndType =
+      def where = i"in intersection $tp1 & $tp2"
+      expectValueTypeOrWildcard(tp1, where)
+      expectValueTypeOrWildcard(tp2, where)
       unchecked(tp1, tp2)
-    }
 
     def balanced(tp1: Type, tp2: Type)(using Context): AndType =
       tp1 match
@@ -3366,7 +3366,7 @@ object Types {
       TypeComparer.liftIfHK(tp1, tp2, AndType.make(_, _, checkValid = false), makeHk, _ | _)
   }
 
-  abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
+  abstract case class OrType protected(tp1: Type, tp2: Type) extends AndOrType {
     def isAnd: Boolean = false
     def isSoft: Boolean
     private var myBaseClassesPeriod: Period = Nowhere
@@ -3398,9 +3398,6 @@ object Types {
           myFactorCount = tp1.orFactorCount(soft) + tp2.orFactorCount(soft)
         myFactorCount
       else 1
-
-    assert(tp1.isValueTypeOrWildcard &&
-           tp2.isValueTypeOrWildcard, s"$tp1 $tp2")
 
     private var myJoin: Type = _
     private var myJoinPeriod: Period = Nowhere
@@ -3476,6 +3473,9 @@ object Types {
   object OrType {
 
     def apply(tp1: Type, tp2: Type, soft: Boolean)(using Context): OrType = {
+      def where = i"in union $tp1 | $tp2"
+      expectValueTypeOrWildcard(tp1, where)
+      expectValueTypeOrWildcard(tp2, where)
       assertUnerased()
       unique(new CachedOrType(tp1, tp2, soft))
     }
@@ -3505,6 +3505,11 @@ object Types {
     def makeHk(tp1: Type, tp2: Type)(using Context): Type =
       TypeComparer.liftIfHK(tp1, tp2, OrType(_, _, soft = true), makeHk, _ & _)
   }
+
+  def expectValueTypeOrWildcard(tp: Type, where: => String)(using Context): Unit =
+    if !tp.isValueTypeOrWildcard then
+      assert(!ctx.isAfterTyper, where) // we check correct kinds at PostTyper
+      throw TypeError(em"$tp is not a value type, cannot be used $where")
 
   /** An extractor object to pattern match against a nullable union.
    *  e.g.
