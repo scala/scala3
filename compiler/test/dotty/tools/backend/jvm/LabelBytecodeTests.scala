@@ -148,7 +148,7 @@ class LabelBytecodeTests extends DottyBytecodeTest {
       s"""import scala.util.*
          |class Test:
          |  def test: $tpe = {
-         |    ${code.lines().toList().asScala.mkString("", "\n    ", "")}
+         |    ${code.linesIterator.toList.mkString("", "\n    ", "")}
          |  }
          |  def nonLocalBreak[T](value: T)(using boundary.Label[T]): Nothing = break(value)
          |  def nonLocalBreak()(using boundary.Label[Unit]): Nothing = break(())
