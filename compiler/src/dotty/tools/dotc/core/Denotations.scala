@@ -300,9 +300,9 @@ object Denotations {
         case NoDenotation | _: NoQualifyingRef | _: MissingRef =>
           def argStr = if (args.isEmpty) "" else i" matching ($args%, %)"
           val msg =
-            if (site.exists) i"$site does not have a member $kind $name$argStr"
-            else i"missing: $kind $name$argStr"
-          throw new TypeError(msg)
+            if site.exists then em"$site does not have a member $kind $name$argStr"
+            else em"missing: $kind $name$argStr"
+          throw TypeError(msg)
         case denot =>
           denot.symbol
       }
@@ -644,15 +644,19 @@ object Denotations {
 
     def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
       val situated = if site == NoPrefix then this else asSeenFrom(site)
-      val sigMatches = sig.matchDegree(situated.signature) match
-        case FullMatch =>
-          true
-        case MethodNotAMethodMatch =>
-          // See comment in `matches`
-          relaxed && !symbol.is(JavaDefined)
-        case ParamMatch =>
-          relaxed
-        case noMatch =>
+      val sigMatches =
+        try
+          sig.matchDegree(situated.signature) match
+            case FullMatch =>
+              true
+            case MethodNotAMethodMatch =>
+              // See comment in `matches`
+              relaxed && !symbol.is(JavaDefined)
+            case ParamMatch =>
+              relaxed
+            case noMatch =>
+              false
+        catch case ex: MissingType =>
           false
       if sigMatches && symbol.hasTargetName(targetName) then this else NoDenotation
 

@@ -47,6 +47,7 @@ import dotty.tools.tasty.TastyFormat._
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 import language.experimental.pureFunctions
+import caps.unsafe.{unsafeUnbox, unsafeBox}
 
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle
@@ -587,7 +588,7 @@ class TreeUnpickler(reader: TastyReader,
     /** Create symbol of member definition or parameter node and enter in symAtAddr map
      *  @return  the created symbol
      */
-    def createMemberSymbol()(using Context): Symbol = {
+    def createMemberSymbol()(using DetachedContext): Symbol = {
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
@@ -613,8 +614,8 @@ class TreeUnpickler(reader: TastyReader,
           case Some(rootd) =>
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
             rootd.symbol.coord = coord
-            rootd.info = adjustIfModule(
-                new Completer(subReader(start, end)) with SymbolLoaders.SecondCompleter)
+            class RootCompleter extends Completer(subReader(start, end)), SymbolLoaders.SecondCompleter
+            rootd.info = adjustIfModule(RootCompleter())
             rootd.flags = flags &~ Touched // allow one more completion
             rootd.setPrivateWithin(privateWithin)
             seenRoots += rootd.symbol
@@ -1085,15 +1086,15 @@ class TreeUnpickler(reader: TastyReader,
 
     def readIndexedStats[T](exprOwner: Symbol, end: Addr, k: (List[Tree], Context) => T = sameTrees)(using Context): T =
       val buf = new mutable.ListBuffer[Tree]
-      var curCtx = ctx
+      var curCtx = ctx.unsafeBox
       while currentAddr.index < end.index do
-        val stat = readIndexedStat(exprOwner)(using curCtx)
+        val stat = readIndexedStat(exprOwner)(using curCtx.unsafeUnbox)
         buf += stat
         stat match
-          case stat: Import => curCtx = curCtx.importContext(stat, stat.symbol)
+          case stat: Import => curCtx = curCtx.unsafeUnbox.importContext(stat, stat.symbol).unsafeBox
           case _ =>
       assert(currentAddr.index == end.index)
-      k(buf.toList, curCtx)
+      k(buf.toList, curCtx.unsafeUnbox)
 
     def readStats[T](exprOwner: Symbol, end: Addr, k: (List[Tree], Context) => T = sameTrees)(using Context): T = {
       fork.indexStats(end)
@@ -1237,6 +1238,12 @@ class TreeUnpickler(reader: TastyReader,
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
+            case APPLYsigpoly =>
+              val fn = readTerm()
+              val methType = readType()
+              val args = until(end)(readTerm())
+              val fun2 = typer.Applications.retypeSignaturePolymorphicFn(fn, methType)
+              tpd.Apply(fun2, args)
             case TYPED =>
               val expr = readTerm()
               val tpt = readTpt()

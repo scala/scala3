@@ -35,7 +35,9 @@ class Staging extends MacroTransform {
       // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
-          val checker = new PCPCheckAndHeal(freshStagingContext) {
+          val stagingCtx = freshStagingContext
+          val checker = new PCPCheckAndHeal(stagingCtx) {
+            // !cc! type error is checker is defined as val checker = new PCPCheckAndHeal { ... }
             override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
               def symStr =
                 if (sym.is(ModuleClass)) sym.sourceModule.show
@@ -70,7 +72,7 @@ class Staging extends MacroTransform {
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
-      new PCPCheckAndHeal(ctx).transform(tree)
+      new PCPCheckAndHeal(ctx.detach).transform(tree)
   }
 }
 

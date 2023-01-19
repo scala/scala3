@@ -9,6 +9,7 @@ import printing.{Showable, Printer}
 import printing.Texts.Text
 import annotation.internal.sharable
 import language.experimental.pureFunctions
+import annotation.retains
 
 object Annotations {
 
@@ -54,7 +55,7 @@ object Annotations {
      *  be overridden. Returns EmptyAnnotation if type type map produces a range
      *  type, since ranges cannot be types of trees.
      */
-    def mapWith(tm: TypeMap)(using Context) =
+    def mapWith(tm: TypeMap @retains(caps.*))(using Context) =
       val args = arguments
       if args.isEmpty then this
       else

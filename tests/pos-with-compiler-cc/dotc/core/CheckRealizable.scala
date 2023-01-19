@@ -8,14 +8,15 @@ import Decorators._
 import collection.mutable
 import config.SourceVersion.future
 import config.Feature.sourceVersion
+import annotation.constructorOnly
 
 /** Realizability status */
 object CheckRealizable {
 
-  sealed abstract class Realizability(val msg: String) {
+  sealed abstract class Realizability(val msg: String) extends caps.Pure {
     def andAlso(other: => Realizability): Realizability =
       if (this == Realizable) other else this
-    def mapError(f: Realizability => Realizability): Realizability =
+    def mapError(f: Realizability -> Context ?-> Realizability)(using Context): Realizability =
       if (this == Realizable) this else f(this)
   }
 
@@ -23,22 +24,22 @@ object CheckRealizable {
 
   object NotConcrete extends Realizability(" is not a concrete type")
 
-  class NotFinal(sym: Symbol)(using Context)
+  class NotFinal(sym: Symbol)(using @constructorOnly ctx: Context)
   extends Realizability(i" refers to nonfinal $sym")
 
-  class HasProblemBounds(name: Name, info: Type)(using Context)
+  class HasProblemBounds(name: Name, info: Type)(using @constructorOnly ctx: Context)
   extends Realizability(i" has a member $name with possibly conflicting bounds ${info.bounds.lo} <: ... <: ${info.bounds.hi}")
 
-  class HasProblemBaseArg(typ: Type, argBounds: TypeBounds)(using Context)
+  class HasProblemBaseArg(typ: Type, argBounds: TypeBounds)(using @constructorOnly ctx: Context)
   extends Realizability(i" has a base type $typ with possibly conflicting parameter bounds ${argBounds.lo} <: ... <: ${argBounds.hi}")
 
-  class HasProblemBase(base1: Type, base2: Type)(using Context)
+  class HasProblemBase(base1: Type, base2: Type)(using @constructorOnly ctx: Context)
   extends Realizability(i" has conflicting base types $base1 and $base2")
 
-  class HasProblemField(fld: SingleDenotation, problem: Realizability)(using Context)
+  class HasProblemField(fld: SingleDenotation, problem: Realizability)(using @constructorOnly ctx: Context)
   extends Realizability(i" has a member $fld which is not a legal path\nsince ${fld.symbol.name}: ${fld.info}${problem.msg}")
 
-  class ProblemInUnderlying(tp: Type, problem: Realizability)(using Context)
+  class ProblemInUnderlying(tp: Type, problem: Realizability)(using @constructorOnly ctx: Context)
   extends Realizability(i"s underlying type ${tp}${problem.msg}") {
     assert(problem != Realizable)
   }

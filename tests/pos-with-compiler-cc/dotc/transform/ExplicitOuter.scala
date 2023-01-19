@@ -176,8 +176,9 @@ object ExplicitOuter {
           if prefix == NoPrefix then outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty))
           else prefix.widen)
     val info = if (flags.is(Method)) ExprType(target) else target
+    val currentNestingLevel = ctx.nestingLevel
     atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
-      newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord)
+      newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord, nestingLevel = currentNestingLevel)
     }
   }
 
@@ -376,7 +377,7 @@ object ExplicitOuter {
   extension (sym: Symbol) def isOuterParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor) && sym.name == nme.OUTER
 
-  def outer(using Context): OuterOps = new OuterOps(ctx)
+  def outer(using Context): OuterOps = new OuterOps(ctx.detach)
 
   /** The operations in this class
    *   - add outer parameters
@@ -395,7 +396,7 @@ object ExplicitOuter {
    *     get erased during erasure. Therefore, outer arguments have to be passed
    *     no later than erasure.
    */
-  class OuterOps(val ictx: Context) extends AnyVal {
+  class OuterOps(val ictx: DetachedContext) extends AnyVal {
     /** The context of all operations of this class */
     given [Dummy]: Context = ictx
 
@@ -469,7 +470,8 @@ object ExplicitOuter {
                 i"failure to construct path from ${ctx.owner.ownersIterator.toList}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
             loop(tree.select(outerAcc).ensureApplied, count - 1)
 
-        report.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
+        val c = ctx
+        report.log(i"computing outerpath to $toCls from ${c.outersIterator.map(_.owner).toList}")
         loop(start, count)
       catch case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")

@@ -169,7 +169,8 @@ object SymDenotations {
           }
         }
         else {
-          if (myFlags.is(Touched)) throw CyclicReference(this)
+          if (myFlags.is(Touched))
+            throw CyclicReference(this)(using ctx.withOwner(symbol))
           myFlags |= Touched
           atPhase(validFor.firstPhaseId)(completer.complete(this))
         }
@@ -961,6 +962,26 @@ object SymDenotations {
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
+    // Java language spec: https://docs.oracle.com/javase/specs/jls/se11/html/jls-15.html#jls-15.12.3
+    // Scala 2 spec: https://scala-lang.org/files/archive/spec/2.13/06-expressions.html#signature-polymorphic-methods
+    def isSignaturePolymorphic(using Context): Boolean =
+      containsSignaturePolymorphic
+      && is(JavaDefined)
+      && hasAnnotation(defn.NativeAnnot)
+      && atPhase(typerPhase)(symbol.denot).paramSymss.match
+        case List(List(p)) => p.info.isRepeatedParam
+        case _             => false
+
+    def containsSignaturePolymorphic(using Context): Boolean =
+      maybeOwner == defn.MethodHandleClass
+      || maybeOwner == defn.VarHandleClass
+
+    def originalSignaturePolymorphic(using Context): Denotation =
+      if containsSignaturePolymorphic && !isSignaturePolymorphic then
+        val d = owner.info.member(name)
+        if d.symbol.isSignaturePolymorphic then d else NoDenotation
+      else NoDenotation
+
     def isInlineMethod(using Context): Boolean =
       isAllOf(InlineMethod, butNot = Accessor)
 
@@ -1083,7 +1104,7 @@ object SymDenotations {
       if (is(Accessor)) accessedFieldOrGetter orElse symbol else symbol
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
-    final def ownersIterator(using Context): Iterator[Symbol] = new Iterator[Symbol] {
+    final def ownersIterator(using DetachedContext): Iterator[Symbol] = new Iterator[Symbol] {
       private var current = symbol
       def hasNext = current.exists
       def next: Symbol = {
@@ -1257,7 +1278,7 @@ object SymDenotations {
       else if (ctx.scope.lookup(this.name) == symbol)
         ctx.scope.lookup(name)
       else
-        companionNamed(name)(using ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next())
+        companionNamed(name)(using ctx.detach.outersIterator.dropWhile(_.scope eq ctx.scope).next())
 
     /** Is this symbol the same or a linked class of `sym`? */
     final def isLinkedWith(sym: Symbol)(using Context): Boolean =
@@ -1636,7 +1657,7 @@ object SymDenotations {
           completeChildrenIn(companionClass)
           setFlag(ChildrenQueried)
 
-      annotations.collect { case Annotation.Child(child) => child }.reverse
+      annotations.collectCC { case Annotation.Child(child) => child }.reverse
     end children
 
     /** Recursively assemble all children of this symbol, Preserves order of insertion.
@@ -2430,8 +2451,6 @@ object SymDenotations {
           )
         if compiledNow.exists then compiledNow
         else
-          //val union = (d1: Set[AbstractFile], d2: Set[AbstractFile]) => d1.union(d2)
-          // !cc! need to break `u` out into separate definition, writing `_ union _` below gives an error
           val assocFiles = multi.aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
           if assocFiles.size == 1 then
             multi // they are all overloaded variants from the same file
@@ -2441,13 +2460,13 @@ object SymDenotations {
             val youngest = assocFiles.filter(_.lastModified == lastModDate)
             val chosen = youngest.head
             def ambiguousFilesMsg(f: AbstractFile) =
-              em"""Toplevel definition $name is defined in
-                  |  $chosen
-                  |and also in
-                  |  $f"""
+              i"""Toplevel definition $name is defined in
+                 |  $chosen
+                 |and also in
+                 |  $f"""
             if youngest.size > 1 then
-              throw TypeError(i"""${ambiguousFilesMsg(youngest.tail.head)}
-                                 |One of these files should be removed from the classpath.""")
+              throw TypeError(em"""${ambiguousFilesMsg(youngest.tail.head)}
+                                  |One of these files should be removed from the classpath.""")
 
             // Warn if one of the older files comes from a different container.
             // In that case picking the youngest file is not necessarily what we want,
@@ -2457,8 +2476,8 @@ object SymDenotations {
               try f.container == chosen.container catch case NonFatal(ex) => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
-                report.warning(i"""${ambiguousFilesMsg(conflicting.nn)}
-                               |Keeping only the definition in $chosen""")
+                report.warning(em"""${ambiguousFilesMsg(conflicting.nn)}
+                                   |Keeping only the definition in $chosen""")
                 ambiguityWarningIssued = true
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
       end dropStale
@@ -2624,7 +2643,8 @@ object SymDenotations {
   /** Possibly accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation)(using Context): Boolean =
     staleOK && {
-      report.debugwarn(denot.staleSymbolMsg)
+      inDetachedContext:
+        report.debugwarn(denot.staleSymbolMsg)
       true
     }
 

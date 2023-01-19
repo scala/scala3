@@ -651,7 +651,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       case typeRef: TypeRef => typeRef
       case _ =>
         // This should not have passed the checks in PrepJSInterop
-        report.error(i"class type required but found $tpe0", tree)
+        report.error(em"class type required but found $tpe0", tree)
         jsdefn.JSObjectType
     }
     val cls = tpe.typeSymbol
@@ -667,7 +667,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         val jsclassAccessor = jsclassAccessorFor(cls)
         ref(NamedType(prefix, jsclassAccessor.name, jsclassAccessor.denot))
       } else {
-        report.error(i"stable reference to a JS class required but $tpe found", tree)
+        report.error(em"stable reference to a JS class required but $tpe found", tree)
         ref(defn.Predef_undefined)
       }
     } else if (isLocalJSClass(cls)) {

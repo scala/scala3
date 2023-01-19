@@ -147,5 +147,7 @@ class CodeSnippets:
     )
   }
 
-  enrichSnippets()
+  window.addEventListener("dynamicPageLoad", (e: Event) => {
+    enrichSnippets()
+  })
 

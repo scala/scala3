@@ -186,7 +186,7 @@ class ExpandSAMs extends MiniPhase:
   private def checkRefinements(tpe: Type, tree: Tree)(using Context): Type = tpe.dealias match {
     case RefinedType(parent, name, _) =>
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
-        report.error("Lambda does not define " + name, tree.srcPos)
+        report.error(em"Lambda does not define $name", tree.srcPos)
       checkRefinements(parent, tree)
     case tpe =>
       tpe

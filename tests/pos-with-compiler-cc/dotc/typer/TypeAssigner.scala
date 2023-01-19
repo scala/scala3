@@ -12,6 +12,7 @@ import collection.mutable
 import reporting._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
+import caps.unsafe.unsafeBoxFunArg
 
 trait TypeAssigner {
   import tpd.*
@@ -26,13 +27,14 @@ trait TypeAssigner {
           qual.isEmpty ||
           sym.name == qual ||
           sym.is(Module) && sym.name.stripModuleClassSuffix == qual)
-    ctx.outersIterator.map(_.owner).find(qualifies) match {
+    ctx.outersIterator.map(((ctx: Context) => ctx.owner).unsafeBoxFunArg).find(qualifies) match {
       case Some(c) if packageOK || !c.is(Package) =>
         c
       case _ =>
         report.error(
-          if (qual.isEmpty) tree.show + " can be used only in a class, object, or template"
-          else qual.show + " is not an enclosing class", tree.srcPos)
+          if qual.isEmpty then em"$tree can be used only in a class, object, or template"
+          else em"$qual is not an enclosing class",
+          tree.srcPos)
         NoSymbol
     }
   }
@@ -127,7 +129,7 @@ trait TypeAssigner {
     def arrayElemType = qual1.tpe.widen match
       case JavaArrayType(elemtp) => elemtp
       case qualType =>
-        report.error("Expected Array but was " + qualType.show, tree.srcPos)
+        report.error(em"Expected Array but was $qualType", tree.srcPos)
         defn.NothingType
 
     val name = tree.name
@@ -156,7 +158,7 @@ trait TypeAssigner {
 
   def importSuggestionAddendum(pt: Type)(using Context): String = ""
 
-  def notAMemberErrorType(tree: untpd.Select, qual: Tree)(using Context): ErrorType =
+  def notAMemberErrorType(tree: untpd.Select, qual: Tree)(using DetachedContext): ErrorType =
     val qualType = qual.tpe.widenIfUnstable
     def kind = if tree.isType then "type" else "value"
     val foundWithoutNull = qualType match
@@ -167,26 +169,13 @@ trait TypeAssigner {
       case _ => false
     def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
     val msg: Message =
-      if tree.name == nme.CONSTRUCTOR then ex"$qualType does not have a constructor".toMessage
+      if tree.name == nme.CONSTRUCTOR then em"$qualType does not have a constructor"
       else NotAMember(qualType, tree.name, kind, addendum)
     errorType(msg, tree.srcPos)
 
   def inaccessibleErrorType(tpe: NamedType, superAccess: Boolean, pos: SrcPos)(using Context): Type =
-    val pre = tpe.prefix
-    val name = tpe.name
-    val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
-    val whatCanNot = alts match
-      case Nil =>
-        em"$name cannot"
-      case sym :: Nil =>
-        em"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
-      case _ =>
-        em"none of the overloaded alternatives named $name can"
-    val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
-    val whyNot = new StringBuffer
-    alts.foreach(_.isAccessibleFrom(pre, superAccess, whyNot))
     if tpe.isError then tpe
-    else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
+    else errorType(CannotBeAccessed(tpe, superAccess), pos)
 
   def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type = tp match
     case AppliedType(tycon, args) =>
@@ -238,7 +227,7 @@ trait TypeAssigner {
     val cls = qualifyingClass(tree, tree.qual.name, packageOK = false)
     tree.withType(
         if (cls.isClass) cls.thisType
-        else errorType("not a legal qualifying class for this", tree.srcPos))
+        else errorType(em"not a legal qualifying class for this", tree.srcPos))
   }
 
   def superType(qualType: Type, mix: untpd.Ident, mixinClass: Symbol, pos: SrcPos)(using Context) =
@@ -252,7 +241,7 @@ trait TypeAssigner {
           case Nil =>
             errorType(SuperQualMustBeParent(mix, cls), pos)
           case p :: q :: _ =>
-            errorType("ambiguous parent class qualifier", pos)
+            errorType(em"ambiguous parent class qualifier", pos)
         }
         val owntype =
           if (mixinClass.exists) mixinClass.typeRef
@@ -300,16 +289,16 @@ trait TypeAssigner {
         if (fntpe.paramInfos.hasSameLengthAs(args) || ctx.phase.prev.relaxedTyping)
           safeSubstMethodParams(fntpe, args.tpes)
         else
-          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
+          errorType(em"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
-        errorType(err.takesNoParamsStr(fn, ""), tree.srcPos)
+        errorType(err.takesNoParamsMsg(fn, ""), tree.srcPos)
     }
     ConstFold.Apply(tree.withType(ownType))
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(using Context): TypeApply = {
-    def fail = tree.withType(errorType(err.takesNoParamsStr(fn, "type "), tree.srcPos))
+    def fail = tree.withType(errorType(err.takesNoParamsMsg(fn, "type "), tree.srcPos))
     ConstFold(fn.tpe.widen match {
       case pt: TypeLambda =>
         tree.withType {

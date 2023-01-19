@@ -306,6 +306,7 @@ object SpaceEngine {
       val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition)
       isEmptyTp <:< ConstantType(Constant(false))
     }
+    || unappResult.derivesFrom(defn.NonEmptyTupleClass)
   }
 
   /** Is the unapply or unapplySeq irrefutable?
@@ -508,10 +509,10 @@ class SpaceEngine(using Context) extends SpaceLogic {
   def isPrimToBox(tp: Type, pt: Type): Boolean =
     tp.isPrimitiveValueType && (defn.boxedType(tp).classSymbol eq pt.classSymbol)
 
-  private val isSubspaceCache = mutable.HashMap.empty[(Space, Space, Context), Boolean]
+  private val isSubspaceCache = mutable.HashMap.empty[(Space, Space, DetachedContext), Boolean]
 
   override def isSubspace(a: Space, b: Space)(using Context): Boolean =
-    isSubspaceCache.getOrElseUpdate((a, b, ctx), super.isSubspace(a, b))
+    isSubspaceCache.getOrElseUpdate((a, b, ctx.detach), super.isSubspace(a, b))
 
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
@@ -893,7 +894,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
     if uncovered.nonEmpty then
       val hasMore = uncovered.lengthCompare(6) > 0
       val deduped = dedup(uncovered.take(6))
-      report.warning(PatternMatchExhaustivity(show(deduped), hasMore), sel.srcPos)
+      val dedupedStr = show(deduped)
+      report.warning(PatternMatchExhaustivity(dedupedStr, hasMore), sel.srcPos)
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =

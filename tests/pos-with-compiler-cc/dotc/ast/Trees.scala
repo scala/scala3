@@ -49,7 +49,7 @@ object Trees {
    *     nodes.
    */
   abstract class Tree[+T <: Untyped](implicit @constructorOnly src: SourceFile)
-  extends Positioned, SrcPos, Product, Attachment.Container, printing.Showable, caps.Pure {
+  extends Positioned, SrcPos, Product, Attachment.Container, printing.Showable {
 
     if (Stats.enabled) ntrees += 1
 
@@ -1394,7 +1394,7 @@ object Trees {
         case _ =>
           sourced
 
-    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
+    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self: TreeMap @retains(caps.*) =>
       def transform(tree: Tree)(using Context): Tree = {
         inContext(transformCtx(tree)) {
           Stats.record(s"TreeMap.transform/$getClass")
@@ -1747,7 +1747,7 @@ object Trees {
       val denot = receiver.tpe.member(method)
       if !denot.exists then
         overload.println(i"members = ${receiver.tpe.decls}")
-        report.error(i"no member $receiver . $method", receiver.srcPos)
+        report.error(em"no member $receiver . $method", receiver.srcPos)
       val selected =
         if (denot.isOverloaded) {
           def typeParamCount(tp: Type) = tp.widen match {

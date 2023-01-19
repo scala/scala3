@@ -30,7 +30,7 @@ import Hashable._
 import Uniques._
 import collection.mutable
 import config.Config
-import annotation.{tailrec, constructorOnly}
+import annotation.{tailrec, constructorOnly, threadUnsafe}
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
@@ -40,7 +40,6 @@ import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, Ev
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.transform.SymUtils._
 import language.experimental.pureFunctions
@@ -399,6 +398,10 @@ object Types {
     def isRepeatedParam(using Context): Boolean =
       typeSymbol eq defn.RepeatedParamClass
 
+    /** Is this a parameter type that allows implicit argument converson? */
+    def isConvertibleParam(using Context): Boolean =
+      typeSymbol eq defn.IntoType
+
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
      */
@@ -538,7 +541,7 @@ object Types {
       case tp: ClassInfo =>
         tp.cls :: Nil
       case AndType(l, r) =>
-        l.parentSymbols(include) | r.parentSymbols(include)
+        l.parentSymbols(include).setUnion(r.parentSymbols(include))
       case OrType(l, r) =>
         l.parentSymbols(include) intersect r.parentSymbols(include) // TODO does not conform to spec
       case _ =>
@@ -1501,7 +1504,7 @@ object Types {
     /** The iterator of underlying types as long as type is a TypeProxy.
      *  Useful for diagnostics
      */
-    def underlyingIterator(using Context): Iterator[Type] = new Iterator[Type] {
+    def underlyingIterator(using DetachedContext): Iterator[Type] = new Iterator[Type] {
       var current = Type.this
       var hasNext = true
       def next = {
@@ -1866,6 +1869,11 @@ object Types {
 
     def dropRepeatedAnnot(using Context): Type = dropAnnot(defn.RepeatedAnnot)
 
+    /** A translation from types of original parameter ValDefs to the types
+     *  of parameters in MethodTypes.
+     *  Translates `Seq[T] @repeated` or `Array[T] @repeated` to `<repeated>[T]`.
+     *  That way, repeated arguments are made manifest without risk of dropped annotations.
+     */
     def annotatedToRepeated(using Context): Type = this match {
       case tp @ ExprType(tp1) =>
         tp.derivedExprType(tp1.annotatedToRepeated)
@@ -2151,7 +2159,7 @@ object Types {
   trait ProtoType extends Type {
     def isMatchedBy(tp: Type, keepConstraint: Boolean = false)(using Context): Boolean
     def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T
-    def map(tm: TypeMap)(using Context): ProtoType
+    def map(tm: TypeMap @retains(caps.*))(using Context): ProtoType
 
     /** If this prototype captures a context, the same prototype except that the result
      *  captures the given context `ctx`.
@@ -2181,7 +2189,7 @@ object Types {
     def designator: Designator
     protected def designator_=(d: Designator): Unit
 
-    assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
+    assert(NamedType.validPrefix(prefix), s"invalid prefix $prefix")
 
     private var myName: Name | Null = null
     private var lastDenotation: Denotation | Null = null
@@ -2416,12 +2424,12 @@ object Types {
       }
       else {
         if (!ctx.reporter.errorsReported)
-          throw new TypeError(
-            i"""bad parameter reference $this at ${ctx.phase}
-               |the parameter is ${param.showLocated} but the prefix $prefix
-               |does not define any corresponding arguments.
-               |idx = $idx, args = $args%, %,
-               |constraint = ${ctx.typerState.constraint}""")
+          throw TypeError(
+            em"""bad parameter reference $this at ${ctx.phase}
+                |the parameter is ${param.showLocated} but the prefix $prefix
+                |does not define any corresponding arguments.
+                |idx = $idx, args = $args%, %,
+                |constraint = ${ctx.typerState.constraint}""")
         NoDenotation
       }
     }
@@ -2449,6 +2457,8 @@ object Types {
     }
 
     private def checkDenot()(using Context) = {}
+      //if name.toString == "getConstructor" then
+      //  println(i"set denot of $this to ${denot.info}, ${denot.getClass}, ${Phases.phaseOf(denot.validFor.lastPhaseId)} at ${ctx.phase}")
 
     private def checkSymAssign(sym: Symbol)(using Context) = {
       def selfTypeOf(sym: Symbol) =
@@ -2689,7 +2699,7 @@ object Types {
         this
 
     /** A reference like this one, but with the given prefix. */
-    final def withPrefix(prefix: Type)(using Context): NamedType = {
+    final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
         val lastSym = lastSymbol.nn
         val allowPrivate = !lastSym.exists || lastSym.is(Private)
@@ -2893,6 +2903,8 @@ object Types {
     def apply(prefix: Type, designator: Name, denot: Denotation)(using Context): NamedType =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
+
+    def validPrefix(prefix: Type): Boolean = prefix.isValueType || (prefix eq NoPrefix)
   }
 
   object TermRef {
@@ -3951,27 +3963,48 @@ object Types {
      *  and inline parameters:
      *   - replace @repeated annotations on Seq or Array types by <repeated> types
      *   - add @inlineParam to inline parameters
+     *   - add @erasedParam to erased parameters
+     *   - wrap types of parameters that have an @allowConversions annotation with Into[_]
      */
-    def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType = {
-      def translateInline(tp: Type): Type = tp match {
-        case ExprType(resType) => ExprType(AnnotatedType(resType, Annotation(defn.InlineParamAnnot)))
-        case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
-      }
-      def translateErased(tp: Type): Type = tp match {
-        case ExprType(resType) => ExprType(AnnotatedType(resType, Annotation(defn.ErasedParamAnnot)))
-        case _ => AnnotatedType(tp, Annotation(defn.ErasedParamAnnot))
-      }
-      def paramInfo(param: Symbol) = {
+    def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
+      def addAnnotation(tp: Type, cls: ClassSymbol): Type = tp match
+        case ExprType(resType) => ExprType(addAnnotation(resType, cls))
+        case _ => AnnotatedType(tp, Annotation(cls))
+
+      def wrapConvertible(tp: Type) =
+        AppliedType(defn.IntoType.typeRef, tp :: Nil)
+
+      /** Add `Into[..] to the type itself and if it is a function type, to all its
+       *  curried result type(s) as well.
+       */
+      def addInto(tp: Type): Type = tp match
+        case tp @ AppliedType(tycon, args) if tycon.typeSymbol == defn.RepeatedParamClass =>
+          tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
+        case tp @ AppliedType(tycon, args) if defn.isFunctionType(tp) =>
+          wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
+        case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionOrPolyType(tp) =>
+          wrapConvertible(tp.derivedRefinedType(parent, rname, addInto(rinfo)))
+        case tp: MethodOrPoly =>
+          tp.derivedLambdaType(resType = addInto(tp.resType))
+        case ExprType(resType) =>
+          ExprType(addInto(resType))
+        case _ =>
+          wrapConvertible(tp)
+
+      def paramInfo(param: Symbol) =
         var paramType = param.info.annotatedToRepeated
-        if (param.is(Inline)) paramType = translateInline(paramType)
-        if (param.is(Erased)) paramType = translateErased(paramType)
+        if param.is(Inline) then
+          paramType = addAnnotation(paramType, defn.InlineParamAnnot)
+        if param.is(Erased) then
+          paramType = addAnnotation(paramType, defn.ErasedParamAnnot)
+        if param.hasAnnotation(defn.AllowConversionsAnnot) then
+          paramType = addInto(paramType)
         paramType
-      }
 
       apply(params.map(_.name.asTermName))(
          tl => params.map(p => tl.integrate(params, paramInfo(p))),
          tl => tl.integrate(params, resultType))
-    }
+    end fromSymbols
 
     final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
       checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
@@ -5296,7 +5329,12 @@ object Types {
   abstract class FlexType extends UncachedGroundType with ValueType
 
   abstract class ErrorType extends FlexType {
+
+    /** An explanation of the cause of the failure */
     def msg(using Context): Message
+
+    /** An explanation of the cause of the failure as a string */
+    def explanation(using Context): String = msg.message
   }
 
   object ErrorType:
@@ -5304,18 +5342,16 @@ object Types {
       val et = new PreviousErrorType
       ctx.base.errorTypeMsg(et) = m
       et
-    def apply(s: -> String)(using Context): ErrorType =
-      apply(s.toMessage)
   end ErrorType
 
   class PreviousErrorType extends ErrorType:
     def msg(using Context): Message =
       ctx.base.errorTypeMsg.get(this) match
         case Some(m) => m
-        case None => "error message from previous run no longer available".toMessage
+        case None => em"error message from previous run no longer available"
 
   object UnspecifiedErrorType extends ErrorType {
-    override def msg(using Context): Message = "unspecified error".toMessage
+    override def msg(using Context): Message = em"unspecified error"
   }
 
   /* Type used to track Select nodes that could not resolve a member and their qualifier is a scala.Dynamic. */
@@ -5502,13 +5538,21 @@ object Types {
         stop == StopAt.Static && tp.currentSymbol.isStatic && isStaticPrefix(tp.prefix)
         || stop == StopAt.Package && tp.currentSymbol.is(Package)
       }
+
+    /** The type parameters of the constructor of this applied type.
+     *  Overridden in OrderingConstraint's ConstraintAwareTraversal to take account
+     *  of instantiations in the constraint that are not yet propagated to the
+     *  instance types of type variables.
+     */
+    protected def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
+      tp.tyconTypeParams
   end VariantTraversal
 
   /** A supertrait for some typemaps that are bijections. Used for capture checking.
    *  BiTypeMaps should map capture references to capture references.
    */
   trait BiTypeMap extends TypeMap:
-    thisMap =>
+    thisMap: BiTypeMap @retains(caps.*) =>
 
     /** The inverse of the type map as a function */
     def inverse(tp: Type): Type
@@ -5516,7 +5560,7 @@ object Types {
     /** The inverse of the type map as a BiTypeMap map, which
      *  has the original type map as its own inverse.
      */
-    def inverseTypeMap(using Context) = new BiTypeMap:
+    def inverseTypeMap(using ctx: Context): BiTypeMap @retains(ctx) = new BiTypeMap:
       def apply(tp: Type) = thisMap.inverse(tp)
       def inverse(tp: Type) = thisMap.apply(tp)
 
@@ -5529,8 +5573,12 @@ object Types {
       case result: CaptureRef if result.canBeTracked => result
   end BiTypeMap
 
-  abstract class TypeMap(implicit protected var mapCtx: Context)
-  extends VariantTraversal with (Type -> Type) { thisMap: TypeMap =>
+  abstract class TypeMap(using protected val mapCtx: Context)
+  extends VariantTraversal with (Type -> Type) { thisMap: TypeMap @retains(mapCtx) =>
+
+    def detach: TypeMap =
+      mapCtx.detach
+      this.asInstanceOf[TypeMap]
 
     def apply(tp: Type): Type
 
@@ -5596,7 +5644,7 @@ object Types {
     protected def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
       val saved = variance
       variance = v
-      try derivedCapturingType(tp, this(parent), refs.map(this))
+      try derivedCapturingType(tp, this(parent), refs.map(detach))
       finally variance = saved
 
     /** Map this function over given type */
@@ -5609,17 +5657,11 @@ object Types {
         case tp: NamedType =>
           if stopBecauseStaticOrLocal(tp) then tp
           else
-            val prefix1 = atVariance(variance max 0)(this(tp.prefix))
-              // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
-              // context, we cannot assume contravariance for `p` because `p`'s lower
-              // bound might not have a binding for `A` (e.g. the lower bound could be `Nothing`).
-              // By contrast, covariance does translate to the prefix, since we have that
-              // if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
-              // of `p`'s upper bound.
+            val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
             derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.tyconTypeParams))
+          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
 
         case tp: LambdaType =>
           mapOverLambda(tp)
@@ -5668,16 +5710,16 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
+          val mapCtx1 = mapCtx.asInstanceOf[FreshContext]
           LazyRef { refCtx =>
-            given Context = refCtx
-            val ref1 = tp.ref
-            if refCtx.runId == mapCtx.runId then this(ref1)
+            val ref1 = tp.ref(using refCtx)
+            if refCtx.runId == mapCtx1.runId then this(ref1)
             else // splice in new run into map context
-              val saved = mapCtx
-              mapCtx = mapCtx.fresh
-                .setPeriod(Period(refCtx.runId, mapCtx.phaseId))
-                .setRun(refCtx.run)
-              try this(ref1) finally mapCtx = saved
+              val savedPeriod = mapCtx1.period
+              val savedRun = mapCtx1.run
+              mapCtx1.setPeriod(Period(refCtx.runId, mapCtx1.phaseId)).setRun(refCtx.run)
+              try this(ref1)
+              finally mapCtx1.setPeriod(savedPeriod).setRun(savedRun)
           }
 
         case tp: ClassInfo =>
@@ -5732,7 +5774,8 @@ object Types {
   }
 
   /** A type map that maps also parents and self type of a ClassInfo */
-  abstract class DeepTypeMap(using Context) extends TypeMap {
+  abstract class DeepTypeMap(using mapCtx: Context)
+  extends TypeMap { thisMap: TypeMap @retains(mapCtx) =>
     override def mapClassInfo(tp: ClassInfo): ClassInfo = {
       val prefix1 = this(tp.prefix)
       val parents1 = tp.declaredParents mapConserve this
@@ -5744,7 +5787,7 @@ object Types {
     }
   }
 
-  @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
+  @sharable object IdentityTypeMap extends TypeMap(using NoContext) {
     def apply(tp: Type): Type = tp
   }
 
@@ -5755,7 +5798,8 @@ object Types {
    *     variance < 0 : approximate by lower bound
    *     variance = 0 : propagate bounds to next outer level
    */
-  abstract class ApproximatingTypeMap(using Context) extends TypeMap { thisMap =>
+  abstract class ApproximatingTypeMap(using mapCtx: Context)
+  extends TypeMap { thisMap: TypeMap @retains(mapCtx) =>
 
     protected def range(lo: Type, hi: Type): Type =
       if (variance > 0) hi
@@ -5946,7 +5990,7 @@ object Types {
               case nil =>
                 true
             }
-            if (distributeArgs(args, tp.tyconTypeParams))
+            if (distributeArgs(args, tyconTypeParams(tp)))
               range(tp.derivedAppliedType(tycon, loBuf.toList),
                     tp.derivedAppliedType(tycon, hiBuf.toList))
             else if tycon.isLambdaSub || args.exists(isRangeOfNonTermTypes) then
@@ -6068,8 +6112,17 @@ object Types {
 
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
-    protected final def applyToPrefix(x: T, tp: NamedType): T =
-      atVariance(variance max 0)(this(x, tp.prefix)) // see remark on NamedType case in TypeMap
+    /** A prefix is never contravariant. Even if say `p.A` is used in a contravariant
+     *  context, we cannot assume contravariance for `p` because `p`'s lower
+     *  bound might not have a binding for `A`, since the lower bound could be `Nothing`.
+     *  By contrast, covariance does translate to the prefix, since we have that
+     *  if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
+     *  of `p`'s upper bound.
+     *  Overridden in OrderingConstraint's ConstraintAwareTraversal, where a
+     *  more relaxed scheme is used.
+     */
+    protected def applyToPrefix(x: T, tp: NamedType): T =
+      atVariance(variance max 0)(this(x, tp.prefix))
 
     def foldOver(x: T, tp: Type): T = {
       record(s"foldOver $getClass")
@@ -6092,7 +6145,7 @@ object Types {
             }
             foldArgs(acc, tparams.tail, args.tail)
           }
-        foldArgs(this(x, tycon), tp.tyconTypeParams, args)
+        foldArgs(this(x, tycon), tyconTypeParams(tp), args)
 
       case _: BoundType | _: ThisType => x
 

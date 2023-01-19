@@ -81,10 +81,10 @@ object Splicer {
           ref(defn.Predef_undefined).withType(ErrorType(ex.msg))
         case NonFatal(ex) =>
           val msg =
-            s"""Failed to evaluate macro.
-               |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
-               |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
-             """.stripMargin
+            em"""Failed to evaluate macro.
+                |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
+                |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
+              """
           report.error(msg, spliceExpansionPos)
           ref(defn.Predef_undefined).withType(ErrorType(msg))
       }

@@ -152,8 +152,8 @@ trait ConstraintHandling {
       return param
     LevelAvoidMap(0, maxLevel)(param) match
       case freshVar: TypeVar => freshVar.origin
-      case _ => throw new TypeError(
-        i"Could not decrease the nesting level of ${param} from ${nestingLevel(param)} to $maxLevel in $constraint")
+      case _ => throw TypeError(
+        em"Could not decrease the nesting level of ${param} from ${nestingLevel(param)} to $maxLevel in $constraint")
 
   def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds = constraint.nonParamBounds(param)
 
@@ -257,7 +257,7 @@ trait ConstraintHandling {
   end LevelAvoidMap
 
   /** Approximate `rawBound` if needed to make it a legal bound of `param` by
-   *  avoiding wildcards and types with a level strictly greater than its
+   *  avoiding cycles, wildcards and types with a level strictly greater than its
    *  `nestingLevel`.
    *
    *  Note that level-checking must be performed here and cannot be delayed
@@ -283,7 +283,7 @@ trait ConstraintHandling {
         // This is necessary for i8900-unflip.scala to typecheck.
         val v = if necessaryConstraintsOnly then -this.variance else this.variance
         atVariance(v)(super.legalVar(tp))
-    approx(rawBound)
+    constraint.validBoundFor(param, approx(rawBound), isUpper)
   end legalBound
 
   protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
@@ -413,8 +413,10 @@ trait ConstraintHandling {
 
     constraint = constraint.addLess(p2, p1, direction = if pKept eq p1 then KeepParam2 else KeepParam1)
 
-    val boundKept    = constraint.nonParamBounds(pKept).substParam(pRemoved, pKept)
-    var boundRemoved = constraint.nonParamBounds(pRemoved).substParam(pRemoved, pKept)
+    val boundKept    = constraint.validBoundsFor(pKept,
+      constraint.nonParamBounds(   pKept).substParam(pRemoved, pKept).bounds)
+    var boundRemoved = constraint.validBoundsFor(pKept,
+      constraint.nonParamBounds(pRemoved).substParam(pRemoved, pKept).bounds)
 
     if level1 != level2 then
       boundRemoved = LevelAvoidMap(-1, math.min(level1, level2))(boundRemoved)
@@ -624,8 +626,9 @@ trait ConstraintHandling {
 
   /** Widen inferred type `inst` with upper `bound`, according to the following rules:
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
-   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`.
-   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
+   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`
+   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint) and
+   *      is not transparent according to `isTransparent`.
    *   2a. If `inst` is a union type and `widenUnions` is true, approximate the union type
    *      from above by an intersection of all common base types, provided the result
    *      is a subtype of `bound`.
@@ -647,7 +650,7 @@ trait ConstraintHandling {
     def widenOr(tp: Type) =
       if widenUnions then
         val tpw = tp.widenUnion
-        if (tpw ne tp) && (tpw <:< bound) then tpw else tp
+        if (tpw ne tp) && !isTransparent(tpw, traitOnly = false) && (tpw <:< bound) then tpw else tp
       else tp.hardenUnions
 
     def widenSingle(tp: Type) =
@@ -663,11 +666,7 @@ trait ConstraintHandling {
       else
         val widenedFromSingle = widenSingle(inst)
         val widenedFromUnion = widenOr(widenedFromSingle)
-        val widened =
-          if (widenedFromUnion ne widenedFromSingle) && isTransparent(widenedFromUnion, traitOnly = false) then
-            widenedFromSingle
-          else
-            dropTransparentTraits(widenedFromUnion, bound)
+        val widened = dropTransparentTraits(widenedFromUnion, bound)
         widenIrreducible(widened)
 
     wideInst match

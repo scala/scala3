@@ -1,4 +1,4 @@
--- [E163] Declaration Error: tests/neg-custom-args/captures/lazylist.scala:22:6 ----------------------------------------
+-- [E164] Declaration Error: tests/neg-custom-args/captures/lazylist.scala:22:6 ----------------------------------------
 22 |  def tail: {*} LazyList[Nothing] = ???  // error overriding
    |      ^
    |      error overriding method tail in class LazyList of type -> lazylists.LazyList[Nothing];

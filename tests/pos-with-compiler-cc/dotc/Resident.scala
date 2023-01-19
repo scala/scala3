@@ -45,10 +45,10 @@ class Resident extends Driver {
           inContext(ctx) {
             doCompile(residentCompiler, files)
           }
-          var nextCtx = ctx
+          var nextCtx: DetachedContext = ctx
           var line = getLine()
           while (line == reset) {
-            nextCtx = rootCtx
+            nextCtx = rootCtx.detach
             line = getLine()
           }
           if line.startsWith(quit) then ctx.reporter

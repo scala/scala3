@@ -1,0 +1,57 @@
+aside {
+  padding: calc(2* var(--base-spacing));
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 16px;
+  margin-bottom: calc(6* var(--base-spacing));
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+aside > .icon {
+  width: 16px;
+  height: 16px;
+  content: url("../../../images/banner-icons/warning.svg");
+  padding-right: var(--base-spacing);
+}
+
+.warning {
+  background-color: var(--semantic-background-yellow);
+}
+
+.warning > .icon {
+   content: url("../../../images/banner-icons/warning.svg");
+}
+
+.success {
+  background-color: var(--semantic-background-grass);
+}
+
+.success > .icon {
+   content: url("../../../images/banner-icons/success.svg");
+}
+
+.neutral {
+  background-color: var(--semantic-background-grey);
+}
+
+.neutral > .icon {
+   content: url("../../../images/banner-icons/neutral.svg");
+}
+
+.info {
+  background-color: var(--semantic-background-sky);
+}
+
+.info > .icon {
+   content: url("../../../images/banner-icons/info.svg");
+}
+
+.error {
+  background-color: var(--semantic-background-red);
+}
+
+.error > .icon {
+   content: url("../../../images/banner-icons/error.svg");
+}

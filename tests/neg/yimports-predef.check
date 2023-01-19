@@ -1,0 +1,4 @@
+-- [E008] Not Found Error: tests/neg/yimports-predef.scala:6:21 --------------------------------------------------------
+6 |  def f[A](x: A) = x + 42 // error
+  |                   ^^^
+  |                   value + is not a member of A

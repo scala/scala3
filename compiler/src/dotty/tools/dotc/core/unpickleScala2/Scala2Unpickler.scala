@@ -89,7 +89,11 @@ object Scala2Unpickler {
         val sourceModule = denot.sourceModule.orElse {
           // For non-toplevel modules, `sourceModule` won't be set when completing
           // the module class, we need to go find it ourselves.
-          NamerOps.findModuleBuddy(cls.name.sourceModuleName, denot.owner.info.decls)
+          val modName = cls.name.sourceModuleName
+          val alternate =
+            if cls.privateWithin.exists && cls.owner.is(Trait) then modName.expandedName(cls.owner)
+            else EmptyTermName
+          NamerOps.findModuleBuddy(modName, denot.owner.info.decls, alternate)
         }
         denot.owner.thisType.select(sourceModule)
       else selfInfo

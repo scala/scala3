@@ -1,10 +1,6 @@
 package dotty
 
 package object tools {
-  // Ensure this object is already classloaded, since it's only actually used
-  // when handling stack overflows and every operation (including class loading)
-  // risks failing.
-  dotty.tools.dotc.core.handleRecursive
 
   val ListOfNil: List[Nil.type] = Nil :: Nil
 
@@ -49,4 +45,9 @@ package object tools {
       val e = if msg == null then AssertionError() else AssertionError("assertion failed: " + msg)
       e.setStackTrace(Array())
       throw e
-}
+
+  // Ensure this object is already classloaded, since it's only actually used
+  // when handling stack overflows and every operation (including class loading)
+  // risks failing.
+  dotty.tools.dotc.core.handleRecursive
+ }

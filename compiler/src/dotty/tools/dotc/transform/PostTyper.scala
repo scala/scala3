@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
@@ -156,12 +157,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           checkInferredWellFormed(tree.tpt)
           if sym.is(Method) then
             if sym.isSetter then
-              removeUnwantedAnnotations(sym, defn.SetterMetaAnnot, NoSymbol, keepIfNoRelevantAnnot = false)
+              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
           else
             if sym.is(Param) then
-              removeUnwantedAnnotations(sym, defn.ParamMetaAnnot, NoSymbol, keepIfNoRelevantAnnot = true)
+              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+            else if sym.is(ParamAccessor) then
+              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
             else
-              removeUnwantedAnnotations(sym, defn.GetterMetaAnnot, defn.FieldMetaAnnot, keepIfNoRelevantAnnot = !sym.is(ParamAccessor))
+              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature)
                // Allow scala.reflect.materializeClassTag to be able to compile scala/reflect/package.scala
@@ -183,17 +186,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
 
-    private def removeUnwantedAnnotations(sym: Symbol, metaAnnotSym: Symbol,
-        metaAnnotSymBackup: Symbol, keepIfNoRelevantAnnot: Boolean)(using Context): Unit =
-      def shouldKeep(annot: Annotation): Boolean =
-        val annotSym = annot.symbol
-        annotSym.hasAnnotation(metaAnnotSym)
-          || annotSym.hasAnnotation(metaAnnotSymBackup)
-          || (keepIfNoRelevantAnnot && {
-            !annotSym.annotations.exists(metaAnnot => defn.FieldAccessorMetaAnnots.contains(metaAnnot.symbol))
-          })
-      if sym.annotations.nonEmpty then
-        sym.filterAnnotations(shouldKeep(_))
 
     private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
       val qual = tree.qualifier
@@ -269,7 +261,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     def checkNotPackage(tree: Tree)(using Context): Tree =
       if !tree.symbol.is(Package) then tree
-      else errorTree(tree, i"${tree.symbol} cannot be used as a type")
+      else errorTree(tree, em"${tree.symbol} cannot be used as a type")
 
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
@@ -375,21 +367,25 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             )
           }
         case tree: ValDef =>
+          registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
+          registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
+          registerIfHasMacroAnnotations(tree)
           val sym = tree.symbol
           if (sym.isClass)
             VarianceChecker.check(tree)
             annotateExperimental(sym)
+            checkMacroAnnotation(sym)
             tree.rhs match
               case impl: Template =>
                 for parent <- impl.parents do
@@ -399,9 +395,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               if ctx.compilationUnit.source.exists && sym != defn.SourceFileAnnot then
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
-                sym.addAnnotation(Annotation.makeSourceFile(relativePath))
+                sym.addAnnotation(Annotation.makeSourceFile(relativePath, tree.span))
               if Feature.pureFunsEnabled && sym != defn.WithPureFunsAnnot then
-                sym.addAnnotation(Annotation(defn.WithPureFunsAnnot))
+                sym.addAnnotation(Annotation(defn.WithPureFunsAnnot, tree.span))
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)
@@ -483,6 +479,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
 
+    /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */
+    private def registerIfHasMacroAnnotations(tree: DefTree)(using Context) =
+      if !Inlines.inInlineMethod && MacroAnnotations.hasMacroAnnotation(tree.symbol) then
+        ctx.compilationUnit.hasMacroAnnotations = true
+
+    /** Check macro annotations implementations  */
+    private def checkMacroAnnotation(sym: Symbol)(using Context) =
+      if sym.derivesFrom(defn.MacroAnnotationClass) && !sym.isStatic then
+        report.error("classes that extend MacroAnnotation must not be inner/local classes", sym.srcPos)
+
     private def checkErasedDef(tree: ValOrDefDef)(using Context): Unit =
       if tree.symbol.is(Erased, butNot = Macro) then
         val tpe = tree.rhs.tpe
@@ -493,8 +499,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     private def annotateExperimental(sym: Symbol)(using Context): Unit =
       if sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot) then
-        sym.addAnnotation(defn.ExperimentalAnnot)
-        sym.companionModule.addAnnotation(defn.ExperimentalAnnot)
+        sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
+        sym.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
   }
 }

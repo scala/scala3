@@ -65,7 +65,7 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
           constant.typeValue.typeSymbol.asClass
         case _ =>
           // this shouldn't happen
-          report.error(i"unexpected $classValueArg for the first argument to `createLocalJSClass`", classValueArg)
+          report.error(em"unexpected $classValueArg for the first argument to `createLocalJSClass`", classValueArg)
           jsdefn.JSObjectClass
       }
 

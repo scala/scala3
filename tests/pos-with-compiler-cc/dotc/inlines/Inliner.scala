@@ -114,7 +114,7 @@ object Inliner:
       oldOwners: List[Symbol],
       newOwners: List[Symbol],
       substFrom: List[Symbol],
-      substTo: List[Symbol])(using Context)
+      substTo: List[Symbol])(using DetachedContext)
     extends TreeTypeMap(
       typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
 
@@ -141,7 +141,7 @@ end Inliner
  *  @param  call         the original call to an inlineable method
  *  @param  rhsToInline  the body of the inlineable method that replaces the call.
  */
-class Inliner(val call: tpd.Tree)(using Context):
+class Inliner(val call: tpd.Tree)(using DetachedContext):
   import tpd._
   import Inliner._
 
@@ -254,7 +254,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         computeParamBindings(tp.resultType, targs.drop(tp.paramNames.length), argss, formalss, buf)
       case tp: MethodType =>
         if argss.isEmpty then
-          report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
+          report.error(em"missing arguments for inline method $inlinedMethod", call.srcPos)
           false
         else
           tp.paramNames.lazyZip(formalss.head).lazyZip(argss.head).foreach { (name, formal, arg) =>
@@ -540,9 +540,9 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     val inlineTyper = new InlineTyper(ctx.reporter.errorCount)
 
-    val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
+    val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope.detach
 
-    def inlinedFromOutside(tree: Tree)(span: Span): Tree =
+    def inlinedFromOutside(tree: Tree)(span: Span)(using Context): Tree =
       Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
 
     // A tree type map to prepare the inlined body for typechecked.
@@ -551,7 +551,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     // the owner from the inlined method to the current owner.
     val inliner = new InlinerMap(
       typeMap =
-        new DeepTypeMap {
+        (new DeepTypeMap {
           override def stopAt =
             if opaqueProxies.isEmpty then StopAt.Static else StopAt.Package
           def apply(t: Type) = t match {
@@ -562,8 +562,8 @@ class Inliner(val call: tpd.Tree)(using Context):
               else paramProxy.getOrElse(t, mapOver(t))
             case t => mapOver(t)
           }
-        },
-      treeMap = {
+        }).detach,
+      treeMap = inDetachedContext {
         case tree: This =>
           tree.tpe match {
             case thistpe: ThisType =>
@@ -617,15 +617,15 @@ class Inliner(val call: tpd.Tree)(using Context):
     def issueError() = callValueArgss match {
       case (msgArg :: Nil) :: Nil =>
         val message = msgArg.tpe match {
-          case ConstantType(Constant(msg: String)) => msg
-          case _ => s"A literal string is expected as an argument to `compiletime.error`. Got ${msgArg.show}"
+          case ConstantType(Constant(msg: String)) => msg.toMessage
+          case _ => em"A literal string is expected as an argument to `compiletime.error`. Got $msgArg"
         }
         // Usually `error` is called from within a rewrite method. In this
         // case we need to report the error at the point of the outermost enclosing inline
         // call. This way, a defensively written rewrite method can always
         // report bad inputs at the point of call instead of revealing its internals.
         val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
-        val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
+        val ctxToReport = ctx.detach.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
         // The context in which we report should still use the existing context reporter
         val ctxOrigReporter = ctxToReport.fresh.setReporter(ctx.reporter)
         inContext(ctxOrigReporter) {
@@ -893,7 +893,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     private def inlineIfNeeded(tree: Tree)(using Context): Tree =
       val meth = tree.symbol
       if meth.isAllOf(DeferredInline) then
-        errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
+        errorTree(tree, em"Deferred inline ${meth.showLocated} cannot be invoked")
       else if Inlines.needsInlining(tree) then Inlines.inlineCall(tree)
       else tree
 
@@ -920,20 +920,20 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.
    *  Inline def bindings that are used only once.
    */
-  private def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(using Context): (List[MemberDef], Tree) = {
+  private def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(using DetachedContext): (List[MemberDef], Tree) = {
     // inlining.println(i"drop unused $bindings%, % in $tree")
     val (termBindings, typeBindings) = bindings.partition(_.symbol.isTerm)
     if (typeBindings.nonEmpty) {
       val typeBindingsSet = typeBindings.foldLeft[SimpleIdentitySet[Symbol]](SimpleIdentitySet.empty)(_ + _.symbol)
       val inlineTypeBindings = new TreeTypeMap(
-        typeMap = new TypeMap() {
+        typeMap = (new TypeMap() {
           override def apply(tp: Type): Type = tp match {
             case tr: TypeRef if tr.prefix.eq(NoPrefix) && typeBindingsSet.contains(tr.symbol) =>
               val TypeAlias(res) = tr.info: @unchecked
               res
             case tp => mapOver(tp)
           }
-        },
+        }).detach,
         treeMap = {
           case ident: Ident if ident.isType && typeBindingsSet.contains(ident.symbol) =>
             val TypeAlias(r) = ident.symbol.info: @unchecked

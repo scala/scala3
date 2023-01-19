@@ -2,14 +2,16 @@ package dotty.tools.scaladoc
 package renderers
 
 import scala.collection.immutable.SortedMap
-import scala.util.chaining._
-import util.HTML._
-import scala.jdk.CollectionConverters._
+import scala.util.chaining.*
+import util.HTML.{div, *}
+
+import scala.jdk.CollectionConverters.*
 import dotty.tools.scaladoc.translators.FilterAttributes
 import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
-import com.vladsch.flexmark.util.ast.{Node => MdNode}
+import com.vladsch.flexmark.util.ast.Node as MdNode
 import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
-import translators._
+import org.jsoup.Jsoup
+import translators.*
 
 class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) extends DocRender(signatureRenderer):
   import signatureRenderer._
@@ -37,10 +39,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       tableRow("Inherited from:", signatureRenderer.renderLink(name + hiddenNameSuffix, dri))
     case _ => Nil
 
-  def docAttributes(m: Member): Seq[AppliedTag] =
+  def flattenedDocPart(on: SortedMap[String, DocPart]): Seq[AppliedTag] =
+    on.flatMap { case (name, value) => tableRow(name, renderDocPart(value)) }.toSeq
 
-    def flattened(on: SortedMap[String, DocPart]): Seq[AppliedTag] =
-      on.flatMap { case (name, value) => tableRow(name, renderDocPart(value))}.toSeq
+  def docAttributes(m: Member): Seq[AppliedTag] =
 
     def list(name: String, on: List[DocPart]): Seq[AppliedTag] =
       if on.isEmpty then Nil else tableRow(name, div(on.map(e => div(renderDocPart(e)))))
@@ -51,28 +53,26 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors:", authors) else Nil
 
     m.docs.fold(Nil)(d =>
-      flattened(d.typeParams) ++
-      flattened(d.valueParams) ++
-      opt("Returns:", d.result) ++
-      list("Throws:", d.throws) ++
-      opt("Constructor:", d.constructor) ++
+      opt("Returns", d.result) ++
+      list("Throws", d.throws) ++
+      opt("Constructor", d.constructor) ++
       authors(d.authors) ++
-      list("See also:", d.see) ++
-      opt("Version:", d.version) ++
-      opt("Since:", d.since) ++
-      list("Todo:", d.todo) ++
-      list("Note:", d.note) ++
-      list("Example:", d.example)
+      list("See also", d.see) ++
+      opt("Version", d.version) ++
+      opt("Since", d.since) ++
+      list("Todo", d.todo) ++
+      list("Note", d.note) ++
+      list("Example", d.example)
     )
 
   def companion(m: Member): Seq[AppliedTag] = m.companion.fold(Nil){ (kind, dri) =>
     val kindName = kind.name
-    tableRow("Companion:", signatureRenderer.renderLink(kindName, dri))
+    tableRow("Companion", signatureRenderer.renderLink(kindName, dri))
   }
 
   def source(m: Member): Seq[AppliedTag] =
     summon[DocContext].sourceLinks.pathTo(m).fold(Nil){ link =>
-      tableRow("Source:", a(href := link)(m.sources.fold("(source)")(_.path.getFileName().toString())))
+      tableRow("Source", a(href := link)(m.sources.fold("(source)")(_.path.getFileName().toString())))
     }
 
   def deprecation(m: Member): Seq[AppliedTag] = m.deprecated.fold(Nil){ a =>
@@ -98,16 +98,24 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     tableRow("Deprecated", content*)
   }
 
-  def memberInfo(m: Member, withBrief: Boolean = false): Seq[AppliedTag] =
+  def experimental(m: Member) = m.experimental.fold(Nil)(_ => tableRow("Experimental", Seq("true")))
+
+  def typeParams(m: Member): Seq[AppliedTag] = m.docs.fold(Nil)(d => flattenedDocPart(d.typeParams))
+  def valueParams(m: Member): Seq[AppliedTag] = m.docs.fold(Nil)(d => flattenedDocPart(d.valueParams))
+
+  def memberInfo(m: Member, withBrief: Boolean = false, full: Boolean = false): Seq[AppliedTag] =
     val comment = m.docs
     val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
-    val classLikeInfo: TagArg = classLikeParts(m)
+    val classLikeInfo: TagArg = classLikeParts(m, full)
 
+    val memberTypeParams = typeParams(m)
+    val memberValueParams = valueParams(m)
     val attributes = Seq(
       docAttributes(m),
       companion(m),
       deprecation(m),
+      experimental(m),
       defintionClasses(m),
       inheritedFrom(m),
       source(m),
@@ -122,8 +130,31 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Option.when(bodyContents.nonEmpty || attributes.nonEmpty)(
         div(cls := "cover")(
           div(cls := "doc")(bodyContents),
-          h2(cls := "h500")("Attributes"),
-          dl(cls := "attributes")(attributes*)
+          Option.when(full)(
+            section(id := "attributes")(
+              Option.when(memberTypeParams.nonEmpty)(Seq(
+                h2(cls := "h500")("Type parameters"),
+                dl(cls := "attributes")(memberTypeParams*)
+              )).toSeq.flatten,
+              Option.when(memberValueParams.nonEmpty)(Seq(
+                h2(cls := "h500")("Value parameters"),
+                dl(cls := "attributes")(memberValueParams*)
+              )).toSeq.flatten,
+              h2(cls := "h500")("Attributes"),
+              dl(cls := "attributes")(attributes*)
+            )
+          ).getOrElse(
+            Option.when(memberTypeParams.nonEmpty)(Seq(
+              h2(cls := "h200")("Type parameters"),
+              dl(cls := "attributes attributes-small")(memberTypeParams *)
+            )).toSeq.flatten ++
+            Option.when(memberValueParams.nonEmpty)(Seq(
+              h2(cls := "h200")("Value parameters"),
+              dl(cls := "attributes attributes-small")(memberValueParams *)
+            )).toSeq.flatten :+
+            h2(cls := "h200")("Attributes") :+
+            dl(cls := "attributes attributes-small")(attributes *)
+          )
         )
       )
     ).flatten
@@ -147,14 +178,52 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     )
 
     val signature: MemberSignature = signatureProvider.rawSignature(member)()
-    Seq(
-      div(cls := "signature mono-small-inline")(
-        span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
-        span(cls := "kind")(signature.kind.map(renderElement(_))),
-        signature.name.map(renderElement(_, nameClasses*)),
-        span(signature.suffix.map(renderElement(_)))
-      ),
-    )
+    val isSubtype = signature.suffix.exists {
+      case Keyword(keyword) => keyword.contains("extends")
+      case _ => false
+    }
+    if !isSubtype then
+      Seq(
+        div(cls := "signature")(
+          (Seq[TagArg](
+            span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
+            span(cls := "kind")(signature.kind.map(renderElement(_))),
+            signature.name.map(renderElement(_, nameClasses*))
+          ) ++ signature.suffix.map(renderElement(_)))*
+        ),
+      )
+    else
+      val (beforeExtends, afterExtends) = signature.suffix.splitAt(signature.suffix.indexOf(Keyword("extends")))
+      val (shortSuffix, longSuffix) = splitTypeSuffixSignature(beforeExtends, afterExtends)
+      Seq(
+        div(cls := "signature")(
+          span(cls := "signature-short")(
+            (Seq[TagArg](
+              span(cls := "modifiers")(signature.prefix.map(renderElement(_))),
+              span(cls := "kind")(signature.kind.map(renderElement(_))),
+              signature.name.map(renderElement(_, nameClasses *))
+            ) ++ shortSuffix.map(renderElement(_)))*
+          ),
+          span(cls := "signature-long")(
+            longSuffix.map(renderElement(_))*
+          )
+        ),
+      )
+  end memberSignature
+
+  def splitTypeSuffixSignature(shortAcc: List[SignaturePart], tail: List[SignaturePart], nestedTypeLevel: Int = 0): (List[SignaturePart], List[SignaturePart]) =
+    tail match
+      case Nil =>
+        (shortAcc, Nil)
+      case (head @ Plain("[")) :: rest =>
+        splitTypeSuffixSignature(shortAcc :+ head, rest, nestedTypeLevel + 1)
+      case (head @ Plain("]")) :: rest =>
+        splitTypeSuffixSignature(shortAcc :+ head, rest, nestedTypeLevel - 1)
+      case (head @ Keyword(", ")) :: rest if nestedTypeLevel == 0 =>
+        (shortAcc :+ head, rest)
+      case head :: rest =>
+        splitTypeSuffixSignature(shortAcc :+ head, rest, nestedTypeLevel)
+
 
   def memberIcon(member: Member) = member.kind match {
     case _ =>
@@ -185,9 +254,11 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val annots = annotations(member)
 
     div(topLevelAttr:_*)(
-      Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button show-content")).toList,
-      annots.map(div(_)).toList,
-      div(cls := "header monospace")(memberSignature(member)),
+      div(cls := "documentableElement-expander")(
+        Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button ar show-content")).toList,
+        annots.map(div(_)).toList,
+        div(cls := "header monospace mono-medium")(memberSignature(member)),
+      ),
       Option.when(originInf.nonEmpty || memberInf.nonEmpty)(
         div(cls := "docs")(
           span(cls := "modifiers"), // just to have padding on left
@@ -201,28 +272,44 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   private case class MGroup(header: AppliedTag, members: Seq[Member], groupName: String)
 
-  private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
+  private def makeSubgroupHeader(name: String): AppliedTag =
+    h4(cls := "groupHeader h200")(name)
+
+  private def actualGroup(name: String, members: Seq[Member | MGroup], headerConstructor: String => AppliedTag = makeSubgroupHeader, wrapInSection: Boolean = true): Seq[AppliedTag] =
     if members.isEmpty then Nil else
-    div(cls := "documentableList expand")(
-      button(cls := "icon-button show-content expand"),
-      h3(cls := "groupHeader h200")(name),
-      members.sortBy {
-        case m: Member => m.name
-        case MGroup(_, _, name) => name
-      }.map {
-        case element: Member =>
-          member(element)
-        case MGroup(header, members, _) =>
-          div(
-            header,
-            members.map(member)
-          )
-      }
-    ) :: Nil
+      val groupBody = div(cls := "documentableList expand")(
+        div(cls := "documentableList-expander")(
+          button(cls := "icon-button show-content expand"),
+          headerConstructor(name)
+        ),
+        members.sortBy {
+          case m: Member => m.name
+          case MGroup(_, _, name) => name
+        }.map {
+          case element: Member =>
+            member(element)
+          case MGroup(header, members, _) =>
+            div(
+              header,
+              members.map(member)
+            )
+        }
+      )
+      if wrapInSection then
+        section(id := name.replace(' ', '-'))(
+          groupBody
+        ) :: Nil
+      else
+        groupBody :: Nil
+
 
   private def isDeprecated(m: Member | MGroup): Boolean = m match
     case m: Member => m.deprecated.nonEmpty
     case g: MGroup => g.members.exists(isDeprecated)
+
+  private def isExperimental(m: Member | MGroup): Boolean = m match
+    case m: Member => m.experimental.nonEmpty
+    case g: MGroup => g.members.exists(isExperimental)
 
   private def isInherited(m: Member | MGroup): Boolean = m match
     case m: Member => m.inheritedFrom.nonEmpty
@@ -235,7 +322,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   private type SubGroup = (String, Seq[Member | MGroup])
   private def buildGroup(name: String, subgroups: Seq[SubGroup]): Tab =
     val all = subgroups.map { case (name, members) =>
-      val (allInherited, allDefined) = members.partition(isInherited)
+      val (experimental, nonExperimental) = members.partition(isExperimental)
+      val (allInherited, allDefined) = nonExperimental.partition(isInherited)
       val (depDefined, defined) = allDefined.partition(isDeprecated)
       val (depInherited, inherited) = allInherited.partition(isDeprecated)
       val normalizedName = name.toLowerCase
@@ -251,7 +339,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       definedWithGroup ++ List(
         actualGroup(s"Deprecated ${normalizedName}", depDefined),
         actualGroup(s"Inherited ${normalizedName}", inherited),
-        actualGroup(s"Deprecated and Inherited ${normalizedName}", depInherited)
+        actualGroup(s"Deprecated and Inherited ${normalizedName}", depInherited),
+        actualGroup(name = s"Experimental ${normalizedName}", experimental)
       )
     }
 
@@ -261,8 +350,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       name,
       name,
       Seq(
-        button(cls := "icon-button show-content expand"),
-        h2(tabAttr(name), cls := "h300")(name)
+        div(cls := "member-group-header")(
+          h3(tabAttr(name), cls := "h400")(name)
+        )
       ) ++ children,
       "expand"
     )
@@ -294,7 +384,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             members.map(member)
           ))
       }
-      Tab("Grouped members", "custom_groups", content, "expand")
+      Tab("Grouped members", "grouped_members",
+        Seq(
+          div(cls := "member-group-header")(
+            h3(tabAttr("grouped_members"), cls := "h400")("Grouped members")
+          )
+        ) ++ content,
+        "expand")
 
   def buildMembers(s: Member): AppliedTag =
     def partitionIntoGroups(members: Seq[Member]) =
@@ -319,23 +415,15 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             .functionParameters(on.argsLists)
             .content
           val sig = typeSig ++ Signature(Plain(s"(${on.name}: ")) ++ on.signature ++ Signature(Plain(")")) ++ argsSig
-          MGroup(span(cls := "groupHeader")(sig.map(renderElement(_))), members.sortBy(_.name).toSeq, on.name)
-      }.toSeq
+          MGroup(span(cls := "groupHeader")(sig.map(renderElement(_))), members.sortBy(_.name).toSeq, on.name) -> on.position
+      }.toSeq.sortBy(_._2).map(_._1)
 
     div(cls := "membersList expand")(
-    h2(cls := "h500")("Members list"),
-    div(cls := "body-small", id := "concise-view-switch")(
-      span("Concise view"),
-      label(cls := "switch")(
-        input(Attr("type") := "checkbox")(),
-        span(cls := "slider")()
-      )
-    ),
     renderTabs(
       singleSelection = false,
-      buildGroup("Packages", Seq(
-        ("", rest.filter(m => m.kind == Kind.Package)),
-      )),
+      Tab("Packages", "packages",
+        actualGroup("Packages", rest.filter(m => m.kind == Kind.Package), name => h3(cls := "groupHeader h400")(name), false),
+        "expand"),
       grouppedMember(s, membersInGroups),
       buildGroup("Type members", Seq(
         ("Classlikes", rest.filter(m => m.kind.isInstanceOf[Classlike])),
@@ -370,14 +458,16 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       if tabs.isEmpty then Nil else
         Seq(div(cls := (if singleSelection then "tabs single" else "tabs"))(
             div(cls := "contents")(tabs.map(t =>
-              div(tabAttr(t.id), cls := s"tab ${t.cls}")(t.content)
+              section(id := t.name.replace(' ', '-'))(
+                div(tabAttr(t.id), cls := s"tab ${t.cls}")(t.content)
+              )
             ))
         ))
 
-  def classLikeParts(m: Member): TagArg =
+  def classLikeParts(m: Member, full: Boolean = true): TagArg =
     if !m.kind.isInstanceOf[Classlike] then Nil else
       val graphHtml = m.graph match
-        case graph if graph.edges.nonEmpty =>
+        case graph if graph.edges.nonEmpty && full =>
           Seq(div( id := "inheritance-diagram", cls := "diagram-class showGraph")(
             button(`type` := "button", cls := "label-only-button", onclick := "zoomOut()")("Reset zoom"),
             button(`type` := "button", cls := "label-only-button", onclick := "hideGraph()")("Hide graph"),
@@ -391,16 +481,16 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
       def signatureList(list: Seq[LinkToType], className: String = "", expandable: Boolean): Seq[AppliedTag] =
         if list.isEmpty then Nil
-         else Seq(div(cls := s"mono-small-inline $className")(
-          if(expandable) then span(cls := "icon-button show-content") else span(),
+         else Seq(div(cls := s"mono-small-block $className")(
          list.map(link =>
-          div(link.kind.name," ", link.signature.map(renderElement(_)))
-        )))
+          div(link.kind.name," ", link.signature.map(renderElement(_)))),
+          if(expandable) then span(cls := "show-all-code show-content text-button h100")("Show all") else span()
+        ))
 
       def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
         if list.isEmpty then Nil
         else Seq(
-          div(cls := "mono-small-inline supertypes")(
+          div(cls := "mono-small-block supertypes")(
             span(),
             list.map { link =>
               div(link.signature.map(renderElement(_)))
@@ -442,30 +532,49 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   }
 
   def fullMember(m: Member): PageContent =
+    val wideClass = m.companion.map(_ => "multi").getOrElse("single")
     val intro = m.kind match
-      case Kind.RootPackage =>Seq(h1(summon[DocContext].args.name))
+      case Kind.RootPackage =>Seq(h1(cls := s"h600")(summon[DocContext].args.name))
       case _ =>
         Seq(
           div(cls := "cover-header")(
             memberIcon(m),
-            h1(cls := "h600")(m.name)
+            h1(cls := s"h600 $wideClass")(m.name)
           ),
           div(cls := "fqname body-large")(
             span(m.fullName)
           )
         ) ++ companionBadge(m) ++
         Seq(
-          div(cls := "main-signature mono-medium")(
+          div(cls := "main-signature mono-small-block")(
             annotations(m).getOrElse(Nil),
             memberSignature(m)
           )
         )
+
+    val memberContent = div(
+      intro,
+      memberInfo(m, full = true),
+      if m.members.length > 0 then
+        Seq(section(id := "members-list")(
+          h2(cls := "h500")("Members list"),
+          buildDocumentableFilter,
+          buildMembers(m)
+        ))
+      else Nil
+    )
+
+    val memberDocument = Jsoup.parse(memberContent.toString)
+
+    val toc = memberDocument.select("section[id]").asScala.toSeq
+      .flatMap { elem =>
+        val header = elem.selectFirst("h1, h2, h3, h4, h5, h6")
+        Option(header).map { h =>
+          TocEntry(h.tag().getName, h.text(), s"#${elem.id()}")
+        }
+      }
+
     PageContent(
-      div(
-        intro,
-        memberInfo(m, withBrief = false),
-        buildDocumentableFilter,
-        buildMembers(m)
-      ),
-      Seq.empty // For now, we don't support table of contents in members
+      memberContent,
+      toc
     )

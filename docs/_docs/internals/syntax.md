@@ -211,7 +211,8 @@ FunArgType        ::=  Type
                     |  ‘=>’ Type                                                PrefixOp(=>, t)
 FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
-ParamValueType    ::=  Type [‘*’]                                               PostfixOp(t, "*")
+ParamValueType    ::=  [‘into’] ExactParamType                                  Into(t)
+ExactParamType    ::=  ParamValueType [‘*’]                                     PostfixOp(t, "*")
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)

@@ -15,7 +15,7 @@ trait SignatureRenderer:
   def currentDri: DRI
   def link(dri: DRI): Option[String]
 
-  def renderElement(e: SignaturePart, modifiers: AppliedAttr*) = renderElementWith(e, modifiers*)
+  def renderElement(e: SignaturePart, modifiers: AppliedAttr*): AppliedTag = renderElementWith(e, modifiers*)
 
   def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
     renderLinkContent(name, dri, modifiers:_*)

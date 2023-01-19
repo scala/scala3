@@ -1,0 +1,2 @@
+@crash // error
+def test = ()

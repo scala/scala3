@@ -164,11 +164,11 @@ class VarianceChecker(using Context) {
               i"\n${hl("enum case")} ${towner.name} requires explicit declaration of $tvar to resolve this issue.\n$example"
             else
               ""
-          i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym$enumAddendum"
+          em"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym$enumAddendum"
         if (migrateTo3 &&
             (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
           report.migrationWarning(
-            s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg",
+            msg.prepend("According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance\n"),
             pos)
             // patch(Span(pos.end), " @scala.annotation.unchecked.uncheckedVariance")
             // Patch is disabled until two TODOs are solved:

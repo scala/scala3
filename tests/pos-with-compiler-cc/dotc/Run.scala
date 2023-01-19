@@ -31,10 +31,13 @@ import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.io.Codec
+import annotation.constructorOnly
 import caps.unsafe.unsafeUnbox
 
 /** A compiler run. Exports various methods to compile source files */
-class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
+class Run(comp: Compiler, @constructorOnly ictx0: Context) extends ImplicitRunInfo with ConstraintRunInfo {
+
+  val ictx = ictx0.detach
 
   /** Default timeout to stop looking for further implicit suggestions, in ms.
    *  This is usually for the first import suggestion; subsequent suggestions
@@ -176,7 +179,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   def compile(files: List[AbstractFile]): Unit =
     try
-      val sources = files.map(runContext.getSource(_))
+      val codec = Codec(runContext.settings.encoding.value)
+      val sources = files.map(runContext.getSource(_, codec))
       compileSources(sources)
     catch
       case NonFatal(ex) =>
@@ -286,7 +290,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
 
-      val unit = CompilationUnit(ctx.getSource(file))
+      val codec = Codec(ctx.settings.encoding.value)
+      val unit = CompilationUnit(ctx.getSource(file, codec))
       val unitCtx = runContext.fresh
         .setCompilationUnit(unit)
         .withRootImports
@@ -368,7 +373,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *                 for type checking.
    *    imports      For each element of RootImports, an import context
    */
-  protected def rootContext(using Context): Context = {
+  protected def rootContext(using Context): DetachedContext = {
     ctx.initialize()
     ctx.base.setPhasePlan(comp.phases)
     val rootScope = new MutableScope(0)
@@ -387,12 +392,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
     // `this` must be unchecked for safe initialization because by being passed to setRun during
     // initialization, it is not yet considered fully initialized by the initialization checker
-    start.setRun(this: @unchecked)
+    start.setRun(this: @unchecked).detach
   }
 
-  private var myCtx: Context | Null = rootContext(using ictx)
+  private var myCtx: DetachedContext | Null = rootContext(using ictx)
 
   /** The context created for this run */
-  given runContext[Dummy_so_its_a_def]: Context = myCtx.nn
+  given runContext[Dummy_so_its_a_def]: DetachedContext = myCtx.nn
   assert(runContext.runId <= Periods.MaxPossibleRunId)
 }

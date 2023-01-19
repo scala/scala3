@@ -24,17 +24,18 @@ import typer.Checking.checkNonCyclic
 import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
 import language.experimental.pureFunctions
+import annotation.retains
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
-  trait Embedded
+  trait Embedded extends caps.Pure
 
   /** Indicate that there is nothing to unpickle and the corresponding symbols can
     * be invalidated. */
   object NoEmbedded extends Embedded
 
   /** Replace raw types with wildcard applications */
-  def cook(using Context): TypeMap = new TypeMap {
+  def cook(using Context): TypeMap = (new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.typeParams.nonEmpty =>
         AppliedType(tp, tp.symbol.typeParams.map(Function.const(TypeBounds.empty)))
@@ -50,13 +51,13 @@ object ClassfileParser {
       case _ =>
         mapOver(tp)
     }
-  }
+  }).detach
 }
 
 class ClassfileParser(
     classfile: AbstractFile,
     classRoot: ClassDenotation,
-    moduleRoot: ClassDenotation)(ictx: Context) {
+    moduleRoot: ClassDenotation)(ictx: DetachedContext) {
 
   import ClassfileConstants._
   import ClassfileParser._
@@ -80,7 +81,7 @@ class ClassfileParser(
   private def mismatchError(className: SimpleName) =
     throw new IOException(s"class file '${classfile.canonicalPath}' has location not matching its contents: contains class $className")
 
-  def run()(using Context): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
+  def run()(using DetachedContext): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
     implicit val reader2 = reader.reset(classfile)
     report.debuglog("[class] >> " + classRoot.fullName)
     parseHeader()
@@ -327,7 +328,7 @@ class ClassfileParser(
       if (isEnum) {
         val enumClass = sym.owner.linkedClass
         if (!enumClass.exists)
-          report.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
+          report.warning(em"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
         else {
           if (!enumClass.is(Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
           enumClass.addAnnotation(Annotation.Child(sym, NoSpan))
@@ -657,7 +658,7 @@ class ClassfileParser(
       case tp: TypeRef if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] =>
         // Silently ignore missing annotation classes like javac
         if ctx.debug then
-          report.warning(i"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
+          report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
         None
       case _ =>
         if (hasError || skip) None
@@ -672,7 +673,7 @@ class ClassfileParser(
       // the classpath would *not* end up here. A class not found is signaled
       // with a `FatalError` exception, handled above. Here you'd end up after a NPE (for example),
       // and that should never be swallowed silently.
-      report.warning("Caught: " + ex + " while parsing annotations in " + classfile)
+      report.warning(em"Caught: $ex while parsing annotations in $classfile")
       if (ctx.debug) ex.printStackTrace()
 
       None // ignore malformed annotations
@@ -754,7 +755,7 @@ class ClassfileParser(
         case tpnme.ConstantValueATTR =>
           val c = pool.getConstant(in.nextChar)
           if (c ne null) res.constant = c
-          else report.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
+          else report.warning(em"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
 
         case tpnme.MethodParametersATTR =>
           val paramCount = in.nextByte
@@ -877,7 +878,7 @@ class ClassfileParser(
    *  Restores the old `bp`.
    *  @return Some(unpickler) iff classfile is from Scala, so no Java info needs to be read.
    */
-  def unpickleOrParseInnerClasses()(using ctx: Context, in: DataReader): Option[Embedded] = {
+  def unpickleOrParseInnerClasses()(using ctx: DetachedContext, in: DataReader): Option[Embedded] = {
     val oldbp = in.bp
     try {
       skipSuperclasses()
@@ -968,7 +969,7 @@ class ClassfileParser(
                 }
               }
               else {
-                report.error(s"Could not find $path in ${classfile.underlyingSource}")
+                report.error(em"Could not find $path in ${classfile.underlyingSource}")
                 Array.empty
               }
             case _ =>
@@ -976,7 +977,7 @@ class ClassfileParser(
               val name = classfile.name.stripSuffix(".class") + ".tasty"
               val tastyFileOrNull = dir.lookupName(name, false)
               if (tastyFileOrNull == null) {
-                report.error(s"Could not find TASTY file $name under $dir")
+                report.error(em"Could not find TASTY file $name under $dir")
                 Array.empty
               } else
                 tastyFileOrNull.toByteArray

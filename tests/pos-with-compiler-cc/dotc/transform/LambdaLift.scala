@@ -25,7 +25,7 @@ object LambdaLift:
   val description: String = "lifts out nested functions to class scope"
 
   /** The core lambda lift functionality. */
-  class Lifter(thisPhase: MiniPhase & DenotTransformer)(using Context):
+  class Lifter(thisPhase: MiniPhase & DenotTransformer)(using DetachedContext):
 
     /** The outer parameter of a constructor */
     private val outerParam = new HashMap[Symbol, Symbol]
@@ -33,7 +33,7 @@ object LambdaLift:
     /** Buffers for lifted out classes and methods, indexed by owner */
     val liftedDefs: HashMap[Symbol, ListBuffer[Tree]] = new HashMap
 
-    val deps = new Dependencies(ctx.compilationUnit.tpdTree, ctx.withPhase(thisPhase)):
+    class Deps(tree: Tree, ictx: DetachedContext) extends Dependencies(tree, ictx):
       def isExpr(sym: Symbol)(using Context): Boolean = sym.is(Method)
       def enclosure(using Context) = ctx.owner.enclosingMethod
 
@@ -47,7 +47,9 @@ object LambdaLift:
           case tree: Template =>
             liftedDefs(tree.symbol.owner) = new ListBuffer
           case _ =>
-    end deps
+    end Deps
+
+    val deps = new Deps(ctx.compilationUnit.tpdTree, ctx.withPhase(thisPhase).detach)
 
     /** A map storing the free variable proxies of functions and classes.
      *  For every function and class, this is a map from the free variables

@@ -7,14 +7,18 @@ import Contexts._
 import Symbols._
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
-
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
+import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
-class Inlining extends MacroTransform {
+class Inlining extends MacroTransform with IdentityDenotTransformer {
+  thisPhase =>
+
   import tpd._
 
   override def phaseName: String = Inlining.name
@@ -23,8 +27,10 @@ class Inlining extends MacroTransform {
 
   override def allowsImplicitSearch: Boolean = true
 
+  override def changesMembers: Boolean = true
+
   override def run(using Context): Unit =
-    if ctx.compilationUnit.needsInlining then
+    if ctx.compilationUnit.needsInlining || ctx.compilationUnit.hasMacroAnnotations then
       try super.run
       catch case _: CompilationUnit.SuspendException => ()
 
@@ -59,8 +65,16 @@ class Inlining extends MacroTransform {
   private class InliningTreeMap extends TreeMapWithImplicits {
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
-        case tree: DefTree =>
+        case tree: MemberDef =>
           if tree.symbol.is(Inline) then tree
+          else if tree.symbol.is(Param) then super.transform(tree)
+          else if
+            !tree.symbol.isPrimaryConstructor
+            && StagingContext.level == 0
+            && MacroAnnotations.hasMacroAnnotation(tree.symbol)
+          then
+            val trees = new MacroAnnotations(thisPhase).expandAnnotations(tree)
+            flatTree(trees.map(super.transform))
           else super.transform(tree)
         case _: Typed | _: Block =>
           super.transform(tree)

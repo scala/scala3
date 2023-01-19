@@ -4,7 +4,7 @@ package transform
 import ast.{TreeTypeMap, tpd}
 import config.Printers.tailrec
 import core.*
-import Contexts.*, Flags.*, Symbols.*
+import Contexts.*, Flags.*, Symbols.*, Decorators.em
 import Constants.Constant
 import NameKinds.{TailLabelName, TailLocalName, TailTempName}
 import StdNames.nme
@@ -159,14 +159,15 @@ class TailRec extends MiniPhase {
         val rhsFullyTransformed = varForRewrittenThis match {
           case Some(localThisSym) =>
             val thisRef = localThisSym.termRef
-            val substitute = new TreeTypeMap(
-              typeMap = _.substThisUnlessStatic(enclosingClass, thisRef)
-                .subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef)),
-              treeMap = {
-                case tree: This if tree.symbol == enclosingClass => Ident(thisRef)
-                case tree => tree
-              }
-            )
+            val substitute = inDetachedContext:
+              new TreeTypeMap(
+                typeMap = _.substThisUnlessStatic(enclosingClass, thisRef)
+                  .subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef)),
+                treeMap = {
+                  case tree: This if tree.symbol == enclosingClass => Ident(thisRef)
+                  case tree => tree
+                }
+              )
             // The previous map will map `This` references to `Ident`s even under `Super`.
             // This violates super's contract. We fix this by cleaning up `Ident`s under
             // super, mapping them back to the original `This` reference. This is not
@@ -179,7 +180,7 @@ class TailRec extends MiniPhase {
                 case _ =>
                   super.transform(t)
             cleanup.transform(substitute.transform(rhsSemiTransformed))
-          case none =>
+          case none => inDetachedContext:
             new TreeTypeMap(
               typeMap = _.subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef))
             ).transform(rhsSemiTransformed)
@@ -303,7 +304,7 @@ class TailRec extends MiniPhase {
         def fail(reason: String) = {
           if (isMandatory) {
             failureReported = true
-            report.error(s"Cannot rewrite recursive call: $reason", tree.srcPos)
+            report.error(em"Cannot rewrite recursive call: $reason", tree.srcPos)
           }
           else
             tailrec.println("Cannot rewrite recursive call at: " + tree.span + " because: " + reason)

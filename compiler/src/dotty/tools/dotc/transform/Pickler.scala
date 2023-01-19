@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -11,7 +12,7 @@ import Periods._
 import Phases._
 import Symbols._
 import Flags.Module
-import reporting.{ThrowingReporter, Profile}
+import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
 import scala.concurrent.{Future, Await, ExecutionContext}
 import scala.concurrent.duration.Duration
@@ -71,7 +72,7 @@ class Pickler extends Phase {
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
       Profile.current.recordTasty(treePkl.buf.length)
-      val positionWarnings = new mutable.ListBuffer[String]()
+      val positionWarnings = new mutable.ListBuffer[Message]()
       val pickledF = inContext(ctx.fresh) {
         Future {
           treePkl.compactify()
@@ -147,8 +148,9 @@ class Pickler extends Phase {
     if unequal then
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      report.error(s"""pickling difference for $cls in ${cls.source}, for details:
-                   |
-                   |  diff before-pickling.txt after-pickling.txt""".stripMargin)
+      //sys.process.Process("diff -u before-pickling.txt after-pickling.txt").!
+      report.error(em"""pickling difference for $cls in ${cls.source}, for details:
+                    |
+                    |  diff before-pickling.txt after-pickling.txt""")
   end testSame
 }

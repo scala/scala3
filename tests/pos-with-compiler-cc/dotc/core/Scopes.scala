@@ -131,7 +131,7 @@ object Scopes {
 
     /** Returns an iterator yielding every symbol with given name in this scope.
      */
-    final def lookupAll(name: Name)(using Context): Iterator[Symbol] = new Iterator[Symbol] {
+    final def lookupAll(name: Name)(using DetachedContext): Iterator[Symbol] = new Iterator[Symbol] {
       var e = lookupEntry(name)
       def hasNext: Boolean = e != null
       def next(): Symbol = { val r = e.nn.sym; e = lookupNextEntry(e.uncheckedNN); r }

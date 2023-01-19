@@ -1,0 +1,8 @@
+-- Error: tests/neg-macros/i16532.scala:7:13 ---------------------------------------------------------------------------
+7 |    val x2 = recurseII($a, $b) // error
+  |             ^^^^^^^^^
+  |access to method recurseII from wrong staging level:
+  | - the definition is at level 0,
+  | - but the access is at level 1.
+  |
+  |Hint: Staged references to inline definition in quotes are only inlined after the quote is spliced into level 0 code by a macro. Try moving this inline definition in a statically accessible location such as an object (this definition can be private).

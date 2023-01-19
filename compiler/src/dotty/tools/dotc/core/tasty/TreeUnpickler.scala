@@ -1236,6 +1236,12 @@ class TreeUnpickler(reader: TastyReader,
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
+            case APPLYsigpoly =>
+              val fn = readTerm()
+              val methType = readType()
+              val args = until(end)(readTerm())
+              val fun2 = typer.Applications.retypeSignaturePolymorphicFn(fn, methType)
+              tpd.Apply(fun2, args)
             case TYPED =>
               val expr = readTerm()
               val tpt = readTpt()

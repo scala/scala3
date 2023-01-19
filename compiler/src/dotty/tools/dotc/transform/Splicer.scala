@@ -69,7 +69,7 @@ object Splicer {
           throw ex
         case ex: scala.quoted.runtime.StopMacroExpansion =>
           if !ctx.reporter.hasErrors then
-            report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users to facilitate debugging when aborting a macro expansion.", splicePos)
+            report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.", splicePos)
           // errors have been emitted
           EmptyTree
         case ex: StopInterpretation =>
@@ -77,10 +77,10 @@ object Splicer {
           ref(defn.Predef_undefined).withType(ErrorType(ex.msg))
         case NonFatal(ex) =>
           val msg =
-            s"""Failed to evaluate macro.
-               |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
-               |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
-             """.stripMargin
+            em"""Failed to evaluate macro.
+                |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
+                |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
+              """
           report.error(msg, spliceExpansionPos)
           ref(defn.Predef_undefined).withType(ErrorType(msg))
       }

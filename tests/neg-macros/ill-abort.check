@@ -2,7 +2,7 @@
 -- Error: tests/neg-macros/ill-abort/quoted_2.scala:1:15 ---------------------------------------------------------------
 1 |def test = fail() // error
   |           ^^^^^^
-  |Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users to facilitate debugging when aborting a macro expansion.
+  |Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.
   |---------------------------------------------------------------------------------------------------------------------
   |Inline stack trace
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

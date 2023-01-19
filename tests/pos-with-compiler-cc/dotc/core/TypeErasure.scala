@@ -435,7 +435,7 @@ object TypeErasure {
     if compareErasedGlb(tp1, tp2) <= 0 then tp1 else tp2
 
   /** Overload of `erasedGlb` to compare more than two types at once. */
-  def erasedGlb(tps: List[Type])(using Context): Type =
+  def erasedGlb(tps: List[Type])(using DetachedContext): Type =
     tps.min(using (a,b) => compareErasedGlb(a, b))
 
   /** A comparison function that induces a total order on erased types,
