@@ -633,6 +633,17 @@ class SpaceEngine(using Context) extends SpaceLogic {
         Typ(ConstantType(Constant(())), true) :: Nil
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
         tp.classSymbol.children.map(sym => Typ(sym.termRef, true))
+
+      case tp @ AppliedType(tycon, targs) if tp.classSymbol.children.isEmpty && canDecompose(tycon) =>
+        // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
+        // But this is guarded by `tp.classSymbol.children.isEmpty`,
+        // meaning we'll decompose to the same class, just not the same type.
+        // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
+        rec(tycon, Nil).map(typ => Typ(tp.derivedAppliedType(typ.tp, targs)))
+
+      case tp: NamedType if canDecompose(tp.prefix) =>
+        rec(tp.prefix, Nil).map(typ => Typ(tp.derivedSelect(typ.tp)))
+
       case tp =>
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
@@ -674,9 +685,11 @@ class SpaceEngine(using Context) extends SpaceLogic {
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean =
     val res = tp.dealias match
+      case AppliedType(tycon, _) if canDecompose(tycon) => true
+      case tp: NamedType if canDecompose(tp.prefix) => true
       case _: SingletonType => false
       case _: OrType => true
-      case and: AndType => canDecompose(and.tp1) || canDecompose(and.tp2)
+      case AndType(tp1, tp2) => canDecompose(tp1) || canDecompose(tp2)
       case _ =>
         val cls = tp.classSymbol
         cls.is(Sealed)
