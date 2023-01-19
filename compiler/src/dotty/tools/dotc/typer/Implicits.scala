@@ -884,17 +884,15 @@ trait Implicits:
       case ((_: SearchSuccess) :: xs, failure@SearchFailure(_)) =>
         // Ignore success and propagate the failure
         resolveCanThrow(xs, failure)
-      case (SearchSuccess(arg, _, _, _) :: xs, SearchSuccess(argAcc, a, b, c)) =>
+      case (SearchSuccess(arg, _, l1, e1) :: xs, SearchSuccess(argAcc, _, l2, e2)) =>
         // Merge both success together
         // TODO HR : Still have a problem with the inference here
-        val capability = typed {
-          untpd.Apply(
-            untpd.Select(untpd.Ident(defn.CanThrowClass.name.toTermName), nme.apply.toTermName),
+        val capability =
+          tpd.Apply(
+            tpd.Select(tpd.Ident(defn.CanThrowClass.companionModule.termRef), nme.apply.toTermName),
             arg :: argAcc :: Nil
           )
-        }
-        // TODO HR : Resolve fix parameters a, b & c to reflect the merge
-        resolveCanThrow(xs, SearchSuccess(capability, a, b, c)(ctx.typerState, ctx.gadt))
+        resolveCanThrow(xs, SearchSuccess(capability, capability.symbol.termRef, l1 min l2, e1 || e2)(ctx.typerState, ctx.gadt))
 
 
   /**
@@ -924,7 +922,6 @@ trait Implicits:
     result match
       case SearchSuccess(arg, _, _, _) => arg
       case fail @ SearchFailure(failed) =>
-        println(s"$failed")
         if fail.isAmbiguous then failed
         else
           if synthesizer == null then synthesizer = Synthesizer(this)
