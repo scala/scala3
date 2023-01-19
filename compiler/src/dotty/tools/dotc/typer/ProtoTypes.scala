@@ -13,6 +13,7 @@ import Decorators._
 import Uniques._
 import inlines.Inlines
 import config.Printers.typr
+import ErrorReporting.*
 import util.SourceFile
 import TypeComparer.necessarySubType
 
@@ -492,7 +493,14 @@ object ProtoTypes {
       val targ = cacheTypedArg(arg,
         typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
         force = true)
-      typer.adapt(targ, wideFormal, locked)
+      val targ1 = typer.adapt(targ, wideFormal, locked)
+      if wideFormal eq formal then targ1
+      else targ1.tpe match
+        case tp: AppliedType if tp.hasCaptureConversionArg =>
+          errorTree(targ1,
+            em"""argument for by-name parameter contains capture conversion skolem types:
+                |$tp""")
+        case _ => targ1
     }
 
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before

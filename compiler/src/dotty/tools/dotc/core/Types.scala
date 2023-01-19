@@ -4470,6 +4470,8 @@ object Types {
 
     def hasWildcardArg(using Context): Boolean = args.exists(isBounds)
 
+    def hasCaptureConversionArg(using Context): Boolean = args.exists(_.typeSymbol == defn.TypeBox_CAP)
+
     def derivedAppliedType(tycon: Type, args: List[Type])(using Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
       else tycon.appliedTo(args)
