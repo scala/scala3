@@ -1777,11 +1777,22 @@ object desugar {
 
     val desugared = tree match {
       case ThrowsReturn(exceptions, rteTpe) =>
-        val r = exceptions.reduce((left, right) => InfixOp(left, Ident(tpnme.OR), right))
-        val args = AppliedTypeTree(Ident(defn.CanThrowClass.name), r)
-        val fn = FunctionWithMods(args :: Nil, rteTpe, Modifiers(Flags.Given))
-        Printers.saferExceptions.println(i"throws clased desugared to $fn")
-        fn
+        rteTpe match
+          case _ : TypeTree =>
+            report.error(
+              i"""
+                 | Cannot infer return type of a definition using a throws clause.
+                 | Not implemented yet.
+                 |""".stripMargin,
+              tree.srcPos
+            )
+            rteTpe
+          case _ =>
+            val r = exceptions.reduce((left, right) => InfixOp(left, Ident(tpnme.OR), right))
+            val args = AppliedTypeTree(Ident(defn.CanThrowClass.name), r)
+            val fn = FunctionWithMods(args :: Nil, rteTpe, Modifiers(Flags.Given))
+            Printers.saferExceptions.println(i"throws clause desugared to $fn")
+            fn
       case PolyFunction(targs, body) =>
         makePolyFunction(targs, body, pt) orElse tree
       case SymbolLit(str) =>
