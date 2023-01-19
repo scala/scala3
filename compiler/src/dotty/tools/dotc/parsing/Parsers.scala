@@ -3604,7 +3604,7 @@ object Parsers {
           except
         else
           report.error(
-            em"""
+            i"""
                 |This syntax is part of the 'safer exceptions' project. To enable it, please add
                 |the following import :
                 |   import scala.language.experimental.saferExceptions

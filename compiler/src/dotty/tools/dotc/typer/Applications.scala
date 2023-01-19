@@ -946,7 +946,7 @@ trait Applications extends Compatibility {
         saferExceptions.println(i"fetch capabilities $capabities to satisfy conditions of $sym")
         if exceptions.nonEmpty then
           report.warning(
-            em""" A function was called (${sym.name}) in a context where safer exceptions is enabled.
+            i""" A function was called (${sym.name}) in a context where safer exceptions is enabled.
                 | This function throws an exception.
                 | ${exceptions zip capabities}
                 |""".stripMargin, tree.srcPos)
