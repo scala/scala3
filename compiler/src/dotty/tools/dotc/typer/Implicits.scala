@@ -871,28 +871,30 @@ trait Implicits:
   /**
    * Combain results of a CanThrow capability search
    */
-  def resolveCanThrow(results: List[SearchResult], acc: SearchResult | Null = null)(using Context): SearchResult =
-    (results, acc) match
-      case (Nil, _) => acc
-      case (x :: xs, null) => resolveCanThrow(xs, x)
-      case (SearchFailure(f) :: xs, SearchFailure(fcc)) =>
-        // TODO : We should merge both failure together
-        resolveCanThrow(xs, acc)
-      case ((failure@SearchFailure(_)) :: xs, _: SearchSuccess) =>
-        // Check the remaining of the list for other failures, success will be ignored
-        resolveCanThrow(xs, failure)
-      case ((_: SearchSuccess) :: xs, failure@SearchFailure(_)) =>
-        // Ignore success and propagate the failure
-        resolveCanThrow(xs, failure)
-      case (SearchSuccess(arg, _, l1, e1) :: xs, SearchSuccess(argAcc, _, l2, e2)) =>
-        // Merge both success together
-        // TODO HR : Still have a problem with the inference here
-        val capability =
-          tpd.Apply(
-            tpd.Select(tpd.Ident(defn.CanThrowClass.companionModule.termRef), nme.apply.toTermName),
-            arg :: argAcc :: Nil
-          )
-        resolveCanThrow(xs, SearchSuccess(capability, capability.symbol.termRef, l1 min l2, e1 || e2)(ctx.typerState, ctx.gadt))
+  def resolveCanThrow(results: List[SearchResult])(using Context): SearchResult =
+    def merge(l: List[SearchResult], acc: SearchResult)(using Context): SearchResult =
+      (l, acc) match
+        case (Nil, _) => acc
+        case (SearchFailure(f) :: xs, SearchFailure(fcc)) =>
+          // TODO : We should merge both failure together
+          merge(xs, acc)
+        case ((failure@SearchFailure(_)) :: xs, _: SearchSuccess) =>
+          // Check the remaining of the list for other failures, success will be ignored
+          merge(xs, failure)
+        case ((_: SearchSuccess) :: xs, failure@SearchFailure(_)) =>
+          // Ignore success and propagate the failure
+          merge(xs, failure)
+        case (SearchSuccess(arg, _, l1, e1) :: xs, SearchSuccess(argAcc, _, l2, e2)) =>
+          // Merge both success together
+          val capability =
+            tpd.Apply(
+              tpd.Select(tpd.Ident(defn.CanThrowClass.companionModule.termRef), nme.apply.toTermName),
+              arg :: argAcc :: Nil
+            )
+          merge(xs, SearchSuccess(capability, capability.symbol.termRef, l1 min l2, e1 || e2)(ctx.typerState, ctx.gadt))
+
+    assert(results.nonEmpty) // We cannot merge an empty list of SearchResult
+    merge(results.tail, results.head)
 
 
   /**
