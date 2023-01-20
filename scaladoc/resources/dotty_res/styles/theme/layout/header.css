@@ -41,6 +41,10 @@
   margin-right: calc(2 * var(--base-spacing));
 }
 
+.header-container-left span.hidden {
+  display: none;
+}
+
 .header-container-right {
   display: flex;
   align-items: center;
