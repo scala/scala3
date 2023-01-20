@@ -497,9 +497,15 @@ object ProtoTypes {
       if wideFormal eq formal then targ1
       else targ1.tpe match
         case tp: AppliedType if tp.hasCaptureConversionArg =>
-          errorTree(targ1,
-            em"""argument for by-name parameter contains capture conversion skolem types:
-                |$tp""")
+          stripCast(targ1).tpe match
+            case tp: AppliedType if tp.hasWildcardArg =>
+              errorTree(targ1,
+                em"""argument for by-name parameter is not a value
+                    |and contains wildcard arguments: $tp
+                    |
+                    |Assign it to a val and pass that instead.
+                    |""")
+            case _ => targ1
         case _ => targ1
     }
 
