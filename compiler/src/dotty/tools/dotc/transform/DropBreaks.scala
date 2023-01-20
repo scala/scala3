@@ -218,10 +218,10 @@ class DropBreaks extends MiniPhase:
    *
    *     return[target] arg
    *
-   *  where `target` is the `goto` return label associated with `local`.
+   *  where `target` is the `goto` return label associated with `lbl`.
    *  Adjust associated ref counts accordingly. The local refcount is increased
-   *  and the non-local refcount is decreased, since `local` the `Label_this`
-   *  binding containing `local` is dropped.
+   *  and the non-local refcount is decreased, since the `lbl` implicit argument
+   *  to `break` is dropped.
    */
   override def transformApply(tree: Apply)(using Context): Tree =
     if enclosingBoundaries == 0 then tree

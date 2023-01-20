@@ -357,7 +357,6 @@ object StdNames {
     val Flag : N                = "Flag"
     val Ident: N                = "Ident"
     val Import: N               = "Import"
-    val Label_this: N           = "Label_this"
     val Literal: N              = "Literal"
     val LiteralAnnotArg: N      = "LiteralAnnotArg"
     val Matchable: N            = "Matchable"
