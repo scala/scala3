@@ -128,9 +128,11 @@ object Scanners {
 
     // Setting token data ----------------------------------------------------
 
+    protected def initialCharBufferSize = 1024
+
     /** A character buffer for literals
       */
-    protected val litBuf = CharBuffer()
+    protected val litBuf = CharBuffer(initialCharBufferSize)
 
     /** append Unicode character to "litBuf" buffer
       */
@@ -244,7 +246,7 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private val commentBuf = CharBuffer()
+    private val commentBuf = CharBuffer(initialCharBufferSize)
 
     def toToken(identifier: SimpleName): Token =
       def handleMigration(keyword: Token): Token =
@@ -553,7 +555,7 @@ object Scanners {
 
       // If nextWidth is an indentation level not yet seen by enclosing indentation
       // region, invoke `handler`.
-      def handleNewIndentWidth(r: Region, handler: Indented => Unit): Unit = r match
+      inline def handleNewIndentWidth(r: Region, inline handler: Indented => Unit): Unit = r match
         case r @ Indented(curWidth, prefix, outer)
         if curWidth < nextWidth && !r.otherIndentWidths.contains(nextWidth) && nextWidth != lastWidth =>
           handler(r)
@@ -571,7 +573,7 @@ object Scanners {
        *     they start with `(`, `[` or `{`, or the last statement ends in a `return`.
        *   The Scala 2 rules apply under source `3.0-migration` or under `-no-indent`.
        */
-      def isContinuing =
+      inline def isContinuing =
         lastWidth < nextWidth
         && (openParensTokens.contains(token) || lastToken == RETURN)
         && !pastBlankLine
@@ -608,10 +610,11 @@ object Scanners {
               case r: Indented =>
                 insert(OUTDENT, offset)
                 handleNewIndentWidth(r.enclosing, ir =>
+                  val lw = lastWidth
                   errorButContinue(
                     em"""The start of this line does not match any of the previous indentation widths.
                         |Indentation width of current line : $nextWidth
-                        |This falls between previous widths: ${ir.width} and $lastWidth"""))
+                        |This falls between previous widths: ${ir.width} and $lw"""))
               case r =>
                 if skipping then
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
@@ -627,7 +630,8 @@ object Scanners {
           else if lastToken == SELFARROW then
             currentRegion.knownWidth = nextWidth
         else if (lastWidth != nextWidth)
-          errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
+          val lw = lastWidth
+          errorButContinue(spaceTabMismatchMsg(lw, nextWidth))
       if token != OUTDENT then
         handleNewIndentWidth(currentRegion, _.otherIndentWidths += nextWidth)
       if next.token == EMPTY then
@@ -1077,6 +1081,7 @@ object Scanners {
       next
 
     class LookaheadScanner(val allowIndent: Boolean = false) extends Scanner(source, offset, allowIndent = allowIndent) {
+      override protected def initialCharBufferSize = 8
       override def languageImportContext = Scanner.this.languageImportContext
     }
 

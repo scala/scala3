@@ -171,7 +171,7 @@ class Driver {
    *  the other overloads without worrying about breaking compatibility
    *  with sbt.
    */
-  final def process(args: Array[String]): Reporter =
+  def process(args: Array[String]): Reporter =
     process(args, null: Reporter | Null, null: interfaces.CompilerCallback | Null)
 
   /** Entry point to the compiler using a custom `Context`.

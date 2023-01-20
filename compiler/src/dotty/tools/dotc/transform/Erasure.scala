@@ -698,18 +698,20 @@ object Erasure {
         return tree.asInstanceOf[Tree] // we are re-typing a primitive array op
 
       val owner = mapOwner(origSym)
-      var sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
-      if !sym.exists then
-        // We fail the sym.exists test for pos/i15158.scala, where we pass an infinitely
-        // recurring match type to an overloaded constructor. An equivalent test
-        // with regular apply methods succeeds. It's at present unclear whether
-        //  - the program should be rejected, or
-        //  - there is another fix.
-        // Therefore, we apply the fix to use the pre-erasure symbol, but only
-        // for constructors, in order not to mask other possible bugs that would
-        // trigger the assert(sym.exists, ...) below.
-        val prevSym = tree.symbol(using preErasureCtx)
-        if prevSym.isConstructor then sym = prevSym
+      val sym =
+        (if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol)
+        .orElse {
+          // We fail the sym.exists test for pos/i15158.scala, where we pass an infinitely
+          // recurring match type to an overloaded constructor. An equivalent test
+          // with regular apply methods succeeds. It's at present unclear whether
+          //  - the program should be rejected, or
+          //  - there is another fix.
+          // Therefore, we apply the fix to use the pre-erasure symbol, but only
+          // for constructors, in order not to mask other possible bugs that would
+          // trigger the assert(sym.exists, ...) below.
+          val prevSym = tree.symbol(using preErasureCtx)
+          if prevSym.isConstructor then prevSym else NoSymbol
+        }
 
       assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
 

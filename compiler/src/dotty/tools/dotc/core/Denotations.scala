@@ -175,7 +175,7 @@ object Denotations {
    *
    *  @param symbol  The referencing symbol, or NoSymbol is none exists
    */
-  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type) extends PreDenotation with printing.Showable {
+  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean) extends PreDenotation with printing.Showable {
     type AsSeenFromResult <: Denotation
 
     /** The type info.
@@ -193,12 +193,6 @@ object Denotations {
      *  is not yet completed, the completer
      */
     def infoOrCompleter: Type
-
-    /** The period during which this denotation is valid. */
-    def validFor: Period
-
-    /** Is this a reference to a type symbol? */
-    def isType: Boolean
 
     /** Is this a reference to a term symbol? */
     def isTerm: Boolean = !isType
@@ -228,6 +222,15 @@ object Denotations {
      *  at its first point of definition.
      */
     def current(using Context): Denotation
+
+    /** The period during which this denotation is valid. */
+    private var myValidFor: Period = Nowhere
+
+    final def validFor: Period = myValidFor
+    final def validFor_=(p: Period): Unit = {
+      myValidFor = p
+      symbol.invalidateDenotCache()
+    }
 
     /** Is this denotation different from NoDenotation or an ErrorDenotation? */
     def exists: Boolean = true
@@ -571,7 +574,7 @@ object Denotations {
   end infoMeet
 
   /** A non-overloaded denotation */
-  abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
+  abstract class SingleDenotation(symbol: Symbol, initInfo: Type, isType: Boolean) extends Denotation(symbol, initInfo, isType) {
     protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
 
     final def name(using Context): Name = symbol.name
@@ -664,14 +667,6 @@ object Denotations {
 
     // ------ Transformations -----------------------------------------
 
-    private var myValidFor: Period = Nowhere
-
-    def validFor: Period = myValidFor
-    def validFor_=(p: Period): Unit = {
-      myValidFor = p
-      symbol.invalidateDenotCache()
-    }
-
     /** The next SingleDenotation in this run, with wrap-around from last to first.
      *
      *  There may be several `SingleDenotation`s with different validity
@@ -695,7 +690,7 @@ object Denotations {
       if (validFor.firstPhaseId <= 1) this
       else {
         var current = nextInRun
-        while (current.validFor.code > this.myValidFor.code) current = current.nextInRun
+        while (current.validFor.code > this.validFor.code) current = current.nextInRun
         current
       }
 
@@ -776,7 +771,7 @@ object Denotations {
      *  are otherwise undefined.
      */
     def skipRemoved(using Context): SingleDenotation =
-      if (myValidFor.code <= 0) nextDefined else this
+      if (validFor.code <= 0) nextDefined else this
 
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
@@ -793,14 +788,12 @@ object Denotations {
     def current(using Context): SingleDenotation =
       util.Stats.record("current")
       val currentPeriod = ctx.period
-      val valid = myValidFor
+      val valid = validFor
 
       def assertNotPackage(d: SingleDenotation, transformer: DenotTransformer) = d match
         case d: ClassDenotation =>
           assert(!d.is(Package), s"illegal transformation of package denotation by transformer $transformer")
         case _ =>
-
-      def escapeToNext = nextDefined.ensuring(_.validFor != Nowhere)
 
       def toNewRun =
         util.Stats.record("current.bringForward")
@@ -837,9 +830,6 @@ object Denotations {
                 // creations that way, and also avoid phase caches in contexts to get large.
                 // To work correctly, we need to demand that the context with the new phase
                 // is not retained in the result.
-            catch case ex: CyclicReference =>
-              // println(s"error while transforming $this")
-              throw ex
             finally
               mutCtx.setPeriod(savedPeriod)
             if next eq cur then
@@ -876,7 +866,7 @@ object Denotations {
         // can happen if we sit on a stale denotation which has been replaced
         // wholesale by an installAfter; in this case, proceed to the next
         // denotation and try again.
-        escapeToNext
+        nextDefined
       else if valid.runId != currentPeriod.runId then
         toNewRun
       else if currentPeriod.code > valid.code then
@@ -963,7 +953,7 @@ object Denotations {
         case denot: SymDenotation => s"in ${denot.owner}"
         case _ => ""
       }
-      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${ctx.period}"
+      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${validFor}, is referred to in run ${ctx.period}"
     }
 
     /** The period (interval of phases) for which there exists
@@ -1149,9 +1139,9 @@ object Denotations {
       acc(false, symbol.info)
   }
 
-  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type) extends SingleDenotation(symbol, initInfo) {
+  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type)
+  extends SingleDenotation(symbol, initInfo, initInfo.isInstanceOf[TypeType]) {
     def infoOrCompleter: Type = initInfo
-    def isType: Boolean = infoOrCompleter.isInstanceOf[TypeType]
   }
 
   class UniqueRefDenotation(
@@ -1247,10 +1237,10 @@ object Denotations {
 
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
-  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType) with MultiPreDenotation {
+  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType, isType = false) with MultiPreDenotation {
+    validFor = denot1.validFor & denot2.validFor
+
     final def infoOrCompleter: Type = multiHasNot("info")
-    final def validFor: Period = denot1.validFor & denot2.validFor
-    final def isType: Boolean = false
     final def hasUniqueSym: Boolean = false
     final def name(using Context): Name = denot1.name
     final def signature(using Context): Signature = Signature.OverloadedSignature

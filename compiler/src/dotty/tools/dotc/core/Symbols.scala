@@ -103,7 +103,7 @@ object Symbols {
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
-      if (checkedPeriod == ctx.period) lastDenot
+      if checkedPeriod.code == ctx.period.code then lastDenot
       else computeDenot(lastDenot)
     }
 

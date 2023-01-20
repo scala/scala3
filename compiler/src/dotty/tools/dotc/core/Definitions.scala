@@ -518,8 +518,8 @@ class Definitions {
     def staticsMethod(name: PreName): TermSymbol = ScalaStaticsModule.requiredMethod(name)
 
   @tu lazy val DottyArraysModule: Symbol = requiredModule("scala.runtime.Arrays")
-    def newGenericArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
-    def newArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
+    @tu lazy val newGenericArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
+    @tu lazy val newArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
   def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
@@ -1415,8 +1415,8 @@ class Definitions {
         val classRefs1 = new Array[TypeRef | Null](classRefs.length * 2)
         Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
         classRefs = classRefs1
-      val funName = s"scala.$prefix$n"
       if classRefs(n) == null then
+        val funName = s"scala.$prefix$n"
         classRefs(n) =
           if prefix.startsWith("Impure")
           then staticRef(funName.toTypeName).symbol.typeRef

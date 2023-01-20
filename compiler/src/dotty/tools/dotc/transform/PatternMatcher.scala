@@ -664,12 +664,12 @@ object PatternMatcher {
       val refCount = varRefCount(plan)
       val LetPlan(topSym, _) = plan: @unchecked
 
-      def toDrop(sym: Symbol) = initializer.get(sym) match {
-        case Some(rhs) =>
+      def toDrop(sym: Symbol) =
+        val rhs = initializer.lookup(sym)
+        if rhs != null then
           isPatmatGenerated(sym) && refCount(sym) <= 1 && sym != topSym && isPureExpr(rhs)
-        case none =>
+        else
           false
-      }
 
       object Inliner extends PlanTransform {
         override val treeMap = new TreeMap {

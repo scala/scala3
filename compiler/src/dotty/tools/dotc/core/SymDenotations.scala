@@ -39,7 +39,7 @@ object SymDenotations {
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol, initInfo) {
+    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol, initInfo, name.isTypeName) {
 
     //assert(symbol.id != 4940, name)
 
@@ -576,9 +576,6 @@ object SymDenotations {
 
     // ----- Tests -------------------------------------------------
 
-    /** Is this denotation a type? */
-    override def isType: Boolean = name.isTypeName
-
     /** Is this denotation a class? */
     final def isClass: Boolean = isInstanceOf[ClassDenotation]
 
@@ -848,13 +845,8 @@ object SymDenotations {
     def isSerializable(using Context): Boolean =
       isClass && derivesFrom(defn.JavaSerializableClass)
 
-    /** Is this symbol a class that extends `AnyVal`? */
-    final def isValueClass(using Context): Boolean =
-      val di = initial
-      di.isClass
-      && atPhase(di.validFor.firstPhaseId)(di.derivesFrom(defn.AnyValClass))
-        // We call derivesFrom at the initial phase both because AnyVal does not exist
-        // after Erasure and to avoid cyclic references caused by forcing denotations
+    /** Is this symbol a class that extends `AnyVal`? Overridden in ClassDenotation */
+    def isValueClass(using Context): Boolean = false
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
@@ -1882,19 +1874,21 @@ object SymDenotations {
       super.info_=(tp)
     }
 
-    /** The symbols of the parent classes. */
-    def parentSyms(using Context): List[Symbol] = info match {
-      case classInfo: ClassInfo => classInfo.declaredParents.map(_.classSymbol)
+    /** The types of the parent classes. */
+    def parentTypes(using Context): List[Type] = info match
+      case classInfo: ClassInfo => classInfo.declaredParents
       case _ => Nil
-    }
+
+    /** The symbols of the parent classes. */
+    def parentSyms(using Context): List[Symbol] =
+      parentTypes.map(_.classSymbol)
 
     /** The symbol of the superclass, NoSymbol if no superclass exists */
-    def superClass(using Context): Symbol = parentSyms match {
-      case parent :: _ =>
-        if (parent.is(Trait)) NoSymbol else parent
-      case _ =>
-        NoSymbol
-    }
+    def superClass(using Context): Symbol = parentTypes match
+      case parentType :: _ =>
+        val parentCls = parentType.classSymbol
+        if parentCls.is(Trait) then NoSymbol else parentCls
+      case _ => NoSymbol
 
     /** The explicitly given self type (self types of modules are assumed to be
      *  explcitly given here).
@@ -1956,20 +1950,20 @@ object SymDenotations {
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
-      val psyms = parentSyms
-      if (psyms.isEmpty && !emptyParentsExpected)
+      val parents = parentTypes
+      if (parents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      def traverse(parents: List[Symbol]): Unit = parents match {
+      def traverse(parents: List[Type]): Unit = parents match {
         case p :: parents1 =>
-          p match {
+          p.classSymbol match {
             case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
             case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
           }
           traverse(parents1)
         case nil =>
       }
-      traverse(psyms)
+      traverse(parents)
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -2005,6 +1999,17 @@ object SymDenotations {
 
     /** Hook to do a pre-enter test. Overridden in PackageDenotation */
     protected def proceedWithEnter(sym: Symbol, mscope: MutableScope)(using Context): Boolean = true
+
+    final override def isValueClass(using Context): Boolean =
+      val di = initial.asClass
+      val anyVal = defn.AnyValClass
+      if di.baseDataCache.isValid && !ctx.erasedTypes then
+        // fast path that does not demand time travel
+        (symbol eq anyVal) || di.baseClassSet.contains(anyVal)
+      else
+        // We call derivesFrom at the initial phase both because AnyVal does not exist
+        // after Erasure and to avoid cyclic references caused by forcing denotations
+        atPhase(di.validFor.firstPhaseId)(di.derivesFrom(anyVal))
 
     /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time
@@ -2307,9 +2312,11 @@ object SymDenotations {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       try {
-        for (p <- parentSyms if p.isClass)
-          for (name <- p.asClass.memberNames(keepOnly))
-            maybeAdd(name)
+        for ptype <- parentTypes do
+          ptype.classSymbol match
+            case pcls: ClassSymbol =>
+              for name <- pcls.memberNames(keepOnly) do
+                maybeAdd(name)
         val ownSyms =
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
@@ -2564,7 +2571,6 @@ object SymDenotations {
 
   @sharable object NoDenotation
   extends SymDenotation(NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
-    override def isType: Boolean = false
     override def isTerm: Boolean = false
     override def exists: Boolean = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
@@ -2861,7 +2867,7 @@ object SymDenotations {
     }
 
     def isValidAt(phase: Phase)(using Context) =
-      checkedPeriod == ctx.period ||
+      checkedPeriod.code == ctx.period.code ||
         createdAt.runId == ctx.runId &&
         createdAt.phaseId < unfusedPhases.length &&
         sameGroup(unfusedPhases(createdAt.phaseId), phase) &&

@@ -204,7 +204,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
       linkedListLoop(null, table(bucket))
   }
 
-  def clear(): Unit = {
+  def clear(resetToInitial: Boolean): Unit = {
     table = new Array[Entry[A] | Null](table.size)
     threshold = computeThreshold
     count = 0

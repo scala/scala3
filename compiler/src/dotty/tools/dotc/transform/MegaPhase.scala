@@ -456,7 +456,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   def transformTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
-    trees.mapInline(transformTree(_, start))
+    trees.flattenedMapConserve(transformTree(_, start))
 
   def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]

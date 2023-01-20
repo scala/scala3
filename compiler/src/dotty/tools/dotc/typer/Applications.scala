@@ -2407,7 +2407,7 @@ trait Applications extends Compatibility {
       else
         None
     catch
-      case NonFatal(_) => None
+      case ex: UnhandledError => None
 
   def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
     methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&

@@ -2266,15 +2266,17 @@ object Types {
     final def symbol(using Context): Symbol =
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
       // because SymDenotation#installAfter never changes the symbol
-      if (checkedPeriod == ctx.period) lastSymbol.nn else computeSymbol
+      if (checkedPeriod.code == ctx.period.code) lastSymbol.asInstanceOf[Symbol]
+      else computeSymbol
 
     private def computeSymbol(using Context): Symbol =
-      designator match {
+      val result = designator match
         case sym: Symbol =>
           if (sym.isValidInCurrentRun) sym else denot.symbol
         case name =>
-          (if (denotationIsCurrent) lastDenotation.nn else denot).symbol
-      }
+          (if (denotationIsCurrent) lastDenotation.asInstanceOf[Denotation] else denot).symbol
+      if checkedPeriod.code != NowhereCode then checkedPeriod = ctx.period
+      result
 
     /** There is a denotation computed which is valid (somewhere in) the
      *  current run.
@@ -2306,18 +2308,16 @@ object Types {
 
     def info(using Context): Type = denot.info
 
-    /** The denotation currently denoted by this type */
-    final def denot(using Context): Denotation = {
+    /** The denotation currently denoted by this type. Extremely hot. Carefully optimized
+     *  to be as small as possible.
+     */
+    final def denot(using Context): Denotation =
       util.Stats.record("NamedType.denot")
-      val now = ctx.period
+      val lastd = lastDenotation.asInstanceOf[Denotation]
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
-      if (checkedPeriod != Nowhere && lastDenotation.nn.validFor.contains(now)) {
-        checkedPeriod = now
-        lastDenotation.nn
-      }
+      if checkedPeriod.code != NowhereCode && lastd.validFor.contains(ctx.period) then lastd
       else computeDenot
-    }
 
     private def computeDenot(using Context): Denotation = {
       util.Stats.record("NamedType.computeDenot")
@@ -2353,11 +2353,11 @@ object Types {
       lastDenotation match {
         case lastd0: SingleDenotation =>
           val lastd = lastd0.skipRemoved
-          if lastd.validFor.runId == ctx.runId && checkedPeriod != Nowhere then
+          if lastd.validFor.runId == ctx.runId && checkedPeriod.code != NowhereCode then
             finish(lastd.current)
           else lastd match {
             case lastd: SymDenotation =>
-              if (stillValid(lastd) && (checkedPeriod != Nowhere)) finish(lastd.current)
+              if stillValid(lastd) && checkedPeriod.code != NowhereCode then finish(lastd.current)
               else finish(memberDenot(lastd.initial.name, allowPrivate = false))
             case _ =>
               fromDesignator
@@ -2443,9 +2443,8 @@ object Types {
       setDenot(memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
 
     private def setDenot(denot: Denotation)(using Context): Unit = {
-      if (Config.checkNoDoubleBindings)
-        if (ctx.settings.YnoDoubleBindings.value)
-          checkSymAssign(denot.symbol)
+      if ctx.base.checkNoDoubleBindings then
+        checkSymAssign(denot.symbol)
 
       lastDenotation = denot
       lastSymbol = denot.symbol

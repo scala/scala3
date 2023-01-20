@@ -231,6 +231,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases)
 
+    if ctx.settings.YnoDoubleBindings.value then
+      ctx.base.checkNoDoubleBindings = true
+
     def runPhases(using Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
       val profiler = ctx.profiler
