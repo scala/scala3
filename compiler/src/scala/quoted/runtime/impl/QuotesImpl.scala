@@ -2973,12 +2973,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           t match
             case t: tpd.DefTree =>
               val defOwner = t.symbol.owner
-              assert(defOwner == owner,
+              assert(defOwner == owner, {
+                val ownerName = owner.fullName
+                val defOwnerName = defOwner.fullName
+                val duplicateSymbolHint =
+                  if ownerName == defOwnerName then "These are two different symbols instances with the same name. The symbol should have been instantiated only once.\n"
+                  else ""
                 s"""Tree had an unexpected owner for ${t.symbol}
                    |Expected: $owner (${owner.fullName})
                    |But was: $defOwner (${defOwner.fullName})
-                   |
-                   |
+                   |$duplicateSymbolHint
                    |The code of the definition of ${t.symbol} is
                    |${Printer.TreeCode.show(t)}
                    |
@@ -2992,7 +2996,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                    |
                    |Tip: The owner of a tree can be changed using method `Tree.changeOwner`.
                    |Tip: The default owner of definitions created in quotes can be changed using method `Symbol.asQuotes`.
-                   |""".stripMargin)
+                   |""".stripMargin
+              })
             case _ => traverseChildren(t)
       }.traverse(tree)
 
