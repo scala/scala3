@@ -51,7 +51,7 @@ class DropBreaks extends MiniPhase:
     // we want by-name parameters to be converted to closures
 
   /** The number of boundary nodes enclosing the currently analized tree. */
-  var enclosingBoundaries: Int = 0
+  private var enclosingBoundaries: Int = 0
 
   private object LabelTry:
 
