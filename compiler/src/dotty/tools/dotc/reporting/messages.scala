@@ -2554,7 +2554,8 @@ class MissingImplicitArgument(
     pt: Type,
     where: String,
     paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
-    ignoredInstanceNormalImport: => Option[SearchSuccess]
+    ignoredInstanceNormalImport: => Option[SearchSuccess],
+    ignoredConversions: => Set[SearchSuccess]
   )(using Context) extends TypeMsg(MissingImplicitArgumentID), ShowMatchTrace(pt):
 
   arg.tpe match
@@ -2743,8 +2744,13 @@ class MissingImplicitArgument(
         // show all available additional info
         def hiddenImplicitNote(s: SearchSuccess) =
           i"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+        def noChainConversionsNote(s: Set[SearchSuccess]): Option[String] =
+          Option.when(s.isEmpty)(
+              i"\n\nNote: Chaining implicit conversions is no longer allowed in Scala. The following conversions were ignored: ${s.map(_.ref.symbol.showLocated).mkString("\n")}"
+          )
         super.msgPostscript
         ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
+            .orElse(noChainConversionsNote(ignoredConversions))
             .getOrElse(ctx.typer.importSuggestionAddendum(pt))
 
   def explain(using Context) = ""

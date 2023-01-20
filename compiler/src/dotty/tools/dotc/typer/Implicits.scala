@@ -923,7 +923,14 @@ trait Implicits:
           // example where searching for a nested type causes an infinite loop.
           None
 
-    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport)
+    def ignoredConversions = arg.tpe match
+      case fail: SearchFailureType =>
+        if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
+          ImplicitSearch(fail.expectedType, dummyTreeOfType(WildcardType), arg.span).allImplicits
+        else
+          Set.empty
+
+    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, ignoredConversions)
   }
 
   /** A string indicating the formal parameter corresponding to a  missing argument */
