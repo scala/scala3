@@ -1,5 +1,5 @@
 import scala.util.control.NonFatal
-import scala.util.*
+import scala.util.boundary, boundary.break
 
 object lib:
   extension [T](op: => T) inline def rescue (fallback: => T) =

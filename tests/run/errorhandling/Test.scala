@@ -1,4 +1,4 @@
-import scala.util.*
+import scala.util.*, boundary.break
 
 /** boundary/break as a replacement for non-local returns */
 def indexOf[T](xs: List[T], elem: T): Int =

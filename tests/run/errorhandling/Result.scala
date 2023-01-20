@@ -1,5 +1,5 @@
 package scala.util
-import boundary.Label
+import boundary.{Label, break}
 
 abstract class Result[+T, +E]
 case class Ok[+T](value: T)  extends Result[T, Nothing]

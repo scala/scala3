@@ -145,7 +145,7 @@ class LabelBytecodeTests extends DottyBytecodeTest {
 
    private def checkLabelBytecodeInstructions(code: String, tpe: String)(checkOutput: List[Instruction] => Unit): Unit = {
     val source =
-      s"""import scala.util.*
+      s"""import scala.util.boundary, boundary.break
          |class Test:
          |  def test: $tpe = {
          |    ${code.linesIterator.toList.mkString("", "\n    ", "")}

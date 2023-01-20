@@ -1,4 +1,4 @@
-import scala.util.{boundary, break}
+import scala.util.boundary, boundary.break
 
 object loop:
 

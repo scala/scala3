@@ -1,4 +1,4 @@
-import scala.util.*
+import scala.util.boundary, boundary.break
 import collection.mutable.ListBuffer
 
 object Test {

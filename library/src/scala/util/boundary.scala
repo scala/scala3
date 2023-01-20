@@ -11,7 +11,17 @@ package scala.util
  *      The `Break` exception class extends `RuntimeException` and is optimized so
  *      that stack trace generation is suppressed.
  *    - Better performance: breaks to enclosing scopes in the same method can
- *      be rwritten to jumps.
+ *      be rewritten to jumps.
+ *
+ * Example usage:
+ *
+ *      import scala.util.boundary, boundary.break
+ *
+ *      def firstIndex[T](xs: List[T], elem: T): Int =
+ *        boundary:
+ *          for (x, i) <- xs.zipWithIndex do
+ *            if x == elem then break(i)
+ *          -1
  */
 object boundary:
 

@@ -1,5 +1,5 @@
 package scala.util
-import boundary.Label
+import boundary.{break, Label}
 
 /** A mockup of scala.Option */
 abstract class Option[+T]

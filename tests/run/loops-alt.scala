@@ -1,5 +1,5 @@
-import scala.util.{boundary, break}
-import boundary.Label
+import scala.util.boundary
+import boundary.{break, Label}
 import java.util.concurrent.TimeUnit
 
 object loop:

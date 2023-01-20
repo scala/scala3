@@ -1,4 +1,4 @@
-import scala.util.*
+import scala.util.boundary, boundary.break
 
 object breakOpt:
 
