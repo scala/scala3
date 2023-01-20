@@ -188,6 +188,7 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/i13026.scala", defaultOptions.and("-print-lines")),
       compileFile("tests/neg-custom-args/i13838.scala", defaultOptions.and("-Ximplicit-search-limit", "1000")),
       compileFile("tests/neg-custom-args/jdk-9-app.scala", defaultOptions.and("-release:8")),
+      compileFile("tests/neg/i16453.scala", defaultOptions),
     ).checkExpectedErrors()
   }
 

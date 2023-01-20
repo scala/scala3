@@ -926,9 +926,10 @@ trait Implicits:
     def ignoredConversions = arg.tpe match
       case fail: SearchFailureType =>
         if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
-          ImplicitSearch(fail.expectedType, dummyTreeOfType(WildcardType), arg.span).allImplicits
+          ctx.implicits.eligible(ViewProto(WildcardType, wildApprox(fail.expectedType)))
+            .collect { case c if c.isConversion => c.ref }
         else
-          Set.empty
+          Nil
 
     MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, ignoredConversions)
   }
