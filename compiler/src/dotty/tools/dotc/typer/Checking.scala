@@ -33,7 +33,7 @@ import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import Inferencing.isFullyDefined
-import transform.patmat.SpaceEngine.isIrrefutable
+import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotedPattern}
 import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion._
@@ -888,9 +888,9 @@ trait Checking {
         pat match
           case Bind(_, pat1) =>
             recur(pat1, pt)
-          case UnApply(fn, _, pats) =>
+          case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
-            (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
+            (isIrrefutable(fn, pats.length) || isIrrefutableQuotedPattern(fn, implicits, pt) || fail(pat, pt, Reason.RefutableExtractor)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
