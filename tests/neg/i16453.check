@@ -1,7 +1,8 @@
 -- [E172] Type Error: tests/neg/i16453.scala:10:43 ---------------------------------------------------------------------
 10 |  val fails = summon[String => Option[Int]] // error
    |                                           ^
-   |     No given instance of type String => Option[Int] was found for parameter x of method summon in object Predef
+   |No given instance of type String => Option[Int] was found for parameter x of method summon in object Predef
    |
-   |     Note: Chaining implicit conversions is no longer allowed in Scala. The following conversions were ignored:
-   |       - given instance given_Conversion_Function_Function
+   |Note: Chaining implicit conversions is no longer allowed in Scala. The following conversions were ignored:
+   |  - final given def given_Conversion_Function_Function[T]: Conversion[String => T, String => Option[T]]
+   |If there is an implicit `Conversion[A, String => Option[Int]]` and an implicit `A` in scope, you need to explicitly pass the argument, e.g. `(using summon[A])`
