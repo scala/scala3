@@ -1338,8 +1338,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             }
           } || tryLiftedToThis2
 
-        case _: TypeVar =>
-          recur(tp1, tp2.superType)
+        case tv: TypeVar =>
+          if tv.isInstantiated then
+            recur(tp1, tp2.superType)
+          else
+            compareAppliedType2(tp2, tv.origin, args2)
         case tycon2: AnnotatedType if !tycon2.isRefining =>
           recur(tp1, tp2.superType)
         case tycon2: AppliedType =>
