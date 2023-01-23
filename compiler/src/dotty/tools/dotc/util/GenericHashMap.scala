@@ -42,9 +42,10 @@ abstract class GenericHashMap[Key, Value]
     else 1 << (32 - Integer.numberOfLeadingZeros(n))
 
   /** Remove all elements from this table and set back to initial configuration */
-  def clear(): Unit =
+  def clear(resetToInitial: Boolean): Unit =
     used = 0
-    allocate(roundToPower(initialCapacity))
+    if resetToInitial then allocate(roundToPower(initialCapacity))
+    else java.util.Arrays.fill(table, null)
 
   /** The number of elements in the set */
   def size: Int = used

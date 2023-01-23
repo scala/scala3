@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import dotty.tools.dotc.util.SourcePosition
 
-import java.util.Optional
+import java.util.{Collections, Optional, List => JList}
 import scala.util.chaining._
 import core.Decorators.toMessage
 
@@ -89,7 +89,7 @@ class Diagnostic(
   val msg: Message,
   val pos: SourcePosition,
   val level: Int
-) extends Exception with interfaces.Diagnostic:
+) extends interfaces.Diagnostic:
   private var verbose: Boolean = false
   def isVerbose: Boolean = verbose
   def setVerbose(): this.type =
@@ -100,7 +100,8 @@ class Diagnostic(
     if (pos.exists && pos.source.exists) Optional.of(pos) else Optional.empty()
   override def message: String =
     msg.message.replaceAll("\u001B\\[[;\\d]*m", "")
+  override def diagnosticRelatedInformation: JList[interfaces.DiagnosticRelatedInformation] =
+    Collections.emptyList()
 
   override def toString: String = s"$getClass at $pos: $message"
-  override def getMessage(): String = message
 end Diagnostic

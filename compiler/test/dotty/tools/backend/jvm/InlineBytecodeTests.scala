@@ -600,13 +600,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(fun)
       val expected = // TODO room for constant folding
         List(
-          Op(ICONST_1),
-          VarOp(ISTORE, 1),
-          Op(ICONST_2),
-          VarOp(ILOAD, 1),
-          Op(IADD),
-          Op(ICONST_3),
-          Op(IADD),
+          IntOp(BIPUSH, 6),
           Op(IRETURN),
         )
       assert(instructions == expected,

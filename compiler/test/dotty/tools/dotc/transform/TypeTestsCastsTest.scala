@@ -6,6 +6,8 @@ import core.*
 import Contexts.*, Decorators.*, Denotations.*, SymDenotations.*, Symbols.*, Types.*
 import Annotations.*
 
+import dotty.tools.dotc.util.Spans.Span
+
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -15,7 +17,7 @@ class TypeTestsCastsTest extends DottyTest:
   @Test def orL = checkFound(List(StringType, LongType), OrType(LongType, StringType, false))
   @Test def orR = checkFound(List(LongType, StringType), OrType(StringType, LongType, false))
 
-  @Test def annot = checkFound(List(StringType, LongType), AnnotatedType(OrType(LongType, StringType, false), Annotation(defn.UncheckedAnnot)))
+  @Test def annot = checkFound(List(StringType, LongType), AnnotatedType(OrType(LongType, StringType, false), Annotation(defn.UncheckedAnnot, Span(0))))
 
   @Test def andL = checkFound(List(StringType), AndType(StringType, AnyType))
   @Test def andR = checkFound(List(StringType), AndType(AnyType, StringType))

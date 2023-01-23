@@ -55,28 +55,29 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps",
   "scala.caps$",
 
+  //// New feature: into
+  "scala.annotation.allowConversions",
+
   //// New APIs: Mirror
   // Can be stabilized in 3.3.0 or later.
   "scala.deriving.Mirror$.fromProductTyped", // This API is a bit convoluted. We may need some more feedback before we can stabilize it.
 
+  //// New feature: Macro annotations
+  "scala.annotation.MacroAnnotation",
+
    //// New APIs: Quotes
   // Can be stabilized in 3.3.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
+  "scala.quoted.Quotes.reflectModule.FlagsModule.JavaAnnotation",
   // Cant be stabilized yet.
   // Need newClass variant that can add constructor parameters.
   // Need experimental annotation macros to check that design works.
   "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
+  "scala.quoted.Quotes.reflectModule.ClassDefModule.module",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
-
-  // New APIs: Lightweight lazy vals. Can be stabilized in 3.3.0
-  "scala.runtime.LazyVals$.Evaluating",
-  "scala.runtime.LazyVals$.Evaluating$",
-  "scala.runtime.LazyVals$.LazyValControlState",
-  "scala.runtime.LazyVals$.NullValue",
-  "scala.runtime.LazyVals$.NullValue$",
-  "scala.runtime.LazyVals$.Waiting",
-  "scala.runtime.LazyVals$.getStaticFieldOffset",
-  "scala.runtime.LazyVals$.objCAS"
+  "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
+  "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
+  "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
 )
 
 

@@ -55,15 +55,14 @@ import collection.mutable
   }
 
   def maybeMonitored[T](op: => T)(using Context): T =
-    if (ctx.settings.YdetailedStats.value && hits.nonEmpty) {
+    if ctx.settings.YdetailedStats.value then
       monitored = true
       try op
-      finally {
-        aggregate()
-        println()
-        println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
-        hits.clear()
-      }
-    }
+      finally
+        if hits.nonEmpty then
+          aggregate()
+          println()
+          println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
+          hits.clear()
     else op
 }

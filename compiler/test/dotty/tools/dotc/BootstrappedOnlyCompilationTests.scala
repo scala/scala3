@@ -10,6 +10,7 @@ import org.junit.Assume._
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
+import reporting.TestReporter
 import vulpix._
 
 import java.nio.file._
@@ -34,6 +35,12 @@ class BootstrappedOnlyCompilationTests {
       compileDir("tests/pos-custom-args/i13405", defaultOptions.and("-Xfatal-warnings")),
     ).checkCompile()
   }
+
+  @Test def posWithCompilerCC: Unit =
+    implicit val testGroup: TestGroup = TestGroup("compilePosWithCompilerCC")
+    aggregateTests(
+      compileDir("tests/pos-with-compiler-cc/dotc", withCompilerOptions.and("-language:experimental.captureChecking"))
+    ).checkCompile()
 
   @Test def posWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosWithCompiler")
@@ -214,6 +221,7 @@ object BootstrappedOnlyCompilationTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {

@@ -12,15 +12,3 @@ class Bar extends Foo:
 class Baz extends Bar:
   override def foo = () => println("baz")
   override def bar = "baz"
-  //override def toString = bar
-
-abstract class Message:
-  protected def msg: String
-  override def toString = msg
-
-abstract class SyntaxMsg extends Message
-
-class CyclicInheritance extends SyntaxMsg:
-  def msg = "cyclic"
-
-

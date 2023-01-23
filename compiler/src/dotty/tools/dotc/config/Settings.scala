@@ -11,6 +11,7 @@ import annotation.tailrec
 import collection.mutable.ArrayBuffer
 import reflect.ClassTag
 import scala.util.{Success, Failure}
+import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 
 object Settings:
 
@@ -69,11 +70,11 @@ object Settings:
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
       case _: T => state.update(idx, x)
-      case _ => throw IllegalArgumentException(s"found: $x of type ${x.getClass.getName}, required: ${implicitly[ClassTag[T]]}")
+      case _ => throw IllegalArgumentException(s"found: $x of type ${x.getClass.getName}, required: ${summon[ClassTag[T]]}")
 
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
 
-    def isMultivalue: Boolean = implicitly[ClassTag[T]] == ListTag
+    def isMultivalue: Boolean = summon[ClassTag[T]] == ListTag
 
     def legalChoices: String =
       choices match {
@@ -106,6 +107,11 @@ object Settings:
       def missingArg =
         fail(s"missing argument for option $name", args)
 
+      def setBoolean(argValue: String, args: List[String]) =
+        if argValue.equalsIgnoreCase("true") || argValue.isEmpty then update(true, args)
+        else if argValue.equalsIgnoreCase("false") then update(false, args)
+        else fail(s"$argValue is not a valid choice for boolean setting $name", args)
+
       def setString(argValue: String, args: List[String]) =
         choices match
           case Some(xs) if !xs.contains(argValue) =>
@@ -126,9 +132,9 @@ object Settings:
         catch case _: NumberFormatException =>
           fail(s"$argValue is not an integer argument for $name", args)
 
-      def doSet(argRest: String) = ((implicitly[ClassTag[T]], args): @unchecked) match {
+      def doSet(argRest: String) = ((summon[ClassTag[T]], args): @unchecked) match {
         case (BooleanTag, _) =>
-          update(true, args)
+          setBoolean(argRest, args)
         case (OptionTag, _) =>
           update(Some(propertyClass.get.getConstructor().newInstance()), args)
         case (ListTag, _) =>
@@ -183,6 +189,19 @@ object Settings:
       def value(using Context): T = setting.valueIn(ctx.settingsState)
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
+
+    /**
+     * A choice with help description.
+     *
+     * NOTE : `equals` and `toString` have special behaviors
+     */
+    case class ChoiceWithHelp[T](name: T, description: String):
+      override def equals(x: Any): Boolean = x match
+        case s:String => s == name.toString()
+        case _ => false
+      override def toString(): String =
+        s"\n- $name${if description.isEmpty() then "" else s" :\n\t${description.replace("\n","\n\t")}"}"
+  end Setting
 
   class SettingGroup {
 
@@ -265,6 +284,9 @@ object Settings:
     def MultiChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
       publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
 
+    def MultiChoiceHelpSetting(name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
+      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
+
     def IntSetting(name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
       publish(Setting(name, descr, default, aliases = aliases))
 
@@ -290,6 +312,6 @@ object Settings:
       publish(Setting(name, descr, default))
 
     def OptionSetting[T: ClassTag](name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
-      publish(Setting(name, descr, None, propertyClass = Some(implicitly[ClassTag[T]].runtimeClass), aliases = aliases))
+      publish(Setting(name, descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases))
   }
 end Settings

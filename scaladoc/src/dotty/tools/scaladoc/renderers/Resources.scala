@@ -177,7 +177,43 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
     def extensionTarget(member: Member): String =
       member.kind match
-        case Kind.Extension(on, _) => flattenToText(on.signature)
+        case Kind.Extension(on, _) =>
+          val typeSig = SignatureBuilder()
+            .keyword("extension ")
+            .generics(on.typeParams)
+            .content
+          val argsSig = SignatureBuilder()
+            .functionParameters(on.argsLists)
+            .content
+          flattenToText(typeSig ++ argsSig)
+        case _ => ""
+
+    def docPartRenderPlain(d: DocPart): String =
+      import dotty.tools.scaladoc.tasty.comments.wiki._
+      import com.vladsch.flexmark.util.ast.{Node => MdNode}
+      def renderPlain(wd: WikiDocElement): String =
+        wd match
+          case Paragraph(text) => renderPlain(text)
+          case Chain(items) => items.map(renderPlain).mkString("")
+          case Italic(text) => renderPlain(text)
+          case Bold(text) => renderPlain(text)
+          case Underline(text) => renderPlain(text)
+          case Superscript(text) => renderPlain(text)
+          case Subscript(text) => renderPlain(text)
+          case Link(link, title) => title.map(renderPlain).getOrElse(
+            link match
+              case DocLink.ToURL(url) => url
+              case DocLink.ToDRI(_, name) => name
+              case _ => ""
+          )
+          case Monospace(text) => renderPlain(text)
+          case Text(text) => text
+          case Summary(text) => renderPlain(text)
+          case _ => ""
+      d match
+        case s: Seq[WikiDocElement @unchecked] =>
+          if s.length == 0 then ""
+          else renderPlain(s.head)
         case _ => ""
 
     def docPartRenderPlain(d: DocPart): String =

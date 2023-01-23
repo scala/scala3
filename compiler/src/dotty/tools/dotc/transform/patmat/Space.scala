@@ -116,15 +116,15 @@ trait SpaceLogic {
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
   def simplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, show)(space match {
     case Prod(tp, fun, spaces) =>
-      val sps = spaces.map(simplify(_))
+      val sps = spaces.mapconserve(simplify)
       if (sps.contains(Empty)) Empty
       else if (canDecompose(tp) && decompose(tp).isEmpty) Empty
-      else Prod(tp, fun, sps)
+      else if sps eq spaces then space else Prod(tp, fun, sps)
     case Or(spaces) =>
-      val spaces2 = spaces.map(simplify(_)).filter(_ != Empty)
+      val spaces2 = spaces.map(simplify).filter(_ != Empty)
       if spaces2.isEmpty then Empty
-      else if spaces2.lengthCompare(1) == 0 then spaces2.head
-      else Or(spaces2)
+      else if spaces2.lengthIs == 1 then spaces2.head
+      else if spaces2.corresponds(spaces)(_ eq _) then space else Or(spaces2)
     case Typ(tp, _) =>
       if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else space
@@ -164,12 +164,15 @@ trait SpaceLogic {
       List(space)
   }
 
-  /** Is `a` a subspace of `b`? Equivalent to `a - b == Empty`, but faster */
+  /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
   def isSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"isSubspace(${show(a)}, ${show(b)})", debug) {
     def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
 
-    (simplify(a), simplify(b)) match {
+    val a2 = simplify(a)
+    val b2 = simplify(b)
+    if (a ne a2) || (b ne b2) then isSubspace(a2, b2)
+    else (a, b) match {
       case (Empty, _) => true
       case (_, Empty) => false
       case (Or(ss), _) =>
@@ -187,7 +190,7 @@ trait SpaceLogic {
       case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
         isSubType(tp1, tp2)
         && covers(fun, tp1, ss.length)
-        && isSubspace(Prod(tp2, fun, signature(fun, tp2, ss.length).map(Typ(_, false))), b)
+        && isSubspace(Prod(tp2, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
       case (Prod(_, fun1, ss1), Prod(_, fun2, ss2)) =>
         isSameUnapply(fun1, fun2) && ss1.zip(ss2).forall((isSubspace _).tupled)
     }
@@ -266,9 +269,11 @@ trait SpaceLogic {
           tryDecompose2(tp2)
         else
           a
+      case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
+        if (!isSameUnapply(fun1, fun2)) => a
+      case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
+        if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) => a
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-        if (!isSameUnapply(fun1, fun2)) return a
-        if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) return a
 
         val range = (0 until ss1.size).toList
         val cache = Array.fill[Space | Null](ss2.length)(null)
@@ -316,6 +321,27 @@ object SpaceEngine {
     tpd.funPart(unapp).tpe match
       case funRef: TermRef => isIrrefutable(funRef, argLen)
       case _: ErrorType => false
+  }
+
+  /** Is this an `'{..}` or `'[..]` irrefutable quoted patterns?
+   *  @param  unapp The unapply function tree
+   *  @param  implicits The implicits of the unapply
+   *  @param  pt The scrutinee type
+   */
+  def isIrrefutableQuotedPattern(unapp: tpd.Tree, implicits: List[tpd.Tree], pt: Type)(using Context): Boolean = {
+    implicits.headOption match
+      // pattern '{ $x: T }
+      case Some(tpd.Apply(tpd.Select(tpd.Quoted(tpd.TypeApply(fn, List(tpt))), nme.apply), _))
+          if unapp.symbol.owner.eq(defn.QuoteMatching_ExprMatchModule)
+          && fn.symbol.eq(defn.QuotedRuntimePatterns_patternHole) =>
+        pt <:< defn.QuotedExprClass.typeRef.appliedTo(tpt.tpe)
+
+      // pattern '[T]
+      case Some(tpd.Apply(tpd.TypeApply(fn, List(tpt)), _))
+          if unapp.symbol.owner.eq(defn.QuoteMatching_TypeMatchModule) =>
+        pt =:= defn.QuotedTypeClass.typeRef.appliedTo(tpt.tpe)
+
+      case _ => false
   }
 }
 
@@ -597,11 +623,11 @@ class SpaceEngine(using Context) extends SpaceLogic {
     }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
-  def decompose(tp: Type): List[Typ] =
-    tp.dealias match {
+  def decompose(tp: Type): List[Typ] = trace(i"decompose($tp)", debug, show(_: Seq[Space])) {
+    def rec(tp: Type, mixins: List[Type]): List[Typ] = tp.dealias match {
       case AndType(tp1, tp2) =>
         def decomposeComponent(tpA: Type, tpB: Type): List[Typ] =
-          decompose(tpA).flatMap {
+          rec(tpA, tpB :: mixins).flatMap {
             case Typ(tp, _) =>
               if tp <:< tpB then
                 Typ(tp, decomposed = true) :: Nil
@@ -628,6 +654,17 @@ class SpaceEngine(using Context) extends SpaceLogic {
         Typ(ConstantType(Constant(())), true) :: Nil
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
         tp.classSymbol.children.map(sym => Typ(sym.termRef, true))
+
+      case tp @ AppliedType(tycon, targs) if tp.classSymbol.children.isEmpty && canDecompose(tycon) =>
+        // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
+        // But this is guarded by `tp.classSymbol.children.isEmpty`,
+        // meaning we'll decompose to the same class, just not the same type.
+        // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
+        rec(tycon, Nil).map(typ => Typ(tp.derivedAppliedType(typ.tp, targs)))
+
+      case tp: NamedType if canDecompose(tp.prefix) =>
+        rec(tp.prefix, Nil).map(typ => Typ(tp.derivedSelect(typ.tp)))
+
       case tp =>
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
@@ -642,7 +679,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
-          val refined = TypeOps.refineUsingParent(tp, sym1)
+          val refined = TypeOps.refineUsingParent(tp, sym1, mixins)
 
           debug.println(sym1.show + " refined to " + refined.show)
 
@@ -663,13 +700,17 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
         parts.map(Typ(_, true))
     }
+    rec(tp, Nil)
+  }
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean =
     val res = tp.dealias match
+      case AppliedType(tycon, _) if canDecompose(tycon) => true
+      case tp: NamedType if canDecompose(tp.prefix) => true
       case _: SingletonType => false
       case _: OrType => true
-      case and: AndType => canDecompose(and.tp1) || canDecompose(and.tp2)
+      case AndType(tp1, tp2) => canDecompose(tp1) || canDecompose(tp2)
       case _ =>
         val cls = tp.classSymbol
         cls.is(Sealed)

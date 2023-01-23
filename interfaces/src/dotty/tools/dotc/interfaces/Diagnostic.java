@@ -1,6 +1,7 @@
 package dotty.tools.dotc.interfaces;
 
 import java.util.Optional;
+import java.util.List;
 
 /** A diagnostic is a message emitted during the compilation process.
  *
@@ -23,4 +24,7 @@ public interface Diagnostic {
   /** @return The position in a source file of the code that caused this diagnostic
    *  to be emitted. */
   Optional<SourcePosition> position();
+
+  /** @return A list of additional messages together with their code positions */
+  List<DiagnosticRelatedInformation> diagnosticRelatedInformation();
 }

@@ -737,8 +737,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       var h = initHash
 
       p match
-        case p: WithLazyField[?] =>
-          p.forceIfLazy
+        case p: WithLazyFields => p.forceFields()
         case _ =>
 
       if inlineOrigin.exists then

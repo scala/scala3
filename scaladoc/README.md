@@ -40,7 +40,7 @@ the documentation won't work completely if you don't.
 ## CLI and SBT Documentation
 
 The preferred way to use scaladoc is calling it from sbt `Compile/doc` task or to use CLI interface provided inside `dotty/bin/scaladoc` bash script.
-More information about specific scaladoc flags you can find inside [Usage docs](https://dotty.epfl.ch/docs/usage/scaladoc/settings.html)
+More information about specific scaladoc flags you can find inside [Usage docs](https://docs.scala-lang.org/scala3/guides/scaladoc/settings.html)
 
 ## Developing
 

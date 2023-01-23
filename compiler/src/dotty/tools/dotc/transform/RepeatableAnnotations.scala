@@ -10,6 +10,7 @@ import Symbols.defn
 import Constants._
 import Types._
 import Decorators._
+import Flags._
 
 import scala.collection.mutable
 
@@ -33,7 +34,7 @@ class RepeatableAnnotations extends MiniPhase:
     val annsByType = stableGroupBy(annotations, _.symbol)
     annsByType.flatMap {
       case (_, a :: Nil) => a :: Nil
-      case (sym, anns) if sym.derivesFrom(defn.ClassfileAnnotationClass) =>
+      case (sym, anns) if sym.is(JavaDefined) =>
         sym.getAnnotation(defn.JavaRepeatableAnnot).flatMap(_.argumentConstant(0)) match
           case Some(Constant(containerTpe: Type)) =>
             val clashingAnns = annsByType.getOrElse(containerTpe.classSymbol, Nil)
@@ -44,7 +45,7 @@ class RepeatableAnnotations extends MiniPhase:
               Nil
             else
               val aggregated = JavaSeqLiteral(anns.map(_.tree).toList, TypeTree(sym.typeRef))
-              Annotation(containerTpe, NamedArg("value".toTermName, aggregated)) :: Nil
+              Annotation(containerTpe, NamedArg("value".toTermName, aggregated), sym.span) :: Nil
           case _ =>
             val pos = anns.head.tree.srcPos
             report.error("Not repeatable annotation repeated", pos)

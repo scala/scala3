@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -11,10 +12,10 @@ import Periods._
 import Phases._
 import Symbols._
 import Flags.Module
-import reporting.{ThrowingReporter, Profile}
+import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
-import scala.concurrent.{Future, Await, ExecutionContext}
-import scala.concurrent.duration.Duration
+import util.concurrent.{Executor, Future}
+import compiletime.uninitialized
 
 object Pickler {
   val name: String = "pickler"
@@ -47,7 +48,7 @@ class Pickler extends Phase {
 
   // Maps that keep a record if -Ytest-pickler is set.
   private val beforePickling = new mutable.HashMap[ClassSymbol, String]
-  private val picklers = new mutable.HashMap[ClassSymbol, TastyPickler]
+  private val pickledBytes = new mutable.HashMap[ClassSymbol, Array[Byte]]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {
@@ -55,6 +56,24 @@ class Pickler extends Phase {
       clss.filterNot(_.is(Module)).map(_.linkedClass).filterNot(_.isAbsent())
     clss.filterNot(companionModuleClasses.contains)
   }
+
+  /** Runs given functions with a scratch data block in a serialized fashion (i.e.
+   *  inside a synchronized block). Scratch data is re-used between calls.
+   *  Used to conserve on memory usage by avoiding to create scratch data for each
+   *  pickled unit.
+   */
+  object serialized:
+    val scratch = new ScratchData
+    def run(body: ScratchData => Array[Byte]): Array[Byte] =
+      synchronized {
+        scratch.reset()
+        body(scratch)
+      }
+
+  private val executor = Executor[Array[Byte]]()
+
+  private def useExecutor(using Context) =
+    Pickler.ParallelPickling && !ctx.settings.YtestPickler.value
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
@@ -64,25 +83,30 @@ class Pickler extends Phase {
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
       tree <- sliceTopLevel(unit.tpdTree, cls)
     do
+      if ctx.settings.YtestPickler.value then beforePickling(cls) = tree.show
+
       val pickler = new TastyPickler(cls)
-      if ctx.settings.YtestPickler.value then
-        beforePickling(cls) = tree.show
-        picklers(cls) = pickler
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
       Profile.current.recordTasty(treePkl.buf.length)
-      val positionWarnings = new mutable.ListBuffer[String]()
-      val pickledF = inContext(ctx.fresh) {
-        Future {
-          treePkl.compactify()
+
+      val positionWarnings = new mutable.ListBuffer[Message]()
+      def reportPositionWarnings() = positionWarnings.foreach(report.warning(_))
+
+      def computePickled(): Array[Byte] = inContext(ctx.fresh) {
+        serialized.run { scratch =>
+          treePkl.compactify(scratch)
           if tree.span.exists then
             val reference = ctx.settings.sourceroot.value
-            new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference)
-              .picklePositions(unit.source, tree :: Nil, positionWarnings)
+            PositionPickler.picklePositions(
+                pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference,
+                unit.source, tree :: Nil, positionWarnings,
+                scratch.positionBuffer, scratch.pickledIndices)
 
           if !ctx.settings.YdropComments.value then
-            new CommentPickler(pickler, treePkl.buf.addrOfTree, treePkl.docString)
-              .pickleComment(tree)
+            CommentPickler.pickleComments(
+                pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
+                scratch.commentBuffer)
 
           val pickled = pickler.assembleParts()
 
@@ -93,26 +117,40 @@ class Pickler extends Phase {
 
           // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
           if pickling ne noPrinter then
-            pickling.synchronized {
-              println(i"**** pickled info of $cls")
-              println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
-            }
+            println(i"**** pickled info of $cls")
+            println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
           pickled
-        }(using ExecutionContext.global)
+        }
       }
-      def force(): Array[Byte] =
-        val result = Await.result(pickledF, Duration.Inf)
-        positionWarnings.foreach(report.warning(_))
-        result
 
-      if !Pickler.ParallelPickling || ctx.settings.YtestPickler.value then force()
+      /** A function that returns the pickled bytes. Depending on `Pickler.ParallelPickling`
+       *  either computes the pickled data in a future or eagerly before constructing the
+       *  function value.
+       */
+      val demandPickled: () => Array[Byte] =
+        if useExecutor then
+          val futurePickled = executor.schedule(computePickled)
+          () =>
+            try futurePickled.force.get
+            finally reportPositionWarnings()
+        else
+          val pickled = computePickled()
+          reportPositionWarnings()
+          if ctx.settings.YtestPickler.value then pickledBytes(cls) = pickled
+          () => pickled
 
-      unit.pickled += (cls -> force)
+      unit.pickled += (cls -> demandPickled)
     end for
   }
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
-    val result = super.runOn(units)
+    val result =
+      if useExecutor then
+        executor.start()
+        try super.runOn(units)
+        finally executor.close()
+      else
+        super.runOn(units)
     if ctx.settings.YtestPickler.value then
       val ctx2 = ctx.fresh.setSetting(ctx.settings.YreadComments, true)
       testUnpickler(
@@ -128,8 +166,8 @@ class Pickler extends Phase {
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
     val unpicklers =
-      for ((cls, pickler) <- picklers) yield {
-        val unpickler = new DottyUnpickler(pickler.assembleParts())
+      for ((cls, bytes) <- pickledBytes) yield {
+        val unpickler = new DottyUnpickler(bytes)
         unpickler.enter(roots = Set.empty)
         cls -> unpickler
       }
@@ -147,8 +185,9 @@ class Pickler extends Phase {
     if unequal then
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      report.error(s"""pickling difference for $cls in ${cls.source}, for details:
-                   |
-                   |  diff before-pickling.txt after-pickling.txt""".stripMargin)
+      //sys.process.Process("diff -u before-pickling.txt after-pickling.txt").!
+      report.error(em"""pickling difference for $cls in ${cls.source}, for details:
+                    |
+                    |  diff before-pickling.txt after-pickling.txt""")
   end testSame
 }

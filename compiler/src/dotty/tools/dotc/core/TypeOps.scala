@@ -13,6 +13,7 @@ import ast.tpd._
 import reporting.trace
 import config.Printers.typr
 import config.Feature
+import transform.SymUtils.*
 import typer.ProtoTypes._
 import typer.ForceDegree
 import typer.Inferencing._
@@ -186,7 +187,7 @@ object TypeOps:
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>
         // See documentation of `Types#simplified`
-        val addTypeVars = new TypeMap:
+        val addTypeVars = new TypeMap with IdempotentCaptRefMap:
           val constraint = ctx.typerState.constraint
           def apply(t: Type): Type = t match
             case t: TypeParamRef => constraint.typeVarOfParam(t).orElse(t)
@@ -504,7 +505,7 @@ object TypeOps:
     override def derivedSelect(tp: NamedType, pre: Type) =
       if (pre eq tp.prefix)
         tp
-      else tryWiden(tp, tp.prefix).orElse {
+      else (if pre.isSingleton then NoType else tryWiden(tp, tp.prefix)).orElse {
         if (tp.isTerm && variance > 0 && !pre.isSingleton)
           apply(tp.info.widenExpr)
         else if (upper(pre).member(tp.name).exists)
@@ -538,6 +539,18 @@ object TypeOps:
       def toAvoid(tp: NamedType) =
         val sym = tp.symbol
         forbidden.contains(sym)
+
+      /** We need to split the set into upper and lower approximations
+       *  only if it contains a local element. The idea here is that at the
+       *  time we perform an `avoid` all local elements are already accounted for
+       *  and no further elements will be added afterwards. So we can just keep
+       *  the set as it is. See comment by @linyxus on #16261.
+       */
+      override def needsRangeIfInvariant(refs: CaptureSet): Boolean =
+        refs.elems.exists {
+          case ref: TermRef => toAvoid(ref)
+          case _ => false
+        }
 
       override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
@@ -609,7 +622,7 @@ object TypeOps:
       boundss: List[TypeBounds],
       instantiate: (Type, List[Type]) => Type,
       app: Type)(
-      using Context): List[BoundsViolation] = withMode(Mode.CheckBounds) {
+      using Context): List[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
     val argTypes = args.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
@@ -726,7 +739,7 @@ object TypeOps:
    *  If the subtyping is true, the instantiated type `p.child[Vs]` is
    *  returned. Otherwise, `NoType` is returned.
    */
-  def refineUsingParent(parent: Type, child: Symbol)(using Context): Type = {
+  def refineUsingParent(parent: Type, child: Symbol, mixins: List[Type] = Nil)(using Context): Type = {
     // <local child> is a place holder from Scalac, it is hopeless to instantiate it.
     //
     // Quote from scalac (from nsc/symtab/classfile/Pickler.scala):
@@ -741,7 +754,7 @@ object TypeOps:
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
     inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds.addMode(Mode.GadtConstraintInference)) {
-      instantiateToSubType(childTp, parent).dealias
+      instantiateToSubType(childTp, parent, mixins).dealias
     }
   }
 
@@ -752,7 +765,7 @@ object TypeOps:
    *
    *  Otherwise, return NoType.
    */
-  private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
+  private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = {
     // In order for a child type S to qualify as a valid subtype of the parent
     // T, we need to test whether it is possible S <: T.
     //
@@ -834,13 +847,15 @@ object TypeOps:
       var prefixTVar: Type | Null = null
       def apply(tp: Type): Type = tp match {
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
-          if (tref.symbol.is(Module))
-            TermRef(this(tref.prefix), tref.symbol.sourceModule)
+          val symbol = tref.symbol
+          if (symbol.is(Module))
+            TermRef(this(tref.prefix), symbol.sourceModule)
           else if (prefixTVar != null)
             this(tref)
           else {
             prefixTVar = WildcardType  // prevent recursive call from assigning it
-            val tref2 = this(tref.applyIfParameterized(tref.typeParams.map(_ => TypeBounds.empty)))
+            val tvars = tref.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
+            val tref2 = this(tref.applyIfParameterized(tvars))
             prefixTVar = newTypeVar(TypeBounds.upper(tref2))
             prefixTVar.uncheckedNN
           }
@@ -869,10 +884,7 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
-      // if there's a change in variance in type parameters (between subtype tp1 and supertype tp2)
-      // then we don't want to maximise the type variables in the wrong direction.
-      // For instance 15967, A[-Z] and B[Y] extends A[Y], we don't want to maximise Y to Any
-      maximizeType(protoTp1.baseType(tp2.classSymbol), NoSpan)
+      for tp <- mixins.reverseIterator do protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }

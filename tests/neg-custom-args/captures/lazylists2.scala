@@ -42,12 +42,12 @@ extension [A](xs: {*} LazyList[A])
     new Mapped
 
   def map4[B](f: A => B): {xs} LazyList[B] =
-    final class Mapped extends LazyList[B]:
+    final class Mapped extends LazyList[B]:  // error
       this: ({xs, f} Mapped) =>
 
       def isEmpty = false
       def head: B = f(xs.head)
-      def tail: {xs, f} LazyList[B] = xs.tail.map(f) // error
+      def tail: {xs, f} LazyList[B] = xs.tail.map(f)
     new Mapped
 
   def map5[B](f: A => B): LazyList[B] =

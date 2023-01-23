@@ -25,4 +25,8 @@ class Construction {
   def reversed = "xyz\udc00\ud801abc"
 }
 
+class Demon {
+  val 😈 = 42
+}
+
 // was: error: illegal character '\ud801', '\udc00'

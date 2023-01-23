@@ -10,7 +10,7 @@
   |                                     expression expected but [31m')'[0m found
   |
   | longer explanation available when compiling with `-explain`
--- Error: tests/neg/i5498-postfixOps.scala:6:0 -------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i5498-postfixOps.scala:6:0 -------------------------------------------------------------
 6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error
   |^
   |No given instance of type scala.concurrent.duration.DurationConversions.Classifier[Null] was found for parameter ev of method second in trait DurationConversions

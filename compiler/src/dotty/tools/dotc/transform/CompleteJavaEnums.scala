@@ -80,7 +80,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     parents.map {
       case app @ Apply(fn, args0) if fn.symbol.owner == targetCls =>
         if args0.nonEmpty && targetCls == defn.JavaEnumClass then
-          report.error("the constructor of java.lang.Enum cannot be called explicitly", app.sourcePos)
+          report.error(em"the constructor of java.lang.Enum cannot be called explicitly", app.sourcePos)
         cpy.Apply(app)(fn, args0 ++ args)
       case p => p
     }
@@ -110,7 +110,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     yield {
       def forwarderSym(flags: FlagSet, info: Type): Symbol { type ThisName = TermName } =
         val sym = newSymbol(clazz, enumValue.name.asTermName, flags, info)
-        sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
+        sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot, sym.span))
         sym
       val body = moduleRef.select(enumValue)
       if ctx.settings.scalajs.value then

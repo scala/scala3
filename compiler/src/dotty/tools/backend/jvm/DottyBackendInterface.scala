@@ -14,6 +14,7 @@ import Contexts._
 import Types._
 import Symbols._
 import Phases._
+import Decorators.em
 
 import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.report
@@ -71,7 +72,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
-        report.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
+        report.error(em"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems

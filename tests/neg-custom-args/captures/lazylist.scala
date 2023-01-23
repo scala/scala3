@@ -14,7 +14,7 @@ abstract class LazyList[+T]:
 class LazyCons[+T](val x: T, val xs: () => {*} LazyList[T]) extends LazyList[T]:
   def isEmpty = false
   def head = x
-  def tail = xs() // error: cannot have an inferred type
+  def tail = xs() // error
 
 object LazyNil extends LazyList[Nothing]:
   def isEmpty = true

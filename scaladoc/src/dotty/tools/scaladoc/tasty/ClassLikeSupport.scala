@@ -539,13 +539,12 @@ trait ClassLikeSupport:
         // Documenting method slightly different then its definition is withing the 'undefiend behaviour'.
         symbol.paramSymss.flatten.find(_.name == name).exists(_.flags.is(Flags.Implicit))
 
-    def handlePolyType(polyType: PolyType): MemberInfo =
-      MemberInfo(polyType.paramNames.zip(polyType.paramBounds).toMap, List.empty, polyType.resType)
+    def handlePolyType(memberInfo: MemberInfo, polyType: PolyType): MemberInfo =
+      MemberInfo(polyType.paramNames.zip(polyType.paramBounds).toMap, memberInfo.paramLists, polyType.resType)
 
     def handleMethodType(memberInfo: MemberInfo, methodType: MethodType): MemberInfo =
       val rawParams = methodType.paramNames.zip(methodType.paramTypes).toMap
       val (evidences, notEvidences) = rawParams.partition(e => isSyntheticEvidence(e._1))
-
 
       def findParamRefs(t: TypeRepr): Seq[ParamRef] = t match
         case paramRef: ParamRef => Seq(paramRef)
@@ -583,7 +582,7 @@ trait ClassLikeSupport:
       MemberInfo(memberInfo.genericTypes, memberInfo.paramLists, byNameType.underlying)
 
     def recursivelyCalculateMemberInfo(memberInfo: MemberInfo): MemberInfo = memberInfo.res match
-      case p: PolyType => recursivelyCalculateMemberInfo(handlePolyType(p))
+      case p: PolyType => recursivelyCalculateMemberInfo(handlePolyType(memberInfo, p))
       case m: MethodType => recursivelyCalculateMemberInfo(handleMethodType(memberInfo, m))
       case b: ByNameType => handleByNameType(memberInfo, b)
       case _ => memberInfo

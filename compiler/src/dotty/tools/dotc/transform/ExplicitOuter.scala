@@ -176,8 +176,9 @@ object ExplicitOuter {
           if prefix == NoPrefix then outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty))
           else prefix.widen)
     val info = if (flags.is(Method)) ExprType(target) else target
+    val currentNestingLevel = ctx.nestingLevel
     atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
-      newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord)
+      newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord, nestingLevel = currentNestingLevel)
     }
   }
 
@@ -255,7 +256,6 @@ object ExplicitOuter {
    */
   def referencesOuter(cls: Symbol, tree: Tree)(using Context): Boolean =
 
-
     val test = new TreeAccumulator[Boolean]:
       private var inInline = false
 
@@ -301,19 +301,20 @@ object ExplicitOuter {
       def containsOuterRefs(t: Tree): Boolean = t match
         case _: This | _: Ident => isOuterRef(t.tpe)
         case nw: New =>
-          val newCls = nw.tpe.classSymbol
+          val newType = nw.tpe.dealias
+          val newCls = newType.classSymbol
           isOuterSym(newCls.owner.enclosingClass) ||
-          hasOuterPrefix(nw.tpe) ||
+          hasOuterPrefix(newType) ||
           newCls.owner.isTerm && cls.isProperlyContainedIn(newCls)
             // newCls might get proxies for free variables. If current class is
             // properly contained in newCls, it needs an outer path to newCls access the
             // proxies and forward them to the new instance.
         case app: TypeApply if app.symbol.isTypeTest =>
           // Type tests of singletons translate to `eq` tests with references, which might require outer pointers
-          containsOuterRefsAtTopLevel(app.args.head.tpe)
+          containsOuterRefsAtTopLevel(app.args.head.tpe.dealias)
         case t: TypeTree if inInline =>
           // Expansions of inline methods must be able to address outer types
-          containsOuterRefsAnywhere(t.tpe)
+          containsOuterRefsAnywhere(t.tpe.dealias)
         case _ =>
           false
 

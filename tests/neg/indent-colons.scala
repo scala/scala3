@@ -1,3 +1,4 @@
+import language.`3.2`
 def tryEither[T](x: T)(y: Int => T): T = ???
 
 def test1 =

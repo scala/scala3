@@ -131,6 +131,20 @@ class RegressionTestScala3 {
       }
     }
   }
+
+  @Test def nonSelectJSNativeRHSIssue14289(): Unit = {
+    js.eval("""
+      var RegressionTestScala3_Issue14289 = {
+        "a": function() { return "foo"; },
+        "b": function() { return 5; },
+        "c": function() { return true; }
+      };
+    """)
+
+    assertEquals("foo", Issue14289.Container.a())
+    assertEquals(5, Issue14289.Container.b())
+    assertEquals(true, Issue14289.Container.c())
+  }
 }
 
 object RegressionTestScala3 {
@@ -246,6 +260,20 @@ object RegressionTestScala3 {
       val unitField: Unit = ()
       @JSExportTopLevel("RegressionTestScala3_Issue14168_finalValField")
       final val finalValField = "finalVal"
+    }
+  }
+
+  object Issue14289 {
+    import scala.scalajs.js.native
+    import scala.scalajs.{js => renamedjs}
+    import scala.scalajs.js.{native => renamednative}
+
+    @js.native
+    @js.annotation.JSGlobal("RegressionTestScala3_Issue14289")
+    object Container extends js.Object {
+      def a(): String = native
+      def b(): Int = renamedjs.native
+      def c(): Boolean = renamednative
     }
   }
 }

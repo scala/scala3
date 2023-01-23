@@ -1,4 +1,4 @@
-import language.experimental.fewerBraces
+import language.`3.3`
 
 val x =
   if true then:  // error

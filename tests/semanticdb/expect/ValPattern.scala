@@ -6,7 +6,7 @@ class ValPattern {
   val Some(number1) =
     Some(1)
 
-  val List(Some(q1), None: None.type, None) = ???
+  val List(Some(q1), None) = ???
 
   var (leftVar, rightVar) = (1, 2)
   var Some(number1Var) =

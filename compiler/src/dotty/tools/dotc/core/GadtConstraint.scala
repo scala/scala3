@@ -26,6 +26,11 @@ sealed trait GadtConstraint (
 
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
+  private[core] def getConstraint: Constraint = constraint
+  private[core] def getMapping: SimpleIdentityMap[Symbol, TypeVar] = mapping
+  private[core] def getReverseMapping: SimpleIdentityMap[TypeParamRef, Symbol] = reverseMapping
+  private[core] def getWasConstrained: Boolean = wasConstrained
+
   /** Exposes ConstraintHandling.subsumes */
   def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
     def extractConstraint(g: GadtConstraint) = g.constraint
@@ -197,6 +202,25 @@ sealed trait GadtConstraint (
     this.mapping = other.mapping
     this.reverseMapping = other.reverseMapping
     this.wasConstrained = other.wasConstrained
+
+  def restore(constr: Constraint, mapping: SimpleIdentityMap[Symbol, TypeVar], revMapping: SimpleIdentityMap[TypeParamRef, Symbol], wasConstrained: Boolean): Unit =
+    this.myConstraint = constr
+    this.mapping = mapping
+    this.reverseMapping = revMapping
+    this.wasConstrained = wasConstrained
+
+  inline def rollbackGadtUnless(inline op: Boolean): Boolean =
+    val savedConstr = myConstraint
+    val savedMapping = mapping
+    val savedReverseMapping = reverseMapping
+    val savedWasConstrained = wasConstrained
+    var result = false
+    try
+      result = op
+    finally
+      if !result then
+        restore(savedConstr, savedMapping, savedReverseMapping, savedWasConstrained)
+    result
 
   // ---- Protected/internal -----------------------------------------------
 

@@ -22,6 +22,11 @@ object Config {
    */
   inline val checkConstraintsNonCyclic = false
 
+  /** Check that reverse dependencies in constraints are correct and complete.
+   *  Can also be enabled using -Ycheck-constraint-deps.
+   */
+  inline val checkConstraintDeps = false
+
   /** Check that each constraint resulting from a subtype test
    *  is satisfiable. Also check that a type variable instantiation
    *  satisfies its constraints.
@@ -77,13 +82,6 @@ object Config {
    *  is not an error condition.
    */
   inline val failOnInstantiationToNothing = false
-
-  /** Enable noDoubleDef checking if option "-YnoDoubleDefs" is set.
-    * The reason to have an option as well as the present global switch is
-    * that the noDoubleDef checking is done in a hotspot, and we do not
-    * want to incur the overhead of checking an option each time.
-    */
-  inline val checkNoDoubleBindings = true
 
   /** Check positions for consistency after parsing */
   inline val checkPositions = true
@@ -183,6 +181,9 @@ object Config {
 
   /** If set, prints a trace of all symbol completions */
   inline val showCompletions = false
+
+  /** If set, show variable/variable reverse dependencies when printing constraints. */
+  inline val showConstraintDeps = true
 
   /** If set, method results that are context functions are flattened by adding
    *  the parameters of the context function results to the methods themselves.

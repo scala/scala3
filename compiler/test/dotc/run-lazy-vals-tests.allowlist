@@ -38,7 +38,6 @@ null-lazy-val.scala
 patmatch-classtag.scala
 priorityQueue.scala
 serialization-new-legacy.scala
-serialization-new.scala
 singletons.scala
 statics.scala
 stream_flatmap_odds.scala

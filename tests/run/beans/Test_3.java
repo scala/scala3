@@ -7,6 +7,7 @@ class JavaTest {
     System.out.println(a.isY());
     System.out.println(new T2().getX());
 
+    System.out.println(Arrays.asList(a.getClass().getDeclaredField("retainingAnnotation").getAnnotations()));
     System.out.println(Arrays.asList(a.getClass().getMethod("getRetainingAnnotation").getAnnotations()));
 
     System.out.println(a.getMutableOneWithLongName());

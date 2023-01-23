@@ -1,7 +1,11 @@
 package dotty.tools.dotc
 package printing
+import scala.annotation.internal.sharable
 
 object Texts {
+
+  @sharable
+  private val ansi = java.util.regex.Pattern.compile("\u001b\\[\\d+m").nn
 
   sealed abstract class Text {
 
@@ -15,12 +19,17 @@ object Texts {
       case Vertical(relems) => relems.isEmpty
     }
 
+    //                 Str Ver Clo Flu
+    // isVertical       F   T   F   F
+    // isClosed         F   T   T   F
+    // isFluid          F   F   T   T
+    // isSplittable     F   F   F   T
     def isVertical: Boolean = isInstanceOf[Vertical]
     def isClosed: Boolean = isVertical || isInstanceOf[Closed]
     def isFluid: Boolean = isInstanceOf[Fluid]
     def isSplittable: Boolean = isFluid && !isClosed
 
-    def close: Closed = new Closed(relems)
+    def close: Text = if isSplittable then Closed(relems) else this
 
     def remaining(width: Int): Int = this match {
       case Str(s, _) =>
@@ -53,7 +62,7 @@ object Texts {
     }
 
     private def appendIndented(that: Text)(width: Int): Text =
-      Vertical(that.layout(width - indentMargin).indented :: this.relems)
+      Fluid(that.layout(width - indentMargin).indented :: this.relems)
 
     private def append(width: Int)(that: Text): Text =
       if (this.isEmpty) that.layout(width)
@@ -65,7 +74,7 @@ object Texts {
       else appendIndented(that)(width)
 
     private def lengthWithoutAnsi(str: String): Int =
-      str.replaceAll("\u001b\\[\\d+m", "").nn.length
+      ansi.matcher(str).nn.replaceAll("").nn.length
 
     def layout(width: Int): Text = this match {
       case Str(s, _) =>
@@ -113,7 +122,7 @@ object Texts {
             sb.append("|")
           }
         }
-        sb.append(s)
+        sb.append(s.replaceAll("[ ]+$", ""))
       case _ =>
         var follow = false
         for (elem <- relems.reverse) {
@@ -138,7 +147,13 @@ object Texts {
     def ~ (that: Text): Text =
       if (this.isEmpty) that
       else if (that.isEmpty) this
-      else Fluid(that :: this :: Nil)
+      else this match
+        case Fluid(relems1) if !isClosed => that match
+          case Fluid(relems2) if !that.isClosed => Fluid(relems2 ++ relems1)
+          case _                                => Fluid(that +: relems1)
+        case _             => that match
+          case Fluid(relems2) if !that.isClosed => Fluid(relems2 :+ this)
+          case _                                => Fluid(that :: this :: Nil)
 
     def ~~ (that: Text): Text =
       if (this.isEmpty) that
@@ -161,9 +176,9 @@ object Texts {
     def apply(xs: Traversable[Text], sep: String = " "): Text =
       if (sep == "\n") lines(xs)
       else {
-        val ys = xs filterNot (_.isEmpty)
+        val ys = xs.filterNot(_.isEmpty)
         if (ys.isEmpty) Str("")
-        else ys reduce (_ ~ sep ~ _)
+        else ys.reduceRight((a, b) => (a ~ sep).close ~ b)
       }
 
     /** The given texts `xs`, each on a separate line */
@@ -176,12 +191,16 @@ object Texts {
 
   case class Str(s: String, lineRange: LineRange = EmptyLineRange) extends Text {
     override def relems: List[Text] = List(this)
+    override def toString = this match
+      case Str(s, EmptyLineRange) => s"Str($s)"
+      case Str(s, lineRange)      => s"Str($s, $lineRange)"
   }
 
   case class Vertical(relems: List[Text]) extends Text
   case class Fluid(relems: List[Text]) extends Text
 
-  class Closed(relems: List[Text]) extends Fluid(relems)
+  class Closed(relems: List[Text]) extends Fluid(relems):
+    override def productPrefix = "Closed"
 
   implicit def stringToText(s: String): Text = Str(s)
 

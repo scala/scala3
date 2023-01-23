@@ -54,6 +54,7 @@ trait BCodeIdiomatic {
     case "17" => asm.Opcodes.V17
     case "18" => asm.Opcodes.V18
     case "19" => asm.Opcodes.V19
+    case "20" => asm.Opcodes.V20
   }
 
   lazy val majorVersion: Int = (classfileVersion & 0xFF)
@@ -618,6 +619,16 @@ trait BCodeIdiomatic {
 
     // can-multi-thread
     final def drop(tk: BType): Unit = { emit(if (tk.isWideType) Opcodes.POP2 else Opcodes.POP) }
+
+    // can-multi-thread
+    final def dropMany(size: Int): Unit = {
+      var s = size
+      while s >= 2 do
+        emit(Opcodes.POP2)
+        s -= 2
+      if s > 0 then
+        emit(Opcodes.POP)
+    }
 
     // can-multi-thread
     final def dup(tk: BType): Unit =  { emit(if (tk.isWideType) Opcodes.DUP2 else Opcodes.DUP) }

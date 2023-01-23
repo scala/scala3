@@ -11,9 +11,9 @@ import java.nio.file.Paths
 
 
 case class ReportedDiagnostics(errors: List[Diagnostic], warnings: List[Diagnostic], infos: List[Diagnostic]):
-  def errorMsgs = errors.map(_.msg.rawMessage)
-  def warningMsgs = warnings.map(_.msg.rawMessage)
-  def infoMsgs = infos.map(_.msg.rawMessage)
+  def errorMsgs = errors.map(_.msg.message)
+  def warningMsgs = warnings.map(_.msg.message)
+  def infoMsgs = infos.map(_.msg.message)
 
 
 extension (c: CompilerContext) def reportedDiagnostics: ReportedDiagnostics =
