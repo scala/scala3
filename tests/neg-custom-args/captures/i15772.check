@@ -1,23 +1,15 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:18:2 ----------------------------------------
-18 |  () => // error
-   |  ^
-   |  Found:    {x} () -> Int
-   |  Required: () -> Int
-19 |    val c : {x} C = new C(x)
-20 |    val boxed1 : (({*} C) => Unit) -> Unit = box1(c)
-21 |    boxed1((cap: {*} C) => unsafe(c))
-22 |    0
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:20:49 ---------------------------------------
+20 |    val boxed1 : (({*} C) => Unit) -> Unit = box1(c)  // error
+   |                                             ^^^^^^^
+   |                                             Found:    {c} ({*} ({c} C{arg: {*} C}) -> Unit) -> Unit
+   |                                             Required: (({*} C) => Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:25:2 ----------------------------------------
-25 |  () => // error
-   |  ^
-   |  Found:    {x} () -> Int
-   |  Required: () -> Int
-26 |    val c : {x} C = new C(x)
-27 |    val boxed2 : Observe[{*} C] = box2(c)
-28 |    boxed2((cap: {*} C) => unsafe(c))
-29 |    0
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:27:38 ---------------------------------------
+27 |    val boxed2 : Observe[{*} C] = box2(c)  // error
+   |                                  ^^^^^^^
+   |                                  Found:    {c} ({*} ({c} C{arg: {*} C}) -> Unit) -> Unit
+   |                                  Required: Observe[{*} C]
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:37 ---------------------------------------
@@ -30,7 +22,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:44:2 ----------------------------------------
 44 |  x: (() -> Unit) // error
    |  ^
-   |  Found:    (x : {sayHello, io} () -> Unit)
+   |  Found:    {x} () -> Unit
    |  Required: () -> Unit
    |
    | longer explanation available when compiling with `-explain`

@@ -3144,7 +3144,23 @@ class JSCodeGen()(using genCtx: Context) {
       val tpe = atPhase(elimErasedValueTypePhase) {
         sym.info.finalResultType
       }
-      unbox(boxedResult, tpe)
+      if (tpe.isRef(defn.BoxedUnitClass) && sym.isGetter) {
+        /* Work around to reclaim Scala 2 erasure behavior, assumed by the test
+         * NonNativeJSTypeTest.defaultValuesForFields.
+         * Scala 2 erases getters of `Unit`-typed fields as returning `Unit`
+         * (not `BoxedUnit`). Therefore, when called in expression position,
+         * the call site introduces an explicit `BoxedUnit.UNIT`. Even if the
+         * field has not been initialized at all (with `= _`), this results in
+         * an actual `()` value.
+         * In Scala 3, the same pattern returns `null`, as a `BoxedUnit`, so we
+         * introduce here an explicit `()` value.
+         * TODO We should remove this branch if the upstream test is updated
+         * not to assume such a strict interpretation of erasure.
+         */
+        js.Block(boxedResult, js.Undefined())
+      } else {
+        unbox(boxedResult, tpe)
+      }
     }
   }
 

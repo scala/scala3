@@ -43,7 +43,6 @@ object Scala3:
         if content.lift(span.end - 1).exists(_ == '`') then
           (span.start + 1, span.end - 1)
         else (span.start, span.end)
-      // println(s"${start}, $end")
       val nameInSource = content.slice(start, end).mkString
       // for secondary constructors `this`
       desig match
@@ -222,6 +221,12 @@ object Scala3:
           case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
           case _                                       => false
         }
+
+      def isDynamic(using Context): Boolean =
+        name == nme.applyDynamic ||
+        name == nme.selectDynamic ||
+        name == nme.updateDynamic ||
+        name == nme.applyDynamicNamed
   end NameOps
 
   given SymbolOps: AnyRef with

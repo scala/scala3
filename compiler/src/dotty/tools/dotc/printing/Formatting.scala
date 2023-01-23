@@ -58,9 +58,9 @@ object Formatting {
         def show(x: Seq[X]) = new CtxShow:
           def run(using Context) = x.map(show1)
 
-      given [A: Show, B: Show]: Show[(A, B)] with
-        def show(x: (A, B)) = new CtxShow:
-          def run(using Context) = (show1(x._1), show1(x._2))
+      given [H: Show, T <: Tuple: Show]: Show[H *: T] with
+        def show(x: H *: T) = new CtxShow:
+          def run(using Context) = show1(x.head) *: Show[T].show(x.tail).ctxShow.asInstanceOf[Tuple]
 
       given [X: Show]: Show[X | Null] with
         def show(x: X | Null) = if x == null then "null" else Show[X].show(x.nn)

@@ -26,6 +26,9 @@ object ErrorReporting {
   def errorTree(tree: untpd.Tree, msg: Message)(using Context): tpd.Tree =
     errorTree(tree, msg, tree.srcPos)
 
+  def errorTree(tree: untpd.Tree, msg: => String)(using Context): tpd.Tree =
+    errorTree(tree, msg.toMessage)
+
   def errorTree(tree: untpd.Tree, msg: TypeError, pos: SrcPos)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
 
@@ -33,6 +36,9 @@ object ErrorReporting {
     report.error(msg, pos)
     ErrorType(msg)
   }
+
+  def errorType(msg: => String, pos: SrcPos)(using Context): ErrorType =
+    errorType(msg.toMessage, pos)
 
   def errorType(ex: TypeError, pos: SrcPos)(using Context): ErrorType = {
     report.error(ex, pos)
@@ -69,15 +75,28 @@ object ErrorReporting {
         "\n(Note that variables need to be initialized to be defined)"
       else ""
 
+    /** Reveal arguments in FunProtos that are proteted by an IgnoredProto but were
+     *  revealed during type inference. This gives clearer error messages for overloading
+     *  resolution errors that need to show argument lists after the first. We do not
+     *  reveal other kinds of ignored prototypes since these might be misleading because
+     *  there might be a possible implicit conversion on the result.
+     */
+    def revealDeepenedArgs(tp: Type): Type = tp match
+      case tp @ IgnoredProto(deepTp: FunProto) if tp.wasDeepened => deepTp
+      case _ => tp
+
     def expectedTypeStr(tp: Type): String = tp match {
       case tp: PolyProto =>
-        em"type arguments [${tp.targs.tpes}%, %] and ${expectedTypeStr(tp.resultType)}"
+        em"type arguments [${tp.targs.tpes}%, %] and ${expectedTypeStr(revealDeepenedArgs(tp.resultType))}"
       case tp: FunProto =>
-        val result = tp.resultType match {
-          case _: WildcardType | _: IgnoredProto => ""
-          case tp => em" and expected result type $tp"
-        }
-        em"arguments (${tp.typedArgs().tpes}%, %)$result"
+        def argStr(tp: FunProto): String =
+          val result = revealDeepenedArgs(tp.resultType) match {
+            case restp: FunProto => argStr(restp)
+            case _: WildcardType | _: IgnoredProto => ""
+            case tp => em" and expected result type $tp"
+          }
+          em"(${tp.typedArgs().tpes}%, %)$result"
+        s"arguments ${argStr(tp)}"
       case _ =>
         em"expected type $tp"
     }

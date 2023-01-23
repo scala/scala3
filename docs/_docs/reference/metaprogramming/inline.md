@@ -344,10 +344,10 @@ In a transparent inline, an `inline if` will force the inlining of any inline de
 ## Inline Matches
 
 A `match` expression in the body of an `inline` method definition may be
-prefixed by the `inline` modifier. If there is enough static information to
-unambiguously take a branch, the expression is reduced to that branch and the
-type of the result is taken. If not, a compile-time error is raised that
-reports that the match cannot be reduced.
+prefixed by the `inline` modifier. If there is enough type information
+at compile time to select a branch, the expression is reduced to that branch and the
+type of the expression is the type of the right-hand side of that result.
+If not, a compile-time error is raised that reports that the match cannot be reduced.
 
 The example below defines an inline method with a
 single inline match expression that picks a case based on its static type:
@@ -363,8 +363,9 @@ g("test") // Has type (String, String)
 ```
 
 The scrutinee `x` is examined statically and the inline match is reduced
-accordingly returning the corresponding value (with the type specialized because `g` is declared `transparent`). This example performs a simple type test over the
-scrutinee. The type can have a richer structure like the simple ADT below.
+accordingly returning the corresponding value (with the type specialized because `g` is declared `transparent`).
+This example performs a simple type test over the scrutinee.
+The type can have a richer structure like the simple ADT below.
 `toInt` matches the structure of a number in [Church-encoding](https://en.wikipedia.org/wiki/Church_encoding)
 and _computes_ the corresponding integer.
 

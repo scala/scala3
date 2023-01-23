@@ -25,15 +25,15 @@ test$package$
 Object
 <empty>.test$package$
 foo
-149
-162
-4
-s
+181
+203
+6
+println
 Apply
 false
 0
 false
-s"foo(a)($b)"
+println(s"foo(a)($b)")
 
 1
 erased/test.scala
@@ -42,15 +42,15 @@ test$package$
 Object
 <empty>.test$package$
 foo
-141
-163
-4
-println
+189
+202
+6
+s
 Apply
 false
 0
 false
-println(s"foo(a)($b)")
+s"foo(a)($b)"
 
 2
 erased/test.scala
@@ -59,9 +59,9 @@ test$package$
 Object
 <empty>.test$package$
 foo
-92
-99
-3
+132
+139
+5
 foo
 DefDef
 false
@@ -76,15 +76,15 @@ test$package$
 Object
 <empty>.test$package$
 identity
-213
-228
-8
-s
+245
+269
+10
+println
 Apply
 false
 0
 false
-s"identity($s)"
+println(s"identity($s)")
 
 4
 erased/test.scala
@@ -93,15 +93,15 @@ test$package$
 Object
 <empty>.test$package$
 identity
-205
-229
-8
-println
+253
+268
+10
+s
 Apply
 false
 0
 false
-println(s"identity($s)")
+s"identity($s)"
 
 5
 erased/test.scala
@@ -110,9 +110,9 @@ test$package$
 Object
 <empty>.test$package$
 identity
-169
-181
-7
+209
+221
+9
 identity
 DefDef
 false
@@ -127,15 +127,15 @@ test$package$
 Object
 <empty>.test$package$
 Test
-264
-270
-13
-e
+300
+323
+15
+foo
 Apply
 false
 0
 false
-e("a")
+foo(parameterless)("b")
 
 7
 erased/test.scala
@@ -144,9 +144,9 @@ test$package$
 Object
 <empty>.test$package$
 Test
-260
-276
-13
+326
+342
+16
 foo
 Apply
 false
@@ -161,15 +161,15 @@ test$package$
 Object
 <empty>.test$package$
 Test
-291
-307
-14
-identity
+345
+374
+17
+foo
 Apply
 false
 0
 false
-identity("idem")
+foo(e("a"))(identity("idem"))
 
 9
 erased/test.scala
@@ -178,15 +178,15 @@ test$package$
 Object
 <empty>.test$package$
 Test
-279
-308
-14
-foo
+357
+373
+17
+identity
 Apply
 false
 0
 false
-foo(e("a"))(identity("idem"))
+identity("idem")
 
 10
 erased/test.scala
@@ -195,14 +195,13 @@ test$package$
 Object
 <empty>.test$package$
 Test
-235
-249
-12
+275
+289
+14
 Test
 DefDef
 false
 0
 false
-@main
-def Test
+@main\ndef Test
 

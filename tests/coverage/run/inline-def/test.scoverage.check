@@ -21,57 +21,6 @@
 0
 inline-def/test.scala
 <empty>
-A
-Class
-<empty>.A
-<init>
-66
-67
-4
-<init>
-Apply
-false
-0
-false
-B
-
-1
-inline-def/test.scala
-<empty>
-A
-Class
-<empty>.A
-foo$retainedBody
-134
-148
-7
-toString
-Apply
-false
-0
-false
-"foo".toString
-
-2
-inline-def/test.scala
-<empty>
-A
-Class
-<empty>.A
-foo$retainedBody
-134
-134
-7
-foo$retainedBody
-DefDef
-false
-0
-false
-
-
-3
-inline-def/test.scala
-<empty>
 test$package$
 Object
 <empty>.test$package$
@@ -86,7 +35,7 @@ false
 false
 A()
 
-4
+1
 inline-def/test.scala
 <empty>
 test$package$
@@ -103,24 +52,7 @@ false
 false
 println(a.x)
 
-5
-inline-def/test.scala
-<empty>
-test$package$
-Object
-<empty>.test$package$
-Test
-134
-148
-7
-toString
-Apply
-false
-0
-false
-"foo".toString
-
-6
+2
 inline-def/test.scala
 <empty>
 test$package$
@@ -137,24 +69,24 @@ false
 false
 println(a.foo)
 
-7
+3
 inline-def/test.scala
 <empty>
 test$package$
 Object
 <empty>.test$package$
 Test
-176
-190
-8
+134
+148
+7
 toString
 Apply
 false
 0
 false
-"bar".toString
+"foo".toString
 
-8
+4
 inline-def/test.scala
 <empty>
 test$package$
@@ -171,24 +103,24 @@ false
 false
 println(a.bar)
 
-9
+5
 inline-def/test.scala
 <empty>
 test$package$
 Object
 <empty>.test$package$
 Test
-303
-308
-17
-foo
-Select
+176
+190
+8
+toString
+Apply
 false
 0
 false
-b.foo
+"bar".toString
 
-10
+6
 inline-def/test.scala
 <empty>
 test$package$
@@ -205,7 +137,24 @@ false
 false
 println(b.foo)
 
-11
+7
+inline-def/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+303
+308
+17
+foo
+Select
+false
+0
+false
+b.foo
+
+8
 inline-def/test.scala
 <empty>
 test$package$
@@ -220,6 +169,5 @@ DefDef
 false
 0
 false
-@main
-def Test
+@main\ndef Test
 

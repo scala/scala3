@@ -311,8 +311,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 thirdTryNamed(tp2)
               else
                 (  (tp1.name eq tp2.name)
-                && tp1.isMemberRef
-                && tp2.isMemberRef
+                && tp2.isPrefixDependentMemberRef
                 && isSubPrefix(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
                 && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
@@ -634,6 +633,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case (info1: MethodType, info2: MethodType) =>
                 matchingMethodParams(info1, info2, precise = false)
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+              case (info1 @ CapturingType(parent1, refs1), info2: Type) =>
+                subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
+                  && isSubInfo(parent1, info2)
+              case (info1: Type, CapturingType(parent2, refs2)) =>
+                val refs1 = info1.captureSet
+                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2, frozenConstraint).isOK) && sameBoxed(info1, info2, refs1)
+                  && isSubInfo(info1, parent2)
               case _ =>
                 isSubType(info1, info2)
 
@@ -1067,12 +1073,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *
      *  - k := args.length
      *  - d := otherArgs.length - k
+     *  - T_0, ..., T_k-1 fresh type parameters
+     *  - bodyArgs := otherArgs.take(d), T_0, ..., T_k-1
      *
-     *  `adaptedTycon` will be:
+     *  Then,
      *
-     *    [T_0, ..., T_k-1] =>> otherTycon[otherArgs(0), ..., otherArgs(d-1), T_0, ..., T_k-1]
+     *    adaptedTycon := [T_0, ..., T_k-1] =>> otherTycon[bodyArgs]
      *
-     *  where `T_n` has the same bounds as `otherTycon.typeParams(d+n)`
+     *  where the bounds of `T_i` are set based on the bounds of `otherTycon.typeParams(d+i)`
+     *  after substituting type parameter references by the corresponding argument
+     *  in `bodyArgs` (see `adaptedBounds` in the implementation).
      *
      *  Historical note: this strategy is known in Scala as "partial unification"
      *  (even though the type constructor variable isn't actually unified but only
@@ -1097,11 +1107,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         variancesConform(remainingTparams, tparams) && {
           val adaptedTycon =
             if d > 0 then
+              val initialArgs = otherArgs.take(d)
+              /** The arguments passed to `otherTycon` in the body of `tl` */
+              def bodyArgs(tl: HKTypeLambda) = initialArgs ++ tl.paramRefs
+              /** The bounds of the type parameters of `tl` */
+              def adaptedBounds(tl: HKTypeLambda) =
+                val bodyArgsComputed = bodyArgs(tl)
+                remainingTparams.map(_.paramInfo)
+                  .mapconserve(_.substTypeParams(otherTycon, bodyArgsComputed).bounds)
+
               HKTypeLambda(remainingTparams.map(_.paramName))(
-                tl => remainingTparams.map(remainingTparam =>
-                  tl.integrate(remainingTparams, remainingTparam.paramInfo).bounds),
-                tl => otherTycon.appliedTo(
-                  otherArgs.take(d) ++ tl.paramRefs))
+                adaptedBounds,
+                tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
               otherTycon
           (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon)) &&
@@ -1831,11 +1848,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     val preGadt = ctx.gadt.fresh
 
     def allSubsumes(leftGadt: GadtConstraint, rightGadt: GadtConstraint, left: Constraint, right: Constraint): Boolean =
-      subsumes(left, right, preConstraint) && preGadt.match
-        case preGadt: ProperGadtConstraint =>
-          preGadt.subsumes(leftGadt, rightGadt, preGadt)
-        case _ =>
-          true
+      subsumes(left, right, preConstraint) && preGadt.subsumes(leftGadt, rightGadt, preGadt)
 
     if op1 then
       val op1Constraint = constraint
@@ -1955,6 +1968,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val info1 = m.info.widenExpr
         isSubInfo(info1, tp2.refinedInfo.widenExpr, m.symbol.info.orElse(info1))
         || matchAbstractTypeMember(m.info)
+        || (tp1.isStable && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
 
       tp1.member(name) match // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)
@@ -3007,11 +3021,18 @@ object TypeComparer {
 }
 
 object TrackingTypeComparer:
-  enum MatchResult:
+  import printing.*, Texts.*
+  enum MatchResult extends Showable:
     case Reduced(tp: Type)
     case Disjoint
     case Stuck
     case NoInstance(fails: List[(Name, TypeBounds)])
+
+    def toText(p: Printer): Text = this match
+      case Reduced(tp)       => "Reduced(" ~ p.toText(tp) ~ ")"
+      case Disjoint          => "Disjoint"
+      case Stuck             => "Stuck"
+      case NoInstance(fails) => "NoInstance(" ~ Text(fails.map(p.toText(_) ~ p.toText(_)), ", ") ~ ")"
 
 class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   import TrackingTypeComparer.*
@@ -3076,7 +3097,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
     /** Match a single case. */
-    def matchCase(cas: Type): MatchResult = trace(i"match case $cas vs $scrut", matchTypes) {
+    def matchCase(cas: Type): MatchResult = trace(i"$scrut match ${MatchTypeTrace.caseText(cas)}", matchTypes, show = true) {
       val cas1 = cas match {
         case cas: HKTypeLambda =>
           caseLambda = constrained(cas)
@@ -3220,7 +3241,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean =
-    traceIndented(s"add GADT constraint ${show(sym)} ${if isUpper then "<:" else ">:"} ${show(b)} $frozenNotice, GADT constraint = ${show(ctx.gadt.debugBoundsDescription)}") {
+    traceIndented(s"add GADT constraint ${show(sym)} ${if isUpper then "<:" else ">:"} ${show(b)} $frozenNotice, GADT constraint = ${show(ctx.gadt)}") {
       super.gadtAddBound(sym, b, isUpper)
     }
 

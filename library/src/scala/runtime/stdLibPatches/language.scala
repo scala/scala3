@@ -60,6 +60,19 @@ object language:
     @compileTimeOnly("`saferExceptions` can only be used at compile time in import statements")
     object saferExceptions
 
+    /** Experimental support for pure function type syntax
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/purefuns]]
+     */
+    @compileTimeOnly("`pureFunctions` can only be used at compile time in import statements")
+    object pureFunctions
+
+    /** Experimental support for capture checking; implies support for pureFunctions
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     */
+    @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
+    object captureChecking
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

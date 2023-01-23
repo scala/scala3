@@ -244,4 +244,10 @@ class HoverTest {
       .hover(m1 to m2, hoverContent("Double"))
       .hover(m3 to m4, hoverContent("Double"))
   }
+
+  @Test def annotation: Unit = {
+    code"""|@${m1}deprecated${m2} def ${m3}x${m4} = 42.0"""
+      .hover(m1 to m2, hoverContent("deprecated"))
+      .hover(m3 to m4, hoverContent("Double"))
+  }
 }

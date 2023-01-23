@@ -149,6 +149,8 @@ private sealed trait VerboseSettings:
   val Vprofile: Setting[Boolean] = BooleanSetting("-Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting("-Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
   val VprofileDetails = IntSetting("-Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
+  val VreplMaxPrintElements: Setting[Int] = IntSetting("-Vrepl-max-print-elements", "Number of elements to be printed before output is truncated.", 1000)
+  val VreplMaxPrintCharacters: Setting[Int] = IntSetting("-Vrepl-max-print-characters", "Number of characters to be printed before output is truncated.", 50000)
 
 /** -W "Warnings" settings
  */
@@ -326,9 +328,9 @@ private sealed trait YSettings:
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
   val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only)")
-  val Ycc: Setting[Boolean] = BooleanSetting("-Ycc", "Check captured references (warning: extremely experimental and unstable)")
-  val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with -Ycc, debug info for captured references")
-  val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with -Ycc, suppress type abbreviations")
+  val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references")
+  val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with captureChecking language import, suppress type abbreviations")
+  val YlightweightLazyVals: Setting[Boolean] = BooleanSetting("-Ylightweight-lazy-vals", "Use experimental lightweight implementation of lazy vals")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

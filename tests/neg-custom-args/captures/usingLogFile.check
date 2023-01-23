@@ -1,18 +1,18 @@
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:27 ------------------------------------------------------
 23 |  val later = usingLogFile { f => () => f.write(0) } // error
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                           {f, *} () -> Unit cannot be box-converted to box ? () -> Unit
+   |                           {f} () -> Unit cannot be box-converted to box ? () -> Unit
    |                           since one of their capture sets contains the root capability `*`
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:29:9 -------------------------------------------------------
 29 |  later2.x()  // error
    |  ^^^^^^^^
    |  The expression's type box {*} () -> Unit is not allowed to capture the root capability `*`.
    |  This usually means that a capability persists longer than its allowed lifetime.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:31:6 -------------------------------------------------------
-31 |  var later3: () => Unit = () => ()  // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  The mutable variable's type box {*} () -> Unit is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:33:2 -------------------------------------------------------
+33 |  later3() // error
+   |  ^^^^^^
+   |  box {*} () -> Unit cannot be box-converted to a type that can be selected or applied
+   |  since one of their capture sets contains the root capability `*`
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:37:9 -------------------------------------------------------
 37 |  later4.x() // error
    |  ^^^^^^^^
@@ -21,15 +21,15 @@
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:27 ------------------------------------------------------
 47 |  val later = usingLogFile { f => () => f.write(0) } // error
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                           {f, *} () -> Unit cannot be box-converted to box ? () -> Unit
+   |                           {f} () -> Unit cannot be box-converted to box ? () -> Unit
    |                           since one of their capture sets contains the root capability `*`
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:33 ------------------------------------------------------
 62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                 {f, *} (x$0: Int) -> Unit cannot be box-converted to box ? (x$0: Int) -> Unit
+   |                                 {f} (x$0: Int) -> Unit cannot be box-converted to box ? (x$0: Int) -> Unit
    |                                 since one of their capture sets contains the root capability `*`
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:71:37 ------------------------------------------------------
 71 |    val later = usingFile("logfile", usingLogger(_, l => () => l.log("test"))) // error
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                     {_$1, *} () -> Unit cannot be box-converted to box ? () -> Unit
+   |                                     {_$1} () -> Unit cannot be box-converted to box ? () -> Unit
    |                                     since one of their capture sets contains the root capability `*`

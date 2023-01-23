@@ -111,7 +111,12 @@ object NavigateAST {
             p.forceIfLazy
           case _ =>
         }
-        childPath(p.productIterator, p :: path)
+        val iterator = p match
+          case defdef: DefTree[?] =>
+            p.productIterator ++ defdef.mods.productIterator
+          case _ =>
+            p.productIterator 
+        childPath(iterator, p :: path)
       }
       else {
         p match {

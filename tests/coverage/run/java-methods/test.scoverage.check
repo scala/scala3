@@ -93,23 +93,6 @@ test$package$
 Object
 <empty>.test$package$
 Test
-173
-193
-8
-identity
-Apply
-false
-0
-false
-obj.identity[Int](0)
-
-5
-java-methods/test.scala
-<empty>
-test$package$
-Object
-<empty>.test$package$
-Test
 165
 194
 8
@@ -119,6 +102,23 @@ false
 0
 false
 println(obj.identity[Int](0))
+
+5
+java-methods/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+173
+193
+8
+identity
+Apply
+false
+0
+false
+obj.identity[Int](0)
 
 6
 java-methods/test.scala
@@ -152,6 +152,5 @@ DefDef
 false
 0
 false
-@main
-def Test
+@main\ndef Test
 

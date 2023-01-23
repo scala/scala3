@@ -14,6 +14,7 @@ import typer.ImportInfo.RootRef
 import Comments.CommentsContext
 import Comments.Comment
 import util.Spans.NoSpan
+import config.Feature
 import Symbols.requiredModuleRef
 import cc.{CapturingType, CaptureSet, EventuallyCapturingType}
 
@@ -469,7 +470,6 @@ class Definitions {
 
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
-  @tu lazy val captureRoot: TermSymbol = enterPermanentSymbol(nme.CAPTURE_ROOT, AnyType).asTerm
 
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
@@ -943,22 +943,27 @@ class Definitions {
 
   @tu lazy val RuntimeTuplesModule: Symbol = requiredModule("scala.runtime.Tuples")
   @tu lazy val RuntimeTuplesModuleClass: Symbol = RuntimeTuplesModule.moduleClass
-    lazy val RuntimeTuples_consIterator: Symbol = RuntimeTuplesModule.requiredMethod("consIterator")
-    lazy val RuntimeTuples_concatIterator: Symbol = RuntimeTuplesModule.requiredMethod("concatIterator")
-    lazy val RuntimeTuples_apply: Symbol = RuntimeTuplesModule.requiredMethod("apply")
-    lazy val RuntimeTuples_cons: Symbol = RuntimeTuplesModule.requiredMethod("cons")
-    lazy val RuntimeTuples_size: Symbol = RuntimeTuplesModule.requiredMethod("size")
-    lazy val RuntimeTuples_tail: Symbol = RuntimeTuplesModule.requiredMethod("tail")
-    lazy val RuntimeTuples_concat: Symbol = RuntimeTuplesModule.requiredMethod("concat")
-    lazy val RuntimeTuples_toArray: Symbol = RuntimeTuplesModule.requiredMethod("toArray")
-    lazy val RuntimeTuples_productToArray: Symbol = RuntimeTuplesModule.requiredMethod("productToArray")
-    lazy val RuntimeTuples_isInstanceOfTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfTuple")
-    lazy val RuntimeTuples_isInstanceOfEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfEmptyTuple")
-    lazy val RuntimeTuples_isInstanceOfNonEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfNonEmptyTuple")
+    @tu lazy val RuntimeTuples_consIterator: Symbol = RuntimeTuplesModule.requiredMethod("consIterator")
+    @tu lazy val RuntimeTuples_concatIterator: Symbol = RuntimeTuplesModule.requiredMethod("concatIterator")
+    @tu lazy val RuntimeTuples_apply: Symbol = RuntimeTuplesModule.requiredMethod("apply")
+    @tu lazy val RuntimeTuples_cons: Symbol = RuntimeTuplesModule.requiredMethod("cons")
+    @tu lazy val RuntimeTuples_size: Symbol = RuntimeTuplesModule.requiredMethod("size")
+    @tu lazy val RuntimeTuples_tail: Symbol = RuntimeTuplesModule.requiredMethod("tail")
+    @tu lazy val RuntimeTuples_concat: Symbol = RuntimeTuplesModule.requiredMethod("concat")
+    @tu lazy val RuntimeTuples_toArray: Symbol = RuntimeTuplesModule.requiredMethod("toArray")
+    @tu lazy val RuntimeTuples_productToArray: Symbol = RuntimeTuplesModule.requiredMethod("productToArray")
+    @tu lazy val RuntimeTuples_isInstanceOfTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfTuple")
+    @tu lazy val RuntimeTuples_isInstanceOfEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfEmptyTuple")
+    @tu lazy val RuntimeTuples_isInstanceOfNonEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfNonEmptyTuple")
 
   @tu lazy val TupledFunctionTypeRef: TypeRef = requiredClassRef("scala.util.TupledFunction")
   def TupledFunctionClass(using Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
   def RuntimeTupleFunctionsModule(using Context): Symbol = requiredModule("scala.runtime.TupledFunctions")
+
+  @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
+    @tu lazy val Caps_unsafeBox: Symbol = CapsModule.requiredMethod("unsafeBox")
+    @tu lazy val Caps_unsafeUnbox: Symbol = CapsModule.requiredMethod("unsafeUnbox")
+    @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("*")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
@@ -972,7 +977,6 @@ class Definitions {
   @tu lazy val BooleanBeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BooleanBeanProperty")
   @tu lazy val BodyAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Body")
   @tu lazy val CapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.capability")
-  @tu lazy val CaptureCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.CaptureChecked")
   @tu lazy val ChildAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Child")
   @tu lazy val ContextResultCountAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ContextResultCount")
   @tu lazy val ProvisionalSuperClassAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ProvisionalSuperClass")
@@ -984,6 +988,7 @@ class Definitions {
   @tu lazy val ErasedParamAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ErasedParam")
   @tu lazy val InvariantBetweenAnnot: ClassSymbol = requiredClass("scala.annotation.internal.InvariantBetween")
   @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.main")
+  @tu lazy val MappedAlternativeAnnot: ClassSymbol = requiredClass("scala.annotation.internal.MappedAlternative")
   @tu lazy val MigrationAnnot: ClassSymbol = requiredClass("scala.annotation.migration")
   @tu lazy val NowarnAnnot: ClassSymbol = requiredClass("scala.annotation.nowarn")
   @tu lazy val TransparentTraitAnnot: ClassSymbol = requiredClass("scala.annotation.transparentTrait")
@@ -1007,6 +1012,7 @@ class Definitions {
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
+  @tu lazy val WithPureFunsAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WithPureFuns")
   @tu lazy val FieldMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.field")
   @tu lazy val GetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.getter")
   @tu lazy val ParamMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.param")
@@ -1154,7 +1160,7 @@ class Definitions {
 
   /** Extractor for context function types representing by-name parameters, of the form
    *  `() ?=> T`.
-   *  Under -Ycc, this becomes `() ?-> T` or `{r1, ..., rN} () ?-> T`.
+   *  Under purefunctions, this becomes `() ?-> T` or `{r1, ..., rN} () ?-> T`.
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
@@ -1977,13 +1983,18 @@ class Definitions {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
-        ++ (JavaEnumClass :: (if ctx.settings.Ycc.value then captureRoot :: Nil else Nil))
-
+      val forced =
+        syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
       isInitialized = true
     }
     addSyntheticSymbolsComments
   }
+
+  /** Definitions used in Lazy Vals implementation */
+  val LazyValsModuleName = "scala.runtime.LazyVals"
+  @tu lazy val LazyValsModule = requiredModule(LazyValsModuleName)
+  @tu lazy val LazyValsWaitingState = requiredClass(s"$LazyValsModuleName.Waiting")
+  @tu lazy val LazyValsControlState = requiredClass(s"$LazyValsModuleName.LazyValControlState")
 
   def addSyntheticSymbolsComments(using Context): Unit =
     def add(sym: Symbol, doc: String) = ctx.docCtx.foreach(_.addDocstring(sym, Some(Comment(NoSpan, doc))))

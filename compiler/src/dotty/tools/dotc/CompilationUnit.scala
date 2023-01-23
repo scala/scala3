@@ -9,10 +9,12 @@ import util.{FreshNameCreator, SourceFile, NoSource}
 import util.Spans.Span
 import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
+import ast.Trees.{Import, Ident}
 import typer.Nullables
 import transform.SymUtils._
 import core.Decorators._
-import config.SourceVersion
+import config.{SourceVersion, Feature}
+import StdNames.nme
 import scala.annotation.internal.sharable
 
 class CompilationUnit protected (val source: SourceFile) {
@@ -50,6 +52,12 @@ class CompilationUnit protected (val source: SourceFile) {
    *  The information is used in phase `Staging`/`Splicing`/`PickleQuotes` in order to avoid traversing trees that need no transformations.
    */
   var needsStaging: Boolean = false
+
+  /** Will be set to true if the unit contains a captureChecking language import */
+  var needsCaptureChecking: Boolean = false
+
+  /** Will be set to true if the unit contains a pureFunctions language import */
+  var knowsPureFuns: Boolean = false
 
   var suspended: Boolean = false
   var suspendedAtInliningPhase: Boolean = false
@@ -138,11 +146,20 @@ object CompilationUnit {
   private class Force extends TreeTraverser {
     var containsQuote = false
     var containsInline = false
+    var containsCaptureChecking = false
     def traverse(tree: Tree)(using Context): Unit = {
       if (tree.symbol.isQuote)
         containsQuote = true
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
+      tree match
+        case Import(qual, selectors) =>
+          tpd.languageImport(qual) match
+            case Some(prefix) =>
+              for case untpd.ImportSelector(untpd.Ident(imported), untpd.EmptyTree, _) <- selectors do
+                Feature.handleGlobalLanguageImport(prefix, imported)
+            case _ =>
+        case _ =>
       traverseChildren(tree)
     }
   }

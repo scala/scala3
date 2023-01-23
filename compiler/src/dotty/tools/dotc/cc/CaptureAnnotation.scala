@@ -39,8 +39,7 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
 
   override def symbol(using Context) = cls
 
-  override def derivedAnnotation(tree: Tree)(using Context): Annotation =
-    unsupported(i"derivedAnnotation(Tree), $tree, $refs")
+  override def derivedAnnotation(tree: Tree)(using Context): Annotation = this
 
   def derivedAnnotation(refs: CaptureSet, boxed: Boolean)(using Context): Annotation =
     if (this.refs eq refs) && (this.boxed == boxed) then this

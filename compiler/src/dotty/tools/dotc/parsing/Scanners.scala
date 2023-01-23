@@ -112,7 +112,7 @@ object Scanners {
 
     /** signal an error where the input ended in the middle of a token */
     def incompleteInputError(msg: String): Unit = {
-      report.incompleteInputError(msg, sourcePos())
+      report.incompleteInputError(msg.toMessage, sourcePos())
       token = EOF
       errOffset = offset
     }

@@ -151,6 +151,7 @@ subsection:
           - page: reference/experimental/explicit-nulls.md
           - page: reference/experimental/main-annotation.md
           - page: reference/experimental/cc.md
+          - page: reference/experimental/purefuns.md
           - page: reference/experimental/tupled-function.md
       - page: reference/syntax.md
       - title: Language Versions

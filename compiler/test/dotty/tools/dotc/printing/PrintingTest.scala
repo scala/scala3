@@ -19,20 +19,25 @@ import dotty.tools.io.Directory
 
 import scala.io.Source
 import org.junit.Test
-
+import scala.util.Using
+import java.io.File
 class PrintingTest {
 
-  def options(phase: String) =
-    List(s"-Xprint:$phase", "-color:never", "-classpath", TestConfiguration.basicClasspath)
+  def options(phase: String, flags: List[String]) =
+    List(s"-Xprint:$phase", "-color:never", "-classpath", TestConfiguration.basicClasspath) ::: flags
 
   private def compileFile(path: JPath, phase: String): Boolean = {
     val baseFilePath  = path.toString.stripSuffix(".scala")
     val checkFilePath = baseFilePath + ".check"
+    val flagsFilePath = baseFilePath + ".flags"
     val byteStream    = new ByteArrayOutputStream()
     val reporter = TestReporter.reporter(new PrintStream(byteStream), INFO)
+    val flags =
+      if (!(new File(flagsFilePath)).exists) Nil
+      else Using(Source.fromFile(flagsFilePath, StandardCharsets.UTF_8.name))(_.getLines().toList).get
 
     try {
-      Main.process((path.toString::options(phase)).toArray, reporter, null)
+      Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
     } catch {
       case e: Throwable =>
         println(s"Compile $path exception:")
@@ -63,4 +68,7 @@ class PrintingTest {
 
   @Test
   def untypedPrinting: Unit = testIn("tests/printing/untyped", "parser")
+
+  @Test
+  def transformedPrinting: Unit = testIn("tests/printing/transformed", "repeatableAnnotations")
 }

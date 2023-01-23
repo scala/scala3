@@ -4,6 +4,7 @@ package coverage
 import java.nio.file.{Path, Paths, Files}
 import java.io.Writer
 import scala.language.unsafeNulls
+import scala.collection.mutable.StringBuilder
 
 /**
  * Serializes scoverage data.
@@ -62,21 +63,21 @@ object Serializer:
     def writeStatement(stmt: Statement, writer: Writer): Unit =
       // Note: we write 0 for the count because we have not measured the actual coverage at this point
       writer.write(s"""${stmt.id}
-                      |${getRelativePath(stmt.location.sourcePath)}
-                      |${stmt.location.packageName}
-                      |${stmt.location.className}
+                      |${getRelativePath(stmt.location.sourcePath).escaped}
+                      |${stmt.location.packageName.escaped}
+                      |${stmt.location.className.escaped}
                       |${stmt.location.classType}
-                      |${stmt.location.fullClassName}
-                      |${stmt.location.method}
+                      |${stmt.location.fullClassName.escaped}
+                      |${stmt.location.methodName.escaped}
                       |${stmt.start}
                       |${stmt.end}
                       |${stmt.line}
-                      |${stmt.symbolName}
+                      |${stmt.symbolName.escaped}
                       |${stmt.treeName}
                       |${stmt.branch}
                       |0
                       |${stmt.ignored}
-                      |${stmt.desc}
+                      |${stmt.desc.escaped}
                       |\f
                       |""".stripMargin)
 
@@ -84,3 +85,27 @@ object Serializer:
     coverage.statements.toSeq
       .sortBy(_.id)
       .foreach(stmt => writeStatement(stmt, writer))
+
+  /** Makes a String suitable for output in the coverage statement data as a single line.
+   * Escaped characters: '\\' (backslash), '\n', '\r', '\f'
+   */
+  extension (str: String) def escaped: String =
+    val builder = StringBuilder(str.length)
+    var i = 0
+    while
+      i < str.length
+    do
+      str.charAt(i) match
+        case '\\' =>
+          builder ++= "\\\\"
+        case '\n' =>
+          builder ++= "\\n"
+        case '\r' =>
+          builder ++= "\\r"
+        case '\f' =>
+          builder ++= "\\f"
+        case c =>
+          builder += c
+      i += 1
+    end while
+    builder.result()

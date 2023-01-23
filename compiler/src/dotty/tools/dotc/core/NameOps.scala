@@ -124,10 +124,9 @@ object NameOps {
      *  it is also called from the backend.
      */
     def stripModuleClassSuffix: N = likeSpacedN {
-      val semName = name.toTermName match {
-        case name: SimpleName if name.endsWith("$") => name.unmangleClassName
+      val semName = name.toTermName match
+        case name: SimpleName if name.endsWith(str.MODULE_SUFFIX) && name.lastPart != MODULE_SUFFIX => name.unmangleClassName
         case _ => name
-      }
       semName.exclude(ModuleClassName)
     }
 
@@ -209,14 +208,13 @@ object NameOps {
             if str == mustHave then found = true
             idx + str.length
           else idx
-        val start = if ctx.settings.Ycc.value then skip(0, "Impure") else 0
-        skip(skip(start, "Erased"), "Context") == suffixStart
+        skip(skip(skip(0, "Impure"), "Erased"), "Context") == suffixStart
         && found
       }
 
     /** Same as `funArity`, except that it returns -1 if the prefix
      *  is not one of a (possibly empty) concatenation of a subset of
-     *  "Impure" (only under -Ycc), "Erased" and "Context" (in that order).
+     *  "Impure" (only under pureFunctions), "Erased" and "Context" (in that order).
      */
     private def checkedFunArity(suffixStart: Int)(using Context): Int =
       if isFunctionPrefix(suffixStart) then funArity(suffixStart) else -1

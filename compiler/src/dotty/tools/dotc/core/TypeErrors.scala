@@ -18,13 +18,14 @@ class TypeError(msg: String) extends Exception(msg) {
   def this() = this("")
   final def toMessage(using Context): Message =
     withMode(Mode.Printing)(produceMessage)
-  def produceMessage(using Context): Message = super.getMessage.nn
+  def produceMessage(using Context): Message = super.getMessage.nn.toMessage
   override def getMessage: String = super.getMessage.nn
 }
 
 class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name]) extends TypeError {
   override def produceMessage(using Context): Message =
     i"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
+      .toMessage
 }
 
 class MissingType(pre: Type, name: Name) extends TypeError {
@@ -38,6 +39,7 @@ class MissingType(pre: Type, name: Name) extends TypeError {
     if (ctx.debug) printStackTrace()
     i"""cannot resolve reference to type $pre.$name
        |the classfile defining the type might be missing from the classpath${otherReason(pre)}"""
+      .toMessage
   }
 }
 

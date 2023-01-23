@@ -4,7 +4,10 @@ title: "Capture Checking"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/cc.html
 ---
 
-Capture checking is a research project that modifies the Scala type system to track references to capabilities in values. It can be enabled with a `-Ycc` compiler option.
+Capture checking is a research project that modifies the Scala type system to track references to capabilities in values. It can be enabled by the language import
+```scala
+import language.experimental.captureChecking
+```
 At present, capture checking is still highly experimental and unstable.
 
 To get an idea what capture checking can do, let's start with a small example:
@@ -78,10 +81,6 @@ The following sections explain in detail how capture checking works in Scala 3.
 
 The capture checker extension introduces a new kind of types and it enforces some rules for working with these types.
 
-Capture checking is enabled by the compiler option `-Ycc`. If the option is not given, the new
-type forms can still be written but they are not checked for consistency, because they are
-treated simply as certain uninterpreted annotated types.
-
 ## Capabilities and Capturing Types
 
 Capture checking is done in terms of _capturing types_ of the form
@@ -129,7 +128,8 @@ any capturing type that adds a capture set to `T`.
 ## Function Types
 
 The usual function type `A => B` now stands for a function that can capture arbitrary capabilities. We call such functions
-_impure_. By contrast, the new single arrow function type `A -> B` stands for a function that cannot capture any capabilities, or otherwise said, is _pure_. One can add a capture set in front of an otherwise pure function.
+_impure_. By contrast, the new single arrow function type `A -> B` stands for a function that cannot capture any capabilities, or otherwise said, is _pure_.
+One can add a capture set in front of an otherwise pure function.
 For instance, `{c, d} A -> B` would be a function that can capture capabilities `c` and `d`, but no others.
 
 The impure function type `A => B` is treated as an alias for `{*} A -> B`. That is, impure functions are functions that can capture anything.
@@ -503,7 +503,7 @@ crasher()
 This code needs to be rejected since otherwise the call to `crasher()` would cause
 an unhandled `LimitExceeded` exception to be thrown.
 
-Under `-Ycc`, the code is indeed rejected
+Under the language import `language.experimental.captureChecking`, the code is indeed rejected
 ```
 14 |  try () => xs.map(f).sum
    |  ^
@@ -655,7 +655,6 @@ TBD
 
 The following options are relevant for capture checking.
 
- - **-Ycc** Enables capture checking.
  - **-Xprint:cc** Prints the program with capturing types as inferred by capture checking.
  - **-Ycc-debug** Gives more detailed, implementation-oriented information about capture checking, as described in the next section.
 

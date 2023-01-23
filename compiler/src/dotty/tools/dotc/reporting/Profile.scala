@@ -103,7 +103,7 @@ class ActiveProfile(details: Int) extends Profile:
         name, info.lineCount, info.tokenCount, Profile.chunks(info.tastySize),
         s"${"%6.2f".format(complexity)}  $explanation", path))
 
-    def safeMax(xs: Array[Int]) = xs.max.max(10).min(50)
+    def safeMax(xs: Array[Int]) = if xs.isEmpty then 10 else xs.max.max(10).min(50)
 
     def printAndAggregateSourceInfos(): Profile.Info =
       val sourceNameWidth = safeMax(units.map(_.source.file.name.length))

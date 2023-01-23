@@ -52,6 +52,7 @@ def id(x: o.T): o.T = x
 ```
 
 Opaque type aliases cannot be `private` and cannot be overridden in subclasses.
+Opaque type aliases cannot have a context function type as right-hand side.
 
 ## Type Parameters of Opaque Types
 

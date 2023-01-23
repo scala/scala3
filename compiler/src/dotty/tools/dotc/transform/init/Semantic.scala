@@ -156,7 +156,7 @@ object Semantic:
     def hasField(f: Symbol) = fields.contains(f)
 
   object Promoted:
-    class PromotionInfo:
+    class PromotionInfo(val entryClass: ClassSymbol):
       var isCurrentObjectPromoted: Boolean = false
       val values = mutable.Set.empty[Value]
       override def toString(): String = values.toString()
@@ -165,7 +165,7 @@ object Semantic:
     opaque type Promoted = PromotionInfo
 
     /** Note: don't use `val` to avoid incorrect sharing */
-    def empty: Promoted = new PromotionInfo
+    def empty(entryClass: ClassSymbol): Promoted = new PromotionInfo(entryClass)
 
     extension (promoted: Promoted)
       def isCurrentObjectPromoted: Boolean = promoted.isCurrentObjectPromoted
@@ -173,6 +173,7 @@ object Semantic:
       def contains(value: Value): Boolean = promoted.values.contains(value)
       def add(value: Value): Unit = promoted.values += value
       def remove(value: Value): Unit = promoted.values -= value
+      def entryClass: ClassSymbol = promoted.entryClass
     end extension
   end Promoted
   type Promoted = Promoted.Promoted
@@ -658,12 +659,12 @@ object Semantic:
 
     def select(field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show) {
       if promoted.isCurrentObjectPromoted then Hot
-      else value match {
+      else value match
         case Hot  =>
           Hot
 
         case Cold =>
-          val error = AccessCold(field, trace.toVector)
+          val error = AccessCold(field)(trace.toVector)
           reporter.report(error)
           Hot
 
@@ -688,11 +689,11 @@ object Semantic:
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, ref, target.owner.asClass, cacheResult = true)
               else
-                val error = CallUnknown(field, trace.toVector)
+                val error = CallUnknown(field)(trace.toVector)
                 reporter.report(error)
                 Hot
             else
-              val error = AccessNonInit(target, trace.toVector)
+              val error = AccessNonInit(target)(trace.toVector)
               reporter.report(error)
               Hot
           else
@@ -710,7 +711,6 @@ object Semantic:
 
         case RefSet(refs) =>
           refs.map(_.select(field, receiver)).join
-      }
     }
 
     def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
@@ -779,7 +779,7 @@ object Semantic:
 
         case Cold =>
           promoteArgs()
-          val error = CallCold(meth, trace.toVector)
+          val error = CallCold(meth)(trace.toVector)
           reporter.report(error)
           Hot
 
@@ -820,7 +820,7 @@ object Semantic:
               // try promoting the receiver as last resort
               val hasErrors = Reporter.hasErrors { ref.promote("try promote value to hot") }
               if hasErrors then
-                val error = CallUnknown(target, trace.toVector)
+                val error = CallUnknown(target)(trace.toVector)
                 reporter.report(error)
               Hot
           else if target.exists then
@@ -899,7 +899,7 @@ object Semantic:
             Hot
           else
             // no source code available
-            val error = CallUnknown(ctor, trace.toVector)
+            val error = CallUnknown(ctor)(trace.toVector)
             reporter.report(error)
             Hot
       }
@@ -922,7 +922,7 @@ object Semantic:
             yield
               i + 1
 
-          val error = UnsafeLeaking(trace.toVector, errors.head, nonHotOuterClass, indices)
+          val error = UnsafeLeaking(errors.head, nonHotOuterClass, indices)(trace.toVector)
           reporter.report(error)
           Hot
         else
@@ -947,7 +947,7 @@ object Semantic:
             tryLeak(warm, NoSymbol, args2)
 
         case Cold =>
-          val error = CallCold(ctor, trace.toVector)
+          val error = CallCold(ctor)(trace.toVector)
           reporter.report(error)
           Hot
 
@@ -1078,7 +1078,7 @@ object Semantic:
         case Hot   =>
 
         case Cold  =>
-          reporter.report(PromoteError(msg, trace.toVector))
+          reporter.report(PromoteError(msg)(trace.toVector))
 
         case thisRef: ThisRef =>
           val emptyFields = thisRef.nonInitFields()
@@ -1086,7 +1086,7 @@ object Semantic:
             promoted.promoteCurrent(thisRef)
           else
             val fields = "Non initialized field(s): " + emptyFields.map(_.show).mkString(", ") + "."
-            reporter.report(PromoteError(msg + "\n" + fields, trace.toVector))
+            reporter.report(PromoteError(msg + "\n" + fields)(trace.toVector))
 
         case warm: Warm =>
           if !promoted.contains(warm) then
@@ -1106,7 +1106,7 @@ object Semantic:
               res.promote("The function return value is not hot. Found = " + res.show + ".")
             }
             if errors.nonEmpty then
-              reporter.report(UnsafePromotion(msg, trace.toVector, errors.head))
+              reporter.report(UnsafePromotion(msg, errors.head)(trace.toVector))
             else
               promoted.add(fun)
 
@@ -1156,7 +1156,7 @@ object Semantic:
         if !isHotSegment then
           for member <- klass.info.decls do
             if member.isClass then
-              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".", Vector.empty)
+              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".")(Vector.empty)
               reporter.report(error)
             else if !member.isType && !member.isConstructor  && !member.is(Flags.Deferred) then
               given Trace = Trace.empty
@@ -1189,7 +1189,7 @@ object Semantic:
       }
 
       if errors.isEmpty then Nil
-      else UnsafePromotion(msg, trace.toVector, errors.head) :: Nil
+      else UnsafePromotion(msg, errors.head)(trace.toVector) :: Nil
     }
 
   end extension
@@ -1206,72 +1206,49 @@ object Semantic:
       cls == defn.AnyValClass ||
       cls == defn.ObjectClass
 
-// ----- Work list ---------------------------------------------------
-  case class Task(value: ThisRef)
-
-  class WorkList private[Semantic]():
-    private val pendingTasks: mutable.ArrayBuffer[Task] = new mutable.ArrayBuffer
-
-    def addTask(task: Task): Unit =
-      if !pendingTasks.contains(task) then pendingTasks.append(task)
-
-    /** Process the worklist until done */
-    final def work()(using Cache, Context): Unit =
-      for task <- pendingTasks
-      do doTask(task)
-
-    /** Check an individual class
-     *
-     *  This method should only be called from the work list scheduler.
-     */
-    private def doTask(task: Task)(using Cache, Context): Unit =
-      val thisRef = task.value
-      val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-
-      @tailrec
-      def iterate(): Unit = {
-        given Promoted = Promoted.empty
-        given Trace = Trace.empty.add(thisRef.klass.defTree)
-        given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
-
-        thisRef.ensureFresh()
-
-        // set up constructor parameters
-        for param <- tpl.constr.termParamss.flatten do
-          thisRef.updateField(param.symbol, Hot)
-
-        log("checking " + task) { eval(tpl, thisRef, thisRef.klass) }
-        reporter.errors.foreach(_.issue)
-
-        if cache.hasChanged && reporter.errors.isEmpty then
-          // code to prepare cache and heap for next iteration
-          cache.prepareForNextIteration()
-          iterate()
-        else
-          cache.prepareForNextClass()
-      }
-
-      iterate()
-    end doTask
-  end WorkList
-  inline def workList(using wl: WorkList): WorkList = wl
-
 // ----- API --------------------------------
 
-  /** Add a checking task to the work list */
-  def addTask(thisRef: ThisRef)(using WorkList) = workList.addTask(Task(thisRef))
-
-  /** Check the specified tasks
+  /** Check an individual class
    *
-   *      Semantic.checkTasks {
-   *         Semantic.addTask(...)
-   *      }
+   *  The class to be checked must be an instantiable concrete class.
    */
-  def checkTasks(using Context)(taskBuilder: WorkList ?=> Unit): Unit =
-    val workList = new WorkList
-    val cache = new Cache
-    taskBuilder(using workList)
-    workList.work()(using cache, ctx)
+  private def checkClass(classSym: ClassSymbol)(using Cache, Context): Unit =
+    val thisRef = ThisRef(classSym)
+    val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+
+    @tailrec
+    def iterate(): Unit = {
+      given Promoted = Promoted.empty(classSym)
+      given Trace = Trace.empty.add(classSym.defTree)
+      given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
+
+      thisRef.ensureFresh()
+
+      // set up constructor parameters
+      for param <- tpl.constr.termParamss.flatten do
+        thisRef.updateField(param.symbol, Hot)
+
+      log("checking " + classSym) { eval(tpl, thisRef, classSym) }
+      reporter.errors.foreach(_.issue)
+
+      if cache.hasChanged && reporter.errors.isEmpty then
+        // code to prepare cache and heap for next iteration
+        cache.prepareForNextIteration()
+        iterate()
+      else
+        cache.prepareForNextClass()
+    }
+
+    iterate()
+  end checkClass
+
+  /**
+   * Check the specified concrete classes
+   */
+  def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
+    given Cache()
+    for classSym <- classes if isConcreteClass(classSym) do
+      checkClass(classSym)
 
 // ----- Semantic definition --------------------------------
 
@@ -1296,7 +1273,10 @@ object Semantic:
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    *
-   *  The parameter `cacheResult` is used to reduce the size of the cache.
+   * @param expr        The expression to be evaluated.
+   * @param thisV       The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass       The enclosing class where the expression is located.
+   * @param cacheResult It is used to reduce the size of the cache.
    */
   def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
     cache.get(thisV, expr) match
@@ -1326,6 +1306,10 @@ object Semantic:
   /** Handles the evaluation of different expressions
    *
    *  Note: Recursive call should go to `eval` instead of `cases`.
+   *
+   * @param expr   The expression to be evaluated.
+   * @param thisV  The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass  The enclosing class where the expression `expr` is located.
    */
   def cases(expr: Tree, thisV: Ref, klass: ClassSymbol): Contextual[Value] =
     val trace2 = trace.add(expr)
@@ -1503,7 +1487,14 @@ object Semantic:
         report.error("[Internal error] unexpected tree" + Trace.show, expr)
         Hot
 
-  /** Handle semantics of leaf nodes */
+  /** Handle semantics of leaf nodes
+   *
+   * For leaf nodes, their semantics is determined by their types.
+   *
+   * @param tp      The type to be evaluated.
+   * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass   The enclosing class where the type `tp` is located.
+   */
   def cases(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
     tp match
       case _: ConstantType =>
@@ -1513,7 +1504,16 @@ object Semantic:
         thisV.accessLocal(tmref, klass)
 
       case tmref: TermRef =>
-        cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
+        val cls = tmref.widenSingleton.classSymbol
+        if cls.exists && cls.isStaticOwner then
+          if klass.isContainedIn(cls) then
+            resolveThis(cls.asClass, thisV, klass)
+          else if cls.isContainedIn(promoted.entryClass) then
+            cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
+          else
+            Hot
+        else
+          cases(tmref.prefix, thisV, klass).select(tmref.symbol, receiver = tmref.prefix)
 
       case tp @ ThisType(tref) =>
         val cls = tref.classSymbol.asClass
@@ -1521,8 +1521,7 @@ object Semantic:
           // O.this outside the body of the object O
           Hot
         else
-          val value = resolveThis(cls, thisV, klass)
-          value
+          resolveThis(cls, thisV, klass)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
@@ -1533,7 +1532,12 @@ object Semantic:
         Hot
   }
 
-  /** Resolve C.this that appear in `klass` */
+  /** Resolve C.this that appear in `klass`
+   *
+   * @param target  The class symbol for `C` for which `C.this` is to be resolved.
+   * @param thisV   The value for `D.this` where `D` is represented by the parameter `klass`.
+   * @param klass   The enclosing class where the type `C.this` is located.
+   */
   def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
     if target == klass then thisV
     else if target.is(Flags.Package) then Hot
@@ -1558,7 +1562,12 @@ object Semantic:
 
   }
 
-  /** Compute the outer value that correspond to `tref.prefix` */
+  /** Compute the outer value that correspond to `tref.prefix`
+   *
+   * @param tref    The type whose prefix is to be evaluated.
+   * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
+   * @param klass   The enclosing class where the type `tref` is located.
+   */
   def outerValue(tref: TypeRef, thisV: Ref, klass: ClassSymbol): Contextual[Value] =
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
@@ -1569,7 +1578,12 @@ object Semantic:
       if cls.isAllOf(Flags.JavaInterface) then Hot
       else cases(tref.prefix, thisV, klass)
 
-  /** Initialize part of an abstract object in `klass` of the inheritance chain */
+  /** Initialize part of an abstract object in `klass` of the inheritance chain
+   *
+   * @param tpl       The class body to be evaluated.
+   * @param thisV     The value of the current object to be initialized.
+   * @param klass     The class to which the template belongs.
+   */
   def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show) {
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> thisV.objekt.field(vdef.symbol)
@@ -1664,7 +1678,16 @@ object Semantic:
     if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val res = eval(vdef.rhs, thisV, klass)
-        thisV.updateField(vdef.symbol, res)
+        // TODO: Improve promotion to avoid handling enum initialization specially
+        //
+        // The failing case is tests/init/pos/i12544.scala due to promotion failure.
+        if vdef.symbol.name == nme.DOLLAR_VALUES
+           && vdef.symbol.is(Flags.Synthetic)
+           && vdef.symbol.owner.companionClass.is(Flags.Enum)
+        then
+          thisV.updateField(vdef.symbol, Hot)
+        else
+          thisV.updateField(vdef.symbol, res)
         fieldsChanged = true
 
       case _: MemberDef =>
@@ -1764,4 +1787,19 @@ object Semantic:
   def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show) {
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.appliedRef)
+  }
+
+  private def isConcreteClass(cls: ClassSymbol)(using Context) = {
+    val instantiable: Boolean =
+      cls.is(Flags.Module) ||
+      !cls.isOneOf(Flags.AbstractOrTrait) && {
+        // see `Checking.checkInstantiable` in typer
+        val tp = cls.appliedRef
+        val stp = SkolemType(tp)
+        val selfType = cls.givenSelfType.asSeenFrom(stp, cls)
+        !selfType.exists || stp <:< selfType
+      }
+
+    // A concrete class may not be instantiated if the self type is not satisfied
+    instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass
   }

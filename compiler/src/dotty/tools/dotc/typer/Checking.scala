@@ -472,9 +472,10 @@ object Checking {
       if (sym.isOneOf(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
     def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: => String) =
-      if (sym.isAllOf(flag1 | flag2)) fail(msg)
+      if (sym.isAllOf(flag1 | flag2)) fail(msg.toMessage)
     def checkCombination(flag1: FlagSet, flag2: FlagSet) =
-      if sym.isAllOf(flag1 | flag2) then fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
+      if sym.isAllOf(flag1 | flag2) then
+        fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym".toMessage)
     def checkApplicable(flag: Flag, ok: Boolean) =
       if sym.is(flag, butNot = Synthetic) && !ok then
         fail(ModifierNotAllowedForDefinition(flag))
@@ -494,15 +495,15 @@ object Checking {
     }
     if sym.is(Transparent) then
       if sym.isType then
-        if !sym.is(Trait) then fail(em"`transparent` can only be used for traits")
+        if !sym.is(Trait) then fail(em"`transparent` can only be used for traits".toMessage)
       else
-        if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods")
+        if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods".toMessage)
     if (!sym.isClass && sym.is(Abstract))
       fail(OnlyClassesCanBeAbstract(sym))
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
-      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
+      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}".toMessage)
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -519,7 +520,7 @@ object Checking {
       if !sym.isOneOf(Method | ModuleVal) then
         fail(TailrecNotApplicable(sym))
       else if sym.is(Inline) then
-        fail("Inline methods cannot be @tailrec")
+        fail("Inline methods cannot be @tailrec".toMessage)
     if sym.hasAnnotation(defn.TargetNameAnnot) && sym.isClass && sym.isTopLevelClass then
       fail(TargetNameOnTopLevelClass(sym))
     if (sym.hasAnnotation(defn.NativeAnnot)) {
@@ -538,7 +539,7 @@ object Checking {
       fail(CannotExtendAnyVal(sym))
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
-      fail("Traits cannot have secondary constructors" + addendum)
+      fail(s"Traits cannot have secondary constructors$addendum".toMessage)
     checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
     if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
@@ -1460,6 +1461,15 @@ trait Checking {
             |CanThrow capabilities can only be generated $req.""",
         pat.srcPos)
 
+  /** Check that tree does not define a context function type */
+  def checkNoContextFunctionType(tree: Tree)(using Context): Unit =
+    def recur(tp: Type): Unit = tp.dealias match
+      case tp: HKTypeLambda => recur(tp.resType)
+      case tp if defn.isContextFunctionType(tp) =>
+        report.error(em"context function type cannot have opaque aliases", tree.srcPos)
+      case _ =>
+    recur(tree.tpe)
+
   /** (1) Check that every named import selector refers to a type or value member of the
    *  qualifier type.
    *  (2) Check that no import selector is renamed more than once.
@@ -1495,6 +1505,7 @@ trait ReChecking extends Checking {
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
   override def checkCanThrow(tp: Type, span: Span)(using Context): Tree = EmptyTree
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
+  override def checkNoContextFunctionType(tree: Tree)(using Context): Unit = ()
   override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }
 

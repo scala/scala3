@@ -14,7 +14,7 @@ import Variances.varianceSign
 import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
-import config.Config
+import config.{Config, Feature}
 import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
 
 class PlainPrinter(_ctx: Context) extends Printer {
@@ -242,7 +242,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else toText(CapturingType(ExprType(parent), refs))
       case ExprType(restp) =>
         changePrec(GlobalPrec) {
-          (if ctx.settings.Ycc.value then "-> " else "=> ") ~ toText(restp)
+          (if Feature.pureFunsEnabled then "-> " else "=> ") ~ toText(restp)
         }
       case tp: HKTypeLambda =>
         changePrec(GlobalPrec) {
@@ -376,6 +376,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCaptureRef(tp: Type): Text =
     homogenize(tp) match
+      case tp: TermRef if tp.symbol == defn.captureRoot => Str("*")
       case tp: SingletonType => toTextRef(tp)
       case _ => toText(tp)
 
@@ -692,6 +693,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
       Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
     finally
       ctx.typerState.constraint = savedConstraint
+
+  def toText(g: GadtConstraint): Text =
+    val deps = for sym <- g.symbols yield
+      val bound = g.fullBounds(sym).nn
+      (typeText(toText(sym.typeRef)) ~ toText(bound)).close
+    ("GadtConstraint(" ~ Text(deps, ", ") ~ ")").close
 
   def plain: PlainPrinter = this
 

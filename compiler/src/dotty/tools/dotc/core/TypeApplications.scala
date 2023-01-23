@@ -204,6 +204,12 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
+  /** Substitute in `self` the type parameters of `tycon` by some other types. */
+  final def substTypeParams(tycon: Type, to: List[Type])(using Context): Type =
+    (tycon.typeParams: @unchecked) match
+      case LambdaParam(lam, _) :: _ => self.substParams(lam, to)
+      case params: List[Symbol @unchecked] => self.subst(params, to)
+
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
   final def hkTypeParams(using Context): List[TypeParamInfo] =
     if (isLambdaSub) typeParams else Nil
@@ -346,7 +352,7 @@ class TypeApplications(val self: Type) extends AnyVal {
             }
             if ((dealiased eq stripped) || followAlias)
               try
-                val instantiated = dealiased.instantiate(args)
+                val instantiated = dealiased.instantiate(args.mapConserve(_.boxedUnlessFun(self)))
                 if (followAlias) instantiated.normalized else instantiated
               catch
                 case ex: IndexOutOfBoundsException =>

@@ -45,7 +45,7 @@ object TypeOps:
         val widenedAsf = new AsSeenFromMap(pre.info, cls)
         val ret = widenedAsf.apply(tp)
 
-        if (!widenedAsf.approximated)
+        if widenedAsf.approxCount == 0 then
           return ret
 
         Stats.record("asSeenFrom skolem prefix required")
@@ -57,8 +57,14 @@ object TypeOps:
 
   /** The TypeMap handling the asSeenFrom */
   class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap, IdempotentCaptRefMap {
-    /** Set to true when the result of `apply` was approximated to avoid an unstable prefix. */
-    var approximated: Boolean = false
+
+    /** The number of range approximations in invariant or contravariant positions
+     *  performed by this TypeMap.
+     *   - Incremented each time we produce a range.
+     *   - Decremented each time we drop a prefix range by forwarding to a type alias
+     *     or singleton type.
+     */
+    private[TypeOps] var approxCount: Int = 0
 
     def apply(tp: Type): Type = {
 
@@ -76,17 +82,8 @@ object TypeOps:
           case _ =>
             if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
               if (variance <= 0 && !isLegalPrefix(pre))
-                if (variance < 0) {
-                  approximated = true
-                  defn.NothingType
-                }
-                else
-                  // Don't set the `approximated` flag yet: if this is a prefix
-                  // of a path, we might be able to dealias the path instead
-                  // (this is handled in `ApproximatingTypeMap`). If dealiasing
-                  // is not possible, then `expandBounds` will end up being
-                  // called which we override to set the `approximated` flag.
-                  range(defn.NothingType, pre)
+                approxCount += 1
+                range(defn.NothingType, pre)
               else pre
             else if (pre.termSymbol.is(Package) && !thiscls.is(Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
@@ -119,10 +116,10 @@ object TypeOps:
       // derived infos have already been subjected to asSeenFrom, hence to need to apply the map again.
       tp
 
-    override protected def expandBounds(tp: TypeBounds): Type = {
-      approximated = true
-      super.expandBounds(tp)
-    }
+    override protected def useAlternate(tp: Type): Type =
+      assert(approxCount > 0)
+      approxCount -= 1
+      tp
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
@@ -212,7 +209,7 @@ object TypeOps:
 
   /** Approximate union type by intersection of its dominators.
    *  That is, replace a union type Tn | ... | Tn
-   *  by the smallest intersection type of base-class instances of T1,...,Tn.
+   *  by the smallest intersection type of accessible base-class instances of T1,...,Tn.
    *  Example: Given
    *
    *      trait C[+T]
@@ -228,16 +225,18 @@ object TypeOps:
    */
   def orDominator(tp: Type)(using Context): Type = {
 
-    /** a faster version of cs1 intersect cs2 that treats bottom types correctly */
+    /** a faster version of cs1 intersect cs2 */
     def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] =
-      if cs1.head == defn.NothingClass then cs2
-      else if cs2.head == defn.NothingClass then cs1
-      else if cs1.head == defn.NullClass && !ctx.explicitNulls && cs2.head.derivesFrom(defn.ObjectClass) then cs2
-      else if cs2.head == defn.NullClass && !ctx.explicitNulls && cs1.head.derivesFrom(defn.ObjectClass) then cs1
-      else
-        val cs2AsSet = new util.HashSet[ClassSymbol](128)
-        cs2.foreach(cs2AsSet += _)
-        cs1.filter(cs2AsSet.contains)
+      val cs2AsSet = BaseClassSet(cs2)
+      cs1.filter(cs2AsSet.contains)
+
+    /** a version of Type#baseClasses that treats bottom types correctly */
+    def orBaseClasses(tp: Type): List[ClassSymbol] = tp.stripTypeVar match
+      case OrType(tp1, tp2) =>
+        if tp1.isBottomType && (tp1 frozen_<:< tp2) then orBaseClasses(tp2)
+        else if tp2.isBottomType && (tp2 frozen_<:< tp1) then orBaseClasses(tp1)
+        else intersect(orBaseClasses(tp1), orBaseClasses(tp2))
+      case _ => tp.baseClasses
 
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
     def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
@@ -371,8 +370,14 @@ object TypeOps:
         }
       }
 
+      def isAccessible(cls: ClassSymbol) =
+        if cls.isOneOf(AccessFlags) || cls.privateWithin.exists then
+          cls.isAccessibleFrom(tp.baseType(cls).normalizedPrefix)
+        else true
+
       // Step 3: Intersect base classes of both sides
-      val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
+      val commonBaseClasses = orBaseClasses(tp).filterConserve(isAccessible)
+
       val doms = dominators(commonBaseClasses, Nil)
       def baseTp(cls: ClassSymbol): Type =
         tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
@@ -773,20 +778,15 @@ object TypeOps:
           tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          def lo = LazyRef.of(apply(tp.underlying.loBound))
-          def hi = LazyRef.of(apply(tp.underlying.hiBound))
           val lookup = boundTypeParams.lookup(tp)
           if lookup != null then lookup
           else
-            val tv = newTypeVar(TypeBounds(lo, hi))
+            val TypeBounds(lo, hi) = tp.underlying.bounds
+            val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
             boundTypeParams(tp) = tv
-            // Force lazy ref eagerly using current context
-            // Otherwise, the lazy ref will be forced with a unknown context,
-            // which causes a problem in tests/patmat/i3645e.scala
-            lo.ref
-            hi.ref
+            assert(tv <:< apply(hi))
+            apply(lo) <:< tv //  no assert, since bounds might conflict
             tv
-          end if
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
 
@@ -869,6 +869,10 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
+      // if there's a change in variance in type parameters (between subtype tp1 and supertype tp2)
+      // then we don't want to maximise the type variables in the wrong direction.
+      // For instance 15967, A[-Z] and B[Y] extends A[Y], we don't want to maximise Y to Any
+      maximizeType(protoTp1.baseType(tp2.classSymbol), NoSpan)
       maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }

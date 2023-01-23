@@ -2,7 +2,6 @@ i94-nada.scala
 i1812.scala
 i1867.scala
 i3067.scala
-t247.scala
 t2712-5.scala
 t284-pos.scala
 t3249
@@ -19,6 +18,7 @@ i6507b.scala
 i12299a.scala
 i13871.scala
 i15181.scala
+i15922.scala
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
@@ -77,6 +77,13 @@ i2797a
 # Late instantiation of type variable in tryInsertImplicitOnQualifier
 # allows to simplify a type that was already computed
 i13842.scala
+
+# Position change under captureChecking
+boxmap-paper.scala
+
+# Function types print differnt after unpickling since test mispredicts Feature.preFundsEnabled
+caps-universal.scala
+
 
 # GADT cast applied to singleton type difference
 i4176-gadt.scala

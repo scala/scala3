@@ -1872,7 +1872,10 @@ object Types {
     def dropRepeatedAnnot(using Context): Type = dropAnnot(defn.RepeatedAnnot)
 
     def annotatedToRepeated(using Context): Type = this match {
-      case tp @ ExprType(tp1) => tp.derivedExprType(tp1.annotatedToRepeated)
+      case tp @ ExprType(tp1) =>
+        tp.derivedExprType(tp1.annotatedToRepeated)
+      case self @ AnnotatedType(tp, annot) if annot matches defn.RetainsByNameAnnot =>
+        self.derivedAnnotatedType(tp.annotatedToRepeated, annot)
       case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
         val typeSym = tp.typeSymbol.asClass
         assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
@@ -2496,8 +2499,10 @@ object Types {
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
       || prefix.isInstanceOf[Types.ThisType] && symd.is(Opaque) // see pos/i11277.scala for a test where this matters
 
-    /** Is this a reference to a class or object member? */
-    def isMemberRef(using Context): Boolean = designator match {
+    /** Is this a reference to a class or object member with an info that might depend
+     *  on the prefix?
+     */
+    def isPrefixDependentMemberRef(using Context): Boolean = designator match {
       case sym: Symbol => infoDependsOnPrefix(sym, prefix)
       case _ => true
     }
@@ -2785,7 +2790,7 @@ object Types {
       ((prefix eq NoPrefix)
       || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
       || isRootCapability
-      ) && !symbol.is(Method)
+      ) && !symbol.isOneOf(UnstableValueFlags)
 
     override def isRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
@@ -3598,10 +3603,14 @@ object Types {
 
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
+     *
+     *  @pre If `tparams` is a list of lambda parameters, then it must be the
+     *       full, in-order list of type parameters of some type constructor, as
+     *       can be obtained using `TypeApplications#typeParams`.
      */
     def integrate(tparams: List[ParamInfo], tp: Type)(using Context): Type =
       (tparams: @unchecked) match {
-        case LambdaParam(lam, _) :: _ => tp.subst(lam, this)
+        case LambdaParam(lam, _) :: _ => tp.subst(lam, this) // This is where the precondition is necessary.
         case params: List[Symbol @unchecked] => tp.subst(params, paramRefs)
       }
 
@@ -4229,7 +4238,7 @@ object Types {
     final val Unknown: DependencyStatus = 0      // not yet computed
     final val NoDeps: DependencyStatus = 1       // no dependent parameters found
     final val FalseDeps: DependencyStatus = 2    // all dependent parameters are prefixes of non-depended alias types
-    final val CaptureDeps: DependencyStatus = 3  // dependencies in capture sets under -Ycc, otherwise only false dependencoes
+    final val CaptureDeps: DependencyStatus = 3  // dependencies in capture sets under captureChecking, otherwise only false dependencoes
     final val TrueDeps: DependencyStatus = 4     // some truly dependent parameters exist
     final val StatusMask: DependencyStatus = 7   // the bits indicating actual dependency status
     final val Provisional: DependencyStatus = 8  // set if dependency status can still change due to type variable instantiations
@@ -5290,16 +5299,18 @@ object Types {
       val et = new PreviousErrorType
       ctx.base.errorTypeMsg(et) = m
       et
+    def apply(s: => String)(using Context): ErrorType =
+      apply(s.toMessage)
   end ErrorType
 
   class PreviousErrorType extends ErrorType:
     def msg(using Context): Message =
       ctx.base.errorTypeMsg.get(this) match
         case Some(m) => m
-        case None => "error message from previous run no longer available"
+        case None => "error message from previous run no longer available".toMessage
 
   object UnspecifiedErrorType extends ErrorType {
-    override def msg(using Context): Message = "unspecified error"
+    override def msg(using Context): Message = "unspecified error".toMessage
   }
 
   /* Type used to track Select nodes that could not resolve a member and their qualifier is a scala.Dynamic. */
@@ -5766,6 +5777,13 @@ object Types {
 
     private var expandingBounds: Boolean = false
 
+    /** Use an alterate type `tp` that replaces a range. This can happen if the
+     *  prefix of a Select is a range and the selected symbol is an alias type
+     *  or a value with a singleton type. In both cases we can forget the prefix
+     *  and use the symbol's type.
+     */
+    protected def useAlternate(tp: Type): Type = reapply(tp)
+
     /** Whether it is currently expanding bounds
      *
      *  It is used to avoid following LazyRef in F-Bounds
@@ -5789,7 +5807,7 @@ object Types {
           case TypeAlias(alias) =>
             // if H#T = U, then for any x in L..H, x.T =:= U,
             // hence we can replace with U under all variances
-            reapply(alias.rewrapAnnots(tp1))
+            useAlternate(alias.rewrapAnnots(tp1))
           case bounds: TypeBounds =>
             // If H#T = ? >: S <: U, then for any x in L..H, S <: x.T <: U,
             // hence we can replace with S..U under all variances
@@ -5797,7 +5815,7 @@ object Types {
           case info: SingletonType =>
             // if H#x: y.type, then for any x in L..H, x.type =:= y.type,
             // hence we can replace with y.type under all variances
-            reapply(info)
+            useAlternate(info)
           case _ =>
             NoType
         }
@@ -5813,10 +5831,10 @@ object Types {
         case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
           arg.info match {
             case argInfo: TypeBounds => expandBounds(argInfo)
-            case argInfo => reapply(arg)
+            case argInfo => useAlternate(arg)
           }
         case arg: TypeBounds => expandBounds(arg)
-        case arg => reapply(arg)
+        case arg => useAlternate(arg)
       }
 
     /** Derived selection.
