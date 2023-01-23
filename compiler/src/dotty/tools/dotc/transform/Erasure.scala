@@ -774,7 +774,7 @@ object Erasure {
             select(qual1, sym)
           else
             val castTarget = // Avoid inaccessible cast targets, see i8661
-              if isJvmAccessible(sym.owner)
+              if isJvmAccessible(sym.owner) && sym.owner.isType
               then
                 sym.owner.typeRef
               else
