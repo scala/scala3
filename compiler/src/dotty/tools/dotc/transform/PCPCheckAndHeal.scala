@@ -179,7 +179,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  - If a type reference is used a higher level, then it is inconsistent.
    *    Will attempt to heal before failing.
    *  - If a term reference is used a higher level, then it is inconsistent.
-   *    It can not be healed because the term will not exists in the any future stage.
+   *    It cannot be healed because the term will not exist in any future stage.
    *
    *  If `T` is a reference to a type at the wrong level, try to heal it by replacing it with
    *  a type tag of type `quoted.Type[T]`.
