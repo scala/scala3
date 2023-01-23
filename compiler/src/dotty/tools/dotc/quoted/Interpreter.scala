@@ -30,6 +30,7 @@ import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.dotc.core.CyclicReference
 
 /** Tree interpreter for metaprogramming constructs */
 class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
@@ -253,8 +254,14 @@ class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
               }
               val shortStackTrace = targetException.getStackTrace.take(end + 1)
               targetException.setStackTrace(shortStackTrace)
+              targetException.printStackTrace(new PrintWriter(sw))
+
+              targetException match
+                case _: CyclicReference => sw.write("\nSee full stack trace using -Ydebug")
+                case _ =>
+            } else {
+              targetException.printStackTrace(new PrintWriter(sw))
             }
-            targetException.printStackTrace(new PrintWriter(sw))
             sw.write("\n")
             throw new StopInterpretation(sw.toString.toMessage, pos)
         }
