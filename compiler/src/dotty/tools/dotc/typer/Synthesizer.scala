@@ -52,14 +52,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             if defn.SpecialClassTagClasses.contains(sym) then
               classTagModul.select(sym.name.toTermName).withSpan(span)
             else
-              def clsOfType(tp: Type): Type = tp.dealias.underlyingMatchType match
-                case matchTp: MatchType =>
-                  matchTp.alternatives.map(clsOfType) match
-                    case ct1 :: cts if cts.forall(ct1 == _) => ct1
-                    case _ => NoType
-                case _ =>
-                  escapeJavaArray(erasure(tp))
-              val ctype = clsOfType(tp)
+              val ctype = escapeJavaArray(erasure(tp))
               if ctype.exists then
                 classTagModul.select(nme.apply)
                   .appliedToType(tp)

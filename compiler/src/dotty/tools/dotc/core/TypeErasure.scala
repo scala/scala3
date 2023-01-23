@@ -520,8 +520,9 @@ object TypeErasure {
         case _: ClassInfo => true
         case _ => false
       }
-    case tp: TypeParamRef => false
-    case tp: TypeBounds => false
+    case _: TypeParamRef => false
+    case _: TypeBounds => false
+    case _: MatchType => false
     case tp: TypeProxy => hasStableErasure(tp.translucentSuperType)
     case tp: AndType => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
     case tp: OrType  => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
