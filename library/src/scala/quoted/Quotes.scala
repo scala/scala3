@@ -2775,6 +2775,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: TypeRef)
         def isOpaqueAlias: Boolean
         def translucentSuperType: TypeRepr
+        /** The type bounds of the referenced type. */
+        @experimental
+        def underlying: TypeRepr
       end extension
     end TypeRefMethods
 

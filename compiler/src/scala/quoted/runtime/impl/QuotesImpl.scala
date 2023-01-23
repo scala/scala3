@@ -1844,6 +1844,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       extension (self: TypeRef)
         def isOpaqueAlias: Boolean = self.symbol.isOpaqueAlias
         def translucentSuperType: TypeRepr = self.translucentSuperType
+        def underlying: TypeRepr = self.underlying
       end extension
     end TypeRefMethods
 

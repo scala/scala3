@@ -1,0 +1,7 @@
+Alias: (X.Alias,_ >: scala.Predef.String <: scala.Predef.String)
+Opaque: (X.Opaque,_ >: scala.Nothing <: scala.Any)
+Bound: (X.Bound,_ >: scala.Nothing <: scala.Predef.String)
+OpaqueBound: (X.OpaqueBound,_ >: scala.Nothing <: scala.Predef.String)
+Param T: (T,_ >: scala.Nothing <: scala.Any)
+Param U: (U,_ >: scala.Nothing <: scala.Predef.String)
+Param V: (V,_ >: scala.Int <: scala.Any)
