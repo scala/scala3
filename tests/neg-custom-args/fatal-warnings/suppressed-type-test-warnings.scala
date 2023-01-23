@@ -11,7 +11,7 @@ object Test {
   }
 
   def err1[A, B](value: Foo[A, B], a: A => Int): B = value match {
-    case b: Bar[A] => // spurious // error
+    case b: Bar[A] =>
       b.x
   }
 
