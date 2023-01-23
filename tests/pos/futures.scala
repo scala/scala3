@@ -5,18 +5,21 @@ import scala.util.boundary, boundary.{Label, break}
 object Scheduler:
   def schedule(task: Runnable): Unit = ???
 
-/** Contains a delimited contination, which can be invoked with `run`,
- *  plus some other value that is returned from a `suspend`.
- */
-case class Suspension[+T, +R](x: T):
+/** Contains a delimited contination, which can be invoked with `resume` */
+class Suspension[+R]:
   def resume(): R = ???
+object Suspension:
+  def apply[R](): Suspension[R] =
+    ??? // magic, can be called only from `suspend`
 
-/** Returns `Suspension(x)` to the boundary associated with the given label */
-def suspend[T, R](x: T)(using Label[Suspension[T, R]]): Unit =
-  break(Suspension(x))
+/** Returns `fn(s)` where `s` is the current suspension to the boundary associated
+ *  with the given label.
+ */
+def suspend[R, T](fn: Suspension[R] => T)(using Label[T]): Unit =
+  break(fn(Suspension()))
 
-/** A suspension indicating the Future for which it is waiting */
-type Waiting = Suspension[Future[?], Unit]
+/** A suspension and a value indicating the Future for which the suspension is waiting */
+type Waiting = (Suspension[Unit], Future[?])
 
 /** The capability to suspend while waiting for some other future */
 type CanWait = Label[Waiting]
@@ -30,7 +33,7 @@ class Future[+T] private ():
   def await(using CanWait): T = result match
     case Some(x) => x
     case None =>
-      suspend(this)
+      suspend((s: Suspension[Unit]) => (s, this))
       await
 
 object Future:
@@ -47,8 +50,8 @@ object Future:
       boundary[Unit | Waiting]:
         complete(f, body)
       match
-        case s @ Suspension(blocking) =>
-          blocking.waiting += (() => s.resume())
+        case (suspension, blocking) =>
+          blocking.waiting += (() => suspension.resume())
         case () =>
     f
 

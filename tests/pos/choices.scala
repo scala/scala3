@@ -2,18 +2,24 @@ import collection.mutable.ListBuffer
 import compiletime.uninitialized
 import scala.util.boundary, boundary.{Label, break}
 
-/** Contains a delimited contination, which can be invoked with `run`,
- *  plus some other value that is returned from a `suspend`.
- */
-case class Suspension[+T, +R](x: T):
+/** Contains a delimited contination, which can be invoked with `r`esume` */
+class Suspension[+R]:
   def resume(): R = ???
+object Suspension:
+  def apply[R](): Suspension[R] =
+    ??? // magic, can be called only from `suspend`
 
-/** Returns `Suspension(x)` to the boundary associated with the given label */
-def suspend[T, R](x: T)(using Label[Suspension[T, R]]): Unit =
-  break(Suspension(x))
+/** Returns `fn(s)` where `s` is the current suspension to the boundary associated
+ *  with the given label.
+ */
+def suspend[R, T](fn: Suspension[R] => T)(using Label[T]): Unit =
+  ??? // break(fn(Suspension()))
 
-def suspend[T, R]()(using Label[Suspension[Unit, R]]): Unit =
-  suspend(())
+/** Returns the current suspension to the boundary associated
+ *  with the given label.
+ */
+def suspend[R]()(using Label[Suspension[R]]): Unit =
+  suspend[R, Suspension[R]](identity)
 
 /** A single method iterator */
 abstract class Choices[+T]:
@@ -32,7 +38,7 @@ end Choices
  *   - a suspension with Option[T] result, which will be
  *     iterated over element by element in the boundary's result.
  */
-type CanChoose[T] = Label[None.type | Suspension[Unit, Option[T]]]
+type CanChoose[T] = Label[None.type | Suspension[Option[T]]]
 
 /** A variable representing Choices */
 class Ref[T](choices: => Choices[T]):
@@ -53,7 +59,7 @@ end Ref
  *  @return all results in a new `Choices` iterator,
  */
 def choices[T](body: CanChoose[T] ?=> T): Choices[T] = new Choices:
-  var stack: List[Suspension[Unit, Option[T]]] = Nil
+  var stack: List[Suspension[Option[T]]] = Nil
 
   def next: Option[T] =
     boundary(Some(body)) match
@@ -66,7 +72,7 @@ def choices[T](body: CanChoose[T] ?=> T): Choices[T] = new Choices:
           // last variable's choices exhausted; use next value of previous variable
           stack = stack.tail
           stack.head.resume()
-      case susp: Suspension[Unit, Option[T]] =>
+      case susp: Suspension[Option[T]] =>
         // A new Choices variable was encountered
         stack = susp :: stack
         stack.head.resume()
