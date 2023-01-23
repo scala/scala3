@@ -41,7 +41,7 @@ class Ref[T](choices: => Choices[T]):
    *  If it yields a Some result take that as the next value of the enclosing
    *  boundary. If it yields a Non, skip the element.
    */
-  def all[R](using CanChoose[R]): T =
+  def each[R](using CanChoose[R]): T =
     val cs = choices
     suspend()
     cs.next.getOrElse(break(None))
@@ -75,10 +75,10 @@ def choices[T](body: CanChoose[T] ?=> T): Choices[T] = new Choices:
   val x = Ref(Choices(1, -2, -3))
   val y = Ref(Choices("ab", "cde"))
   choices:
-    val xx = x.all
+    val xx = x.each
     xx + (
-      if xx > 0 then y.all.length * x.all
-      else y.all.length
+      if xx > 0 then y.each.length * x.each
+      else y.each.length
     )
     /* Gives the results of the following computations:
         1 + 2 * 1
