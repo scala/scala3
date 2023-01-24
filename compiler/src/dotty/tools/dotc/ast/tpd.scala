@@ -414,6 +414,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case _ => false
   }
 
+  def needsIdent(tp: Type)(using Context): Boolean = tp match
+    case tp: TermRef => tp.prefix eq NoPrefix
+    case _ => false
+
   /** A tree representing the same reference as the given type */
   def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree =
     if (tp.isType) TypeTree(tp)
