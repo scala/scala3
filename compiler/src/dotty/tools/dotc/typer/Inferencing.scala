@@ -262,7 +262,7 @@ object Inferencing {
                                    && ctx.gadt.contains(tp.symbol)
                                    =>
         val sym = tp.symbol
-        val res = ctx.gadt.approximation(sym, fromBelow = variance < 0)
+        val res = ctx.gadtState.approximation(sym, fromBelow = variance < 0)
         gadts.println(i"approximated $tp  ~~  $res")
         res
 
@@ -432,7 +432,7 @@ object Inferencing {
     }
 
     // We add the created symbols to GADT constraint here.
-    if (res.nonEmpty) ctx.gadt.addToConstraint(res)
+    if (res.nonEmpty) ctx.gadtState.addToConstraint(res)
     res
   }
 

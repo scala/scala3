@@ -261,12 +261,12 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     val assumeInvariantRefinement =
       migrateTo3 || forceInvariantRefinement || refinementIsInvariant(patternTp)
 
-    trace(i"constraining simple pattern type $tp >:< $pt", gadts, (res: Boolean) => i"$res gadt = ${ctx.gadt.gadt}") {
+    trace(i"constraining simple pattern type $tp >:< $pt", gadts, (res: Boolean) => i"$res gadt = ${ctx.gadt}") {
       (tp, pt) match {
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
           val saved = state.nn.constraint
           val result =
-            ctx.gadt.rollbackGadtUnless {
+            ctx.gadtState.rollbackGadtUnless {
               tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
                 val variance = param.paramVarianceSign
                 if variance == 0 || assumeInvariantRefinement ||

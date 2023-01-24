@@ -141,7 +141,8 @@ object Contexts {
     def tree: Tree[?]
     def scope: Scope
     def typerState: TyperState
-    def gadt: GadtConstraintHandling
+    def gadt: GadtConstraint = gadtState.gadt
+    def gadtState: GadtState
     def searchHistory: SearchHistory
     def source: SourceFile
 
@@ -410,7 +411,7 @@ object Contexts {
       val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next()
       superOrThisCallContext(owner, constrCtx.scope)
         .setTyperState(typerState)
-        .setGadt(gadt)
+        .setGadtState(gadtState)
         .fresh
         .setScope(this.scope)
     }
@@ -541,8 +542,8 @@ object Contexts {
     private var _typerState: TyperState = uninitialized
     final def typerState: TyperState = _typerState
 
-    private var _gadt: GadtConstraintHandling = uninitialized
-    final def gadt: GadtConstraintHandling = _gadt
+    private var _gadtState: GadtState = uninitialized
+    final def gadtState: GadtState = _gadtState
 
     private var _searchHistory: SearchHistory = uninitialized
     final def searchHistory: SearchHistory = _searchHistory
@@ -567,7 +568,7 @@ object Contexts {
       _owner = origin.owner
       _tree = origin.tree
       _scope = origin.scope
-      _gadt = origin.gadt
+      _gadtState = origin.gadtState
       _searchHistory = origin.searchHistory
       _source = origin.source
       _moreProperties = origin.moreProperties
@@ -624,12 +625,12 @@ object Contexts {
       this._scope = typer.scope
       setTypeAssigner(typer)
 
-    def setGadt(gadt: GadtConstraintHandling): this.type =
-      util.Stats.record("Context.setGadt")
-      this._gadt = gadt
+    def setGadtState(gadtState: GadtState): this.type =
+      util.Stats.record("Context.setGadtState")
+      this._gadtState = gadtState
       this
     def setFreshGADTBounds: this.type =
-      setGadt(gadt.fresh)
+      setGadtState(gadtState.fresh)
 
     def setSearchHistory(searchHistory: SearchHistory): this.type =
       util.Stats.record("Context.setSearchHistory")
@@ -721,7 +722,7 @@ object Contexts {
           .updated(notNullInfosLoc, Nil)
           .updated(compilationUnitLoc, NoCompilationUnit)
       c._searchHistory = new SearchRoot
-      c._gadt = GadtConstraintHandling(GadtConstraint.empty)
+      c._gadtState = GadtState(GadtConstraint.empty)
       c
   end FreshContext
 

@@ -1782,7 +1782,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // see tests/pos/i12226 and issue #12226. It might be possible that this
         // will end up taking too much memory. If it does, we should just limit
         // how much GADT constraints we infer - it's always sound to infer less.
-        pat1.putAttachment(InferredGadtConstraints, ctx.gadt.gadt)
+        pat1.putAttachment(InferredGadtConstraints, ctx.gadt)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
@@ -2362,7 +2362,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       ctx.outer.outersIterator.takeWhile(!_.owner.is(Method))
         .filter(ctx => ctx.owner.isClass && ctx.owner.typeParams.nonEmpty)
         .toList.reverse
-        .foreach(ctx => rhsCtx.gadt.addToConstraint(ctx.owner.typeParams))
+        .foreach(ctx => rhsCtx.gadtState.addToConstraint(ctx.owner.typeParams))
 
     if tparamss.nonEmpty then
       rhsCtx.setFreshGADTBounds
@@ -2371,7 +2371,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // we're typing a polymorphic definition's body,
         // so we allow constraining all of its type parameters
         // constructors are an exception as we don't allow constraining type params of classes
-        rhsCtx.gadt.addToConstraint(tparamSyms)
+        rhsCtx.gadtState.addToConstraint(tparamSyms)
       else if !sym.isPrimaryConstructor then
         linkConstructorParams(sym, tparamSyms, rhsCtx)
 
@@ -3835,7 +3835,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 adaptToSubType(wtp)
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
-             && !inContext(ctx.fresh.setGadt(GadtConstraintHandling(GadtConstraint.empty))) {
+             && !inContext(ctx.fresh.setGadtState(GadtState(GadtConstraint.empty))) {
                val res = (tree.tpe.widenExpr frozen_<:< pt)
                if res then
                  // we overshot; a cast is not needed, after all.

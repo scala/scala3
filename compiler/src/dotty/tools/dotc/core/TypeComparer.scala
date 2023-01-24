@@ -116,7 +116,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
-  protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadt.addBound(sym, b, isUpper)
+  protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadtState.addBound(sym, b, isUpper)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
 
@@ -1446,10 +1446,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else if tp1 eq tp2 then true
     else
       val savedCstr = constraint
-      val savedGadt = ctx.gadt.gadt
+      val savedGadt = ctx.gadt
       inline def restore() =
         state.constraint = savedCstr
-        ctx.gadt.restore(savedGadt)
+        ctx.gadtState.restore(savedGadt)
       val savedSuccessCount = successCount
       try
         recCount += 1
@@ -1855,34 +1855,34 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   private def necessaryEither(op1: => Boolean, op2: => Boolean): Boolean =
     val preConstraint = constraint
-    val preGadtHandling = ctx.gadt.fresh
-    val preGadt = preGadtHandling.gadt
+    val preGadt = ctx.gadt
 
     def allSubsumes(leftGadt: GadtConstraint, rightGadt: GadtConstraint, left: Constraint, right: Constraint): Boolean =
-      subsumes(left, right, preConstraint) && preGadtHandling.subsumes(leftGadt, rightGadt, preGadt)
+      subsumes(left, right, preConstraint)
+      && subsumes(leftGadt.constraint, rightGadt.constraint, preGadt.constraint)
 
     if op1 then
       val op1Constraint = constraint
-      val op1Gadt = ctx.gadt.gadt
+      val op1Gadt = ctx.gadt
       constraint = preConstraint
-      ctx.gadt.restore(preGadt)
+      ctx.gadtState.restore(preGadt)
       if op2 then
-        if allSubsumes(op1Gadt, ctx.gadt.gadt, op1Constraint, constraint) then
-          gadts.println(i"GADT CUT - prefer ${ctx.gadt.gadt} over $op1Gadt")
+        if allSubsumes(op1Gadt, ctx.gadt, op1Constraint, constraint) then
+          gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $op1Gadt")
           constr.println(i"CUT - prefer $constraint over $op1Constraint")
-        else if allSubsumes(ctx.gadt.gadt, op1Gadt, constraint, op1Constraint) then
-          gadts.println(i"GADT CUT - prefer $op1Gadt over ${ctx.gadt.gadt}")
+        else if allSubsumes(ctx.gadt, op1Gadt, constraint, op1Constraint) then
+          gadts.println(i"GADT CUT - prefer $op1Gadt over ${ctx.gadt}")
           constr.println(i"CUT - prefer $op1Constraint over $constraint")
           constraint = op1Constraint
-          ctx.gadt.restore(op1Gadt)
+          ctx.gadtState.restore(op1Gadt)
         else
           gadts.println(i"GADT CUT - no constraint is preferable, reverting to $preGadt")
           constr.println(i"CUT - no constraint is preferable, reverting to $preConstraint")
           constraint = preConstraint
-          ctx.gadt.restore(preGadt)
+          ctx.gadtState.restore(preGadt)
       else
         constraint = op1Constraint
-        ctx.gadt.restore(op1Gadt)
+        ctx.gadtState.restore(op1Gadt)
       true
     else op2
   end necessaryEither
@@ -2054,7 +2054,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
       else
-        ctx.gadt.rollbackGadtUnless(gadtAddBound(tparam, bound, isUpper))
+        ctx.gadtState.rollbackGadtUnless(gadtAddBound(tparam, bound, isUpper))
     }
   }
 

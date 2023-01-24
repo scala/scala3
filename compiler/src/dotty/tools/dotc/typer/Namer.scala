@@ -1864,7 +1864,7 @@ class Namer { typer: Typer =>
       // so we must allow constraining its type parameters
       // compare with typedDefDef, see tests/pos/gadt-inference.scala
       rhsCtx.setFreshGADTBounds
-      rhsCtx.gadt.addToConstraint(typeParams)
+      rhsCtx.gadtState.addToConstraint(typeParams)
     }
 
     def typedAheadRhs(pt: Type) =
