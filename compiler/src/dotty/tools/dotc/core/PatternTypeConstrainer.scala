@@ -264,6 +264,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     trace(i"constraining simple pattern type $tp >:< $pt", gadts, (res: Boolean) => i"$res gadt = ${ctx.gadt}") {
       (tp, pt) match {
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
+          var success = true
           tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).foreach { (param, argS, argP) =>
             val variance = param.paramVarianceSign
             if variance == 0 || assumeInvariantRefinement ||
@@ -273,10 +274,10 @@ trait PatternTypeConstrainer { self: TypeComparer =>
             then
               val TypeBounds(loS, hiS) = argS.bounds
               val TypeBounds(loP, hiP) = argP.bounds
-              if variance <  1 then isSubType(loS, hiP)
-              if variance > -1 then isSubType(loP, hiS)
+              if variance <  1 then success = isSubType(loS, hiP) && success
+              if variance > -1 then success = isSubType(loP, hiS) && success
           }
-          true
+          success
         case _ =>
           // Give up if we don't get AppliedType, e.g. if we upcasted to Any.
           // Note that this doesn't mean that patternTp, scrutineeTp cannot possibly
