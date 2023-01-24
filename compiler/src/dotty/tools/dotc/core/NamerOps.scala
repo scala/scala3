@@ -212,11 +212,11 @@ object NamerOps:
    *  by (ab?)-using GADT constraints. See pos/i941.scala.
    */
   def linkConstructorParams(sym: Symbol, tparams: List[Symbol], rhsCtx: Context)(using Context): Unit =
-    rhsCtx.gadt.addToConstraint(tparams)
+    rhsCtx.gadtState.addToConstraint(tparams)
     tparams.lazyZip(sym.owner.typeParams).foreach { (psym, tparam) =>
       val tr = tparam.typeRef
-      rhsCtx.gadt.addBound(psym, tr, isUpper = false)
-      rhsCtx.gadt.addBound(psym, tr, isUpper = true)
+      rhsCtx.gadtState.addBound(psym, tr, isUpper = false)
+      rhsCtx.gadtState.addBound(psym, tr, isUpper = true)
     }
 
 end NamerOps

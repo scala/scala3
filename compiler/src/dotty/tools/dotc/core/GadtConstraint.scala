@@ -133,20 +133,14 @@ class GadtConstraint private (
   ): GadtConstraint = GadtConstraint(myConstraint, mapping, reverseMapping, wasConstrained)
 end GadtConstraint
 
-object GadtConstraintHandling:
-  def apply(gadt: GadtConstraint): GadtConstraintHandling = new ProperGadtConstraintHandling(gadt)
+object GadtState:
+  def apply(gadt: GadtConstraint): GadtState = ProperGadtState(gadt)
 
-sealed trait GadtConstraintHandling(private var myGadt: GadtConstraint) {
-  this: ConstraintHandling =>
+sealed trait GadtState {
+  this: ConstraintHandling => // Hide ConstraintHandling within GadtConstraintHandling
 
-  def gadt: GadtConstraint              = myGadt
-  private def gadt_=(g: GadtConstraint) = myGadt = g
-
-  /** Exposes ConstraintHandling.subsumes */
-  def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
-    def extractConstraint(g: GadtConstraint) = g.constraint
-    subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
-  }
+  def gadt: GadtConstraint
+  def gadt_=(g: GadtConstraint): Unit
 
   override protected def legalBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Type =
     // GADT constraints never involve wildcards and are not propagated outside
@@ -233,13 +227,6 @@ sealed trait GadtConstraintHandling(private var myGadt: GadtConstraint) {
     result
   }
 
-  def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = gadt.isLess(sym1, sym2)
-  def fullBounds(sym: Symbol)(using Context): TypeBounds | Null = gadt.fullBounds(sym)
-  def bounds(sym: Symbol)(using Context): TypeBounds | Null = gadt.bounds(sym)
-  def contains(sym: Symbol)(using Context): Boolean = gadt.contains(sym)
-  def isNarrowing: Boolean = gadt.isNarrowing
-  def symbols: List[Symbol] = gadt.symbols
-
   /** See [[ConstraintHandling.approximation]] */
   def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type = {
     approximation(gadt.tvarOrError(sym).origin, fromBelow, maxLevel).match
@@ -252,7 +239,7 @@ sealed trait GadtConstraintHandling(private var myGadt: GadtConstraint) {
       .showing(i"approximating $sym ~> $result", gadts)
   }
 
-  def fresh: GadtConstraintHandling = GadtConstraintHandling(gadt)
+  def fresh: GadtState = GadtState(gadt)
 
   /** Restore the GadtConstraint state. */
   def restore(gadt: GadtConstraint): Unit = this.gadt = gadt
@@ -281,5 +268,7 @@ sealed trait GadtConstraintHandling(private var myGadt: GadtConstraint) {
   override def constr = gadtsConstr
 }
 
-// Hide ConstraintHandling within GadtConstraintHandling
-private class ProperGadtConstraintHandling(gadt: GadtConstraint) extends ConstraintHandling with GadtConstraintHandling(gadt)
+// Hide ConstraintHandling within GadtState
+private class ProperGadtState(private var myGadt: GadtConstraint) extends ConstraintHandling with GadtState:
+  def gadt: GadtConstraint               = myGadt
+  def gadt_=(gadt: GadtConstraint): Unit = myGadt = gadt
