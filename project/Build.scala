@@ -843,6 +843,7 @@ object Build {
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
       "-Yexplicit-nulls",
     ),
+    (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings
   )
 
   lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
@@ -1892,8 +1893,7 @@ object ScaladocConfigs {
     )
   }
 
-  lazy val DefaultGenerationConfig = Def.task {
-    def distLocation = (dist / pack).value
+  lazy val DefaultGenerationSettings = Def.task {
     def projectVersion = version.value
     def socialLinks = SocialLinks(List(
       "github::https://github.com/lampepfl/dotty",
@@ -1932,6 +1932,11 @@ object ScaladocConfigs {
         )
       )
     )
+  }
+
+  lazy val DefaultGenerationConfig = Def.task {
+    def distLocation = (dist / pack).value
+    DefaultGenerationSettings.value
   }
 
   lazy val Scaladoc = Def.task {
