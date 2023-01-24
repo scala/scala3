@@ -1227,13 +1227,21 @@ class Namer { typer: Typer =>
               case pt: MethodOrPoly => 1 + extensionParamsCount(pt.resType)
               case _ => 0
             val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
+              val forwarderCtx = ctx.withOwner(forwarder)
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
               val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
-              ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
-                .etaExpandCFT(using ctx.withOwner(forwarder))
+              val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
+                .etaExpandCFT(using forwarderCtx)
+              if forwarder.isInlineMethod then
+                // Eagerly make the body inlineable. `registerInlineInfo` does this lazily
+                // but it does not get evaluated during typer as the forwarder we are creating
+                // is already typed.
+                val inlinableRhs = PrepareInlineable.makeInlineable(rhs)(using forwarderCtx)
+                PrepareInlineable.registerInlineInfo(forwarder, inlinableRhs)(using forwarderCtx)
+                inlinableRhs
+              else
+                rhs
             })
-            if forwarder.isInlineMethod then
-              PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
             buf += ddef.withSpan(span)
             if hasDefaults then
               foreachDefaultGetterOf(sym.asTerm,
