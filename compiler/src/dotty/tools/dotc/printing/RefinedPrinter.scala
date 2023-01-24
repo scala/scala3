@@ -3,6 +3,7 @@ package dotc
 package printing
 
 import core._
+import Constants.*
 import Texts._
 import Types._
 import Flags._
@@ -286,14 +287,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: ViewProto =>
         toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case tp @ FunProto(args, resultType) =>
-        val argsText = args match {
-          case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
-          case _ => toTextGlobal(args, ", ")
-        }
         "[applied to ("
         ~ keywordText("using ").provided(tp.isContextualMethod)
         ~ keywordText("erased ").provided(tp.isErasedMethod)
-        ~ argsText
+        ~ argsTreeText(args)
         ~ ") returning "
         ~ toText(resultType)
         ~ "]"
@@ -308,6 +305,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def exprToText(tp: ExprType): Text =
     "=> " ~ toText(tp.resType)
+
+  protected def argsTreeText(args: List[untpd.Tree]): Text = args match
+    case dummyTreeOfType(tp) :: Nil if !tp.isRef(defn.NullClass) && !homogenizedView => toText(Constant(null)) ~ ": " ~ toText(tp)
+    case _                                                                           => toTextGlobal(args, ", ")
 
   protected def blockToText[T <: Untyped](block: Block[T]): Text =
     blockText(block.stats :+ block.expr)
@@ -442,7 +443,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           toTextLocal(fun)
           ~ "("
           ~ Str("using ").provided(app.applyKind == ApplyKind.Using && !homogenizedView)
-          ~ toTextGlobal(args, ", ")
+          ~ argsTreeText(args)
           ~ ")"
       case tree: TypeApply =>
         typeApplyText(tree)

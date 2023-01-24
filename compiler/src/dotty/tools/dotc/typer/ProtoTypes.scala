@@ -671,10 +671,12 @@ object ProtoTypes {
    *
    *    [] _
    */
-  @sharable object AnyFunctionProto extends UncachedGroundType with MatchAlways
+  @sharable object AnyFunctionProto extends UncachedGroundType with MatchAlways:
+    override def toString = "AnyFunctionProto"
 
   /** A prototype for type constructors that are followed by a type application */
-  @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways
+  @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways:
+    override def toString = "AnyTypeConstructorProto"
 
   extension (pt: Type)
     def isExtensionApplyProto: Boolean = pt match
@@ -946,8 +948,8 @@ object ProtoTypes {
   object dummyTreeOfType {
     def apply(tp: Type)(implicit src: SourceFile): Tree =
       untpd.Literal(Constant(null)) withTypeUnchecked tp
-    def unapply(tree: untpd.Tree): Option[Type] = tree match {
-      case Literal(Constant(null)) => Some(tree.typeOpt)
+    def unapply(tree: untpd.Tree): Option[Type] = untpd.unsplice(tree) match {
+      case tree @ Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None
     }
   }
