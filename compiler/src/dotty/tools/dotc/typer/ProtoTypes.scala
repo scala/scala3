@@ -13,6 +13,8 @@ import Decorators._
 import Uniques._
 import inlines.Inlines
 import config.Printers.typr
+import Inferencing.*
+import ErrorReporting.*
 import util.SourceFile
 import TypeComparer.necessarySubType
 
@@ -492,7 +494,23 @@ object ProtoTypes {
       val targ = cacheTypedArg(arg,
         typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
         force = true)
-      typer.adapt(targ, wideFormal, locked)
+      val targ1 = typer.adapt(targ, wideFormal, locked)
+      if wideFormal eq formal then targ1
+      else checkNoWildcardCaptureForCBN(targ1)
+    }
+
+    def checkNoWildcardCaptureForCBN(targ1: Tree)(using Context): Tree = {
+      if hasCaptureConversionArg(targ1.tpe) then
+        stripCast(targ1).tpe match
+          case tp: AppliedType if tp.hasWildcardArg =>
+            errorTree(targ1,
+              em"""argument for by-name parameter is not a value
+                  |and contains wildcard arguments: $tp
+                  |
+                  |Assign it to a val and pass that instead.
+                  |""")
+          case _ => targ1
+      else targ1
     }
 
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before

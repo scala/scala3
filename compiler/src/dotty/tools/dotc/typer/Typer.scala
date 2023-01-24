@@ -1570,6 +1570,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else if ((tree.tpt `eq` untpd.ContextualEmptyTree) && mt.paramNames.isEmpty)
                   // Note implicitness of function in target type since there are no method parameters that indicate it.
                   TypeTree(defn.FunctionOf(Nil, mt.resType, isContextual = true, isErased = false))
+                else if hasCaptureConversionArg(mt.resType) then
+                  errorTree(tree,
+                    em"""cannot turn method type $mt into closure
+                        |because it has capture conversion skolem types""")
                 else
                   EmptyTree
             }

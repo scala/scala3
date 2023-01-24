@@ -542,6 +542,10 @@ object Inferencing {
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
     case _ => tp
   }
+
+  def hasCaptureConversionArg(tp: Type)(using Context): Boolean = tp match
+    case tp: AppliedType => tp.args.exists(_.typeSymbol == defn.TypeBox_CAP)
+    case _ => false
 }
 
 trait Inferencing { this: Typer =>
