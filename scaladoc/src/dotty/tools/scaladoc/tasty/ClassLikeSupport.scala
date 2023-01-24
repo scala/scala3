@@ -266,7 +266,7 @@ trait ClassLikeSupport:
     def getParentsAsTreeSymbolTuples: List[(Tree, Symbol)] =
       if noPosClassDefs.contains(c.symbol) then Nil
       else for
-        parentTree <- c.parents if parentTree.pos.start != parentTree.pos.end // We assume here that order is correct
+        parentTree <- c.parents if parentTree.pos.exists && parentTree.pos.start != parentTree.pos.end // We assume here that order is correct
         parentSymbol = parentTree match
           case t: TypeTree => t.tpe.typeSymbol
           case tree if tree.symbol.isClassConstructor => tree.symbol.owner

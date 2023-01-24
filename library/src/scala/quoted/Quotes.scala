@@ -4499,6 +4499,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Position` */
     trait PositionMethods {
       extension (self: Position)
+        /** Whether we have Span information at all */
+        def exists: Boolean
 
         /** The start offset in the source file */
         def start: Int

@@ -2850,6 +2850,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given PositionMethods: PositionMethods with
       extension (self: Position)
+        def exists: Boolean = self.exists
         def start: Int = self.start
         def end: Int = self.end
         def sourceFile: SourceFile = self.source

@@ -106,3 +106,5 @@ class ImplicitMembers extends SignatureTest(
   Seq("def"),
   filterFunc = _.toString.endsWith("OuterClass$ImplicitMemberTarget.html")
 )
+
+class NonScala3Parent extends SignatureTest("nonScala3Parent", SignatureTest.all)
