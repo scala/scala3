@@ -7,4 +7,7 @@ import dotty.tools.dotc.util.NoSource
  *  encountered, and attempted to inspect, something that has already been loaded, for example a Scala primitive or a
  *  library class like Option.
  */
-class AlreadyLoadedCompilationUnit(val className: String) extends CompilationUnit(NoSource)
+class AlreadyLoadedCompilationUnit(val className: String) extends CompilationUnit(NoSource) {
+  override def toString(): String = s"AlreadyLoadedCompilationUnit(${className})"
+}
+

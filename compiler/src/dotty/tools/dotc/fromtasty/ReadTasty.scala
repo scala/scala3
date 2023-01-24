@@ -11,6 +11,7 @@ import Denotations.staticRef
 import NameOps._
 import ast.Trees.Tree
 import Phases.Phase
+import quoted.reflect.FromSymbol
 
 
 /** Load trees from TASTY files */
@@ -33,25 +34,30 @@ class ReadTasty extends Phase {
         None
       }
 
-      def compilationUnit(cls: Symbol): Option[CompilationUnit] = cls match {
-        case cls: ClassSymbol =>
-          (cls.rootTreeOrProvider: @unchecked) match {
-            case unpickler: tasty.DottyUnpickler =>
-              if (cls.rootTree.isEmpty) None
-              else {
-                val unit = CompilationUnit(cls, cls.rootTree, forceTrees = true)
-                unit.pickled += (cls -> (() => unpickler.unpickler.bytes))
-                Some(unit)
-              }
-            case tree: Tree[?] =>
-              // TODO handle correctly this case correctly to get the tree or avoid it completely.
-              cls.denot.infoOrCompleter match {
-                case _ => Some(AlreadyLoadedCompilationUnit(cls.denot.fullName.toString))
-              }
-            case _ =>
-              cannotUnpickle(s"its class file does not have a TASTY attribute")
-          }
-        case _ => None
+      def compilationUnit(cls: Symbol): Option[CompilationUnit] =  {
+          cls match {
+          case cls: ClassSymbol =>
+            (cls.rootTreeOrProvider: @unchecked) match {
+              case unpickler: tasty.DottyUnpickler =>
+                if (cls.rootTree.isEmpty) None
+                else {
+                  val unit = CompilationUnit(cls, cls.rootTree, forceTrees = true)
+                  unit.pickled += (cls -> (() => unpickler.unpickler.bytes))
+                  Some(unit)
+                }
+              case tree: Tree[?] =>
+                // TODO handle correctly this case correctly to get the tree or avoid it completely.
+                cls.denot.infoOrCompleter match {
+                  case _ =>
+                    if (tree.isEmpty) {
+                      Some(CompilationUnit(cls, FromSymbol.definitionFromSym(cls), forceTrees = false))
+                    } else Some(AlreadyLoadedCompilationUnit(cls.denot.fullName.toString))
+                }
+              case _ =>
+                cannotUnpickle(s"its class file does not have a TASTY attribute")
+            }
+          case _ => None
+        }
       }
 
       // The TASTY section in a/b/C.class may either contain a class a.b.C, an object a.b.C, or both.
@@ -67,11 +73,13 @@ class ReadTasty extends Phase {
             case _ =>
           }
           def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
-          compilationUnit(clsd.classSymbol).orElse(compilationUnit(moduleClass))
+          if (clsd.classSymbol.flags.is(Flags.Scala2x)) cannotUnpickle("this is a scala2 class")
+          else compilationUnit(clsd.classSymbol).orElse(compilationUnit(moduleClass))
         case _ =>
           staticRef(className.moduleClassName) match {
             case clsd: ClassDenotation =>
-              compilationUnit(clsd.classSymbol)
+              if (clsd.classSymbol.flags.is(Flags.Scala2x)) cannotUnpickle(f"this is a scala2 class")
+              else compilationUnit(clsd.classSymbol)
             case denot =>
               cannotUnpickle(s"no class file was found for denot: $denot")
           }
