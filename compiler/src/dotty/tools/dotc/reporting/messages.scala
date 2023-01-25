@@ -2746,7 +2746,7 @@ class MissingImplicitArgument(
           i"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
         def noChainConversionsNote(ignoredConversions: Iterable[TermRef]): Option[String] =
           Option.when(ignoredConversions.nonEmpty)(
-              i"\n\nNote: implicit conversions are not automatically applied to implicit arguments. " +
+              i"\n\nNote: implicit conversions are not automatically applied to arguments of using clauses. " +
               i"You will have to pass the argument explicitly.\n" +
               i"The following conversions in scope result in ${pt.show}: ${ignoredConversions.map(g => s"\n  - ${g.symbol.showDcl}").mkString}"
           )
