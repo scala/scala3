@@ -2744,7 +2744,7 @@ class MissingImplicitArgument(
         // show all available additional info
         def hiddenImplicitNote(s: SearchSuccess) =
           i"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
-        def noChainConversionsNote(s: Iterable[TermRef]): Option[String] =
+        def noChainConversionsNote(ignoredConversions: Iterable[TermRef]): Option[String] =
           Option.when(s.nonEmpty)(
               i"\n\nNote: Chaining implicit conversions are not allowed in Scala. " +
               i"The following conversions are in scope:${s.map(g => s"\n  - ${g.symbol.showDcl}").mkString}" +
