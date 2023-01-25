@@ -22,19 +22,19 @@ import tpd.Tree
  *
  *  The general skeleton for usage of the cache is as follows
  *
- *      def analysis() = {
+ *      def analysis(entryExp: Expr) = {
  *        def iterate(entryExp: Expr)(using Cache) =
  *           eval(entryExp, initConfig)
  *           if cache.hasChanged && noErrors then
  *             cache.last = cache.current
  *             cache.current = Empty
  *             cache.changed = false
- *             iterate(outputCache, emptyCache)
+ *             iterate(entryExp)
  *           else
  *             reportErrors
  *
  *
- *        def eval(exp: Exp, config: Config)(using Cache) =
+ *        def eval(expr: Expr, config: Config)(using Cache) =
  *          cache.cachedEval(config, expr) {
  *            // Actual recursive evaluation of expression.
  *            //
