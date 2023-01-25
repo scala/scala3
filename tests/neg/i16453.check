@@ -3,7 +3,7 @@
    |                     ^
    |No given instance of type Option[Int] was found for parameter x of method summon in object Predef
    |
-   |Note: implicit conversions are not automatically applied to implicit arguments. You will have to pass the argument explicitly.
+   |Note: implicit conversions are not automatically applied to arguments of using clauses. You will have to pass the argument explicitly.
    |The following conversions in scope result in Option[Int]: 
    |  - final given def given_Conversion_T_Option[T]: Conversion[T, Option[T]]
    |  - implicit def toOption[T](t: T): Option[T]
@@ -12,7 +12,7 @@
    |                         ^
    |No given instance of type Option[Int] was found for parameter e of method implicitly in object Predef
    |
-   |Note: implicit conversions are not automatically applied to implicit arguments. You will have to pass the argument explicitly.
+   |Note: implicit conversions are not automatically applied to arguments of using clauses. You will have to pass the argument explicitly.
    |The following conversions in scope result in Option[Int]: 
    |  - final given def given_Conversion_T_Option[T]: Conversion[T, Option[T]]
    |  - implicit def toOption[T](t: T): Option[T]
