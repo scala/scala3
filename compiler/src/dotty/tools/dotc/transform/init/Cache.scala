@@ -8,6 +8,51 @@ import Contexts.*
 import ast.tpd
 import tpd.Tree
 
+/** The co-inductive cache used for analysis
+ *
+ *  The cache contains two maps from `(Config, Tree)` to `Res`:
+ *
+ *  - input cache (`this.last`)
+ *  - output cache (`this.current`)
+ *
+ *  The two caches are required because we want to make sure in a new iteration,
+ *  an expression is evaluated exactly once. The monotonicity of the analysis
+ *  ensures that the cache state goes up the lattice of the abstract domain,
+ *  consequently the algorithm terminates.
+ *
+ *  The general skeleton for usage of the cache is as follows
+ *
+ *      def analysis() = {
+ *        def iterate(entryExp: Expr)(using Cache) =
+ *           eval(entryExp, initConfig)
+ *           if cache.hasChanged && noErrors then
+ *             cache.last = cache.current
+ *             cache.current = Empty
+ *             cache.changed = false
+ *             iterate(outputCache, emptyCache)
+ *           else
+ *             reportErrors
+ *
+ *
+ *        def eval(exp: Exp, config: Config)(using Cache) =
+ *          cache.cachedEval(config, expr) {
+ *            // Actual recursive evaluation of expression.
+ *            //
+ *            // Only executed if the entry `(exp, config)` is not in the output cache.
+ *          }
+ *
+ *        iterate(entryExp)(using new Cache)
+ *      }
+ *
+ *  See the documentation for the method `Cache.cachedEval` for more information.
+ *
+ *  What goes to the configuration (`Config`) and what goes to the result (`Res`)
+ *  need to be decided by the specific analysis and justified by reasoning about
+ *  soundness.
+ *
+ *  @param Config The analysis state that matters for evaluating an expression.
+ *  @param Res The result from the evaluation the given expression.
+ */
 class Cache[Config, Res]:
   import Cache.*
 
@@ -36,28 +81,36 @@ class Cache[Config, Res]:
   def get(config: Config, expr: Tree): Option[Res] =
     current.get(config, expr)
 
-  /** Copy the value (config, expr)` from the last cache to the current cache
+  /** Evaluate an expression with cache
    *
-   *  It assumes `default` if it doesn't exist in the last cache.
+   *  The algorithmic skeleton is as follows:
    *
-   *  It updates the current caches if the values change.
+   *      if this.current.contains(config, expr) then
+   *        return cached value
+   *      else
+   *        val assumed = this.last(config, expr) or bottom value if absent
+   *        this.current(config, expr) = assumed
+   *        val actual = eval(exp)
    *
-   *  The two caches are required because we want to make sure in a new iteration, an expression is evaluated once.
+   *        if assumed != actual then
+   *          this.changed = true
+   *          this.current(config, expr) = actual
+   *
    */
-  def cachedEval(config: Config, expr: Tree, cacheResult: Boolean, default: Res)(eval: => Res): Res =
+  def cachedEval(config: Config, expr: Tree, cacheResult: Boolean, default: Res)(eval: Tree => Res): Res =
     this.get(config, expr) match
     case Some(value) => value
     case None =>
       val assumeValue: Res =
-        last.get(config, expr) match
+        this.last.get(config, expr) match
         case Some(value) => value
         case None =>
-          this.last = last.updatedNested(config, expr, default)
+          this.last = this.last.updatedNested(config, expr, default)
           default
 
-      this.current = current.updatedNested(config, expr, assumeValue)
+      this.current = this.current.updatedNested(config, expr, assumeValue)
 
-      val actual = eval
+      val actual = eval(expr)
       if actual != assumeValue then
         // println("Changed! from = " + assumeValue + ", to = " + actual)
         this.changed = true

@@ -11,6 +11,12 @@ import Decorators._, printing.SyntaxHighlighting
 
 import scala.collection.mutable
 
+/** Logic related to evaluation trace for showing friendly error messages
+ *
+ *  A trace is a sequence of program positions which tells the evaluation order
+ *  that leads to an error. It is usually more informative than the stack trace
+ *  by tracking the exact sub-expression in the trace instead of only methods.
+ */
 object Trace:
   opaque type Trace = Vector[Tree]
 
