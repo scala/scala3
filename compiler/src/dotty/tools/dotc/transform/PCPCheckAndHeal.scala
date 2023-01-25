@@ -176,8 +176,10 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   /** If the type refers to a locally defined symbol (either directly, or in a pickled type),
    *  check that its staging level matches the current level.
    *  - Static types and term are allowed at any level.
-   *  - If a type reference is used a higher level, then it is inconsistent. Will attempt to heal before failing.
-   *  - If a term reference is used a different level, then it is inconsistent.
+   *  - If a type reference is used a higher level, then it is inconsistent.
+   *    Will attempt to heal before failing.
+   *  - If a term reference is used a higher level, then it is inconsistent.
+   *    It cannot be healed because the term will not exist in any future stage.
    *
    *  If `T` is a reference to a type at the wrong level, try to heal it by replacing it with
    *  a type tag of type `quoted.Type[T]`.
@@ -206,6 +208,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
               tryHeal(prefix.symbol, tp, pos)
             case _ =>
               mapOver(tp)
+        case tp @ TermRef(NoPrefix, _) if !tp.symbol.isStatic && level > levelOf(tp.symbol) =>
+          levelError(tp.symbol, tp, pos)
         case tp: ThisType if level != -1 && level != levelOf(tp.cls) =>
           levelError(tp.cls, tp, pos)
         case tp: AnnotatedType =>

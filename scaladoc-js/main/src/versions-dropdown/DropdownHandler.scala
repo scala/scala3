@@ -31,6 +31,7 @@ class DropdownHandler:
   private def disableButton() =
     val btn = document.getElementById("dropdown-trigger").asInstanceOf[html.Span]
     btn.classList.add("disabled")
+    btn.classList.add("hidden")
 
   private def getURLContent(url: String): Future[String] = Ajax.get(url).map(_.responseText)
 
