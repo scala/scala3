@@ -55,7 +55,7 @@ trait TraceSyntax:
     apply(question, printer, {
       val showOp: T => String = inline if show == true then
         val showT = summonInline[Show[T]]
-        {
+        locally {
           given Show[T] = showT
           t => i"$t"
         }

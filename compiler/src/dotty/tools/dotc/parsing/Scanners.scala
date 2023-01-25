@@ -569,9 +569,9 @@ object Scanners {
        *   - In Scala 2: Only `{` is treated as continuing, irrespective of indentation.
        *     But this is in fact handled by Parser.argumentStart which skips a NEWLINE,
        *     so we always assume false here.
-       *   - In Scala 3: Only indented statements are treated as continuing, as long as
+       *   - In Scala 3: Indented statements are treated as continuing, as long as
        *     they start with `(`, `[` or `{`, or the last statement ends in a `return`.
-       *   The Scala 2 rules apply under source `3.0-migration` or under `-no-indent`.
+       *  The Scala 2 rules apply under source `3.0-migration` or under `-no-indent`.
        */
       inline def isContinuing =
         lastWidth < nextWidth

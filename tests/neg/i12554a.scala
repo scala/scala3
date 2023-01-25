@@ -17,7 +17,7 @@ object Test {
 
   def i: Unit = {
     f("Foo")
-    {}    // ok, error in Scala 2
+    {}    // error, error in Scala 2
   }
 
   def j: Int = {

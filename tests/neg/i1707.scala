@@ -17,6 +17,7 @@ object DepBug {
     import d.*
     a m (b)
   }
+
   {
     import dep.*
     a m (b) // error: not found: a

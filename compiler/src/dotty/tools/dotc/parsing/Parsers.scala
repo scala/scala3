@@ -1353,15 +1353,7 @@ object Parsers {
 
     def argumentStart(): Unit =
       colonAtEOLOpt()
-      if migrateTo3 && in.token == NEWLINE && in.next.token == LBRACE then
-        in.nextToken()
-        if in.indentWidth(in.offset) == in.currentRegion.indentWidth then
-          report.errorOrMigrationWarning(
-            em"""This opening brace will start a new statement in Scala 3.
-                |It needs to be indented to the right to keep being treated as
-                |an argument to the previous expression.${rewriteNotice()}""",
-            in.sourcePos(), from = `3.0`)
-          patch(source, Span(in.offset), "  ")
+      newLineOptWhenFollowedBy(LBRACE)
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL(inTemplate = true)

@@ -149,7 +149,6 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/i3246.scala", scala2CompatMode),
       compileFile("tests/neg-custom-args/overrideClass.scala", scala2CompatMode),
       compileFile("tests/neg-custom-args/ovlazy.scala", scala2CompatMode.and("-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/newline-braces.scala", scala2CompatMode.and("-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.andLanguageFeature("noAutoTupling")),
       compileFile("tests/neg-custom-args/i1650.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes),

@@ -7,5 +7,6 @@ def f(x: Int)
     (2)
     + f(1)
        {2}
+
   { println(x) }
 
