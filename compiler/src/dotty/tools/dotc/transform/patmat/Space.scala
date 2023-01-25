@@ -489,9 +489,10 @@ class SpaceEngine(using Context) extends SpaceLogic {
   private def erase(tp: Type, inArray: Boolean = false, isValue: Boolean = false): Type = trace(i"$tp erased to", debug) {
 
     tp match {
-      case tp @ AppliedType(tycon, args) =>
-        if tycon.typeSymbol.isPatternBound then return WildcardType
+      case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isPatternBound =>
+        WildcardType
 
+      case tp @ AppliedType(tycon, args) =>
         val args2 =
           if (tycon.isRef(defn.ArrayClass)) args.map(arg => erase(arg, inArray = true, isValue = false))
           else args.map(arg => erase(arg, inArray = false, isValue = false))

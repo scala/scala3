@@ -1002,11 +1002,10 @@ trait Implicits:
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer at phase ${ctx.phase.phaseName}"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
 
-      if pt.unusableForInference
-         || !argument.isEmpty && argument.tpe.unusableForInference
-      then return NoMatchingImplicitsFailure
+      val usableForInference = !pt.unusableForInference
+        && (argument.isEmpty || !argument.tpe.unusableForInference)
 
-      val result0 =
+      val result0 = if usableForInference then
         // If we are searching implicits when resolving an import symbol, start the search
         // in the first enclosing context that does not have the same scope and owner as the current
         // context. Without that precaution, an eligible implicit in the current scope
@@ -1023,7 +1022,7 @@ trait Implicits:
         catch case ce: CyclicReference =>
           ce.inImplicitSearch = true
           throw ce
-      end result0
+      else NoMatchingImplicitsFailure
 
       val result =
         result0 match {
@@ -1052,7 +1051,7 @@ trait Implicits:
                   result
               }
             else result
-          case NoMatchingImplicitsFailure =>
+          case NoMatchingImplicitsFailure if usableForInference =>
             SearchFailure(new NoMatchingImplicits(pt, argument, ctx.typerState.constraint), span)
           case _ =>
             result0
