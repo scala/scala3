@@ -1,11 +1,16 @@
 import scala.language.implicitConversions
 
-given [T]: Conversion[String => T, String => Option[T]] = ???
+// Scala 3 style conversion
+given [T]: Conversion[T, Option[T]] = ???
+// Scala 2 style conversion
+implicit def toOption[T](t: T): Option[T] = Option(t)
+
 // This one is irrelevant, shouldn't be included in error message
-given irrelevant[T]: Conversion[String => T, String => Byte] = ???
+given irrelevant: Conversion[Int, Option[Long]] = ???
 
 def test() = {
-  given foo: (String => Int) = _ => 42
+  given foo: Int = 0
 
-  val fails = summon[String => Option[Int]] // error
+  summon[Option[Int]] // error
+  implicitly[Option[Int]] // error
 }
