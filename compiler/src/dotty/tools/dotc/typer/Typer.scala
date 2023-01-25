@@ -1197,9 +1197,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     )
   end typedIf
 
-  /** Decompose function prototype into a list of parameter prototypes, an optional list 
-   *  describing whether the parameter prototypes come from WildcardTypes, and a result prototype
-   *  tree, using WildcardTypes where a type is not known.
+  /** Decompose function prototype into a list of parameter prototypes and a result
+   *  prototype tree, using WildcardTypes where a type is not known.
+   *  Note: parameter prototypes may be TypeBounds.
    *  For the result type we do this even if the expected type is not fully
    *  defined, which is a bit of a hack. But it's needed to make the following work
    *  (see typers.scala and printers/PlainPrinter.scala for examples).
@@ -1207,7 +1207,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *     def double(x: Char): String = s"$x$x"
    *     "abc" flatMap double
    */
-  private def decomposeProtoFunction(pt: Type, defaultArity: Int, pos: SrcPos)(using Context): (List[Type], Option[List[Boolean]], untpd.Tree) = {
+  private def decomposeProtoFunction(pt: Type, defaultArity: Int, pos: SrcPos)(using Context): (List[Type], untpd.Tree) = {
     def typeTree(tp: Type) = tp match {
       case _: WildcardType => new untpd.InferredTypeTree()
       case _ => untpd.InferredTypeTree(tp)
@@ -1235,26 +1235,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // if expected parameter type(s) are wildcards, approximate from below.
           // if expected result type is a wildcard, approximate from above.
           // this can type the greatest set of admissible closures.
-          // However, we still keep the information on whether expected parameter types were 
-          // wildcards, in case of types inferred from target being more specific
 
-          val fromWildcards = pt1.argInfos.init.map{
-            case bounds @ TypeBounds(nt, at) if nt == defn.NothingType && at == defn.AnyType => true
-            case bounds => false
-          }
-
-          (pt1.argTypesLo.init, Some(fromWildcards), typeTree(interpolateWildcards(pt1.argTypesHi.last)))
+          (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
-          (formals, None, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
+          (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
         case SAMType(mt @ MethodTpe(_, formals, restpe)) =>
-          (formals, None, 
+          (formals,
            if (mt.isResultDependent)
              untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
            else
              typeTree(restpe))
         case _ =>
-          (List.tabulate(defaultArity)(alwaysWildcardType), None, untpd.TypeTree())
+          (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
       }
     }
   }
@@ -1276,7 +1269,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  If both attempts fail, return `NoType`.
    */
   def inferredFromTarget(
-      param: untpd.ValDef, formal: Type, calleeType: Type, paramIndex: Name => Int, isWildcardParam: Boolean)(using Context): Type =
+      param: untpd.ValDef, formal: Type, calleeType: Type, paramIndex: Name => Int)(using Context): Type =
     val target = calleeType.widen match
       case mtpe: MethodType =>
         val pos = paramIndex(param.name)
@@ -1289,7 +1282,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else NoType
       case _ => NoType
     if target.exists then formal <:< target
-    if !isWildcardParam && isFullyDefined(formal, ForceDegree.flipBottom) then formal
+    if !formal.isExactlyNothing && isFullyDefined(formal, ForceDegree.flipBottom) then formal
     else if target.exists && isFullyDefined(target, ForceDegree.flipBottom) then target
     else NoType
 
@@ -1466,7 +1459,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
     }
 
-    val (protoFormals, areWildcardParams, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
+    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
     def protoFormal(i: Int): Type =
       if (protoFormals.length == params.length) protoFormals(i)
@@ -1482,11 +1475,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
 
     var desugared: untpd.Tree = EmptyTree
-    if protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head) then
-      val isGenericTuple =
-        protoFormals.head.derivesFrom(defn.TupleClass)
-        && !defn.isTupleClass(protoFormals.head.typeSymbol)
-      desugared = desugar.makeTupledFunction(params, fnBody, isGenericTuple)
+    if protoFormals.length == 1 && params.length != 1 then
+      val firstFormal = protoFormals.head.loBound
+      if ptIsCorrectProduct(firstFormal) then
+        val isGenericTuple =
+          firstFormal.derivesFrom(defn.TupleClass)
+          && !defn.isTupleClass(firstFormal.typeSymbol)
+        desugared = desugar.makeTupledFunction(params, fnBody, isGenericTuple)
     else if protoFormals.length > 1 && params.length == 1 then
       def isParamRef(scrut: untpd.Tree): Boolean = scrut match
         case untpd.Annotated(scrut1, _) => isParamRef(scrut1)
@@ -1508,22 +1503,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         for ((param, i) <- params.zipWithIndex) yield
           if (!param.tpt.isEmpty) param
           else
-            val formal = protoFormal(i)
-            val isWildcardParam = areWildcardParams.map(list => if i < list.length then list(i) else false).getOrElse(false)
+            val formalBounds = protoFormal(i)
+            val formal = formalBounds.loBound
+            val isBottomFromWildcard = (formalBounds ne formal) && formal.isExactlyNothing
             val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
-            // Since decomposeProtoFunction eagerly approximates function arguments
-            // from below, then in the case that the argument was also identified as
-            // a wildcard type we try to prioritize inferring from target, if possible.
-            // See issue 16405 (tests/run/16405.scala)
-            val (usingFormal, paramType) =
-              if !isWildcardParam && knownFormal then (true, formal)
-              else 
-                val fromTarget = inferredFromTarget(param, formal, calleeType, paramIndex, isWildcardParam)
-                if fromTarget.exists then (false, fromTarget)
-                else if knownFormal then (true, formal)
-                else (false, errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos))
+            // If the expected formal is a TypeBounds wildcard argument with Nothing as lower bound,
+            // try to prioritize inferring from target. See issue 16405 (tests/run/16405.scala)
+            val paramType =
+              if knownFormal && !isBottomFromWildcard then
+                formal
+              else
+                inferredFromTarget(param, formal, calleeType, paramIndex).orElse(
+                  if knownFormal then formal
+                  else errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos)
+                )
             val paramTpt = untpd.TypedSplice(
-                (if usingFormal then InferredTypeTree() else untpd.TypeTree())
+                (if knownFormal then InferredTypeTree() else untpd.TypeTree())
                   .withType(paramType.translateFromRepeated(toArray = false))
                   .withSpan(param.span.endPos)
               )
@@ -1594,7 +1589,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, cases1, pt)
         }
         else {
-          val (protoFormals, _, _) = decomposeProtoFunction(pt, 1, tree.srcPos)
+          val (protoFormals, _) = decomposeProtoFunction(pt, 1, tree.srcPos)
           val checkMode =
             if (pt.isRef(defn.PartialFunctionClass)) desugar.MatchCheck.None
             else desugar.MatchCheck.Exhaustive
