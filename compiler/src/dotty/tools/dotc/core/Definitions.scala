@@ -1675,6 +1675,15 @@ class Definitions {
     rec(tp.stripTypeVar, Nil, bound)
   }
 
+  def isSmallGenericTuple(tp: Type)(using Context): Boolean =
+    if tp.derivesFrom(defn.PairClass) && !defn.isTupleNType(tp.widenDealias) then
+      // If this is a generic tuple we need to cast it to make the TupleN/ members accessible.
+      // This works only for generic tuples of known size up to 22.
+      defn.tupleTypes(tp.widenTermRefExpr) match
+        case Some(elems) if elems.length <= Definitions.MaxTupleArity => true
+        case _ => false
+    else false
+
   def isProductSubType(tp: Type)(using Context): Boolean = tp.derivesFrom(ProductClass)
 
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
