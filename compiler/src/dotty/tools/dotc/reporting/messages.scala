@@ -2745,10 +2745,10 @@ class MissingImplicitArgument(
         def hiddenImplicitNote(s: SearchSuccess) =
           i"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
         def noChainConversionsNote(ignoredConversions: Iterable[TermRef]): Option[String] =
-          Option.when(s.nonEmpty)(
-              i"\n\nNote: Chaining implicit conversions are not allowed in Scala. " +
-              i"The following conversions are in scope:${s.map(g => s"\n  - ${g.symbol.showDcl}").mkString}" +
-              i"\nIf there is an implicit `Conversion[A, ${pt.show}]` and an implicit `A` in scope, you can explicitly pass the argument, e.g. `(using summon[A])`"
+          Option.when(ignoredConversions.nonEmpty)(
+              i"\n\nNote: implicit conversions are not automatically applied to implicit arguments. " +
+              i"You will have to pass the argument explicitly.\n" +
+              i"The following conversions in scope result in ${pt.show}: ${ignoredConversions.map(g => s"\n  - ${g.symbol.showDcl}").mkString}"
           )
         super.msgPostscript
         ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
