@@ -3,10 +3,10 @@
   |               ^^^^^^
   |               no eligible member B at M
   |               M.B cannot be exported because it clashes with another export in the same export clause
--- [E050] Type Error: tests/neg/i14818.scala:16:10 ---------------------------------------------------------------------
+-- [E050] Type Error: tests/neg/i14818.scala:16:11 ---------------------------------------------------------------------
 16 |  val x = b(1)  // error
-   |          ^
-   |          method b in object T3 does not take parameters
+   |           ^
+   |           method b in object T3 does not take parameters
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/i14818.scala:19:22 ---------------------------------------------------------------------------------

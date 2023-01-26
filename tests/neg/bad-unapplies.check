@@ -19,10 +19,10 @@
    |         D cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
    |
    | longer explanation available when compiling with `-explain`
--- [E050] Type Error: tests/neg/bad-unapplies.scala:25:9 ---------------------------------------------------------------
+-- [E050] Type Error: tests/neg/bad-unapplies.scala:25:10 --------------------------------------------------------------
 25 |    case E("2") => // error (value unapply in object E does not take parameters)
-   |         ^
-   |         value unapply in object E does not take parameters
+   |          ^
+   |          value unapply in object E does not take parameters
    |
    | longer explanation available when compiling with `-explain`
 -- [E107] Syntax Error: tests/neg/bad-unapplies.scala:26:10 ------------------------------------------------------------

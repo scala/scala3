@@ -3555,7 +3555,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           errorTree(tree, em"Missing arguments for $methodStr")
       case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
-        errorTree(tree, MethodDoesNotTakeParameters(tree))
+        errorTree(tree, MethodDoesNotTakeParameters(tree), tree.srcPos.endPos)
       }
     }
 

@@ -38,7 +38,7 @@ object Module:
 
   println(new Module.Member())
   println(Module.Member(23))
-  println(Module.Member("?")(23)) // error: Found: ("?" : String) Required: Int
+  println(Module.Member("?")(23)) // error: Found: ("?" : String) Required: Int // error: method Member in object Module does not take more parameters
   println(summon[Module.Baz]) // error: no implicit argument of type Module.Baz was found
 
   println(summon[Module.Qux])

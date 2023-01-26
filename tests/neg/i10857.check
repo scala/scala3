@@ -1,0 +1,31 @@
+-- [E008] Not Found Error: tests/neg/i10857.scala:33:17 ----------------------------------------------------------------
+33 |  println(Module.valueOf("Red")) // error: value valueOf is not a member
+   |          ^^^^^^^^^^^^^^
+   |          value valueOf is not a member of object Module
+-- [E008] Not Found Error: tests/neg/i10857.scala:36:21 ----------------------------------------------------------------
+36 |  println(new Module.GivenBar()) // error: type GivenBar is not a member
+   |              ^^^^^^^^^^^^^^^
+   |              type GivenBar is not a member of object Module - did you mean Module.Givens.type?
+-- [E050] Type Error: tests/neg/i10857.scala:37:25 ---------------------------------------------------------------------
+37 |  println(Module.GivenBar(23)) // error: method GivenBar does not take parameters
+   |                         ^
+   |                         given instance GivenBar in object Module does not take parameters
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i10857.scala:41:24 ------------------------------------------------------------
+41 |  println(Module.Member("?")(23)) // error: Found: ("?" : String) Required: Int // error: method Member in object Module does not take more parameters
+   |                        ^^^
+   |                        Found:    ("?" : String)
+   |                        Required: Int
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E050] Type Error: tests/neg/i10857.scala:41:28 ---------------------------------------------------------------------
+41 |  println(Module.Member("?")(23)) // error: Found: ("?" : String) Required: Int // error: method Member in object Module does not take more parameters
+   |                            ^
+   |                            method Member in object Module does not take more parameters
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E172] Type Error: tests/neg/i10857.scala:42:28 ---------------------------------------------------------------------
+42 |  println(summon[Module.Baz]) // error: no implicit argument of type Module.Baz was found
+   |                            ^
+   |                No given instance of type Module.Baz was found for parameter x of method summon in object Predef
