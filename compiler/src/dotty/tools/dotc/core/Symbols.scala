@@ -686,7 +686,7 @@ object Symbols {
       addToGadt: Boolean = true,
       flags: FlagSet = EmptyFlags)(using Context): Symbol = {
     val sym = newSymbol(ctx.owner, name, Case | flags, info, coord = span)
-    if (addToGadt && name.isTypeName) ctx.gadt.addToConstraint(sym)
+    if (addToGadt && name.isTypeName) ctx.gadtState.addToConstraint(sym)
     sym
   }
 
