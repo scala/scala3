@@ -1217,8 +1217,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     )
   end typedIf
 
-  /** Decompose function prototype into a list of parameter prototypes and a result prototype
-   *  tree, using WildcardTypes where a type is not known.
+  /** Decompose function prototype into a list of parameter prototypes and a result
+   *  prototype tree, using WildcardTypes where a type is not known.
+   *  Note: parameter prototypes may be TypeBounds.
    *  For the result type we do this even if the expected type is not fully
    *  defined, which is a bit of a hack. But it's needed to make the following work
    *  (see typers.scala and printers/PlainPrinter.scala for examples).
@@ -1254,7 +1255,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // if expected parameter type(s) are wildcards, approximate from below.
           // if expected result type is a wildcard, approximate from above.
           // this can type the greatest set of admissible closures.
-          (pt1.argTypesLo.init, typeTree(interpolateWildcards(pt1.argTypesHi.last)))
+
+          (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
           (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
@@ -1300,7 +1302,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else NoType
       case _ => NoType
     if target.exists then formal <:< target
-    if isFullyDefined(formal, ForceDegree.flipBottom) then formal
+    if !formal.isExactlyNothing && isFullyDefined(formal, ForceDegree.flipBottom) then formal
     else if target.exists && isFullyDefined(target, ForceDegree.flipBottom) then target
     else NoType
 
@@ -1493,11 +1495,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
 
     var desugared: untpd.Tree = EmptyTree
-    if protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head) then
-      val isGenericTuple =
-        protoFormals.head.derivesFrom(defn.TupleClass)
-        && !defn.isTupleClass(protoFormals.head.typeSymbol)
-      desugared = desugar.makeTupledFunction(params, fnBody, isGenericTuple)
+    if protoFormals.length == 1 && params.length != 1 then
+      val firstFormal = protoFormals.head.loBound
+      if ptIsCorrectProduct(firstFormal) then
+        val isGenericTuple =
+          firstFormal.derivesFrom(defn.TupleClass)
+          && !defn.isTupleClass(firstFormal.typeSymbol)
+        desugared = desugar.makeTupledFunction(params, fnBody, isGenericTuple)
     else if protoFormals.length > 1 && params.length == 1 then
       def isParamRef(scrut: untpd.Tree): Boolean = scrut match
         case untpd.Annotated(scrut1, _) => isParamRef(scrut1)
@@ -1519,12 +1523,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         for ((param, i) <- params.zipWithIndex) yield
           if (!param.tpt.isEmpty) param
           else
-            val formal = protoFormal(i)
+            val formalBounds = protoFormal(i)
+            val formal = formalBounds.loBound
+            val isBottomFromWildcard = (formalBounds ne formal) && formal.isExactlyNothing
             val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
+            // If the expected formal is a TypeBounds wildcard argument with Nothing as lower bound,
+            // try to prioritize inferring from target. See issue 16405 (tests/run/16405.scala)
             val paramType =
-              if knownFormal then formal
-              else inferredFromTarget(param, formal, calleeType, paramIndex)
-                .orElse(errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos))
+              if knownFormal && !isBottomFromWildcard then
+                formal
+              else
+                inferredFromTarget(param, formal, calleeType, paramIndex).orElse(
+                  if knownFormal then formal
+                  else errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos)
+                )
             val paramTpt = untpd.TypedSplice(
                 (if knownFormal then InferredTypeTree() else untpd.TypeTree())
                   .withType(paramType.translateFromRepeated(toArray = false))
