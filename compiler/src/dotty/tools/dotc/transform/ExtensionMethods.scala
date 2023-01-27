@@ -16,6 +16,7 @@ import TypeErasure.{ valueErasure, ErasedValueType }
 import NameKinds.{ExtMethName, BodyRetainerName}
 import Decorators._
 import TypeUtils._
+import Symbols.TypeTests.given
 
 /**
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all

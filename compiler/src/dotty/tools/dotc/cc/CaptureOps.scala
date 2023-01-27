@@ -10,6 +10,7 @@ import config.Printers.capt
 import util.Property.Key
 import tpd.*
 import config.Feature
+import Symbols.TypeTests.given
 
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()

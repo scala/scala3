@@ -51,6 +51,7 @@ import Nullables._
 import NullOpsDecorator._
 import cc.CheckCaptures
 import config.Config
+import Symbols.TypeTests.given
 
 import scala.annotation.constructorOnly
 

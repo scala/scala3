@@ -12,6 +12,7 @@ import core.StdNames.tpnme
 import scala.util.chaining.scalaUtilChainingOps
 
 import collection.mutable
+import core.Symbols.TypeTests.given
 
 import dotty.tools.dotc.{semanticdb => s}
 import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}

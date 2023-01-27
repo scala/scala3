@@ -16,6 +16,7 @@ import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
 import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
+import Symbols.TypeTests.given
 
 class PlainPrinter(_ctx: Context) extends Printer {
 

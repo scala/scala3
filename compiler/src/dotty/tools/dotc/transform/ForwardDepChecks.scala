@@ -9,6 +9,7 @@ import util.Store
 import collection.immutable
 import ast.tpd
 import MegaPhase.MiniPhase
+import Symbols.TypeTests.given
 
 object ForwardDepChecks:
 

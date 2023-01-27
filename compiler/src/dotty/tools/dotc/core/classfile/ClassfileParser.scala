@@ -23,6 +23,7 @@ import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
+import Symbols.TypeTests.given
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */

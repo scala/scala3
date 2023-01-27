@@ -10,6 +10,7 @@ import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
 import reporting._
 import NameKinds.SuperAccessorName
+import Symbols.TypeTests.given
 
 object ElimErasedValueType {
   val name: String = "elimErasedValueType"

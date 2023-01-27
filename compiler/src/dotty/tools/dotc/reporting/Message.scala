@@ -12,6 +12,7 @@ import config.SourceVersion
 import scala.language.unsafeNulls
 
 import scala.annotation.threadUnsafe
+import Symbols.TypeTests.given
 
 /** ## Tips for error message generation
  *
@@ -154,7 +155,7 @@ object Message:
     /** Produce a where clause with explanations for recorded iterms.
      */
     def explanations(using Context): String =
-      def needsExplanation(entry: Recorded) = entry match {
+      def needsExplanation(entry: Recorded) = (entry: @unchecked) match { // !!! dotty opaque exhaustivity problem
         case param: TypeParamRef => ctx.typerState.constraint.contains(param)
         case param: ParamRef     => false
         case skolem: SkolemType => true

@@ -24,6 +24,7 @@ import scala.annotation.{ threadUnsafe => tu, tailrec }
 import scala.PartialFunction.condOpt
 
 import dotty.tools.dotc.{semanticdb => s}
+import Symbols.TypeTests.given
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1

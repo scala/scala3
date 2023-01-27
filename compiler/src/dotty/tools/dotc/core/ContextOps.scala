@@ -5,6 +5,7 @@ import Contexts._, Symbols._, Types._, Flags._
 import Denotations._, SymDenotations._
 import Names.Name, StdNames.nme
 import ast.untpd
+import Symbols.TypeTests.given
 
 /** Extension methods for contexts where we want to keep the ctx.<methodName> syntax */
 object ContextOps:

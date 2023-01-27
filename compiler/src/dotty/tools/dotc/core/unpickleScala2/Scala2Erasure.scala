@@ -6,6 +6,7 @@ package unpickleScala2
 import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Phases._
 import Decorators._
 import scala.collection.mutable.ListBuffer
+import Symbols.TypeTests.given
 
 /** Erasure logic specific to Scala 2 symbols. */
 object Scala2Erasure:
@@ -161,7 +162,7 @@ object Scala2Erasure:
        *  pseudo-symbol, if its upper-bound is a sub of that pseudo-symbol.
        */
       def goUpperBound(psym: Symbol | StructuralRef): Boolean =
-        val info = psym match
+        val info = (psym: @unchecked) match // !!! dotty opaque exhaustivity problem
           case sym: Symbol => sym.info
           case tp: StructuralRef => tp.info
         info match
@@ -178,7 +179,7 @@ object Scala2Erasure:
         // is an abstract type upper-bounded by this refinement, since each
         // textual appearance of a refinement will have its own class symbol.
         !that.isInstanceOf[Scala2RefinedType] &&
-        psym.match
+        (psym: @unchecked).match // !!! dotty opaque exhaustivity problem
           case sym1: Symbol => that match
             case sym2: Symbol =>
               if sym1.isClass && sym2.isClass then

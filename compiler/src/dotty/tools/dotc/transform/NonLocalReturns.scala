@@ -7,6 +7,7 @@ import MegaPhase._
 import NameKinds.NonLocalReturnKeyName
 import config.SourceVersion.*
 import Decorators.em
+import Symbols.TypeTests.given
 
 object NonLocalReturns {
   import ast.tpd._
@@ -90,9 +91,9 @@ class NonLocalReturns extends MiniPhase {
   }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
-    nonLocalReturnKeys.remove(tree.symbol) match
-      case key: TermSymbol => cpy.DefDef(tree)(rhs = nonLocalReturnTry(tree.rhs, key, tree.symbol))
-      case null => tree
+    val key = nonLocalReturnKeys.remove(tree.symbol)
+    if key == null then tree
+    else cpy.DefDef(tree)(rhs = nonLocalReturnTry(tree.rhs, key.asTerm, tree.symbol))
 
   override def transformReturn(tree: Return)(using Context): Tree =
     if isNonLocalReturn(tree) then

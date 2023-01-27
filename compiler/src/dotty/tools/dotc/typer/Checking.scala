@@ -39,6 +39,7 @@ import config.Feature.sourceVersion
 import config.SourceVersion._
 import printing.Formatting.hlAsKeyword
 import transform.TypeUtils.*
+import Symbols.TypeTests.given
 
 import collection.mutable
 import reporting._

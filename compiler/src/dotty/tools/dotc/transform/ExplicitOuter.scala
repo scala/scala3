@@ -3,21 +3,15 @@ package dotc
 package transform
 
 import MegaPhase._
-import core.DenotTransformers._
-import core.Symbols._
-import core.Contexts._
-import core.Phases._
-import core.Types._
-import core.Flags._
-import core.Decorators._
-import core.StdNames.nme
-import core.Names._
-import core.NameOps._
-import SymUtils._
+import core.*
+import DenotTransformers.*, Symbols.*, Contexts.*, Phases.*, core.Types.*, Flags.*
+import Decorators.*, Names.*, NameOps.*, SymUtils.*
+import StdNames.nme
 import dotty.tools.dotc.ast.tpd
 
 import collection.mutable
 import scala.annotation.tailrec
+import Symbols.TypeTests.given
 
 /** This phase adds outer accessors to classes and traits that need them.
  *  Compared to Scala 2.x, it tries to minimize the set of classes

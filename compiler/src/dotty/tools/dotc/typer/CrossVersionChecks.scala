@@ -9,6 +9,7 @@ import config.{ScalaVersion, NoScalaVersion, Feature, ScalaRelease}
 import MegaPhase.MiniPhase
 import scala.util.{Failure, Success}
 import ast.tpd
+import Symbols.TypeTests.given
 
 class CrossVersionChecks extends MiniPhase:
   import tpd.*

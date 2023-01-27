@@ -46,6 +46,7 @@ import dotty.tools.tasty.TastyFormat._
 
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
+import Symbols.TypeTests.given
 
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle

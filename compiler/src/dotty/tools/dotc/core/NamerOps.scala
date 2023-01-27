@@ -5,6 +5,7 @@ package core
 import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, Names._, NameOps._
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
 import TypeApplications.EtaExpansion
+import Symbols.TypeTests.given
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:

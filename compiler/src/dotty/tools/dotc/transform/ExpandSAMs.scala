@@ -9,6 +9,7 @@ import MegaPhase._
 import SymUtils._
 import NullOpsDecorator._
 import ast.untpd
+import Symbols.TypeTests.given
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
  *  These fall into five categories

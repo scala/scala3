@@ -2,39 +2,39 @@ package dotty.tools
 package dotc
 package transform
 
-import core.Phases._
-import core.DenotTransformers._
-import core.Denotations._
-import core.SymDenotations._
-import core.Symbols._
-import core.Contexts._
-import core.Types._
-import core.Names._
-import core.StdNames._
-import core.NameOps._
-import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
-import core.Scopes.newScopeWith
-import core.Decorators._
-import core.Constants._
-import core.Definitions._
-import core.Annotations.BodyAnnotation
+import core.*
+import Phases._
+import DenotTransformers._
+import Denotations._
+import SymDenotations._
+import Symbols._
+import Contexts._
+import Types._
+import Names._
+import StdNames._
+import NameOps._
+import NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
+import Scopes.newScopeWith
+import Decorators._
+import Constants._
+import Definitions._
+import Annotations.BodyAnnotation
 import typer.NoChecking
 import inlines.Inlines
 import typer.ProtoTypes._
 import typer.ErrorReporting.errorTree
 import typer.Checking.checkValue
-import core.TypeErasure._
-import core.Decorators._
+import TypeErasure._
+import Decorators._
 import dotty.tools.dotc.ast.{tpd, untpd}
 import ast.TreeTypeMap
-import dotty.tools.dotc.core.{Constants, Flags}
 import ValueClasses._
 import TypeUtils._
 import ContextFunctionResults._
 import ExplicitOuter._
-import core.Mode
 import util.Property
 import reporting._
+import Symbols.TypeTests.given
 
 class Erasure extends Phase with DenotTransformer {
 

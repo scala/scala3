@@ -12,6 +12,7 @@ import core.StdNames.nme
 import SymbolInformation.{Kind => k}
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans.Span
+import core.Symbols.TypeTests.given
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 
@@ -44,7 +45,7 @@ object Scala3:
         else (span.start, span.end)
       val nameInSource = content.slice(start, end).mkString
       // for secondary constructors `this`
-      desig match
+      (desig: @unchecked) match // !!! dotty opaque exhaustivity problem
         case sym: Symbol =>
           if sym.isConstructor && nameInSource == nme.THISkw.toString then
             true
@@ -76,7 +77,7 @@ object Scala3:
 
   given SemanticSymbolOps : AnyRef with
     extension (sym: SemanticSymbol)
-      def name(using Context): Name = sym match
+      def name(using Context): Name = (sym: @unchecked) match  // !!! dotty opaque exhaustivity problem
         case s: Symbol => core.Symbols.name(s)
         case s: WildcardTypeSymbol => nme.WILDCARD
         case s: TermParamRefSymbol => s.name
@@ -84,7 +85,7 @@ object Scala3:
         case s: RefinementSymbol => s.name
 
       def symbolName(using builder: SemanticSymbolBuilder)(using Context): String =
-        sym match
+        (sym: @unchecked) match  // !!! dotty opaque exhaustivity problem
           case s: Symbol => builder.symbolName(s)
           case s: FakeSymbol =>
             s.sname.getOrElse {
@@ -94,7 +95,7 @@ object Scala3:
             }
 
       def symbolInfo(symkinds: Set[SymbolKind])(using LinkMode, TypeOps, SemanticSymbolBuilder, Context): SymbolInformation =
-        sym match
+        (sym: @unchecked) match  // !!! dotty opaque exhaustivity problem
           case s: Symbol =>
             val kind = s.symbolKind(symkinds)
             val sname = sym.symbolName

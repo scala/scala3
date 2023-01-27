@@ -12,6 +12,7 @@ import Names._
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
 import cc.boxedUnlessFun
+import Symbols.TypeTests.given
 
 object TypeApplications {
 
@@ -217,7 +218,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
   final def typeParamSymbols(using Context): List[TypeSymbol] = typeParams match {
     case tparams @ (_: Symbol) :: _ =>
-      assert(tparams.forall(_.isInstanceOf[Symbol]))
+      assert(tparams.forall(_.isSymbol))
       tparams.asInstanceOf[List[TypeSymbol]]
         // Note: Two successive calls to typeParams can yield different results here because
         // of different completion status. I.e. the first call might produce some symbols,

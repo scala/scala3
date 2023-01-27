@@ -12,6 +12,7 @@ import transform.Recheck.*
 import CaptureSet.IdentityCaptRefMap
 import Synthetics.isExcluded
 import util.Property
+import Symbols.TypeTests.given
 
 /** A tree traverser that prepares a compilation unit to be capture checked.
  *  It does the following:

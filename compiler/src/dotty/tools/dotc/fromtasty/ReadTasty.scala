@@ -11,6 +11,7 @@ import Denotations.staticRef
 import NameOps._
 import ast.Trees.Tree
 import Phases.Phase
+import Symbols.TypeTests.given
 
 
 /** Load trees from TASTY files */

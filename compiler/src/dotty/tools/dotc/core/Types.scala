@@ -43,6 +43,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.transform.SymUtils._
+import Symbols.TypeTests.given
 
 object Types {
 
@@ -2719,7 +2720,7 @@ object Types {
       if (prefix eq this.prefix) this
       else if !NamedType.validPrefix(prefix) then UnspecifiedErrorType
       else if (lastDenotation == null) NamedType(prefix, designator)
-      else designator match {
+      else (designator: @unchecked) match {  // !!! dotty opaque exhaustivity problem
         case sym: Symbol =>
           if (infoDependsOnPrefix(sym, prefix) && !prefix.isArgPrefixOf(sym)) {
             val candidate = reload()
@@ -2899,7 +2900,7 @@ object Types {
   }
 
   object NamedType {
-    def isType(desig: Designator)(using Context): Boolean = desig match {
+    def isType(desig: Designator)(using Context): Boolean = (desig: @unchecked) match {  // !!! dotty opaque exhaustivity problem
       case sym: Symbol => sym.isType
       case name: Name => name.isTypeName
     }
@@ -5036,7 +5037,7 @@ object Types {
               TypeAlias(
                 withMode(Mode.CheckCyclic)(
                   LazyRef.of(force))))
-          cinfo.selfInfo match
+          (cinfo.selfInfo: @unchecked) match  // !!! dotty opaque exhaustivity problem
             case self: Type =>
               cinfo.derivedClassInfo(
                 selfInfo = refineSelfType(self.orElse(defn.AnyType)))

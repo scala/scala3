@@ -373,8 +373,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
   /** Return the space that represents the pattern `pat` */
   def project(pat: Tree): Space = pat match {
     case Literal(c) =>
-      if (c.value.isInstanceOf[Symbol])
-        Typ(c.value.asInstanceOf[Symbol].termRef, decomposed = false)
+      if (c.value.isSymbol)
+        Typ(c.value.asSymbol.termRef, decomposed = false)
       else
         Typ(ConstantType(c), decomposed = false)
 

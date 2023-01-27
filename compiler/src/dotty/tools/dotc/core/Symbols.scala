@@ -32,6 +32,7 @@ import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
 import scala.annotation.internal.sharable
 import config.Printers.typr
 import annotation.tailrec
+import scala.reflect.TypeTest
 
 object Symbols {
 
@@ -45,6 +46,19 @@ object Symbols {
 
   opaque type ClassSymbl <: Symbl
     = ClassDenotation
+
+  object TypeTests:
+
+    given SymTest: TypeTest[AnyRef, Symbol] with
+      def unapply(x: AnyRef): Option[x.type & Symbol] = x match
+        case sd: SymDenotation => Some(sd.asInstanceOf)
+        case _ => None
+
+    given ClsTest: TypeTest[AnyRef, ClassSymbol] with
+      def unapply(x: AnyRef): Option[x.type & ClassSymbol] = x match
+        case cd: ClassDenotation => Some(cd.asInstanceOf)
+        case _ => None
+  end TypeTests
 
   /** A Symbol represents a Scala definition/declaration or a package.
    *  @param coord  The coordinates of the symbol (a position or an index)
@@ -84,7 +98,7 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  extension (x: AnyRef)
+  extension (x: Any)
     inline def isSymbol: Boolean = x.isInstanceOf[Symbol]
     inline def asSymbol: Symbol = x.asInstanceOf[Symbol]
 

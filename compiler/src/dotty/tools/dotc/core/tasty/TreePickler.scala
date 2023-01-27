@@ -19,6 +19,7 @@ import config.Config
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
+import core.Symbols.TypeTests.given
 
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
@@ -212,7 +213,7 @@ class TreePickler(pickler: TastyPickler) {
           report.error(em"pickling reference to as yet undefined $tpe with symbol ${sym}", sym.srcPos)
         pickleSymRef(sym)
       }
-      else tpe.designator match {
+      else (tpe.designator: @unchecked) match {  // !!! dotty opaque exhaustivity problem
         case name: Name =>
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleName(name); pickleType(tpe.prefix)
@@ -598,7 +599,7 @@ class TreePickler(pickler: TastyPickler) {
               else {
                 if (!tree.self.isEmpty) registerTreeAddr(tree.self)
                 pickleType {
-                  selfInfo match {
+                  (selfInfo: @unchecked) match {  // !!! dotty opaque exhaustivity problem
                     case sym: Symbol => sym.info
                     case tp: Type => tp
                   }

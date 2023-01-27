@@ -28,6 +28,7 @@ import transform.TypeUtils._
 import cc.{CapturingType, derivedCapturingType, Setup, EventuallyCapturingType, isEventuallyCapturingType}
 
 import scala.annotation.internal.sharable
+import Symbols.TypeTests.given
 
 object SymDenotations {
 
@@ -1993,7 +1994,7 @@ object SymDenotations {
     /** The explicitly given self type (self types of modules are assumed to be
      *  explcitly given here).
      */
-    def givenSelfType(using Context): Type = classInfo.selfInfo match {
+    def givenSelfType(using Context): Type = (classInfo.selfInfo: @unchecked) match { // !!! dotty problem: opaque exhaustive
       case tp: Type => tp
       case self: Symbol => self.info
     }
