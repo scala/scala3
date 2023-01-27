@@ -2088,7 +2088,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           def tparamBounds =
             val bounds =
               tparam.paramInfoAsSeenFrom(tpt1.tpe.appliedTo(tparams.map(_ => TypeBounds.empty)))
-            if tparam.isInstanceOf[Symbol] then bounds
+            if tparam.isSymbol then bounds
             else sanitizeBounds(bounds, tpt1.tpe)
           val (desugaredArg, argPt) =
             if ctx.mode.is(Mode.Pattern) then

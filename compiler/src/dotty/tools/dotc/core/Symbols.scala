@@ -84,6 +84,10 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
+  extension (x: AnyRef)
+    inline def isSymbol: Boolean = x.isInstanceOf[Symbol]
+    inline def asSymbol: Symbol = x.asInstanceOf[Symbol]
+
   extension (_self: Symbol)
     def self = _self.initialDenot
 

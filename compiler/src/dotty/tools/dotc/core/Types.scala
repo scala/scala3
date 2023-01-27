@@ -2221,7 +2221,7 @@ object Types {
 
     private def computeName: Name = designator match {
       case name: Name => name
-      case sym: Symbol => sym.originDenotation.name
+      case sym => sym.asSymbol.originDenotation.name
     }
 
     final override def signature(using Context): Signature =
@@ -2272,10 +2272,12 @@ object Types {
       else computeSymbol
 
     private def computeSymbol(using Context): Symbol =
-      val result = designator match
-        case sym: Symbol =>
-          if (sym.isValidInCurrentRun) sym else denot.symbol
-        case name =>
+      val desig = designator
+      val result =
+        if desig.isSymbol then
+          val sym = desig.asSymbol
+          if sym.isValidInCurrentRun then sym else denot.symbol
+        else
           (if (denotationIsCurrent) lastDenotation.asInstanceOf[Denotation] else denot).symbol
       if checkedPeriod.code != NowhereCode then checkedPeriod = ctx.period
       result
@@ -2295,10 +2297,11 @@ object Types {
      *  type accumulators, as well as to be safe in diagnostic printing.
      *  Normally, it's better to use `symbol`, not `currentSymbol`.
      */
-    final def currentSymbol(using Context): Symbol = designator match {
-      case sym: Symbol => sym
-      case _ => if (denotationIsCurrent) lastDenotation.nn.symbol else NoSymbol
-    }
+    final def currentSymbol(using Context): Symbol =
+      val desig = designator
+      if desig.isSymbol then desig.asSymbol
+      else if denotationIsCurrent then lastDenotation.nn.symbol
+      else NoSymbol
 
     /** Retrieves currently valid symbol without necessarily updating denotation.
      *  Assumes that symbols do not change between periods in the same run.
@@ -2340,7 +2343,8 @@ object Types {
           val sym = lastSymbol
           val allowPrivate = sym == null || (sym == NoSymbol) || sym.lastKnownDenotation.flagsUNSAFE.is(Private)
           finish(memberDenot(name, allowPrivate))
-        case sym: Symbol =>
+        case desig =>
+          val sym = desig.asSymbol
           val symd = sym.lastKnownDenotation
           if (symd.validFor.runId != ctx.runId && !stillValid(symd))
             finish(memberDenot(symd.initial.name, allowPrivate = false))
@@ -2452,11 +2456,8 @@ object Types {
       val lastSym = denot.symbol.asInstanceOf[Symbol]
       lastSymbol = lastSym
       checkedPeriod = if (prefix.isProvisional) Nowhere else ctx.period
-      designator match {
-        case sym: Symbol if designator ne lastSym =>
-          designator = lastSym
-        case _ =>
-      }
+      if designator.isSymbol && (designator ne lastSym) then
+        designator = lastSym
       checkDenot()
     }
 
@@ -2675,7 +2676,7 @@ object Types {
         val adapted = withSym(denot.symbol)
         val result =
           if (adapted.eq(this)
-              || designator.isInstanceOf[Symbol]
+              || designator.isSymbol
               || !adapted.denotationIsCurrent
               || adapted.info.eq(denot.info))
             adapted
@@ -2864,12 +2865,12 @@ object Types {
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
-    assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
+    assert((prefix ne NoPrefix) || designator.isSymbol)
     myHash = hc
   }
 
   final class CachedTypeRef(prefix: Type, designator: Designator, hc: Int) extends TypeRef(prefix, designator) {
-    assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
+    assert((prefix ne NoPrefix) || designator.isSymbol)
     myHash = hc
   }
 
