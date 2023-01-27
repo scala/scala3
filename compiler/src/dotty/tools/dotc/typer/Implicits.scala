@@ -923,11 +923,21 @@ trait Implicits:
           // example where searching for a nested type causes an infinite loop.
           None
 
+    def allImplicits(currImplicits: ContextualImplicits): List[ImplicitRef] =
+      if currImplicits.outerImplicits == null then currImplicits.refs
+      else currImplicits.refs ::: allImplicits(currImplicits.outerImplicits)
+
     def ignoredConversions = arg.tpe match
       case fail: SearchFailureType =>
+        // Get every implicit in scope and find Conversions for each
         if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
-          ctx.implicits.eligible(ViewProto(WildcardType, wildApprox(fail.expectedType)))
-            .collect { case c if c.isConversion => c.ref }
+          // todo filter out implicit conversions
+          allImplicits(ctx.implicits).map { imp =>
+            // todo imp.underlyingRef.underlying does not work for implicit functions or givens
+            // with type or implicit parameters
+            val convs = ctx.implicits.eligible(ViewProto(imp.underlyingRef.underlying, wildApprox(fail.expectedType)))
+            (imp.underlyingRef, convs.map(_.ref))
+          }.filter(_._2.nonEmpty)
         else
           Nil
 

@@ -2555,7 +2555,7 @@ class MissingImplicitArgument(
     where: String,
     paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
     ignoredInstanceNormalImport: => Option[SearchSuccess],
-    ignoredConversions: => Iterable[TermRef]
+    ignoredConversions: => Iterable[(TermRef, Iterable[TermRef])]
   )(using Context) extends TypeMsg(MissingImplicitArgumentID), ShowMatchTrace(pt):
 
   arg.tpe match
@@ -2744,12 +2744,18 @@ class MissingImplicitArgument(
         // show all available additional info
         def hiddenImplicitNote(s: SearchSuccess) =
           i"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
-        def noChainConversionsNote(ignoredConversions: Iterable[TermRef]): Option[String] =
+        def showImplicitAndConversions(imp: TermRef, convs: Iterable[TermRef]) =
+          i"\n- ${imp.symbol.showDcl}${convs.map(c => "\n    - " + c.symbol.showDcl).mkString}"
+        def noChainConversionsNote(ignoredConversions: Iterable[(TermRef, Iterable[TermRef])]): Option[String] = {
+          val convsFormatted = ignoredConversions.map{ (imp, convs) =>
+            i"\n- ${imp.symbol.showDcl}${convs.map(c => "\n    - " + c.symbol.showDcl).mkString}"
+          }.mkString
           Option.when(ignoredConversions.nonEmpty)(
               i"\n\nNote: implicit conversions are not automatically applied to arguments of using clauses. " +
               i"You will have to pass the argument explicitly.\n" +
-              i"The following conversions in scope result in ${pt.show}: ${ignoredConversions.map(g => s"\n  - ${g.symbol.showDcl}").mkString}"
+              i"The following conversions in scope result in ${pt.show}: $convsFormatted"
           )
+        }
         super.msgPostscript
         ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
             .orElse(noChainConversionsNote(ignoredConversions))
