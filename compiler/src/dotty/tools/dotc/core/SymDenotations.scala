@@ -73,7 +73,7 @@ object SymDenotations {
   class SymDenotation private[SymDenotations] (
     symbolHint: Symbol | Null,
     final val common: SymCommon,
-    final val maybeOwner: Symbol,
+    ownerOrNull: Symbol | Null,
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
@@ -91,6 +91,9 @@ object SymDenotations {
     */
     if (Config.checkNoSkolemsInInfo) assertNoSkolems(initInfo)
 
+    final def maybeOwner: Symbol =
+      if ownerOrNull == null then NoSymbol else ownerOrNull
+
     // ------ Getting and setting fields -----------------------------
 
     private var myFlags: FlagSet = adaptFlags(initFlags)
@@ -99,7 +102,9 @@ object SymDenotations {
     private var myParamss: List[List[Symbol]] = Nil
 
     /** The owner of the symbol; overridden in NoDenotation */
-    def owner: Symbol = maybeOwner
+    final def owner: Symbol =
+      assert(ownerOrNull != null, "NoDenotation.owner")
+      ownerOrNull
 
     /** The flag set */
     final def flags(using Context): FlagSet = { ensureCompleted(); myFlags }
@@ -2057,8 +2062,8 @@ object SymDenotations {
       val builder = new BaseDataBuilder
       def traverse(parents: List[Type]): Unit = parents match {
         case p :: parents1 =>
-          p.classSymbol match {
-            case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
+          p.classSymbol.denot match {
+            case pcls: ClassDenotation => builder.addAll(pcls.baseClasses)
             case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
           }
           traverse(parents1)
@@ -2414,8 +2419,8 @@ object SymDenotations {
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       try {
         for ptype <- parentTypes do
-          ptype.classSymbol match
-            case pcls: ClassSymbol =>
+          ptype.classSymbol.denot match
+            case pcls: ClassDenotation =>
               for name <- pcls.memberNames(keepOnly) do
                 maybeAdd(name)
         val ownSyms =
@@ -2678,10 +2683,9 @@ object SymDenotations {
   }
 
   @sharable object NoDenotation
-  extends SymDenotation(NoSymbol, SymCommon(NoCoord, 0, 0), NoSymbol, "<none>".toTermName, Permanent, NoType) {
+  extends SymDenotation(NoSymbol, SymCommon(NoCoord, 0, 0), null, "<none>".toTermName, Permanent, NoType) {
     override def isTerm: Boolean = false
     override def exists: Boolean = false
-    override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(using Context): SingleDenotation = this
     override def asSeenFrom(pre: Type)(using Context): AsSeenFromResult = this
