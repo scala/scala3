@@ -1213,10 +1213,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genLoadModule(tree: Tree): BType = {
       val module = (
         if (!tree.symbol.is(PackageClass)) tree.symbol
-        else tree.symbol.info.member(nme.PACKAGE).symbol match {
-          case NoSymbol => abort(s"SI-5604: Cannot use package as value: $tree")
-          case s        => abort(s"SI-5604: found package class where package object expected: $tree")
-        }
+        else
+          val s = tree.symbol.info.member(nme.PACKAGE).symbol
+          if s.exists
+          then abort(s"SI-5604: found package class where package object expected: $tree")
+          else abort(s"SI-5604: Cannot use package as value: $tree")
       )
       lineNumber(tree)
       genLoadModule(module)

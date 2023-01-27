@@ -428,9 +428,8 @@ object Comments {
      *  @param vble  The variable for which a definition is searched
      *  @param site  The class for which doc comments are generated
      */
-    def lookupVariable(vble: String, site: Symbol)(using Context): Option[String] = site match {
-      case NoSymbol => None
-      case _        =>
+    def lookupVariable(vble: String, site: Symbol)(using Context): Option[String] =
+      if site.exists then
         val searchList =
           if (site.flags.is(Flags.Module)) site :: site.info.baseClasses
           else site.info.baseClasses
@@ -439,7 +438,7 @@ object Comments {
           case Some(str) if str startsWith "$" => lookupVariable(str.tail, site)
           case res                             => res orElse lookupVariable(vble, site.owner)
         }
-    }
+      else None
 
     /** The position of the raw doc comment of symbol `sym`, or NoPosition if missing
      *  If a symbol does not have a doc comment but some overridden version of it does,

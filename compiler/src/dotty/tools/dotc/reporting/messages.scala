@@ -712,9 +712,9 @@ extends SyntaxMsg(WrongNumberOfTypeArgsID) {
       .mkString("[", ", ", "]")
     val actualArgString = actual.map(_.show).mkString("[", ", ", "]")
     val prettyName =
-      try fntpe.termSymbol match
-        case NoSymbol => fntpe.show
-        case symbol   => symbol.showFullName
+      try
+        val symbol = fntpe.termSymbol
+        if symbol.exists then symbol.showFullName else fntpe.show
       catch case NonFatal(ex) => fntpe.show
     i"""|$msgPrefix type arguments for $prettyName$expectedArgString
         |expected: $expectedArgString
