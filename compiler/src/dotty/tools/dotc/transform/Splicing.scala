@@ -242,9 +242,14 @@ class Splicing extends MacroTransform:
                 else args.mapConserve(arg => transformLevel0QuoteContent(arg)(using quoteContext))
               }
               cpy.Apply(tree)(cpy.Select(sel)(cpy.Apply(app)(fn, newArgs), nme.apply), quotesArgs)
-        case Apply(TypeApply(_, List(tpt)), List(quotes))
+        case Apply(TypeApply(typeof, List(tpt)), List(quotes))
         if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
-          ref(capturedType(tpt))(using ctx.withSource(tree.source)).withSpan(tree.span)
+          tpt match
+            case block: Block =>
+              val newBlock = capturedBlockPartTypes(block)
+              Apply(TypeApply(typeof, List(newBlock)), List(quotes)).withSpan(tree.span)
+            case _ =>
+              ref(capturedType(tpt))(using ctx.withSource(tree.source)).withSpan(tree.span)
         case CapturedApplication(fn, argss) =>
           transformCapturedApplication(tree, fn, argss)
         case _ =>
@@ -335,16 +340,38 @@ class Splicing extends MacroTransform:
       val bindingSym = refBindingMap.getOrElseUpdate(tree.symbol, (tree, newBinding))._2
       ref(bindingSym)
 
-    private def capturedType(tree: Tree)(using Context): Symbol =
-      val tpe = tree.tpe.widenTermRefExpr
-      def newBinding = newSymbol(
+    private def newQuotedTypeClassBinding(tpe: Type)(using Context) = 
+      newSymbol(
         spliceOwner,
         UniqueName.fresh(nme.Type).toTermName,
         Param,
         defn.QuotedTypeClass.typeRef.appliedTo(tpe),
       )
-      val bindingSym = refBindingMap.getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newBinding))._2
+
+    private def capturedType(tree: Tree)(using Context): Symbol =
+      val tpe = tree.tpe.widenTermRefExpr
+      val bindingSym = refBindingMap
+        .getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tpe)))._2
       bindingSym
+
+    private def capturedBlockPartTypes(block: Block)(using Context): Tree =
+      val old = healedTypes
+      healedTypes = PCPCheckAndHeal.QuoteTypeTags(block.span)
+      val capturePartTypes = new TypeMap {
+        def apply(tp: Type) = tp match {
+          case typeRef @ TypeRef(prefix, _) if isCaptured(prefix.typeSymbol) || isCaptured(prefix.termSymbol) =>
+            val termRef = refBindingMap
+              .getOrElseUpdate(typeRef.symbol, (TypeTree(typeRef), newQuotedTypeClassBinding(typeRef)))._2.termRef
+            val tagRef = healedTypes.nn.getTagRef(termRef)
+            tagRef
+          case _ =>
+            mapOver(tp)
+        }
+      }
+      val captured = capturePartTypes(block.tpe.widenTermRefExpr)
+      val newHealedTypes = healedTypes.nn.getTypeTags
+      healedTypes = old
+      Block(newHealedTypes ::: block.stats, TypeTree(captured))
 
     private def getTagRefFor(tree: Tree)(using Context): Tree =
       val capturedTypeSym = capturedType(tree)
