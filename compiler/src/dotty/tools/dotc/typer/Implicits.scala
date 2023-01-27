@@ -935,8 +935,17 @@ trait Implicits:
           allImplicits(ctx.implicits).map { imp =>
             // todo imp.underlyingRef.underlying does not work for implicit functions or givens
             // with type or implicit parameters
-            val convs = ctx.implicits.eligible(ViewProto(imp.underlyingRef.underlying, wildApprox(fail.expectedType)))
-            (imp.underlyingRef, convs.map(_.ref))
+            val impRef = imp.underlyingRef
+            val impResultType = wildApprox(impRef.underlying.finalResultType)
+            val convs = ctx.implicits.eligible(ViewProto(impResultType, fail.expectedType))
+              .filter { conv =>
+                if !conv.isConversion then false
+                else
+                  // Actually feed the summoned implicit into the Conversion to
+                  // check if it works
+                  true
+              }
+            (impRef, convs.map(_.ref))
           }.filter(_._2.nonEmpty)
         else
           Nil

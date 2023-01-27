@@ -2748,7 +2748,7 @@ class MissingImplicitArgument(
           i"\n- ${imp.symbol.showDcl}${convs.map(c => "\n    - " + c.symbol.showDcl).mkString}"
         def noChainConversionsNote(ignoredConversions: Iterable[(TermRef, Iterable[TermRef])]): Option[String] = {
           val convsFormatted = ignoredConversions.map{ (imp, convs) =>
-            i"\n- ${imp.symbol.showDcl}${convs.map(c => "\n    - " + c.symbol.showDcl).mkString}"
+            s"\n- ${imp.symbol.showDcl}${convs.map(c => "\n    - " + c.symbol.showDcl).mkString}"
           }.mkString
           Option.when(ignoredConversions.nonEmpty)(
               i"\n\nNote: implicit conversions are not automatically applied to arguments of using clauses. " +
