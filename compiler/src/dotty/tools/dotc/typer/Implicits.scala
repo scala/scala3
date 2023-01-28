@@ -927,26 +927,33 @@ trait Implicits:
       if currImplicits.outerImplicits == null then currImplicits.refs
       else currImplicits.refs ::: allImplicits(currImplicits.outerImplicits)
 
+    /** Ensure an implicit is not a Scala 2-style implicit conversion, based on its type */
+    def notImplicitConv(typ: Type): Boolean = typ match {
+      case PolyType(_, resType) => notImplicitConv(resType)
+      case mt: MethodType => mt.isImplicitMethod || mt.isContextualMethod
+      case _ => true
+    }
+
     def ignoredConversions = arg.tpe match
       case fail: SearchFailureType =>
         // Get every implicit in scope and find Conversions for each
         if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
           // todo filter out implicit conversions
-          allImplicits(ctx.implicits).map { imp =>
-            // todo imp.underlyingRef.underlying does not work for implicit functions or givens
-            // with type or implicit parameters
-            val impRef = imp.underlyingRef
-            val impResultType = wildApprox(impRef.underlying.finalResultType)
-            val convs = ctx.implicits.eligible(ViewProto(impResultType, fail.expectedType))
-              .filter { conv =>
-                if !conv.isConversion then false
-                else
-                  // Actually feed the summoned implicit into the Conversion to
-                  // check if it works
-                  true
-              }
-            (impRef, convs.map(_.ref))
-          }.filter(_._2.nonEmpty)
+          allImplicits(ctx.implicits)
+            .filter(imp => notImplicitConv(imp.underlyingRef.underlying))
+            .map { imp =>
+              val impRef = imp.underlyingRef
+              val impResultType = wildApprox(impRef.underlying.finalResultType)
+              val convs = ctx.implicits.eligible(ViewProto(impResultType, fail.expectedType))
+                .filter { conv =>
+                  if !conv.isConversion then false
+                  else
+                    // TODO Actually feed the summoned implicit into the Conversion to
+                    // check if it works
+                    true
+                }
+              (impRef, convs.map(_.ref))
+            }.filter(_._2.nonEmpty)
         else
           Nil
 
