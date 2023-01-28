@@ -39,13 +39,16 @@ final public class DelegatingReporter extends AbstractReporter {
     StringBuilder rendered = new StringBuilder();
     rendered.append(messageAndPos(dia, ctx));
     Message message = dia.msg();
+    StringBuilder messageBuilder = new StringBuilder();
+    messageBuilder.append(message.message());
     String diagnosticCode = String.valueOf(message.errorId().errorNumber());
     boolean shouldExplain = Diagnostic.shouldExplain(dia, ctx);
     if (shouldExplain && !message.explanation().isEmpty()) {
       rendered.append(explanation(message, ctx));
+      messageBuilder.append(System.lineSeparator()).append(explanation(message, ctx));
     }
 
-    delegate.log(new Problem(position, message.message(), severity, rendered.toString(), diagnosticCode));
+    delegate.log(new Problem(position, messageBuilder.toString(), severity, rendered.toString(), diagnosticCode));
   }
 
   private static Severity severityOf(int level) {
