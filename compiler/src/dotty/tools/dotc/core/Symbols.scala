@@ -20,6 +20,7 @@ import StdNames._
 import NameOps._
 import transform.SymUtils._
 import NameKinds.LazyImplicitName
+import Annotations.Annotation
 import ast.tpd
 import tpd.{Tree, TreeProvider, TreeOps, EmptyTree, NameTree}
 import ast.TreeTypeMap
@@ -180,6 +181,9 @@ object Symbols {
     /** The last known denotation of this symbol, without going through `current` */
     def lastKnownDenotation: SymDenotation = lastDenot
 
+    def classDenot(using Context): ClassDenotation =
+      _self.denot.asInstanceOf[ClassDenotation]
+
     private[core] def defRunId: RunId =
       lastDenot.validFor.runId
 
@@ -270,9 +274,9 @@ object Symbols {
           case owner: ClassSymbol =>
             if owner.is(Package) then
               d.validFor |= InitialPeriod
-              if d.is(Module) then d.moduleClass.validFor |= InitialPeriod
+              if d.is(Module) then d.moduleClass.denot.validFor |= InitialPeriod
             else
-              owner.ensureFreshScopeAfter(phase)
+              owner.classDenot.ensureFreshScopeAfter(phase)
             assert(isPrivate || phase.changesMembers, i"$_self entered in $owner at undeclared phase $phase")
             _self.entered
           case _ => _self
@@ -280,8 +284,8 @@ object Symbols {
     /** Remove symbol from scope of owning class */
     final def drop()(using Context): Unit =
       val d = denot
-      d.owner.asClass.delete(_self)
-      if d.is(Module) then d.owner.asClass.delete(d.moduleClass)
+      d.owner.classDenot.delete(_self)
+      if d.is(Module) then d.owner.classDenot.delete(d.moduleClass)
 
     /** Remove symbol from scope of owning class after given `phase`. Create a fresh
      *  denotation for its owner class if the class does not already have one that starts being valid after `phase`.
@@ -293,7 +297,7 @@ object Symbols {
       else
         val d = denot
         assert(!d.owner.is(Package))
-        d.owner.asClass.ensureFreshScopeAfter(phase)
+        d.owner.classDenot.ensureFreshScopeAfter(phase)
         assert(isPrivate || phase.changesMembers, i"$_self deleted in ${d.owner} at undeclared phase $phase")
         drop()
 
@@ -365,6 +369,39 @@ object Symbols {
       else
         _self
 
+    def exists(using Context): Boolean = _self.denot.exists
+    def owner(using Context): Symbol = _self.denot.owner
+    def typeParams(using Context): List[TypeSymbol] = _self.denot.typeParams
+    def thisType(using Context): Type = _self.denot.thisType
+    def typeRef(using Context): TypeRef = _self.denot.typeRef
+    def termRef(using Context): TermRef = _self.denot.termRef
+    def isCompleted(using Context): Boolean = _self.denot.isCompleted
+    def isCompleting(using Context): Boolean = _self.denot.isCompleting
+    def ensureCompleted()(using Context): Unit = _self.denot.ensureCompleted()
+    def unforcedDecls(using Context): Scope = _self.denot.unforcedDecls
+    def appliedRef(using Context): Type = _self.denot.appliedRef
+    def namedType(using Context): NamedType = _self.denot.namedType
+    def unforcedAnnotation(cls: Symbol)(using Context): Option[Annotation] = _self.denot.unforcedAnnotation(cls)
+    def children(using Context): List[Symbol] = _self.denot.children
+    def topLevelClass(using Context): Symbol = _self.denot.topLevelClass
+    def moduleClass(using Context): Symbol = _self.denot.moduleClass
+    def sourceModule(using Context): Symbol = _self.denot.sourceModule
+    def underlyingSymbol(using Context): Symbol = _self.denot.underlyingSymbol
+    def ownersIterator(using Context): Iterator[Symbol] = _self.denot.ownersIterator
+    def enclosingClass(using Context): Symbol = _self.denot.enclosingClass
+    def enclosingMethod(using Context): Symbol = _self.denot.enclosingMethod
+    def typeParamCreationFlags(using Context): FlagSet = _self.denot.typeParamCreationFlags
+    //def is(flag: Flag)(using Context): Boolean = _self.denot.is(flag)
+    //def is(flag: Flag, butNot: FlagSet)(using Context): Boolean = _self.denot.is(flag, butNot)
+    //def isOneOf(fs: FlagSet)(using Context): Boolean = _self.denot.isOneOf(fs)
+    //def isOneOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean = _self.denot.isOneOf(fs, butNot)
+    //def isAllOf(fs: FlagSet)(using Context): Boolean = _self.denot.isAllOf(fs)
+    //def isAllOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean = _self.denot.isAllOf(fs, butNot)
+    // !!! Dotty problem: overloaded extension methods here lead to failures like
+    // Assertion failed: data race? overwriting method isAllOf with method isAllOf in type TermRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix,module class dotc)),object core),object Symbols),isAllOf),
+    // |last sym id = 10301, new sym id = 10299,
+    // |last owner = module class Symbols$, new owner = module class Symbols$,
+
     // SrcPos types and methods // !!! make them use lastDenot?
     def span: Span = self.span
     def sourcePos(using Context): SourcePosition = self.sourcePos
@@ -410,6 +447,8 @@ object Symbols {
     def showKind(using Context): String = ctx.printer.kindString(_self)
     def showName(using Context): String = ctx.printer.nameString(_self)
     def showFullName(using Context): String = ctx.printer.fullNameString(_self)
+
+    def debugString: String = self.debugString
 
   end extension
 
@@ -474,7 +513,7 @@ object Symbols {
 
     def sourceOfClass(using Context): SourceFile =
       val common = _self.lastKnownDenotation.common.asClass
-      if !common.source.exists && !_self.denot.is(Package) then
+      if !common.source.exists && !_self.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = _self.associatedFile
         if file != null && file.extension != "class" then
@@ -491,8 +530,10 @@ object Symbols {
             }
       common.source
 
-    def classDenot(using Context): ClassDenotation =
-      _self.denot.asInstanceOf[ClassDenotation]
+    private def enter(sym: Symbol, scope: Scope = EmptyScope)(using Context): Unit =
+      _self.classDenot.enter(sym, scope)
+
+    def classInfo(using Context): ClassInfo = _self.classDenot.classInfo
 
   end extension
 

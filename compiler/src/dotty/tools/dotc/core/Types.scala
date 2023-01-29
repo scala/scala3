@@ -2501,6 +2501,7 @@ object Types {
             s"""data race? overwriting $lastSym with $sym in type $this,
              |last sym id = ${lastSym.id}, new sym id = ${sym.id},
              |last owner = ${lastSym.owner}, new owner = ${sym.owner},
+             |last info = ${lastSym.infoOrCompleter}, new info = ${sym.infoOrCompleter}
              |period = ${ctx.phase} at run ${ctx.runId}""" })
     }
 
@@ -2785,7 +2786,10 @@ object Types {
     override def isOverloaded(using Context): Boolean = denot.isOverloaded
 
     def alternatives(using Context): List[TermRef] =
-      denot.alternatives.map(withDenot(_))
+      try denot.alternatives.map(withDenot(_))
+      catch case ex: AssertionError =>
+        println(i"error while alts ${denot.alternatives}")
+        throw ex
 
     def altsWith(p: Symbol => Boolean)(using Context): List[TermRef] =
       denot.altsWith(p).map(withDenot(_))
