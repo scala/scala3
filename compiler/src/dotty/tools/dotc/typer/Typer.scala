@@ -864,19 +864,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               report.error(WildcardOnTypeArgumentNotAllowedOnNew(), targ.srcPos)
           case _ =>
         }
-        tpt1.tpe match {
-          case EventuallyCapturingType(parents, cs) =>
-            // Note that `cs.elems.size` must be 1 (ensured by parser).
-            assert(cs.elems.size == 1,
-              i"New-expr-with-safe-zone syntax accepts exactly one instance of SafeZone.")
-            val head = cs.elems.toList.head
-            if !TypeComparer.isSubType(head, defn.NativeSafeZoneType) then
-              val CapturingTypeTree(List(sz), _) = tree.tpt: @unchecked
-              report.error(
-                TypeMismatch(head, defn.NativeSafeZoneType, Some(tree),
-                "\nNote that new-expr-with-safe-zone syntax is only supported in Scala Native environment."), sz.srcPos)
-          case _ =>
-        }
         assignType(cpy.New(tree)(tpt1), tpt1)
     }
 
@@ -2960,7 +2947,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
         def typedUnnamed(tree: untpd.Tree): Tree = tree match {
           case tree: untpd.Apply =>
-            if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
+            if (ctx.mode is Mode.Pattern)
+              typedUnApply(tree, pt)
+            else
+              tree match {
+                case tApp @ untpd.Apply(tSelect @ untpd.Select(tNew @ untpd.New(untpd.CapturingTypeTree(List(sz), parent)), _), _)  =>
+                  // For the new expression with a specified safe zone, e.g. `new {sz} T(...)`
+                  // rewrite it to `scala.scalanative.safe.SafeZoneCompat.withSafeZone(sz, new T(...))`
+                  import scala.util.{Try, Failure}
+                  Try(defn.NativeWithSafeZoneMethod.sym) match
+                    case Failure(ex: TypeError) =>
+                      report.error(
+                        em"""Specifying a safe zone in the instance creation expression is only supported in Scala Native.
+                            |Please check the current environment.""", sz.srcPos)
+                    case _ =>
+                  import untpd._
+                  val tNew1 = cpy.New(tNew)(parent)
+                  val tSelect1 = cpy.Select(tSelect)(tNew1, tSelect.name)
+                  val tApp1 = cpy.Apply(tApp)(tSelect1, tApp.args)
+                  val tApp2 = Apply(defn.NativeWithSafeZoneMethod.genTree, List(sz, tApp1))
+                  typedApply(tApp2, pt)
+                case _ => typedApply(tree, pt)
+              }
           case tree: untpd.This => typedThis(tree)
           case tree: untpd.Number => typedNumber(tree, pt)
           case tree: untpd.Literal => typedLiteral(tree)

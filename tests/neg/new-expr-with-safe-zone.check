@@ -1,0 +1,9 @@
+-- Error: tests/neg/new-expr-with-safe-zone.scala:9:18 -----------------------------------------------------------------
+9 |    val a1 = new {str} A(0) // error // error
+  |                  ^^^
+  |                  Specifying a safe zone in the instance creation expression is only supported in Scala Native.
+  |                  Please check the current environment.
+-- Error: tests/neg/new-expr-with-safe-zone.scala:9:13 -----------------------------------------------------------------
+9 |    val a1 = new {str} A(0) // error // error
+  |             ^
+  |             package scala.scalanative.safe.SafeZoneCompat does not have a member method withSafeZone
