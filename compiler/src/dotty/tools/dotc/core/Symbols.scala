@@ -272,7 +272,7 @@ object Symbols {
         val d = denot
         d.owner match
           case owner: ClassSymbol =>
-            if owner.is(Package) then
+            if owner._is(Package) then
               d.validFor |= InitialPeriod
               if d.is(Module) then d.moduleClass.denot.validFor |= InitialPeriod
             else
@@ -296,7 +296,7 @@ object Symbols {
         atPhase(phase.next)(dropAfter(phase))
       else
         val d = denot
-        assert(!d.owner.is(Package))
+        assert(!d.owner._is(Package))
         d.owner.classDenot.ensureFreshScopeAfter(phase)
         assert(isPrivate || phase.changesMembers, i"$_self deleted in ${d.owner} at undeclared phase $phase")
         drop()
@@ -362,7 +362,7 @@ object Symbols {
         d.moduleClass.sourceSymbol // The module val always has a zero-extent position
       else if d.is(Synthetic) then
         val linked = d.linkedClass
-        if linked.exists && !linked.is(Synthetic) then linked
+        if linked.exists && !linked._is(Synthetic) then linked
         else d.owner.sourceSymbol
       else if d.isPrimaryConstructor then
         d.owner.sourceSymbol
@@ -375,6 +375,7 @@ object Symbols {
     def thisType(using Context): Type = _self.denot.thisType
     def typeRef(using Context): TypeRef = _self.denot.typeRef
     def termRef(using Context): TermRef = _self.denot.termRef
+    def _info(using Context): Type = _self.denot.info
     def isCompleted(using Context): Boolean = _self.denot.isCompleted
     def isCompleting(using Context): Boolean = _self.denot.isCompleting
     def ensureCompleted()(using Context): Unit = _self.denot.ensureCompleted()
@@ -391,12 +392,12 @@ object Symbols {
     def enclosingClass(using Context): Symbol = _self.denot.enclosingClass
     def enclosingMethod(using Context): Symbol = _self.denot.enclosingMethod
     def typeParamCreationFlags(using Context): FlagSet = _self.denot.typeParamCreationFlags
-    //def is(flag: Flag)(using Context): Boolean = _self.denot.is(flag)
-    //def is(flag: Flag, butNot: FlagSet)(using Context): Boolean = _self.denot.is(flag, butNot)
-    //def isOneOf(fs: FlagSet)(using Context): Boolean = _self.denot.isOneOf(fs)
-    //def isOneOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean = _self.denot.isOneOf(fs, butNot)
-    //def isAllOf(fs: FlagSet)(using Context): Boolean = _self.denot.isAllOf(fs)
-    //def isAllOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean = _self.denot.isAllOf(fs, butNot)
+    def _is(flag: Flag)(using Context): Boolean = _self.denot.is(flag)
+    def _is(flag: Flag, butNot: FlagSet)(using Context): Boolean = _self.denot.is(flag, butNot)
+    def _isOneOf(fs: FlagSet)(using Context): Boolean = _self.denot.isOneOf(fs)
+    def _isOneOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean = _self.denot.isOneOf(fs, butNot)
+    def _isAllOf(fs: FlagSet)(using Context): Boolean = _self.denot.isAllOf(fs)
+    def _isAllOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean = _self.denot.isAllOf(fs, butNot)
     // !!! Dotty problem: overloaded extension methods here lead to failures like
     // Assertion failed: data race? overwriting method isAllOf with method isAllOf in type TermRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix,module class dotc)),object core),object Symbols),isAllOf),
     // |last sym id = 10301, new sym id = 10299,
@@ -513,7 +514,7 @@ object Symbols {
 
     def sourceOfClass(using Context): SourceFile =
       val common = _self.lastKnownDenotation.common.asClass
-      if !common.source.exists && !_self.is(Package) then
+      if !common.source.exists && !_self._is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = _self.associatedFile
         if file != null && file.extension != "class" then
@@ -664,7 +665,7 @@ object Symbols {
       owner, name, modFlags | ModuleValCreationFlags, NoCompleter, privateWithin, coord)
     val modcls = newClassSymbol(
       owner, modclsName, modclsFlags, infoFn(module, _), privateWithin, coord, assocFile)
-    module.info =
+    module.denot.info =
       if (modcls.isCompleted) TypeRef(owner.thisType, modcls)
       else new ModuleCompleter(modcls)
     module
@@ -756,7 +757,7 @@ object Symbols {
    */
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile | Null = null)(using Context): Symbol = {
     def stubCompleter = new StubInfo()
-    val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
+    val normalizedOwner = if (owner._is(ModuleVal)) owner.moduleClass else owner
     typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
     typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
@@ -838,7 +839,7 @@ object Symbols {
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
     for (tparam, bound) <- tparams.lazyZip(bounds) do
-      tparam.info = bound
+      tparam.denot.info = bound
     tparams
   }
 
@@ -861,7 +862,7 @@ object Symbols {
    */
   def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
     if (originals.forall(sym =>
-        (ttmap.mapType(sym.info) eq sym.info) &&
+        (ttmap.mapType(sym._info) eq sym._info) &&
         !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
       originals
     else {
@@ -880,7 +881,7 @@ object Symbols {
 
           def complete(denot: SymDenotation)(using Context): Unit =
 
-            val oinfo = original.info match
+            val oinfo = original._info match
               case ClassInfo(pre, _, parents, decls, selfInfo) =>
                 assert(original.isClass)
                 val parents1 = parents.mapConserve(ttmap.mapType)
@@ -894,7 +895,7 @@ object Symbols {
                   val decls1 = newScope
                   val newTypeParams = mapSymbols(original.typeParams, ttmap1, mapAlways = true)
                   newTypeParams.foreach(decls1.enter)
-                  for sym <- decls do if !sym.is(TypeParam) then decls1.enter(sym)
+                  for sym <- decls do if !sym._is(TypeParam) then decls1.enter(sym)
                   val parents2 = parents1.map(_.substSym(otypeParams, newTypeParams))
                   val selfInfo1 = selfInfo match
                     case selfInfo: Type => selfInfo.substSym(otypeParams, newTypeParams)
@@ -910,10 +911,10 @@ object Symbols {
 
         end completer
 
-        copy.info = completer
+        copy.denot.info = completer
         copy.denot match
           case cd: ClassDenotation =>
-            cd.registeredCompanion = original.registeredCompanion.subst(originals, copies)
+            cd.registeredCompanion = original.denot.registeredCompanion.subst(originals, copies)
           case _ =>
       }
 
@@ -922,9 +923,9 @@ object Symbols {
       // Update Child annotations of classes encountered previously to new values
       // if some child is among the mapped symbols
       for orig <- ttmap1.substFrom do
-        if orig.is(Sealed) && orig.children.exists(originals.contains) then
+        if orig._is(Sealed) && orig.children.exists(originals.contains) then
           val sealedCopy = orig.subst(ttmap1.substFrom, ttmap1.substTo)
-          sealedCopy.annotations = sealedCopy.annotations.mapConserve(ttmap1.apply)
+          sealedCopy.denot.annotations = sealedCopy.denot.annotations.mapConserve(ttmap1.apply)
 
       copies
     }
@@ -949,7 +950,7 @@ object Symbols {
 
   def requiredPackage(path: PreName)(using Context): TermSymbol = {
     val name = path.toTermName
-    staticRef(name, isPackage = true).requiredSymbol("package", name)(_.is(Package)).asTerm
+    staticRef(name, isPackage = true).requiredSymbol("package", name)(_._is(Package)).asTerm
   }
 
   def requiredPackageRef(path: PreName)(using Context): TermRef = requiredPackage(path).termRef
@@ -982,11 +983,11 @@ object Symbols {
    */
   def getPackageClassIfDefined(path: PreName)(using Context): Symbol =
     staticRef(path.toTypeName, isPackage = true, generateStubs = false)
-      .disambiguate(_ is PackageClass).symbol
+      .disambiguate(_._is(PackageClass)).symbol
 
   def requiredModule(path: PreName)(using Context): TermSymbol = {
     val name = path.toTermName
-    staticRef(name).requiredSymbol("object", name)(_.is(Module)).asTerm
+    staticRef(name).requiredSymbol("object", name)(_._is(Module)).asTerm
   }
 
   /** Get module symbol if the module is either defined in current compilation run
@@ -994,13 +995,13 @@ object Symbols {
    */
   def getModuleIfDefined(path: PreName)(using Context): Symbol =
     staticRef(path.toTermName, generateStubs = false)
-      .disambiguate(_.is(Module)).symbol
+      .disambiguate(_._is(Module)).symbol
 
   def requiredModuleRef(path: PreName)(using Context): TermRef = requiredModule(path).termRef
 
   def requiredMethod(path: PreName)(using Context): TermSymbol = {
     val name = path.toTermName
-    staticRef(name).requiredSymbol("method", name)(_.is(Method)).asTerm
+    staticRef(name).requiredSymbol("method", name)(_._is(Method)).asTerm
   }
 
   def requiredMethodRef(path: PreName)(using Context): TermRef = requiredMethod(path).termRef
