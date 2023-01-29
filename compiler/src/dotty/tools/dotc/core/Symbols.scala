@@ -369,7 +369,7 @@ object Symbols {
       else
         _self
 
-    def exists(using Context): Boolean = _self.denot.exists
+    def exists(using Context): Boolean = _self ne NoSymbol
     def owner(using Context): Symbol = _self.denot.owner
     def typeParams(using Context): List[TypeSymbol] = _self.denot.typeParams
     def thisType(using Context): Type = _self.denot.thisType
