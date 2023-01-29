@@ -555,6 +555,12 @@ object Symbols {
   /** Makes all class denotation operations available on class symbols */
   implicit def toClassDenot(cls: ClassSymbol)(using Context): ClassDenotation = cls.classDenot
 
+  /** Blocks use of `toDenot` conversion in Symbols itself */
+  private implicit def toDenotALT(sym: Symbol)(using Context): SymDenotation = sym.denot
+
+  /** Blocks use of `toClassDenot` conversion in Symbols itself */
+  private implicit def toClassDenotALT(cls: ClassSymbol)(using Context): ClassDenotation = cls.classDenot
+
   /** The Definitions object */
   def defn(using Context): Definitions = ctx.definitions
 

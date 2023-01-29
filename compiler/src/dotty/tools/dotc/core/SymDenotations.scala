@@ -1600,7 +1600,7 @@ object SymDenotations {
 
     // ----- Sanity checks and debugging */
 
-    def debugString: String = toString + "#" + symbol.id // !!! DEBUG
+    def debugString: String = toString + "#" + common.id // !!! DEBUG
 
     def hasSkolems(tp: Type): Boolean = tp match {
       case tp: SkolemType => true
