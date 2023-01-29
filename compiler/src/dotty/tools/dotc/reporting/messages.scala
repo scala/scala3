@@ -2555,7 +2555,7 @@ class MissingImplicitArgument(
     where: String,
     paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
     ignoredInstanceNormalImport: => Option[SearchSuccess],
-    ignoredConversions: => Iterable[(TermRef, Iterable[TermRef])]
+    ignoredConvertibleImplicits: => Iterable[TermRef]
   )(using Context) extends TypeMsg(MissingImplicitArgumentID), ShowMatchTrace(pt):
 
   arg.tpe match
@@ -2746,19 +2746,16 @@ class MissingImplicitArgument(
           i"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
         def showImplicitAndConversions(imp: TermRef, convs: Iterable[TermRef]) =
           i"\n- ${imp.symbol.showDcl}${convs.map(c => "\n    - " + c.symbol.showDcl).mkString}"
-        def noChainConversionsNote(ignoredConversions: Iterable[(TermRef, Iterable[TermRef])]): Option[String] = {
-          val convsFormatted = ignoredConversions.map{ (imp, convs) =>
-            s"\n- ${imp.symbol.showDcl}${convs.map(c => "\n    - " + c.symbol.showDcl).mkString}"
-          }.mkString
-          Option.when(ignoredConversions.nonEmpty)(
-              i"\n\nNote: implicit conversions are not automatically applied to arguments of using clauses. " +
-              i"You will have to pass the argument explicitly.\n" +
-              i"The following conversions in scope result in ${pt.show}: $convsFormatted"
+        def noChainConversionsNote(ignoredConvertibleImplicits: Iterable[TermRef]): Option[String] =
+          Option.when(ignoredConvertibleImplicits.nonEmpty)(
+            i"\n\nNote: implicit conversions are not automatically applied to arguments of using clauses. " +
+            i"You will have to pass the argument explicitly.\n" +
+            i"The following implicits in scope can be converted to ${pt.show}:" +
+            ignoredConvertibleImplicits.map { imp => s"\n- ${imp.symbol.showDcl}"}.mkString
           )
-        }
         super.msgPostscript
         ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
-            .orElse(noChainConversionsNote(ignoredConversions))
+            .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
             .getOrElse(ctx.typer.importSuggestionAddendum(pt))
 
   def explain(using Context) = ""

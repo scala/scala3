@@ -934,26 +934,34 @@ trait Implicits:
       case _ => true
     }
 
+    def isScala2Conv(typ: Type): Boolean = typ match {
+      case PolyType(_, resType) => isScala2Conv(resType)
+      case mt: MethodType =>
+        (!mt.resultType.isImplicitMethod && !mt.resultType.isContextualMethod)
+          || isScala2Conv(mt.resultType)
+      case _ => false
+    }
+
     def ignoredConversions = arg.tpe match
       case fail: SearchFailureType =>
         // Get every implicit in scope and find Conversions for each
         if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
-          // todo filter out implicit conversions
           allImplicits(ctx.implicits)
-            .filter(imp => notImplicitConv(imp.underlyingRef.underlying))
-            .map { imp =>
-              val impRef = imp.underlyingRef
-              val impResultType = wildApprox(impRef.underlying.finalResultType)
-              val convs = ctx.implicits.eligible(ViewProto(impResultType, fail.expectedType))
-                .filter { conv =>
-                  if !conv.isConversion then false
-                  else
-                    // TODO Actually feed the summoned implicit into the Conversion to
-                    // check if it works
-                    true
-                }
-              (impRef, convs.map(_.ref))
-            }.filter(_._2.nonEmpty)
+            .map(_.underlyingRef)
+            .filter { imp =>
+              if notImplicitConv(imp.underlying) then false
+              else
+                val locked = ctx.typerState.ownedVars
+                val tryCtx = ctx.fresh
+                val tried = Contexts.withMode(Mode.Printing) {
+                    typed(
+                      tpd.ref(imp).withSpan(arg.span),
+                      fail.expectedType,
+                      locked
+                    )
+                  }(using tryCtx)
+                !tryCtx.reporter.hasErrors && fail.expectedType =:= tried.tpe
+            }
         else
           Nil
 

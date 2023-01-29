@@ -3,7 +3,7 @@ import scala.language.implicitConversions
 trait Foo { type T }
 
 // Scala 3 style conversion
-// given [T]: Conversion[T, Option[T]] = ???
+given [T]: Conversion[T, Option[T]] = ???
 given [F <: Foo](using f: F): Conversion[f.T, Option[f.T]] = ???
 // Scala 2 style conversion
 implicit def toOption[T](t: T): Option[T] = Option(t)
