@@ -1818,6 +1818,19 @@ object SymDenotations {
 
     override def hashCode = common.id // for debugging
 
+    /** The current denotation of this symbol */
+    def currentDenot(using Context): SymDenotation =
+      util.Stats.record("Symbol.denot")
+      val valid = validFor.code
+      // Next condition is inlined from Periods.containsSinglePhasePeriod
+      if ((valid - ctx.period.code) >>> PhaseWidth) <= (valid & PhaseMask)
+      then this
+      else recomputeDenot()
+
+    private def recomputeDenot()(using Context): SymDenotation =
+      util.Stats.record("Symbol.recomputeDenot")
+      symbol.setLastDenot(currentSymDenot)
+
     // ---- ParamInfo bindings -------------------------------------
 
     type ThisName <: Name

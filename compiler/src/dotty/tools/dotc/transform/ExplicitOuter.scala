@@ -124,7 +124,8 @@ object ExplicitOuter {
   def ensureOuterAccessors(cls: ClassSymbol)(using Context): Unit =
     atPhase(explicitOuterPhase.next) {
       if (!hasOuter(cls))
-        newOuterAccessors(cls).foreach(_.enteredAfter(explicitOuterPhase.asInstanceOf[DenotTransformer]))
+      for outerAcc <- newOuterAccessors(cls) do
+        outerAcc.enteredAfter(explicitOuterPhase.asInstanceOf[DenotTransformer])
     }
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
