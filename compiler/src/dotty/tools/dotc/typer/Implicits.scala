@@ -928,44 +928,46 @@ trait Implicits:
       else currImplicits.refs ::: allImplicits(currImplicits.outerImplicits)
 
     /** Ensure an implicit is not a Scala 2-style implicit conversion, based on its type */
-    def notImplicitConv(typ: Type): Boolean = typ match {
-      case PolyType(_, resType) => notImplicitConv(resType)
-      case mt: MethodType => mt.isImplicitMethod || mt.isContextualMethod
-      case _ => true
-    }
-
     def isScala2Conv(typ: Type): Boolean = typ match {
       case PolyType(_, resType) => isScala2Conv(resType)
-      case mt: MethodType =>
-        (!mt.resultType.isImplicitMethod && !mt.resultType.isContextualMethod)
-          || isScala2Conv(mt.resultType)
+      case mt: MethodType => !mt.isImplicitMethod && !mt.isContextualMethod
       case _ => false
     }
 
-    def ignoredConversions = arg.tpe match
+    def hasErrors(tree: Tree): Boolean =
+      if tree.tpe.isInstanceOf[ErrorType] then true
+      else
+        tree match {
+          case Apply(_, List(arg)) => arg.tpe.isInstanceOf[ErrorType]
+          case _ => false
+        }
+
+    def ignoredConvertibleImplicits = arg.tpe match
       case fail: SearchFailureType =>
-        // Get every implicit in scope and find Conversions for each
         if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
+          // Get every implicit in scope and try to convert each
           allImplicits(ctx.implicits)
+            .distinctBy(_.underlyingRef.denot)
+            .view
             .map(_.underlyingRef)
             .filter { imp =>
-              if notImplicitConv(imp.underlying) then false
+              if isScala2Conv(imp.underlying) || imp.symbol == defn.Predef_conforms then
+                false
               else
-                val locked = ctx.typerState.ownedVars
-                val tryCtx = ctx.fresh
+                // Using Mode.Printing will stop it from printing errors
                 val tried = Contexts.withMode(Mode.Printing) {
                     typed(
                       tpd.ref(imp).withSpan(arg.span),
                       fail.expectedType,
-                      locked
+                      ctx.typerState.ownedVars
                     )
-                  }(using tryCtx)
-                !tryCtx.reporter.hasErrors && fail.expectedType =:= tried.tpe
+                  }
+                !hasErrors(tried) && fail.expectedType =:= tried.tpe
             }
         else
           Nil
 
-    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, ignoredConversions)
+    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, ignoredConvertibleImplicits)
   }
 
   /** A string indicating the formal parameter corresponding to a  missing argument */

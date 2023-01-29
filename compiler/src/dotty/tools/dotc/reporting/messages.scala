@@ -2750,7 +2750,7 @@ class MissingImplicitArgument(
           Option.when(ignoredConvertibleImplicits.nonEmpty)(
             i"\n\nNote: implicit conversions are not automatically applied to arguments of using clauses. " +
             i"You will have to pass the argument explicitly.\n" +
-            i"The following implicits in scope can be converted to ${pt.show}:" +
+            i"The following implicits in scope can be implicitly converted to ${pt.show}:" +
             ignoredConvertibleImplicits.map { imp => s"\n- ${imp.symbol.showDcl}"}.mkString
           )
         super.msgPostscript
