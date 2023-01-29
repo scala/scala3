@@ -255,8 +255,8 @@ object Symbols {
     final def entered(using Context): _self.type =
       val d = denot
       if d.owner.isClass then
-        d.owner.asClass.enter(_self)
-        if d.is(Module) then d.owner.asClass.enter(d.moduleClass)
+        d.owner.classDenot.enter(_self)
+        if d.is(Module) then d.owner.classDenot.enter(d.moduleClass)
       _self
 
 
@@ -530,9 +530,6 @@ object Symbols {
                 case none => NoSource
             }
       common.source
-
-    private def enter(sym: Symbol, scope: Scope = EmptyScope)(using Context): Unit =
-      _self.classDenot.enter(sym, scope)
 
     def classInfo(using Context): ClassInfo = _self.classDenot.classInfo
 
