@@ -36,7 +36,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       // if the synchronized block returns a result, store it in a local variable.
       // Just leaving it on the stack is not valid in MSIL (stack is cleaned when leaving try-blocks).
       val hasResult = (expectedType != UNIT)
-      val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
+      val monitorResult: Symbol | Null = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
 
       /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
       genLoadQualifier(fun)
@@ -55,7 +55,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       registerCleanup(monCleanup)
       genLoad(args.head, expectedType /* toTypeKind(tree.tpe.resultType) */)
       unregisterCleanup(monCleanup)
-      if (hasResult) { locals.store(monitorResult) }
+      if (hasResult) { locals.store(monitorResult.nn) }
       nopIfNeeded(startProtected)
       val endProtected = currProgramPoint()
 
@@ -66,7 +66,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        */
       locals.load(monitor)
       emit(asm.Opcodes.MONITOREXIT)
-      if (hasResult) { locals.load(monitorResult) }
+      if (hasResult) { locals.load(monitorResult.uncheckedNN) }
       val postHandler = new asm.Label
       bc goTo postHandler
 
@@ -214,7 +214,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        * please notice `tmp` has type tree.tpe, while `earlyReturnVar` has the method return type.
        * Because those two types can be different, dedicated vars are needed.
        */
-      val tmp          = if (guardResult) locals.makeLocal(tpeTK(tree), "tmp", tree.tpe, tree.span) else null
+      val tmp: Symbol | Null = if (guardResult) locals.makeLocal(tpeTK(tree), "tmp", tree.tpe, tree.span) else null
 
       /*
        * upon early return from the try-body or one of its EHs (but not the EH-version of the finally-clause)
@@ -375,8 +375,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       cleanups match {
         case Nil =>
           if (earlyReturnVar != null) {
-            locals.load(earlyReturnVar)
-            bc.emitRETURN(locals(earlyReturnVar).tk)
+            locals.load(earlyReturnVar.uncheckedNN)
+            bc.emitRETURN(locals(earlyReturnVar.uncheckedNN).tk)
           } else {
             bc emitRETURN UNIT
           }
@@ -396,15 +396,15 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
     }
 
     /* `tmp` (if non-null) is the symbol of the local-var used to preserve the result of the try-body, see `guardResult` */
-    def emitFinalizer(finalizer: Tree, tmp: Symbol, isDuplicate: Boolean): Unit = {
+    def emitFinalizer(finalizer: Tree, tmp: Symbol | Null, isDuplicate: Boolean): Unit = {
       var saved: immutable.Map[ /* Labeled */ Symbol, (BType, LoadDestination) ] = null
       if (isDuplicate) {
         saved = jumpDest
       }
       // when duplicating, the above guarantees new asm.Labels are used for LabelDefs contained in the finalizer (their vars are reused, that's ok)
-      if (tmp != null) { locals.store(tmp) }
+      if (tmp != null) { locals.store(tmp.uncheckedNN) }
       genLoad(finalizer, UNIT)
-      if (tmp != null) { locals.load(tmp)  }
+      if (tmp != null) { locals.load(tmp.uncheckedNN)  }
       if (isDuplicate) {
         jumpDest = saved
       }

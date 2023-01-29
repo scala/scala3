@@ -123,7 +123,7 @@ object Scala2Erasure:
      */
     def isClass: Boolean = psym match
       case sym: Symbol =>
-        sym.isClass
+        Symbols.isClass(sym)
       case _: Scala2RefinedType =>
         true
       case _ =>

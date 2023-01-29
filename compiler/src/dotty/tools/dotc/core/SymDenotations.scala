@@ -92,7 +92,7 @@ object SymDenotations {
     if (Config.checkNoSkolemsInInfo) assertNoSkolems(initInfo)
 
     final def maybeOwner: Symbol =
-      if ownerOrNull == null then NoSymbol else ownerOrNull
+      if ownerOrNull == null then NoSymbol else ownerOrNull.asInstanceOf[Symbol]
 
     // ------ Getting and setting fields -----------------------------
 
@@ -104,7 +104,7 @@ object SymDenotations {
     /** The owner of the symbol; overridden in NoDenotation */
     final def owner: Symbol =
       assert(ownerOrNull != null, "NoDenotation.owner")
-      ownerOrNull
+      ownerOrNull.asInstanceOf[Symbol]
 
     /** The flag set */
     final def flags(using Context): FlagSet = { ensureCompleted(); myFlags }
@@ -1648,7 +1648,7 @@ object SymDenotations {
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
       val rawParamss1 = if rawParamss != null then rawParamss else this.rawParamss
-      val d = SymDenotation(symbol, symbol.lastKnownDenotation.common, owner, name, initFlags1, info1, privateWithin1)
+      val d = SymDenotation(symbol, symbol.lastKnownDenotation.common, owner, name, initFlags1, info1, privateWithin1.uncheckedNN)
       d.annotations = annotations1
       d.rawParamss = rawParamss1
       d.registeredCompanion = registeredCompanion

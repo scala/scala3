@@ -2342,7 +2342,7 @@ object Types {
       def fromDesignator = designator match {
         case name: Name =>
           val sym = lastSymbol
-          val allowPrivate = sym == null || (sym == NoSymbol) || sym.lastKnownDenotation.flagsUNSAFE.is(Private)
+          val allowPrivate = (sym == null) || (sym eq NoSymbol) || sym.asInstanceOf[Symbol].lastKnownDenotation.flagsUNSAFE.is(Private)
           finish(memberDenot(name, allowPrivate))
         case desig =>
           val sym = desig.asSymbol
@@ -2469,9 +2469,9 @@ object Types {
     private def checkSymAssign(sym: Symbol)(using Context) = {
       def selfTypeOf(sym: Symbol) =
         if (sym.isClass) sym.asClass.givenSelfType else NoType
-      val lastSym = lastSymbol
+      val lastSym: Symbol = lastSymbol.asInstanceOf[Symbol]
       assert(
-        (lastSym == null)
+        (lastSym eq null)
         ||
         (lastSym eq sym)
         ||
@@ -2494,7 +2494,7 @@ object Types {
           )
         ||
         sym == defn.AnyClass.primaryConstructor, {
-          if lastSym == null then
+          if lastSym eq null then
             s"""data race? overwriting $lastSym with $sym in type $this,
              |period = ${ctx.phase} at run ${ctx.runId}"""
           else

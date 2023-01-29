@@ -226,7 +226,8 @@ object Contexts {
      */
     def effectiveScope(using Context): Scope =
       val myOwner: Symbol | Null = owner
-      if myOwner != null && myOwner.isClass then myOwner.asClass.unforcedDecls
+      if myOwner != null && myOwner.uncheckedNN.isClass
+      then myOwner.uncheckedNN.asClass.unforcedDecls
       else scope
 
     def nestingLevel: Int = effectiveScope.nestingLevel

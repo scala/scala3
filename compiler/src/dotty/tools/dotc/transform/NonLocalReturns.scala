@@ -91,9 +91,9 @@ class NonLocalReturns extends MiniPhase {
   }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
-    val key = nonLocalReturnKeys.remove(tree.symbol)
+    val key: Symbol | Null = nonLocalReturnKeys.remove(tree.symbol)
     if key == null then tree
-    else cpy.DefDef(tree)(rhs = nonLocalReturnTry(tree.rhs, key.asTerm, tree.symbol))
+    else cpy.DefDef(tree)(rhs = nonLocalReturnTry(tree.rhs, key.nn.asTerm, tree.symbol))
 
   override def transformReturn(tree: Return)(using Context): Tree =
     if isNonLocalReturn(tree) then

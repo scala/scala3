@@ -184,8 +184,7 @@ object Denotations {
     type AsSeenFromResult <: Denotation
 
     val symbol: Symbol =
-      if symbolHint != null then symbolHint
-      else this.asInstanceOf[Symbol]
+      (if symbolHint != null then symbolHint else this).asInstanceOf[Symbol]
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation

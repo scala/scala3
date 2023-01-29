@@ -72,8 +72,8 @@ class JSCodeGen()(using genCtx: Context) {
   private val generatedClasses = mutable.ListBuffer.empty[js.ClassDef]
   private val generatedStaticForwarderClasses = mutable.ListBuffer.empty[(Symbol, js.ClassDef)]
 
-  val currentClassSym = new ScopedVar[Symbol]
-  private val currentMethodSym = new ScopedVar[Symbol]
+  val currentClassSym = new ScopedVar[Symbol | Null]
+  private val currentMethodSym = new ScopedVar[Symbol | Null]
   private val localNames = new ScopedVar[LocalNameGenerator]
   private val thisLocalVarIdent = new ScopedVar[Option[js.LocalIdent]]
   private val isModuleInitialized = new ScopedVar[ScopedVar.VarBox[Boolean]]
@@ -126,7 +126,7 @@ class JSCodeGen()(using genCtx: Context) {
   implicit def implicitLocalNames: LocalNameGenerator = localNames.get
 
   def currentThisType: jstpe.Type = {
-    encodeClassType(currentClassSym) match {
+    encodeClassType(currentClassSym.get.nn) match {
       case tpe @ jstpe.ClassType(cls) =>
         jstpe.BoxedClassToPrimType.getOrElse(cls, tpe)
       case tpe =>
@@ -856,7 +856,7 @@ class JSCodeGen()(using genCtx: Context) {
   /** Gen definitions for the fields of a class. */
   private def genClassFields(td: TypeDef): List[js.MemberDef] = {
     val classSym = td.symbol.asClass
-    assert(currentClassSym.get == classSym,
+    assert(currentClassSym.get eq classSym,
         "genClassFields called with a ClassDef other than the current one")
 
     val isJSClass = classSym.isNonNativeJSClass
@@ -1493,7 +1493,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       if (primitives.isPrimitive(sym)) {
         None
-      } else if (sym.is(Deferred) && currentClassSym.isNonNativeJSClass) {
+      } else if (sym.is(Deferred) && currentClassSym.get.nn.isNonNativeJSClass) {
         // scala-js/#4409: Do not emit abstract methods in non-native JS classes
         None
       } else if (sym.is(Deferred)) {
@@ -1503,7 +1503,7 @@ class JSCodeGen()(using genCtx: Context) {
       } else if (isIgnorableDefaultParam) {
         // #11592
         None
-      } else if (sym.is(Bridge) && sym.name.is(DefaultGetterName) && currentClassSym.isNonNativeJSClass) {
+      } else if (sym.is(Bridge) && sym.name.is(DefaultGetterName) && currentClassSym.get.nn.isNonNativeJSClass) {
         /* #12572 Bridges for default accessors in non-native JS classes must not be emitted,
          * because they call another default accessor, making their entire body an
          * <undefined-param> that cannot be eliminated.
@@ -1582,7 +1582,7 @@ class JSCodeGen()(using genCtx: Context) {
       else genExpr(tree)
     }
 
-    if (namespace.isStatic || !currentClassSym.isNonNativeJSClass) {
+    if (namespace.isStatic || !currentClassSym.get.nn.isNonNativeJSClass) {
       val flags = js.MemberFlags.empty.withNamespace(namespace)
       js.MethodDef(flags, methodName, originalName, jsParams, resultIRType, Some(genBody()))(
             optimizerHints, None)
@@ -1688,7 +1688,7 @@ class JSCodeGen()(using genCtx: Context) {
     tree match {
       case _: This =>
         val sym = tree.symbol
-        if (sym != currentClassSym.get && sym.is(Module))
+        if ((sym ne currentClassSym.get) && sym.is(Module))
           genLoadModuleOrGlobalScope(sym)
         else
           MaybeGlobalScope.NotGlobalScope(genExpr(tree))
@@ -1784,7 +1784,7 @@ class JSCodeGen()(using genCtx: Context) {
         genApplyDynamic(app)*/
 
       case tree: This =>
-        val currentClass = currentClassSym.get
+        val currentClass = currentClassSym.get.nn
         val symIsModuleClass = tree.symbol.is(ModuleClass)
         assert(tree.symbol == currentClass || symIsModuleClass,
             s"Trying to access the this of another class: tree.symbol = ${tree.symbol}, class symbol = $currentClass")
@@ -1886,8 +1886,8 @@ class JSCodeGen()(using genCtx: Context) {
             val qualifier = lhs.qualifier
 
             def ctorAssignment = (
-                currentMethodSym.get.name == nme.CONSTRUCTOR &&
-                currentMethodSym.get.owner == qualifier.symbol &&
+                currentMethodSym.get.nn.name == nme.CONSTRUCTOR &&
+                currentMethodSym.get.nn.owner == qualifier.symbol &&
                 qualifier.isInstanceOf[This]
             )
             // TODO This fails for OFFSET$x fields. Re-enable when we can.
@@ -2178,7 +2178,7 @@ class JSCodeGen()(using genCtx: Context) {
     if (sym == defn.Any_getClass) {
       // The only primitive that is also callable as super call
       js.GetClass(genThis())
-    } else if (currentClassSym.isNonNativeJSClass) {
+    } else if (currentClassSym.get.nn.isNonNativeJSClass) {
       genJSSuperCall(tree, isStat)
     } else {
       /* #3013 `qual` can be `this.$outer()` in some cases since Scala 2.12,
@@ -2188,10 +2188,10 @@ class JSCodeGen()(using genCtx: Context) {
           genExpr(qual), sym, genActualArgs(sym, args))
 
       // Initialize the module instance just after the super constructor call.
-      if (isStaticModule(currentClassSym) && !isModuleInitialized.get.value &&
-          currentMethodSym.get.isClassConstructor) {
+      if (isStaticModule(currentClassSym.get.nn) && !isModuleInitialized.get.value &&
+          currentMethodSym.get.nn.isClassConstructor) {
         isModuleInitialized.get.value = true
-        val className = encodeClassName(currentClassSym)
+        val className = encodeClassName(currentClassSym.get.nn)
         val thisType = jstpe.ClassType(className)
         val initModule = js.StoreModule(className, js.This()(thisType))
         js.Block(superCall, initModule)
@@ -3245,7 +3245,7 @@ class JSCodeGen()(using genCtx: Context) {
         genApplyJSClassMethod(genReceiver, sym, genScalaArgs)
       } else {
         val jsSuperClassValue = explicitJSSuperClassValue.orElse {
-          Some(genLoadJSConstructor(currentClassSym.get.asClass.superClass))
+          Some(genLoadJSConstructor(currentClassSym.get.nn.asClass.superClass))
         }
         genApplyJSMethodGeneric(sym, MaybeGlobalScope.NotGlobalScope(genReceiver),
             genJSArgs, isStat, jsSuperClassValue)(tree.sourcePos)
@@ -3873,7 +3873,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       case JS_NEW_TARGET =>
         // js.new.target
-        val valid = currentMethodSym.get.isClassConstructor && currentClassSym.isNonNativeJSClass
+        val valid = currentMethodSym.get.nn.isClassConstructor && currentClassSym.get.nn.isNonNativeJSClass
         if (!valid) {
           report.error(
               "Illegal use of js.`new`.target.\n" +

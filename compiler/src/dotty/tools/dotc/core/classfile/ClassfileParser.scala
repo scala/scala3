@@ -365,7 +365,8 @@ class ClassfileParser(
       ct.convertTo(pt)
   }
 
-  private def sigToType(sig: String, owner: Symbol = null, isVarargs: Boolean = false)(using Context): Type = {
+  private def sigToType(sig: String, ownerOrNull: Symbol | Null = null, isVarargs: Boolean = false)(using Context): Type = {
+    def owner = ownerOrNull.asInstanceOf[Symbol]
     var index = 0
     val end = sig.length
     def accept(ch: Char): Unit = {

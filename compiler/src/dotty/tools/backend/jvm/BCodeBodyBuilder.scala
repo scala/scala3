@@ -521,20 +521,20 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     /*
      * must-single-thread
      */
-    def fieldLoad( field: Symbol, hostClass: Symbol = null): Unit = fieldOp(field, isLoad = true,  hostClass)
+    def fieldLoad( field: Symbol, hostClass: Symbol | Null = null): Unit = fieldOp(field, isLoad = true,  hostClass)
 
     /*
      * must-single-thread
      */
-    def fieldStore(field: Symbol, hostClass: Symbol = null): Unit = fieldOp(field, isLoad = false, hostClass)
+    def fieldStore(field: Symbol, hostClass: Symbol | Null = null): Unit = fieldOp(field, isLoad = false, hostClass)
 
     /*
      * must-single-thread
      */
-    private def fieldOp(field: Symbol, isLoad: Boolean, specificReceiver: Symbol): Unit = {
+    private def fieldOp(field: Symbol, isLoad: Boolean, specificReceiver: Symbol | Null): Unit = {
       val useSpecificReceiver = specificReceiver != null && !field.isScalaStatic
 
-      val owner      = internalName(if (useSpecificReceiver) specificReceiver else field.owner)
+      val owner      = internalName(if (useSpecificReceiver) specificReceiver.nn else field.owner)
       val fieldJName = field.javaSimpleName
       val fieldDescr = symInfoTK(field).descriptor
       val isStatic   = field.isStaticMember
@@ -629,7 +629,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               if (earlyReturnVar == null) {
                 earlyReturnVar = locals.makeLocal(returnType, "earlyReturnVar", expr.tpe, expr.span)
               }
-              locals.store(earlyReturnVar)
+              locals.store(earlyReturnVar.nn)
             }
             bc goTo nextCleanup
             shouldEmitCleanup = true
@@ -853,7 +853,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor)
               generatedType = methodBType.returnType
             } else {
-              val receiverClass = if (!invokeStyle.isVirtual) null else {
+              val receiverClass: Symbol | Null = if (!invokeStyle.isVirtual) null else {
                 // receiverClass is used in the bytecode to as the method receiver. using sym.owner
                 // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
                 val qualSym = qual.tpe.typeSymbol
@@ -1389,16 +1389,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * invocation instruction, otherwise `method.owner`. A specific receiver class is needed to
      * prevent an IllegalAccessError, (aladdin bug 455).
      */
-    def genCallMethod(method: Symbol, style: InvokeStyle, pos: Span = NoSpan, specificReceiver: Symbol = null): BType = {
+    def genCallMethod(method: Symbol, style: InvokeStyle, pos: Span = NoSpan, specificReceiver: Symbol | Null = null): BType = {
       val methodOwner = method.owner
 
       // the class used in the invocation's method descriptor in the classfile
-      val receiverClass = {
+      val receiverClass: Symbol = {
         if (specificReceiver != null)
           assert(style.isVirtual || specificReceiver == methodOwner, s"specificReceiver can only be specified for virtual calls. $method - $specificReceiver")
 
-        val useSpecificReceiver = specificReceiver != null && !defn.isBottomClass(specificReceiver) && !method.isScalaStatic
-        val receiver = if (useSpecificReceiver) specificReceiver else methodOwner
+        val useSpecificReceiver = specificReceiver != null && !defn.isBottomClass(specificReceiver.nn) && !method.isScalaStatic
+        val receiver = if (useSpecificReceiver) specificReceiver.nn else methodOwner
 
         // workaround for a JVM bug: https://bugs.openjdk.java.net/browse/JDK-8154587
         // when an interface method overrides a member of Object (note that all interfaces implicitly
@@ -1432,7 +1432,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val bmType   = asmMethodType(method)
       val mdescr   = bmType.descriptor
 
-      val isInterface = isEmittedInterface(receiverClass)
+      val isInterface = isEmittedInterface(receiverClass.nn)
       import InvokeStyle._
       if (style == Super) {
         if (isInterface && !method.is(JavaDefined)) {

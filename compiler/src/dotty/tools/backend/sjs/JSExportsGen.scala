@@ -585,7 +585,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   }
 
   private def reportCannotDisambiguateError(jsName: JSName, alts: List[Symbol]): Unit = {
-    val currentClass = currentClassSym.get
+    val currentClass = currentClassSym.get.nn
 
     /* Find a position that is in the current class for decent error reporting.
      * If there are more than one, always use the "highest" one (i.e., the
@@ -623,7 +623,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
    */
   private def genApplyForSingleExported(formalArgsRegistry: FormalArgsRegistry,
       exported: Exported, static: Boolean): js.Tree = {
-    if (currentClassSym.isJSType && exported.sym.owner != currentClassSym.get) {
+    if (currentClassSym.get.nn.isJSType && exported.sym.owner != currentClassSym.get) {
       assert(!static, s"nonsensical JS super call in static export of ${exported.sym}")
       genApplyForSingleExportedJSSuperCall(formalArgsRegistry, exported)
     } else {
@@ -642,7 +642,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val allArgs = formalArgsRegistry.genAllArgsRefsForForwarder()
 
     val superClass = {
-      val superClassSym = currentClassSym.asClass.superClass
+      val superClassSym = currentClassSym.get.nn.asClass.superClass
       if (superClassSym.isNestedJSClass)
         js.VarRef(js.LocalIdent(JSSuperClassParamName))(jstpe.AnyType)
       else
@@ -806,7 +806,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       implicit pos: SourcePosition): js.Tree = {
 
     val sym = exported.sym
-    val currentClass = currentClassSym.get
+    val currentClass = currentClassSym.get.nn
 
     def receiver =
       if (static) genLoadModule(sym.owner)

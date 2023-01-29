@@ -87,7 +87,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var cnode: ClassNode1          = null
     var thisName: String           = null // the internal name of the class being emitted
 
-    var claszSymbol: Symbol        = null
+    var claszSymbol: Symbol        = _
     var isCZParcelable             = false
     var isCZStaticModule           = false
 
@@ -364,9 +364,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var jMethodName: String        = null
     var isMethSymStaticCtor        = false
     var returnType: BType          = null
-    var methSymbol: Symbol         = null
+    var methSymbol: Symbol         = _
     // used by genLoadTry() and genSynchronized()
-    var earlyReturnVar: Symbol     = null
+    var earlyReturnVar: Symbol | Null = null
     var shouldEmitCleanup          = false
     // stack tracking
     var stackHeight                = 0

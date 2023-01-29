@@ -1074,24 +1074,26 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     // Set by the three functions to follow.  If symbol is non-null
     // after the new tree 't' has been created, t has its Symbol
     // set to symbol; and it always has its Type set to tpe.
-    var symbol: Symbol = null
+    var mySymbol: Symbol | Null = null
     var mods: Modifiers = null
     var name: Name = null
 
+    def symbol = mySymbol.nn
+
     /** Read a Symbol, Modifiers, and a Name */
     def setSymModsName(): Unit = {
-      symbol = readSymbolRef()
+      mySymbol = readSymbolRef()
       mods = readModifiersRef(symbol.isType)
       name = readNameRef()
     }
     /** Read a Symbol and a Name */
     def setSymName(): Unit = {
-      symbol = readSymbolRef()
+      mySymbol = readSymbolRef()
       name = readNameRef()
     }
     /** Read a Symbol */
     def setSym(): Unit =
-      symbol = readSymbolRef()
+      mySymbol = readSymbolRef()
 
     implicit val span: Span = NoSpan
 

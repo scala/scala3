@@ -85,8 +85,8 @@ class GadtConstraint private (
 
   def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match
     case param: TypeParamRef =>
-      val sym = reverseMapping(param)
-      if sym != null then sym.typeRef else param
+      val sym: Symbol | Null = reverseMapping(param)
+      if sym != null then sym.uncheckedNN.typeRef else param
     case tp: TypeAlias       => tp.derivedAlias(externalize(tp.alias, theMap))
     case tp                  => (if theMap == null then ExternalizeMap() else theMap).mapOver(tp)
 
