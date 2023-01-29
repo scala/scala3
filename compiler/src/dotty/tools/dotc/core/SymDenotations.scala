@@ -80,7 +80,7 @@ object SymDenotations {
     initPrivateWithin: Symbol = NoSymbol)
   extends SingleDenotation(symbolHint, initInfo, name.isTypeName), ParamInfo, SrcPos, Named {
 
-    //assert(symbol.id != 4940, name)
+    //assert(common.id != 9141, name)
 
     override def hasUniqueSym: Boolean = exists
 
@@ -1810,7 +1810,6 @@ object SymDenotations {
 
     /** The last denotation of this symbol */
     var lastDenot: SymDenotation = _
-    var checkedPeriod: Period = Nowhere
 
     /** Overridden in NoSymbol */
     //private[SymDenotations]
@@ -2699,7 +2698,6 @@ object SymDenotations {
     override def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation = this
     override def associatedFile(using Context): AbstractFile | Null = NoSource.file
 
-    NoSymbol.initialDenot = this
     NoSymbol.denot_=(this)
     validFor = Period.allInRun(NoRunId)
   }

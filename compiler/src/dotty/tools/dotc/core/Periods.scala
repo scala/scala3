@@ -63,7 +63,7 @@ object Periods {
       //
       // Let's compute:
       //
-      //  lastDiff = X * 2^5 + (l1 - l2) mod 2^5
+      //  lastDiff = X * 2^7 + (l1 - l2) mod 2^7
       //             where X >= 0, X == 0 iff r1 == r2 & l1 - l2 >= 0
       //  result = lastDiff + d2 <= d1
       //  We have:
@@ -102,6 +102,13 @@ object Periods {
     def ==(that: Period): Boolean = this.code == that.code
     def !=(that: Period): Boolean = this.code != that.code
   }
+
+  /** Same as new Period(p1).contains(new Period(p2)), assuming that p2 is the
+   *  code of a single-phase period.
+   */
+  extension (p1: Int)
+    transparent inline def containsSinglePhasePeriod(p2: Int): Boolean =
+      ((p1 - p2) >>> PhaseWidth) <= (p1 & PhaseMask)
 
   object Period {
 

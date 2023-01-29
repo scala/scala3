@@ -235,11 +235,8 @@ object Denotations {
     private var myValidFor: Period = Nowhere
 
     final def validFor: Period = myValidFor
-    final def validFor_=(p: Period): Unit = {
+    final def validFor_=(p: Period): Unit =
       myValidFor = p
-      if symbol.initialDenot ne null then
-        symbol.initialDenot.checkedPeriod = Nowhere
-    }
 
     /** Is this denotation different from NoDenotation or an ErrorDenotation? */
     def exists: Boolean = true

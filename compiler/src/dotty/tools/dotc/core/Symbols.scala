@@ -37,34 +37,32 @@ import scala.reflect.TypeTest
 
 object Symbols {
 
-  implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
-
   /** Tree attachment containing the identifiers in a tree as a sorted array */
   val Ids: Property.Key[Array[String]] = new Property.Key
 
-  opaque type Symbl <: ParamInfo & SrcPos & Named & printing.Showable
+  opaque type Symbol <: ParamInfo & SrcPos & Named & printing.Showable
     = SymDenotation
-
-  opaque type ClassSymbl <: Symbl
+  opaque type ClassSymbol <: TypeSymbol
     = ClassDenotation
 
   object TypeTests:
 
-    given SymTest: TypeTest[AnyRef, Symbol] with
-      def unapply(x: AnyRef): Option[x.type & Symbol] = x match
-        case sd: SymDenotation => Some(sd.asInstanceOf)
+    given SymTest: TypeTest[Any, Symbol] with
+      def unapply(x: Any): Option[x.type & Symbol] = x match
+        case sd: SymDenotation => Some(sd.asInstanceOf[x.type & Symbol])
         case _ => None
 
-    given ClsTest: TypeTest[AnyRef, ClassSymbol] with
-      def unapply(x: AnyRef): Option[x.type & ClassSymbol] = x match
-        case cd: ClassDenotation => Some(cd.asInstanceOf)
+    given ClsTest: TypeTest[Any, ClassSymbol] with
+      def unapply(x: Any): Option[x.type & ClassSymbol] = x match
+        case cd: ClassDenotation => Some(cd.asInstanceOf[x.type & ClassSymbol])
         case _ => None
   end TypeTests
+
+  implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
 
   /** A Symbol represents a Scala definition/declaration or a package.
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
-   */
   class Symbol private[Symbols] ()
     extends ParamInfo, SrcPos, Named, printing.Showable {
 
@@ -95,6 +93,7 @@ object Symbols {
 
     override def hashCode(): Int = Symbols.id(this) // for debugging.
   }
+   */
 
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
@@ -104,7 +103,7 @@ object Symbols {
     inline def asSymbol: Symbol = x.asInstanceOf[Symbol]
 
   extension (_self: Symbol)
-    def self = _self.initialDenot
+    def self: SymDenotation = _self
 
     private def lastDenot: SymDenotation = self.lastDenot
     private def lastDenot_=(d: SymDenotation): Unit = self.lastDenot = d
@@ -154,20 +153,14 @@ object Symbols {
     private[core] def denot_=(d: SymDenotation): Unit =
       util.Stats.record("Symbol.denot_=")
       lastDenot = d
-      self.checkedPeriod = Nowhere
 
     /** The current denotation of this symbol */
     def denot(using Context): SymDenotation =
       util.Stats.record("Symbol.denot")
       val lastd = lastDenot
-      if self.checkedPeriod.code == ctx.period.code then lastd
-      else computeDenot(lastd)
-
-    def computeDenot(lastd: SymDenotation)(using Context): SymDenotation =
-      util.Stats.record("Symbol.computeDenot")
-      val now = ctx.period
-      self.checkedPeriod = now
-      if lastd.validFor contains now then lastd else recomputeDenot(lastd)
+      if lastd.validFor.code.containsSinglePhasePeriod(ctx.period.code)
+      then lastd
+      else recomputeDenot(lastd)
 
     private def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation =
       util.Stats.record("Symbol.recomputeDenot")
@@ -454,16 +447,16 @@ object Symbols {
   end extension
 
   type TreeOrProvider = TreeProvider | Tree
-
+/*
   class ClassSymbol private[Symbols] extends Symbol {
 
     util.Stats.record("ClassSymbol")
 
     type ThisName = TypeName
   }
-
+*/
   extension (_self: ClassSymbol)
-    def self = _self.initialDenot
+    def self: ClassDenotation = _self
 
     /** If this is a top-level class and `-Yretain-trees` (or `-from-tasty`) is set.
       * Returns the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
@@ -535,16 +528,7 @@ object Symbols {
 
   end extension
 
-  @sharable object NoSymbol extends Symbol {
-    //override def coord = NoCoord
-    //override def id = 0
-    //override def nestingLevel = 0
-    //override def defTree = tpd.EmptyTree
-    //override def associatedFile(using Context): AbstractFile | Null = NoSource.file
-    //override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
-  }
-
-  NoDenotation // force it in order to set `denot` field of NoSymbol
+  def NoSymbol: Symbol = NoDenotation
 
   /** Makes all denotation operations available on symbols */
   implicit def toDenot(sym: Symbol)(using Context): SymDenotation = sym.denot
@@ -579,11 +563,9 @@ object Symbols {
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
       nestingLevel: Int = ctx.nestingLevel): Symbol { type ThisName = N } = {
-    val sym = new Symbol().asInstanceOf[Symbol { type ThisName = N }]
-    val denot = SymDenotation(sym, SymCommon(coord, ctx.base.nextSymId, nestingLevel), owner, name, flags, info, privateWithin)
-    sym.initialDenot = denot
-    sym.denot_=(denot)
-    sym
+    val sym = SymDenotation(null, SymCommon(coord, ctx.base.nextSymId, nestingLevel), owner, name, flags, info, privateWithin)
+    sym.denot_=(sym)
+    sym.asInstanceOf[Symbol { type ThisName = N }]
   }
 
   /** Create a class symbol from its non-info fields and a function
@@ -598,11 +580,9 @@ object Symbols {
       coord: Coord = NoCoord,
       assocFile: AbstractFile | Null = null)(using Context): ClassSymbol
   = {
-    val cls = new ClassSymbol()
-    val denot = SymDenotation(cls, ClassCommon(coord, ctx.base.nextSymId, ctx.nestingLevel, assocFile), owner, name, flags, NoType, privateWithin)
-    cls.initialDenot = denot
-    cls.denot_=(denot)
-    denot.info = infoFn(cls)
+    val cls = SymDenotation(null, ClassCommon(coord, ctx.base.nextSymId, ctx.nestingLevel, assocFile), owner, name, flags, NoType, privateWithin).asClass
+    cls.denot_=(cls)
+    cls.info = infoFn(cls)
     cls
   }
 

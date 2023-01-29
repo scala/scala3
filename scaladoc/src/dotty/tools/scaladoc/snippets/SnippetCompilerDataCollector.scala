@@ -5,6 +5,7 @@ import scala.quoted._
 import dotty.tools.scaladoc.tasty.SymOps._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.util.{ SourceFile => CSourceFile, NoSource }
+import Symbols.TypeTests.given
 
 class SnippetCompilerDataCollector[Q <: Quotes](val qctx: Q):
   import qctx.reflect._
