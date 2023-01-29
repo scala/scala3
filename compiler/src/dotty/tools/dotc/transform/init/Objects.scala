@@ -179,10 +179,10 @@ object Objects:
         val config = Config(thisV, State.leakedInstances)
         super.get(config, expr).map(_.value)
 
-      def assume(thisV: Value, expr: Tree, cacheResult: Boolean)(fun: => Value)(using State.Data): Value =
+      def cachedEval(thisV: Value, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using State.Data): Value =
         val config = Config(thisV, State.leakedInstances)
-        val result = super.assume(config, expr, cacheResult, default = Res(Bottom, State.leakedInstances)) {
-          Res(fun, State.leakedInstances)
+        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, State.leakedInstances)) { expr =>
+          Res(fun(expr), State.leakedInstances)
         }
         result.value
   end Cache
@@ -492,10 +492,7 @@ object Objects:
    * @param cacheResult It is used to reduce the size of the cache.
    */
   def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
-    cache.get(thisV, expr) match
-    case Some(value) => value
-    case None =>
-      cache.assume(thisV, expr, cacheResult) { cases(expr, thisV, klass) }
+    cache.cachedEval(thisV, expr, cacheResult) { expr => cases(expr, thisV, klass) }
   }
 
 
