@@ -864,6 +864,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               report.error(WildcardOnTypeArgumentNotAllowedOnNew(), targ.srcPos)
           case _ =>
         }
+
         assignType(cpy.New(tree)(tpt1), tpt1)
     }
 
