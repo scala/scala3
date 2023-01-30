@@ -1810,6 +1810,7 @@ object SymDenotations {
 
     /** The last denotation of this symbol */
     var lastDenot: SymDenotation = _
+    var checkedPeriod: Period = Nowhere
 
     /** Overridden in NoSymbol */
     //private[SymDenotations]
@@ -1819,11 +1820,13 @@ object SymDenotations {
     override def hashCode = common.id // for debugging
 
     /** The current denotation of this symbol */
-    def currentDenot(using Context): SymDenotation =
+    def computeDenot(using Context): SymDenotation =
       util.Stats.record("Symbol.denot")
       val valid = validFor.code
+      val now = ctx.period
+      symbol.setCheckedPeriod(now)
       // Next condition is inlined from Periods.containsSinglePhasePeriod
-      if ((valid - ctx.period.code) >>> PhaseWidth) <= (valid & PhaseMask)
+      if ((valid - now.code) >>> PhaseWidth) <= (valid & PhaseMask)
       then this
       else recomputeDenot()
 

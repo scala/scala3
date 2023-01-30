@@ -113,14 +113,22 @@ object Symbols {
     private[core] def denot_=(d: SymDenotation): Unit =
       util.Stats.record("Symbol.denot_=")
       self.lastDenot = d
+      self.checkedPeriod = Nowhere
 
     /** The current denotation of this symbol */
     def denot(using Context): SymDenotation =
-      self.lastDenot.currentDenot
+      util.Stats.record("Symbol.denot")
+      val lastd = self.lastDenot
+      if self.checkedPeriod.code == ctx.period.code
+      then lastd
+      else lastd.computeDenot
 
     private[core] def setLastDenot(d: SymDenotation): SymDenotation =
       self.lastDenot = d
       d
+
+    def setCheckedPeriod(period: Period): Unit =
+      self.checkedPeriod = period
 
     /** The original denotation of this symbol, without forcing anything */
     def originDenotation: SymDenotation = self

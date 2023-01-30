@@ -237,6 +237,7 @@ object Denotations {
     final def validFor: Period = myValidFor
     final def validFor_=(p: Period): Unit =
       myValidFor = p
+      symbol.setCheckedPeriod(Nowhere): @unchecked
 
     /** Is this denotation different from NoDenotation or an ErrorDenotation? */
     def exists: Boolean = true
