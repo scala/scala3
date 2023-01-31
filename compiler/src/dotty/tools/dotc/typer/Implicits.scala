@@ -934,25 +934,6 @@ trait Implicits:
       case _ => false
     }
 
-    /** Whether a found implicit be converted to the desired type */
-    def canBeConverted(ref: TermRef, expected: Type): Boolean = {
-      // Using Mode.Printing will stop it from printing errors
-      val tried = Contexts.withMode(Mode.Printing) {
-          typed(
-            tpd.ref(ref).withSpan(arg.span),
-            expected,
-            ctx.typerState.ownedVars
-          )
-        }
-      val hasErrors =
-        if tried.tpe.isInstanceOf[ErrorType] then true
-        else tried match {
-          case Apply(_, List(arg)) => arg.tpe.isInstanceOf[ErrorType]
-          case _ => false
-        }
-      !hasErrors && expected =:= tried.tpe
-    }
-
     def ignoredConvertibleImplicits = arg.tpe match
       case fail: SearchFailureType =>
         if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
@@ -964,7 +945,7 @@ trait Implicits:
             .filter { imp =>
               !isImplicitDefConversion(imp.underlying)
                 && imp.symbol != defn.Predef_conforms
-                && canBeConverted(imp, fail.expectedType)
+                && viewExists(imp, fail.expectedType)
             }
         else
           Nil
