@@ -962,9 +962,7 @@ trait Implicits:
             .map(_.underlyingRef)
             .distinctBy(_.denot)
             .filter { imp =>
-              !isImplicitDefConversion(imp.underlying)
-                && imp.symbol != defn.Predef_conforms
-                && canBeConverted(imp, fail.expectedType)
+              !isImplicitDefConversion(imp.underlying) && canBeConverted(imp, fail.expectedType)
             }
         else
           Nil
