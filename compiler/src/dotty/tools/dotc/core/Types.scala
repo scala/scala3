@@ -92,6 +92,9 @@ object Types {
    */
   abstract class Type extends Hashable with printing.Showable {
 
+    def visit(tm: TypeMap): Type = this
+    def visit[T](ta: TypeAccumulator[T], x: T) = x
+
 // ----- Tests -----------------------------------------------------
 
 //    // debug only: a unique identifier for a type
@@ -2203,6 +2206,9 @@ object Types {
     def withContext(ctx: Context): ProtoType = this
 
     override def dropIfProto = WildcardType
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   /** Implementations of this trait cache the results of `narrow`. */
@@ -2783,6 +2789,9 @@ object Types {
     }
 
     override def eql(that: Type): Boolean = this eq that // safe because named types are hash-consed separately
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   /** A reference to an implicit definition. This can be either a TermRef or a
@@ -3032,6 +3041,9 @@ object Types {
       case that: SuperType => thistpe.eq(that.thistpe) && supertpe.eq(that.supertpe)
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   final class CachedSuperType(thistpe: Type, supertpe: Type) extends SuperType(thistpe, supertpe)
@@ -3098,6 +3110,9 @@ object Types {
     override def toString: String = s"LazyRef(${if (computed) myRef else "..."})"
     override def equals(other: Any): Boolean = this.eq(other.asInstanceOf[AnyRef])
     override def hashCode: Int = System.identityHashCode(this)
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
   object LazyRef:
     def of(refFn: Context ?=> (Type | Null)): LazyRef = LazyRef(refFn(using _))
@@ -3155,6 +3170,9 @@ object Types {
         parent.equals(that.parent, bs)
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   class CachedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
@@ -3254,6 +3272,9 @@ object Types {
 
     override def toString: String = s"RecType($parent | $hashCode)"
 
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
+
     private def checkInst(using Context): this.type = this // debug hook
   }
 
@@ -3350,6 +3371,9 @@ object Types {
       case that: AndType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   final class CachedAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
@@ -3499,6 +3523,9 @@ object Types {
       case that: OrType => tp1.eq(that.tp1) && tp2.eq(that.tp2) && isSoft == that.isSoft
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   final class CachedOrType(tp1: Type, tp2: Type, override val isSoft: Boolean) extends OrType(tp1, tp2)
@@ -3592,6 +3619,9 @@ object Types {
       case that: ExprType => resType.equals(that.resType, bs)
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   final class CachedExprType(resultType: Type) extends ExprType(resultType)
@@ -3685,6 +3715,9 @@ object Types {
 
     protected def prefixString: String
     override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   abstract class HKLambda extends CachedProxyType with LambdaType {
@@ -4545,6 +4578,9 @@ object Types {
       case that: AppliedType => tycon.equals(that.tycon, bs) && args.equalElements(that.args, bs)
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   final class CachedAppliedType(tycon: Type, args: List[Type], hc: Int) extends AppliedType(tycon, args) {
@@ -4695,6 +4731,9 @@ object Types {
     }
 
     override def toString: String = s"SkolemType($hashCode)"
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   /** A skolem type used to wrap the type of the qualifier of a selection.
@@ -4858,6 +4897,9 @@ object Types {
       def instStr = if (inst.exists) s" -> $inst" else ""
       s"TypeVar($origin$instStr)"
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
   object TypeVar:
     def apply(using Context)(initOrigin: TypeParamRef, creatorState: TyperState | Null, nestingLevel: Int = ctx.nestingLevel) =
@@ -4963,6 +5005,9 @@ object Types {
         bound.eq(that.bound) && scrutinee.eq(that.scrutinee) && cases.eqElements(that.cases)
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   class CachedMatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends MatchType(bound, scrutinee, cases)
@@ -5120,6 +5165,9 @@ object Types {
     }
 
     override def toString: String = s"ClassInfo($prefix, $cls, $declaredParents)"
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   class CachedClassInfo(prefix: Type, cls: ClassSymbol, declaredParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)
@@ -5221,6 +5269,9 @@ object Types {
       case that: TypeBounds => lo.eq(that.lo) && hi.eq(that.hi)
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
@@ -5333,6 +5384,9 @@ object Types {
     override def iso(that: Any, bs: BinderPairs): Boolean = that match
       case that: AnnotatedType => parent.equals(that.parent, bs) && (annot eql that.annot)
       case _ => false
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   class CachedAnnotatedType(parent: Type, annot: Annotation) extends AnnotatedType(parent, annot)
@@ -5358,6 +5412,9 @@ object Types {
       case that: JavaArrayType => elemType.eq(that.elemType)
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
   final class CachedJavaArrayType(elemType: Type) extends JavaArrayType(elemType)
   object JavaArrayType {
@@ -5437,6 +5494,9 @@ object Types {
       case that: WildcardType => optBounds.equals(that.optBounds, bs)
       case _ => false
     }
+
+    override def visit(tm: TypeMap): Type = tm.mapOver(this)
+    override def visit[T](ta: TypeAccumulator[T], x: T) = ta.foldOver(x, this)
   }
 
   final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)
@@ -5713,107 +5773,95 @@ object Types {
       finally variance = saved
 
     /** Map this function over given type */
-    def mapOver(tp: Type): Type = {
+    def mapOver(tp: Type): Type =
       record(s"TypeMap mapOver ${getClass}")
       record("TypeMap mapOver total")
-      val ctx = this.mapCtx // optimization for performance
-      given Context = ctx
-      tp match {
-        case tp: NamedType =>
-          if stopBecauseStaticOrLocal(tp) then tp
-          else
-            val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
-            derivedSelect(tp, prefix1)
+      tp.visit(this)
 
-        case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
+    def mapOver(tp: NamedType): Type =
+      if stopBecauseStaticOrLocal(tp) then tp
+      else
+        val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
+        derivedSelect(tp, prefix1)
 
-        case tp: LambdaType =>
-          mapOverLambda(tp)
+    def mapOver(tp: AppliedType): Type =
+      derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
 
-        case tp: AliasingBounds =>
-          derivedAlias(tp, atVariance(0)(this(tp.alias)))
+    def mapOver(tp: LambdaType): Type =
+      mapOverLambda(tp)
 
-        case tp: TypeBounds =>
-          variance = -variance
-          val lo1 = this(tp.lo)
-          variance = -variance
-          derivedTypeBounds(tp, lo1, this(tp.hi))
+    def mapOver(tp: TypeBounds): Type = tp match
+      case tp: AliasingBounds =>
+        derivedAlias(tp, atVariance(0)(this(tp.alias)))
+      case tp =>
+        variance = -variance
+        val lo1 = this(tp.lo)
+        variance = -variance
+        derivedTypeBounds(tp, lo1, this(tp.hi))
 
-        case tp: TypeVar =>
-          val inst = tp.instanceOpt
-          if (inst.exists) apply(inst) else tp
+    def mapOver(tp: TypeVar): Type =
+      val inst = tp.instanceOpt
+      if (inst.exists) apply(inst) else tp
 
-        case tp: ExprType =>
-          derivedExprType(tp, this(tp.resultType))
+    def mapOver(tp: ExprType) =
+      derivedExprType(tp, this(tp.resultType))
 
-        case CapturingType(parent, refs) =>
-          mapCapturingType(tp, parent, refs, variance)
+    def mapOver(tp: AnnotatedType): Type = tp match
+      case CapturingType(parent, refs) =>
+        mapCapturingType(tp, parent, refs, variance)
+      case AnnotatedType(underlying, annot) =>
+        val parent1 = this(tp.parent)
+        val annot1 = tp.annot.mapWith(this)
+        if annot1 eq EmptyAnnotation then parent1
+        else derivedAnnotatedType(tp, parent1, annot1)
 
-        case tp @ AnnotatedType(underlying, annot) =>
-          val underlying1 = this(underlying)
-          val annot1 = annot.mapWith(this)
-          if annot1 eq EmptyAnnotation then underlying1
-          else derivedAnnotatedType(tp, underlying1, annot1)
+    def mapOver(tp: ProtoType): Type =
+      tp.map(this)
 
-        case _: ThisType
-          | _: BoundType
-          | NoPrefix =>
-          tp
+    def mapOver(tp: RefinedType): Type =
+      derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
 
-        case tp: ProtoType =>
-          tp.map(this)
+    def mapOver(tp: RecType): Type =
+      derivedRecType(tp, this(tp.parent))
 
-        case tp: RefinedType =>
-          derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
+    def mapOver(tp: SuperType): Type =
+      derivedSuperType(tp, this(tp.thistpe), this(tp.supertpe))
 
-        case tp: RecType =>
-          record("TypeMap.RecType")
-          derivedRecType(tp, this(tp.parent))
-
-        case tp @ SuperType(thistp, supertp) =>
-          derivedSuperType(tp, this(thistp), this(supertp))
-
-        case tp: LazyRef =>
-          LazyRef { refCtx =>
-            given Context = refCtx
-            val ref1 = tp.ref
-            if refCtx.runId == mapCtx.runId then this(ref1)
-            else // splice in new run into map context
-              val saved = mapCtx
-              mapCtx = mapCtx.fresh
-                .setPeriod(Period(refCtx.runId, mapCtx.phaseId))
-                .setRun(refCtx.run)
-              try this(ref1) finally mapCtx = saved
-          }
-
-        case tp: ClassInfo =>
-          mapClassInfo(tp)
-
-        case tp: AndType =>
-          derivedAndType(tp, this(tp.tp1), this(tp.tp2))
-
-        case tp: OrType =>
-          derivedOrType(tp, this(tp.tp1), this(tp.tp2))
-
-        case tp: MatchType =>
-          val bound1 = this(tp.bound)
-          val scrut1 = atVariance(0)(this(tp.scrutinee))
-          derivedMatchType(tp, bound1, scrut1, tp.cases.mapConserve(this))
-
-        case tp: SkolemType =>
-          derivedSkolemType(tp, this(tp.info))
-
-        case tp: WildcardType =>
-          derivedWildcardType(tp, mapOver(tp.optBounds))
-
-        case tp: JavaArrayType =>
-          derivedJavaArrayType(tp, this(tp.elemType))
-
-        case _ =>
-          tp
+    def mapOver(tp: LazyRef): Type =
+      LazyRef { refCtx =>
+        given Context = refCtx
+        val ref1 = tp.ref
+        if refCtx.runId == mapCtx.runId then this(ref1)
+        else // splice in new run into map context
+          val saved = mapCtx
+          mapCtx = mapCtx.fresh
+            .setPeriod(Period(refCtx.runId, mapCtx.phaseId))
+            .setRun(refCtx.run)
+          try this(ref1) finally mapCtx = saved
       }
-    }
+
+    def mapOver(tp: ClassInfo): Type =
+      mapClassInfo(tp)
+
+    def mapOver(tp: AndType): Type =
+      derivedAndType(tp, this(tp.tp1), this(tp.tp2))
+
+    def mapOver(tp: OrType): Type =
+      derivedOrType(tp, this(tp.tp1), this(tp.tp2))
+
+    def mapOver(tp: MatchType): Type =
+      val bound1 = this(tp.bound)
+      val scrut1 = atVariance(0)(this(tp.scrutinee))
+      derivedMatchType(tp, bound1, scrut1, tp.cases.mapConserve(this))
+
+    def mapOver(tp: SkolemType): Type =
+      derivedSkolemType(tp, this(tp.info))
+
+    def mapOver(tp: WildcardType): Type =
+      derivedWildcardType(tp, mapOver(tp.optBounds))
+
+    def mapOver(tp: JavaArrayType): Type =
+      derivedJavaArrayType(tp, this(tp.elemType))
 
     private def treeTypeMap = new TreeTypeMap(typeMap = this)
 
@@ -6186,103 +6234,96 @@ object Types {
     protected def applyToPrefix(x: T, tp: NamedType): T =
       atVariance(variance max 0)(this(x, tp.prefix))
 
-    def foldOver(x: T, tp: Type): T = {
+    def foldOver(x: T, tp: Type): T =
       record(s"foldOver $getClass")
       record(s"foldOver total")
-      tp match {
-      case tp: TypeRef =>
-        if stopBecauseStaticOrLocal(tp) then x
-        else
-          val tp1 = tp.prefix.lookupRefined(tp.name)
-          if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
+      tp.visit(this, x)
 
-      case tp @ AppliedType(tycon, args) =>
-        @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
-          if (args.isEmpty || tparams.isEmpty) x
-          else {
-            val tparam = tparams.head
-            val acc = args.head match {
-              case arg: TypeBounds => this(x, arg)
-              case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
-            }
-            foldArgs(acc, tparams.tail, args.tail)
-          }
-        foldArgs(this(x, tycon), tyconTypeParams(tp), args)
+    def foldOver(x: T, tp: NamedType): T =
+      if stopBecauseStaticOrLocal(tp) then x
+      else if tp.isInstanceOf[TypeRef] then
+        val tp1 = tp.prefix.lookupRefined(tp.name)
+        if tp1.exists then this(x, tp1) else applyToPrefix(x, tp)
+      else applyToPrefix(x, tp)
 
-      case _: BoundType | _: ThisType => x
-
-      case tp: LambdaType =>
-        val restpe = tp.resultType
-        val saved = variance
-        variance = if (defn.MatchCase.isInstance(restpe)) 0 else -variance
-        val y = foldOver(x, tp.paramInfos)
-        variance = saved
-        this(y, restpe)
-
-      case tp: TermRef =>
-        if stopBecauseStaticOrLocal(tp) then x else applyToPrefix(x, tp)
-
-      case tp: TypeVar =>
-        this(x, tp.underlying)
-
-      case ExprType(restpe) =>
-        this(x, restpe)
-
-      case bounds @ TypeBounds(lo, hi) =>
-        if (lo eq hi) atVariance(0)(this(x, lo))
+    def foldOver(x: T, tp: AppliedType): T =
+      @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
+        if (args.isEmpty || tparams.isEmpty) x
         else {
-          variance = -variance
-          val y = this(x, lo)
-          variance = -variance
-          this(y, hi)
+          val tparam = tparams.head
+          val acc = args.head match {
+            case arg: TypeBounds => this(x, arg)
+            case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
+          }
+          foldArgs(acc, tparams.tail, args.tail)
         }
+      foldArgs(this(x, tp.tycon), tyconTypeParams(tp), tp.args)
 
-      case tp: AndType =>
-        this(this(x, tp.tp1), tp.tp2)
+    def foldOver(x: T, tp: LambdaType): T =
+      val restpe = tp.resultType
+      val saved = variance
+      variance = if (defn.MatchCase.isInstance(restpe)) 0 else -variance
+      val y = foldOver(x, tp.paramInfos)
+      variance = saved
+      this(y, restpe)
 
-      case tp: OrType =>
-        this(this(x, tp.tp1), tp.tp2)
+    def foldOver(x: T, tp: TypeVar): T =
+      this(x, tp.underlying)
 
-      case tp: MatchType =>
-        val x1 = this(x, tp.bound)
-        val x2 = atVariance(0)(this(x1, tp.scrutinee))
-        foldOver(x2, tp.cases)
+    def foldOver(x: T, tp: ExprType): T =
+      this(x, tp.resType)
 
+    def foldOver(x: T, tp: TypeBounds): T =
+      if tp.lo eq tp.hi then atVariance(0)(this(x, tp.lo))
+      else
+        variance = -variance
+        val y = this(x, tp.lo)
+        variance = -variance
+        this(y, tp.hi)
+
+    def foldOver(x: T, tp: AndType): T =
+      this(this(x, tp.tp1), tp.tp2)
+
+    def foldOver(x: T, tp: OrType): T =
+      this(this(x, tp.tp1), tp.tp2)
+
+    def foldOver(x: T, tp: MatchType): T =
+      val x1 = this(x, tp.bound)
+      val x2 = atVariance(0)(this(x1, tp.scrutinee))
+      foldOver(x2, tp.cases)
+
+    def foldOver(x: T, tp: AnnotatedType): T = tp match
       case CapturingType(parent, refs) =>
         (this(x, parent) /: refs.elems)(this)
+      case _ =>
+        this(applyToAnnot(x, tp.annot), tp.parent)
 
-      case AnnotatedType(underlying, annot) =>
-        this(applyToAnnot(x, annot), underlying)
+    def foldOver(x: T, tp: ProtoType): T =
+      tp.fold(x, this)
 
-      case tp: ProtoType =>
-        tp.fold(x, this)
+    def foldOver(x: T, tp: RefinedType): T =
+      this(this(x, tp.parent), tp.refinedInfo)
 
-      case tp: RefinedType =>
-        this(this(x, tp.parent), tp.refinedInfo)
+    def foldOver(x: T, tp: WildcardType): T =
+      this(x, tp.optBounds)
 
-      case tp: WildcardType =>
-        this(x, tp.optBounds)
+    def foldOver(x: T, tp: ClassInfo): T =
+      this(x, tp.prefix)
 
-      case tp @ ClassInfo(prefix, _, _, _, _) =>
-        this(x, prefix)
+    def foldOver(x: T, tp: JavaArrayType): T =
+      this(x, tp.elemType)
 
-      case tp: JavaArrayType =>
-        this(x, tp.elemType)
+    def foldOver(x: T, tp: SkolemType): T =
+      this(x, tp.info)
 
-      case tp: SkolemType =>
-        this(x, tp.info)
+    def foldOver(x: T, tp: SuperType): T =
+      this(this(x, tp.thistpe), tp.supertpe)
 
-      case SuperType(thistp, supertp) =>
-        this(this(x, thistp), supertp)
+    def foldOver(x: T, tp: LazyRef): T =
+      this(x, tp.ref)
 
-      case tp: LazyRef =>
-        this(x, tp.ref)
-
-      case tp: RecType =>
-        this(x, tp.parent)
-
-      case _ => x
-    }}
+    def foldOver(x: T, tp: RecType): T =
+      this(x, tp.parent)
 
     @tailrec final def foldOver(x: T, ts: List[Type]): T = ts match {
       case t :: ts1 => foldOver(apply(x, t), ts1)
