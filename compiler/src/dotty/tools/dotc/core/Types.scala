@@ -446,6 +446,37 @@ object Types {
     final def containsWildcardTypes(using Context) =
       existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false)
 
+    /** Return underlying context function type (i.e. instance of an ContextFunctionN class)
+     *  or NoType if none exists. The following types are considered as underlying types:
+     *   - the alias of an alias type
+     *   - the instance or origin of a TypeVar (i.e. the result of a stripTypeVar)
+     *   - the upper bound of a TypeParamRef in the current constraint
+     *  Overridden in AppliedType
+     */
+    def asContextFunctionType(using Context): Type = this match
+      case tp: TypeRef =>
+        if tp.symbol.isClass then NoType
+        else
+          val tp1 = tp.dealias
+          if tp1 ne tp then tp1.asContextFunctionType else NoType
+      case tp: TypeParamRef if ctx.typerState.constraint.contains(tp) =>
+        TypeComparer.bounds(tp).hiBound.asContextFunctionType
+      case tp: (TypeVar | LazyRef) =>
+        tp.underlying.asContextFunctionType
+      case tp: AnnotatedType =>
+        val tp1 = tp.underlying.asContextFunctionType
+        tp match
+          case tp @ CapturingType(parent, refs) if tp1.exists => tp
+          case _ => tp1
+      case tp: RefinedType if tp.underlying.isContextFunctionType =>
+        tp
+      case _ =>
+        NoType
+
+    /** Is `tp` an context function type? */
+    final def isContextFunctionType(using Context): Boolean =
+      asContextFunctionType.exists
+
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
@@ -4356,6 +4387,8 @@ object Types {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
+    private var cachedAsContextFunctionType: Type | Null = null
+
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
@@ -4391,6 +4424,7 @@ object Types {
           case tycon: TypeRef if tycon.symbol.isClass => tycon
           case tycon: TypeProxy => tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
+        cachedAsContextFunctionType = null
       cachedSuper
 
     override def translucentSuperType(using Context): Type = tycon match {
@@ -4399,6 +4433,21 @@ object Types {
       case _ =>
         tryNormalize.orElse(superType)
     }
+
+    override def asContextFunctionType(using Context): Type =
+      var res = cachedAsContextFunctionType
+      if res == null then
+        val tyconSym = tycon.typeSymbol
+        res =
+          if tyconSym.isClass then
+            if tyconSym.name.isContextFunction && defn.isFunctionType(this)
+            then this
+            else NoType
+          else
+            val tp1 = dealias
+            if tp1 ne this then tp1.asContextFunctionType else NoType
+        if !isProvisional then cachedAsContextFunctionType = res
+      res
 
     inline def map(inline op: Type => Type)(using Context) =
       def mapArgs(args: List[Type]): List[Type] = args match
@@ -5454,8 +5503,8 @@ object Types {
         val absMems = tp.possibleSamMethods
         if (absMems.size == 1)
           absMems.head.info match {
-            case mt: MethodType if !mt.isParamDependent &&
-                !defn.isContextFunctionType(mt.resultType) =>
+            case mt: MethodType
+            if !mt.isParamDependent && !mt.resultType.isContextFunctionType =>
               val cls = tp.classSymbol
 
               // Given a SAM type such as:
@@ -5508,6 +5557,21 @@ object Types {
       }
       else None
   }
+
+  /** An extractor for context function types `As ?=> B`, possibly with
+   *  dependent refinements. Optionally returns a triple consisting of the argument
+   *  types `As`, the result type `B` and a whether the type is an erased context function.
+   */
+  object ContextFunctionType:
+    def unapply(tp: Type)(using Context): Option[(List[Type], Type, Boolean)] =
+      if ctx.erasedTypes then
+        atPhase(erasurePhase)(unapply(tp))
+      else
+        val tp1 = tp.asContextFunctionType
+        if tp1.exists then
+          val args = tp1.dropDependentRefinement.argInfos
+          Some((args.init, args.last, tp1.typeSymbol.name.isErasedFunction))
+        else None
 
   // ----- TypeMaps --------------------------------------------------------------------
 

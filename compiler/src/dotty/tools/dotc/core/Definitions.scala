@@ -1690,6 +1690,7 @@ class Definitions {
    *  instance?
    */
   def isNonRefinedFunction(tp: Type)(using Context): Boolean =
+    util.Stats.record(i"isNonRefinedFunction")
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
 
@@ -1802,13 +1803,8 @@ class Definitions {
    *   - the instance or origin of a TypeVar (i.e. the result of a stripTypeVar)
    *   - the upper bound of a TypeParamRef in the current constraint
    */
-  def asContextFunctionType(tp: Type)(using Context): Type =
-    tp.stripTypeVar.dealias match
-      case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
-        asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
-      case tp1 =>
-        if tp1.typeSymbol.name.isContextFunction && isFunctionType(tp1) then tp1
-        else NoType
+  inline def asContextFunctionType(tp: Type)(using Context): Type =
+    tp.asContextFunctionType
 
   /** Is `tp` an context function type? */
   def isContextFunctionType(tp: Type)(using Context): Boolean =
