@@ -518,13 +518,13 @@ the code it runs produces one.
 
 ## Example Expansion
 
-Assume we have two methods, `map` that takes an `Expr[Array[T]]` and a
-function `f`, and `sum` that performs a sum by delegating to `map`.
+Assume we have two methods, `foreach` that takes an `Expr[Array[T]]` and a
+consumer `f`, and `sum` that performs a sum by delegating to `foreach`.
 
 ```scala
 object Macros:
 
-  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])
+  def foreach[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])
             (using Type[T], Quotes): Expr[Unit] = '{
     var i: Int = 0
     while i < ($arr).length do
@@ -535,7 +535,7 @@ object Macros:
 
   def sum(arr: Expr[Array[Int]])(using Quotes): Expr[Int] = '{
     var sum = 0
-    ${ map(arr, x => '{sum += $x}) }
+    ${ foreach(arr, x => '{sum += $x}) }
     sum
   }
 
@@ -557,7 +557,7 @@ then it will call `sum`:
 val arr: Array[Int] = Array.apply(1, 2, 3)
 ${ '{
   var sum = 0
-  ${ map('arr, x => '{sum += $x}) }
+  ${ foreach('arr, x => '{sum += $x}) }
   sum
 } }
 ```
@@ -568,7 +568,7 @@ and cancel the `${'{...}}`:
 val arr: Array[Int] = Array.apply(1, 2, 3)
 
 var sum = 0
-${ map('arr, x => '{sum += $x}) }
+${ foreach('arr, x => '{sum += $x}) }
 sum
 ```
 
@@ -579,11 +579,11 @@ val arr: Array[Int] = Array.apply(1, 2, 3)
 
 var sum = 0
 val f = x => '{sum += $x}
-${ _root_.Macros.map('arr, 'f)(Type.of[Int]) }
+${ _root_.Macros.foreach('arr, 'f)(Type.of[Int]) }
 sum
 ```
 
-and then call `map`:
+and then call `foreach`:
 
 ```scala
 val arr: Array[Int] = Array.apply(1, 2, 3)
