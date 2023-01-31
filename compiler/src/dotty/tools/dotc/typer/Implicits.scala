@@ -927,42 +927,44 @@ trait Implicits:
       if currImplicits.outerImplicits == null then currImplicits.refs
       else currImplicits.refs ::: allImplicits(currImplicits.outerImplicits)
 
-    /** Ensure an implicit is not a Scala 2-style implicit conversion, based on its type */
-    def isScala2Conv(typ: Type): Boolean = typ match {
-      case PolyType(_, resType) => isScala2Conv(resType)
+    /** Whether the given type is for an implicit def that's a Scala 2 implicit conversion */
+    def isImplicitDefConversion(typ: Type): Boolean = typ match {
+      case PolyType(_, resType) => isImplicitDefConversion(resType)
       case mt: MethodType => !mt.isImplicitMethod && !mt.isContextualMethod
       case _ => false
     }
 
-    def hasErrors(tree: Tree): Boolean =
-      if tree.tpe.isInstanceOf[ErrorType] then true
-      else
-        tree match {
+    /** Whether a found implicit be converted to the desired type */
+    def canBeConverted(ref: TermRef, expected: Type): Boolean = {
+      // Using Mode.Printing will stop it from printing errors
+      val tried = Contexts.withMode(Mode.Printing) {
+          typed(
+            tpd.ref(ref).withSpan(arg.span),
+            expected,
+            ctx.typerState.ownedVars
+          )
+        }
+      val hasErrors =
+        if tried.tpe.isInstanceOf[ErrorType] then true
+        else tried match {
           case Apply(_, List(arg)) => arg.tpe.isInstanceOf[ErrorType]
           case _ => false
         }
+      !hasErrors && expected =:= tried.tpe
+    }
 
     def ignoredConvertibleImplicits = arg.tpe match
       case fail: SearchFailureType =>
         if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
           // Get every implicit in scope and try to convert each
           allImplicits(ctx.implicits)
-            .distinctBy(_.underlyingRef.denot)
             .view
             .map(_.underlyingRef)
+            .distinctBy(_.denot)
             .filter { imp =>
-              if isScala2Conv(imp.underlying) || imp.symbol == defn.Predef_conforms then
-                false
-              else
-                // Using Mode.Printing will stop it from printing errors
-                val tried = Contexts.withMode(Mode.Printing) {
-                    typed(
-                      tpd.ref(imp).withSpan(arg.span),
-                      fail.expectedType,
-                      ctx.typerState.ownedVars
-                    )
-                  }
-                !hasErrors(tried) && fail.expectedType =:= tried.tpe
+              !isImplicitDefConversion(imp.underlying)
+                && imp.symbol != defn.Predef_conforms
+                && canBeConverted(imp, fail.expectedType)
             }
         else
           Nil
