@@ -68,6 +68,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
        (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flatten.isEmpty
 
     !meth.isConstructor &&
+    !meth.is(JavaStatic) &&
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
     (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
      generateJUnitForwarder || generateSerializationForwarder) &&

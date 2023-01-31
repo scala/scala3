@@ -1,0 +1,2 @@
+3.0-3.3 inline accessor: List(foo$Bar$$inline$Baz)
+3.4+ inline accessor: List(inline$Baz)

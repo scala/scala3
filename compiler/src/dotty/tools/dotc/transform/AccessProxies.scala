@@ -66,8 +66,8 @@ abstract class AccessProxies {
   trait Insert {
     import ast.tpd._
 
-    /** The name of the accessor for definition with given `name` in given `site` */
-    def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName
+    /** The name of the accessor for definition `accessed` in given `site` */
+    def accessorNameOf(accessed: Symbol, site: Symbol, isStatic: Boolean)(using Context): TermName
     def needsAccessor(sym: Symbol)(using Context): Boolean
 
     def ifNoHost(reference: RefTree)(using Context): Tree = {
@@ -76,9 +76,10 @@ abstract class AccessProxies {
     }
 
     /** A fresh accessor symbol */
-    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, accessed: Symbol)(using Context): TermSymbol = {
+    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, accessed: Symbol, isStatic: Boolean)(using Context): TermSymbol = {
       val sym = newSymbol(owner, name, Synthetic | Method, info, coord = accessed.span).entered
       if accessed.is(Private) then sym.setFlag(Final)
+      if isStatic then sym.setFlag(JavaStaticTerm)
       else if sym.allOverriddenSymbols.exists(!_.is(Deferred)) then sym.setFlag(Override)
       if accessed.hasAnnotation(defn.ExperimentalAnnot) then
         sym.addAnnotation(defn.ExperimentalAnnot)
@@ -86,10 +87,10 @@ abstract class AccessProxies {
     }
 
     /** An accessor symbol, create a fresh one unless one exists already */
-    protected def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(using Context): Symbol = {
+    protected def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol, isStatic: Boolean = false)(using Context): Symbol = {
       def refersToAccessed(sym: Symbol) = accessedBy.get(sym).contains(accessed)
       owner.info.decl(accessorName).suchThat(refersToAccessed).symbol.orElse {
-        val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed)
+        val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed, isStatic)
         accessedBy(acc) = accessed
         acc
       }
@@ -127,16 +128,17 @@ abstract class AccessProxies {
     /** Create an accessor unless one exists already, and replace the original
       *  access with a reference to the accessor.
       *
-      *  @param reference    The original reference to the non-public symbol
-      *  @param onLHS        The reference is on the left-hand side of an assignment
+      *  @param reference The original reference to the non-public symbol
+      *  @param accessorClass Class where the accessor will be generated
+      *  @param isStatic If this accessor will become a java static method
       */
-    def useAccessor(reference: RefTree, accessorClass: Symbol)(using Context): Tree = {
+    def useAccessor(reference: RefTree, accessorClass: Symbol, isStatic: Boolean = false)(using Context): Tree = {
       val accessed = reference.symbol.asTerm
       if (accessorClass.exists) {
-        val accessorName = accessorNameOf(accessed.name, accessorClass)
+        val accessorName = accessorNameOf(accessed, accessorClass, isStatic)
         val accessorInfo =
           accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
-        val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)
+        val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed, isStatic)
         rewire(reference, accessor)
       }
       else ifNoHost(reference)

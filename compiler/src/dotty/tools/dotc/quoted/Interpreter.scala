@@ -162,13 +162,17 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
   private def interpretVarargs(args: List[Object]): Object =
     args.toSeq
 
-  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object = {
-    val inst =
-      try loadModule(moduleClass)
+  private def interpretedStaticMethodCall(owner: Symbol, fn: Symbol, args: List[Object]): Object = {
+    val (inst, clazz) =
+      try
+        if owner.is(Module) then
+          val inst = loadModule(owner)
+          (inst, inst.getClass)
+        else
+          (null, loadClass(owner.binaryClassName))
       catch
         case MissingClassDefinedInCurrentRun(sym) =>
           suspendOnMissing(sym, pos)
-    val clazz = inst.getClass
     val name = fn.name.asTermName
     val method = getMethod(clazz, name, paramsSig(fn))
     stopIfRuntimeException(method.invoke(inst, args: _*), method)

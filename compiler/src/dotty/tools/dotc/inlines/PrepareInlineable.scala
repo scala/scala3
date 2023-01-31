@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package inlines
 
+import scala.collection.mutable
+
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import Trees._
 import core._
@@ -22,6 +24,9 @@ import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
 import dotty.tools.dotc.transform.TreeMapWithStages._
+import dotty.tools.dotc.ast.desugar.packageObjectName
+import dotty.tools.dotc.core.StdNames.str
+import dotty.tools.dotc.util.{Spans, SrcPos}
 
 object PrepareInlineable {
   import tpd._
@@ -53,9 +58,12 @@ object PrepareInlineable {
     /** A tree map which inserts accessors for non-public term members accessed from inlined code.
      */
     abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert {
-      def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName =
-        val accName = InlineAccessorName(name)
-        if site.isExtensibleClass then accName.expandedName(site) else accName
+      def accessorNameOf(accessed: Symbol, site: Symbol, isStatic: Boolean)(using Context): TermName =
+        val baseName =
+          if isStatic then ("static$" + accessed.fullName.toString.replace('.', '$')).toTermName
+          else accessed.name.asTermName
+        val accName = InlineAccessorName(baseName)
+        if site.isExtensibleClass && !isStatic then accName.expandedName(site) else accName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
        *  and it is not part of the tree that gets inlined. The latter test is implemented
@@ -99,20 +107,32 @@ object PrepareInlineable {
      *  advantage that we can re-use the receiver as is. But it is only
      *  possible if the receiver is essentially this or an outer this, which is indicated
      *  by the test that we can find a host for the accessor.
+     *
+     *  @param inlineSym symbol of the inline method
+     *  @param compat use inline accessor format of 3.0-3.3
      */
-    class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
+    class MakeInlineableDirect(inlineSym: Symbol, compat: Boolean) extends MakeInlineableMap(inlineSym) {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if tree.symbol.isConstructor then
             report.error("Implementation restriction: cannot use private constructors in inline methods", tree.srcPos)
             tree // TODO: create a proper accessor for the private constructor
-          else
+          else if compat then
+            // Generate the accessor for backwards compatibility with 3.0-3.3
             val nearestHost = AccessProxies.hostForAccessorOf(tree.symbol)
             val host = if nearestHost.is(Package) then ctx.owner.topLevelClass else nearestHost
             useAccessor(tree, host)
+          else
+            // Generate the accessor for 3.4+
+            val nearestHost = AccessProxies.hostForAccessorOf(tree.symbol)
+            if nearestHost.is(Package) || (tree.symbol.owner.isStaticOwner && !nearestHost.isStaticOwner) then
+              useAccessor(tree, ctx.owner.topLevelClass, isStatic = true)
+            else
+              useAccessor(tree, nearestHost)
         case _ =>
           tree
       }
+
       override def ifNoHost(reference: RefTree)(using Context): Tree = reference
     }
 
@@ -228,8 +248,12 @@ object PrepareInlineable {
         // so no accessors are needed for them.
         tree
       else
+        // Generate inline accessors for 3.0-3.3
         new MakeInlineablePassing(inlineSym).transform(
-          new MakeInlineableDirect(inlineSym).transform(tree))
+          new MakeInlineableDirect(inlineSym, compat = true).transform(tree))
+          // Generate and use inline accessors for 3.4+
+        new MakeInlineablePassing(inlineSym).transform(
+          new MakeInlineableDirect(inlineSym, compat = false).transform(tree))
     }
   }
 
