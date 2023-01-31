@@ -21,6 +21,7 @@ object StdNames {
     inline val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
     inline val MODULE_SUFFIX            = "$"
     inline val TOPLEVEL_SUFFIX          = "$package"
+    inline val TOPLEVEL_INLINE_SUFFIX   = "$inline$accessors"
     inline val NAME_JOIN                = "$"
     inline val DEFAULT_GETTER           = "$default$"
     inline val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks

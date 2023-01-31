@@ -349,9 +349,10 @@ object Interpreter:
       if !ctx.compilationUnit.isSuspendable then None
       else targetException match
         case _: NoClassDefFoundError | _: ClassNotFoundException =>
-          val className = targetException.getMessage
-          if className eq null then None
+          val msg = targetException.getMessage
+          if msg eq null then None
           else
+            val className = msg.stripSuffix(str.TOPLEVEL_INLINE_SUFFIX + str.MODULE_SUFFIX)
             val sym = staticRef(className.toTypeName).symbol
             if (sym.isDefinedInCurrentRun) Some(sym) else None
         case _ => None

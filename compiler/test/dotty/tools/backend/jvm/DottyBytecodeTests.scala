@@ -1682,6 +1682,83 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertSameCode(instructions, expected)
     }
   }
+
+  @Test
+  def i13215(): Unit = {
+    val code =
+      """package foo:
+        |  trait Bar:
+        |    inline def baz = Baz
+        |  private[foo] object Baz
+      """.stripMargin
+    checkBCode(code) { dir =>
+      val privateAccessors = Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED
+
+      // For 3.0-3.3 compat
+      val barClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("Bar.class", directory = false).input, skipDebugInfo = false)
+      val accessorOld  = getMethod(barClass, "foo$Bar$$inline$Baz")
+      assert(accessorOld.signature == "()Lfoo/Baz$;", accessorOld.signature)
+      assert((accessorOld.access & privateAccessors) == 0)
+
+      // For 3.4+
+      val accessorsClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("Bar$inline$accessors.class", directory = false).input, skipDebugInfo = false)
+      val accessorNew  = getMethod(accessorsClass, "inline$Baz")
+      assert(accessorNew.signature == "()Lfoo/Baz$;", accessorNew.signature)
+      assert((accessorNew.access & privateAccessors) == 0)
+    }
+  }
+
+  @Test
+  def i15413(): Unit = {
+    val code =
+      """import scala.quoted.*
+        |class Macro:
+        |  inline def foo = Macro.fooImpl
+        |object Macro:
+        |  private def fooImpl = {}
+      """.stripMargin
+    checkBCode(code) { dir =>
+      val privateAccessors = Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED
+
+      // For 3.0-3.3 compat
+      val macroClass = loadClassNode(dir.lookupName("Macro.class", directory = false).input, skipDebugInfo = false)
+      val accessorOld  = getMethod(macroClass, "Macro$$inline$fooImpl")
+      assert(accessorOld.signature == "()V")
+      assert((accessorOld.access & privateAccessors) == 0)
+
+      // For 3.4+
+      val accessorsClass = loadClassNode(dir.lookupName("Macro$inline$accessors.class", directory = false).input, skipDebugInfo = false)
+      val accessorNew  = getMethod(accessorsClass, "inline$fooImpl")
+      assert(accessorNew.signature == "()V")
+      assert((accessorNew.access & privateAccessors) == 0)
+    }
+  }
+
+  @Test
+  def i15413b(): Unit = {
+    val code =
+      """package foo
+        |class C:
+        |  inline def baz = D.bazImpl
+        |object D:
+        |  private[foo] def bazImpl = {}
+      """.stripMargin
+    checkBCode(code) { dir =>
+      val privateAccessors = Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED
+
+      // For 3.0-3.3 compat
+      val barClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("C.class", directory = false).input, skipDebugInfo = false)
+      val accessorOld  = getMethod(barClass, "inline$bazImpl$i1")
+      assert(accessorOld.desc == "(Lfoo/D$;)V", accessorOld.desc)
+      assert((accessorOld.access & privateAccessors) == 0)
+
+      // For 3.4+
+      val accessorsClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("C$inline$accessors.class", directory = false).input, skipDebugInfo = false)
+      val accessorNew  = getMethod(accessorsClass, "inline$bazImpl")
+      assert(accessorNew.signature == "()V", accessorNew.signature)
+      assert((accessorNew.access & privateAccessors) == 0)
+    }
+  }
 }
 
 object invocationReceiversTestCode {

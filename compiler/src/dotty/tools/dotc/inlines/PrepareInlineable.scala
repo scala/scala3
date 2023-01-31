@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package inlines
 
+import scala.collection.mutable
+
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import Trees._
 import core._
@@ -22,14 +24,21 @@ import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
 import dotty.tools.dotc.transform.TreeMapWithStages._
+import dotty.tools.dotc.ast.desugar.packageObjectName
+import dotty.tools.dotc.core.StdNames.str
+import dotty.tools.dotc.util.{Spans, SrcPos}
+import dotty.tools.dotc.typer.TopLevelExtensionModules.newAccessorModule
 
 object PrepareInlineable {
   import tpd._
 
   private val InlineAccessorsKey = new Property.Key[InlineAccessors]
+  private val InlineAccessorsModuleKey = new Property.Key[mutable.Map[Symbol, Symbol]]
 
   def initContext(ctx: Context): Context =
-    ctx.fresh.setProperty(InlineAccessorsKey, new InlineAccessors)
+    ctx.fresh
+      .setProperty(InlineAccessorsKey, new InlineAccessors)
+      .setProperty(InlineAccessorsModuleKey, mutable.Map.empty)
 
   def makeInlineable(tree: Tree)(using Context): Tree =
     ctx.property(InlineAccessorsKey).get.makeInlineable(tree)
@@ -38,6 +47,19 @@ object PrepareInlineable {
     ctx.property(InlineAccessorsKey) match
       case Some(inlineAccessors) => inlineAccessors.addAccessorDefs(cls, body)
       case _ => body
+
+  def inlineAccessorsModule(topLevelClass: Symbol)(using Context): Symbol =
+    assert(topLevelClass.asClass.owner.is(Package), topLevelClass)
+    ctx.property(InlineAccessorsModuleKey).get.getOrElse(topLevelClass, NoSymbol)
+
+  def requiredInlineAccessorsModule(topLevelClass: Symbol)(using Context): Symbol =
+    assert(topLevelClass.asClass.owner.is(Package), topLevelClass)
+    ctx.property(InlineAccessorsModuleKey) match
+      case Some(inlineAccessorsModule) =>
+        inlineAccessorsModule.getOrElseUpdate(
+          topLevelClass,
+          newAccessorModule(str.TOPLEVEL_INLINE_SUFFIX))
+      case None => NoSymbol
 
   class InlineAccessors extends AccessProxies {
 
@@ -99,20 +121,32 @@ object PrepareInlineable {
      *  advantage that we can re-use the receiver as is. But it is only
      *  possible if the receiver is essentially this or an outer this, which is indicated
      *  by the test that we can find a host for the accessor.
+     *
+     *  @param inlineSym symbol of the inline method
+     *  @param compat use inline accessor format of 3.0-3.3
      */
-    class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
+    class MakeInlineableDirect(inlineSym: Symbol, compat: Boolean) extends MakeInlineableMap(inlineSym) {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if tree.symbol.isConstructor then
             report.error("Implementation restriction: cannot use private constructors in inline methods", tree.srcPos)
             tree // TODO: create a proper accessor for the private constructor
-          else
+          else if compat then
+            // Generate the accessor for backwards compatibility with 3.0-3.3
             val nearestHost = AccessProxies.hostForAccessorOf(tree.symbol)
             val host = if nearestHost.is(Package) then ctx.owner.topLevelClass else nearestHost
             useAccessor(tree, host)
+          else
+            // Generate the accessor for 3.4+
+            val nearestHost = AccessProxies.hostForAccessorOf(tree.symbol)
+            if nearestHost.is(Package) || (tree.symbol.owner.isStaticOwner && !nearestHost.isStaticOwner) then
+              useAccessor(tree, requiredInlineAccessorsModule(ctx.owner.topLevelClass))
+            else
+              useAccessor(tree, nearestHost)
         case _ =>
           tree
       }
+
       override def ifNoHost(reference: RefTree)(using Context): Tree = reference
     }
 
@@ -228,8 +262,12 @@ object PrepareInlineable {
         // so no accessors are needed for them.
         tree
       else
+        // Generate inline accessors for 3.0-3.3
         new MakeInlineablePassing(inlineSym).transform(
-          new MakeInlineableDirect(inlineSym).transform(tree))
+          new MakeInlineableDirect(inlineSym, compat = true).transform(tree))
+          // Generate and use inline accessors for 3.4+
+        new MakeInlineablePassing(inlineSym).transform(
+          new MakeInlineableDirect(inlineSym, compat = false).transform(tree))
     }
   }
 

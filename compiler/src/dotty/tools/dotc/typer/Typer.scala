@@ -34,6 +34,8 @@ import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
+import TopLevelExtensionModules.topLevelModuleDefTree
+
 
 import collection.mutable
 import annotation.tailrec
@@ -2713,6 +2715,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           pkg.moduleClass.info.decls.lookup(topLevelClassName).ensureCompleted()
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
           if (!ctx.isAfterTyper)
+            val inlineAccessorClasses = stats1.view.collect {
+              case tdef @ TypeDef(name, rhs) if tdef.symbol.isClass && PrepareInlineable.inlineAccessorsModule(tdef.symbol).exists =>
+                val inlineAccessorsModuleClass = PrepareInlineable.inlineAccessorsModule(tdef.symbol)
+                topLevelModuleDefTree(
+                  inlineAccessorsModuleClass.asClass,
+                  addAccessorDefs(inlineAccessorsModuleClass, Nil)
+                )
+            }.flatten
+            stats1 = stats1 ++ inlineAccessorClasses
+
             stats1 = stats1 ++ typedBlockStats(MainProxies.proxies(stats1))._1
           cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
         }
