@@ -467,7 +467,6 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot, containerSymbol.span)) // private @volatile var _x: AnyRef
     containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
     containerSymbol.removeAnnotation(defn.ScalaStaticAnnot)
-    containerSymbol.resetFlag(JavaStatic)
     val getOffset =
         Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getOffsetStatic)
     val containerTree = ValDef(containerSymbol, nullLiteral)
