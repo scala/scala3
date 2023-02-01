@@ -39,8 +39,9 @@ object Future:
       given Async with
         def await[T](f: Future[T]): T = f.result match
           case Some(x) => x
-          case None => suspend[T, Unit]: s ?=>
-            f.waiting += (v => s.resume(v))
+          case None =>
+            suspend[T, Unit]: s ?=>
+              f.waiting += (v => s.resume(v))
             f.await
       body
 
