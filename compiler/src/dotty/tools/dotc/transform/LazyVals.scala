@@ -674,7 +674,6 @@ object LazyVals {
       val cas: TermName                    = N.cas.toTermName
       val getOffset: TermName              = N.getOffset.toTermName
       val getOffsetStatic: TermName        = "getOffsetStatic".toTermName
-      val getStaticFieldOffset: TermName   = "getStaticFieldOffset".toTermName
       val getDeclaredField: TermName       = "getDeclaredField".toTermName
     }
     val flag: TermName        = "flag".toTermName
