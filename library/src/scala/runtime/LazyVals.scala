@@ -142,14 +142,6 @@ object LazyVals {
     r
   }
 
-  def getStaticFieldOffset(field: java.lang.reflect.Field): Long = {
-    @nowarn
-    val r = unsafe.staticFieldOffset(field)
-    if (debug)
-      println(s"getStaticFieldOffset(${field.getDeclaringClass}, ${field.getName}) = $r")
-    r
-  }
-
   def getOffsetStatic(field: java.lang.reflect.Field) =
     @nowarn
     val r = unsafe.objectFieldOffset(field)
