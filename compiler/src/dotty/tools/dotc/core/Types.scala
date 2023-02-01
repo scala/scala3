@@ -5773,24 +5773,24 @@ object Types {
       finally variance = saved
 
     /** Map this function over given type */
-    def mapOver(tp: Type): Type =
+    final def mapOver(tp: Type): Type =
       record(s"TypeMap mapOver ${getClass}")
       record("TypeMap mapOver total")
       tp.visit(this)
 
-    def mapOver(tp: NamedType): Type =
+    final def mapOver(tp: NamedType): Type =
       if stopBecauseStaticOrLocal(tp) then tp
       else
         val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
         derivedSelect(tp, prefix1)
 
-    def mapOver(tp: AppliedType): Type =
+    final def mapOver(tp: AppliedType): Type =
       derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
 
-    def mapOver(tp: LambdaType): Type =
+    final def mapOver(tp: LambdaType): Type =
       mapOverLambda(tp)
 
-    def mapOver(tp: TypeBounds): Type = tp match
+    final def mapOver(tp: TypeBounds): Type = tp match
       case tp: AliasingBounds =>
         derivedAlias(tp, atVariance(0)(this(tp.alias)))
       case tp =>
@@ -5799,14 +5799,14 @@ object Types {
         variance = -variance
         derivedTypeBounds(tp, lo1, this(tp.hi))
 
-    def mapOver(tp: TypeVar): Type =
+    final def mapOver(tp: TypeVar): Type =
       val inst = tp.instanceOpt
       if (inst.exists) apply(inst) else tp
 
-    def mapOver(tp: ExprType) =
+    final def mapOver(tp: ExprType) =
       derivedExprType(tp, this(tp.resultType))
 
-    def mapOver(tp: AnnotatedType): Type = tp match
+    final def mapOver(tp: AnnotatedType): Type = tp match
       case CapturingType(parent, refs) =>
         mapCapturingType(tp, parent, refs, variance)
       case AnnotatedType(underlying, annot) =>
@@ -5815,19 +5815,19 @@ object Types {
         if annot1 eq EmptyAnnotation then parent1
         else derivedAnnotatedType(tp, parent1, annot1)
 
-    def mapOver(tp: ProtoType): Type =
+    final def mapOver(tp: ProtoType): Type =
       tp.map(this)
 
-    def mapOver(tp: RefinedType): Type =
+    final def mapOver(tp: RefinedType): Type =
       derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
 
-    def mapOver(tp: RecType): Type =
+    final def mapOver(tp: RecType): Type =
       derivedRecType(tp, this(tp.parent))
 
-    def mapOver(tp: SuperType): Type =
+    final def mapOver(tp: SuperType): Type =
       derivedSuperType(tp, this(tp.thistpe), this(tp.supertpe))
 
-    def mapOver(tp: LazyRef): Type =
+    final def mapOver(tp: LazyRef): Type =
       LazyRef { refCtx =>
         given Context = refCtx
         val ref1 = tp.ref
@@ -5840,41 +5840,41 @@ object Types {
           try this(ref1) finally mapCtx = saved
       }
 
-    def mapOver(tp: ClassInfo): Type =
+    final def mapOver(tp: ClassInfo): Type =
       mapClassInfo(tp)
 
-    def mapOver(tp: AndType): Type =
+    final def mapOver(tp: AndType): Type =
       derivedAndType(tp, this(tp.tp1), this(tp.tp2))
 
-    def mapOver(tp: OrType): Type =
+    final def mapOver(tp: OrType): Type =
       derivedOrType(tp, this(tp.tp1), this(tp.tp2))
 
-    def mapOver(tp: MatchType): Type =
+    final def mapOver(tp: MatchType): Type =
       val bound1 = this(tp.bound)
       val scrut1 = atVariance(0)(this(tp.scrutinee))
       derivedMatchType(tp, bound1, scrut1, tp.cases.mapConserve(this))
 
-    def mapOver(tp: SkolemType): Type =
+    final def mapOver(tp: SkolemType): Type =
       derivedSkolemType(tp, this(tp.info))
 
-    def mapOver(tp: WildcardType): Type =
+    final def mapOver(tp: WildcardType): Type =
       derivedWildcardType(tp, mapOver(tp.optBounds))
 
-    def mapOver(tp: JavaArrayType): Type =
+    final def mapOver(tp: JavaArrayType): Type =
       derivedJavaArrayType(tp, this(tp.elemType))
 
     private def treeTypeMap = new TreeTypeMap(typeMap = this)
 
-    def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
+    final def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
 
-    def mapOver(scope: Scope): Scope = {
+    final def mapOver(scope: Scope): Scope = {
       val elems = scope.toList
       val elems1 = mapOver(elems)
       if (elems1 eq elems) scope
       else newScopeWith(elems1: _*)
     }
 
-    def mapOver(tree: Tree): Tree = treeTypeMap(tree)
+    final def mapOver(tree: Tree): Tree = treeTypeMap(tree)
 
     /** Can be overridden. By default, only the prefix is mapped. */
     protected def mapClassInfo(tp: ClassInfo): Type =
@@ -6234,19 +6234,19 @@ object Types {
     protected def applyToPrefix(x: T, tp: NamedType): T =
       atVariance(variance max 0)(this(x, tp.prefix))
 
-    def foldOver(x: T, tp: Type): T =
+    final def foldOver(x: T, tp: Type): T =
       record(s"foldOver $getClass")
       record(s"foldOver total")
       tp.visit(this, x)
 
-    def foldOver(x: T, tp: NamedType): T =
+    final def foldOver(x: T, tp: NamedType): T =
       if stopBecauseStaticOrLocal(tp) then x
       else if tp.isInstanceOf[TypeRef] then
         val tp1 = tp.prefix.lookupRefined(tp.name)
         if tp1.exists then this(x, tp1) else applyToPrefix(x, tp)
       else applyToPrefix(x, tp)
 
-    def foldOver(x: T, tp: AppliedType): T =
+    final def foldOver(x: T, tp: AppliedType): T =
       @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
         if (args.isEmpty || tparams.isEmpty) x
         else {
@@ -6259,7 +6259,7 @@ object Types {
         }
       foldArgs(this(x, tp.tycon), tyconTypeParams(tp), tp.args)
 
-    def foldOver(x: T, tp: LambdaType): T =
+    final def foldOver(x: T, tp: LambdaType): T =
       val restpe = tp.resultType
       val saved = variance
       variance = if (defn.MatchCase.isInstance(restpe)) 0 else -variance
@@ -6267,13 +6267,13 @@ object Types {
       variance = saved
       this(y, restpe)
 
-    def foldOver(x: T, tp: TypeVar): T =
+    final def foldOver(x: T, tp: TypeVar): T =
       this(x, tp.underlying)
 
-    def foldOver(x: T, tp: ExprType): T =
+    final def foldOver(x: T, tp: ExprType): T =
       this(x, tp.resType)
 
-    def foldOver(x: T, tp: TypeBounds): T =
+    final def foldOver(x: T, tp: TypeBounds): T =
       if tp.lo eq tp.hi then atVariance(0)(this(x, tp.lo))
       else
         variance = -variance
@@ -6281,48 +6281,48 @@ object Types {
         variance = -variance
         this(y, tp.hi)
 
-    def foldOver(x: T, tp: AndType): T =
+    final def foldOver(x: T, tp: AndType): T =
       this(this(x, tp.tp1), tp.tp2)
 
-    def foldOver(x: T, tp: OrType): T =
+    final def foldOver(x: T, tp: OrType): T =
       this(this(x, tp.tp1), tp.tp2)
 
-    def foldOver(x: T, tp: MatchType): T =
+    final def foldOver(x: T, tp: MatchType): T =
       val x1 = this(x, tp.bound)
       val x2 = atVariance(0)(this(x1, tp.scrutinee))
       foldOver(x2, tp.cases)
 
-    def foldOver(x: T, tp: AnnotatedType): T = tp match
+    final def foldOver(x: T, tp: AnnotatedType): T = tp match
       case CapturingType(parent, refs) =>
         (this(x, parent) /: refs.elems)(this)
       case _ =>
         this(applyToAnnot(x, tp.annot), tp.parent)
 
-    def foldOver(x: T, tp: ProtoType): T =
+    final def foldOver(x: T, tp: ProtoType): T =
       tp.fold(x, this)
 
-    def foldOver(x: T, tp: RefinedType): T =
+    final def foldOver(x: T, tp: RefinedType): T =
       this(this(x, tp.parent), tp.refinedInfo)
 
-    def foldOver(x: T, tp: WildcardType): T =
+    final def foldOver(x: T, tp: WildcardType): T =
       this(x, tp.optBounds)
 
-    def foldOver(x: T, tp: ClassInfo): T =
+    final def foldOver(x: T, tp: ClassInfo): T =
       this(x, tp.prefix)
 
-    def foldOver(x: T, tp: JavaArrayType): T =
+    final def foldOver(x: T, tp: JavaArrayType): T =
       this(x, tp.elemType)
 
-    def foldOver(x: T, tp: SkolemType): T =
+    final def foldOver(x: T, tp: SkolemType): T =
       this(x, tp.info)
 
-    def foldOver(x: T, tp: SuperType): T =
+    final def foldOver(x: T, tp: SuperType): T =
       this(this(x, tp.thistpe), tp.supertpe)
 
-    def foldOver(x: T, tp: LazyRef): T =
+    final def foldOver(x: T, tp: LazyRef): T =
       this(x, tp.ref)
 
-    def foldOver(x: T, tp: RecType): T =
+    final def foldOver(x: T, tp: RecType): T =
       this(x, tp.parent)
 
     @tailrec final def foldOver(x: T, ts: List[Type]): T = ts match {
