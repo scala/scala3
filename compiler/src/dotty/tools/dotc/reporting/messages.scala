@@ -2554,7 +2554,8 @@ class MissingImplicitArgument(
     pt: Type,
     where: String,
     paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
-    ignoredInstanceNormalImport: => Option[SearchSuccess]
+    ignoredInstanceNormalImport: => Option[SearchSuccess],
+    ignoredConvertibleImplicits: => Iterable[TermRef]
   )(using Context) extends TypeMsg(MissingImplicitArgumentID), ShowMatchTrace(pt):
 
   arg.tpe match
@@ -2743,8 +2744,18 @@ class MissingImplicitArgument(
         // show all available additional info
         def hiddenImplicitNote(s: SearchSuccess) =
           i"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+        def showImplicitAndConversions(imp: TermRef, convs: Iterable[TermRef]) =
+          i"\n- ${imp.symbol.showDcl}${convs.map(c => "\n    - " + c.symbol.showDcl).mkString}"
+        def noChainConversionsNote(ignoredConvertibleImplicits: Iterable[TermRef]): Option[String] =
+          Option.when(ignoredConvertibleImplicits.nonEmpty)(
+            i"\n\nNote: implicit conversions are not automatically applied to arguments of using clauses. " +
+            i"You will have to pass the argument explicitly.\n" +
+            i"The following implicits in scope can be implicitly converted to ${pt.show}:" +
+            ignoredConvertibleImplicits.map { imp => s"\n- ${imp.symbol.showDcl}"}.mkString
+          )
         super.msgPostscript
         ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
+            .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
             .getOrElse(ctx.typer.importSuggestionAddendum(pt))
 
   def explain(using Context) = ""

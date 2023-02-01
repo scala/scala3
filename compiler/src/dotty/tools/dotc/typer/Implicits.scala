@@ -923,7 +923,34 @@ trait Implicits:
           // example where searching for a nested type causes an infinite loop.
           None
 
-    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport)
+    def allImplicits(currImplicits: ContextualImplicits): List[ImplicitRef] =
+      if currImplicits.outerImplicits == null then currImplicits.refs
+      else currImplicits.refs ::: allImplicits(currImplicits.outerImplicits)
+
+    /** Whether the given type is for an implicit def that's a Scala 2 implicit conversion */
+    def isImplicitDefConversion(typ: Type): Boolean = typ match {
+      case PolyType(_, resType) => isImplicitDefConversion(resType)
+      case mt: MethodType => !mt.isImplicitMethod && !mt.isContextualMethod
+      case _ => false
+    }
+
+    def ignoredConvertibleImplicits = arg.tpe match
+      case fail: SearchFailureType =>
+        if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
+          // Get every implicit in scope and try to convert each
+          allImplicits(ctx.implicits)
+            .view
+            .map(_.underlyingRef)
+            .distinctBy(_.denot)
+            .filter { imp =>
+              !isImplicitDefConversion(imp.underlying)
+                && imp.symbol != defn.Predef_conforms
+                && viewExists(imp, fail.expectedType)
+            }
+        else
+          Nil
+
+    MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, ignoredConvertibleImplicits)
   }
 
   /** A string indicating the formal parameter corresponding to a  missing argument */
