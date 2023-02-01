@@ -12,7 +12,7 @@ object Scheduler:
 class Suspension[-T, +R]:
   def resume(arg: T): R = ???
 
-def suspend[T, R](body: Suspension[T, R] ?=> R)(using Label[R]): T = ???
+def suspend[T, R](body: Suspension[T, R] => R)(using Label[R]): T = ???
 
 trait Async:
   def await[T](f: Future[T]): T
@@ -29,26 +29,22 @@ class Future[+T] private():
 object Future:
   private def complete[T](f: Future[T], value: T): Unit =
     f.result = Some(value)
-    for wf <- f.waiting do
-      Scheduler.schedule(() => wf(value))
+    for resumption <- f.waiting do
+      Scheduler.schedule(() => resumption(value))
     f.waiting = ListBuffer()
 
   // a handler for Async
-  def async[T](body: Async ?=> Unit): Unit =
+  def async(body: Async ?=> Unit): Unit =
     boundary [Unit]:
       given Async with
         def await[T](f: Future[T]): T = f.result match
           case Some(x) => x
-          case None =>
-            suspend[T, Unit]: s ?=>
-              f.waiting += (v => s.resume(v))
-            f.await
+          case None => suspend[T, Unit](s => f.waiting += s.resume)
       body
 
   def apply[T](body: Async ?=> T): Future[T] =
     val f = new Future[T]
-    Scheduler.schedule: () =>
-      async(complete(f, body))
+    Scheduler.schedule(() => async(complete(f, body)))
     f
 
 end Future
