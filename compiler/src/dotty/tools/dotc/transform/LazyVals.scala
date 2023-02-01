@@ -466,13 +466,9 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val containerSymbol = newSymbol(claz, containerName, x.symbol.flags &~ containerFlagsMask | containerFlags | Private, defn.ObjectType, coord = x.symbol.coord).enteredAfter(this)
     containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot, containerSymbol.span)) // private @volatile var _x: AnyRef
     containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
-    val stat = x.symbol.isStatic
-    if stat then
-      containerSymbol.setFlag(JavaStatic)
+    containerSymbol.removeAnnotation(defn.ScalaStaticAnnot)
+    containerSymbol.resetFlag(JavaStatic)
     val getOffset =
-      if stat then
-        Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getStaticFieldOffset)
-      else
         Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getOffsetStatic)
     val containerTree = ValDef(containerSymbol, nullLiteral)
 
@@ -490,9 +486,6 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val offset = ref(offsetSymbol.nn)
 
     val swapOver =
-      if stat then
-        tpd.clsOf(x.symbol.owner.typeRef)
-      else
         This(claz)
 
     val (accessorDef, initMethodDef) = mkThreadSafeDef(x, claz, containerSymbol, offset, swapOver)
