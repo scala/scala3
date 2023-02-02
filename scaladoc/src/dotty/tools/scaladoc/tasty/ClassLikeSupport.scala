@@ -350,16 +350,17 @@ trait ClassLikeSupport:
     val unshuffledMemberInfoParamLists = 
       if methodSymbol.isExtensionMethod && methodSymbol.isRightAssoc then
         // Taken from RefinedPrinter.scala
-        val (leadingTyParamss, rest1) = memberInfo.paramLists.span(_.isType)
+        // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
+        val (leftTyParams, rest1) = memberInfo.paramLists.span(_.isType)
         val (leadingUsing, rest2) = rest1.span(_.isUsing)
-        val (rightTyParamss, rest3) = rest2.span(_.isType)
-        val (rightParamss, rest4) = rest3.splitAt(1)
-        val (leftParamss, rest5) = rest4.splitAt(1)
+        val (rightTyParams, rest3) = rest2.span(_.isType)
+        val (rightParam, rest4) = rest3.splitAt(1)
+        val (leftParam, rest5) = rest4.splitAt(1)
         val (trailingUsing, rest6) = rest5.span(_.isUsing)
-        if leftParamss.nonEmpty then
-          // leadingTyParamss ::: leadingUsing ::: leftParamss ::: trailingUsing ::: rightTyParamss ::: rightParamss ::: rest6
+        if leftParam.nonEmpty then
+          // leftTyParams ::: leadingUsing ::: leftParam ::: trailingUsing ::: rightTyParams ::: rightParam ::: rest6
           // because of takeRight after, this is equivalent to the following:
-          rightTyParamss ::: rightParamss ::: rest6
+          rightTyParams ::: rightParam ::: rest6
         else
           memberInfo.paramLists // it wasn't a binary operator, after all.
       else 
