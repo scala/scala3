@@ -1,25 +1,6 @@
 import collection.mutable.ListBuffer
-import compiletime.uninitialized
 import scala.util.boundary, boundary.{Label, break}
-
-/** Contains a delimited contination, which can be invoked with `r`esume` */
-class Suspension[+R]:
-  def resume(): R = ???
-object Suspension:
-  def apply[R](): Suspension[R] =
-    ??? // magic, can be called only from `suspend`
-
-/** Returns `fn(s)` where `s` is the current suspension to the boundary associated
- *  with the given label.
- */
-def suspend[R, T](fn: Suspension[R] => T)(using Label[T]): Unit =
-  ??? // break(fn(Suspension()))
-
-/** Returns the current suspension to the boundary associated
- *  with the given label.
- */
-def suspend[R]()(using Label[Suspension[R]]): Unit =
-  suspend[R, Suspension[R]](identity)
+import runtime.*
 
 /** A single method iterator */
 abstract class Choices[+T]:

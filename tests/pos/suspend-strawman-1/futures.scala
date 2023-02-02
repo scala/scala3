@@ -1,22 +1,6 @@
 import collection.mutable.ListBuffer
 import scala.util.boundary, boundary.{Label, break}
-
-/** A hypthetical task scheduler */
-object Scheduler:
-  def schedule(task: Runnable): Unit = ???
-
-/** Contains a delimited contination, which can be invoked with `resume` */
-class Suspension[+R]:
-  def resume(): R = ???
-object Suspension:
-  def apply[R](): Suspension[R] =
-    ??? // magic, can be called only from `suspend`
-
-/** Returns `fn(s)` where `s` is the current suspension to the boundary associated
- *  with the given label.
- */
-def suspend[R, T](fn: Suspension[R] => T)(using Label[T]): Unit =
-  break(fn(Suspension()))
+import runtime.*
 
 /** A suspension and a value indicating the Future for which the suspension is waiting */
 type Waiting = (Suspension[Unit], Future[?])
@@ -44,7 +28,7 @@ object Future:
     f.waiting = ListBuffer()
 
   /** Create future that eventually returns the result of `op` */
-  def apply[T](body: => T): Future[T] =
+  def apply[T](body: CanWait ?=> T): Future[T] =
     val f = new Future[T]
     Scheduler.schedule: () =>
       boundary[Unit | Waiting]:
@@ -55,10 +39,9 @@ object Future:
         case () =>
     f
 
-def Test(x1: Future[Int], x2: Future[Int])(using CanWait) =
+def Test(x: Future[Int], xs: List[Future[Int]]) =
   Future:
-    x1.await + x2.await
-
+    x.await + xs.map(_.await).sum
 
 
 
