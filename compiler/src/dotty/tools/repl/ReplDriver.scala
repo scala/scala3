@@ -187,19 +187,23 @@ class ReplDriver(settings: Array[String],
   // TODO: i5069
   final def bind(name: String, value: Any)(using state: State): State = state
 
+  protected def redirectOutput: Boolean = true
+
   // redirecting the output allows us to test `println` in scripted tests
   private def withRedirectedOutput(op: => State): State = {
-    val savedOut = System.out
-    val savedErr = System.err
-    try {
-      System.setOut(out)
-      System.setErr(out)
-      op
-    }
-    finally {
-      System.setOut(savedOut)
-      System.setErr(savedErr)
-    }
+    if redirectOutput then
+      val savedOut = System.out
+      val savedErr = System.err
+      try {
+        System.setOut(out)
+        System.setErr(out)
+        op
+      }
+      finally {
+        System.setOut(savedOut)
+        System.setErr(savedErr)
+      }
+    else op
   }
 
   private def newRun(state: State, reporter: StoreReporter = newStoreReporter) = {
