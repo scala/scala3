@@ -1130,6 +1130,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
+      bspEnabled := false,
       scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
 
       // Required to run Scala.js tests.
