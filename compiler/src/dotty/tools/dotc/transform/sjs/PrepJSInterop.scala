@@ -888,6 +888,9 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
             report.error("A non-native JS trait cannot contain private members", tree)
           } else if (sym.is(Lazy)) {
             report.error("A non-native JS trait cannot contain lazy vals", tree)
+          } else if (sym.is(ParamAccessor)) {
+            // #12621
+            report.error("A non-native JS trait cannot have constructor parameters", tree)
           } else if (!sym.is(Deferred)) {
             /* Tell the back-end not to emit this thing. In fact, this only
              * matters for mixed-in members created from this member.
