@@ -15,7 +15,7 @@ trait Monad[F[_]]:
 
 end Monad
 
-trait CanReflect[M[_]: Monad, R]:
+trait CanReflect[M[_], R]:
   def reflect(mr: M[R]): R
 
 trait Monadic[M[_]: Monad]:
