@@ -15,8 +15,8 @@ trait Monad[F[_]]:
 
 end Monad
 
-trait CanReflect[M[_], R]:
-  def reflect(mr: M[R]): R
+trait CanReflect[M[_]]:
+  def reflect[R](mr: M[R]): R
 
 trait Monadic[M[_]: Monad]:
 
@@ -41,16 +41,16 @@ trait Monadic[M[_]: Monad]:
   /**
    * Helper to summon and use an instance of CanReflect[M]
    */
-  def reflect[R](mr: M[R])(using r: CanReflect[M, R]): R = r.reflect(mr)
+  def reflect[R](mr: M[R])(using r: CanReflect[M]): R = r.reflect(mr)
 
   /**
    * Reify a computation into a monadic value
    */
-  def reify[R](prog: CanReflect[M, R] ?=> R): M[R] =
+  def reify[R](prog: CanReflect[M] ?=> R): M[R] =
     boundary [M[R]]:
-      given CanReflect[M, R] with
-        def reflect(mr: M[R]): R =
-          suspend [R, M[R]] (s => mr.flatMap(s.resume))
+      given CanReflect[M] with
+        def reflect[R2](mr: M[R2]): R2 =
+          suspend [R2, M[R]] (s => mr.flatMap(s.resume))
       pure(prog)
 
 end Monadic
