@@ -10,19 +10,19 @@ package <empty> {
     @static private def <clinit>(): Unit =
       {
         A.OFFSET$_m_0 =
-          scala.runtime.LazyVals.getStaticFieldOffset(
+          scala.runtime.LazyVals.getOffsetStatic(
             classOf[Object {...}].getDeclaredField("x$lzy1"))
         ()
       }
     @static @static val OFFSET$_m_0: Long =
-      scala.runtime.LazyVals.getStaticFieldOffset(
+      scala.runtime.LazyVals.getOffsetStatic(
         classOf[Object {...}].getDeclaredField("x$lzy1"))
     private def writeReplace(): Object =
       new scala.runtime.ModuleSerializationProxy(classOf[A])
-    @volatile private lazy <static> var x$lzy1: Object = null
+    @volatile private lazy var x$lzy1: Object = null
     lazy def x(): Int =
       {
-        val result: Object = A#x$lzy1
+        val result: Object = A.x$lzy1
         if result.isInstanceOf[Int] then scala.Int.unbox(result) else
           if result.eq(scala.runtime.LazyVals.NullValue) then
             scala.Int.unbox(null) else scala.Int.unbox(A.x$lzyINIT1())
@@ -30,10 +30,10 @@ package <empty> {
     private def x$lzyINIT1(): Object =
       while <empty> do
         {
-          val current: Object = A#x$lzy1
+          val current: Object = A.x$lzy1
           if current.eq(null) then
             if
-              scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0, null,
+              scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0, null,
                 scala.runtime.LazyVals.Evaluating)
              then
               {
@@ -49,15 +49,15 @@ package <empty> {
                   }
                  finally
                   if
-                    scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0,
+                    scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0,
                       scala.runtime.LazyVals.Evaluating, result).unary_!()
                    then
                     {
                       val lock: scala.runtime.LazyVals.LazyVals$Waiting =
-                        A#x$lzy1.asInstanceOf[
+                        A.x$lzy1.asInstanceOf[
                           scala.runtime.LazyVals.LazyVals$Waiting]
-                      scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0,
-                        lock, result)
+                      scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0, lock,
+                        result)
                       lock.countDown()
                     }
                    else ()
@@ -71,8 +71,8 @@ package <empty> {
              then
               if current.eq(scala.runtime.LazyVals.Evaluating) then
                 {
-                  scala.runtime.LazyVals.objCAS(classOf[A], A.OFFSET$_m_0,
-                    current, new scala.runtime.LazyVals.LazyVals$Waiting())
+                  scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0, current,
+                    new scala.runtime.LazyVals.LazyVals$Waiting())
                   ()
                 }
                else
