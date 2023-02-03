@@ -17,6 +17,9 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.util.boundary$Break"),
     ProblemFilters.exclude[MissingClassProblem]("scala.util.boundary$Label"),
 
+    // Scala.js only: new runtime support class in 3.2.3; not available to users
+    ProblemFilters.exclude[MissingClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),
+
     //  New experimental features in 3.3.X
     ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.clauseInterleaving"),
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$clauseInterleaving$"),

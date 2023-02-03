@@ -3532,12 +3532,15 @@ class JSCodeGen()(using genCtx: Context) {
       val closure = js.Closure(arrow = true, formalCaptures, formalParams, restParam, genBody, actualCaptures)
 
       if (!funInterfaceSym.exists || defn.isFunctionClass(funInterfaceSym)) {
-        assert(!funInterfaceSym.exists || defn.isFunctionClass(funInterfaceSym),
-            s"Invalid functional interface $funInterfaceSym reached the back-end")
         val formalCount = formalParams.size
         val cls = ClassName("scala.scalajs.runtime.AnonFunction" + formalCount)
         val ctorName = MethodName.constructor(
             jstpe.ClassRef(ClassName("scala.scalajs.js.Function" + formalCount)) :: Nil)
+        js.New(cls, js.MethodIdent(ctorName), List(closure))
+      } else if (funInterfaceSym.name == tpnme.FunctionXXL && funInterfaceSym.owner == defn.ScalaRuntimePackageClass) {
+        val cls = ClassName("scala.scalajs.runtime.AnonFunctionXXL")
+        val ctorName = MethodName.constructor(
+            jstpe.ClassRef(ClassName("scala.scalajs.js.Function1")) :: Nil)
         js.New(cls, js.MethodIdent(ctorName), List(closure))
       } else {
         assert(funInterfaceSym.isJSType,
