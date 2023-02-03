@@ -3143,7 +3143,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `MethodType` */
     trait MethodTypeMethods:
       extension (self: MethodType)
-        /** Is this the type of given parameter clause `(implicit X1, ..., Xn)`, `(given X1, ..., Xn)` or `(given x1: X1, ..., xn: Xn)` */
+        /** Is this the type of using parameter clause `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
         def isErased: Boolean
         def param(idx: Int): TypeRepr

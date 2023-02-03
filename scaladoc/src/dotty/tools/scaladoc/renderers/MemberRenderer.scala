@@ -409,10 +409,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         case (Some(on), members) =>
           val typeSig = SignatureBuilder()
             .keyword("extension ")
-            .generics(on.typeParams)
+            .typeParamList(on.typeParams)
             .content
           val argsSig = SignatureBuilder()
-            .functionParameters(on.argsLists)
+            .functionTermParameters(on.argsLists)
             .content
           val sig = typeSig ++ Signature(Plain(s"(${on.name}: ")) ++ on.signature ++ Signature(Plain(")")) ++ argsSig
           MGroup(span(cls := "groupHeader")(sig.map(renderElement(_))), members.sortBy(_.name).toSeq, on.name) -> on.position

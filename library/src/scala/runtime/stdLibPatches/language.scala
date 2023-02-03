@@ -61,6 +61,14 @@ object language:
     @compileTimeOnly("`saferExceptions` can only be used at compile time in import statements")
     object saferExceptions
 
+    /** Adds support for clause interleaving:
+      * Methods can now have as many type clauses as they like, this allows to have type bounds depend on terms: `def f(x: Int)[A <: x.type]: A`
+      *
+      * @see [[http://dotty.epfl.ch/docs/reference/other-new-features/explicit-nulls.html]]
+      */
+    @compileTimeOnly("`clauseInterleaving` can only be used at compile time in import statements")
+    object clauseInterleaving
+
     /** Experimental support for pure function type syntax
      *
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/purefuns]]

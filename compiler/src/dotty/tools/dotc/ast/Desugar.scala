@@ -915,16 +915,16 @@ object desugar {
       name = normalizeName(mdef, mdef.tpt).asTermName,
       paramss =
         if mdef.name.isRightAssocOperatorName then
-          val (typaramss, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
+          val (rightTyParams, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
 
           paramss match
-            case params :: paramss1 => // `params` must have a single parameter and without `given` flag
+            case rightParam :: paramss1 => // `rightParam` must have a single parameter and without `given` flag
 
               def badRightAssoc(problem: String) =
                 report.error(em"right-associative extension method $problem", mdef.srcPos)
                 extParamss ++ mdef.paramss
 
-              params match
+              rightParam match
                 case ValDefs(vparam :: Nil) =>
                   if !vparam.mods.is(Given) then
                     // we merge the extension parameters with the method parameters,
@@ -934,8 +934,10 @@ object desugar {
                     //     def %:[E](f: F)(g: G)(using H): Res = ???
                     // will be encoded as
                     //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
-                    val (leadingUsing, otherExtParamss) = extParamss.span(isUsingOrTypeParamClause)
-                    leadingUsing ::: typaramss ::: params :: otherExtParamss ::: paramss1
+                    //
+                    // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
+                    val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
+                    leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
                   else
                     badRightAssoc("cannot start with using clause")
                 case _ =>

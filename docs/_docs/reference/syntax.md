@@ -338,9 +338,6 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
 ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’] id [HkTypeParamClause] TypeParamBounds
 
-DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
-
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
 TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
 
@@ -352,13 +349,20 @@ ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
                     |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
-Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
-DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
-DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’ | UsingParamClause
-UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefParams | FunArgTypes) ‘)’
-DefParams         ::=  DefParam {‘,’ DefParam}
-DefParam          ::=  {Annotation} [‘inline’] Param
+TypelessClauses   ::=  TypelessClause {TypelessClause}
+TypelessClause    ::=  DefTermParamClause
+                    |  UsingParamClause
+
+DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
+DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
+DefTermParamClause::=  [nl] ‘(’ [DefTermParams] ‘)’
+UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) ‘)’
+DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
+
+DefTermParams     ::= DefTermParam {‘,’ DefTermParam}
+DefTermParam      ::= {Annotation} [‘inline’] Param
+Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 ```
 
 ### Bindings and Imports
@@ -409,8 +413,8 @@ Dcl               ::=  RefineDcl
 ValDcl            ::=  ids ‘:’ Type
 VarDcl            ::=  ids ‘:’ Type
 DefDcl            ::=  DefSig ‘:’ Type
-DefSig            ::=  id [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
+DefSig            ::=  id [DefTypeParamClause] [TypelessClauses] [DefImplicitClause]
+TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ PatDef
@@ -420,7 +424,7 @@ Def               ::=  ‘val’ PatDef
 PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
                     |  Pattern2 [‘:’ Type] ‘=’ Expr
 DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr
-                    |  ‘this’ DefParamClause DefParamClauses ‘=’ ConstrExpr
+                    |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
@@ -432,10 +436,10 @@ ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
-GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefParamClause`, `UsingParamClause` must be present
+GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
 StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
-                       ‘(’ DefParam ‘)’ {UsingParamClause} ExtMethods
+                       ‘(’ DefTermParam ‘)’ {UsingParamClause} ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
                     |  Export
