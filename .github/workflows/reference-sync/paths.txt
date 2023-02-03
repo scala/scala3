@@ -1,0 +1,3 @@
+.github/workflows
+scaladoc
+docs
