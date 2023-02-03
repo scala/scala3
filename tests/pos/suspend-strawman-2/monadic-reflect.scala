@@ -15,9 +15,8 @@ trait Monad[F[_]]:
 
 end Monad
 
-trait CanReflect[M[_], R] {
-  def reflect(mr: M[R])(using Monad[M]): R
-}
+trait CanReflect[M[_]: Monad, R]:
+  def reflect(mr: M[R]): R
 
 trait Monadic[M[_]: Monad]:
 
@@ -50,7 +49,7 @@ trait Monadic[M[_]: Monad]:
   def reify[R](prog: CanReflect[M, R] ?=> R): M[R] =
     boundary [M[R]]:
       given CanReflect[M, R] with
-        def reflect(mr: M[R])(using Monad[M]): R =
+        def reflect(mr: M[R]): R =
           suspend [R, M[R]] (s => mr.flatMap(s.resume))
       pure(prog)
 
