@@ -201,8 +201,8 @@ ArgumentExprs ::=  ‘(’ [Exprs] ‘)’
 Exprs         ::=  Expr {‘,’ Expr}
 ```
 
-An application `´f(e_1, ..., e_m)´` applies the expression `´f´` to the argument expressions `´e_1, ..., e_m´`.
-For the overal expression to be well-typed, ´f´ must be *applicable* to its arguments, which is defined next by case analysis on ´f´'s type.
+An application `´f(e_1, ..., e_m)´` applies the method `´f´` to the argument expressions `´e_1, ..., e_m´`.
+For this expression to be well-typed, the method must be *applicable* to its arguments:
 
 If ´f´ has a method type `(´p_1´:´T_1, ..., p_n´:´T_n´)´U´`, each argument expression ´e_i´ is typed with the corresponding parameter type ´T_i´ as expected type.
 Let ´S_i´ be the type of argument ´e_i´ ´(i = 1, ..., m)´.
@@ -214,12 +214,12 @@ Once the types ´S_i´ have been determined, the method ´f´ of the above metho
   - for every positional argument ´e_i´ the type ´S_i´ is [compatible](03-types.html#compatibility) with ´T_i´;
   - if the expected type is defined, the result type ´U´ is [compatible](03-types.html#compatibility) to it.
 
-If ´f´ is a polymorphic method, [local type inference](#local-type-inference) is used to instantiate ´f´'s type parameters.
-The polymorphic method is applicable if type inference can determine type arguments so that the instantiated method is applicable.
+If ´f´ is instead of some value type, the application is taken to be equivalent to `´f´.apply(´e_1, ..., e_m´)`, i.e. the application of an `apply` method defined by ´f´.
+Value `´f´` is applicable to the given arguments if `´f´.apply` is applicable.
 
-If ´f´ has some value type, the application is taken to be equivalent to `´f´.apply(´e_1, ..., e_m´)`, i.e. the application of an `apply` method defined by ´f´.
-The value `´f´` is applicable to the given arguments if `´f´.apply` is applicable.
-
+Note:
+In the case where ´f´ or `´f´.apply` is a polymorphic method, this is taken as an [ommitted type application](#type-applications).
+`´f´` is applicable to the given arguments if the result of this type application is applicable.
 
 The application `´f´(´e_1, ..., e_n´)` evaluates ´f´ and then each argument ´e_1, ..., e_n´ from left to right, except for arguments that correspond to a by-name parameter (see below).
 Each argument expression is converted to the type of its corresponding formal parameter.
