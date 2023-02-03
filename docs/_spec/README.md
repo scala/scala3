@@ -1,4 +1,6 @@
-# Scala Language Reference
+# WIP Scala 3 Language Specification
+
+**This is still a work in progress, and should *not* be regarded as a source of truth.**
 
 First of all, the language specification is meant to be correct, precise and clear.
 
@@ -15,9 +17,6 @@ Check `Gemfile` for the current versions.
 We aim to track the configuration GitHub Pages uses but differences may arise as GitHub Pages evolves.
 
 ## Building
-
-<!-- TODO: change url to correct one -->
-Travis CI builds the spec automatically after every merged pull release and publishes to https://www.scala-lang.org/files/archive/spec/2.13/.
 
 <!-- TODO: Check nothing else is needed -->
 To preview locally, run the following commands in the docs/_spec subfolder:
@@ -40,8 +39,16 @@ and open http://0.0.0.0:4000/ to view the spec. Jekyll will rebuild as you edit 
 - MathJAX errors  will appear within the  rendered DOM as span  elements with class `mtext` and style attribute `color: red` applied. It is  possible to search for this combination in the development  tools of the browser of your choice. In chrome, CTRL+F / CMD+F within the inspect element panel allows you to do this.
 
 - This document follows the "one sentence <=> one line" convention, with the following exceptions below.
-- - A multiline code bloc is part of the sentence
-- - An enumeration of links is long enough
+  - A multiline code block is part of the sentence
+  - An enumeration of links is long enough
+
+- Whenever doing an enumeration of the kind "a, ..., z", follow the following conventions:
+  - It should always be "separator whitespace period period period separator whitespace", for example `, ..., ` or `,\n...,\n` for multiline.
+  - If in a code block, only the elements (a and z above) should be in math mode (between forward ticks)
+  - If in a math expression, the whole thing should be in a single math mode
+  - Look at the [Tuple Types section](docs/_spec/03-types.html#tuple-types) for an example of the different cases above.
+
+- Try to use "Note" blocks to point out logical conclusions that are not obvious, for examples, look at the [Tuple Types section](docs/_spec/03-types.html#tuple-types).
 
 ### Macro replacements:
 
@@ -51,7 +58,7 @@ and open http://0.0.0.0:4000/ to view the spec. Jekyll will rebuild as you edit 
 - As MathJAX has  no support for slanted font (latex  command \sl), so in all instances  this should be replaced with \mathit{}
 - The macro \U{ABCD} used for unicode character references can be replaced with \\uABCD.
 - The macro \URange{ABCD}{DCBA} used for unicode character ranges can be replaced with \\uABCD-\\uDBCA.
-- The macro \commadots can be replaced with ` , … , `.
+- The macro \commadots can be replaced with ` , … , ` (But should not, see above).
 - There is no adequate replacement for `\textsc{...}`  (small caps) in pandoc markdown. While unicode contains a number of  small capital  letters, it  is notably  missing Q and  X as  these glyphs  are intended  for phonetic spelling, therefore these  cannot be reliably used. For now,  the best option is to use  underscore emphasis and capitalise the text manually, `_LIKE THIS_`.
 
 ### Unicode Character replacements
