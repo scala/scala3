@@ -1461,7 +1461,6 @@ trait Checking {
 
   def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit =
     if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`future-migration`) then
-      val kind = if pattern then "pattern selector" else "value"
       report.warning(MatchableWarning(tp, pattern), pos)
 
   /** Check that there is an implicit capability to throw a checked exception
