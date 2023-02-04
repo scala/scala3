@@ -501,15 +501,13 @@ object ProtoTypes {
 
     def checkNoWildcardCaptureForCBN(targ1: Tree)(using Context): Tree = {
       if hasCaptureConversionArg(targ1.tpe) then
-        stripCast(targ1).tpe match
-          case tp: AppliedType if tp.hasWildcardArg =>
-            errorTree(targ1,
-              em"""argument for by-name parameter is not a value
-                  |and contains wildcard arguments: $tp
-                  |
-                  |Assign it to a val and pass that instead.
-                  |""")
-          case _ => targ1
+        val tp = stripCast(targ1).tpe
+        errorTree(targ1,
+          em"""argument for by-name parameter is not a value
+              |and contains wildcard arguments: $tp
+              |
+              |Assign it to a val and pass that instead.
+              |""")
       else targ1
     }
 
