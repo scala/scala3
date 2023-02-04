@@ -1,4 +1,4 @@
-package futures
+package simpleFutures
 
 import scala.collection.mutable.ListBuffer
 import scala.util.boundary, boundary.Label
@@ -14,17 +14,8 @@ class Future[+T](body: Async ?=> T):
 
   def await(using a: Async): T = a.await(this)
 
-  // a handler for Async
-  private def async(body: Async ?=> Unit): Unit =
-    boundary [Unit]:
-      given Async with
-        def await[T](f: Future[T]): T = f.result match
-          case Some(x) => x
-          case None => suspend[T, Unit](s => f.addWaiting(s.resume))
-      body
-
   private def complete(): Unit =
-    async:
+    Future.async:
       val value = body
       val result = Some(value)
       for k <- waiting do
@@ -33,7 +24,17 @@ class Future[+T](body: Async ?=> T):
 
   Scheduler.schedule(() => complete())
 
-object Future
+object Future:
+
+  // a handler for Async
+  def async(body: Async ?=> Unit): Unit =
+    boundary [Unit]:
+      given Async with
+        def await[T](f: Future[T]): T = f.result match
+          case Some(x) => x
+          case None => suspend[T, Unit](s => f.addWaiting(s.resume))
+      body
+
 end Future
 
 def Test(x: Future[Int], xs: List[Future[Int]]) =
