@@ -19,12 +19,13 @@ end Async
 class Future[+T](body: Async ?=> T):
   import Future.Status, Status.*
 
-  private var status: Status = Started
+  @volatile private var status: Status = Initial
   private var result: Try[T] = uninitialized
   private var waiting: ListBuffer[Try[T] => Unit] = ListBuffer()
 
-  private def addWaiting(k: Try[T] => Unit): Unit =
-    waiting += k
+  private def addWaiting(k: Try[T] => Unit): Unit = synchronized:
+    if status == Completed then k(result)
+    else waiting += k
 
   /** Wait for this future to be completed, return its value in case of success,
    *  or rethrow exception in case of failure.
@@ -57,9 +58,10 @@ class Future[+T](body: Async ?=> T):
 
   /** Start future's execution */
   def start(): this.type =
-    if status == Initial then
-      Scheduler.schedule(() => complete())
-      status = Started
+    synchronized:
+      if status == Initial then
+        Scheduler.schedule(() => complete())
+        status = Started
     this
 
 object Future:
