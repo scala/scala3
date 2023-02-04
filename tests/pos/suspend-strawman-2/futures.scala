@@ -8,7 +8,9 @@ import runtime.*
 
 trait Async:
 
-  /** Wait for completion of future `f`.
+  /** Wait for completion of future `f`. This means:
+   *   - ensure that computing `f` has started
+   *   - wait for the completion and return the completed Try
    */
   def await[T](f: Future[T]): Try[T]
 
@@ -34,6 +36,9 @@ class Future[+T](body: Async ?=> T):
     boundary [Unit]:
       given Async with
         def await[T](f: Future[T]): Try[T] = f.status match
+          case Initial   =>
+            f.start()
+            await(f)
           case Started   =>
             suspend[Try[T], Unit](s => f.addWaiting(s.resume))
           case Completed =>
@@ -49,17 +54,23 @@ class Future[+T](body: Async ?=> T):
       for k <- waiting do
         Scheduler.schedule(() => k(result))
       waiting.clear()
-      
-  Scheduler.schedule(() => complete())
+
+  /** Start future's execution */
+  def start(): this.type =
+    if status == Initial then
+      Scheduler.schedule(() => complete())
+      status = Started
+    this
 
 object Future:
   enum Status:
-    case Started, Completed
+    case Initial, Started, Completed
 end Future
 
 def Test(x: Future[Int], xs: List[Future[Int]]) =
   Future:
     x.await + xs.map(_.await).sum
+  .start()
 
 
 
