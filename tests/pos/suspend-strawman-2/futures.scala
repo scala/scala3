@@ -22,6 +22,7 @@ class Future[+T](body: Async ?=> T):
   @volatile private var status: Status = Initial
   private var result: Try[T] = uninitialized
   private var waiting: ListBuffer[Try[T] => Unit] = ListBuffer()
+  private var scheduler: Scheduler = uninitialized
 
   private def addWaiting(k: Try[T] => Unit): Unit = synchronized:
     if status == Completed then k(result)
@@ -38,10 +39,13 @@ class Future[+T](body: Async ?=> T):
       given Async with
         def await[T](f: Future[T]): Try[T] = f.status match
           case Initial   =>
-            f.start()
+            f.start()(using scheduler)
             await(f)
           case Started   =>
-            suspend[Try[T], Unit](s => f.addWaiting(s.resume))
+            suspend[Try[T], Unit]: s =>
+              f.addWaiting: result =>
+                scheduler.schedule: () =>
+                  s.resume(result)
           case Completed =>
             f.result
       body
@@ -52,15 +56,15 @@ class Future[+T](body: Async ?=> T):
         try Success(body)
         catch case ex: Exception => Failure(ex)
       status = Completed
-      for k <- waiting do
-        Scheduler.schedule(() => k(result))
+      waiting.foreach(_(result))
       waiting.clear()
 
   /** Start future's execution */
-  def start(): this.type =
+  def start()(using scheduler: Scheduler): this.type =
+    this.scheduler = scheduler
     synchronized:
       if status == Initial then
-        Scheduler.schedule(() => complete())
+        scheduler.schedule(() => complete())
         status = Started
     this
 
@@ -69,7 +73,7 @@ object Future:
     case Initial, Started, Completed
 end Future
 
-def Test(x: Future[Int], xs: List[Future[Int]]) =
+def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler) =
   Future:
     x.await + xs.map(_.await).sum
   .start()
