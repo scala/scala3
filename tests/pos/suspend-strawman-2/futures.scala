@@ -1,6 +1,6 @@
 package futures
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable, mutable.ListBuffer
 import scala.util.boundary, boundary.Label
 import scala.compiletime.uninitialized
 import scala.util.{Try, Success, Failure}
@@ -14,6 +14,9 @@ trait Async:
    */
   def await[T](f: Future[T]): Try[T]
 
+  /** The future computed by this async computation. */
+  def client: Future[?]
+
 end Async
 
 class Future[+T](body: Async ?=> T):
@@ -23,6 +26,7 @@ class Future[+T](body: Async ?=> T):
   private var result: Try[T] = uninitialized
   private var waiting: ListBuffer[Try[T] => Unit] = ListBuffer()
   private var scheduler: Scheduler = uninitialized
+  private var children: mutable.Set[Future[?]] = mutable.Set()
 
   private def addWaiting(k: Try[T] => Unit): Unit = synchronized:
     if status == Completed then k(result)
@@ -32,6 +36,11 @@ class Future[+T](body: Async ?=> T):
     val ws = waiting.toList
     waiting.clear()
     ws
+
+  private def currentChildren(): List[Future[?]] = synchronized:
+    val cs = children.toList
+    children.clear()
+    cs
 
   private def checkCancellation(): Unit =
     if status == Cancelled then throw Cancellation()
@@ -70,6 +79,10 @@ class Future[+T](body: Async ?=> T):
                 f.addWaiting: result =>
                   scheduler.schedule: () =>
                     s.resume(result)
+
+        def client = Future.this
+      end given
+      
       body
   end async
 
@@ -80,6 +93,7 @@ class Future[+T](body: Async ?=> T):
         catch case ex: Exception => Failure(ex)
       status = Completed
       for task <- currentWaiting() do task(result)
+      cancelChildren()
 
   /** Ensure future's execution has started */
   def ensureStarted()(using scheduler: Scheduler): this.type =
@@ -98,9 +112,25 @@ class Future[+T](body: Async ?=> T):
       status = Started
     this
 
+  /** Links the future as a child to the current async client.
+   *  This means the future will be cancelled when the async client
+   *  completes.
+   */
+  def linked(using async: Async): this.type = synchronized:
+    if status != Completed then
+      async.client.children += this
+    this
+
+  private def cancelChildren(): Unit =
+    for f <- currentChildren() do f.cancel()
+
+  /** Eventually stop computation of this future and fail with
+   *  a `Cancellation` exception. Also cancel all linked children.
+   */
   def cancel(): Unit = synchronized:
     if status != Completed && status != Cancelled then
       status = Cancelled
+      cancelChildren()
 
 object Future:
 
