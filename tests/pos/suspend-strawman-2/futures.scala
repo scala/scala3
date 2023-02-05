@@ -71,12 +71,14 @@ class Future[+T](body: Async ?=> T):
 object Future:
   enum Status:
     case Initial, Started, Completed
+
+  def spawn[T](body: Async ?=> T)(using Scheduler): Future[T] =
+    Future(body).start()
 end Future
 
-def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler) =
-  Future:
+def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
+  Future.spawn:
     x.await + xs.map(_.await).sum
-  .start()
 
 
 
