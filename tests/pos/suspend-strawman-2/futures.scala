@@ -4,6 +4,7 @@ import scala.collection.mutable, mutable.ListBuffer
 import scala.util.boundary, boundary.Label
 import scala.compiletime.uninitialized
 import scala.util.{Try, Success, Failure}
+import java.util.concurrent.atomic.AtomicBoolean
 import runtime.*
 
 trait Async:
@@ -13,6 +14,12 @@ trait Async:
    *   - wait for the completion and return the completed Try
    */
   def await[T](f: Future[T]): Try[T]
+
+  /** Wait for completion of the first of the futures `f1`, `f2`
+   *  @return  `Left(r1)`  if `f1` completed first with `r1`
+   *           `Right(r2)` if `f2` completed first with `r2`
+  */
+  def awaitEither[T1, T2](f1: Future[T1], f2: Future[T2]): Either[Try[T1], Try[T2]]
 
   /** The future computed by this async computation. */
   def client: Future[?]
@@ -80,9 +87,24 @@ class Future[+T](body: Async ?=> T):
                   scheduler.schedule: () =>
                     s.resume(result)
 
+        def awaitEither[T1, T2](f1: Future[T1], f2: Future[T2]): Either[Try[T1], Try[T2]] =
+          cancelChecked:
+            resultOption(f1).map(Left(_)).getOrElse:
+              resultOption(f2).map(Right(_)).getOrElse:
+                suspend[Either[Try[T1], Try[T2]], Unit]: s =>
+                  var found = AtomicBoolean()
+                  f1.addWaiting: result =>
+                    if !found.getAndSet(true) then
+                      scheduler.schedule: () =>
+                        s.resume(Left(result))
+                  f2.addWaiting: result =>
+                    if !found.getAndSet(true) then
+                      scheduler.schedule: () =>
+                        s.resume(Right(result))
+
         def client = Future.this
       end given
-      
+
       body
   end async
 
@@ -146,6 +168,34 @@ object Future:
    */
   def spawn[T](body: Async ?=> T)(using Scheduler): Future[T] =
     Future(body).start()
+
+  /** The conjuntion of two futures with given bodies `body1` and `body2`.
+   *  If both futures succeed, suceed with their values in a pair. Otherwise,
+   *  fail with the failure that was returned first.
+   */
+  def both[T1, T2](body1: Async ?=> T1, body2: Async ?=> T2): Future[(T1, T2)] =
+    Future: async ?=>
+      val f1 = Future(body1).linked
+      val f2 = Future(body2).linked
+      async.awaitEither(f1, f2) match
+        case Left(Success(x1))  => (x1, f2.await)
+        case Right(Success(x2)) => (f1.await, x2)
+        case Left(Failure(ex))  => throw ex
+        case Right(Failure(ex)) => throw ex
+
+  /** The disjuntion of two futures with given bodies `body1` and `body2`.
+   *  If either future succeeds, suceed with the success that was returned first.
+   *  Otherwise, fail with the failure that was returned last.
+   */
+  def either[T](body1: Async ?=> T, body2: Async ?=> T): Future[T] =
+    Future: async ?=>
+      val f1 = Future(body1).linked
+      val f2 = Future(body2).linked
+      async.awaitEither(f1, f2) match
+        case Left(Success(x1))    => x1
+        case Right(Success(x2))   => x2
+        case Left(_: Failure[?])  => f2.await
+        case Right(_: Failure[?]) => f1.await
 end Future
 
 def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
