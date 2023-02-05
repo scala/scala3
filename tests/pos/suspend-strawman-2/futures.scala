@@ -116,6 +116,7 @@ class Future[+T](body: Async ?=> T):
       status = Completed
       for task <- currentWaiting() do task(result)
       cancelChildren()
+      notifyAll()
 
   /** Ensure future's execution has started */
   def ensureStarted()(using scheduler: Scheduler): this.type =
@@ -153,6 +154,13 @@ class Future[+T](body: Async ?=> T):
     if status != Completed && status != Cancelled then
       status = Cancelled
       cancelChildren()
+
+  /** Block thread until future is completed and return result
+   *  N.B. This should be parameterized with a timeout.
+   */
+  def force(): T =
+    while status != Completed do wait()
+    result.get
 
 object Future:
 
@@ -201,3 +209,7 @@ end Future
 def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
   Future.spawn:
     x.await + xs.map(_.await).sum
+
+def Main(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Int =
+  Test(x, xs).force()
+
