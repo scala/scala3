@@ -55,7 +55,7 @@ class Future[+T](body: Async ?=> T):
   /** Wait for this future to be completed, return its value in case of success,
    *  or rethrow exception in case of failure.
    */
-  def await(using a: Async): T = a.await(this).get
+  def value(using async: Async): T = async.await(this).get
 
   // a handler for Async
   private def async(body: Async ?=> Unit): Unit =
@@ -186,8 +186,8 @@ object Future:
       val f1 = Future(body1).linked
       val f2 = Future(body2).linked
       async.awaitEither(f1, f2) match
-        case Left(Success(x1))  => (x1, f2.await)
-        case Right(Success(x2)) => (f1.await, x2)
+        case Left(Success(x1))  => (x1, f2.value)
+        case Right(Success(x2)) => (f1.value, x2)
         case Left(Failure(ex))  => throw ex
         case Right(Failure(ex)) => throw ex
 
@@ -202,13 +202,13 @@ object Future:
       async.awaitEither(f1, f2) match
         case Left(Success(x1))    => x1
         case Right(Success(x2))   => x2
-        case Left(_: Failure[?])  => f2.await
-        case Right(_: Failure[?]) => f1.await
+        case Left(_: Failure[?])  => f2.value
+        case Right(_: Failure[?]) => f1.value
 end Future
 
 def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
   Future.spawn:
-    x.await + xs.map(_.await).sum
+    x.value + xs.map(_.value).sum
 
 def Main(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Int =
   Test(x, xs).force()
