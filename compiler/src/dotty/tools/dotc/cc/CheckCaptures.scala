@@ -656,7 +656,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           expected
 
     /** Adapt `actual` type to `expected` type by inserting boxing and unboxing conversions
-     * 
+     *
      *  @param alwaysConst  always make capture set variables constant after adaptation
      */
     def adaptBoxed(actual: Type, expected: Type, pos: SrcPos, alwaysConst: Boolean = false)(using Context): Type =
