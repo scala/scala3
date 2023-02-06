@@ -86,7 +86,7 @@ object Splicer {
       }
   }
 
-  /** Checks that no symbol that whas generated within the macro expansion has an out of scope reference */
+  /** Checks that no symbol that was generated within the macro expansion has an out of scope reference */
   def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using Context): tree.type =
     new TreeTraverser {
       private[this] var locals = Set.empty[Symbol]
@@ -119,7 +119,10 @@ object Splicer {
         sym.exists && !sym.is(Package)
         && sym.owner.ownersIterator.exists(x =>
           x == expansionOwner || // symbol was generated within this macro expansion
-          isMacroOwner(x) // symbol was generated within another macro expansion
+          { // symbol was generated within another macro expansion
+            isMacroOwner(x) &&
+            !ctx.owner.ownersIterator.contains(x)
+          }
         )
         && !locals.contains(sym) // symbol is not in current scope
     }.traverse(tree)
