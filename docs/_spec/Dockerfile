@@ -5,7 +5,9 @@ RUN apt-get install -y curl \
   && apt-get install -y nodejs \
   && curl -L https://www.npmjs.com/install.sh | sh
 
-RUN gem install  bundler:1.17.2 jekyll 
+RUN gem update --system
+RUN gem install sass-embedded -v 1.58.0
+RUN gem install bundler:1.17.2 jekyll
 
 WORKDIR /srv/jekyll
 
