@@ -119,7 +119,7 @@ object Splicer {
         sym.exists && !sym.is(Package)
         && sym.owner.ownersIterator.exists(x =>
           x == expansionOwner || // symbol was generated within this macro expansion
-          x.is(Macro, butNot = Method) && x.name == nme.MACROkw // symbol was generated within another macro expansion
+          isMacroOwner(x) // symbol was generated within another macro expansion
         )
         && !locals.contains(sym) // symbol is not in current scope
     }.traverse(tree)
@@ -221,6 +221,14 @@ object Splicer {
 
       checkIfValidStaticCall(tree)(using Set.empty)
   }
+
+  /** Is this the dummy owner of a macro expansion */
+  def isMacroOwner(sym: Symbol)(using Context): Boolean =
+    sym.is(Macro, butNot = Method) && sym.name == nme.MACROkw
+
+  /** Is this the dummy owner of a macro expansion */
+  def inMacroExpansion(using Context) =
+    ctx.owner.ownersIterator.exists(isMacroOwner)
 
   /** Tree interpreter that evaluates the tree.
    *  Interpreter is assumed to start at quotation level -1.
