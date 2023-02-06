@@ -5,7 +5,15 @@ import scala.util.boundary, boundary.Label
 import scala.compiletime.uninitialized
 import scala.util.{Try, Success, Failure}
 import java.util.concurrent.atomic.AtomicBoolean
-import runtime.*
+import runtime.suspend
+
+/** A hypothetical task scheduler trait */
+trait Scheduler:
+  def schedule(task: Runnable): Unit = ???
+
+object Scheduler extends Scheduler:
+  given fromAsync(using async: Async): Scheduler = async.client.scheduler
+end Scheduler
 
 trait Async:
 
@@ -24,15 +32,16 @@ trait Async:
   /** The future computed by this async computation. */
   def client: Future[?]
 
+object Async:
+  inline def current(using async: Async): Async = async
 end Async
 
-class Future[+T](body: Async ?=> T):
+class Future[+T](body: Async ?=> T)(using val scheduler: Scheduler):
   import Future.{Status, Cancellation}, Status.*
 
-  @volatile private var status: Status = Initial
+  @volatile private var status: Status = Started
   private var result: Try[T] = uninitialized
   private var waiting: ListBuffer[Try[T] => Unit] = ListBuffer()
-  private var scheduler: Scheduler = uninitialized
   private var children: mutable.Set[Future[?]] = mutable.Set()
 
   private def addWaiting(k: Try[T] => Unit): Unit = synchronized:
@@ -63,9 +72,6 @@ class Future[+T](body: Async ?=> T):
       given Async with
 
         private def resultOption[T](f: Future[T]): Option[Try[T]] = f.status match
-          case Initial =>
-            f.ensureStarted()(using scheduler)
-            resultOption(f)
           case Started =>
             None
           case Completed =>
@@ -110,30 +116,13 @@ class Future[+T](body: Async ?=> T):
 
   private def complete(): Unit =
     async:
-      val result =
+      result =
         try Success(body)
         catch case ex: Exception => Failure(ex)
       status = Completed
-      for task <- currentWaiting() do task(result)
-      cancelChildren()
-      notifyAll()
-
-  /** Ensure future's execution has started */
-  def ensureStarted()(using scheduler: Scheduler): this.type =
-    synchronized:
-      if status == Initial then start()
-    this
-
-  /** Start future's execution
-   *  @pre future has not yet started
-   */
-  def start()(using scheduler: Scheduler): this.type =
-    synchronized:
-      assert(status == Initial)
-      this.scheduler = scheduler
-      scheduler.schedule(() => complete())
-      status = Started
-    this
+    for task <- currentWaiting() do task(result)
+    cancelChildren()
+    notifyAll()
 
   /** Links the future as a child to the current async client.
    *  This means the future will be cancelled when the async client
@@ -162,52 +151,44 @@ class Future[+T](body: Async ?=> T):
     while status != Completed do wait()
     result.get
 
+  scheduler.schedule(() => complete())
+end Future
+
 object Future:
-
-  class Cancellation extends Exception
-
   enum Status:
     // Transitions always go left to right.
     // Cancelled --> Completed with Failure(Cancellation()) result
-    case Initial, Started, Cancelled, Completed
+    case Started, Cancelled, Completed
 
-  /** Construct a future and start it so that ion runs in parallel with the
-   *  current thread.
-   */
-  def spawn[T](body: Async ?=> T)(using Scheduler): Future[T] =
-    Future(body).start()
+  class Cancellation extends Exception
+end Future
 
-  /** The conjuntion of two futures with given bodies `body1` and `body2`.
-   *  If both futures succeed, suceed with their values in a pair. Otherwise,
-   *  fail with the failure that was returned first.
-   */
-  def both[T1, T2](body1: Async ?=> T1, body2: Async ?=> T2): Future[(T1, T2)] =
-    Future: async ?=>
-      val f1 = Future(body1).linked
-      val f2 = Future(body2).linked
+class Task[+T](val body: Async ?=> T):
+  def run(using Scheduler): Future[T] = Future(body)
+
+  def par[U](other: Task[U]): Task[(T, U)] =
+    Task: async ?=>
+      val f1 = Future(this.body).linked
+      val f2 = Future(other.body).linked
       async.awaitEither(f1, f2) match
         case Left(Success(x1))  => (x1, f2.value)
         case Right(Success(x2)) => (f1.value, x2)
         case Left(Failure(ex))  => throw ex
         case Right(Failure(ex)) => throw ex
 
-  /** The disjuntion of two futures with given bodies `body1` and `body2`.
-   *  If either future succeeds, suceed with the success that was returned first.
-   *  Otherwise, fail with the failure that was returned last.
-   */
-  def either[T](body1: Async ?=> T, body2: Async ?=> T): Future[T] =
-    Future: async ?=>
-      val f1 = Future(body1).linked
-      val f2 = Future(body2).linked
+  def alt[U >: T](other: Task[U]): Task[U] =
+    Task: async ?=>
+      val f1 = Future(this.body).linked
+      val f2 = Future(other.body).linked
       async.awaitEither(f1, f2) match
         case Left(Success(x1))    => x1
         case Right(Success(x2))   => x2
         case Left(_: Failure[?])  => f2.value
         case Right(_: Failure[?]) => f1.value
-end Future
+end Task
 
 def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
-  Future.spawn:
+  Future:
     x.value + xs.map(_.value).sum
 
 def Main(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Int =
