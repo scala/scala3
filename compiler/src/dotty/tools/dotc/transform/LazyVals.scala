@@ -466,13 +466,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val containerSymbol = newSymbol(claz, containerName, x.symbol.flags &~ containerFlagsMask | containerFlags | Private, defn.ObjectType, coord = x.symbol.coord).enteredAfter(this)
     containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot, containerSymbol.span)) // private @volatile var _x: AnyRef
     containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
-    val stat = x.symbol.isStatic
-    if stat then
-      containerSymbol.setFlag(JavaStatic)
+    containerSymbol.removeAnnotation(defn.ScalaStaticAnnot)
     val getOffset =
-      if stat then
-        Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getStaticFieldOffset)
-      else
         Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getOffsetStatic)
     val containerTree = ValDef(containerSymbol, nullLiteral)
 
@@ -490,9 +485,6 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val offset = ref(offsetSymbol.nn)
 
     val swapOver =
-      if stat then
-        tpd.clsOf(x.symbol.owner.typeRef)
-      else
         This(claz)
 
     val (accessorDef, initMethodDef) = mkThreadSafeDef(x, claz, containerSymbol, offset, swapOver)
@@ -682,7 +674,6 @@ object LazyVals {
       val cas: TermName                    = N.cas.toTermName
       val getOffset: TermName              = N.getOffset.toTermName
       val getOffsetStatic: TermName        = "getOffsetStatic".toTermName
-      val getStaticFieldOffset: TermName   = "getStaticFieldOffset".toTermName
       val getDeclaredField: TermName       = "getDeclaredField".toTermName
     }
     val flag: TermName        = "flag".toTermName

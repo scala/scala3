@@ -151,7 +151,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         // !!! Part of this logic is duplicated in JSCodeGen.genCompilationUnit
         claszSymbol.info.decls.foreach { f =>
-          if f.isField && !f.name.is(LazyBitMapName) then
+          if f.isField && !f.name.is(LazyBitMapName) && !f.name.is(LazyLocalName) then
             f.setFlag(JavaStatic)
         }
 
