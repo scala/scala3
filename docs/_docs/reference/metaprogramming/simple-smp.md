@@ -23,7 +23,7 @@ replace evaluation contexts with contextual typing rules. While this
 is more verbose, it makes it easier to set up the meta theory.
 
 ## Syntax
-```
+```ebnf
 Terms         t  ::=  x                 variable
                       (x: T) => t       lambda
                       t t               application

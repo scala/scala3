@@ -57,7 +57,7 @@ extends simply-typed lambda calculus with quotes and splices.
 ### Syntax
 
 The syntax of terms, values, and types is given as follows:
-```
+```ebnf
 Terms         t  ::=  x                 variable
                       (x: T) => t       lambda
                       t t               application
@@ -77,7 +77,7 @@ Typing rules are formulated using a stack of environments
 `Es`. Individual environments `E` consist as usual of variable
 bindings `x: T`. Environments can be combined using the two
 combinators `'` and `$`.
-```
+```ebnf
 Environment   E  ::=  ()                empty
                       E, x: T
 
@@ -108,7 +108,7 @@ rule says that splice and quotes cancel each other out. The third rule
 is a context rule; it says that reduction is allowed in the hole `[ ]`
 position of an evaluation context.  Evaluation contexts `e` and
 splice evaluation context `e_s` are defined syntactically as follows:
-```
+```ebnf
 Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[${e}]
 Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
 ```

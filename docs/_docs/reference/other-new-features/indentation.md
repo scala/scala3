@@ -174,12 +174,12 @@ The syntax changes allowing this are as follows:
 
 Define for an arbitrary sequence of tokens or non-terminals `TS`:
 
-```
+```ebnf
 :<<< TS >>>   ::=   ‘{’ TS ‘}’
                 |   <colon> <indent" TS <outdent>
 ```
 Then the grammar changes as follows:
-```
+```ebnf
 TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>
 EnumBody          ::=  :<<< [SelfType] EnumStat {semi EnumStat} >>>
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
@@ -229,7 +229,7 @@ xs.foldLeft(0): (x, y) =>
 
 The grammar changes for optional braces around arguments are as follows.
 
-```
+```ebnf
 SimpleExpr       ::=  ...
                    |  SimpleExpr ColonArgument
 InfixExpr        ::=  ...
@@ -430,7 +430,7 @@ If none of these criteria apply, it's often better to not use an end marker sinc
 
 ### Syntax
 
-```
+```ebnf
 EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
 EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | ‘try’
                     |  ‘new’ | ‘this’ | ‘given’ | ‘extension’ | ‘val’
