@@ -103,11 +103,13 @@ object PrepareInlineable {
     class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
-          if (tree.symbol.isConstructor) {
+          if tree.symbol.isConstructor then
             report.error("Implementation restriction: cannot use private constructors in inline methods", tree.srcPos)
             tree // TODO: create a proper accessor for the private constructor
-          }
-          else useAccessor(tree)
+          else
+            val nearestHost = AccessProxies.hostForAccessorOf(tree.symbol)
+            val host = if nearestHost.is(Package) then ctx.owner.topLevelClass else nearestHost
+            useAccessor(tree, host)
         case _ =>
           tree
       }

@@ -130,12 +130,9 @@ abstract class AccessProxies {
       *  @param reference    The original reference to the non-public symbol
       *  @param onLHS        The reference is on the left-hand side of an assignment
       */
-    def useAccessor(reference: RefTree)(using Context): Tree = {
+    def useAccessor(reference: RefTree, accessorClass: Symbol)(using Context): Tree = {
       val accessed = reference.symbol.asTerm
-      var accessorClass = hostForAccessorOf(accessed: Symbol)
       if (accessorClass.exists) {
-        if accessorClass.is(Package) then
-          accessorClass = ctx.owner.topLevelClass
         val accessorName = accessorNameOf(accessed.name, accessorClass)
         val accessorInfo =
           accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
@@ -152,7 +149,7 @@ abstract class AccessProxies {
           report.error("Implementation restriction: cannot use private constructors in inlineable methods", tree.srcPos)
           tree // TODO: create a proper accessor for the private constructor
         }
-        else useAccessor(tree)
+        else useAccessor(tree, hostForAccessorOf(tree.symbol))
       case _ =>
         tree
     }
