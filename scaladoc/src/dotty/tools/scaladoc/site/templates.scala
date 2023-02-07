@@ -11,7 +11,6 @@ import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.{AbstractYamlFrontMatterVisitor, YamlFrontMatterExtension}
 import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
-import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.formatter.Formatter
 import liqp.Template
