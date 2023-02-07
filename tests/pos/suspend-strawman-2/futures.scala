@@ -158,10 +158,16 @@ object Future:
           catch case ex: Exception => Failure(ex))
   end RunnableFuture
 
-  /** Create a future that asynchronously executes `body` to define
+  /** Create a future that asynchronously executes `body` that defines
    *  its result value in a Try or returns failure if an exception was thrown.
+   *  If the future is created in an Async context, it is added to the
+   *  children of that context's runner.
    */
-  def apply[T](body: Async ?=> T)(using Scheduler): Future[T] = RunnableFuture(body)
+  def apply[T](body: Async ?=> T)(
+      using scheduler: Scheduler, environment: Async | Null = null): Future[T] =
+    val f = RunnableFuture(body)
+    if environment != null then environment.runner.addChild(f)
+    f
 
   /** A promise defines a future that is be completed via the
    *  promise's `complete` method.
@@ -185,7 +191,8 @@ end Future
 class Task[+T](val body: Async ?=> T):
 
   /** Start a future computed from the `body` of this task */
-  def run(using Scheduler): Future[T] = Future(body)
+  def run(using scheduler: Scheduler, environment: Async | Null = null): Future[T] =
+    Future(body)
 
   /** Parallel composition of this task with `other` task.
    *  If both tasks succeed, succeed with their values in a pair. Otherwise,
@@ -193,8 +200,8 @@ class Task[+T](val body: Async ?=> T):
    */
   def par[U](other: Task[U]): Task[(T, U)] =
     Task: async ?=>
-      val f1 = Future(this.body).linked
-      val f2 = Future(other.body).linked
+      val f1 = Future(this.body)
+      val f2 = Future(other.body)
       async.awaitEither(f1, f2) match
         case Left(Success(x1))  => (x1, f2.value)
         case Right(Success(x2)) => (f1.value, x2)
@@ -207,8 +214,8 @@ class Task[+T](val body: Async ?=> T):
    */
   def alt[U >: T](other: Task[U]): Task[U] =
     Task: async ?=>
-      val f1 = Future(this.body).linked
-      val f2 = Future(other.body).linked
+      val f1 = Future(this.body)
+      val f2 = Future(other.body)
       async.awaitEither(f1, f2) match
         case Left(Success(x1))    => x1
         case Right(Success(x2))   => x2
