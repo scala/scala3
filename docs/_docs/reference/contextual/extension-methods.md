@@ -285,7 +285,7 @@ def position(s: String)(ch: Char, n: Int): Int =
 Here are the syntax changes for extension methods and collective extensions relative
 to the [current syntax](../syntax.md).
 
-```
+```ebnf
 BlockStat         ::=  ... | Extension
 TemplateStat      ::=  ... | Extension
 TopStat           ::=  ... | Extension

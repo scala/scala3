@@ -8,7 +8,7 @@ Initial implementation in [PR #3464](https://github.com/lampepfl/dotty/pull/3464
 
 ## Syntax
 
-```
+```ebnf
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {',' FunArgType } ] ‘)’
                     |  ‘(’ TypedFunParam {',' TypedFunParam } ‘)’

@@ -47,7 +47,7 @@ The syntactical precedence of match expressions has been changed.
 
 The new syntax of match expressions is as follows.
 
-```
+```ebnf
 InfixExpr    ::=  ...
                |  InfixExpr MatchClause
 SimpleExpr   ::=  ...

@@ -10,7 +10,7 @@ In this section we give more details about the [named type arguments](named-type
 
 The addition to the grammar is:
 
-```
+```ebnf
 SimpleExpr1       ::=  ...
                     |  SimpleExpr (TypeArgs | NamedTypeArgs)
 NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’
@@ -19,7 +19,7 @@ NamedTypeArg      ::=  id ‘=’ Type
 
 Note in particular that named arguments cannot be passed to type constructors:
 
-``` scala
+```scala
 class C[T]
 
 val x: C[T = Int] = // error

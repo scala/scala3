@@ -6,7 +6,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/structu
 
 ## Syntax
 
-```
+```ebnf
 SimpleType    ::= ... | Refinement
 Refinement    ::= ‘{’ RefineStatSeq ‘}’
 RefineStatSeq ::=  RefineStat {semi RefineStat}

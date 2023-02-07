@@ -24,7 +24,7 @@ The old syntax for splice arguments will be phased out.
 
 ## Syntax
 
-```
+```ebnf
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
                     |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’
 
