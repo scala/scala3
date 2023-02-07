@@ -10,10 +10,13 @@ object Dependencies {
   val `jackson-dataformat-yaml` =
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  private val flexmarkVersion = "0.64.0"
+  // Freeze on 0.62.x as 0.64.0 requires Java 11
+  private val flexmarkVersion = "0.62.2"
 
   val flexmarkDeps = Seq(
     "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
+    "com.vladsch.flexmark" % "flexmark-util-ast" % flexmarkVersion,
+    "com.vladsch.flexmark" % "flexmark-util-data" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-util-html" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
@@ -21,6 +24,7 @@ object Dependencies {
     "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-wikilink" % flexmarkVersion,
+    "com.vladsch.flexmark" % "flexmark-ext-tables" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
   )
 

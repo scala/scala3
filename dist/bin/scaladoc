@@ -61,15 +61,20 @@ classpathArgs () {
   CLASS_PATH+="$(find_lib "*tasty-core*")$PSEP"
   CLASS_PATH+="$(find_lib "*scala3-tasty-inspector*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-0*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-html-parser*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-ext-anchorlink*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-ext-autolink*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-ext-emoji*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-ext-gfm-strikethrough*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-gfm-tables*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-ext-gfm-tasklist*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-ext-wikilink*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-ext-yaml-front-matter*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-tables*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-ins*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-superscript*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-util-ast*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-util-data*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-util-dependency*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-util-misc*")$PSEP"
   CLASS_PATH+="$(find_lib "*liqp*")$PSEP"
   CLASS_PATH+="$(find_lib "*jsoup*")$PSEP"
   CLASS_PATH+="$(find_lib "*jackson-dataformat-yaml*")$PSEP"
@@ -80,7 +85,6 @@ classpathArgs () {
   CLASS_PATH+="$(find_lib "*jline-reader*")$PSEP"
   CLASS_PATH+="$(find_lib "*jline-terminal-3*")$PSEP"
   CLASS_PATH+="$(find_lib "*jline-terminal-jna*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-formatter*")$PSEP"
   CLASS_PATH+="$(find_lib "*autolink-0.6*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-jira-converter*")$PSEP"
@@ -93,9 +97,6 @@ classpathArgs () {
   CLASS_PATH+="$(find_lib "*protobuf-java*")$PSEP"
   CLASS_PATH+="$(find_lib "*util-interface*")$PSEP"
   CLASS_PATH+="$(find_lib "*jna-5*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-tables*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-ins*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-superscript*")$PSEP"
   CLASS_PATH+="$(find_lib "*antlr4-runtime*")$PSEP"
 
   jvm_cp_args="-classpath \"$CLASS_PATH\""
@@ -123,6 +124,10 @@ case "$1" in
 done
 
 classpathArgs
+
+echo "----------"
+echo $jvm_cp_args | grep tables
+echo "----------"
 
 eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
