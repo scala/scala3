@@ -2768,7 +2768,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def SomeModule: Symbol = dotc.core.Symbols.defn.SomeClass.companionModule
       def ProductClass: Symbol = dotc.core.Symbols.defn.ProductClass
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
+        if arity < 0 then throw IllegalArgumentException(s"arity: $arity")
         dotc.core.Symbols.defn.FunctionSymbol(arity, isImplicit, isErased)
+      def FunctionClass(arity: Int): Symbol =
+        FunctionClass(arity, false, false)
+      def FunctionClass(arity: Int, isContextual: Boolean): Symbol =
+        FunctionClass(arity, isContextual, false)
       def TupleClass(arity: Int): Symbol =
         dotc.core.Symbols.defn.TupleType(arity).nn.classSymbol.asClass
       def isTupleClass(sym: Symbol): Boolean =
