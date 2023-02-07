@@ -241,7 +241,7 @@ It inherits member `f` from trait `C` and member `g` from trait `B`.
 A member ´M´ of class ´C´ that [matches](#class-members) a non-private member ´M'´ of a base class of ´C´ is said to _override_ that member.
 In this case the binding of the overriding member ´M´ must [subsume](03-types.html#conformance) the binding of the overridden member ´M'´.
 Furthermore, the following restrictions on modifiers apply to ´M´ and ´M'´:
-
+- ´M'´ must not be a class.
 - ´M'´ must not be labeled `final`.
 - ´M´ must not be [`private`](#modifiers).
 - If ´M´ is labeled `private[´C´]` for some enclosing class or package ´C´, then ´M'´ must be labeled `private[´C'´]` for some class or package ´C'´ where ´C'´ equals ´C´ or ´C'´ is contained in ´C´.
