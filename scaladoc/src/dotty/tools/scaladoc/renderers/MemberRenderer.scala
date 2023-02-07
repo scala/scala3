@@ -7,9 +7,6 @@ import util.HTML.{div, *}
 
 import scala.jdk.CollectionConverters.*
 import dotty.tools.scaladoc.translators.FilterAttributes
-import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
-import com.vladsch.flexmark.util.ast.Node as MdNode
-import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
 import org.jsoup.Jsoup
 import translators.*
 
