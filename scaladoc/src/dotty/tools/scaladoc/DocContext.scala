@@ -1,11 +1,9 @@
 package dotty.tools.scaladoc
 
 import java.io.File
-import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc.site.StaticSiteContext
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.SourceFile
@@ -13,9 +11,6 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
-import scala.io.Codec
-import java.net.URL
-import scala.util.Try
 import scala.collection.mutable
 import dotty.tools.scaladoc.util.Check.checkJekyllIncompatPath
 
