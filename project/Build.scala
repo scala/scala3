@@ -360,6 +360,7 @@ object Build {
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
+    // To enable support of scaladoc and language-server projects you need to change this to true and use sbt as your build server
     bspEnabled := false,
     (Compile / unmanagedSourceDirectories) += baseDirectory.value / "src-bootstrapped",
 
@@ -1130,6 +1131,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
+      bspEnabled := false,
       scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
 
       // Required to run Scala.js tests.
