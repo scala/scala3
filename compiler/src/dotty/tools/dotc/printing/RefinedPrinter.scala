@@ -571,7 +571,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (lo eq hi) && alias.isEmpty then optText(lo)(" = " ~ _)
         else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _) ~ optText(alias)(" = " ~ _)
       case bind @ Bind(name, body) =>
-        keywordText("given ").provided(tree.symbol.isOneOf(GivenOrImplicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
+        toTextOwner(bind) ~ keywordText("given ").provided(tree.symbol.isOneOf(GivenOrImplicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
         changePrec(InfixPrec) { nameIdText(bind) ~ " @ " ~ toText(body) }
       case Alternative(trees) =>
         changePrec(OrPrec) { toText(trees, " | ") }
