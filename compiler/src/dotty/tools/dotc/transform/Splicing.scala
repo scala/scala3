@@ -244,12 +244,14 @@ class Splicing extends MacroTransform:
               cpy.Apply(tree)(cpy.Select(sel)(cpy.Apply(app)(fn, newArgs), nme.apply), quotesArgs)
         case Apply(TypeApply(typeof, List(tpt)), List(quotes))
         if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
-          tpt match
-            case block: Block =>
-              val newBlock = capturedBlockPartTypes(block)
-              Apply(TypeApply(typeof, List(newBlock)), List(quotes)).withSpan(tree.span)
+          val newContent = capturedPartTypes(tpt)
+          newContent match
+            case block: Block => 
+              inContext(ctx.withSource(tree.source)) {
+                Apply(TypeApply(typeof, List(newContent)), List(quotes)).withSpan(tree.span)
+              }
             case _ =>
-              ref(capturedType(tpt))(using ctx.withSource(tree.source)).withSpan(tree.span)
+              ref(capturedType(newContent))(using ctx.withSource(tree.source)).withSpan(tree.span)
         case CapturedApplication(fn, argss) =>
           transformCapturedApplication(tree, fn, argss)
         case _ =>
@@ -354,9 +356,9 @@ class Splicing extends MacroTransform:
         .getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tpe)))._2
       bindingSym
 
-    private def capturedBlockPartTypes(block: Block)(using Context): Tree =
+    private def capturedPartTypes(tpt: Tree)(using Context): Tree =
       val old = healedTypes
-      healedTypes = PCPCheckAndHeal.QuoteTypeTags(block.span)
+      healedTypes = PCPCheckAndHeal.QuoteTypeTags(tpt.span)
       val capturePartTypes = new TypeMap {
         def apply(tp: Type) = tp match {
           case typeRef @ TypeRef(prefix, _) if isCaptured(prefix.typeSymbol) || isCaptured(prefix.termSymbol) =>
@@ -368,10 +370,17 @@ class Splicing extends MacroTransform:
             mapOver(tp)
         }
       }
-      val captured = capturePartTypes(block.tpe.widenTermRefExpr)
+      val captured = capturePartTypes(tpt.tpe.widenTermRefExpr)
       val newHealedTypes = healedTypes.nn.getTypeTags
       healedTypes = old
-      Block(newHealedTypes ::: block.stats, TypeTree(captured))
+      tpt match
+        case block: Block =>
+          cpy.Block(block)(newHealedTypes ::: block.stats, TypeTree(captured))
+        case _ => 
+          if newHealedTypes.nonEmpty then
+            cpy.Block(tpt)(newHealedTypes, TypeTree(captured))
+          else
+            tpt
 
     private def getTagRefFor(tree: Tree)(using Context): Tree =
       val capturedTypeSym = capturedType(tree)
