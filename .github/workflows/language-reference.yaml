@@ -74,6 +74,7 @@ jobs:
       pull-requests: write  # it creates a pr
     env:
       GITHUB_TOKEN: ${{ github.token }}
+      BRANCH_NAME: reference-merge-${{ github.event.head_commit.id }}
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
@@ -96,19 +97,18 @@ jobs:
 
       - name: Push
         run: |
-          BranchName=reference-merge-${{ github.event.head_commit.id }}
           Url=${{ github.server_url }}
           Server=${Url#*://}
           Scheme=${Url%%://*}
           Remote=${Scheme}://${{ github.token }}@${Server}/${{ github.repository }}
-          git push $Remote HEAD:refs/heads/$BranchName
+          git push $Remote HEAD:refs/heads/$BRANCH_NAME
 
-      - name: Format the message and create a pull request
+      - name: Prepare the message and create a pull request
         run: |
           <.github/workflows/reference-sync/pr-template.md sed -E "
             s^<<commit-id>>^${{ github.event.head_commit.id }}^g;
             s^<<author>>^${{ github.event.head_commit.author.username }}^g;
             s^<<repo-url>>^${Url}/${{ github.repository }}^g;
-            s^<<branch-name>>^${BranchName}^g;
+            s^<<branch-name>>^${BRANCH_NAME}^g;
           " \
-            | hub pull-request -f -b main -h ${BranchName} -a ${{ github.event.head_commit.author.username }} -l area:documentation -F -
+            | hub pull-request -f -b main -h ${BRANCH_NAME} -a ${{ github.event.head_commit.author.username }} -l area:documentation -F -
