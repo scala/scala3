@@ -5,7 +5,7 @@ import runtime.suspend
 import Async.{Listener, await}
 
 /** An unbounded channel */
-class UnboundedChannel[T] extends Async.Source[T]:
+class UnboundedChannel[T] extends Async.ComposableSource[T]:
   private val pending = ListBuffer[T]()
   private val waiting = mutable.Set[Listener[T]]()
 
@@ -45,78 +45,69 @@ class UnboundedChannel[T] extends Async.Source[T]:
 
 end UnboundedChannel
 
-class SyncChannel[T]:
+trait SyncChannel[T]:
+  def canRead: Async.Source[T]
+  def canSend: Async.Source[Listener[T]]
 
-  private val pendingReads = mutable.Set[Listener[T]]()
-  private val pendingSends = mutable.Set[Listener[Listener[T]]]()
+  def send(x: T)(using Async): Unit = await(canSend)(x)
 
-  private def collapse[T](k2: Listener[Listener[T]]): Option[T] =
-    var r: Option[T] = None
-    if k2 { x => r = Some(x); true } then r else None
+  def read()(using Async): T = await(canRead)
 
-  protected def link[T](pending: mutable.Set[T], op: T => Boolean): Boolean =
-    pending.iterator.find(op) match
-      case Some(elem) => pending -= elem; true
-      case None => false
+object SyncChannel:
+  def apply[T](): SyncChannel[T] = new Impl[T]:
+    val canRead = new ReadSource
+    val canSend = new SendSource
 
-  val canRead = new Async.Source[T]:
-    def poll(k: Listener[T]): Boolean =
-      link(pendingSends, sender => collapse(sender).map(k) == Some(true))
-    def onComplete(k: Listener[T]): Unit =
-      if !poll(k) then pendingReads += k
-    def dropListener(k: Listener[T]): Unit =
-      pendingReads -= k
+  abstract class Impl[T] extends SyncChannel[T]:
+    protected val pendingReads = mutable.Set[Listener[T]]()
+    protected val pendingSends = mutable.Set[Listener[Listener[T]]]()
 
-  val canSend = new Async.Source[Listener[T]]:
-    def poll(k: Listener[Listener[T]]): Boolean =
-      link(pendingReads, k)
-    def onComplete(k: Listener[Listener[T]]): Unit =
-      if !poll(k) then pendingSends += k
-    def dropListener(k: Listener[Listener[T]]): Unit =
-      pendingSends -= k
+    protected def link[T](pending: mutable.Set[T], op: T => Boolean): Boolean =
+      pending.headOption match
+        case Some(elem) => op(elem); true
+        case None => false
 
-  def send(x: T)(using Async): Unit =
-    await(canSend)(x)
+    private def collapse[T](k2: Listener[Listener[T]]): Option[T] =
+      var r: Option[T] = None
+      if k2 { x => r = Some(x); true } then r else None
 
-  def read()(using Async): T =
-    await(canRead)
+    protected class ReadSource extends Async.Source[T]:
+      def poll(k: Listener[T]): Boolean =
+        link(pendingSends, sender => collapse(sender).map(k) == Some(true))
+      def onComplete(k: Listener[T]): Unit =
+        if !poll(k) then pendingReads += k
+      def dropListener(k: Listener[T]): Unit =
+        pendingReads -= k
+
+    protected class SendSource extends Async.Source[Listener[T]]:
+      def poll(k: Listener[Listener[T]]): Boolean =
+        link(pendingReads, k(_))
+      def onComplete(k: Listener[Listener[T]]): Unit =
+        if !poll(k) then pendingSends += k
+      def dropListener(k: Listener[Listener[T]]): Unit =
+        pendingSends -= k
+  end Impl
 
 end SyncChannel
 
-class DirectSyncChannel[T]:
+trait ComposableSyncChannel[T] extends SyncChannel[T]:
+  def canRead: Async.ComposableSource[T]
+  def canSend: Async.ComposableSource[Listener[T]]
 
-  private val pendingReads = mutable.Set[Listener[T]]()
-  private val pendingSends = mutable.Set[Listener[Listener[T]]]()
+object ComposableSyncChannel:
+  def apply[T](): ComposableSyncChannel[T] = new Impl[T]:
+    val canRead = new ComposableReadSource
+    val canSend = new ComposableSendSource
 
-  private def collapse[T](k2: Listener[Listener[T]]): Option[T] =
-    var r: Option[T] = None
-    if k2 { x => r = Some(x); true } then r else None
+  abstract class Impl[T] extends SyncChannel.Impl[T], ComposableSyncChannel[T]:
 
-  private def link[T](pending: mutable.Set[T], op: T => Unit): Boolean =
-    pending.headOption match
-      case Some(elem) => op(elem); true
-      case None => false
+    override protected def link[T](pending: mutable.Set[T], op: T => Boolean): Boolean =
+      pending.iterator.find(op) match
+        case Some(elem) => pending -= elem; true
+        case None => false
 
-  val canRead = new Async.Source[T]:
-    def poll(k: Listener[T]): Boolean =
-      link(pendingSends, sender => collapse(sender).map(k))
-    def onComplete(k: Listener[T]): Unit =
-      if !poll(k) then pendingReads += k
-    def dropListener(k: Listener[T]): Unit =
-      pendingReads -= k
+    class ComposableReadSource extends ReadSource, Async.ComposableSource[T]
+    class ComposableSendSource extends SendSource, Async.ComposableSource[Listener[T]]
+  end Impl
 
-  val canSend = new Async.Source[Listener[T]]:
-    def poll(k: Listener[Listener[T]]): Boolean =
-      link(pendingReads, k(_))
-    def onComplete(k: Listener[Listener[T]]): Unit =
-      if !poll(k) then pendingSends += k
-    def dropListener(k: Listener[Listener[T]]): Unit =
-      pendingSends -= k
-
-  def send(x: T)(using Async): Unit =
-    await(canSend)(x)
-
-  def read()(using Async): T =
-    await(canRead)
-
-end DirectSyncChannel
+end ComposableSyncChannel

@@ -32,21 +32,18 @@ trait Async extends AsyncConfig:
 
 object Async:
 
-  abstract class AsyncImpl(val root: Cancellable, val scheduler: Scheduler)
+  abstract class Impl(val root: Cancellable, val scheduler: Scheduler)
      (using boundary.Label[Unit]) extends Async:
 
     protected def checkCancellation(): Unit
 
-    private var result: T
-
     def await[T](src: Async.Source[T]): T =
       checkCancellation()
       var resultOpt: Option[T] = None
-      if src.poll: x =>
-        result = x
+      src.poll: x =>
+        resultOpt = Some(x)
         true
-      then result
-      else
+      resultOpt.getOrElse:
         try suspend[T, Unit]: k =>
           src.onComplete: x =>
             scheduler.schedule: () =>
@@ -54,7 +51,7 @@ object Async:
             true // signals to `src` that result `x` was consumed
         finally checkCancellation()
 
-  end AsyncImpl
+  end Impl
 
   /** The currently executing Async context */
   inline def current(using async: Async): Async = async
@@ -78,11 +75,13 @@ object Async:
    */
   abstract case class FinalListener[T]() extends Listener[T]
 
-  /** A source that cannot be mapped, filtered, or raced. In other words,
-   *  an item coming from a direct source must be immediately consumed in
-   *  another async computation; no rejection of this item is possible.
+  /** An asynchronous data source. Sources can be persistent or ephemeral.
+   *  A persistent source will always pass same data to calls of `poll and `onComplete`.
+   *  An ephememral source can pass new data in every call.
+   *  An example of a persistent source is `Future`.
+   *  An example of an ephemeral source is `Channel`.
    */
-  trait DirectSource[+T]:
+  trait Source[+T]:
 
     /** If data is available at present, pass it to function `k`
      *  and return the result if this call.
@@ -104,31 +103,29 @@ object Async:
      */
     def dropListener(k: Listener[T]): Unit
 
-  end DirectSource
+  end Source
 
-  /** An asynchronous data source. Sources can be persistent or ephemeral.
-   *  A persistent source will always pass same data to calls of `poll and `onComplete`.
-   *  An ephememral source can pass new data in every call.
-   *  An example of a persistent source is `Future`.
-   *  An example of an ephemeral source is `Channel`.
-   */
-  trait Source[+T] extends DirectSource[T]:
+   /** A source that can be mapped, filtered, or raced. Only ComposableSources
+    *  can pass `false` to the `Listener` in `poll` or `onComplete`. They do
+    *  that if the data is rejected by a filter or did not come first in a race.
+    */
+  trait ComposableSource[+T] extends Source[T]:
 
     /** Pass on data transformed by `f` */
-    def map[U](f: T => U): Source[U] =
+    def map[U](f: T => U): ComposableSource[U] =
       new DerivedSource[T, U](this):
         def listen(x: T, k: Listener[U]) = k(f(x))
 
     /** Pass on only data matching the predicate `p` */
-    def filter(p: T => Boolean): Source[T] =
+    def filter(p: T => Boolean): ComposableSource[T] =
       new DerivedSource[T, T](this):
         def listen(x: T, k: Listener[T]) = p(x) && k(x)
 
-  end Source
+  end ComposableSource
 
   /** As source that transforms an original source in some way */
 
-  abstract class DerivedSource[T, U](src: Source[T]) extends Source[U]:
+  abstract class DerivedSource[T, U](src: Source[T]) extends ComposableSource[U]:
 
     /** Handle a value `x` passed to the original source by possibly
      *  invokiong the continuation for this source.
@@ -148,41 +145,42 @@ object Async:
   end DerivedSource
 
   /** Pass first result from any of `sources` to the continuation */
-  def race[T](sources: Source[T]*): Source[T] = new Source:
+  def race[T](sources: ComposableSource[T]*): ComposableSource[T] =
+    new ComposableSource:
 
-    def poll(k: Listener[T]): Boolean =
-      val it = sources.iterator
-      var found = false
-      while it.hasNext && !found do
-        it.next.poll: x =>
-          found = k(x)
-          found
-      found
+      def poll(k: Listener[T]): Boolean =
+        val it = sources.iterator
+        var found = false
+        while it.hasNext && !found do
+          it.next.poll: x =>
+            found = k(x)
+            found
+        found
 
-    def onComplete(k: Listener[T]): Unit =
-      val listener = new ForwardingListener[T](this, k):
-        var foundBefore = false
-        def continueIfFirst(x: T): Boolean = synchronized:
-          if foundBefore then false else { foundBefore = k(x); foundBefore }
-        def apply(x: T): Boolean =
-          val found = continueIfFirst(x)
-          if found then sources.foreach(_.dropListener(this))
-          found
-      sources.foreach(_.onComplete(listener))
+      def onComplete(k: Listener[T]): Unit =
+        val listener = new ForwardingListener[T](this, k):
+          var foundBefore = false
+          def continueIfFirst(x: T): Boolean = synchronized:
+            if foundBefore then false else { foundBefore = k(x); foundBefore }
+          def apply(x: T): Boolean =
+            val found = continueIfFirst(x)
+            if found then sources.foreach(_.dropListener(this))
+            found
+        sources.foreach(_.onComplete(listener))
 
-    def dropListener(k: Listener[T]): Unit =
-      val listener = new ForwardingListener[T](this, k):
-        def apply(x: T): Boolean = ???
-          // not to be called, we need the listener only for its
-          // hashcode and equality test.
-      sources.foreach(_.dropListener(listener))
+      def dropListener(k: Listener[T]): Unit =
+        val listener = new ForwardingListener[T](this, k):
+          def apply(x: T): Boolean = ???
+            // not to be called, we need the listener only for its
+            // hashcode and equality test.
+        sources.foreach(_.dropListener(listener))
 
   end race
 
   /** If left (respectively, right) source succeeds with `x`, pass `Left(x)`,
    *  (respectively, Right(x)) on to the continuation.
    */
-  def either[T, U](src1: Source[T], src2: Source[U]): Source[Either[T, U]] =
+  def either[T, U](src1: ComposableSource[T], src2: ComposableSource[U]): ComposableSource[Either[T, U]] =
     race[Either[T, U]](src1.map(Left(_)), src2.map(Right(_)))
 
 end Async

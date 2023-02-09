@@ -10,7 +10,7 @@ import runtime.suspend
 
 /** A cancellable future that can suspend waiting for other synchronous sources
  */
-trait Future[+T] extends Async.Source[Try[T]], Cancellable:
+trait Future[+T] extends Async.ComposableSource[Try[T]], Cancellable:
 
   /** Wait for this future to be completed, return its value in case of success,
    *  or rethrow exception in case of failure.
@@ -39,10 +39,6 @@ trait Future[+T] extends Async.Source[Try[T]], Cancellable:
   def addChild(child: Cancellable): Unit
 
 object Future:
-
-  private enum Status:
-    case Initial, Completed
-  import Status.*
 
   /** The core part of a future that is compled explicitly by calling its
    *  `complete` method. There are two implementations
@@ -118,7 +114,7 @@ object Future:
     // a handler for Async
     private def async(body: Async ?=> Unit): Unit =
       boundary [Unit]:
-        given Async = new Async.AsyncImpl(this, scheduler):
+        given Async = new Async.Impl(this, scheduler):
           def checkCancellation() =
             if hasCompleted then throw new CancellationException()
         body
