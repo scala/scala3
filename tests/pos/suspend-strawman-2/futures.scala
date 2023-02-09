@@ -6,9 +6,10 @@ import scala.compiletime.uninitialized
 import scala.util.{Try, Success, Failure}
 import scala.annotation.unchecked.uncheckedVariance
 import java.util.concurrent.CancellationException
-import java.util.concurrent.atomic.AtomicBoolean
 import runtime.suspend
 
+/** A cancellable future that can suspend waiting for other synchronous sources
+ */
 trait Future[+T] extends Async.Source[Try[T]], Cancellable:
 
   /** Wait for this future to be completed, return its value in case of success,
@@ -21,8 +22,8 @@ trait Future[+T] extends Async.Source[Try[T]], Cancellable:
    */
   def force(): T
 
-  /** Links the future as a child to the current async runner.
-   *  This means the future will be cancelled when the async runner
+  /** Links the future as a child to the current async root.
+   *  This means the future will be cancelled when the async root
    *  completes.
    */
   def linked(using async: Async): this.type
@@ -32,60 +33,65 @@ trait Future[+T] extends Async.Source[Try[T]], Cancellable:
    */
   def cancel(): Unit
 
+  /** If this future has not yet completed, add `child` so that it will
+   *  be cancelled together with this future in case the future is cancelled.
+   */
+  def addChild(child: Cancellable): Unit
+
 object Future:
 
   private enum Status:
-    // Transitions always go left to right.
-    // Cancelled --> Completed with Failure(CancellationException()) result
-    case Started, Cancelled, Completed
+    case Initial, Completed
   import Status.*
 
+  /** The core part of a future that is compled explicitly by calling its
+   *  `complete` method. There are two implementations
+   *
+   *   - RunnableFuture: Completion is done by running a block of code
+   *   - Promise.future: Completion is done by external request.
+   */
   private class CoreFuture[+T] extends Future[T]:
-    @volatile protected var status: Status = Started
-    private var result: Try[T] = uninitialized
-    private var waiting: ListBuffer[Try[T] => Unit] = ListBuffer()
+
+    @volatile protected var hasCompleted: Boolean = false
+    private var result: Try[T] = uninitialized // guaranteed to be set if hasCompleted = true
+    private var waiting: mutable.Set[Try[T] => Boolean] = mutable.Set()
     private var children: mutable.Set[Cancellable] = mutable.Set()
 
-    private def currentWaiting(): List[Try[T] => Unit] = synchronized:
-      val ws = waiting.toList
-      waiting.clear()
-      ws
+    private def extract[T](s: mutable.Set[T]): List[T] = synchronized:
+      val xs = s.toList
+      s.clear()
+      xs
 
-    private def currentChildren(): List[Cancellable] = synchronized:
-      val cs = children.toList
-      children.clear()
-      cs
+    def poll(k: Async.Listener[Try[T]]): Boolean =
+      hasCompleted && k(result)
 
-    def poll: Option[Try[T]] =
-      if status == Started then None else Some(result)
-
-    def handleWith(k: Try[T] => Unit): Unit = synchronized:
-      if status == Started then waiting += k else k(result)
+    def onComplete(k: Async.Listener[Try[T]]): Unit = synchronized:
+      if !poll(k) then waiting += k
 
     def cancel(): Unit =
-      val toCancel = synchronized:
-        if status != Completed && status != Cancelled then
-          result = Failure(new CancellationException())
-          status = Cancelled
-          currentChildren()
+      val othersToCancel = synchronized:
+        if hasCompleted then Nil
         else
-          Nil
-      toCancel.foreach(_.cancel())
+          result = Failure(new CancellationException())
+          hasCompleted = true
+          extract(children)
+      othersToCancel.foreach(_.cancel())
 
     def addChild(child: Cancellable): Unit = synchronized:
-      if status == Completed then child.cancel()
-      else children += this
-
-    def isCancelled = status == Cancelled
+      if !hasCompleted then children += this
 
     def linked(using async: Async): this.type =
-      if status != Completed then async.runner.addChild(this)
+      if !hasCompleted then async.root.addChild(this)
       this
 
-    def value(using async: Async): T = async.await(this).get
+    def dropListener(k: Async.Listener[Try[T]]): Unit =
+      waiting -= k
+
+    def value(using async: Async): T =
+      async.await(this).get
 
     def force(): T =
-      while status != Completed do wait()
+      while !hasCompleted do wait()
       result.get
 
     /** Complete future with result. If future was cancelled in the meantime,
@@ -98,9 +104,10 @@ object Future:
      *     the type with which the future was created since `Promise` is invariant.
      */
     private[Future] def complete(result: Try[T] @uncheckedVariance): Unit =
-      if status == Started then this.result = result
-      status = Completed
-      for task <- currentWaiting() do task(result)
+      if !hasCompleted then
+        this.result = result
+        hasCompleted = true
+      for listener <- extract(waiting) do listener(result)
       notifyAll()
 
   end CoreFuture
@@ -111,63 +118,52 @@ object Future:
     // a handler for Async
     private def async(body: Async ?=> Unit): Unit =
       boundary [Unit]:
-        given Async with
-          private def checkCancellation(): Unit =
-            if status == Cancelled then throw new CancellationException()
-
-          private inline def cancelChecked[T](op: => T): T =
-            checkCancellation()
-            val res = op
-            checkCancellation()
-            res
-
-          def await[T](src: Async.Source[T]): T =
-            cancelChecked:
-              src.poll.getOrElse:
-                suspend[T, Unit]: k =>
-                  src.handleWith: result =>
-                    scheduler.schedule: () =>
-                      k.resume(result)
-
-          def awaitEither[T1, T2](src1: Async.Source[T1], src2: Async.Source[T2]): Either[T1, T2] =
-            cancelChecked:
-              src1.poll.map(Left(_)).getOrElse:
-                src2.poll.map(Right(_)).getOrElse:
-                  suspend[Either[T1, T2], Unit]: k =>
-                    var found = AtomicBoolean()
-                    src1.handleWith: result =>
-                      if !found.getAndSet(true) then
-                        scheduler.schedule: () =>
-                          k.resume(Left(result))
-                    src2.handleWith: result =>
-                      if !found.getAndSet(true) then
-                        scheduler.schedule: () =>
-                          k.resume(Right(result))
-
-          def runner: Cancellable = RunnableFuture.this
-          def scheduler = RunnableFuture.this.scheduler
-        end given
-
+        given Async = new Async.AsyncImpl(this, scheduler):
+          def checkCancellation() =
+            if hasCompleted then throw new CancellationException()
         body
     end async
 
     scheduler.schedule: () =>
-      async:
-        complete(
-          try Success(body)
-          catch case ex: Exception => Failure(ex))
+      async(complete(Try(body)))
+
   end RunnableFuture
 
   /** Create a future that asynchronously executes `body` that defines
    *  its result value in a Try or returns failure if an exception was thrown.
    *  If the future is created in an Async context, it is added to the
-   *  children of that context's runner.
+   *  children of that context's root.
    */
-  def apply[T](body: Async ?=> T)(
-      using scheduler: Scheduler, environment: Async | Null = null): Future[T] =
-    val f = RunnableFuture(body)
-    if environment != null then environment.runner.addChild(f)
+  def apply[T](body: Async ?=> T)(using ac: AsyncConfig): Future[T] =
+    val f = RunnableFuture(body)(using ac.scheduler)
+    ac.root.addChild(f)
     f
+
+  extension [T1](f1: Future[T1])
+
+    /** Parallel composition of two futures.
+     *  If both futures succeed, succeed with their values in a pair. Otherwise,
+     *  fail with the failure that was returned first and cancel the other.
+     */
+    def par[T2](f2: Future[T2])(using AsyncConfig): Future[(T1, T2)] = Future:
+      Async.await(Async.either(f1, f2)) match
+        case Left(Success(x1))  => (x1, f2.value)
+        case Right(Success(x2)) => (f1.value, x2)
+        case Left(Failure(ex))  => f2.cancel(); throw ex
+        case Right(Failure(ex)) => f1.cancel(); throw ex
+
+    /** Alternative parallel composition of this task with `other` task.
+     *  If either task succeeds, succeed with the success that was returned first
+     *  and cancel the other. Otherwise, fail with the failure that was returned last.
+     */
+    def alt[T2 >: T1](f2: Future[T2])(using AsyncConfig): Future[T2] = Future:
+      Async.await(Async.either(f1, f2)) match
+        case Left(Success(x1))    => f2.cancel(); x1
+        case Right(Success(x2))   => f1.cancel(); x2
+        case Left(_: Failure[?])  => f2.value
+        case Right(_: Failure[?]) => f1.value
+
+  end extension
 
   /** A promise defines a future that is be completed via the
    *  promise's `complete` method.
@@ -176,7 +172,7 @@ object Future:
     private val myFuture = CoreFuture[T]()
 
     /** The future defined by this promise */
-    def future: Future[T] = myFuture
+    val future: Future[T] = myFuture
 
     /** Define the result value of `future`. However, if `future` was
      *  cancelled in the meantime complete with a `CancellationException`
@@ -191,40 +187,14 @@ end Future
 class Task[+T](val body: Async ?=> T):
 
   /** Start a future computed from the `body` of this task */
-  def run(using scheduler: Scheduler, environment: Async | Null = null): Future[T] =
-    Future(body)
+  def run(using AsyncConfig) = Future(body)
 
-  /** Parallel composition of this task with `other` task.
-   *  If both tasks succeed, succeed with their values in a pair. Otherwise,
-   *  fail with the failure that was returned first.
-   */
-  def par[U](other: Task[U]): Task[(T, U)] =
-    Task: async ?=>
-      val f1 = Future(this.body)
-      val f2 = Future(other.body)
-      async.awaitEither(f1, f2) match
-        case Left(Success(x1))  => (x1, f2.value)
-        case Right(Success(x2)) => (f1.value, x2)
-        case Left(Failure(ex))  => throw ex
-        case Right(Failure(ex)) => throw ex
-
-  /** Alternative parallel composition of this task with `other` task.
-   *  If either task succeeds, succeed with the success that was returned first.
-   *  Otherwise, fail with the failure that was returned last.
-   */
-  def alt[U >: T](other: Task[U]): Task[U] =
-    Task: async ?=>
-      val f1 = Future(this.body)
-      val f2 = Future(other.body)
-      async.awaitEither(f1, f2) match
-        case Left(Success(x1))    => x1
-        case Right(Success(x2))   => x2
-        case Left(_: Failure[?])  => f2.value
-        case Right(_: Failure[?]) => f1.value
 end Task
 
 def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
   Future:
+    val f1 = Future:
+      x.value * 2
     x.value + xs.map(_.value).sum
 
 def Main(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Int =
