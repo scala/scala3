@@ -8,11 +8,9 @@ import scala.annotation.unchecked.uncheckedVariance
 import java.util.concurrent.CancellationException
 import runtime.suspend
 
-/** A cancellable future that can suspend waiting for other synchronous sources
+/** A cancellable future that can suspend waiting for other asynchronous sources
  */
 trait Future[+T] extends Async.Source[Try[T]], Cancellable:
-
-  type CanFilter = Async.Yes
 
   /** Wait for this future to be completed, return its value in case of success,
    *  or rethrow exception in case of failure.
@@ -25,8 +23,8 @@ trait Future[+T] extends Async.Source[Try[T]], Cancellable:
   def force(): T
 
   /** Links the future as a child to the current async root.
-   *  This means the future will be cancelled when the async root
-   *  completes.
+   *  This means the future will be cancelled if the async root
+   *  is canceled.
    */
   def linked(using async: Async): this.type
 
@@ -42,7 +40,7 @@ trait Future[+T] extends Async.Source[Try[T]], Cancellable:
 
 object Future:
 
-  /** The core part of a future that is compled explicitly by calling its
+  /** The core part of a future that is completed explicitly by calling its
    *  `complete` method. There are two implementations
    *
    *   - RunnableFuture: Completion is done by running a block of code
@@ -113,7 +111,7 @@ object Future:
   private class RunnableFuture[+T](body: Async ?=> T)(using scheduler: Scheduler)
   extends CoreFuture[T]:
 
-    // a handler for Async
+    /** a handler for Async */
     private def async(body: Async ?=> Unit): Unit =
       boundary [Unit]:
         given Async = new Async.Impl(this, scheduler):
@@ -143,7 +141,7 @@ object Future:
      *  If both futures succeed, succeed with their values in a pair. Otherwise,
      *  fail with the failure that was returned first and cancel the other.
      */
-    def par[T2](f2: Future[T2])(using AsyncConfig): Future[(T1, T2)] = Future:
+    def zip[T2](f2: Future[T2])(using AsyncConfig): Future[(T1, T2)] = Future:
       Async.await(Async.either(f1, f2)) match
         case Left(Success(x1))  => (x1, f2.value)
         case Right(Success(x2)) => (f1.value, x2)
@@ -163,6 +161,8 @@ object Future:
 
   end extension
 
+  // TODO: efficient n-ary versions of the last two operations
+
   /** A promise defines a future that is be completed via the
    *  promise's `complete` method.
    */
@@ -181,7 +181,9 @@ object Future:
   end Promise
 end Future
 
-/** A task is a template that can be turned into a runnable future */
+/** A task is a template that can be turned into a runnable future
+ *  Composing tasks can be referentially transparent.
+ */
 class Task[+T](val body: Async ?=> T):
 
   /** Start a future computed from the `body` of this task */
@@ -190,10 +192,23 @@ class Task[+T](val body: Async ?=> T):
 end Task
 
 def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
+  val b = x.zip:
+    Future:
+      xs.headOption.toString
+
+  val _: Future[(Int, String)] = b
+
+  val c = x.alt:
+    Future:
+      b.value._1
+  val _: Future[Int] = c
+
   Future:
     val f1 = Future:
       x.value * 2
     x.value + xs.map(_.value).sum
+
+end Test
 
 def Main(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Int =
   Test(x, xs).force()

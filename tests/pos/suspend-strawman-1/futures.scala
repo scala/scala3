@@ -42,10 +42,3 @@ object Future:
 def Test(x: Future[Int], xs: List[Future[Int]]) =
   Future:
     x.await + xs.map(_.await).sum
-
-
-
-
-
-
-
