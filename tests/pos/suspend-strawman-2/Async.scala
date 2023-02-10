@@ -32,6 +32,9 @@ trait Async extends AsyncConfig:
 
 object Async:
 
+  /** A marker type for Source#CanFilter */
+  opaque type Yes = Unit
+
   abstract class Impl(val root: Cancellable, val scheduler: Scheduler)
      (using boundary.Label[Unit]) extends Async:
 
@@ -83,6 +86,8 @@ object Async:
    */
   trait Source[+T]:
 
+    type CanFilter
+
     /** If data is available at present, pass it to function `k`
      *  and return the result if this call.
      *  `k` returns true iff the data was consumed in an async block.
@@ -105,27 +110,9 @@ object Async:
 
   end Source
 
-   /** A source that can be mapped, filtered, or raced. Only ComposableSources
-    *  can pass `false` to the `Listener` in `poll` or `onComplete`. They do
-    *  that if the data is rejected by a filter or did not come first in a race.
-    */
-  trait ComposableSource[+T] extends Source[T]:
-
-    /** Pass on data transformed by `f` */
-    def map[U](f: T => U): ComposableSource[U] =
-      new DerivedSource[T, U](this):
-        def listen(x: T, k: Listener[U]) = k(f(x))
-
-    /** Pass on only data matching the predicate `p` */
-    def filter(p: T => Boolean): ComposableSource[T] =
-      new DerivedSource[T, T](this):
-        def listen(x: T, k: Listener[T]) = p(x) && k(x)
-
-  end ComposableSource
-
   /** As source that transforms an original source in some way */
 
-  abstract class DerivedSource[T, U](src: Source[T]) extends ComposableSource[U]:
+  abstract class DerivedSource[T, U](val original: Source[T]) extends Source[U]:
 
     /** Handle a value `x` passed to the original source by possibly
      *  invokiong the continuation for this source.
@@ -137,16 +124,34 @@ object Async:
         def apply(x: T): Boolean = listen(x, k)
 
     def poll(k: Listener[U]): Boolean =
-      src.poll(transform(k))
+      original.poll(transform(k))
     def onComplete(k: Listener[U]): Unit =
-      src.onComplete(transform(k))
+      original.onComplete(transform(k))
     def dropListener(k: Listener[U]): Unit =
-      src.dropListener(transform(k))
+      original.dropListener(transform(k))
   end DerivedSource
 
+  extension [T](src: Source[T])
+
+    /** Pass on data transformed by `f` */
+    def map[U](f: T => U): Source[U] { type CanFilter = src.CanFilter } =
+      new DerivedSource[T, U](src):
+        type CanFilter = src.CanFilter
+        def listen(x: T, k: Listener[U]) = k(f(x))
+
+  extension [T](src: Source[T] { type CanFilter = Yes })
+
+    /** Pass on only data matching the predicate `p` */
+    def filter(p: T => Boolean): Source[T] { type CanFilter = src.CanFilter } =
+      new DerivedSource[T, T](src):
+        type CanFilter = src.CanFilter
+        def listen(x: T, k: Listener[T]) = p(x) && k(x)
+
+
   /** Pass first result from any of `sources` to the continuation */
-  def race[T](sources: ComposableSource[T]*): ComposableSource[T] =
-    new ComposableSource:
+  def race[T, CF](sources: Source[T] { type CanFilter <: CF} *): Source[T] { type CanFilter <: CF } =
+    new Source[T]:
+      type CanFilter <: CF
 
       def poll(k: Listener[T]): Boolean =
         val it = sources.iterator
@@ -180,8 +185,11 @@ object Async:
   /** If left (respectively, right) source succeeds with `x`, pass `Left(x)`,
    *  (respectively, Right(x)) on to the continuation.
    */
-  def either[T, U](src1: ComposableSource[T], src2: ComposableSource[U]): ComposableSource[Either[T, U]] =
-    race[Either[T, U]](src1.map(Left(_)), src2.map(Right(_)))
+  def either[T, U, CF](
+      src1: Source[T] { type CanFilter <: CF },
+      src2: Source[U] { type CanFilter <: CF })
+    : Source[Either[T, U]] { type CanFilter <: CF } =
+    race[Either[T, U], CF](src1.map(Left(_)), src2.map(Right(_)))
 
 end Async
 

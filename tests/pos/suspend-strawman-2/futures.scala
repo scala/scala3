@@ -10,7 +10,9 @@ import runtime.suspend
 
 /** A cancellable future that can suspend waiting for other synchronous sources
  */
-trait Future[+T] extends Async.ComposableSource[Try[T]], Cancellable:
+trait Future[+T] extends Async.Source[Try[T]], Cancellable:
+
+  type CanFilter = Async.Yes
 
   /** Wait for this future to be completed, return its value in case of success,
    *  or rethrow exception in case of failure.
