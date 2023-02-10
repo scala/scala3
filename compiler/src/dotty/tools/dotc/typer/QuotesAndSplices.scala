@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds.PatMatGivenVarName
+import dotty.tools.dotc.core.NameOps.isVarPattern
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
@@ -23,7 +24,6 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
 import scala.collection.mutable
-
 
 /** Type quotes `'{ ... }` and splices `${ ... }` */
 trait QuotesAndSplices {
@@ -394,9 +394,84 @@ trait QuotesAndSplices {
     }
     val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
     val quoteCtx = quoteContext.addMode(Mode.QuotedPattern).retractMode(Mode.Pattern)
+
+    def normalizeTypeBindings(quoted: untpd.Tree): untpd.Tree =
+      val variables = mutable.Set.empty[TypeName] // TODO use stable order
+      val typeNormalizer = new untpd.UntypedTreeMap {
+        override def transform(tpt: untpd.Tree)(using Context) =
+          tpt match
+            case untpd.Ident(tpnme.WILDCARD_STAR) => tpt
+            case tpt @ untpd.Ident(name) if name.isTypeName && !tpt.isBackquoted && name.isVarPattern =>
+              variables += name.asTypeName
+              tpt.pushAttachment(Trees.Backquoted, ())
+              tpt
+            case _: untpd.TypedSplice => tpt
+            case _ => super.transform(tpt)
+      }
+      val termNormalizer = new untpd.UntypedTreeMap {
+        override def transform(tree: untpd.Tree)(using Context) =
+          tree match
+            case untpd.Splice(_) => tree
+            case untpd.Typed(expr, tpt) =>
+              untpd.cpy.Typed(tree)(
+                super.transform(expr),
+                typeNormalizer.transform(tpt)
+              )
+            case untpd.TypeApply(fn, targs) =>
+              untpd.cpy.TypeApply(tree)(
+                super.transform(fn),
+                targs.map(typeNormalizer.transform)
+              )
+            case _ => super.transform(tree)
+      }
+
+      val transformed: untpd.Tree =
+        if quoted.isType then quoted // FIXME: typeNormalizer.transform(quoted)
+        else termNormalizer.transform(quoted)
+
+      def typeBindingDefinedInSource: List[TypeName] =
+        transformed match
+          case untpd.Block(stats, _) =>
+            stats.takeWhile {
+              case untpd.TypeDef(name, _) => name.isVarPattern
+              case _ => false
+            }.map(_.asInstanceOf[untpd.TypeDef].name.asTypeName)
+          case _ => Nil
+      variables --= typeBindingDefinedInSource
+
+      // println("==============")
+      // println(quoted.show)
+      // println(quoted)
+      // println("--------------")
+      // println(transformed.show)
+      // println(transformed)
+      // println(" ")
+      // println(variables)
+      // println(" ")
+
+      if variables.isEmpty then transformed
+      else
+        transformed match
+          case untpd.Block(stats, expr) =>
+            val typeBindings = stats.takeWhile {
+              case untpd.TypeDef(name, _) => name.isVarPattern
+              case _ => false
+            }
+            variables --= typeBindings.map(_.asInstanceOf[untpd.TypeDef].name.asTypeName)
+            untpd.cpy.Block(quoted)(
+              variables.toList.map(name => untpd.TypeDef(name, untpd.TypeBoundsTree(untpd.EmptyTree, untpd.EmptyTree, untpd.EmptyTree))) ::: stats,
+              expr
+            )
+          case _ =>
+            untpd.cpy.Block(quoted)(
+              variables.toList.map(name => untpd.TypeDef(name, untpd.TypeBoundsTree(untpd.EmptyTree, untpd.EmptyTree, untpd.EmptyTree))),
+              transformed
+            )
+
+    val quoted0normalized = normalizeTypeBindings(quoted0)
     val quoted1 =
-      if quoted.isType then typedType(quoted0, WildcardType)(using quoteCtx)
-      else typedExpr(quoted0, WildcardType)(using quoteCtx)
+      if quoted.isType then typedType(quoted0normalized, WildcardType)(using quoteCtx)
+      else typedExpr(quoted0normalized, WildcardType)(using quoteCtx)
 
     val (typeBindings, shape, splices) = splitQuotePattern(quoted1)
 

@@ -1518,7 +1518,7 @@ object Trees {
         paramss.mapConserve(transformParams)
 
       protected def transformMoreCases(tree: Tree)(using Context): Tree = {
-        assert(ctx.reporter.errorsReported)
+        assert(ctx.reporter.errorsReported, tree)
         tree
       }
     }
