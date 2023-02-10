@@ -1,0 +1,5 @@
+## This could just be a pos test checked by FromTastyTests, but
+## ParallelTesting#compileTastyInDir does not support test with multiple files
+## currently.
+> compile
+> doc
