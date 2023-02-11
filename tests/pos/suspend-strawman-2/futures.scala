@@ -130,7 +130,7 @@ object Future:
    *  If the future is created in an Async context, it is added to the
    *  children of that context's root.
    */
-  def apply[T](body: Async ?=> T)(using ac: AsyncConfig): Future[T] =
+  def apply[T](body: Async ?=> T)(using ac: Async.Config): Future[T] =
     val f = RunnableFuture(body)(using ac.scheduler)
     ac.root.addChild(f)
     f
@@ -141,7 +141,7 @@ object Future:
      *  If both futures succeed, succeed with their values in a pair. Otherwise,
      *  fail with the failure that was returned first and cancel the other.
      */
-    def zip[T2](f2: Future[T2])(using AsyncConfig): Future[(T1, T2)] = Future:
+    def zip[T2](f2: Future[T2])(using Async.Config): Future[(T1, T2)] = Future:
       Async.await(Async.either(f1, f2)) match
         case Left(Success(x1))  => (x1, f2.value)
         case Right(Success(x2)) => (f1.value, x2)
@@ -152,7 +152,7 @@ object Future:
      *  If either task succeeds, succeed with the success that was returned first
      *  and cancel the other. Otherwise, fail with the failure that was returned last.
      */
-    def alt[T2 >: T1](f2: Future[T2])(using AsyncConfig): Future[T2] = Future:
+    def alt[T2 >: T1](f2: Future[T2])(using Async.Config): Future[T2] = Future:
       Async.await(Async.either(f1, f2)) match
         case Left(Success(x1))    => f2.cancel(); x1
         case Right(Success(x2))   => f1.cancel(); x2
@@ -187,7 +187,7 @@ end Future
 class Task[+T](val body: Async ?=> T):
 
   /** Start a future computed from the `body` of this task */
-  def run(using AsyncConfig) = Future(body)
+  def run(using Async.Config) = Future(body)
 
 end Task
 

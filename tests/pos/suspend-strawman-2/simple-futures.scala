@@ -3,6 +3,7 @@ package simpleFutures
 import scala.collection.mutable.ListBuffer
 import scala.util.boundary, boundary.Label
 import runtime.*
+import concurrent.Scheduler
 
 trait Async:
   def await[T](f: Future[T]): T

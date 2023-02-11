@@ -27,7 +27,7 @@ object Async:
     /** A toplevel async group with given scheduler and a synthetic root that
      *  ignores cancellation requests
      */
-    given fromScheduler(using s: Scheduler): AsyncConfig with
+    given fromScheduler(using s: Scheduler): Config with
       def root = Cancellable.empty
       def scheduler = s
 
