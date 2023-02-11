@@ -541,7 +541,11 @@ class Namer { typer: Typer =>
           res = cpy.TypeDef(modCls)(
             rhs = cpy.Template(modTempl)(
               derived = if (fromTempl.derived.nonEmpty) fromTempl.derived else modTempl.derived,
-              body = fromTempl.body ++ modTempl.body))
+              body = fromTempl.body.filter {
+                  case stat: DefDef => stat.name != nme.toString_
+                    // toString should only be generated if explicit companion is missing
+                  case _ => true
+                } ++ modTempl.body))
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
               report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
