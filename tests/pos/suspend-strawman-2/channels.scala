@@ -1,7 +1,8 @@
 package concurrent
 import scala.collection.mutable, mutable.ListBuffer
-import scala.util.boundary.Label
+import scala.util.boundary, boundary.Label
 import runtime.suspend
+import java.util.concurrent.CancellationException
 import Async.{Listener, await}
 
 /** An unbounded asynchronous channel. Senders do not wait for matching
@@ -96,6 +97,40 @@ object SyncChannel:
 
 end SyncChannel
 
+/** A simplistic coroutine. Error handling is still missing,  */
+class Coroutine(body: Async ?=> Unit)(using scheduler: Scheduler) extends Cancellable:
+  private var children: mutable.ListBuffer[Cancellable] = mutable.ListBuffer()
+  @volatile var cancelled = false
+
+  def cancel() =
+    cancelled = true
+    synchronized(children).foreach(_.cancel())
+
+  def addChild(child: Cancellable) = synchronized:
+    children += child
+
+  boundary [Unit]:
+    given Async = new Async.Impl(this, scheduler):
+      def checkCancellation() =
+        if cancelled then throw new CancellationException()
+    try body
+    catch case ex: CancellationException => ()
+end Coroutine
+
+def TestChannel(using Scheduler) =
+  val c = SyncChannel[Option[Int]]()
+  Coroutine:
+    for i <- 0 to 100 do
+      c.send(Some(i))
+      c.send(None)
+  Coroutine:
+    var sum = 0
+    def loop(): Unit =
+      c.read() match
+        case Some(x) => sum += x; loop()
+        case None => println(sum)
+    loop()
+
 def TestRace =
   val c1, c2 = SyncChannel[Int]()
   val s = c1.canSend
@@ -114,3 +149,4 @@ def TestRace =
     .map:
       case Left(x) => -x
       case Right(x) => x
+
