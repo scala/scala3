@@ -47,11 +47,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Apply(expr, args)
     case _: RefTree | _: GenericApply | _: Inlined | _: Hole =>
       ta.assignType(untpd.Apply(fn, args), fn, args)
+    case _ =>
+      assert(ctx.reporter.errorsReported)
+      ta.assignType(untpd.Apply(fn, args), fn, args)
 
   def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = fn match
     case Block(Nil, expr) =>
       TypeApply(expr, args)
     case _: RefTree | _: GenericApply =>
+      ta.assignType(untpd.TypeApply(fn, args), fn, args)
+    case _ =>
+      assert(ctx.reporter.errorsReported)
       ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
   def Literal(const: Constant)(using Context): Literal =
