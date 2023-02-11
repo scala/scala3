@@ -467,7 +467,7 @@ Schema => SemanticDB v4
 Uri => Classes.scala
 Text => empty
 Language => Scala
-Symbols => 109 entries
+Symbols => 108 entries
 Occurrences => 114 entries
 Synthetics => 2 entries
 
@@ -504,10 +504,9 @@ classes/C4#copy$default$1(). => method copy$default$1 => Int @uncheckedVariance
 classes/C4#copy(). => method copy (param x: Int): C4
 classes/C4#copy().(x) => param x: Int
 classes/C4#x. => val method x Int
-classes/C4. => final object C4 extends Object { self: C4.type => +4 decls }
+classes/C4. => final object C4 extends Object { self: C4.type => +3 decls }
 classes/C4.apply(). => method apply (param x: Int): C4
 classes/C4.apply().(x) => param x: Int
-classes/C4.toString(). => method toString => String <: scala/Any#toString().
 classes/C4.unapply(). => method unapply (param x$1: C4): C4
 classes/C4.unapply().(x$1) => param x$1: C4
 classes/C6# => case class C6 extends Object with Product with Serializable { self: C6 => +5 decls }
@@ -4559,7 +4558,7 @@ Schema => SemanticDB v4
 Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
-Symbols => 144 entries
+Symbols => 143 entries
 Occurrences => 228 entries
 Synthetics => 1 entries
 
@@ -4585,10 +4584,9 @@ types/Foo#copy$default$1(). => method copy$default$1 => "abc" @uncheckedVariance
 types/Foo#copy(). => method copy (param s: "abc"): Foo
 types/Foo#copy().(s) => param s: "abc"
 types/Foo#s. => val method s "abc"
-types/Foo. => final object Foo extends Object { self: Foo.type => +6 decls }
+types/Foo. => final object Foo extends Object { self: Foo.type => +5 decls }
 types/Foo.apply(). => method apply (param s: "abc"): Foo
 types/Foo.apply().(s) => param s: "abc"
-types/Foo.toString(). => method toString => String <: scala/Any#toString().
 types/Foo.unapply(). => method unapply (param x$1: Foo): Foo
 types/Foo.unapply().(x$1) => param x$1: Foo
 types/Foo.x. => val method x "abc" @deprecated
