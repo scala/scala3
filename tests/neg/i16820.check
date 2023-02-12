@@ -1,0 +1,22 @@
+-- Error: tests/neg/i16820.scala:5:11 ----------------------------------------------------------------------------------
+5 |  val x1 = f  // error
+  |           ^
+  |           missing arguments for method f in object Test
+-- [E100] Syntax Error: tests/neg/i16820.scala:6:11 --------------------------------------------------------------------
+6 |  val x2 = g  // error
+  |           ^
+  |           method g in object Test must be called with () argument
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/i16820.scala:8:14 ----------------------------------------------------------------------------------
+8 |  val x3 = "".formatted // error
+  |           ^^^^^^^^^^^^
+  |           missing arguments for method formatted in class String
+-- Error: tests/neg/i16820.scala:9:40 ----------------------------------------------------------------------------------
+9 |  val x4 = java.nio.file.Paths.get(".").toRealPath // error
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |           missing arguments for method toRealPath in trait Path
+-- Error: tests/neg/i16820.scala:13:14 ---------------------------------------------------------------------------------
+13 |def test = Foo(3)  // error
+   |           ^^^^^^
+   |           missing arguments for method apply in object Foo

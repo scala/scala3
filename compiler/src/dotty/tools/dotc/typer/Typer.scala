@@ -3922,7 +3922,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               else defn.functionArity(ptNorm)
             else
               val nparams = wtp.paramInfos.length
-              if nparams > 0 || pt.eq(AnyFunctionProto) then nparams
+              if nparams > 1
+                  || nparams == 1 && !wtp.isVarArgsMethod
+                  || pt.eq(AnyFunctionProto)
+              then nparams
               else -1 // no eta expansion in this case
           adaptNoArgsUnappliedMethod(wtp, funExpected, arity)
         case _ =>
