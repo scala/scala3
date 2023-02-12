@@ -90,6 +90,7 @@ object Formatting {
       given Show[util.SourceFile]                     = ShowAny
       given Show[util.Spans.Span]                     = ShowAny
       given Show[tasty.TreeUnpickler#OwnerTree]       = ShowAny
+      given Show[typer.ForceDegree.Value]             = ShowAny
 
       private def show1[A: Show](x: A)(using Context) = show2(Show[A].show(x).ctxShow)
       private def show2(x: Shown)(using Context): String = x match
