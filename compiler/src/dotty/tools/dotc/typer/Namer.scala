@@ -1343,7 +1343,7 @@ class Namer { typer: Typer =>
        *
        *  The idea is that this simulates the hypothetical case where export forwarders
        *  are not generated and we treat an export instead more like an import where we
-       *  expand the use site reference. Test cases in {neg,pos}/i14699.scala.
+       *  expand the use site reference. Test cases in {neg,pos}/i14966.scala.
        *
        *  @pre Forwarders with the same name are consecutive in `forwarders`.
        */
