@@ -1732,7 +1732,7 @@ object desugar {
 
           val applyVParams = vargs.zipWithIndex.map {
             case (p: ValDef, _) => p.withAddedFlags(mods.flags)
-            case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
+            case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags.toTermFlags)
           }
           RefinedTypeTree(polyFunctionTpt, List(
             DefDef(nme.apply, applyTParams :: applyVParams :: Nil, res, EmptyTree).withFlags(Synthetic)
