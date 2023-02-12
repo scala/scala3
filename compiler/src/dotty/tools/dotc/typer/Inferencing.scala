@@ -307,16 +307,17 @@ object Inferencing {
   }
 
   /** If `tree` has a type lambda type, infer its type parameters by comparing with expected type `pt` */
-  def inferTypeParams(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match {
+  def inferTypeParams(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case tl: TypeLambda =>
       val (tl1, tvars) = constrained(tl, tree)
       var tree1 = AppliedTypeTree(tree.withType(tl1), tvars)
       tree1.tpe <:< pt
-      fullyDefinedType(tree1.tpe, "template parent", tree.srcPos)
-      tree1
+      if isFullyDefined(tree1.tpe, force = ForceDegree.failBottom) then
+        tree1
+      else
+        EmptyTree
     case _ =>
       tree
-  }
 
   def isSkolemFree(tp: Type)(using Context): Boolean =
     !tp.existsPart(_.isInstanceOf[SkolemType])
