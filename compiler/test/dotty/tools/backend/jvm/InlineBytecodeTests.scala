@@ -578,6 +578,63 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  @Test def beta_reduce_polymorphic_function = {
+    val source = """class Test:
+                   |  def test =
+                   |    ([Z] => (arg: Z) => { val a: Z = arg; a }).apply[Int](2)
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          Op(ICONST_2),
+          VarOp(ISTORE, 1),
+          VarOp(ILOAD, 1),
+          Op(IRETURN)
+        )
+
+      assert(instructions == expected,
+        "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  @Test def beta_reduce_function_of_opaque_types = {
+    val source = """object foo:
+                   |  opaque type T = Int
+                   |  inline def apply(inline op: T => T): T = op(2)
+                   |
+                   |class Test:
+                   | def test = foo { n => n }
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          Field(GETSTATIC, "foo$", "MODULE$", "Lfoo$;"),
+          VarOp(ASTORE, 1),
+          VarOp(ALOAD, 1),
+          VarOp(ASTORE, 2),
+          Op(ICONST_2),
+          Op(IRETURN),
+        )
+
+      assert(instructions == expected,
+        "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
   @Test def i9456 = {
     val source = """class Foo {
                    |  def test: Int = inline2(inline1(2.+))

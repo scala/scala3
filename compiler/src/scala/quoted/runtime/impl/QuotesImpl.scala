@@ -371,16 +371,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Term extends TermModule:
       def betaReduce(tree: Term): Option[Term] =
         tree match
-          case app @ tpd.Apply(tpd.Select(fn, nme.apply), args) if dotc.core.Symbols.defn.isFunctionType(fn.tpe) =>
-            val app1 = dotc.transform.BetaReduce(app, fn, args)
-            if app1 eq app then None
-            else Some(app1.withSpan(tree.span))
           case tpd.Block(Nil, expr) =>
             for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Nil, e)
           case tpd.Inlined(_, Nil, expr) =>
             betaReduce(expr)
           case _ =>
-            None
+            val tree1 = dotc.transform.BetaReduce(tree)
+            if tree1 eq tree then None
+            else Some(tree1.withSpan(tree.span))
+
     end Term
 
     given TermMethods: TermMethods with
