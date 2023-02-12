@@ -1,0 +1,10 @@
+-- [E172] Type Error: tests/neg-custom-args/explain/labelNotFound.scala:2:30 -------------------------------------------
+2 |  scala.util.boundary.break(1) // error
+  |                              ^
+  |No given instance of type scala.util.boundary.Label[Int] was found for parameter label of method break in object boundary
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | A Label is generated from an enclosing `scala.util.boundary` call.
+  | Maybe that boundary is missing?
+   ---------------------------------------------------------------------------------------------------------------------
