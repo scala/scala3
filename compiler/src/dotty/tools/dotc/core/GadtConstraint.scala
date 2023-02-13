@@ -71,12 +71,26 @@ class GadtConstraint private (
     externalize(constraint.nonParamBounds(param)).bounds
 
   def fullLowerBound(param: TypeParamRef)(using Context): Type =
-    constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
+    val self = externalize(param)
+    constraint.minLower(param).filterNot { p =>
+      val sym = paramSymbol(p)
+      sym.name.is(NameKinds.UniqueName) && {
+        val hi = sym.info.hiBound
+        !hi.isExactlyAny && self <:< hi
+      }
+    }.foldLeft(nonParamBounds(param).lo) {
       (t, u) => t | externalize(u)
     }
 
   def fullUpperBound(param: TypeParamRef)(using Context): Type =
-    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (t, u) =>
+    val self = externalize(param)
+    constraint.minUpper(param).filterNot { p =>
+      val sym = paramSymbol(p)
+      sym.name.is(NameKinds.UniqueName) && {
+        val lo = sym.info.loBound
+        !lo.isExactlyNothing && lo <:< self
+      }
+    }.foldLeft(nonParamBounds(param).hi) { (t, u) =>
       val eu = externalize(u)
       // Any as the upper bound means "no bound", but if F is higher-kinded,
       // Any & F = F[_]; this is wrong for us so we need to short-circuit
@@ -95,6 +109,10 @@ class GadtConstraint private (
 
   def tvarOrError(sym: Symbol)(using Context): TypeVar =
     mapping(sym).ensuring(_ != null, i"not a constrainable symbol: $sym").uncheckedNN
+
+  private def paramSymbol(p: TypeParamRef): Symbol = reverseMapping(p) match
+    case sym: Symbol => sym
+    case null        => NoSymbol
 
   @tailrec final def stripInternalTypeVar(tp: Type): Type = tp match
     case tv: TypeVar =>
