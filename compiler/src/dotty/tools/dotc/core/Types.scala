@@ -2501,10 +2501,36 @@ object Types {
 
     /** A reference with the initial symbol in `symd` has an info that
      *  might depend on the given prefix.
+     *  Note: If T is an abstract type in trait or class C, its info depends
+     *  even on C.this if class C has a self type that refines the info of T.
+     *  Currently, "refines" means an actual refinement type that constrains the
+     *  name `T`. We should try to extend that also to other classes that introduce
+     *  a new bining for `T`. Furthermore, we should also treat term members
+     *  in this way.
      */
     private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(using Context): Boolean =
+
+      def refines(tp: Type, name: Name): Boolean = tp match
+        case AndType(tp1, tp2) => refines(tp1, name) || refines(tp2, name)
+        case RefinedType(parent, rname, _) => rname == name || refines(parent, name)
+        case tp: RecType => refines(tp.parent, name)
+        case _ => false
+
+      def givenSelfTypeOrCompleter(cls: Symbol) = cls.infoOrCompleter match
+        case cinfo: ClassInfo =>
+          cinfo.selfInfo match
+            case sym: Symbol => sym.infoOrCompleter
+            case tpe: Type => tpe
+        case _ => NoType
+
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
-      || prefix.isInstanceOf[Types.ThisType] && symd.is(Opaque) // see pos/i11277.scala for a test where this matters
+      || prefix.match
+        case prefix: Types.ThisType =>
+          symd.isAbstractType
+          && prefix.sameThis(symd.maybeOwner.thisType)
+          && refines(givenSelfTypeOrCompleter(prefix.cls), symd.name)
+        case _ => false
+    end infoDependsOnPrefix
 
     /** Is this a reference to a class or object member with an info that might depend
      *  on the prefix?
@@ -2653,25 +2679,11 @@ object Types {
       else this
 
     /** A reference like this one, but with the given denotation, if it exists.
-     *  Returns a new named type with the denotation's symbol if that symbol exists, and
-     *  one of the following alternatives applies:
-     *   1. The current designator is a symbol and the symbols differ, or
-     *   2. The current designator is a name and the new symbolic named type
-     *      does not have a currently known denotation.
-     *   3. The current designator is a name and the new symbolic named type
-     *      has the same info as the current info
-     *  Returns a new named type with a name as designator if the denotation is
-     *  overloaded and the name is different from the current designator.
-     *  Otherwise the current denotation is overwritten with the given one.
-     *
-     *  Note: (2) and (3) are a "lock in mechanism" where a reference with a name as
-     *  designator can turn into a symbolic reference.
-     *
-     *  Note: This is a subtle dance to keep the balance between going to symbolic
-     *  references as much as we can (since otherwise we'd risk getting cycles)
-     *  and to still not lose any type info in the denotation (since symbolic
-     *  references often recompute their info directly from the symbol's info).
-     *  A test case is neg/opaque-self-encoding.scala.
+     *  Returns a new named type with the denotation's symbol as designator
+     *  if that symbol exists and it is different from the current designator.
+     *  Returns a new named type with the denotations's name as designator
+     *  if the denotation is overloaded and its name is different from the
+     *  current designator.
      */
     final def withDenot(denot: Denotation)(using Context): ThisType =
       if denot.exists then
@@ -2679,14 +2691,7 @@ object Types {
           if denot.symbol.exists then withSym(denot.symbol)
           else if denot.isOverloaded then withName(denot.name)
           else this
-        val result =
-          if adapted.eq(this)
-              || designator.isInstanceOf[Symbol]
-              || !adapted.denotationIsCurrent
-              || adapted.info.eq(denot.info)
-          then adapted
-          else this
-        val lastDenot = result.lastDenotation
+        val lastDenot = adapted.lastDenotation
         denot match
           case denot: SymDenotation
           if denot.validFor.firstPhaseId < ctx.phase.id
@@ -2696,15 +2701,15 @@ object Types {
             // In this case the new SymDenotation might be valid for all phases, which means
             // we would not recompute the denotation when travelling to an earlier phase, maybe
             // in the next run. We fix that problem by creating a UniqueRefDenotation instead.
-            core.println(i"overwrite ${result.toString} / ${result.lastDenotation}, ${result.lastDenotation.getClass} with $denot at ${ctx.phaseId}")
-            result.setDenot(
+            core.println(i"overwrite ${adapted.toString} / ${adapted.lastDenotation}, ${adapted.lastDenotation.getClass} with $denot at ${ctx.phaseId}")
+            adapted.setDenot(
               UniqueRefDenotation(
                 denot.symbol, denot.info,
                 Period(ctx.runId, ctx.phaseId, denot.validFor.lastPhaseId),
                 this.prefix))
           case _ =>
-            result.setDenot(denot)
-        result.asInstanceOf[ThisType]
+            adapted.setDenot(denot)
+        adapted.asInstanceOf[ThisType]
       else // don't assign NoDenotation, we might need to recover later. Test case is pos/avoid.scala.
         this
 
