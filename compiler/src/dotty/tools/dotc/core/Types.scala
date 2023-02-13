@@ -2503,17 +2503,17 @@ object Types {
      *  might depend on the given prefix.
      *  Note: If T is an abstract type in trait or class C, its info depends
      *  even on C.this if class C has a self type that refines the info of T.
-     *  Currently, "refines" means an actual refinement type that constrains the
-     *  name `T`. We should try to extend that also to other classes that introduce
-     *  a new bining for `T`. Furthermore, we should also treat term members
-     *  in this way.
+     *  We should also treat term members in this way.
      */
     private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(using Context): Boolean =
 
       def refines(tp: Type, name: Name): Boolean = tp match
         case AndType(tp1, tp2) => refines(tp1, name) || refines(tp2, name)
         case RefinedType(parent, rname, _) => rname == name || refines(parent, name)
-        case tp: RecType => refines(tp.parent, name)
+        case tp: ClassInfo =>
+          val other = tp.cls.infoOrCompleter.nonPrivateMember(name)
+          other.exists && other.symbol != symd.symbol
+        case tp: TypeProxy => refines(tp.underlying, name)
         case _ => false
 
       def givenSelfTypeOrCompleter(cls: Symbol) = cls.infoOrCompleter match
