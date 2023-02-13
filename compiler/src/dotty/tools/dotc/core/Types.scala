@@ -2644,8 +2644,12 @@ object Types {
       }
 
     /** A reference like this one, but with the given symbol, if it exists */
-    final def withSym(sym: Symbol)(using Context): ThisType =
-      if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]
+    private def withSym(sym: Symbol)(using Context): ThisType =
+      if designator ne sym then NamedType(prefix, sym).asInstanceOf[ThisType]
+      else this
+
+    private def withName(name: Name)(using Context): ThisType =
+      if designator ne name then NamedType(prefix, name).asInstanceOf[ThisType]
       else this
 
     /** A reference like this one, but with the given denotation, if it exists.
@@ -2656,6 +2660,8 @@ object Types {
      *      does not have a currently known denotation.
      *   3. The current designator is a name and the new symbolic named type
      *      has the same info as the current info
+     *  Returns a new named type with a name as designator if the denotation is
+     *  overloaded and the name is different from the current designator.
      *  Otherwise the current denotation is overwritten with the given one.
      *
      *  Note: (2) and (3) are a "lock in mechanism" where a reference with a name as
@@ -2669,13 +2675,16 @@ object Types {
      */
     final def withDenot(denot: Denotation)(using Context): ThisType =
       if denot.exists then
-        val adapted = withSym(denot.symbol)
+        val adapted =
+          if denot.symbol.exists then withSym(denot.symbol)
+          else if denot.isOverloaded then withName(denot.name)
+          else this
         val result =
-          if (adapted.eq(this)
+          if adapted.eq(this)
               || designator.isInstanceOf[Symbol]
               || !adapted.denotationIsCurrent
-              || adapted.info.eq(denot.info))
-            adapted
+              || adapted.info.eq(denot.info)
+          then adapted
           else this
         val lastDenot = result.lastDenotation
         denot match
