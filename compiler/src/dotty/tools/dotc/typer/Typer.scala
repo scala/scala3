@@ -1111,6 +1111,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if ctx.mode.is(Mode.SafeNulls)
       && !exprCtx.mode.is(Mode.SafeNulls)
       && pt.isValueType
+      && !tree.isType
       && !inContext(exprCtx.addMode(Mode.SafeNulls))(expr1.tpe <:< pt) then
       expr1 = expr1.cast(pt)
 

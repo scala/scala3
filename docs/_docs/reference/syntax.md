@@ -274,7 +274,7 @@ ColonArgument     ::=  colon [LambdaStart]
 LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
                     |  HkTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
-                    |  ‘'’ ‘[’ Type ‘]’
+                    |  ‘'’ ‘[’ TypeBlock ‘]’
 ExprSplice        ::= spliceId                                                  -- if inside quoted block
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
@@ -293,6 +293,8 @@ BlockStat         ::=  Import
                     |  Extension
                     |  Expr1
                     |  EndMarker
+TypeBlock         ::=  {TypeBlockStat semi} Type
+TypeBlockStat     ::=  ‘type’ {nl} TypeDcl
 
 ForExpr           ::=  ‘for’ ‘(’ Enumerators0 ‘)’ {nl} [‘do‘ | ‘yield’] Expr
                     |  ‘for’ ‘{’ Enumerators0 ‘}’ {nl} [‘do‘ | ‘yield’] Expr
