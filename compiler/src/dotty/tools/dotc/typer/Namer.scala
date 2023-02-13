@@ -1461,27 +1461,41 @@ class Namer { typer: Typer =>
        * only if parent type contains uninstantiated type parameters.
        */
       def parentType(parent: untpd.Tree)(using Context): Type =
-        if (parent.isType)
-          typedAheadType(parent, AnyTypeConstructorProto).tpe
-        else {
-          val (core, targs) = stripApply(parent) match {
+
+        def typedParentApplication(parent: untpd.Tree): Type =
+          val (core, targs) = stripApply(parent) match
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)
-          }
-          core match {
+          core match
             case Select(New(tpt), nme.CONSTRUCTOR) =>
               val targs1 = targs map (typedAheadType(_))
               val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
               if (ptype.typeParams.isEmpty) ptype
-              else {
+              else
                 if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(GivenOrImplicit))
                   missingType(denot.symbol, "parent ")(using creationContext)
                 fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.srcPos)
-              }
             case _ =>
               UnspecifiedErrorType.assertingErrorsReported
-          }
-        }
+
+        def typedParentType(tree: untpd.Tree): tpd.Tree =
+          val parentTpt = typer.typedType(parent, AnyTypeConstructorProto)
+          val ptpe = parentTpt.tpe
+          if ptpe.typeParams.nonEmpty
+              && ptpe.underlyingClassRef(refinementOK = false).exists
+          then
+            // Try to infer type parameters from a synthetic application.
+            // This might yield new info if implicit parameters are resolved.
+            // A test case is i16778.scala.
+            val app = untpd.Apply(untpd.Select(untpd.New(parentTpt), nme.CONSTRUCTOR), Nil)
+            typedParentApplication(app)
+            app.getAttachment(TypedAhead).getOrElse(parentTpt)
+          else
+            parentTpt
+
+        if parent.isType then typedAhead(parent, typedParentType).tpe
+        else typedParentApplication(parent)
+      end parentType
 
       /** Check parent type tree `parent` for the following well-formedness conditions:
        *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
@@ -1615,7 +1629,7 @@ class Namer { typer: Typer =>
       case Some(ttree) => ttree
       case none =>
         val ttree = typed(tree)
-        xtree.putAttachment(TypedAhead, ttree)
+        if !ttree.isEmpty then xtree.putAttachment(TypedAhead, ttree)
         ttree
     }
   }
