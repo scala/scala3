@@ -1632,6 +1632,19 @@ object Parsers {
             t
     end typ
 
+    /** TypeBlock ::= {TypeBlockStat semi} Type
+     *  TypeBlockStat     ::=  ‘type’ {nl} TypeDcl
+     */
+    def typeBlock(): Tree =
+      val tDefs = new ListBuffer[Tree]
+      while in.token == TYPE do
+        val mods = defAnnotsMods(modifierTokens)
+        tDefs += typeDefOrDcl(in.offset, in.skipToken(mods))
+        acceptStatSep()
+      val tpt = typ()
+      if tDefs.isEmpty then tpt else Block(tDefs.toList, tpt)
+
+
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
       val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
       // We remove the variance marker from the name without passing along the specified variance at all
@@ -2495,7 +2508,7 @@ object Parsers {
           atSpan(in.skipToken()) {
             withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.QuotedPattern else 0)) {
               Quote {
-                if (in.token == LBRACKET) inBrackets(typ())
+                if (in.token == LBRACKET) inBrackets(typeBlock())
                 else stagedBlock()
               }
             }

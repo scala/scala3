@@ -198,11 +198,11 @@ trait QuotesAndSplices {
    *  )
    *  ```
    */
-  private def splitQuotePattern(quoted: Tree)(using Context): (Map[Symbol, Bind], Tree, List[Tree]) = {
+  private def splitQuotePattern(quoted: Tree)(using Context): (Map[Symbol, Tree], Tree, List[Tree]) = {
     val ctx0 = ctx
 
-    val typeBindings: collection.mutable.Map[Symbol, Bind] = collection.mutable.Map.empty
-    def getBinding(sym: Symbol): Bind =
+    val typeBindings: collection.mutable.Map[Symbol, Tree] = collection.mutable.Map.empty
+    def getBinding(sym: Symbol): Tree =
       typeBindings.getOrElseUpdate(sym, {
         val bindingBounds = sym.info
         val bsym = newPatternBoundSymbol(sym.name.toString.stripPrefix("$").toTypeName, bindingBounds, quoted.span)
@@ -396,7 +396,10 @@ trait QuotesAndSplices {
     val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
     val quoteCtx = quoteContext.addMode(Mode.QuotedPattern).retractMode(Mode.Pattern)
     val quoted1 =
-      if quoted.isType then typedType(quoted0, WildcardType)(using quoteCtx)
+      if quoted.isType then typedType(quoted0, WildcardType)(using quoteCtx) match
+        case quoted1 @ Block(stats, Typed(tpt, _)) => cpy.Block(quoted1)(stats, tpt)
+        case quoted1 => quoted1
+
       else typedExpr(quoted0, WildcardType)(using quoteCtx)
 
     val (typeBindings, shape, splices) = splitQuotePattern(quoted1)

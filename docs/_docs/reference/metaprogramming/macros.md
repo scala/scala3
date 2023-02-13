@@ -530,6 +530,7 @@ def empty[T: Type]: Expr[T] =
   Type.of[T] match
     case '[String] => '{ "" }
     case '[List[t]] => '{ List.empty[t] }
+    case '[type t <: Option[Int]; List[`t`]] => '{ List.empty[t] }
     ...
 ```
 
