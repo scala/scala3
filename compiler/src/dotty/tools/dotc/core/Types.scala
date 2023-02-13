@@ -2501,20 +2501,24 @@ object Types {
 
     /** A reference with the initial symbol in `symd` has an info that
      *  might depend on the given prefix.
-     *  Note: If T is an abstract type in trait or class C, its info depends
-     *  even on C.this if class C has a self type that refines the info of T.
-     *  We should also treat term members in this way.
+     *  Note: If M is an abstract type or non-final term member in trait or class C,
+     *  its info depends even on C.this if class C has a self type that refines
+     *  the info of M.
      */
     private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(using Context): Boolean =
 
       def refines(tp: Type, name: Name): Boolean = tp match
-        case AndType(tp1, tp2) => refines(tp1, name) || refines(tp2, name)
-        case RefinedType(parent, rname, _) => rname == name || refines(parent, name)
+        case AndType(tp1, tp2) =>
+          refines(tp1, name) || refines(tp2, name)
+        case RefinedType(parent, rname, _) =>
+          rname == name || refines(parent, name)
         case tp: ClassInfo =>
-          val other = tp.cls.infoOrCompleter.nonPrivateMember(name)
-          other.exists && other.symbol != symd.symbol
-        case tp: TypeProxy => refines(tp.underlying, name)
-        case _ => false
+          val otherd = tp.cls.nonPrivateMembersNamed(name)
+          otherd.exists && !otherd.containsSym(symd.symbol)
+        case tp: TypeProxy =>
+          refines(tp.underlying, name)
+        case _ =>
+          false
 
       def givenSelfTypeOrCompleter(cls: Symbol) = cls.infoOrCompleter match
         case cinfo: ClassInfo =>
@@ -2526,7 +2530,10 @@ object Types {
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
       || prefix.match
         case prefix: Types.ThisType =>
-          symd.isAbstractType
+          (symd.isAbstractType
+            || symd.isTerm
+                && !symd.flagsUNSAFE.isOneOf(Module | Final | Param)
+                && !symd.maybeOwner.isEffectivelyFinal)
           && prefix.sameThis(symd.maybeOwner.thisType)
           && refines(givenSelfTypeOrCompleter(prefix.cls), symd.name)
         case _ => false
