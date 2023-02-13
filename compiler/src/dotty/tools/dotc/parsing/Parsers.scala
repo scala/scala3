@@ -1740,6 +1740,27 @@ object Parsers {
     /** The block in a quote or splice */
     def stagedBlock() = inBraces(block(simplify = true))
 
+    /** TypeBlock ::= {TypeBlockStat semi} Type
+     */
+    def typeBlock(): Tree =
+      typeBlockStats() match
+        case Nil => typ()
+        case tdefs => Block(tdefs, typ())
+
+    def typeBlockStats(): List[Tree] =
+      val tdefs = new ListBuffer[Tree]
+      while in.token == TYPE do tdefs += typeBlockStat()
+      tdefs.toList
+
+    /**  TypeBlockStat     ::=  ‘type’ {nl} TypeDcl
+     */
+    def typeBlockStat(): Tree =
+      val mods = defAnnotsMods(BitSet())
+      val tdef = typeDefOrDcl(in.offset, in.skipToken(mods))
+      if in.token == SEMI then in.nextToken()
+      if in.isNewLine then in.nextToken()
+      tdef
+
     /** ExprSplice  ::=  ‘$’ spliceId          --     if inside quoted block
      *                |  ‘$’ ‘{’ Block ‘}’     -- unless inside quoted pattern
      *                |  ‘$’ ‘{’ Pattern ‘}’   --   when inside quoted pattern
@@ -2480,7 +2501,7 @@ object Parsers {
           atSpan(in.skipToken()) {
             withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.QuotedPattern else 0)) {
               val body =
-                if (in.token == LBRACKET) inBrackets(typ())
+                if (in.token == LBRACKET) inBrackets(typeBlock())
                 else stagedBlock()
               Quote(body, Nil)
             }
@@ -3757,6 +3778,8 @@ object Parsers {
             }
             else makeTypeDef(bounds)
           case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
+            makeTypeDef(typeBounds())
+          case _ if (staged & StageKind.QuotedPattern) != 0 =>
             makeTypeDef(typeBounds())
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))

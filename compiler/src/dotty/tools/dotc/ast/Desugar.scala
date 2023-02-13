@@ -366,7 +366,7 @@ object desugar {
   /** Split out the quoted pattern type variable definition from the pattern.
    *
    *  Type variable definitions are all the `type t` defined at the start of a quoted pattern.
-   *  Were name `t` is a pattern type variable name (i.e. lower case letters).
+   *  Where name `t` is a pattern type variable name (i.e. lower case letters).
    *
    *  ```
    *   type t1; ...; type tn; <pattern>
@@ -379,16 +379,12 @@ object desugar {
   def quotedPatternTypeVariables(tree: untpd.Tree)(using Context): (List[untpd.TypeDef], untpd.Tree) =
     tree match
       case untpd.Block(stats, expr) =>
-        val untpdTypeVariables = stats.takeWhile {
-          case tdef @ untpd.TypeDef(name, _) => name.isVarPattern
-          case _ => false
-        }.asInstanceOf[List[untpd.TypeDef]]
-        val otherStats = stats.dropWhile {
+        val (untpdTypeVariables, otherStats) = stats.span {
           case tdef @ untpd.TypeDef(name, _) => name.isVarPattern
           case _ => false
         }
         val pattern = if otherStats.isEmpty then expr else untpd.cpy.Block(tree)(otherStats, expr)
-        (untpdTypeVariables, pattern)
+        (untpdTypeVariables.asInstanceOf[List[untpd.TypeDef]], pattern)
       case _ =>
         (Nil, tree)
 

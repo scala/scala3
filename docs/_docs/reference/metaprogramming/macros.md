@@ -530,14 +530,23 @@ It works the same way as a quoted pattern but is restricted to contain a type.
 Type variables can be used in quoted type patterns to extract a type.
 
 ```scala
-def empty[T: Type]: Expr[T] =
+def empty[T: Type](using Quotes): Expr[T] =
   Type.of[T] match
     case '[String] => '{ "" }
     case '[List[t]] => '{ List.empty[t] }
+    case '[type t <: Option[Int]; List[t]] => '{ List.empty[t] }
     ...
 ```
-
 `Type.of[T]` is used to summon the given instance of `Type[T]` in scope, it is equivalent to `summon[Type[T]]`.
+
+It is possible to match against a higher-kinded type using appropriate type bounds on type variables.
+```scala
+def empty[K <: AnyKind : Type](using Quotes): Type[?] =
+  Type.of[K] match
+    case '[type f[X]; f] => Type.of[f]
+    case '[type f[X <: Int, Y]; f] => Type.of[f]
+    case '[type k <: AnyKind; k ] => Type.of[k]
+```
 
 #### Type testing and casting
 It is important to note that instance checks and casts on `Expr`, such as `isInstanceOf[Expr[T]]` and `asInstanceOf[Expr[T]]`, will only check if the instance is of the class `Expr` but will not be able to check the `T` argument.
