@@ -1765,7 +1765,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           else report.error(new DuplicateBind(b, cdef), b.srcPos)
           if (!ctx.isAfterTyper) {
             val bounds = ctx.gadt.fullBounds(sym)
-            if (bounds != null) sym.info = bounds
+            if (bounds != null) sym.info = checkNonCyclic(sym, bounds, reportErrors = true)
           }
           b
         case t: UnApply if t.symbol.is(Inline) => Inlines.inlinedUnapply(t)
