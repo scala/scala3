@@ -15,6 +15,7 @@ on:
     ## - or neither of them.
     ## But it's important to not have only one or the other.
   pull_request:
+  merge_group:
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
