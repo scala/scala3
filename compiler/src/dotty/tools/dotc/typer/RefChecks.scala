@@ -336,10 +336,21 @@ object RefChecks {
         next == other || isInheritedAccessor(next, other)
       }
 
+    /** Detect any param section where params in last position do not agree isRepeatedParam.
+     */
     def incompatibleRepeatedParam(member: Symbol, other: Symbol): Boolean =
-      member.is(Method, butNot = JavaDefined) && other.is(Method, butNot = JavaDefined) && atPhase(typerPhase) {
-        member.info.paramInfoss.nestedZipExists(other.info.paramInfoss)(_.isRepeatedParam != _.isRepeatedParam)
-      }
+      def loop(mParamInfoss: List[List[Type]], oParamInfoss: List[List[Type]]): Boolean =
+        mParamInfoss match
+          case Nil => false
+          case h :: t =>
+            oParamInfoss match
+              case Nil => false
+              case h2 :: t2 => h.nonEmpty && h2.nonEmpty && h.last.isRepeatedParam != h2.last.isRepeatedParam
+                            || loop(t, t2)
+      member.is(Method, butNot = JavaDefined)
+      && other.is(Method, butNot = JavaDefined)
+      && atPhase(typerPhase):
+        loop(member.info.paramInfoss, other.info.paramInfoss)
 
     /* Check that all conditions for overriding `other` by `member`
      * of class `clazz` are met.
@@ -502,7 +513,7 @@ object RefChecks {
         else if member.is(Exported) then
           overrideError("cannot override since it comes from an export")
         else if incompatibleRepeatedParam(member, other) then
-          overrideError("cannot override because erased signatures conflict in repeated parameter")
+          report.error(DoubleDefinition(member, other, clazz), member.srcPos)
         else
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))

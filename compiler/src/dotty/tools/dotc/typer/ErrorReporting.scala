@@ -137,7 +137,7 @@ object ErrorReporting {
     /** Explain info of symbol `sym` as a member of class `base`.
      *   @param  showLocation  if true also show sym's location.
      */
-    def infoString(sym: Symbol, base: Type, showLocation: Boolean): String = atPhase(Phases.typerPhase) {
+    def infoString(sym: Symbol, base: Type, showLocation: Boolean): String =
       val sym1 = sym.underlyingSymbol
       def info = base.memberInfo(sym1)
       val infoStr =
@@ -147,7 +147,6 @@ object ErrorReporting {
         else if sym1.isTerm then i" of type $info"
         else ""
       i"${if showLocation then sym1.showLocated else sym1}$infoStr"
-    }
 
     def infoStringWithLocation(sym: Symbol, base: Type) =
       infoString(sym, base, showLocation = true)
