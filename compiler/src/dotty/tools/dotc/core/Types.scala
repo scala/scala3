@@ -2508,15 +2508,20 @@ object Types {
     private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(using Context): Boolean =
 
       def refines(tp: Type, name: Name): Boolean = tp match
-        case AndType(tp1, tp2) =>
-          refines(tp1, name) || refines(tp2, name)
+        case tp: TypeRef =>
+          tp.symbol match
+            case cls: ClassSymbol =>
+              val otherd = cls.nonPrivateMembersNamed(name)
+              otherd.exists && !otherd.containsSym(symd.symbol)
+            case tsym =>
+              refines(tsym.info.hiBound, name)
+                // avoid going through tp.denot, since that might call infoDependsOnPrefix again
         case RefinedType(parent, rname, _) =>
           rname == name || refines(parent, name)
-        case tp: ClassInfo =>
-          val otherd = tp.cls.nonPrivateMembersNamed(name)
-          otherd.exists && !otherd.containsSym(symd.symbol)
         case tp: TypeProxy =>
           refines(tp.underlying, name)
+        case AndType(tp1, tp2) =>
+          refines(tp1, name) || refines(tp2, name)
         case _ =>
           false
 
