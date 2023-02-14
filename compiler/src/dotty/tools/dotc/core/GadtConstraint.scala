@@ -77,6 +77,13 @@ class GadtConstraint private (
       sym.name.is(NameKinds.UniqueName) && {
         val hi = sym.info.hiBound
         !hi.isExactlyAny && self <:< hi
+        // drop any lower param that is a GADT symbol
+        // and is upper-bounded by a non-Any super-type of the original parameter
+        // e.g. in pos/i14287.min
+        // B$1 had info <: X   and fullBounds >: B$2 <: X, and
+        // B$2 had info <: B$1 and fullBounds <: B$1
+        // We can use the info of B$2 to drop the lower-bound of B$1
+        // and return non-bidirectional bounds B$1 <: X and B$2 <: B$1.
       }
     }.foldLeft(nonParamBounds(param).lo) {
       (t, u) => t | externalize(u)
@@ -88,7 +95,7 @@ class GadtConstraint private (
       val sym = paramSymbol(p)
       sym.name.is(NameKinds.UniqueName) && {
         val lo = sym.info.loBound
-        !lo.isExactlyNothing && lo <:< self
+        !lo.isExactlyNothing && lo <:< self // same as fullLowerBounds
       }
     }.foldLeft(nonParamBounds(param).hi) { (t, u) =>
       val eu = externalize(u)
