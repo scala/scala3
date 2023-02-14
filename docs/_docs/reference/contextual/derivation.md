@@ -419,7 +419,7 @@ object Eq:
           case ((x, y), elem) => check(elem)(x, y)
         }
 
-  inline given derived[T](using m: Mirror.Of[T]): Eq[T] =
+  inline def derived[T](using m: Mirror.Of[T]): Eq[T] =
     lazy val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
