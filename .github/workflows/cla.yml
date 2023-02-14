@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'language-reference-stable'
+  merge_group:
 permissions:
   contents: write
   pull-requests: write
