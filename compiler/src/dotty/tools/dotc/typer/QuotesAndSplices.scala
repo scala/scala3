@@ -364,7 +364,7 @@ trait QuotesAndSplices {
    *
    *  ```
    *  case scala.internal.quoted.Expr.unapply[
-   *          Tuple1[t @ _], // Type binging definition
+   *          KList[t @ _, KNil], // Type binging definition
    *          Tuple2[Type[t], Expr[List[t]]] // Typing the result of the pattern match
    *        ](
    *          Tuple2.unapply
@@ -411,7 +411,7 @@ trait QuotesAndSplices {
     val replaceBindings = new ReplaceBindings
     val patType = defn.tupleType(splices.tpes.map(tpe => replaceBindings(tpe.widen)))
 
-    val typeBindingsTuple = tpd.tupleTypeTree(typeBindings.values.toList)
+    val typeBindingsTuple = tpd.hkNestedPairsTypeTree(typeBindings.values.toList)
 
     val replaceBindingsInTree = new TreeMap {
       private var bindMap = Map.empty[Symbol, Symbol]

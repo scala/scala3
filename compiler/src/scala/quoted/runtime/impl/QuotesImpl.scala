@@ -3092,14 +3092,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:
-    def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
+    def unapply[TypeBindings, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
       val scrutineeTree = reflect.asTerm(scrutinee)
       val patternTree = reflect.asTerm(pattern)
       treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end ExprMatch
 
   object TypeMatch extends TypeMatchModule:
-    def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Type[?])(using pattern: scala.quoted.Type[?]): Option[Tup] =
+    def unapply[TypeBindings, Tup <: Tuple](scrutinee: scala.quoted.Type[?])(using pattern: scala.quoted.Type[?]): Option[Tup] =
       val scrutineeTree = reflect.TypeTree.of(using scrutinee)
       val patternTree = reflect.TypeTree.of(using pattern)
       treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
