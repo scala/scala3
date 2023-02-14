@@ -1,7 +1,10 @@
 -- [E172] Type Error: tests/neg-macros/i6436.scala:5:9 -----------------------------------------------------------------
 5 |    case '{ StringContext(${Varargs(parts)}*) } => // error
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |         No given instance of type scala.quoted.Quotes was found
+  |         No given instance of type scala.quoted.Quotes was found.
+  |
+  |         Quotes are generated from an enclosing splice `$ { ... }` or `scala.staging.run` call.
+  |         Maybe that splice `$ { ... }` or `scala.staging.run` is missing?
 -- [E006] Not Found Error: tests/neg-macros/i6436.scala:6:34 -----------------------------------------------------------
 6 |      val ps: Seq[Expr[String]] = parts // error
   |                                  ^^^^^

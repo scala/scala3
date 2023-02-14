@@ -1,0 +1,7 @@
+-- [E172] Type Error: tests/neg-macros/i16888.scala:1:38 ---------------------------------------------------------------
+1 |def test = summon[scala.quoted.Quotes] // error
+  |                                      ^
+  |                            No given instance of type scala.quoted.Quotes was found.
+  |
+  |                            Quotes are generated from an enclosing splice `$ { ... }` or `scala.staging.run` call.
+  |                            Maybe that splice `$ { ... }` or `scala.staging.run` is missing?
