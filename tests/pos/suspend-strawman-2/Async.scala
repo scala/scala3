@@ -51,16 +51,13 @@ object Async:
      */
     def await[T](src: Source[T]): T =
       checkCancellation()
-      var resultOpt: Option[T] = None
-      src.poll: x =>
-        resultOpt = Some(x)
-        true
-      resultOpt.getOrElse:
-        try suspend[T, Unit]: k =>
-          src.onComplete: x =>
-            scheduler.schedule: () =>
-              k.resume(x)
-            true // signals to `src` that result `x` was consumed
+      src.poll().getOrElse:
+        try
+          suspend[T, Unit]: k =>
+            src.onComplete: x =>
+              scheduler.schedule: () =>
+                k.resume(x)
+              true // signals to `src` that result `x` was consumed
         finally checkCancellation()
 
   end Impl
@@ -115,6 +112,12 @@ object Async:
      */
     def dropListener(k: Listener[T]): Unit
 
+    /** Utililty method for direct polling. */
+    def poll(): Option[T] =
+      var resultOpt: Option[T] = None
+      poll { x => resultOpt = Some(x); true }
+      resultOpt
+
   end Source
 
   /** A source that transforms an original source in some way */
@@ -135,6 +138,7 @@ object Async:
       original.onComplete(transform(k))
     def dropListener(k: Listener[U]): Unit =
       original.dropListener(transform(k))
+
   end DerivedSource
 
   extension [T](src: Source[T])

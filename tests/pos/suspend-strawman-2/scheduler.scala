@@ -5,6 +5,6 @@ trait Scheduler:
   def schedule(task: Runnable): Unit = ???
 
 object Scheduler extends Scheduler:
-  given fromAsync(using async: Async): Scheduler = async.scheduler
+  given fromAsyncConfig(using ac: Async.Config): Scheduler = ac.scheduler
 end Scheduler
 

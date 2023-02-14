@@ -6,7 +6,6 @@ import scala.compiletime.uninitialized
 import scala.util.{Try, Success, Failure}
 import scala.annotation.unchecked.uncheckedVariance
 import java.util.concurrent.CancellationException
-import runtime.suspend
 
 /** A cancellable future that can suspend waiting for other asynchronous sources
  */
@@ -22,14 +21,8 @@ trait Future[+T] extends Async.Source[Try[T]], Cancellable:
    */
   def force(): T
 
-  /** Links the future as a child to the current async root.
-   *  This means the future will be cancelled if the async root
-   *  is canceled.
-   */
-  def linked(using async: Async): this.type
-
   /** Eventually stop computation of this future and fail with
-   *  a `Cancellation` exception. Also cancel all linked children.
+   *  a `Cancellation` exception. Also cancel all children.
    */
   def cancel(): Unit
 
@@ -40,8 +33,8 @@ trait Future[+T] extends Async.Source[Try[T]], Cancellable:
 
 object Future:
 
-  /** The core part of a future that is completed explicitly by calling its
-   *  `complete` method. There are two implementations
+  /**  A future that is completed explicitly by calling its
+   *  `complete` method. There are two public implementations
    *
    *   - RunnableFuture: Completion is done by running a block of code
    *   - Promise.future: Completion is done by external request.
@@ -50,19 +43,26 @@ object Future:
 
     @volatile protected var hasCompleted: Boolean = false
     private var result: Try[T] = uninitialized // guaranteed to be set if hasCompleted = true
-    private var waiting: mutable.Set[Try[T] => Boolean] = mutable.Set()
-    private var children: mutable.Set[Cancellable] = mutable.Set()
+    private val waiting: mutable.Set[Try[T] => Boolean] = mutable.Set()
+    private val children: mutable.Set[Cancellable] = mutable.Set()
 
     private def extract[T](s: mutable.Set[T]): List[T] = synchronized:
       val xs = s.toList
       s.clear()
       xs
 
+    // Async.Source method implementations
+
     def poll(k: Async.Listener[Try[T]]): Boolean =
       hasCompleted && k(result)
 
     def onComplete(k: Async.Listener[Try[T]]): Unit = synchronized:
       if !poll(k) then waiting += k
+
+    def dropListener(k: Async.Listener[Try[T]]): Unit =
+      waiting -= k
+
+    // Cancellable method implementations
 
     def cancel(): Unit =
       val othersToCancel = synchronized:
@@ -76,17 +76,12 @@ object Future:
     def addChild(child: Cancellable): Unit = synchronized:
       if !hasCompleted then children += this
 
-    def linked(using async: Async): this.type =
-      if !hasCompleted then async.root.addChild(this)
-      this
-
-    def dropListener(k: Async.Listener[Try[T]]): Unit =
-      waiting -= k
+    // Future method implementations
 
     def value(using async: Async): T =
       async.await(this).get
 
-    def force(): T =
+    def force(): T = synchronized:
       while !hasCompleted do wait()
       result.get
 
@@ -104,10 +99,14 @@ object Future:
         this.result = result
         hasCompleted = true
       for listener <- extract(waiting) do listener(result)
-      notifyAll()
+      synchronized:
+        notifyAll()
 
   end CoreFuture
 
+  /** A future that is completed by evaluating `body` as a separate
+   *  asynchronous operation in the given `scheduler`
+   */
   private class RunnableFuture[+T](body: Async ?=> T)(using scheduler: Scheduler)
   extends CoreFuture[T]:
 
@@ -191,7 +190,7 @@ class Task[+T](val body: Async ?=> T):
 
 end Task
 
-def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
+def add(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
   val b = x.zip:
     Future:
       xs.headOption.toString
@@ -208,8 +207,8 @@ def Test(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
       x.value * 2
     x.value + xs.map(_.value).sum
 
-end Test
+end add
 
 def Main(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Int =
-  Test(x, xs).force()
+  add(x, xs).force()
 
