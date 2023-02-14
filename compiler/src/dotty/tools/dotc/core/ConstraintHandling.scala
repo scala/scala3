@@ -287,6 +287,15 @@ trait ConstraintHandling {
   end legalBound
 
   protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
+
+    def unionPreservingSoftness(t1: Type, t2: Type) =
+      def containsHardUnions(tp: Type): Boolean = tp match
+        case tp: TypeProxy => containsHardUnions(tp.underlying)
+        case tp@OrType(tp1, tp2) => !tp.isSoft || containsHardUnions(tp1) || containsHardUnions(tp2)
+        case AndType(tp1, tp2) => containsHardUnions(tp1) || containsHardUnions(tp2)
+        case _ => false
+      TypeComparer.lub(t1, t2, isSoft = !containsHardUnions(t1) && !containsHardUnions(t2))
+
     if !constraint.contains(param) then true
     else if !isUpper && param.occursIn(rawBound) then
       // We don't allow recursive lower bounds when defining a type,
@@ -311,7 +320,7 @@ trait ConstraintHandling {
           try
             withUntrustedBounds(
               if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
-              else oldBounds.derivedTypeBounds(lo | bound, hi))
+              else oldBounds.derivedTypeBounds(unionPreservingSoftness(lo, bound), hi))
           finally
             homogenizeArgs = saved
         //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
