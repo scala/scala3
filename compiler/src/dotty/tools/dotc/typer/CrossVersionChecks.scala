@@ -69,8 +69,8 @@ class CrossVersionChecks extends MiniPhase:
 
     for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
       if !skipWarning then
-        val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
-        val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
+        val msg = annot.argumentConstantString(0).filter(!_.isEmpty).map(": " + _).getOrElse("")
+        val since = annot.argumentConstantString(1).filter(!_.isEmpty).map(" since " + _).getOrElse("")
         report.deprecationWarning(em"${sym.showLocated} is deprecated${since}${msg}", pos)
 
   private def checkExperimentalSignature(sym: Symbol, pos: SrcPos)(using Context): Unit =
