@@ -35,8 +35,8 @@ class CrossVersionChecks extends MiniPhase:
       checkMigration(sym, pos, xMigrationValue)
   end checkUndesiredProperties
 
-  /** If @deprecated is present, and the point of reference is not enclosed
-   * in either a deprecated member or a scala bridge method, issue a warning.
+  /** Issue a warning if symbol is deprecated, unless the point of reference is enclosed by a deprecated member,
+   *  or has a deprecated companion.
    */
   private def checkDeprecated(sym: Symbol, pos: SrcPos)(using Context): Unit =
 
@@ -52,16 +52,20 @@ class CrossVersionChecks extends MiniPhase:
       owner.isDeprecated
       || isEnumOwner(owner)
 
-    /**Scan the chain of outer declaring scopes from the current context
-     * a deprecation warning will be skipped if one the following holds
-     * for a given declaring scope:
-     * - the symbol associated with the scope is also deprecated.
-     * - if and only if `sym` is an enum case, the scope is either
-     *   a module that declares `sym`, or the companion class of the
-     *   module that declares `sym`.
+    def isDeprecatedOrCompanion(owner: Symbol)(using Context) =
+      owner.isDeprecated
+      || owner.companionClass.isDeprecated
+
+    /** Scan the chain of outer declaring scopes from the current context for an exclusion.
+     *
+     *  A deprecation warning will be skipped if one the following holds for a given declaring scope:
+     *  - the symbol associated with the scope, or its companion, is also deprecated.
+     *  - if and only if `sym` is an enum case, the scope is either
+     *    a module that declares `sym`, or the companion class of the
+     *    module that declares `sym`.
      */
     def skipWarning(using Context) =
-      ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
+      ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else isDeprecatedOrCompanion)
 
     for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
       if !skipWarning then
