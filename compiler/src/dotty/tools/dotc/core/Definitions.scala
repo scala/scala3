@@ -865,6 +865,9 @@ class Definitions {
     @tu lazy val QuoteMatching_ExprMatchModule: Symbol = QuoteMatchingClass.requiredClass("ExprMatchModule")
     @tu lazy val QuoteMatching_TypeMatch: Symbol = QuoteMatchingClass.requiredMethod("TypeMatch")
     @tu lazy val QuoteMatching_TypeMatchModule: Symbol = QuoteMatchingClass.requiredClass("TypeMatchModule")
+  @tu lazy val QuoteMatchingModule: Symbol = requiredModule("scala.quoted.runtime.QuoteMatching")
+    @tu lazy val QuoteMatching_KNil: Symbol = QuoteMatchingModule.requiredType("KNil")
+    @tu lazy val QuoteMatching_KCons: Symbol = QuoteMatchingModule.requiredType("KCons")
 
   @tu lazy val ToExprModule: Symbol = requiredModule("scala.quoted.ToExpr")
     @tu lazy val ToExprModule_BooleanToExpr: Symbol = ToExprModule.requiredMethod("BooleanToExpr")
