@@ -78,13 +78,13 @@ package foo.test.companionprivate:
 package foo.test.i16678:
   def foo(func: Int => String, value: Int): String = func(value) // OK
 
-  def run = 
+  def run =
     println(foo(number => number.toString, value = 5)) // OK
     println(foo(number => "<number>", value = 5)) // error
     println(foo(func = number => "<number>", value = 5)) // error
     println(foo(func = number => number.toString, value = 5)) // OK
     println(foo(func = _.toString, value = 5)) // OK
-    
+
 package foo.test.possibleclasses:
   case class AllCaseClass(
     k: Int, // OK
@@ -93,7 +93,7 @@ package foo.test.possibleclasses:
     s: Int, // error /* But not these */
     val t: Int, // OK
     private val z: Int // error
-  )       
+  )
 
   case class AllCaseUsed(
     k: Int, // OK
@@ -113,7 +113,7 @@ package foo.test.possibleclasses:
     s: Int, // error
     val t: Int, // OK
     private val z: Int // error
-  )      
+  )
 
   class AllUsed(
     k: Int, // OK
@@ -124,10 +124,21 @@ package foo.test.possibleclasses:
     private val z: Int // OK
   ) {
     def a = k + y + s + t + z
-  } 
+  }
 
 package foo.test.from.i16675:
   case class PositiveNumber private (i: Int) // OK
   object PositiveNumber:
-    def make(i: Int): Option[PositiveNumber] = //OK 
+    def make(i: Int): Option[PositiveNumber] = //OK
       Option.when(i >= 0)(PositiveNumber(i)) // OK
+
+package foo.test.i16822:
+  enum ExampleEnum {
+    case Build(context: String) // OK
+    case List // OK
+  }
+
+  def demo = {
+    val x = ExampleEnum.List // OK
+    println(x) // OK
+  }
