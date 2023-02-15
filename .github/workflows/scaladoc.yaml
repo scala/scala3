@@ -8,6 +8,7 @@ on:
   pull_request:
     branches-ignore:
       - 'language-reference-stable'
+  merge_group:
 permissions:
   contents: read
 
@@ -16,7 +17,8 @@ jobs:
     env:
       AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
     runs-on: ubuntu-latest
-    if: "(    github.event_name == 'pull_request'
+    if: "github.event_name == 'merge_group'
+         || (    github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip docs]')
          )
