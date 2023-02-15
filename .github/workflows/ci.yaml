@@ -14,6 +14,10 @@ on:
     ## - both (tags or tags-ignore) and (branches or branches-ignore),
     ## - or neither of them.
     ## But it's important to not have only one or the other.
+    tags:
+      - '*'
+    branches-ignore:
+      - 'gh-readonly-queue/*'
   pull_request:
   merge_group:
   schedule:
