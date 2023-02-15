@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore:
       - 'language-reference-stable'
+      - 'gh-readonly-queue/**'
   pull_request:
     branches-ignore:
       - 'language-reference-stable'
