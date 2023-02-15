@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Contexts.*, Decorators.*, Symbols.*, Types.*
+import NameKinds.UniqueName
 import config.Printers.{gadts, gadtsConstr}
 import util.{SimpleIdentitySet, SimpleIdentityMap}
 import printing._
@@ -72,36 +73,30 @@ class GadtConstraint private (
 
   def fullLowerBound(param: TypeParamRef)(using Context): Type =
     val self = externalize(param)
-    constraint.minLower(param).filterNot { p =>
-      val sym = paramSymbol(p)
-      sym.name.is(NameKinds.UniqueName) && {
-        val hi = sym.info.hiBound
-        !hi.isExactlyAny && self <:< hi
-        // drop any lower param that is a GADT symbol
-        // and is upper-bounded by a non-Any super-type of the original parameter
-        // e.g. in pos/i14287.min
-        // B$1 had info <: X   and fullBounds >: B$2 <: X, and
-        // B$2 had info <: B$1 and fullBounds <: B$1
-        // We can use the info of B$2 to drop the lower-bound of B$1
-        // and return non-bidirectional bounds B$1 <: X and B$2 <: B$1.
-      }
-    }.foldLeft(nonParamBounds(param).lo) {
-      (t, u) => t | externalize(u)
+    constraint.minLower(param).foldLeft(nonParamBounds(param).lo) { (acc, p) =>
+      externalize(p) match
+        case tp: TypeRef
+          // drop any lower param that is a GADT symbol
+          // and is upper-bounded by a non-Any super-type of the original parameter
+          // e.g. in pos/i14287.min
+          // B$1 had info <: X   and fullBounds >: B$2 <: X, and
+          // B$2 had info <: B$1 and fullBounds <: B$1
+          // We can use the info of B$2 to drop the lower-bound of B$1
+          // and return non-bidirectional bounds B$1 <: X and B$2 <: B$1.
+          if tp.name.is(UniqueName) && !tp.info.hiBound.isExactlyAny && self <:< tp.info.hiBound => acc
+        case tp => acc | tp
     }
 
   def fullUpperBound(param: TypeParamRef)(using Context): Type =
     val self = externalize(param)
-    constraint.minUpper(param).filterNot { p =>
-      val sym = paramSymbol(p)
-      sym.name.is(NameKinds.UniqueName) && {
-        val lo = sym.info.loBound
-        !lo.isExactlyNothing && lo <:< self // same as fullLowerBounds
-      }
-    }.foldLeft(nonParamBounds(param).hi) { (t, u) =>
-      val eu = externalize(u)
-      // Any as the upper bound means "no bound", but if F is higher-kinded,
-      // Any & F = F[_]; this is wrong for us so we need to short-circuit
-      if t.isAny then eu else t & eu
+    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (acc, u) =>
+      externalize(u) match
+        case tp: TypeRef // same as fullLowerBounds
+          if tp.name.is(UniqueName) && !tp.info.loBound.isExactlyNothing && tp.info.loBound <:< self => acc
+        case tp =>
+          // Any as the upper bound means "no bound", but if F is higher-kinded,
+          // Any & F = F[_]; this is wrong for us so we need to short-circuit
+          if acc.isAny then tp else acc & tp
     }
 
   def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match
@@ -116,10 +111,6 @@ class GadtConstraint private (
 
   def tvarOrError(sym: Symbol)(using Context): TypeVar =
     mapping(sym).ensuring(_ != null, i"not a constrainable symbol: $sym").uncheckedNN
-
-  private def paramSymbol(p: TypeParamRef): Symbol = reverseMapping(p) match
-    case sym: Symbol => sym
-    case null        => NoSymbol
 
   @tailrec final def stripInternalTypeVar(tp: Type): Type = tp match
     case tv: TypeVar =>
