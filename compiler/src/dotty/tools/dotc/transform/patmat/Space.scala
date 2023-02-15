@@ -55,7 +55,16 @@ import collection.mutable
 
 
 /** space definition */
-sealed trait Space
+sealed trait Space:
+  private val isSubspaceCache = mutable.HashMap.empty[Space, Boolean]
+
+  def isSubspace(b: Space)(engine: SpaceEngine)(using Context): Boolean =
+    if this == Empty then true
+    else if b == Empty then false
+    else trace(s"isSubspace(${engine.show(this)}, ${engine.show(b)})", debug) {
+      isSubspaceCache.getOrElseUpdate(b, engine.computeIsSubspace(this, b))
+    }
+end Space
 
 /** Empty space */
 case object Empty extends Space
@@ -349,13 +358,6 @@ object SpaceEngine {
 class SpaceEngine(using Context) extends SpaceLogic {
   import tpd._
 
-  private val scalaSeqFactoryClass = defn.SeqFactoryClass
-  private val scalaListType        = defn.ListClass.typeRef
-  private val scalaNilType         = defn.NilModule.termRef
-  private val scalaConsType        = defn.ConsClass.typeRef
-
-  private val constantNullType     = ConstantType(Constant(null))
-
   override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space = trace(s"atomic intersection: ${AndType(tp1, tp2).show}", debug) {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
     if !ctx.mode.is(Mode.SafeNulls) && (tp1.isNullType || tp2.isNullType) then
@@ -398,7 +400,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
         val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
-        if (fun.symbol.owner == scalaSeqFactoryClass && scalaListType.appliedTo(elemTp) <:< pat.tpe)
+        if (fun.symbol.owner == defn.SeqFactoryClass && defn.ListType.appliedTo(elemTp) <:< pat.tpe)
           // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
           // and product types (into its components).  To get better counter-examples for patterns that are of type
           // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
@@ -519,16 +521,16 @@ class SpaceEngine(using Context) extends SpaceLogic {
   /** Space of the pattern: unapplySeq(a, b, c: _*)
    */
   def projectSeq(pats: List[Tree]): Space = {
-    if (pats.isEmpty) return Typ(scalaNilType, false)
+    if (pats.isEmpty) return Typ(defn.NilType, false)
 
     val (items, zero) = if (isWildcardStarArg(pats.last))
-      (pats.init, Typ(scalaListType.appliedTo(pats.last.tpe.elemType), false))
+      (pats.init, Typ(defn.ListType.appliedTo(pats.last.tpe.elemType), false))
     else
-      (pats, Typ(scalaNilType, false))
+      (pats, Typ(defn.NilType, false))
 
-    val unapplyTp = scalaConsType.classSymbol.companionModule.termRef.select(nme.unapply)
+    val unapplyTp = defn.ConsType.classSymbol.companionModule.termRef.select(nme.unapply)
     items.foldRight[Space](zero) { (pat, acc) =>
-      val consTp = scalaConsType.appliedTo(pats.head.tpe.widen)
+      val consTp = defn.ConsType.appliedTo(pats.head.tpe.widen)
       Prod(consTp, unapplyTp, project(pat) :: acc :: Nil)
     }
   }
@@ -538,13 +540,14 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
   private val isSubspaceCache = mutable.HashMap.empty[(Space, Space, Context), Boolean]
 
-  override def isSubspace(a: Space, b: Space)(using Context): Boolean =
-    isSubspaceCache.getOrElseUpdate((a, b, ctx), super.isSubspace(a, b))
+  override def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)(this)
+
+  def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = super.isSubspace(a, b)
 
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
-    if tp1 == constantNullType && !ctx.mode.is(Mode.SafeNulls)
-    then tp2 == constantNullType
+    if tp1 == ConstantType(Constant(null)) && !ctx.mode.is(Mode.SafeNulls)
+    then tp2 == ConstantType(Constant(null))
     else tp1 <:< tp2
   }
 
@@ -593,10 +596,10 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
         if (isUnapplySeq) {
           val (arity, elemTp, resultTp) = unapplySeqInfo(resTp, unappSym.srcPos)
-          if (elemTp.exists) scalaListType.appliedTo(elemTp) :: Nil
+          if (elemTp.exists) defn.ListType.appliedTo(elemTp) :: Nil
           else {
             val sels = productSeqSelectors(resultTp, arity, unappSym.srcPos)
-            sels.init :+ scalaListType.appliedTo(sels.last)
+            sels.init :+ defn.ListType.appliedTo(sels.last)
           }
         }
         else {
@@ -821,7 +824,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       case Empty => "empty"
       case Typ(c: ConstantType, _) => "" + c.value.value
       case Typ(tp: TermRef, _) =>
-        if (flattenList && tp <:< scalaNilType) ""
+        if (flattenList && tp <:< defn.NilType) ""
         else tp.symbol.showName
       case Typ(tp, decomposed) =>
 
@@ -829,9 +832,9 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
         if (ctx.definitions.isTupleNType(tp))
           params(tp).map(_ => "_").mkString("(", ", ", ")")
-        else if (scalaListType.isRef(sym))
+        else if (defn.ListType.isRef(sym))
           if (flattenList) "_*" else "_: List"
-        else if (scalaConsType.isRef(sym))
+        else if (defn.ConsType.isRef(sym))
           if (flattenList) "_, _*"  else "List(_, _*)"
         else if (tp.classSymbol.is(Sealed) && tp.classSymbol.hasAnonymousChild)
           "_: " + showType(tp) + " (anonymous)"
@@ -843,7 +846,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       case Prod(tp, fun, params) =>
         if (ctx.definitions.isTupleNType(tp))
           "(" + params.map(doShow(_)).mkString(", ") + ")"
-        else if (tp.isRef(scalaConsType.symbol))
+        else if (tp.isRef(defn.ConsType.symbol))
           if (flattenList) params.map(doShow(_, flattenList)).filter(_.nonEmpty).mkString(", ")
           else params.map(doShow(_, flattenList = true)).filter(!_.isEmpty).mkString("List(", ", ", ")")
         else {
@@ -961,7 +964,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
     val isNullable = selTyp.classSymbol.isNullableClass
     val targetSpace = if isNullable
-      then project(OrType(selTyp, constantNullType, soft = false))
+      then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
       else project(selTyp)
     debug.println(s"targetSpace: ${show(targetSpace)}")
 
