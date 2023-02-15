@@ -75,15 +75,14 @@ class GadtConstraint private (
     val self = externalize(param)
     constraint.minLower(param).foldLeft(nonParamBounds(param).lo) { (acc, p) =>
       externalize(p) match
-        case tp: TypeRef
-          // drop any lower param that is a GADT symbol
-          // and is upper-bounded by a non-Any super-type of the original parameter
-          // e.g. in pos/i14287.min
-          // B$1 had info <: X   and fullBounds >: B$2 <: X, and
-          // B$2 had info <: B$1 and fullBounds <: B$1
-          // We can use the info of B$2 to drop the lower-bound of B$1
-          // and return non-bidirectional bounds B$1 <: X and B$2 <: B$1.
-          if tp.symbol.isPatternBound && !tp.info.hiBound.isExactlyAny && self <:< tp.info.hiBound => acc
+        // drop any lower param that is a GADT symbol
+        // and is upper-bounded by a non-Any super-type of the original parameter
+        // e.g. in pos/i14287.min
+        // B$1 had info <: X   and fullBounds >: B$2 <: X, and
+        // B$2 had info <: B$1 and fullBounds <: B$1
+        // We can use the info of B$2 to drop the lower-bound of B$1
+        // and return non-bidirectional bounds B$1 <: X and B$2 <: B$1.
+        case tp: TypeRef if tp.symbol.isPatternBound && self =:= tp.info.hiBound => acc
         case tp => acc | tp
     }
 
@@ -91,8 +90,7 @@ class GadtConstraint private (
     val self = externalize(param)
     constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (acc, u) =>
       externalize(u) match
-        case tp: TypeRef // same as fullLowerBounds
-          if tp.symbol.isPatternBound && !tp.info.loBound.isExactlyNothing && tp.info.loBound <:< self => acc
+        case tp: TypeRef if tp.symbol.isPatternBound && self =:= tp.info.loBound => acc // like fullLowerBound
         case tp =>
           // Any as the upper bound means "no bound", but if F is higher-kinded,
           // Any & F = F[_]; this is wrong for us so we need to short-circuit
