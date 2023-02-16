@@ -1,0 +1,12 @@
+-- Error: tests/neg-custom-args/fatal-warnings/quote-type-var-with-bounds.scala:9:18 -----------------------------------
+9 |    case '{ $x: C[t] } => // error
+  |                  ^
+  |                  Type variable `t` has partially inferred bounds <: Int.
+  |
+  |                  Consider defining bounds explicitly `'{ type t <: Int; ... }`
+-- Error: tests/neg-custom-args/fatal-warnings/quote-type-var-with-bounds.scala:10:18 ----------------------------------
+10 |    case '{ $x: D[t] } => // error
+   |                  ^
+   |                  Type variable `t` has partially inferred bounds >: Null <: String.
+   |
+   |                  Consider defining bounds explicitly `'{ type t >: Null <: String; ... }`

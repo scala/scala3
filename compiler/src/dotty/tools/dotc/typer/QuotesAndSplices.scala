@@ -160,6 +160,8 @@ trait QuotesAndSplices {
       case _ => TypeBounds.empty
     val typeSym = newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.span)
     typeSym.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)))
+    if !(typeSymInfo =:= TypeBounds.empty) then
+      report.warning(em"Type variable `$tree` has partially inferred bounds$pt.\n\nConsider defining bounds explicitly `'{ $typeSym$pt; ... }`", tree.srcPos)
     val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
         using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
     pat.select(tpnme.Underlying)
