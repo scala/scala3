@@ -77,7 +77,18 @@ case object Empty extends Space
  * @param decomposed: does the space result from decomposition? Used for pretty print
  *
  */
-case class Typ(tp: Type, decomposed: Boolean = true) extends Space
+case class Typ(tp: Type, decomposed: Boolean = true) extends Space:
+  private var myCanDecompose: java.lang.Boolean = _
+  private var myDecompose: List[Typ] = _
+
+  def canDecompose(using Context): Boolean =
+    if myCanDecompose == null then myCanDecompose = SpaceEngine.canDecompose(tp)
+    myCanDecompose
+
+  def decompose(using Context): List[Typ] =
+    if myDecompose == null then myDecompose = SpaceEngine.decompose(tp)
+    myDecompose
+end Typ
 
 /** Space representing an extractor pattern */
 case class Prod(tp: Type, unappTp: TermRef, params: List[Space]) extends Space
@@ -101,7 +112,7 @@ object SpaceEngine {
       else if spaces2.lengthIs == 1 then spaces2.head
       else if spaces2.corresponds(spaces)(_ eq _) then space else Or(spaces2)
     case typ: Typ =>
-      if canDecompose(typ.tp) && decompose(typ.tp).isEmpty then Empty
+      if canDecompose(typ) && decompose(typ).isEmpty then Empty
       else space
     case _ => space
   })
@@ -152,12 +163,12 @@ object SpaceEngine {
       case (Or(ss), _) => ss.forall(isSubspace(_, b))
       case (a @ Typ(tp1, _), Or(ss)) =>  // optimization: don't go to subtraction too early
         ss.exists(isSubspace(a, _))
-        || canDecompose(tp1) && isSubspace(Or(decompose(tp1)), b)
+        || canDecompose(a) && isSubspace(Or(decompose(a)), b)
       case (_, Or(_))  => simplify(minus(a, b)) == Empty
       case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
         isSubType(tp1, tp2)
-        || canDecompose(tp1) && isSubspace(Or(decompose(tp1)), b)
-        || canDecompose(tp2) && isSubspace(a, Or(decompose(tp2)))
+        || canDecompose(a) && isSubspace(Or(decompose(a)), b)
+        || canDecompose(b) && isSubspace(a, Or(decompose(b)))
       case (Prod(tp1, _, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
       case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
@@ -178,17 +189,17 @@ object SpaceEngine {
       case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
         if isSubType(tp1, tp2) then a
         else if isSubType(tp2, tp1) then b
-        else if canDecompose(tp1) then intersect(Or(decompose(tp1)), b)
-        else if canDecompose(tp2) then intersect(a, Or(decompose(tp2)))
+        else if canDecompose(a) then intersect(Or(decompose(a)), b)
+        else if canDecompose(b) then intersect(a, Or(decompose(b)))
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         if isSubType(tp2, tp1) then b
-        else if canDecompose(tp1) then intersect(Or(decompose(tp1)), b)
+        else if canDecompose(a) then intersect(Or(decompose(a)), b)
         else if isSubType(tp1, tp2) then a // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(b)
       case (Prod(tp1, fun, ss), b @ Typ(tp2, _)) =>
         if isSubType(tp1, tp2) then a
-        else if canDecompose(tp2) then intersect(a, Or(decompose(tp2)))
+        else if canDecompose(b) then intersect(a, Or(decompose(b)))
         else if isSubType(tp2, tp1) then a  // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
       case (a @ Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
@@ -207,20 +218,20 @@ object SpaceEngine {
       case (_, Or(ss)) => ss.foldLeft(a)(minus)
       case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
         if isSubType(tp1, tp2) then Empty
-        else if canDecompose(tp1) then minus(Or(decompose(tp1)), b)
-        else if canDecompose(tp2) then minus(a, Or(decompose(tp2)))
+        else if canDecompose(a) then minus(Or(decompose(a)), b)
+        else if canDecompose(b) then minus(a, Or(decompose(b)))
         else a
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
         if isSubType(tp1, tp2) && covers(fun, tp1, ss.length) then
           minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
-        else if canDecompose(tp1) then minus(Or(decompose(tp1)), b)
+        else if canDecompose(a) then minus(Or(decompose(a)), b)
         else a
       case (Prod(tp1, fun, ss), b @ Typ(tp2, _)) =>
         // uncovered corner case: tp2 :< tp1, may happen when inheriting case class
         if isSubType(tp1, tp2) then Empty
         else if simplify(a) == Empty then Empty
-        else if canDecompose(tp2) then minus(a, Or(decompose(tp2)))
+        else if canDecompose(b) then minus(a, Or(decompose(b)))
         else a
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
           if !isSameUnapply(fun1, fun2) => a
@@ -567,6 +578,9 @@ object SpaceEngine {
       val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
+
+  def canDecompose(typ: Typ)(using Context): Boolean = typ.canDecompose
+  def decompose(typ: Typ)(using Context): List[Typ]  = typ.decompose
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
   def decompose(tp: Type)(using Context): List[Typ] = trace(i"decompose($tp)", debug, showSpaces) {
