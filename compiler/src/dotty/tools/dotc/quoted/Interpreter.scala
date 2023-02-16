@@ -32,9 +32,14 @@ import dotty.tools.dotc.reporting.Message
 import dotty.tools.repl.AbstractFileClassLoader
 
 /** Tree interpreter for metaprogramming constructs */
-class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
+class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
   import Interpreter._
   import tpd._
+
+  val classLoader =
+    if ctx.owner.topLevelClass.name.startsWith(str.REPL_SESSION_LINE) then
+        new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader0)
+    else classLoader0
 
   /** Local variable environment */
   type Env = Map[Symbol, Object]
@@ -157,18 +162,12 @@ class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context):
     args.toSeq
 
   private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object = {
-    val (inst, clazz) =
-      try
-        if (moduleClass.name.startsWith(str.REPL_SESSION_LINE))
-          (null, loadReplLineClass(moduleClass))
-        else {
-          val inst = loadModule(moduleClass)
-          (inst, inst.getClass)
-        }
+    val inst =
+      try loadModule(moduleClass)
       catch
         case MissingClassDefinedInCurrentRun(sym) =>
           suspendOnMissing(sym, pos)
-
+    val clazz = inst.getClass
     val name = fn.name.asTermName
     val method = getMethod(clazz, name, paramsSig(fn))
     stopIfRuntimeException(method.invoke(inst, args: _*), method)
