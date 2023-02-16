@@ -584,19 +584,13 @@ object SpaceEngine {
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
   def decompose(tp: Type)(using Context): List[Typ] = trace(i"decompose($tp)", debug, showSpaces) {
-    def rec(tp: Type, mixins: List[Type]): List[Typ] = tp.dealias match {
+    def rec(tp: Type, mixins: List[Type]): List[Type] = tp.dealias match {
       case AndType(tp1, tp2) =>
-        def decomposeComponent(tpA: Type, tpB: Type): List[Typ] =
-          rec(tpA, tpB :: mixins).flatMap {
-            case Typ(tp, _) =>
-              if tp <:< tpB then
-                Typ(tp, decomposed = true) :: Nil
-              else if tpB <:< tp then
-                Typ(tpB, decomposed = true) :: Nil
-              else if TypeComparer.provablyDisjoint(tp, tpB) then
-                Nil
-              else
-                Typ(AndType(tp, tpB), decomposed = true) :: Nil
+        def decomposeComponent(tpA: Type, tpB: Type): List[Type] =
+          rec(tpA, tpB :: mixins).collect {
+            case tp if tp <:< tpB                              => tp
+            case tp if tpB <:< tp                              => tpB
+            case tp if !TypeComparer.provablyDisjoint(tp, tpB) => AndType(tp, tpB)
           }
 
         if canDecompose(tp1) then
@@ -604,26 +598,26 @@ object SpaceEngine {
         else
           decomposeComponent(tp2, tp1)
 
-      case OrType(tp1, tp2) => List(Typ(tp1, decomposed = true), Typ(tp2, decomposed = true))
+      case OrType(tp1, tp2) => List(tp1, tp2)
       case tp if tp.isRef(defn.BooleanClass) =>
         List(
-          Typ(ConstantType(Constant(true)), decomposed = true),
-          Typ(ConstantType(Constant(false)), decomposed = true)
+          ConstantType(Constant(true)),
+          ConstantType(Constant(false))
         )
       case tp if tp.isRef(defn.UnitClass) =>
-        Typ(ConstantType(Constant(())), decomposed = true) :: Nil
+        ConstantType(Constant(())) :: Nil
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
-        tp.classSymbol.children.map(sym => Typ(sym.termRef, decomposed = true))
+        tp.classSymbol.children.map(_.termRef)
 
       case tp @ AppliedType(tycon, targs) if tp.classSymbol.children.isEmpty && canDecompose(tycon) =>
         // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
         // But this is guarded by `tp.classSymbol.children.isEmpty`,
         // meaning we'll decompose to the same class, just not the same type.
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
-        rec(tycon, Nil).map(typ => Typ(tp.derivedAppliedType(typ.tp, targs), decomposed = true))
+        rec(tycon, Nil).map(tp.derivedAppliedType(_, targs))
 
       case tp: NamedType if canDecompose(tp.prefix) =>
-        rec(tp.prefix, Nil).map(typ => Typ(tp.derivedSelect(typ.tp), decomposed = true))
+        rec(tp.prefix, Nil).map(tp.derivedSelect)
 
       case tp =>
         def getChildren(sym: Symbol): List[Symbol] =
@@ -655,9 +649,9 @@ object SpaceEngine {
 
         debug.println(i"$tp decomposes to $parts")
 
-        parts.map(Typ(_, decomposed = true))
+        parts
     }
-    rec(tp, Nil)
+    rec(tp, Nil).map(Typ(_, decomposed = true))
   }
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
