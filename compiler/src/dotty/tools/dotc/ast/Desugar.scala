@@ -363,6 +363,35 @@ object desugar {
     adaptToExpectedTpt(tree)
   }
 
+  /** Split out the quoted pattern type variable definition from the pattern.
+   *
+   *  Type variable definitions are all the `type t` defined at the start of a quoted pattern.
+   *  Were name `t` is a pattern type variable name (i.e. lower case letters).
+   *
+   *  ```
+   *   type t1; ...; type tn; <pattern>
+   *  ```
+   *  is split into
+   *  ```
+   *   (List(<type t1>; ...; <type tn>), <pattern>)
+   *  ```
+   */
+  def quotedPatternTypeVariables(tree: untpd.Tree)(using Context): (List[untpd.TypeDef], untpd.Tree) =
+    tree match
+      case untpd.Block(stats, expr) =>
+        val untpdTypeVariables = stats.takeWhile {
+          case tdef @ untpd.TypeDef(name, _) => name.isVarPattern
+          case _ => false
+        }.asInstanceOf[List[untpd.TypeDef]]
+        val otherStats = stats.dropWhile {
+          case tdef @ untpd.TypeDef(name, _) => name.isVarPattern
+          case _ => false
+        }
+        val pattern = if otherStats.isEmpty then expr else untpd.cpy.Block(tree)(otherStats, expr)
+        (untpdTypeVariables, pattern)
+      case _ =>
+        (Nil, tree)
+
   /**  Add all evidence parameters in `params` as implicit parameters to `meth`.
    *   If the parameters of `meth` end in an implicit parameter list or using clause,
    *   evidence parameters are added in front of that list. Otherwise they are added

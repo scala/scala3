@@ -504,18 +504,22 @@ def let(x: Expr[Any])(using Quotes): Expr[Any] =
 let('{1}) // will return a `Expr[Any]` that contains an `Expr[Int]]`
 ```
 
-While we can define the type variable in the middle of the pattern, their normal form is to define them as a `type` with a lower case name at the start of the pattern.
-We use the Scala backquote `` `t` `` naming convention which interprets the string within the backquote as a literal name identifier.
-This is typically used when we have names that contain special characters that are not allowed for normal Scala identifiers.
-But we use it to explicitly state that this is a reference to that name and not the introduction of a new variable.
-```scala
-  case '{ type t; $x: `t` } =>
-```
-This is a bit more verbose but has some expressivity advantages such as allowing to define bounds on the variables and be able to refer to them several times in any scope of the pattern.
+It is also possible to refer to the same type variable multiple times in a pattern.
 
 ```scala
-  case '{ type t >: List[Int] <: Seq[Int]; $x: `t` } =>
-  case '{ type t; $x: (`t`, `t`) } =>
+  case '{ $x: (t, t) } =>
+```
+
+While we can define the type variable in the middle of the pattern, their normal form is to define them as a `type` with a lower case name at the start of the pattern.
+
+```scala
+  case '{ type t; $x: t } =>
+```
+
+This is a bit more verbose but has some expressivity advantages such as allowing to define bounds on the variables.
+
+```scala
+  case '{ type t >: List[Int] <: Seq[Int]; $x: t } =>
 ```
 
 
