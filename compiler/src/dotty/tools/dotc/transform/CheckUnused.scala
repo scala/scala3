@@ -81,7 +81,7 @@ class CheckUnused extends MiniPhase:
     ctx
 
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
-    if tree.symbol.exists then 
+    if tree.symbol.exists then
       _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
     else if tree.hasType then
       _key.unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
@@ -103,7 +103,7 @@ class CheckUnused extends MiniPhase:
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
     _key.unusedDataApply{ud =>
       // do not register the ValDef generated for `object`
-      if !tree.symbol.is(Module) then 
+      if !tree.symbol.is(Module) then
         ud.registerDef(tree)
       ud.addIgnoredUsage(tree.symbol)
     }
@@ -335,7 +335,7 @@ object CheckUnused:
      * The optional name will be used to target the right import
      * as the same element can be imported with different renaming
      */
-    def registerUsed(sym: Symbol, name: Option[Name])(using Context): Unit =      
+    def registerUsed(sym: Symbol, name: Option[Name])(using Context): Unit =
       if !isConstructorOfSynth(sym) && !doNotRegister(sym) then
         if sym.isConstructor && sym.exists then
           registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
@@ -371,7 +371,7 @@ object CheckUnused:
             implicitParamInScope += memDef
           else
             explicitParamInScope += memDef
-        else if currScopeType.top == ScopeType.Local then 
+        else if currScopeType.top == ScopeType.Local then
           localDefInScope += memDef
         else if memDef.shouldReportPrivateDef then
           privateDefInScope += memDef
@@ -578,10 +578,10 @@ object CheckUnused:
         else
           false
 
-      private def usedDefContains(using Context): Boolean = 
+      private def usedDefContains(using Context): Boolean =
         sym.everySymbol.exists(usedDef.apply)
 
-      private def everySymbol(using Context): List[Symbol] = 
+      private def everySymbol(using Context): List[Symbol] =
         List(sym, sym.companionClass, sym.companionModule, sym.moduleClass).filter(_.exists)
 
     end extension
@@ -614,10 +614,11 @@ object CheckUnused:
       private def isValidParam(using Context): Boolean =
         val sym = memDef.symbol
         (sym.is(Param) || sym.isAllOf(PrivateParamAccessor | Local, butNot = CaseAccessor)) &&
-        !isSyntheticMainParam(sym)  &&
-        !sym.shouldNotReportParamOwner
+        !isSyntheticMainParam(sym) &&
+        !sym.shouldNotReportParamOwner &&
+        (!sym.exists || !sym.owner.isAllOf(Synthetic | PrivateLocal))
 
-      private def shouldReportPrivateDef(using Context): Boolean = 
+      private def shouldReportPrivateDef(using Context): Boolean =
         currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
 
     extension (imp: tpd.Import)
