@@ -46,12 +46,11 @@ class CheckUnused extends MiniPhase:
    */
   private val _key = Property.Key[UnusedData]
 
-  extension (k: Property.Key[UnusedData])
-    private def unusedDataApply[U](f: UnusedData => U)(using Context): Context =
-      ctx.property(_key).foreach(f)
-      ctx
-    private def getUnusedData(using Context): Option[UnusedData] =
-      ctx.property(_key)
+  private def unusedDataApply[U](f: UnusedData => U)(using Context): Context =
+    ctx.property(_key).foreach(f)
+    ctx
+  private def getUnusedData(using Context): Option[UnusedData] =
+    ctx.property(_key)
 
   override def phaseName: String = CheckUnused.phaseName
 
@@ -71,7 +70,7 @@ class CheckUnused extends MiniPhase:
   // ========== END + REPORTING ==========
 
   override def transformUnit(tree: tpd.Tree)(using Context): tpd.Tree =
-    _key.unusedDataApply(ud => reportUnused(ud.getUnused))
+    unusedDataApply(ud => reportUnused(ud.getUnused))
     tree
 
   // ========== MiniPhase Prepare ==========
@@ -81,15 +80,15 @@ class CheckUnused extends MiniPhase:
     ctx
 
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
-    if tree.symbol.exists then
-      _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+    if tree.symbol.exists then 
+      unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
     else if tree.hasType then
-      _key.unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
+      unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
     else
       ctx
 
   override def prepareForSelect(tree: tpd.Select)(using Context): Context =
-    _key.unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+    unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
 
   override def prepareForBlock(tree: tpd.Block)(using Context): Context =
     pushInBlockTemplatePackageDef(tree)
@@ -101,7 +100,7 @@ class CheckUnused extends MiniPhase:
     pushInBlockTemplatePackageDef(tree)
 
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
-    _key.unusedDataApply{ud =>
+    unusedDataApply{ud =>
       // do not register the ValDef generated for `object`
       if !tree.symbol.is(Module) then
         ud.registerDef(tree)
@@ -109,7 +108,7 @@ class CheckUnused extends MiniPhase:
     }
 
   override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
-    _key.unusedDataApply{ ud =>
+    unusedDataApply{ ud =>
       import ud.registerTrivial
       tree.registerTrivial
       ud.registerDef(tree)
@@ -117,17 +116,17 @@ class CheckUnused extends MiniPhase:
     }
 
   override def prepareForTypeDef(tree: tpd.TypeDef)(using Context): Context =
-    _key.unusedDataApply{ ud =>
+    unusedDataApply{ ud =>
       if !tree.symbol.is(Param) then // Ignore type parameter (as Scala 2)
         ud.registerDef(tree)
         ud.addIgnoredUsage(tree.symbol)
     }
 
   override def prepareForBind(tree: tpd.Bind)(using Context): Context =
-    _key.unusedDataApply(_.registerPatVar(tree))
+    unusedDataApply(_.registerPatVar(tree))
 
   override def prepareForTypeTree(tree: tpd.TypeTree)(using Context): Context =
-    typeTraverser(_key.unusedDataApply).traverse(tree.tpe)
+    if !tree.isInstanceOf[tpd.InferredTypeTree] then typeTraverser(unusedDataApply).traverse(tree.tpe)
     ctx
 
   // ========== MiniPhase Transform ==========
@@ -145,27 +144,27 @@ class CheckUnused extends MiniPhase:
     tree
 
   override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
-    _key.unusedDataApply(_.removeIgnoredUsage(tree.symbol))
+    unusedDataApply(_.removeIgnoredUsage(tree.symbol))
     tree
 
   override def transformDefDef(tree: tpd.DefDef)(using Context): tpd.Tree =
-    _key.unusedDataApply(_.removeIgnoredUsage(tree.symbol))
+    unusedDataApply(_.removeIgnoredUsage(tree.symbol))
     tree
 
   override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree =
-    _key.unusedDataApply(_.removeIgnoredUsage(tree.symbol))
+    unusedDataApply(_.removeIgnoredUsage(tree.symbol))
     tree
 
   // ---------- MiniPhase HELPERS -----------
 
   private def pushInBlockTemplatePackageDef(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context =
-    _key.unusedDataApply { ud =>
+    unusedDataApply { ud =>
       ud.pushScope(UnusedData.ScopeType.fromTree(tree))
     }
     ctx
 
   private def popOutBlockTemplatePackageDef()(using Context): Context =
-    _key.unusedDataApply { ud =>
+    unusedDataApply { ud =>
       ud.popScope()
     }
     ctx
@@ -188,7 +187,7 @@ class CheckUnused extends MiniPhase:
       val newCtx = if tree.symbol.exists then ctx.withOwner(tree.symbol) else ctx
       tree match
         case imp:tpd.Import =>
-          _key.unusedDataApply(_.registerImport(imp))
+          unusedDataApply(_.registerImport(imp))
           traverseChildren(tree)(using newCtx)
         case ident: Ident =>
           prepareForIdent(ident)
@@ -198,7 +197,7 @@ class CheckUnused extends MiniPhase:
           traverseChildren(tree)(using newCtx)
         case _: (tpd.Block | tpd.Template | tpd.PackageDef) =>
           //! DIFFERS FROM MINIPHASE
-          _key.unusedDataApply { ud =>
+          unusedDataApply { ud =>
             ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree)(using newCtx))
           }
         case t:tpd.ValDef =>
@@ -216,9 +215,10 @@ class CheckUnused extends MiniPhase:
         case t: tpd.Bind =>
           prepareForBind(t)
           traverseChildren(tree)(using newCtx)
+        case _: tpd.InferredTypeTree =>
         case t@tpd.TypeTree() =>
           //! DIFFERS FROM MINIPHASE
-          typeTraverser(_key.unusedDataApply).traverse(t.tpe)
+          typeTraverser(unusedDataApply).traverse(t.tpe)
           traverseChildren(tree)(using newCtx)
         case _ =>
           //! DIFFERS FROM MINIPHASE
@@ -228,9 +228,14 @@ class CheckUnused extends MiniPhase:
 
   /** This is a type traverser which catch some special Types not traversed by the term traverser above */
   private def typeTraverser(dt: (UnusedData => Any) => Unit)(using Context) = new TypeTraverser:
-    override def traverse(tp: Type): Unit = tp match
-      case AnnotatedType(_, annot) => dt(_.registerUsed(annot.symbol, None))
-      case _ => traverseChildren(tp)
+    override def traverse(tp: Type): Unit =
+      if tp.typeSymbol.exists then dt(_.registerUsed(tp.typeSymbol, Some(tp.typeSymbol.name)))
+      tp match
+        case AnnotatedType(_, annot) =>
+          dt(_.registerUsed(annot.symbol, None))
+          traverseChildren(tp)
+        case _ =>
+          traverseChildren(tp)
 
   /** Do the actual reporting given the result of the anaylsis */
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
