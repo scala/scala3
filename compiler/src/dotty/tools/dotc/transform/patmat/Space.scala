@@ -92,16 +92,16 @@ object SpaceEngine {
   def simplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, show)(space match {
     case Prod(tp, fun, spaces) =>
       val sps = spaces.mapconserve(simplify)
-      if (sps.contains(Empty)) Empty
-      else if (canDecompose(tp) && decompose(tp).isEmpty) Empty
+      if sps.contains(Empty) then Empty
+      else if canDecompose(tp) && decompose(tp).isEmpty then Empty
       else if sps eq spaces then space else Prod(tp, fun, sps)
     case Or(spaces) =>
       val spaces2 = spaces.map(simplify).filter(_ != Empty)
       if spaces2.isEmpty then Empty
       else if spaces2.lengthIs == 1 then spaces2.head
       else if spaces2.corresponds(spaces)(_ eq _) then space else Or(spaces2)
-    case Typ(tp, _) =>
-      if (canDecompose(tp) && decompose(tp).isEmpty) Empty
+    case typ: Typ =>
+      if canDecompose(typ.tp) && decompose(typ.tp).isEmpty then Empty
       else space
     case _ => space
   })
@@ -143,25 +143,21 @@ object SpaceEngine {
   def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)
 
   def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = {
-    def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
-    def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
-
     val a2 = simplify(a)
     val b2 = simplify(b)
     if (a ne a2) || (b ne b2) then isSubspace(a2, b2)
     else (a, b) match {
       case (Empty, _) => true
       case (_, Empty) => false
-      case (Or(ss), _) =>
-        ss.forall(isSubspace(_, b))
-      case (Typ(tp1, _), Typ(tp2, _)) =>
+      case (Or(ss), _) => ss.forall(isSubspace(_, b))
+      case (a @ Typ(tp1, _), Or(ss)) =>  // optimization: don't go to subtraction too early
+        ss.exists(isSubspace(a, _))
+        || canDecompose(tp1) && isSubspace(Or(decompose(tp1)), b)
+      case (_, Or(_))  => simplify(minus(a, b)) == Empty
+      case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
         isSubType(tp1, tp2)
-        || canDecompose(tp1) && tryDecompose1(tp1)
-        || canDecompose(tp2) && tryDecompose2(tp2)
-      case (Typ(tp1, _), Or(ss)) =>  // optimization: don't go to subtraction too early
-        ss.exists(isSubspace(a, _)) || tryDecompose1(tp1)
-      case (_, Or(_)) =>
-        simplify(minus(a, b)) == Empty
+        || canDecompose(tp1) && isSubspace(Or(decompose(tp1)), b)
+        || canDecompose(tp2) && isSubspace(a, Or(decompose(tp2)))
       case (Prod(tp1, _, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
       case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
@@ -169,90 +165,74 @@ object SpaceEngine {
         && covers(fun, tp1, ss.length)
         && isSubspace(Prod(tp2, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
       case (Prod(_, fun1, ss1), Prod(_, fun2, ss2)) =>
-        isSameUnapply(fun1, fun2) && ss1.zip(ss2).forall((isSubspace _).tupled)
+        isSameUnapply(fun1, fun2) && ss1.lazyZip(ss2).forall(isSubspace)
     }
   }
 
   /** Intersection of two spaces  */
   def intersect(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} & ${show(b)}", debug, show) {
-    def tryDecompose1(tp: Type) = intersect(Or(decompose(tp)), b)
-    def tryDecompose2(tp: Type) = intersect(a, Or(decompose(tp)))
-
     (a, b) match {
       case (Empty, _) | (_, Empty) => Empty
       case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filter(_ ne Empty))
       case (Or(ss), _) => Or(ss.map(intersect(_, b)).filter(_ ne Empty))
-      case (Typ(tp1, _), Typ(tp2, _)) =>
-        if (isSubType(tp1, tp2)) a
-        else if (isSubType(tp2, tp1)) b
-        else if (canDecompose(tp1)) tryDecompose1(tp1)
-        else if (canDecompose(tp2)) tryDecompose2(tp2)
+      case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
+        if isSubType(tp1, tp2) then a
+        else if isSubType(tp2, tp1) then b
+        else if canDecompose(tp1) then intersect(Or(decompose(tp1)), b)
+        else if canDecompose(tp2) then intersect(a, Or(decompose(tp2)))
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
-      case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
-        if (isSubType(tp2, tp1)) b
-        else if (canDecompose(tp1)) tryDecompose1(tp1)
-        else if (isSubType(tp1, tp2)) a // problematic corner case: inheriting a case class
+      case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
+        if isSubType(tp2, tp1) then b
+        else if canDecompose(tp1) then intersect(Or(decompose(tp1)), b)
+        else if isSubType(tp1, tp2) then a // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(b)
-      case (Prod(tp1, fun, ss), Typ(tp2, _)) =>
-        if (isSubType(tp1, tp2)) a
-        else if (canDecompose(tp2)) tryDecompose2(tp2)
-        else if (isSubType(tp2, tp1)) a  // problematic corner case: inheriting a case class
+      case (Prod(tp1, fun, ss), b @ Typ(tp2, _)) =>
+        if isSubType(tp1, tp2) then a
+        else if canDecompose(tp2) then intersect(a, Or(decompose(tp2)))
+        else if isSubType(tp2, tp1) then a  // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
-      case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-        if (!isSameUnapply(fun1, fun2)) intersectUnrelatedAtomicTypes(tp1, tp2)(a)
-        else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) Empty
-        else Prod(tp1, fun1, ss1.zip(ss2).map((intersect _).tupled))
+      case (a @ Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
+        if !isSameUnapply(fun1, fun2) then intersectUnrelatedAtomicTypes(tp1, tp2)(a)
+        else if ss1.lazyZip(ss2).exists((a, b) => simplify(intersect(a, b)) == Empty) then Empty
+        else Prod(tp1, fun1, ss1.lazyZip(ss2).map(intersect))
     }
   }
 
   /** The space of a not covered by b */
   def minus(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} - ${show(b)}", debug, show) {
-    def tryDecompose1(tp: Type) = minus(Or(decompose(tp)), b)
-    def tryDecompose2(tp: Type) = minus(a, Or(decompose(tp)))
-
     (a, b) match {
       case (Empty, _) => Empty
       case (_, Empty) => a
-      case (Typ(tp1, _), Typ(tp2, _)) =>
-        if (isSubType(tp1, tp2)) Empty
-        else if (canDecompose(tp1)) tryDecompose1(tp1)
-        else if (canDecompose(tp2)) tryDecompose2(tp2)
+      case (Or(ss), _) => Or(ss.map(minus(_, b)))
+      case (_, Or(ss)) => ss.foldLeft(a)(minus)
+      case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
+        if isSubType(tp1, tp2) then Empty
+        else if canDecompose(tp1) then minus(Or(decompose(tp1)), b)
+        else if canDecompose(tp2) then minus(a, Or(decompose(tp2)))
         else a
-      case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
+      case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
         if isSubType(tp1, tp2) && covers(fun, tp1, ss.length) then
           minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
-        else if canDecompose(tp1) then
-          tryDecompose1(tp1)
-        else
-          a
-      case (Or(ss), _) =>
-        Or(ss.map(minus(_, b)))
-      case (_, Or(ss)) =>
-        ss.foldLeft(a)(minus)
-      case (Prod(tp1, fun, ss), Typ(tp2, _)) =>
+        else if canDecompose(tp1) then minus(Or(decompose(tp1)), b)
+        else a
+      case (Prod(tp1, fun, ss), b @ Typ(tp2, _)) =>
         // uncovered corner case: tp2 :< tp1, may happen when inheriting case class
-        if (isSubType(tp1, tp2))
-          Empty
-        else if (simplify(a) == Empty)
-           Empty
-        else if (canDecompose(tp2))
-          tryDecompose2(tp2)
-        else
-          a
+        if isSubType(tp1, tp2) then Empty
+        else if simplify(a) == Empty then Empty
+        else if canDecompose(tp2) then minus(a, Or(decompose(tp2)))
+        else a
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
-        if (!isSameUnapply(fun1, fun2)) => a
+          if !isSameUnapply(fun1, fun2) => a
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
-        if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) => a
-      case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-
-        val range = (0 until ss1.size).toList
+          if fun1.symbol.name == nme.unapply && ss1.length != ss2.length => a
+      case (a @ Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
+        val range = ss1.indices.toList
         val cache = Array.fill[Space | Null](ss2.length)(null)
         def sub(i: Int) =
           if cache(i) == null then
             cache(i) = minus(ss1(i), ss2(i))
           cache(i).nn
-        end sub
 
         if range.exists(i => isSubspace(ss1(i), sub(i))) then a
         else if cache.forall(sub => isSubspace(sub.nn, Empty)) then Empty
@@ -610,26 +590,26 @@ object SpaceEngine {
         else
           decomposeComponent(tp2, tp1)
 
-      case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
+      case OrType(tp1, tp2) => List(Typ(tp1, decomposed = true), Typ(tp2, decomposed = true))
       case tp if tp.isRef(defn.BooleanClass) =>
         List(
-          Typ(ConstantType(Constant(true)), true),
-          Typ(ConstantType(Constant(false)), true)
+          Typ(ConstantType(Constant(true)), decomposed = true),
+          Typ(ConstantType(Constant(false)), decomposed = true)
         )
       case tp if tp.isRef(defn.UnitClass) =>
-        Typ(ConstantType(Constant(())), true) :: Nil
+        Typ(ConstantType(Constant(())), decomposed = true) :: Nil
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
-        tp.classSymbol.children.map(sym => Typ(sym.termRef, true))
+        tp.classSymbol.children.map(sym => Typ(sym.termRef, decomposed = true))
 
       case tp @ AppliedType(tycon, targs) if tp.classSymbol.children.isEmpty && canDecompose(tycon) =>
         // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
         // But this is guarded by `tp.classSymbol.children.isEmpty`,
         // meaning we'll decompose to the same class, just not the same type.
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
-        rec(tycon, Nil).map(typ => Typ(tp.derivedAppliedType(typ.tp, targs)))
+        rec(tycon, Nil).map(typ => Typ(tp.derivedAppliedType(typ.tp, targs), decomposed = true))
 
       case tp: NamedType if canDecompose(tp.prefix) =>
-        rec(tp.prefix, Nil).map(typ => Typ(tp.derivedSelect(typ.tp)))
+        rec(tp.prefix, Nil).map(typ => Typ(tp.derivedSelect(typ.tp), decomposed = true))
 
       case tp =>
         def getChildren(sym: Symbol): List[Symbol] =
@@ -641,30 +621,27 @@ object SpaceEngine {
             else List(child)
           }
         val children = getChildren(tp.classSymbol)
-        debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
+        debug.println(i"candidates for $tp : $children")
 
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
           val refined = TypeOps.refineUsingParent(tp, sym1, mixins)
+          debug.println(i"$sym1 refined to $refined")
 
-          debug.println(sym1.show + " refined to " + refined.show)
+          def inhabited(tp: Type): Boolean = tp.dealias match
+            case AndType(tp1, tp2) => !TypeComparer.provablyDisjoint(tp1, tp2)
+            case OrType(tp1, tp2) => inhabited(tp1) || inhabited(tp2)
+            case tp: RefinedType => inhabited(tp.parent)
+            case tp: TypeRef => inhabited(tp.prefix)
+            case _ => true
 
-          def inhabited(tp: Type): Boolean =
-            tp.dealias match {
-              case AndType(tp1, tp2) => !TypeComparer.provablyDisjoint(tp1, tp2)
-              case OrType(tp1, tp2) => inhabited(tp1) || inhabited(tp2)
-              case tp: RefinedType => inhabited(tp.parent)
-              case tp: TypeRef => inhabited(tp.prefix)
-              case _ => true
-            }
-
-          if (inhabited(refined)) refined
+          if inhabited(refined) then refined
           else NoType
-        } filter(_.exists)
+        }.filter(_.exists)
 
-        debug.println(s"${tp.show} decomposes to [${parts.map(_.show).mkString(", ")}]")
+        debug.println(i"$tp decomposes to $parts")
 
-        parts.map(Typ(_, true))
+        parts.map(Typ(_, decomposed = true))
     }
     rec(tp, Nil)
   }
