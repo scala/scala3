@@ -83,7 +83,9 @@ case class Typ(tp: Type, decomposed: Boolean = true) extends Space:
   def canDecompose(using Context): Boolean = decompose != SpaceEngine.ListOfTypNoType
 
   def decompose(using Context): List[Typ] =
-    if myDecompose == null then myDecompose = SpaceEngine.decompose(tp).map(Typ(_, decomposed = true))
+    if myDecompose == null then myDecompose = tp match
+      case SpaceEngine.Parts(parts) => parts.map(Typ(_, decomposed = true))
+      case _                        => SpaceEngine.ListOfTypNoType
     myDecompose
 end Typ
 
@@ -581,18 +583,6 @@ object SpaceEngine {
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
   def decompose(tp: Type)(using Context): List[Type] = trace(i"decompose($tp)", debug) {
-    var lastType:  Type       = NoType
-    var lastParts: List[Type] = Nil
-    def dec(tp: Type)    =
-      if tp eq lastType then lastParts
-      else
-        lastType = tp
-        lastParts = decompose(tp)
-        lastParts
-    def canDec(tp: Type) =
-      lastParts = dec(tp)
-      lastParts != ListOfNoType
-
     def rec(tp: Type, mixins: List[Type]): List[Type] = tp.dealias match
       case AndType(tp1, tp2) =>
         var tpB   = tp2
@@ -611,14 +601,14 @@ object SpaceEngine {
       case tp if tp.isRef(defn.BooleanClass)           => List(ConstantType(Constant(true)), ConstantType(Constant(false)))
       case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) => tp.classSymbol.children.map(_.termRef)
-      case tp: NamedType if canDec(tp.prefix)          => dec(tp.prefix).map(tp.derivedSelect)
+      case tp @ TypeRef(Parts(parts), _)               => parts.map(tp.derivedSelect)
 
-      case tp @ AppliedType(tycon, targs) if tp.classSymbol.children.isEmpty && canDec(tycon) =>
+      case tp @ AppliedType(Parts(parts), targs) if tp.classSymbol.children.isEmpty =>
         // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
         // But this is guarded by `tp.classSymbol.children.isEmpty`,
         // meaning we'll decompose to the same class, just not the same type.
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
-        dec(tycon).map(tp.derivedAppliedType(_, targs))
+        parts.map(tp.derivedAppliedType(_, targs))
 
       case tp if {
         val cls = tp.classSymbol
@@ -664,6 +654,12 @@ object SpaceEngine {
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
+
+  object Parts:
+    def unapply(tp: Type)(using Context): PartsExtractor = PartsExtractor(decompose(tp))
+
+  final class PartsExtractor(val get: List[Type]) extends AnyVal:
+    def isEmpty: Boolean = get == ListOfNoType
 
   /** Show friendly type name with current scope in mind
    *
