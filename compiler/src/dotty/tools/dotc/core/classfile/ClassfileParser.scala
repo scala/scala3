@@ -1086,10 +1086,10 @@ class ClassfileParser(
           if (sym == classRoot.symbol)
             staticScope.lookup(name)
           else {
-            var module = sym.companionModule
-            if (!module.exists && sym.isAbsent())
-              module = sym.scalacLinkedClass
-            module.info.member(name).symbol
+            var moduleClass = sym.registeredCompanion
+            if (!moduleClass.exists && sym.isAbsent())
+              moduleClass = sym.scalacLinkedClass
+            moduleClass.info.member(name).symbol
           }
         else if (sym == classRoot.symbol)
           instanceScope.lookup(name)
