@@ -66,7 +66,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.MacroAnnotation",
 
    //// New APIs: Quotes
-  // Can be stabilized in 3.3.0 (unsure) or later
+  // Should be stabilized in 3.4.0
+  "scala.quoted.Quotes.reflectModule.defnModule.FunctionClass",
+  // Can be stabilized in 3.4.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
   "scala.quoted.Quotes.reflectModule.FlagsModule.JavaAnnotation",
   // Cant be stabilized yet.
