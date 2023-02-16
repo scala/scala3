@@ -718,7 +718,9 @@ object Objects:
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         val sym = tmref.symbol
-        if sym.isOneOf(Flags.Param | Flags.Mutable) then
+        if sym.is(Flags.Mutable) then
+          State.readAddress(Heap.Address(thisV, sym))
+        else if sym.is(Flags.Param) then
           // TODO: handle environment parameters and mutation differently
           Cold
         else if sym.is(Flags.Package) then
