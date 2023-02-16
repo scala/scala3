@@ -245,7 +245,7 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: => String*)(using Context)
+class TypeMismatch(found: Type, expected: Type, inTree: Option[untpd.Tree], addenda: => String*)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
   def msg(using Context) =
