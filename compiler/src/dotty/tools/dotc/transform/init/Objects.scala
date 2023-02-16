@@ -71,6 +71,8 @@ object Objects:
     private val fields: mutable.Map[Symbol, Value] = mutable.Map.empty
     private val outers: mutable.Map[ClassSymbol, Value] = mutable.Map.empty
 
+    def owner: ClassSymbol
+
     def klass: ClassSymbol
 
     def fieldValue(sym: Symbol): Value = fields(sym)
@@ -93,6 +95,8 @@ object Objects:
 
   /** A reference to a static object */
   case class ObjectRef(klass: ClassSymbol) extends Ref:
+    val owner = klass
+
     def show(using Context) = "ObjectRef(" + klass.show + ")"
 
   /**
@@ -100,12 +104,12 @@ object Objects:
    *
    * `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass private(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref:
+  case class OfClass private(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], owner: ClassSymbol) extends Ref:
     def show(using Context) = "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ")"
 
   object OfClass:
-    def apply(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using Context): OfClass =
-      val instance = new OfClass(klass, outer, ctor, args)
+    def apply(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using State.Data, Context): OfClass =
+      val instance = new OfClass(klass, outer, ctor, args, State.currentObject)
       instance.updateOuter(klass, outer)
       instance
 
@@ -244,13 +248,13 @@ object Objects:
         tp match
         case Bottom => Bottom
         case RefSet(refs) => refs.map(ref => widenInternal(ref, fuel)).join
-        case OfClass(klass, outer, args, init) =>
+        case OfClass(klass, outer, args, init, owner) =>
           if fuel == 0 then
             Cold
           else
             val outer2 = widenInternal(outer, fuel - 1)
             val args2 = args.map(arg => widenInternal(fuel - 1))
-            OfClass(klass, outer2, args2, init)
+            OfClass(klass, outer2, args2, init, owner)
         case _ => a
 
       widenInternal(a, 3)
@@ -364,25 +368,19 @@ object Objects:
         val rhs = target.defTree.asInstanceOf[ValDef].rhs
         eval(rhs, ref, target.owner.asClass, cacheResult = true)
       else if target.exists then
-        ref match
-        case obj: ObjectRef if State.currentObject != obj.klass =>
-          if target.isOneOf(Flags.Mutable) then
-            report.warning("Reading mutable state of " + obj.klass + " during initialization of " + State.currentObject + " is discouraged as it breaks initialization-time irrelevance. Calling trace: " + Trace.show, Trace.position)
-            Bottom
+        if target.isOneOf(Flags.Mutable) then
+          if ref.owner == State.currentObject then
+            State.readAddress(Heap.Addr(thisV, vdef.symbol), res)
           else
-            if ref.hasField(target) then
-              // TODO:  check immutability
-              ref.fieldValue(target)
-            else
-              // initialization error, reported by the initialization checker
-              Bottom
+            report.warning("Reading mutable state of " + ref.owner.show + " during initialization of " + State.currentObject + " is discouraged as it breaks initialization-time irrelevance. Calling trace: " + Trace.show, Trace.position)
+            Bottom
+          end if
+        else if ref.hasField(target) then
+          ref.fieldValue(target)
+        else
+          // initialization error, reported by the initialization checker
+          Bottom
 
-        case _ =>
-          if ref.hasField(target) then
-            ref.fieldValue(target)
-          else
-            // initialization error, reported by the initialization checker
-            Bottom
       else
         if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
           report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
@@ -402,6 +400,30 @@ object Objects:
 
     case RefSet(refs) =>
       refs.map(ref => select(ref, field, receiver)).join
+  }
+
+  def assign(receiver: Value, field: Symbol, rhs: Value): Contextual[Value] = log("Assign" + field.show + " of " + receiver.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
+    receiver match
+    case Fun(body, thisV, klass) =>
+      report.error("[Internal error] unexpected tree in assignment, fun = " + body.show + Trace.show, Trace.position)
+      Bottom
+
+    case Cold =>
+      report.warning("Assigning to cold aliases is forbidden", Trace.position)
+      Bottom
+
+    case Bottom =>
+      Bottom
+
+    case RefSet(refs) =>
+      refs.map(ref => assign(ref, field, value)).join
+
+    case ref: Ref =>
+      if receiver.owner != State.currentObject then
+        withTrace(trace2) { errorMutateOtherStaticObject(State.currentObject, receiver.owner) }
+      else
+        State.writeAddress(Heap.Addr(ref, field), rhs)
+        Bottom
   }
 
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
@@ -592,20 +614,19 @@ object Objects:
         eval(arg, thisV, klass)
 
       case Assign(lhs, rhs) =>
-        lhs match
-        case Select(qual, _) =>
-          eval(qual, thisV, klass)
-        case id: Ident =>
-          id.tpe match
-          case TermRef(NoPrefix, _) =>
-          case TermRef(prefix, _) =>
-            extendTrace(id) { evalType(prefix, thisV, klass) }
+        val receiver =
+          lhs match
+          case Select(qual, _) =>
+            eval(qual, thisV, klass)
+          case id: Ident =>
+            id.tpe match
+            case TermRef(NoPrefix, _) =>
+              thisV
+            case TermRef(prefix, _) =>
+              extendTrace(id) { evalType(prefix, thisV, klass) }
 
-        eval(rhs, thisV, klass)
-        if lhs.symbol.owner.isStaticObject && lhs.symbol.owner != State.currentObject then
-          withTrace(trace2) { errorMutateOtherStaticObject(State.currentObject, lhs.symbol.owner.asClass) }
-        end if
-        Bottom
+        val value = eval(rhs, thisV, klass)
+        assign(receiver, lhs.symbol, value)
 
       case closureDef(ddef) =>
         Fun(ddef.rhs, thisV, klass)
@@ -751,6 +772,12 @@ object Objects:
     }
     argInfos.toList
 
+  /** Initialize part of an abstract object in `klass` of the inheritance chain
+   *
+   * @param tpl       The class body to be evaluated.
+   * @param thisV     The value of the current object to be initialized.
+   * @param klass     The class to which the template belongs.
+   */
   def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show) {
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> thisV.fieldValue(vdef.symbol)
@@ -848,7 +875,10 @@ object Objects:
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val res = eval(vdef.rhs, thisV, klass)
-        thisV.updateField(vdef.symbol, res)
+        if vdef.symbol.is(Flags.Mutable) then
+          State.writeAddress(Heap.Addr(thisV, vdef.symbol), res)
+        else
+          thisV.updateField(vdef.symbol, res)
 
       case _: MemberDef =>
 
