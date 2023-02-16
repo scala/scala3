@@ -74,6 +74,9 @@ class TreeUnpickler(reader: TastyReader,
    */
   private val typeAtAddr = new mutable.HashMap[Addr, Type]
 
+  /** If this is a pickled quote, the owner of the quote, otherwise NoSymbol. */
+  private var rootOwner: Symbol = NoSymbol
+
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
@@ -106,6 +109,7 @@ class TreeUnpickler(reader: TastyReader,
 
   /** The unpickled trees */
   def unpickle(mode: UnpickleMode)(using Context): List[Tree] = {
+    if mode != UnpickleMode.TopLevel then rootOwner = ctx.owner
     assert(roots != null, "unpickle without previous enterTopLevel")
     val rdr = new TreeReader(reader)
     mode match {
@@ -1635,7 +1639,7 @@ class TreeUnpickler(reader: TastyReader,
             pickling.println(i"no owner for $addr among $cs%, %")
             throw ex
         }
-      try search(children, NoSymbol)
+      try search(children, rootOwner)
       catch {
         case ex: TreeWithoutOwner =>
           pickling.println(s"ownerTree = $ownerTree")
