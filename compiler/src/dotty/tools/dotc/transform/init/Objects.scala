@@ -30,17 +30,30 @@ import scala.annotation.tailrec
  *      case object A extends Foo(B)     // A -> B
  *      case object B extends Foo(A)     // B -> A
  *
- *  In the code above, the initialization of object `A` depends on `B` and vice
- *  versa. There is no correct way to initialize the code above. The current
- *  checker issues a warning for the code above.
+ *  In the code above, the initialization of object `A` depends on `B` and vice versa. There is no
+ *  correct way to initialize the code above. The current checker issues a warning for the code
+ *  above.
  *
  *  At the high-level, the analysis has the following characteristics:
  *
- *  1. It is inter-procedural and flow-insensitive.
+ *  1. It is inter-procedural and flow-sensitive.
  *
- *  2. It is receiver-sensitive but not heap-sensitive nor parameter-sensitive.
+ *  2. It is object-sensitive by default and parameter-sensitive on-demand.
  *
- *     Fields and parameters are always abstracted by their types.
+ *  3. The check is modular in the sense that each object is checked separately and there is no
+ *     whole-program analysis. However, the check is not modular in terms of project boundaries.
+ *
+ *  4. The check enforces the principle of "initialization-time irrelevance", which means that the
+ *     time when an object is initialized should not change program semantics. For that purpose, it
+ *     enforces the following rule:
+ *
+ *         The initialization of a static object should not directly or indirectly read or write
+ *         mutable state of another static object.
+ *
+ *  5. The design is based on the concept of "cold aliasing" --- a cold alias may not be actively
+ *     used during initialization, i.e., it's forbidden to call methods or access fields of a cold
+ *     alias. Method arguments are cold aliases by default unless specified to be sensitive. Method
+ *     parameters captured in lambdas or inner classes are always cold aliases.
  *
  */
 object Objects:
@@ -87,29 +100,17 @@ object Objects:
    *
    * `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass private(tp: Type, klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref:
+  case class OfClass private(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref:
     def show(using Context) = "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ")"
 
   object OfClass:
-    def apply(tp: Type, klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using Context): OfClass =
-      val instance = new OfClass(tp, klass, outer, ctor, args)
+    def apply(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using Context): OfClass =
+      val instance = new OfClass(klass, outer, ctor, args)
       instance.updateOuter(klass, outer)
       instance
 
   /**
-   * Rerepsents values of a specific type
-   *
-   * `OfType` is just a short-cut referring to currently instantiated sub-types.
-   *
-   * Note: this value should never be an index in the cache.
-   */
-  case class OfType(tp: Type) extends Value:
-    def show(using Context) = "OfType(" + tp.show + ")"
-
-  /**
    * Represents a lambda expression
-   *
-   * TODO: add concrete type of lambdas
    */
   case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value:
     def show(using Context) = "Fun(" + expr.show + ", " + thisV.show + ", " + klass.show + ")"
@@ -123,34 +124,33 @@ object Objects:
     assert(refs.forall(!_.isInstanceOf[RefSet]))
     def show(using Context) = refs.map(_.show).mkString("[", ",", "]")
 
+  /** A cold alias which should not be used during initialization. */
+  case object Cold extends Value
+
   val Bottom = RefSet(Nil)
 
+  /** Checking state  */
   object State:
-    /** Record leaked instantiated types and lambdas.
-     *
-     *  For more fine-grained approximation, the values are distinguished by their types.
-     */
-    class LeakedInstances(classes: Map[ClassSymbol, List[Type]], funs: Map[Type, List[Fun]])
-
-    object LeakedInstances:
-      val empty = LeakedInstances(Map.empty, Map.empty)
-
-    /**
-     * Remembers the instantiated types during instantiation of a static object.
-     */
     class Data:
       // objects under check
       private[State] val checkingObjects = new mutable.ListBuffer[ClassSymbol]
       private[State] val checkedObjects = new mutable.ArrayBuffer[ClassSymbol]
       private[State] val pendingTraces = new mutable.ListBuffer[Trace]
 
-      private[State] val leakedInstancesByObject = mutable.Map.empty[ClassSymbol, LeakedInstances]
+      // Use a mutable field to avoid thread through it in the program.
+      private[State] var heap = Heap.empty
     end Data
 
-    def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last
+    def getHeap()(using data: Data): Heap.Data = data.heap
 
-    def leakedInstances(using data: Data): LeakedInstances =
-      data.leakedInstancesByObject.getOrElseUpdate(currentObject, LeakedInstances.empty)
+    def containsAddress(addr: Addr)(using data: Data): Value = Heap.contains(addr)(using data.heap)
+
+    def readAddress(addr: Addr)(using data: Data): Value = Heap.read(addr)(using data.heap)
+
+    def writeAddress(addr: Addr, value: Value)(using data: Data): Data =
+      data.heap = Heap.write(addr, value)(using data.heap)
+
+    def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last
 
     def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context, pendingTrace: Trace) =
       val index = data.checkingObjects.indexOf(clazz)
@@ -170,19 +170,51 @@ object Objects:
     end checkCycle
   end State
 
+  /** Environment for parameters */
+  object Env:
+    opaque type Data = Map[Symbol, Value]
+
+    val empty: Data = Map.empty
+
+    def apply(x: Symbol)(using data: Data): Value = data(x)
+    def contains(x: Symbol)(using data: Data): Value = data.contains(x)
+    def of(map: Map[Symbol, Value]): Data = map
+
+  /** Abstract heap for mutable fields
+   *
+   *  To avoid threading through it in the code, we use a mutable field in `State.Data` to hold the
+   *  information.
+   */
+  object Heap:
+    case class Addr(ref: Ref, field: Symbol):
+      def show(using Context) = "Addr(" + ref.show + ", " + field.show + ")"
+
+    opaque type Data = Map[Addr, Value]
+
+    val empty: Data = Map.empty
+
+    def contains(addr: Addr)(using data: Data): Value = data.contains(addr)
+
+    def read(addr: Addr)(using data: Data): Value = data(addr)
+
+    def write(addr: Addr, value: Value)(using data: Data): Data =
+      val current = data.getOrElse(addr, bottom)
+      data.updated(addr, value.join(current))
+
+  /** Cache used to terminate the check  */
   object Cache:
-    case class Config(thisV: Value, leakedInstances: State.LeakedInstances)
-    case class Res(value: Value, leakedInstances: State.LeakedInstances)
+    case class Config(thisV: Value, env: Env.Data, heap: Heap.Data)
+    case class Res(value: Value, heap: Heap.Data)
 
     class Data extends Cache[Config, Res]:
-      def get(thisV: Value, expr: Tree)(using State.Data): Option[Value] =
-        val config = Config(thisV, State.leakedInstances)
+      def get(thisV: Value, expr: Tree)(using State.Data, Env.Data): Option[Value] =
+        val config = Config(thisV, summonp[Env.Data], State.getHeap())
         super.get(config, expr).map(_.value)
 
-      def cachedEval(thisV: Value, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using State.Data): Value =
-        val config = Config(thisV, State.leakedInstances)
-        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, State.leakedInstances)) { expr =>
-          Res(fun(expr), State.leakedInstances)
+      def cachedEval(thisV: Value, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using State.Data, Env.Data): Value =
+        val config = Config(thisV, summonp[Env.Data], State.getHeap())
+        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, State.getHeap())) { expr =>
+          Res(fun(expr), State.getHeap())
         }
         result.value
   end Cache
@@ -198,6 +230,8 @@ object Objects:
   extension (a: Value)
     def join(b: Value): Value =
       (a, b) match
+      case (Cold, b)                          => Cold
+      case (a, Cold)                          => Cold
       case (Bottom, b)                        => b
       case (a, Bottom)                        => a
       case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
@@ -205,37 +239,37 @@ object Objects:
       case (RefSet(refs), b)                  => RefSet(b :: refs)
       case (a, b)                             => RefSet(a :: b :: Nil)
 
-    def widenArg(using Context): Value =
-      a match
-      case Bottom => Bottom
-      case RefSet(refs) => refs.map(_.widenArg).join
-      case OfClass(tp, _, _: OfClass, _, _) => OfType(tp)
-      case _ => a
+    def widen(using Context): Value =
+      def widenInternal(tp: Type, fuel: Int): Value =
+        tp match
+        case Bottom => Bottom
+        case RefSet(refs) => refs.map(ref => widenInternal(ref, fuel)).join
+        case OfClass(klass, outer, args, init) =>
+          if fuel == 0 then
+            Cold
+          else
+            val outer2 = widenInternal(outer, fuel - 1)
+            val args2 = args.map(arg => widenInternal(fuel - 1))
+            OfClass(klass, outer2, args2, init)
+        case _ => a
+
+      widenInternal(a, 3)
 
   extension (values: Seq[Value])
     def join: Value = if values.isEmpty then Bottom else values.reduce { (v1, v2) => v1.join(v2) }
 
-    def widenArgs: Contextual[List[Value]] = values.map(_.widenArg).toList
+    def widen: Contextual[List[Value]] = values.map(_.widen).toList
 
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-    def checkArgs() =
-      // TODO: check aliasing of static objects
-      for
-        arg <- args
-      do
-        arg.value match
-        case ObjectRef(obj) =>
-          report.warning("Aliasing object " + obj.show, Trace.position)
-
-        case _ =>
-
     value match
+    case Cold =>
+      report.warning("Using cold alias", Trace.position)
+      Bottom
+
     case Bottom =>
       Bottom
 
     case ref: Ref =>
-      checkArgs()
-
       val isLocal = !meth.owner.isClass
       val target =
         if !needResolve then
@@ -276,26 +310,7 @@ object Objects:
           // See tests/init/pos/Type.scala
           Bottom
 
-    case OfType(tp) =>
-      checkArgs()
-
-      if meth.exists && meth.isEffectivelyFinal then
-        if meth.hasSource then
-          val isLocal = meth.owner.isClass
-          val ddef = meth.defTree.asInstanceOf[DefDef]
-          extendTrace(ddef) {
-            eval(ddef.rhs, value, meth.owner.enclosingClass.asClass, cacheResult = true)
-          }
-        else
-          Bottom
-      else
-        // TODO: approximate call with instantiated types
-        report.warning("Virtual method call ", Trace.position)
-        Bottom
-
     case Fun(expr, thisV, klass) =>
-      checkArgs()
-
       // meth == NoSymbol for poly functions
       if meth.name.toString == "tupled" then
         value // a call like `fun.tupled`
@@ -320,7 +335,7 @@ object Objects:
       if ctor.hasSource then
         val cls = ctor.owner.enclosingClass.asClass
         val ddef = ctor.defTree.asInstanceOf[DefDef]
-        val args2 = args.map(_.value).widenArgs
+        val args2 = args.map(_.value).widen
         addParamsAsFields(args2, ref, ddef)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -339,6 +354,10 @@ object Objects:
 
   def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + thisV, printer, (_: Value).show) {
     thisV match
+    case Cold =>
+      report.warning("Using cold alias", Trace.position)
+      Bottom
+
     case ref: Ref =>
       val target = if needResolve then resolve(ref.klass, field) else field
       if target.is(Flags.Lazy) then
@@ -373,17 +392,6 @@ object Objects:
           // See tests/init/pos/Type.scala
           Bottom
 
-    case OfType(tp) =>
-      if field.isEffectivelyFinal then
-        if field.hasSource then
-          val vdef = field.defTree.asInstanceOf[ValDef]
-          eval(vdef.rhs, thisV, field.owner.enclosingClass.asClass, cacheResult = true)
-        else
-          Bottom
-      else
-        val fieldType = tp.memberInfo(field)
-        OfType(fieldType)
-
     case fun: Fun =>
       report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show + Trace.show, fun.expr)
       Bottom
@@ -403,19 +411,14 @@ object Objects:
       report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show + Trace.show, Trace.position)
       Bottom
 
-    case value: (Bottom.type | ObjectRef | OfClass | OfType) =>
+    case value: (Bottom.type | ObjectRef | OfClass | Cold) =>
+      // The outer can be a bottom value for top-level classes.
+
       // widen the outer to finitize the domain
-      val outerWidened = outer.widenArg
-      val argsWidened = args.map(_.value).widenArgs
+      val outerWidened = outer.widen
+      val argsWidened = args.map(_.value).widen
 
-      // TODO: type arguments
-      val tp = value match
-        case v: ObjectRef => v.klass.typeRef.memberInfo(klass)
-        case v: OfClass   => v.tp.memberInfo(klass)
-        case v: OfType    => v.tp.memberInfo(klass)
-        case Bottom       => klass.typeRef
-
-      val instance = OfClass(tp, klass, outerWidened, ctor, argsWidened)
+      val instance = OfClass(klass, outerWidened, ctor, argsWidened)
       val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
       callConstructor(instance, ctor, argInfos2)
       instance
@@ -693,11 +696,10 @@ object Objects:
         Bottom
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
-        // - params and var definitions are abstract by its type
-        // - evaluate the rhs of the local definition for val definitions
         val sym = tmref.symbol
         if sym.isOneOf(Flags.Param | Flags.Mutable) then
-          OfType(sym.info)
+          // TODO: handle environment parameters and mutation differently
+          Cold
         else if sym.is(Flags.Package) then
           Bottom
         else if sym.hasSource then
@@ -705,7 +707,7 @@ object Objects:
           eval(rhs, thisV, klass)
         else
           // pattern-bound variables
-          OfType(sym.info)
+          Cold
 
       case tmref: TermRef =>
         val sym = tmref.symbol
@@ -880,6 +882,7 @@ object Objects:
     else
       thisV match
         case Bottom => Bottom
+        case Cold => Cold
         case ref: Ref =>
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !ref.hasOuter(klass) then
@@ -893,8 +896,6 @@ object Objects:
         case fun: Fun =>
           report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
           Bottom
-        case OfType(tp) =>
-          OfType(target.appliedRef)
   }
 
   /** Compute the outer value that correspond to `tref.prefix`
