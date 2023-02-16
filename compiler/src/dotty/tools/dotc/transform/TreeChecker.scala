@@ -141,7 +141,7 @@ class TreeChecker extends Phase with SymTransformer {
       override def apply(parent: Tree, tree: Tree)(using Context): Tree = {
         tree match {
           case tree: New if !parent.isInstanceOf[tpd.Select] =>
-            assert(assertion = false, i"`New` node must be wrapped in a `Select`:\n  parent = ${parent.show}\n  child = ${tree.show}")
+            assert(assertion = false, i"`New` node must be wrapped in a `Select` of the constructor:\n  parent = ${parent.show}\n  child = ${tree.show}")
           case _: Annotated =>
             // Don't check inside annotations, since they're allowed to contain
             // somewhat invalid trees.
