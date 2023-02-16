@@ -164,10 +164,20 @@ trait QuotesAndSplices {
       case pt: TypeBounds => pt
       case _ => TypeBounds.empty
 
-    def warnOnInferredBounds(typeSym: Symbol) =
+    def openQuote = if ctx.mode.is(Mode.QuotedExprPattern) then "'{" else "'["
+    def closeQuote = if ctx.mode.is(Mode.QuotedExprPattern) then "}" else "]"
+
+    def warnOnUnusedBounds(typeSym: Symbol) =
       if !(typeSymInfo =:= TypeBounds.empty) && !(typeSym.info <:< typeSymInfo) then
-        val (openQuote, closeQuote) = if ctx.mode.is(Mode.QuotedExprPattern) then ("'{", "}") else ("'[", "]")
         report.warning(em"Ignored bound$typeSymInfo\n\nConsider defining bounds explicitly:\n  $openQuote $typeSym${typeSym.info & typeSymInfo}; ... $closeQuote", tree.srcPos)
+
+    def warnOnInferredBounds(typeSym: Symbol) =
+      if !(typeSymInfo =:= TypeBounds.empty) then
+        if ctx.mode.is(Mode.QuotedExprPattern) then // TODO drop this guard once SIP-53 is non-experimental
+          // TODO state in the message when this will no longer work.
+          //   - We could stabilize SIP-53 and start deprecation warnings for type quoted patterns in 3.4.0.
+          //   - Then we could drop type variable inference 3.5.0.
+          report.deprecationWarning(em"Type variable `$tree` has partially inferred bounds$typeSymInfo.\n\nConsider defining bounds explicitly:\n  $openQuote $typeSym$typeSymInfo; ... $closeQuote", tree.srcPos)
 
     getQuotedPatternTypeVariable(tree.name.asTypeName) match
       case Some(typeSym) =>
@@ -175,7 +185,7 @@ trait QuotesAndSplices {
           "support for multiple references to the same type (without backticks) in quoted type patterns (SIP-53)",
           tree.srcPos,
           "\n\nSIP-53: https://docs.scala-lang.org/sips/quote-pattern-type-variable-syntax.html")
-        warnOnInferredBounds(typeSym)
+        warnOnUnusedBounds(typeSym)
         ref(typeSym)
       case None =>
         val spliceContext = quotePatternSpliceContext
@@ -183,6 +193,7 @@ trait QuotesAndSplices {
         val nameOfSyntheticGiven = PatMatGivenVarName.fresh(tree.name.toTermName)
         val expr = untpd.cpy.Ident(tree)(nameOfSyntheticGiven)
         val typeSym = newSymbol(spliceContext.owner, name, EmptyFlags, typeSymInfo, NoSymbol, tree.span)
+        warnOnInferredBounds(typeSym)
         typeSym.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)))
         addQuotedPatternTypeVariable(typeSym)
         val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(using spliceContext)
@@ -536,8 +547,12 @@ trait QuotesAndSplices {
 object QuotesAndSplices {
   import tpd._
 
+  private enum QuotePattenKind:
+    case Expr, Type
+
   /** Key for mapping from quoted pattern type variable names into their symbol */
   private val TypeVariableKey = new Property.Key[collection.mutable.Map[TypeName, Symbol]]
+  private val QuotePattenKindKey = new Property.Key[QuotePattenKind]
 
   /** Get the symbol for the quoted pattern type variable if it exists */
   def getQuotedPatternTypeVariable(name: TypeName)(using Context): Option[Symbol] =

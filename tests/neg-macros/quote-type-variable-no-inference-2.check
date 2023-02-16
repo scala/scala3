@@ -1,12 +1,19 @@
--- Warning: tests/neg-macros/quote-type-variable-no-inference-2.scala:5:22 ---------------------------------------------
-5 |    case '{ $_ : F[t, t]; () } => // warn // error
+-- Deprecation Warning: tests/neg-macros/quote-type-variable-no-inference-2.scala:7:19 ---------------------------------
+7 |    case '{ $_ : F[t, t]; () } => // warn // error
+  |                   ^
+  |                   Type variable `t` has partially inferred bounds <: Int.
+  |
+  |                   Consider defining bounds explicitly:
+  |                     '{ type t <: Int; ... }
+-- Warning: tests/neg-macros/quote-type-variable-no-inference-2.scala:7:22 ---------------------------------------------
+7 |    case '{ $_ : F[t, t]; () } => // warn // error
   |                      ^
   |                      Ignored bound <: Double
   |
   |                      Consider defining bounds explicitly:
   |                        '{ type t <: Int & Double; ... }
--- [E057] Type Mismatch Error: tests/neg-macros/quote-type-variable-no-inference-2.scala:5:12 --------------------------
-5 |    case '{ $_ : F[t, t]; () } => // warn // error
+-- [E057] Type Mismatch Error: tests/neg-macros/quote-type-variable-no-inference-2.scala:7:12 --------------------------
+7 |    case '{ $_ : F[t, t]; () } => // warn // error
   |            ^
   |            Type argument t does not conform to upper bound Double in inferred type F[t, t]
   |

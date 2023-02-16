@@ -1,3 +1,5 @@
+// scalac: -deprecation
+
 import scala.quoted.*
 
 def test2(x: Expr[Any])(using Quotes) =
