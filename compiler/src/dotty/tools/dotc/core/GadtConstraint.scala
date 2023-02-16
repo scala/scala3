@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Contexts.*, Decorators.*, Symbols.*, Types.*
+import NameKinds.UniqueName
 import config.Printers.{gadts, gadtsConstr}
 import util.{SimpleIdentitySet, SimpleIdentityMap}
 import printing._
@@ -71,16 +72,29 @@ class GadtConstraint private (
     externalize(constraint.nonParamBounds(param)).bounds
 
   def fullLowerBound(param: TypeParamRef)(using Context): Type =
-    constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
-      (t, u) => t | externalize(u)
+    val self = externalize(param)
+    constraint.minLower(param).foldLeft(nonParamBounds(param).lo) { (acc, p) =>
+      externalize(p) match
+        // drop any lower param that is a GADT symbol
+        // and is upper-bounded by a non-Any super-type of the original parameter
+        // e.g. in pos/i14287.min
+        // B$1 had info <: X   and fullBounds >: B$2 <: X, and
+        // B$2 had info <: B$1 and fullBounds <: B$1
+        // We can use the info of B$2 to drop the lower-bound of B$1
+        // and return non-bidirectional bounds B$1 <: X and B$2 <: B$1.
+        case tp: TypeRef if tp.symbol.isPatternBound && self =:= tp.info.hiBound => acc
+        case tp => acc | tp
     }
 
   def fullUpperBound(param: TypeParamRef)(using Context): Type =
-    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (t, u) =>
-      val eu = externalize(u)
-      // Any as the upper bound means "no bound", but if F is higher-kinded,
-      // Any & F = F[_]; this is wrong for us so we need to short-circuit
-      if t.isAny then eu else t & eu
+    val self = externalize(param)
+    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (acc, u) =>
+      externalize(u) match
+        case tp: TypeRef if tp.symbol.isPatternBound && self =:= tp.info.loBound => acc // like fullLowerBound
+        case tp =>
+          // Any as the upper bound means "no bound", but if F is higher-kinded,
+          // Any & F = F[_]; this is wrong for us so we need to short-circuit
+          if acc.isAny then tp else acc & tp
     }
 
   def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match
