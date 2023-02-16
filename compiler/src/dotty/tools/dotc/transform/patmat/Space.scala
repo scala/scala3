@@ -78,15 +78,12 @@ case object Empty extends Space
  *
  */
 case class Typ(tp: Type, decomposed: Boolean = true) extends Space:
-  private var myCanDecompose: java.lang.Boolean = _
   private var myDecompose: List[Typ] = _
 
-  def canDecompose(using Context): Boolean =
-    if myCanDecompose == null then myCanDecompose = SpaceEngine.canDecompose(tp)
-    myCanDecompose
+  def canDecompose(using Context): Boolean = decompose != SpaceEngine.ListOfTypNoType
 
   def decompose(using Context): List[Typ] =
-    if myDecompose == null then myDecompose = SpaceEngine.decompose(tp)
+    if myDecompose == null then myDecompose = SpaceEngine.decompose(tp).map(Typ(_, decomposed = true))
     myDecompose
 end Typ
 
@@ -104,7 +101,7 @@ object SpaceEngine {
     case Prod(tp, fun, spaces) =>
       val sps = spaces.mapconserve(simplify)
       if sps.contains(Empty) then Empty
-      else if canDecompose(tp) && decompose(tp).isEmpty then Empty
+      else if decompose(tp).isEmpty then Empty
       else if sps eq spaces then space else Prod(tp, fun, sps)
     case Or(spaces) =>
       val spaces2 = spaces.map(simplify).filter(_ != Empty)
@@ -112,7 +109,7 @@ object SpaceEngine {
       else if spaces2.lengthIs == 1 then spaces2.head
       else if spaces2.corresponds(spaces)(_ eq _) then space else Or(spaces2)
     case typ: Typ =>
-      if canDecompose(typ) && decompose(typ).isEmpty then Empty
+      if decompose(typ).isEmpty then Empty
       else space
     case _ => space
   })
@@ -583,43 +580,53 @@ object SpaceEngine {
   def decompose(typ: Typ)(using Context): List[Typ]  = typ.decompose
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
-  def decompose(tp: Type)(using Context): List[Typ] = trace(i"decompose($tp)", debug, showSpaces) {
-    def rec(tp: Type, mixins: List[Type]): List[Type] = tp.dealias match {
+  def decompose(tp: Type)(using Context): List[Type] = trace(i"decompose($tp)", debug) {
+    var lastType:  Type       = NoType
+    var lastParts: List[Type] = Nil
+    def dec(tp: Type)    =
+      if tp eq lastType then lastParts
+      else
+        lastType = tp
+        lastParts = decompose(tp)
+        lastParts
+    def canDec(tp: Type) =
+      lastParts = dec(tp)
+      lastParts != ListOfNoType
+
+    def rec(tp: Type, mixins: List[Type]): List[Type] = tp.dealias match
       case AndType(tp1, tp2) =>
-        def decomposeComponent(tpA: Type, tpB: Type): List[Type] =
-          rec(tpA, tpB :: mixins).collect {
-            case tp if tp <:< tpB                              => tp
-            case tp if tpB <:< tp                              => tpB
-            case tp if !TypeComparer.provablyDisjoint(tp, tpB) => AndType(tp, tpB)
-          }
+        var tpB   = tp2
+        var parts = rec(tp1, tp2 :: mixins)
+        if parts == ListOfNoType then
+          tpB   = tp1
+          parts = rec(tp2, tp1 :: mixins)
+        if parts == ListOfNoType then ListOfNoType
+        else parts.collect:
+          case tp if tp <:< tpB                              => tp
+          case tp if tpB <:< tp                              => tpB
+          case tp if !TypeComparer.provablyDisjoint(tp, tpB) => AndType(tp, tpB)
 
-        if canDecompose(tp1) then
-          decomposeComponent(tp1, tp2)
-        else
-          decomposeComponent(tp2, tp1)
+      case OrType(tp1, tp2)                            => List(tp1, tp2)
+      case _: SingletonType                            => ListOfNoType
+      case tp if tp.isRef(defn.BooleanClass)           => List(ConstantType(Constant(true)), ConstantType(Constant(false)))
+      case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
+      case tp if tp.classSymbol.isAllOf(JavaEnumTrait) => tp.classSymbol.children.map(_.termRef)
+      case tp: NamedType if canDec(tp.prefix)          => dec(tp.prefix).map(tp.derivedSelect)
 
-      case OrType(tp1, tp2) => List(tp1, tp2)
-      case tp if tp.isRef(defn.BooleanClass) =>
-        List(
-          ConstantType(Constant(true)),
-          ConstantType(Constant(false))
-        )
-      case tp if tp.isRef(defn.UnitClass) =>
-        ConstantType(Constant(())) :: Nil
-      case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
-        tp.classSymbol.children.map(_.termRef)
-
-      case tp @ AppliedType(tycon, targs) if tp.classSymbol.children.isEmpty && canDecompose(tycon) =>
+      case tp @ AppliedType(tycon, targs) if tp.classSymbol.children.isEmpty && canDec(tycon) =>
         // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
         // But this is guarded by `tp.classSymbol.children.isEmpty`,
         // meaning we'll decompose to the same class, just not the same type.
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
-        rec(tycon, Nil).map(tp.derivedAppliedType(_, targs))
+        dec(tycon).map(tp.derivedAppliedType(_, targs))
 
-      case tp: NamedType if canDecompose(tp.prefix) =>
-        rec(tp.prefix, Nil).map(tp.derivedSelect)
-
-      case tp =>
+      case tp if {
+        val cls = tp.classSymbol
+        cls.is(Sealed)
+        && cls.isOneOf(AbstractOrTrait)
+        && !cls.hasAnonymousChild
+        && cls.children.nonEmpty
+      } =>
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
@@ -646,33 +653,17 @@ object SpaceEngine {
           if inhabited(refined) then refined
           else NoType
         }.filter(_.exists)
-
         debug.println(i"$tp decomposes to $parts")
-
         parts
-    }
-    rec(tp, Nil).map(Typ(_, decomposed = true))
+
+      case _ => ListOfNoType
+    end rec
+
+    rec(tp, Nil)
   }
 
-  /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
-  def canDecompose(tp: Type)(using Context): Boolean =
-    val res = tp.dealias match
-      case AppliedType(tycon, _) if canDecompose(tycon) => true
-      case tp: NamedType if canDecompose(tp.prefix) => true
-      case _: SingletonType => false
-      case _: OrType => true
-      case AndType(tp1, tp2) => canDecompose(tp1) || canDecompose(tp2)
-      case _ =>
-        val cls = tp.classSymbol
-        cls.is(Sealed)
-        && cls.isOneOf(AbstractOrTrait)
-        && !cls.hasAnonymousChild
-        && cls.children.nonEmpty
-        || cls.isAllOf(JavaEnumTrait)
-        || tp.isRef(defn.BooleanClass)
-        || tp.isRef(defn.UnitClass)
-    //debug.println(s"decomposable: ${tp.show} = $res")
-    res
+  val ListOfNoType    = List(NoType)
+  val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
 
   /** Show friendly type name with current scope in mind
    *
