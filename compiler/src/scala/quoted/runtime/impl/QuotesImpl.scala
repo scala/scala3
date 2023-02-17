@@ -3139,18 +3139,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     val matchings = QuoteMatcher.treeMatch(scrutinee, pat1)(using ctx1)
 
-    if typeHoles.isEmpty then matchings
-    else {
-      // After matching and doing all subtype checks, we have to approximate all the type bindings
-      // that we have found, seal them in a quoted.Type and add them to the result
-      def typeHoleApproximation(sym: Symbol) =
-        val fromAboveAnnot = sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)
-        val fullBounds = ctx1.gadt.fullBounds(sym)
-        val tp = if fromAboveAnnot then fullBounds.hi else fullBounds.lo
-        reflect.TypeReprMethods.asType(tp)
-      matchings.map { tup =>
-        Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
-      }
+    // After matching and doing all subtype checks, we have to approximate all the type bindings
+    // that we have found, seal them in a quoted.Type and add them to the result
+    def typeHoleApproximation(sym: Symbol) =
+      val fromAboveAnnot = sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)
+      val fullBounds = ctx1.gadt.fullBounds(sym)
+      val tp = if fromAboveAnnot then fullBounds.hi else fullBounds.lo
+      reflect.TypeReprMethods.asType(tp)
+    matchings.map { tup =>
+      val results = typeHoles.map(typeHoleApproximation) ++ tup
+      Tuple.fromIArray(results.toArray.asInstanceOf[IArray[Object]])
     }
   }
 

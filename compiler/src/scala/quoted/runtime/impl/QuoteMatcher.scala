@@ -1,7 +1,6 @@
 package scala.quoted
 package runtime.impl
 
-
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
@@ -9,6 +8,7 @@ import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.util.optional
 
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
@@ -103,12 +103,13 @@ import dotty.tools.dotc.core.Symbols.*
 object QuoteMatcher {
   import tpd.*
 
-  // TODO improve performance
-
   // TODO use flag from Context. Maybe -debug or add -debug-macros
   private inline val debug = false
 
-  import Matching._
+  /** Sequence of matched expressions.
+   *  These expressions are part of the scrutinee and will be bound to the quote pattern term splices.
+   */
+  type MatchingExprs = Seq[Expr[Any]]
 
   /** A map relating equivalent symbols from the scrutinee and the pattern
     *  For example in
@@ -121,19 +122,20 @@ object QuoteMatcher {
 
   private def withEnv[T](env: Env)(body: Env ?=> T): T = body(using env)
 
-  def treeMatch(scrutineeTree: Tree, patternTree: Tree)(using Context): Option[Tuple] =
+  def treeMatch(scrutineeTree: Tree, patternTree: Tree)(using Context): Option[MatchingExprs] =
     given Env = Map.empty
-    scrutineeTree =?= patternTree
+    optional:
+      scrutineeTree =?= patternTree
 
   /** Check that all trees match with `mtch` and concatenate the results with &&& */
-  private def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => Matching): Matching = (l1, l2) match {
+  private def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => MatchingExprs): optional[MatchingExprs] = (l1, l2) match {
     case (x :: xs, y :: ys) => mtch(x, y) &&& matchLists(xs, ys)(mtch)
     case (Nil, Nil) => matched
     case _ => notMatched
   }
 
   extension (scrutinees: List[Tree])
-    private def =?= (patterns: List[Tree])(using Env, Context): Matching =
+    private def =?= (patterns: List[Tree])(using Env, Context): optional[MatchingExprs] =
       matchLists(scrutinees, patterns)(_ =?= _)
 
   extension (scrutinee0: Tree)
@@ -144,9 +146,9 @@ object QuoteMatcher {
       *  @param scrutinee The tree being matched
       *  @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
       *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
-      *  @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
+      *  @return `None` if it did not match or `Some(tup: MatchingExprs)` if it matched where `tup` contains the contents of the holes.
       */
-    private def =?= (pattern0: Tree)(using Env, Context): Matching =
+    private def =?= (pattern0: Tree)(using Env, Context): optional[MatchingExprs] =
 
       /* Match block flattening */ // TODO move to cases
       /** Normalize the tree */
@@ -431,7 +433,6 @@ object QuoteMatcher {
       case _ => scrutinee
     val pattern = patternTree.symbol
 
-
     devirtualizedScrutinee == pattern
     || summon[Env].get(devirtualizedScrutinee).contains(pattern)
     || devirtualizedScrutinee.allOverriddenSymbols.contains(pattern)
@@ -452,32 +453,16 @@ object QuoteMatcher {
       accumulator.apply(Set.empty, term)
   }
 
-  /** Result of matching a part of an expression */
-  private type Matching = Option[Tuple]
+  private inline def notMatched: optional[MatchingExprs] =
+    optional.break()
 
-  private object Matching {
+  private inline def matched: MatchingExprs =
+    Seq.empty
 
-    def notMatched: Matching = None
+  private inline def matched(tree: Tree)(using Context): MatchingExprs =
+    Seq(new ExprImpl(tree, SpliceScope.getCurrent))
 
-    val matched: Matching = Some(Tuple())
-
-    def matched(tree: Tree)(using Context): Matching =
-      Some(Tuple1(new ExprImpl(tree, SpliceScope.getCurrent)))
-
-    extension (self: Matching)
-      def asOptionOfTuple: Option[Tuple] = self
-
-      /** Concatenates the contents of two successful matchings or return a `notMatched` */
-      def &&& (that: => Matching): Matching = self match {
-        case Some(x) =>
-          that match {
-            case Some(y) => Some(x ++ y)
-            case _ => None
-          }
-        case _ => None
-      }
-    end extension
-
-  }
+  extension (self: MatchingExprs)
+    private inline def &&& (that: MatchingExprs): MatchingExprs = self ++ that
 
 }
