@@ -1618,9 +1618,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         }
         else {
           val (protoFormals, _) = decomposeProtoFunction(pt, 1, tree.srcPos)
-          val checkMode =
-            if (pt.isRef(defn.PartialFunctionClass)) desugar.MatchCheck.None
-            else desugar.MatchCheck.Exhaustive
+          val checkMode = desugar.MatchCheck.Exhaustive
           typed(desugar.makeCaseLambda(tree.cases, checkMode, protoFormals.length).withSpan(tree.span), pt)
         }
       case _ =>

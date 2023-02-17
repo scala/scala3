@@ -9,7 +9,7 @@ import TypeUtils._
 import Contexts._
 import Flags._
 import ast._
-import Decorators._
+import Decorators.{ show => _, * }
 import Symbols._
 import StdNames._
 import NameOps._
@@ -25,6 +25,8 @@ import util.{SrcPos, NoSourcePosition}
 
 import scala.annotation.internal.sharable
 import scala.collection.mutable
+
+import SpaceEngine.*
 
 /* Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -57,7 +59,6 @@ import scala.collection.mutable
 
 /** space definition */
 sealed trait Space:
-  import SpaceEngine.*
 
   @sharable private val isSubspaceCache = mutable.HashMap.empty[Space, Boolean]
 
@@ -95,14 +96,14 @@ case object Empty extends Space
 case class Typ(tp: Type, decomposed: Boolean = true) extends Space:
   private var myDecompose: List[Typ] | Null = null
 
-  def canDecompose(using Context): Boolean = decompose != SpaceEngine.ListOfTypNoType
+  def canDecompose(using Context): Boolean = decompose != ListOfTypNoType
 
   def decompose(using Context): List[Typ] =
     val decompose = myDecompose
     if decompose == null then
       val decompose = tp match
-        case SpaceEngine.Parts(parts) => parts.map(Typ(_, decomposed = true))
-        case _                        => SpaceEngine.ListOfTypNoType
+        case Parts(parts) => parts.map(Typ(_, decomposed = true))
+        case _            => ListOfTypNoType
       myDecompose = decompose
       decompose
     else decompose
@@ -346,7 +347,7 @@ object SpaceEngine {
   }
 
   /** Return the space that represents the pattern `pat` */
-  def project(pat: Tree)(using Context): Space = pat match {
+  def project(pat: Tree)(using Context): Space = trace(i"project($pat ${pat.className} ${pat.tpe})", debug, show)(pat match {
     case Literal(c) =>
       if (c.value.isInstanceOf[Symbol])
         Typ(c.value.asInstanceOf[Symbol].termRef, decomposed = false)
@@ -407,7 +408,7 @@ object SpaceEngine {
     case _ =>
       // Pattern is an arbitrary expression; assume a skolem (i.e. an unknown value) of the pattern type
       Typ(pat.tpe.narrow, decomposed = false)
-  }
+  })
 
   private def project(tp: Type)(using Context): Space = tp match {
     case OrType(tp1, tp2) => Or(project(tp1) :: project(tp2) :: Nil)
@@ -461,16 +462,23 @@ object SpaceEngine {
    *  If `isValue` is true, then pattern-bound symbols are erased to its upper bound.
    *  This is needed to avoid spurious unreachable warnings. See tests/patmat/i6197.scala.
    */
-  private def erase(tp: Type, inArray: Boolean = false, isValue: Boolean = false)(using Context): Type = trace(i"$tp erased to", debug) {
-
-    tp match {
+  private def erase(tp: Type, inArray: Boolean = false, isValue: Boolean = false)(using Context): Type =
+    trace(i"erase($tp${if inArray then " inArray" else ""}${if isValue then " isValue" else ""})", debug)(tp match {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isPatternBound =>
         WildcardType
 
       case tp @ AppliedType(tycon, args) =>
         val args2 =
-          if (tycon.isRef(defn.ArrayClass)) args.map(arg => erase(arg, inArray = true, isValue = false))
-          else args.map(arg => erase(arg, inArray = false, isValue = false))
+          if tycon.isRef(defn.ArrayClass) then
+            args.map(arg => erase(arg, inArray = true, isValue = false))
+          else tycon.typeParams.lazyZip(args).map { (tparam, arg) =>
+            if isValue && tparam.paramVarianceSign == 0 then
+              // when matching against a value,
+              // any type argument for an invariant type parameter will be unchecked,
+              // meaning it won't fail to match against anything; thus the wildcard replacement
+              WildcardType
+            else erase(arg, inArray = false, isValue = false)
+          }
         tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
@@ -488,8 +496,7 @@ object SpaceEngine {
         else WildcardType
 
       case _ => tp
-    }
-  }
+    })
 
   /** Space of the pattern: unapplySeq(a, b, c: _*)
    */
@@ -873,16 +880,11 @@ object SpaceEngine {
     case _                                          => tp
   })
 
-  def checkExhaustivity(_match: Match)(using Context): Unit = {
-    val Match(sel, cases) = _match
-    debug.println(i"checking exhaustivity of ${_match}")
-
-    if (!exhaustivityCheckable(sel)) return
-
-    val selTyp = toUnderlying(sel.tpe).dealias
+  def checkExhaustivity(m: Match)(using Context): Unit = if exhaustivityCheckable(m.selector) then trace(i"checkExhaustivity($m)", debug) {
+    val selTyp = toUnderlying(m.selector.tpe).dealias
     debug.println(i"selTyp = $selTyp")
 
-    val patternSpace = Or(cases.foldLeft(List.empty[Space]) { (acc, x) =>
+    val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
       val space = if (x.guard.isEmpty) project(x.pat) else Empty
       debug.println(s"${x.pat.show} ====> ${show(space)}")
       space :: acc
@@ -899,7 +901,7 @@ object SpaceEngine {
     if uncovered.nonEmpty then
       val hasMore = uncovered.lengthCompare(6) > 0
       val deduped = dedup(uncovered.take(6))
-      report.warning(PatternMatchExhaustivity(showSpaces(deduped), hasMore), sel.srcPos)
+      report.warning(PatternMatchExhaustivity(showSpaces(deduped), hasMore), m.selector)
   }
 
   private def redundancyCheckable(sel: Tree)(using Context): Boolean =
@@ -912,14 +914,10 @@ object SpaceEngine {
     && !sel.tpe.widen.isRef(defn.QuotedExprClass)
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
-  def checkRedundancy(_match: Match)(using Context): Unit = {
-    val Match(sel, _) = _match
-    val cases = _match.cases.toIndexedSeq
-    debug.println(i"checking redundancy in $_match")
+  def checkRedundancy(m: Match)(using Context): Unit = if redundancyCheckable(m.selector) then trace(i"checkRedundancy($m)", debug) {
+    val cases = m.cases.toIndexedSeq
 
-    if (!redundancyCheckable(sel)) return
-
-    val selTyp = toUnderlying(sel.tpe).dealias
+    val selTyp = toUnderlying(m.selector.tpe).dealias
     debug.println(i"selTyp = $selTyp")
 
     val isNullable = selTyp.classSymbol.isNullableClass
@@ -953,6 +951,7 @@ object SpaceEngine {
         for (pat <- deferred.reverseIterator)
           report.warning(MatchCaseUnreachable(), pat.srcPos)
         if pat != EmptyTree // rethrow case of catch uses EmptyTree
+            && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
             && isSubspace(covered, prev)
         then {
           val nullOnly = isNullable && i == len - 1 && isWildcardArg(pat)
