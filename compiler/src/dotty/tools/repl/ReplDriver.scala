@@ -187,19 +187,34 @@ class ReplDriver(settings: Array[String],
   // TODO: i5069
   final def bind(name: String, value: Any)(using state: State): State = state
 
+  /**
+   * Controls whether the `System.out` and `System.err` streams are set to the provided constructor parameter instance
+   * of [[java.io.PrintStream]] during the execution of the repl. On by default.
+   *
+   * Disabling this can be beneficial when executing a repl instance inside a concurrent environment, for example a
+   * thread pool (such as the Scala compile server in the Scala Plugin for IntelliJ IDEA).
+   *
+   * In such environments, indepently executing `System.setOut` and `System.setErr` without any synchronization can
+   * lead to unpredictable results when restoring the original streams (dependent on the order of execution), leaving
+   * the Java process in an inconsistent state.
+   */
+  protected def redirectOutput: Boolean = true
+
   // redirecting the output allows us to test `println` in scripted tests
   private def withRedirectedOutput(op: => State): State = {
-    val savedOut = System.out
-    val savedErr = System.err
-    try {
-      System.setOut(out)
-      System.setErr(out)
-      op
-    }
-    finally {
-      System.setOut(savedOut)
-      System.setErr(savedErr)
-    }
+    if redirectOutput then
+      val savedOut = System.out
+      val savedErr = System.err
+      try {
+        System.setOut(out)
+        System.setErr(out)
+        op
+      }
+      finally {
+        System.setOut(savedOut)
+        System.setErr(savedErr)
+      }
+    else op
   }
 
   private def newRun(state: State, reporter: StoreReporter = newStoreReporter) = {
