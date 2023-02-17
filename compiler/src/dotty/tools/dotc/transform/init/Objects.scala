@@ -108,8 +108,8 @@ object Objects:
     def show(using Context) = "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ")"
 
   object OfClass:
-    def apply(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using State.Data, Context): OfClass =
-      val instance = new OfClass(klass, outer, ctor, args, State.currentObject)
+    def apply(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], owner: ClassSymbol)(using Context): OfClass =
+      val instance = new OfClass(klass, outer, ctor, args, owner)
       instance.updateOuter(klass, outer)
       instance
 
@@ -129,7 +129,8 @@ object Objects:
     def show(using Context) = refs.map(_.show).mkString("[", ",", "]")
 
   /** A cold alias which should not be used during initialization. */
-  case object Cold extends Value
+  case object Cold extends Value:
+    def show(using Context) = "Cold"
 
   val Bottom = RefSet(Nil)
 
@@ -146,13 +147,8 @@ object Objects:
     end Data
 
     def getHeap()(using data: Data): Heap.Data = data.heap
-
-    def containsAddress(addr: Addr)(using data: Data): Value = Heap.contains(addr)(using data.heap)
-
-    def readAddress(addr: Addr)(using data: Data): Value = Heap.read(addr)(using data.heap)
-
-    def writeAddress(addr: Addr, value: Value)(using data: Data): Data =
-      data.heap = Heap.write(addr, value)(using data.heap)
+    def setHeap(heap: Heap.Data)(using data: Data) =
+      data.heap = heap
 
     def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last
 
@@ -181,7 +177,7 @@ object Objects:
     val empty: Data = Map.empty
 
     def apply(x: Symbol)(using data: Data): Value = data(x)
-    def contains(x: Symbol)(using data: Data): Value = data.contains(x)
+    def contains(x: Symbol)(using data: Data): Boolean = data.contains(x)
     def of(map: Map[Symbol, Value]): Data = map
 
   /** Abstract heap for mutable fields
@@ -190,20 +186,26 @@ object Objects:
    *  information.
    */
   object Heap:
-    case class Addr(ref: Ref, field: Symbol):
+    private case class Addr(ref: Ref, field: Symbol):
       def show(using Context) = "Addr(" + ref.show + ", " + field.show + ")"
 
     opaque type Data = Map[Addr, Value]
 
     val empty: Data = Map.empty
 
-    def contains(addr: Addr)(using data: Data): Value = data.contains(addr)
+    def contains(ref: Ref, field: Symbol)(using state: State.Data): Boolean =
+      val data: Data = State.getHeap()
+      data.contains(Addr(ref, field))
 
-    def read(addr: Addr)(using data: Data): Value = data(addr)
+    def read(ref: Ref, field: Symbol)(using state: State.Data): Value =
+      val data: Data = State.getHeap()
+      data(Addr(ref, field))
 
-    def write(addr: Addr, value: Value)(using data: Data): Data =
-      val current = data.getOrElse(addr, bottom)
-      data.updated(addr, value.join(current))
+    def write(ref: Ref, field: Symbol, value: Value)(using state: State.Data): Unit =
+      val addr = Addr(ref, field)
+      val data: Data = State.getHeap()
+      val current = data.getOrElse(addr, Bottom)
+      State.setHeap(data.updated(addr, value.join(current)))
 
   /** Cache used to terminate the check  */
   object Cache:
@@ -212,11 +214,11 @@ object Objects:
 
     class Data extends Cache[Config, Res]:
       def get(thisV: Value, expr: Tree)(using State.Data, Env.Data): Option[Value] =
-        val config = Config(thisV, summonp[Env.Data], State.getHeap())
+        val config = Config(thisV, summon[Env.Data], State.getHeap())
         super.get(config, expr).map(_.value)
 
       def cachedEval(thisV: Value, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using State.Data, Env.Data): Value =
-        val config = Config(thisV, summonp[Env.Data], State.getHeap())
+        val config = Config(thisV, summon[Env.Data], State.getHeap())
         val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, State.getHeap())) { expr =>
           Res(fun(expr), State.getHeap())
         }
@@ -225,7 +227,7 @@ object Objects:
 
   inline def cache(using c: Cache.Data): Cache.Data = c
 
-  type Contextual[T] = (Context, State.Data, Cache.Data, Trace) ?=> T
+  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Trace) ?=> T
 
   // --------------------------- domain operations -----------------------------
 
@@ -244,17 +246,23 @@ object Objects:
       case (a, b)                             => RefSet(a :: b :: Nil)
 
     def widen(using Context): Value =
-      def widenInternal(tp: Type, fuel: Int): Value =
-        tp match
+      def widenInternal(value: Value, fuel: Int): Value =
+        value match
         case Bottom => Bottom
-        case RefSet(refs) => refs.map(ref => widenInternal(ref, fuel)).join
-        case OfClass(klass, outer, args, init, owner) =>
+
+        case RefSet(refs) =>
+          refs.map(ref => widenInternal(ref, fuel)).join
+
+        case Fun(expr, thisV, klass) =>
+          Fun(expr, widenInternal(thisV, fuel), klass)
+
+        case ref @ OfClass(klass, outer, init, args, owner) =>
           if fuel == 0 then
             Cold
           else
             val outer2 = widenInternal(outer, fuel - 1)
-            val args2 = args.map(arg => widenInternal(fuel - 1))
-            OfClass(klass, outer2, args2, init, owner)
+            val args2 = args.map(arg => widenInternal(arg, fuel - 1))
+            OfClass(klass, outer2, init, args2, owner)
         case _ => a
 
       widenInternal(a, 3)
@@ -370,7 +378,7 @@ object Objects:
       else if target.exists then
         if target.isOneOf(Flags.Mutable) then
           if ref.owner == State.currentObject then
-            State.readAddress(Heap.Addr(thisV, vdef.symbol), res)
+            Heap.read(ref, field)
           else
             report.warning("Reading mutable state of " + ref.owner.show + " during initialization of " + State.currentObject + " is discouraged as it breaks initialization-time irrelevance. Calling trace: " + Trace.show, Trace.position)
             Bottom
@@ -416,13 +424,14 @@ object Objects:
       Bottom
 
     case RefSet(refs) =>
-      refs.map(ref => assign(ref, field, value)).join
+      refs.map(ref => assign(ref, field, rhs)).join
 
     case ref: Ref =>
-      if receiver.owner != State.currentObject then
-        withTrace(trace2) { errorMutateOtherStaticObject(State.currentObject, receiver.owner) }
+      if ref.owner != State.currentObject then
+        errorMutateOtherStaticObject(State.currentObject, ref.owner)
+        Bottom
       else
-        State.writeAddress(Heap.Addr(ref, field), rhs)
+        Heap.write(ref, field, rhs)
         Bottom
   }
 
@@ -433,14 +442,14 @@ object Objects:
       report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show + Trace.show, Trace.position)
       Bottom
 
-    case value: (Bottom.type | ObjectRef | OfClass | Cold) =>
+    case value: (Bottom.type | ObjectRef | OfClass | Cold.type) =>
       // The outer can be a bottom value for top-level classes.
 
       // widen the outer to finitize the domain
       val outerWidened = outer.widen
       val argsWidened = args.map(_.value).widen
 
-      val instance = OfClass(klass, outerWidened, ctor, argsWidened)
+      val instance = OfClass(klass, outerWidened, ctor, argsWidened, State.currentObject)
       val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
       callConstructor(instance, ctor, argInfos2)
       instance
@@ -464,6 +473,7 @@ object Objects:
         count += 1
 
         given Trace = Trace.empty.add(classSym.defTree)
+        given env: Env.Data = Env.empty
 
         log("Iteration " + count) {
           init(tpl, ObjectRef(classSym), classSym)
@@ -626,7 +636,7 @@ object Objects:
               extendTrace(id) { evalType(prefix, thisV, klass) }
 
         val value = eval(rhs, thisV, klass)
-        assign(receiver, lhs.symbol, value)
+        withTrace(trace2) { assign(receiver, lhs.symbol, value) }
 
       case closureDef(ddef) =>
         Fun(ddef.rhs, thisV, klass)
@@ -719,7 +729,11 @@ object Objects:
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         val sym = tmref.symbol
         if sym.is(Flags.Mutable) then
-          State.readAddress(Heap.Address(thisV, sym))
+          val ownerClass = sym.enclosingClass
+          val ownerValue = resolveThis(ownerClass.asClass, thisV, klass)
+          // local mutable fields are associated with the object
+          select(ownerValue, sym, ownerClass.thisType, needResolve = false)
+
         else if sym.is(Flags.Param) then
           // TODO: handle environment parameters and mutation differently
           Cold
@@ -878,7 +892,7 @@ object Objects:
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val res = eval(vdef.rhs, thisV, klass)
         if vdef.symbol.is(Flags.Mutable) then
-          State.writeAddress(Heap.Addr(thisV, vdef.symbol), res)
+          Heap.write(thisV, vdef.symbol, res)
         else
           thisV.updateField(vdef.symbol, res)
 
