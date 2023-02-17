@@ -3137,18 +3137,27 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         ctx1.gadtState.addToConstraint(typeHoles)
         ctx1
 
-    val matchings = QuoteMatcher.treeMatch(scrutinee, pat1)(using ctx1)
-
     // After matching and doing all subtype checks, we have to approximate all the type bindings
     // that we have found, seal them in a quoted.Type and add them to the result
     def typeHoleApproximation(sym: Symbol) =
       val fromAboveAnnot = sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)
       val fullBounds = ctx1.gadt.fullBounds(sym)
-      val tp = if fromAboveAnnot then fullBounds.hi else fullBounds.lo
-      reflect.TypeReprMethods.asType(tp)
-    matchings.map { tup =>
-      val results = typeHoles.map(typeHoleApproximation) ++ tup
-      Tuple.fromIArray(results.toArray.asInstanceOf[IArray[Object]])
+      if fromAboveAnnot then fullBounds.hi else fullBounds.lo
+
+    QuoteMatcher.treeMatch(scrutinee, pat1)(using ctx1).map { matchings =>
+      import QuoteMatcher.MatchResult.*
+      lazy val spliceScope = SpliceScope.getCurrent
+      val typeHoleApproximations = typeHoles.map(typeHoleApproximation)
+      val typeHoleMapping = Map(typeHoles.zip(typeHoleApproximations)*)
+      val typeHoleMap = new Types.TypeMap {
+          def apply(tp: Types.Type): Types.Type = tp match
+            case Types.TypeRef(Types.NoPrefix, _) => typeHoleMapping.getOrElse(tp.typeSymbol, tp)
+            case _ => mapOver(tp)
+      }
+      val matchedExprs = matchings.map(_.toExpr(typeHoleMap, spliceScope))
+      val matchedTypes = typeHoleApproximations.map(reflect.TypeReprMethods.asType)
+      val results = matchedTypes ++ matchedExprs
+      Tuple.fromIArray(IArray.unsafeFromArray(results.toArray))
     }
   }
 

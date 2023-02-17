@@ -109,7 +109,7 @@ object QuoteMatcher {
   /** Sequence of matched expressions.
    *  These expressions are part of the scrutinee and will be bound to the quote pattern term splices.
    */
-  type MatchingExprs = Seq[Expr[Any]]
+  type MatchingExprs = Seq[MatchResult]
 
   /** A map relating equivalent symbols from the scrutinee and the pattern
     *  For example in
@@ -141,12 +141,13 @@ object QuoteMatcher {
   extension (scrutinee0: Tree)
 
     /** Check that the trees match and return the contents from the pattern holes.
-      *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
+      *  Return a sequence containing all the contents in the holes.
+      *  If it does not match, continues to the `optional` with `None`.
       *
       *  @param scrutinee The tree being matched
       *  @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
       *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
-      *  @return `None` if it did not match or `Some(tup: MatchingExprs)` if it matched where `tup` contains the contents of the holes.
+      *  @return The sequence with the contents of the holes of the matched expression.
       */
     private def =?= (pattern0: Tree)(using Env, Context): optional[MatchingExprs] =
 
@@ -205,31 +206,12 @@ object QuoteMatcher {
         // Matches an open term and wraps it into a lambda that provides the free variables
         case Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil)
             if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
-          def hoasClosure = {
-            val names: List[TermName] = args.map {
-              case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
-              case arg => arg.symbol.name.asTermName
-            }
-            val argTypes = args.map(x => x.tpe.widenTermRefExpr)
-            val methTpe = MethodType(names)(_ => argTypes, _ => pattern.tpe)
-            val meth = newAnonFun(ctx.owner, methTpe)
-            def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
-              val argsMap = args.map(_.symbol).zip(lambdaArgss.head).toMap
-              val body = new TreeMap {
-                override def transform(tree: Tree)(using Context): Tree =
-                  tree match
-                    case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
-                    case tree => super.transform(tree)
-              }.transform(scrutinee)
-              TreeOps(body).changeNonLocalOwners(meth)
-            }
-            Closure(meth, bodyFn)
-          }
+          val env = summon[Env]
           val capturedArgs = args.map(_.symbol)
-          val captureEnv = summon[Env].filter((k, v) => !capturedArgs.contains(v))
+          val captureEnv = env.filter((k, v) => !capturedArgs.contains(v))
           withEnv(captureEnv) {
             scrutinee match
-              case ClosedPatternTerm(scrutinee) => matched(hoasClosure)
+              case ClosedPatternTerm(scrutinee) => matchedOpen(scrutinee, pattern.tpe, args, env)
               case _ => notMatched
           }
 
@@ -453,6 +435,52 @@ object QuoteMatcher {
       accumulator.apply(Set.empty, term)
   }
 
+  enum MatchResult:
+    /** Closed pattern extracted value
+     *  @param tree Scrutinee sub-tree that matched
+     */
+    case ClosedTree(tree: Tree)
+    /** HOAS pattern extracted value
+     *
+     *  @param tree Scrutinee sub-tree that matched
+     *  @param patternTpe Type of the pattern hole (from the pattern)
+     *  @param args HOAS arguments (from the pattern)
+     *  @param env Mapping between scrutinee and pattern variables
+     */
+    case OpenTree(tree: Tree, patternTpe: Type, args: List[Tree], env: Env)
+
+    /** Return the expression that was extracted from a hole.
+     *
+     *  If it was a closed expression it returns that expression. Otherwise,
+     *  if it is a HOAS pattern, the surrounding lambda is generated using
+     *  `mapTypeHoles` to create the signature of the lambda.
+     *
+     *  This expression is assumed to be a valid expression in the given splice scope.
+     */
+    def toExpr(mapTypeHoles: TypeMap, spliceScope: Scope)(using Context): Expr[Any] = this match
+      case MatchResult.ClosedTree(tree) =>
+        new ExprImpl(tree, spliceScope)
+      case MatchResult.OpenTree(tree, patternTpe, args, env) =>
+        val names: List[TermName] = args.map {
+          case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
+          case arg => arg.symbol.name.asTermName
+        }
+        val paramTypes = args.map(x => mapTypeHoles(x.tpe.widenTermRefExpr))
+        val methTpe = MethodType(names)(_ => paramTypes, _ => mapTypeHoles(patternTpe))
+        val meth = newAnonFun(ctx.owner, methTpe)
+        def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
+          val argsMap = args.view.map(_.symbol).zip(lambdaArgss.head).toMap
+          val body = new TreeMap {
+            override def transform(tree: Tree)(using Context): Tree =
+              tree match
+                case tree: Ident => env.get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
+                case tree => super.transform(tree)
+          }.transform(tree)
+          TreeOps(body).changeNonLocalOwners(meth)
+        }
+        val hoasClosure = Closure(meth, bodyFn)
+        new ExprImpl(hoasClosure, spliceScope)
+
   private inline def notMatched: optional[MatchingExprs] =
     optional.break()
 
@@ -460,9 +488,14 @@ object QuoteMatcher {
     Seq.empty
 
   private inline def matched(tree: Tree)(using Context): MatchingExprs =
-    Seq(new ExprImpl(tree, SpliceScope.getCurrent))
+    Seq(MatchResult.ClosedTree(tree))
+
+  private def matchedOpen(tree: Tree, patternTpe: Type, args: List[Tree], env: Env)(using Context): MatchingExprs =
+    Seq(MatchResult.OpenTree(tree, patternTpe, args, env))
 
   extension (self: MatchingExprs)
-    private inline def &&& (that: MatchingExprs): MatchingExprs = self ++ that
+      /** Concatenates the contents of two successful matchings */
+      def &&& (that: MatchingExprs): MatchingExprs = self ++ that
+  end extension
 
 }
