@@ -266,7 +266,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
           val saved = state.nn.constraint
           val result =
-            ctx.gadt.rollbackGadtUnless {
+            ctx.gadtState.rollbackGadtUnless {
               tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
                 val variance = param.paramVarianceSign
                 if variance == 0 || assumeInvariantRefinement ||

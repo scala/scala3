@@ -687,8 +687,8 @@ object TypeOps:
             val bound1 = massage(bound)
             if (bound1 ne bound) {
               if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds
-              if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addToConstraint(sym)
-              checkCtx.gadt.addBound(sym, bound1, fromBelow)
+              if (!checkCtx.gadt.contains(sym)) checkCtx.gadtState.addToConstraint(sym)
+              checkCtx.gadtState.addBound(sym, bound1, fromBelow)
               typr.println("install GADT bound $bound1 for when checking F-bounded $sym")
             }
           }
@@ -872,7 +872,7 @@ object TypeOps:
         case tp: TypeRef if tp.symbol.exists && !tp.symbol.isClass => foldOver(tp.symbol :: xs, tp)
         case tp                                => foldOver(xs, tp)
     val syms2 = getAbstractSymbols(Nil, tp2).reverse
-    if syms2.nonEmpty then ctx.gadt.addToConstraint(syms2)
+    if syms2.nonEmpty then ctx.gadtState.addToConstraint(syms2)
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to

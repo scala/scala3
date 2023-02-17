@@ -71,6 +71,9 @@ abstract class Constraint extends Showable {
    */
   def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds
 
+  /** The current bounds of type parameter `param` */
+  def bounds(param: TypeParamRef)(using Context): TypeBounds
+
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
    *  @param tvars   A list of type variables associated with the params,

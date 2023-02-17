@@ -269,7 +269,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case CaseDef(pat, _, _) =>
           val gadtCtx =
            pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
-             case Some(gadt) => ctx.fresh.setGadt(gadt)
+             case Some(gadt) => ctx.fresh.setGadtState(GadtState(gadt))
              case None =>
                ctx
           super.transform(tree)(using gadtCtx)
