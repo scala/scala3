@@ -309,6 +309,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 thirdTryNamed(tp2)
               else
                 (  (tp1.name eq tp2.name)
+                && !sym1.is(Private)
                 && tp2.isPrefixDependentMemberRef
                 && isSubPrefix(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
