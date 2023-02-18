@@ -80,7 +80,7 @@ class CheckUnused extends MiniPhase:
     ctx
 
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
-    if tree.symbol.exists then 
+    if tree.symbol.exists then
       unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
     else if tree.hasType then
       unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
@@ -621,7 +621,7 @@ object CheckUnused:
         (sym.is(Param) || sym.isAllOf(PrivateParamAccessor | Local, butNot = CaseAccessor)) &&
         !isSyntheticMainParam(sym) &&
         !sym.shouldNotReportParamOwner &&
-        (!sym.exists || !sym.owner.isAllOf(Synthetic | PrivateLocal))
+        (!sym.exists || !(sym.owner.isAllOf(Synthetic | PrivateLocal) || sym.owner.is(Accessor)))
 
       private def shouldReportPrivateDef(using Context): Boolean =
         currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
