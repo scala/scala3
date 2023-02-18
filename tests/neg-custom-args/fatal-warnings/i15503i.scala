@@ -142,3 +142,12 @@ package foo.test.i16822:
     val x = ExampleEnum.List // OK
     println(x) // OK
   }
+
+package foo.test.i16877:
+  import scala.collection.immutable.HashMap // OK
+  import scala.annotation.StaticAnnotation // OK
+
+  class ExampleAnnotation(val a: Object) extends StaticAnnotation // OK
+
+  @ExampleAnnotation(new HashMap()) // OK
+  class Test //OK
