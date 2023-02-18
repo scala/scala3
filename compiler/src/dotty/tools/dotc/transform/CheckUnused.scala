@@ -621,7 +621,7 @@ object CheckUnused:
         (sym.is(Param) || sym.isAllOf(PrivateParamAccessor | Local, butNot = CaseAccessor)) &&
         !isSyntheticMainParam(sym) &&
         !sym.shouldNotReportParamOwner &&
-        (!sym.exists || !sym.owner.isAllOf(Synthetic | PrivateLocal))
+        (!sym.exists || !(sym.owner.isAllOf(Synthetic | PrivateLocal) || sym.owner.is(Accessor)))
 
       private def shouldReportPrivateDef(using Context): Boolean =
         currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
