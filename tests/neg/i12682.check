@@ -7,17 +7,20 @@
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  | The identifier m is ambiguous because a binding of lower precedence
+  | The identifier m is ambiguous because a name binding of lower precedence
   | in an inner scope cannot shadow a binding with higher precedence in
   | an outer scope.
   |
-  | The precedence of the different kinds of bindings, from highest to lowest, is:
+  | The precedence of the different kinds of name bindings, from highest to lowest, is:
   |  - Definitions in an enclosing scope
   |  - Inherited definitions and top-level definitions in packages
-  |  - Names introduced by imports
-  |  - Named imports take precedence over wildcard imports
+  |  - Names introduced by import of a specific name
+  |  - Names introduced by wildcard import
   |  - Definitions from packages in other files
   | Note:
+  |  - As a rule, definitions take precedence over imports.
+  |  - Definitions in an enclosing scope take precedence over inherited definitions,
+  |    which can result in ambiguities in nested classes.
   |  - When importing, you can avoid naming conflicts by renaming:
   |    import scala.{m => mTick}
    ---------------------------------------------------------------------------------------------------------------------
@@ -30,16 +33,19 @@
    |--------------------------------------------------------------------------------------------------------------------
    | Explanation (enabled by `-explain`)
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   | The identifier m is ambiguous because two bindings of equal precedence
+   | The identifier m is ambiguous because two name bindings of equal precedence
    | were introduced in the same scope.
    |
-   | The precedence of the different kinds of bindings, from highest to lowest, is:
+   | The precedence of the different kinds of name bindings, from highest to lowest, is:
    |  - Definitions in an enclosing scope
    |  - Inherited definitions and top-level definitions in packages
-   |  - Names introduced by imports
-   |  - Named imports take precedence over wildcard imports
+   |  - Names introduced by import of a specific name
+   |  - Names introduced by wildcard import
    |  - Definitions from packages in other files
    | Note:
+   |  - As a rule, definitions take precedence over imports.
+   |  - Definitions in an enclosing scope take precedence over inherited definitions,
+   |    which can result in ambiguities in nested classes.
    |  - When importing, you can avoid naming conflicts by renaming:
    |    import scala.{m => mTick}
     --------------------------------------------------------------------------------------------------------------------

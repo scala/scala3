@@ -1334,21 +1334,24 @@ class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec
 
   def explain(using Context) =
     val precedent =
-      if newPrec == prevPrec then                 """two bindings of equal precedence
+      if newPrec == prevPrec then                 """two name bindings of equal precedence
         |were introduced in the same scope.""".stripMargin
-      else                                        """a binding of lower precedence
+      else                                        """a name binding of lower precedence
         |in an inner scope cannot shadow a binding with higher precedence in
         |an outer scope.""".stripMargin
 
     i"""|The identifier $name is ambiguous because $precedent
         |
-        |The precedence of the different kinds of bindings, from highest to lowest, is:
+        |The precedence of the different kinds of name bindings, from highest to lowest, is:
         | - Definitions in an enclosing scope
         | - Inherited definitions and top-level definitions in packages
-        | - Names introduced by imports
-        | - Named imports take precedence over wildcard imports
+        | - Names introduced by import of a specific name
+        | - Names introduced by wildcard import
         | - Definitions from packages in other files
         |Note:
+        | - As a rule, definitions take precedence over imports.
+        | - Definitions in an enclosing scope take precedence over inherited definitions,
+        |   which can result in ambiguities in nested classes.
         | - When importing, you can avoid naming conflicts by renaming:
         |   ${hl("import")} scala.{$name => ${name.show}Tick}
         |"""
