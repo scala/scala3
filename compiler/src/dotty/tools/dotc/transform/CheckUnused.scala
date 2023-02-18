@@ -28,6 +28,7 @@ import dotty.tools.dotc.core.Types.ConstantType
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
 import dotty.tools.dotc.core.Types.TermRef
 import dotty.tools.dotc.core.Types.NameFilter
+import dotty.tools.dotc.core.Symbols.Symbol
 
 
 
@@ -103,6 +104,7 @@ class CheckUnused extends MiniPhase:
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
     _key.unusedDataApply{ud =>
       // do not register the ValDef generated for `object`
+      traverseAnnotations(tree.symbol)
       if !tree.symbol.is(Module) then
         ud.registerDef(tree)
       ud.addIgnoredUsage(tree.symbol)
@@ -112,6 +114,7 @@ class CheckUnused extends MiniPhase:
     _key.unusedDataApply{ ud =>
       import ud.registerTrivial
       tree.registerTrivial
+      traverseAnnotations(tree.symbol)
       ud.registerDef(tree)
       ud.addIgnoredUsage(tree.symbol)
     }
@@ -119,11 +122,13 @@ class CheckUnused extends MiniPhase:
   override def prepareForTypeDef(tree: tpd.TypeDef)(using Context): Context =
     _key.unusedDataApply{ ud =>
       if !tree.symbol.is(Param) then // Ignore type parameter (as Scala 2)
+        traverseAnnotations(tree.symbol)
         ud.registerDef(tree)
         ud.addIgnoredUsage(tree.symbol)
     }
 
   override def prepareForBind(tree: tpd.Bind)(using Context): Context =
+    traverseAnnotations(tree.symbol)
     _key.unusedDataApply(_.registerPatVar(tree))
 
   override def prepareForTypeTree(tree: tpd.TypeTree)(using Context): Context =
@@ -232,6 +237,10 @@ class CheckUnused extends MiniPhase:
       case AnnotatedType(_, annot) => dt(_.registerUsed(annot.symbol, None))
       case _ => traverseChildren(tp)
 
+  /** This traverse the annotations of the symbol */
+  private def traverseAnnotations(sym: Symbol)(using Context): Unit =
+    sym.denot.annotations.foreach(annot => traverser.traverse(annot.tree))
+
   /** Do the actual reporting given the result of the anaylsis */
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
     import CheckUnused.WarnTypes
@@ -274,7 +283,6 @@ object CheckUnused:
   private class UnusedData:
     import dotty.tools.dotc.transform.CheckUnused.UnusedData.UnusedResult
     import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack}
-    import dotty.tools.dotc.core.Symbols.Symbol
     import UnusedData.ScopeType
 
     /** The current scope during the tree traversal */
@@ -324,11 +332,6 @@ object CheckUnused:
       execInNewScope
       popScope()
 
-    /** Register all annotations of this symbol's denotation */
-    def registerUsedAnnotation(sym: Symbol)(using Context): Unit =
-      val annotSym = sym.denot.annotations.map(_.symbol)
-      annotSym.foreach(s => registerUsed(s, None))
-
     /**
      * Register a found (used) symbol along with its name
      *
@@ -363,8 +366,6 @@ object CheckUnused:
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
     def registerDef(memDef: tpd.MemberDef)(using Context): Unit =
-      // register the annotations for usage
-      registerUsedAnnotation(memDef.symbol)
       if memDef.isValidMemberDef then
         if memDef.isValidParam then
           if memDef.symbol.isOneOf(GivenOrImplicit) then
@@ -378,7 +379,6 @@ object CheckUnused:
 
     /** Register pattern variable */
     def registerPatVar(patvar: tpd.Bind)(using Context): Unit =
-      registerUsedAnnotation(patvar.symbol)
       if !patvar.symbol.isUnusedAnnot then
         patVarsInScope += patvar
 
