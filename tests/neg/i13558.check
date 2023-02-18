@@ -8,8 +8,8 @@
    |
    |                failed with:
    |
-   |                    Reference to id is ambiguous,
-   |                    it is both imported by import testcode.ExtensionB._
+   |                    Reference to id is ambiguous.
+   |                    It is both imported by import testcode.ExtensionB._
    |                    and imported subsequently by import testcode.ExtensionA._
 -- [E008] Not Found Error: tests/neg/i13558.scala:29:14 ----------------------------------------------------------------
 29 |    println(a.id) // error
@@ -21,6 +21,6 @@
    |
    |                failed with:
    |
-   |                    Reference to id is ambiguous,
-   |                    it is both imported by import testcode.ExtensionA._
+   |                    Reference to id is ambiguous.
+   |                    It is both imported by import testcode.ExtensionA._
    |                    and imported subsequently by import testcode.ExtensionB._
