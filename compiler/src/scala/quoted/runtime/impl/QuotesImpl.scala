@@ -1865,7 +1865,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given SuperTypeMethods: SuperTypeMethods with
       extension (self: SuperType)
         def thistpe: TypeRepr = self.thistpe
-        def supertpe: TypeRepr = self.thistpe
+        def supertpe: TypeRepr = self.supertpe
       end extension
     end SuperTypeMethods
 

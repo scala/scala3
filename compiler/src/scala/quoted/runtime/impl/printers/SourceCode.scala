@@ -1189,12 +1189,12 @@ object SourceCode {
         }
 
       case SuperType(thistpe, supertpe) =>
-        printType(supertpe)
+        printType(thistpe)
         this += highlightTypeDef(".super")
 
       case TypeLambda(paramNames, tparams, body) =>
         inSquare(printMethodicTypeParams(paramNames, tparams))
-        this += highlightTypeDef(" => ")
+        this += highlightTypeDef(" =>> ")
         printType(body)
 
       case ParamRef(lambda, idx) =>
