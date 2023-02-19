@@ -1,7 +1,7 @@
 package concurrent
 
 import scala.collection.mutable, mutable.ListBuffer
-import scala.util.boundary
+import fiberRuntime.boundary
 import scala.compiletime.uninitialized
 import scala.util.{Try, Success, Failure}
 import scala.annotation.unchecked.uncheckedVariance
@@ -15,11 +15,6 @@ trait Future[+T] extends Async.OriginalSource[Try[T]], Cancellable:
    *  or rethrow exception in case of failure.
    */
   def value(using async: Async): T
-
-  /** Block thread until future is completed and return result
-   *  N.B. This should be parameterized with a timeout.
-   */
-  def force(): T
 
   /** Eventually stop computation of this future and fail with
    *  a `Cancellation` exception. Also cancel all children.
@@ -81,10 +76,6 @@ object Future:
     def value(using async: Async): T =
       async.await(this).get
 
-    def force(): T = synchronized:
-      while !hasCompleted do wait()
-      result.get
-
     /** Complete future with result. If future was cancelled in the meantime,
      *  return a CancellationException failure instead.
      *  Note: @uncheckedVariance is safe here since `complete` is called from
@@ -99,8 +90,6 @@ object Future:
         this.result = result
         hasCompleted = true
       for listener <- extract(waiting) do listener(result)
-      synchronized:
-        notifyAll()
 
   end CoreFuture
 
@@ -151,7 +140,8 @@ object Future:
      *  If either task succeeds, succeed with the success that was returned first
      *  and cancel the other. Otherwise, fail with the failure that was returned last.
      */
-    def alt[T2 >: T1](f2: Future[T2])(using Async.Config): Future[T2] = Future:
+    def alt[T2 >: T1](f2: Future[T2], name: String = "alt")(using Async.Config): Future[T2] = Future:
+      boundary.setName(name)
       Async.await(Async.either(f1, f2)) match
         case Left(Success(x1))    => f2.cancel(); x1
         case Right(Success(x2))   => f1.cancel(); x2
@@ -210,5 +200,5 @@ def add(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
 end add
 
 def Main(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Int =
-  add(x, xs).force()
+  Async.blocking(add(x, xs).value)
 

@@ -1,7 +1,7 @@
 package concurrent
 import scala.collection.mutable, mutable.ListBuffer
-import scala.util.boundary, boundary.Label
-import runtime.suspend
+import fiberRuntime.boundary, boundary.Label
+import fiberRuntime.suspend
 import java.util.concurrent.CancellationException
 import Async.{Listener, await}
 

@@ -1,8 +1,8 @@
 package concurrent
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
-import runtime.suspend
-import scala.util.boundary
+import fiberRuntime.suspend
+import fiberRuntime.boundary
 
 /** A context that allows to suspend waiting for asynchronous data sources
  */
@@ -53,22 +53,47 @@ object Async:
       checkCancellation()
       src.poll().getOrElse:
         try
+          var result: Option[T] = None
           suspend[T, Unit]: k =>
             src.onComplete: x =>
               scheduler.schedule: () =>
-                k.resume(x)
+                result = Some(x)
+                k.resume()
               true // signals to `src` that result `x` was consumed
+          result.get
         finally checkCancellation()
 
   end Impl
+
+  private class Blocking(val scheduler: Scheduler = Scheduler) extends Async:
+
+    def root = Cancellable.empty
+
+    protected def checkCancellation(): Unit = ()
+
+    private var hasResumed = false
+
+    def await[T](src: Source[T]): T = synchronized:
+      src.poll() match
+        case Some(x) => x
+        case None =>
+          var result: Option[T] = None
+          src.onComplete: x =>
+            synchronized:
+              result = Some(x)
+              notify()
+            true
+          while result.isEmpty do wait()
+          result.get
+
+  def blocking[T](body: Async ?=> T, scheduler: Scheduler = Scheduler): T =
+    body(using Blocking())
 
   /** The currently executing Async context */
   inline def current(using async: Async): Async = async
 
   /** Await source result in currently executing Async context */
   inline def await[T](src: Source[T])(using async: Async): T = async.await(src)
-
-
 
   /** A function `T => Boolean` whose lineage is recorded by its implementing
    *  classes. The Listener function accepts values of type `T` and returns
