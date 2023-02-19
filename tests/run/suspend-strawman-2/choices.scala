@@ -14,7 +14,7 @@ def choices[T](body: Choice ?=> T): Seq[T] =
 
 def choose[A](choices: A*)(using c: Choice): A = c.choose(choices*)
 
-@main def test: Seq[Int] =
+def TestChoices: Seq[Int] =
   choices:
     def x = choose(1, -2, -3)
     def y = choose("ab", "cde")
