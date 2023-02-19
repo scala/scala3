@@ -2,7 +2,7 @@ package simpleFutures
 
 import scala.collection.mutable.ListBuffer
 import scala.util.boundary, boundary.Label
-import runtime.*
+import runtime.suspend
 import concurrent.Scheduler
 
 trait Async:

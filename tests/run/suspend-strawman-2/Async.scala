@@ -95,7 +95,7 @@ object Async:
   trait Source[+T]:
 
     /** If data is available at present, pass it to function `k`
-     *  and return the result of this call.
+     *  and return the result of this call. Otherwise return false.
      *  `k` returns true iff the data was consumed in an async block.
      *  Calls to `poll` are always synchronous.
      */
@@ -121,6 +121,19 @@ object Async:
       resultOpt
 
   end Source
+
+  /** An original source has a standard definition of `onCopmplete` in terms
+   *  of `poll` and `addListener`.
+   */
+  abstract class OriginalSource[+T] extends Source[T]:
+
+    /** Add `k` to the listener set of this source */
+    protected def addListener(k: Listener[T]): Unit
+
+    def onComplete(k: Listener[T]): Unit = synchronized:
+      if !poll(k) then addListener(k)
+
+  end OriginalSource
 
   /** A source that transforms an original source in some way */
   abstract class DerivedSource[T, U](val original: Source[T]) extends Source[U]:

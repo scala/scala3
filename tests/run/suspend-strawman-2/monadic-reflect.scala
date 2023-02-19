@@ -1,5 +1,5 @@
 import scala.util.boundary
-import runtime.*
+import runtime.suspend
 
 trait Monad[F[_]]:
 

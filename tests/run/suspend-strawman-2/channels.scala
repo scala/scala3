@@ -8,7 +8,7 @@ import Async.{Listener, await}
 /** An unbounded asynchronous channel. Senders do not wait for matching
  *  readers.
  */
-class UnboundedChannel[T] extends Async.Source[T]:
+class UnboundedChannel[T] extends Async.OriginalSource[T]:
 
   private val pending = ListBuffer[T]()
   private val waiting = mutable.Set[Listener[T]]()
@@ -37,8 +37,8 @@ class UnboundedChannel[T] extends Async.Source[T]:
   def poll(k: Listener[T]): Boolean = synchronized:
     drainPending(k)
 
-  def onComplete(k: Listener[T]): Unit = synchronized:
-    if !drainPending(k) then waiting += k
+  def addListener(k: Listener[T]): Unit = synchronized:
+    waiting += k
 
   def dropListener(k: Listener[T]): Unit = synchronized:
     waiting -= k
@@ -79,20 +79,20 @@ object SyncChannel:
       var r: Option[T] = None
       if k2 { x => r = Some(x); true } then r else None
 
-    val canRead = new Async.Source[T]:
+    val canRead = new Async.OriginalSource[T]:
       def poll(k: Listener[T]): Boolean =
         link(pendingSends, sender => collapse(sender).map(k) == Some(true))
-      def onComplete(k: Listener[T]): Unit =
-        if !poll(k) then pendingReads += k
-      def dropListener(k: Listener[T]): Unit =
+      def addListener(k: Listener[T]) = synchronized:
+        pendingReads += k
+      def dropListener(k: Listener[T]): Unit = synchronized:
         pendingReads -= k
 
-    val canSend = new Async.Source[Listener[T]]:
+    val canSend = new Async.OriginalSource[Listener[T]]:
       def poll(k: Listener[Listener[T]]): Boolean =
         link(pendingReads, k(_))
-      def onComplete(k: Listener[Listener[T]]): Unit =
-        if !poll(k) then pendingSends += k
-      def dropListener(k: Listener[Listener[T]]): Unit =
+      def addListener(k: Listener[Listener[T]]) = synchronized:
+        pendingSends += k
+      def dropListener(k: Listener[Listener[T]]): Unit = synchronized:
         pendingSends -= k
 
 end SyncChannel

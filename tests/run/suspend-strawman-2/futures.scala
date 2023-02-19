@@ -9,7 +9,7 @@ import java.util.concurrent.CancellationException
 
 /** A cancellable future that can suspend waiting for other asynchronous sources
  */
-trait Future[+T] extends Async.Source[Try[T]], Cancellable:
+trait Future[+T] extends Async.OriginalSource[Try[T]], Cancellable:
 
   /** Wait for this future to be completed, return its value in case of success,
    *  or rethrow exception in case of failure.
@@ -56,10 +56,10 @@ object Future:
     def poll(k: Async.Listener[Try[T]]): Boolean =
       hasCompleted && k(result)
 
-    def onComplete(k: Async.Listener[Try[T]]): Unit = synchronized:
-      if !poll(k) then waiting += k
+    def addListener(k: Async.Listener[Try[T]]): Unit = synchronized:
+      waiting += k
 
-    def dropListener(k: Async.Listener[Try[T]]): Unit =
+    def dropListener(k: Async.Listener[Try[T]]): Unit = synchronized:
       waiting -= k
 
     // Cancellable method implementations
