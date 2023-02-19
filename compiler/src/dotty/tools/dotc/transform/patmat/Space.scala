@@ -67,11 +67,15 @@ sealed trait Space:
       isSubspaceCache.getOrElseUpdate(b, computeIsSubspace(this, b))
     }
 
-  private var mySimplified: Space = _
+  private var mySimplified: Space | Null = _
 
   def simplify(using Context): Space =
-    if mySimplified == null then mySimplified = SpaceEngine.computeSimplify(this)
-    mySimplified
+    val simplified = mySimplified
+    if simplified == null then
+      val simplified = SpaceEngine.computeSimplify(this)
+      mySimplified = simplified
+      simplified
+    else simplified
 end Space
 
 /** Empty space */
@@ -84,15 +88,19 @@ case object Empty extends Space
  *
  */
 case class Typ(tp: Type, decomposed: Boolean = true) extends Space:
-  private var myDecompose: List[Typ] = _
+  private var myDecompose: List[Typ] | Null = _
 
   def canDecompose(using Context): Boolean = decompose != SpaceEngine.ListOfTypNoType
 
   def decompose(using Context): List[Typ] =
-    if myDecompose == null then myDecompose = tp match
-      case SpaceEngine.Parts(parts) => parts.map(Typ(_, decomposed = true))
-      case _                        => SpaceEngine.ListOfTypNoType
-    myDecompose
+    val decompose = myDecompose
+    if decompose == null then
+      val decompose = tp match
+        case SpaceEngine.Parts(parts) => parts.map(Typ(_, decomposed = true))
+        case _                        => SpaceEngine.ListOfTypNoType
+      myDecompose = decompose
+      decompose
+    else decompose
 end Typ
 
 /** Space representing an extractor pattern */
