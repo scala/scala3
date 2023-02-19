@@ -65,6 +65,7 @@ object Async:
 
   end Impl
 
+  /** An implementation of Async that blocks the running thread when waiting */
   private class Blocking(val scheduler: Scheduler = Scheduler) extends Async:
 
     def root = Cancellable.empty
@@ -73,19 +74,21 @@ object Async:
 
     private var hasResumed = false
 
-    def await[T](src: Source[T]): T = synchronized:
-      src.poll() match
-        case Some(x) => x
-        case None =>
-          var result: Option[T] = None
-          src.onComplete: x =>
-            synchronized:
-              result = Some(x)
-              notify()
-            true
+    def await[T](src: Source[T]): T =
+      src.poll().getOrElse:
+        var result: Option[T] = None
+        src.onComplete: x =>
+          synchronized:
+            result = Some(x)
+            notify()
+          true
+        synchronized:
           while result.isEmpty do wait()
           result.get
 
+  /** Execute asynchronous computation `body` on currently running thread.
+   *  The thread will suspend when the computation waits.
+   */
   def blocking[T](body: Async ?=> T, scheduler: Scheduler = Scheduler): T =
     body(using Blocking())
 

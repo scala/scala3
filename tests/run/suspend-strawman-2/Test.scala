@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import concurrent.*
 import fiberRuntime.boundary.setName
 
