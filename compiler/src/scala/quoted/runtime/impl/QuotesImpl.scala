@@ -2167,11 +2167,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end PolyTypeMethods
 
-    type TypeLambda = dotc.core.Types.TypeLambda
+    type TypeLambda = dotc.core.Types.HKTypeLambda
 
     object TypeLambdaTypeTest extends TypeTest[TypeRepr, TypeLambda]:
       def unapply(x: TypeRepr): Option[TypeLambda & x.type] = x match
-        case tpe: (Types.TypeLambda & x.type) => Some(tpe)
+        case tpe: (Types.HKTypeLambda & x.type) => Some(tpe)
         case _ => None
     end TypeLambdaTypeTest
 
