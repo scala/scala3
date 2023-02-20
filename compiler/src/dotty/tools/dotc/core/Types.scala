@@ -2182,7 +2182,7 @@ object Types {
 
 // --- NamedTypes ------------------------------------------------------------------
 
-  abstract class NamedType extends CachedProxyType, ValueType { self =>
+  abstract class NamedType extends CachedProxyType, ValueType, Product { self =>
 
     type ThisType >: this.type <: NamedType
     type ThisName <: Name
@@ -2190,6 +2190,8 @@ object Types {
     val prefix: Type
     def designator: Designator
     protected def designator_=(d: Designator): Unit
+    def _1: Type
+    def _2: Designator
 
     assert(NamedType.validPrefix(prefix), s"invalid prefix $prefix")
 
@@ -2905,6 +2907,7 @@ object Types {
     def apply(prefix: Type, designator: Name, denot: Denotation)(using Context): NamedType =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
+    def unapply(tp: NamedType): NamedType = tp
 
     def validPrefix(prefix: Type): Boolean = prefix.isValueType || (prefix eq NoPrefix)
   }

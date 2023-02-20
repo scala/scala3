@@ -611,11 +611,11 @@ object SpaceEngine {
           case tp if !TypeComparer.provablyDisjoint(tp, tpB) => AndType(tp, tpB)
 
       case OrType(tp1, tp2)                            => List(tp1, tp2)
-      case _: SingletonType                            => ListOfNoType
       case tp if tp.isRef(defn.BooleanClass)           => List(ConstantType(Constant(true)), ConstantType(Constant(false)))
       case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) => tp.classSymbol.children.map(_.termRef)
-      case tp @ TypeRef(Parts(parts), _)               => parts.map(tp.derivedSelect)
+      case tp @ NamedType(Parts(parts), _)             => parts.map(tp.derivedSelect)
+      case _: SingletonType                            => ListOfNoType
 
       case tp @ AppliedType(Parts(parts), targs) if tp.classSymbol.children.isEmpty =>
         // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
