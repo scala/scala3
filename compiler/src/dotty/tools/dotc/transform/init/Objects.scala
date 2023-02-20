@@ -36,14 +36,7 @@ import scala.annotation.tailrec
  *
  *  At the high-level, the analysis has the following characteristics:
  *
- *  1. It is inter-procedural and flow-sensitive.
- *
- *  2. It is object-sensitive by default and parameter-sensitive on-demand.
- *
- *  3. The check is modular in the sense that each object is checked separately and there is no
- *     whole-program analysis. However, the check is not modular in terms of project boundaries.
- *
- *  4. The check enforces the principle of "initialization-time irrelevance", which means that the
+ *  1. The check enforces the principle of "initialization-time irrelevance", which means that the
  *     time when an object is initialized should not change program semantics. For that purpose, it
  *     enforces the following rule:
  *
@@ -53,10 +46,17 @@ import scala.annotation.tailrec
  *     This principle not only put initialization of static objects on a solid foundation, but also
  *     avoids whole-program analysis.
  *
- *  5. The design is based on the concept of "cold aliasing" --- a cold alias may not be actively
+ *  2. The design is based on the concept of "cold aliasing" --- a cold alias may not be actively
  *     used during initialization, i.e., it's forbidden to call methods or access fields of a cold
  *     alias. Method arguments are cold aliases by default unless specified to be sensitive. Method
  *     parameters captured in lambdas or inner classes are always cold aliases.
+ *
+ *  3. It is inter-procedural and flow-sensitive.
+ *
+ *  4. It is object-sensitive by default and parameter-sensitive on-demand.
+ *
+ *  5. The check is modular in the sense that each object is checked separately and there is no
+ *     whole-program analysis. However, the check is not modular in terms of project boundaries.
  *
  */
 object Objects:
@@ -180,8 +180,15 @@ object Objects:
     val empty: Data = Map.empty
 
     def apply(x: Symbol)(using data: Data): Value = data(x)
+
+    def get(x: Symbol)(using data: Data): Option[Value] = data.get(x)
+
     def contains(x: Symbol)(using data: Data): Boolean = data.contains(x)
-    def of(map: Map[Symbol, Value]): Data = map
+
+    def of(ddef: DefDef, args: List[Value])(using Context): Data =
+      val params = ddef.termParamss.flatten.map(_.symbol)
+      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
+      params.zip(args).toMap
 
   /** Abstract heap for mutable fields
    *
@@ -322,6 +329,7 @@ object Objects:
           case _ =>
             val cls = target.owner.enclosingClass.asClass
             val ddef = target.defTree.asInstanceOf[DefDef]
+            given Env.Data = Env.of(ddef, args.map(_.value))
             extendTrace(ddef) {
               eval(ddef.rhs, ref, cls, cacheResult = true)
             }
@@ -366,8 +374,8 @@ object Objects:
       if ctor.hasSource then
         val cls = ctor.owner.enclosingClass.asClass
         val ddef = ctor.defTree.asInstanceOf[DefDef]
-        val args2 = args.map(_.value).widen(0)
-        addParamsAsFields(args2, ref, ddef)
+        val argValues = args.map(_.value)
+        addParamsAsFields(argValues, ref, ddef)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
           extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
@@ -464,13 +472,11 @@ object Objects:
     case value: (Bottom.type | ObjectRef | OfClass | Cold.type) =>
       // The outer can be a bottom value for top-level classes.
 
-      // widen the outer to finitize the domain
+      // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
       val outerWidened = outer.widen(1)
-      val argsWidened = args.map(_.value).widen(0)
 
-      val instance = OfClass(klass, outerWidened, ctor, argsWidened, State.currentObject)
-      val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
-      callConstructor(instance, ctor, argInfos2)
+      val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), State.currentObject)
+      callConstructor(instance, ctor, args)
       instance
 
     case RefSet(refs) =>
@@ -634,7 +640,7 @@ object Objects:
         Bottom
 
       case Typed(expr, tpt) =>
-        if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot))
+        if tpt.tpe.hasAnnotation(defn.UncheckedAnnot) then
           Bottom
         else
           eval(expr, thisV, klass)
@@ -754,13 +760,17 @@ object Objects:
           select(ownerValue, sym, ownerClass.thisType, needResolve = false)
 
         else if sym.is(Flags.Param) then
-          // TODO: handle environment parameters and mutation differently
-          Cold
+          Env.get(sym) match
+          case Some(v) => v
+          case None => Cold
+
         else if sym.is(Flags.Package) then
           Bottom
+
         else if sym.hasSource then
           val rhs = sym.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, thisV, klass)
+
         else
           // pattern-bound variables
           Cold
@@ -793,7 +803,7 @@ object Objects:
         throw new Exception("unexpected type: " + tp)
   }
 
-  /** Evaluate arguments of methods */
+  /** Evaluate arguments of methods and constructors */
   def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol): Contextual[List[ArgInfo]] =
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
     args.foreach { arg =>
@@ -802,6 +812,13 @@ object Objects:
           Fun(arg.tree, thisV, klass)
         else
           eval(arg.tree, thisV, klass)
+
+      // TODO: handle @widen(n)
+      val widened =
+        if arg.tree.tpe.hasAnnotation(defn.InitExposeAnnot) then
+          res.widen(1)
+        else
+          Cold
 
       argInfos += TraceValue(res, trace.add(arg.tree))
     }
