@@ -265,32 +265,31 @@ object Objects:
       case (RefSet(refs), b)                  => RefSet(b :: refs)
       case (a, b)                             => RefSet(a :: b :: Nil)
 
-    def widen(using Context): Value =
-      def widenInternal(value: Value, fuel: Int): Value =
-        value match
-        case Bottom => Bottom
+    def widen(height: Int)(using Context): Value =
+      a match
+      case Bottom => Bottom
 
-        case RefSet(refs) =>
-          refs.map(ref => widenInternal(ref, fuel)).join
+      case RefSet(refs) =>
+        refs.map(ref => ref.widen(height)).join
 
-        case Fun(expr, thisV, klass) =>
-          Fun(expr, widenInternal(thisV, fuel), klass)
+      case Fun(expr, thisV, klass) =>
+        if height == 0 then Cold
+        else Fun(expr, thisV.widen(height), klass)
 
-        case ref @ OfClass(klass, outer, init, args, owner) =>
-          if fuel == 0 then
-            Cold
-          else
-            val outer2 = widenInternal(outer, fuel - 1)
-            val args2 = args.map(arg => widenInternal(arg, fuel - 1))
-            OfClass(klass, outer2, init, args2, owner)
-        case _ => a
+      case ref @ OfClass(klass, outer, init, args, owner) =>
+        if height == 0 then
+          Cold
+        else
+          val outer2 = outer.widen(height - 1)
+          val args2 = args.map(arg => arg.widen(height - 1))
+          OfClass(klass, outer2, init, args2, owner)
+      case _ => a
 
-      widenInternal(a, 3)
 
   extension (values: Seq[Value])
     def join: Value = if values.isEmpty then Bottom else values.reduce { (v1, v2) => v1.join(v2) }
 
-    def widen: Contextual[List[Value]] = values.map(_.widen).toList
+    def widen(height: Int): Contextual[List[Value]] = values.map(_.widen(height)).toList
 
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value match
@@ -367,7 +366,7 @@ object Objects:
       if ctor.hasSource then
         val cls = ctor.owner.enclosingClass.asClass
         val ddef = ctor.defTree.asInstanceOf[DefDef]
-        val args2 = args.map(_.value).widen
+        val args2 = args.map(_.value).widen(0)
         addParamsAsFields(args2, ref, ddef)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -466,8 +465,8 @@ object Objects:
       // The outer can be a bottom value for top-level classes.
 
       // widen the outer to finitize the domain
-      val outerWidened = outer.widen
-      val argsWidened = args.map(_.value).widen
+      val outerWidened = outer.widen(1)
+      val argsWidened = args.map(_.value).widen(0)
 
       val instance = OfClass(klass, outerWidened, ctor, argsWidened, State.currentObject)
       val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
