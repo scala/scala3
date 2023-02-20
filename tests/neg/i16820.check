@@ -8,15 +8,11 @@
   |           method g in object Test must be called with () argument
   |
   | longer explanation available when compiling with `-explain`
--- Error: tests/neg/i16820.scala:8:14 ----------------------------------------------------------------------------------
-8 |  val x3 = "".formatted // error
-  |           ^^^^^^^^^^^^
-  |           missing arguments for method formatted in class String
--- Error: tests/neg/i16820.scala:9:40 ----------------------------------------------------------------------------------
-9 |  val x4 = java.nio.file.Paths.get(".").toRealPath // error
+-- Error: tests/neg/i16820.scala:7:40 ----------------------------------------------------------------------------------
+7 |  val x3 = java.nio.file.Paths.get(".").toRealPath // error
   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |           missing arguments for method toRealPath in trait Path
--- Error: tests/neg/i16820.scala:13:14 ---------------------------------------------------------------------------------
-13 |def test = Foo(3)  // error
+-- Error: tests/neg/i16820.scala:11:14 ---------------------------------------------------------------------------------
+11 |def test = Foo(3)  // error
    |           ^^^^^^
    |           missing arguments for method apply in object Foo

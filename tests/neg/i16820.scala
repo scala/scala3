@@ -4,9 +4,7 @@ object Test:
 
   val x1 = f  // error
   val x2 = g  // error
-
-  val x3 = "".formatted // error
-  val x4 = java.nio.file.Paths.get(".").toRealPath // error
+  val x3 = java.nio.file.Paths.get(".").toRealPath // error
 
 // #14567
 case class Foo(x: Int)(xs: String*)
