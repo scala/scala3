@@ -1,5 +1,4 @@
 import java.util.concurrent.Semaphore
-import scala.runtime.LazyVals.Evaluating
 
 object Repro {
 
@@ -25,14 +24,14 @@ object Repro {
       override def run(): Unit =
         Holder.s.acquire()
         val x = Holder.Bit.value
-        assert(!x.isInstanceOf[Evaluating.type])
+        assert(x.isInstanceOf[DFBit.type])
         println("Success")
     }
     val b = new Thread() {
       override def run(): Unit =
         Holder.s.acquire()
         val x = Holder.Bit.value
-        assert(!x.isInstanceOf[Evaluating.type])
+        assert(x.isInstanceOf[DFBit.type])
         println("Success")
     }
     a.start()
