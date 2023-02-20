@@ -53,7 +53,7 @@ object Async:
       checkCancellation()
       src.poll().getOrElse:
         try
-          var result: Option[T] = None
+          var result: Option[T] = None // Not needed if we have full continuations
           suspend[T, Unit]: k =>
             src.onComplete: x =>
               scheduler.schedule: () =>
@@ -61,6 +61,14 @@ object Async:
                 k.resume()
               true // signals to `src` that result `x` was consumed
           result.get
+          /* With full continuations, the try block can be written more simply as follows:
+
+            suspend[T, Unit]: k =>
+              src.onComplete: x =>
+                scheduler.schedule: () =>
+                  k.resume(x)
+              true
+          */
         finally checkCancellation()
 
   end Impl
@@ -109,11 +117,6 @@ object Async:
    */
   abstract case class ForwardingListener[T](src: Source[?], continue: Listener[?]) extends Listener[T]
 
-  /** A listener for values that are processed directly in an async block.
-   *  Closures of type `T => Boolean` can be SAM converted to this type.
-   */
-  abstract case class FinalListener[T](apply: T => Boolean) extends Listener[T]
-
   /** An asynchronous data source. Sources can be persistent or ephemeral.
    *  A persistent source will always pass same data to calls of `poll and `onComplete`.
    *  An ephememral source can pass new data in every call.
@@ -158,7 +161,7 @@ object Async:
     /** Add `k` to the listener set of this source */
     protected def addListener(k: Listener[T]): Unit
 
-    def onComplete(k: Listener[T]): Unit = synchronized:
+    def onComplete(k: Listener[T]): Unit =
       if !poll(k) then addListener(k)
 
   end OriginalSource
@@ -232,8 +235,8 @@ object Async:
   /** If left (respectively, right) source succeeds with `x`, pass `Left(x)`,
    *  (respectively, Right(x)) on to the continuation.
    */
-  def either[T, U](src1: Source[T], src2: Source[U]): Source[Either[T, U]] =
-    race[Either[T, U]](src1.map(Left(_)), src2.map(Right(_)))
+  def either[T1, T2](src1: Source[T1], src2: Source[T2]): Source[Either[T1, T2]] =
+    race(src1.map(Left(_)), src2.map(Right(_)))
 
 end Async
 

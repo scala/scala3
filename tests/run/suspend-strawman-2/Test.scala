@@ -16,11 +16,17 @@ import fiberRuntime.boundary.setName
     val a = Future{ setName("ya"); 22 }
     val b = Future{ setName("yb"); 11 }
     a.zip(b).value
+  val z = Future:
+    val a = Future{ setName("za"); 22 }
+    val b = Future{ setName("zb"); true }
+    a.alt(b).value
+  val _: Future[Int | Boolean] = z
   println("test async:")
   Async.blocking:
     println(x.value)
     println(y.value)
   //println("test choices:")
   //println(TestChoices)
+
 
 

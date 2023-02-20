@@ -123,13 +123,13 @@ object Future:
     ac.root.addChild(f)
     f
 
-  extension [T1](f1: Future[T1])
+  extension [T](f1: Future[T])
 
     /** Parallel composition of two futures.
      *  If both futures succeed, succeed with their values in a pair. Otherwise,
      *  fail with the failure that was returned first and cancel the other.
      */
-    def zip[T2](f2: Future[T2])(using Async.Config): Future[(T1, T2)] = Future:
+    def zip[U](f2: Future[U])(using Async.Config): Future[(T, U)] = Future:
       Async.await(Async.either(f1, f2)) match
         case Left(Success(x1))  => (x1, f2.value)
         case Right(Success(x2)) => (f1.value, x2)
@@ -140,7 +140,7 @@ object Future:
      *  If either task succeeds, succeed with the success that was returned first
      *  and cancel the other. Otherwise, fail with the failure that was returned last.
      */
-    def alt[T2 >: T1](f2: Future[T2], name: String = "alt")(using Async.Config): Future[T2] = Future:
+    def alt(f2: Future[T], name: String = "alt")(using Async.Config): Future[T] = Future:
       boundary.setName(name)
       Async.await(Async.either(f1, f2)) match
         case Left(Success(x1))    => f2.cancel(); x1
