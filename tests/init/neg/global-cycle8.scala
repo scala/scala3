@@ -6,7 +6,7 @@ class B {
   val a = new A
 }
 
-object O {
+object O {           // error
   val n: Int = 10
   println(P.m)
 }
@@ -16,5 +16,5 @@ object P {
 }
 
 object Q {
-  def bar(b: B) = b.a.foo() // error
+  def bar(b: B) = b.a.foo()
 }
