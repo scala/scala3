@@ -192,23 +192,40 @@ object Objects:
     private case class Addr(ref: Ref, field: Symbol):
       def show(using Context) = "Addr(" + ref.show + ", " + field.show + ")"
 
-    opaque type Data = Map[Addr, Value]
+    opaque type Data = ImmutableMapWithRefEquality
 
-    val empty: Data = Map.empty
+    /** Wrap the map in a class such that equality of two maps is defined as referential equality.
+     *
+     *  This is a performance optimization.
+     */
+    private class ImmutableMapWithRefEquality(val map: Map[Addr, Value]):
+      private[Heap] def updated(addr: Addr, value: Value): Data =
+        map.get(addr) match
+        case None =>
+          new Data(map.updated(addr, value))
+
+        case Some(current) =>
+          val value2 = value.join(current)
+          if value2 != current then
+            new Data(map.updated(addr, value2))
+          else
+            this
+
+    val empty: Data = new Data(Map.empty)
 
     def contains(ref: Ref, field: Symbol)(using state: State.Data): Boolean =
       val data: Data = State.getHeap()
-      data.contains(Addr(ref, field))
+      data.map.contains(Addr(ref, field))
 
     def read(ref: Ref, field: Symbol)(using state: State.Data): Value =
       val data: Data = State.getHeap()
-      data(Addr(ref, field))
+      data.map(Addr(ref, field))
 
     def write(ref: Ref, field: Symbol, value: Value)(using state: State.Data): Unit =
       val addr = Addr(ref, field)
       val data: Data = State.getHeap()
-      val current = data.getOrElse(addr, Bottom)
-      State.setHeap(data.updated(addr, value.join(current)))
+      val data2 = data.updated(addr, value)
+      State.setHeap(data2)
 
   /** Cache used to terminate the check  */
   object Cache:
