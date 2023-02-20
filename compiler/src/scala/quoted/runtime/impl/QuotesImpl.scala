@@ -268,6 +268,21 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end ClassDefMethods
 
+    type ValOrDefDef = tpd.ValOrDefDef
+
+    object ValOrDefDefTypeTest extends TypeTest[Tree, ValOrDefDef]:
+      def unapply(x: Tree): Option[ValOrDefDef & x.type] = x match
+        case x: (tpd.ValOrDefDef & x.type) => Some(x)
+        case _ => None
+    end ValOrDefDefTypeTest
+
+    given ValOrDefDefMethods: ValOrDefDefMethods with
+      extension (self: ValOrDefDef)
+        def tpt: TypeTree = self.tpt
+        def rhs: Option[Term] = optional(self.rhs)
+      end extension
+    end ValOrDefDefMethods
+
     type DefDef = tpd.DefDef
 
     object DefDefTypeTest extends TypeTest[Tree, DefDef]:

@@ -135,8 +135,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |             +- Export
    *           |             +- Definition --+- ClassDef
    *           |             |               +- TypeDef
-   *           |             |               +- DefDef
-   *           |             |               +- ValDef
+   *           |             |               +- ValOrDefDef -+- DefDef
+   *           |             |                               +- ValDef
    *           |             |
    *           |             +- Term --------+- Ref -+- Ident -+- Wildcard
    *           |                             |       +- Select
@@ -551,10 +551,33 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ClassDefMethods
 
+    // ValOrDefDef
+
+    /** Tree representing a value or method definition in the source code.
+     *  This includes `def`, `val`, `lazy val`, `var`, `object` and parameter definitions.
+     */
+    type ValOrDefDef <: Definition
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValOrDefDef` */
+    given ValOrDefDefTypeTest: TypeTest[Tree, ValOrDefDef]
+
+    /** Makes extension methods on `ValOrDefDef` available without any imports */
+    given ValOrDefDefMethods: ValOrDefDefMethods
+
+    /** Extension methods of `ValOrDefDef` */
+    trait ValOrDefDefMethods:
+      extension (self: ValOrDefDef)
+        /** The type tree of this `val` or `def` definition */
+        def tpt: TypeTree
+        /** The right-hand side of this `val` or `def` definition */
+        def rhs: Option[Term]
+      end extension
+    end ValOrDefDefMethods
+
     // DefDef
 
     /** Tree representing a method definition in the source code */
-    type DefDef <: Definition
+    type DefDef <: ValOrDefDef
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `DefDef` */
     given DefDefTypeTest: TypeTest[Tree, DefDef]
@@ -630,8 +653,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ValDef
 
-    /** Tree representing a value definition in the source code This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
-    type ValDef <: Definition
+    /** Tree representing a value definition in the source code. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
+    type ValDef <: ValOrDefDef
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValDef` */
     given ValDefTypeTest: TypeTest[Tree, ValDef]
