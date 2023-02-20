@@ -61,10 +61,14 @@ sealed trait Space:
   private val isSubspaceCache = mutable.HashMap.empty[Space, Boolean]
 
   def isSubspace(b: Space)(using Context): Boolean =
-    if this == Empty then true
+    val a = this
+    val a2 = a.simplify
+    val b2 = b.simplify
+    if (a ne a2) || (b ne b2) then a2.isSubspace(b2)
+    else if a == Empty then true
     else if b == Empty then false
     else trace(s"isSubspace(${show(this)}, ${show(b)})", debug) {
-      isSubspaceCache.getOrElseUpdate(b, computeIsSubspace(this, b))
+      isSubspaceCache.getOrElseUpdate(b, computeIsSubspace(a, b))
     }
 
   private var mySimplified: Space | Null = _
