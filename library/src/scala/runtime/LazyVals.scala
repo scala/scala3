@@ -45,7 +45,7 @@ object LazyVals {
 
   /* ------------- Start of public API ------------- */
 
-  sealed trait LazyValControlState
+  sealed trait LazyValControlState extends Serializable
 
   /**
    * Used to indicate the state of a lazy val that is being
