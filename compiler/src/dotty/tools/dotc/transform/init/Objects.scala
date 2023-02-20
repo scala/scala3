@@ -50,6 +50,9 @@ import scala.annotation.tailrec
  *         The initialization of a static object should not directly or indirectly read or write
  *         mutable state of another static object.
  *
+ *     This principle not only put initialization of static objects on a solid foundation, but also
+ *     avoids whole-program analysis.
+ *
  *  5. The design is based on the concept of "cold aliasing" --- a cold alias may not be actively
  *     used during initialization, i.e., it's forbidden to call methods or access fields of a cold
  *     alias. Method arguments are cold aliases by default unless specified to be sensitive. Method
