@@ -23,6 +23,7 @@ import reporting._
 import config.Printers.{exhaustivity => debug}
 import util.{SrcPos, NoSourcePosition}
 
+import scala.annotation.internal.sharable
 import scala.collection.mutable
 
 /* Space logic for checking exhaustivity and unreachability of pattern matching
@@ -58,7 +59,7 @@ import scala.collection.mutable
 sealed trait Space:
   import SpaceEngine.*
 
-  private val isSubspaceCache = mutable.HashMap.empty[Space, Boolean]
+  @sharable private val isSubspaceCache = mutable.HashMap.empty[Space, Boolean]
 
   def isSubspace(b: Space)(using Context): Boolean =
     val a = this
@@ -71,7 +72,7 @@ sealed trait Space:
       isSubspaceCache.getOrElseUpdate(b, computeIsSubspace(a, b))
     }
 
-  private var mySimplified: Space | Null = _
+  @sharable private var mySimplified: Space | Null = _
 
   def simplify(using Context): Space =
     val simplified = mySimplified
