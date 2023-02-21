@@ -15,16 +15,11 @@ trait InlineNumeric[T] extends Ordering[T]: // extends Numeric[T] // TODO can we
   transparent inline def toLong(inline x: T): Long
   transparent inline def toFloat(inline x: T): Float
   transparent inline def toDouble(inline x: T): Double
+  transparent inline def abs(inline x: T): T
+  transparent inline def sign(inline x: T): T
 
   transparent inline def zero = fromInt(0)
   transparent inline def one = fromInt(1)
-
-  transparent inline def abs(inline x: T): T = if lt(x, zero) then negate(x) else x
-
-  transparent inline def sign(inline x: T): T =
-    if lt(x, zero) then negate(one)
-    else if gt(x, zero) then one
-    else zero
 
 object InlineNumeric:
   extension [T](inline x: T)(using inline num: InlineNumeric[T])
@@ -36,12 +31,16 @@ object InlineNumeric:
     transparent inline def toLong: Long = num.toLong(x)
     transparent inline def toFloat: Float = num.toFloat(x)
     transparent inline def toDouble: Double = num.toDouble(x)
-
     transparent inline def abs: T = num.abs(x)
-
     transparent inline def sign: T = num.sign(x)
 
 trait InlineIntegral[T] extends InlineNumeric[T]:
+  transparent inline def abs(inline x: T): T = if lt(x, zero) then negate(x) else x
+  transparent inline def sign(inline x: T): T =
+    if lt(x, zero) then negate(one)
+    else if gt(x, zero) then one
+    else zero
+
   transparent inline def quot(inline x: T, inline y: T): T
   transparent inline def rem(inline x: T, inline y: T): T
 
@@ -53,7 +52,16 @@ object InlineIntegral:
     transparent inline def /%(inline rhs: T) = (int.quot(lhs, rhs), int.rem(lhs, rhs))
 
 trait InlineFractional[T] extends InlineNumeric[T]:
+  transparent inline def abs(inline x: T): T = if lt(x, zero) || isNegZero(x) then negate(x) else x
+  transparent inline def sign(inline x: T): T =
+    if isNaN(x) || isNegZero(x) then x
+    else if lt(x, zero) then negate(one)
+    else if gt(x, zero) then one
+    else zero
+
   transparent inline def div(inline x: T, inline y: T): T
+  protected transparent inline def isNaN(inline x: T): Boolean
+  protected transparent inline def isNegZero(inline x: T): Boolean
 
 object InlineFractional:
   // TODO: how are these imported/composed with Numeric/Fractional. Should the extension methods be defined in trait InlineFractional?
@@ -163,6 +171,8 @@ given FloatIsInlineFractional: InlineFractional[Float] with Ordering.Float.IeeeO
   transparent inline def toDouble(inline x: Float): Double = x.toDouble
 
   transparent inline def div(inline x: Float, inline y: Float): Float = x / y
+  protected transparent inline def isNaN(inline x: Float): Boolean = x.isNaN
+  protected transparent inline def isNegZero(inline x: Float): Boolean = x.equals(-0f)
 
 given DoubleIsInlineFractional: InlineFractional[Double] with Ordering.Double.IeeeOrdering with
   transparent inline def plus(inline x: Double, inline y: Double): Double = x + y
@@ -177,6 +187,8 @@ given DoubleIsInlineFractional: InlineFractional[Double] with Ordering.Double.Ie
   transparent inline def toDouble(inline x: Double): Double = x
 
   transparent inline def div(inline x: Double, inline y: Double): Double = x / y
+  protected transparent inline def isNaN(inline x: Double): Boolean = x.isNaN
+  protected transparent inline def isNegZero(inline x: Double): Boolean = x.equals(-0.0)
 
 trait BigDecimalIsConflicted extends InlineNumeric[BigDecimal] with Ordering.BigDecimalOrdering:
   transparent inline def plus(inline x: BigDecimal, inline y: BigDecimal): BigDecimal = x + y
@@ -192,6 +204,9 @@ trait BigDecimalIsConflicted extends InlineNumeric[BigDecimal] with Ordering.Big
 
 given BigDecimalIsInlineFractional: BigDecimalIsConflicted with InlineFractional[BigDecimal] with
   transparent inline def div(inline x: BigDecimal, inline y: BigDecimal): BigDecimal = x / y
+  protected transparent inline def isNaN(inline x: BigDecimal): Boolean = false
+  protected transparent inline def isNegZero(inline x: BigDecimal): Boolean = false
+
 
 given BigDecimalAsIfInlineIntegral: BigDecimalIsConflicted with InlineIntegral[BigDecimal] with
   transparent inline def quot(inline x: BigDecimal, inline y: BigDecimal): BigDecimal = x quot y
@@ -214,7 +229,8 @@ object tests:
 
   inline def bar[T: InlineNumeric](a: T) = a.toInt
 
-  inline def sign[T: InlineNumeric](a: T) = a.sign
+  inline def signInt[T: InlineIntegral](a: T) = a.sign
+  inline def signFrac[T: InlineFractional](a: T) = a.sign
 
   def test(a: Int, b: Int) =
     foo(a, b) // should be a + b * b // can check with -Xprint:inlining
@@ -226,6 +242,9 @@ object tests:
     bar(a.toFloat) // should be a.toFloat.toInt
     bar(a) // should be a
 
-    sign(a)
-    sign(a.toChar)
-    sign(-7F)
+    signInt(a)
+    signInt(a.toChar)
+    signFrac(-7F)
+
+    signInt(BigDecimal(a))
+    signFrac(BigDecimal(a)) // the condition with isNan() should be removed
