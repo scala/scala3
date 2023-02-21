@@ -214,23 +214,23 @@ given BigDecimalAsIfInlineIntegral: BigDecimalIsConflicted with InlineIntegral[B
 
 object tests:
   import InlineNumeric.*
+  import InlineIntegral.{/ => quot, %}
+  import InlineFractional.{/}
 
   // A generic inline operation that inlines/specializes primitive operations
-  inline def foo[T: InlineNumeric](a: T, b: T) =
+  inline def foo[T: InlineNumeric](inline a: T, inline b: T) =
     a + b * b
 
-  inline def div[T: InlineIntegral](a: T, b: T) =
-    import InlineIntegral.{/, %}
-    a / b % b
+  inline def div[T: InlineIntegral](inline a: T, inline b: T) =
+    a quot b % b
 
-  inline def div[T: InlineFractional](a: T, b: T) =
-    import InlineFractional.{/}
+  inline def div[T: InlineFractional](inline a: T, inline b: T) =
     a / b + a
 
-  inline def bar[T: InlineNumeric](a: T) =
+  inline def bar[T: InlineNumeric](inline a: T) =
     a.toInt
 
-  inline def sign[T: InlineNumeric](a: T) =
+  inline def sign[T: InlineNumeric](inline a: T) =
     a.sign
 
   def test(a: Int, b: Int) =
