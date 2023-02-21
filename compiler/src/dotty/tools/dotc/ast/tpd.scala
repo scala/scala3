@@ -1508,7 +1508,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  /** Creates the tuple type tree repesentation of the type trees in `ts` */
+  /** Creates the tuple type tree representation of the type trees in `ts` */
   def tupleTypeTree(elems: List[Tree])(using Context): Tree = {
     val arity = elems.length
     if arity <= Definitions.MaxTupleArity then
@@ -1519,9 +1519,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else nestedPairsTypeTree(elems)
   }
 
-  /** Creates the nested pairs type tree repesentation of the type trees in `ts` */
+  /** Creates the nested pairs type tree representation of the type trees in `ts` */
   def nestedPairsTypeTree(ts: List[Tree])(using Context): Tree =
     ts.foldRight[Tree](TypeTree(defn.EmptyTupleModule.termRef))((x, acc) => AppliedTypeTree(TypeTree(defn.PairClass.typeRef), x :: acc :: Nil))
+
+  /** Creates the nested higher-kinded pairs type tree representation of the type trees in `ts` */
+  def hkNestedPairsTypeTree(ts: List[Tree])(using Context): Tree =
+    ts.foldRight[Tree](TypeTree(defn.QuoteMatching_KNil.typeRef))((x, acc) => AppliedTypeTree(TypeTree(defn.QuoteMatching_KCons.typeRef), x :: acc :: Nil))
 
   /** Replaces all positions in `tree` with zero-extent positions */
   private def focusPositions(tree: Tree)(using Context): Tree = {

@@ -121,9 +121,9 @@ object QuoteMatcher {
 
   private def withEnv[T](env: Env)(body: Env ?=> T): T = body(using env)
 
-  def treeMatch(scrutineeTerm: Tree, patternTerm: Tree)(using Context): Option[Tuple] =
+  def treeMatch(scrutineeTree: Tree, patternTree: Tree)(using Context): Option[Tuple] =
     given Env = Map.empty
-    scrutineeTerm =?= patternTerm
+    scrutineeTree =?= patternTree
 
   /** Check that all trees match with `mtch` and concatenate the results with &&& */
   private def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => Matching): Matching = (l1, l2) match {
