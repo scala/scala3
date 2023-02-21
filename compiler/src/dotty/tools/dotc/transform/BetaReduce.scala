@@ -128,7 +128,10 @@ object BetaReduce:
             ref.symbol
           case _ =>
             val flags = Synthetic | (param.symbol.flags & Erased)
-            val tpe = if arg.tpe.dealias.isInstanceOf[ConstantType] then arg.tpe.dealias else arg.tpe.widen
+            val tpe =
+              if arg.tpe.isBottomType then param.tpe.widenTermRefExpr
+              else if arg.tpe.dealias.isInstanceOf[ConstantType] then arg.tpe.dealias
+              else arg.tpe.widen
             val binding = ValDef(newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span), arg).withSpan(arg.span)
             if !(tpe.isInstanceOf[ConstantType] && isPureExpr(arg)) then
               bindings += binding
