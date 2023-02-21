@@ -5736,6 +5736,12 @@ object Types {
         case tp @ SuperType(thistp, supertp) =>
           derivedSuperType(tp, this(thistp), this(supertp))
 
+        case tp @ ConstantType(const @ Constant(_: Type)) =>
+          val classType = const.tpe
+          val classType1 = this(classType)
+          if classType eq classType1 then tp
+          else classType1
+
         case tp: LazyRef =>
           LazyRef { refCtx =>
             given Context = refCtx
