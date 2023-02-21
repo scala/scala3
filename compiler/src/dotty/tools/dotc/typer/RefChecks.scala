@@ -1163,8 +1163,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkAllOverrides(cls)
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
     tree
-  }
-  catch {
+  } catch {
     case ex: TypeError =>
       report.error(ex, tree.srcPos)
       tree
