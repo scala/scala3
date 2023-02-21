@@ -7,6 +7,7 @@ import scala.compiletime.uninitialized
 import scala.util.{Try, Success, Failure}
 import scala.annotation.unchecked.uncheckedVariance
 import java.util.concurrent.CancellationException
+import scala.concurrent.ExecutionContext
 
 /** A cancellable future that can suspend waiting for other asynchronous sources
  */
@@ -103,7 +104,7 @@ object Future:
               var result: Option[T] = None // Not needed if we have full continuations
               suspend[T, Unit]: k =>
                 src.onComplete: x =>
-                  config.scheduler.schedule: () =>
+                  config.scheduler.execute: () =>
                     result = Some(x)
                     k.resume()
                   true // signals to `src` that result `x` was consumed
@@ -124,7 +125,7 @@ object Future:
         body(using FutureAsync())
     end async
 
-    ac.scheduler.schedule: () =>
+    ac.scheduler.execute: () =>
       async:
         link()
         Async.group:
@@ -198,7 +199,7 @@ class Task[+T](val body: Async ?=> T):
 
 end Task
 
-def add(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
+def add(x: Future[Int], xs: List[Future[Int]])(using ExecutionContext): Future[Int] =
   val b = x.zip:
     Future:
       xs.headOption.toString
@@ -217,6 +218,6 @@ def add(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Future[Int] =
 
 end add
 
-def Main(x: Future[Int], xs: List[Future[Int]])(using Scheduler): Int =
+def Main(x: Future[Int], xs: List[Future[Int]])(using ExecutionContext): Int =
   Async.blocking(add(x, xs).value)
 

@@ -2,7 +2,7 @@ package concurrent
 import scala.collection.mutable, mutable.ListBuffer
 import fiberRuntime.boundary, boundary.Label
 import fiberRuntime.suspend
-import java.util.concurrent.CancellationException
+import scala.concurrent.ExecutionContext
 import Async.{Listener, await}
 
 /** An unbounded asynchronous channel. Senders do not wait for matching
@@ -97,7 +97,7 @@ object SyncChannel:
 
 end SyncChannel
 
-def TestChannel(using Scheduler) =
+def TestChannel(using ExecutionContext) =
   val c = SyncChannel[Option[Int]]()
   Future:
     for i <- 0 to 100 do

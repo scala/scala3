@@ -2,9 +2,10 @@
 
 import concurrent.*
 import fiberRuntime.boundary.setName
+import scala.concurrent.ExecutionContext
 
 @main def Test =
-  given Scheduler = Scheduler
+  given ExecutionContext = ExecutionContext.global
   val x = Future:
     setName("x")
     val a = Future{ setName("xa"); 22 }

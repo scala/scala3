@@ -1,6 +1,7 @@
 package concurrent
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
 
 /** A context that allows to suspend waiting for asynchronous data sources
  */
@@ -18,14 +19,15 @@ trait Async:
 object Async:
 
   /** The underlying configuration of an async block */
-  case class Config(scheduler: Scheduler, group: Cancellable.Group)
+  case class Config(scheduler: ExecutionContext, group: Cancellable.Group)
 
   trait LowPrioConfig:
 
     /** A toplevel async group with given scheduler and a synthetic root that
      *  ignores cancellation requests
      */
-    given fromScheduler(using s: Scheduler): Config = Config(s, Cancellable.Unlinked)
+    given fromExecutionContext(using scheduler: ExecutionContext): Config =
+      Config(scheduler, Cancellable.Unlinked)
 
   end LowPrioConfig
 
@@ -57,7 +59,7 @@ object Async:
   /** Execute asynchronous computation `body` on currently running thread.
    *  The thread will suspend when the computation waits.
    */
-  def blocking[T](body: Async ?=> T)(using Scheduler): T =
+  def blocking[T](body: Async ?=> T)(using ExecutionContext): T =
     body(using Blocking())
 
   /** The currently executing Async context */
