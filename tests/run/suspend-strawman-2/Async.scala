@@ -4,38 +4,40 @@ import scala.collection.mutable
 
 /** A context that allows to suspend waiting for asynchronous data sources
  */
-trait Async extends Async.Config:
+trait Async:
 
   /** Wait for completion of async source `src` and return the result */
   def await[T](src: Async.Source[T]): T
 
-  /** An Async of the same kind as this one, with a given cancellation group */
-  def withGroup(group: Cancellable.Group): Async
+  /** The configuration of this Async */
+  def config: Async.Config
+
+  /** An Async of the same kind as this one, with a new configuration as given */
+  def withConfig(config: Async.Config): Async
 
 object Async:
 
   /** The underlying configuration of an async block */
-  trait Config:
+  case class Config(scheduler: Scheduler, group: Cancellable.Group)
 
-    /** The group of cancellableup to which nested futures belong */
-    def group: Cancellable.Group
-
-    /** The scheduler for runnables defined in this async computation */
-    def scheduler: Scheduler
-
-  object Config:
+  trait LowPrioConfig:
 
     /** A toplevel async group with given scheduler and a synthetic root that
      *  ignores cancellation requests
      */
-    given fromScheduler(using s: Scheduler): Config with
-      def group = Cancellable.Unlinked
-      def scheduler = s
+    given fromScheduler(using s: Scheduler): Config = Config(s, Cancellable.Unlinked)
+
+  end LowPrioConfig
+
+  object Config extends LowPrioConfig:
+
+    /** The async configuration stored in the given async capabaility */
+    given fromAsync(using async: Async): Config = async.config
 
   end Config
 
   /** An implementation of Async that blocks the running thread when waiting */
-  private class Blocking(val scheduler: Scheduler, val group: Cancellable.Group) extends Async:
+  private class Blocking(using val config: Config) extends Async:
 
     def await[T](src: Source[T]): T =
       src.poll().getOrElse:
@@ -49,15 +51,14 @@ object Async:
           while result.isEmpty do wait()
           result.get
 
-    def withGroup(group: Cancellable.Group) = Blocking(scheduler, group)
+    def withConfig(config: Config) = Blocking(using config)
   end Blocking
-
 
   /** Execute asynchronous computation `body` on currently running thread.
    *  The thread will suspend when the computation waits.
    */
-  def blocking[T](body: Async ?=> T, scheduler: Scheduler = Scheduler): T =
-    body(using Blocking(scheduler, Cancellable.Unlinked))
+  def blocking[T](body: Async ?=> T)(using Scheduler): T =
+    body(using Blocking())
 
   /** The currently executing Async context */
   inline def current(using async: Async): Async = async
@@ -67,7 +68,7 @@ object Async:
 
   def group[T](body: Async ?=> T)(using async: Async): T =
     val newGroup = Cancellable.Group().link()
-    body(using async.withGroup(newGroup))
+    body(using async.withConfig(async.config.copy(group = newGroup)))
 
   /** A function `T => Boolean` whose lineage is recorded by its implementing
    *  classes. The Listener function accepts values of type `T` and returns

@@ -88,7 +88,7 @@ object Future:
 
     /** a handler for Async */
     private def async(body: Async ?=> Unit): Unit =
-      class FutureAsync(val scheduler: Scheduler, val group: Cancellable.Group) extends Async:
+      class FutureAsync(using val config: Async.Config) extends Async:
 
         def checkCancellation() =
           if cancelRequest then throw CancellationException()
@@ -103,7 +103,7 @@ object Future:
               var result: Option[T] = None // Not needed if we have full continuations
               suspend[T, Unit]: k =>
                 src.onComplete: x =>
-                  scheduler.schedule: () =>
+                  config.scheduler.schedule: () =>
                     result = Some(x)
                     k.resume()
                   true // signals to `src` that result `x` was consumed
@@ -118,10 +118,10 @@ object Future:
               */
             finally checkCancellation()
 
-        def withGroup(group: Cancellable.Group) = FutureAsync(scheduler, group)
+        def withConfig(config: Async.Config) = FutureAsync(using config)
 
       boundary [Unit]:
-        body(using FutureAsync(ac.scheduler, ac.group))
+        body(using FutureAsync())
     end async
 
     ac.scheduler.schedule: () =>
