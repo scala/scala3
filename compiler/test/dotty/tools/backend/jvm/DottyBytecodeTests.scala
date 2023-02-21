@@ -1682,6 +1682,74 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertSameCode(instructions, expected)
     }
   }
+
+  @Test
+  def i15413(): Unit = {
+    val code =
+      """import scala.quoted.*
+        |import scala.annotation.inlineAccessible
+        |class Macro:
+        |  inline def foo = Macro.fooImpl
+        |  def test = foo
+        |object Macro:
+        |  @inlineAccessible private def fooImpl = {}
+      """.stripMargin
+    checkBCode(code) { dir =>
+      val privateAccessors = Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED
+
+      // For 3.0-3.3 compat
+      val macroClass = loadClassNode(dir.lookupName("Macro.class", directory = false).input, skipDebugInfo = false)
+      val oldAccessor = getMethod(macroClass, "Macro$$inline$fooImpl")
+      assert(oldAccessor.signature == "()V")
+      assert((oldAccessor.access & privateAccessors) == 0)
+
+      // For 3.4+
+      val moduleClass = loadClassNode(dir.lookupName("Macro$.class", directory = false).input, skipDebugInfo = false)
+      val newAccessor = getMethod(moduleClass, "inline$fooImpl")
+      assert(newAccessor.signature == "()V")
+      assert((newAccessor.access & privateAccessors) == 0)
+
+      // Check that the @inlineAccessible generated accessor is used
+      val testMethod = getMethod(macroClass, "test")
+      val testInstructions = instructionsFromMethod(testMethod).filter(_.isInstanceOf[Invoke])
+      assertSameCode(testInstructions, List(
+        Invoke(INVOKEVIRTUAL, "Macro$", "inline$fooImpl", "()V", false)))
+    }
+  }
+
+  @Test
+  def i15413b(): Unit = {
+    val code =
+      """package foo
+        |import scala.annotation.inlineAccessible
+        |class C:
+        |  inline def baz = D.bazImpl
+        |  def test = baz
+        |object D:
+        |  @inlineAccessible private[foo] def bazImpl = {}
+      """.stripMargin
+    checkBCode(code) { dir =>
+      val privateAccessors = Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED
+
+      // For 3.0-3.3 compat
+      val barClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("C.class", directory = false).input, skipDebugInfo = false)
+      val oldAccessor  = getMethod(barClass, "inline$bazImpl$i1")
+      assert(oldAccessor.desc == "(Lfoo/D$;)V", oldAccessor.desc)
+      assert((oldAccessor.access & privateAccessors) == 0)
+
+      // For 3.4+
+      val dModuleClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("D$.class", directory = false).input, skipDebugInfo = false)
+      val newAccessor  = getMethod(dModuleClass, "inline$bazImpl")
+      assert(newAccessor.signature == "()V", newAccessor.signature)
+      assert((newAccessor.access & privateAccessors) == 0)
+
+      // Check that the @inlineAccessible generated accessor is used
+      val testMethod = getMethod(barClass, "test")
+      val testInstructions = instructionsFromMethod(testMethod).filter(_.isInstanceOf[Invoke])
+      assertSameCode(testInstructions, List(
+        Invoke(INVOKEVIRTUAL, "foo/D$", "inline$bazImpl", "()V", false)))
+    }
+  }
 }
 
 object invocationReceiversTestCode {

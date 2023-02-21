@@ -2347,6 +2347,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     postProcessInfo(sym)
+    inlineAccessors(sym)
     vdef1.setDefTree
   }
 
@@ -2450,6 +2451,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
 
     postProcessInfo(sym)
+    inlineAccessors(sym)
     ddef2.setDefTree
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
@@ -2462,6 +2464,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
     if !sym.is(Module) && !sym.isConstructor && sym.info.finalResultType.isErasedClass then
       sym.setFlag(Erased)
+
+  /** Generate inline accessors for definitions annotated with @inlineAccessible */
+  def inlineAccessors(sym: Symbol)(using Context): Unit =
+    if !ctx.isAfterTyper && !sym.is(Param) && sym.hasAnnotation(defn.InlineAccessibleAnnot) then
+      PrepareInlineable.makeInlineAccessible(sym)
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
     val TypeDef(name, rhs) = tdef

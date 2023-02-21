@@ -96,7 +96,7 @@ abstract class AccessProxies {
     }
 
     /** Rewire reference to refer to `accessor` symbol */
-    private def rewire(reference: RefTree, accessor: Symbol)(using Context): Tree = {
+    protected def rewire(reference: RefTree, accessor: Symbol)(using Context): Tree = {
       reference match {
         case Select(qual, _) if qual.tpe.derivesFrom(accessor.owner) => qual.select(accessor)
         case _ => ref(accessor)
@@ -127,15 +127,12 @@ abstract class AccessProxies {
     /** Create an accessor unless one exists already, and replace the original
       *  access with a reference to the accessor.
       *
-      *  @param reference    The original reference to the non-public symbol
-      *  @param onLHS        The reference is on the left-hand side of an assignment
+      *  @param reference     The original reference to the non-public symbol
+      *  @param accessorClass The owner of the accessor
       */
-    def useAccessor(reference: RefTree)(using Context): Tree = {
+    def useAccessor(reference: RefTree, accessorClass: Symbol)(using Context): Tree = {
       val accessed = reference.symbol.asTerm
-      var accessorClass = hostForAccessorOf(accessed: Symbol)
       if (accessorClass.exists) {
-        if accessorClass.is(Package) then
-          accessorClass = ctx.owner.topLevelClass
         val accessorName = accessorNameOf(accessed.name, accessorClass)
         val accessorInfo =
           accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
@@ -152,7 +149,7 @@ abstract class AccessProxies {
           report.error("Implementation restriction: cannot use private constructors in inlineable methods", tree.srcPos)
           tree // TODO: create a proper accessor for the private constructor
         }
-        else useAccessor(tree)
+        else useAccessor(tree, hostForAccessorOf(tree.symbol))
       case _ =>
         tree
     }
