@@ -219,32 +219,33 @@ object tests:
   inline def foo[T: InlineNumeric](a: T, b: T) =
     a + b * b
 
-  inline def integDiv[T: InlineIntegral](a: T, b: T) =
+  inline def div[T: InlineIntegral](a: T, b: T) =
     import InlineIntegral.{/, %}
     a / b % b
 
-  inline def fracDiv[T: InlineFractional](a: T, b: T) =
+  inline def div[T: InlineFractional](a: T, b: T) =
     import InlineFractional.{/}
     a / b + a
 
-  inline def bar[T: InlineNumeric](a: T) = a.toInt
+  inline def bar[T: InlineNumeric](a: T) =
+    a.toInt
 
-  inline def signInt[T: InlineIntegral](a: T) = a.sign
-  inline def signFrac[T: InlineFractional](a: T) = a.sign
+  inline def sign[T: InlineNumeric](a: T) =
+    a.sign
 
   def test(a: Int, b: Int) =
-    foo(a, b) // should be a + b * b // can check with -Xprint:inlining
-    foo(a.toShort, b.toShort) // should be a + b * b
+    val v1 = foo(a, b) // should be a + b * b // can check with -Xprint:inlining
+    val v2 = foo(a.toShort, b.toShort) // should be a + b * b
 
-    integDiv(BigDecimal(a), BigDecimal(b)) // should be BigDecimal(a) quot BigDecimal(b) remainder BigDecimal(b)
-    fracDiv(BigDecimal(a), BigDecimal(b)) // should be BigDecimal(a) / BigDecimal(b) + BigDecimal(a)
+    val v3 = div(BigDecimal(a), BigDecimal(b))(using BigDecimalAsIfInlineIntegral) // should be BigDecimal(a) quot BigDecimal(b) remainder BigDecimal(b)
+    val v4 = div(BigDecimal(a), BigDecimal(b))(using BigDecimalIsInlineFractional) // should be BigDecimal(a) / BigDecimal(b) + BigDecimal(a)
 
-    bar(a.toFloat) // should be a.toFloat.toInt
-    bar(a) // should be a
+    val v5 = bar(a.toFloat) // should be a.toFloat.toInt
+    val v6 = bar(a) // should be a
 
-    signInt(a)
-    signInt(a.toChar)
-    signFrac(-7F)
+    val v7 = sign(a)
+    val v8 = sign(a.toChar)
+    val v9 = sign(-7F)
 
-    signInt(BigDecimal(a))
-    signFrac(BigDecimal(a)) // the condition with isNan() should be removed
+    val v10 = sign(BigDecimal(a))(using BigDecimalAsIfInlineIntegral)
+    val v11 = sign(BigDecimal(a))(using BigDecimalIsInlineFractional) // the condition with isNan() should be removed, i.e. it should be equivalent to v10
