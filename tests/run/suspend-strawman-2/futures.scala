@@ -1,6 +1,7 @@
 package concurrent
 
 import scala.collection.mutable, mutable.ListBuffer
+import fiberRuntime.suspend
 import fiberRuntime.boundary
 import scala.compiletime.uninitialized
 import scala.util.{Try, Success, Failure}
@@ -17,14 +18,9 @@ trait Future[+T] extends Async.OriginalSource[Try[T]], Cancellable:
   def value(using async: Async): T
 
   /** Eventually stop computation of this future and fail with
-   *  a `Cancellation` exception. Also cancel all children.
+   *  a `Cancellation` exception.
    */
   def cancel(): Unit
-
-  /** If this future has not yet completed, add `child` so that it will
-   *  be cancelled together with this future in case the future is cancelled.
-   */
-  def addChild(child: Cancellable): Unit
 
 object Future:
 
@@ -37,14 +33,9 @@ object Future:
   private class CoreFuture[+T] extends Future[T]:
 
     @volatile protected var hasCompleted: Boolean = false
+    protected var cancelRequest = false
     private var result: Try[T] = uninitialized // guaranteed to be set if hasCompleted = true
     private val waiting: mutable.Set[Try[T] => Boolean] = mutable.Set()
-    private val children: mutable.Set[Cancellable] = mutable.Set()
-
-    private def extract[T](s: mutable.Set[T]): List[T] = synchronized:
-      val xs = s.toList
-      s.clear()
-      xs
 
     // Async.Source method implementations
 
@@ -60,16 +51,7 @@ object Future:
     // Cancellable method implementations
 
     def cancel(): Unit =
-      val othersToCancel = synchronized:
-        if hasCompleted then Nil
-        else
-          result = Failure(new CancellationException())
-          hasCompleted = true
-          extract(children)
-      othersToCancel.foreach(_.cancel())
-
-    def addChild(child: Cancellable): Unit = synchronized:
-      if !hasCompleted then children += this
+      cancelRequest = true
 
     // Future method implementations
 
@@ -86,30 +68,68 @@ object Future:
      *     the type with which the future was created since `Promise` is invariant.
      */
     private[Future] def complete(result: Try[T] @uncheckedVariance): Unit =
-      if !hasCompleted then
-        this.result = result
-        hasCompleted = true
-      for listener <- extract(waiting) do listener(result)
+      val toNotify = synchronized:
+        if hasCompleted then Nil
+        else
+          this.result = result
+          hasCompleted = true
+          val ws = waiting.toList
+          waiting.clear()
+          ws
+      for listener <- toNotify do listener(result)
 
   end CoreFuture
 
   /** A future that is completed by evaluating `body` as a separate
    *  asynchronous operation in the given `scheduler`
    */
-  private class RunnableFuture[+T](body: Async ?=> T)(using scheduler: Scheduler)
+  private class RunnableFuture[+T](body: Async ?=> T)(using ac: Async.Config)
   extends CoreFuture[T]:
 
     /** a handler for Async */
     private def async(body: Async ?=> Unit): Unit =
+      class FutureAsync(val scheduler: Scheduler, val group: Cancellable.Group) extends Async:
+
+        def checkCancellation() =
+          if cancelRequest then throw CancellationException()
+
+        /** Await a source first by polling it, and, if that fails, by suspending
+         *  in a onComplete call.
+         */
+        def await[T](src: Async.Source[T]): T =
+          checkCancellation()
+          src.poll().getOrElse:
+            try
+              var result: Option[T] = None // Not needed if we have full continuations
+              suspend[T, Unit]: k =>
+                src.onComplete: x =>
+                  scheduler.schedule: () =>
+                    result = Some(x)
+                    k.resume()
+                  true // signals to `src` that result `x` was consumed
+              result.get
+              /* With full continuations, the try block can be written more simply as follows:
+
+                suspend[T, Unit]: k =>
+                  src.onComplete: x =>
+                    scheduler.schedule: () =>
+                      k.resume(x)
+                  true
+              */
+            finally checkCancellation()
+
+        def withGroup(group: Cancellable.Group) = FutureAsync(scheduler, group)
+
       boundary [Unit]:
-        given Async = new Async.Impl(this, scheduler):
-          def checkCancellation() =
-            if hasCompleted then throw new CancellationException()
-        body
+        body(using FutureAsync(ac.scheduler, ac.group))
     end async
 
-    scheduler.schedule: () =>
-      async(complete(Try(body)))
+    ac.scheduler.schedule: () =>
+      async:
+        link()
+        Async.group:
+          complete(Try(body))
+        unlink()
 
   end RunnableFuture
 
@@ -119,9 +139,7 @@ object Future:
    *  children of that context's root.
    */
   def apply[T](body: Async ?=> T)(using ac: Async.Config): Future[T] =
-    val f = RunnableFuture(body)(using ac.scheduler)
-    ac.root.addChild(f)
-    f
+    RunnableFuture(body)
 
   extension [T](f1: Future[T])
 

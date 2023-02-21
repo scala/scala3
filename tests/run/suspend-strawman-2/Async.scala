@@ -1,8 +1,6 @@
 package concurrent
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
-import fiberRuntime.suspend
-import fiberRuntime.boundary
 
 /** A context that allows to suspend waiting for asynchronous data sources
  */
@@ -11,13 +9,16 @@ trait Async extends Async.Config:
   /** Wait for completion of async source `src` and return the result */
   def await[T](src: Async.Source[T]): T
 
+  /** An Async of the same kind as this one, with a given cancellation group */
+  def withGroup(group: Cancellable.Group): Async
+
 object Async:
 
   /** The underlying configuration of an async block */
   trait Config:
 
-    /** The cancellable async source underlying this async computation */
-    def root: Cancellable
+    /** The group of cancellableup to which nested futures belong */
+    def group: Cancellable.Group
 
     /** The scheduler for runnables defined in this async computation */
     def scheduler: Scheduler
@@ -28,59 +29,13 @@ object Async:
      *  ignores cancellation requests
      */
     given fromScheduler(using s: Scheduler): Config with
-      def root = Cancellable.empty
+      def group = Cancellable.Unlinked
       def scheduler = s
 
   end Config
 
-  /** A possible implementation of Async. Defines an `await` method based
-   *  on a method to check for cancellation that needs to be implemented by
-   *  subclasses.
-   *
-   *   @param   root      the root of the Async's config
-   *   @param   scheduler the scheduler of the Async's config
-   *   @param   label     the label of the boundary that defines the representedd async block
-   */
-  abstract class Impl(val root: Cancellable, val scheduler: Scheduler)
-     (using label: boundary.Label[Unit]) extends Async:
-
-    protected def checkCancellation(): Unit
-
-    /** Await a source first by polling it, and, if that fails, by suspending
-     *  in a onComplete call.
-     */
-    def await[T](src: Source[T]): T =
-      checkCancellation()
-      src.poll().getOrElse:
-        try
-          var result: Option[T] = None // Not needed if we have full continuations
-          suspend[T, Unit]: k =>
-            src.onComplete: x =>
-              scheduler.schedule: () =>
-                result = Some(x)
-                k.resume()
-              true // signals to `src` that result `x` was consumed
-          result.get
-          /* With full continuations, the try block can be written more simply as follows:
-
-            suspend[T, Unit]: k =>
-              src.onComplete: x =>
-                scheduler.schedule: () =>
-                  k.resume(x)
-              true
-          */
-        finally checkCancellation()
-
-  end Impl
-
   /** An implementation of Async that blocks the running thread when waiting */
-  private class Blocking(val scheduler: Scheduler = Scheduler) extends Async:
-
-    def root = Cancellable.empty
-
-    protected def checkCancellation(): Unit = ()
-
-    private var hasResumed = false
+  private class Blocking(val scheduler: Scheduler, val group: Cancellable.Group) extends Async:
 
     def await[T](src: Source[T]): T =
       src.poll().getOrElse:
@@ -94,17 +49,25 @@ object Async:
           while result.isEmpty do wait()
           result.get
 
+    def withGroup(group: Cancellable.Group) = Blocking(scheduler, group)
+  end Blocking
+
+
   /** Execute asynchronous computation `body` on currently running thread.
    *  The thread will suspend when the computation waits.
    */
   def blocking[T](body: Async ?=> T, scheduler: Scheduler = Scheduler): T =
-    body(using Blocking())
+    body(using Blocking(scheduler, Cancellable.Unlinked))
 
   /** The currently executing Async context */
   inline def current(using async: Async): Async = async
 
   /** Await source result in currently executing Async context */
   inline def await[T](src: Source[T])(using async: Async): T = async.await(src)
+
+  def group[T](body: Async ?=> T)(using async: Async): T =
+    val newGroup = Cancellable.Group().link()
+    body(using async.withGroup(newGroup))
 
   /** A function `T => Boolean` whose lineage is recorded by its implementing
    *  classes. The Listener function accepts values of type `T` and returns
