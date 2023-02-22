@@ -159,12 +159,12 @@ object Objects:
     def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context, pendingTrace: Trace) =
       val index = data.checkingObjects.indexOf(clazz)
 
-      if index != -1 then
+      if index != -1 && data.checkingObjects.size > 1 then
         val joinedTrace = data.pendingTraces.slice(index + 1, data.checkingObjects.size).foldLeft(pendingTrace) { (a, acc) => acc ++ a }
         val callTrace = Trace.buildStacktrace(joinedTrace, "Calling trace:\n")
         val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
         report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, clazz.defTree)
-      else if data.checkedObjects.indexOf(clazz) == -1 then
+      else if index == -1 && data.checkedObjects.indexOf(clazz) == -1 then
         data.pendingTraces += pendingTrace
         data.checkingObjects += clazz
         work
@@ -483,7 +483,6 @@ object Objects:
       refs.foreach(ref => assign(ref, field, rhs, rhsTyp))
 
     case ref: Ref =>
-      println("ref = " + ref.show + ", ref.owner = " + ref.owner.show + ", current = " + State.currentObject.show)
       if ref.owner != State.currentObject then
         errorMutateOtherStaticObject(State.currentObject, ref.owner)
       else

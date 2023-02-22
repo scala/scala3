@@ -5,7 +5,7 @@ enum Enum:
 def g(b: Enum.B): Int = b.foo()
 
 object Enum:
-  object nested:
+  object nested:               // error
     val a: Enum = Case
 
   val b: Enum = f(nested.a)
