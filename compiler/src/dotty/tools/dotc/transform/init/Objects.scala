@@ -437,29 +437,30 @@ object Objects:
       refs.map(ref => select(ref, field, receiver)).join
   }
 
-  def assign(receiver: Value, field: Symbol, rhs: Value): Contextual[Value] = log("Assign" + field.show + " of " + receiver.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
-    receiver match
-    case Fun(body, thisV, klass) =>
-      report.error("[Internal error] unexpected tree in assignment, fun = " + body.show + Trace.show, Trace.position)
-      Bottom
+  def assign(receiver: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + receiver.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
+    // Ignore primitive types
+    if !rhsTyp.widenDealias.typeSymbol.isPrimitiveValueClass then
 
-    case Cold =>
-      report.warning("Assigning to cold aliases is forbidden", Trace.position)
-      Bottom
+      receiver match
+      case Fun(body, thisV, klass) =>
+        report.error("[Internal error] unexpected tree in assignment, fun = " + body.show + Trace.show, Trace.position)
 
-    case Bottom =>
-      Bottom
+      case Cold =>
+        report.warning("Assigning to cold aliases is forbidden", Trace.position)
 
-    case RefSet(refs) =>
-      refs.map(ref => assign(ref, field, rhs)).join
+      case Bottom =>
 
-    case ref: Ref =>
-      if ref.owner != State.currentObject then
-        errorMutateOtherStaticObject(State.currentObject, ref.owner)
-        Bottom
-      else
-        Heap.write(ref, field, rhs)
-        Bottom
+      case RefSet(refs) =>
+        refs.foreach(ref => assign(ref, field, rhs, rhsTyp))
+
+      case ref: Ref =>
+        if ref.owner != State.currentObject then
+          errorMutateOtherStaticObject(State.currentObject, ref.owner)
+        else
+          Heap.write(ref, field, rhs)
+    end if
+
+    Bottom
   }
 
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
@@ -661,7 +662,7 @@ object Objects:
               extendTrace(id) { evalType(prefix, thisV, klass) }
 
         val value = eval(rhs, thisV, klass)
-        withTrace(trace2) { assign(receiver, lhs.symbol, value) }
+        withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
 
       case closureDef(ddef) =>
         Fun(ddef.rhs, thisV, klass)
