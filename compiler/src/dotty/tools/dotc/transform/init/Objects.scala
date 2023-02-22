@@ -19,6 +19,7 @@ import Errors.*
 import Trace.*
 import Util.*
 
+import scala.collection.immutable.ListSet
 import scala.collection.mutable
 import scala.annotation.tailrec
 
@@ -127,7 +128,7 @@ object Objects:
    *
    * It comes from `if` expressions.
    */
-  case class RefSet(refs: List[Value]) extends Value:
+  case class RefSet(refs: ListSet[Value]) extends Value:
     assert(refs.forall(!_.isInstanceOf[RefSet]))
     def show(using Context) = refs.map(_.show).mkString("[", ",", "]")
 
@@ -135,7 +136,7 @@ object Objects:
   case object Cold extends Value:
     def show(using Context) = "Cold"
 
-  val Bottom = RefSet(Nil)
+  val Bottom = RefSet(ListSet.empty)
 
   /** Checking state  */
   object State:
@@ -269,9 +270,9 @@ object Objects:
       case (Bottom, b)                        => b
       case (a, Bottom)                        => a
       case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
-      case (a, RefSet(refs))                  => RefSet(a :: refs)
-      case (RefSet(refs), b)                  => RefSet(b :: refs)
-      case (a, b)                             => RefSet(a :: b :: Nil)
+      case (a, RefSet(refs))                  => RefSet(refs + a)
+      case (RefSet(refs), b)                  => RefSet(refs + b)
+      case (a, b)                             => RefSet(ListSet(a, b))
 
     def widen(height: Int)(using Context): Value =
       a match
@@ -294,7 +295,7 @@ object Objects:
       case _ => a
 
 
-  extension (values: Seq[Value])
+  extension (values: Iterable[Value])
     def join: Value = if values.isEmpty then Bottom else values.reduce { (v1, v2) => v1.join(v2) }
 
     def widen(height: Int): Contextual[List[Value]] = values.map(_.widen(height)).toList
