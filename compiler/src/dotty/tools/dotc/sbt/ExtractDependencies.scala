@@ -306,6 +306,13 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       }
     }
 
+  private def addInheritanceDependencies(tree: Closure)(using Context): Unit =
+    // If the tpt is empty, this is a non-SAM lambda, so no need to register
+    // an inheritance relationship.
+    if !tree.tpt.isEmpty then
+      val from = resolveDependencySource
+      _dependencies += ClassDependency(from, tree.tpt.tpe.classSymbol, LocalDependencyByInheritance)
+
   private def addInheritanceDependencies(tree: Template)(using Context): Unit =
     if (tree.parents.nonEmpty) {
       val depContext = depContextOf(tree.symbol.owner)
@@ -369,6 +376,8 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       case ref: RefTree =>
         addMemberRefDependency(ref.symbol)
         addTypeDependency(ref.tpe)
+      case t: Closure =>
+        addInheritanceDependencies(t)
       case t: Template =>
         addInheritanceDependencies(t)
       case _ =>
