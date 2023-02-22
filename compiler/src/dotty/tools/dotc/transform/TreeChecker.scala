@@ -729,6 +729,11 @@ object TreeChecker {
       try treeChecker.typed(expansion)(using checkingCtx)
       catch
         case err: java.lang.AssertionError =>
+          val stack =
+            if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
+            else if err.getStackTrace == null then "  no stacktrace"
+            else err.getStackTrace.nn.mkString("  ", "  \n", "")
+
           report.error(
             s"""Malformed tree was found while expanding macro with -Xcheck-macros.
                |The tree does not conform to the compiler's tree invariants.
@@ -741,7 +746,7 @@ object TreeChecker {
                |
                |Error:
                |${err.getMessage}
-               |
+               |$stack
                |""",
             original
           )
