@@ -176,20 +176,32 @@ object Objects:
 
   /** Environment for parameters */
   object Env:
-    opaque type Data = Map[Symbol, Value]
+    case class Data(private[Env] val params: Map[Symbol, Value]):
+      private[Env] val locals: mutable.Map[Symbol, Value] = mutable.Map.empty
 
-    val empty: Data = Map.empty
+      private[Env] def get(x: Symbol)(using Context): Option[Value] =
+        if x.is(Flags.Param) then params.get(x)
+        else locals.get(x)
 
-    def apply(x: Symbol)(using data: Data): Value = data(x)
+      private[Env] def contains(x: Symbol): Boolean = params.contains(x) || locals.contains(x)
 
-    def get(x: Symbol)(using data: Data): Option[Value] = data.get(x)
+
+    def empty: Data = new Data(Map.empty)
+
+    def apply(x: Symbol)(using data: Data, ctx: Context): Value = data.get(x).get
+
+    def get(x: Symbol)(using data: Data, ctx: Context): Option[Value] = data.get(x)
+
+    def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context): Unit =
+      assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
+      data.locals(x) = value
 
     def contains(x: Symbol)(using data: Data): Boolean = data.contains(x)
 
     def of(ddef: DefDef, args: List[Value])(using Context): Data =
       val params = ddef.termParamss.flatten.map(_.symbol)
       assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
-      params.zip(args).toMap
+      new Data(params.zip(args).toMap)
 
   /** Abstract heap for mutable fields
    *
@@ -197,8 +209,13 @@ object Objects:
    *  information.
    */
   object Heap:
-    private case class Addr(ref: Ref, field: Symbol):
-      def show(using Context) = "Addr(" + ref.show + ", " + field.show + ")"
+    private abstract class Addr
+
+    /** The address for mutable fields of objects. */
+    private case class FieldAddr(ref: Ref, field: Symbol) extends Addr
+
+    /** The address for mutable local variables . */
+    private case class LocalVarAddr(ref: Ref, env: Env.Data, sym: Symbol) extends Addr
 
     opaque type Data = ImmutableMapWithRefEquality
 
@@ -223,15 +240,28 @@ object Objects:
 
     def contains(ref: Ref, field: Symbol)(using state: State.Data): Boolean =
       val data: Data = State.getHeap()
-      data.map.contains(Addr(ref, field))
+      data.map.contains(FieldAddr(ref, field))
 
     def read(ref: Ref, field: Symbol)(using state: State.Data): Value =
       val data: Data = State.getHeap()
-      // Primitive values are not in the heap and initialization errors are reported by the initialization checker.
-      data.map.getOrElse(Addr(ref, field), Bottom)
+      data.map(FieldAddr(ref, field))
 
     def write(ref: Ref, field: Symbol, value: Value)(using state: State.Data): Unit =
-      val addr = Addr(ref, field)
+      val addr = FieldAddr(ref, field)
+      val data: Data = State.getHeap()
+      val data2 = data.updated(addr, value)
+      State.setHeap(data2)
+
+    def containsLocalVar(ref: Ref, env: Env.Data, sym: Symbol)(using state: State.Data): Boolean =
+      val data: Data = State.getHeap()
+      data.map.contains(LocalVarAddr(ref, env, sym))
+
+    def readLocalVar(ref: Ref, env: Env.Data, sym: Symbol)(using state: State.Data): Value =
+      val data: Data = State.getHeap()
+      data.map(LocalVarAddr(ref, env, sym))
+
+    def writeLocalVar(ref: Ref, env: Env.Data, sym: Symbol, value: Value)(using state: State.Data): Unit =
+      val addr = LocalVarAddr(ref, env, sym)
       val data: Data = State.getHeap()
       val data2 = data.updated(addr, value)
       State.setHeap(data2)
@@ -440,27 +470,25 @@ object Objects:
   }
 
   def assign(receiver: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + receiver.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
-    // Ignore primitive types
-    if !rhsTyp.widenDealias.typeSymbol.isPrimitiveValueClass then
+    receiver match
+    case Fun(body, thisV, klass) =>
+      report.error("[Internal error] unexpected tree in assignment, fun = " + body.show + Trace.show, Trace.position)
 
-      receiver match
-      case Fun(body, thisV, klass) =>
-        report.error("[Internal error] unexpected tree in assignment, fun = " + body.show + Trace.show, Trace.position)
+    case Cold =>
+      report.warning("Assigning to cold aliases is forbidden", Trace.position)
 
-      case Cold =>
-        report.warning("Assigning to cold aliases is forbidden", Trace.position)
+    case Bottom =>
 
-      case Bottom =>
+    case RefSet(refs) =>
+      refs.foreach(ref => assign(ref, field, rhs, rhsTyp))
 
-      case RefSet(refs) =>
-        refs.foreach(ref => assign(ref, field, rhs, rhsTyp))
-
-      case ref: Ref =>
-        if ref.owner != State.currentObject then
-          errorMutateOtherStaticObject(State.currentObject, ref.owner)
-        else
-          Heap.write(ref, field, rhs)
-    end if
+    case ref: Ref =>
+      println("ref = " + ref.show + ", ref.owner = " + ref.owner.show + ", current = " + State.currentObject.show)
+      if ref.owner != State.currentObject then
+        errorMutateOtherStaticObject(State.currentObject, ref.owner)
+      else
+        Heap.write(ref, field, rhs)
+    end match
 
     Bottom
   }
@@ -652,6 +680,7 @@ object Objects:
         eval(arg, thisV, klass)
 
       case Assign(lhs, rhs) =>
+        var isLocal = false
         val receiver =
           lhs match
           case Select(qual, _) =>
@@ -659,12 +688,18 @@ object Objects:
           case id: Ident =>
             id.tpe match
             case TermRef(NoPrefix, _) =>
+              isLocal = true
               thisV
             case TermRef(prefix, _) =>
               extendTrace(id) { evalType(prefix, thisV, klass) }
 
         val value = eval(rhs, thisV, klass)
-        withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
+
+        if isLocal then
+          Heap.writeLocalVar(receiver.asInstanceOf[Ref], summon[Env.Data], lhs.symbol, value)
+          Bottom
+        else
+          withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
 
       case closureDef(ddef) =>
         Fun(ddef.rhs, thisV, klass)
@@ -716,7 +751,18 @@ object Objects:
 
       case vdef : ValDef =>
         // local val definition
-        eval(vdef.rhs, thisV, klass)
+        val rhs = eval(vdef.rhs, thisV, klass)
+        val sym = vdef.symbol
+        if vdef.symbol.is(Flags.Mutable) then
+          val ref = thisV.asInstanceOf[Ref]
+          val env = summon[Env.Data]
+          // Ignore writing to outer locals, will be abstracted by Cold in read.
+          if Heap.containsLocalVar(ref, env, sym) then
+            Heap.writeLocalVar(ref, env, sym, rhs)
+        else
+          Env.setLocalVal(vdef.symbol, rhs)
+
+        Bottom
 
       case ddef : DefDef =>
         // local method
@@ -756,26 +802,22 @@ object Objects:
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         val sym = tmref.symbol
-        if sym.is(Flags.Mutable) then
-          val ownerClass = sym.enclosingClass
-          val ownerValue = resolveThis(ownerClass.asClass, thisV, klass)
-          // local mutable fields are associated with the object
-          select(ownerValue, sym, ownerClass.thisType, needResolve = false)
+        val valueOpt = Env.get(sym)
+        if valueOpt.nonEmpty then
+          valueOpt.get
 
-        else if sym.is(Flags.Param) then
-          Env.get(sym) match
-          case Some(v) => v
-          case None => Cold
+        else if sym.is(Flags.Mutable) then
+          val ref = thisV.asInstanceOf[Ref]
+          val env = summon[Env.Data]
+          if Heap.containsLocalVar(ref, env, sym) then
+            Heap.readLocalVar(ref, env, sym)
+          else
+            Cold
 
         else if sym.is(Flags.Package) then
           Bottom
 
-        else if sym.hasSource then
-          val rhs = sym.defTree.asInstanceOf[ValDef].rhs
-          eval(rhs, thisV, klass)
-
         else
-          // pattern-bound variables
           Cold
 
       case tmref: TermRef =>
