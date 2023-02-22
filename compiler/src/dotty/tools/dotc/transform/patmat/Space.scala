@@ -72,7 +72,7 @@ sealed trait Space:
       isSubspaceCache.getOrElseUpdate(b, computeIsSubspace(a, b))
     }
 
-  @sharable private var mySimplified: Space | Null = _
+  @sharable private var mySimplified: Space | Null = null
 
   def simplify(using Context): Space =
     val simplified = mySimplified
@@ -93,7 +93,7 @@ case object Empty extends Space
  *
  */
 case class Typ(tp: Type, decomposed: Boolean = true) extends Space:
-  private var myDecompose: List[Typ] | Null = _
+  private var myDecompose: List[Typ] | Null = null
 
   def canDecompose(using Context): Boolean = decompose != SpaceEngine.ListOfTypNoType
 
