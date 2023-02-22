@@ -530,9 +530,12 @@ class Definitions {
   })
 
   @tu lazy val ListClass: Symbol       = requiredClass("scala.collection.immutable.List")
+  def ListType: TypeRef                = ListClass.typeRef
   @tu lazy val ListModule: Symbol      = requiredModule("scala.collection.immutable.List")
   @tu lazy val NilModule: Symbol       = requiredModule("scala.collection.immutable.Nil")
+  def NilType: TermRef                 = NilModule.termRef
   @tu lazy val ConsClass: Symbol       = requiredClass("scala.collection.immutable.::")
+  def ConsType: TypeRef                = ConsClass.typeRef
   @tu lazy val SeqFactoryClass: Symbol = requiredClass("scala.collection.SeqFactory")
 
   @tu lazy val SingletonClass: ClassSymbol =
