@@ -1,0 +1,44 @@
+-- Error: tests/neg/binaryAPI.scala:6:17 -------------------------------------------------------------------------------
+6 |@binaryAPI class C: // error
+  |                 ^
+  |                 @binaryAPI cannot be used on class definitions
+-- Error: tests/neg/binaryAPI.scala:7:25 -------------------------------------------------------------------------------
+7 |  @binaryAPI private def f: Unit = // error
+  |                         ^
+  |                         @binaryAPI cannot be used on private definitions.
+  |
+  |                         Could use private[C] or protected instead.
+-- Error: tests/neg/binaryAPI.scala:8:19 -------------------------------------------------------------------------------
+8 |    @binaryAPI def g = () // error
+  |                   ^
+  |                   @binaryAPI cannot be used on local definitions.
+-- Error: tests/neg/binaryAPI.scala:10:19 ------------------------------------------------------------------------------
+10 |class D(@binaryAPI x: Int) // error
+   |                   ^
+   |                   @binaryAPI cannot be used on private definitions.
+   |
+   |                   Could use private[D] or protected instead.
+-- Error: tests/neg/binaryAPI.scala:11:19 ------------------------------------------------------------------------------
+11 |class E[@binaryAPI T] // error
+   |                   ^
+   |                   @binaryAPI cannot be used on type definitions
+-- Error: tests/neg/binaryAPI.scala:15:16 ------------------------------------------------------------------------------
+15 |@binaryAPI enum Enum1: // error
+   |                ^
+   |                @binaryAPI cannot be used on enum definitions.
+-- Error: tests/neg/binaryAPI.scala:19:18 ------------------------------------------------------------------------------
+19 |  @binaryAPI case A // error
+   |                  ^
+   |                  @binaryAPI cannot be used on enum definitions.
+-- Error: tests/neg/binaryAPI.scala:20:18 ------------------------------------------------------------------------------
+20 |  @binaryAPI case B(a: Int) // error
+   |                  ^
+   |                  @binaryAPI cannot be used on enum definitions.
+-- Error: tests/neg/binaryAPI.scala:5:16 -------------------------------------------------------------------------------
+5 |@binaryAPI type A // error
+  |                ^
+  |                @binaryAPI cannot be used on type definitions
+-- Error: tests/neg/binaryAPI.scala:13:17 ------------------------------------------------------------------------------
+13 |def f(@binaryAPI x: Int) = 3 // error
+   |                 ^
+   |                 @binaryAPI cannot be used on local definitions.

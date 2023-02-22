@@ -99,7 +99,9 @@ trait TypeAssigner {
     val tpe1 = accessibleType(tpe, superAccess)
     if tpe1.exists then tpe1
     else tpe match
-      case tpe: NamedType => inaccessibleErrorType(tpe, superAccess, pos)
+      case tpe: NamedType =>
+        if tpe.termSymbol.isBinaryAPI then tpe
+        else inaccessibleErrorType(tpe, superAccess, pos)
       case NoType => tpe
 
   /** Return a potentially skolemized version of `qualTpe` to be used

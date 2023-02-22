@@ -526,6 +526,11 @@ object Checking {
         fail(em"Inline methods cannot be @tailrec")
     if sym.hasAnnotation(defn.TargetNameAnnot) && sym.isClass && sym.isTopLevelClass then
       fail(TargetNameOnTopLevelClass(sym))
+    if sym.hasAnnotation(defn.BinaryAPIAnnot) then
+      if sym.is(Enum) then fail(em"@binaryAPI cannot be used on enum definitions.")
+      else if sym.isType && !sym.is(Module) && !(sym.is(Given) || sym.companionModule.is(Given)) then fail(em"@binaryAPI cannot be used on ${sym.showKind} definitions")
+      else if !sym.owner.isClass && !(sym.is(Param) && sym.owner.isConstructor) then fail(em"@binaryAPI cannot be used on local definitions.")
+      else if sym.is(Private) then fail(em"@binaryAPI cannot be used on private definitions.\n\nCould use private[${sym.owner.name}] or protected instead.")
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))

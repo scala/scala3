@@ -54,6 +54,9 @@ object PrepareInlineable {
     /** A tree map which inserts accessors for non-public term members accessed from inlined code.
      */
     abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert {
+
+      def useBinaryAPI: Boolean
+
       def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName =
         val accName = InlineAccessorName(name)
         if site.isExtensibleClass then accName.expandedName(site) else accName
@@ -71,6 +74,7 @@ object PrepareInlineable {
       def needsAccessor(sym: Symbol)(using Context): Boolean =
         sym.isTerm &&
         (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
+        (!useBinaryAPI || !sym.isBinaryAPI) &&
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
@@ -94,7 +98,7 @@ object PrepareInlineable {
      *  possible if the receiver is essentially this or an outer this, which is indicated
      *  by the test that we can find a host for the accessor.
      */
-    class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
+    class MakeInlineableDirect(inlineSym: Symbol, val useBinaryAPI: Boolean) extends MakeInlineableMap(inlineSym) {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
@@ -118,13 +122,14 @@ object PrepareInlineable {
      *      private[inlines] def next[U](y: U): (T, U) = (x, y)
      *    }
      *    class TestPassing {
-     *      inline def foo[A](x: A): (A, Int) = {
-     *      val c = new C[A](x)
-     *      c.next(1)
-     *    }
-     *    inline def bar[A](x: A): (A, String) = {
-     *      val c = new C[A](x)
-     *      c.next("")
+     *        inline def foo[A](x: A): (A, Int) = {
+     *        val c = new C[A](x)
+     *        c.next(1)
+     *      }
+     *      inline def bar[A](x: A): (A, String) = {
+     *        val c = new C[A](x)
+     *        c.next("")
+     *      }
      *    }
      *
      *  `C` could be compiled separately, so we cannot place the inline accessor in it.
@@ -137,7 +142,7 @@ object PrepareInlineable {
      *  Since different calls might have different receiver types, we need to generate one
      *  such accessor per call, so they need to have unique names.
      */
-    class MakeInlineablePassing(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
+    class MakeInlineablePassing(inlineSym: Symbol, val useBinaryAPI: Boolean) extends MakeInlineableMap(inlineSym) {
 
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case _: Apply | _: TypeApply | _: RefTree
@@ -220,8 +225,13 @@ object PrepareInlineable {
         // so no accessors are needed for them.
         tree
       else
-        new MakeInlineablePassing(inlineSym).transform(
-          new MakeInlineableDirect(inlineSym).transform(tree))
+        // Make sure the old accessors are generated for binary compatibility
+        new MakeInlineablePassing(inlineSym, useBinaryAPI = false).transform(
+          new MakeInlineableDirect(inlineSym, useBinaryAPI = false).transform(tree))
+
+        // TODO: warn if MakeInlineablePassing or MakeInlineableDirect generate accessors when useBinaryAPI in enabled
+        new MakeInlineablePassing(inlineSym, useBinaryAPI = true).transform(
+          new MakeInlineableDirect(inlineSym, useBinaryAPI = true).transform(tree))
     }
   }
 

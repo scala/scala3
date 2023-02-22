@@ -36,7 +36,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.MainAnnotation$.Parameter",
   "scala.annotation.MainAnnotation$.ParameterAnnotation",
 
-
   //// New feature: prototype of new version of @main
   // This will never be stabilized. When it is ready it should replace the old @main annotation (requires scala.annotation.MainAnnotation).
   // Needs user feedback.

@@ -72,7 +72,8 @@ class Compiler {
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new init.Checker) ::        // Check initialization of objects
-    List(new ProtectedAccessors,     // Add accessors for protected members
+    List(new BinaryAPIAnnotations,   // Makes @binaryAPI definitions public
+         new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
          new ElimByName,             // Map by-name parameters to functions

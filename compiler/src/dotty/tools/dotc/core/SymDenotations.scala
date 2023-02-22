@@ -1038,6 +1038,13 @@ object SymDenotations {
       isOneOf(EffectivelyErased)
       || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
 
+    /** Is this a member that will become public in the generated binary */
+    def isBinaryAPI(using Context): Boolean =
+      isTerm && (
+        hasAnnotation(defn.BinaryAPIAnnot) ||
+        allOverriddenSymbols.exists(_.hasAnnotation(defn.BinaryAPIAnnot))
+      )
+
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
      *  because the Scala library does not always follow the right conventions.
