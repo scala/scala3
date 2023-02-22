@@ -630,13 +630,7 @@ object SpaceEngine {
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
         parts.map(tp.derivedAppliedType(_, targs))
 
-      case tp if {
-        val cls = tp.classSymbol
-        cls.is(Sealed)
-        && cls.isOneOf(AbstractOrTrait)
-        && !cls.hasAnonymousChild
-        && cls.children.nonEmpty
-      } =>
+      case tp if tp.classSymbol.isDecomposableToChildren =>
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
@@ -671,6 +665,18 @@ object SpaceEngine {
 
     rec(tp, Nil)
   }
+
+  extension (cls: Symbol)
+    /** A type is decomposable to children if it's sealed,
+      * abstract (or a trait) - so its not a sealed concrete class that can be instantiated on its own,
+      * has no anonymous children, which we wouldn't be able to name as counter-examples,
+      * but does have children.
+      *
+      * A sealed trait with no subclasses is considered not decomposable and thus is treated as an opaque type.
+      * A sealed trait with subclasses that then get removed after `refineUsingParent`, decomposes to the empty list.
+      * So that's why we consider whether a type has children. */
+    def isDecomposableToChildren(using Context): Boolean =
+      cls.is(Sealed) && cls.isOneOf(AbstractOrTrait) && !cls.hasAnonymousChild && cls.children.nonEmpty
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
