@@ -226,7 +226,8 @@ object Objects:
 
     def read(ref: Ref, field: Symbol)(using state: State.Data): Value =
       val data: Data = State.getHeap()
-      data.map(Addr(ref, field))
+      // Primitive values are not in the heap and initialization errors are reported by the initialization checker.
+      data.map.getOrElse(Addr(ref, field), Bottom)
 
     def write(ref: Ref, field: Symbol, value: Value)(using state: State.Data): Unit =
       val addr = Addr(ref, field)
