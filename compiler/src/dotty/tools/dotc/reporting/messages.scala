@@ -2231,7 +2231,8 @@ class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)
   def msg(using Context) = "A pure expression does nothing in statement position; you may be omitting necessary parentheses"
   def explain(using Context) =
     i"""The pure expression $stat doesn't have any side effect and its result is not assigned elsewhere.
-        |It can be removed without changing the semantics of the program. This may indicate an error."""
+        |It can be removed without changing the semantics of the program. This may indicate an error.
+        |You can add `: @nowarn` to suppress this warning"""
 }
 
 class TraitCompanionWithMutableStatic()(using Context)
@@ -2815,11 +2816,11 @@ extends SyntaxMsg(InlineGivenShouldNotBeFunctionID):
 class ValueDiscarding(tp: Type)(using Context)
   extends Message(ValueDiscardingID):
     def kind = MessageKind.PotentialIssue
-    def msg(using Context) = i"discarded non-Unit value of type $tp"
+    def msg(using Context) = i"discarded non-Unit value of type $tp (add `: @nowarn` to suppress this warning)"
     def explain(using Context) = ""
 
 class UnusedNonUnitValue(tp: Type)(using Context)
   extends Message(UnusedNonUnitValueID):
     def kind = MessageKind.PotentialIssue
-    def msg(using Context) = i"unused value of type $tp"
+    def msg(using Context) = i"unused value of type $tp (add `: @nowarn` to suppress this warning)"
     def explain(using Context) = ""

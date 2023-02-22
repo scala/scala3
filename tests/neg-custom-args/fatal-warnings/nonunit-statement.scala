@@ -3,6 +3,7 @@ import collection.ArrayOps
 import collection.mutable.{ArrayBuilder, LinkedHashSet, ListBuffer}
 import concurrent._
 import scala.reflect.ClassTag
+import scala.annotation.nowarn
 
 class C {
   import ExecutionContext.Implicits._
@@ -47,8 +48,13 @@ class WhoCares {
 class Absolution {
   def f(i: Int): Int = i+1
   import ExecutionContext.Implicits._
-  // Future(42): Unit        // nowarn { F(42)(ctx) }: Unit where annot is on F(42)
-  // f(42): Unit             // nowarn
+  Future(42): @nowarn        // nowarn (literally @nowarn)
+  f(42): @nowarn             // nowarn (literally @nowarn)
+  val _ = f(42)              // nowarn (alternative approach)
+  def doSth(): Unit = {
+    println("")
+    42: @nowarn              // nowarn (literally @nowarn)
+  }
 }
 // warn uni-branched unless user disables it with -Wnonunit-if:false
 class Boxed[A](a: A) {

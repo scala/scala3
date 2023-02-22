@@ -4252,7 +4252,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       && !isThisTypeResult(t)                   // buf += x
       && !isSuperConstrCall(t)                  // just a thing
       && !isJavaApplication(t)                  // Java methods are inherently side-effecting
-      // && !treeInfo.hasExplicitUnit(t)           // suppressed by explicit expr: Unit // TODO Should explicit `: Unit` be added as warning suppression?
     )
     if ctx.settings.WNonUnitStatement.value && !ctx.isAfterTyper && checkInterestingShapes(t) then
       val where = t match {
