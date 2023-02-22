@@ -163,7 +163,8 @@ object Objects:
         val joinedTrace = data.pendingTraces.slice(index + 1, data.checkingObjects.size).foldLeft(pendingTrace) { (a, acc) => acc ++ a }
         val callTrace = Trace.buildStacktrace(joinedTrace, "Calling trace:\n")
         val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
-        report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, clazz.defTree)
+        val pos = clazz.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template].constr
+        report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, pos)
       else if index == -1 && data.checkedObjects.indexOf(clazz) == -1 then
         data.pendingTraces += pendingTrace
         data.checkingObjects += clazz
@@ -527,7 +528,7 @@ object Objects:
       def iterate()(using Context): Unit =
         count += 1
 
-        given Trace = Trace.empty.add(classSym.defTree)
+        given Trace = Trace.empty.add(tpl.constr)
         given env: Env.Data = Env.empty
 
         log("Iteration " + count) {
