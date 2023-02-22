@@ -695,6 +695,7 @@ object Objects:
         val value = eval(rhs, thisV, klass)
 
         if isLocal then
+          // TODO: the local var might be from outer environment.
           Heap.writeLocalVar(receiver.asInstanceOf[Ref], summon[Env.Data], lhs.symbol, value)
           Bottom
         else
@@ -755,9 +756,7 @@ object Objects:
         if vdef.symbol.is(Flags.Mutable) then
           val ref = thisV.asInstanceOf[Ref]
           val env = summon[Env.Data]
-          // Ignore writing to outer locals, will be abstracted by Cold in read.
-          if Heap.containsLocalVar(ref, env, sym) then
-            Heap.writeLocalVar(ref, env, sym, rhs)
+          Heap.writeLocalVar(ref, env, sym, rhs)
         else
           Env.setLocalVal(vdef.symbol, rhs)
 
