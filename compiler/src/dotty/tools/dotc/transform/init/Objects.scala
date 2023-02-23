@@ -69,7 +69,7 @@ object Objects:
 
 
   /**
-   * A reference caches the current value.
+   * A reference caches the values for outers and immutable fields.
    */
   sealed abstract class Ref extends Value:
     private val fields: mutable.Map[Symbol, Value] = mutable.Map.empty
@@ -106,21 +106,20 @@ object Objects:
   /**
    * Rerepsents values that are instances of the specified class
    *
-   * `tp.classSymbol` should be the concrete class of the value at runtime.
    */
-  case class OfClass private(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], owner: ClassSymbol) extends Ref:
+  case class OfClass private(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data, owner: ClassSymbol) extends Ref:
     def show(using Context) = "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ")"
 
   object OfClass:
-    def apply(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], owner: ClassSymbol)(using Context): OfClass =
-      val instance = new OfClass(klass, outer, ctor, args, owner)
+    def apply(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data, owner: ClassSymbol)(using Context): OfClass =
+      val instance = new OfClass(klass, outer, ctor, args, env, owner)
       instance.updateOuter(klass, outer)
       instance
 
   /**
    * Represents a lambda expression
    */
-  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value:
+  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol, env: Env.Data) extends Value:
     def show(using Context) = "Fun(" + expr.show + ", " + thisV.show + ", " + klass.show + ")"
 
   /**
@@ -177,32 +176,93 @@ object Objects:
 
   /** Environment for parameters */
   object Env:
-    case class Data(private[Env] val params: Map[Symbol, Value]):
+    abstract class Data:
+      private[Env] def get(x: Symbol)(using Context): Option[Value]
+      private[Env] def contains(x: Symbol): Boolean
+
+      def exists: Boolean
+      def widen(height: Int)(using Context): Data
+
+    /** Local environments can be deeply nested, therefore we need `outer`. */
+    private case class LocalEnv(private[Env] val params: Map[Symbol, Value], owner: Symbol, outer: Data) extends Data:
       private[Env] val locals: mutable.Map[Symbol, Value] = mutable.Map.empty
 
       private[Env] def get(x: Symbol)(using Context): Option[Value] =
         if x.is(Flags.Param) then params.get(x)
         else locals.get(x)
 
-      private[Env] def contains(x: Symbol): Boolean = params.contains(x) || locals.contains(x)
+      private[Env] def contains(x: Symbol): Boolean =
+        params.contains(x) || locals.contains(x)
 
+      val exists: Boolean = true
 
-    def empty: Data = new Data(Map.empty)
+      def widen(height: Int)(using Context): Data =
+        new LocalEnv(params.map(_ -> _.widen(height)), owner, outer.widen(height))
+    end LocalEnv
+
+    object NoEnv extends Data:
+      private[Env] def get(x: Symbol)(using Context): Option[Value] =
+        throw new RuntimeException("Invalid usage of non-existent env")
+
+      private[Env] def contains(x: Symbol): Boolean =
+        throw new RuntimeException("Invalid usage of non-existent env")
+
+      val exists: Boolean = false
+
+      def widen(height: Int)(using Context): Data = this
+    end NoEnv
+
+    /** An empty environment can be used for non-method environments, e.g., field initializers.
+     */
+    def emptyEnv(owner: Symbol): Data = new LocalEnv(Map.empty, owner, NoEnv)
 
     def apply(x: Symbol)(using data: Data, ctx: Context): Value = data.get(x).get
 
     def get(x: Symbol)(using data: Data, ctx: Context): Option[Value] = data.get(x)
 
-    def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context): Unit =
-      assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
-      data.locals(x) = value
-
     def contains(x: Symbol)(using data: Data): Boolean = data.contains(x)
 
-    def of(ddef: DefDef, args: List[Value])(using Context): Data =
+    def of(ddef: DefDef, args: List[Value], outer: Data)(using Context): Data =
       val params = ddef.termParamss.flatten.map(_.symbol)
-      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
-      new Data(params.zip(args).toMap)
+      assert(args.size == params.size && (ddef.symbol.owner.isClass ^ outer.exists), "arguments = " + args.size + ", params = " + params.size)
+      new LocalEnv(params.zip(args).toMap, ddef.symbol, outer)
+
+    def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context): Unit =
+      assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
+      data match
+      case localEnv: LocalEnv =>
+        assert(!localEnv.locals.contains(x), "Already initialized local " + x.show)
+        localEnv.locals(x) = value
+      case _ =>
+        throw new RuntimeException("Incorrect local environment for initializing " + x.show)
+
+    /**
+     * Resolve the definition environment for the given local variable.
+     *
+     * A local variable could be located in outer scope with intermixed classes between its
+     * definition site and usage site.
+     *
+     * Due to widening, the corresponding environment might not exist. As a result reading the local
+     * variable will return `Cold` and it's forbidden to write to the local variable.
+     *
+     * @param sym   The symbol of the local variable
+     * @param thisV The value for `this` of the enclosing class where the local variable is referenced.
+     * @param env   The local environment where the local variable is referenced.
+     */
+    def resolveDefinitionEnv(sym: Symbol, thisV: Value, env: Data): Option[(Value, Data)] =
+      if env.contains(sym) then Some(thisV -> env)
+      else
+        env match
+        case localEnv: LocalEnv =>
+          resolveDefinitionEnv(sym, thisV, localEnv.outer)
+        case NoEnv =>
+          // TODO: handle RefSet
+          thisV match
+          case ref: OfClass =>
+            resolveDefinitionEnv(sym, ref.outer, ref.env)
+          case _ =>
+            None
+  end Env
 
   /** Abstract heap for mutable fields
    *
@@ -252,10 +312,6 @@ object Objects:
       val data: Data = State.getHeap()
       val data2 = data.updated(addr, value)
       State.setHeap(data2)
-
-    def containsLocalVar(ref: Ref, env: Env.Data, sym: Symbol)(using state: State.Data): Boolean =
-      val data: Data = State.getHeap()
-      data.map.contains(LocalVarAddr(ref, env, sym))
 
     def readLocalVar(ref: Ref, env: Env.Data, sym: Symbol)(using state: State.Data): Value =
       val data: Data = State.getHeap()
@@ -312,17 +368,18 @@ object Objects:
       case RefSet(refs) =>
         refs.map(ref => ref.widen(height)).join
 
-      case Fun(expr, thisV, klass) =>
+      case Fun(expr, thisV, klass, env) =>
         if height == 0 then Cold
-        else Fun(expr, thisV.widen(height), klass)
+        else Fun(expr, thisV.widen(height), klass, env.widen(height))
 
-      case ref @ OfClass(klass, outer, init, args, owner) =>
+      case ref @ OfClass(klass, outer, init, args, env, owner) =>
         if height == 0 then
           Cold
         else
           val outer2 = outer.widen(height - 1)
-          val args2 = args.map(arg => arg.widen(height - 1))
-          OfClass(klass, outer2, init, args2, owner)
+          val args2 = args.map(_.widen(height - 1))
+          val env2 = env.widen(height - 1)
+          OfClass(klass, outer2, init, args2, env2, owner)
       case _ => a
 
 
@@ -362,8 +419,9 @@ object Objects:
           case _ =>
             val cls = target.owner.enclosingClass.asClass
             val ddef = target.defTree.asInstanceOf[DefDef]
-            given Env.Data = Env.of(ddef, args.map(_.value))
+            val env2 = Env.of(ddef, args.map(_.value), if ddef.symbol.owner.isClass then Env.NoEnv else summon[Env.Data])
             extendTrace(ddef) {
+              given Env.Data = env2
               eval(ddef.rhs, ref, cls, cacheResult = true)
             }
         else
@@ -382,11 +440,12 @@ object Objects:
           // See tests/init/pos/Type.scala
           Bottom
 
-    case Fun(expr, thisV, klass) =>
+    case Fun(expr, thisV, klass, env) =>
       // meth == NoSymbol for poly functions
       if meth.name.toString == "tupled" then
         value // a call like `fun.tupled`
       else
+        given Env.Data = env
         eval(expr, thisV, klass, cacheResult = true)
 
     case RefSet(vs) =>
@@ -394,13 +453,6 @@ object Objects:
   }
 
   def callConstructor(thisV: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-    // init "fake" param fields for parameters of primary and secondary constructors
-    def addParamsAsFields(args: List[Value], ref: Ref, ctorDef: DefDef) =
-      val params = ctorDef.termParamss.flatten.map(_.symbol)
-      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size + ", ctor = " + ctor.show)
-      for (param, value) <- params.zip(args) do
-        ref.updateField(param, value)
-        printer.println(param.show + " initialized with " + value)
 
     thisV match
     case ref: Ref =>
@@ -408,7 +460,8 @@ object Objects:
         val cls = ctor.owner.enclosingClass.asClass
         val ddef = ctor.defTree.asInstanceOf[DefDef]
         val argValues = args.map(_.value)
-        addParamsAsFields(argValues, ref, ddef)
+
+        given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
           extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
@@ -472,8 +525,8 @@ object Objects:
 
   def assign(receiver: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + receiver.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
     receiver match
-    case Fun(body, thisV, klass) =>
-      report.error("[Internal error] unexpected tree in assignment, fun = " + body.show + Trace.show, Trace.position)
+    case fun: Fun =>
+      report.error("[Internal error] unexpected tree in assignment, fun = " + fun.expr.show + Trace.show, Trace.position)
 
     case Cold =>
       report.warning("Assigning to cold aliases is forbidden", Trace.position)
@@ -496,8 +549,8 @@ object Objects:
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     outer match
 
-    case Fun(body, thisV, klass) =>
-      report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show + Trace.show, Trace.position)
+    case fun: Fun =>
+      report.error("[Internal error] unexpected tree in instantiating a function, fun = " + fun.expr.show + Trace.show, Trace.position)
       Bottom
 
     case value: (Bottom.type | ObjectRef | OfClass | Cold.type) =>
@@ -505,13 +558,55 @@ object Objects:
 
       // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
       val outerWidened = outer.widen(1)
+      val envWidened = if klass.owner.isClass then Env.NoEnv else summon[Env.Data].widen(1)
 
-      val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), State.currentObject)
+      val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened, State.currentObject)
       callConstructor(instance, ctor, args)
       instance
 
     case RefSet(refs) =>
       refs.map(ref => instantiate(ref, klass, ctor, args)).join
+  }
+
+  def initLocal(ref: Ref, sym: Symbol, value: Value): Contextual[Unit] = log("initialize local " + sym.show + " with " + value.show, printer) {
+    if sym.is(Flags.Mutable) then
+      val env = summon[Env.Data]
+      Heap.writeLocalVar(ref, env, sym, value)
+    else
+      Env.setLocalVal(sym, value)
+  }
+
+  def readLocal(thisV: Value, sym: Symbol): Contextual[Value] = log("reading local " + sym.show, printer, (_: Value).show) {
+    Env.resolveDefinitionEnv(sym, thisV, summon[Env.Data]) match
+    case Some(thisV -> env) =>
+      if sym.is(Flags.Mutable) then
+        thisV match
+        case ref: Ref =>
+          Heap.readLocalVar(ref, env, sym)
+        case _ =>
+          Cold
+      else
+        Env(sym)
+
+    case _ => Cold
+  }
+
+  def writeLocal(thisV: Value, sym: Symbol, value: Value): Contextual[Value] = log("write local " + sym.show + " with " + value.show, printer, (_: Value).show) {
+
+    assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
+
+    Env.resolveDefinitionEnv(sym, thisV, summon[Env.Data]) match
+    case Some(thisV -> env) =>
+      thisV match
+      case ref: Ref =>
+        Heap.writeLocalVar(ref, summon[Env.Data], sym, value)
+      case _ =>
+        report.warning("Assigning to variables in outer scope", Trace.position)
+
+    case _ =>
+      report.warning("Assigning to variables in outer scope", Trace.position)
+
+    Bottom
   }
 
   // -------------------------------- algorithm --------------------------------
@@ -529,7 +624,7 @@ object Objects:
         count += 1
 
         given Trace = Trace.empty.add(tpl.constr)
-        given env: Env.Data = Env.empty
+        given env: Env.Data = Env.NoEnv
 
         log("Iteration " + count) {
           init(tpl, ObjectRef(classSym), classSym)
@@ -696,17 +791,15 @@ object Objects:
         val value = eval(rhs, thisV, klass)
 
         if isLocal then
-          // TODO: the local var might be from outer environment.
-          Heap.writeLocalVar(receiver.asInstanceOf[Ref], summon[Env.Data], lhs.symbol, value)
-          Bottom
+          writeLocal(receiver.asInstanceOf[Ref], lhs.symbol, value)
         else
           withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
 
       case closureDef(ddef) =>
-        Fun(ddef.rhs, thisV, klass)
+        Fun(ddef.rhs, thisV, klass, summon[Env.Data])
 
       case PolyFun(body) =>
-        Fun(body, thisV, klass)
+        Fun(body, thisV, klass, summon[Env.Data])
 
       case Block(stats, expr) =>
         evalExprs(stats, thisV, klass)
@@ -754,13 +847,7 @@ object Objects:
         // local val definition
         val rhs = eval(vdef.rhs, thisV, klass)
         val sym = vdef.symbol
-        if vdef.symbol.is(Flags.Mutable) then
-          val ref = thisV.asInstanceOf[Ref]
-          val env = summon[Env.Data]
-          Heap.writeLocalVar(ref, env, sym, rhs)
-        else
-          Env.setLocalVal(vdef.symbol, rhs)
-
+        initLocal(ref.asInstanceOf[Ref], vdef.symbol, rhs)
         Bottom
 
       case ddef : DefDef =>
@@ -801,23 +888,8 @@ object Objects:
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         val sym = tmref.symbol
-        val valueOpt = Env.get(sym)
-        if valueOpt.nonEmpty then
-          valueOpt.get
-
-        else if sym.is(Flags.Mutable) then
-          val ref = thisV.asInstanceOf[Ref]
-          val env = summon[Env.Data]
-          if Heap.containsLocalVar(ref, env, sym) then
-            Heap.readLocalVar(ref, env, sym)
-          else
-            Cold
-
-        else if sym.is(Flags.Package) then
-          Bottom
-
-        else
-          Cold
+        if sym.is(Flags.Package) then Bottom
+        else readLocal(thisV, sym)
 
       case tmref: TermRef =>
         val sym = tmref.symbol
@@ -853,7 +925,7 @@ object Objects:
     args.foreach { arg =>
       val res =
         if arg.isByName then
-          Fun(arg.tree, thisV, klass)
+          Fun(arg.tree, thisV, klass, summon[Env.Data])
         else
           eval(arg.tree, thisV, klass)
 
@@ -876,7 +948,7 @@ object Objects:
    */
   def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show) {
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
-      vdef.name -> thisV.fieldValue(vdef.symbol)
+      vdef.name -> Env(vdef.symbol)
     }.toMap
 
     // init param fields
