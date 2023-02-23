@@ -4810,7 +4810,7 @@ object Types {
     def hasLowerBound(using Context): Boolean = !currentEntry.loBound.isExactlyNothing
 
     /** For uninstantiated type variables: Is the upper bound different from Any? */
-    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.finalResultType.isExactlyAny
+    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.finalResultType.isRef(defn.AnyClass) // so also `Any[..]`
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
