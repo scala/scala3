@@ -67,7 +67,7 @@ abstract class AccessProxies {
     import ast.tpd._
 
     /** The name of the accessor for definition with given `name` in given `site` */
-    def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName
+    def accessorNameOf(accessed: Symbol, site: Symbol)(using Context): TermName
     def needsAccessor(sym: Symbol)(using Context): Boolean
 
     def ifNoHost(reference: RefTree)(using Context): Tree = {
@@ -136,7 +136,7 @@ abstract class AccessProxies {
       if (accessorClass.exists) {
         if accessorClass.is(Package) then
           accessorClass = ctx.owner.topLevelClass
-        val accessorName = accessorNameOf(accessed.name, accessorClass)
+        val accessorName = accessorNameOf(accessed, accessorClass)
         val accessorInfo =
           accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
         val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)

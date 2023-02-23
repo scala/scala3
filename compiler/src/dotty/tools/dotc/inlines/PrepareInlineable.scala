@@ -35,6 +35,9 @@ object PrepareInlineable {
   def makeInlineable(tree: Tree)(using Context): Tree =
     ctx.property(InlineAccessorsKey).get.makeInlineable(tree)
 
+  def makePrivateBinaryAPIAccessor(sym: Symbol)(using Context): Unit =
+    ctx.property(InlineAccessorsKey).get.makePrivateBinaryAPIAccessor(sym)
+
   def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] =
     ctx.property(InlineAccessorsKey) match
       case Some(inlineAccessors) => inlineAccessors.addAccessorDefs(cls, body)
@@ -51,15 +54,14 @@ object PrepareInlineable {
       case _ => false
     }
 
-    /** A tree map which inserts accessors for non-public term members accessed from inlined code.
-     */
-    abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert {
+    trait InsertInlineAccessors extends Insert {
 
       def useBinaryAPI: Boolean
 
-      def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName =
-        val accName = InlineAccessorName(name)
-        if site.isExtensibleClass then accName.expandedName(site) else accName
+      def accessorNameOf(accessed: Symbol, site: Symbol)(using Context): TermName =
+        val accName = InlineAccessorName(accessed.name.asTermName)
+        if site.isExtensibleClass || useBinaryAPI then accName.expandedName(site)
+        else accName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
        *  and it is not part of the tree that gets inlined. The latter test is implemented
@@ -74,11 +76,21 @@ object PrepareInlineable {
       def needsAccessor(sym: Symbol)(using Context): Boolean =
         sym.isTerm &&
         (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
-        (!useBinaryAPI || !sym.isBinaryAPI) &&
-        !sym.isContainedIn(inlineSym) &&
+        (!useBinaryAPI || !sym.isBinaryAPI || (sym.is(Private) && !sym.owner.is(Trait))) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
         (Inlines.inInlineMethod || StagingLevel.level > 0)
+    }
+
+    class InsertPrivateBinaryAPIAccessors extends InsertInlineAccessors:
+      def useBinaryAPI: Boolean = true
+
+    /** A tree map which inserts accessors for non-public term members accessed from inlined code.
+     */
+    abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with InsertInlineAccessors {
+
+      override def needsAccessor(sym: Symbol)(using Context): Boolean =
+        !sym.isContainedIn(inlineSym) && super.needsAccessor(sym)
 
       def preTransform(tree: Tree)(using Context): Tree
 
@@ -209,6 +221,16 @@ object PrepareInlineable {
           tree
       }
     }
+
+    /** Create an inline accessor for this definition. */
+    def makePrivateBinaryAPIAccessor(sym: Symbol)(using Context): Unit =
+      assert(sym.is(Private))
+      if !sym.owner.is(Trait) then
+        val ref = tpd.ref(sym).asInstanceOf[RefTree]
+        val insertPrivateBinaryAPIAccessors = new InsertPrivateBinaryAPIAccessors()
+        val accessor = insertPrivateBinaryAPIAccessors.useAccessor(ref)
+        if sym.is(Mutable) then
+          insertPrivateBinaryAPIAccessors.useSetter(accessor)
 
     /** Adds accessors for all non-public term members accessed
      *  from `tree`. Non-public type members are currently left as they are.

@@ -2,29 +2,34 @@ package foo
 
 import scala.annotation.binaryAPI
 
-class Foo(@binaryAPI private[Foo] val param: Int, @binaryAPI private[Foo] var param2: Int):
+class Foo(@binaryAPI param: Int, @binaryAPI private[Foo] val paramVal: Int, @binaryAPI private[Foo] var paramVar: Int):
+  @binaryAPI
+  private val privateVal: Int = 2
   @binaryAPI
   protected val protectedVal: Int = 2
   @binaryAPI
   private[foo] val packagePrivateVal: Int = 2
+  @binaryAPI
+  private val privateVar: Int = 2
   @binaryAPI
   protected var protectedVar: Int = 2
   @binaryAPI
   private[foo] var packagePrivateVar: Int = 2
 
   inline def foo: Int =
+    paramVar = 3
     protectedVar = 3
     packagePrivateVar = 3
-    param + param2 + protectedVal + packagePrivateVal + protectedVar + packagePrivateVar
+    param + paramVal + paramVar + privateVal + protectedVal + packagePrivateVal + protectedVar + packagePrivateVar
 
-class Bar() extends Foo(3, 3):
+class Bar() extends Foo(3, 3, 3):
   override protected val protectedVal: Int = 2
 
   override private[foo] val packagePrivateVal: Int = 2
 
   inline def bar: Int = protectedVal + packagePrivateVal
 
-class Baz() extends Foo(4, 4):
+class Baz() extends Foo(4, 4, 4):
   @binaryAPI // TODO warn? Not needed because Foo.protectedVal is already @binaryAPI
   override protected val protectedVal: Int = 2
 
@@ -34,11 +39,11 @@ class Baz() extends Foo(4, 4):
   inline def baz: Int = protectedVal + packagePrivateVal
 
 
-class Qux() extends Foo(5, 5):
+class Qux() extends Foo(5, 5, 5):
   inline def qux: Int = protectedVal + packagePrivateVal
 
 def test =
-  Foo(3, 3).foo
+  Foo(3, 3, 3).foo
   Bar().bar
   Baz().baz
   Qux().qux
@@ -81,3 +86,16 @@ def localTest =
   class Foo:
     @annotation.binaryAPI private[Foo] val a: Int = 1
     @annotation.binaryAPI protected val b: Int = 1
+
+trait Trait:
+  @annotation.binaryAPI private val myVal = 1
+  @annotation.binaryAPI private lazy val myLazyVl = 2
+  @annotation.binaryAPI private var myVar = 2
+  @annotation.binaryAPI private def myDef = 3
+  @annotation.binaryAPI private given myGiven: Int = 4
+
+  inline def inlined: Unit =
+    myVar = 1
+    myVal + myLazyVl + myVar + myDef + myGiven
+
+def testTrait(t: Trait) = t.inlined

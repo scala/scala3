@@ -4,11 +4,10 @@ import scala.annotation.binaryAPI
 
 @binaryAPI type A // error
 @binaryAPI class C: // error
-  @binaryAPI private def f: Unit = // error
+  def f: Unit =
     @binaryAPI def g = () // error
     ()
-class D(@binaryAPI x: Int) // error
-class E[@binaryAPI T] // error
+class D[@binaryAPI T] // error
 
 def f(@binaryAPI x: Int) = 3 // error
 
