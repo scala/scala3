@@ -198,6 +198,12 @@ object Objects:
 
       def widen(height: Int)(using Context): Data =
         new LocalEnv(params.map(_ -> _.widen(height)), owner, outer.widen(height))
+
+      override def toString() =
+        "params: " + params + "\n" +
+        "locals: " + locals + "\n" +
+        "outer {\n" + outer + "\n}"
+
     end LocalEnv
 
     object NoEnv extends Data:
@@ -249,19 +255,19 @@ object Objects:
      * @param thisV The value for `this` of the enclosing class where the local variable is referenced.
      * @param env   The local environment where the local variable is referenced.
      */
-    def resolveDefinitionEnv(sym: Symbol, thisV: Value, env: Data): Option[(Value, Data)] =
-      if env.contains(sym) then Some(thisV -> env)
-      else
-        env match
-        case localEnv: LocalEnv =>
-          resolveDefinitionEnv(sym, thisV, localEnv.outer)
-        case NoEnv =>
-          // TODO: handle RefSet
-          thisV match
-          case ref: OfClass =>
-            resolveDefinitionEnv(sym, ref.outer, ref.env)
-          case _ =>
-            None
+    def resolveDefinitionEnv(sym: Symbol, thisV: Value, env: Data)(using Context): Option[(Value, Data)] =
+      env match
+      case localEnv: LocalEnv =>
+        if localEnv.owner == sym.owner then Some(thisV -> env)
+        else resolveDefinitionEnv(sym, thisV, localEnv.outer)
+      case NoEnv =>
+        // TODO: handle RefSet
+        thisV match
+        case ref: OfClass =>
+          resolveDefinitionEnv(sym, ref.outer, ref.env)
+        case _ =>
+          None
+    end resolveDefinitionEnv
   end Env
 
   /** Abstract heap for mutable fields
@@ -791,7 +797,7 @@ object Objects:
         val value = eval(rhs, thisV, klass)
 
         if isLocal then
-          writeLocal(receiver.asInstanceOf[Ref], lhs.symbol, value)
+          writeLocal(thisV, lhs.symbol, value)
         else
           withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
 
@@ -847,7 +853,7 @@ object Objects:
         // local val definition
         val rhs = eval(vdef.rhs, thisV, klass)
         val sym = vdef.symbol
-        initLocal(ref.asInstanceOf[Ref], vdef.symbol, rhs)
+        initLocal(thisV.asInstanceOf[Ref], vdef.symbol, rhs)
         Bottom
 
       case ddef : DefDef =>
