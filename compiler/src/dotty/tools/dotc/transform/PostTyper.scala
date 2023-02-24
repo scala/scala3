@@ -264,6 +264,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       tree match
         case tree: ValOrDefDef if !sym.is(Synthetic) =>
           checkInferredWellFormed(tree.tpt)
+          if tree.symbol.owner.isInlineTrait then checkInlTraitPrivateMemberIsLocal(tree)
           if sym.is(Method) then
             if sym.isSetter then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
@@ -310,6 +311,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
 
+    private def checkInlTraitPrivateMemberIsLocal(tree: Tree)(using Context): Unit =
+      if tree.symbol.owner.isInlineTrait && tree.symbol.isAllOf(Private, butNot = Local) then
+        report.error(em"implementation restriction: inline traits cannot have non-local private members. This also means no retained inline methods.", tree.srcPos)
 
     private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
       val qual = tree.qualifier
@@ -675,6 +679,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val tree1 = cpy.DefDef(tree)(tpt = explicifyTpt(tree))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
+          if tree.symbol.isInlineTrait then
+            ctx.compilationUnit.needsInlining = true  // Transform inner classes to traits
           registerIfHasMacroAnnotations(tree)
           val sym = tree.symbol
           if (sym.isClass)
@@ -686,6 +692,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             tree.rhs match
               case impl: Template =>
                 for parent <- impl.parents do
+                  if Inlines.symbolFromParent(parent).isInlineTrait then
+                    ctx.compilationUnit.needsInlining = true
                   Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
                   // Constructor parameters are in scope when typing a parent.
                   // While they can safely appear in a parent tree, to preserve

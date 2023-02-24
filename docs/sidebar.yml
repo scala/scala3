@@ -197,6 +197,7 @@ subsection:
       - page: reference/experimental/sub-cases.md
       - page: reference/experimental/dedented-string-literals.md
       - page: reference/experimental/spec-strings.md
+      - page: reference/experimental/inline-traits.md
   - page: reference/syntax.md
   - title: Language Versions
     index: reference/language-versions/language-versions.md

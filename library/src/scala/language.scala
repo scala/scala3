@@ -391,6 +391,11 @@ object language {
     @compileTimeOnly("`magic` can only be used at compile time in import statements")
     object magic
 
+    
+    /** Experimental support for inline traits
+      */
+    @compileTimeOnly("`inlineTraits` can only be used at compile time in import statements")
+    object inlineTraits
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

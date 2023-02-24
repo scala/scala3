@@ -83,6 +83,9 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   /** Will be set to true if the unit contains a pureFunctions language import */
   var knowsPureFuns: Boolean = false
+  
+  /** Will be set to true if the unit contains an inlineTrait language import */
+  var knowsInlineTraits: Boolean = false
 
   var suspended: Boolean = false
   var suspendedAtInliningPhase: Boolean = false
