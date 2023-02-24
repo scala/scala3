@@ -69,7 +69,7 @@ class ExtractDependencies extends Phase {
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
-    val rec = DependencyRecorder()
+    val rec = unit.depRecorder
     val collector = ExtractDependenciesCollector(rec)
     collector.traverse(unit.tpdTree)
 
@@ -422,8 +422,15 @@ class DependencyRecorder {
             case (usedName, scopes) =>
               cb.usedName(className, usedName.toString, scopes)
       classDependencies.foreach(recordClassDependency(cb, _))
-    _usedNames.clear()
-    _classDependencies.clear()
+    clear()
+
+   /** Clear all state. */
+   def clear(): Unit =
+     _usedNames.clear()
+     _classDependencies.clear()
+     lastOwner = NoSymbol
+     lastDepSource = NoSymbol
+     _responsibleForImports = NoSymbol
 
   /** Handles dependency on given symbol by trying to figure out if represents a term
    *  that is coming from either source code (not necessarily compiled in this compilation
