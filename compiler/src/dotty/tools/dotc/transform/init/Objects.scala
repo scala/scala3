@@ -158,7 +158,7 @@ object Objects:
     def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context, pendingTrace: Trace) =
       val index = data.checkingObjects.indexOf(clazz)
 
-      if index != -1 && data.checkingObjects.size > 1 then
+      if index != -1 && data.checkingObjects.size - 1 > index then
         val joinedTrace = data.pendingTraces.slice(index + 1, data.checkingObjects.size).foldLeft(pendingTrace) { (a, acc) => acc ++ a }
         val callTrace = Trace.buildStacktrace(joinedTrace, "Calling trace:\n")
         val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
