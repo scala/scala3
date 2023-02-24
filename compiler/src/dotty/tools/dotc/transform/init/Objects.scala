@@ -180,7 +180,6 @@ object Objects:
       private[Env] def get(x: Symbol)(using Context): Option[Value]
       private[Env] def contains(x: Symbol): Boolean
 
-      def exists: Boolean
       def widen(height: Int)(using Context): Data
 
     /** Local environments can be deeply nested, therefore we need `outer`. */
@@ -193,8 +192,6 @@ object Objects:
 
       private[Env] def contains(x: Symbol): Boolean =
         params.contains(x) || locals.contains(x)
-
-      val exists: Boolean = true
 
       def widen(height: Int)(using Context): Data =
         new LocalEnv(params.map(_ -> _.widen(height)), owner, outer.widen(height))
@@ -213,8 +210,6 @@ object Objects:
       private[Env] def contains(x: Symbol): Boolean =
         throw new RuntimeException("Invalid usage of non-existent env")
 
-      val exists: Boolean = false
-
       def widen(height: Int)(using Context): Data = this
     end NoEnv
 
@@ -230,7 +225,7 @@ object Objects:
 
     def of(ddef: DefDef, args: List[Value], outer: Data)(using Context): Data =
       val params = ddef.termParamss.flatten.map(_.symbol)
-      assert(args.size == params.size && (ddef.symbol.owner.isClass ^ outer.exists), "arguments = " + args.size + ", params = " + params.size)
+      assert(args.size == params.size && (ddef.symbol.owner.isClass ^ (outer != NoEnv)), "arguments = " + args.size + ", params = " + params.size)
       new LocalEnv(params.zip(args).toMap, ddef.symbol, outer)
 
     def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context): Unit =
@@ -591,7 +586,11 @@ object Objects:
           Heap.readLocalVar(ref, env, sym)
         case _ =>
           Cold
+      else if sym.isPatternBound then
+        // TODO: handle patterns
+        Cold
       else
+        given Env.Data = env
         Env(sym)
 
     case _ => Cold
