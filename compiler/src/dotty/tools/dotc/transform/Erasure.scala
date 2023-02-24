@@ -729,6 +729,12 @@ object Erasure {
           erasure(
             inContext(preErasureCtx):
               tree.qualifier.typeOpt.widen.finalResultType)
+              
+        def hasImmediateInlineParent: Boolean = {
+          owner.isInlineTrait && 
+            (qual1.tpe.widenDealias.classSymbol ne sym.owner) &&
+            qual1.tpe.widenDealias.classSymbol.info.parents.exists(_.classSymbol eq sym.owner)
+        }
 
         if qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType then
           recur(box(qual))
@@ -740,6 +746,17 @@ object Erasure {
           adaptIfSuper(qual) match
             case qual1: Super =>
               select(qual1, sym)
+            case qual1 if hasImmediateInlineParent =>
+              // If A is an inline trait and A.foo was inlined into B, references to b.foo (val b = B()) will still
+              // point to A.foo until now. We want them to point to B.foo so we get the benefit of specialization. 
+              // We fix that here rather than in a separate phase because
+              // it needs to happen coordinated with erasure of Specialized traits, so that:
+              //    a) we see the erased A$sp$Int traits and can point at their members
+              //    b) we make the replacement before boxing in case A.foo is typed with T and B.foo specializes this to e.g. Int
+              //       Otherwise we will end up with Int.unbox(A.foo) instead of directly B.foo which won't typecheck.  
+              val specializedInterfaceSym = qual1.tpe.widenDealias.classSymbol.asClass
+              val newSym = inContext(preErasureCtx) { sym.overridingSymbol(specializedInterfaceSym) }
+              qual1.select(newSym)
             case qual1 if !isJvmAccessible(qual1.tpe.typeSymbol)
                 || !qual1.tpe.derivesFrom(sym.owner) =>
               val castTarget = // Avoid inaccessible cast targets, see i8661
