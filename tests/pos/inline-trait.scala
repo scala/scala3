@@ -1,0 +1,1 @@
+inline trait A

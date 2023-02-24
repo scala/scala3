@@ -3765,7 +3765,7 @@ object Parsers {
       }
     }
 
-    /** TmplDef ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
+    /** TmplDef ::=  ([‘case’] ‘class’ | [‘inline’] ‘trait’) ClassDef
      *            |  [‘case’] ‘object’ ObjectDef
      *            |  ‘enum’ EnumDef
      *            |  ‘given’ GivenDef
