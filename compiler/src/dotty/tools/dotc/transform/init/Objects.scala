@@ -234,7 +234,8 @@ object Objects:
 
     def of(ddef: DefDef, args: List[Value], outer: Data)(using Context): Data =
       val params = ddef.termParamss.flatten.map(_.symbol)
-      assert(args.size == params.size && (ddef.symbol.owner.isClass ^ (outer != NoEnv)), "arguments = " + args.size + ", params = " + params.size)
+      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
+      assert(ddef.symbol.owner.isClass ^ (outer != NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outer = " + outer + ", " + ddef.source)
       new LocalEnv(params.zip(args).toMap, ddef.symbol, outer)
 
     def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context): Unit =
@@ -247,10 +248,10 @@ object Objects:
         throw new RuntimeException("Incorrect local environment for initializing " + x.show)
 
     /**
-     * Resolve the environment owned by the given symbol.
+     * Resolve the environment owned by the given method.
      *
-     * The owner (e.g., method) could be located in outer scope with intermixed classes between its
-     * definition site and usage site.
+     * The method could be located in outer scope with intermixed classes between its definition
+     * site and usage site.
      *
      * Due to widening, the corresponding environment might not exist. As a result reading the local
      * variable will return `Cold` and it's forbidden to write to the local variable.
@@ -272,6 +273,8 @@ object Objects:
         case _ =>
           None
     end resolveEnv
+
+    def withEnv[T](env: Data)(fn: Data ?=> T): T = fn(using env)
   end Env
 
   /** Abstract heap for mutable fields
@@ -435,7 +438,7 @@ object Objects:
               if meth.owner.isClass then
                 (ref, Env.NoEnv)
               else
-                Env.resolveEnv(meth.owner, ref, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+                Env.resolveEnv(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
             val env2 = Env.of(ddef, args.map(_.value), outerEnv)
             extendTrace(ddef) {
@@ -579,7 +582,7 @@ object Objects:
         if klass.owner.isClass then
           (outer.widen(1), Env.NoEnv)
         else
-          Env.resolveEnv(klass.owner, outer, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+          Env.resolveEnv(klass.enclosingMethod, outer, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
       val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened, State.currentObject)
       callConstructor(instance, ctor, args)
@@ -598,7 +601,7 @@ object Objects:
   }
 
   def readLocal(thisV: Value, sym: Symbol): Contextual[Value] = log("reading local " + sym.show, printer, (_: Value).show) {
-    Env.resolveEnv(sym.owner, thisV, summon[Env.Data]) match
+    Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       if sym.is(Flags.Mutable) then
         thisV match
@@ -620,7 +623,7 @@ object Objects:
 
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
 
-    Env.resolveEnv(sym.owner, thisV, summon[Env.Data]) match
+    Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       thisV match
       case ref: Ref =>
@@ -649,7 +652,7 @@ object Objects:
         count += 1
 
         given Trace = Trace.empty.add(tpl.constr)
-        given env: Env.Data = Env.NoEnv
+        given env: Env.Data = Env.emptyEnv(tpl.constr.symbol)
 
         log("Iteration " + count) {
           init(tpl, ObjectRef(classSym), classSym)
