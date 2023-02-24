@@ -182,8 +182,15 @@ object Objects:
 
       def widen(height: Int)(using Context): Data
 
+      def level: Int
+
     /** Local environments can be deeply nested, therefore we need `outer`. */
-    private case class LocalEnv(private[Env] val params: Map[Symbol, Value], owner: Symbol, outer: Data) extends Data:
+    private case class LocalEnv(private[Env] val params: Map[Symbol, Value], owner: Symbol, outer: Data)(using Context) extends Data:
+      val level = outer.level + 1
+
+      if (level > 3)
+        report.warning("[Internal error] Deeply nested environemnt, level =  " + level + ", " + owner.show + " in " + owner.enclosingClass.show, owner.defTree)
+
       private[Env] val locals: mutable.Map[Symbol, Value] = mutable.Map.empty
 
       private[Env] def get(x: Symbol)(using Context): Option[Value] =
@@ -204,6 +211,8 @@ object Objects:
     end LocalEnv
 
     object NoEnv extends Data:
+      val level = 0
+
       private[Env] def get(x: Symbol)(using Context): Option[Value] =
         throw new RuntimeException("Invalid usage of non-existent env")
 
@@ -215,7 +224,7 @@ object Objects:
 
     /** An empty environment can be used for non-method environments, e.g., field initializers.
      */
-    def emptyEnv(owner: Symbol): Data = new LocalEnv(Map.empty, owner, NoEnv)
+    def emptyEnv(owner: Symbol)(using Context): Data = new LocalEnv(Map.empty, owner, NoEnv)
 
     def apply(x: Symbol)(using data: Data, ctx: Context): Value = data.get(x).get
 
@@ -238,31 +247,31 @@ object Objects:
         throw new RuntimeException("Incorrect local environment for initializing " + x.show)
 
     /**
-     * Resolve the definition environment for the given local variable.
+     * Resolve the environment owned by the given symbol.
      *
-     * A local variable could be located in outer scope with intermixed classes between its
+     * The owner (e.g., method) could be located in outer scope with intermixed classes between its
      * definition site and usage site.
      *
      * Due to widening, the corresponding environment might not exist. As a result reading the local
      * variable will return `Cold` and it's forbidden to write to the local variable.
      *
-     * @param sym   The symbol of the local variable
+     * @param meth  The method which owns the environment
      * @param thisV The value for `this` of the enclosing class where the local variable is referenced.
      * @param env   The local environment where the local variable is referenced.
      */
-    def resolveDefinitionEnv(sym: Symbol, thisV: Value, env: Data)(using Context): Option[(Value, Data)] =
+    def resolveEnv(owner: Symbol, thisV: Value, env: Data)(using Context): Option[(Value, Data)] =
       env match
       case localEnv: LocalEnv =>
-        if localEnv.owner == sym.owner then Some(thisV -> env)
-        else resolveDefinitionEnv(sym, thisV, localEnv.outer)
+        if localEnv.owner == owner then Some(thisV -> env)
+        else resolveEnv(owner, thisV, localEnv.outer)
       case NoEnv =>
         // TODO: handle RefSet
         thisV match
         case ref: OfClass =>
-          resolveDefinitionEnv(sym, ref.outer, ref.env)
+          resolveEnv(owner, ref.outer, ref.env)
         case _ =>
           None
-    end resolveDefinitionEnv
+    end resolveEnv
   end Env
 
   /** Abstract heap for mutable fields
@@ -420,7 +429,15 @@ object Objects:
           case _ =>
             val cls = target.owner.enclosingClass.asClass
             val ddef = target.defTree.asInstanceOf[DefDef]
-            val env2 = Env.of(ddef, args.map(_.value), if ddef.symbol.owner.isClass then Env.NoEnv else summon[Env.Data])
+            val meth = ddef.symbol
+
+            val (thisV, outerEnv) =
+              if meth.owner.isClass then
+                (ref, Env.NoEnv)
+              else
+                Env.resolveEnv(meth.owner, ref, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+
+            val env2 = Env.of(ddef, args.map(_.value), outerEnv)
             extendTrace(ddef) {
               given Env.Data = env2
               eval(ddef.rhs, ref, cls, cacheResult = true)
@@ -558,8 +575,11 @@ object Objects:
       // The outer can be a bottom value for top-level classes.
 
       // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
-      val outerWidened = outer.widen(1)
-      val envWidened = if klass.owner.isClass then Env.NoEnv else summon[Env.Data].widen(1)
+      val (outerWidened, envWidened) =
+        if klass.owner.isClass then
+          (outer.widen(1), Env.NoEnv)
+        else
+          Env.resolveEnv(klass.owner, outer, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
       val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened, State.currentObject)
       callConstructor(instance, ctor, args)
@@ -578,7 +598,7 @@ object Objects:
   }
 
   def readLocal(thisV: Value, sym: Symbol): Contextual[Value] = log("reading local " + sym.show, printer, (_: Value).show) {
-    Env.resolveDefinitionEnv(sym, thisV, summon[Env.Data]) match
+    Env.resolveEnv(sym.owner, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       if sym.is(Flags.Mutable) then
         thisV match
@@ -600,7 +620,7 @@ object Objects:
 
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
 
-    Env.resolveDefinitionEnv(sym, thisV, summon[Env.Data]) match
+    Env.resolveEnv(sym.owner, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       thisV match
       case ref: Ref =>
