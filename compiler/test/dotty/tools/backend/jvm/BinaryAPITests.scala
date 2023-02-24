@@ -283,21 +283,16 @@ class BinaryAPITests extends DottyBytecodeTest {
       val cTrait = loadClassNode(dir.lookupName("C.class", directory = false).input, skipDebugInfo = false)
 
       checkPublicMethod(cTrait, "C$$privateValBinaryAPI", "()I")
-      checkPublicMethod(cTrait, "C$$inline$privateValBinaryAPI", "()I")
       checkPublicMethod(cTrait, "packagePrivateValBinaryAPI", "()I")
       checkPublicMethod(cTrait, "protectedValBinaryAPI", "()I")
       checkPublicMethod(cTrait, "C$$privateLazyValBinaryAPI", "()I")
-      checkPublicMethod(cTrait, "C$$inline$privateLazyValBinaryAPI", "()I")
       checkPublicMethod(cTrait, "packagePrivateLazyValBinaryAPI", "()I")
       checkPublicMethod(cTrait, "protectedLazyValBinaryAPI", "()I")
       checkPublicMethod(cTrait, "C$$privateVarBinaryAPI", "()I")
-      checkPublicMethod(cTrait, "C$$inline$privateVarBinaryAPI", "()I")
-      checkPublicMethod(cTrait, "C$$inline$privateVarBinaryAPI_$eq", "(I)V")
       checkPublicMethod(cTrait, "packagePrivateVarBinaryAPI", "()I")
       checkPublicMethod(cTrait, "packagePrivateVarBinaryAPI_$eq", "(I)V")
       checkPublicMethod(cTrait, "protectedVarBinaryAPI", "()I")
       checkPublicMethod(cTrait, "protectedVarBinaryAPI_$eq", "(I)V")
-      checkPublicMethod(cTrait, "C$$inline$privateDefBinaryAPI", "()I")
       checkPublicMethod(cTrait, "packagePrivateDefBinaryAPI", "()I")
       checkPublicMethod(cTrait, "protectedDefBinaryAPI", "()I")
 
@@ -374,11 +369,7 @@ class BinaryAPITests extends DottyBytecodeTest {
         |  @binaryAPI private[foo] object Baz
       """.stripMargin
     checkBCode(code) { dir =>
-      // For 3.0-3.3 compat
       val barClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("Bar.class", directory = false).input, skipDebugInfo = false)
-      checkPublicMethod(barClass, "foo$Bar$$inline$Baz", "()Lfoo/Baz$;")
-
-      // Check that the @binaryAPI annotated method is called
       checkPublicMethod(barClass, "testInlined", "()Lfoo/Baz$;")
     }
   }
@@ -394,11 +385,7 @@ class BinaryAPITests extends DottyBytecodeTest {
         |  @binaryAPI private object Baz
       """.stripMargin
     checkBCode(code) { dir =>
-      // For 3.0-3.3 compat
       val barClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("Bar.class", directory = false).input, skipDebugInfo = false)
-      checkPublicMethod(barClass, "foo$Bar$$inline$Baz", "()Lfoo/Baz$;")
-
-      // Check that the @binaryAPI annotated method is called
       checkPublicMethod(barClass, "testInlined", "()Lfoo/Baz$;")
     }
   }
@@ -415,11 +402,7 @@ class BinaryAPITests extends DottyBytecodeTest {
         |  @binaryAPI private[Macro] def fooImpl = {}
       """.stripMargin
     checkBCode(code) { dir =>
-      // For 3.0-3.3 compat
       val macroClass = loadClassNode(dir.lookupName("Macro.class", directory = false).input, skipDebugInfo = false)
-      checkPublicMethod(macroClass, "Macro$$inline$fooImpl", "()V")
-
-      // Check that the @binaryAPI annotated method is called
       val testMethod = getMethod(macroClass, "test")
       val testInstructions = instructionsFromMethod(testMethod).filter(_.isInstanceOf[Invoke])
       assertSameCode(testInstructions, List(
@@ -439,11 +422,7 @@ class BinaryAPITests extends DottyBytecodeTest {
         |  @binaryAPI private[foo] def bazImpl = {}
       """.stripMargin
     checkBCode(code) { dir =>
-      // For 3.0-3.3 compat
       val barClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("C.class", directory = false).input, skipDebugInfo = false)
-      checkPublicMethod(barClass, "inline$bazImpl$i1", "(Lfoo/D$;)V")
-
-      // Check that the @binaryAPI annotated method is called
       val testMethod = getMethod(barClass, "test")
       val testInstructions = instructionsFromMethod(testMethod).filter(_.isInstanceOf[Invoke])
       assertSameCode(testInstructions, List(

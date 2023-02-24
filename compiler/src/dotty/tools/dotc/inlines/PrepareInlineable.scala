@@ -56,11 +56,9 @@ object PrepareInlineable {
 
     trait InsertInlineAccessors extends Insert {
 
-      def useBinaryAPI: Boolean
-
       def accessorNameOf(accessed: Symbol, site: Symbol)(using Context): TermName =
         val accName = InlineAccessorName(accessed.name.asTermName)
-        if site.isExtensibleClass || useBinaryAPI then accName.expandedName(site)
+        if site.isExtensibleClass || accessed.isBinaryAPI then accName.expandedName(site)
         else accName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
@@ -76,14 +74,13 @@ object PrepareInlineable {
       def needsAccessor(sym: Symbol)(using Context): Boolean =
         sym.isTerm &&
         (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
-        (!useBinaryAPI || !sym.isBinaryAPI || (sym.is(Private) && !sym.owner.is(Trait))) &&
+        (!sym.isBinaryAPI || (sym.is(Private) && !sym.owner.is(Trait))) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
         (Inlines.inInlineMethod || StagingLevel.level > 0)
     }
 
-    class InsertPrivateBinaryAPIAccessors extends InsertInlineAccessors:
-      def useBinaryAPI: Boolean = true
+    object InsertPrivateBinaryAPIAccessors extends InsertInlineAccessors
 
     /** A tree map which inserts accessors for non-public term members accessed from inlined code.
      */
@@ -110,7 +107,7 @@ object PrepareInlineable {
      *  possible if the receiver is essentially this or an outer this, which is indicated
      *  by the test that we can find a host for the accessor.
      */
-    class MakeInlineableDirect(inlineSym: Symbol, val useBinaryAPI: Boolean) extends MakeInlineableMap(inlineSym) {
+    class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
@@ -154,7 +151,7 @@ object PrepareInlineable {
      *  Since different calls might have different receiver types, we need to generate one
      *  such accessor per call, so they need to have unique names.
      */
-    class MakeInlineablePassing(inlineSym: Symbol, val useBinaryAPI: Boolean) extends MakeInlineableMap(inlineSym) {
+    class MakeInlineablePassing(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
 
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case _: Apply | _: TypeApply | _: RefTree
@@ -227,10 +224,9 @@ object PrepareInlineable {
       assert(sym.is(Private))
       if !sym.owner.is(Trait) then
         val ref = tpd.ref(sym).asInstanceOf[RefTree]
-        val insertPrivateBinaryAPIAccessors = new InsertPrivateBinaryAPIAccessors()
-        val accessor = insertPrivateBinaryAPIAccessors.useAccessor(ref)
+        val accessor = InsertPrivateBinaryAPIAccessors.useAccessor(ref)
         if sym.is(Mutable) then
-          insertPrivateBinaryAPIAccessors.useSetter(accessor)
+          InsertPrivateBinaryAPIAccessors.useSetter(accessor)
 
     /** Adds accessors for all non-public term members accessed
      *  from `tree`. Non-public type members are currently left as they are.
@@ -247,13 +243,9 @@ object PrepareInlineable {
         // so no accessors are needed for them.
         tree
       else
-        // Make sure the old accessors are generated for binary compatibility
-        new MakeInlineablePassing(inlineSym, useBinaryAPI = false).transform(
-          new MakeInlineableDirect(inlineSym, useBinaryAPI = false).transform(tree))
-
-        // TODO: warn if MakeInlineablePassing or MakeInlineableDirect generate accessors when useBinaryAPI in enabled
-        new MakeInlineablePassing(inlineSym, useBinaryAPI = true).transform(
-          new MakeInlineableDirect(inlineSym, useBinaryAPI = true).transform(tree))
+        // TODO: warn if MakeInlineablePassing or MakeInlineableDirect generate accessors
+        new MakeInlineablePassing(inlineSym).transform(
+          new MakeInlineableDirect(inlineSym).transform(tree))
     }
   }
 
