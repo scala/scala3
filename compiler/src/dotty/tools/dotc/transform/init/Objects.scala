@@ -184,6 +184,8 @@ object Objects:
 
       def level: Int
 
+      def show(using Context): String
+
     /** Local environments can be deeply nested, therefore we need `outer`. */
     private case class LocalEnv(private[Env] val params: Map[Symbol, Value], owner: Symbol, outer: Data)(using Context) extends Data:
       val level = outer.level + 1
@@ -203,10 +205,11 @@ object Objects:
       def widen(height: Int)(using Context): Data =
         new LocalEnv(params.map(_ -> _.widen(height)), owner, outer.widen(height))
 
-      override def toString() =
-        "params: " + params + "\n" +
-        "locals: " + locals + "\n" +
-        "outer {\n" + outer + "\n}"
+      def show(using Context) =
+        "owner: " + owner.show + "\n" +
+        "params: " + params.map(_.show + " ->" + _.show).mkString("{", ", ", "}") + "\n" +
+        "locals: " + locals.map(_.show + " ->" + _.show).mkString("{", ", ", "}") + "\n" +
+        "outer = {\n" + outer.show + "\n}"
 
     end LocalEnv
 
@@ -220,6 +223,8 @@ object Objects:
         throw new RuntimeException("Invalid usage of non-existent env")
 
       def widen(height: Int)(using Context): Data = this
+
+      def show(using Context): String = "NoEnv"
     end NoEnv
 
     /** An empty environment can be used for non-method environments, e.g., field initializers.
@@ -614,7 +619,11 @@ object Objects:
         Cold
       else
         given Env.Data = env
-        Env(sym)
+        try
+          Env(sym)
+        catch ex =>
+          report.warning("[Internal error] Not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
+          Bottom
 
     case _ => Cold
   }
@@ -916,8 +925,18 @@ object Objects:
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         val sym = tmref.symbol
-        if sym.is(Flags.Package) then Bottom
-        else readLocal(thisV, sym)
+        if sym.is(Flags.Package) then
+          Bottom
+        else if sym.owner.isClass then
+          // The typer incorrectly assigns a TermRef with NoPrefix for `config`,
+          // while the actual denotation points to the symbol of the class member
+          // instead of the parameter symbol for the primary constructor.
+          //
+          // abstract class Base(implicit config: Int)
+          // case class A(x: Int)(implicit config: Int) extends Base
+          evalType(sym.termRef, thisV, klass, elideObjectAccess)
+        else
+          readLocal(thisV, sym)
 
       case tmref: TermRef =>
         val sym = tmref.symbol
