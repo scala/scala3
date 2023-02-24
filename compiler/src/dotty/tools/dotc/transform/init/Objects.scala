@@ -162,7 +162,7 @@ object Objects:
         val joinedTrace = data.pendingTraces.slice(index + 1, data.checkingObjects.size).foldLeft(pendingTrace) { (a, acc) => acc ++ a }
         val callTrace = Trace.buildStacktrace(joinedTrace, "Calling trace:\n")
         val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
-        val pos = clazz.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template].constr
+        val pos = clazz.defTree
         report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, pos)
       else if index == -1 && data.checkedObjects.indexOf(clazz) == -1 then
         data.pendingTraces += pendingTrace
@@ -186,12 +186,15 @@ object Objects:
 
       def show(using Context): String
 
-    /** Local environments can be deeply nested, therefore we need `outer`. */
-    private case class LocalEnv(private[Env] val params: Map[Symbol, Value], owner: Symbol, outer: Data)(using Context) extends Data:
+    /** Local environments can be deeply nested, therefore we need `outer`.
+     *
+     *  For local variables in rhs of class field definitions, the `meth` is the primary constructor.
+     */
+    private case class LocalEnv(private[Env] val params: Map[Symbol, Value], meth: Symbol, outer: Data)(using Context) extends Data:
       val level = outer.level + 1
 
       if (level > 3)
-        report.warning("[Internal error] Deeply nested environemnt, level =  " + level + ", " + owner.show + " in " + owner.enclosingClass.show, owner.defTree)
+        report.warning("[Internal error] Deeply nested environemnt, level =  " + level + ", " + meth.show + " in " + meth.enclosingClass.show, meth.defTree)
 
       private[Env] val locals: mutable.Map[Symbol, Value] = mutable.Map.empty
 
@@ -203,10 +206,10 @@ object Objects:
         params.contains(x) || locals.contains(x)
 
       def widen(height: Int)(using Context): Data =
-        new LocalEnv(params.map(_ -> _.widen(height)), owner, outer.widen(height))
+        new LocalEnv(params.map(_ -> _.widen(height)), meth, outer.widen(height))
 
       def show(using Context) =
-        "owner: " + owner.show + "\n" +
+        "owner: " + meth.show + "\n" +
         "params: " + params.map(_.show + " ->" + _.show).mkString("{", ", ", "}") + "\n" +
         "locals: " + locals.map(_.show + " ->" + _.show).mkString("{", ", ", "}") + "\n" +
         "outer = {\n" + outer.show + "\n}"
@@ -265,19 +268,19 @@ object Objects:
      * @param thisV The value for `this` of the enclosing class where the local variable is referenced.
      * @param env   The local environment where the local variable is referenced.
      */
-    def resolveEnv(owner: Symbol, thisV: Value, env: Data)(using Context): Option[(Value, Data)] =
+    def resolveEnv(meth: Symbol, thisV: Value, env: Data)(using Context): Option[(Value, Data)] = log("Resolving env for " + meth.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
       env match
       case localEnv: LocalEnv =>
-        if localEnv.owner == owner then Some(thisV -> env)
-        else resolveEnv(owner, thisV, localEnv.outer)
+        if localEnv.meth == meth then Some(thisV -> env)
+        else resolveEnv(meth, thisV, localEnv.outer)
       case NoEnv =>
         // TODO: handle RefSet
         thisV match
         case ref: OfClass =>
-          resolveEnv(owner, ref.outer, ref.env)
+          resolveEnv(meth, ref.outer, ref.env)
         case _ =>
           None
-    end resolveEnv
+    }
 
     def withEnv[T](env: Data)(fn: Data ?=> T): T = fn(using env)
   end Env
@@ -587,7 +590,8 @@ object Objects:
         if klass.owner.isClass then
           (outer.widen(1), Env.NoEnv)
         else
-          Env.resolveEnv(klass.enclosingMethod, outer, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+          // klass.enclosingMethod returns its primary constructor
+          Env.resolveEnv(klass.owner.enclosingMethod, outer, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
       val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened, State.currentObject)
       callConstructor(instance, ctor, args)
@@ -631,7 +635,6 @@ object Objects:
   def writeLocal(thisV: Value, sym: Symbol, value: Value): Contextual[Value] = log("write local " + sym.show + " with " + value.show, printer, (_: Value).show) {
 
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
-
     Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       thisV match
@@ -660,7 +663,7 @@ object Objects:
       def iterate()(using Context): Unit =
         count += 1
 
-        given Trace = Trace.empty.add(tpl.constr)
+        given Trace = Trace.empty.add(classSym.defTree)
         given env: Env.Data = Env.emptyEnv(tpl.constr.symbol)
 
         log("Iteration " + count) {
