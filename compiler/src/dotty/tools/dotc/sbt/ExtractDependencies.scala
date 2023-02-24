@@ -69,12 +69,13 @@ class ExtractDependencies extends Phase {
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
-    val collector = new ExtractDependenciesCollector
+    val rec = DependencyRecorder()
+    val collector = ExtractDependenciesCollector(rec)
     collector.traverse(unit.tpdTree)
 
     if (ctx.settings.YdumpSbtInc.value) {
-      val deps = collector.dependencies.map(_.toString).toArray[Object]
-      val names = collector.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
+      val deps = rec.classDependencies.map(_.toString).toArray[Object]
+      val names = rec.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
       Arrays.sort(deps)
       Arrays.sort(names)
 
@@ -91,61 +92,7 @@ class ExtractDependencies extends Phase {
       } finally pw.close()
     }
 
-    ctx.withIncCallback: cb =>
-      collector.usedNames.foreach {
-        case (clazz, usedNames) =>
-          val className = classNameAsString(clazz)
-          usedNames.names.foreach {
-            case (usedName, scopes) =>
-              cb.usedName(className, usedName.toString, scopes)
-          }
-      }
-      collector.dependencies.foreach(recordDependency)
-  }
-
-  /*
-   * Handles dependency on given symbol by trying to figure out if represents a term
-   * that is coming from either source code (not necessarily compiled in this compilation
-   * run) or from class file and calls respective callback method.
-   */
-  def recordDependency(dep: ClassDependency)(using Context): Unit = {
-    val fromClassName = classNameAsString(dep.from)
-    val sourceFile = ctx.compilationUnit.source
-
-    def binaryDependency(file: Path, binaryClassName: String) =
-      ctx.withIncCallback(_.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context))
-
-    def processExternalDependency(depFile: AbstractFile, binaryClassName: String) = {
-      depFile match {
-        case ze: ZipArchive#Entry => // The dependency comes from a JAR
-          ze.underlyingSource match
-            case Some(zip) if zip.jpath != null =>
-              binaryDependency(zip.jpath, binaryClassName)
-            case _ =>
-        case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
-          binaryDependency(pf.jpath, binaryClassName)
-        case _ =>
-          internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.from.srcPos)
-      }
-    }
-
-    val depFile = dep.to.associatedFile
-    if (depFile != null) {
-      // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
-      def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
-      val depClassFile =
-        if depFile.isClass then depFile
-        else depFile.resolveSibling(dep.to.binaryClassName + ".class")
-      if (depClassFile != null) {
-        // Dependency is external -- source is undefined
-        processExternalDependency(depClassFile, dep.to.binaryClassName)
-      } else if (allowLocal || depFile != sourceFile.file) {
-        // We cannot ignore dependencies coming from the same source file because
-        // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
-        val toClassName = classNameAsString(dep.to)
-        ctx.withIncCallback(_.classDependency(toClassName, fromClassName, dep.context))
-      }
-    }
+    rec.sendToZinc()
   }
 }
 
@@ -160,8 +107,6 @@ object ExtractDependencies {
   def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     report.error(em"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
 }
-
-private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)
 
 /** An object that maintain the set of used names from within a class */
 private final class UsedNamesInClass {
@@ -194,110 +139,18 @@ private final class UsedNamesInClass {
  *  specially, see the subsection "Dependencies introduced by member reference and
  *  inheritance" in the "Name hashing algorithm" section.
  */
-private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeTraverser =>
+private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.TreeTraverser { thisTreeTraverser =>
   import tpd._
-
-  private val _usedNames = new mutable.HashMap[Symbol, UsedNamesInClass]
-  private val _dependencies = new mutable.HashSet[ClassDependency]
-
-  /** The names used in this class, this does not include names which are only
-   *  defined and not referenced.
-   */
-  def usedNames: collection.Map[Symbol, UsedNamesInClass] = _usedNames
-
-  /** The set of class dependencies from this compilation unit.
-   */
-  def dependencies: Set[ClassDependency] = _dependencies
-
-  /** Top level import dependencies are registered as coming from a first top level
-   *  class/trait/object declared in the compilation unit. If none exists, issue warning.
-   */
-  private var _responsibleForImports: Symbol = _
-  private def responsibleForImports(using Context) = {
-    def firstClassOrModule(tree: Tree) = {
-      val acc = new TreeAccumulator[Symbol] {
-        def apply(x: Symbol, t: Tree)(using Context) =
-          t match {
-            case typeDef: TypeDef =>
-              typeDef.symbol
-            case other =>
-              foldOver(x, other)
-          }
-      }
-      acc(NoSymbol, tree)
-    }
-
-    if (_responsibleForImports == null) {
-      val tree = ctx.compilationUnit.tpdTree
-      _responsibleForImports = firstClassOrModule(tree)
-      if (!_responsibleForImports.exists)
-          report.warning("""|No class, trait or object is defined in the compilation unit.
-                         |The incremental compiler cannot record the dependency information in such case.
-                         |Some errors like unused import referring to a non-existent class might not be reported.
-                         |""".stripMargin, tree.sourcePos)
-    }
-    _responsibleForImports
-  }
-
-  private var lastOwner: Symbol = _
-  private var lastDepSource: Symbol = _
-
-  /**
-   * Resolves dependency source (that is, the closest non-local enclosing
-   * class from a given `ctx.owner`
-   */
-  private def resolveDependencySource(using Context): Symbol = {
-    def nonLocalEnclosingClass = {
-      var clazz = ctx.owner.enclosingClass
-      var owner = clazz
-
-      while (!owner.is(PackageClass)) {
-        if (owner.isTerm) {
-          clazz = owner.enclosingClass
-          owner = clazz
-        } else {
-          owner = owner.owner
-        }
-      }
-      clazz
-    }
-
-    if (lastOwner != ctx.owner) {
-      lastOwner = ctx.owner
-      val source = nonLocalEnclosingClass
-      lastDepSource = if (source.is(PackageClass)) responsibleForImports else source
-    }
-
-    lastDepSource
-  }
-
-  private def addUsedName(fromClass: Symbol, name: Name, scope: UseScope): Unit = {
-    val usedName = _usedNames.getOrElseUpdate(fromClass, new UsedNamesInClass)
-    usedName.update(name, scope)
-  }
-
-  private def addUsedName(name: Name, scope: UseScope)(using Context): Unit = {
-    val fromClass = resolveDependencySource
-    if (fromClass.exists) { // can happen when visiting imports
-      assert(fromClass.isClass)
-      addUsedName(fromClass, name, scope)
-    }
-  }
 
   private def addMemberRefDependency(sym: Symbol)(using Context): Unit =
     if (!ignoreDependency(sym)) {
-      val enclOrModuleClass = if (sym.is(ModuleVal)) sym.moduleClass else sym.enclosingClass
-      assert(enclOrModuleClass.isClass, s"$enclOrModuleClass, $sym")
+      rec.addUsedName(sym, UseScope.Default)
+      // packages have class symbol. Only record them as used names but not dependency
+      if (!sym.is(Package)) {
+        val enclOrModuleClass = if (sym.is(ModuleVal)) sym.moduleClass else sym.enclosingClass
+        assert(enclOrModuleClass.isClass, s"$enclOrModuleClass, $sym")
 
-      val fromClass = resolveDependencySource
-      if (fromClass.exists) { // can happen when visiting imports
-        assert(fromClass.isClass)
-
-        addUsedName(fromClass, sym.zincMangledName, UseScope.Default)
-        // packages have class symbol. Only record them as used names but not dependency
-        if (!sym.is(Package)) {
-          _dependencies += ClassDependency(fromClass, enclOrModuleClass, DependencyByMemberRef)
-        }
+        rec.addClassDependency(enclOrModuleClass, DependencyByMemberRef)
       }
     }
 
@@ -305,15 +158,13 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     // If the tpt is empty, this is a non-SAM lambda, so no need to register
     // an inheritance relationship.
     if !tree.tpt.isEmpty then
-      val from = resolveDependencySource
-      _dependencies += ClassDependency(from, tree.tpt.tpe.classSymbol, LocalDependencyByInheritance)
+      rec.addClassDependency(tree.tpt.tpe.classSymbol, LocalDependencyByInheritance)
 
   private def addInheritanceDependencies(tree: Template)(using Context): Unit =
     if (tree.parents.nonEmpty) {
       val depContext = depContextOf(tree.symbol.owner)
-      val from = resolveDependencySource
       for parent <- tree.parents do
-        _dependencies += ClassDependency(from, parent.tpe.classSymbol, depContext)
+        rec.addClassDependency(parent.tpe.classSymbol, depContext)
     }
 
   private def depContextOf(cls: Symbol)(using Context): DependencyContext =
@@ -351,7 +202,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
         for sel <- selectors if !sel.isWildcard do
           addImported(sel.name)
           if sel.rename != sel.name then
-            addUsedName(sel.rename, UseScope.Default)
+            rec.addUsedRawName(sel.rename, UseScope.Default)
       case exp @ Export(expr, selectors) =>
         val dep = expr.tpe.classSymbol
         if dep.exists && selectors.exists(_.isWildcard) then
@@ -364,8 +215,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
           // inheritance dependency in the presence of wildcard exports
           // to ensure all new members of `dep` are forwarded to.
           val depContext = depContextOf(ctx.owner.lexicallyEnclosingClass)
-          val from = resolveDependencySource
-          _dependencies += ClassDependency(from, dep, depContext)
+          rec.addClassDependency(dep, depContext)
       case t: TypeTree =>
         addTypeDependency(t.tpe)
       case ref: RefTree =>
@@ -472,10 +322,185 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     val traverser = new TypeDependencyTraverser {
       def addDependency(symbol: Symbol) =
         if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
-          val usedName = symbol.zincMangledName
-          addUsedName(usedName, UseScope.PatMatTarget)
+          rec.addUsedName(symbol, UseScope.PatMatTarget)
         }
     }
     traverser.traverse(tpe)
+  }
+}
+
+case class ClassDependency(fromClass: Symbol, toClass: Symbol, context: DependencyContext)
+
+/** Record dependencies using `addUsedName`/`addClassDependency` and inform Zinc using `sendToZinc()`.
+ *
+ *  Note: As an alternative design choice, we could directly call the appropriate
+ *  callback as we record each dependency, this way we wouldn't need to record
+ *  them locally and we could get rid of `sendToZinc()`, but this may be less
+ *  efficient since it would mean calling `classNameAsString` on each call
+ *  to `addUsedName` rather than once per class.
+ */
+class DependencyRecorder {
+  import ExtractDependencies.*
+
+  /** A map from a non-local class to the names it uses, this does not include
+   *  names which are only defined and not referenced.
+   */
+  def usedNames: collection.Map[Symbol, UsedNamesInClass] = _usedNames
+
+  /** Record a reference to the name of `sym` used according to `scope`
+   *  from the current non-local enclosing class.
+   */
+  def addUsedName(sym: Symbol, scope: UseScope)(using Context): Unit =
+    addUsedRawName(sym.zincMangledName, scope)
+
+  /** Record a reference to `name` used according to `scope`
+   *  from the current non-local enclosing class.
+   *
+   *  Most of the time, prefer to sue `addUsedName` which takes
+   *  care of name mangling.
+   */
+  def addUsedRawName(name: Name, scope: UseScope)(using Context): Unit = {
+    val fromClass = resolveDependencySource
+    if (fromClass.exists) {
+      val usedName = _usedNames.getOrElseUpdate(fromClass, new UsedNamesInClass)
+      usedName.update(name, scope)
+    }
+  }
+
+  private val _classDependencies = new mutable.HashSet[ClassDependency]
+
+  def classDependencies: Set[ClassDependency] = _classDependencies
+
+  /** Record a dependency to the class `to` in a given `context`
+   *  from the current non-local enclosing class.
+  */
+  def addClassDependency(toClass: Symbol, context: DependencyContext)(using Context): Unit =
+    val fromClass = resolveDependencySource
+    if (fromClass.exists)
+      _classDependencies += ClassDependency(fromClass, toClass, context)
+
+  private val _usedNames = new mutable.HashMap[Symbol, UsedNamesInClass]
+
+  /** Send the collected dependency information to Zinc and clear the local caches. */
+  def sendToZinc()(using Context): Unit =
+    ctx.withIncCallback: cb =>
+      usedNames.foreach:
+        case (clazz, usedNames) =>
+          val className = classNameAsString(clazz)
+          usedNames.names.foreach:
+            case (usedName, scopes) =>
+              cb.usedName(className, usedName.toString, scopes)
+      classDependencies.foreach(recordClassDependency(cb, _))
+    _usedNames.clear()
+    _classDependencies.clear()
+
+  /** Handles dependency on given symbol by trying to figure out if represents a term
+   *  that is coming from either source code (not necessarily compiled in this compilation
+   *  run) or from class file and calls respective callback method.
+   */
+  private def recordClassDependency(cb: interfaces.IncrementalCallback, dep: ClassDependency)(using Context): Unit = {
+    val fromClassName = classNameAsString(dep.fromClass)
+    val sourceFile = ctx.compilationUnit.source
+
+    def binaryDependency(file: Path, binaryClassName: String) =
+      cb.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context)
+
+    def processExternalDependency(depFile: AbstractFile, binaryClassName: String) = {
+      depFile match {
+        case ze: ZipArchive#Entry => // The dependency comes from a JAR
+          ze.underlyingSource match
+            case Some(zip) if zip.jpath != null =>
+              binaryDependency(zip.jpath, binaryClassName)
+            case _ =>
+        case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
+          binaryDependency(pf.jpath, binaryClassName)
+        case _ =>
+          internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.fromClass.srcPos)
+      }
+    }
+
+    val depFile = dep.toClass.associatedFile
+    if (depFile != null) {
+      // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
+      def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
+      val depClassFile =
+        if depFile.isClass then depFile
+        else depFile.resolveSibling(dep.toClass.binaryClassName + ".class")
+      if (depClassFile != null) {
+        // Dependency is external -- source is undefined
+        processExternalDependency(depClassFile, dep.toClass.binaryClassName)
+      } else if (allowLocal || depFile != sourceFile.file) {
+        // We cannot ignore dependencies coming from the same source file because
+        // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
+        val toClassName = classNameAsString(dep.toClass)
+        cb.classDependency(toClassName, fromClassName, dep.context)
+      }
+    }
+  }
+
+  private var lastOwner: Symbol = _
+  private var lastDepSource: Symbol = _
+
+  /** The source of the dependency according to `nonLocalEnclosingClass`
+   *  if it exists, otherwise fall back to `responsibleForImports`.
+   *
+   *  This is backed by a cache which is invalidated when `ctx.owner` changes.
+   */
+  private def resolveDependencySource(using Context): Symbol = {
+    if (lastOwner != ctx.owner) {
+      lastOwner = ctx.owner
+      val source = nonLocalEnclosingClass
+      lastDepSource = if (source.is(PackageClass)) responsibleForImports else source
+    }
+
+    lastDepSource
+  }
+
+  /** The closest non-local enclosing class from `ctx.owner`. */
+  private def nonLocalEnclosingClass(using Context): Symbol = {
+    var clazz = ctx.owner.enclosingClass
+    var owner = clazz
+
+    while (!owner.is(PackageClass)) {
+      if (owner.isTerm) {
+        clazz = owner.enclosingClass
+        owner = clazz
+      } else {
+        owner = owner.owner
+      }
+    }
+    clazz
+  }
+
+  private var _responsibleForImports: Symbol = _
+
+  /** Top level import dependencies are registered as coming from a first top level
+   *  class/trait/object declared in the compilation unit. If none exists, issue a warning and return NoSymbol.
+   */
+  private def responsibleForImports(using Context) = {
+    import tpd.*
+    def firstClassOrModule(tree: Tree) = {
+      val acc = new TreeAccumulator[Symbol] {
+        def apply(x: Symbol, t: Tree)(using Context) =
+          t match {
+            case typeDef: TypeDef =>
+              typeDef.symbol
+            case other =>
+              foldOver(x, other)
+          }
+      }
+      acc(NoSymbol, tree)
+    }
+
+    if (_responsibleForImports == null) {
+      val tree = ctx.compilationUnit.tpdTree
+      _responsibleForImports = firstClassOrModule(tree)
+      if (!_responsibleForImports.exists)
+          report.warning("""|No class, trait or object is defined in the compilation unit.
+                            |The incremental compiler cannot record the dependency information in such case.
+                            |Some errors like unused import referring to a non-existent class might not be reported.
+                            |""".stripMargin, tree.sourcePos)
+    }
+    _responsibleForImports
   }
 }
