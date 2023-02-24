@@ -99,7 +99,7 @@ If `F` and `DerivingType` take the same number of arguments (`N == K`):
 ```scala
 given TC[DerivingType] = TC.derived
 // simplified form of:
-given TC[ [A_1, ..., A_K] => DerivingType[A_1, ..., A_K] ] = TC.derived
+given TC[ [A_1, ..., A_K] =>> DerivingType[A_1, ..., A_K] ] = TC.derived
 ```
 If `DerivingType` takes less arguments than `F` (`N < K`), we use only the rightmost parameters from the type lambda:
 ```scala
