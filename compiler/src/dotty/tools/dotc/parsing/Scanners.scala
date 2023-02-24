@@ -21,6 +21,8 @@ import config.Feature.{migrateTo3, fewerBracesEnabled}
 import config.SourceVersion.`3.0`
 import reporting.{NoProfile, Profile, Message}
 
+import scala.annotation.binaryAPI
+
 import java.util.Objects
 
 object Scanners {
@@ -1597,7 +1599,7 @@ object Scanners {
     protected def coversIndent(w: IndentWidth): Boolean =
       knownWidth != null && w == indentWidth
 
-    private var myCommasExpected: Boolean = false
+    @binaryAPI private var myCommasExpected: Boolean = false
 
     inline def withCommasExpected[T](inline op: => T): T =
       val saved = myCommasExpected

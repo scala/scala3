@@ -22,6 +22,8 @@ import dotty.tools.dotc.typer.Inferencing._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
+
+import scala.annotation.binaryAPI
 import scala.collection.mutable
 
 
@@ -213,7 +215,7 @@ trait QuotesAndSplices {
       })
 
     object splitter extends tpd.TreeMap {
-      private var variance: Int = 1
+      @binaryAPI private var variance: Int = 1
 
       inline private def atVariance[T](v: Int)(op: => T): T = {
         val saved = variance

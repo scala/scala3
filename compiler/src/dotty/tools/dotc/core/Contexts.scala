@@ -30,6 +30,7 @@ import classfile.ReusableDataReader
 import StdNames.nme
 import compiletime.uninitialized
 
+import scala.annotation.binaryAPI
 import scala.annotation.internal.sharable
 
 import DenotTransformers.DenotTransformer
@@ -805,6 +806,7 @@ object Contexts {
    *  Note: plain TypeComparers always take on the kind of the outer comparer if they are in the same context.
    *  In other words: tracking or explaining is a sticky property in the same context.
    */
+  @binaryAPI
   private def comparer(using Context): TypeComparer =
     util.Stats.record("comparing")
     val base = ctx.base
@@ -980,7 +982,7 @@ object Contexts {
     private[core] var phasesPlan: List[List[Phase]] = uninitialized
 
     /** Phases by id */
-    private[dotc] var phases: Array[Phase] = uninitialized
+    @binaryAPI private[dotc] var phases: Array[Phase] = uninitialized
 
     /** Phases with consecutive Transforms grouped into a single phase, Empty array if fusion is disabled */
     private[core] var fusedPhases: Array[Phase] = Array.empty[Phase]
@@ -1019,7 +1021,7 @@ object Contexts {
     val generalContextPool = ContextPool()
 
     private[Contexts] val comparers = new mutable.ArrayBuffer[TypeComparer]
-    private[Contexts] var comparersInUse: Int = 0
+    @binaryAPI private[Contexts] var comparersInUse: Int = 0
 
     private var charArray = new Array[Char](256)
 

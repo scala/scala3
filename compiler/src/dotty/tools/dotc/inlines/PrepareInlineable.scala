@@ -21,6 +21,7 @@ import transform.{AccessProxies, Splicer}
 import staging.CrossStageSafety
 import transform.SymUtils.*
 import config.Printers.inlining
+import util.SrcPos
 import util.Property
 import staging.StagingLevel
 
@@ -74,7 +75,7 @@ object PrepareInlineable {
       def needsAccessor(sym: Symbol)(using Context): Boolean =
         sym.isTerm &&
         (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
-        (!sym.isBinaryAPI || (sym.is(Private) && !sym.owner.is(Trait))) &&
+        (!sym.isBinaryAPI || sym.is(Private)) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
         (Inlines.inInlineMethod || StagingLevel.level > 0)
@@ -100,6 +101,22 @@ object PrepareInlineable {
 
       override def transform(tree: Tree)(using Context): Tree =
         postTransform(super.transform(preTransform(tree)))
+
+      protected def unstableAccessorWarning(accessor: Symbol, accessed: Symbol, srcPos: SrcPos)(using Context): Unit =
+        val accessorDefTree = accessorDef(accessor, accessed)
+        val solution =
+          if accessed.is(Private) then
+            s"Annotate ${accessed.name} with `@binaryAPI` to generate a stable accessor."
+          else
+            s"Annotate ${accessed.name} with `@binaryAPI` to make it accessible."
+        val binaryCompat =
+          s"""Adding @binaryAPI may break binary compatibility if a previous version of this
+              |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
+              |using MiMa. To keep binary you can add the following accessor to ${accessor.owner.showKind} ${accessor.owner.name.stripModuleClassSuffix}:
+              |  @binaryAPI private[${accessor.owner.name.stripModuleClassSuffix}] ${accessorDefTree.show}
+              |
+              |""".stripMargin
+        report.warning(em"Generated unstable inline accessor for $accessed defined in ${accessed.owner}.\n\n$solution\n\n$binaryCompat", srcPos)
     }
 
     /** Direct approach: place the accessor with the accessed symbol. This has the
@@ -114,7 +131,11 @@ object PrepareInlineable {
             report.error("Implementation restriction: cannot use private constructors in inline methods", tree.srcPos)
             tree // TODO: create a proper accessor for the private constructor
           }
-          else useAccessor(tree)
+          else
+            val accessorTree = useAccessor(tree)
+            if !tree.symbol.isBinaryAPI && tree.symbol != accessorTree.symbol then
+              unstableAccessorWarning(accessorTree.symbol, tree.symbol, tree.srcPos)
+            accessorTree
         case _ =>
           tree
       }
@@ -199,7 +220,9 @@ object PrepareInlineable {
             localRefs.map(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
             (qual :: Nil) :: otherArgss
           )
-          ref(accessor).appliedToArgss(argss1).withSpan(tree.span)
+          val accessorTree = ref(accessor).appliedToArgss(argss1).withSpan(tree.span)
+
+          unstableAccessorWarning(accessorTree.symbol, tree.symbol, tree.srcPos)
 
             // TODO: Handle references to non-public types.
             // This is quite tricky, as such types can appear anywhere, including as parts
@@ -211,6 +234,7 @@ object PrepareInlineable {
             //  myAccessors += TypeDef(accessor).withPos(tree.pos.focus)
             //  ref(accessor).withSpan(tree.span)
             //
+          accessorTree
         case _: TypeDef if tree.symbol.is(Case) =>
           report.error(reporting.CaseClassInInlinedCode(tree), tree)
           tree
@@ -222,7 +246,7 @@ object PrepareInlineable {
     /** Create an inline accessor for this definition. */
     def makePrivateBinaryAPIAccessor(sym: Symbol)(using Context): Unit =
       assert(sym.is(Private))
-      if !sym.owner.is(Trait) then
+      if !sym.is(Accessor) then
         val ref = tpd.ref(sym).asInstanceOf[RefTree]
         val accessor = InsertPrivateBinaryAPIAccessors.useAccessor(ref)
         if sym.is(Mutable) then
@@ -243,7 +267,6 @@ object PrepareInlineable {
         // so no accessors are needed for them.
         tree
       else
-        // TODO: warn if MakeInlineablePassing or MakeInlineableDirect generate accessors
         new MakeInlineablePassing(inlineSym).transform(
           new MakeInlineableDirect(inlineSym).transform(tree))
     }

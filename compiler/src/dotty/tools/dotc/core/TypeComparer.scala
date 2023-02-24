@@ -25,6 +25,8 @@ import reporting.trace
 import annotation.constructorOnly
 import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
 
+import scala.annotation.binaryAPI
+
 /** Provides methods to compare types.
  */
 class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling, PatternTypeConstrainer {
@@ -34,7 +36,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var myContext: Context = initctx
   def comparerContext: Context = myContext
 
-  protected given [DummySoItsADef]: Context = myContext
+  @binaryAPI protected given [DummySoItsADef]: Context = myContext
 
   protected var state: TyperState = compiletime.uninitialized
   def constraint: Constraint = state.constraint
@@ -115,7 +117,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
-  protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
+  @binaryAPI protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
   protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadtState.addBound(sym, b, isUpper)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
@@ -156,7 +158,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private [this] var leftRoot: Type | Null = null
 
   /** Are we forbidden from recording GADT constraints? */
-  private var frozenGadt = false
+  @binaryAPI private var frozenGadt = false
   private inline def inFrozenGadt[T](inline op: T): T =
     inFrozenGadtIf(true)(op)
 
@@ -187,7 +189,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     inFrozenGadtIf(true)(inFrozenConstraint(op))
 
   extension (sym: Symbol)
-    private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
+    @binaryAPI private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
       val bounds = gadtBounds(sym)
       bounds != null && op(bounds)
 

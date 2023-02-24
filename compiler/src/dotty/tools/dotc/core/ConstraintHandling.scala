@@ -15,6 +15,8 @@ import NameKinds.AvoidNameKind
 import util.SimpleIdentitySet
 import NullOpsDecorator.stripNull
 
+import scala.annotation.binaryAPI
+
 /** Methods for adding constraints and solving them.
  *
  * What goes into a Constraint as opposed to a ConstrainHandler?
@@ -39,12 +41,12 @@ trait ConstraintHandling {
   private var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
-  protected var frozenConstraint: Boolean = false
+  @binaryAPI protected var frozenConstraint: Boolean = false
 
   /** Potentially a type lambda that is still instantiatable, even though the constraint
    *  is generally frozen.
    */
-  protected var caseLambda: Type = NoType
+  @binaryAPI protected var caseLambda: Type = NoType
 
   /** If set, align arguments `S1`, `S2`when taking the glb
    *  `T1 { X = S1 } & T2 { X = S2 }` of a constraint upper bound for some type parameter.
@@ -56,7 +58,7 @@ trait ConstraintHandling {
   /** We are currently comparing type lambdas. Used as a flag for
    *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
    */
-  protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
+  @binaryAPI protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
   /** Used for match type reduction: If false, we don't recognize an abstract type
    *  to be a subtype type of any of its base classes. This is in place only at the
@@ -110,7 +112,7 @@ trait ConstraintHandling {
    *  of `1`. So the lower bound is `1 | x.M` and when we level-avoid that we
    *  get `1 | Int & String`, which simplifies to `Int`.
    */
-  private var myTrustBounds = true
+  @binaryAPI private var myTrustBounds = true
 
   inline def withUntrustedBounds(op: => Type): Type =
     val saved = myTrustBounds

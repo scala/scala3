@@ -39,6 +39,7 @@ import compiletime.uninitialized
 import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
+import scala.annotation.binaryAPI
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
@@ -5542,7 +5543,7 @@ object Types {
 
   /** Common base class of TypeMap and TypeAccumulator */
   abstract class VariantTraversal:
-    protected[dotc] var variance: Int = 1
+    @binaryAPI protected[dotc] var variance: Int = 1
 
     inline protected def atVariance[T](v: Int)(op: => T): T = {
       val saved = variance

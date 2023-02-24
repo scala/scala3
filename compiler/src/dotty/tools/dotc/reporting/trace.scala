@@ -8,6 +8,7 @@ import core.*, Contexts.*, Decorators.*
 import config.*
 import printing.Formatting.*
 
+import scala.annotation.binaryAPI
 import scala.compiletime.*
 
 /** Exposes the {{{ trace("question") { op } }}} syntax.
@@ -76,9 +77,9 @@ trait TraceSyntax:
   inline def apply[T](inline question: String)(inline op: T)(using Context): T =
     apply[T](question, false)(op)
 
-  private val alwaysToString = (x: Any) => String.valueOf(x)
+  @binaryAPI private val alwaysToString = (x: Any) => String.valueOf(x)
 
-  private def doTrace[T](question: => String,
+  @binaryAPI private def doTrace[T](question: => String,
                          printer: Printers.Printer = Printers.default,
                          showOp: T => String)
                         (op: => T)(using Context): T =

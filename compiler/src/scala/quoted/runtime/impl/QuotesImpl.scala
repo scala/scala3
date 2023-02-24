@@ -22,6 +22,7 @@ import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
 import scala.quoted.runtime.impl.printers._
 
 import scala.reflect.TypeTest
+import scala.annotation.binaryAPI
 
 object QuotesImpl {
 
@@ -38,6 +39,7 @@ object QuotesImpl {
 
 class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler, QuoteMatching:
 
+  @binaryAPI
   private val xCheckMacro: Boolean = ctx.settings.XcheckMacros.value
 
   extension [T](self: scala.quoted.Expr[T])

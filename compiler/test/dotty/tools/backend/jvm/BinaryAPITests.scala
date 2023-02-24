@@ -300,19 +300,19 @@ class BinaryAPITests extends DottyBytecodeTest {
       val testInlined = getMethod(cTrait, "testInlined")
       val testInlinedInstructions = instructionsFromMethod(testInlined).filter(_.isInstanceOf[Invoke])
       assertSameCode(testInlinedInstructions, List(
-        Invoke(INVOKEINTERFACE, "C", "C$$privateVarBinaryAPI_$eq", "(I)V", true),
+        Invoke(INVOKEINTERFACE, "C", "C$$inline$privateVarBinaryAPI_$eq", "(I)V", true),
         Invoke(INVOKEINTERFACE, "C", "packagePrivateVarBinaryAPI_$eq", "(I)V", true),
         Invoke(INVOKEINTERFACE, "C", "protectedVarBinaryAPI_$eq", "(I)V", true),
-        Invoke(INVOKEINTERFACE, "C", "C$$privateValBinaryAPI", "()I", true),
+        Invoke(INVOKEINTERFACE, "C", "C$$inline$privateValBinaryAPI", "()I", true),
         Invoke(INVOKEINTERFACE, "C", "packagePrivateValBinaryAPI", "()I", true),
         Invoke(INVOKEINTERFACE, "C", "protectedValBinaryAPI", "()I", true),
-        Invoke(INVOKEINTERFACE, "C", "C$$privateLazyValBinaryAPI", "()I", true),
+        Invoke(INVOKEINTERFACE, "C", "C$$inline$privateLazyValBinaryAPI", "()I", true),
         Invoke(INVOKEINTERFACE, "C", "packagePrivateLazyValBinaryAPI", "()I", true),
         Invoke(INVOKEINTERFACE, "C", "protectedLazyValBinaryAPI", "()I", true),
-        Invoke(INVOKEINTERFACE, "C", "C$$privateVarBinaryAPI", "()I", true),
+        Invoke(INVOKEINTERFACE, "C", "C$$inline$privateVarBinaryAPI", "()I", true),
         Invoke(INVOKEINTERFACE, "C", "packagePrivateVarBinaryAPI", "()I", true),
         Invoke(INVOKEINTERFACE, "C", "protectedVarBinaryAPI", "()I", true),
-        Invoke(INVOKESPECIAL, "C", "privateDefBinaryAPI", "()I", true),
+        Invoke(INVOKEINTERFACE, "C", "C$$inline$privateDefBinaryAPI", "()I", true),
         Invoke(INVOKEINTERFACE, "C", "packagePrivateDefBinaryAPI", "()I", true),
         Invoke(INVOKEINTERFACE, "C", "protectedDefBinaryAPI", "()I", true)
       ))

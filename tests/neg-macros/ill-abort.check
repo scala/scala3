@@ -6,7 +6,7 @@
   |---------------------------------------------------------------------------------------------------------------------
   |Inline stack trace
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  |This location contains code that was inlined from quoted_1.scala:3
-3 |inline def fail(): Unit = ${ impl }
+  |This location contains code that was inlined from quoted_1.scala:4
+4 |inline def fail(): Unit = ${ impl }
   |                          ^^^^^^^^^
    ---------------------------------------------------------------------------------------------------------------------

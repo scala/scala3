@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package transform
 package sjs
 
+import scala.annotation.binaryAPI
 import scala.collection.mutable
 
 import ast.tpd
@@ -1153,7 +1154,7 @@ object PrepJSInterop {
   val name: String = "prepjsinterop"
   val description: String = "additional checks and transformations for Scala.js"
 
-  private final class OwnerKind private (private val baseKinds: Int) extends AnyVal {
+  private final class OwnerKind private (@binaryAPI private val baseKinds: Int) extends AnyVal {
 
     inline def isBaseKind: Boolean =
       Integer.lowestOneBit(baseKinds) == baseKinds && baseKinds != 0 // exactly 1 bit on

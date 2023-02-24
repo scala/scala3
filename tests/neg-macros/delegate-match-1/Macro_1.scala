@@ -1,9 +1,9 @@
 import scala.quoted.*
-
+import scala.annotation.binaryAPI
 
 inline def f: Any = ${ fImpl }
 
-private def fImpl(using Quotes): Expr[Unit] = {
+@binaryAPI private def fImpl(using Quotes): Expr[Unit] = {
   import quotes.reflect.*
   Implicits.search(TypeRepr.of[A]) match {
     case x: ImplicitSearchSuccess =>

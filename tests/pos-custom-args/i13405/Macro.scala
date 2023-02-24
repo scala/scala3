@@ -1,9 +1,9 @@
 import scala.quoted.*
+import scala.annotation.binaryAPI
 
 sealed class Foo()
 inline def hh(): Unit = ${ interpMacro() }
-
-private def interpMacro()(using Quotes): Expr[Unit] =
+@binaryAPI private def interpMacro()(using Quotes): Expr[Unit] =
   import quotes.reflect.*
   '{
     val res: Either[String, (Foo, Foo)] =

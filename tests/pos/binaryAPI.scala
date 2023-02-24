@@ -87,15 +87,39 @@ def localTest =
     @annotation.binaryAPI private[Foo] val a: Int = 1
     @annotation.binaryAPI protected val b: Int = 1
 
-trait Trait:
-  @annotation.binaryAPI private val myVal = 1
-  @annotation.binaryAPI private lazy val myLazyVl = 2
-  @annotation.binaryAPI private var myVar = 2
-  @annotation.binaryAPI private def myDef = 3
-  @annotation.binaryAPI private given myGiven: Int = 4
+package traits {
+  trait Trait:
+    @annotation.binaryAPI private val myVal = 1
+    @annotation.binaryAPI private lazy val myLazyVl = 2
+    @annotation.binaryAPI private var myVar = 2
+    @annotation.binaryAPI private def myDef = 3
+    @annotation.binaryAPI private given myGiven: Int = 4
 
-  inline def inlined: Unit =
-    myVar = 1
-    myVal + myLazyVl + myVar + myDef + myGiven
+    @annotation.binaryAPI protected val myVal2 = 1
+    @annotation.binaryAPI protected lazy val myLazyVl2 = 2
+    @annotation.binaryAPI protected var myVar2 = 2
+    @annotation.binaryAPI protected def myDef2 = 3
+    @annotation.binaryAPI protected given myGiven2: Int = 4
 
-def testTrait(t: Trait) = t.inlined
+    inline def inlined: Unit =
+      myVar2 = 1
+      myVar = 1
+      myVal + myLazyVl + myVar + myDef + myGiven +
+      myVal2 + myLazyVl2 + myVar2 + myDef2 + myGiven2
+
+  def testTrait(t: Trait) = t.inlined
+
+  class Baz extends Foo
+  object Baz extends Foo
+
+  trait Foo:
+    inline def foo: Any = bar
+    @binaryAPI private def bar: Any = ???
+  end Foo
+
+  def test =
+    Baz.foo
+    (new Baz).foo
+    val baz = new Baz
+    baz.foo
+}
