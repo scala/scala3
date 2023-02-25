@@ -15,6 +15,8 @@ import config.Printers.init as printer
 import reporting.StoreReporter
 import reporting.trace as log
 
+import util.HashSet
+
 import Errors.*
 import Trace.*
 import Util.*
@@ -141,17 +143,10 @@ object Objects:
   object State:
     class Data:
       // objects under check
-      private[State] val checkingObjects = new mutable.ListBuffer[ClassSymbol]
+      private[State] val checkingObjects = new mutable.ArrayBuffer[ClassSymbol]
       private[State] val checkedObjects = new mutable.ArrayBuffer[ClassSymbol]
-      private[State] val pendingTraces = new mutable.ListBuffer[Trace]
-
-      // Use a mutable field to avoid thread through it in the program.
-      private[State] var heap = Heap.empty
+      private[State] val pendingTraces = new mutable.ArrayBuffer[Trace]
     end Data
-
-    def getHeap()(using data: Data): Heap.Data = data.heap
-    def setHeap(heap: Heap.Data)(using data: Data) =
-      data.heap = heap
 
     def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last
 
@@ -286,9 +281,6 @@ object Objects:
   end Env
 
   /** Abstract heap for mutable fields
-   *
-   *  To avoid threading through it in the code, we use a mutable field in `State.Data` to hold the
-   *  information.
    */
   object Heap:
     private abstract class Addr
@@ -299,50 +291,48 @@ object Objects:
     /** The address for mutable local variables . */
     private case class LocalVarAddr(ref: Ref, env: Env.Data, sym: Symbol) extends Addr
 
+    /** Immutable heap data */
     opaque type Data = ImmutableMapWithRefEquality
+
+    /** Store the heap as a mutable field to avoid thread through it in the program. */
+    class MutableData(private[Heap] var heap: Data):
+      private[Heap] def update(addr: Addr, value: Value): Unit =
+        heap.map.get(addr) match
+        case None =>
+          heap = new Data(heap.map.updated(addr, value))
+
+        case Some(current) =>
+          val value2 = value.join(current)
+          if value2 != current then
+            heap = new Data(heap.map.updated(addr, value2))
+
 
     /** Wrap the map in a class such that equality of two maps is defined as referential equality.
      *
      *  This is a performance optimization.
      */
-    private class ImmutableMapWithRefEquality(val map: Map[Addr, Value]):
-      private[Heap] def updated(addr: Addr, value: Value): Data =
-        map.get(addr) match
-        case None =>
-          new Data(map.updated(addr, value))
+    private class ImmutableMapWithRefEquality(val map: Map[Addr, Value])
 
-        case Some(current) =>
-          val value2 = value.join(current)
-          if value2 != current then
-            new Data(map.updated(addr, value2))
-          else
-            this
+    def empty(): MutableData = new MutableData(new Data(Map.empty))
 
-    val empty: Data = new Data(Map.empty)
+    def contains(ref: Ref, field: Symbol)(using mutable: MutableData): Boolean =
+      mutable.heap.map.contains(FieldAddr(ref, field))
 
-    def contains(ref: Ref, field: Symbol)(using state: State.Data): Boolean =
-      val data: Data = State.getHeap()
-      data.map.contains(FieldAddr(ref, field))
+    def read(ref: Ref, field: Symbol)(using mutable: MutableData): Value =
+      mutable.heap.map(FieldAddr(ref, field))
 
-    def read(ref: Ref, field: Symbol)(using state: State.Data): Value =
-      val data: Data = State.getHeap()
-      data.map(FieldAddr(ref, field))
-
-    def write(ref: Ref, field: Symbol, value: Value)(using state: State.Data): Unit =
+    def write(ref: Ref, field: Symbol, value: Value)(using mutable: MutableData): Unit =
       val addr = FieldAddr(ref, field)
-      val data: Data = State.getHeap()
-      val data2 = data.updated(addr, value)
-      State.setHeap(data2)
+      mutable.update(addr, value)
 
-    def readLocalVar(ref: Ref, env: Env.Data, sym: Symbol)(using state: State.Data): Value =
-      val data: Data = State.getHeap()
-      data.map(LocalVarAddr(ref, env, sym))
+    def readLocalVar(ref: Ref, env: Env.Data, sym: Symbol)(using mutable: MutableData): Value =
+      mutable.heap.map(LocalVarAddr(ref, env, sym))
 
-    def writeLocalVar(ref: Ref, env: Env.Data, sym: Symbol, value: Value)(using state: State.Data): Unit =
+    def writeLocalVar(ref: Ref, env: Env.Data, sym: Symbol, value: Value)(using mutable: MutableData): Unit =
       val addr = LocalVarAddr(ref, env, sym)
-      val data: Data = State.getHeap()
-      val data2 = data.updated(addr, value)
-      State.setHeap(data2)
+      mutable.update(addr, value)
+
+    def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
   /** Cache used to terminate the check  */
   object Cache:
@@ -350,21 +340,21 @@ object Objects:
     case class Res(value: Value, heap: Heap.Data)
 
     class Data extends Cache[Config, Res]:
-      def get(thisV: Value, expr: Tree)(using State.Data, Env.Data): Option[Value] =
-        val config = Config(thisV, summon[Env.Data], State.getHeap())
+      def get(thisV: Value, expr: Tree)(using Heap.MutableData, Env.Data): Option[Value] =
+        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
         super.get(config, expr).map(_.value)
 
-      def cachedEval(thisV: Value, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using State.Data, Env.Data): Value =
-        val config = Config(thisV, summon[Env.Data], State.getHeap())
-        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, State.getHeap())) { expr =>
-          Res(fun(expr), State.getHeap())
+      def cachedEval(thisV: Value, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using Heap.MutableData, Env.Data): Value =
+        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
+        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, Heap.getHeapData())) { expr =>
+          Res(fun(expr), Heap.getHeapData())
         }
         result.value
   end Cache
 
   inline def cache(using c: Cache.Data): Cache.Data = c
 
-  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Trace) ?=> T
+  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Trace) ?=> T
 
   // --------------------------- domain operations -----------------------------
 
@@ -664,7 +654,8 @@ object Objects:
         count += 1
 
         given Trace = Trace.empty.add(classSym.defTree)
-        given env: Env.Data = Env.emptyEnv(tpl.constr.symbol)
+        given Env.Data = Env.emptyEnv(tpl.constr.symbol)
+        given Heap.MutableData = Heap.empty()
 
         log("Iteration " + count) {
           init(tpl, ObjectRef(classSym), classSym)
