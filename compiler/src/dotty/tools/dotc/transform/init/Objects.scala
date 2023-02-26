@@ -13,7 +13,7 @@ import NameKinds.SuperAccessorName
 import ast.tpd.*
 import config.Printers.init as printer
 import reporting.StoreReporter
-import reporting.trace as log
+import reporting.trace.force as log
 
 import Errors.*
 import Trace.*
@@ -179,11 +179,31 @@ object Objects:
 
       def show(using Context): String
 
+      def owner: ClassSymbol
+
     /** Local environments can be deeply nested, therefore we need `outer`.
      *
      *  For local variables in rhs of class field definitions, the `meth` is the primary constructor.
+     *
+     *  We need to record the `owner` of a local environment, which is the static object which
+     *  creates the environment, as a local environment may contain mutable vars. To enforce
+     *  initialization-time irrelevance, we need to make sure that when the environment is captured
+     *  in lambdas or local classes, it is impossible to read/write the captured mutable vars from a
+     *  different object other than the object which creates and owns it.
+     *
+     *  An environment and its outer environment might have different owners. For example:
+     *
+     *      object A:
+     *        def foo(): Int => Int =
+     *          var n = 0
+     *          x => { n += 1; x + n }
+     *        val f: Int => Int = foo()
+     *
+     *      object B:
+     *        val m = A.f(10)
+     *
      */
-    private case class LocalEnv(private[Env] val params: Map[Symbol, Value], meth: Symbol, outer: Data)(using Context) extends Data:
+    private case class LocalEnv(private[Env] val params: Map[Symbol, Value], meth: Symbol, owner: ClassSymbol, outer: Data)(using Context) extends Data:
       val level = outer.level + 1
 
       if (level > 3)
@@ -199,7 +219,7 @@ object Objects:
         params.contains(x) || locals.contains(x)
 
       def widen(height: Int)(using Context): Data =
-        new LocalEnv(params.map(_ -> _.widen(height)), meth, outer.widen(height))
+        new LocalEnv(params.map(_ -> _.widen(height)), meth, owner, outer.widen(height))
 
       def show(using Context) =
         "owner: " + meth.show + "\n" +
@@ -221,11 +241,13 @@ object Objects:
       def widen(height: Int)(using Context): Data = this
 
       def show(using Context): String = "NoEnv"
+
+      def owner = throw new RuntimeException("Invalid usage of non-existent env")
     end NoEnv
 
     /** An empty environment can be used for non-method environments, e.g., field initializers.
      */
-    def emptyEnv(owner: Symbol)(using Context): Data = new LocalEnv(Map.empty, owner, NoEnv)
+    def emptyEnv(meth: Symbol, owner: ClassSymbol)(using Context): Data = new LocalEnv(Map.empty, meth, owner, NoEnv)
 
     def apply(x: Symbol)(using data: Data, ctx: Context): Value = data.get(x).get
 
@@ -233,11 +255,11 @@ object Objects:
 
     def contains(x: Symbol)(using data: Data): Boolean = data.contains(x)
 
-    def of(ddef: DefDef, args: List[Value], outer: Data)(using Context): Data =
+    def of(ddef: DefDef, args: List[Value], owner: ClassSymbol, outer: Data)(using Context): Data =
       val params = ddef.termParamss.flatten.map(_.symbol)
       assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
       assert(ddef.symbol.owner.isClass ^ (outer != NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outer = " + outer + ", " + ddef.source)
-      new LocalEnv(params.zip(args).toMap, ddef.symbol, outer)
+      new LocalEnv(params.zip(args).toMap, ddef.symbol, owner, outer)
 
     def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context): Unit =
       assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
@@ -435,7 +457,7 @@ object Objects:
               else
                 Env.resolveEnv(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
-            val env2 = Env.of(ddef, args.map(_.value), outerEnv)
+            val env2 = Env.of(ddef, args.map(_.value), State.currentObject, outerEnv)
             extendTrace(ddef) {
               given Env.Data = env2
               eval(ddef.rhs, ref, cls, cacheResult = true)
@@ -477,7 +499,7 @@ object Objects:
         val ddef = ctor.defTree.asInstanceOf[DefDef]
         val argValues = args.map(_.value)
 
-        given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
+        given Env.Data = Env.of(ddef, argValues, State.currentObject, Env.NoEnv)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
           extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
@@ -509,7 +531,7 @@ object Objects:
           if ref.owner == State.currentObject then
             Heap.read(ref, field)
           else
-            report.warning("Reading mutable state of " + ref.owner.show + " during initialization of " + State.currentObject + " is discouraged as it breaks initialization-time irrelevance. Calling trace: " + Trace.show, Trace.position)
+            errorReadOtherStaticObject(State.currentObject, ref.owner)
             Bottom
           end if
         else if ref.hasField(target) then
@@ -602,7 +624,12 @@ object Objects:
       if sym.is(Flags.Mutable) then
         thisV match
         case ref: Ref =>
-          Heap.readLocalVar(ref, env, sym)
+          if env.owner == State.currentObject then
+            Heap.readLocalVar(ref, env, sym)
+          else
+            errorReadOtherStaticObject(State.currentObject, env.owner)
+            Bottom
+          end if
         case _ =>
           Cold
       else if sym.isPatternBound then
@@ -645,7 +672,10 @@ object Objects:
     case Some(thisV -> env) =>
       thisV match
       case ref: Ref =>
-        Heap.writeLocalVar(ref, summon[Env.Data], sym, value)
+        if env.owner != State.currentObject then
+          errorMutateOtherStaticObject(State.currentObject, env.owner)
+        else
+          Heap.writeLocalVar(ref, summon[Env.Data], sym, value)
       case _ =>
         report.warning("Assigning to variables in outer scope", Trace.position)
 
@@ -670,7 +700,7 @@ object Objects:
         count += 1
 
         given Trace = Trace.empty.add(classSym.defTree)
-        given Env.Data = Env.emptyEnv(tpl.constr.symbol)
+        given Env.Data = Env.emptyEnv(tpl.constr.symbol, classSym)
         given Heap.MutableData = Heap.empty()
 
         log("Iteration " + count) {
@@ -1173,5 +1203,13 @@ object Objects:
       s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
       "Mutating other static objects during the initialization of one static object is discouraged. " +
       "Calling trace:\n" + Trace.show
+
+    report.warning(msg, Trace.position)
+
+  def errorReadOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
+    val msg =
+      "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
+      "Reading mutable state of other static objects is discouraged as it breaks initialization-time irrelevance." +
+      "Calling trace: " + Trace.show
 
     report.warning(msg, Trace.position)
