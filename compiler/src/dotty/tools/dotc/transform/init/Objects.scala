@@ -15,8 +15,6 @@ import config.Printers.init as printer
 import reporting.StoreReporter
 import reporting.trace as log
 
-import util.HashSet
-
 import Errors.*
 import Trace.*
 import Util.*
@@ -291,42 +289,41 @@ object Objects:
     /** The address for mutable local variables . */
     private case class LocalVarAddr(ref: Ref, env: Env.Data, sym: Symbol) extends Addr
 
-    /** Immutable heap data */
-    opaque type Data = ImmutableMapWithRefEquality
+    /** Immutable heap data used in the cache.
+     *
+     *  We need to use structural equivalence so that in different iterations the cache can be effective.
+     *
+     *  TODO: speed up equality check for heap.
+     */
+    opaque type Data = Map[Addr, Value]
 
     /** Store the heap as a mutable field to avoid thread through it in the program. */
     class MutableData(private[Heap] var heap: Data):
       private[Heap] def update(addr: Addr, value: Value): Unit =
-        heap.map.get(addr) match
+        heap.get(addr) match
         case None =>
-          heap = new Data(heap.map.updated(addr, value))
+          heap = heap.updated(addr, value)
 
         case Some(current) =>
           val value2 = value.join(current)
           if value2 != current then
-            heap = new Data(heap.map.updated(addr, value2))
+            heap = heap.updated(addr, value2)
 
 
-    /** Wrap the map in a class such that equality of two maps is defined as referential equality.
-     *
-     *  This is a performance optimization.
-     */
-    private class ImmutableMapWithRefEquality(val map: Map[Addr, Value])
-
-    def empty(): MutableData = new MutableData(new Data(Map.empty))
+    def empty(): MutableData = new MutableData(Map.empty)
 
     def contains(ref: Ref, field: Symbol)(using mutable: MutableData): Boolean =
-      mutable.heap.map.contains(FieldAddr(ref, field))
+      mutable.heap.contains(FieldAddr(ref, field))
 
     def read(ref: Ref, field: Symbol)(using mutable: MutableData): Value =
-      mutable.heap.map(FieldAddr(ref, field))
+      mutable.heap(FieldAddr(ref, field))
 
     def write(ref: Ref, field: Symbol, value: Value)(using mutable: MutableData): Unit =
       val addr = FieldAddr(ref, field)
       mutable.update(addr, value)
 
     def readLocalVar(ref: Ref, env: Env.Data, sym: Symbol)(using mutable: MutableData): Value =
-      mutable.heap.map(LocalVarAddr(ref, env, sym))
+      mutable.heap(LocalVarAddr(ref, env, sym))
 
     def writeLocalVar(ref: Ref, env: Env.Data, sym: Symbol, value: Value)(using mutable: MutableData): Unit =
       val addr = LocalVarAddr(ref, env, sym)
