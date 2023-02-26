@@ -19,7 +19,7 @@ trait Async:
 object Async:
 
   /** The underlying configuration of an async block */
-  case class Config(scheduler: ExecutionContext, group: Cancellable.Group)
+  case class Config(scheduler: ExecutionContext, group: CancellationGroup)
 
   trait LowPrioConfig:
 
@@ -27,7 +27,7 @@ object Async:
      *  ignores cancellation requests
      */
     given fromExecutionContext(using scheduler: ExecutionContext): Config =
-      Config(scheduler, Cancellable.Unlinked)
+      Config(scheduler, CancellationGroup.Unlinked)
 
   end LowPrioConfig
 
@@ -69,14 +69,14 @@ object Async:
   inline def await[T](src: Source[T])(using async: Async): T = async.await(src)
 
   def group[T](body: Async ?=> T)(using async: Async): T =
-    val newGroup = Cancellable.Group().link()
+    val newGroup = CancellationGroup().link()
     body(using async.withConfig(async.config.copy(group = newGroup)))
 
   /** A function `T => Boolean` whose lineage is recorded by its implementing
    *  classes. The Listener function accepts values of type `T` and returns
    *  `true` iff the value was consumed by an async block.
    */
-  trait Listener[-T] extends Function[T, Boolean]
+  trait Listener[-T] extends (T => Boolean)
 
   /** A listener for values that are processed by the given source `src` and
    *  that are demanded by the continuation listener `continue`.

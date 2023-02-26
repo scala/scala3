@@ -5,13 +5,25 @@ import fiberRuntime.suspend
 import scala.concurrent.ExecutionContext
 import Async.{Listener, await}
 
+/** A common interface for channels */
+trait Channel[T]:
+  def read()(using Async): T
+  def send(x: T)(using Async): Unit
+  def close(): Unit
+
+class ChannelClosedException extends Exception
+
 /** An unbounded asynchronous channel. Senders do not wait for matching
  *  readers.
  */
-class UnboundedChannel[T] extends Async.OriginalSource[T]:
+class AsyncChannel[T] extends Async.OriginalSource[T], Channel[T]:
 
   private val pending = ListBuffer[T]()
   private val waiting = mutable.Set[Listener[T]]()
+  private var isClosed = false
+
+  private def ensureOpen() =
+    if isClosed then throw ChannelClosedException()
 
   private def drainWaiting(x: T): Boolean =
     waiting.iterator.find(_(x)) match
@@ -30,11 +42,13 @@ class UnboundedChannel[T] extends Async.OriginalSource[T]:
   def read()(using Async): T = synchronized:
     await(this)
 
-  def send(x: T): Unit = synchronized:
+  def send(x: T)(using Async): Unit = synchronized:
+    ensureOpen()
     val sent = pending.isEmpty && drainWaiting(x)
     if !sent then pending += x
 
   def poll(k: Listener[T]): Boolean = synchronized:
+    ensureOpen()
     drainPending(k)
 
   def addListener(k: Listener[T]): Unit = synchronized:
@@ -43,7 +57,10 @@ class UnboundedChannel[T] extends Async.OriginalSource[T]:
   def dropListener(k: Listener[T]): Unit = synchronized:
     waiting -= k
 
-end UnboundedChannel
+  def close() =
+    isClosed = true
+
+end AsyncChannel
 
 /** An unbuffered, synchronous channel. Senders and readers both block
  *  until a communication between them happens. The channel provides two
@@ -52,7 +69,7 @@ end UnboundedChannel
  *  waiting sender the data is transmitted directly. Otherwise we add
  *  the operation to the corresponding pending set.
  */
-trait SyncChannel[T]:
+trait SyncChannel[T] extends Channel[T]:
 
   val canRead: Async.Source[T]
   val canSend: Async.Source[Listener[T]]
@@ -67,8 +84,13 @@ object SyncChannel:
 
     private val pendingReads = mutable.Set[Listener[T]]()
     private val pendingSends = mutable.Set[Listener[Listener[T]]]()
+    private var isClosed = false
+
+    private def ensureOpen() =
+      if isClosed then throw ChannelClosedException()
 
     private def link[T](pending: mutable.Set[T], op: T => Boolean): Boolean =
+      ensureOpen()
       // Since sources are filterable, we have to match all pending readers or writers
       // against the incoming request
       pending.iterator.find(op) match
@@ -94,6 +116,9 @@ object SyncChannel:
         pendingSends += k
       def dropListener(k: Listener[Listener[T]]): Unit = synchronized:
         pendingSends -= k
+
+    def close() =
+      isClosed = true
 
 end SyncChannel
 

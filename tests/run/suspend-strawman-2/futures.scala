@@ -1,7 +1,7 @@
 package concurrent
 
 import scala.collection.mutable, mutable.ListBuffer
-import fiberRuntime.suspend
+import fiberRuntime.util.*
 import fiberRuntime.boundary
 import scala.compiletime.uninitialized
 import scala.util.{Try, Success, Failure}
@@ -13,10 +13,13 @@ import scala.concurrent.ExecutionContext
  */
 trait Future[+T] extends Async.OriginalSource[Try[T]], Cancellable:
 
+  /** Wait for this future to be completed and return its result */
+  def result(using async: Async): Try[T]
+
   /** Wait for this future to be completed, return its value in case of success,
    *  or rethrow exception in case of failure.
    */
-  def value(using async: Async): T
+  def value(using async: Async): T = result.get
 
   /** Eventually stop computation of this future and fail with
    *  a `Cancellation` exception.
@@ -56,8 +59,7 @@ object Future:
 
     // Future method implementations
 
-    def value(using async: Async): T =
-      async.await(this).get
+    def result(using async: Async): Try[T] = async.await(this)
 
     /** Complete future with result. If future was cancelled in the meantime,
      *  return a CancellationException failure instead.
@@ -87,12 +89,12 @@ object Future:
   private class RunnableFuture[+T](body: Async ?=> T)(using ac: Async.Config)
   extends CoreFuture[T]:
 
+    def checkCancellation() =
+      if cancelRequest then throw CancellationException()
+
     /** a handler for Async */
     private def async(body: Async ?=> Unit): Unit =
       class FutureAsync(using val config: Async.Config) extends Async:
-
-        def checkCancellation() =
-          if cancelRequest then throw CancellationException()
 
         /** Await a source first by polling it, and, if that fails, by suspending
          *  in a onComplete call.
@@ -101,14 +103,20 @@ object Future:
           checkCancellation()
           src.poll().getOrElse:
             try
-              var result: Option[T] = None // Not needed if we have full continuations
-              suspend[T, Unit]: k =>
+              src.poll().getOrElse:
+                sleepABit()
+                log(s"suspending ${threadName.get()}")
+                var result: Option[T] = None
                 src.onComplete: x =>
-                  config.scheduler.execute: () =>
+                  synchronized:
                     result = Some(x)
-                    k.resume()
-                  true // signals to `src` that result `x` was consumed
-              result.get
+                    notify()
+                  true
+                sleepABit()
+                synchronized:
+                  log(s"suspended ${threadName.get()}")
+                  while result.isEmpty do wait()
+                  result.get
               /* With full continuations, the try block can be written more simply as follows:
 
                 suspend[T, Unit]: k =>
@@ -121,8 +129,14 @@ object Future:
 
         def withConfig(config: Async.Config) = FutureAsync(using config)
 
+      sleepABit()
+      try body(using FutureAsync())
+      finally log(s"finished ${threadName.get()} ${Thread.currentThread.getId()}")
+      /** With continuations, this becomes:
+
       boundary [Unit]:
         body(using FutureAsync())
+      */
     end async
 
     ac.scheduler.execute: () =>
@@ -142,30 +156,31 @@ object Future:
   def apply[T](body: Async ?=> T)(using ac: Async.Config): Future[T] =
     RunnableFuture(body)
 
+  /** A future that immediately terminates with the given result */
+  def now[T](result: Try[T]): Future[T] =
+    val f = CoreFuture[T]()
+    f.complete(result)
+    f
+
   extension [T](f1: Future[T])
 
     /** Parallel composition of two futures.
      *  If both futures succeed, succeed with their values in a pair. Otherwise,
-     *  fail with the failure that was returned first and cancel the other.
+     *  fail with the failure that was returned first.
      */
     def zip[U](f2: Future[U])(using Async.Config): Future[(T, U)] = Future:
       Async.await(Async.either(f1, f2)) match
         case Left(Success(x1))  => (x1, f2.value)
         case Right(Success(x2)) => (f1.value, x2)
-        case Left(Failure(ex))  => f2.cancel(); throw ex
-        case Right(Failure(ex)) => f1.cancel(); throw ex
+        case Left(Failure(ex))  => throw ex
+        case Right(Failure(ex)) => throw ex
 
     /** Alternative parallel composition of this task with `other` task.
-     *  If either task succeeds, succeed with the success that was returned first
-     *  and cancel the other. Otherwise, fail with the failure that was returned last.
+     *  If either task succeeds, succeed with the success that was returned first.
+     *  Otherwise, fail with the failure that was returned last.
      */
-    def alt(f2: Future[T], name: String = "alt")(using Async.Config): Future[T] = Future:
-      boundary.setName(name)
-      Async.await(Async.either(f1, f2)) match
-        case Left(Success(x1))    => f2.cancel(); x1
-        case Right(Success(x2))   => f1.cancel(); x2
-        case Left(_: Failure[?])  => f2.value
-        case Right(_: Failure[?]) => f1.value
+    def alt(f2: Future[T])(using Async.Config): Future[T] = Future:
+      Async.await(Async.race(f1, f2)).get
 
   end extension
 
