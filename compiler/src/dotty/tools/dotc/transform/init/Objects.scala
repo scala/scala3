@@ -611,12 +611,31 @@ object Objects:
       else
         given Env.Data = env
         try
-          Env(sym)
+          val value = Env(sym)
+          if sym.is(Flags.Param) && sym.info.isInstanceOf[ExprType] then
+            value match
+            case fun: Fun =>
+              given Env.Data = fun.env
+              eval(fun.expr, fun.thisV, fun.klass)
+            case Cold =>
+              report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
+              Bottom
+            case _: RefSet | _: OfClass | _: ObjectRef =>
+              report.warning("[Internal error] Unexpected by-name value " + value.show  + ". Calling trace:\n" + Trace.show, Trace.position)
+              Bottom
+          else
+            value
+
         catch ex =>
           report.warning("[Internal error] Not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
           Bottom
 
-    case _ => Cold
+    case _ =>
+      if sym.is(Flags.Param) && sym.info.isInstanceOf[ExprType] then
+        report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
+        Bottom
+      else
+        Cold
   }
 
   def writeLocal(thisV: Value, sym: Symbol, value: Value): Contextual[Value] = log("write local " + sym.show + " with " + value.show, printer, (_: Value).show) {
