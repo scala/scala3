@@ -974,7 +974,7 @@ object Objects:
         else
           Cold
 
-      argInfos += TraceValue(res, trace.add(arg.tree))
+      argInfos += TraceValue(widened, trace.add(arg.tree))
     }
     argInfos.toList
 
