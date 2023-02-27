@@ -753,6 +753,7 @@ object Objects:
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
     Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
+      given Env.Data = env
       val addr = Env.varAddr(sym)
       if addr.owner != State.currentObject then
         errorMutateOtherStaticObject(State.currentObject, addr.owner)
@@ -1092,7 +1093,12 @@ object Objects:
     // init param fields
     klass.paramGetters.foreach { acc =>
       val value = paramsMap(acc.name.toTermName)
-      thisV.initVal(acc, value)
+      if acc.is(Flags.Mutable) then
+        val addr = Heap.fieldVarAddr(thisV, acc, State.currentObject)
+        thisV.initVar(acc, addr)
+        Heap.write(addr, value)
+      else
+        thisV.initVal(acc, value)
       printer.println(acc.show + " initialized with " + value)
     }
 
