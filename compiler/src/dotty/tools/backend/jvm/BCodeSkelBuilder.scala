@@ -281,6 +281,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       if (emitSource) {
         sourceMap = sourceMapFor(cunit)(s => classBTypeFromSymbol(s).internalName)
+        // debugExtension is the ScalaDebug Stratum
+        // println(s"sourceMap for ${claszSymbol.fullName} = ${sourceMap.debugExtension}")
         cnode.visitSource(cunit.source.file.name, sourceMap.debugExtension.orNull)
       }
 

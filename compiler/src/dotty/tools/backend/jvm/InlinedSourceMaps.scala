@@ -85,6 +85,8 @@ object InlinedSourceMaps:
     val requests = mutable.ListBuffer.empty[(SourcePosition, SourcePosition)]
     var internalNames = Map.empty[SourceFile, String]
 
+    // Collect all inlined calls in the compilation unit
+
     class RequestCollector(enclosingFile: SourceFile) extends TreeTraverser:
       override def traverse(tree: Tree)(using Context): Unit =
         if tree.source != enclosingFile && tree.source != cunit.source then
@@ -95,6 +97,7 @@ object InlinedSourceMaps:
               cls match
                 case Some(symbol) if !internalNames.isDefinedAt(tree.source) =>
                   internalNames += (tree.source -> internalNameProvider(symbol))
+                  //println(s"Internal name for ${tree.source} is ${internalNames(tree.source)}")
                   // We are skipping any internal name info if we already have one stored in our map
                   // because a debugger will use internal name only to localize matching source.
                   // Both old and new internal names are associated with the same source file
@@ -107,17 +110,30 @@ object InlinedSourceMaps:
         else traverseChildren(tree)
     end RequestCollector
 
+    // Create the mapping from the real source files to the real and virtual lines
+
     // Don't generate mappings for the quotes compiled at runtime by the staging compiler
     if cunit.source.file.isVirtual then InlinedSourceMap(cunit, Nil, Map.empty[SourceFile, String])
     else
-      var lastLine = cunit.tpdTree.sourcePos.endLine
+      var lastLine = cunit.tpdTree.sourcePos.endLine // Last line of the source file
+      //println(s"lastLine = $lastLine")
       def allocate(origPos: SourcePosition): Int =
-        val line = lastLine + 1
+        val line = lastLine + 1 // Add an empty line. Why ?
         lastLine += origPos.lines.length
+        //println(s"LastLine = $lastLine, line = $line")
         line
 
       RequestCollector(cunit.source).traverse(cunit.tpdTree)
       val allocated = requests.sortBy(_._1.start).map(r => Request(r._1, r._2, allocate(r._2)))
+      // targetPos.startLine is the line in the source file where the inlined call is located
+      // origPos.startLine is the line in the source file where the inlined is defined
+      // firstFakeLine is the first virtual line of the inline
+      /*allocated.foreach { case Request(targetPos, origPos, firstFakeLine) =>
+        println(s"targetPos = ${targetPos.startLine}, origPos = ${origPos.startLine}, firstFakeLine = $firstFakeLine")
+      }*/
+      // internalNames is a map from source file to the internal name of the class that contains the inlined code
+      // Map(local/Macro_1.scala -> Macro_1$package$)
+      //println(s"internalNames = $internalNames")
       InlinedSourceMap(cunit, allocated.toList, internalNames)
   end sourceMapFor
 
@@ -126,10 +142,13 @@ object InlinedSourceMaps:
     requests: List[Request],
     internalNames: Map[SourceFile, String])(using Context):
 
+    // Generate the Scala Stratum and the ScalaDebug Stratum from the map created in sourceMapFor
+
     def debugExtension: Option[String] = Option.when(requests.nonEmpty) {
       val scalaStratum =
         val files = cunit.source :: requests.map(_.origPos.source).distinct.filter(_ != cunit.source)
         val mappings = requests.map { case Request(_, origPos, firstFakeLine) =>
+          //println(s" origPos = ${origPos.startLine}, files.indexOf(origPos.source) + 1 = ${files.indexOf(origPos.source) + 1}, origPos.lines.length = ${origPos.lines.length}, firstFakeLine = $firstFakeLine")
           Mapping(origPos.startLine, files.indexOf(origPos.source) + 1, origPos.lines.length, firstFakeLine, 1)
         }
         Stratum("Scala",
