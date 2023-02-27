@@ -71,10 +71,14 @@ object Objects:
   /**
    * A reference caches the values for outers and immutable fields.
    */
-  sealed abstract class Ref extends Value:
-    private val vals: mutable.Map[Symbol, Value] = mutable.Map.empty
-    private val vars: mutable.Map[Symbol, Heap.Addr] = mutable.Map.empty
-    private val outers: mutable.Map[ClassSymbol, Value] = mutable.Map.empty
+  sealed abstract class Ref(
+    valsMap: mutable.Map[Symbol, Value],
+    varsMap: mutable.Map[Symbol, Heap.Addr],
+    outersMap: mutable.Map[ClassSymbol, Value])
+  extends Value:
+    protected val vals: mutable.Map[Symbol, Value] = valsMap
+    protected val vars: mutable.Map[Symbol, Heap.Addr] = varsMap
+    protected val outers: mutable.Map[ClassSymbol, Value] = outersMap
 
     def klass: ClassSymbol
 
@@ -108,7 +112,8 @@ object Objects:
     }
 
   /** A reference to a static object */
-  case class ObjectRef(klass: ClassSymbol) extends Ref:
+  case class ObjectRef(klass: ClassSymbol)
+  extends Ref(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty):
     val owner = klass
 
     def show(using Context) = "ObjectRef(" + klass.show + ")"
@@ -117,12 +122,26 @@ object Objects:
    * Rerepsents values that are instances of the specified class
    *
    */
-  case class OfClass private(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data) extends Ref:
-    def show(using Context) = "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ")"
+  case class OfClass private (klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)
+    (valsMap: mutable.Map[Symbol, Value], varsMap: mutable.Map[Symbol, Heap.Addr], outersMap: mutable.Map[ClassSymbol, Value])
+  extends Ref(valsMap, varsMap, outersMap):
+
+    def widenedCopy(outer: Value, args: List[Value], env: Env.Data): OfClass =
+      new OfClass(klass, outer, ctor, args, env)(this.valsMap, this.varsMap, outersMap)
+
+    def show(using Context) =
+      val valFields = vals.map(_.show +  " -> " +  _.show)
+      "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ", vals = " + valFields + ")"
 
   object OfClass:
-    def apply(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)(using Context): OfClass =
-      val instance = new OfClass(klass, outer, ctor, args, env)
+    def apply(
+      klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)(
+      using Context
+    ): OfClass =
+      val instance =
+        new OfClass(klass, outer, ctor, args, env)(
+          valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty
+        )
       instance.initOuter(klass, outer)
       instance
 
@@ -240,14 +259,18 @@ object Objects:
      *  For local variables in rhs of class field definitions, the `meth` is the primary constructor.
      *
      */
-    private case class LocalEnv(private[Env] val params: Map[Symbol, Value], meth: Symbol, outer: Data)(using Context) extends Data:
+    private case class LocalEnv
+      (private[Env] val params: Map[Symbol, Value], meth: Symbol, outer: Data)
+      (valsMap: mutable.Map[Symbol, Value], varsMap: mutable.Map[Symbol, Heap.Addr])
+      (using Context)
+    extends Data:
       val level = outer.level + 1
 
       if (level > 3)
         report.warning("[Internal error] Deeply nested environemnt, level =  " + level + ", " + meth.show + " in " + meth.enclosingClass.show, meth.defTree)
 
-      private[Env] val vals: mutable.Map[Symbol, Value] = mutable.Map.empty
-      private[Env] val vars: mutable.Map[Symbol, Heap.Addr] = mutable.Map.empty
+      private[Env] val vals: mutable.Map[Symbol, Value] = valsMap
+      private[Env] val vars: mutable.Map[Symbol, Heap.Addr] = varsMap
 
       private[Env] def getVal(x: Symbol)(using Context): Option[Value] =
         if x.is(Flags.Param) then params.get(x)
@@ -257,8 +280,7 @@ object Objects:
         vars.get(x)
 
       def widen(height: Int)(using Context): Data =
-        // TODO: locals do not exist for the widened environment
-        new LocalEnv(params.map(_ -> _.widen(height)), meth, outer.widen(height))
+        new LocalEnv(params.map(_ -> _.widen(height)), meth, outer.widen(height))(this.vals, this.vars)
 
       def show(using Context) =
         "owner: " + meth.show + "\n" +
@@ -288,7 +310,8 @@ object Objects:
      *  The owner for the local environment for field initializers is the primary constructor of the
      *  enclosing class.
      */
-    def emptyEnv(meth: Symbol)(using Context): Data = new LocalEnv(Map.empty, meth, NoEnv)
+    def emptyEnv(meth: Symbol)(using Context): Data =
+      new LocalEnv(Map.empty, meth, NoEnv)(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty)
 
     def valValue(x: Symbol)(using data: Data, ctx: Context): Value = data.getVal(x).get
 
@@ -302,7 +325,7 @@ object Objects:
       val params = ddef.termParamss.flatten.map(_.symbol)
       assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
       assert(ddef.symbol.owner.isClass ^ (outer != NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outer = " + outer + ", " + ddef.source)
-      new LocalEnv(params.zip(args).toMap, ddef.symbol, outer)
+      new LocalEnv(params.zip(args).toMap, ddef.symbol, outer)(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty)
 
     def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context): Unit =
       assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
@@ -461,7 +484,7 @@ object Objects:
           val outer2 = outer.widen(height - 1)
           val args2 = args.map(_.widen(height - 1))
           val env2 = env.widen(height - 1)
-          OfClass(klass, outer2, init, args2, env2)
+          ref.widenedCopy(outer2, args2, env2)
       case _ => a
 
 
@@ -565,7 +588,7 @@ object Objects:
       Bottom
   }
 
-  def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + thisV, printer, (_: Value).show) {
+  def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + thisV.show, printer, (_: Value).show) {
     thisV match
     case Cold =>
       report.warning("Using cold alias", Trace.position)
