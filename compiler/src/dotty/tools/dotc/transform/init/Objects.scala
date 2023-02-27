@@ -119,8 +119,8 @@ object Objects:
   /**
    * Represents a lambda expression
    */
-  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol, env: Env.Data) extends Value:
-    def show(using Context) = "Fun(" + expr.show + ", " + thisV.show + ", " + klass.show + ")"
+  case class Fun(code: Tree, thisV: Value, klass: ClassSymbol, env: Env.Data) extends Value:
+    def show(using Context) = "Fun(" + code.show + ", " + thisV.show + ", " + klass.show + ")"
 
   /**
    * Represents a set of values
@@ -398,9 +398,9 @@ object Objects:
       case RefSet(refs) =>
         refs.map(ref => ref.widen(height)).join
 
-      case Fun(expr, thisV, klass, env) =>
+      case Fun(code, thisV, klass, env) =>
         if height == 0 then Cold
-        else Fun(expr, thisV.widen(height), klass, env.widen(height))
+        else Fun(code, thisV.widen(height), klass, env.widen(height))
 
       case ref @ OfClass(klass, outer, init, args, env, owner) =>
         if height == 0 then
@@ -478,13 +478,20 @@ object Objects:
           // See tests/init/pos/Type.scala
           Bottom
 
-    case Fun(expr, thisV, klass, env) =>
+    case Fun(code, thisV, klass, env) =>
       // meth == NoSymbol for poly functions
       if meth.name.toString == "tupled" then
         value // a call like `fun.tupled`
       else
-        given Env.Data = env
-        eval(expr, thisV, klass, cacheResult = true)
+        code match
+        case ddef: DefDef =>
+          given Env.Data = Env.of(ddef, args.map(_.value), State.currentObject, env)
+          extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+
+        case _ =>
+          // by-name closure
+          given Env.Data = env
+          extendTrace(code) { eval(code, thisV, klass, cacheResult = true) }
 
     case RefSet(vs) =>
       vs.map(v => call(v, meth, args, receiver, superType)).join
@@ -550,7 +557,7 @@ object Objects:
           Bottom
 
     case fun: Fun =>
-      report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show + Trace.show, fun.expr)
+      report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.code.show + Trace.show, fun.code)
       Bottom
 
     case Bottom =>
@@ -564,7 +571,7 @@ object Objects:
   def assign(receiver: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + receiver.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
     receiver match
     case fun: Fun =>
-      report.error("[Internal error] unexpected tree in assignment, fun = " + fun.expr.show + Trace.show, Trace.position)
+      report.error("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
 
     case Cold =>
       report.warning("Assigning to cold aliases is forbidden", Trace.position)
@@ -588,7 +595,7 @@ object Objects:
     outer match
 
     case fun: Fun =>
-      report.error("[Internal error] unexpected tree in instantiating a function, fun = " + fun.expr.show + Trace.show, Trace.position)
+      report.error("[Internal error] unexpected tree in instantiating a function, fun = " + fun.code.show + Trace.show, Trace.position)
       Bottom
 
     case value: (Bottom.type | ObjectRef | OfClass | Cold.type) =>
@@ -643,7 +650,7 @@ object Objects:
             value match
             case fun: Fun =>
               given Env.Data = fun.env
-              eval(fun.expr, fun.thisV, fun.klass)
+              eval(fun.code, fun.thisV, fun.klass)
             case Cold =>
               report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
               Bottom
@@ -873,10 +880,10 @@ object Objects:
           withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
 
       case closureDef(ddef) =>
-        Fun(ddef.rhs, thisV, klass, summon[Env.Data])
+        Fun(ddef, thisV, klass, summon[Env.Data])
 
-      case PolyFun(body) =>
-        Fun(body, thisV, klass, summon[Env.Data])
+      case PolyFun(ddef) =>
+        Fun(ddef, thisV, klass, summon[Env.Data])
 
       case Block(stats, expr) =>
         evalExprs(stats, thisV, klass)

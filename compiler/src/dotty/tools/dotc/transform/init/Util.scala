@@ -64,14 +64,14 @@ object Util:
       case _ => None
 
   object PolyFun:
-    def unapply(tree: Tree)(using Context): Option[Tree] =
+    def unapply(tree: Tree)(using Context): Option[DefDef] =
       tree match
       case Block((cdef: TypeDef) :: Nil, Typed(NewExpr(tref, _, _, _), _))
       if tref.symbol.isAnonymousClass && tref <:< defn.PolyFunctionType
       =>
         val body = cdef.rhs.asInstanceOf[Template].body
         val apply = body.head.asInstanceOf[DefDef]
-        Some(apply.rhs)
+        Some(apply)
       case _ =>
         None
 
