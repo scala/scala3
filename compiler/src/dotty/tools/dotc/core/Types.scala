@@ -1574,8 +1574,6 @@ object Types {
           else NoType
         case SkolemType(tp) =>
           loop(tp)
-        case pre: WildcardType =>
-          WildcardType
         case pre: TypeRef =>
           pre.info match {
             case TypeAlias(alias) => loop(alias)
@@ -2554,10 +2552,7 @@ object Types {
       case _ => true
     }
 
-    /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
-     *  to an (unbounded) wildcard type.
-     *
-     *  (2) Reduce a type-ref `T { X = U; ... } # X`  to   `U`
+    /** Reduce a type-ref `T { X = U; ... } # X`  to   `U`
      *  provided `U` does not refer with a RecThis to the
      *  refinement type `T { X = U; ... }`
      */
@@ -2679,7 +2674,7 @@ object Types {
               case _ =>
             }
         }
-        if (prefix.isInstanceOf[WildcardType]) WildcardType
+        if (prefix.isInstanceOf[WildcardType]) WildcardType.sameKindAs(this)
         else withPrefix(prefix)
       }
 
@@ -5253,6 +5248,10 @@ object Types {
       else
         result
     def emptyPolyKind(using Context): TypeBounds = apply(defn.NothingType, defn.AnyKindType)
+    /** An interval covering all types of the same kind as `tp`. */
+    def emptySameKindAs(tp: Type)(using Context): TypeBounds =
+      val top = tp.topType
+      if top.isExactlyAny then empty else apply(defn.NothingType, top)
     def upper(hi: Type)(using Context): TypeBounds = apply(defn.NothingType, hi)
     def lower(lo: Type)(using Context): TypeBounds = apply(lo, defn.AnyType)
   }
@@ -5428,6 +5427,9 @@ object Types {
         else
           result
       else unique(CachedWildcardType(bounds))
+    /** A wildcard matching any type of the same kind as `tp`. */
+    def sameKindAs(tp: Type)(using Context): WildcardType =
+      apply(TypeBounds.emptySameKindAs(tp))
   }
 
   /** An extractor for single abstract method types.
