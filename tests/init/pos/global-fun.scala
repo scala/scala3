@@ -7,7 +7,7 @@ object A:
   val f: C => Int  = foo(10)
 
   def foo(x: Int): C => Int =
-    c => c.double(x)  // error
+    c => c.double(x: @init.expose)
 
 
 object B:

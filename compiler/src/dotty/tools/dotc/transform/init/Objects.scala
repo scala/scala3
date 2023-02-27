@@ -13,7 +13,7 @@ import NameKinds.SuperAccessorName
 import ast.tpd.*
 import config.Printers.init as printer
 import reporting.StoreReporter
-import reporting.trace.force as log
+import reporting.trace as log
 
 import Errors.*
 import Trace.*
@@ -141,30 +141,76 @@ object Objects:
   object State:
     class Data:
       // objects under check
-      private[State] val checkingObjects = new mutable.ArrayBuffer[ClassSymbol]
-      private[State] val checkedObjects = new mutable.ArrayBuffer[ClassSymbol]
+      private[State] val checkingObjects = new mutable.ArrayBuffer[ObjectRef]
+      private[State] val checkedObjects = new mutable.ArrayBuffer[ObjectRef]
       private[State] val pendingTraces = new mutable.ArrayBuffer[Trace]
     end Data
 
-    def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last
+    def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last.klass
 
-    def checkCycle(clazz: ClassSymbol)(work: => Unit)(using data: Data, ctx: Context, pendingTrace: Trace) =
-      val index = data.checkingObjects.indexOf(clazz)
+    private def doCheckObject(classSym: ClassSymbol)(using ctx: Context, data: Data) =
+      val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
-      if index != -1 && data.checkingObjects.size - 1 > index then
-        val joinedTrace = data.pendingTraces.slice(index + 1, data.checkingObjects.size).foldLeft(pendingTrace) { (a, acc) => acc ++ a }
-        val callTrace = Trace.buildStacktrace(joinedTrace, "Calling trace:\n")
-        val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
-        val pos = clazz.defTree
-        report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, pos)
-      else if index == -1 && data.checkedObjects.indexOf(clazz) == -1 then
-        data.pendingTraces += pendingTrace
-        data.checkingObjects += clazz
-        work
-        assert(data.checkingObjects.last == clazz, "Expect = " + clazz.show + ", found = " + data.checkingObjects.last)
-        data.pendingTraces.remove(data.pendingTraces.size - 1)
-        data.checkedObjects += data.checkingObjects.remove(data.checkingObjects.size - 1)
-    end checkCycle
+      var count = 0
+      given Cache.Data = new Cache.Data
+
+      @tailrec
+      def iterate()(using Context): ObjectRef =
+        count += 1
+
+        given Trace = Trace.empty.add(classSym.defTree)
+        given Env.Data = Env.emptyEnv(tpl.constr.symbol, classSym)
+        given Heap.MutableData = Heap.empty()
+
+        val obj = ObjectRef(classSym)
+        log("Iteration " + count) {
+          data.checkingObjects += obj
+          init(tpl, obj, classSym)
+          assert(data.checkingObjects.last.klass == classSym, "Expect = " + classSym.show + ", found = " + data.checkingObjects.last.klass)
+          data.checkingObjects.remove(data.checkingObjects.size - 1)
+        }
+
+        val hasError = ctx.reporter.pendingMessages.nonEmpty
+        if cache.hasChanged && !hasError then
+          cache.prepareForNextIteration()
+          iterate()
+        else
+          data.checkedObjects += obj
+          obj
+      end iterate
+
+      val reporter = new StoreReporter(ctx.reporter)
+      val obj = iterate()(using ctx.fresh.setReporter(reporter))
+      for warning <- reporter.pendingMessages do
+        ctx.reporter.report(warning)
+
+      obj
+    end doCheckObject
+
+    def checkObjectAccess(clazz: ClassSymbol)(using data: Data, ctx: Context, pendingTrace: Trace): Value =
+      val index = data.checkingObjects.indexOf(ObjectRef(clazz))
+
+      if index != -1 then
+        if data.checkingObjects.size - 1 > index then
+          // Only report errors for non-trivial cycles, ignore self cycles.
+          val joinedTrace = data.pendingTraces.slice(index + 1, data.checkingObjects.size).foldLeft(pendingTrace) { (a, acc) => acc ++ a }
+          val callTrace = Trace.buildStacktrace(joinedTrace, "Calling trace:\n")
+          val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
+          val pos = clazz.defTree
+          report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, pos)
+        end if
+        data.checkingObjects(index)
+      else
+        val objOpt = data.checkedObjects.find(_.klass == clazz)
+        objOpt match
+        case Some(obj) => obj
+
+        case None =>
+          data.pendingTraces += pendingTrace
+          val obj = doCheckObject(clazz)
+          data.pendingTraces.remove(data.pendingTraces.size - 1)
+          obj
+    end checkObjectAccess
   end State
 
   /** Environment for parameters */
@@ -697,38 +743,9 @@ object Objects:
   /** Check an individual object */
   private def accessObject(classSym: ClassSymbol)(using Context, State.Data, Trace): Value = log("accessing " + classSym.show, printer, (_: Value).show) {
     if classSym.hasSource then
-      val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-
-      var count = 0
-      given Cache.Data = new Cache.Data
-
-      @tailrec
-      def iterate()(using Context): Unit =
-        count += 1
-
-        given Trace = Trace.empty.add(classSym.defTree)
-        given Env.Data = Env.emptyEnv(tpl.constr.symbol, classSym)
-        given Heap.MutableData = Heap.empty()
-
-        log("Iteration " + count) {
-          init(tpl, ObjectRef(classSym), classSym)
-        }
-
-        val hasError = ctx.reporter.pendingMessages.nonEmpty
-        if cache.hasChanged && !hasError then
-          cache.prepareForNextIteration()
-          iterate()
-      end iterate
-
-      State.checkCycle(classSym) {
-        val reporter = new StoreReporter(ctx.reporter)
-        iterate()(using ctx.fresh.setReporter(reporter))
-        for warning <- reporter.pendingMessages do
-          ctx.reporter.report(warning)
-      }
-    end if
-
-    ObjectRef(classSym)
+      State.checkObjectAccess(classSym)
+    else
+      ObjectRef(classSym)
   }
 
 
