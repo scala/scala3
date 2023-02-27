@@ -89,6 +89,7 @@
   #mobile-menu-toggle {
     margin-left: calc(3 * var(--base-spacing));
     display: block;
+    padding: 16px;
   }
 
   .header-container-right .text-button {
