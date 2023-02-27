@@ -180,7 +180,11 @@ object Future:
      *  Otherwise, fail with the failure that was returned last.
      */
     def alt(f2: Future[T])(using Async.Config): Future[T] = Future:
-      Async.await(Async.race(f1, f2)).get
+      Async.await(Async.either(f1, f2)) match
+        case Left(Success(x1))    => x1
+        case Right(Success(x2))   => x2
+        case Left(_: Failure[?])  => f2.value
+        case Right(_: Failure[?]) => f1.value
 
   end extension
 

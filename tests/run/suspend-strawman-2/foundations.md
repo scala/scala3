@@ -186,12 +186,15 @@ which takes two futures and if they complete successfully returns their results 
         case Right(Failure(ex))   => throw ex
 
     def alt(f2: Future[T])(using Async.Config): Future[T] = Future:
-      Async.await(Async.race(f1, f2)).get
+      Async.await(Async.either(f1, f2)) match
+        case Left(Success(x1))    => x1
+        case Right(Success(x2))   => x2
+        case Left(_: Failure[?])  => f2.value
+        case Right(_: Failure[?]) => f1.value
 ```
 The `zip` implementation calls `await` over a source which results from an `either`. We have seen that `either` is in turn implemented by a combination of `map` and `race`. It distinguishes four cases reflecting which of the argument futures finished first, and whether that was with a success or a failure.
 
-The `alt` implementation is a bit simpler. It is implemented directly in terms
-of `await`ing the result of a `race`.
+The `alt` implementation starts in the same way, calling `await` over `either`. If the first result was a success, it returns it. If not, it waits for the second result.
 
 In some cases an operand future is no longer needed for the result of a `zip` or an `alt`. For `zip` this is the case if one of the operands fails, since then the result is always a failure, and for `alt` this is the case if one of the operands succeeds, since then the result is that success value.
 
