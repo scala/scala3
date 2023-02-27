@@ -207,7 +207,7 @@ object Objects:
           val callTrace = Trace.buildStacktrace(joinedTrace, "Calling trace:\n")
           val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
           val pos = clazz.defTree
-          report.warning("Cyclic initialization: " + cycle.map(_.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, pos)
+          report.warning("Cyclic initialization: " + cycle.map(_.klass.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, pos)
         end if
         data.checkingObjects(index)
       else
