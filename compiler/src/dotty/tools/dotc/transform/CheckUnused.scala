@@ -7,13 +7,13 @@ import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.{em, i}
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.typer.ImportInfo
-import dotty.tools.dotc.util.Property
+import dotty.tools.dotc.util.{Property, SourcePosition, SrcPos}
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Types.TypeTraverser
 import dotty.tools.dotc.core.Types.Type
@@ -302,6 +302,7 @@ object CheckUnused:
      * See the `isAccessibleAsIdent` extension method below in the file
      */
     private val usedInScope = MutStack(MutSet[(Symbol,Boolean, Option[Name])]())
+    private val usedInPosition = MutSet[(SrcPos, Name)]()
     /* unused import collected during traversal */
     private val unusedImport = MutSet[ImportSelector]()
 
@@ -351,6 +352,7 @@ object CheckUnused:
           usedInScope.top += ((sym, sym.isAccessibleAsIdent, name))
           usedInScope.top += ((sym.companionModule, sym.isAccessibleAsIdent, name))
           usedInScope.top += ((sym.companionClass, sym.isAccessibleAsIdent, name))
+          name.map(n => usedInPosition += ((sym.sourcePos, n)))
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
@@ -455,6 +457,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.locals then
           localDefInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
             .map(d => d.namePos -> WarnTypes.LocalDefs).toList
         else
           Nil
@@ -483,6 +486,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.patvars then
           patVarsInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
             .map(d => d.namePos -> WarnTypes.PatVars).toList
         else
           Nil
