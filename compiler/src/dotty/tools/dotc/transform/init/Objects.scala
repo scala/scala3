@@ -706,6 +706,7 @@ object Objects:
     case Some(thisV -> env) =>
       if sym.is(Flags.Mutable) then
         // Assume forward reference check is doing a good job
+        given Env.Data = env
         val addr = Env.varAddr(sym)
         if addr.owner == State.currentObject then
           Heap.read(addr)
@@ -1262,7 +1263,7 @@ object Objects:
   def errorReadOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
     val msg =
       "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
-      "Reading mutable state of other static objects is discouraged as it breaks initialization-time irrelevance." +
+      "Reading mutable state of other static objects is discouraged as it breaks initialization-time irrelevance. " +
       "Calling trace: " + Trace.show
 
     report.warning(msg, Trace.position)
