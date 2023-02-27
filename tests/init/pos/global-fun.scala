@@ -4,7 +4,8 @@ class C:
   def double(x: Int): Int = x * 2
 
 object A:
-  val f: C => Int  = foo(10)
+  val n: Int = 10
+  val f: C => Int  = foo(n: @init.expose)
 
   def foo(x: Int): C => Int =
     c => c.double(x: @init.expose)
