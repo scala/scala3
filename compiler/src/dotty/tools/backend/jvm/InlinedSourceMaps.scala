@@ -143,7 +143,6 @@ object InlinedSourceMaps:
         }
         Stratum("ScalaDebug", File(1, cunit.source.name, None) :: Nil, mappings)
 
-
       val b = new StringBuilder
       b ++= "SMAP\n"
       b ++= cunit.source.name
