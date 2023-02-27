@@ -1,3 +1,4 @@
+//scalajs: --skip
 import java.util.concurrent.Semaphore
 
 object Repro {
