@@ -244,15 +244,9 @@ object Inlines:
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(using Context): Tree =
-    //println(i"inlined : ${inlined.show}")
-    //println(i"inlined is empty : ${inlined.call.isEmpty}")
     val topLevelClass = Option.when(!inlined.call.isEmpty)(inlined.call.symbol.topLevelClass)
-    //println(i"topLevelClass : ${topLevelClass}")
     val inliningPosition = InliningPosition(inlined.sourcePos, topLevelClass)
-    //println(i"inliningPosition : ${inliningPosition}")
     val withPos = inlined.expansion.withAttachment(InliningPosition, inliningPosition)
-    //println(i"withPos : ${withPos}")
-    //println(i"inlined.bindings : ${inlined.bindings}")
     if inlined.bindings.isEmpty then withPos else cpy.Block(inlined)(inlined.bindings, withPos)
 
   /** Leave only a call trace consisting of
