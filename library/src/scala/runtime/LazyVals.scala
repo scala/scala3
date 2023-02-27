@@ -45,6 +45,7 @@ object LazyVals {
 
   /* ------------- Start of public API ------------- */
 
+  // This trait extends Serializable to fix #16806 that caused a race condition
   sealed trait LazyValControlState extends Serializable
 
   /**
