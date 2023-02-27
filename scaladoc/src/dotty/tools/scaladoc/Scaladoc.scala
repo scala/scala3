@@ -6,7 +6,7 @@ import java.nio.file.Paths
 
 import collection.immutable.ArraySeq
 
-import dotty.tools.dotc.config.Settings._
+import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
 import dotty.tools.dotc.config.{ CommonScalaSettings, AllScalaSettings }
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.core.Contexts._
