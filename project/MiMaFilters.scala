@@ -27,6 +27,11 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.into"),
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$into$"),
     // end of New experimental features in 3.3.X
+
+    // Added java.io.Serializable as LazyValControlState supertype
+    ProblemFilters.exclude[MissingTypesProblem]("scala.runtime.LazyVals$LazyValControlState"),
+    ProblemFilters.exclude[MissingTypesProblem]("scala.runtime.LazyVals$Waiting"),
+
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
     ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyBuffer.reset"),
