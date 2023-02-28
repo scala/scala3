@@ -2640,17 +2640,18 @@ class MissingImplicitArgument(
     recur(pt)
 
   /** The implicitNotFound annotation on the parameter, or else on the type.
-   *  implicitNotFound message strings starting with `...` are intended for
-   *  additional explanations, not the message proper. The leading `...` is
+   *  implicitNotFound message strings starting with `explain=` are intended for
+   *  additional explanations, not the message proper. The leading `explain=` is
    *  dropped in this case.
    *  @param explain  The message is used for an additional explanation, not
    *                  the message proper.
    */
   def userDefinedImplicitNotFoundMessage(explain: Boolean)(using Context): Option[String] =
+    val explainTag = "explain="
     def filter(msg: Option[String]) = msg match
       case Some(str) =>
-        if str.startsWith("...") then
-          if explain then Some(str.drop(3)) else None
+        if str.startsWith(explainTag) then
+          if explain then Some(str.drop(explainTag.length)) else None
         else if explain then None
         else msg
       case None => None

@@ -35,7 +35,7 @@ object boundary:
 
   /** Labels are targets indicating which boundary will be exited by a `break`.
    */
-  @implicitNotFound("...A Label is generated from an enclosing `scala.util.boundary` call.\nMaybe that boundary is missing?")
+  @implicitNotFound("explain=A Label is generated from an enclosing `scala.util.boundary` call.\nMaybe that boundary is missing?")
   final class Label[-T]
 
   /** Abort current computation and instead return `value` as the value of
