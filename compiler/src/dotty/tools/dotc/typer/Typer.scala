@@ -2650,6 +2650,30 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
     }
 
+    def generateInlineTraitsDefs(parents: List[Tree]): List[Tree] = {
+      def rhs(sym: Symbol, argss: List[List[Tree]]) = {
+        tpd.ref(defn.Predef_undefined)
+      }
+
+      val inlineParents: List[Symbol] = parents.map(_.tpe.dealias.typeSymbol).filter(_.isAllOf(Inline))
+      val classSyms: Map[Symbol, List[Symbol]] =
+        inlineParents.map(parent => parent -> parent.asClass.info.decls.toList.filter(!_.isConstructor)).toMap
+      val inlinedSyms: Map[Symbol, List[TermSymbol]] = classSyms.transform((_, defSyms) => defSyms.map(sym =>
+        newSymbol(
+          cls,
+          sym.name,
+          sym.flags | Override,
+          sym.info,
+          sym.privateWithin,
+          cls.coord
+        ).asTerm.entered
+      ))
+      val inlinedDefs: List[DefDef] =
+        inlinedSyms.flatMap((parent, defSyms) => defSyms.map(sym => DefDef(sym, argss => rhs(sym, argss)))).toList // appliedToArgss(argss)
+      // println(inlinedDefs.map(_.show))
+      inlinedDefs
+    }
+
     ensureCorrectSuperClass()
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
@@ -2667,7 +2691,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       cdef.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
-      val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
+      val inlineTraitDefs = if ctx.isAfterTyper then Nil else generateInlineTraitsDefs(parents1)
+      val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1) ::: inlineTraitDefs
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
