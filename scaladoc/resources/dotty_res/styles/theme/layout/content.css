@@ -91,6 +91,7 @@
 @media (max-width: 768px) {
 
   #content {
+    padding-top: calc(10 * var(--base-spacing));
     padding-bottom: calc(6 * var(--base-spacing));
   }
 
