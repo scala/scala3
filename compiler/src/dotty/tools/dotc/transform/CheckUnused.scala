@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.typer.ImportInfo
-import dotty.tools.dotc.util.{Property, SourcePosition, SrcPos}
+import dotty.tools.dotc.util.{Property, SrcPos}
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Types.TypeTraverser
 import dotty.tools.dotc.core.Types.Type
