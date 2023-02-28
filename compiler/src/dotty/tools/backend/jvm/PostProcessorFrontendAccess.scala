@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Phases
 
-import scala.annotation.binaryAPI
+import scala.annotation.binaryAPIAccessor
 
 /**
  * Functionality needed in the post-processor whose implementation depends on the compiler
@@ -22,7 +22,7 @@ sealed abstract class PostProcessorFrontendAccess {
   def backendReporting: BackendReporting
   def getEntryPoints: List[String]
 
-  @binaryAPI
+  @binaryAPIAccessor
   private val frontendLock: AnyRef = new Object()
   inline final def frontendSynch[T](inline x: => T): T = frontendLock.synchronized(x)
 }

@@ -1,9 +1,9 @@
 package foo
-import scala.annotation.binaryAPI
+import scala.annotation.{binaryAPI, binaryAPIAccessor}
 class A:
   private val valBinaryAPI1: Int = 1
   private[foo] val valBinaryAPI2: Int = 1
-  @binaryAPI private val valBinaryAPI3: Int = 1
+  @binaryAPIAccessor private val valBinaryAPI3: Int = 1
   @binaryAPI private[foo] val valBinaryAPI4: Int = 1
     inline def inlined =
     valBinaryAPI1 + // error
@@ -18,7 +18,7 @@ class B(val a: A):
 final class C:
   private val valBinaryAPI1: Int = 1
   private[foo] val valBinaryAPI2: Int = 1
-  @binaryAPI private val valBinaryAPI3: Int = 1
+  @binaryAPIAccessor private val valBinaryAPI3: Int = 1
   @binaryAPI private[foo] val valBinaryAPI4: Int = 1
     inline def inlined =
     valBinaryAPI1 + // error
@@ -33,7 +33,7 @@ final class D(val c: C):
 object E:
   private val valBinaryAPI1: Int = 1
   private[foo] val valBinaryAPI2: Int = 1
-  @binaryAPI private val valBinaryAPI3: Int = 1
+  @binaryAPIAccessor private val valBinaryAPI3: Int = 1
   @binaryAPI private[foo] val valBinaryAPI4: Int = 1
     inline def inlined =
     valBinaryAPI1 + // error

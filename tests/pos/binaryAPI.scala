@@ -1,15 +1,15 @@
 package foo
 
-import scala.annotation.binaryAPI
+import scala.annotation.{binaryAPI, binaryAPIAccessor}
 
-class Foo(@binaryAPI param: Int, @binaryAPI private[Foo] val paramVal: Int, @binaryAPI private[Foo] var paramVar: Int):
-  @binaryAPI
+class Foo(@binaryAPIAccessor param: Int, @binaryAPI private[Foo] val paramVal: Int, @binaryAPI private[Foo] var paramVar: Int):
+  @binaryAPIAccessor
   private val privateVal: Int = 2
   @binaryAPI
   protected val protectedVal: Int = 2
   @binaryAPI
   private[foo] val packagePrivateVal: Int = 2
-  @binaryAPI
+  @binaryAPIAccessor
   private val privateVar: Int = 2
   @binaryAPI
   protected var protectedVar: Int = 2
@@ -84,22 +84,22 @@ def testFoo = foo.f
 
 def localTest =
   class Foo:
-    @annotation.binaryAPI private[Foo] val a: Int = 1
-    @annotation.binaryAPI protected val b: Int = 1
+    @binaryAPI private[Foo] val a: Int = 1
+    @binaryAPI protected val b: Int = 1
 
 package traits {
   trait Trait:
-    @annotation.binaryAPI private val myVal = 1
-    @annotation.binaryAPI private lazy val myLazyVl = 2
-    @annotation.binaryAPI private var myVar = 2
-    @annotation.binaryAPI private def myDef = 3
-    @annotation.binaryAPI private given myGiven: Int = 4
+    @binaryAPIAccessor private val myVal = 1
+    @binaryAPIAccessor private lazy val myLazyVl = 2
+    @binaryAPIAccessor private var myVar = 2
+    @binaryAPIAccessor private def myDef = 3
+    @binaryAPIAccessor private given myGiven: Int = 4
 
-    @annotation.binaryAPI protected val myVal2 = 1
-    @annotation.binaryAPI protected lazy val myLazyVl2 = 2
-    @annotation.binaryAPI protected var myVar2 = 2
-    @annotation.binaryAPI protected def myDef2 = 3
-    @annotation.binaryAPI protected given myGiven2: Int = 4
+    @binaryAPI protected val myVal2 = 1
+    @binaryAPI protected lazy val myLazyVl2 = 2
+    @binaryAPI protected var myVar2 = 2
+    @binaryAPI protected def myDef2 = 3
+    @binaryAPI protected given myGiven2: Int = 4
 
     inline def inlined: Unit =
       myVar2 = 1
@@ -114,7 +114,7 @@ package traits {
 
   trait Foo:
     inline def foo: Any = bar
-    @binaryAPI private def bar: Any = ???
+    @binaryAPIAccessor private def bar: Any = ???
   end Foo
 
   def test =

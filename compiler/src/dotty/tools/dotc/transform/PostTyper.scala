@@ -166,12 +166,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                     ++ sym.annotations)
           else
             val binaryAPIAnnotOpt = sym.getAnnotation(defn.BinaryAPIAnnot)
+            val binaryAPIWithPrivateAccessorAnnotOpt = sym.getAnnotation(defn.BinaryAPIAccessorAnnot)
             if sym.is(Param) then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
             else if sym.is(ParamAccessor) then
               // FIXME: copyAndKeepAnnotationsCarrying is dropping defn.BinaryAPIAnnot
-              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot, defn.BinaryAPIAnnot))
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot, defn.BinaryAPIAnnot, defn.BinaryAPIAccessorAnnot))
               for binaryAPIAnnot <- binaryAPIAnnotOpt do sym.addAnnotation(binaryAPIAnnot)
+              for binaryAPIWithPrivateAccessorAnnot <- binaryAPIWithPrivateAccessorAnnotOpt do sym.addAnnotation(binaryAPIWithPrivateAccessorAnnot) // TODO is this one necessary?
             else
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then

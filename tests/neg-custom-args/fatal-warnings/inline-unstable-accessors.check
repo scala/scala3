@@ -3,9 +3,9 @@
   |    ^^^^^^^^^^^^^
   |    Generated unstable inline accessor for value valBinaryAPI1 defined in class A.
   |
-  |    Annotate valBinaryAPI1 with `@binaryAPI` to generate a stable accessor.
+  |    Annotate valBinaryAPI1 with `@binaryAPIAccessor` to generate a stable accessor.
   |
-  |    Adding @binaryAPI may break binary compatibility if a previous version of this
+  |    Adding @binaryAPIAccessor may break binary compatibility if a previous version of this
   |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
   |    using MiMa. To keep binary you can add the following accessor to class A:
   |      @binaryAPI private[A] final def foo$A$$inline$valBinaryAPI1: Int = this.valBinaryAPI1
@@ -39,9 +39,9 @@
    |    ^^^^^^^^^^^^^
    |    Generated unstable inline accessor for value valBinaryAPI1 defined in class C.
    |
-   |    Annotate valBinaryAPI1 with `@binaryAPI` to generate a stable accessor.
+   |    Annotate valBinaryAPI1 with `@binaryAPIAccessor` to generate a stable accessor.
    |
-   |    Adding @binaryAPI may break binary compatibility if a previous version of this
+   |    Adding @binaryAPIAccessor may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
    |    using MiMa. To keep binary you can add the following accessor to class C:
    |      @binaryAPI private[C] final def inline$valBinaryAPI1: Int = this.valBinaryAPI1
@@ -75,9 +75,9 @@
    |    ^^^^^^^^^^^^^
    |    Generated unstable inline accessor for value valBinaryAPI1 defined in object E.
    |
-   |    Annotate valBinaryAPI1 with `@binaryAPI` to generate a stable accessor.
+   |    Annotate valBinaryAPI1 with `@binaryAPIAccessor` to generate a stable accessor.
    |
-   |    Adding @binaryAPI may break binary compatibility if a previous version of this
+   |    Adding @binaryAPIAccessor may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
    |    using MiMa. To keep binary you can add the following accessor to object E:
    |      @binaryAPI private[E] final def inline$valBinaryAPI1: Int = foo.E.valBinaryAPI1

@@ -19,7 +19,7 @@ import Decorators.{em, toMessage}
 import util.SourceFile
 import Utility._
 
-import scala.annotation.binaryAPI
+import scala.annotation.binaryAPIAccessor
 
 // XXX/Note: many/most of the functions in here are almost direct cut and pastes
 // from another file - scala.xml.parsing.MarkupParser, it looks like.
@@ -53,7 +53,7 @@ object MarkupParsers {
     override def getMessage: String = "input ended while parsing XML"
   }
 
-  class MarkupParser(@binaryAPI parser: Parser, final val preserveWS: Boolean)(using @binaryAPI c: Context) extends MarkupParserCommon {
+  class MarkupParser(@binaryAPIAccessor parser: Parser, final val preserveWS: Boolean)(using @binaryAPIAccessor c: Context) extends MarkupParserCommon {
 
     import Tokens.{ LBRACE, RBRACE }
 
@@ -94,8 +94,8 @@ object MarkupParsers {
     var xEmbeddedBlock: Boolean = false
 
     private var debugLastStartElement = List.empty[(Int, String)]
-    @binaryAPI private def debugLastPos = debugLastStartElement.head._1
-    @binaryAPI private def debugLastElem = debugLastStartElement.head._2
+    @binaryAPIAccessor private def debugLastPos = debugLastStartElement.head._1
+    @binaryAPIAccessor private def debugLastElem = debugLastStartElement.head._2
 
     private def errorBraces() = {
       reportSyntaxError("in XML content, please use '}}' to express '}'")

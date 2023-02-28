@@ -1,4 +1,4 @@
-import scala.annotation.binaryAPI
+import scala.annotation.binaryAPIAccessor
 
 class TestSuite:
   protected val it = new ItWord
@@ -6,7 +6,7 @@ class TestSuite:
   protected final class ItWord:
     def should(string: String) = new ItVerbString("should", string)
 
-  @binaryAPI private def registerTestToRun(fun: => Any): Unit = ()
+  @binaryAPIAccessor private def registerTestToRun(fun: => Any): Unit = ()
 
   protected final class ItVerbString(verb: String, name: String):
     inline def in(testFun: => Any): Unit = registerTestToRun(testFun)

@@ -1040,6 +1040,7 @@ class Definitions {
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
   @tu lazy val BinaryAPIAnnot: ClassSymbol = requiredClass("scala.annotation.binaryAPI")
+  @tu lazy val BinaryAPIAccessorAnnot: ClassSymbol = requiredClass("scala.annotation.binaryAPIAccessor")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 

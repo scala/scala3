@@ -1,5 +1,5 @@
 import scala.quoted.*
-import scala.annotation.binaryAPI
+import scala.annotation.binaryAPIAccessor
 
 object Macros {
 
@@ -8,7 +8,8 @@ object Macros {
     case class HCons[+HD, TL <: HList](hd: HD, tl: TL) extends HList
     case object HNil extends HList
 
-    @binaryAPI private def sizeImpl(e: Expr[HList], n:Int)(using qctx:Quotes): Expr[Int] = {
+    @binaryAPIAccessor
+    private def sizeImpl(e: Expr[HList], n:Int)(using qctx:Quotes): Expr[Int] = {
       import quotes.reflect.*
       e match {
         case '{HCons(_,$t)} => // error if run with fatal warinings in BootstrappedOnlyCompilationTests

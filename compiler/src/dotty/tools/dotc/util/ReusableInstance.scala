@@ -3,7 +3,7 @@ package dotty.tools.dotc.util
 import scala.collection.mutable.ArrayBuffer
 import scala.util.chaining._
 
-import scala.annotation.binaryAPI
+import scala.annotation.binaryAPIAccessor
 
 /** A wrapper for a list of cached instances of a type `T`.
   * The wrapper is recursion-reentrant: several instances are kept, so
@@ -16,9 +16,11 @@ import scala.annotation.binaryAPI
   *
   * Ported from scala.reflect.internal.util.ReusableInstance
   */
-final class ReusableInstance[T <: AnyRef] private (@binaryAPI make: => T) {
-  @binaryAPI private[this] val cache = new ArrayBuffer[T](ReusableInstance.InitialSize).tap(_.addOne(make))
-  @binaryAPI private[this] var taken = 0
+final class ReusableInstance[T <: AnyRef] private (@binaryAPIAccessor make: => T) {
+  @binaryAPIAccessor
+  private[this] val cache = new ArrayBuffer[T](ReusableInstance.InitialSize).tap(_.addOne(make))
+  @binaryAPIAccessor
+  private[this] var taken = 0
 
   inline def withInstance[R](action: T => R): R ={
     if (taken == cache.size)

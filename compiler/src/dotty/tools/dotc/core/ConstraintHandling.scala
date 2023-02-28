@@ -15,7 +15,7 @@ import NameKinds.AvoidNameKind
 import util.SimpleIdentitySet
 import NullOpsDecorator.stripNull
 
-import scala.annotation.binaryAPI
+import scala.annotation.{binaryAPI, binaryAPIAccessor}
 
 /** Methods for adding constraints and solving them.
  *
@@ -112,7 +112,8 @@ trait ConstraintHandling {
    *  of `1`. So the lower bound is `1 | x.M` and when we level-avoid that we
    *  get `1 | Int & String`, which simplifies to `Int`.
    */
-  @binaryAPI private var myTrustBounds = true
+  @binaryAPIAccessor
+  private var myTrustBounds = true
 
   inline def withUntrustedBounds(op: => Type): Type =
     val saved = myTrustBounds

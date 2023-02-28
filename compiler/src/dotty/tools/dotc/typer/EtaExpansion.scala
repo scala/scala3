@@ -15,7 +15,7 @@ import util.Property
 import collection.mutable
 import Trees._
 
-import scala.annotation.binaryAPI
+import scala.annotation.binaryAPIAccessor
 
 /** A class that handles argument lifting. Argument lifting is needed in the following
  *  scenarios:
@@ -165,7 +165,7 @@ object LiftComplex extends LiftComplex
 object LiftCoverage extends LiftImpure {
 
   // Property indicating whether we're currently lifting the arguments of an application
-  @binaryAPI private val LiftingArgs = new Property.Key[Boolean]
+  @binaryAPIAccessor private val LiftingArgs = new Property.Key[Boolean]
 
   private inline def liftingArgs(using Context): Boolean =
     ctx.property(LiftingArgs).contains(true)

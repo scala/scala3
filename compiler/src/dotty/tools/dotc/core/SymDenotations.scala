@@ -1042,8 +1042,12 @@ object SymDenotations {
     def isBinaryAPI(using Context): Boolean =
       isTerm && (
         hasAnnotation(defn.BinaryAPIAnnot) ||
-        allOverriddenSymbols.exists(_.hasAnnotation(defn.BinaryAPIAnnot))
+        allOverriddenSymbols.exists(sym => sym.hasAnnotation(defn.BinaryAPIAnnot))
       )
+
+    /** Is this a member that will have an accessor in the generated binary */
+    def isBinaryAPIAccessor(using Context): Boolean =
+      isTerm && hasAnnotation(defn.BinaryAPIAccessorAnnot)
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,

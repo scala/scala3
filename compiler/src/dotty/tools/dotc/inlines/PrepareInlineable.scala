@@ -59,7 +59,7 @@ object PrepareInlineable {
 
       def accessorNameOf(accessed: Symbol, site: Symbol)(using Context): TermName =
         val accName = InlineAccessorName(accessed.name.asTermName)
-        if site.isExtensibleClass || accessed.isBinaryAPI then accName.expandedName(site)
+        if site.isExtensibleClass || accessed.isBinaryAPIAccessor then accName.expandedName(site)
         else accName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
@@ -75,7 +75,7 @@ object PrepareInlineable {
       def needsAccessor(sym: Symbol)(using Context): Boolean =
         sym.isTerm &&
         (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
-        (!sym.isBinaryAPI || sym.is(Private)) &&
+        !sym.isBinaryAPI &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
         (Inlines.inInlineMethod || StagingLevel.level > 0)
@@ -104,13 +104,14 @@ object PrepareInlineable {
 
       protected def unstableAccessorWarning(accessor: Symbol, accessed: Symbol, srcPos: SrcPos)(using Context): Unit =
         val accessorDefTree = accessorDef(accessor, accessed)
+        val annot = if accessed.is(Private) then "@binaryAPIAccessor" else "@binaryAPI"
         val solution =
           if accessed.is(Private) then
-            s"Annotate ${accessed.name} with `@binaryAPI` to generate a stable accessor."
+            s"Annotate ${accessed.name} with `$annot` to generate a stable accessor."
           else
-            s"Annotate ${accessed.name} with `@binaryAPI` to make it accessible."
+            s"Annotate ${accessed.name} with `$annot` to make it accessible."
         val binaryCompat =
-          s"""Adding @binaryAPI may break binary compatibility if a previous version of this
+          s"""Adding $annot may break binary compatibility if a previous version of this
               |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
               |using MiMa. To keep binary you can add the following accessor to ${accessor.owner.showKind} ${accessor.owner.name.stripModuleClassSuffix}:
               |  @binaryAPI private[${accessor.owner.name.stripModuleClassSuffix}] ${accessorDefTree.show}
@@ -133,7 +134,7 @@ object PrepareInlineable {
           }
           else
             val accessorTree = useAccessor(tree)
-            if !tree.symbol.isBinaryAPI && tree.symbol != accessorTree.symbol then
+            if !tree.symbol.isBinaryAPI && !tree.symbol.isBinaryAPIAccessor && tree.symbol != accessorTree.symbol then
               unstableAccessorWarning(accessorTree.symbol, tree.symbol, tree.srcPos)
             accessorTree
         case _ =>
@@ -245,7 +246,6 @@ object PrepareInlineable {
 
     /** Create an inline accessor for this definition. */
     def makePrivateBinaryAPIAccessor(sym: Symbol)(using Context): Unit =
-      assert(sym.is(Private))
       if !sym.is(Accessor) then
         val ref = tpd.ref(sym).asInstanceOf[RefTree]
         val accessor = InsertPrivateBinaryAPIAccessors.useAccessor(ref)

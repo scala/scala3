@@ -39,9 +39,9 @@ class BinaryAPITests extends DottyBytecodeTest {
   @Test
   def binaryAPIDef(): Unit = {
     val code =
-      """import scala.annotation.binaryAPI
+      """import scala.annotation.{binaryAPI, binaryAPIAccessor}
         |class C:
-        |  @binaryAPI private def privateBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private def privateBinaryAPI: Int = 1
         |  @binaryAPI private[C] def packagePrivateBinaryAPI: Int = 1
         |  @binaryAPI protected def protectedBinaryAPI: Int = 1
         |  inline def inlined = privateBinaryAPI + packagePrivateBinaryAPI + protectedBinaryAPI
@@ -69,12 +69,12 @@ class BinaryAPITests extends DottyBytecodeTest {
   @Test
   def binaryAPIVal(): Unit = {
     val code =
-      """import scala.annotation.binaryAPI
+      """import scala.annotation.{binaryAPI, binaryAPIAccessor}
         |class C:
-        |  @binaryAPI private val privateBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private val privateBinaryAPI: Int = 1
         |  @binaryAPI private[C] val packagePrivateBinaryAPI: Int = 1
         |  @binaryAPI protected val protectedBinaryAPI: Int = 1
-        |  @binaryAPI private lazy val lazyPrivateBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private lazy val lazyPrivateBinaryAPI: Int = 1
         |  @binaryAPI private[C] lazy val lazyPackagePrivateBinaryAPI: Int = 1
         |  @binaryAPI protected lazy val lazyProtectedBinaryAPI: Int = 1
         |  inline def inlined = privateBinaryAPI + packagePrivateBinaryAPI + protectedBinaryAPI + lazyPrivateBinaryAPI + lazyPackagePrivateBinaryAPI + lazyProtectedBinaryAPI
@@ -110,9 +110,9 @@ class BinaryAPITests extends DottyBytecodeTest {
   @Test
   def binaryAPIVar(): Unit = {
     val code =
-      """import scala.annotation.binaryAPI
+      """import scala.annotation.{binaryAPI, binaryAPIAccessor}
         |class C:
-        |  @binaryAPI private var privateBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private var privateBinaryAPI: Int = 1
         |  @binaryAPI private[C] var packagePrivateBinaryAPI: Int = 1
         |  @binaryAPI protected var protectedBinaryAPI: Int = 1
         |  inline def inlined =
@@ -150,12 +150,12 @@ class BinaryAPITests extends DottyBytecodeTest {
   @Test
   def binaryAPIGiven(): Unit = {
     val code =
-      """import scala.annotation.binaryAPI
+      """import scala.annotation.{binaryAPI, binaryAPIAccessor}
         |class C:
-        |  @binaryAPI private given privateBinaryAPI1: Int = 1
+        |  @binaryAPIAccessor private given privateBinaryAPI1: Int = 1
         |  @binaryAPI private[C] given packagePrivateBinaryAPI1: Int = 1
         |  @binaryAPI protected given protectedBinaryAPI1: Int = 1
-        |  @binaryAPI private given privateBinaryAPI2(using Int): Int = 1
+        |  @binaryAPIAccessor private given privateBinaryAPI2(using Int): Int = 1
         |  @binaryAPI private[C] given packagePrivateBinaryAPI2(using Int): Int = 1
         |  @binaryAPI protected given protectedBinaryAPI2(using Int): Int = 1
         |  inline def inlined =
@@ -189,12 +189,12 @@ class BinaryAPITests extends DottyBytecodeTest {
   @Test
   def binaryAPIClassParam(): Unit = {
     val code =
-      """import scala.annotation.binaryAPI
+      """import scala.annotation.{binaryAPI, binaryAPIAccessor}
         |class C(
-        |  @binaryAPI private val privateBinaryAPI: Int = 1,
+        |  @binaryAPIAccessor private val privateBinaryAPI: Int = 1,
         |  @binaryAPI private[C] val packagePrivateBinaryAPI: Int = 1,
         |  @binaryAPI protected val protectedBinaryAPI: Int = 1,
-        |  @binaryAPI private var privateVarBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private var privateVarBinaryAPI: Int = 1
         |) {
         |  inline def inlined =
         |    privateVarBinaryAPI = 1
@@ -227,8 +227,8 @@ class BinaryAPITests extends DottyBytecodeTest {
   def binaryAPIObject(): Unit = {
     val code =
       """package foo
-        |import scala.annotation.binaryAPI
-        |@binaryAPI private object PrivateBinaryAPI
+        |import scala.annotation.{binaryAPI, binaryAPIAccessor}
+        |@binaryAPIAccessor private object PrivateBinaryAPI
         |@binaryAPI private[foo] object PackagePrivateBinaryAPI
         |@binaryAPI protected object ProtectedBinaryAPI
       """.stripMargin
@@ -247,18 +247,18 @@ class BinaryAPITests extends DottyBytecodeTest {
   @Test
   def binaryAPITraitDefs(): Unit = {
     val code =
-      """import scala.annotation.binaryAPI
+      """import scala.annotation.{binaryAPI, binaryAPIAccessor}
         |trait C:
-        |  @binaryAPI private val privateValBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private val privateValBinaryAPI: Int = 1
         |  @binaryAPI private[C] val packagePrivateValBinaryAPI: Int = 1
         |  @binaryAPI protected val protectedValBinaryAPI: Int = 1
-        |  @binaryAPI private lazy val privateLazyValBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private lazy val privateLazyValBinaryAPI: Int = 1
         |  @binaryAPI private[C] lazy val packagePrivateLazyValBinaryAPI: Int = 1
         |  @binaryAPI protected lazy val protectedLazyValBinaryAPI: Int = 1
-        |  @binaryAPI private var privateVarBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private var privateVarBinaryAPI: Int = 1
         |  @binaryAPI private[C] var packagePrivateVarBinaryAPI: Int = 1
         |  @binaryAPI protected var protectedVarBinaryAPI: Int = 1
-        |  @binaryAPI private def privateDefBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private def privateDefBinaryAPI: Int = 1
         |  @binaryAPI private[C] def packagePrivateDefBinaryAPI: Int = 1
         |  @binaryAPI protected def protectedDefBinaryAPI: Int = 1
         |  inline def inlined =
@@ -322,11 +322,11 @@ class BinaryAPITests extends DottyBytecodeTest {
   @Test
   def binaryAPIDefFinalPrivateAccessors(): Unit = {
     val code =
-      """import scala.annotation.binaryAPI
-        |final class C(@binaryAPI paramBinaryAPI: Int):
-        |  @binaryAPI private val valBinaryAPI: Int = 1
-        |  @binaryAPI private def defBinaryAPI: Int = 1
-        |  @binaryAPI private var varBinaryAPI: Int = 1
+      """import scala.annotation.binaryAPIAccessor
+        |final class C(@binaryAPIAccessor paramBinaryAPI: Int):
+        |  @binaryAPIAccessor private val valBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private def defBinaryAPI: Int = 1
+        |  @binaryAPIAccessor private var varBinaryAPI: Int = 1
         |  inline def inlined =
         |    varBinaryAPI = 1
         |    paramBinaryAPI + valBinaryAPI + defBinaryAPI + varBinaryAPI
@@ -359,6 +359,49 @@ class BinaryAPITests extends DottyBytecodeTest {
   }
 
   @Test
+  def binaryAPIDefFinalPrivateAccessorsOnPublic(): Unit = {
+    val code =
+      """import scala.annotation.binaryAPIAccessor
+        |final class C(@binaryAPIAccessor val paramBinaryAPI: Int):
+        |  @binaryAPIAccessor val valBinaryAPI: Int = 1
+        |  @binaryAPIAccessor def defBinaryAPI: Int = 1
+        |  @binaryAPIAccessor var varBinaryAPI: Int = 1
+        |  inline def inlined =
+        |    varBinaryAPI = 1
+        |    paramBinaryAPI + valBinaryAPI + defBinaryAPI + varBinaryAPI
+        |  def testInlined = inlined
+      """.stripMargin
+    checkBCode(code) { dir =>
+      val cClass = loadClassNode(dir.lookupName("C.class", directory = false).input, skipDebugInfo = false)
+
+      checkPrivateField(cClass, "paramBinaryAPI")
+      checkPublicMethod(cClass, "paramBinaryAPI", "()I")
+      checkPublicMethod(cClass, "C$$inline$paramBinaryAPI", "()I")
+      checkPrivateField(cClass, "valBinaryAPI")
+      checkPublicMethod(cClass, "valBinaryAPI", "()I")
+      checkPublicMethod(cClass, "C$$inline$valBinaryAPI", "()I")
+      checkPublicMethod(cClass, "defBinaryAPI", "()I")
+      checkPublicMethod(cClass, "C$$inline$defBinaryAPI", "()I")
+      checkPrivateField(cClass, "varBinaryAPI")
+      checkPublicMethod(cClass, "varBinaryAPI", "()I")
+      checkPublicMethod(cClass, "C$$inline$varBinaryAPI", "()I")
+      checkPublicMethod(cClass, "varBinaryAPI_$eq", "(I)V")
+      checkPublicMethod(cClass, "C$$inline$varBinaryAPI_$eq", "(I)V")
+
+      // Check that the @binaryAPI annotated method is called
+      val testInlined = getMethod(cClass, "testInlined")
+      val testInlinedInstructions = instructionsFromMethod(testInlined).filter(_.isInstanceOf[Invoke])
+      assertSameCode(testInlinedInstructions, List(
+        Invoke(INVOKEVIRTUAL, "C", "varBinaryAPI_$eq", "(I)V", false),
+        Invoke(INVOKEVIRTUAL, "C", "paramBinaryAPI", "()I", false),
+        Invoke(INVOKEVIRTUAL, "C", "valBinaryAPI", "()I", false),
+        Invoke(INVOKEVIRTUAL, "C", "defBinaryAPI", "()I", false),
+        Invoke(INVOKEVIRTUAL, "C", "varBinaryAPI", "()I", false),
+      ))
+    }
+  }
+
+  @Test
   def i13215(): Unit = {
     val code =
       """import scala.annotation.binaryAPI
@@ -377,12 +420,12 @@ class BinaryAPITests extends DottyBytecodeTest {
   @Test
   def i13215b(): Unit = {
     val code =
-      """import scala.annotation.binaryAPI
+      """import scala.annotation.binaryAPIAccessor
         |package foo:
         |  trait Bar:
         |    inline def baz = Baz
         |    def testInlined = baz
-        |  @binaryAPI private object Baz
+        |  @binaryAPIAccessor private object Baz
       """.stripMargin
     checkBCode(code) { dir =>
       val barClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("Bar.class", directory = false).input, skipDebugInfo = false)

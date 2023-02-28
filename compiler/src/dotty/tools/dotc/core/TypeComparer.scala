@@ -25,7 +25,7 @@ import reporting.trace
 import annotation.constructorOnly
 import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
 
-import scala.annotation.binaryAPI
+import scala.annotation.{binaryAPI, binaryAPIAccessor}
 
 /** Provides methods to compare types.
  */
@@ -158,7 +158,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private [this] var leftRoot: Type | Null = null
 
   /** Are we forbidden from recording GADT constraints? */
-  @binaryAPI private var frozenGadt = false
+  @binaryAPIAccessor
+  private var frozenGadt = false
   private inline def inFrozenGadt[T](inline op: T): T =
     inFrozenGadtIf(true)(op)
 
@@ -189,7 +190,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     inFrozenGadtIf(true)(inFrozenConstraint(op))
 
   extension (sym: Symbol)
-    @binaryAPI private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
+    @binaryAPIAccessor private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
       val bounds = gadtBounds(sym)
       bounds != null && op(bounds)
 

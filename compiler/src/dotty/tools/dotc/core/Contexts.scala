@@ -30,7 +30,7 @@ import classfile.ReusableDataReader
 import StdNames.nme
 import compiletime.uninitialized
 
-import scala.annotation.binaryAPI
+import scala.annotation.{binaryAPI, binaryAPIAccessor}
 import scala.annotation.internal.sharable
 
 import DenotTransformers.DenotTransformer
@@ -806,7 +806,7 @@ object Contexts {
    *  Note: plain TypeComparers always take on the kind of the outer comparer if they are in the same context.
    *  In other words: tracking or explaining is a sticky property in the same context.
    */
-  @binaryAPI
+  @binaryAPIAccessor
   private def comparer(using Context): TypeComparer =
     util.Stats.record("comparing")
     val base = ctx.base
