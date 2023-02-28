@@ -1,6 +1,7 @@
 package scala.quoted
 
 import scala.annotation.experimental
+import scala.annotation.implicitNotFound
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
@@ -21,7 +22,25 @@ transparent inline def quotes(using q: Quotes): q.type = q
  *
  *  It contains the low-level Typed AST API metaprogramming API.
  *  This API does not have the static type guarantees that `Expr` and `Type` provide.
+ *  `Quotes` are generated from an enclosing `${ ... }` or `scala.staging.run`. For example:
+ *  ```scala sc:nocompile
+ *  import scala.quoted._
+ *  inline def myMacro: Expr[T] =
+ *    ${ /* (quotes: Quotes) ?=> */ myExpr }
+ *  def myExpr(using Quotes): Expr[T] =
+ *    '{ f(${ /* (quotes: Quotes) ?=> */ myOtherExpr }) }
+ *  }
+ *  def myOtherExpr(using Quotes): Expr[U] = '{ ... }
+ *  ```
  */
+
+@implicitNotFound("""explain=Maybe this methods is missing a `(using Quotes)` parameter.
+
+Maybe that splice `$ { ... }` is missing?
+Given instances of `Quotes` are generated from an enclosing splice `$ { ... }` (or `scala.staging.run` call).
+A splice can be thought as a method with the following signature.
+  def $[T](body: Quotes ?=> Expr[T]): T
+""")
 trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   // Extension methods for `Expr[T]`
