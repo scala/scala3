@@ -2655,22 +2655,63 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         tpd.ref(defn.Predef_undefined)
       }
 
-      val inlineParents: List[Symbol] = parents.map(_.tpe.dealias.typeSymbol).filter(_.isAllOf(Inline))
-      val classSyms: Map[Symbol, List[Symbol]] =
-        inlineParents.map(parent => parent -> parent.asClass.info.decls.toList.filter(!_.isConstructor)).toMap
-      val inlinedSyms: Map[Symbol, List[TermSymbol]] = classSyms.transform((_, defSyms) => defSyms.map(sym =>
+      def isInlineable(decl: Symbol): Boolean = !decl.isConstructor && !decl.isType
+
+      type ParamsToArgs = Map[TypeRef, Type]
+
+      def mapConstructorArgss(parent: Tree, typeParamSymss: List[List[Symbol]], termParamSymss: List[List[Symbol]]): ParamsToArgs =
+        @tailrec def rec(par: Tree, typeParamss: List[List[Symbol]], termParamss: List[List[Symbol]], acc: ParamsToArgs): ParamsToArgs =
+          (par, typeParamss, termParamss) match {
+            case (Ident(_), Nil, Nil) =>
+              acc
+            case (AppliedTypeTree(tree, typeArgs), types :: typeSymss, _) =>
+              tree.tpe.dealias match {
+                case tr: TypeRef =>
+                  val typeRefParams = types.map(param => TypeRef(new ThisType(tr) {}, param))
+                  val typesToTerms = typeRefParams.zip(typeArgs.map(_.tpe.dealias))
+                  rec(tree, typeSymss, termParamss, acc ++ typesToTerms)
+                case _ =>
+                  ???
+              }
+            case tup =>
+              ???
+          }
+
+        rec(parent, typeParamSymss, termParamSymss, Map.empty)
+      end mapConstructorArgss
+
+      val inlineParents =
+        parents.map(parent => parent -> parent.tpe.dealias.typeSymbol).filter((_, parentSym) => parentSym.isAllOf(Inline)).toMap
+      val classSyms =
+        inlineParents.map((parent, parentSym) => {
+          val parentDecls = parentSym.asClass.info.decls.toList
+          val inlineableDefs = parentDecls.filter(isInlineable)
+          // Using List[List[TypeSymbol]] allows for potential future type interweaving for class-like trees
+          val parentTypeParamSymss = parentSym.asClass.info.classSymbol.typeParams match {
+            case Nil => Nil
+            case l => List(l)
+          }
+          val constrParamsToArgs: ParamsToArgs = mapConstructorArgss(parent, parentTypeParamSymss, Nil)
+          parent -> (parentSym, inlineableDefs, constrParamsToArgs)
+        }).toMap
+      val inlinedSyms = classSyms.transform{ case (parent, (parentSym, defSyms, paramsToArgs)) => defSyms.map(sym => {
+        val inlineInfoMap = new TypeMap {
+          def apply(tp: Type): Type = tp match {
+              case tr: TypeRef => paramsToArgs.getOrElse(tr, mapOver(tp))
+              case _ => mapOver(tp)
+          }
+        }
         newSymbol(
           cls,
           sym.name,
           sym.flags | Override,
-          sym.info,
+          inlineInfoMap.mapOver(sym.info),
           sym.privateWithin,
           cls.coord
         ).asTerm.entered
-      ))
+      })}
       val inlinedDefs: List[DefDef] =
-        inlinedSyms.flatMap((parent, defSyms) => defSyms.map(sym => DefDef(sym, argss => rhs(sym, argss)))).toList // appliedToArgss(argss)
-      // println(inlinedDefs.map(_.show))
+        inlinedSyms.flatMap{(_, defSyms) => defSyms.map(sym => DefDef(sym, argss => rhs(sym, argss)))}.toList // appliedToArgss(argss)
       inlinedDefs
     }
 
