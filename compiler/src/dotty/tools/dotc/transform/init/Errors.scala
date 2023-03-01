@@ -47,11 +47,11 @@ object Errors:
 
   case class AccessCold(field: Symbol)(val trace: Trace) extends Error:
     def show(using Context): String =
-      "Access field " + field.show +  " on a cold object." + stacktrace
+      "Access field " + field.show +  " on an uninitialized (Cold) object." + stacktrace
 
   case class CallCold(meth: Symbol)(val trace: Trace) extends Error:
     def show(using Context): String =
-      "Call method " + meth.show + " on a cold object." + stacktrace
+      "Call method " + meth.show + " on an uninitialized (Cold) object." + stacktrace
 
   case class CallUnknown(meth: Symbol)(val trace: Trace) extends Error:
     def show(using Context): String =
@@ -62,7 +62,7 @@ object Errors:
   case class UnsafePromotion(msg: String, error: Error)(val trace: Trace) extends Error:
     def show(using Context): String =
       msg + stacktrace + "\n" +
-        "Promoting the value to hot (transitively initialized) failed due to the following problem:\n" + {
+        "Promoting the value to transitively initialized (Hot) failed due to the following problem:\n" + {
           val ctx2 = ctx.withProperty(IsFromPromotion, Some(true))
           error.show(using ctx2)
         }
@@ -96,5 +96,5 @@ object Errors:
           acc + text2
         }
       val verb = if multiple then " are " else " is "
-      val adjective = "not hot (transitively initialized)."
+      val adjective = "not transitively initialized (Hot)."
       subject + verb + adjective
