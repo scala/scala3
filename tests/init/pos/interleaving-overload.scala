@@ -7,6 +7,8 @@ class A{
 
     f1(1)
     f1("hello")
+    f1[Boolean]("a")[Int]
+    f1[Boolean](1)[Int]
 
     case class B[U](x: Int)
     def b[U](x: Int) = B[U](x)
@@ -16,5 +18,7 @@ class A{
     f2(1)
     f2[Any](1)
     f2[Any][Any](1)
+
+    b[Int](5)
 
 }
