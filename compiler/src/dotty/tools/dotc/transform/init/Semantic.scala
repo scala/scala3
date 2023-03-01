@@ -893,7 +893,7 @@ object Semantic:
 
               case Cold => Cold
 
-              case ref: Ref => eval(vdef.rhs, ref, enclosingClass)
+              case ref: Ref => eval(vdef.rhs, ref, enclosingClass, cacheResult = true)
 
               case _ =>
                  report.error("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
@@ -989,7 +989,7 @@ object Semantic:
             val errors = Reporter.stopEarly {
               val res = {
                 given Trace = Trace.empty
-                eval(body, thisV, klass)
+                eval(body, thisV, klass, cacheResult = true)
               }
               given Trace = Trace.empty.add(body)
               res.promote("The function return value is not hot. Found = " + res.show + ".")
