@@ -135,6 +135,18 @@ def TestChannel(using ExecutionContext) =
         case Some(x) => sum += x; loop()
         case None => println(sum)
     loop()
+  val chan = SyncChannel[Int]()
+  val allTasks = List(
+      Task:
+        println("task1")
+        chan.read(),
+      Task:
+        println("task2")
+        chan.read()
+    )
+
+  def start() = Future:
+    allTasks.map(_.run.value).sum
 
 def TestRace =
   val c1, c2 = SyncChannel[Int]()

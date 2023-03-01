@@ -332,6 +332,69 @@ trait SyncChannel[T] extends Channel[T]:
   def read()(using Async): T = await(canRead)
 ```
 
+## Tasks
+
+One criticism leveled against futures is that they "lack referential transparency". What this means is that a future starts running when it is defined, so passing a reference to a future is not the same as passing the referenced expression itself. Example:
+```scala
+val x = Future { println("started") }
+f(x)
+```
+is not the same as
+```scala
+val x = Future { println("started") }
+f(Future { println("started") })
+```
+In the first case the program prints "started" once whereas in the second case it prints "started" twice. In a sense that's exactly what's intended. After all, the whole point of futures is to get parallelism. So a future should start well before its result is requested and the simplest way to achieve that is to start the future when it is defined. _Aside_: I believe the criticism of the existing `scala.concurrent.Future` design in Scala 2.13 is understandable, since
+these futures are usually composed monad-style using for expressions, which informally suggests referential transparency. Direct-style futures like the ones presented here don't have that problem.
+
+On the other hand, the early start of futures _does_ makes it harder to assemble parallel computations as first class values in data structures and to launch them according to user-defined execution rules. Of course one can still achieve all that by working with
+functions producing futures instead of futures directly. A function of type `() => Future[T]` will start executing its embedded future only once it is called.
+
+Tasks make the definition of such delayed futures a bit easier. The `Task` class is defined
+as follows:
+```scala
+class Task[+T](val body: Async ?=> T):
+  def run(using Async.Config) = Future(body)
+```
+A `Task` takes the body of a future as an argument. Its `run` method converts that body to a `Future`, which means starting its execution.
+
+Example:
+```scala
+  val chan: Channel[Int]
+  val allTasks = List(
+      Task:
+        println("task1")
+        chan.read(),
+      Task:
+        println("task2")
+        chan.read()
+    )
+
+  def start() = Future:
+    allTasks.map(_.run.value).sum
+```
+
+Tasks have two advantages over simple lambdas when it comes to delaying futures:
+
+ - The intent is made clear: This is a computation intended to be executed concurrently in a future.
+ - The `Async` context is implicitly provided, since `Task.apply` takes a context function over `Async` as argument.
+
+## Promises
+
+Sometimes we want to define future's value externally instead of executing a specific body of code. This can be done using a promise.
+The design and implementation of promises is simply this:
+```scala
+class Promise[T]:
+  private val myFuture = CoreFuture[T]()
+
+  val future: Future[T] = myFuture
+
+  def complete(result: Try[T]): Unit =
+    myFuture.complete(result)
+```
+A promise provides a `future` and a way to define the result of that
+future in its `complete` method.
+
 ## Going Further
 
 The library is expressive enough so that higher-order abstractions over channels can be built with ease. In the following, I outline some of the possible extensions and explain how they could be defined and implemented.
