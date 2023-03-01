@@ -322,8 +322,8 @@ object Phases {
       units.map { unit =>
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
         try run(using unitCtx)
-        catch case ex: Throwable =>
-          println(s"$ex while running $phaseName on $unit")
+        catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+          println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
           throw ex
         unitCtx.compilationUnit
       }
