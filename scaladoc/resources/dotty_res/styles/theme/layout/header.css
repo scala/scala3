@@ -105,7 +105,7 @@
   }
 
   .projectVersion{
-    width: calc(9 * var(--base-spacing));
+    max-width: calc(12 * var(--base-spacing));
   }
 }
 
