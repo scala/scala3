@@ -765,7 +765,7 @@ object TypeOps:
    *
    *  Otherwise, return NoType.
    */
-  private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = {
+  private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = trace(i"instantiateToSubType($tp1, $tp2, $mixins)", typr) {
     // In order for a child type S to qualify as a valid subtype of the parent
     // T, we need to test whether it is possible S <: T.
     //
@@ -854,6 +854,12 @@ object TypeOps:
           case tp: TypeRef if tp.symbol.isAbstractOrParamType =>
             gadtSyms += tp.symbol
             traverseChildren(tp)
+            val owners = Iterator.iterate(tp.symbol)(_.maybeOwner).takeWhile(_.exists)
+            for sym <- owners do
+              // add ThisType's for the classes symbols in the ownership of `tp`
+              // for example, i16451.CanForward.scala, add `Namer.this`, as one of the owners of the type parameter `A1`
+              if sym.isClass && !sym.isAnonymousClass && !sym.isStaticOwner then
+                traverse(sym.thisType)
           case _ =>
             traverseChildren(tp)
       }
