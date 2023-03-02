@@ -72,7 +72,7 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  width: calc(9 * var(--base-spacing));
+  width: auto;
 }
 
 .single {
@@ -102,6 +102,10 @@
 
   #search-toggle {
     display: none;
+  }
+
+  .projectVersion{
+    max-width: calc(12 * var(--base-spacing));
   }
 }
 
