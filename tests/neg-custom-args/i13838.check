@@ -1,15 +1,15 @@
--- Error: tests/neg-custom-args/i13838.scala:10:5 ----------------------------------------------------------------------
+-- [E172] Type Error: tests/neg-custom-args/i13838.scala:10:5 ----------------------------------------------------------
 10 |  foo  // error
    |     ^
-   |No given instance of type Order[X] was found for parameter x$1 of method foo in object FooT
-   |
-   |where:    X is a type variable
-   |.
+   |No given instance of type Order[X] was found for parameter x$1 of method foo in object FooT.
    |I found:
    |
    |    FooT.OrderFFooA[F, A](FooT.OrderFFooA[F, A](/* missing */summon[Order[F[Foo[A]]]]))
    |
-   |But given instance OrderFFooA in object FooT produces a diverging implicit search when trying to match type Order[F[Foo[A]]].
+   |But given instance OrderFFooA in object FooT produces a diverging implicit search when trying to match type Order[F[Foo[A]]]
+   |
+   |where:    X is a type variable
+   |.
 -- [E168] Type Warning: tests/neg-custom-args/i13838.scala:10:5 --------------------------------------------------------
 10 |  foo  // error
    |     ^

@@ -201,7 +201,7 @@ class Namer { typer: Typer =>
           case tree: MemberDef => SymDenotations.canBeLocal(tree.name, flags)
           case _ => false
         if !ok then
-          report.error(i"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.srcPos)
+          report.error(em"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.srcPos)
         if adapted.is(Private) && canBeLocal then adapted | Local else adapted
       }
 
@@ -461,8 +461,8 @@ class Namer { typer: Typer =>
         val isProvisional = parents.exists(!_.baseType(defn.AnyClass).exists)
         if isProvisional then
           typr.println(i"provisional superclass $first for $cls")
-          first = AnnotatedType(first, Annotation(defn.ProvisionalSuperClassAnnot))
-        checkFeasibleParent(first, cls.srcPos, em" in inferred superclass $first") :: parents
+          first = AnnotatedType(first, Annotation(defn.ProvisionalSuperClassAnnot, cls.span))
+        checkFeasibleParent(first, cls.srcPos, i" in inferred superclass $first") :: parents
   end ensureFirstIsClass
 
   /** Add child annotation for `child` to annotations of `cls`. The annotation
@@ -541,7 +541,11 @@ class Namer { typer: Typer =>
           res = cpy.TypeDef(modCls)(
             rhs = cpy.Template(modTempl)(
               derived = if (fromTempl.derived.nonEmpty) fromTempl.derived else modTempl.derived,
-              body = fromTempl.body ++ modTempl.body))
+              body = fromTempl.body.filter {
+                  case stat: DefDef => stat.name != nme.toString_
+                    // toString should only be generated if explicit companion is missing
+                  case _ => true
+                } ++ modTempl.body))
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
               report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
@@ -762,7 +766,7 @@ class Namer { typer: Typer =>
     }
 
   def missingType(sym: Symbol, modifier: String)(using Context): Unit = {
-    report.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.srcPos)
+    report.error(em"${modifier}type of implicit definition needs to be given explicitly", sym.srcPos)
     sym.resetFlag(GivenOrImplicit)
   }
 
@@ -831,9 +835,9 @@ class Namer { typer: Typer =>
         for (annotTree <- original.mods.annotations) {
           val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
           if (cls eq sym)
-            report.error("An annotation class cannot be annotated with iself", annotTree.srcPos)
+            report.error(em"An annotation class cannot be annotated with iself", annotTree.srcPos)
           else {
-            val ann = Annotation.deferred(cls)(typedAheadAnnotation(annotTree)(using annotCtx))
+            val ann = Annotation.deferred(cls)(typedAheadExpr(annotTree)(using annotCtx))
             sym.addAnnotation(ann)
           }
         }
@@ -1227,13 +1231,21 @@ class Namer { typer: Typer =>
               case pt: MethodOrPoly => 1 + extensionParamsCount(pt.resType)
               case _ => 0
             val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
+              val forwarderCtx = ctx.withOwner(forwarder)
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
               val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
-              ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
-                .etaExpandCFT(using ctx.withOwner(forwarder))
+              val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
+                .etaExpandCFT(using forwarderCtx)
+              if forwarder.isInlineMethod then
+                // Eagerly make the body inlineable. `registerInlineInfo` does this lazily
+                // but it does not get evaluated during typer as the forwarder we are creating
+                // is already typed.
+                val inlinableRhs = PrepareInlineable.makeInlineable(rhs)(using forwarderCtx)
+                PrepareInlineable.registerInlineInfo(forwarder, inlinableRhs)(using forwarderCtx)
+                inlinableRhs
+              else
+                rhs
             })
-            if forwarder.isInlineMethod then
-              PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
             buf += ddef.withSpan(span)
             if hasDefaults then
               foreachDefaultGetterOf(sym.asTerm,
@@ -1249,7 +1261,7 @@ class Namer { typer: Typer =>
           val reason = mbrs.map(canForward(_, alias)).collect {
             case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
           }.headOption.getOrElse("")
-          report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
+          report.error(em"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
         else
           targets += alias
 
@@ -1314,7 +1326,7 @@ class Namer { typer: Typer =>
                 case _ => 0
               if cmp == 0 then
                 report.error(
-                  ex"""Clashing exports: The exported
+                  em"""Clashing exports: The exported
                       |     ${forwarder.rhs.symbol}: ${alt1.widen}
                       |and  ${forwarder1.rhs.symbol}: ${alt2.widen}
                       |have the same signature after erasure and overloading resolution could not disambiguate.""",
@@ -1335,7 +1347,7 @@ class Namer { typer: Typer =>
        *
        *  The idea is that this simulates the hypothetical case where export forwarders
        *  are not generated and we treat an export instead more like an import where we
-       *  expand the use site reference. Test cases in {neg,pos}/i14699.scala.
+       *  expand the use site reference. Test cases in {neg,pos}/i14966.scala.
        *
        *  @pre Forwarders with the same name are consecutive in `forwarders`.
        */
@@ -1437,7 +1449,7 @@ class Namer { typer: Typer =>
         case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
           // See issue #8073 for background
           report.error(
-              i"""Implementation restriction: case classes cannot have dependencies between parameters""",
+              em"""Implementation restriction: case classes cannot have dependencies between parameters""",
               cls.srcPos)
         case _ =>
 
@@ -1453,27 +1465,41 @@ class Namer { typer: Typer =>
        * only if parent type contains uninstantiated type parameters.
        */
       def parentType(parent: untpd.Tree)(using Context): Type =
-        if (parent.isType)
-          typedAheadType(parent, AnyTypeConstructorProto).tpe
-        else {
-          val (core, targs) = stripApply(parent) match {
+
+        def typedParentApplication(parent: untpd.Tree): Type =
+          val (core, targs) = stripApply(parent) match
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)
-          }
-          core match {
+          core match
             case Select(New(tpt), nme.CONSTRUCTOR) =>
               val targs1 = targs map (typedAheadType(_))
               val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
               if (ptype.typeParams.isEmpty) ptype
-              else {
+              else
                 if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(GivenOrImplicit))
                   missingType(denot.symbol, "parent ")(using creationContext)
                 fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.srcPos)
-              }
             case _ =>
               UnspecifiedErrorType.assertingErrorsReported
-          }
-        }
+
+        def typedParentType(tree: untpd.Tree): tpd.Tree =
+          val parentTpt = typer.typedType(parent, AnyTypeConstructorProto)
+          val ptpe = parentTpt.tpe
+          if ptpe.typeParams.nonEmpty
+              && ptpe.underlyingClassRef(refinementOK = false).exists
+          then
+            // Try to infer type parameters from a synthetic application.
+            // This might yield new info if implicit parameters are resolved.
+            // A test case is i16778.scala.
+            val app = untpd.Apply(untpd.Select(untpd.New(parentTpt), nme.CONSTRUCTOR), Nil)
+            typedParentApplication(app)
+            app.getAttachment(TypedAhead).getOrElse(parentTpt)
+          else
+            parentTpt
+
+        if parent.isType then typedAhead(parent, typedParentType).tpe
+        else typedParentApplication(parent)
+      end parentType
 
       /** Check parent type tree `parent` for the following well-formedness conditions:
        *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
@@ -1607,7 +1633,7 @@ class Namer { typer: Typer =>
       case Some(ttree) => ttree
       case none =>
         val ttree = typed(tree)
-        xtree.putAttachment(TypedAhead, ttree)
+        if !ttree.isEmpty then xtree.putAttachment(TypedAhead, ttree)
         ttree
     }
   }
@@ -1618,15 +1644,14 @@ class Namer { typer: Typer =>
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
     typedAhead(tree, typer.typedExpr(_, pt))
 
-  def typedAheadAnnotation(tree: Tree)(using Context): tpd.Tree =
-    typedAheadExpr(tree, defn.AnnotationClass.typeRef)
-
-  def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match {
+  def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match
     case Apply(fn, _) => typedAheadAnnotationClass(fn)
     case TypeApply(fn, _) => typedAheadAnnotationClass(fn)
     case Select(qual, nme.CONSTRUCTOR) => typedAheadAnnotationClass(qual)
     case New(tpt) => typedAheadType(tpt).tpe.classSymbol
-  }
+    case TypedSplice(_) =>
+      val sym = tree.symbol
+      if sym.isConstructor then sym.owner else sym
 
   /** Enter and typecheck parameter list */
   def completeParams(params: List[MemberDef])(using Context): Unit = {
@@ -1690,8 +1715,10 @@ class Namer { typer: Typer =>
             if !Config.checkLevelsOnConstraints then
               val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
-                report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
-                  i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
+                report.error(
+                  em"""return type ${tpt.tpe} of lambda cannot be made hygienic
+                      |it is not a supertype of the hygienic type $hygienicType""",
+                  mdef.srcPos)
             //println(i"lifting $rhsType over $termParamss -> $hygienicType = ${tpt.tpe}")
             //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>
@@ -1863,7 +1890,7 @@ class Namer { typer: Typer =>
       // so we must allow constraining its type parameters
       // compare with typedDefDef, see tests/pos/gadt-inference.scala
       rhsCtx.setFreshGADTBounds
-      rhsCtx.gadt.addToConstraint(typeParams)
+      rhsCtx.gadtState.addToConstraint(typeParams)
     }
 
     def typedAheadRhs(pt: Type) =
@@ -1882,7 +1909,7 @@ class Namer { typer: Typer =>
         // larger choice of overrides (see `default-getter.scala`).
         // For justification on the use of `@uncheckedVariance`, see
         // `default-getter-variance.scala`.
-        AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot))
+        AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot, sym.span))
       else
         // don't strip @uncheckedVariance annot for default getters
         TypeOps.simplify(tp.widenTermRefExpr,

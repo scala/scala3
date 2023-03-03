@@ -1,0 +1,4 @@
+-- Error: tests/neg-scalajs/js-trait-ctor-param.scala:9:34 -------------------------------------------------------------
+9 |trait NonNativeBagHolderTrait(val bag: Bag) extends js.Any // error
+  |                              ^^^^^^^^^^^^
+  |                              A non-native JS trait cannot have constructor parameters

@@ -145,15 +145,13 @@ class ExpandSAMs extends MiniPhase:
 
       def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(using Context) = {
         val selector = tree.selector
-        val selectorTpe = selector.tpe.widen
-        val defaultSym = newSymbol(pfParam.owner, nme.WILDCARD, SyntheticCase, selectorTpe)
-        val defaultCase =
-          CaseDef(
-            Bind(defaultSym, Underscore(selectorTpe)),
-            EmptyTree,
-            defaultValue)
-        val unchecked = selector.annotated(New(ref(defn.UncheckedAnnot.typeRef)))
-        cpy.Match(tree)(unchecked, cases :+ defaultCase)
+        val cases1 = if cases.exists(isDefaultCase) then cases
+        else
+          val selectorTpe = selector.tpe.widen
+          val defaultSym = newSymbol(pfParam.owner, nme.WILDCARD, SyntheticCase, selectorTpe)
+          val defaultCase = CaseDef(Bind(defaultSym, Underscore(selectorTpe)), EmptyTree, defaultValue)
+          cases :+ defaultCase
+        cpy.Match(tree)(selector, cases1)
           .subst(param.symbol :: Nil, pfParam :: Nil)
             // Needed because  a partial function can be written as:
             // param => param match { case "foo" if foo(param) => param }
@@ -186,7 +184,7 @@ class ExpandSAMs extends MiniPhase:
   private def checkRefinements(tpe: Type, tree: Tree)(using Context): Type = tpe.dealias match {
     case RefinedType(parent, name, _) =>
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
-        report.error("Lambda does not define " + name, tree.srcPos)
+        report.error(em"Lambda does not define $name", tree.srcPos)
       checkRefinements(parent, tree)
     case tpe =>
       tpe

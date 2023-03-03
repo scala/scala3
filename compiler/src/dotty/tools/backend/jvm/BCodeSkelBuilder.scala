@@ -45,7 +45,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /** The value is put on the stack, and control flows through to the next opcode. */
     case FallThrough
     /** The value is put on the stack, and control flow is transferred to the given `label`. */
-    case Jump(label: asm.Label)
+    case Jump(label: asm.Label, targetStackHeight: Int)
     /** The value is RETURN'ed from the enclosing method. */
     case Return
     /** The value is ATHROW'n. */
@@ -151,7 +151,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         // !!! Part of this logic is duplicated in JSCodeGen.genCompilationUnit
         claszSymbol.info.decls.foreach { f =>
-          if f.isField && !f.name.is(LazyBitMapName) then
+          if f.isField && !f.name.is(LazyBitMapName) && !f.name.is(LazyLocalName) then
             f.setFlag(JavaStatic)
         }
 
@@ -368,6 +368,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     // used by genLoadTry() and genSynchronized()
     var earlyReturnVar: Symbol     = null
     var shouldEmitCleanup          = false
+    // stack tracking
+    var stackHeight                = 0
     // line numbers
     var lastEmittedLineNr          = -1
 
@@ -504,6 +506,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         loc
       }
 
+      def makeTempLocal(tk: BType): Local =
+        assert(nxtIdx != -1, "not a valid start index")
+        assert(tk.size > 0, "makeLocal called for a symbol whose type is Unit.")
+        val loc = Local(tk, "temp", nxtIdx, isSynth = true)
+        nxtIdx += tk.size
+        loc
+
       // not to be confused with `fieldStore` and `fieldLoad` which also take a symbol but a field-symbol.
       def store(locSym: Symbol): Unit = {
         val Local(tk, _, idx, _) = slots(locSym)
@@ -547,11 +556,17 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case _ => false } )
     }
     def lineNumber(tree: Tree): Unit = {
+      @tailrec
+      def getNonLabelNode(a: asm.tree.AbstractInsnNode): asm.tree.AbstractInsnNode = a match {
+        case a: asm.tree.LabelNode => getNonLabelNode(a.getPrevious)
+        case _                     => a
+      }
+
       if (!emitLines || !tree.span.exists) return;
       val nr = ctx.source.offsetToLine(tree.span.point) + 1
       if (nr != lastEmittedLineNr) {
         lastEmittedLineNr = nr
-        lastInsn match {
+        getNonLabelNode(lastInsn) match {
           case lnn: asm.tree.LineNumberNode =>
             // overwrite previous landmark as no instructions have been emitted for it
             lnn.line = nr
@@ -573,6 +588,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(cleanups == Nil, "Previous invocation of genDefDef didn't unregister as many cleanups as it registered.")
       earlyReturnVar      = null
       shouldEmitCleanup   = false
+
+      stackHeight = 0
 
       lastEmittedLineNr = -1
     }
@@ -748,7 +765,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       if (params.size > MaximumJvmParameters) {
         // SI-7324
-        report.error(s"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", ctx.source.atSpan(methSymbol.span))
+        report.error(em"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", ctx.source.atSpan(methSymbol.span))
         return
       }
 
@@ -800,9 +817,10 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           val veryFirstProgramPoint = currProgramPoint()
 
           if trimmedRhs == tpd.EmptyTree then
-            report.error("Concrete method has no definition: " + dd + (
-              if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
-              else ""),
+            report.error(
+              em"Concrete method has no definition: $dd${
+                  if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
+                  else ""}",
               ctx.source.atSpan(NoSpan)
             )
           else

@@ -13,6 +13,7 @@ import ast.untpd
 import ValueClasses.isDerivedValueClass
 import SymUtils._
 import util.Property
+import util.Spans.Span
 import config.Printers.derive
 import NullOpsDecorator._
 
@@ -155,7 +156,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.hashCode_ => chooseHashcode
         case nme.toString_ => toStringBody(vrefss)
         case nme.equals_ => equalsBody(vrefss.head.head)
-        case nme.canEqual_ => canEqualBody(vrefss.head.head)
+        case nme.canEqual_ => canEqualBody(vrefss.head.head, synthetic.span)
         case nme.ordinal => ordinalRef
         case nme.productArity => Literal(Constant(accessors.length))
         case nme.productPrefix if isEnumValue => nameRef
@@ -260,13 +261,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def equalsBody(that: Tree)(using Context): Tree = {
       val thatAsClazz = newSymbol(ctx.owner, nme.x_0, SyntheticCase, clazzType, coord = ctx.owner.span) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
-      val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))) // x$0 @ (_: C @unchecked)
+      val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot, thatAsClazz.span)))) // x$0 @ (_: C @unchecked)
       // compare primitive fields first, slow equality checks of non-primitive fields can be skipped when primitives differ
       val sortedAccessors = accessors.sortBy(accessor => if (accessor.info.typeSymbol.isPrimitiveValueClass) 0 else 1)
       val comparisons = sortedAccessors.map { accessor =>
         This(clazz).withSpan(ctx.owner.span.focus).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
       var rhs = // this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
-        if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
+        if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceBalanced(_ and _)
       val canEqualMeth = existingDef(defn.Product_canEqual, clazz)
       if !clazz.is(Final) || canEqualMeth.exists && !canEqualMeth.is(Synthetic) then
         rhs = rhs.and(
@@ -390,7 +391,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *
      *  `@unchecked` is needed for parametric case classes.
      */
-    def canEqualBody(that: Tree): Tree = that.isInstance(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))
+    def canEqualBody(that: Tree, span: Span): Tree = that.isInstance(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot, span)))
 
     symbolsToSynthesize.flatMap(syntheticDefIfMissing)
   }

@@ -6,7 +6,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/opaqu
 
 ## Syntax
 
-```
+```ebnf
 Modifier          ::=  ...
                     |  ‘opaque’
 ```
@@ -40,7 +40,7 @@ object o:
 
 In this case we have inside the object (also for non-opaque types) that `o.T` is equal to
 `T` or its expanded form `o.this.T`. Equality is understood here as mutual subtyping, i.e.
-`o.T <: o.this.T` and `o.this.T <: T`. Furthermore, we have by the rules of opaque type aliases
+`o.T <: o.this.T` and `o.this.T <: o.T`. Furthermore, we have by the rules of opaque type aliases
 that `o.this.T` equals `R`. The two equalities compose. That is, inside `o`, it is
 also known that `o.T` is equal to `R`. This means the following code type-checks:
 

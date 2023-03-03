@@ -10,6 +10,7 @@ import JavaTokens._
 import scala.annotation.{switch, tailrec}
 import util.Chars._
 import PartialFunction.cond
+import core.Decorators.em
 
 object JavaScanners {
 
@@ -108,7 +109,7 @@ object JavaScanners {
                   setStrVal()
                   nextChar()
                 else
-                  error("unclosed string literal")
+                  error(em"unclosed string literal")
               else
                 nextChar()
                 if ch != '\"' then // "" empty string literal
@@ -127,7 +128,7 @@ object JavaScanners {
                 setStrVal()
               }
               else
-                error("unclosed character literal")
+                error(em"unclosed character literal")
 
             case '=' =>
               token = EQUALS
@@ -298,7 +299,7 @@ object JavaScanners {
                   nextChar()
                   token = DOTDOTDOT
                 }
-                else error("`.` character expected")
+                else error(em"`.` character expected")
               }
 
             case ';' =>
@@ -336,7 +337,7 @@ object JavaScanners {
             case SU =>
               if (isAtEnd) token = EOF
               else {
-                error("illegal character")
+                error(em"illegal character")
                 nextChar()
               }
 
@@ -347,7 +348,7 @@ object JavaScanners {
                 getIdentRest()
               }
               else {
-                error("illegal character: " + ch.toInt)
+                error(em"illegal character: ${ch.toInt}")
                 nextChar()
               }
           }
@@ -360,7 +361,7 @@ object JavaScanners {
         case _ => nextChar(); skipLineComment()
       }
       @tailrec def skipJavaComment(): Unit = ch match {
-        case SU => incompleteInputError("unclosed comment")
+        case SU => incompleteInputError(em"unclosed comment")
         case '*' => nextChar(); if (ch == '/') nextChar() else skipJavaComment()
         case _ => nextChar(); skipJavaComment()
       }
@@ -480,7 +481,7 @@ object JavaScanners {
         nextChar()
       }
       if (ch != LF && ch != CR) { // CR-LF is already normalized into LF by `JavaCharArrayReader`
-        error("illegal text block open delimiter sequence, missing line terminator")
+        error(em"illegal text block open delimiter sequence, missing line terminator")
         return
       }
       nextChar()
@@ -529,7 +530,7 @@ object JavaScanners {
 
       // Bail out if the block never did have an end
       if (!blockClosed) {
-        error("unclosed text block")
+        error(em"unclosed text block")
         return
       }
 
@@ -642,14 +643,14 @@ object JavaScanners {
         while (i < len) {
           val d = digit2int(strVal.charAt(i), base)
           if (d < 0) {
-            error("malformed integer number")
+            error(em"malformed integer number")
             return 0
           }
           if (value < 0 ||
               limit / (base / divider) < value ||
               limit - (d / divider) < value * (base / divider) &&
               !(negated && limit == value * base - 1 + d)) {
-                error("integer number too large")
+                error(em"integer number too large")
                 return 0
               }
           value = value * base + d
@@ -666,11 +667,11 @@ object JavaScanners {
       try {
         val value: Double = java.lang.Double.valueOf(strVal.toString).nn.doubleValue()
         if (value > limit)
-          error("floating point number too large")
+          error(em"floating point number too large")
         if (negated) -value else value
       } catch {
         case _: NumberFormatException =>
-          error("malformed floating point number")
+          error(em"malformed floating point number")
           0.0
       }
     }

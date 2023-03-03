@@ -1,0 +1,11 @@
+baseurl: /files/archive/spec/2.13
+latestScalaVersion: 2.13
+thisScalaVersion: 2.13
+versionCompareMessage: "an upcoming"
+safe: true
+lsi: false
+highlighter: false
+markdown: redcarpet
+encoding: utf-8
+redcarpet:
+  extensions: ["no_intra_emphasis", "fenced_code_blocks", "autolink", "tables", "with_toc_data", "strikethrough", "lax_spacing", "space_after_headers", "superscript", "footnotes"]

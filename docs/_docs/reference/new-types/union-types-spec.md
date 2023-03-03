@@ -72,6 +72,10 @@ a non-union type, for this purpose we define the _join_ of a union type `T1 |
 `T1`,...,`Tn`. Note that union types might still appear as type arguments in the
 resulting type, this guarantees that the join is always finite.
 
+The _visible join_ of a union type is its join where all operands of the intersection that
+are instances of [transparent](../other-new-features/transparent-traits.md) traits or classes are removed.
+
+
 ### Example
 
 Given
@@ -80,30 +84,49 @@ Given
 trait C[+T]
 trait D
 trait E
-class A extends C[A] with D
-class B extends C[B] with D with E
+transparent trait X
+class A extends C[A], D, X
+class B extends C[B], D, E, X
 ```
 
-The join of `A | B` is `C[A | B] & D`
+The join of `A | B` is `C[A | B] & D & X` and the visible join of `A | B` is `C[A | B] & D`.
+
+## Hard and Soft Union Types
+
+We distinguish between hard and soft union types. A _hard_ union type is a union type that's explicitly
+written in the source. For instance, in
+```scala
+val x: Int | String = ...
+```
+`Int | String` would be a hard union type. A _soft_ union type is a type that arises from type checking
+an alternative of expressions. For instance, the type of the expression
+```scala
+val x = 1
+val y = "abc"
+if cond then x else y
+```
+is the soft unon type `Int | String`. Similarly for match expressions. The type of
+```scala
+x match
+  case 1 => x
+  case 2 => "abc"
+  case 3 => List(1, 2, 3)
+```
+is the soft union type `Int | "abc" | List[Int]`.
+
 
 ## Type inference
 
 When inferring the result type of a definition (`val`, `var`, or `def`) and the
-type we are about to infer is a union type, then we replace it by its join.
+type we are about to infer is a soft union type, then we replace it by its visible join,
+provided it is not empty.
 Similarly, when instantiating a type argument, if the corresponding type
 parameter is not upper-bounded by a union type and the type we are about to
-instantiate is a union type, we replace it by its join. This mirrors the
+instantiate is a soft union type, we replace it by its visible join, provided it is not empty.
+This mirrors the
 treatment of singleton types which are also widened to their underlying type
 unless explicitly specified. The motivation is the same: inferring types
 which are "too precise" can lead to unintuitive typechecking issues later on.
-
-**Note:** Since this behavior limits the usability of union types, it might
-be changed in the future. For example by not widening unions that have been
-explicitly written down by the user and not inferred, or by not widening a type
-argument when the corresponding type parameter is covariant.
-
-See [PR #2330](https://github.com/lampepfl/dotty/pull/2330) and
-[Issue #4867](https://github.com/lampepfl/dotty/issues/4867) for further discussions.
 
 ### Example
 

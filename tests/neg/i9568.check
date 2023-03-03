@@ -1,12 +1,16 @@
--- Error: tests/neg/i9568.scala:13:10 ----------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i9568.scala:13:10 ----------------------------------------------------------------------
 13 |  blaMonad.foo(bla) // error: diverges
    |          ^
-   |          No given instance of type => Monad[F] was found for parameter ev of method blaMonad in object Test
-   |
-   |          where:    F is a type variable with constraint <: [_] =>> Any
-   |          .
+   |          No given instance of type => Monad[F] was found for parameter ev of method blaMonad in object Test.
    |          I found:
    |
-   |              Test.blaMonad[F, S](Test.blaMonad[F, S])
+   |              Test.blaMonad[F², S](Test.blaMonad[F³, S²])
    |
-   |          But method blaMonad in object Test does not match type => Monad[F].
+   |          But method blaMonad in object Test does not match type => Monad[F²]
+   |
+   |          where:    F  is a type variable with constraint <: [_] =>> Any
+   |                    F² is a type variable with constraint <: [_] =>> Any
+   |                    F³ is a type variable with constraint <: [_] =>> Any
+   |                    S  is a type variable
+   |                    S² is a type variable
+   |          .

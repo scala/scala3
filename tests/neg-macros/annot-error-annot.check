@@ -1,0 +1,127 @@
+
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:17:6 ---------------------------------------------------------
+16 |@error
+17 |class cGlobal // error
+   |^
+   |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:20:7 ---------------------------------------------------------
+19 |@error
+20 |object oGlobal // error
+   |^
+   |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:24:6 ---------------------------------------------------------
+23 |  @error
+24 |  val vMember: Int = 1 // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:26:11 --------------------------------------------------------
+25 |  @error
+26 |  lazy val lvMember: Int = 1 // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:28:6 ---------------------------------------------------------
+27 |  @error
+28 |  def dMember: Int = 1 // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:30:8 ---------------------------------------------------------
+29 |  @error
+30 |  given gMember: Int = 1 // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:32:8 ---------------------------------------------------------
+31 |  @error
+32 |  given gMember2: Num[Int] with // error
+   |  ^
+   |  MACRO ERROR
+33 |    def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:35:8 ---------------------------------------------------------
+34 |  @error
+35 |  given gMember3(using DummyImplicit): Num[Int] with // error
+   |  ^
+   |  MACRO ERROR
+36 |    def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:39:8 ---------------------------------------------------------
+38 |  @error
+39 |  class cMember // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:42:9 ---------------------------------------------------------
+41 |  @error
+42 |  object oMember // error
+   |  ^
+   |  MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:46:8 ---------------------------------------------------------
+45 |    @error
+46 |    val vLocal: Int = 1 // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:48:13 --------------------------------------------------------
+47 |    @error
+48 |    lazy val lvLocal: Int = 1 // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:50:8 ---------------------------------------------------------
+49 |    @error
+50 |    def dLocal: Int = 1 // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:52:10 --------------------------------------------------------
+51 |    @error
+52 |    given gLocal: Int = 1 // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:54:10 --------------------------------------------------------
+53 |    @error
+54 |    given gLocal2: Num[Int] with // error
+   |    ^
+   |    MACRO ERROR
+55 |      def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:57:10 --------------------------------------------------------
+56 |    @error
+57 |    given gLocal3(using DummyImplicit): Num[Int] with // error
+   |    ^
+   |    MACRO ERROR
+58 |      def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:61:10 --------------------------------------------------------
+60 |    @error
+61 |    class cLocal // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:63:11 --------------------------------------------------------
+62 |    @error
+63 |    object oLocal // error
+   |    ^
+   |    MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:2:4 ----------------------------------------------------------
+1 |@error
+2 |val vGlobal: Int = 1 // error
+  |^
+  |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:4:9 ----------------------------------------------------------
+3 |@error
+4 |lazy val lvGlobal: Int = 1 // error
+  |^
+  |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:6:4 ----------------------------------------------------------
+5 |@error
+6 |def dGlobal: Int = 1 // error
+  |^
+  |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:8:6 ----------------------------------------------------------
+7 |@error
+8 |given gGlobal: Int = 1 // error
+  |^
+  |MACRO ERROR
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:10:6 ---------------------------------------------------------
+ 9 |@error
+10 |given gGlobal2: Num[Int] with // error
+   |^
+   |MACRO ERROR
+11 |  def zero = 0
+-- Error: tests/neg-macros/annot-error-annot/Test_2.scala:13:6 ---------------------------------------------------------
+12 |@error
+13 |given gGlobal3(using DummyImplicit): Num[Int] with // error
+   |^
+   |MACRO ERROR
+14 |  def zero = 0

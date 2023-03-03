@@ -49,6 +49,7 @@ object TestConfiguration {
     withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyTastyInspector))
 
   lazy val scalaJSClasspath = mkClasspath(List(
+    Properties.scalaJSJavalib,
     Properties.scalaJSLibrary,
     Properties.dottyLibraryJS
   ))

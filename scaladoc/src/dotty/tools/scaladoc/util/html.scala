@@ -88,6 +88,7 @@ object HTML:
   val th = Tag("th")
   val tr = Tag("tr")
   val td = Tag("td")
+  val section = Tag("section")
 
   val cls = Attr("class")
   val href = Attr("href")

@@ -13,11 +13,18 @@
 
   /* border */
   --border-default: var(--grey5);
-  --border-background-color: var(--grey1);
+  --border-strong: var(--grey7)
+  --border-background-color: var(--muave1);
 
   /* background */
   --background-default: var(--grey1);
-  --background-neutral: var(--grey2);
+  --background-subtle: var(--grey2);
+  --background-neutral: var(--grey3);
+
+  /* layout backgrounds */
+  --background-header: var(--background-default);
+  --background-nav: var(--background-default);
+  --background-main: var(--background-default);
 
   /* action */
   --action-primary-content-default: var(--grey11);
@@ -31,7 +38,7 @@
   --action-primary-background-active: var(--grey3);
   --action-primary-background-selected: var(--grey4);
 
-  --action-primary-border-default: var(--grey5);
+  --action-primary-border-default: var(--grey4);
 
   /* semantic */
   --semantic-content-grey: var(--grey11);
@@ -47,8 +54,9 @@
   --semantic-background-red: var(--red3);
 
   /* code */
-  --code-props-content: var(--crimson11);
-  --code-props-background: var(--red3);
+  --code-props-content: var(--grey12);
+  --code-props-background: var(--grey2);
+  --code-props-border: var(--grey5);
 
   --code-syntax-highlighting-comment: var(--grey11);
   --code-syntax-highlighting-quote: var(--grey11);
@@ -113,12 +121,19 @@
   --icon-hover: var(--grey12);
 
   /* border */
-  --border-default: var(--grey6);
+  --border-default: var(--grey5);
+  --border-strong: var(--grey7);
   --border-background-color: var(--grey1);
 
   /* background */
   --background-default: var(--grey1);
+  --background-subtle: var(--grey2);
   --background-neutral: var(--grey3);
+
+  /* layout backgrounds */
+  --background-header: var(--background-neutral);
+  --background-nav: var(--background-default);
+  --background-main: var(--background-subtle);
 
   /* action */
   --action-primary-content-default: var(--grey11);
@@ -131,11 +146,13 @@
   --action-primary-background-hover: var(--grey4);
   --action-primary-background-active: var(--grey4);
   --action-primary-background-selected: var(--grey5);
-  --action-primary-border-default: var(--grey6);
+
+  --action-primary-border-default: var(--grey5);
 
   /* code */
-  --code-props-content: var(--crimson11);
-  --code-props-background: var(--red3);
+  --code-props-content: var(--grey12);
+  --code-props-background: var(--grey3);
+  --code-props-border: var(--grey6);
 
   --code-syntax-highlighting-comment: var(--grey11);
   --code-syntax-highlighting-quote: var(--grey11);

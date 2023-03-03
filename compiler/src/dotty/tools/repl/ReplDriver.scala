@@ -37,6 +37,7 @@ import org.jline.reader._
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have
@@ -118,7 +119,7 @@ class ReplDriver(settings: Array[String],
   private var rootCtx: Context = _
   private var shouldStart: Boolean = _
   private var compiler: ReplCompiler = _
-  private var rendering: Rendering = _
+  protected var rendering: Rendering = _
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
@@ -138,7 +139,7 @@ class ReplDriver(settings: Array[String],
    *  observable outside of the CLI, for this reason, most helper methods are
    *  `protected final` to facilitate testing.
    */
-  final def runUntilQuit(using initialState: State = initialState)(): State = {
+  def runUntilQuit(using initialState: State = initialState)(): State = {
     val terminal = new JLineTerminal
 
     out.println(
@@ -176,24 +177,44 @@ class ReplDriver(settings: Array[String],
     interpret(ParseResult.complete(input))
   }
 
-  private def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
+  final def runQuietly(input: String)(using State): State = runBody {
+    val parsed = ParseResult(input)
+    interpret(parsed, quiet = true)
+  }
+
+  protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
 
   // TODO: i5069
   final def bind(name: String, value: Any)(using state: State): State = state
 
+  /**
+   * Controls whether the `System.out` and `System.err` streams are set to the provided constructor parameter instance
+   * of [[java.io.PrintStream]] during the execution of the repl. On by default.
+   *
+   * Disabling this can be beneficial when executing a repl instance inside a concurrent environment, for example a
+   * thread pool (such as the Scala compile server in the Scala Plugin for IntelliJ IDEA).
+   *
+   * In such environments, indepently executing `System.setOut` and `System.setErr` without any synchronization can
+   * lead to unpredictable results when restoring the original streams (dependent on the order of execution), leaving
+   * the Java process in an inconsistent state.
+   */
+  protected def redirectOutput: Boolean = true
+
   // redirecting the output allows us to test `println` in scripted tests
   private def withRedirectedOutput(op: => State): State = {
-    val savedOut = System.out
-    val savedErr = System.err
-    try {
-      System.setOut(out)
-      System.setErr(out)
-      op
-    }
-    finally {
-      System.setOut(savedOut)
-      System.setErr(savedErr)
-    }
+    if redirectOutput then
+      val savedOut = System.out
+      val savedErr = System.err
+      try {
+        System.setOut(out)
+        System.setErr(out)
+        op
+      }
+      finally {
+        System.setOut(savedOut)
+        System.setErr(savedErr)
+      }
+    else op
   }
 
   private def newRun(state: State, reporter: StoreReporter = newStoreReporter) = {
@@ -236,16 +257,16 @@ class ReplDriver(settings: Array[String],
           unit.tpdTree = tree
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
-          val (_, completions) = Completion.completions(srcPos)
+          val completions = try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
           completions.map(_.label).distinct.map(makeCandidate)
         }
         .getOrElse(Nil)
   end completions
 
-  private def interpret(res: ParseResult)(using state: State): State = {
+  protected def interpret(res: ParseResult, quiet: Boolean = false)(using state: State): State = {
     res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
-        compile(parsed, state)
+        compile(parsed, state, quiet)
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)
@@ -263,7 +284,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
-  private def compile(parsed: Parsed, istate: State): State = {
+  private def compile(parsed: Parsed, istate: State, quiet: Boolean = false): State = {
     def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
       case PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
       case _ => nme.NO_NAME
@@ -314,9 +335,11 @@ class ReplDriver(settings: Array[String],
               given Ordering[Diagnostic] =
                 Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-              (definitions ++ warnings)
-                .sorted
-                .foreach(printDiagnostic)
+              if (!quiet) {
+                (definitions ++ warnings)
+                  .sorted
+                  .foreach(printDiagnostic)
+              }
 
               updatedState
             }

@@ -34,6 +34,9 @@ given [T: Ordering]: Ordering[Option[T]] = Ordering.derived
 
 It is discouraged to directly refer to the `derived` member if you can use a `derives` clause instead.
 
+All data types can have a `derives` clause. This document focuses primarily on data types which also have a given instance
+of the `Mirror` type class available.
+
 ## Exact mechanism
 In the following, when type arguments are enumerated and the first index evaluates to a larger value than the last, then there are actually no arguments, for example: `A[T_2, ..., T_1]` means `A`.
 
@@ -99,7 +102,7 @@ If `F` and `DerivingType` take the same number of arguments (`N == K`):
 ```scala
 given TC[DerivingType] = TC.derived
 // simplified form of:
-given TC[ [A_1, ..., A_K] => DerivingType[A_1, ..., A_K] ] = TC.derived
+given TC[ [A_1, ..., A_K] =>> DerivingType[A_1, ..., A_K] ] = TC.derived
 ```
 If `DerivingType` takes less arguments than `F` (`N < K`), we use only the rightmost parameters from the type lambda:
 ```scala
@@ -281,11 +284,13 @@ Note the following properties of `Mirror` types,
 + The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
   which is obtained from `MirroredType` by wildcarding its type parameters.
 
-### Implementing `derived` with `Mirror`
+## Implementing `derived` with `Mirror`
 
 As seen before, the signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary, but we expect it to typically be of the following form:
 
 ```scala
+import scala.deriving.Mirror
+
 inline def derived[T](using Mirror.Of[T]): TC[T] = ...
 ```
 
@@ -479,9 +484,9 @@ The framework described here enables all three of these approaches without manda
 For a brief discussion on how to use macros to write a type class `derived`
 method please read more at [How to write a type class `derived` method using macros](./derivation-macro.md).
 
-### Syntax
+## Syntax
 
-```
+```ebnf
 Template          ::=  InheritClauses [TemplateBody]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]

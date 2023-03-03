@@ -1,5 +1,5 @@
 inline def summonA[T](using x: T): x.type = x
-inline def summonB[T](using inline x: T): x.type = x
+// inline def summonB[T](using inline x: T): x.type = x // inline parameters are unstable
 inline def summonC[T](using inline x: T): T = x
 
 trait Foo:
@@ -7,6 +7,6 @@ trait Foo:
 
 def test(using Foo) =
   summonA[Foo].f
-  summonB[Foo].f
+  // summonB[Foo].f
   summonC[Foo].f
   ()

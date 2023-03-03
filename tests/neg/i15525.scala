@@ -37,7 +37,7 @@ def element22(
       transmittable20.Type / transmittable21.Type
   } = ???
 
-def test22 =
+def test22 = // error
   Resolution(
     element22(
       Resolution(element0), Resolution(element0), // error // error

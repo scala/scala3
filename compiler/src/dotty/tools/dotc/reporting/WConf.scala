@@ -18,7 +18,7 @@ enum MessageFilter:
     case Feature => message.isInstanceOf[Diagnostic.FeatureWarning]
     case Unchecked => message.isInstanceOf[Diagnostic.UncheckedWarning]
     case MessagePattern(pattern) =>
-      val noHighlight = message.msg.rawMessage.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
+      val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
       pattern.findFirstIn(noHighlight).nonEmpty
     case MessageID(errorId) => message.msg.errorId == errorId
     case None => false

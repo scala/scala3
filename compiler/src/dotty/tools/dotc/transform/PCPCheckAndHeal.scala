@@ -176,8 +176,10 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   /** If the type refers to a locally defined symbol (either directly, or in a pickled type),
    *  check that its staging level matches the current level.
    *  - Static types and term are allowed at any level.
-   *  - If a type reference is used a higher level, then it is inconsistent. Will attempt to heal before failing.
-   *  - If a term reference is used a different level, then it is inconsistent.
+   *  - If a type reference is used a higher level, then it is inconsistent.
+   *    Will attempt to heal before failing.
+   *  - If a term reference is used a higher level, then it is inconsistent.
+   *    It cannot be healed because the term will not exist in any future stage.
    *
    *  If `T` is a reference to a type at the wrong level, try to heal it by replacing it with
    *  a type tag of type `quoted.Type[T]`.
@@ -206,6 +208,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
               tryHeal(prefix.symbol, tp, pos)
             case _ =>
               mapOver(tp)
+        case tp @ TermRef(NoPrefix, _) if !tp.symbol.isStatic && level > levelOf(tp.symbol) =>
+          levelError(tp.symbol, tp, pos)
         case tp: ThisType if level != -1 && level != levelOf(tp.cls) =>
           levelError(tp.cls, tp, pos)
         case tp: AnnotatedType =>
@@ -246,13 +250,14 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         checkStable(tp, pos, "type witness")
         getQuoteTypeTags.getTagRef(tp)
       case _: SearchFailureType =>
-        report.error(i"""Reference to $tp within quotes requires a given $reqType in scope.
-                     |${ctx.typer.missingArgMsg(tag, reqType, "")}
-                     |
-                     |""", pos)
+        report.error(
+          ctx.typer.missingArgMsg(tag, reqType, "")
+            .prepend(i"Reference to $tp within quotes requires a given $reqType in scope.\n")
+            .append("\n"),
+            pos)
         tp
       case _ =>
-        report.error(i"""Reference to $tp within quotes requires a given $reqType in scope.
+        report.error(em"""Reference to $tp within quotes requires a given $reqType in scope.
                      |
                      |""", pos)
         tp
@@ -263,10 +268,16 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show
       else i"${sym.name}.this"
+    val hint =
+      if sym.is(Inline) && levelOf(sym) < level then
+        "\n\n" +
+        "Hint: Staged references to inline definition in quotes are only inlined after the quote is spliced into level 0 code by a macro. " +
+        "Try moving this inline definition in a statically accessible location such as an object (this definition can be private)."
+      else ""
     report.error(
       em"""access to $symStr from wrong staging level:
           | - the definition is at level ${levelOf(sym)},
-          | - but the access is at level $level.""", pos)
+          | - but the access is at level $level.$hint""", pos)
     tp
   }
 
@@ -296,7 +307,7 @@ object PCPCheckAndHeal {
         flags = Synthetic,
         info = TypeAlias(splicedTree.tpe.select(tpnme.Underlying)),
         coord = span).asType
-      local.addAnnotation(Annotation(defn.QuotedRuntime_SplicedTypeAnnot))
+      local.addAnnotation(Annotation(defn.QuotedRuntime_SplicedTypeAnnot, span))
       ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
     }
 

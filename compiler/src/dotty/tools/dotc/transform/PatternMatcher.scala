@@ -2,11 +2,10 @@ package dotty.tools
 package dotc
 package transform
 
-import scala.annotation.tailrec
 import core._
 import MegaPhase._
-import collection.mutable
 import Symbols._, Contexts._, Types._, StdNames._, NameOps._
+import patmat.SpaceEngine
 import util.Spans._
 import typer.Applications.*
 import SymUtils._
@@ -16,8 +15,11 @@ import Decorators._
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
 import reporting._
-import dotty.tools.dotc.ast._
+import ast._
 import util.Property._
+
+import scala.annotation.tailrec
+import scala.collection.mutable
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches
@@ -45,9 +47,8 @@ class PatternMatcher extends MiniPhase {
       val translated = new Translator(matchType, this).translateMatch(tree)
 
       // check exhaustivity and unreachability
-      val engine = new patmat.SpaceEngine
-      engine.checkExhaustivity(tree)
-      engine.checkRedundancy(tree)
+      SpaceEngine.checkExhaustivity(tree)
+      SpaceEngine.checkRedundancy(tree)
 
       translated.ensureConforms(matchType)
     }
@@ -664,12 +665,12 @@ object PatternMatcher {
       val refCount = varRefCount(plan)
       val LetPlan(topSym, _) = plan: @unchecked
 
-      def toDrop(sym: Symbol) = initializer.get(sym) match {
-        case Some(rhs) =>
+      def toDrop(sym: Symbol) =
+        val rhs = initializer.lookup(sym)
+        if rhs != null then
           isPatmatGenerated(sym) && refCount(sym) <= 1 && sym != topSym && isPureExpr(rhs)
-        case none =>
+        else
           false
-      }
 
       object Inliner extends PlanTransform {
         override val treeMap = new TreeMap {

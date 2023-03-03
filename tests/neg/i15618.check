@@ -1,4 +1,4 @@
--- Error: tests/neg/i15618.scala:17:44 ---------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i15618.scala:17:44 ---------------------------------------------------------------------
 17 |  def toArray: Array[ScalaType[T]] = Array() // error
    |                                            ^
    |                                            No ClassTag available for ScalaType[T]
@@ -16,3 +16,9 @@
    |
    |                                                case Float32 => Float
    |                                                case Int32 => Int
+-- [E172] Type Error: tests/neg/i15618.scala:21:33 ---------------------------------------------------------------------
+21 |  def toArray: Array[T] = Array() // error
+   |                                 ^
+   |                                 No ClassTag available for T
+   |
+   |                                 where:    T is a type in class Tensor2 with bounds <: Int | Float

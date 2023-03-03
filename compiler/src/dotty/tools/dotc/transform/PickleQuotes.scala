@@ -113,12 +113,10 @@ class PickleQuotes extends MacroTransform {
             case _ =>
               val (contents, tptWithHoles) = makeHoles(tpt)
               PickleQuotes(quotes, tptWithHoles, contents, tpt.tpe, true)
-        case tree: DefDef if tree.symbol.is(Macro) =>
+        case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           // Shrink size of the tree. The methods have already been inlined.
           // TODO move to FirstTransform to trigger even without quotes
           cpy.DefDef(tree)(rhs = defaultValue(tree.rhs.tpe))
-        case _: DefDef if tree.symbol.isInlineMethod =>
-          tree
         case _ =>
           super.transform(tree)
   }
@@ -317,14 +315,17 @@ object PickleQuotes {
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = termSplices.map { case (splice, idx) =>
-                val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _, _), _, _) = splice.tpe: @unchecked
+                val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)
                   }
                   val Block(List(ddef: DefDef), _) = splice: @unchecked
                   // TODO: beta reduce inner closure? Or wait until BetaReduce phase?
-                  BetaReduce(ddef, spliceArgs).select(nme.apply).appliedTo(args(2).asInstance(quotesType))
+                  BetaReduce(
+                    splice
+                      .select(nme.apply).appliedToArgs(spliceArgs))
+                      .select(nme.apply).appliedTo(args(2).asInstance(quotesType))
                 }
                 CaseDef(Literal(Constant(idx)), EmptyTree, rhs)
               }

@@ -76,7 +76,7 @@ object Test {
     val x4 = xs.head
     val y4: Int = x4
     val x5 = xs.to(List)
-    val y5: {x5} List[Int] = x5
+    val y5: List[Int] = x5
     val (xs6, xs7) = xs.partition(isEven)
     val ys6: {xs6, isEven} View[Int] = xs6
     val ys7: {xs7, isEven} View[Int] = xs7

@@ -26,7 +26,3 @@ object Test {
   object M extends C // error: illegal inheritance: self type Test.M.type of object M$ does not conform to self type B of parent class C
 
 }
-
-trait X { self: Y => } // error: missing requirement: self type Y & X of trait X does not conform to self type Z of required trait Y
-trait Y { self: Z => }
-trait Z

@@ -8,10 +8,10 @@ class Outer {
   trait B {
     def bar() = assert(a == 5)
   }
-}
 
-class M(val o: Outer) extends A with o.B {
-  val n: Int = 10
+  class M extends A with B {
+    val n: Int = 10
+  }
 }
 
 class Dummy {

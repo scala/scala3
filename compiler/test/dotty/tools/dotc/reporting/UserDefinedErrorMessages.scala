@@ -26,9 +26,9 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages: @unchecked
+      val (m: TypeMsg) :: Nil = messages: @unchecked
 
-      assertEquals(m.msg, "Could not prove Int =!= Int")
+      assertEquals(m.message, "Could not prove Int =!= Int")
     }
 
   @Test def userDefinedImplicitAmbiguous2 =
@@ -50,9 +50,9 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages: @unchecked
+      val (m: TypeMsg) :: Nil = messages: @unchecked
 
-      assertEquals(m.msg, "Could not prove Int =!= Int")
+      assertEquals(m.message, "Could not prove Int =!= Int")
     }
 
   @Test def userDefinedImplicitAmbiguous3 =
@@ -75,9 +75,9 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages: @unchecked
+      val (m: TypeMsg) :: Nil = messages: @unchecked
 
-      assertEquals(m.msg, "Could not prove Int =!= Int")
+      assertEquals(m.message, "Could not prove Int =!= Int")
     }
 
   @Test def userDefinedImplicitAmbiguous4 =
@@ -97,9 +97,9 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages: @unchecked
+      val (m: TypeMsg) :: Nil = messages: @unchecked
 
-      assertEquals(m.msg, "msg A=Any")
+      assertEquals(m.message, "msg A=Any")
     }
 
   @Test def userDefinedImplicitAmbiguous5 =
@@ -119,8 +119,8 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
       given Context = itcx
 
       assertMessageCount(1, messages)
-      val (m: NoExplanation) :: Nil = messages: @unchecked
+      val (m: TypeMsg) :: Nil = messages: @unchecked
 
-      assertEquals(m.msg, "msg A=Any")
+      assertEquals(m.message, "msg A=Any")
     }
 }

@@ -49,9 +49,12 @@ class NameBuffer extends TastyBuffer(10000) {
     }
   }
 
-  private def withLength(op: => Unit, lengthWidth: Int = 1): Unit = {
+  private inline def withLength(inline op: Unit, lengthWidth: Int = 1): Unit = {
     val lengthAddr = currentAddr
-    for (i <- 0 until lengthWidth) writeByte(0)
+    var i = 0
+    while i < lengthWidth do
+      writeByte(0)
+      i += 1
     op
     val length = currentAddr.index - lengthAddr.index - lengthWidth
     putNat(lengthAddr, length, lengthWidth)
@@ -111,11 +114,11 @@ class NameBuffer extends TastyBuffer(10000) {
 
   override def assemble(): Unit = {
     var i = 0
-    for ((name, ref) <- nameRefs) {
+    for (name, ref) <- nameRefs do
+      val ref = nameRefs(name)
       assert(ref.index == i)
       i += 1
       pickleNameContents(name)
-    }
   }
 }
 

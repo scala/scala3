@@ -16,7 +16,9 @@
    |value apply is not a member of object ExtensionMethodReproduction.c.
    |An extension method was tried, but could not be fully constructed:
    |
-   |    apply(ExtensionMethodReproduction.c)    failed with
+   |    apply(ExtensionMethodReproduction.c)
+   |
+   |    failed with:
    |
    |        Ambiguous overload. The overloaded alternatives of method apply in object ExtensionMethodReproduction with types
    |         (c: ExtensionMethodReproduction.C)(x: Int, y: Int): String

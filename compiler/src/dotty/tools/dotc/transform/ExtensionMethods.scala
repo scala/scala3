@@ -13,7 +13,7 @@ import core._
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, Symbols._, StdNames._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
-import NameKinds.ExtMethName
+import NameKinds.{ExtMethName, BodyRetainerName}
 import Decorators._
 import TypeUtils._
 
@@ -79,7 +79,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           // because it adds extension methods before pickling.
           if (!(valueClass.is(Scala2x)))
             for (decl <- valueClass.classInfo.decls)
-              if (isMethodWithExtension(decl))
+              if isMethodWithExtension(decl) then
                 enterInModuleClass(createExtensionMethod(decl, moduleClassSym.symbol))
 
           // Create synthetic methods to cast values between the underlying type
@@ -179,7 +179,10 @@ object ExtensionMethods {
 
   /** Name of the extension method that corresponds to given instance method `meth`. */
   def extensionName(imeth: Symbol)(using Context): TermName =
-    ExtMethName(imeth.name.asTermName)
+    ExtMethName(
+      imeth.name.asTermName match
+        case BodyRetainerName(name) => name
+        case name => name)
 
   /** Return the extension method that corresponds to given instance method `meth`. */
   def extensionMethod(imeth: Symbol)(using Context): TermSymbol =
@@ -188,9 +191,17 @@ object ExtensionMethods {
       val companion = imeth.owner.companionModule
       val companionInfo = companion.info
       val candidates = companionInfo.decl(extensionName(imeth)).alternatives
-      val matching =
-        // See the documentation of `memberSignature` to understand why `.stripPoly.ensureMethodic` is needed here.
-        candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.info.stripPoly.ensureMethodic.signature)
+      def matches(candidate: SingleDenotation) =
+        FullParameterization.memberSignature(candidate.info) == imeth.info.stripPoly.ensureMethodic.signature
+          // See the documentation of `memberSignature` to understand why `.stripPoly.ensureMethodic` is needed here.
+        && (if imeth.targetName == imeth.name then
+              // imeth does not have a @targetName annotation, candidate should not have one either
+              candidate.symbol.targetName == candidate.symbol.name
+            else
+              // imeth has a @targetName annotation, candidate's target name must match
+              imeth.targetName == candidate.symbol.targetName
+           )
+      val matching = candidates.filter(matches)
       assert(matching.nonEmpty,
        i"""no extension method found for:
           |
@@ -203,6 +214,9 @@ object ExtensionMethods {
           | Candidates (signatures normalized):
           |
           | ${candidates.map(c => s"${c.name}:${c.info.signature}:${FullParameterization.memberSignature(c.info)}").mkString("\n")}""")
+      if matching.tail.nonEmpty then
+        // this case will report a "have the same erasure" error later at erasure pahse
+        report.log(i"mutiple extension methods match $imeth: ${candidates.map(c => i"${c.name}:${c.info}")}")
       matching.head.symbol.asTerm
     }
 }

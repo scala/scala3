@@ -60,13 +60,13 @@ object Macros {
       printout(defn.FunctionClass(i).name)
 
     for (i <- 0 to 25)
+      printout(defn.FunctionClass(i, isContextual = true).name)
       printout(defn.FunctionClass(i, isImplicit = true).name)
 
-    for (i <- 1 to 25)
-      printout(defn.FunctionClass(i, isErased = true).name)
+    // should fail
+    printout(defn.FunctionClass(1, isErased = true).name)
 
-    for (i <- 1 to 25)
-      printout(defn.FunctionClass(i, isImplicit = true, isErased = true).name)
+    printout(defn.ErasedFunctionClass.name)
 
     for (i <- 2 to 22)
       printout(defn.TupleClass(i).name)

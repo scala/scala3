@@ -313,8 +313,8 @@ object Interactive {
             case _ =>
           }
           localCtx
-        case tree @ Template(constr, parents, self, _) =>
-          if ((constr :: self :: parents).contains(nested)) outer
+        case tree @ Template(constr, _, self, _) =>
+          if ((constr :: self :: tree.parentsOrDerived).contains(nested)) outer
           else contextOfStat(tree.body, nested, tree.symbol, outer.inClassContext(self.symbol))
         case _ =>
           outer

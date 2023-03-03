@@ -6,7 +6,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/contextual/context-funct
 
 ## Syntax
 
-```
+```ebnf
 Type              ::=  ...
                     |  FunArgTypes ‘?=>’ Type
 Expr              ::=  ...

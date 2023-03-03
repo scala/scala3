@@ -42,6 +42,9 @@ class A[T] {
 
   def next: T = ???
 
+  import scala.language.experimental.clauseInterleaving
+
+  def b[U <: T](x: Int)[V >: T](y: String) = false
 }
 
 class B extends A[Int] {
@@ -52,6 +55,20 @@ class B extends A[Int] {
 
   override def next(): Int = ???    // error: incompatible type
 
+  import scala.language.experimental.clauseInterleaving
+
+  override def b[T <: Int](x: Int)(y: String) = true // error
+}
+
+class C extends A[String] {
+
+  override def f(x: String) = x // error
+
+  override def next: Int = ???    // error: incompatible type
+
+  import scala.language.experimental.clauseInterleaving
+
+  override def b[T <: String](x: Int)[U >: Int](y: String) = true // error: incompatible type
 }
 
 class X {
@@ -103,4 +120,3 @@ class C extends A {
   override def m: Int = 42 // error: has incompatible type
 }
 }
-

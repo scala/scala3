@@ -21,6 +21,7 @@ import scala.io.Source
 import org.junit.Test
 import scala.util.Using
 import java.io.File
+
 class PrintingTest {
 
   def options(phase: String, flags: List[String]) =
@@ -45,7 +46,7 @@ class PrintingTest {
     }
 
     val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator
-    FileDiff.checkAndDump(path.toString, actualLines.toIndexedSeq, checkFilePath)
+    FileDiff.checkAndDumpOrUpdate(path.toString, actualLines.toIndexedSeq, checkFilePath)
   }
 
   def testIn(testsDir: String, phase: String) =

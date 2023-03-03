@@ -36,6 +36,12 @@ class BootstrappedOnlyCompilationTests {
     ).checkCompile()
   }
 
+  @Test def posWithCompilerCC: Unit =
+    implicit val testGroup: TestGroup = TestGroup("compilePosWithCompilerCC")
+    aggregateTests(
+      compileDir("tests/pos-with-compiler-cc/dotc", withCompilerOptions.and("-language:experimental.captureChecking"))
+    ).checkCompile()
+
   @Test def posWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosWithCompiler")
     aggregateTests(
@@ -124,6 +130,8 @@ class BootstrappedOnlyCompilationTests {
       compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
       compileFilesInDir("tests/run-custom-args/Yread-comments", defaultOptions and "-Yread-docs"),
       compileFilesInDir("tests/run-custom-args/run-macros-erased", defaultOptions.and("-language:experimental.erasedDefinitions").and("-Xcheck-macros")),
+      compileDir("tests/run-custom-args/Xmacro-settings/simple", defaultOptions.and("-Xmacro-settings:one,two,three")),
+      compileDir("tests/run-custom-args/Xmacro-settings/compileTimeEnv", defaultOptions.and("-Xmacro-settings:a,b=1,c.b.a=x.y.z=1,myLogger.level=INFO")),
     )
   }.checkRuns()
 

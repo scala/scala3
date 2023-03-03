@@ -38,8 +38,9 @@ class TastyPickler(val rootCls: ClassSymbol) {
     nameBuffer.assemble()
     sections.foreach(_._2.assemble())
 
-    val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes)
-    val treeSectionHash +: otherSectionHashes = sections.map(x => TastyHash.pjwHash64(x._2.bytes)): @unchecked
+    val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes, nameBuffer.length)
+    val treeSectionHash +: otherSectionHashes =
+      sections.map(x => TastyHash.pjwHash64(x._2.bytes, x._2.length)): @unchecked
 
     // Hash of name table and tree
     val uuidLow: Long = nameBufferHash ^ treeSectionHash

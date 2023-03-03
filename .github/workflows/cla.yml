@@ -1,9 +1,12 @@
 name: Scala CLA
 on:
   pull_request:
+    branches-ignore:
+      - 'language-reference-stable'
   push:
     branches:
-      - 'language-reference-backport'
+      - 'language-reference-stable'
+  merge_group:
 permissions:
   contents: write
   pull-requests: write

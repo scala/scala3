@@ -1,0 +1,5 @@
+
+-- Error: tests/neg-macros/annot-ill-abort/Test_2.scala:1:0 ------------------------------------------------------------
+1 |@crash // error
+  |^^^^^^
+  |Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.

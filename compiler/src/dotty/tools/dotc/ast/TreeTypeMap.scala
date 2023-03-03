@@ -43,7 +43,7 @@ class TreeTypeMap(
 
   def copy(
       typeMap: Type => Type,
-      treeMap: tpd.Tree => tpd.Tree,
+      treeMap: Tree => Tree,
       oldOwners: List[Symbol],
       newOwners: List[Symbol],
       substFrom: List[Symbol],
@@ -85,26 +85,42 @@ class TreeTypeMap(
       updateDecls(prevStats.tail, newStats.tail)
     }
 
-  def transformInlined(tree: tpd.Inlined)(using Context): tpd.Tree =
+  def transformInlined(tree: Inlined)(using Context): Tree =
     val Inlined(call, bindings, expanded) = tree
     val (tmap1, bindings1) = transformDefs(bindings)
     val expanded1 = tmap1.transform(expanded)
     cpy.Inlined(tree)(call, bindings1, expanded1)
 
-  override def transform(tree: tpd.Tree)(using Context): tpd.Tree = treeMap(tree) match {
-    case impl @ Template(constr, parents, self, _) =>
+  override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
+    case impl @ Template(constr, _, self, _) =>
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
-          parents = parents.mapconserve(transform),
+          parents = impl.parents.mapconserve(transform),
           self = tmap.transformSub(self),
           body = impl.body mapconserve
             (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner))))
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
-        case id: Ident if tpd.needsSelect(id.tpe) =>
-          ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
+        case id: Ident =>
+          if needsSelect(id.tpe) then
+            ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
+          else
+            super.transform(id)
+        case sel: Select =>
+          if needsIdent(sel.tpe) then
+            ref(sel.tpe.asInstanceOf[TermRef]).withSpan(sel.span)
+          else
+            super.transform(sel)
+        case app: Apply =>
+          super.transform(app)
+        case blk @ Block(stats, expr) =>
+          val (tmap1, stats1) = transformDefs(stats)
+          val expr1 = tmap1.transform(expr)
+          cpy.Block(blk)(stats1, expr1)
+        case lit @ Literal(Constant(tpe: Type)) =>
+          cpy.Literal(lit)(Constant(mapType(tpe)))
         case ddef @ DefDef(name, paramss, tpt, _) =>
           val (tmap1, paramss1) = transformAllParamss(paramss)
           val res = cpy.DefDef(ddef)(name, paramss1, tmap1.transform(tpt), tmap1.transform(ddef.rhs))
@@ -117,10 +133,6 @@ class TreeTypeMap(
         case tdef @ LambdaTypeTree(tparams, body) =>
           val (tmap1, tparams1) = transformDefs(tparams)
           cpy.LambdaTypeTree(tdef)(tparams1, tmap1.transform(body))
-        case blk @ Block(stats, expr) =>
-          val (tmap1, stats1) = transformDefs(stats)
-          val expr1 = tmap1.transform(expr)
-          cpy.Block(blk)(stats1, expr1)
         case inlined: Inlined =>
           transformInlined(inlined)
         case cdef @ CaseDef(pat, guard, rhs) =>
@@ -139,18 +151,16 @@ class TreeTypeMap(
           val content1 = transform(content)
           val tpt1 = transform(tpt)
           cpy.Hole(tree)(args = args1, content = content1, tpt = tpt1)
-        case lit @ Literal(Constant(tpe: Type)) =>
-          cpy.Literal(lit)(Constant(mapType(tpe)))
         case tree1 =>
           super.transform(tree1)
       }
   }
 
-  override def transformStats(trees: List[tpd.Tree], exprOwner: Symbol)(using Context): List[Tree] =
+  override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
     transformDefs(trees)._2
 
-  def transformDefs[TT <: tpd.Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
-    val tmap = withMappedSyms(tpd.localSyms(trees))
+  def transformDefs[TT <: Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
+    val tmap = withMappedSyms(localSyms(trees))
     (tmap, tmap.transformSub(trees))
   }
 
@@ -165,7 +175,7 @@ class TreeTypeMap(
     case nil =>
       (this, paramss)
 
-  def apply[ThisTree <: tpd.Tree](tree: ThisTree): ThisTree = transform(tree).asInstanceOf[ThisTree]
+  def apply[ThisTree <: Tree](tree: ThisTree): ThisTree = transform(tree).asInstanceOf[ThisTree]
 
   def apply(annot: Annotation): Annotation = annot.derivedAnnotation(apply(annot.tree))
 

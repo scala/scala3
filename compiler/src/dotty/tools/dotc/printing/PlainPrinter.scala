@@ -111,13 +111,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def refinementNameString(tp: RefinedType): String = nameString(tp.refinedName)
 
   /** String representation of a refinement */
-  protected def toTextRefinement(rt: RefinedType): Closed =
-    (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
+  protected def toTextRefinement(rt: RefinedType): Text =
+    val keyword = rt.refinedInfo match {
+      case _: ExprType | _: MethodOrPoly => "def "
+      case _: TypeBounds => "type "
+      case _: TypeProxy => "val "
+      case _ => ""
+    }
+    (keyword ~ refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
-  protected def argText(arg: Type): Text = homogenizeArg(arg) match {
+  protected def argText(arg: Type, isErased: Boolean = false): Text = keywordText("erased ").provided(isErased) ~ (homogenizeArg(arg) match {
     case arg: TypeBounds => "?" ~ toText(arg)
     case arg => toText(arg)
-  }
+  })
 
   /** Pretty-print comma-separated type arguments for a constructor to be inserted among parentheses or brackets
     * (hence with `GlobalPrec` precedence).
@@ -218,7 +224,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
-        s"<error ${tp.msg.rawMessage}>"
+        s"<error ${tp.msg.message}>"
       case tp: WildcardType =>
         if (tp.optBounds.exists) "<?" ~ toTextRHS(tp.bounds) ~ ">" else "<?>"
       case NoType =>
@@ -229,7 +235,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(GlobalPrec) {
           "("
           ~ keywordText("using ").provided(tp.isContextualMethod)
-          ~ keywordText("erased ").provided(tp.isErasedMethod)
           ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
           ~ paramsText(tp)
           ~ ")"
@@ -258,8 +263,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if annot.symbol == defn.InlineParamAnnot || annot.symbol == defn.ErasedParamAnnot then toText(tpe)
         else toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
+        def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)
         if (tp.isInstantiated)
-          toTextLocal(tp.instanceOpt) ~ (Str("^") provided printDebug)
+          toTextCaret(tp.instanceOpt)
         else {
           val constr = ctx.typerState.constraint
           val bounds =
@@ -267,7 +273,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
               withMode(Mode.Printing)(TypeComparer.fullBounds(tp.origin))
             else
               TypeBounds.empty
-          if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided printDebug)
+          if (bounds.isTypeAlias) toTextCaret(bounds.lo)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
         }
@@ -278,6 +284,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
             case ex: Throwable => Str("...")
           }
         "LazyRef(" ~ refTxt ~ ")"
+      case Range(lo, hi) =>
+        toText(lo) ~ ".." ~ toText(hi)
       case _ =>
         tp.fallbackToText(this)
     }
@@ -287,9 +295,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
 
   protected def paramsText(lam: LambdaType): Text = {
-    def paramText(name: Name, tp: Type) =
-      toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
-    Text(lam.paramNames.lazyZip(lam.paramInfos).map(paramText), ", ")
+    val erasedParams = lam.erasedParams
+    def paramText(name: Name, tp: Type, erased: Boolean) =
+      keywordText("erased ").provided(erased) ~ toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
+    Text(lam.paramNames.lazyZip(lam.paramInfos).lazyZip(erasedParams).map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)
@@ -607,7 +616,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText(sc: Scope): Text =
     ("Scope{" ~ dclsText(sc.toList) ~ "}").close
 
-  def toText[T >: Untyped](tree: Tree[T]): Text = {
+  def toText[T <: Untyped](tree: Tree[T]): Text = {
     def toTextElem(elem: Any): Text = elem match {
       case elem: Showable => elem.toText(this)
       case elem: List[?] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"

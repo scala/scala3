@@ -50,7 +50,7 @@ for case (x, y) <- elems yield (y, x)  // returns List((2, 1), (4, 3))
 ## Syntax Changes
 
 Generators in for expressions may be prefixed with `case`.
-```
+```ebnf
 Generator      ::=  [‘case’] Pattern1 ‘<-’ Expr
 ```
 

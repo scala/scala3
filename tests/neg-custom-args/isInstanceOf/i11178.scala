@@ -12,7 +12,6 @@ object Test1 {
   def test[A](bar: Bar[A]) =
     bar match {
       case _: Bar[Boolean] => ??? // error
-      case _ => ???
     }
 }
 

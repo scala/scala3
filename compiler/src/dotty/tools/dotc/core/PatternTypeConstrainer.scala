@@ -265,26 +265,26 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       (tp, pt) match {
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
           val saved = state.nn.constraint
-          val savedGadt = ctx.gadt.fresh
           val result =
-            tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
-              val variance = param.paramVarianceSign
-              if variance == 0 || assumeInvariantRefinement ||
-                // As a special case, when pattern and scrutinee types have the same type constructor,
-                // we infer better bounds for pattern-bound abstract types.
-                argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
-              then
-                val TypeBounds(loS, hiS) = argS.bounds
-                val TypeBounds(loP, hiP) = argP.bounds
-                var res = true
-                if variance <  1 then res &&= isSubType(loS, hiP)
-                if variance > -1 then res &&= isSubType(loP, hiS)
-                res
-              else true
+            ctx.gadtState.rollbackGadtUnless {
+              tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
+                val variance = param.paramVarianceSign
+                if variance == 0 || assumeInvariantRefinement ||
+                  // As a special case, when pattern and scrutinee types have the same type constructor,
+                  // we infer better bounds for pattern-bound abstract types.
+                  argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
+                then
+                  val TypeBounds(loS, hiS) = argS.bounds
+                  val TypeBounds(loP, hiP) = argP.bounds
+                  var res = true
+                  if variance <  1 then res &&= isSubType(loS, hiP)
+                  if variance > -1 then res &&= isSubType(loP, hiS)
+                  res
+                else true
+              }
             }
           if !result then
             constraint = saved
-            ctx.gadt.restore(savedGadt)
           result
         case _ =>
           // Give up if we don't get AppliedType, e.g. if we upcasted to Any.
