@@ -70,7 +70,8 @@ object Async:
 
   def group[T](body: Async ?=> T)(using async: Async): T =
     val newGroup = CancellationGroup().link()
-    body(using async.withConfig(async.config.copy(group = newGroup)))
+    try body(using async.withConfig(async.config.copy(group = newGroup)))
+    finally newGroup.cancel()
 
   /** A function `T => Boolean` whose lineage is recorded by its implementing
    *  classes. The Listener function accepts values of type `T` and returns

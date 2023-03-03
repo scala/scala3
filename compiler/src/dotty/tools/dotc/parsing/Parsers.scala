@@ -3080,8 +3080,8 @@ object Parsers {
  /* -------- PARAMETERS ------------------------------------------- */
 
     /** DefParamClauses       ::= DefParamClause { DefParamClause }  -- and two DefTypeParamClause cannot be adjacent
-     *  DefParamClause        ::= DefTypeParamClause 
-     *                          | DefTermParamClause 
+     *  DefParamClause        ::= DefTypeParamClause
+     *                          | DefTermParamClause
      *                          | UsingParamClause
      */
     def typeOrTermParamClauses(
@@ -3179,7 +3179,7 @@ object Parsers {
      *  UsingClsTermParamClause::= ‘(’ ‘using’ [‘erased’] (ClsParams | ContextTypes) ‘)’
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
      *  ClsParam          ::=  {Annotation}
-     * 
+     *
      *  TypelessClause    ::= DefTermParamClause
      *                      | UsingParamClause
      *
@@ -3557,13 +3557,13 @@ object Parsers {
       }
     }
 
-    
+
 
     /** DefDef  ::=  DefSig [‘:’ Type] ‘=’ Expr
      *            |  this TypelessClauses [DefImplicitClause] `=' ConstrExpr
      *  DefDcl  ::=  DefSig `:' Type
      *  DefSig  ::=  id [DefTypeParamClause] DefTermParamClauses
-     * 
+     *
      * if clauseInterleaving is enabled:
      *  DefSig  ::=  id [DefParamClauses] [DefImplicitClause]
      */
@@ -3602,8 +3602,8 @@ object Parsers {
         val mods1 = addFlag(mods, Method)
         val ident = termIdent()
         var name = ident.name.asTermName
-        val paramss = 
-          if in.featureEnabled(Feature.clauseInterleaving) then 
+        val paramss =
+          if in.featureEnabled(Feature.clauseInterleaving) then
             // If you are making interleaving stable manually, please refer to the PR introducing it instead, section "How to make non-experimental"
             typeOrTermParamClauses(ParamOwner.Def, numLeadParams = numLeadParams)
           else
@@ -3613,7 +3613,7 @@ object Parsers {
             joinParams(tparams, vparamss)
 
         var tpt = fromWithinReturnType { typedOpt() }
-        
+
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if in.token == EQUALS then
