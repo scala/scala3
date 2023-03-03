@@ -128,7 +128,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       view.toList
 
     fnType.dealias match
-      case fnType: MethodType if fnType.isErasedMethod => interpretArgs(argss, fnType.resType)
+      case fnType: MethodType if fnType.hasErasedParams => interpretArgs(argss, fnType.resType)
       case fnType: MethodType =>
         val argTypes = fnType.paramInfos
         assert(argss.head.size == argTypes.size)
@@ -342,7 +342,7 @@ object Interpreter:
         case fn: Ident => Some((tpd.desugarIdent(fn).withSpan(fn.span), Nil))
         case fn: Select => Some((fn, Nil))
         case Apply(f @ Call0(fn, args1), args2) =>
-          if (f.tpe.widenDealias.isErasedMethod) Some((fn, args1))
+          if (f.tpe.widenDealias.hasErasedParams) Some((fn, args1))
           else Some((fn, args2 :: args1))
         case TypeApply(Call0(fn, args), _) => Some((fn, args))
         case _ => None

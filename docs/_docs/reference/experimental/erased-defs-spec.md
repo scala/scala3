@@ -19,8 +19,8 @@ TODO: complete
 
     def g(erased x: Int) = ...
 
-    (erased x: Int) => ...
-    def h(x: (erased Int) => Int) = ...
+    (erased x: Int, y: Int) => ...
+    def h(x: (Int, erased Int) => Int) = ...
 
     class K(erased x: Int) { ... }
     erased class E {}
@@ -34,12 +34,12 @@ TODO: complete
 
 3. Functions
    * `(erased x1: T1, x2: T2, ..., xN: TN) => y : (erased T1, T2, ..., TN) => R`
-   * `(given erased x1: T1, x2: T2, ..., xN: TN) => y: (given erased T1, T2, ..., TN) => R`
+   * `(given x1: T1, erased x2: T2, ..., xN: TN) => y: (given T1, erased T2, ..., TN) => R`
    * `(given erased T1) => R  <:<  erased T1 => R`
-   * `(given erased T1, T2) => R  <:< (erased T1, T2) => R`
+   * `(given T1, erased T2) => R  <:< (T1, erased T2) => R`
    *  ...
 
-   Note that there is no subtype relation between `(erased T) => R` and `T => R` (or `(given erased T) => R` and `(given T) => R`)
+   Note that there is no subtype relation between `(erased T) => R` and `T => R` (or `(given erased T) => R` and `(given T) => R`). The `erased` parameters must match exactly in their respective positions.
 
 
 4. Eta expansion
@@ -51,7 +51,8 @@ TODO: complete
    * All `erased` parameters are removed from the function
    * All argument to `erased` parameters are not passed to the function
    * All `erased` definitions are removed
-   * All `(erased T1, T2, ..., TN) => R` and `(given erased T1, T2, ..., TN) => R` become `() => R`
+   * `(erased ET1, erased ET2, T1, ..., erased ETN, TM) => R` are erased to `(T1, ..., TM) => R`.
+   * `(given erased ET1, erased ET2, T1, ..., erased ETN, TM) => R` are erased to `(given T1, ..., TM) => R`.
 
 
 6. Overloading
@@ -60,11 +61,10 @@ TODO: complete
 
 
 7. Overriding
-   * Member definitions overriding each other must both be `erased` or not be `erased`
-   * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` and vice-versa
-   *
-
+   * Member definitions overriding each other must both be `erased` or not be `erased`.
+   * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` and vice-versa.
 
 8. Type Restrictions
    * For dependent functions, `erased` parameters are limited to realizable types, that is, types that are inhabited by non-null values.
      This restriction stops us from using a bad bound introduced by an erased value, which leads to unsoundness (see #4060).
+   * Polymorphic functions with erased parameters are currently not supported, and will be rejected by the compiler. This is purely an implementation restriction, and might be lifted in the future.

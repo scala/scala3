@@ -120,10 +120,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
     (keyword ~ refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
-  protected def argText(arg: Type): Text = homogenizeArg(arg) match {
+  protected def argText(arg: Type, isErased: Boolean = false): Text = keywordText("erased ").provided(isErased) ~ (homogenizeArg(arg) match {
     case arg: TypeBounds => "?" ~ toText(arg)
     case arg => toText(arg)
-  }
+  })
 
   /** Pretty-print comma-separated type arguments for a constructor to be inserted among parentheses or brackets
     * (hence with `GlobalPrec` precedence).
@@ -235,7 +235,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(GlobalPrec) {
           "("
           ~ keywordText("using ").provided(tp.isContextualMethod)
-          ~ keywordText("erased ").provided(tp.isErasedMethod)
           ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
           ~ paramsText(tp)
           ~ ")"
@@ -296,9 +295,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
 
   protected def paramsText(lam: LambdaType): Text = {
-    def paramText(name: Name, tp: Type) =
-      toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
-    Text(lam.paramNames.lazyZip(lam.paramInfos).map(paramText), ", ")
+    val erasedParams = lam.erasedParams
+    def paramText(name: Name, tp: Type, erased: Boolean) =
+      keywordText("erased ").provided(erased) ~ toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
+    Text(lam.paramNames.lazyZip(lam.paramInfos).lazyZip(erasedParams).map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)

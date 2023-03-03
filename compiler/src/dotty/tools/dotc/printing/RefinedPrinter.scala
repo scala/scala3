@@ -148,17 +148,16 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def toTextTuple(args: List[Type]): Text =
       "(" ~ argsText(args) ~ ")"
 
-    def toTextFunction(args: List[Type], isGiven: Boolean, isErased: Boolean, isPure: Boolean): Text =
+    def toTextFunction(args: List[Type], isGiven: Boolean, isPure: Boolean): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
           if args.length == 2
              && !defn.isTupleNType(args.head)
-             && !isGiven && !isErased
+             && !isGiven
           then
             atPrec(InfixPrec) { argText(args.head) }
           else
             "("
-            ~ keywordText("erased ").provided(isErased)
             ~ argsText(args.init)
             ~ ")"
         argStr ~ " " ~ arrow(isGiven, isPure) ~ " " ~ argText(args.last)
@@ -168,7 +167,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case info: MethodType =>
         changePrec(GlobalPrec) {
           "("
-          ~ keywordText("erased ").provided(info.isErasedMethod)
           ~ paramsText(info)
           ~ ") "
           ~ arrow(info.isImplicitMethod, isPure)
@@ -226,7 +224,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
             else if tp.isConvertibleParam then "into " ~ toText(args.head)
             else if defn.isFunctionSymbol(tsym) then
-              toTextFunction(args, tsym.name.isContextFunction, tsym.name.isErasedFunction,
+              toTextFunction(args, tsym.name.isContextFunction,
                 isPure = Feature.pureFunsEnabled && !tsym.name.isImpureFunction)
             else if isInfixType(tp) then
               val l :: r :: Nil = args: @unchecked
@@ -289,7 +287,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp @ FunProto(args, resultType) =>
         "[applied to ("
         ~ keywordText("using ").provided(tp.isContextualMethod)
-        ~ keywordText("erased ").provided(tp.isErasedMethod)
         ~ argsTreeText(args)
         ~ ") returning "
         ~ toText(resultType)
@@ -650,27 +647,29 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case str: Literal => strText(str)
         }
         toText(id) ~ "\"" ~ Text(segments map segmentText, "") ~ "\""
-      case Function(args, body) =>
+      case fn @ Function(args, body) =>
         var implicitSeen: Boolean = false
         var isGiven: Boolean = false
-        var isErased: Boolean = false
-        def argToText(arg: Tree) = arg match {
+        val erasedParams = fn match {
+          case fn: FunctionWithMods => fn.erasedParams
+          case _ => fn.args.map(_ => false)
+        }
+        def argToText(arg: Tree, isErased: Boolean) = arg match {
           case arg @ ValDef(name, tpt, _) =>
             val implicitText =
               if ((arg.mods.is(Given))) { isGiven = true; "" }
-              else if ((arg.mods.is(Erased))) { isErased = true; "" }
               else if ((arg.mods.is(Implicit)) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
               else ""
-            implicitText ~ toText(name) ~ optAscription(tpt)
+            val erasedText = if isErased then keywordStr("erased ") else ""
+            implicitText ~ erasedText ~ toText(name) ~ optAscription(tpt)
           case _ =>
             toText(arg)
         }
         val argsText = args match {
-          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
+          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg, erasedParams(0))
           case _ =>
             "("
-            ~ keywordText("erased ").provided(isErased)
-            ~ Text(args.map(argToText), ", ")
+            ~ Text(args.zip(erasedParams).map(argToText), ", ")
             ~ ")"
         }
         val isPure =
@@ -870,7 +869,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       "()"
     case untpd.ValDefs(vparams @ (vparam :: _)) =>
       "(" ~ keywordText("using ").provided(vparam.mods.is(Given))
-          ~ keywordText("erased ").provided(vparam.mods.is(Erased))
           ~ toText(vparams, ", ") ~ ")"
     case untpd.TypeDefs(tparams) =>
       "[" ~ toText(tparams, ", ") ~ "]"
@@ -1032,7 +1030,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else PrintableFlags(isType)
     if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= GivenOrImplicit // drop implicit/given from classes
     val rawFlags = if (sym.exists) sym.flagsUNSAFE else mods.flags
-    if (rawFlags.is(Param)) flagMask = flagMask &~ Given &~ Erased
+    if (rawFlags.is(Param)) flagMask = flagMask &~ Given
     val flags = rawFlags & flagMask
     var flagsText = toTextFlags(sym, flags)
     val annotTexts =

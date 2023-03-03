@@ -372,7 +372,7 @@ object ProtoTypes {
 
     private def isUndefined(tp: Type): Boolean = tp match {
       case _: WildcardType => true
-      case defn.FunctionOf(args, result, _, _) => args.exists(isUndefined) || isUndefined(result)
+      case defn.FunctionOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
       case _ => false
     }
 
@@ -842,7 +842,7 @@ object ProtoTypes {
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asContextFunctionType(wtp)
-        if iftp.exists && followIFT then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
+        if iftp.exists && followIFT then normalize(iftp.functionArgInfos.last, pt)
         else tp
     }
   }

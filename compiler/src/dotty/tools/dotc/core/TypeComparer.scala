@@ -2119,7 +2119,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case nil =>
         formals2.isEmpty
     }
-    loop(tp1.paramInfos, tp2.paramInfos)
+    // If methods have erased parameters, then the erased parameters must match
+    val erasedValid = (!tp1.hasErasedParams && !tp2.hasErasedParams) || (tp1.erasedParams == tp2.erasedParams)
+
+    erasedValid && loop(tp1.paramInfos, tp2.paramInfos)
   }
 
   /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`

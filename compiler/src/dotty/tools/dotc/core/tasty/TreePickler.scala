@@ -287,7 +287,6 @@ class TreePickler(pickler: TastyPickler) {
       var mods = EmptyFlags
       if tpe.isContextualMethod then mods |= Given
       else if tpe.isImplicitMethod then mods |= Implicit
-      if tpe.isErasedMethod then mods |= Erased
       pickleMethodic(METHODtype, tpe, mods)
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")

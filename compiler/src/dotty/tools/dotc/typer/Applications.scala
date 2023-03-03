@@ -1978,7 +1978,7 @@ trait Applications extends Compatibility {
           val formals = ref.widen.firstParamTypes
           if formals.length > idx then
             formals(idx) match
-              case defn.FunctionOf(args, _, _, _) => args.length
+              case defn.FunctionOf(args, _, _) => args.length
               case _ => -1
           else -1
 
@@ -2062,7 +2062,7 @@ trait Applications extends Compatibility {
           if isDetermined(alts2) then alts2
           else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
-      case defn.FunctionOf(args, resultType, _, _) =>
+      case defn.FunctionOf(args, resultType, _) =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
@@ -2225,7 +2225,7 @@ trait Applications extends Compatibility {
         val formalsForArg: List[Type] = altFormals.map(_.head)
         def argTypesOfFormal(formal: Type): List[Type] =
           formal.dealias match {
-            case defn.FunctionOf(args, result, isImplicit, isErased) => args
+            case defn.FunctionOf(args, result, isImplicit) => args
             case defn.PartialFunctionOf(arg, result) => arg :: Nil
             case _ => Nil
           }
