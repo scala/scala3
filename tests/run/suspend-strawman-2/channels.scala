@@ -3,13 +3,20 @@ import scala.collection.mutable, mutable.ListBuffer
 import fiberRuntime.boundary, boundary.Label
 import fiberRuntime.suspend
 import scala.concurrent.ExecutionContext
+import scala.util.{Try, Failure}
 import Async.{Listener, await}
 
 /** A common interface for channels */
 trait Channel[T]:
   def read()(using Async): T
   def send(x: T)(using Async): Unit
-  def close(): Unit
+  protected def shutDown(finalValue: T): Unit
+
+object Channel:
+
+  extension [T](c: Channel[Try[T]])
+    def close(): Unit =
+      c.shutDown(Failure(ChannelClosedException()))
 
 class ChannelClosedException extends Exception
 
@@ -57,8 +64,9 @@ class AsyncChannel[T] extends Async.OriginalSource[T], Channel[T]:
   def dropListener(k: Listener[T]): Unit = synchronized:
     waiting -= k
 
-  def close() =
+  protected def shutDown(finalValue: T) =
     isClosed = true
+    waiting.foreach(_(finalValue))
 
 end AsyncChannel
 
@@ -117,8 +125,9 @@ object SyncChannel:
       def dropListener(k: Listener[Listener[T]]): Unit = synchronized:
         pendingSends -= k
 
-    def close() =
+    protected def shutDown(finalValue: T) =
       isClosed = true
+      pendingReads.foreach(_(finalValue))
 
 end SyncChannel
 

@@ -9,7 +9,10 @@ enum StreamResult[+T]:
 
 import StreamResult.*
 
-extension [T](c: Channel[T])
+extension [T](c: Channel[Try[T]])
   def toStream(using Async.Config): Stream[T] = Future:
-    try StreamResult.More(c.read(), toStream)
-    catch case ex: ChannelClosedException => StreamResult.End
+    c.read() match
+      case Success(x) => StreamResult.More(x, toStream)
+      case Failure(ex: ChannelClosedException) => StreamResult.End
+      case Failure(ex) => throw ex
+

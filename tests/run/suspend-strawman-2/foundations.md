@@ -300,13 +300,11 @@ The general interface of a channel is as follows:
 trait Channel[T]:
   def read()(using Async): T
   def send(x: T)(using Async): Unit
-  def close(): Unit
 ```
 Channels provide
 
  - a `read` method, which might suspend while waiting for a message to arrive,
  - a `send` method, which also might suspend in case this is a sync channel or there is some other mechanism that forces a sender to wait,
- - a `close` method which closes the channel. Trying to send to a closed channel or to read from it results in a `ChannelClosedException` to be thrown.
 
 ### Async Channels
 
@@ -409,12 +407,17 @@ A stream represents a sequence of values that are computed one-by-one in a separ
     case More(elem: T, rest: Stream[T])
     case End extends StreamResult[Nothing]
 ```
-One can see a stream as a static representation of the values that are transmitted over a channel. Indeed, there is an easy way to convert a channel to a stream:
+One can see a stream as a static representation of the values that are transmitted over a channel. This poses the question of termination -- when do we know that a channel receives no further values, so the stream can be terminated
+with an `StreamResult.End` value. The following implementation shows one
+possibility: Here we map a channel of `Try` results to a stream, mapping
+failures with a special =`ChannelClosedException` to `StreamResult.End`.
 ```scala
-  extension [T](c: Channel[T])
+  extension [T](c: Channel[Try[T]])
     def toStream(using Async.Config): Stream[T] = Future:
-      try StreamResult.More(read(), toStream)
-      catch case ex: ChannelClosedException => StreamResult.End
+      c.read() match
+        case Success(x) => StreamResult.More(x, toStream)
+        case Failure(ex: ChannelClosedException) => StreamResult.End
+        case Failure(ex) => throw ex
 ```
 
 ### Coroutines or Fibers
