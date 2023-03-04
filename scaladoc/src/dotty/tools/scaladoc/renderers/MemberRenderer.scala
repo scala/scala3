@@ -72,7 +72,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def source(m: Member): Seq[AppliedTag] =
     summon[DocContext].sourceLinks.pathTo(m).fold(Nil){ link =>
-      tableRow("Source", a(href := link)(m.sources.fold("(source)")(_.path.getFileName().toString())))
+      tableRow("Source", a(href := link, target := "_blank")(m.sources.fold("(source)")(_.path.getFileName().toString())))
     }
 
   def deprecation(m: Member): Seq[AppliedTag] = m.deprecated.fold(Nil){ a =>
