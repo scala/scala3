@@ -11,7 +11,6 @@ def ownerWorksImpl(in: Expr[Int])(using Quotes): Expr[String] =
   val position = Position.ofMacroExpansion
   val file = position.sourceFile
   val owner0 = Symbol.spliceOwner.maybeOwner
-  println("owner0 = " + owner0)
   val ownerName = owner0.tree match {
     case ValDef(name, _, _) =>
       name
