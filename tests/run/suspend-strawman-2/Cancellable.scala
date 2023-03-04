@@ -35,7 +35,7 @@ class CancellationGroup extends Cancellable:
 
   /** Cancel all members and clear the members set */
   def cancel() =
-    members.toArray.foreach(_.cancel())
+    synchronized(members.toArray).foreach(_.cancel())
     members.clear()
 
   /** Add given member to the members set */
