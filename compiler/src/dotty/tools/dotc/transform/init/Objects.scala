@@ -22,6 +22,7 @@ import Util.*
 import scala.collection.immutable.ListSet
 import scala.collection.mutable
 import scala.annotation.tailrec
+import scala.annotation.constructorOnly
 
 /** Check initialization safety of static objects
  *
@@ -119,13 +120,13 @@ object Objects:
     def show(using Context) = "ObjectRef(" + klass.show + ")"
 
   /**
-   * Rerepsents values that are instances of the specified class
+   * Rerepsents values that are instances of the specified class.
    *
+   * Note that the 2nd parameter block does not take part in the definition of equality.
    */
   case class OfClass private (klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)
     (valsMap: mutable.Map[Symbol, Value], varsMap: mutable.Map[Symbol, Heap.Addr], outersMap: mutable.Map[ClassSymbol, Value])
   extends Ref(valsMap, varsMap, outersMap):
-
     def widenedCopy(outer: Value, args: List[Value], env: Env.Data): OfClass =
       new OfClass(klass, outer, ctor, args, env)(this.valsMap, this.varsMap, outersMap)
 
@@ -138,12 +139,30 @@ object Objects:
       klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)(
       using Context
     ): OfClass =
-      val instance =
-        new OfClass(klass, outer, ctor, args, env)(
-          valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty
-        )
+      val instance = new OfClass(klass, outer, ctor, args, env)(
+        valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty
+      )
       instance.initOuter(klass, outer)
       instance
+
+
+  /**
+   * Rerepsents arrays.
+   *
+   * Note that the 2nd parameter block does not take part in the definition of equality.
+   *
+   * Different arrays are distinguished by the context. Currently the default context is the static
+   * object whose initialization triggers the creation of the array.
+   *
+   * In the future, it is possible that we introduce a mechanism for end-users to mark the context.
+   *
+   * @param owner The static object whose initialization creates the array.
+   */
+  case class OfArray(owner: ClassSymbol)(using @constructorOnly ctx: Context)
+  extends Ref(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty):
+    val klass: ClassSymbol = defn.ArrayClass
+    val addr: Heap.Addr = Heap.arrayAddr(this, owner)
+    def show(using Context) = "OfArray(owner = " + owner.show + ")"
 
   /**
    * Represents a lambda expression
@@ -426,6 +445,9 @@ object Objects:
     def fieldVarAddr(ref: Ref, sym: Symbol, owner: ClassSymbol): Addr =
       FieldAddr(ref, sym, owner)
 
+    def arrayAddr(ref: Ref, owner: ClassSymbol): Addr =
+      FieldAddr(ref, NoSymbol, owner)
+
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
   /** Cache used to terminate the check  */
@@ -501,6 +523,26 @@ object Objects:
 
     case Bottom =>
       Bottom
+
+    case arr: OfArray =>
+      val target = resolve(defn.ArrayClass, meth)
+
+      if target == defn.Array_apply || target == defn.Array_clone then
+        if arr.addr.owner == State.currentObject then
+          Heap.read(arr.addr)
+        else
+          errorReadOtherStaticObject(State.currentObject, arr.addr.owner)
+          Bottom
+      else if target == defn.Array_update then
+        assert(args.size == 2, "Incorrect number of arguments for Array update, found = " + args.size)
+        if arr.addr.owner != State.currentObject then
+          errorMutateOtherStaticObject(State.currentObject, arr.addr.owner)
+        else
+          Heap.write(arr.addr, args.tail.head.value)
+        Bottom
+      else
+        // Array.length is OK
+        Bottom
 
     case ref: Ref =>
       val isLocal = !meth.owner.isClass
@@ -669,24 +711,27 @@ object Objects:
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     outer match
 
-    case fun: Fun =>
-      report.error("[Internal error] unexpected tree in instantiating a function, fun = " + fun.code.show + Trace.show, Trace.position)
+    case _ : Fun | _: OfArray  =>
+      report.error("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
       Bottom
 
     case value: (Bottom.type | ObjectRef | OfClass | Cold.type) =>
       // The outer can be a bottom value for top-level classes.
 
-      // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
-      val (outerWidened, envWidened) =
-        if klass.owner.isClass then
-          (outer.widen(1), Env.NoEnv)
-        else
-          // klass.enclosingMethod returns its primary constructor
-          Env.resolveEnv(klass.owner.enclosingMethod, outer, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+      if klass == defn.ArrayClass then
+        OfArray(State.currentObject)
+      else
+        // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
+        val (outerWidened, envWidened) =
+          if klass.owner.isClass then
+            (outer.widen(1), Env.NoEnv)
+          else
+            // klass.enclosingMethod returns its primary constructor
+            Env.resolveEnv(klass.owner.enclosingMethod, outer, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
-      val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
-      callConstructor(instance, ctor, args)
-      instance
+        val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
+        callConstructor(instance, ctor, args)
+        instance
 
     case RefSet(refs) =>
       refs.map(ref => instantiate(ref, klass, ctor, args)).join
@@ -730,7 +775,7 @@ object Objects:
             case Cold =>
               report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
               Bottom
-            case _: RefSet | _: OfClass | _: ObjectRef =>
+            case _: RefSet | _: Ref =>
               report.warning("[Internal error] Unexpected by-name value " + value.show  + ". Calling trace:\n" + Trace.show, Trace.position)
               Bottom
           else
