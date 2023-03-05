@@ -719,7 +719,9 @@ object Objects:
       // The outer can be a bottom value for top-level classes.
 
       if klass == defn.ArrayClass then
-        OfArray(State.currentObject)
+        val arr = OfArray(State.currentObject)
+        Heap.write(arr.addr, Bottom)
+        arr
       else
         // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
         val (outerWidened, envWidened) =
