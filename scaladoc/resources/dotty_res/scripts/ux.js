@@ -309,6 +309,10 @@ document
       var selected = document.getElementById(location.hash.substring(1));
       if (selected) {
         selected.classList.toggle("expand");
+        selected.classList.toggle("expanded");
+        const btn = selected.querySelector(".icon-button");
+        btn.classList.toggle("expand");
+        btn.classList.toggle("expanded");
       }
     }
   }
