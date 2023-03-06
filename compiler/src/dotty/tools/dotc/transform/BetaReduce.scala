@@ -117,7 +117,7 @@ object BetaReduce:
           case ref @ TypeRef(NoPrefix, _) =>
             ref.symbol
           case _ =>
-            val binding = TypeDef(newSymbol(ctx.owner, tparam.name, EmptyFlags, targ.tpe, coord = targ.span)).withSpan(targ.span)
+            val binding = TypeDef(newSymbol(ctx.owner, tparam.name, EmptyFlags, TypeAlias(targ.tpe), coord = targ.span)).withSpan(targ.span)
             bindings += binding
             binding.symbol
 
