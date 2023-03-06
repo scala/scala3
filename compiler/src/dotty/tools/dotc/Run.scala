@@ -173,15 +173,14 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   var ccImportEncountered = false
 
+  private var myEnrichedErrorMessage = false
+
   def compile(files: List[AbstractFile]): Unit =
-    try
-      val sources = files.map(runContext.getSource(_))
-      compileSources(sources)
-    catch
-      case NonFatal(ex) =>
-        if units.nonEmpty then report.echo(i"exception occurred while compiling $units%, %")
-        else report.echo(s"exception occurred while compiling ${files.map(_.name).mkString(", ")}")
-        throw ex
+    try compileSources(files.map(runContext.getSource(_)))
+    catch case NonFatal(ex) if !this.enrichedErrorMessage =>
+      val files1 = if units.isEmpty then files else units.map(_.source.file)
+      report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
+      throw ex
 
   /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
    *  when we first build the compiler. But we modify them with -Yskip, -Ystop
@@ -397,4 +396,17 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** The context created for this run */
   given runContext[Dummy_so_its_a_def]: Context = myCtx.nn
   assert(runContext.runId <= Periods.MaxPossibleRunId)
+}
+
+object Run {
+  extension (run: Run | Null)
+    def enrichedErrorMessage: Boolean = if run == null then false else run.myEnrichedErrorMessage
+    def enrichErrorMessage(errorMessage: String)(using Context): String =
+      if run == null then
+        report.enrichErrorMessage(errorMessage)
+      else if !run.enrichedErrorMessage then
+        run.myEnrichedErrorMessage = true
+        report.enrichErrorMessage(errorMessage)
+      else
+        errorMessage
 }

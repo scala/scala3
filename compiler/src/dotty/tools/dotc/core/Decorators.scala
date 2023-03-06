@@ -280,10 +280,7 @@ object Decorators {
           case ex: CyclicReference => "... (caught cyclic reference) ..."
           case NonFatal(ex)
           if !ctx.mode.is(Mode.PrintShowExceptions) && !ctx.settings.YshowPrintErrors.value =>
-            val msg = ex match
-              case te: TypeError => te.toMessage.message
-              case _ => ex.getMessage
-            s"[cannot display due to $msg, raw string = $x]"
+            s"... (cannot display due to ${ex.className} ${ex.getMessage}) ..."
       case _ => String.valueOf(x).nn
 
     /** Returns the simple class name of `x`. */
