@@ -64,7 +64,7 @@ object Semantic:
   sealed abstract class Value:
     def show(using Context): String = this match
       case ThisRef(klass) =>
-        "the original object of type " + klass.show + " that started this trace"
+        "the original object of type \"" + klass.show + "\" that started this trace"
       case Warm(klass, outer, ctor, args) =>
         val argsText = if args.nonEmpty then ", args = " + args.map(_.show).mkString("(", ", ", ")") else ""
         "an initialized (Warm) object of type " + klass.show + "{ outer = " + outer.show + argsText + " }"
@@ -472,7 +472,7 @@ object Semantic:
     def widenArg: Contextual[Value] =
       a match
       case _: Ref | _: Fun =>
-        val hasError = Reporter.hasErrors { a.promote("Argument cannot be promoted to transitively initialized (Hot)") }
+        val hasError = Reporter.hasErrors { a.promote("Argument cannot be proven to be transitively initialized (Hot)") }
         if hasError then Cold else Hot
 
       case RefSet(refs) =>
@@ -996,7 +996,7 @@ object Semantic:
                 eval(body, thisV, klass)
               }
               given Trace = Trace.empty.add(body)
-              res.promote("Only transitively initialized (Hot) values can be returned by functions. The function " + fun.show + " returned " + res.show + ".")
+              res.promote("Only transitively initialized (Hot) values can be returned by functions. The function " + fun.show + " returns " + res.show + ".")
             }
             if errors.nonEmpty then
               reporter.report(UnsafePromotion(msg, errors.head)(trace))
@@ -1040,7 +1040,7 @@ object Semantic:
         //
         // This invariant holds because of the Scala/Java/JVM restriction that we cannot use `this` in super constructor calls.
         if subClassSegmentHot && !isHotSegment then
-          report.error("[Internal error] Expect current segment to be transitively initialized (hot) in promotion, current klass = " + klass.show +
+          report.error("[Internal error] Expect current segment to be transitively initialized (Hot) in promotion, current klass = " + klass.show +
               ", subclass = " + subClass.show + Trace.show, Trace.position)
 
         // If the outer and parameters of a class are all hot, then accessing fields and methods of the current
