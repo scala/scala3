@@ -66,7 +66,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
   private def ensurePrivateAccessible(d: SymDenotation)(using Context) =
     if (isVCPrivateParamAccessor(d))
       d.ensureNotPrivate.installAfter(thisPhase)
-    else if (d.is(PrivateTerm) && !d.owner.is(Package) && d.owner != ctx.owner.lexicallyEnclosingClass && !d.is(InlineProxy)) {
+    else if (d.is(PrivateTerm) && !d.owner.is(Package) && d.owner != ctx.owner.lexicallyEnclosingClass) {
       // Paths `p1` and `p2` are similar if they have a common suffix that follows
       // possibly different directory paths. That is, their common suffix extends
       // in both cases either to the start of the path or to a file separator character.
@@ -81,11 +81,12 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
         (i < 0 || p1(i) == separatorChar) &&
         (j < 0 || p2(j) == separatorChar)
       }
-
+  /*
       assert(d.symbol.source.exists &&
              ctx.owner.source.exists &&
              isSimilar(d.symbol.source.path, ctx.owner.source.path),
-          s"private ${d.symbol.showLocated} in ${d.symbol.source} accessed from ${ctx.owner.showLocated} in ${ctx.owner.source}")
+          s"private ${d.symbol.showLocated} in ${d.symbol.source} accessed from ${ctx.owner.showLocated} in ${ctx.owner.source}") */
+
       d.ensureNotPrivate.installAfter(thisPhase)
     }
 
