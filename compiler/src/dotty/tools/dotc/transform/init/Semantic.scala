@@ -893,7 +893,7 @@ object Semantic:
 
               case Cold => Cold
 
-              case ref: Ref => eval(vdef.rhs, ref, enclosingClass, cacheResult = true)
+              case ref: Ref => eval(vdef.rhs, ref, enclosingClass)
 
               case _ =>
                  report.error("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
