@@ -64,12 +64,12 @@ object Semantic:
   sealed abstract class Value:
     def show(using Context): String = this match
       case ThisRef(klass) =>
-        "the original object of type \"" + klass.show + "\" that started this trace"
+        "the original object of type \"" + klass.show + "\" where initialization checking started"
       case Warm(klass, outer, ctor, args) =>
         val argsText = if args.nonEmpty then ", args = " + args.map(_.show).mkString("(", ", ", ")") else ""
         "an initialized (Warm) object of type " + klass.show + "{ outer = " + outer.show + argsText + " }"
       case Fun(expr, thisV, klass) =>
-        "a function { this = " + thisV.show + ", owner = " + klass.show + " }"
+        "a function where \"this\" is " + thisV.show + " and the function owner is an object of type " + klass.show
       case RefSet(values) =>
         values.map(_.show).mkString("Set { ", ", ", " }")
       case Hot =>
