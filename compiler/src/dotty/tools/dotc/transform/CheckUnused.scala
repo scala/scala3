@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Decorators.{em, i}
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
-import dotty.tools.dotc.report
+import dotty.tools.dotc.{ast, report}
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.{Property, SrcPos}
@@ -432,6 +432,20 @@ object CheckUnused:
         else
           exists
       }
+
+      // not report unused transparent inline imports
+      for {
+        imp <- imports
+        sel <- imp.selectors
+      } {
+        if unusedImport.contains(sel) then
+          val tpd.Import(qual, _) = imp
+          val importedMembers = qual.tpe.member(sel.name).alternatives.map(_.symbol)
+          val isTransparentAndInline = importedMembers.exists(s => s.is(Transparent) && s.is(Inline))
+          if isTransparentAndInline then
+            unusedImport -= sel
+      }
+
       // if there's an outer scope
       if usedInScope.nonEmpty then
         // we keep the symbols not referencing an import in this scope
@@ -450,6 +464,7 @@ object CheckUnused:
      */
     def getUnused(using Context): UnusedResult =
       popScope()
+
       val sortedImp =
         if ctx.settings.WunusedHas.imports || ctx.settings.WunusedHas.strictNoImplicitWarn then
           unusedImport.map(d => d.srcPos -> WarnTypes.Imports).toList
@@ -460,6 +475,7 @@ object CheckUnused:
           localDefInScope
             .filterNot(d => d.symbol.usedDefContains)
             .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.LocalDefs).toList
         else
           Nil
@@ -467,6 +483,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.explicits then
           explicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.ExplicitParams).toList
         else
           Nil
@@ -474,6 +491,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.implicits then
           implicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.ImplicitParams).toList
         else
           Nil
@@ -481,6 +499,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.privates then
           privateDefInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.PrivateMembers).toList
         else
           Nil
@@ -488,6 +507,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.patvars then
           patVarsInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
             .map(d => d.namePos -> WarnTypes.PatVars).toList
         else
@@ -500,6 +520,11 @@ object CheckUnused:
     end getUnused
     //============================ HELPERS ====================================
 
+    /**
+     * Heuristic to detect synthetic suffixes in names of symbols
+     */
+    private def containsSyntheticSuffix(symbol: Symbol)(using Context): Boolean =
+      symbol.name.mangledString.contains("$")
     /**
      * Is the the constructor of synthetic package object
      * Should be ignored as it is always imported/used in package
