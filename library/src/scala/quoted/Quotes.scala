@@ -34,7 +34,7 @@ transparent inline def quotes(using q: Quotes): q.type = q
  *  ```
  */
 
-@implicitNotFound("""explain=Maybe this methods is missing a `(using Quotes)` parameter.
+@implicitNotFound("""explain=Maybe this method is missing a `(using Quotes)` parameter.
 
 Maybe that splice `$ { ... }` is missing?
 Given instances of `Quotes` are generated from an enclosing splice `$ { ... }` (or `scala.staging.run` call).
