@@ -33,17 +33,11 @@ object ProtectedAccessors {
       ctx.owner.isContainedIn(boundary) || ctx.owner.isContainedIn(boundary.linkedClass)
     }
 
-  /** Do we need a protected accessor if the current context's owner
-   *  is not in a subclass or subtrait of `sym`?
-   */
-  def needsAccessorIfNotInSubclass(sym: Symbol)(using Context): Boolean =
-    sym.isTerm && sym.is(Protected) &&
-    !sym.owner.is(Trait) && // trait methods need to be handled specially, are currently always public
-    !insideBoundaryOf(sym)
-
   /** Do we need a protected accessor for accessing sym from the current context's owner? */
   def needsAccessor(sym: Symbol)(using Context): Boolean =
-    needsAccessorIfNotInSubclass(sym) &&
+    sym.isTerm && sym.is(Protected) &&
+    !sym.owner.is(Trait) && // trait methods need to be handled specially, are currently always public
+    !insideBoundaryOf(sym) &&
     !ctx.owner.enclosingClass.derivesFrom(sym.owner)
 }
 
