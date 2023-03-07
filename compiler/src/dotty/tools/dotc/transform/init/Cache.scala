@@ -75,6 +75,8 @@ class Cache[Config, Res]:
    */
   protected var changed: Boolean = false
 
+  protected var cacheUsed: Boolean = false
+
   /** Used to avoid allocation, its state does not matter */
   protected given MutableTreeWrapper = new MutableTreeWrapper
 
@@ -99,7 +101,9 @@ class Cache[Config, Res]:
    */
   def cachedEval(config: Config, expr: Tree, cacheResult: Boolean, default: Res)(eval: Tree => Res): Res =
     this.get(config, expr) match
-    case Some(value) => value
+    case Some(value) =>
+      cacheUsed = true
+      value
     case None =>
       val assumeValue: Res =
         this.last.get(config, expr) match
@@ -124,6 +128,8 @@ class Cache[Config, Res]:
 
   def hasChanged = changed
 
+  def isUsed = cacheUsed
+
   /** Prepare cache for the next iteration
    *
    *  1. Reset changed flag.
@@ -132,6 +138,7 @@ class Cache[Config, Res]:
    */
   def prepareForNextIteration()(using Context) =
     this.changed = false
+    this.cacheUsed = false
     this.last = this.current
     this.current = Map.empty
 end Cache

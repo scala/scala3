@@ -1101,12 +1101,15 @@ object Semantic:
    *
    *  The class to be checked must be an instantiable concrete class.
    */
-  private def checkClass(classSym: ClassSymbol)(using Cache.Data, Context): Unit =
+  private def checkClass(classSym: ClassSymbol)(using Cache.Data, Context): Int =
     val thisRef = ThisRef(classSym)
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
+    var accum = 0
+
     @tailrec
     def iterate(): Unit = {
+      accum += 1
       given Promoted = Promoted.empty(classSym)
       given Trace = Trace.empty.add(classSym.defTree)
       given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
@@ -1120,7 +1123,7 @@ object Semantic:
       log("checking " + classSym) { eval(tpl, thisRef, classSym) }
       reporter.errors.foreach(_.issue)
 
-      if cache.hasChanged && reporter.errors.isEmpty then
+      if cache.hasChanged && reporter.errors.isEmpty && cache.isUsed then
         // code to prepare cache and heap for next iteration
         cache.prepareForNextIteration()
         iterate()
@@ -1129,15 +1132,19 @@ object Semantic:
     }
 
     iterate()
+
+    accum - 1
   end checkClass
 
   /**
    * Check the specified concrete classes
    */
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
+    var total = 0
     given Cache.Data()
     for classSym <- classes if isConcreteClass(classSym) do
-      checkClass(classSym)
+      total += checkClass(classSym)
+    System.err.nn.println(total)
 
 // ----- Semantic definition --------------------------------
   type ArgInfo = TraceValue[Value]
