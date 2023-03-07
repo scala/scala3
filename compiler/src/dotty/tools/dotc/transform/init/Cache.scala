@@ -75,6 +75,10 @@ class Cache[Config, Res]:
    */
   protected var changed: Boolean = false
 
+  /** Whether any value in the cache was accessed after being added.
+  *   If no cached values are used after they are added for the first time
+  *   then another iteration of analysis is not needed.
+  */
   protected var cacheUsed: Boolean = false
 
   /** Used to avoid allocation, its state does not matter */

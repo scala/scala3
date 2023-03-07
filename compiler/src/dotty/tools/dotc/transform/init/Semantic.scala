@@ -1137,7 +1137,7 @@ object Semantic:
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given Cache.Data()
     for classSym <- classes if isConcreteClass(classSym) do
-      total += checkClass(classSym)
+      checkClass(classSym)
 
 // ----- Semantic definition --------------------------------
   type ArgInfo = TraceValue[Value]
