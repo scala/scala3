@@ -2725,7 +2725,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         x && {
           t.dealias match {
             case tp: TypeRef if !tp.symbol.isClass => false
-            case _: SkolemType | _: TypeVar | _: TypeParamRef => false
+            case _: SkolemType | _: TypeVar | _: TypeParamRef | _: TypeBounds => false
             case _ => foldOver(x, t)
           }
         }

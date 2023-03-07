@@ -9,7 +9,7 @@
    |                                            Note: a match type could not be fully reduced:
    |
    |                                              trying to reduce  ScalaType[T]
-   |                                              failed since selector  T
+   |                                              failed since selector T
    |                                              does not match  case Float16 => Float
    |                                              and cannot be shown to be disjoint from it either.
    |                                              Therefore, reduction cannot advance to the remaining cases

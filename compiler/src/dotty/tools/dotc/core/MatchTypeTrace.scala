@@ -100,16 +100,16 @@ object MatchTypeTrace:
     case TryReduce(scrut: Type) =>
       i"  trying to reduce  $scrut"
     case NoMatches(scrut, cases) =>
-      i"""  failed since selector  $scrut
+      i"""  failed since selector $scrut
          |  matches none of the cases
          |
          |    ${casesText(cases)}"""
     case EmptyScrutinee(scrut) =>
-      i"""  failed since selector  $scrut
+      i"""  failed since selector $scrut
          |  is uninhabited (there are no values of that type)."""
     case Stuck(scrut, stuckCase, otherCases) =>
       val msg =
-        i"""  failed since selector  $scrut
+        i"""  failed since selector $scrut
            |  does not match  ${caseText(stuckCase)}
            |  and cannot be shown to be disjoint from it either."""
       if otherCases.length == 0 then msg
@@ -121,14 +121,14 @@ object MatchTypeTrace:
            |    ${casesText(otherCases)}"""
     case NoInstance(scrut, stuckCase, fails) =>
       def params = if fails.length == 1 then "parameter" else "parameters"
-      i"""  failed since selector  $scrut
+      i"""  failed since selector $scrut
          |  does not uniquely determine $params ${fails.map(_._1)}%, % in
          |    ${caseText(stuckCase)}
          |  The computed bounds for the $params are:
          |    ${fails.map((name, bounds) => i"$name$bounds")}%\n    %"""
 
   def noMatchesText(scrut: Type, cases: List[Type])(using Context): String =
-    i"""failed since selector  $scrut
+    i"""failed since selector $scrut
        |matches none of the cases
        |
        |    ${casesText(cases)}"""
