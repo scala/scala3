@@ -122,12 +122,29 @@ class CrossStageSafety extends TreeMapWithStages {
       val targs2 = targs.map(targ => TypeTree(healType(quote.fun.srcPos)(stripAnnotsDeep(targ.tpe))))
       cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), body2 :: Nil)
     else
-      val quotes = quote.args.mapConserve(transform)
-      body.tpe match
-        case tp @ TypeRef(x: TermRef, _) if tp.symbol == defn.QuotedType_splice =>
-          // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
-          ref(x)
+      object DirectTypeOfRef:
+        def unapply(body: Tree): Option[Tree] =
+          body.tpe match
+            case tp @ TypeRef(x: TermRef, _) if tp.symbol == defn.QuotedType_splice =>
+              // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
+              Some(ref(x).withSpan(quote.span))
+            case _ =>
+              body2 match
+                case Block(List(tdef: TypeDef), tpt: TypeTree) =>
+                  tpt.tpe match
+                    case tpe: TypeRef if tpe.typeSymbol == tdef.symbol =>
+                      tdef.rhs.tpe.hiBound match
+                        case tp @ TypeRef(x: TermRef, _) if tp.symbol == defn.QuotedType_splice =>
+                          // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
+                          Some(ref(x).withSpan(quote.span))
+                        case _ => None
+                    case _ => None
+                case _ => None
+
+      body match
+        case DirectTypeOfRef(ref) => ref
         case _ =>
+          val quotes = quote.args.mapConserve(transform)
           // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
           val TypeApply(fun, _) = quote.fun: @unchecked
           cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body2 :: Nil), quotes)
