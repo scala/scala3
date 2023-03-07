@@ -2433,11 +2433,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree = {
-    if (!sym.info.exists) { // it's a discarded synthetic case class method, drop it
-      assert(sym.is(Synthetic) && desugar.isRetractableCaseClassMethodName(sym.name))
+    def canBeInvalidated(sym: Symbol): Boolean =
+      sym.is(Synthetic)
+      && (desugar.isRetractableCaseClassMethodName(sym.name) ||
+        (sym.isConstructor && sym.owner.derivesFrom(defn.JavaRecordClass)))
+
+    if !sym.info.exists then
+      // it's a discarded method (synthetic case class method or synthetic java record constructor), drop it
+      assert(canBeInvalidated(sym))
       sym.owner.info.decls.openForMutations.unlink(sym)
       return EmptyTree
-    }
+
     // TODO: - Remove this when `scala.language.experimental.erasedDefinitions` is no longer experimental.
     //       - Modify signature to `erased def erasedValue[T]: T`
     if sym.eq(defn.Compiletime_erasedValue) then

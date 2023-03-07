@@ -21,8 +21,7 @@ import reporting._
 import dotty.tools.dotc.util.SourceFile
 import util.Spans._
 
-import scala.collection.mutable.ListBuffer
-import scala.collection.immutable.ListMap
+import scala.collection.mutable.{ListBuffer, LinkedHashMap}
 
 object JavaParsers {
 
@@ -839,7 +838,7 @@ object JavaParsers {
 
       // We need to generate accessors for every param, if no method with the same name is already defined
 
-      var fieldsByName = header.map(v => (v.name, (v.tpt, v.mods.annotations))).to(ListMap)
+      var fieldsByName = header.map(v => (v.name, (v.tpt, v.mods.annotations))).to(LinkedHashMap)
 
       for case DefDef(name, paramss, _, _) <- body
       if paramss.isEmpty && fieldsByName.contains(name)
@@ -855,7 +854,8 @@ object JavaParsers {
 
       // generate the canonical constructor
       val canonicalConstructor =
-        DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(header)), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined, mods.privateWithin))
+        DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(header)), TypeTree(), EmptyTree)
+          .withMods(Modifiers(Flags.JavaDefined | Flags.Synthetic, mods.privateWithin))
 
       // return the trees
       val recordTypeDef = atSpan(start, nameOffset) {
@@ -866,7 +866,7 @@ object JavaParsers {
             tparams = tparams,
             true
           )
-        )
+        ).withMods(mods)
       }
       addCompanionObject(statics, recordTypeDef)
     end recordDecl

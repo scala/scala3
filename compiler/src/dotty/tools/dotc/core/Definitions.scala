@@ -688,6 +688,7 @@ class Definitions {
   @tu lazy val JavaCalendarClass: ClassSymbol = requiredClass("java.util.Calendar")
   @tu lazy val JavaDateClass: ClassSymbol = requiredClass("java.util.Date")
   @tu lazy val JavaFormattableClass: ClassSymbol = requiredClass("java.util.Formattable")
+  @tu lazy val JavaRecordClass: Symbol = getClassIfDefined("java.lang.Record")
 
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
