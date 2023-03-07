@@ -17,14 +17,14 @@ import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.SrcPos
 
-/** Checks that the Phase Consistency Principle (PCP) holds and heals types.
+/** Checks that staging level consistency holds and heals staged types .
  *
- *  Local term references are phase consistent if and only if they are used at the same level as their definition.
+ *  Local term references are level consistent if and only if they are used at the same level as their definition.
  *
  *  Local type references can be used at the level of their definition or lower. If used used at a higher level,
  *  it will be healed if possible, otherwise it is inconsistent.
  *
- *  Type healing consists in transforming a phase inconsistent type `T` into `summon[Type[T]].Underlying`.
+ *  Type healing consists in transforming a level inconsistent type `T` into `summon[Type[T]].Underlying`.
  *
  *  As references to types do not necessarily have an associated tree it is not always possible to replace the types directly.
  *  Instead we always generate a type alias for it and place it at the start of the surrounding quote. This also avoids duplication.
@@ -43,7 +43,7 @@ import dotty.tools.dotc.util.SrcPos
  *     }
  *
  */
-class PCPCheckAndHeal extends TreeMapWithStages {
+class CrossStageSafety extends TreeMapWithStages {
   import tpd._
 
   private val InAnnotation = Property.Key[Unit]()
@@ -97,7 +97,7 @@ class PCPCheckAndHeal extends TreeMapWithStages {
         super.transform(tree)
     }
 
-  /** Transform quoted trees while maintaining phase correctness */
+  /** Transform quoted trees while maintaining level correctness */
   override protected def transformQuotation(body: Tree, quote: Apply)(using Context): Tree = {
     val taggedTypes = new QuoteTypeTags(quote.span)
 

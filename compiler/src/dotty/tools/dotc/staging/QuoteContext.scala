@@ -4,7 +4,6 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.staging.PCPCheckAndHeal
 import dotty.tools.dotc.staging.StagingLevel.*
 
 object QuoteContext {
