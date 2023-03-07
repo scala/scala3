@@ -854,7 +854,8 @@ object JavaParsers {
         ).toList
 
       // generate the canonical constructor
-      val canonicalConstructor = makeConstructor(header, tparams)
+      val canonicalConstructor =
+        DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(header)), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined, mods.privateWithin))
 
       // return the trees
       val recordTypeDef = atSpan(start, nameOffset) {
@@ -863,7 +864,7 @@ object JavaParsers {
             parents = superclass :: interfaces,
             stats = canonicalConstructor :: accessors ::: body,
             tparams = tparams,
-            false
+            true
           )
         )
       }

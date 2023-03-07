@@ -3589,7 +3589,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     adapt(tree, pt, ctx.typerState.ownedVars)
 
   private def adapt1(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
-    assert(pt.exists && !pt.isInstanceOf[ExprType] || ctx.reporter.errorsReported)
+    assert(pt.exists && !pt.isInstanceOf[ExprType] || ctx.reporter.errorsReported, i"tree: $tree, pt: $pt")
     def methodStr = err.refStr(methPart(tree).tpe)
 
     def readapt(tree: Tree)(using Context) = adapt(tree, pt, locked)
