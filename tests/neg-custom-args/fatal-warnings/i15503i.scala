@@ -165,3 +165,68 @@ package foo.test.i16925:
       i <- 1 to 2 if true
       _ = println(i) // OK
     } yield ()
+
+package foo.test.i16863a:
+  import scala.quoted.*
+  def fn(using Quotes) =
+    val x = Expr(1)
+    '{ $x + 2 } // OK
+
+package foo.test.i16863b:
+  import scala.quoted.*
+  def fn[A](using Quotes, Type[A]) = // OK
+    val numeric = Expr.summon[Numeric[A]].getOrElse(???)
+    '{ $numeric.fromInt(3) } // OK
+
+package foo.test.i16863c:
+  import scala.quoted.*
+  def fn[A](expr: Expr[Any])(using Quotes) =
+    val imp = expr match
+      case '{ ${ _ }: a } => Expr.summon[Numeric[a]] // OK
+    println(imp)
+
+package foo.test.i16863d:
+  import scala.quoted.*
+  import scala.compiletime.asMatchable // OK
+  def fn[A](using Quotes, Type[A]) =
+    import quotes.reflect.*
+    val imp = TypeRepr.of[A].widen.asMatchable match
+      case Refinement(_,_,_) => ()
+    println(imp)
+
+package foo.test.i16679a:
+  object myPackage:
+    trait CaseClassName[A]:
+      def name: String
+    object CaseClassName:
+      trait CaseClassByStringName[A] extends CaseClassName[A]
+      import scala.deriving.Mirror
+      object CaseClassByStringName:
+        inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassByStringName[A] =
+          new CaseClassByStringName[A]:
+            def name: String = A.toString
+
+  object secondPackage:
+    import myPackage.CaseClassName // OK
+    case class CoolClass(i: Int) derives CaseClassName.CaseClassByStringName
+    println(summon[CaseClassName[CoolClass]].name)
+
+package foo.test.i16679b:
+  object myPackage:
+    trait CaseClassName[A]:
+      def name: String
+
+    object CaseClassName:
+      import scala.deriving.Mirror
+      inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassName[A] =
+        new CaseClassName[A]:
+          def name: String = A.toString
+
+  object Foo:
+    given x: myPackage.CaseClassName[secondPackage.CoolClass] = null
+
+  object secondPackage:
+    import myPackage.CaseClassName // OK
+    import Foo.x
+    case class CoolClass(i: Int)
+    println(summon[myPackage.CaseClassName[CoolClass]])
