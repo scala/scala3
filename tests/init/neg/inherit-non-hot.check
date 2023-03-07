@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/inherit-non-hot.scala:6:32 --------------------------------------------------------------------
 6 |            if b == null then b = new B(this) // error
   |                              ^^^^^^^^^^^^^^^
-  |The RHS of reassignment must be transitively initialized (Hot). It was found to be an initialized (Warm) object of type class B{ outer = a transitively initialized (Hot) object, args = (an uninitialized (Cold) object) }.  Calling trace:
+  |The RHS of reassignment must be transitively initialized (Hot). It was found to be an initialized (Warm) object of type (class B) { outer = a transitively initialized (Hot) object, args = (an uninitialized (Cold) object) }.  Calling trace:
   |-> class C extends A {	[ inherit-non-hot.scala:15 ]
   |   ^
   |-> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
