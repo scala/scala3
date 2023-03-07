@@ -1,3 +1,5 @@
+import language.experimental.relaxedExtensionImports
+
 object One:
   extension (s: String)
     def wow: Unit = println(s)

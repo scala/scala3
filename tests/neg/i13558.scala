@@ -1,5 +1,4 @@
 package testcode
-import language.experimental.relaxedExtensionImports
 
 class A
 
@@ -21,12 +20,12 @@ object Main {
     import ExtensionB._
     import ExtensionA._
     val a = A()
-    println(a.id) // now ok
+    println(a.id) // error
   }
   def main2(args: Array[String]): Unit = {
     import ExtensionA._
     import ExtensionB._
     val a = A()
-    println(a.id) // now ok
+    println(a.id) // error
   }
 }

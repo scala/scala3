@@ -252,7 +252,9 @@ The following two rewritings are tried in order:
     If only one import leads to an expansion that typechecks without errors, pick
     that expansion. If there are several such imports, but only one import which is
     not a wildcard import, pick the expansion from that import. Otherwise, report
-    an ambiguous reference error.    
+    an ambiguous reference error.
+
+    **Note**: This relaxation is currently enabled only under the `experimental.relaxedExtensionImports` language import.
 
  2. If the first rewriting does not typecheck with expected type `T`,
     and there is an extension method `m` in some eligible object `o`, the selection is rewritten to `o.m[Ts](e)`. An object `o` is _eligible_ if
