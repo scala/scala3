@@ -655,6 +655,11 @@ object TreeChecker {
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
       val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt): @unchecked
 
+      // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
+      // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
+      for arg <- args do
+        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole type args but got: " + arg.tpe)
+
       // Check result type of the hole
       if isTermHole then assert(tpt.typeOpt <:< pt)
       else assert(tpt.typeOpt =:= pt)
