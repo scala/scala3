@@ -151,6 +151,7 @@ object TypeTestsCasts {
             // always false test warnings are emitted elsewhere
             X.classSymbol.exists && P.classSymbol.exists &&
               !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass)
+            || X.classSymbol.isOneOf(FinalOrSealed)
             || typeArgsTrivial(X, tpe)
             ||| i"its type arguments can't be determined from $X"
         }
