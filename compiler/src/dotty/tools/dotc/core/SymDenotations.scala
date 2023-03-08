@@ -2226,13 +2226,12 @@ object SymDenotations {
             def computeApplied = {
               btrCache(tp) = NoPrefix
               val baseTp =
-                if (tycon.typeSymbol eq symbol) tp
-                else (tycon.typeParams: @unchecked) match {
+                if (tycon.typeSymbol eq symbol) && !tycon.isLambdaSub then tp
+                else (tycon.typeParams: @unchecked) match
                   case LambdaParam(_, _) :: _ =>
                     recur(tp.superType)
                   case tparams: List[Symbol @unchecked] =>
                     recur(tycon).substApprox(tparams, args)
-                }
               record(tp, baseTp)
               baseTp
             }
