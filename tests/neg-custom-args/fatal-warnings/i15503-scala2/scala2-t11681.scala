@@ -100,9 +100,9 @@ trait Anonymous {
 trait Context[A]
 trait Implicits {
   def f[A](implicit ctx: Context[A]) = answer // error
-  def g[A: Context] = answer // error
+  def g[A: Context] = answer // OK
 }
-class Bound[A: Context] // error
+class Bound[A: Context] // OK
 object Answers {
   def answer: Int = 42
 }
