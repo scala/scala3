@@ -1,4 +1,4 @@
--- [E057] Type Mismatch Error: tests/neg-custom-args/i11637.scala:11:33 ------------------------------------------------
+-- [E057] Type Mismatch Error: tests/neg-custom-args/explain/i11637.scala:11:33 ----------------------------------------
 11 |  var h = new HKT3_1[FunctorImpl]();  // error // error
    |                                 ^
    |       Type argument test2.FunctorImpl does not conform to upper bound [Generic2[T <: String] <: Set[T]] =>> Any
@@ -26,7 +26,7 @@
    |
    | The tests were made under the empty constraint
     --------------------------------------------------------------------------------------------------------------------
--- [E057] Type Mismatch Error: tests/neg-custom-args/i11637.scala:11:21 ------------------------------------------------
+-- [E057] Type Mismatch Error: tests/neg-custom-args/explain/i11637.scala:11:21 ----------------------------------------
 11 |  var h = new HKT3_1[FunctorImpl]();  // error // error
    |                     ^
    |       Type argument test2.FunctorImpl does not conform to upper bound [Generic2[T <: String] <: Set[T]] =>> Any
