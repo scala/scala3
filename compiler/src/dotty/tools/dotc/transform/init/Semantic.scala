@@ -67,7 +67,7 @@ object Semantic:
         "the original object of type (" + klass.show + ") where initialization checking started"
       case Warm(klass, outer, ctor, args) =>
         val argsText = if args.nonEmpty then ", args = " + args.map(_.show).mkString("(", ", ", ")") else ""
-        "an initialized (Warm) object of type (" + klass.show + ") { outer = " + outer.show + argsText + " }"
+        "a non-transitively initialized (Warm) object of type (" + klass.show + ") { outer = " + outer.show + argsText + " }"
       case Fun(expr, thisV, klass) =>
         "a function where \"this\" is (" + thisV.show + ") and the function owner is an object of type (" + klass.show + ")"
       case RefSet(values) =>
@@ -472,7 +472,7 @@ object Semantic:
     def widenArg: Contextual[Value] =
       a match
       case _: Ref | _: Fun =>
-        val hasError = Reporter.hasErrors { a.promote("Argument cannot be proven to be transitively initialized (Hot)") }
+        val hasError = Reporter.hasErrors { a.promote("Argument is not provably transitively initialized (Hot)") }
         if hasError then Cold else Hot
 
       case RefSet(refs) =>
@@ -710,7 +710,7 @@ object Semantic:
               promoteArgs()
               // try promoting the receiver as last resort
               val hasErrors = Reporter.hasErrors {
-                ref.promote(ref.show + " has no source code and could not be proven to be transitively initialized (Hot).")
+                ref.promote(ref.show + " has no source code and is not provably transitively initialized (Hot).")
               }
               if hasErrors then
                 val error = CallUnknown(target)(trace)
