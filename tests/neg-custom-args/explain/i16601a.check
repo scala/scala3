@@ -1,4 +1,4 @@
--- [E042] Type Error: tests/neg-custom-args/i16601a.scala:1:27 ---------------------------------------------------------
+-- [E042] Type Error: tests/neg-custom-args/explain/i16601a.scala:1:27 -------------------------------------------------
 1 |@main def Test: Unit = new concurrent.ExecutionContext  // error
   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |                           ExecutionContext is a trait; it cannot be instantiated
