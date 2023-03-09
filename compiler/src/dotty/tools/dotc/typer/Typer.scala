@@ -29,7 +29,7 @@ import Inferencing._
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
-import inlines.{Inlines, PrepareInlineable}
+import inlines.{Inliner, Inlines, PrepareInlineable}
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
@@ -2486,7 +2486,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if sym.isScala2Macro then typedScala2MacroBody(ddef.rhs)(using rhsCtx)
       else typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(using rhsCtx))
 
-    if sym.isInlineMethod || (sym.is(Method) && sym.owner.isAllOf(Trait | Inline)) then
+    if sym.isInlineMethod then
       if StagingLevel.level > 0 then
         report.error("inline def cannot be within quotes", sym.sourcePos)
       if sym.is(Given)
@@ -2650,72 +2650,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
     }
 
-    def generateInlineTraitsDefs(parents: List[Tree]): List[Tree] = {
-      def rhs(oldDefSym: Symbol, newDefSym: Symbol, argss: List[List[Tree]])(using Context) =
-        val sup = Super(This(newDefSym.owner.asClass), oldDefSym.owner.name.asTypeName)
-        Inlines.inlineCall(sup.select(oldDefSym).appliedToArgss(argss).withSpan(newDefSym.span))
-
-      def isInlineable(decl: Symbol): Boolean = !decl.isConstructor && !decl.isType
-
-      type ParamsToArgs = Map[TypeRef, Type]
-
-      def mapConstructorArgss(parent: Tree, typeParamSymss: List[List[Symbol]], termParamSymss: List[List[Symbol]]): ParamsToArgs =
-        @tailrec def rec(par: Tree, typeParamss: List[List[Symbol]], termParamss: List[List[Symbol]], acc: ParamsToArgs): ParamsToArgs =
-          (par, typeParamss, termParamss) match {
-            case (Ident(_), Nil, Nil) =>
-              acc
-            case (AppliedTypeTree(tree, typeArgs), types :: typeSymss, _) =>
-              tree.tpe.dealias match {
-                case tr: TypeRef =>
-                  val typeRefParams = types.map(param => TypeRef(new ThisType(tr) {}, param))
-                  val typesToTerms = typeRefParams.zip(typeArgs.map(_.tpe.dealias))
-                  rec(tree, typeSymss, termParamss, acc ++ typesToTerms)
-                case _ =>
-                  ???
-              }
-            case tup =>
-              ???
-          }
-
-        rec(parent, typeParamSymss, termParamSymss, Map.empty)
-      end mapConstructorArgss
-
-      val inlineParents =
-        parents.map(parent => parent -> parent.tpe.dealias.typeSymbol).filter((_, parentSym) => parentSym.isAllOf(Inline)).toMap
-      val classSyms =
-        inlineParents.map((parent, parentSym) => {
-          val parentDecls = parentSym.asClass.info.decls.toList
-          val inlineableDefs = parentDecls.filter(isInlineable)
-          // Using List[List[TypeSymbol]] allows for potential future type interweaving for class-like trees
-          val parentTypeParamSymss = parentSym.asClass.info.classSymbol.typeParams match {
-            case Nil => Nil
-            case l => List(l)
-          }
-          val constrParamsToArgs: ParamsToArgs = mapConstructorArgss(parent, parentTypeParamSymss, Nil)
-          parent -> (parentSym, inlineableDefs, constrParamsToArgs)
-        }).toMap
-      val inlinedDefs = classSyms.flatMap{ case (parent, (parentSym, defSyms, paramsToArgs)) => defSyms.map(sym => {
-        val inlineInfoMap = new TypeMap {
-          def apply(tp: Type): Type = tp match {
-              case tr: TypeRef => paramsToArgs.getOrElse(tr, mapOver(tp))
-              case _ => mapOver(tp)
-          }
-        }
-        val newSym = newSymbol(
-          cls,
-          sym.name,
-          sym.flags | Override,
-          inlineInfoMap.mapOver(sym.info),
-          sym.privateWithin,
-          cls.coord
-        ).asTerm.entered
-
-        DefDef(newSym, argss => rhs(sym, newSym, argss)(using ctx.withOwner(newSym)))
-      })}
-
-      inlinedDefs.toList
-    }
-
     ensureCorrectSuperClass()
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
@@ -2733,8 +2667,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       cdef.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
-      val inlineTraitDefs = if ctx.isAfterTyper then Nil else generateInlineTraitsDefs(parents1)
+      val inlineTraitDefs =
+        if ctx.isAfterTyper then Nil
+        else parents1.flatMap(Inlines.inlineParentTrait)
       val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1) ::: inlineTraitDefs
+
+      if !ctx.isAfterTyper && cls.isInlineTrait then
+        def isConstructorType(t: Tree) =
+          t.isInstanceOf[TypeDef] && cls.typeParams.contains(t.symbol)
+        val inlineTraitMembers = Block(body1.filter(t => !isConstructorType(t)), unitLiteral)
+        PrepareInlineable.registerInlineInfo(cls, inlineTraitMembers)
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)

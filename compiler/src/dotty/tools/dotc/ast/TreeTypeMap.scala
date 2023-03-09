@@ -124,6 +124,8 @@ class TreeTypeMap(
         case ddef @ DefDef(name, paramss, tpt, _) =>
           val (tmap1, paramss1) = transformAllParamss(paramss)
           val res = cpy.DefDef(ddef)(name, paramss1, tmap1.transform(tpt), tmap1.transform(ddef.rhs))
+          if tree.symbol.owner.isInlineTrait then
+            res.symbol.info = mapType(res.symbol.info)  // FIXME inline traits' info doesn't get mapped
           res.symbol.setParamssFromDefs(paramss1)
           res.symbol.transformAnnotations {
             case ann: BodyAnnotation => ann.derivedAnnotation(transform(ann.tree))

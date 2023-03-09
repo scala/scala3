@@ -4,7 +4,7 @@ package inlines
 
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
-import StdNames.tpnme
+import StdNames.{str, nme, tpnme}
 import transform.SymUtils._
 import typer.*
 import NameKinds.BodyRetainerName
@@ -32,7 +32,7 @@ object Inlines:
   /** `sym` is an inline method with a known body to inline.
    */
   def hasBodyToInline(sym: SymDenotation)(using Context): Boolean =
-    (sym.isInlineMethod || sym.owner.isAllOf(Trait | Inline)) && sym.hasAnnotation(defn.BodyAnnot)
+    (sym.isInlineMethod || sym.isInlineTrait) && sym.hasAnnotation(defn.BodyAnnot)
 
   /** The body to inline for method `sym`, or `EmptyTree` if none exists.
    *  @pre  hasBodyToInline(sym)
@@ -168,6 +168,11 @@ object Inlines:
         // reset so that further inline calls can be expanded
     tree2
   end inlineCall
+
+  def inlineParentTrait(parent: tpd.Tree)(using Context): List[Tree] =
+    val traitSym = if parent.symbol.isConstructor then parent.symbol.owner else parent.symbol
+    if traitSym.isInlineTrait then InlineParentTrait(parent, traitSym).expandDefs()
+    else Nil
 
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
    *  inline depth is exceeded.
@@ -459,4 +464,13 @@ object Inlines:
           // the opaque type itself. An example is in pos/opaque-inline1.scala.
     end expand
   end InlineCall
+
+  private class InlineParentTrait(parent: tpd.Tree, parentSym: Symbol)(using Context) extends Inliner(parent):
+    import tpd._
+    import Inlines.*
+
+    def expandDefs(): List[Tree] =
+      val Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
+      stats.map(stat => inlined(stat)._2)
+  end InlineParentTrait
 end Inlines
