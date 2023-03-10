@@ -157,13 +157,18 @@ class PickleQuotes extends MacroTransform {
         override def apply(tp: Type): Type = tp match
           case tp: TypeRef if tp.typeSymbol.isTypeSplice =>
             apply(tp.dealias)
-          case tp @ TypeRef(pre, _) if pre == NoPrefix || pre.termSymbol.isLocal =>
+          case tp @ TypeRef(pre, _) if isLocalPath(pre) =>
             val hiBound = tp.typeSymbol.info match
               case info: ClassInfo => info.parents.reduce(_ & _)
               case info => info.hiBound
             apply(hiBound)
           case tp =>
             mapOver(tp)
+
+        private def isLocalPath(tp: Type): Boolean = tp match
+          case NoPrefix => true
+          case tp: TermRef if !tp.symbol.is(Package) => isLocalPath(tp.prefix)
+          case tp => false
       }
 
       /** Remove references to local types that will not be defined in this quote */
