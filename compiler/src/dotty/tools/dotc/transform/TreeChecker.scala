@@ -678,7 +678,7 @@ object TreeChecker {
         defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =
         defn.FunctionOf(argQuotedTypes, contextualResult)
-      assert(content.typeOpt =:= expectedContentType)
+      assert(content.typeOpt =:= expectedContentType, i"expected content of the hole to be ${expectedContentType} but got ${content.typeOpt}")
 
       tree1
     }
