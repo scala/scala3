@@ -246,7 +246,7 @@ class Splicing extends MacroTransform:
         if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
           val newContent = capturedPartTypes(tpt)
           newContent match
-            case block: Block => 
+            case block: Block =>
               inContext(ctx.withSource(tree.source)) {
                 Apply(TypeApply(typeof, List(newContent)), List(quotes)).withSpan(tree.span)
               }
@@ -342,7 +342,7 @@ class Splicing extends MacroTransform:
       val bindingSym = refBindingMap.getOrElseUpdate(tree.symbol, (tree, newBinding))._2
       ref(bindingSym)
 
-    private def newQuotedTypeClassBinding(tpe: Type)(using Context) = 
+    private def newQuotedTypeClassBinding(tpe: Type)(using Context) =
       newSymbol(
         spliceOwner,
         UniqueName.fresh(nme.Type).toTermName,
@@ -361,7 +361,7 @@ class Splicing extends MacroTransform:
       healedTypes = PCPCheckAndHeal.QuoteTypeTags(tpt.span)
       val capturePartTypes = new TypeMap {
         def apply(tp: Type) = tp match {
-          case typeRef @ TypeRef(prefix, _) if isCaptured(prefix.typeSymbol) || isCaptured(prefix.termSymbol) =>
+          case typeRef: TypeRef if containsCapturedType(typeRef) =>
             val termRef = refBindingMap
               .getOrElseUpdate(typeRef.symbol, (TypeTree(typeRef), newQuotedTypeClassBinding(typeRef)))._2.termRef
             val tagRef = healedTypes.nn.getTagRef(termRef)
@@ -376,7 +376,7 @@ class Splicing extends MacroTransform:
       tpt match
         case block: Block =>
           cpy.Block(block)(newHealedTypes ::: block.stats, TypeTree(captured))
-        case _ => 
+        case _ =>
           if newHealedTypes.nonEmpty then
             cpy.Block(tpt)(newHealedTypes, TypeTree(captured))
           else
