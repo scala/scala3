@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Decorators.{em, i}
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
-import dotty.tools.dotc.{ast, report}
+import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.{Property, SrcPos}
@@ -368,7 +368,7 @@ object CheckUnused:
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
-      if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum then
+      if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum && !isTransparentAndInline(imp) then
         impInScope.top += imp
         unusedImport ++= imp.selectors.filter { s =>
           !shouldSelectorBeReported(imp, s) && !isImportExclusion(s)
@@ -431,19 +431,6 @@ object CheckUnused:
           true // a matching import exists so the symbol won't be kept for outer scope
         else
           exists
-      }
-
-      // not report unused transparent inline imports
-      for {
-        imp <- imports
-        sel <- imp.selectors
-      } {
-        if unusedImport.contains(sel) then
-          val tpd.Import(qual, _) = imp
-          val importedMembers = qual.tpe.member(sel.name).alternatives.map(_.symbol)
-          val isTransparentAndInline = importedMembers.exists(s => s.is(Transparent) && s.is(Inline))
-          if isTransparentAndInline then
-            unusedImport -= sel
       }
 
       // if there's an outer scope
@@ -520,6 +507,18 @@ object CheckUnused:
     end getUnused
     //============================ HELPERS ====================================
 
+
+    /**
+     * Checks if import selects a def that is transparent and inline
+     */
+    private def isTransparentAndInline(imp: tpd.Import)(using Context): Boolean =
+      (for {
+        sel <- imp.selectors
+      } yield {
+        val qual = imp.expr
+        val importedMembers = qual.tpe.member(sel.name).alternatives.map(_.symbol)
+        importedMembers.exists(s => s.is(Transparent) && s.is(Inline))
+      }).exists(identity)
     /**
      * Heuristic to detect synthetic suffixes in names of symbols
      */

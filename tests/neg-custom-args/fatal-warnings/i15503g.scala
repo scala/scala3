@@ -5,8 +5,8 @@ val default_int = 1
 
 def f1(a: Int) = a // OK
 def f2(a: Int) = default_int // error
-def f3(a: Int)(using Int) = a // error
-def f4(a: Int)(using Int) = default_int // error // error
+def f3(a: Int)(using Int) = a // OK
+def f4(a: Int)(using Int) = default_int // error
 def f6(a: Int)(using Int) = summon[Int] // error
 def f7(a: Int)(using Int) = summon[Int] + a // OK
 
