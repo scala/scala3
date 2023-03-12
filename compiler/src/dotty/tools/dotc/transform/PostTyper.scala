@@ -157,14 +157,20 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           checkInferredWellFormed(tree.tpt)
           if sym.is(Method) then
             if sym.isSetter then
-              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
+            if sym.isOneOf(GivenOrImplicit) then
+              val cls = sym.info.finalResultType.classSymbol
+              if cls.isOneOf(GivenOrImplicit) then
+                sym.updateAnnotationsAfter(thisPhase,
+                  atPhase(thisPhase)(cls.annotationsCarrying(Set(defn.CompanionMethodMetaAnnot)))
+                    ++ sym.annotations)
           else
             if sym.is(Param) then
-              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
             else if sym.is(ParamAccessor) then
-              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
             else
-              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature)
                // Allow scala.reflect.materializeClassTag to be able to compile scala/reflect/package.scala
@@ -388,6 +394,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             VarianceChecker.check(tree)
             annotateExperimental(sym)
             checkMacroAnnotation(sym)
+            if sym.isOneOf(GivenOrImplicit) then
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.CompanionClassMetaAnnot), orNoneOf = defn.MetaAnnots)
             tree.rhs match
               case impl: Template =>
                 for parent <- impl.parents do
