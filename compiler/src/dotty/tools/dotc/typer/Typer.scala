@@ -2511,6 +2511,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           checkSimpleKinded(parent)
             // allow missing type parameters if there are implicit arguments to pass
             // since we can infer type arguments from them
+        val constr = psym.primaryConstructor
+        if constr.exists then
+          ensureAccessible(constr.termRef, superAccess = true, tree.srcPos)
       else
         checkParentCall(result, cls)
       if cls is Case then
