@@ -283,17 +283,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           val ctx = comparerContext
           given Context = ctx // optimization for performance
           val info2 = tp2.info
+
+          /** Does `tp2` have a singleton type or NoPrefix as a prefix?
+           *  If that's not the case, following an alias via asSeenFrom could be lossy
+           *  so we should not conclude `false` if comparing aliases fails.
+           *  See pos/i17064.scala for a test case
+           */
+          def hasPrecisePrefix(tp: NamedType) =
+            tp.prefix.isSingleton || tp.prefix == NoPrefix
+
           info2 match
             case info2: TypeAlias =>
               if recur(tp1, info2.alias) then return true
-              if tp2.asInstanceOf[TypeRef].canDropAlias then return false
+              if tp2.asInstanceOf[TypeRef].canDropAlias && hasPrecisePrefix(tp2) then
+                return false
             case _ =>
           tp1 match
             case tp1: NamedType =>
               tp1.info match {
                 case info1: TypeAlias =>
                   if recur(info1.alias, tp2) then return true
-                  if tp1.asInstanceOf[TypeRef].canDropAlias then return false
+                  if tp1.asInstanceOf[TypeRef].canDropAlias && hasPrecisePrefix(tp2) then
+                    return false
                 case _ =>
               }
               val sym2 = tp2.symbol
@@ -302,7 +313,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // For convenience we want X$ <:< X.type
                 // This is safe because X$ self-type is X.type
                 sym1 = sym1.companionModule
-              if ((sym1 ne NoSymbol) && (sym1 eq sym2))
+              if (sym1 ne NoSymbol) && (sym1 eq sym2) then
                 ctx.erasedTypes ||
                 sym1.isStaticOwner ||
                 isSubPrefix(tp1.prefix, tp2.prefix) ||
