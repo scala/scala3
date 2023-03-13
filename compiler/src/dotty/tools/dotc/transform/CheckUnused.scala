@@ -15,19 +15,14 @@ import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.{Property, SrcPos}
 import dotty.tools.dotc.core.Mode
-import dotty.tools.dotc.core.Types.TypeTraverser
-import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.core.Types.AnnotatedType
+import dotty.tools.dotc.core.Types.{AnnotatedType, ConstantType, NoType, TermRef, Type, TypeTraverser}
 import dotty.tools.dotc.core.Flags.flagsString
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Definitions
-import dotty.tools.dotc.core.Types.ConstantType
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
-import dotty.tools.dotc.core.Types.TermRef
-import dotty.tools.dotc.core.Types.NameFilter
 import dotty.tools.dotc.core.Symbols.Symbol
 
 
@@ -82,6 +77,12 @@ class CheckUnused extends MiniPhase:
 
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
     if tree.symbol.exists then
+      val prefixes = LazyList.iterate(tree.typeOpt.normalizedPrefix)(_.normalizedPrefix).takeWhile(_ != NoType)
+      for {
+        prefix <- prefixes
+      } {
+        unusedDataApply(_.registerUsed(prefix.classSymbol, None))
+      }
       unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
     else if tree.hasType then
       unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
@@ -409,7 +410,6 @@ object CheckUnused:
       val kept = used.filterNot { t =>
         val (sym, isAccessible, optName) = t
         // keep the symbol for outer scope, if it matches **no** import
-
         // This is the first matching wildcard selector
         var selWildCard: Option[ImportSelector] = None
 

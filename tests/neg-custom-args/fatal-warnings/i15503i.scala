@@ -208,3 +208,20 @@ package foo.test.i16925:
       i <- 1 to 2 if true
       _ = println(i) // OK
     } yield ()
+
+package foo.test.i16679:
+  object myPackage:
+    trait CaseClassName[A]:
+      def name: String
+    object CaseClassName:
+      trait CaseClassByStringName[A] extends CaseClassName[A]
+      import scala.deriving.Mirror
+      object CaseClassByStringName:
+        inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassByStringName[A] =
+          new CaseClassByStringName[A]:
+            def name: String = A.toString
+
+  object secondPackage:
+    import myPackage.CaseClassName // OK
+    case class CoolClass(i: Int) derives CaseClassName.CaseClassByStringName
+    println(summon[CaseClassName[CoolClass]].name)
