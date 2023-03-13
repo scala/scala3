@@ -47,7 +47,7 @@ import dotty.tools.dotc.util.Property
  *     }
  *
  */
-class PCPCheckAndHeal extends TreeMapWithStages with Checking {
+class PCPCheckAndHeal extends TreeMapWithStages {
   import tpd._
 
   private val InAnnotation = Property.Key[Unit]()
@@ -256,7 +256,7 @@ class PCPCheckAndHeal extends TreeMapWithStages with Checking {
     tag.tpe match
 
       case tp: TermRef =>
-        checkStable(tp, pos, "type witness")
+        ctx.typer.checkStable(tp, pos, "type witness")
         getQuoteTypeTags.getTagRef(tp)
       case _: SearchFailureType =>
         report.error(
