@@ -21,7 +21,7 @@ import transform.{AccessProxies, PCPCheckAndHeal, Splicer}
 import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
-import dotty.tools.dotc.transform.TreeMapWithStages._
+import dotty.tools.dotc.staging.StagingLevel.freshStagingLevelContext
 
 object PrepareInlineable {
   import tpd._
@@ -293,7 +293,7 @@ object PrepareInlineable {
           if (code.symbol.flags.is(Inline))
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)
-          new PCPCheckAndHeal(freshStagingContext).transform(body) // Ignore output, only check PCP
+          (new PCPCheckAndHeal).transform(body)(using freshStagingLevelContext) // Ignore output, only check PCP
         case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
         case Block(Nil, expr) => checkMacro(expr)
         case Typed(expr, _) => checkMacro(expr)

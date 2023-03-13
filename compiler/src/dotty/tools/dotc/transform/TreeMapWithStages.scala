@@ -8,9 +8,9 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.util.Property
+import dotty.tools.dotc.staging.StagingLevel
 
 import scala.collection.mutable
-import scala.annotation.constructorOnly
 
 /** The main transformer class
  *  @param  level      the current level, where quotes add one and splices subtract one level.
@@ -18,22 +18,14 @@ import scala.annotation.constructorOnly
  *                     and `l == -1` is code inside a top level splice (in an inline method).
  *  @param  levels     a stacked map from symbols to the levels in which they were defined
  */
-abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMapWithImplicits {
-
+abstract class TreeMapWithStages extends TreeMapWithImplicits {
   import tpd._
-  import TreeMapWithStages._
-
-  /** A map from locally defined symbols to their definition quotation level */
-  private[this] val levelOfMap: mutable.HashMap[Symbol, Int] = ictx.property(LevelOfKey).get
 
   /** A stack of entered symbols, to be unwound after scope exit */
   private[this] var enteredSyms: List[Symbol] = Nil
 
   /** If we are inside a quote or a splice */
   private[this] var inQuoteOrSplice = false
-
-  /** The quotation level of the definition of the locally defined symbol */
-  protected def levelOf(sym: Symbol): Int = levelOfMap.getOrElse(sym, 0)
 
   /** Locally defined symbols seen so far by `StagingTransformer.transform` */
   protected def localSymbols: List[Symbol] = enteredSyms
@@ -43,8 +35,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
 
   /** Enter staging level of symbol defined by `tree` */
   private def markSymbol(sym: Symbol)(using Context): Unit =
-    if level != 0 && !levelOfMap.contains(sym) then
-      levelOfMap(sym) = level
+    if StagingLevel.markSymbol(sym) then
       enteredSyms = sym :: enteredSyms
 
   /** Enter staging level of symbol defined by `tree`, if applicable. */
@@ -79,7 +70,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
         try super.transform(tree)
         finally
           while (enteredSyms ne lastEntered) {
-            levelOfMap -= enteredSyms.head
+            StagingLevel.removeLevelOf(enteredSyms.head)
             enteredSyms = enteredSyms.tail
           }
 
@@ -149,16 +140,4 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           mapOverTree(enteredSyms)
       }
     }
-}
-
-
-object TreeMapWithStages {
-
-  /** A key to be used in a context property that caches the `levelOf` mapping */
-  private val LevelOfKey = new Property.Key[mutable.HashMap[Symbol, Int]]
-
-  /** Initial context for a StagingTransformer transformation. */
-  def freshStagingContext(using Context): Context =
-    ctx.fresh.setProperty(LevelOfKey, new mutable.HashMap[Symbol, Int])
-
 }

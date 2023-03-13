@@ -21,7 +21,7 @@ import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
-import dotty.tools.dotc.transform.TreeMapWithStages._
+import dotty.tools.dotc.staging.StagingLevel.freshStagingLevelContext
 import dotty.tools.dotc.config.ScalaRelease.*
 
 import scala.annotation.constructorOnly
@@ -77,7 +77,7 @@ class Splicing extends MacroTransform:
 
   override def run(using Context): Unit =
     if ctx.compilationUnit.needsStaging then
-      super.run(using freshStagingContext)
+      super.run(using freshStagingLevelContext)
 
   protected def newTransformer(using Context): Transformer = Level0QuoteTransformer
 
@@ -246,7 +246,7 @@ class Splicing extends MacroTransform:
         if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
           val newContent = capturedPartTypes(tpt)
           newContent match
-            case block: Block => 
+            case block: Block =>
               inContext(ctx.withSource(tree.source)) {
                 Apply(TypeApply(typeof, List(newContent)), List(quotes)).withSpan(tree.span)
               }
@@ -342,7 +342,7 @@ class Splicing extends MacroTransform:
       val bindingSym = refBindingMap.getOrElseUpdate(tree.symbol, (tree, newBinding))._2
       ref(bindingSym)
 
-    private def newQuotedTypeClassBinding(tpe: Type)(using Context) = 
+    private def newQuotedTypeClassBinding(tpe: Type)(using Context) =
       newSymbol(
         spliceOwner,
         UniqueName.fresh(nme.Type).toTermName,
@@ -376,7 +376,7 @@ class Splicing extends MacroTransform:
       tpt match
         case block: Block =>
           cpy.Block(block)(newHealedTypes ::: block.stats, TypeTree(captured))
-        case _ => 
+        case _ =>
           if newHealedTypes.nonEmpty then
             cpy.Block(tpt)(newHealedTypes, TypeTree(captured))
           else

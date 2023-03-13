@@ -17,10 +17,9 @@ import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.core.Annotations._
+import dotty.tools.dotc.staging.StagingLevel.*
 
 import dotty.tools.dotc.util.Property
-
-import scala.annotation.constructorOnly
 
 /** Checks that the Phase Consistency Principle (PCP) holds and heals types.
  *
@@ -48,7 +47,7 @@ import scala.annotation.constructorOnly
  *     }
  *
  */
-class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) with Checking {
+class PCPCheckAndHeal extends TreeMapWithStages with Checking {
   import tpd._
 
   private val InAnnotation = Property.Key[Unit]()

@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.transform.TreeMapWithStages._
+import dotty.tools.dotc.staging.StagingLevel.*
 
 
 
@@ -35,7 +35,7 @@ class Staging extends MacroTransform {
       // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
-          val checker = new PCPCheckAndHeal(freshStagingContext) {
+          val checker = new PCPCheckAndHeal {
             override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
               def symStr =
                 if (sym.is(ModuleClass)) sym.sourceModule.show
@@ -51,7 +51,7 @@ class Staging extends MacroTransform {
               tp
             }
           }
-          checker.transform(tree)
+          checker.transform(tree)(using freshStagingLevelContext)
         case _ =>
       }
 
@@ -66,11 +66,11 @@ class Staging extends MacroTransform {
     }
 
   override def run(using Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run(using freshStagingContext)
+    if (ctx.compilationUnit.needsStaging) super.run(using freshStagingLevelContext)
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
-      new PCPCheckAndHeal(ctx).transform(tree)
+      (new PCPCheckAndHeal).transform(tree)
   }
 }
 
