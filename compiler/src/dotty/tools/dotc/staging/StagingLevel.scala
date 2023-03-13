@@ -14,8 +14,23 @@ import scala.collection.mutable
 
 object StagingLevel {
 
+  /** A key to be used in a context property that tracks the staging level */
+  private val LevelKey = new Property.Key[Int]
+
   /** A key to be used in a context property that caches the `levelOf` mapping */
   private val LevelOfKey = new Property.Key[Map[Symbol, Int]]
+
+  /** All enclosing calls that are currently inlined, from innermost to outermost. */
+  def level(using Context): Int =
+    ctx.property(LevelKey).getOrElse(0)
+
+  /** Context with an incremented staging level. */
+  def quoteContext(using Context): FreshContext =
+    ctx.fresh.setProperty(LevelKey, level + 1)
+
+  /** Context with a decremented staging level. */
+  def spliceContext(using Context): FreshContext =
+    ctx.fresh.setProperty(LevelKey, level - 1)
 
   /** The quotation level of the definition of the locally defined symbol */
   def levelOf(sym: Symbol)(using Context): Int =
