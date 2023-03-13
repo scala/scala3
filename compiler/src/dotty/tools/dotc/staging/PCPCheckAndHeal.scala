@@ -59,8 +59,12 @@ class PCPCheckAndHeal extends TreeMapWithStages {
       checkAnnotations(tree)
       super.transform(tree)
     else tree match {
-
-      case _: TypeTree | _: RefTree if tree.isType =>
+      case _: TypeTree =>
+        val tp1 = transformTypeAnnotationSplices(tree.tpe)
+        val healedType = healType(tree.srcPos)(tp1)
+        if healedType == tree.tpe then tree
+        else TypeTree(healedType).withSpan(tree.span)
+      case _: RefTree if tree.isType =>
         val healedType = healType(tree.srcPos)(tree.tpe)
         if healedType == tree.tpe then tree
         else TypeTree(healedType).withSpan(tree.span)
@@ -163,6 +167,15 @@ class PCPCheckAndHeal extends TreeMapWithStages {
       ref(tagRef).withSpan(splice.span)
   }
 
+  def transformTypeAnnotationSplices(tp: Type)(using Context) = new TypeMap {
+    def apply(tp: Type): Type = tp match
+      case tp: AnnotatedType =>
+        val newAnnotTree = transform(tp.annot.tree)
+        derivedAnnotatedType(tp, apply(tp.parent), tp.annot.derivedAnnotation(newAnnotTree))
+      case _ =>
+        mapOver(tp)
+  }.apply(tp)
+
   /** Check that annotations do not contain quotes and and that splices are valid */
   private def checkAnnotations(tree: Tree)(using Context): Unit =
     tree match
@@ -198,8 +211,7 @@ class PCPCheckAndHeal extends TreeMapWithStages {
         case tp @ TermRef(NoPrefix, _) if !tp.symbol.isStatic && level > levelOf(tp.symbol) =>
           levelError(tp.symbol, tp, pos)
         case tp: AnnotatedType =>
-          val newAnnotTree = transform(tp.annot.tree)
-          derivedAnnotatedType(tp, apply(tp.parent), tp.annot.derivedAnnotation(newAnnotTree))
+          derivedAnnotatedType(tp, apply(tp.parent), tp.annot)
         case _ =>
           mapOver(tp)
 
