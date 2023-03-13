@@ -1,5 +1,5 @@
 package dotty.tools.dotc
-package transform
+package staging
 
 import dotty.tools.dotc.ast.{TreeMapWithImplicits, tpd}
 import dotty.tools.dotc.config.Printers.staging

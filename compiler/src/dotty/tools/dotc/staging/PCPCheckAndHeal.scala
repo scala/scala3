@@ -14,7 +14,6 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.transform.TreeMapWithStages
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.core.Annotations._
