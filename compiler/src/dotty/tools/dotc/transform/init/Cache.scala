@@ -85,7 +85,9 @@ class Cache[Config, Res]:
   protected given MutableTreeWrapper = new MutableTreeWrapper
 
   def get(config: Config, expr: Tree): Option[Res] =
-    current.get(config, expr)
+    val res = current.get(config, expr)
+    cacheUsed = cacheUsed || res.nonEmpty
+    res
 
   /** Evaluate an expression with cache
    *
@@ -105,9 +107,7 @@ class Cache[Config, Res]:
    */
   def cachedEval(config: Config, expr: Tree, cacheResult: Boolean, default: Res)(eval: Tree => Res): Res =
     this.get(config, expr) match
-    case Some(value) =>
-      cacheUsed = true
-      value
+    case Some(value) => value
     case None =>
       val assumeValue: Res =
         this.last.get(config, expr) match
