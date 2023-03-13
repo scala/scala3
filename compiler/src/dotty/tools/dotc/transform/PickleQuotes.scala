@@ -19,7 +19,6 @@ import scala.collection.mutable
 import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
-import dotty.tools.dotc.staging.StagingLevel.freshStagingLevelContext
 import dotty.tools.dotc.inlines.Inlines
 
 import scala.annotation.constructorOnly
@@ -93,7 +92,7 @@ class PickleQuotes extends MacroTransform {
       case _ =>
 
   override def run(using Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run(using freshStagingLevelContext)
+    if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =

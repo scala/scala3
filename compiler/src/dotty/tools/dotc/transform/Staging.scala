@@ -51,7 +51,7 @@ class Staging extends MacroTransform {
               tp
             }
           }
-          checker.transform(tree)(using freshStagingLevelContext)
+          checker.transform(tree)
         case _ =>
       }
 
@@ -66,7 +66,7 @@ class Staging extends MacroTransform {
     }
 
   override def run(using Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run(using freshStagingLevelContext)
+    if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =

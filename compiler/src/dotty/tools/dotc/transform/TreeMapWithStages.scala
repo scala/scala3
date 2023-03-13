@@ -8,41 +8,19 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.staging.StagingLevel
+import dotty.tools.dotc.staging.StagingLevel.*
 
 import scala.collection.mutable
 
-/** The main transformer class
- *  @param  level      the current level, where quotes add one and splices subtract one level.
- *                     The initial level is 0, a level `l` where `l > 0` implies code has been quoted `l` times
- *                     and `l == -1` is code inside a top level splice (in an inline method).
- *  @param  levels     a stacked map from symbols to the levels in which they were defined
- */
+/** TreeMap that keeps track of staging levels using StagingLevel. */
 abstract class TreeMapWithStages extends TreeMapWithImplicits {
   import tpd._
-
-  /** A stack of entered symbols, to be unwound after scope exit */
-  private[this] var enteredSyms: List[Symbol] = Nil
 
   /** If we are inside a quote or a splice */
   private[this] var inQuoteOrSplice = false
 
-  /** Locally defined symbols seen so far by `StagingTransformer.transform` */
-  protected def localSymbols: List[Symbol] = enteredSyms
-
   /** If we are inside a quote or a splice */
   protected def isInQuoteOrSplice: Boolean = inQuoteOrSplice
-
-  /** Enter staging level of symbol defined by `tree` */
-  private def markSymbol(sym: Symbol)(using Context): Unit =
-    if StagingLevel.markSymbol(sym) then
-      enteredSyms = sym :: enteredSyms
-
-  /** Enter staging level of symbol defined by `tree`, if applicable. */
-  private def markDef(tree: Tree)(using Context): Unit = tree match {
-    case tree: DefTree => markSymbol(tree.symbol)
-    case _ =>
-  }
 
   /** Transform the quote `quote` which contains the quoted `body`.
    *
@@ -66,14 +44,6 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
     else reporting.trace(i"StagingTransformer.transform $tree at $level", staging, show = true) {
-      def mapOverTree(lastEntered: List[Symbol]) =
-        try super.transform(tree)
-        finally
-          while (enteredSyms ne lastEntered) {
-            StagingLevel.removeLevelOf(enteredSyms.head)
-            enteredSyms = enteredSyms.tail
-          }
-
       def dropEmptyBlocks(tree: Tree): Tree = tree match {
         case Block(Nil, expr) => dropEmptyBlocks(expr)
         case _ => tree
@@ -118,26 +88,30 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           finally inQuoteOrSplice = old
 
         case Block(stats, _) =>
-          val last = enteredSyms
-          stats.foreach(markDef)
-          mapOverTree(last)
+          val defSyms = stats.collect { case defTree: DefTree => defTree.symbol }
+          super.transform(tree)(using symbolsInCurrentLevel(defSyms))
 
         case CaseDef(pat, guard, body) =>
-          val last = enteredSyms
-          tpd.patVars(pat).foreach(markSymbol)
-          mapOverTree(last)
+          super.transform(tree)(using symbolsInCurrentLevel(tpd.patVars(pat)))
 
         case (_:Import | _:Export) =>
           tree
 
         case _: Template =>
-          val last = enteredSyms
-          tree.symbol.owner.info.decls.foreach(markSymbol)
-          mapOverTree(last)
+          val decls = tree.symbol.owner.info.decls.toList
+          super.transform(tree)(using symbolsInCurrentLevel(decls))
+
+        case LambdaTypeTree(tparams, body) =>
+          super.transform(tree)(using symbolsInCurrentLevel(tparams.map(_.symbol)))
+
+        case tree: DefTree =>
+          val paramSyms = tree match
+            case tree: DefDef => tree.paramss.flatten.map(_.symbol)
+            case _ => Nil
+          super.transform(tree)(using symbolsInCurrentLevel(tree.symbol :: paramSyms))
 
         case _ =>
-          markDef(tree)
-          mapOverTree(enteredSyms)
+          super.transform(tree)
       }
     }
 }

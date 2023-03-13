@@ -13,26 +13,20 @@ import scala.collection.mutable
 object StagingLevel {
 
   /** A key to be used in a context property that caches the `levelOf` mapping */
-  private val LevelOfKey = new Property.Key[mutable.HashMap[Symbol, Int]]
-
-  /** Initial context for a StagingTransformer transformation. */
-  def freshStagingLevelContext(using Context): Context =
-    ctx.fresh.setProperty(LevelOfKey, new mutable.HashMap[Symbol, Int])
+  private val LevelOfKey = new Property.Key[Map[Symbol, Int]]
 
   /** The quotation level of the definition of the locally defined symbol */
   def levelOf(sym: Symbol)(using Context): Int =
-    ctx.property(LevelOfKey).get.getOrElse(sym, 0)
+    ctx.property(LevelOfKey) match
+      case Some(map) => map.getOrElse(sym, 0)
+      case None => 0
 
-  def removeLevelOf(sym: Symbol)(using Context): Unit =
-    val levelOfMap = ctx.property(LevelOfKey).get
-    levelOfMap -= sym
-
-  /** Enter staging level of symbol defined by `tree` */
-  def markSymbol(sym: Symbol)(using Context): Boolean =
-    val levelOfMap = ctx.property(LevelOfKey).get
-    if level != 0 && !levelOfMap.contains(sym) then
-      levelOfMap(sym) = level
-      true
+  /** Context with the current staging level set for the symbols */
+  def symbolsInCurrentLevel(syms: List[Symbol])(using Context): Context =
+    if level == 0 then ctx
     else
-      false
+      val levelOfMap = ctx.property(LevelOfKey).getOrElse(Map.empty)
+      val syms1 = syms//.filter(sym => !levelOfMap.contains(sym))
+      val newMap = syms1.foldLeft(levelOfMap)((acc, sym) => acc.updated(sym, level))
+      ctx.fresh.setProperty(LevelOfKey, newMap)
 }

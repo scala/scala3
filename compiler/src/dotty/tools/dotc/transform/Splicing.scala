@@ -21,7 +21,6 @@ import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
-import dotty.tools.dotc.staging.StagingLevel.freshStagingLevelContext
 import dotty.tools.dotc.config.ScalaRelease.*
 
 import scala.annotation.constructorOnly
@@ -77,7 +76,7 @@ class Splicing extends MacroTransform:
 
   override def run(using Context): Unit =
     if ctx.compilationUnit.needsStaging then
-      super.run(using freshStagingLevelContext)
+      super.run
 
   protected def newTransformer(using Context): Transformer = Level0QuoteTransformer
 
