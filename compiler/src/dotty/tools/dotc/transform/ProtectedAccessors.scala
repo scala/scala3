@@ -38,7 +38,7 @@ object ProtectedAccessors {
     sym.isTerm && sym.is(Protected) &&
     !sym.owner.is(Trait) && // trait methods need to be handled specially, are currently always public
     !insideBoundaryOf(sym) &&
-    !ctx.owner.enclosingClass.derivesFrom(sym.owner)
+    (sym.is(JavaDefined) || !ctx.owner.enclosingClass.derivesFrom(sym.owner))
 }
 
 class ProtectedAccessors extends MiniPhase {
