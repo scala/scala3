@@ -75,11 +75,19 @@ class Cache[Config, Res]:
    */
   protected var changed: Boolean = false
 
+  /** Whether any value in the output cache (this.current) was accessed
+   *  after being added. If no cached values are used after they are added
+   *  for the first time then another iteration of analysis is not needed.
+   */
+  protected var cacheUsed: Boolean = false
+
   /** Used to avoid allocation, its state does not matter */
   protected given MutableTreeWrapper = new MutableTreeWrapper
 
   def get(config: Config, expr: Tree): Option[Res] =
-    current.get(config, expr)
+    val res = current.get(config, expr)
+    cacheUsed = cacheUsed || res.nonEmpty
+    res
 
   /** Evaluate an expression with cache
    *
@@ -124,6 +132,8 @@ class Cache[Config, Res]:
 
   def hasChanged = changed
 
+  def isUsed = cacheUsed
+
   /** Prepare cache for the next iteration
    *
    *  1. Reset changed flag.
@@ -132,6 +142,7 @@ class Cache[Config, Res]:
    */
   def prepareForNextIteration()(using Context) =
     this.changed = false
+    this.cacheUsed = false
     this.last = this.current
     this.current = Map.empty
 end Cache

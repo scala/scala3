@@ -1120,7 +1120,7 @@ object Semantic:
       log("checking " + classSym) { eval(tpl, thisRef, classSym) }
       reporter.errors.foreach(_.issue)
 
-      if cache.hasChanged && reporter.errors.isEmpty then
+      if cache.hasChanged && reporter.errors.isEmpty && cache.isUsed then
         // code to prepare cache and heap for next iteration
         cache.prepareForNextIteration()
         iterate()
