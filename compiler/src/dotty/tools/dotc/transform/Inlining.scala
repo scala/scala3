@@ -12,7 +12,7 @@ import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
-import dotty.tools.dotc.staging.StagingContext.*
+import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel
 
 import scala.collection.mutable.ListBuffer
