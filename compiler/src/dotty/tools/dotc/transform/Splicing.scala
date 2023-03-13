@@ -14,7 +14,6 @@ import util.Spans._
 import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd
-import StagingContext._
 
 import scala.collection.mutable
 import dotty.tools.dotc.core.Annotations._
@@ -23,6 +22,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.config.ScalaRelease.*
 import dotty.tools.dotc.staging.PCPCheckAndHeal
+import dotty.tools.dotc.staging.StagingContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 
 import scala.annotation.constructorOnly

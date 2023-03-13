@@ -1,4 +1,4 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc.staging
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._

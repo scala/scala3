@@ -5,7 +5,6 @@ import dotty.tools.dotc.ast.{TreeMapWithImplicits, tpd}
 import dotty.tools.dotc.config.Printers.staging
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.staging.StagingLevel.*

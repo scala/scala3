@@ -7,10 +7,10 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds._
-import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.staging.StagingContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.Spans._
