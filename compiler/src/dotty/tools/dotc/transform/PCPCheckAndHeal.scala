@@ -103,6 +103,9 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     if (ctx.property(InAnnotation).isDefined)
       report.error("Cannot have a quote in an annotation", quote.srcPos)
 
+    val stripAnnotsDeep: TypeMap = new TypeMap:
+      def apply(tp: Type): Type = mapOver(tp.stripAnnots)
+
     val contextWithQuote =
       if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
       else quoteContext
@@ -115,7 +118,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     if body.isTerm then
       // `quoted.runtime.Expr.quote[T](<body>)`  --> `quoted.runtime.Expr.quote[T2](<body2>)`
       val TypeApply(fun, targs) = quote.fun: @unchecked
-      val targs2 = targs.map(targ => TypeTree(healTypeOfTerm(quote.fun.srcPos)(targ.tpe)))
+      val targs2 = targs.map(targ => TypeTree(healTypeOfTerm(quote.fun.srcPos)(stripAnnotsDeep(targ.tpe))))
       cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), body2 :: Nil)
     else
       val quotes = quote.args.mapConserve(transform)
