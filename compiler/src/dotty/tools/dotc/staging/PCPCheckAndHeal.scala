@@ -12,6 +12,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.staging.StagingContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
+import dotty.tools.dotc.staging.QuoteTypeTags.*
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.SrcPos
@@ -98,7 +99,7 @@ class PCPCheckAndHeal extends TreeMapWithStages {
 
   /** Transform quoted trees while maintaining phase correctness */
   override protected def transformQuotation(body: Tree, quote: Apply)(using Context): Tree = {
-    val taggedTypes = new PCPCheckAndHeal.QuoteTypeTags(quote.span)
+    val taggedTypes = new QuoteTypeTags(quote.span)
 
     if (ctx.property(InAnnotation).isDefined)
       report.error("Cannot have a quote in an annotation", quote.srcPos)
@@ -235,36 +236,4 @@ class PCPCheckAndHeal extends TreeMapWithStages {
           | - but the access is at level $level.$hint""", pos)
     tp
   }
-}
-
-object PCPCheckAndHeal {
-  import tpd._
-
-  class QuoteTypeTags(span: Span)(using Context) {
-
-    private val tags = collection.mutable.LinkedHashMap.empty[Symbol, TypeDef]
-
-    def getTagRef(spliced: TermRef): TypeRef = {
-      val typeDef = tags.getOrElseUpdate(spliced.symbol, mkTagSymbolAndAssignType(spliced))
-      typeDef.symbol.typeRef
-    }
-
-    def getTypeTags: List[TypeDef] = tags.valuesIterator.toList
-
-    private def mkTagSymbolAndAssignType(spliced: TermRef): TypeDef = {
-      val splicedTree = tpd.ref(spliced).withSpan(span)
-      val rhs = splicedTree.select(tpnme.Underlying).withSpan(span)
-      val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs, EmptyTree)
-      val local = newSymbol(
-        owner = ctx.owner,
-        name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_").toTermName).toTypeName,
-        flags = Synthetic,
-        info = TypeAlias(splicedTree.tpe.select(tpnme.Underlying)),
-        coord = span).asType
-      local.addAnnotation(Annotation(defn.QuotedRuntime_SplicedTypeAnnot, span))
-      ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
-    }
-
-  }
-
 }

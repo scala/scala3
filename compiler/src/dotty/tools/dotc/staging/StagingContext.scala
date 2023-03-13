@@ -14,18 +14,10 @@ object StagingContext {
    */
   private val QuotesStack = new Property.Key[List[tpd.Tree]]
 
-  private val TaggedTypes = new Property.Key[PCPCheckAndHeal.QuoteTypeTags]
-
   /** Context with an incremented quotation level and pushes a reference to a Quotes on the quote context stack */
   def pushQuotes(qctxRef: tpd.Tree)(using Context): Context =
     val old = ctx.property(QuotesStack).getOrElse(List.empty)
     quoteContext.setProperty(QuotesStack, qctxRef :: old)
-
-  def contextWithQuoteTypeTags(taggedTypes: PCPCheckAndHeal.QuoteTypeTags)(using Context) =
-    ctx.fresh.setProperty(TaggedTypes, taggedTypes)
-
-  def getQuoteTypeTags(using Context): PCPCheckAndHeal.QuoteTypeTags =
-    ctx.property(TaggedTypes).get
 
   /** Context with a decremented quotation level and pops the Some of top of the quote context stack or None if the stack is empty.
    *  The quotation stack could be empty if we are in a top level splice or an erroneous splice directly within a top level splice.
