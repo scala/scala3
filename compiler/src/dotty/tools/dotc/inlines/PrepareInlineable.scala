@@ -17,7 +17,8 @@ import NameKinds.{InlineAccessorName, UniqueInlineName}
 import inlines.Inlines
 import NameOps._
 import Annotations._
-import transform.{AccessProxies, PCPCheckAndHeal, Splicer}
+import transform.{AccessProxies, Splicer}
+import staging.PCPCheckAndHeal
 import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
