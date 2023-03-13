@@ -414,7 +414,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           val argsSig = SignatureBuilder()
             .functionTermParameters(on.argsLists)
             .content
-          val sig = typeSig ++ Signature(Plain(s"(${on.name}: ")) ++ on.signature ++ Signature(Plain(")")) ++ argsSig
+          val sig = typeSig ++ argsSig
           MGroup(span(cls := "groupHeader")(sig.map(renderElement(_))), members.sortBy(_.name).toSeq, on.name) -> on.position
       }.toSeq.sortBy(_._2).map(_._1)
 
