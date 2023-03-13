@@ -78,6 +78,7 @@ class CheckUnused extends MiniPhase:
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
     if tree.symbol.exists then
       val prefixes = LazyList.iterate(tree.typeOpt.normalizedPrefix)(_.normalizedPrefix).takeWhile(_ != NoType)
+        .take(10) // Failsafe for the odd case if there was an infinite cycle
       for {
         prefix <- prefixes
       } {
