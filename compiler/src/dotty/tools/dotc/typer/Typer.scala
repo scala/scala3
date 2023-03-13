@@ -2512,7 +2512,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // allow missing type parameters if there are implicit arguments to pass
             // since we can infer type arguments from them
         val constr = psym.primaryConstructor
-        if constr.exists then
+        if psym.is(Trait) && constr.exists && !cls.isRefinementClass then
           ensureAccessible(constr.termRef, superAccess = true, tree.srcPos)
       else
         checkParentCall(result, cls)
