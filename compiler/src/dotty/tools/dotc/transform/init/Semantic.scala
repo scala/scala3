@@ -1148,7 +1148,7 @@ object Semantic:
 
   extension (arg: ArgInfo)
     def promote: Contextual[Unit] = withTrace(arg.trace) {
-      arg.value.promote("Could not verify that the method argument is transitively initialized (Hot). It was found to be " + arg.value.show + ". Only transitively initialized arguments may be passed to methods outside the analyzed initialization region.")
+      arg.value.promote("Could not verify that the method argument is transitively initialized (Hot). It was found to be " + arg.value.show + ". Only transitively initialized arguments may be passed to methods (except constructors).")
     }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
