@@ -13,6 +13,7 @@ import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.PCPCheckAndHeal
+import dotty.tools.dotc.staging.HealType
 
 /** Checks that the Phase Consistency Principle (PCP) holds and heals types.
  *
@@ -35,19 +36,21 @@ class Staging extends MacroTransform {
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
           val checker = new PCPCheckAndHeal {
-            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
-              def symStr =
-                if (sym.is(ModuleClass)) sym.sourceModule.show
-                else i"${sym.name}.this"
-              val errMsg = s"\nin ${ctx.owner.fullName}"
-              assert(
-                ctx.owner.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) ||
-                (sym.isType && levelOf(sym) > 0),
-                em"""access to $symStr from wrong staging level:
-                    | - the definition is at level ${levelOf(sym)},
-                    | - but the access is at level $level.$errMsg""")
+            override protected def healType(pos: SrcPos)(using Context) = new HealType(pos) {
+              override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos): TypeRef = {
+                def symStr =
+                  if (sym.is(ModuleClass)) sym.sourceModule.show
+                  else i"${sym.name}.this"
+                val errMsg = s"\nin ${ctx.owner.fullName}"
+                assert(
+                  ctx.owner.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) ||
+                  (sym.isType && levelOf(sym) > 0),
+                  em"""access to $symStr from wrong staging level:
+                      | - the definition is at level ${levelOf(sym)},
+                      | - but the access is at level $level.$errMsg""")
 
-              tp
+                tp
+              }
             }
           }
           checker.transform(tree)
