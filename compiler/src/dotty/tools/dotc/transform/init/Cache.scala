@@ -93,12 +93,14 @@ class Cache[Config, Res]:
    *
    *  The algorithmic skeleton is as follows:
    *
+   *      if don't cache result then
+   *        return eval(expr)
    *      if this.current.contains(config, expr) then
    *        return cached value
    *      else
    *        val assumed = this.last(config, expr) or bottom value if absent
    *        this.current(config, expr) = assumed
-   *        val actual = eval(exp)
+   *        val actual = eval(expr)
    *
    *        if assumed != actual then
    *          this.changed = true
@@ -106,28 +108,31 @@ class Cache[Config, Res]:
    *
    */
   def cachedEval(config: Config, expr: Tree, cacheResult: Boolean, default: Res)(eval: Tree => Res): Res =
-    this.get(config, expr) match
-    case Some(value) => value
-    case None =>
-      val assumeValue: Res =
-        this.last.get(config, expr) match
-        case Some(value) => value
-        case None =>
-          this.last = this.last.updatedNested(config, expr, default)
-          default
+    if !cacheResult then
+      eval(expr)
+    else
+      this.get(config, expr) match
+      case Some(value) => value
+      case None =>
+        val assumeValue: Res =
+          this.last.get(config, expr) match
+          case Some(value) => value
+          case None =>
+            this.last = this.last.updatedNested(config, expr, default)
+            default
 
-      this.current = this.current.updatedNested(config, expr, assumeValue)
+        this.current = this.current.updatedNested(config, expr, assumeValue)
 
-      val actual = eval(expr)
-      if actual != assumeValue then
-        // println("Changed! from = " + assumeValue + ", to = " + actual)
-        this.changed = true
-        // TODO: respect cacheResult to reduce cache size
-        this.current = this.current.updatedNested(config, expr, actual)
-        // this.current = this.current.removed(config, expr)
-      end if
+        val actual = eval(expr)
+        if actual != assumeValue then
+          // println("Changed! from = " + assumeValue + ", to = " + actual)
+          this.changed = true
+          this.current = this.current.updatedNested(config, expr, actual)
+          // this.current = this.current.removed(config, expr)
+        end if
 
-      actual
+        actual
+    end if
   end cachedEval
 
   def hasChanged = changed
