@@ -175,7 +175,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val sym = sel.symbol
 
     def needsSuperAccessor =
-      ProtectedAccessors.needsAccessor(sym) &&
+      ProtectedAccessors.needsAccessorIfNotInSubclass(sym) &&
       AccessProxies.hostForAccessorOf(sym).is(Trait)
     qual match {
       case _: This if needsSuperAccessor =>
@@ -185,10 +185,19 @@ class SuperAccessors(thisPhase: DenotTransformer) {
          * If T extends C, then we can access it by casting
          * the qualifier of the select to C.
          *
+         * That's because the protected method is actually public,
+         * so we can call it.  For truly protected methods, like from
+         * Java, we error instead of emitting the wrong code (i17021.ext-java).
+         *
          * Otherwise, we need to go through an accessor,
          * which the implementing class will provide an implementation for.
          */
-        superAccessorCall(sel)
+        if ctx.owner.enclosingClass.derivesFrom(sym.owner) then
+          if sym.is(JavaDefined) then
+            report.error(em"${ctx.owner} accesses protected $sym inside a concrete trait method: use super.${sel.name} instead", sel.srcPos)
+          sel
+        else
+          superAccessorCall(sel)
       case Super(_, mix) =>
         transformSuperSelect(sel)
       case _ =>
