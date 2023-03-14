@@ -1,7 +1,7 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.tpd.TreeTraverser
+import dotty.tools.dotc.ast.tpd.{Inlined, TreeTraverser}
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
@@ -59,6 +59,7 @@ class CheckUnused extends MiniPhase:
   // ========== SETUP ============
 
   override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
+    println(tree)
     val data = UnusedData()
     val fresh = ctx.fresh.setProperty(_key, data)
     fresh
@@ -75,15 +76,16 @@ class CheckUnused extends MiniPhase:
     traverser.traverse(tree)
     ctx
 
+  def prepareForInlined(tree: Inlined)(using Context): Context =
+    traverser.traverse(tree.call)
+    ctx
+
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
     if tree.symbol.exists then
       val prefixes = LazyList.iterate(tree.typeOpt.normalizedPrefix)(_.normalizedPrefix).takeWhile(_ != NoType)
         .take(10) // Failsafe for the odd case if there was an infinite cycle
-      for {
-        prefix <- prefixes
-      } {
+      for prefix <- prefixes do
         unusedDataApply(_.registerUsed(prefix.classSymbol, None))
-      }
       unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
     else if tree.hasType then
       unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
