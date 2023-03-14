@@ -59,7 +59,6 @@ class CheckUnused extends MiniPhase:
   // ========== SETUP ============
 
   override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
-    println(tree)
     val data = UnusedData()
     val fresh = ctx.fresh.setProperty(_key, data)
     fresh
@@ -76,7 +75,7 @@ class CheckUnused extends MiniPhase:
     traverser.traverse(tree)
     ctx
 
-  def prepareForInlined(tree: Inlined)(using Context): Context =
+  override def prepareForInlined(tree: tpd.Inlined)(using Context): Context =
     traverser.traverse(tree.call)
     ctx
 
