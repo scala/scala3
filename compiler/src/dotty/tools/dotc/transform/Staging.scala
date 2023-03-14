@@ -6,14 +6,14 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.transform.TreeMapWithStages._
-
-
+import dotty.tools.dotc.staging.QuoteContext.*
+import dotty.tools.dotc.staging.StagingLevel.*
+import dotty.tools.dotc.staging.PCPCheckAndHeal
+import dotty.tools.dotc.staging.HealType
 
 /** Checks that the Phase Consistency Principle (PCP) holds and heals types.
  *
@@ -35,20 +35,22 @@ class Staging extends MacroTransform {
       // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
-          val checker = new PCPCheckAndHeal(freshStagingContext) {
-            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
-              def symStr =
-                if (sym.is(ModuleClass)) sym.sourceModule.show
-                else i"${sym.name}.this"
-              val errMsg = s"\nin ${ctx.owner.fullName}"
-              assert(
-                ctx.owner.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) ||
-                (sym.isType && levelOf(sym) > 0),
-                em"""access to $symStr from wrong staging level:
-                    | - the definition is at level ${levelOf(sym)},
-                    | - but the access is at level $level.$errMsg""")
+          val checker = new PCPCheckAndHeal {
+            override protected def healType(pos: SrcPos)(using Context) = new HealType(pos) {
+              override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos): TypeRef = {
+                def symStr =
+                  if (sym.is(ModuleClass)) sym.sourceModule.show
+                  else i"${sym.name}.this"
+                val errMsg = s"\nin ${ctx.owner.fullName}"
+                assert(
+                  ctx.owner.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) ||
+                  (sym.isType && levelOf(sym) > 0),
+                  em"""access to $symStr from wrong staging level:
+                      | - the definition is at level ${levelOf(sym)},
+                      | - but the access is at level $level.$errMsg""")
 
-              tp
+                tp
+              }
             }
           }
           checker.transform(tree)
@@ -66,11 +68,11 @@ class Staging extends MacroTransform {
     }
 
   override def run(using Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run(using freshStagingContext)
+    if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
-      new PCPCheckAndHeal(ctx).transform(tree)
+      (new PCPCheckAndHeal).transform(tree)
   }
 }
 

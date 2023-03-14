@@ -17,11 +17,12 @@ import NameKinds.{InlineAccessorName, UniqueInlineName}
 import inlines.Inlines
 import NameOps._
 import Annotations._
-import transform.{AccessProxies, PCPCheckAndHeal, Splicer}
+import transform.{AccessProxies, Splicer}
+import staging.PCPCheckAndHeal
 import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
-import dotty.tools.dotc.transform.TreeMapWithStages._
+import staging.StagingLevel
 
 object PrepareInlineable {
   import tpd._
@@ -73,7 +74,7 @@ object PrepareInlineable {
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
-        (Inlines.inInlineMethod || StagingContext.level > 0)
+        (Inlines.inInlineMethod || StagingLevel.level > 0)
 
       def preTransform(tree: Tree)(using Context): Tree
 
@@ -90,8 +91,8 @@ object PrepareInlineable {
         }
 
       private def stagingContext(tree: Tree)(using Context): Context = tree match
-        case tree: Apply if tree.symbol.isQuote => StagingContext.quoteContext
-        case tree: Apply if tree.symbol.isExprSplice => StagingContext.spliceContext
+        case tree: Apply if tree.symbol.isQuote => StagingLevel.quoteContext
+        case tree: Apply if tree.symbol.isExprSplice => StagingLevel.spliceContext
         case _ => ctx
     }
 
@@ -293,7 +294,7 @@ object PrepareInlineable {
           if (code.symbol.flags.is(Inline))
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)
-          new PCPCheckAndHeal(freshStagingContext).transform(body) // Ignore output, only check PCP
+          (new PCPCheckAndHeal).transform(body) // Ignore output, only check PCP
         case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
         case Block(Nil, expr) => checkMacro(expr)
         case Typed(expr, _) => checkMacro(expr)

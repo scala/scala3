@@ -14,6 +14,7 @@ import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, SrcPos}
 import parsing.Parsers.Parser
 import transform.{PostTyper, Inlining, CrossVersionChecks}
+import staging.StagingLevel
 
 import collection.mutable
 import reporting.trace
@@ -56,7 +57,7 @@ object Inlines:
     case _ =>
       isInlineable(tree.symbol)
       && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly]
-      && StagingContext.level == 0
+      && StagingLevel.level == 0
       && (
         ctx.phase == Phases.inliningPhase
         || (ctx.phase == Phases.typerPhase && needsTransparentInlining(tree))

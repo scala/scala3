@@ -44,6 +44,7 @@ import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion._
 import rewrites.Rewrites.patch
+import staging.StagingLevel
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting._
@@ -2410,7 +2411,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(using rhsCtx))
 
     if sym.isInlineMethod then
-      if StagingContext.level > 0 then
+      if StagingLevel.level > 0 then
         report.error("inline def cannot be within quotes", sym.sourcePos)
       if sym.is(Given)
           && untpd.stripBlock(untpd.unsplice(ddef.rhs)).isInstanceOf[untpd.Function]

@@ -11,11 +11,12 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds.PatMatGivenVarName
 import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.inlines.PrepareInlineable
+import dotty.tools.dotc.staging.QuoteContext.*
+import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
@@ -91,7 +92,7 @@ trait QuotesAndSplices {
         tree.withType(UnspecifiedErrorType)
       }
     else {
-      if (StagingContext.level == 0) {
+      if (level == 0) {
         // Mark the first inline method from the context as a macro
         def markAsMacro(c: Context): Unit =
           if (c.owner eq c.outer.owner) markAsMacro(c.outer)
