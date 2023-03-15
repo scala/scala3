@@ -663,7 +663,7 @@ object TreeChecker {
       // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
       for arg <- args do
-        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole type args but got: " + arg.tpe)
+        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef] || arg.tpe.isInstanceOf[TermRef] || arg.tpe.isInstanceOf[ThisType], "Expected TypeRef or TermRef in Hole type args but got: " + arg.tpe)
 
       // Check result type of the hole
       if isTermHole then assert(tpt.typeOpt <:< pt)

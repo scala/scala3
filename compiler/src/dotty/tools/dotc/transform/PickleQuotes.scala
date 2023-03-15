@@ -162,6 +162,10 @@ class PickleQuotes extends MacroTransform {
               case info: ClassInfo => info.parents.reduce(_ & _)
               case info => info.hiBound
             apply(hiBound)
+          case tp @ TermRef(pre, _) if isLocalPath(pre) =>
+            apply(tp.widenTermRefExpr)
+          case ThisType(ref @ TypeRef(pre, _)) if isLocalPath(pre) =>
+            apply(ref)
           case tp =>
             mapOver(tp)
 
