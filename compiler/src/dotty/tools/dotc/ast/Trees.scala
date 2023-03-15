@@ -984,7 +984,7 @@ object Trees {
    *  @param content Lambda that computes the content of the hole. This tree is empty when in a quote pickle.
    *  @param tpt Type of the hole
    */
-  case class Hole[+T <: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]], content: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
+  case class Hole[+T <: Untyped](isTermHole: Boolean, idx: Int, targs: List[Tree[T]], args: List[Tree[T]], content: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
     type ThisTree[+T <: Untyped] <: Hole[T]
     override def isTerm: Boolean = isTermHole
     override def isType: Boolean = !isTermHole
@@ -1337,9 +1337,9 @@ object Trees {
         case tree: Thicket if (trees eq tree.trees) => tree
         case _ => finalize(tree, untpd.Thicket(trees)(sourceFile(tree)))
       }
-      def Hole(tree: Tree)(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole = tree match {
-        case tree: Hole if isTerm == tree.isTerm && idx == tree.idx && args.eq(tree.args) && content.eq(tree.content) && content.eq(tree.content) => tree
-        case _ => finalize(tree, untpd.Hole(isTerm, idx, args, content, tpt)(sourceFile(tree)))
+      def Hole(tree: Tree)(isTerm: Boolean, idx: Int, targs: List[Tree], args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole = tree match {
+        case tree: Hole if isTerm == tree.isTerm && idx == tree.idx && targs.eq(tree.args) && args.eq(tree.args) && content.eq(tree.content) && content.eq(tree.content) => tree
+        case _ => finalize(tree, untpd.Hole(isTerm, idx, targs, args, content, tpt)(sourceFile(tree)))
       }
 
       // Copier methods with default arguments; these demand that the original tree
@@ -1362,8 +1362,8 @@ object Trees {
         TypeDef(tree: Tree)(name, rhs)
       def Template(tree: Template)(using Context)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody): Template =
         Template(tree: Tree)(constr, parents, derived, self, body)
-      def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
-        Hole(tree: Tree)(isTerm, idx, args, content, tpt)
+      def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, targs: List[Tree] = tree.targs, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
+        Hole(tree: Tree)(isTerm, idx, targs, args, content, tpt)
 
     }
 
@@ -1494,8 +1494,8 @@ object Trees {
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
-            case tree @ Hole(_, _, args, content, tpt) =>
-              cpy.Hole(tree)(args = transform(args), content = transform(content), tpt = transform(tpt))
+            case tree @ Hole(_, _, targs, args, content, tpt) =>
+              cpy.Hole(tree)(targs = transform(targs), args = transform(args), content = transform(content), tpt = transform(tpt))
             case _ =>
               transformMoreCases(tree)
           }
@@ -1635,8 +1635,8 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
-            case Hole(_, _, args, content, tpt) =>
-              this(this(this(x, args), content), tpt)
+            case Hole(_, _, targs, args, content, tpt) =>
+              this(this(this(this(x, targs), args), content), tpt)
             case _ =>
               foldMoreCases(x, tree)
           }

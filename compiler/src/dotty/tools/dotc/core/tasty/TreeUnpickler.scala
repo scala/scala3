@@ -1438,8 +1438,10 @@ class TreeUnpickler(reader: TastyReader,
             case HOLE =>
               val idx = readNat()
               val tpe = readType()
-              val args = until(end)(readTerm())
-              Hole(true, idx, args, EmptyTree, TypeTree(tpe)).withType(tpe)
+              val rawArgs = until(end)(readTerm())
+              val targs = rawArgs.filter(_.isType)
+              val args = rawArgs.filter(_.isTerm)
+              Hole(true, idx, targs, args, EmptyTree, TypeTree(tpe)).withType(tpe)
             case _ =>
               readPathTerm()
           }
@@ -1472,8 +1474,10 @@ class TreeUnpickler(reader: TastyReader,
           val end = readEnd()
           val idx = readNat()
           val tpe = readType()
-          val args = until(end)(readTerm())
-          Hole(false, idx, args, EmptyTree, TypeTree(tpe)).withType(tpe)
+          val rawArgs = until(end)(readTerm())
+          val targs = rawArgs.filter(_.isType)
+          val args = rawArgs.filter(_.isTerm)
+          Hole(false, idx, targs, args, EmptyTree, TypeTree(tpe)).withType(tpe)
         case _ =>
           if (isTypeTreeTag(nextByte)) readTerm()
           else {
