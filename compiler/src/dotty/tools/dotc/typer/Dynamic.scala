@@ -181,7 +181,7 @@ trait Dynamic {
     val vargss = termArgss(tree)
 
     def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
-      val selectable = adapt(qual, defn.SelectableClass.typeRef)
+      val selectable = adapt(qual, defn.SelectableClass.typeRef | defn.DynamicClass.typeRef)
 
       // ($qual: Selectable).$selectorName("$name")
       val base =
