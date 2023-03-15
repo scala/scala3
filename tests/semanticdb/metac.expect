@@ -49,7 +49,7 @@ Uri => Advanced.scala
 Text => empty
 Language => Scala
 Symbols => 60 entries
-Occurrences => 134 entries
+Occurrences => 138 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -187,18 +187,21 @@ Occurrences:
 [27:6..27:9): s1x <- advanced/Test.s1x.
 [27:12..27:13): s -> advanced/Test.s.
 [27:14..27:16): s1 -> advanced/Structural#s1().
+[27:16..27:18): .x -> scala/reflect/Selectable#selectDynamic().
 [28:6..28:8): s2 <- advanced/Test.s2.
 [28:11..28:12): s -> advanced/Test.s.
 [28:13..28:15): s2 -> advanced/Structural#s2().
 [29:6..29:9): s2x <- advanced/Test.s2x.
 [29:12..29:13): s -> advanced/Test.s.
 [29:14..29:16): s2 -> advanced/Structural#s2().
+[29:16..29:18): .x -> scala/reflect/Selectable#selectDynamic().
 [30:6..30:8): s3 <- advanced/Test.s3.
 [30:11..30:12): s -> advanced/Test.s.
 [30:13..30:15): s3 -> advanced/Structural#s3().
 [31:6..31:9): s3x <- advanced/Test.s3x.
 [31:12..31:13): s -> advanced/Test.s.
 [31:14..31:16): s3 -> advanced/Structural#s3().
+[31:16..31:18): .m -> scala/reflect/Selectable#applyDynamic().
 [31:19..31:22): ??? -> scala/Predef.`???`().
 [33:6..33:7): e <- advanced/Test.e.
 [33:14..33:23): Wildcards -> advanced/Wildcards#
@@ -233,6 +236,7 @@ Occurrences:
 [47:11..47:14): foo -> advanced/Test.foo.
 [47:15..47:16): A -> local17
 [47:19..47:22): foo -> advanced/Test.foo.
+[47:22..47:24): .a -> scala/reflect/Selectable#selectDynamic().
 [52:6..52:13): HKClass <- advanced/HKClass#
 [52:14..52:15): F <- advanced/HKClass#[F]
 [52:20..52:21): T <- advanced/HKClass#`<init>`().[F][T]
