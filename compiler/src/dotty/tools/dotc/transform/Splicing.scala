@@ -224,7 +224,7 @@ class Splicing extends MacroTransform:
                 // Dealias references to captured types
                 TypeTree(tree.tpe.dealias)
             else super.transform(tree)
-        case tree: TypeTree =>
+        case _: TypeTree | _: SingletonTypeTree =>
           if containsCapturedType(tree.tpe) && level >= 1 then getTagRefFor(tree)
           else tree
         case tree @ Assign(lhs: RefTree, rhs) =>
@@ -353,9 +353,8 @@ class Splicing extends MacroTransform:
       )
 
     private def capturedType(tree: Tree)(using Context): Symbol =
-      val tpe = tree.tpe.widenTermRefExpr
       val bindingSym = refBindingMap
-        .getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tpe)))._2
+        .getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tree.tpe)))._2
       bindingSym
 
     private def capturedPartTypes(tpt: Tree)(using Context): Tree =
