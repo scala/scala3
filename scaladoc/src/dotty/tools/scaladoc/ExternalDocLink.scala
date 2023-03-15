@@ -25,10 +25,12 @@ object ExternalDocLink:
     case Failure(e) => fail(mapping, s"Unable to parse $descr. Exception $e occured")
   }
 
+  private def stripIndex(url: String): String = url.stripSuffix("index.html").stripSuffix("/") + "/"
+
   def parseLegacy(mapping: String): Either[String, ExternalDocLink] =
     mapping.split("#").toList match
       case path :: apiUrl :: Nil => for {
-        url <- tryParse(mapping, "url")(URL(apiUrl))
+        url <- tryParse(mapping, "url")(URL(stripIndex(apiUrl)))
       } yield ExternalDocLink(
         List(s"${Regex.quote(path)}.*".r),
         url,
@@ -55,7 +57,7 @@ object ExternalDocLink:
       case regexStr :: docToolStr :: urlStr :: rest =>
         for {
           regex <- tryParse(mapping, "regex")(regexStr.r)
-          url <- tryParse(mapping, "url")(URL(urlStr))
+          url <- tryParse(mapping, "url")(URL(stripIndex(urlStr)))
           doctool <- doctoolByName(docToolStr)
           packageList <- parsePackageList(rest)
         } yield ExternalDocLink(
