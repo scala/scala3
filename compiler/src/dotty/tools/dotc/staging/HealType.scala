@@ -4,6 +4,7 @@ package staging
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.staging.QuoteContext.*
@@ -68,13 +69,14 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
    *  reference to a type alias containing the equivalent of `${summon[quoted.Type[T]]}`.
    *  Emits an error if `T` cannot be healed and returns `T`.
    */
-  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos): TypeRef = {
+  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos): Type = {
     val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
     val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
     tag.tpe match
       case tp: TermRef =>
         ctx.typer.checkStable(tp, pos, "type witness")
-        getQuoteTypeTags.getTagRef(tp)
+        if levelOf(tp.symbol) > 0 then tp.select(tpnme.Underlying)
+        else getQuoteTypeTags.getTagRef(tp)
       case _: SearchFailureType =>
         report.error(
           ctx.typer.missingArgMsg(tag, reqType, "")
