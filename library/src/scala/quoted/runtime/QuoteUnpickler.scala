@@ -1,5 +1,6 @@
 package scala.quoted.runtime
 
+import scala.annotation.compileTimeOnly
 import scala.quoted.{Quotes, Expr, Type}
 
 /** Part of the Quotes interface that needs to be implemented by the compiler but is not visible to users */
@@ -32,3 +33,10 @@ trait QuoteUnpickler:
    *  Generated for code compiled with Scala 3.2.0+
    */
   def unpickleTypeV2[T <: AnyKind](pickled: String | List[String], types: Null | Seq[Type[?]]): scala.quoted.Type[T]
+
+object QuoteUnpickler:
+  @compileTimeOnly("Illegal reference to `scala.quoted.runtime.QuoteUnpickler.hole`")
+  def hole[Idx <: Int, T, TArgs](args: Any*): T = ???
+
+  @compileTimeOnly("Illegal reference to `scala.quoted.runtime.QuoteUnpickler.hole`")
+  type hole[Idx <: Int, T] <: T

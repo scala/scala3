@@ -17,6 +17,8 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.util.boundary$Break"),
     ProblemFilters.exclude[MissingClassProblem]("scala.util.boundary$Label"),
     ProblemFilters.exclude[MissingClassProblem]("scala.quoted.runtime.QuoteMatching$"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.quoted.runtime.QuoteUnpickler$"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.QuoteUnpickler.hole"),
 
     // Scala.js only: new runtime support class in 3.2.3; not available to users
     ProblemFilters.exclude[MissingClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),

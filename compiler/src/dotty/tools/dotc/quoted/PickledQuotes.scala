@@ -3,6 +3,7 @@ package dotty.tools.dotc.quoted
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.config.Printers._
+import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -125,6 +126,34 @@ object PickledQuotes {
               val quotedType = evalHole.nn.apply(idx, reifyTypeHoleArgs(args))
               PickledQuotes.quotedTypeToTree(quotedType)
           }
+        case Apply(TypeApply(hole, List(idxTree, tpt, targs)), List(Typed(SeqLiteral(args, _), _))) if hole.symbol == defn.QuoteUnpickler_exprHole =>
+          inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {
+            val idx = (idxTree.tpe: @unchecked) match
+              case ConstantType(Constant(idx: Int)) => idx
+
+            def kListTypes(tp: Type): List[TypeTree] = tp match
+              case AppliedType(kCons: TypeRef, headType :: tailType :: Nil) if kCons.symbol == defn.QuoteMatching_KCons =>
+                TypeTree(headType) :: kListTypes(tailType)
+              case kNil: TypeRef if kNil.symbol == defn.QuoteMatching_KNil =>
+                Nil
+
+            val targsList = kListTypes(targs.tpe)
+            val reifiedTypeArgs = reifyTypeHoleArgs(targsList)
+            val reifiedArgs = reifyTypeHoleArgs(targsList)
+
+            val argRefs = args.map(methPart) // strip dummy arguments
+
+            val quotedExpr = (termHole: @unchecked) match
+              case ExprHole.V2(evalHole) =>
+                  evalHole.nn.apply(idx, reifiedTypeArgs ::: reifyExprHoleV2Args(argRefs), QuotesImpl())
+
+            val filled = PickledQuotes.quotedExprToTree(quotedExpr)
+
+            // We need to make sure a hole is created with the source file of the surrounding context, even if
+            // it filled with contents a different source file.
+            if filled.source == ctx.source then filled
+            else filled.cloneIn(ctx.source).withSpan(tree.span)
+          }
         case tree =>
           if tree.isDef then
             tree.symbol.annotations = tree.symbol.annotations.map {
@@ -173,7 +202,11 @@ object PickledQuotes {
                     // To keep for backwards compatibility. In some older version we missed the creation of some holes.
                     tpt
               case TypeHole.V2(types) =>
-                val PickledHole(_, idx, _, _) = tdef.rhs: @unchecked
+                val idx = tdef.rhs match
+                  case PickledHole(_, idx, _, _) => idx
+                  case rhs: TypeTree =>
+                    rhs.tpe match
+                      case AppliedType(tycon, ConstantType(Constant(idx: Int)) :: _) if tycon.typeSymbol == defn.QuoteUnpickler_typeHole => idx
                 PickledQuotes.quotedTypeToTree(types.nn.apply(idx))
             (tdef.symbol, tree.tpe)
         }.toMap

@@ -334,7 +334,7 @@ class TreePickler(pickler: TastyPickler) {
         pickleName(sym.name)
         pickleParams
         tpt match {
-          case _: Template | _: Hole => pickleTree(tpt)
+          case _: Template => pickleTree(tpt)
           case _ if tpt.isType => pickleTpt(tpt)
         }
         pickleTreeUnlessEmpty(rhs)
@@ -413,7 +413,6 @@ class TreePickler(pickler: TastyPickler) {
               var ename = tree.symbol.targetName
               val selectFromQualifier =
                 name.isTypeName
-                || qual.isInstanceOf[Hole] // holes have no symbol
                 || sig == Signature.NotAMethod // no overload resolution necessary
                 || !tree.denot.symbol.exists // polymorphic function type
                 || tree.denot.asSingleDenotation.isRefinedMethod // refined methods have no defining class symbol
@@ -664,14 +663,6 @@ class TreePickler(pickler: TastyPickler) {
             else
               pickleTree(hi)
               pickleTree(alias)
-          }
-        case Hole(_, idx, targs, args, _, tpt) =>
-          writeByte(HOLE)
-          withLength {
-            writeNat(idx)
-            pickleType(tpt.tpe, richTypes = true)
-            targs.foreach(pickleTree)
-            args.foreach(pickleTree)
           }
       }
       catch {

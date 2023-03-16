@@ -33,11 +33,13 @@ import scala.annotation.constructorOnly
  *      val x1: U1 = ???
  *      val x2: U2 = ???
  *      ...
- *      {{{ 3 | x1 | contents0 | T0 }}} // hole
+ *      {{{ 3 | T0 | x1 | contents0 }}} // hole
  *      ...
- *      {{{ 4 | x2 | contents1 | T1 }}} // hole
+ *      {{{ 4 | T1 | x2 | contents1 }}} // hole
  *      ...
- *      {{{ 5 | x1, x2 | contents2 | T2 }}} // hole
+ *      {{{ 5 | T2 | x1, x2 | contents2 |  }}} // hole
+ *      ...
+ *      {{{ 6 | T2 | X0, x1 | contents2 |  }}} // hole
  *      ...
  *    }
  *    ```
@@ -45,16 +47,18 @@ import scala.annotation.constructorOnly
  *    ```
  *     unpickleExprV2(
  *       pickled = [[ // PICKLED TASTY
- *       @TypeSplice type X0 // with bounds that do not contain captured types
- *       @TypeSplice type X1 // with bounds that do not contain captured types
+ *       @TypeSplice type X0 = hole[0, ..] // with bounds that do not contain captured types
+ *       @TypeSplice type X1 = hole[1, ..]// with bounds that do not contain captured types
  *         val x1 = ???
  *         val x2 = ???
  *         ...
- *      {{{ 0 | x1 | | T0 }}} // hole
- *      ...
- *      {{{ 1 | x2 | | T1 }}} // hole
- *      ...
- *      {{{ 2 | x1, x2 | | T2 }}} // hole
+ *         hole[3, T0, KNil](x1) // hole
+ *         ...
+ *         hole[4, T1, KNil](x2) // hole
+ *         ...
+ *         hole[5, T2, KNil](x1, x2) // hole
+ *         ...
+ *         hole[6, T2, KCons[X0, KNil]](x1) // hole
  *         ...
  *       ]],
  *       typeHole = (idx: Int, args: List[Any]) => idx match {
@@ -65,6 +69,7 @@ import scala.annotation.constructorOnly
  *         case 3 => content0.apply(args(0).asInstanceOf[Expr[U1]]).apply(quotes) // beta reduced
  *         case 4 => content1.apply(args(0).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
  *         case 5 => content2.apply(args(0).asInstanceOf[Expr[U1]], args(1).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
+ *         case 6 => content2.apply(args(0).asInstanceOf[Type[?]], args(1).asInstanceOf[Expr[U1]]).apply(quotes) // beta reduced
  *       },
  *     )
  *    ```
@@ -126,13 +131,36 @@ class PickleQuotes extends MacroTransform {
       private val contents = List.newBuilder[Tree]
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
-          case tree @ Hole(isTerm, _, _, _, content, _) =>
+          case tree @ Hole(isTerm, idx, targs, args, content, _) =>
             if !content.isEmpty then
               contents += content
-            val holeType =
-              if isTerm then getTermHoleType(tree.tpe) else getTypeHoleType(tree.tpe)
-            val hole = cpy.Hole(tree)(content = EmptyTree, TypeTree(holeType))
-            if isTerm then Inlined(EmptyTree, Nil, hole).withSpan(tree.span) else hole
+            if isTerm then // transform into method call `hole[idx, T', Targs](args*)`
+              val args1 = args.filter(_.isTerm).map { arg =>
+                def fullyAppliedToDummyArgs(arg: Tree, tpe: Type): Tree =
+                  tpe match
+                    case tpe: MethodType =>
+                      fullyAppliedToDummyArgs(arg.appliedToArgs(tpe.paramNames.map(_ => tpd.ref(defn.Predef_undefined))), tpe.resultType)
+                    case tpe: PolyType =>
+                      fullyAppliedToDummyArgs(arg.appliedToTypes(tpe.paramInfos.map(_.loBound)), tpe.resultType)
+                    case _ => arg
+                fullyAppliedToDummyArgs(arg, arg.tpe.widenTermRefExpr)
+              }
+              val holeType = getTermHoleType(tree.tpe)
+              val typeArgs = tpd.hkNestedPairsTypeTree(targs).tpe
+              val holeTypeArgs = List(ConstantType(Constant(idx)), holeType, typeArgs)
+              val newHole =
+                ref(defn.QuoteUnpickler_exprHole)
+                  .appliedToTypes(holeTypeArgs)
+                  .appliedToVarargs(args1, TypeTree(defn.AnyType))
+                  .withSpan(tree.span)
+              Inlined(EmptyTree, Nil, newHole).withSpan(tree.span)
+            else // transform into type `hole[idx, T']`
+              assert(targs.isEmpty)
+              assert(args.isEmpty)
+              val holeType = getTypeHoleType(tree.tpe)
+              val holeTypeArgs = List(ConstantType(Constant(idx)), holeType)
+              TypeTree(AppliedType(defn.QuoteUnpickler_typeHole.typeRef, holeTypeArgs))
+                .withSpan(tree.span)
           case tree: DefTree =>
             val newAnnotations = tree.symbol.annotations.mapconserve { annot =>
               annot.derivedAnnotation(transform(annot.tree)(using ctx.withOwner(tree.symbol)))
