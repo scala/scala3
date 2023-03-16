@@ -188,7 +188,8 @@ class Splicing extends MacroTransform:
    *  ```
    */
   private class SpliceTransformer(spliceOwner: Symbol, isCaptured: Symbol => Boolean) extends Transformer:
-    private var refBindingMap = mutable.Map.empty[Symbol, (Tree, Symbol)]
+    private val typeBindingMap = mutable.Map.empty[Symbol, (Tree, Symbol)]
+    private val termBindingMap = mutable.Map.empty[Symbol, (Tree, Symbol)]
     /** Reference to the `Quotes` instance of the current level 1 splice */
     private var quotes: Tree | Null = null // TODO: add to the context
     private var healedTypes: QuoteTypeTags | Null = null // TODO: add to the context
@@ -196,7 +197,10 @@ class Splicing extends MacroTransform:
     def transformSplice(tree: tpd.Tree, tpe: Type, holeIdx: Int)(using Context): tpd.Tree =
       assert(level == 0)
       val newTree = transform(tree)
-      val (refs, bindings) = refBindingMap.values.toList.unzip
+      val (typeRefs, typeBindings) = typeBindingMap.values.toList.unzip
+      val (termRefs, termBindings) = termBindingMap.values.toList.unzip
+      val refs = typeRefs ::: termRefs
+      val bindings = typeBindings ::: termBindings
       val bindingsTypes = bindings.map(_.termRef.widenTermRefExpr)
       val methType = MethodType(bindingsTypes, newTree.tpe)
       val meth = newSymbol(spliceOwner, nme.ANON_FUN, Synthetic | Method, methType)
@@ -348,7 +352,7 @@ class Splicing extends MacroTransform:
         Param,
         defn.QuotedExprClass.typeRef.appliedTo(tpe),
       )
-      val bindingSym = refBindingMap.getOrElseUpdate(tree.symbol, (tree, newBinding))._2
+      val bindingSym = termBindingMap.getOrElseUpdate(tree.symbol, (tree, newBinding))._2
       ref(bindingSym)
 
     private def newQuotedTypeClassBinding(tpe: Type)(using Context) =
@@ -361,7 +365,7 @@ class Splicing extends MacroTransform:
 
     private def capturedType(tree: Tree)(using Context): Symbol =
       val tpe = tree.tpe.widenTermRefExpr
-      val bindingSym = refBindingMap
+      val bindingSym = typeBindingMap
         .getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tpe)))._2
       bindingSym
 
@@ -371,7 +375,7 @@ class Splicing extends MacroTransform:
       val capturePartTypes = new TypeMap {
         def apply(tp: Type) = tp match {
           case typeRef: TypeRef if containsCapturedType(typeRef) =>
-            val termRef = refBindingMap
+            val termRef = typeBindingMap
               .getOrElseUpdate(typeRef.symbol, (TypeTree(typeRef), newQuotedTypeClassBinding(typeRef)))._2.termRef
             val tagRef = healedTypes.nn.getTagRef(termRef)
             tagRef
