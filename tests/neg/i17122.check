@@ -1,0 +1,5 @@
+-- [E172] Type Error: tests/neg/i17122.scala:7:14 ----------------------------------------------------------------------
+7 |def test = m() // error
+  |              ^
+  |              No given instance of type A was found for parameter of C
+  |              Where C is an alias of: (A) ?=> B
