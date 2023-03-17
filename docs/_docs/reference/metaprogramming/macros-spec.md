@@ -24,7 +24,7 @@ ${ hello('name) }         ${ hello('{name}) }
 
 ### Quotes
 Quotes come in four flavors: quoted identifiers, quoted blocks, quoted block patterns and quoted type patterns.
-Scala 2 used quoted identifiers to represent `Symbol` literals. They were deprecated in Scala 3, allowing to use them for quotation.
+Scala 2 used quoted identifiers to represent `Symbol` literals. They were deprecated in Scala 3, allowing the syntax to be used for quotation.
 ```scala
 SimpleExpr ::= ...
              |  `'` alphaid                           // quoted identifier
@@ -42,7 +42,7 @@ Lastly, the quoted type pattern simply contains a type.
 ### Splices
 Splices come in three flavors: spliced identifiers, spliced blocks and splice patterns.
 Scala specifies identifiers containing `$` as valid identifiers but reserves them for compiler and standard library use only.
-Unfortunately, many libraries have used such identifiers in Scala~2. Therefore to mitigate the cost of migration, we still support them.
+Unfortunately, many libraries have used such identifiers in Scala 2. Therefore to mitigate the cost of migration, we still support them.
 We work around this by only allowing spliced identifiers[^3] within quoted blocks or quoted block patterns (`inQuoteBlock`).
 Splice blocks and splice patterns can contain an arbitrary block or pattern respectively.
 They are distinguished based on their surrounding quote (`inQuotePattern`), a quote block will contain spliced blocks, and a quote block pattern will contain splice patterns.
@@ -208,7 +208,7 @@ import scala.quoted.staging.*
 given Compiler = Compiler.make(getClass.getClassLoader)
 ```
 
-The classloader is needed for the compiler to know which dependencies have been loaded and to load the generated code using the same classloader.
+The classloader is needed for the compiler to know which dependencies have been loaded and to load the generated code using the same classloader. Below is an example method `mkPower2` that is passed to `staging.run`:
 
 ```scala
 def mkPower2()(using Quotes): Expr[Double => Double] = ...
@@ -229,7 +229,7 @@ To do this, the resulting `RunInstance` class is loaded in the JVM using Java Re
 
 Quotes and splices are primitive forms in the generated typed abstract syntax trees.
 These need to be type-checked with some extra rules, e.g., staging levels need to be checked and the references to generic types need to be adapted.
-Finally, quoted expressions that will be generated at run-time need to be encoded (serialized) and decoded (deserialized).
+Finally, quoted expressions that will be generated at run-time need to be encoded (serialized/pickled) and decoded (deserialized/unpickled).
 
 #### Typing Quoted Expressions
 
@@ -473,7 +473,7 @@ In general, the splice normal form has the shape `${ <lambda>.apply(<args>*) }` 
 
 ##### Function references normalization
 A reference to a function `f` that receives parameters is not a valid value in Scala.
-Such a function reference `f` can be eta-expaned as `x => f(x)` to be used as a lambda value.
+Such a function reference `f` can be eta-expanded as `x => f(x)` to be used as a lambda value.
 Therefore function references cannot be transformed by the normalization as directly as other expressions as we cannot represent `'{f}` with a method reference type.
 We can use the eta-expanded form of `f` in the normalized form.
 For example, consider the reference to `f` below.
@@ -626,7 +626,7 @@ With these transformations, the contents of the quote or `Type.of` are guarantee
 The AST is pickled into TASTy, which is a sequence of bytes.
 This sequence of bytes needs to be instantiated in the bytecode, but unfortunately it cannot be dumped into the classfile as bytes.
 To reify it we encode the bytes into a Java `String`.
-In the following examples we display this encoding in human readable form with the fictitious |tasty"..."| string literal.
+In the following examples we display this encoding in human readable form with the fictitious `|tasty"..."|` string literal.
 
 ```scala
 // pickled AST bytes encoded in a base64 string
@@ -697,8 +697,8 @@ As the type holes are at the start of the quote, they will have the first `N` in
 This implies that we can place the references in a sequence `Seq(t, u, ...)` where the index in the sequence is the same as the hole index.
 
 Lastly, the quote itself is replaced by a call to `QuoteUnpickler.unpickleExpr` which will unpickle the AST, evaluate the holes, i.e., splices, and wrap the resulting AST in an `Expr[Int]`.
-This method takes takes the pickled |tasty"..."|, the types and the hole lambda.
-Similarly, `Type.of` is replaced with a call to `QuoteUnpickler.unpickleType` but only receives the pickled |tasty"..."| and the types.
+This method takes takes the pickled `|tasty"..."|`, the types and the hole lambda.
+Similarly, `Type.of` is replaced with a call to `QuoteUnpickler.unpickleType` but only receives the pickled `|tasty"..."|` and the types.
 Because `QuoteUnpickler` is part of the self-type of the `Quotes` class, we have to cast the instance but know that this cast will always succeed.
 
 ```scala
