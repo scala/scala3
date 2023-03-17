@@ -131,7 +131,7 @@ class TastyPrinter(bytes: Array[Byte]) {
               printName(); printTrees()
             case REFINEDtype | TERMREFin | TYPEREFin | SELECTin =>
               printName(); printTree(); printTrees()
-            case RETURN | HOLE =>
+            case RETURN | HOLE | QUOTEHOLE =>
               printNat(); printTrees()
             case METHODtype | POLYtype | TYPELAMBDAtype =>
               printTree()

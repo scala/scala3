@@ -122,8 +122,9 @@ Standard-Section: "ASTs" TopLevelStat*
                   MATCHtpt       Length bound_Term? sel_Term CaseDef*              -- sel match { CaseDef } where `bound` is optional upper bound of all rhs
                   BYNAMEtpt             underlying_Term                            -- => underlying
                   SHAREDterm            term_ASTRef                                -- Link to previously serialized term
+                  QUOTEHOLE      Length idx_Nat tptTargs_Tree arg_Tree*            -- Splice hole with index `idx`, the type of the hole `tpt`, type arguments `targ`s and term arguments `args`s
+                                                                                      -- tptTargs=APPLIEDtpt(tpt,targ*), this is not a true type application. Reused for its structure.
                   HOLE           Length idx_Nat tpe_Type arg_Tree*                 -- Splice hole with index `idx`, the type of the hole `tpe`, type and term arguments of the hole `arg`s
-
 
   CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?              -- case pat if guard => rhs
   ImplicitArg   = IMPLICITARG           arg_Term                                   -- implicit unapply argument
@@ -586,12 +587,14 @@ object TastyFormat {
   final val MATCHtpt = 191
   final val MATCHCASEtype = 192
 
-  final val HOLE = 255
+  final val QUOTEHOLE = 254
+  final val HOLE = 255 // Used from 3.0 to 3.3, repaced with QUOTEHOLE in 3.4+
 
   final val firstNatTreeTag = SHAREDterm
   final val firstASTTreeTag = THIS
   final val firstNatASTTreeTag = IDENT
   final val firstLengthTreeTag = PACKAGE
+  final val firstQuoteTag = QUOTEHOLE
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
@@ -600,7 +603,7 @@ object TastyFormat {
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
     firstLengthTreeTag <= tag && tag <= MATCHtpt ||
-    tag == HOLE
+    firstQuoteTag <= tag && tag <= HOLE
 
   def isParamTag(tag: Int): Boolean = tag == PARAM || tag == TYPEPARAM
 
@@ -803,6 +806,7 @@ object TastyFormat {
     case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
+    case QUOTEHOLE => "QUOTEHOLE"
     case HOLE => "HOLE"
   }
 
@@ -811,7 +815,7 @@ object TastyFormat {
    */
   def numRefs(tag: Int): Int = tag match {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
-         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | SELECTin | HOLE => 1
+         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | SELECTin | QUOTEHOLE | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | TYPELAMBDAtype | METHODtype => -1
     case _ => 0

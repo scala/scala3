@@ -666,14 +666,13 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(alias)
           }
         case Hole(_, idx, targs, args, _, tpt) =>
-          writeByte(HOLE)
+          writeByte(QUOTEHOLE)
           withLength {
             writeNat(idx)
-            pickleType(tpt.tpe, richTypes = true)
-            targs.foreach(pickleTree)
+            pickleTree(untpd.AppliedTypeTree(tpt, targs))
             args.foreach(pickleTree)
           }
-      }
+        }
       catch {
         case ex: TypeError =>
           report.error(ex.toMessage, tree.srcPos.focus)
