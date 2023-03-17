@@ -1435,8 +1435,8 @@ class TreeUnpickler(reader: TastyReader,
               val hi = if currentAddr == end then lo else readTpt()
               val alias = if currentAddr == end then EmptyTree else readTpt()
               createNullableTypeBoundsTree(lo, hi, alias)
-            case HOLE | QUOTEHOLE =>
-              readHole(tag, end, isTerm = true)
+            case HOLE =>
+              readHole(end, isTerm = true)
             case _ =>
               readPathTerm()
           }
@@ -1464,8 +1464,9 @@ class TreeUnpickler(reader: TastyReader,
           val aliases = readStats(ctx.owner, end)
           val tpt = typeReader.readTpt()
           Block(aliases, tpt)
-        case HOLE | QUOTEHOLE =>
-          readHole(readByte(), readEnd(), isTerm = false)
+        case HOLE =>
+          readByte()
+          readHole(readEnd(), isTerm = false)
         case _ =>
           if (isTypeTreeTag(nextByte)) readTerm()
           else {
@@ -1509,18 +1510,17 @@ class TreeUnpickler(reader: TastyReader,
       owner => new LazyReader(localReader, owner, mode, source, op)
     }
 
-    def readHole(tag: Int, end: Addr, isTerm: Boolean)(using Context): Tree = tag match {
-      case QUOTEHOLE =>
-        val idx = readNat()
-        val AppliedTypeTree(tpt, targs) = readTerm(): @unchecked
-        val args = until(end)(readTerm())
-        PickledHole(isTerm, idx, targs ::: args, tpt).withType(tpt.tpe)
-      case HOLE =>
-        val idx = readNat()
-        val tpe = readType()
-        val args = until(end)(readTerm())
-        PickledHole(isTerm, idx, args, TypeTree(tpe)).withType(tpe)
-    }
+    def readHole(end: Addr, isTerm: Boolean)(using Context): Tree =
+      val idx = readNat()
+      idx >> 24 match
+        case 0 =>
+          val tpe = readType()
+          val args = until(end)(readTerm())
+          PickledHole(isTerm, idx, args, TypeTree(tpe)).withType(tpe)
+        case 1 =>
+          val AppliedTypeTree(tpt, targs) = readTerm(): @unchecked
+          val args = until(end)(readTerm())
+          PickledHole(isTerm, idx & 0x00FF_FFFF, targs ::: args, tpt).withType(tpt.tpe)
 
 // ------ Setting positions ------------------------------------------------
 
