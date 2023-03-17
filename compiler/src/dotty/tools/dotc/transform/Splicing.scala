@@ -132,7 +132,7 @@ class Splicing extends MacroTransform:
             case None =>
               val holeIdx = numHoles
               numHoles += 1
-              val hole = tpd.Hole(false, holeIdx, Nil, ref(qual), TypeTree(tp))
+              val hole = tpd.Hole(false, holeIdx, Nil, Nil, ref(qual), TypeTree(tp))
               typeHoles.put(qual, hole)
               hole
           cpy.TypeDef(tree)(rhs = hole)
@@ -199,7 +199,6 @@ class Splicing extends MacroTransform:
       val newTree = transform(tree)
       val (typeRefs, typeBindings) = typeBindingMap.values.toList.unzip
       val (termRefs, termBindings) = termBindingMap.values.toList.unzip
-      val refs = typeRefs ::: termRefs
       val bindings = typeBindings ::: termBindings
       val bindingsTypes = bindings.map(_.termRef.widenTermRefExpr)
       val methType = MethodType(bindingsTypes, newTree.tpe)
@@ -207,7 +206,7 @@ class Splicing extends MacroTransform:
       val ddef = DefDef(meth, List(bindings), newTree.tpe, newTree.changeOwner(ctx.owner, meth))
       val fnType = defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes :+ newTree.tpe)
       val closure = Block(ddef :: Nil, Closure(Nil, ref(meth), TypeTree(fnType)))
-      tpd.Hole(true, holeIdx, refs, closure, TypeTree(tpe))
+      tpd.Hole(true, holeIdx, typeRefs, termRefs, closure, TypeTree(tpe))
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
