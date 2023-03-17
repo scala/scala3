@@ -126,7 +126,7 @@ class PickleQuotes extends MacroTransform {
       private val contents = List.newBuilder[Tree]
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
-          case tree @ Hole(isTerm, _, _, content, _) =>
+          case tree @ Hole(isTerm, _, _, _, content, _) =>
             if !content.isEmpty then
               contents += content
             val holeType =
