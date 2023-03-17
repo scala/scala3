@@ -148,11 +148,11 @@ class CoursierScalaTests:
 
 object CoursierScalaTests:
 
-  def execCmd(command: String, options: String*): List[String] =
+  def execCmd(command: String, options: String*): (Int, List[String]) =
     val cmd = (command :: options.toList).toSeq.mkString(" ")
     val out = new ListBuffer[String]
-    cmd.!(ProcessLogger(out += _, out += _))
-    out.toList
+    val code = cmd.!(ProcessLogger(out += _, out += _))
+    (code, out.toList)
 
   def csScalaCmd(options: String*): List[String] =
     csCmd("dotty.tools.MainGenericRunner", options*)
@@ -166,10 +166,16 @@ object CoursierScalaTests:
       case Nil => args
       case _ => "--" +: args
     val newJOpts = jOpts.map(s => s"--java-opt ${s.stripPrefix("-J")}").mkString(" ")
-    execCmd("./cs", (s"""launch "org.scala-lang:scala3-compiler_3:${sys.env("DOTTY_BOOTSTRAPPED_VERSION")}" $newJOpts --main-class "$entry" --property "scala.usejavacp=true"""" +: newOptions)*)
+    execCmd("./cs", (s"""launch "org.scala-lang:scala3-compiler_3:${sys.env("DOTTY_BOOTSTRAPPED_VERSION")}" $newJOpts --main-class "$entry" --property "scala.usejavacp=true"""" +: newOptions)*)._2
 
   /** Get coursier script */
   @BeforeClass def setup(): Unit =
-    val ver = execCmd("uname").head.replace('L', 'l').replace('D', 'd')
-    execCmd("curl", s"-fLo cs https://git.io/coursier-cli-$ver") #&& execCmd("chmod", "+x cs")
+    val ver = execCmd("uname")._2.head.replace('L', 'l').replace('D', 'd')
 
+    def runAndCheckCmd(cmd: String, options: String*): Unit =
+      val (code, out) = execCmd(cmd, options*)
+      if code != 0 then
+        fail(s"Failed to run $cmd ${options.mkString(" ")}, exit code: $code, output: ${out.mkString("\n")}")
+
+    runAndCheckCmd("curl", s"-fLo cs https://git.io/coursier-cli-$ver")
+    runAndCheckCmd("chmod", "+x cs")
