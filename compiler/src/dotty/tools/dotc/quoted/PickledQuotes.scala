@@ -100,14 +100,14 @@ object PickledQuotes {
   private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
     def evaluateHoles = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
-        case Hole(isTermHole, idx, args, _, _) =>
+        case Hole(isTermHole, idx, targs, args, _, _) =>
           inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {
             if isTermHole then
               val quotedExpr = termHole match
                 case ExprHole.V1(evalHole) =>
-                  evalHole.nn.apply(idx, reifyExprHoleV1Args(args), QuotesImpl())
+                  evalHole.nn.apply(idx, reifyExprHoleV1Args(targs ::: args), QuotesImpl())
                 case ExprHole.V2(evalHole) =>
-                  evalHole.nn.apply(idx, reifyExprHoleV2Args(args), QuotesImpl())
+                  evalHole.nn.apply(idx, reifyExprHoleV2Args(targs ::: args), QuotesImpl())
 
               val filled = PickledQuotes.quotedExprToTree(quotedExpr)
 
@@ -165,15 +165,15 @@ object PickledQuotes {
             val tree = typeHole match
               case TypeHole.V1(evalHole) =>
                 tdef.rhs match
-                  case TypeBoundsTree(_, Hole(_, idx, args, _, _), _) =>
+                  case TypeBoundsTree(_, Hole(_, idx, targs, args, _, _), _) =>
                     // To keep for backwards compatibility. In some older version holes where created in the bounds.
-                    val quotedType = evalHole.nn.apply(idx, reifyTypeHoleArgs(args))
+                    val quotedType = evalHole.nn.apply(idx, reifyTypeHoleArgs(targs ::: args))
                     PickledQuotes.quotedTypeToTree(quotedType)
                   case TypeBoundsTree(_, tpt, _) =>
                     // To keep for backwards compatibility. In some older version we missed the creation of some holes.
                     tpt
               case TypeHole.V2(types) =>
-                val Hole(_, idx, _, _, _) = tdef.rhs: @unchecked
+                val Hole(_, idx, _, _, _, _) = tdef.rhs: @unchecked
                 PickledQuotes.quotedTypeToTree(types.nn.apply(idx))
             (tdef.symbol, tree.tpe)
         }.toMap

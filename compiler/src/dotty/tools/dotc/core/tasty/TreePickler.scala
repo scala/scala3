@@ -665,11 +665,12 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(hi)
               pickleTree(alias)
           }
-        case Hole(_, idx, args, _, tpt) =>
+        case Hole(_, idx, targs, args, _, tpt) =>
           writeByte(HOLE)
           withLength {
             writeNat(idx)
             pickleType(tpt.tpe, richTypes = true)
+            targs.foreach(pickleTree)
             args.foreach(pickleTree)
           }
       }

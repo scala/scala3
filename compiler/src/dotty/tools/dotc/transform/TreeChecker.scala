@@ -658,11 +658,11 @@ object TreeChecker {
         super.typedPackageDef(tree)
 
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
-      val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt): @unchecked
+      val tree1 @ Hole(isTermHole, _, targs, args, content, tpt) = super.typedHole(tree, pt): @unchecked
 
       // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
-      for arg <- args do
+      for arg <- (targs ::: args) do // TODO check targs and terms separately
         assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole type args but got: " + arg.tpe)
 
       // Check result type of the hole
@@ -670,7 +670,7 @@ object TreeChecker {
       else assert(tpt.typeOpt =:= pt)
 
       // Check that the types of the args conform to the types of the contents of the hole
-      val argQuotedTypes = args.map { arg =>
+      val argQuotedTypes = (targs ::: args).map { arg =>
         if arg.isTerm then
           val tpe = arg.typeOpt.widenTermRefExpr match
             case _: MethodicType =>
