@@ -394,6 +394,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Hole(isTermHole: Boolean, idx: Int, targs: List[Tree], args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole =
     ta.assignType(untpd.Hole(isTermHole, idx, targs, args, content, tpt), tpt)
 
+  // def PickledHole(isTermHole: Boolean, idx: Int, args: List[Tree], tpt: Tree)(using Context): PickledHole =
+  //   ta.assignType(untpd.PickledHole(isTermHole, idx, args, tpt), tpt)
+
   // ------ Making references ------------------------------------------------------
 
   def prefixIsElidable(tp: NamedType)(using Context): Boolean = {
