@@ -536,6 +536,8 @@ trait TypeAssigner {
   def assignType(tree: untpd.Hole, tpt: Tree)(using Context): Hole =
     tree.withType(tpt.tpe)
 
+  def assignType(tree: untpd.PickledHole, tpt: Tree)(using Context): PickledHole =
+    tree.withType(tpt.tpe)
 }
 
 object TypeAssigner extends TypeAssigner:
