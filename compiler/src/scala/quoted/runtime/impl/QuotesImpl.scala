@@ -3080,7 +3080,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       lazy val ConstantCode: Printer[Constant] = new Printer[Constant]:
         def show(const: Constant): String =
-          const.show(using ctx.fresh.setSetting(ctx.settings.color, "never"))
+          const.show(using ctx.withoutColors)
 
       lazy val ConstantStructure: Printer[Constant] = new Printer[Constant]:
         def show(const: Constant): String =
