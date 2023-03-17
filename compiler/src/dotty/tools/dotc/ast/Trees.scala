@@ -976,13 +976,8 @@ object Trees {
   def genericEmptyTree[T <: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
-   *  It is only used when picking quotes (will never be in a TASTy file).
-   *
-   *  Hole created by this compile separate the targs from the args. Holes
-   *  generated with 3.0-3.3 contain all type args and targs in any order in
-   *  a single list. For backwards compatibility we read holes from tasty as
-   *  if they had no targs and have only args. Therefore the args may contain
-   *  type trees.
+   *  It is only used when encoding pickled quotes. These will be encoded
+   *  as PickledHole when pickled.
    *
    *  @param isTermHole If this hole is a term, otherwise it is a type hole.
    *  @param idx The index of the hole in it's enclosing level 0 quote.
@@ -993,6 +988,26 @@ object Trees {
    */
   case class Hole[+T <: Untyped](isTermHole: Boolean, idx: Int, targs: List[Tree[T]], args: List[Tree[T]], content: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
     type ThisTree[+T <: Untyped] <: Hole[T]
+    override def isTerm: Boolean = isTermHole
+    override def isType: Boolean = !isTermHole
+  }
+
+  /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
+   *  It is only used when picking quotes (will never be in a TASTy file).
+   *
+   *  Hole created by this compile separate the targs from the args. Holes
+   *  generated with 3.0-3.3 contain all type args and targs in any order in
+   *  a single list. For backwards compatibility we read holes from tasty as
+   *  if they had no targs and have only args. Therefore the args may contain
+   *  type trees.
+   *
+   *  @param isTermHole If this hole is a term, otherwise it is a type hole.
+   *  @param idx The index of the hole in it's enclosing level 0 quote.
+   *  @param args The term (or type) arguments of the splice to compute its content
+   *  @param tpt Type of the hole
+   */
+  case class PickledHole[+T <: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
+    type ThisTree[+T <: Untyped] <: PickledHole[T]
     override def isTerm: Boolean = isTermHole
     override def isType: Boolean = !isTermHole
   }
@@ -1119,6 +1134,7 @@ object Trees {
     type Thicket = Trees.Thicket[T]
 
     type Hole = Trees.Hole[T]
+    type PickledHole = Trees.PickledHole[T]
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
@@ -1345,8 +1361,12 @@ object Trees {
         case _ => finalize(tree, untpd.Thicket(trees)(sourceFile(tree)))
       }
       def Hole(tree: Tree)(isTerm: Boolean, idx: Int, targs: List[Tree], args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole = tree match {
-        case tree: Hole if isTerm == tree.isTerm && idx == tree.idx && targs.eq(tree.targs) && args.eq(tree.args) && content.eq(tree.content) && content.eq(tree.content) => tree
+        case tree: Hole if isTerm == tree.isTerm && idx == tree.idx && targs.eq(tree.targs) && args.eq(tree.args) && content.eq(tree.content) && tpt.eq(tree.tpt) => tree
         case _ => finalize(tree, untpd.Hole(isTerm, idx, targs, args, content, tpt)(sourceFile(tree)))
+      }
+      def PickledHole(tree: Tree)(isTerm: Boolean, idx: Int, args: List[Tree], tpt: Tree)(using Context): PickledHole = tree match {
+        case tree: PickledHole if isTerm == tree.isTerm && idx == tree.idx && args.eq(tree.args) && tpt.eq(tree.tpt) => tree
+        case _ => finalize(tree, untpd.PickledHole(isTerm, idx, args, tpt)(sourceFile(tree)))
       }
 
       // Copier methods with default arguments; these demand that the original tree
@@ -1371,6 +1391,8 @@ object Trees {
         Template(tree: Tree)(constr, parents, derived, self, body)
       def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, targs: List[Tree] = tree.targs, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
         Hole(tree: Tree)(isTerm, idx, targs, args, content, tpt)
+      def PickledHole(tree: PickledHole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, tpt: Tree = tree.tpt)(using Context): PickledHole =
+        PickledHole(tree: Tree)(isTerm, idx, args, tpt)
 
     }
 
@@ -1503,6 +1525,8 @@ object Trees {
               if (trees1 eq trees) tree else Thicket(trees1)
             case tree @ Hole(_, _, targs, args, content, tpt) =>
               cpy.Hole(tree)(targs = transform(targs), args = transform(args), content = transform(content), tpt = transform(tpt))
+            case tree @ PickledHole(_, _, args, tpt) =>
+              cpy.PickledHole(tree)(args = transform(args), tpt = transform(tpt))
             case _ =>
               transformMoreCases(tree)
           }
@@ -1644,6 +1668,8 @@ object Trees {
               this(x, ts)
             case Hole(_, _, targs, args, content, tpt) =>
               this(this(this(this(x, targs), args), content), tpt)
+            case PickledHole(_, _, args, tpt) =>
+              this(this(x, args), tpt)
             case _ =>
               foldMoreCases(x, tree)
           }
