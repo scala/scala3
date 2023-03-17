@@ -181,12 +181,12 @@ trait Dynamic {
     val vargss = termArgss(tree)
 
     def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
-      val selectable = adapt(qual, defn.SelectableClass.typeRef)
+      val selectable = adapt(qual, defn.SelectableClass.typeRef | defn.DynamicClass.typeRef)
 
       // ($qual: Selectable).$selectorName("$name")
       val base =
         untpd.Apply(
-          untpd.TypedSplice(selectable.select(selectorName)).withSpan(fun.span),
+          untpd.Select(untpd.TypedSplice(selectable), selectorName).withSpan(fun.span),
           (Literal(Constant(name.encode.toString)) :: Nil).map(untpd.TypedSplice(_)))
 
       val scall =
@@ -219,19 +219,19 @@ trait Dynamic {
     extension (tree: Tree)
       /** The implementations of `selectDynamic` and `applyDynamic` in `scala.reflect.SelectDynamic` have no information about the expected return type of a value/method which was declared in the refinement,
        *  only the JVM type after erasure can be obtained through reflection, e.g.
-       *  
+       *
        *  class Foo(val i: Int) extends AnyVal
        *  class Reflective extends reflect.Selectable
        *  val reflective = new Reflective {
        *    def foo = Foo(1) // Foo at compile time, java.lang.Integer in reflection
        *  }
-       * 
+       *
        *  Because of that reflective access cannot be implemented properly in `scala.reflect.SelectDynamic` itself
        *  because it's not known there if the value should be wrapped in a value class constructor call or not.
        *  Hence the logic of wrapping is performed here, relying on the fact that the implementations of `selectDynamic` and `applyDynamic` in `scala.reflect.SelectDynamic` are final.
        */
       def maybeBoxingCast(tpe: Type) =
-        val maybeBoxed = 
+        val maybeBoxed =
           if ValueClasses.isDerivedValueClass(tpe.classSymbol) && qual.tpe <:< defn.ReflectSelectableTypeRef then
             val genericUnderlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass)
             val underlying = tpe.select(genericUnderlying).widen.resultType

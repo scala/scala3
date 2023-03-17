@@ -25,11 +25,11 @@ class Wildcards/*<-advanced::Wildcards#*/ {
 object Test/*<-advanced::Test.*/ {
   val s/*<-advanced::Test.s.*/ = new Structural/*->advanced::Structural#*/
   val s1/*<-advanced::Test.s1.*/ = s/*->advanced::Test.s.*/.s1/*->advanced::Structural#s1().*/
-  val s1x/*<-advanced::Test.s1x.*/ = s/*->advanced::Test.s.*/.s1/*->advanced::Structural#s1().*/.x
+  val s1x/*<-advanced::Test.s1x.*/ = s/*->advanced::Test.s.*/.s1/*->advanced::Structural#s1().*/.x/*->scala::reflect::Selectable#selectDynamic().*/
   val s2/*<-advanced::Test.s2.*/ = s/*->advanced::Test.s.*/.s2/*->advanced::Structural#s2().*/
-  val s2x/*<-advanced::Test.s2x.*/ = s/*->advanced::Test.s.*/.s2/*->advanced::Structural#s2().*/.x
+  val s2x/*<-advanced::Test.s2x.*/ = s/*->advanced::Test.s.*/.s2/*->advanced::Structural#s2().*/.x/*->scala::reflect::Selectable#selectDynamic().*/
   val s3/*<-advanced::Test.s3.*/ = s/*->advanced::Test.s.*/.s3/*->advanced::Structural#s3().*/
-  val s3x/*<-advanced::Test.s3x.*/ = s/*->advanced::Test.s.*/.s3/*->advanced::Structural#s3().*/.m(???/*->scala::Predef.`???`().*/)
+  val s3x/*<-advanced::Test.s3x.*/ = s/*->advanced::Test.s.*/.s3/*->advanced::Structural#s3().*/.m/*->scala::reflect::Selectable#applyDynamic().*/(???/*->scala::Predef.`???`().*/)
 
   val e/*<-advanced::Test.e.*/ = new Wildcards/*->advanced::Wildcards#*/
   val e1/*<-advanced::Test.e1.*/ = e/*->advanced::Test.e.*/.e1/*->advanced::Wildcards#e1().*/
@@ -45,7 +45,7 @@ object Test/*<-advanced::Test.*/ {
 
   // see: https://github.com/lampepfl/dotty/pull/14608#discussion_r835642563
   lazy val foo/*<-advanced::Test.foo.*/: (reflect.Selectable/*->scala::reflect::Selectable#*/ { type A/*<-local16*/ = Int/*->scala::Int#*/ }) &/*->scala::`&`#*/ (reflect.Selectable/*->scala::reflect::Selectable#*/ { type A/*<-local17*/ = Int/*->scala::Int#*/; val a/*<-local18*/: A/*->local17*/ }) = ???/*->scala::Predef.`???`().*/
-  def bar/*<-advanced::Test.bar().*/: foo/*->advanced::Test.foo.*/.A/*->local17*/ = foo/*->advanced::Test.foo.*/.a
+  def bar/*<-advanced::Test.bar().*/: foo/*->advanced::Test.foo.*/.A/*->local17*/ = foo/*->advanced::Test.foo.*/.a/*->scala::reflect::Selectable#selectDynamic().*/
 }
 
 
