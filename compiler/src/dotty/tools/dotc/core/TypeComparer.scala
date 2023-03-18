@@ -284,13 +284,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           given Context = ctx // optimization for performance
           val info2 = tp2.info
 
-          /** Does `tp2` have a singleton type or NoPrefix as a prefix?
+          /** Does `tp2` have a stable prefix or NoPrefix as a prefix?
            *  If that's not the case, following an alias via asSeenFrom could be lossy
            *  so we should not conclude `false` if comparing aliases fails.
            *  See pos/i17064.scala for a test case
            */
           def hasPrecisePrefix(tp: NamedType) =
-            tp.prefix.isSingleton || tp.prefix == NoPrefix
+            tp.prefix.isStable || tp.prefix == NoPrefix
 
           info2 match
             case info2: TypeAlias =>
