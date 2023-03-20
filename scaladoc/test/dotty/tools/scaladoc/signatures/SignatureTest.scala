@@ -43,7 +43,7 @@ abstract class SignatureTest(
 
     val unexpected = unexpectedFromSources.flatMap(actualSignatures.get).flatten
     val expectedButNotFound = expectedFromSources.flatMap {
-      case (k, v) => findMissingSingatures(v, actualSignatures.getOrElse(k, Nil))
+      case (k, v) => findMissingSignatures(v, actualSignatures.getOrElse(k, Nil))
     }
 
     val missingReport = Option.when(!ignoreMissingSignatures && !expectedButNotFound.isEmpty)
@@ -75,7 +75,7 @@ abstract class SignatureTest(
   private val unexpectedRegex = raw"(.+)//unexpected".r
   private val identifierRegex = raw"^\s*(`.*`|(?:\w+)(?:_[^\[\(\s]+)|\w+|[^\[\(\s]+)".r
 
-  private def findMissingSingatures(expected: Seq[String], actual: Seq[String]): Set[String] =
+  private def findMissingSignatures(expected: Seq[String], actual: Seq[String]): Set[String] =
     expected.toSet &~ actual.toSet
 
   extension (s: String)
