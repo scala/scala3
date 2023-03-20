@@ -82,11 +82,18 @@ abstract class SignatureTest(
     private def startWithAnyOfThese(c: String*) = c.exists(s.startsWith)
     private def compactWhitespaces = whitespaceRegex.replaceAllIn(s, " ")
 
+  private var counter = 0
   private def findName(signature: String, kinds: Seq[String]): Option[String] =
     for
-      kindMatch <- kinds.flatMap(k => s"\\b$k\\b".r.findFirstMatchIn(signature)).headOption
+      kindMatch <- kinds.flatMap(k =>s"\\b$k\\b".r.findFirstMatchIn(signature)).headOption
       afterKind <- Option(kindMatch.after(0)) // to filter out nulls
-      nameMatch <- identifierRegex.findFirstMatchIn(afterKind)
+      nameMatch <- identifierRegex.findFirstMatchIn(
+        if kindMatch.group(0).contains("extension")
+        then
+          signature
+        else
+          afterKind
+        )
     yield nameMatch.group(1)
 
   private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[SignatureRes] =
@@ -110,6 +117,11 @@ abstract class SignatureTest(
 
     def processFile(path: Path): Unit = if filterFunc(path) then
       val document = Jsoup.parse(IO.read(path))
+      val documentable = document.select(".groupHeader").forEach { element =>
+        val signature = element.select(".groupHeader").eachText.asScala.mkString("")
+        val all = s"$signature"
+        signatures += all
+      }
       val content = document.select(".documentableElement").forEach { elem =>
         val annotations = elem.select(".annotations").eachText.asScala.mkString("")
         val other = elem.select(".header .other-modifiers").eachText.asScala.mkString("")
@@ -122,13 +134,13 @@ abstract class SignatureTest(
         val all = s"$annotations$other $sigPrefix$signature".trim()
         signatures += all
       }
-
+    counter = 0
 
     IO.foreachFileIn(output, processFile)
     signatures.result
 
 object SignatureTest {
   val classlikeKinds = Seq("class",  "object", "trait", "enum") // TODO add docs for packages
-  val members = Seq("type", "def", "val", "var", "given")
+  val members = Seq("type", "def", "val", "var", "given", "extension")
   val all = classlikeKinds ++ members
 }
