@@ -43,7 +43,7 @@ abstract class SignatureTest(
 
     val unexpected = unexpectedFromSources.flatMap(actualSignatures.get).flatten
     val expectedButNotFound = expectedFromSources.flatMap {
-      case (k, v) => findMissingSingatures(v, actualSignatures.getOrElse(k, Nil))
+      case (k, v) => findMissingSignatures(v, actualSignatures.getOrElse(k, Nil))
     }
 
     val missingReport = Option.when(!ignoreMissingSignatures && !expectedButNotFound.isEmpty)
@@ -75,26 +75,21 @@ abstract class SignatureTest(
   private val unexpectedRegex = raw"(.+)//unexpected".r
   private val identifierRegex = raw"^\s*(`.*`|(?:\w+)(?:_[^\[\(\s]+)|\w+|[^\[\(\s]+)".r
 
-  private def findMissingSingatures(expected: Seq[String], actual: Seq[String]): Set[String] =
+  private def findMissingSignatures(expected: Seq[String], actual: Seq[String]): Set[String] =
     expected.toSet &~ actual.toSet
 
   extension (s: String)
     private def startWithAnyOfThese(c: String*) = c.exists(s.startsWith)
     private def compactWhitespaces = whitespaceRegex.replaceAllIn(s, " ")
 
-  private var counter = 0
   private def findName(signature: String, kinds: Seq[String]): Option[String] =
     for
       kindMatch <- kinds.flatMap(k =>s"\\b$k\\b".r.findFirstMatchIn(signature)).headOption
+      kind <- Option(kindMatch.group(0)) // to filter out nulls
       afterKind <- Option(kindMatch.after(0)) // to filter out nulls
-      nameMatch <- identifierRegex.findFirstMatchIn(
-        if kindMatch.group(0).contains("extension")
-        then
-          signature
-        else
-          afterKind
-        )
-    yield nameMatch.group(1)
+      name <- if kind.contains("extension") then Some(signature) // The name of an extension will always be the signature itself
+                    else identifierRegex.findFirstMatchIn(afterKind).map(_.group(1))
+    yield name
 
   private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[SignatureRes] =
     source.getLines.map(_.trim)
@@ -118,9 +113,7 @@ abstract class SignatureTest(
     def processFile(path: Path): Unit = if filterFunc(path) then
       val document = Jsoup.parse(IO.read(path))
       val documentable = document.select(".groupHeader").forEach { element =>
-        val signature = element.select(".groupHeader").eachText.asScala.mkString("")
-        val all = s"$signature"
-        signatures += all
+        signatures += element.text
       }
       val content = document.select(".documentableElement").forEach { elem =>
         val annotations = elem.select(".annotations").eachText.asScala.mkString("")
@@ -134,7 +127,6 @@ abstract class SignatureTest(
         val all = s"$annotations$other $sigPrefix$signature".trim()
         signatures += all
       }
-    counter = 0
 
     IO.foreachFileIn(output, processFile)
     signatures.result
