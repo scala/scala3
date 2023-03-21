@@ -191,7 +191,7 @@ class Splicing extends MacroTransform:
     private var refBindingMap = mutable.Map.empty[Symbol, (Tree, Symbol)]
     /** Reference to the `Quotes` instance of the current level 1 splice */
     private var quotes: Tree | Null = null // TODO: add to the context
-    private var healedTypes: PCPCheckAndHeal.QuoteTypeTags | Null = null // TODO: add to the context
+    private var healedTypes: CrossStageSafety.QuoteTypeTags | Null = null // TODO: add to the context
 
     def transformSplice(tree: tpd.Tree, tpe: Type, holeIdx: Int)(using Context): tpd.Tree =
       assert(level == 0)
@@ -254,7 +254,7 @@ class Splicing extends MacroTransform:
     private def transformLevel0QuoteContent(tree: Tree)(using Context): Tree =
       // transform and collect new healed types
       val old = healedTypes
-      healedTypes = new PCPCheckAndHeal.QuoteTypeTags(tree.span)
+      healedTypes = new CrossStageSafety.QuoteTypeTags(tree.span)
       val tree1 = transform(tree)
       val newHealedTypes = healedTypes.nn.getTypeTags
       healedTypes = old
