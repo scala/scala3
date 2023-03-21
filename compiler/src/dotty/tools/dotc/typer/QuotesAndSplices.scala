@@ -250,7 +250,7 @@ trait QuotesAndSplices {
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
-        case Select(pat, _) if tree.symbol.isTypeSplice =>
+        case Select(pat: Bind, _) if tree.symbol.isTypeSplice =>
           val sym = tree.tpe.dealias.typeSymbol
           if sym.exists then
             val tdef = TypeDef(sym.asType).withSpan(sym.span)
