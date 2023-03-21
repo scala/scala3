@@ -207,6 +207,14 @@ class Splicing extends MacroTransform:
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
+        case tree: Select if tree.isTerm && isCaptured(tree.symbol) =>
+          tree.symbol.allOverriddenSymbols.find(sym => !isCaptured(sym.owner)) match
+            case Some(sym) =>
+              // virtualize call on overridden symbol that is not defined in a non static class
+              transform(tree.qualifier.select(sym))
+            case _ =>
+              report.error(em"Can not use reference to staged local ${tree.symbol} defined in an outer quote.\n\nThis can work if ${tree.symbol.owner} would extend a top level interface that defines ${tree.symbol}.", tree)
+              tree
         case tree: RefTree =>
           if tree.isTerm then
             if isCaptured(tree.symbol) then
