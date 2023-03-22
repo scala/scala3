@@ -580,7 +580,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val base = nonExprBaseType(tp1, cls2)
             if (base.typeSymbol == cls2) return true
           }
-          else if tp1.isLambdaSub && !tp1.isAnyKind then
+          else if tp1.typeParams.nonEmpty && !tp1.isAnyKind then
             return recur(tp1, EtaExpansion(tp2))
         fourthTry
     }
