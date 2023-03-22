@@ -107,30 +107,37 @@ class CrossStageSafety extends TreeMapWithStages {
     val stripAnnotsDeep: TypeMap = new TypeMap:
       def apply(tp: Type): Type = mapOver(tp.stripAnnots)
 
-    val contextWithQuote =
-      if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
-      else quoteContext
-    val body1 = transform(body)(using contextWithQuote)
-    val body2 =
+    def transformBody() =
+      val contextWithQuote =
+        if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
+        else quoteContext
+      val transformedBody = transform(body)(using contextWithQuote)
       taggedTypes.getTypeTags match
-        case Nil  => body1
-        case tags => tpd.Block(tags, body1).withSpan(body.span)
+        case Nil  => transformedBody
+        case tags => tpd.Block(tags, transformedBody).withSpan(body.span)
 
     if body.isTerm then
+      val transformedBody = transformBody()
       // `quoted.runtime.Expr.quote[T](<body>)`  --> `quoted.runtime.Expr.quote[T2](<body2>)`
       val TypeApply(fun, targs) = quote.fun: @unchecked
       val targs2 = targs.map(targ => TypeTree(healType(quote.fun.srcPos)(stripAnnotsDeep(targ.tpe))))
-      cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), body2 :: Nil)
+      cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), transformedBody :: Nil)
     else
-      val quotes = quote.args.mapConserve(transform)
       body.tpe match
-        case tp @ TypeRef(x: TermRef, _) if tp.symbol == defn.QuotedType_splice =>
+        case DirectTypeOf(termRef) =>
           // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
-          ref(x)
+          ref(termRef).withSpan(quote.span)
         case _ =>
-          // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
-          val TypeApply(fun, _) = quote.fun: @unchecked
-          cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body2 :: Nil), quotes)
+          transformBody() match
+            case DirectTypeOf.Healed(termRef) =>
+              // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
+              ref(termRef).withSpan(quote.span)
+            case transformedBody =>
+              val quotes = quote.args.mapConserve(transform)
+              // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
+              val TypeApply(fun, _) = quote.fun: @unchecked
+              cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, transformedBody :: Nil), quotes)
+
   }
 
   /** Transform splice
