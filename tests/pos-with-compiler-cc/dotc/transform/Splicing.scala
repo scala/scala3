@@ -105,8 +105,10 @@ class Splicing extends MacroTransform:
     /** Set of definitions in the current quote */
     private val quotedDefs = mutable.Set.empty[Symbol]
 
-    /** Number of holes created in this quote. Used for indexing holes. */
-    private var numHoles = 0
+    /** Number of term holes created in this quote. Used for indexing term holes. */
+    private var numTermHoles = 0
+    /** Number of type holes created in this quote. Used for indexing type holes. */
+    private var numTypeHoles = 0
 
     /** Mapping from the term symbol of a `Type[T]` to it's hole. Used to deduplicate type holes. */
     private val typeHoles = mutable.Map.empty[Symbol, Hole]
@@ -118,8 +120,8 @@ class Splicing extends MacroTransform:
             val splicedCode1 = super.transform(splicedCode)(using spliceContext)
             cpy.Apply(tree)(fn, List(splicedCode1))
           else
-            val holeIdx = numHoles
-            numHoles += 1
+            val holeIdx = numTermHoles
+            numTermHoles += 1
             val splicer = SpliceTransformer(ctx.owner, quotedDefs.contains)
             val newSplicedCode1 = splicer.transformSplice(splicedCode, tree.tpe, holeIdx)(using spliceContext)
             val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
@@ -130,8 +132,8 @@ class Splicing extends MacroTransform:
           val hole = typeHoles.get(qual.symbol) match
             case Some (hole) => cpy.Hole(hole)(content = EmptyTree)
             case None =>
-              val holeIdx = numHoles
-              numHoles += 1
+              val holeIdx = numTypeHoles
+              numTypeHoles += 1
               val hole = tpd.Hole(false, holeIdx, Nil, ref(qual), TypeTree(tp))
               typeHoles.put(qual.symbol, hole)
               hole
