@@ -1,0 +1,48 @@
+-- Error: tests/neg/binaryAPIAccessor.scala:6:25 -----------------------------------------------------------------------
+6 |@binaryAPIAccessor class C: // error
+  |                         ^
+  |                         @binaryAPIAccessor cannot be used on class definitions
+-- Error: tests/neg/binaryAPIAccessor.scala:8:27 -----------------------------------------------------------------------
+8 |    @binaryAPIAccessor def g = () // error
+  |                           ^
+  |                           @binaryAPIAccessor cannot be used on local definitions.
+-- Error: tests/neg/binaryAPIAccessor.scala:10:27 ----------------------------------------------------------------------
+10 |class D[@binaryAPIAccessor T] // error
+   |                           ^
+   |                           @binaryAPIAccessor cannot be used on type definitions
+-- Error: tests/neg/binaryAPIAccessor.scala:14:24 ----------------------------------------------------------------------
+14 |@binaryAPIAccessor enum Enum1: // error
+   |                        ^
+   |                        @binaryAPIAccessor cannot be used on enum definitions.
+-- Error: tests/neg/binaryAPIAccessor.scala:18:26 ----------------------------------------------------------------------
+18 |  @binaryAPIAccessor case A // error
+   |                          ^
+   |                          @binaryAPIAccessor cannot be used on enum definitions.
+-- Error: tests/neg/binaryAPIAccessor.scala:19:26 ----------------------------------------------------------------------
+19 |  @binaryAPIAccessor case B(a: Int) // error
+   |                          ^
+   |                          @binaryAPIAccessor cannot be used on enum definitions.
+-- Error: tests/neg/binaryAPIAccessor.scala:21:9 -----------------------------------------------------------------------
+21 |class Foo @binaryAPIAccessor private (x: Int): // error
+   |         ^
+   |         @binaryAPIAccessor cannot be used on constructors.
+-- Error: tests/neg/binaryAPIAccessor.scala:22:33 ----------------------------------------------------------------------
+22 |  @binaryAPIAccessor private def this(x: Int, y: Int) = this(x + y) // error
+   |                                 ^
+   |                                 @binaryAPIAccessor cannot be used on constructors.
+-- Error: tests/neg/binaryAPIAccessor.scala:24:9 -----------------------------------------------------------------------
+24 |class Bar @binaryAPIAccessor private[this] (x: Int): // error
+   |         ^
+   |         @binaryAPIAccessor cannot be used on constructors.
+-- Error: tests/neg/binaryAPIAccessor.scala:25:39 ----------------------------------------------------------------------
+25 |  @binaryAPIAccessor private[this] def this(x: Int, y: Int) = this(x + y) // error
+   |                                       ^
+   |                                       @binaryAPIAccessor cannot be used on constructors.
+-- Error: tests/neg/binaryAPIAccessor.scala:5:24 -----------------------------------------------------------------------
+5 |@binaryAPIAccessor type A // error
+  |                        ^
+  |                        @binaryAPIAccessor cannot be used on type definitions
+-- Error: tests/neg/binaryAPIAccessor.scala:12:25 ----------------------------------------------------------------------
+12 |def f(@binaryAPIAccessor x: Int) = 3 // error
+   |                         ^
+   |                         @binaryAPIAccessor cannot be used on local definitions.

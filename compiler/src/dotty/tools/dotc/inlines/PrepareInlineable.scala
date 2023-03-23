@@ -246,7 +246,7 @@ object PrepareInlineable {
 
     /** Create an inline accessor for this definition. */
     def makePrivateBinaryAPIAccessor(sym: Symbol)(using Context): Unit =
-      if !sym.is(Accessor) then
+      if !sym.is(Accessor) && sym.owner.isClass then
         val ref = tpd.ref(sym).asInstanceOf[RefTree]
         val accessor = InsertPrivateBinaryAPIAccessors.useAccessor(ref)
         if sym.is(Mutable) then

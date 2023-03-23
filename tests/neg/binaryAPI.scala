@@ -17,3 +17,10 @@ def f(@binaryAPI x: Int) = 3 // error
 enum Enum2:
   @binaryAPI case A // error
   @binaryAPI case B(a: Int) // error
+
+
+class Foo @binaryAPI private (x: Int): // error
+  @binaryAPI private def this(x: Int, y: Int) = this(x + y) // error
+
+class Bar @binaryAPI private[this] (x: Int): // error
+  @binaryAPI private[this] def this(x: Int, y: Int) = this(x + y) // error

@@ -22,6 +22,30 @@
 19 |  @binaryAPI case B(a: Int) // error
    |                  ^
    |                  @binaryAPI cannot be used on enum definitions.
+-- Error: tests/neg/binaryAPI.scala:22:9 -------------------------------------------------------------------------------
+22 |class Foo @binaryAPI private (x: Int): // error
+   |         ^
+   | @binaryAPI cannot be used on private definitions.
+   |
+   | Could the definition `private[Foo]` or `protected` instead or use `@binaryAPIAccessor` instead of `@binaryAPI`.
+-- Error: tests/neg/binaryAPI.scala:23:25 ------------------------------------------------------------------------------
+23 |  @binaryAPI private def this(x: Int, y: Int) = this(x + y) // error
+   |                         ^
+   | @binaryAPI cannot be used on private definitions.
+   |
+   | Could the definition `private[Foo]` or `protected` instead or use `@binaryAPIAccessor` instead of `@binaryAPI`.
+-- Error: tests/neg/binaryAPI.scala:25:9 -------------------------------------------------------------------------------
+25 |class Bar @binaryAPI private[this] (x: Int): // error
+   |         ^
+   | @binaryAPI cannot be used on private definitions.
+   |
+   | Could the definition `private[Bar]` or `protected` instead or use `@binaryAPIAccessor` instead of `@binaryAPI`.
+-- Error: tests/neg/binaryAPI.scala:26:31 ------------------------------------------------------------------------------
+26 |  @binaryAPI private[this] def this(x: Int, y: Int) = this(x + y) // error
+   |                               ^
+   | @binaryAPI cannot be used on private definitions.
+   |
+   | Could the definition `private[Bar]` or `protected` instead or use `@binaryAPIAccessor` instead of `@binaryAPI`.
 -- Error: tests/neg/binaryAPI.scala:5:16 -------------------------------------------------------------------------------
 5 |@binaryAPI type A // error
   |                ^

@@ -123,3 +123,16 @@ package traits {
     val baz = new Baz
     baz.foo
 }
+
+package constructors {
+  class Foo @binaryAPI private[constructors] (x: Int):
+    @binaryAPI private[constructors] def this(x: Int, y: Int) = this(x + y)
+
+  inline def newFoo(x: Int) = new Foo(x)
+  inline def newFoo(x: Int, y: Int) = new Foo(x, y)
+}
+
+def testConstructors =
+  import constructors.*
+  val f = newFoo(1)
+  val g = newFoo(1, 2)
