@@ -533,6 +533,11 @@ object TreeChecker {
         i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
     }
 
+    override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
+      assert(sym.info.isInstanceOf[ClassInfo | TypeBounds], i"wrong type, expect a template or type bounds for ${sym.fullName}, but found: ${sym.info}")
+      super.typedTypeDef(tdef, sym)
+    }
+
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
       val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef: @unchecked
       assert(cdef.symbol == cls)
