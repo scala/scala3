@@ -128,11 +128,15 @@ package constructors {
   class Foo @binaryAPI private[constructors] (x: Int):
     @binaryAPI private[constructors] def this(x: Int, y: Int) = this(x + y)
 
+  class Bar @binaryAPI(x: Int):
+    @binaryAPI private def this(x: Int, y: Int) = this(x + y)
+    inline def bar: Bar = new Bar(x, x)
+
   inline def newFoo(x: Int) = new Foo(x)
   inline def newFoo(x: Int, y: Int) = new Foo(x, y)
 }
 
 def testConstructors =
-  import constructors.*
-  val f = newFoo(1)
-  val g = newFoo(1, 2)
+  val f = constructors.newFoo(1)
+  val g = constructors.newFoo(1, 2)
+  val h = new constructors.Bar(1).bar
