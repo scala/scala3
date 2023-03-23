@@ -751,8 +751,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           case _ =>
         }
         case Failure(output) =>
-          echo(s"Test '${testSource.title}' failed with output:")
-          echo(output)
+          if output == "" then
+            echo(s"Test '${testSource.title}' failed with no output")
+          else
+            echo(s"Test '${testSource.title}' failed with output:")
+            echo(output)
           failTestSource(testSource)
         case Timeout =>
           echo("failed because test " + testSource.title + " timed out")
