@@ -71,7 +71,7 @@ abstract class AccessProxies {
     def needsAccessor(sym: Symbol)(using Context): Boolean
 
     def ifNoHost(reference: RefTree)(using Context): Tree = {
-      assert(false, "no host found for $reference with ${reference.symbol.showLocated} from ${ctx.owner}")
+      assert(false, i"no host found for $reference with ${reference.symbol.showLocated} from ${ctx.owner}")
       reference
     }
 
