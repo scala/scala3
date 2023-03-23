@@ -662,24 +662,29 @@ object TreeChecker {
 
       // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
-      for arg <- (targs ::: args) do // TODO check targs and terms separately
-        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole type args but got: " + arg.tpe)
+      for targ <- targs do
+        assert(targ.isType)
+        assert(targ.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole targs but got: " + targ.tpe)
+      for arg <- args do
+        assert(arg.isTerm)
+        assert(arg.isInstanceOf[RefTree], "Expected RefTree in Hole args but got: " + arg)
 
       // Check result type of the hole
       if isTermHole then assert(tpt.typeOpt <:< pt)
       else assert(tpt.typeOpt =:= pt)
 
       // Check that the types of the args conform to the types of the contents of the hole
-      val argQuotedTypes = (targs ::: args).map { arg =>
-        if arg.isTerm then
-          val tpe = arg.typeOpt.widenTermRefExpr match
-            case _: MethodicType =>
-              // Special erasure for captured function references
-              // See `SpliceTransformer.transformCapturedApplication`
-              defn.AnyType
-            case tpe => tpe
-          defn.QuotedExprClass.typeRef.appliedTo(tpe)
-        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
+      val targQuotedTypes = targs.map { arg =>
+        defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
+      }
+      val argQuotedTypes = args.map { arg =>
+        val tpe = arg.typeOpt.widenTermRefExpr match
+          case _: MethodicType =>
+            // Special erasure for captured function references
+            // See `SpliceTransformer.transformCapturedApplication`
+            defn.AnyType
+          case tpe => tpe
+        defn.QuotedExprClass.typeRef.appliedTo(tpe)
       }
       val expectedResultType =
         if isTermHole then defn.QuotedExprClass.typeRef.appliedTo(tpt.typeOpt)
@@ -687,7 +692,7 @@ object TreeChecker {
       val contextualResult =
         defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =
-        defn.FunctionOf(argQuotedTypes, contextualResult)
+        defn.FunctionOf(targQuotedTypes ::: argQuotedTypes, contextualResult)
       assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")
 
       tree1
