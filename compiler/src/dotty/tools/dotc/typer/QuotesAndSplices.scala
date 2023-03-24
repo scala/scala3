@@ -168,7 +168,7 @@ trait QuotesAndSplices {
     val tpt = typedType(tree.tpt)
     assignType(tree, tpt)
 
-  def typedPickledHole(tree: untpd.PickledHole, pt: Type)(using Context): Tree =
+  def typedTastyQuoteHole(tree: untpd.TastyQuoteHole, pt: Type)(using Context): Tree =
     val tpt = typedType(tree.tpt)
     assignType(tree, tpt)
 
