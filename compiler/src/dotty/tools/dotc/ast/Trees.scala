@@ -977,7 +977,7 @@ object Trees {
 
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
    *  It is only used when encoding pickled quotes. These will be encoded
-   *  as PickledHole when pickled.
+   *  as TastyQuoteHole when pickled.
    *
    *  @param isTermHole If this hole is a term, otherwise it is a type hole.
    *  @param idx The index of the hole in it's enclosing level 0 quote.
@@ -1006,8 +1006,8 @@ object Trees {
    *  @param args The term (or type) arguments of the splice to compute its content
    *  @param tpt Type of the hole
    */
-  case class PickledHole[+T <: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
-    type ThisTree[+T <: Untyped] <: PickledHole[T]
+  case class TastyQuoteHole[+T <: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
+    type ThisTree[+T <: Untyped] <: TastyQuoteHole[T]
     override def isTerm: Boolean = isTermHole
     override def isType: Boolean = !isTermHole
   }
@@ -1134,7 +1134,7 @@ object Trees {
     type Thicket = Trees.Thicket[T]
 
     type Hole = Trees.Hole[T]
-    type PickledHole = Trees.PickledHole[T]
+    type TastyQuoteHole = Trees.TastyQuoteHole[T]
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
@@ -1364,9 +1364,9 @@ object Trees {
         case tree: Hole if isTerm == tree.isTerm && idx == tree.idx && targs.eq(tree.targs) && args.eq(tree.args) && content.eq(tree.content) && tpt.eq(tree.tpt) => tree
         case _ => finalize(tree, untpd.Hole(isTerm, idx, targs, args, content, tpt)(sourceFile(tree)))
       }
-      def PickledHole(tree: Tree)(isTerm: Boolean, idx: Int, args: List[Tree], tpt: Tree)(using Context): PickledHole = tree match {
-        case tree: PickledHole if isTerm == tree.isTerm && idx == tree.idx && args.eq(tree.args) && tpt.eq(tree.tpt) => tree
-        case _ => finalize(tree, untpd.PickledHole(isTerm, idx, args, tpt)(sourceFile(tree)))
+      def TastyQuoteHole(tree: Tree)(isTerm: Boolean, idx: Int, args: List[Tree], tpt: Tree)(using Context): TastyQuoteHole = tree match {
+        case tree: TastyQuoteHole if isTerm == tree.isTerm && idx == tree.idx && args.eq(tree.args) && tpt.eq(tree.tpt) => tree
+        case _ => finalize(tree, untpd.TastyQuoteHole(isTerm, idx, args, tpt)(sourceFile(tree)))
       }
 
       // Copier methods with default arguments; these demand that the original tree
@@ -1391,8 +1391,8 @@ object Trees {
         Template(tree: Tree)(constr, parents, derived, self, body)
       def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, targs: List[Tree] = tree.targs, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
         Hole(tree: Tree)(isTerm, idx, targs, args, content, tpt)
-      def PickledHole(tree: PickledHole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, tpt: Tree = tree.tpt)(using Context): PickledHole =
-        PickledHole(tree: Tree)(isTerm, idx, args, tpt)
+      def TastyQuoteHole(tree: TastyQuoteHole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, tpt: Tree = tree.tpt)(using Context): TastyQuoteHole =
+        TastyQuoteHole(tree: Tree)(isTerm, idx, args, tpt)
 
     }
 
@@ -1525,8 +1525,8 @@ object Trees {
               if (trees1 eq trees) tree else Thicket(trees1)
             case tree @ Hole(_, _, targs, args, content, tpt) =>
               cpy.Hole(tree)(targs = transform(targs), args = transform(args), content = transform(content), tpt = transform(tpt))
-            case tree @ PickledHole(_, _, args, tpt) =>
-              cpy.PickledHole(tree)(args = transform(args), tpt = transform(tpt))
+            case tree @ TastyQuoteHole(_, _, args, tpt) =>
+              cpy.TastyQuoteHole(tree)(args = transform(args), tpt = transform(tpt))
             case _ =>
               transformMoreCases(tree)
           }
@@ -1668,7 +1668,7 @@ object Trees {
               this(x, ts)
             case Hole(_, _, targs, args, content, tpt) =>
               this(this(this(this(x, targs), args), content), tpt)
-            case PickledHole(_, _, args, tpt) =>
+            case TastyQuoteHole(_, _, args, tpt) =>
               this(this(x, args), tpt)
             case _ =>
               foldMoreCases(x, tree)

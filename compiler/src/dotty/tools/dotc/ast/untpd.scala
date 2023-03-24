@@ -427,7 +427,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit src: SourceFile): PackageDef = new PackageDef(pid, stats)
   def Annotated(arg: Tree, annot: Tree)(implicit src: SourceFile): Annotated = new Annotated(arg, annot)
   def Hole(isTermHole: Boolean, idx: Int, targs: List[Tree], args: List[Tree], content: Tree, tpt: Tree)(implicit src: SourceFile): Hole = new Hole(isTermHole, idx, targs, args, content, tpt)
-  def PickledHole(isTermHole: Boolean, idx: Int, args: List[Tree], tpt: Tree)(implicit src: SourceFile): PickledHole = new PickledHole(isTermHole, idx, args, tpt)
+  def TastyQuoteHole(isTermHole: Boolean, idx: Int, args: List[Tree], tpt: Tree)(implicit src: SourceFile): TastyQuoteHole = new TastyQuoteHole(isTermHole, idx, args, tpt)
 
   // ------ Additional creation methods for untyped only -----------------
 
