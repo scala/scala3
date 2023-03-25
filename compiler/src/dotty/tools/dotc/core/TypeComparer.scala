@@ -284,18 +284,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           given Context = ctx // optimization for performance
           val info2 = tp2.info
 
-          /** Does `tp2` have a stable prefix or NoPrefix as a prefix?
+          /** Does `tp2` have a stable prefix?
            *  If that's not the case, following an alias via asSeenFrom could be lossy
            *  so we should not conclude `false` if comparing aliases fails.
            *  See pos/i17064.scala for a test case
            */
-          def hasPrecisePrefix(tp: NamedType) =
-            tp.prefix.isStable || tp.prefix == NoPrefix
+          def hasStablePrefix(tp: NamedType) =
+            tp.prefix.isStable
 
           info2 match
             case info2: TypeAlias =>
               if recur(tp1, info2.alias) then return true
-              if tp2.asInstanceOf[TypeRef].canDropAlias && hasPrecisePrefix(tp2) then
+              if tp2.asInstanceOf[TypeRef].canDropAlias && hasStablePrefix(tp2) then
                 return false
             case _ =>
           tp1 match
@@ -303,7 +303,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               tp1.info match {
                 case info1: TypeAlias =>
                   if recur(info1.alias, tp2) then return true
-                  if tp1.asInstanceOf[TypeRef].canDropAlias && hasPrecisePrefix(tp2) then
+                  if tp1.asInstanceOf[TypeRef].canDropAlias && hasStablePrefix(tp2) then
                     return false
                 case _ =>
               }
