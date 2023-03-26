@@ -104,4 +104,4 @@ object Util:
   /** Whether the class or its super class/trait contains any mutable fields? */
   def isMutable(cls: ClassSymbol)(using Context): Boolean =
     cls.classInfo.decls.exists(_.is(Flags.Mutable)) ||
-    cls.parentSyms.exists(parentCls => isMutable(parentCls))
+    cls.parentSyms.exists(parentCls => isMutable(parentCls.asClass))

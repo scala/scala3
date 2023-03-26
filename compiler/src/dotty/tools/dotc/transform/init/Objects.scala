@@ -163,10 +163,10 @@ object Objects:
    *
    * @param owner The static object whose initialization creates the array.
    */
-  case class OfArray(owner: ClassSymbol)(using @constructorOnly ctx: Context)
+  case class OfArray(owner: ClassSymbol, regions: Regions.Data)(using @constructorOnly ctx: Context)
   extends Ref(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty):
     val klass: ClassSymbol = defn.ArrayClass
-    val addr: Heap.Addr = Heap.arrayAddr(this, owner)
+    val addr: Heap.Addr = Heap.arrayAddr(regions, owner)
     def show(using Context) = "OfArray(owner = " + owner.show + ")"
 
   /**
@@ -214,6 +214,7 @@ object Objects:
         given Trace = Trace.empty.add(classSym.defTree)
         given Env.Data = Env.emptyEnv(tpl.constr.symbol)
         given Heap.MutableData = Heap.empty()
+        given regions: Regions.Data = Regions.empty // explicit name to avoid naming conflict
 
         val obj = ObjectRef(classSym)
         log("Iteration " + count) {
@@ -281,7 +282,6 @@ object Objects:
     /** Local environments can be deeply nested, therefore we need `outer`.
      *
      *  For local variables in rhs of class field definitions, the `meth` is the primary constructor.
-     *
      */
     private case class LocalEnv
       (private[Env] val params: Map[Symbol, Value], meth: Symbol, outer: Data)
@@ -407,10 +407,10 @@ object Objects:
       def owner: ClassSymbol
 
     /** The address for mutable fields of objects. */
-    private case class FieldAddr(ref: Ref, field: Symbol, owner: ClassSymbol) extends Addr
+    private case class FieldAddr(regions: Regions.Data, field: Symbol, owner: ClassSymbol) extends Addr
 
     /** The address for mutable local variables . */
-    private case class LocalVarAddr(ref: Ref, env: Env.Data, sym: Symbol, owner: ClassSymbol) extends Addr
+    private case class LocalVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol) extends Addr
 
     /** Immutable heap data used in the cache.
      *
@@ -444,14 +444,14 @@ object Objects:
     def write(addr: Addr, value: Value)(using mutable: MutableData): Unit =
       mutable.update(addr, value)
 
-    def localVarAddr(ref: Ref, env: Env.Data, sym: Symbol, owner: ClassSymbol): Addr =
-      LocalVarAddr(ref, env, sym, owner)
+    def localVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol): Addr =
+      LocalVarAddr(regions, sym, owner)
 
-    def fieldVarAddr(ref: Ref, sym: Symbol, owner: ClassSymbol): Addr =
-      FieldAddr(ref, sym, owner)
+    def fieldVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol): Addr =
+      FieldAddr(regions, sym, owner)
 
-    def arrayAddr(ref: Ref, owner: ClassSymbol): Addr =
-      FieldAddr(ref, NoSymbol, owner)
+    def arrayAddr(regions: Regions.Data, owner: ClassSymbol)(using Context): Addr =
+      FieldAddr(regions, defn.ArrayClass, owner)
 
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
@@ -482,7 +482,7 @@ object Objects:
     opaque type Data = List[SourcePosition]
     val empty: Data = Nil
     def extend(pos: SourcePosition)(using data: Data): Data = pos :: data
-    def exists(pos: SourcePosition)(using data: Data): Data = data.indexOf(pos) >= 0
+    def exists(pos: SourcePosition)(using data: Data): Boolean = data.indexOf(pos) >= 0
 
   inline def cache(using c: Cache.Data): Cache.Data = c
 
@@ -735,7 +735,7 @@ object Objects:
       // The outer can be a bottom value for top-level classes.
 
       if klass == defn.ArrayClass then
-        val arr = OfArray(State.currentObject)
+        val arr = OfArray(State.currentObject, summon[Regions.Data])
         Heap.write(arr.addr, Bottom)
         arr
       else
@@ -761,7 +761,7 @@ object Objects:
 
   def initLocal(ref: Ref, sym: Symbol, value: Value): Contextual[Unit] = log("initialize local " + sym.show + " with " + value.show, printer) {
     if sym.is(Flags.Mutable) then
-      val addr = Heap.localVarAddr(ref, summon[Env.Data], sym, State.currentObject)
+      val addr = Heap.localVarAddr(summon[Regions.Data], sym, State.currentObject)
       Env.setLocalVar(sym, addr)
       Heap.write(addr, value)
     else
@@ -1161,7 +1161,7 @@ object Objects:
     klass.paramGetters.foreach { acc =>
       val value = paramsMap(acc.name.toTermName)
       if acc.is(Flags.Mutable) then
-        val addr = Heap.fieldVarAddr(thisV, acc, State.currentObject)
+        val addr = Heap.fieldVarAddr(summon[Regions.Data], acc, State.currentObject)
         thisV.initVar(acc, addr)
         Heap.write(addr, value)
       else
@@ -1256,7 +1256,7 @@ object Objects:
         val res = eval(vdef.rhs, thisV, klass)
         val sym = vdef.symbol
         if sym.is(Flags.Mutable) then
-          val addr = Heap.fieldVarAddr(thisV, sym, State.currentObject)
+          val addr = Heap.fieldVarAddr(summon[Regions.Data], sym, State.currentObject)
           thisV.initVar(sym, addr)
           Heap.write(addr, res)
         else
