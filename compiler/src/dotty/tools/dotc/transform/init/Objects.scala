@@ -664,7 +664,7 @@ object Objects:
             else
               errorReadOtherStaticObject(State.currentObject, addr.owner)
               Bottom
-          else if ref.isObjectRef then
+          else if ref.isObjectRef && ref.klass.hasSource then
             report.warning("Access uninitialized field " + field.show + ". Call trace: " + Trace.show, Trace.position)
             Bottom
           else
@@ -672,7 +672,7 @@ object Objects:
             Bottom
         else if ref.hasVal(target) then
           ref.valValue(target)
-        else if ref.isObjectRef then
+        else if ref.isObjectRef && ref.klass.hasSource then
           report.warning("Access uninitialized field " + field.show + ". Call trace: " + Trace.show, Trace.position)
           Bottom
         else
