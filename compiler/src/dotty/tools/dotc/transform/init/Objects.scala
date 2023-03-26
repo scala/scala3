@@ -123,18 +123,14 @@ object Objects:
   /**
    * Rerepsents values that are instances of the specified class.
    *
-   * For immutable classes (classes without mutable fields, non-transitive), the parameter regions
-   * is always empty and `owner` is `NoSymbol`.
-   *
    * Note that the 2nd parameter block does not take part in the definition of equality.
    */
   case class OfClass private (
-    klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data,
-    regions: Regions.Data, owner: Symbol)(
+    klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)(
     valsMap: mutable.Map[Symbol, Value], varsMap: mutable.Map[Symbol, Heap.Addr], outersMap: mutable.Map[ClassSymbol, Value])
   extends Ref(valsMap, varsMap, outersMap):
     def widenedCopy(outer: Value, args: List[Value], env: Env.Data): OfClass =
-      new OfClass(klass, outer, ctor, args, env, regions, owner)(this.valsMap, this.varsMap, outersMap)
+      new OfClass(klass, outer, ctor, args, env)(this.valsMap, this.varsMap, outersMap)
 
     def show(using Context) =
       val valFields = vals.map(_.show +  " -> " +  _.show)
@@ -142,10 +138,10 @@ object Objects:
 
   object OfClass:
     def apply(
-      klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data, regions: Regions.Data, owner: Symbol)(
+      klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)(
       using Context
     ): OfClass =
-      val instance = new OfClass(klass, outer, ctor, args, env, regions, owner)(
+      val instance = new OfClass(klass, outer, ctor, args, env)(
         valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty
       )
       instance.initOuter(klass, outer)
@@ -515,7 +511,7 @@ object Objects:
         if height == 0 then Cold
         else Fun(code, thisV.widen(height), klass, env.widen(height))
 
-      case ref @ OfClass(klass, outer, _, args, env, _, _) =>
+      case ref @ OfClass(klass, outer, _, args, env) =>
         if height == 0 then
           Cold
         else
@@ -747,11 +743,7 @@ object Objects:
             // klass.enclosingMethod returns its primary constructor
             Env.resolveEnv(klass.owner.enclosingMethod, outer, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
-        // Immutable objects do not care about owners and context
-        val owner = if isMutable(klass) then State.currentObject else NoSymbol
-        val regions = if isMutable(klass) then summon[Regions.Data] else Regions.empty
-
-        val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened, regions, owner)
+        val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
         callConstructor(instance, ctor, args)
         instance
 
