@@ -82,6 +82,8 @@ object Objects:
     protected val vars: mutable.Map[Symbol, Heap.Addr] = varsMap
     protected val outers: mutable.Map[ClassSymbol, Value] = outersMap
 
+    def isObjectRef: Boolean = this.isInstanceOf[ObjectRef]
+
     def klass: ClassSymbol
 
     def valValue(sym: Symbol): Value = vals(sym)
@@ -479,6 +481,7 @@ object Objects:
     val empty: Data = Nil
     def extend(pos: SourcePosition)(using data: Data): Data = pos :: data
     def exists(pos: SourcePosition)(using data: Data): Boolean = data.indexOf(pos) >= 0
+    def show(using data: Data, ctx: Context): String = data.map(_.show).mkString("[", ", ", "]")
 
   inline def cache(using c: Cache.Data): Cache.Data = c
 
@@ -663,11 +666,17 @@ object Objects:
             else
               errorReadOtherStaticObject(State.currentObject, addr.owner)
               Bottom
+          else if ref.isObjectRef then
+            report.warning("Access uninitialized field " + field.show + ". Call trace: " + Trace.show, Trace.position)
+            Bottom
           else
             // initialization error, reported by the initialization checker
             Bottom
         else if ref.hasVal(target) then
           ref.valValue(target)
+        else if ref.isObjectRef then
+          report.warning("Access uninitialized field " + field.show + ". Call trace: " + Trace.show, Trace.position)
+          Bottom
         else
           // initialization error, reported by the initialization checker
           Bottom
@@ -865,7 +874,7 @@ object Objects:
    * @param klass       The enclosing class where the expression is located.
    * @param cacheResult It is used to reduce the size of the cache.
    */
-  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + ", regions = " + Regions.show + " in " + klass.show, printer, (_: Value).show) {
     cache.cachedEval(thisV, expr, cacheResult) { expr => cases(expr, thisV, klass) }
   }
 
@@ -956,6 +965,14 @@ object Objects:
       case Typed(expr, tpt) =>
         if tpt.tpe.hasAnnotation(defn.UncheckedAnnot) then
           Bottom
+        else if tpt.tpe.hasAnnotation(defn.InitRegionAnnot) then
+          val regions2 = Regions.extend(tpt.sourcePos)
+          if Regions.exists(tpt.sourcePos) then
+            report.warning("Cyclic region detected. Trace: " + Trace.show, tpt.sourcePos)
+            Bottom
+          else
+            given Regions.Data = regions2
+            eval(expr, thisV, klass)
         else
           eval(expr, thisV, klass)
 
@@ -997,8 +1014,10 @@ object Objects:
         evalExprs(cond :: thenp :: elsep :: Nil, thisV, klass).join
 
       case Annotated(arg, annot) =>
-        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Bottom
-        else eval(arg, thisV, klass)
+        if expr.tpe.hasAnnotation(defn.UncheckedAnnot) then
+          Bottom
+        else
+          eval(arg, thisV, klass)
 
       case Match(selector, cases) =>
         eval(selector, thisV, klass)
