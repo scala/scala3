@@ -69,7 +69,7 @@ object Semantic:
         val argsText = if args.nonEmpty then ", args = " + args.map(_.show).mkString("(", ", ", ")") else ""
         "a non-transitively initialized (Warm) object of type (" + klass.show + ") { outer = " + outer.show + argsText + " }"
       case Fun(expr, thisV, klass) =>
-        "a function where \"this\" is (" + thisV.show + ") and the function owner is an object of type (" + klass.show + ")"
+        "a function where \"this\" is (" + thisV.show + ")"
       case RefSet(values) =>
         values.map(_.show).mkString("Set { ", ", ", " }")
       case Hot =>
