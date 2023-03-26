@@ -11,6 +11,7 @@ import NameKinds.OuterSelectName
 import NameKinds.SuperAccessorName
 
 import ast.tpd.*
+import util.SourcePosition
 import config.Printers.init as printer
 import reporting.StoreReporter
 import reporting.trace as log
@@ -122,13 +123,18 @@ object Objects:
   /**
    * Rerepsents values that are instances of the specified class.
    *
+   * For immutable classes (classes without mutable fields, non-transitive), the parameter regions
+   * is always empty and `owner` is `NoSymbol`.
+   *
    * Note that the 2nd parameter block does not take part in the definition of equality.
    */
-  case class OfClass private (klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)
-    (valsMap: mutable.Map[Symbol, Value], varsMap: mutable.Map[Symbol, Heap.Addr], outersMap: mutable.Map[ClassSymbol, Value])
+  case class OfClass private (
+    klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data,
+    regions: Regions.Data, owner: Symbol)(
+    valsMap: mutable.Map[Symbol, Value], varsMap: mutable.Map[Symbol, Heap.Addr], outersMap: mutable.Map[ClassSymbol, Value])
   extends Ref(valsMap, varsMap, outersMap):
     def widenedCopy(outer: Value, args: List[Value], env: Env.Data): OfClass =
-      new OfClass(klass, outer, ctor, args, env)(this.valsMap, this.varsMap, outersMap)
+      new OfClass(klass, outer, ctor, args, env, regions, owner)(this.valsMap, this.varsMap, outersMap)
 
     def show(using Context) =
       val valFields = vals.map(_.show +  " -> " +  _.show)
@@ -136,15 +142,14 @@ object Objects:
 
   object OfClass:
     def apply(
-      klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)(
+      klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data, regions: Regions.Data, owner: Symbol)(
       using Context
     ): OfClass =
-      val instance = new OfClass(klass, outer, ctor, args, env)(
+      val instance = new OfClass(klass, outer, ctor, args, env, regions, owner)(
         valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty
       )
       instance.initOuter(klass, outer)
       instance
-
 
   /**
    * Rerepsents arrays.
@@ -468,9 +473,20 @@ object Objects:
         result.value
   end Cache
 
+  /**
+   * Region context for mutable states
+   *
+   * By default, the region context is empty.
+   */
+  object Regions:
+    opaque type Data = List[SourcePosition]
+    val empty: Data = Nil
+    def extend(pos: SourcePosition)(using data: Data): Data = pos :: data
+    def exists(pos: SourcePosition)(using data: Data): Data = data.indexOf(pos) >= 0
+
   inline def cache(using c: Cache.Data): Cache.Data = c
 
-  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Trace) ?=> T
+  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Trace) ?=> T
 
   // --------------------------- domain operations -----------------------------
 
@@ -499,7 +515,7 @@ object Objects:
         if height == 0 then Cold
         else Fun(code, thisV.widen(height), klass, env.widen(height))
 
-      case ref @ OfClass(klass, outer, init, args, env) =>
+      case ref @ OfClass(klass, outer, _, args, env, _, _) =>
         if height == 0 then
           Cold
         else
@@ -731,7 +747,11 @@ object Objects:
             // klass.enclosingMethod returns its primary constructor
             Env.resolveEnv(klass.owner.enclosingMethod, outer, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
-        val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
+        // Immutable objects do not care about owners and context
+        val owner = if isMutable(klass) then State.currentObject else NoSymbol
+        val regions = if isMutable(klass) then summon[Regions.Data] else Regions.empty
+
+        val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened, regions, owner)
         callConstructor(instance, ctor, args)
         instance
 
