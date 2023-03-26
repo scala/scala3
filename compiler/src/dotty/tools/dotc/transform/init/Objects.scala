@@ -504,26 +504,24 @@ object Objects:
       case (a, b)                             => RefSet(ListSet(a, b))
 
     def widen(height: Int)(using Context): Value =
-      a match
-      case Bottom => Bottom
+      if height == 0 then Cold
+      else
+        a match
+        case Bottom => Bottom
 
-      case RefSet(refs) =>
-        refs.map(ref => ref.widen(height)).join
+        case RefSet(refs) =>
+          refs.map(ref => ref.widen(height)).join
 
-      case Fun(code, thisV, klass, env) =>
-        if height == 0 then Cold
-        else Fun(code, thisV.widen(height), klass, env.widen(height))
+        case Fun(code, thisV, klass, env) =>
+          Fun(code, thisV.widen(height), klass, env.widen(height))
 
-      case ref @ OfClass(klass, outer, _, args, env) =>
-        if height == 0 then
-          Cold
-        else
+        case ref @ OfClass(klass, outer, _, args, env) =>
           val outer2 = outer.widen(height - 1)
           val args2 = args.map(_.widen(height - 1))
           val env2 = env.widen(height - 1)
           ref.widenedCopy(outer2, args2, env2)
-      case _ => a
 
+        case _ => a
 
   extension (values: Iterable[Value])
     def join: Value = if values.isEmpty then Bottom else values.reduce { (v1, v2) => v1.join(v2) }
@@ -1151,7 +1149,7 @@ object Objects:
         if arg.tree.tpe.hasAnnotation(defn.InitExposeAnnot) then
           res.widen(1)
         else
-          Cold
+          res.widen(1)
 
       argInfos += TraceValue(widened, trace.add(arg.tree))
     }

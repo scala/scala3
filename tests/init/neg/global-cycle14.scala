@@ -10,5 +10,5 @@ object A {              // error
 }
 
 object B {
-  val m: Int = A.n
+  val m: Int = A.n      // error
 }
