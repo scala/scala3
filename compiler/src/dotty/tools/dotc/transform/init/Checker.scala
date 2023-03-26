@@ -37,7 +37,9 @@ class Checker extends Phase:
     val classes = traverser.getClasses()
 
     Semantic.checkClasses(classes)(using checkCtx)
-    Objects.checkClasses(classes)(using checkCtx)
+
+    if ctx.settings.YcheckInitGlobal.value then
+      Objects.checkClasses(classes)(using checkCtx)
 
     units
 
