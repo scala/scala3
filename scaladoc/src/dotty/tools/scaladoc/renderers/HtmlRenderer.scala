@@ -41,13 +41,17 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       case _ => Nil)
       :+ (Attr("data-pathToRoot") := pathToRoot(page.link.dri))
 
-    html(attrs: _*)(
+    val htmlTag = html(attrs: _*)(
       head((mkHead(page) :+ docHead):_*),
       body(
         if !page.hasFrame then docBody
         else mkFrame(page.link, parents, docBody, toc)
       )
     )
+
+    val doctypeTag = s"<!DOCTYPE html>"
+    val finalTag = raw(doctypeTag + htmlTag.toString)
+    finalTag
 
   override def render(): Unit =
     val renderedResources = renderResources()
