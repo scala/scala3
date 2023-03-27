@@ -589,14 +589,22 @@ object CheckUnused:
       /** Given an import and accessibility, return an option of selector that match import<->symbol */
       private def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name])(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
-        val qualHasSymbol = qual.tpe.member(sym.name).alternatives.map(_.symbol).contains(sym)
+        val dealiasedSym = dealias(sym)
+        val qualHasSymbol = qual.tpe.member(sym.name).alternatives.map(_.symbol).map(dealias).contains(dealiasedSym)
         def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
+        def dealiasedSelector = sels.flatMap(sel => qual.tpe.member(sym.name).alternatives.map(m => (sel, m.symbol))).collect {
+          case (sel, sym) if dealias(sym) == dealiasedSym => sel
+        }.headOption
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
         if qualHasSymbol && !isAccessible && sym.exists then
-          selector.orElse(wildcard) // selector with name or wildcard (or given)
+          selector.orElse(dealiasedSelector).orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
 
+      private def dealias(symbol: Symbol)(using Context): Symbol =
+        if(symbol.isType && symbol.asType.denot.isAliasType) then
+          symbol.asType.typeRef.dealias.typeSymbol
+        else symbol
       /** Annotated with @unused */
       private def isUnusedAnnot(using Context): Boolean =
         sym.annotations.exists(a => a.symbol == ctx.definitions.UnusedAnnot)
