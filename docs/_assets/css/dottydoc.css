@@ -14,6 +14,11 @@ main.container {
   height: auto;
 }
 
+.site-container img{
+  width: 100%;
+  height: auto;
+}
+
 /* headers */
 main header {
   border-bottom: 1px solid rgba(0,0,0,.1);
@@ -43,21 +48,6 @@ ul.post-list {
 }
 .post-list h2 {
   margin-bottom: 0;
-}
-
-/* headings anchors */
-a.anchor {
-  color: transparent;
-  margin-left: -23px;
-  padding-right: 3px;
-  transition: color .4s ease-out;
-}
-
-a.anchor::before {
-	content: "\f0c1";
-	font-family: "Font Awesome 5 Free";
-	font-weight: 900;
-	font-size: 20px;
 }
 
 h1:hover a.anchor,
@@ -191,15 +181,6 @@ blockquote {
   border-left: 0.25em solid #ddd;
 }
 
-aside {
-  padding: 15px;
-  margin: 10px 0;
-}
-
-aside.warning {
-  border-left: 3px solid var(--red500);
-  background-color: var(--aside-warning-bg);
-}
 
 aside.notice {
   border-left: 3px solid #4c97e4;
