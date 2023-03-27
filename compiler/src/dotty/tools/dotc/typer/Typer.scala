@@ -544,22 +544,40 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       	unimported = saved1
       	foundUnderScala2 = saved2
 
-    def checkNotShadowed(ownType: Type) = ownType match
-      case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
-        val shadowed = findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos)
-        if shadowed.exists then
-          report.error(
-            em"""Reference to constructor proxy for ${ownType.symbol.companionClass.showLocated}
-                |shadows outer reference to ${shadowed.termSymbol.showLocated}""", tree.srcPos)
-      case _ =>
+    /** Normally, returns `ownType` except if `ownType` is a constructor proxy,
+     *  and there is another shadowed type accessible with the same name that is not:
+     *    - if the prototype is an application:
+     *      - if the shadowed type has a method alternative or an apply method,
+     *        issue an ambiguity error
+     *      - otherwise again return `ownType`
+     *    - if the prototype is not an application, return the shadowed type
+     */
+    def checkNotShadowed(ownType: Type): Type =
+      ownType match
+        case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
+          findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos) match
+            case shadowed: TermRef =>
+              pt match
+                case pt: FunOrPolyProto =>
+                  def err(shadowedIsApply: Boolean) =
+                    report.error(ConstrProxyShadows(ownType, shadowed, shadowedIsApply), tree.srcPos)
+                  if shadowed.denot.hasAltWith(sd => sd.symbol.is(Method, butNot = Accessor)) then
+                    err(shadowedIsApply = false)
+                  else if shadowed.member(nme.apply).hasAltWith(_.symbol.is(Method, butNot = Accessor)) then
+                    err(shadowedIsApply = true)
+                case _ =>
+                  return shadowed
+            case shadowed =>
+        case _ =>
+      ownType
 
     def setType(ownType: Type): Tree =
-      checkNotShadowed(ownType)
-      val tree1 = ownType match
-        case ownType: NamedType if !prefixIsElidable(ownType) =>
-          ref(ownType).withSpan(tree.span)
+      val checkedType = checkNotShadowed(ownType)
+      val tree1 = checkedType match
+        case checkedType: NamedType if !prefixIsElidable(checkedType) =>
+          ref(checkedType).withSpan(tree.span)
         case _ =>
-          tree.withType(ownType)
+          tree.withType(checkedType)
       val tree2 = toNotNullTermRef(tree1, pt)
       checkLegalValue(tree2, pt)
       tree2

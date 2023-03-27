@@ -190,6 +190,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case InlineGivenShouldNotBeFunctionID // errorNumber 174
   case ValueDiscardingID // errorNumber 175
   case UnusedNonUnitValueID // errorNumber 176
+  case ConstrProxyShadowsID // errorNumber 177
 
   def errorNumber = ordinal - 1
 
