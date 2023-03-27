@@ -1,15 +1,14 @@
 -- Error: tests/init/neg/promotion-loop.scala:16:10 --------------------------------------------------------------------
 16 |  println(b)      // error
    |          ^
-   |          Cannot prove the method argument is hot. Only hot values are safe to leak.
-   |          Found = Warm[class B] { outer = ThisRef[class Test] }. Calling trace:
-   |          -> class Test { test =>	[ promotion-loop.scala:1 ]
-   |             ^
-   |          -> println(b)      // error	[ promotion-loop.scala:16 ]
-   |                     ^
+   |Could not verify that the method argument is transitively initialized (Hot). It was found to be a non-transitively initialized (Warm) object of type (class B) { outer = the original object of type (class Test) where initialization checking started }. Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
+   |-> class Test { test =>	[ promotion-loop.scala:1 ]
+   |   ^
+   |-> println(b)      // error	[ promotion-loop.scala:16 ]
+   |           ^
    |
-   |          Promoting the value to hot (transitively initialized) failed due to the following problem:
-   |          Cannot prove that the field value outer is hot. Found = ThisRef[class Test].
-   |          Non initialized field(s): value n. Promotion trace:
-   |          -> val outer = test	[ promotion-loop.scala:12 ]
-   |             ^^^^^^^^^^^^^^^^
+   |Promoting the value to transitively initialized (Hot) failed due to the following problem:
+   |Could not verify that the field value outer is transitively initialized (Hot). It was found to be the original object of type (class Test) where initialization checking started.
+   |Non initialized field(s): value n. Promotion trace:
+   |-> val outer = test	[ promotion-loop.scala:12 ]
+   |   ^^^^^^^^^^^^^^^^
