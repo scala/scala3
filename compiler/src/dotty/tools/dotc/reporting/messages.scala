@@ -1305,6 +1305,37 @@ extends SyntaxMsg(VarArgsParamMustComeLastID) {
 
 import typer.Typer.BindingPrec
 
+class ConstrProxyShadows(proxy: TermRef, shadowed: Type, shadowedIsApply: Boolean)(using Context)
+  extends ReferenceMsg(ConstrProxyShadowsID), NoDisambiguation:
+
+  def clsString(using Context) = proxy.symbol.companionClass.showLocated
+  def shadowedString(using Context) = shadowed.termSymbol.showLocated
+  def appClause = if shadowedIsApply then " the apply method of" else ""
+  def appSuffix = if shadowedIsApply then ".apply" else ""
+
+  def msg(using Context) =
+    i"""Reference to constructor proxy for $clsString
+       |shadows outer reference to $shadowedString
+       |
+       |The instance needs to be created with an explicit `new`."""
+
+  def explain(using Context) =
+    i"""There is an ambiguity in the meaning of the call
+       |
+       |   ${proxy.symbol.name}(...)
+       |
+       |It could mean creating an instance of $clsString with
+       |
+       |   new ${proxy.symbol.companionClass.name}(...)
+       |
+       |Or it could mean calling$appClause $shadowedString as in
+       |
+       |   ${shadowed.termSymbol.name}$appSuffix(...)
+       |
+       |To disambiguate, use an explicit `new` if you mean the former,
+       |or use a full prefix for ${shadowed.termSymbol.name} if you mean the latter."""
+end ConstrProxyShadows
+
 class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(using Context)
   extends ReferenceMsg(AmbiguousReferenceID), NoDisambiguation {
 
