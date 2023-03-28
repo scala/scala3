@@ -160,4 +160,29 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
     }
   }
 
+  @Test def testListApplyAvoidsIntermediateArray = {
+    val source =
+      """
+        |class Foo {
+        |  def meth1: List[String] = List("1", "2", "3")
+        |  def meth2: List[String] =
+        | new scala.collection.immutable.::("1", new scala.collection.immutable.::("2", new scala.collection.immutable.::("3", scala.collection.immutable.Nil))).asInstanceOf[List[String]]
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Foo.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val meth1   = getMethod(clsNode, "meth1")
+      val meth2   = getMethod(clsNode, "meth2")
+
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      assert(instructions1 == instructions2,
+        "the List.apply method " +
+          diffInstructions(instructions1, instructions2))
+    }
+  }
+
 }

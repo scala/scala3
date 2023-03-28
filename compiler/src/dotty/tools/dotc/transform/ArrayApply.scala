@@ -22,9 +22,18 @@ class ArrayApply extends MiniPhase {
 
   override def description: String = ArrayApply.description
 
+  private var transformListApplyLimit = 8
+
+  private def reducingTransformListApply[A](depth: Int)(body: => A): A = {
+      val saved = transformListApplyLimit
+      transformListApplyLimit -= depth
+      try body
+      finally transformListApplyLimit = saved
+    }
+
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
     if isArrayModuleApply(tree.symbol) then
-      tree.args match {
+      tree.args match
         case StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
           seqLit
@@ -35,13 +44,27 @@ class ArrayApply extends MiniPhase {
 
         case _ =>
           tree
-      }
+
+    else if isListOrSeqModuleApply(tree.symbol) then
+      tree.args match
+        // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
+        case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: tpd.JavaSeqLiteral)))) :: Nil
+          if defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) &&
+            rest.elems.lengthIs < transformListApplyLimit =>
+          rest.elems.foldRight(tpd.ref(defn.NilModule)): (elem, acc) => 
+            tpd.New(defn.ConsType, List(elem, acc))
+
+        case _ =>
+          tree
 
     else tree
 
   private def isArrayModuleApply(sym: Symbol)(using Context): Boolean =
     sym.name == nme.apply
     && (sym.owner == defn.ArrayModuleClass || (sym.owner == defn.IArrayModuleClass && !sym.is(Extension)))
+
+  private def isListOrSeqModuleApply(sym: Symbol)(using Context): Boolean =
+    sym == defn.ListModule_apply || sym == defn.SeqModule_apply
 
   /** Only optimize when classtag if it is one of
    *  - `ClassTag.apply(classOf[XYZ])`
