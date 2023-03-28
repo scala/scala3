@@ -15,7 +15,7 @@ import scala.util.chaining._
 class ScalaSettings extends SettingGroup with AllScalaSettings
 
 object ScalaSettings:
-  // Keep synchronized with `classfileVersion` in `BCodeIdiomatic`
+  // Keep synchronized with `classfileVersion` in `BackendUtils`
   private val minTargetVersion = 8
   private val maxTargetVersion = 20
 

@@ -271,7 +271,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val flags = javaFlags(claszSymbol)
 
       val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner)
-      cnode.visit(classfileVersion, flags,
+      cnode.visit(backendUtils.classfileVersion, flags,
                   thisName, thisSignature,
                   superClass, interfaceNames.toArray)
 
