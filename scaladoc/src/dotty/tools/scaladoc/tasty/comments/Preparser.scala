@@ -4,6 +4,9 @@ package tasty.comments
 import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import scala.util.matching.Regex
+import java.net.URL
+import java.nio.file.{Paths, Files}
+import scala.util.Try
 
 object Preparser {
   import Regexes._
@@ -11,7 +14,7 @@ object Preparser {
   /** Parses a raw comment string into a `Comment` object. */
   def preparse(
     comment: List[String],
-  ): PreparsedComment = {
+  )(using DocContext): PreparsedComment = {
 
     /** Parses a comment (in the form of a list of lines) to a `Comment`
       * instance, recursively on lines. To do so, it splits the whole comment
@@ -129,7 +132,38 @@ object Preparser {
         val stripTags = List(inheritDiagramTag, contentDiagramTag, SimpleTagKey("template"), SimpleTagKey("documentable"))
         val tagsWithoutDiagram = tags.filterNot(pair => stripTags.contains(pair._1))
 
+        def processLink: Unit =
+          if (!summon[DocContext].args.noLinkWarnings) then tags.get(SimpleTagKey("see")).get.foreach(link => {
+            val newLink: String = link.replaceAll("\\[\\[|\\]\\]", "")
+            val isValid = Try(new URL(newLink)).isSuccess
+            isValid match {
+              case true =>
+                val url = new URL(newLink)
+                url match {
+                  // We check if it's an internal link
+                  case s if s.getPath.contains("/docs/") =>
+                    if (newLink.contains("oracle")) then // exclude links containing "oracle"
+                    None
+                    else
+                      // We check if the internal link to the static documentation is valid
+                      val docPath = url.getPath.substring(url.getPath.indexOf("/docs/")).replaceFirst("/docs/", "docs/_docs/").replace(".html", ".md")
+                      println(docPath)
+                      val fileExists = Files.exists(Paths.get(docPath))
+                      if !fileExists then
+                        //Si le fichier n'existe pas, on vérifie si le fichier existe avec l'extension .md
+                        val newDocPath = docPath + ".md"
+                        if !Files.exists(Paths.get(newDocPath)) then
+                          report.warning(s"Link to $newLink will return a 404 not found")
+                  case _ => None
+                }
+              case false =>
+                None
+              }
+            })
+
         val bodyTags: mutable.Map[TagKey, List[String]] =
+          if tags.get(SimpleTagKey("see")).isDefined then
+            processLink
           mutable.Map((tagsWithoutDiagram).toSeq: _*)
 
         def allTags(key: SimpleTagKey): List[String] =
