@@ -579,23 +579,6 @@ class Inliner(val call: tpd.Tree)(using Context):
           }
         },
       treeMap = {
-        case tree: (DefDef | ValDef | TypeDef) if inlinedMethod.is(Trait) && tree.symbol.owner == inlinedMethod =>
-          val sym = tree.symbol
-          val inlinedSym = sym.copy(owner = ctx.owner, flags = sym.flags | Override)
-          inlinedSym.entered // Should this be entered here? Or after inlining process has succeeded
-
-          tree match {
-            case tree: DefDef =>
-              def rhsFun(paramss: List[List[Tree]]): Tree =
-                val oldParamSyms = tree.paramss.flatten.map(_.symbol)
-                val newParamSyms = paramss.flatten.map(_.symbol)
-                tree.rhs.subst(oldParamSyms, newParamSyms)
-              tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(tree.span)
-            case tree: ValDef =>
-              tpd.ValDef(inlinedSym.asTerm, tree.rhs).withSpan(tree.span)
-            case tree: TypeDef =>
-              tpd.TypeDef(inlinedSym.asType).withSpan(tree.span)
-          }
         case tree: This =>
           tree.tpe match {
             case thistpe: ThisType =>

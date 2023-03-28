@@ -470,7 +470,69 @@ object Inlines:
     import Inlines.*
 
     def expandDefs(): List[Tree] =
+      val argsMap = parent match
+        case Apply(_, args) =>
+          val MethodType(paramNames) = parent.symbol.info: @unchecked
+          paramNames.zip(args).toMap
+        case _ => Map.empty
+
       val Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
-      stats.map(stat => inlined(stat)._2)
+
+      val stats1 = stats.map { stat =>
+          val sym = stat.symbol
+          stat match
+            case tree: ValDef if sym.is(ParamAccessor) =>
+              val vdef = cloneValDef(tree)
+              vdef.symbol.resetFlag(ParamAccessor)
+              cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
+            case stat: ValDef =>
+              val vdef = cloneValDef(stat)
+              if !sym.is(Private) then vdef.symbol.setFlag(Override)
+              cpy.ValDef(vdef)() // TODO keep rhs? Can we do a single ValOrDefDef case using cloneStat?
+            case stat: DefDef =>
+              val ddef = cloneDefDef(stat)
+              if !sym.is(Private) then ddef.symbol.setFlag(Override)
+              ddef
+            case stat @ TypeDef(_, impl: Template) =>
+              cloneClass(stat, impl)
+            case stat: TypeDef =>
+              val tdef = cloneTypeDef(stat)
+              tdef.symbol.setFlag(Override)
+              cpy.TypeDef(tdef)()
+      }
+      stats1.map(stat => inlined(stat)._2)
+
+    private def cloneClass(clDef: TypeDef, impl: Template)(using Context): TypeDef =
+      val inlinedCls: ClassSymbol =
+        val ClassInfo(prefix, cls, declaredParents, scope, selfInfo) = clDef.symbol.info: @unchecked
+        val inlinedInfo = ClassInfo(prefix, cls, declaredParents, Scopes.newScope, selfInfo) // TODO adapt parents
+        clDef.symbol.copy(owner = ctx.owner, info = inlinedInfo).entered.asClass
+      val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
+        (cloneDefDef(impl.constr), impl.body.map(cloneStat))
+      }
+      tpd.ClassDefWithParents(inlinedCls, constr, impl.parents, body).withSpan(clDef.span) // TODO adapt parents
+
+    private def cloneStat(tree: Tree)(using Context): Tree = tree match
+      case tree: DefDef => cloneDefDef(tree)
+      case tree: ValDef => cloneValDef(tree)
+      // TODO case stat @ TypeDef(_, impl: Template) => cloneClass(stat, impl)
+      // TODO case tree: TypeDef => cloneTypeDef(tree)
+
+    private def cloneDefDef(ddef: DefDef)(using Context): DefDef =
+      val inlinedSym = ddef.symbol.copy(owner = ctx.owner).entered
+      def rhsFun(paramss: List[List[Tree]]): Tree =
+        val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
+        val newParamSyms = paramss.flatten.map(_.symbol)
+        ddef.rhs.subst(oldParamSyms, newParamSyms) // TODO clone local classes?
+      tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(ddef.span)
+
+    private def cloneValDef(vdef: ValDef)(using Context): ValDef =
+      val inlinedSym = vdef.symbol.copy(owner = ctx.owner).entered
+      tpd.ValDef(inlinedSym.asTerm, vdef.rhs).withSpan(vdef.span) // TODO clone local classes?
+
+    private def cloneTypeDef(tdef: TypeDef)(using Context): TypeDef =
+      val inlinedSym = tdef.symbol.copy(owner = ctx.owner).entered
+      tpd.TypeDef(inlinedSym.asType).withSpan(tdef.span)
+
   end InlineParentTrait
 end Inlines
