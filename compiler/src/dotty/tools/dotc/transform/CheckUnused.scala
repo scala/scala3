@@ -478,7 +478,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.implicits then
           implicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
-            .filterNot(d => containsSyntheticSuffix(d.symbol))
+            .filterNot(d => containsSyntheticSuffix(d.symbol) && !d.rawMods.is(Given))
             .map(d => d.namePos -> WarnTypes.ImplicitParams).toList
         else
           Nil
