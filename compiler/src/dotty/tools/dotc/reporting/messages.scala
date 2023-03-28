@@ -1962,7 +1962,11 @@ class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Name)(using Con
         |To be used as an extractor, an unapply method has to return a type that either:
         | - has members ${Magenta("isEmpty: Boolean")} and ${Magenta("get: S")} (usually an ${Green("Option[S]")})
         | - is a ${Green("Boolean")}
-        | - is a ${Green("Product")} (like a ${Magenta("Tuple2[T1, T2]")})
+        | - is a ${Green("Product")} (like a ${Magenta("Tuple2[T1, T2]")}) of arity i with i >= 1, and has members _1 to _i
+        |
+        |See: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html#fixed-arity-extractors
+        |
+        |Examples:
         |
         |class A(val i: Int)
         |
