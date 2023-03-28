@@ -399,6 +399,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       Some(tree)
     case Block(Nil, expr) =>
       functionWithUnknownParamType(expr)
+    case NamedArg(_, expr) =>
+      functionWithUnknownParamType(expr)
     case _ =>
       None
   }
