@@ -93,7 +93,7 @@ object Mixin {
  *                <mods> def x_=(y: T) = ()
  *
  *          4.5 (done in `mixinForwarders`) For every method
- *          `<mods> def f[Ts](ps1)...(psN): U` imn M` that needs to be disambiguated:
+ *          `<mods> def f[Ts](ps1)...(psN): U` in M that needs to be disambiguated:
  *
  *                <mods> def f[Ts](ps1)...(psN): U = super[M].f[Ts](ps1)...(psN)
  *
@@ -244,6 +244,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
 
     def traitInits(mixin: ClassSymbol): List[Tree] = {
+      if mixin.isInlineTrait then return Nil
       val argsIt = superCallsAndArgs.get(mixin) match
         case Some((_, _, args)) => args.iterator
         case _ => Iterator.empty

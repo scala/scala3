@@ -4,9 +4,6 @@ inline trait A(a: Int):
 end A
 
 class B extends A(4):
-  // FIXME: Should not generate second field for A.a (probably in the memoize phase). `B.A$$a` could point to the `a` we already have.
-  //        Alternative: remove the field and defs from `A`.
-
   /*
   <generated> private val a: Int = 4
   <generated> override def f: Int = this.a
