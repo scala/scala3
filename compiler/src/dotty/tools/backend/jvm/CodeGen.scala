@@ -72,7 +72,13 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
           genTastyAndSetAttributes(sym, tastyAttrNode)
 
         def registerGeneratedClass(classNode: ClassNode, isArtifact: Boolean): Unit =
-          generatedClasses += GeneratedClass(classNode, sym.javaClassName, sym.srcPos.sourcePos, isArtifact, onFileCreated(classNode, sym, unit.source))
+          if classNode ne null then
+            generatedClasses += GeneratedClass(classNode,
+              sourceClassName = sym.javaClassName,
+              position = sym.srcPos.sourcePos,
+              isArtifact = isArtifact,
+              onFileCreated = onFileCreated(classNode, sym, unit.source)
+            )
 
         registerGeneratedClass(mainClassNode, isArtifact = false)
         registerGeneratedClass(mirrorClassNode, isArtifact = true)
