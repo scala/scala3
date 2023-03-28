@@ -13,6 +13,7 @@ import core.Decorators._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
+import core.NameKinds.SuperArgName
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
 
@@ -197,10 +198,16 @@ object ExplicitOuter {
   private def outerAccName(cls: ClassSymbol)(using Context): TermName =
     nme.OUTER.expandedName(cls)
 
+  private def outerOwner(sym: Symbol)(using Context): Symbol =
+    val owner = sym.effectiveOwner
+    if owner.name.is(SuperArgName) || owner.isLocalDummy
+    then owner.enclosingClass
+    else owner
+
   /** Class needs an outer pointer, provided there is a reference to an outer this in it. */
   def needsOuterIfReferenced(cls: ClassSymbol)(using Context): Boolean =
     !(cls.isStatic
-      || cls.effectiveOwner.isStaticOwner
+      || outerOwner(cls).isStaticOwner
       || cls.is(PureInterface)
      )
 
