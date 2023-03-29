@@ -28,7 +28,7 @@ Conversely, if the expected type of an expression `E` is a context function type
 `(T_1, ..., T_n) ?=> U` and `E` is not already an
 context function literal, `E` is converted to a context function literal by rewriting it to
 ```scala
-  (x_1: T1, ..., x_n: Tn) ?=> E
+  (x_1: T1, ..., x_n: Tn) ?=> U
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
