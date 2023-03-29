@@ -478,7 +478,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.implicits then
           implicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
-            .filterNot(d => containsSyntheticSuffix(d.symbol) && (!d.rawMods.is(Given) || hasZeroLengthSpan(d.symbol)))
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.ImplicitParams).toList
         else
           Nil
@@ -526,11 +526,6 @@ object CheckUnused:
     private def containsSyntheticSuffix(symbol: Symbol)(using Context): Boolean =
       symbol.name.mangledString.contains("$")
 
-    /**
-     * Heuristic to detect generated symbols by checking if symbol has zero length span in source
-     */
-    private def hasZeroLengthSpan(symbol: Symbol)(using Context): Boolean =
-      symbol.span.end - symbol.span.start == 0
     /**
      * Is the the constructor of synthetic package object
      * Should be ignored as it is always imported/used in package
