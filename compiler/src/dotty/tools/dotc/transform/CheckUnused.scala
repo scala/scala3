@@ -512,13 +512,11 @@ object CheckUnused:
      * Checks if import selects a def that is transparent and inline
      */
     private def isTransparentAndInline(imp: tpd.Import)(using Context): Boolean =
-      (for {
-        sel <- imp.selectors
-      } yield {
+      imp.selectors.exists { sel =>
         val qual = imp.expr
         val importedMembers = qual.tpe.member(sel.name).alternatives.map(_.symbol)
         importedMembers.exists(s => s.is(Transparent) && s.is(Inline))
-      }).exists(identity)
+      }
 
     /**
      * Heuristic to detect synthetic suffixes in names of symbols
