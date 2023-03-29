@@ -41,7 +41,7 @@ object Test {
   )
 
   //compiles fine
-  //summon[Col[ColFromPos[0], Sudoku1] =:= (x, 8, x,  5, x, x,  x, 3, 6)]
+  summon[Col[ColFromPos[0], Sudoku1] =:= (x, 8, x,  5, x, x,  x, 3, 6)]
 
   summon[TupleDedup[(x, 8, x,  5, x, x,  x, 3, 6), Nothing] =:= (x, 8, 5, 3, 6)]
   //but this doesn't
