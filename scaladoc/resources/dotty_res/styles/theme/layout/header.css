@@ -63,6 +63,14 @@
   align-items: center;
 }
 
+.logo-container .project-logo {
+  max-width: 40px;
+}
+
+.logo-container .project-logo img {
+  max-width: 100%;
+}
+
 #mobile-menu-toggle {
   display: none;
 }
