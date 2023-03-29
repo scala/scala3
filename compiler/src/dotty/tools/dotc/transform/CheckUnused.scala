@@ -473,6 +473,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.explicits then
           explicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
             .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.ExplicitParams).toList
         else
