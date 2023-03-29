@@ -25,7 +25,7 @@ class C
 
 def f[X <: Box[C], Y <: Cov[C], Z <: Contrav[C]] =
   def a: BoxElem[X] = ???  // OK
-  val _: C = a
+  val _: C = a // error
 
   def a1: CovElem[Y] = ???
   val _: C = a1  // error

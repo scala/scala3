@@ -3095,6 +3095,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
       def apply(insts: Array[Type], t: Type) = t match
         case param @ TypeParamRef(b, n) if b eq caseLambda =>
+          def range1(tp: Type) = Range(tp, tp)
           insts(n) =
             if canApprox then
               approximation(param, fromBelow = variance >= 0, Int.MaxValue).simplified
@@ -3102,10 +3103,10 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               case entry: TypeBounds =>
                 val lo = fullLowerBound(param)
                 val hi = fullUpperBound(param)
-                if isSubType(hi, lo) then lo.simplified else Range(lo, hi)
+                if isSubType(hi, lo) then range1(lo.simplified) else Range(lo, hi)
               case inst =>
                 assert(inst.exists, i"param = $param\nconstraint = $constraint")
-                inst.simplified
+                range1(inst.simplified)
           insts
         case _ =>
           foldOver(insts, t)

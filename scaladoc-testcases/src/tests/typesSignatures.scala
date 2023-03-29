@@ -51,7 +51,7 @@ class Operators
   // type Binary2 = String op Int
 
   import scala.compiletime.ops.boolean.*
-  type Unary = ![true]
+  type Unary = ![true] //expected: type Unary = false
 }
 
 trait ThisTypeTest

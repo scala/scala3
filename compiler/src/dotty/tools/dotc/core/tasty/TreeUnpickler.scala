@@ -1418,7 +1418,11 @@ class TreeUnpickler(reader: TastyReader,
               val args = until(end)(readTpt())
               val tree = untpd.AppliedTypeTree(tycon, args)
               val ownType = ctx.typeAssigner.processAppliedType(tree, tycon.tpe.safeAppliedTo(args.tpes))
-              tree.withType(postProcessFunction(ownType))
+              tree.withType(postProcessFunction(ownType) match {
+                case tp @ MatchType.InDisguise(_) => tp
+                case tp: AndType                  => tp // pickleSkolem
+                case tp                           => tp.simplified // i17149
+              })
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTerm())
             case LAMBDAtpt =>
