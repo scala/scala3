@@ -627,7 +627,7 @@ object CheckUnused:
 
     extension (memDef: tpd.MemberDef)
       private def isValidMemberDef(using Context): Boolean =
-        !memDef.symbol.isUnusedAnnot && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags) && !memDef.name.isWildcard
+        !memDef.symbol.isUnusedAnnot && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags) && !memDef.name.isWildcard && !memDef.symbol.owner.is(Extension)
 
       private def isValidParam(using Context): Boolean =
         val sym = memDef.symbol
