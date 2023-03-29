@@ -24,6 +24,7 @@ import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
 import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
+import NameKinds.WildcardParamName
 
 /** Provides methods to compare types.
  */
@@ -865,10 +866,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         fourthTry
     }
 
+    /** Can we widen an abstract type when comparing with `tp`?
+     *  This is NOT the case if one of the following is true:
+     *    - canWidenAbstract is false,
+     *    - or `tp` contains a non-wildcard type parameter of the matched-against
+     *      case lambda that appears in co- or contra-variant position
+     */
+    def widenAbstractOKFor(tp: Type): Boolean =
+      val acc = new TypeAccumulator[Boolean]:
+        override def apply(x: Boolean, t: Type) =
+          x && t.match
+            case t: TypeParamRef =>
+              variance == 0 || (t.binder ne caseLambda) || t.paramName.is(WildcardParamName)
+            case _ =>
+              foldOver(x, t)
+      canWidenAbstract && acc(true, tp)
+
     def tryBaseType(cls2: Symbol) = {
       val base = nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
       if base.exists && (base ne tp1)
-        && (!caseLambda.exists || canWidenAbstract || tp1.widen.underlyingClassRef(refinementOK = true).exists)
+          && (!caseLambda.exists
+              || widenAbstractOKFor(tp2)
+              || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
         isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
         && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
@@ -889,8 +908,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            (!caseLambda.exists || canWidenAbstract)
-                && isSubType(hi1.boxedIfTypeParam(tp1.symbol), tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
+            (!caseLambda.exists || widenAbstractOKFor(tp2))
+              && isSubType(hi1.boxedIfTypeParam(tp1.symbol), tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
             || compareGADT
             || tryLiftedToThis1
           case _ =>
