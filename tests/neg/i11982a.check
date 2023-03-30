@@ -7,10 +7,8 @@
   |
   |                                    trying to reduce  Tuple.Tail[X]
   |                                    failed since selector X
-  |                                    does not uniquely determine parameter xs in
-  |                                      case _ *: xs => xs
-  |                                    The computed bounds for the parameter are:
-  |                                      xs >: Any *: EmptyTuple.type <: Tuple
+  |                                    does not match  case _ *: xs => xs
+  |                                    and cannot be shown to be disjoint from it either.
   |
   | longer explanation available when compiling with `-explain`
 -- [E057] Type Mismatch Error: tests/neg/i11982a.scala:10:38 -----------------------------------------------------------
@@ -22,10 +20,8 @@
    |
    |                                        trying to reduce  Tuple.Tail[X]
    |                                        failed since selector X
-   |                                        does not uniquely determine parameter xs in
-   |                                          case _ *: xs => xs
-   |                                        The computed bounds for the parameter are:
-   |                                          xs >: Any *: EmptyTuple.type <: Tuple
+   |                                        does not match  case _ *: xs => xs
+   |                                        and cannot be shown to be disjoint from it either.
    |
    | longer explanation available when compiling with `-explain`
 -- [E057] Type Mismatch Error: tests/neg/i11982a.scala:12:25 -----------------------------------------------------------
@@ -37,9 +33,7 @@
    |
    |                           trying to reduce  Tuple.Tail[X]
    |                           failed since selector X
-   |                           does not uniquely determine parameter xs in
-   |                             case _ *: xs => xs
-   |                           The computed bounds for the parameter are:
-   |                             xs >: Any *: EmptyTuple.type <: Tuple
+   |                           does not match  case _ *: xs => xs
+   |                           and cannot be shown to be disjoint from it either.
    |
    | longer explanation available when compiling with `-explain`

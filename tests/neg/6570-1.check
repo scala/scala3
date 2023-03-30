@@ -24,9 +24,7 @@
    |
    |                                                  trying to reduce  M[T]
    |                                                  failed since selector T
-   |                                                  does not uniquely determine parameter x in
-   |                                                    case Cov[x] => N[x]
-   |                                                  The computed bounds for the parameter are:
-   |                                                    x >: Box[Int]
+   |                                                  does not match  case Cov[x] => N[x]
+   |                                                  and cannot be shown to be disjoint from it either.
    |
    | longer explanation available when compiling with `-explain`
