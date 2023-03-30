@@ -368,7 +368,7 @@ object CheckUnused:
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
-      if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum then
+      if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum && !isTransparentAndInline(imp) then
         impInScope.top += imp
         unusedImport ++= imp.selectors.filter { s =>
           !shouldSelectorBeReported(imp, s) && !isImportExclusion(s)
@@ -432,6 +432,7 @@ object CheckUnused:
         else
           exists
       }
+
       // if there's an outer scope
       if usedInScope.nonEmpty then
         // we keep the symbols not referencing an import in this scope
@@ -450,6 +451,7 @@ object CheckUnused:
      */
     def getUnused(using Context): UnusedResult =
       popScope()
+
       val sortedImp =
         if ctx.settings.WunusedHas.imports || ctx.settings.WunusedHas.strictNoImplicitWarn then
           unusedImport.map(d => d.srcPos -> WarnTypes.Imports).toList
@@ -460,6 +462,7 @@ object CheckUnused:
           localDefInScope
             .filterNot(d => d.symbol.usedDefContains)
             .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.LocalDefs).toList
         else
           Nil
@@ -467,6 +470,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.explicits then
           explicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.ExplicitParams).toList
         else
           Nil
@@ -474,6 +478,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.implicits then
           implicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.ImplicitParams).toList
         else
           Nil
@@ -481,6 +486,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.privates then
           privateDefInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.PrivateMembers).toList
         else
           Nil
@@ -488,6 +494,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.patvars then
           patVarsInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => containsSyntheticSuffix(d.symbol))
             .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
             .map(d => d.namePos -> WarnTypes.PatVars).toList
         else
@@ -499,6 +506,23 @@ object CheckUnused:
       UnusedResult(warnings, Nil)
     end getUnused
     //============================ HELPERS ====================================
+
+
+    /**
+     * Checks if import selects a def that is transparent and inline
+     */
+    private def isTransparentAndInline(imp: tpd.Import)(using Context): Boolean =
+      imp.selectors.exists { sel =>
+        val qual = imp.expr
+        val importedMembers = qual.tpe.member(sel.name).alternatives.map(_.symbol)
+        importedMembers.exists(s => s.is(Transparent) && s.is(Inline))
+      }
+
+    /**
+     * Heuristic to detect synthetic suffixes in names of symbols
+     */
+    private def containsSyntheticSuffix(symbol: Symbol)(using Context): Boolean =
+      symbol.name.mangledString.contains("$")
 
     /**
      * Is the the constructor of synthetic package object
