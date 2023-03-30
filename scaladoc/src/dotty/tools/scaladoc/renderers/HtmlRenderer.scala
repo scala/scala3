@@ -207,11 +207,11 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       }
 
     val darkProjectLogoElem =
-      darkProjectLogo.flatMap {
+      darkProjectLogo.orElse(projectLogo).flatMap {
         case Resource.File(path, _) =>
           Some(span(id := "dark-project-logo", cls := "project-logo")(img(src := resolveRoot(link.dri, path))))
         case _ => None
-      }.orElse(projectLogoElem)
+      }
 
     val parentsHtml =
       val innerTags = parents.flatMap[TagArg](b => Seq(
