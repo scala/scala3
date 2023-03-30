@@ -63,6 +63,7 @@ trait ConstraintHandling {
    *  toplevel; it is turned on again when we add parts of the scrutinee to the constraint.
    */
   protected var canWidenAbstract: Boolean = true
+  protected var poisoned: Set[TypeParamRef] = Set.empty
 
   protected var myNecessaryConstraintsOnly = false
   /** When collecting the constraints needed for a particular subtyping

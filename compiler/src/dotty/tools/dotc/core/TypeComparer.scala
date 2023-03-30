@@ -877,9 +877,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         override def apply(x: Boolean, t: Type) =
           x && t.match
             case t: TypeParamRef =>
-              variance == 0 || (t.binder ne caseLambda) || t.paramName.is(WildcardParamName)
+              variance == 0
+              || (t.binder ne caseLambda)
+              || t.paramName.is(WildcardParamName)
+              || { poisoned += t; true }
             case _ =>
               foldOver(x, t)
+
       canWidenAbstract && acc(true, tp)
 
     def tryBaseType(cls2: Symbol) = {
@@ -3110,6 +3114,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   def matchCases(scrut: Type, cases: List[Type])(using Context): Type = {
+    var poisoned: Set[TypeParamRef] = Set.empty
 
     def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
       def apply(insts: Array[Type], t: Type) = t match
@@ -3121,10 +3126,10 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               case entry: TypeBounds =>
                 val lo = fullLowerBound(param)
                 val hi = fullUpperBound(param)
-                if isSubType(hi, lo) then lo.simplified else Range(lo, hi)
+                if !poisoned(param) && isSubType(hi, lo) then lo.simplified else Range(lo, hi)
               case inst =>
                 assert(inst.exists, i"param = $param\nconstraint = $constraint")
-                inst.simplified
+                if !poisoned(param) then inst.simplified else Range(inst, inst)
           insts
         case _ =>
           foldOver(insts, t)
@@ -3152,9 +3157,14 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
       def matches(canWidenAbstract: Boolean): Boolean =
         val saved = this.canWidenAbstract
+        val savedPoisoned = this.poisoned
         this.canWidenAbstract = canWidenAbstract
+        this.poisoned = Set.empty
         try necessarySubType(scrut, pat)
-        finally this.canWidenAbstract = saved
+        finally
+          poisoned = this.poisoned
+          this.poisoned = savedPoisoned
+          this.canWidenAbstract = saved
 
       def redux(canApprox: Boolean): MatchResult =
         caseLambda match
