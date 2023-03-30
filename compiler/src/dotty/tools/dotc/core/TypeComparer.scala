@@ -3095,7 +3095,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
       def apply(insts: Array[Type], t: Type) = t match
         case param @ TypeParamRef(b, n) if b eq caseLambda =>
-          def range1(tp: Type) = if variance == 0 then tp else Range(tp, tp)
+          def range1(tp: Type) = if variance == 0 || param.paramName.is(NameKinds.WildcardParamName) then tp else Range(tp, tp)
           insts(n) =
             if canApprox then
               approximation(param, fromBelow = variance >= 0, Int.MaxValue).simplified

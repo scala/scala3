@@ -36,7 +36,7 @@ class CustomCompletionTests extends DottyTest:
         initialCtx.fresh
           .addMode(Mode.ReadPositions | Mode.Interactive)
           // discard errors - comment out this line to print them in the console
-          .setReporter(new StoreReporter(dotc.reporting.Reporter.NoReporter))
+          .setReporter(new StoreReporter(null))
           .setSetting(initialCtx.settings.YstopAfter, List("typer"))
       )
       val file = SourceFile.virtual("<completions>", allCode, maybeIncomplete = true)
