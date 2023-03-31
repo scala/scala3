@@ -3,6 +3,10 @@ import com.typesafe.tools.mima.core._
 
 object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
+    ProblemFilters.exclude[MissingMethodProblem]("scala.quoted.Quotes#reflectModule.AssumeInfo"),
+    ProblemFilters.exclude[MissingMethodProblem]("scala.quoted.Quotes#reflectModule.AssumeInfoTypeTest"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$AssumeInfoModule"),
+
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.unsafeBox"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.unsafeUnbox"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.CanEqual.canEqualMap"),
@@ -31,9 +35,11 @@ object MiMaFilters {
     // Added java.io.Serializable as LazyValControlState supertype
     ProblemFilters.exclude[MissingTypesProblem]("scala.runtime.LazyVals$LazyValControlState"),
     ProblemFilters.exclude[MissingTypesProblem]("scala.runtime.LazyVals$Waiting"),
-
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
+    // New TASTy tags
+    ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.ASSUMEINFO"),
+
     ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyBuffer.reset"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.APPLYsigpoly"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyHash.pjwHash64"),

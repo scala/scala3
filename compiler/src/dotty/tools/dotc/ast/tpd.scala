@@ -98,6 +98,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         Block(stats, expr)
     }
 
+  def AssumeInfo(sym: Symbol, info: Type, body: Tree)(using Context): AssumeInfo =
+    ta.assignType(untpd.AssumeInfo(sym, info, body), body)
+
   def If(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If =
     ta.assignType(untpd.If(cond, thenp, elsep), thenp, elsep)
 
@@ -683,6 +686,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
+    override def AssumeInfo(tree: Tree)(sym: Symbol, info: Type, body: Tree)(using Context): AssumeInfo =
+      val tree1 = untpdCpy.AssumeInfo(tree)(sym, info, body)
+      tree match
+        case tree: AssumeInfo if body.tpe eq tree.body.tpe => tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, body)
+
     override def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If = {
       val tree1 = untpdCpy.If(tree)(cond, thenp, elsep)
       tree match {
@@ -767,6 +776,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
+    override def AssumeInfo(tree: AssumeInfo)(sym: Symbol = tree.sym, info: Type = tree.info, body: Tree = tree.body)(using Context): AssumeInfo =
+      AssumeInfo(tree: Tree)(sym, info, body)
     override def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(using Context): If =
       If(tree: Tree)(cond, thenp, elsep)
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =

@@ -346,6 +346,8 @@ object desugar {
       // Propagate down the expected type to the leafs of the expression
       case Block(stats, expr) =>
         cpy.Block(tree)(stats, adaptToExpectedTpt(expr))
+      case AssumeInfo(sym, info, body) =>
+        cpy.AssumeInfo(tree)(sym, info, adaptToExpectedTpt(body))
       case If(cond, thenp, elsep) =>
         cpy.If(tree)(cond, adaptToExpectedTpt(thenp), adaptToExpectedTpt(elsep))
       case untpd.Parens(expr) =>
@@ -1645,6 +1647,7 @@ object desugar {
           case Tuple(trees) => (pats corresponds trees)(isIrrefutable)
           case Parens(rhs1) => matchesTuple(pats, rhs1)
           case Block(_, rhs1) => matchesTuple(pats, rhs1)
+          case AssumeInfo(_, _, rhs1) => matchesTuple(pats, rhs1)
           case If(_, thenp, elsep) => matchesTuple(pats, thenp) && matchesTuple(pats, elsep)
           case Match(_, cases) => cases forall (matchesTuple(pats, _))
           case CaseDef(_, _, rhs1) => matchesTuple(pats, rhs1)

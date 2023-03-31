@@ -97,6 +97,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPED          Length expr_Term ascriptionType_Term              -- expr: ascription
                   ASSIGN         Length lhs_Term rhs_Term                          -- lhs = rhs
                   BLOCK          Length expr_Term Stat*                            -- { stats; expr }
+                  ASSUMEINFO     Length sym_ASTRef info_Type body_Term             -- Contextual info of a symbol, such as GADT bounds
                   INLINED        Length expr_Term call_Term? ValOrDefDef*          -- Inlined code from call, with given body `expr` and given bindings
                   LAMBDA         Length meth_Term target_Type?                     -- Closure over method `f` of type `target` (omitted id `target` is a function type)
                   IF             Length [INLINE] cond_Term then_Term else_Term     -- inline? if cond then thenPart else elsePart
@@ -581,6 +582,7 @@ object TastyFormat {
   // final val ??? = 179
   final val METHODtype = 180
   final val APPLYsigpoly = 181
+  final val ASSUMEINFO = 182
 
   final val MATCHtype = 190
   final val MATCHtpt = 191
@@ -754,6 +756,7 @@ object TastyFormat {
     case NAMEDARG => "NAMEDARG"
     case ASSIGN => "ASSIGN"
     case BLOCK => "BLOCK"
+    case ASSUMEINFO => "ASSUMEINFO"
     case IF => "IF"
     case LAMBDA => "LAMBDA"
     case MATCH => "MATCH"
@@ -811,7 +814,7 @@ object TastyFormat {
    */
   def numRefs(tag: Int): Int = tag match {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
-         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | SELECTin | HOLE => 1
+         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | SELECTin | ASSUMEINFO | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | TYPELAMBDAtype | METHODtype => -1
     case _ => 0

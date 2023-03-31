@@ -4923,13 +4923,6 @@ object Types {
       myReduced.nn
     }
 
-    /** True if the reduction uses GADT constraints. */
-    def reducesUsingGadt(using Context): Boolean =
-      (reductionContext ne null) && reductionContext.keysIterator.exists {
-        case tp: TypeRef => reductionContext(tp).exists
-        case _           => false
-      }
-
     override def computeHash(bs: Binders): Int = doHash(bs, scrutinee, bound :: cases)
 
     override def eql(that: Type): Boolean = that match {
@@ -4944,11 +4937,6 @@ object Types {
   object MatchType {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(using Context): MatchType =
       unique(new CachedMatchType(bound, scrutinee, cases))
-
-    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp match
-      case MatchType.InDisguise(mt) => mt.reducesUsingGadt
-      case mt: MatchType            => mt.reducesUsingGadt
-      case _                        => false
 
     /** Extractor for match types hidden behind an AppliedType/MatchAlias. */
     object InDisguise:

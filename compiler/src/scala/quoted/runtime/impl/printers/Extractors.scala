@@ -99,6 +99,8 @@ object Extractors {
         this += "Assign(" += lhs += ", " += rhs += ")"
       case Block(stats, expr) =>
         this += "Block(" ++= stats += ", " += expr += ")"
+      case AssumeInfo(sym, info, body) =>
+        this += "AssumeInfo(" += sym += ", " += info += ", " += body += ")"
       case If(cond, thenp, elsep) =>
         this += "If(" += cond += ", " += thenp += ", " += elsep += ")"
       case Closure(meth, tpt) =>
@@ -259,6 +261,7 @@ object Extractors {
       else if x.isDefDef then this += "IsDefDefSymbol(<" += x.fullName += ">)"
       else if x.isValDef then this += "IsValDefSymbol(<" += x.fullName += ">)"
       else if x.isTypeDef then this += "IsTypeDefSymbol(<" += x.fullName += ">)"
+      else if x.isBind then this += "IsBindSymbol(<" += x.fullName += ">)"
       else { assert(x.isNoSymbol); this += "NoSymbol()" }
 
     def visitParamClause(x: ParamClause): this.type =

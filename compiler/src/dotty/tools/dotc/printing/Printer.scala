@@ -160,7 +160,7 @@ abstract class Printer {
   def toText(result: ImportInfo): Text
 
   /** Textual representation of a constraint */
-  def toText(c: OrderingConstraint): Text
+  def toText(c: Constraint): Text
 
   /** Textual representation of a GADT constraint */
   def toText(c: GadtConstraint): Text

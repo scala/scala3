@@ -1353,7 +1353,8 @@ trait Applications extends Compatibility {
 
         qual match
           case TypeApply(qual1, targs) =>
-            tryWithTypeArgs(qual1, targs.mapconserve(typedType(_)))((t, ts) =>
+            val gadtCtx = ctx.fresh.setFreshGADTBounds
+            tryWithTypeArgs(qual1, targs.mapconserve(typedType(_)(using gadtCtx)))((t, ts) =>
               tryWithTypeArgs(qual, Nil)(fallBack))
           case _ =>
             tryWithTypeArgs(qual, Nil)(fallBack)

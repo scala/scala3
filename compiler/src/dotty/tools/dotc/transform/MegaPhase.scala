@@ -321,6 +321,10 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           val tpt = transformTree(tree.tpt, start)
           goTyped(cpy.Typed(tree)(expr, tpt), start)
         }
+      case tree: AssumeInfo =>
+        tree.fold(transformTree(_, start)) { (assumeInfo, body) =>
+          cpy.AssumeInfo(assumeInfo)(body = body)
+        }
       case tree: CaseDef =>
         inContext(prepCaseDef(tree, start)(using outerCtx)) {
           val pat = withMode(Mode.Pattern)(transformTree(tree.pat, start))

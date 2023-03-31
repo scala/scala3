@@ -271,14 +271,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
-        // TODO move CaseDef case lower: keep most probable trees first for performance
-        case CaseDef(pat, _, _) =>
-          val gadtCtx =
-           pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
-             case Some(gadt) => ctx.fresh.setGadtState(GadtState(gadt))
-             case None =>
-               ctx
-          super.transform(tree)(using gadtCtx)
         case tree: Ident =>
           if tree.isType then
             checkNotPackage(tree)
@@ -433,6 +425,19 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.tpe, tree.srcPos)
           super.transform(tree)
+        case cdef @ CaseDef(pat, guard, body) =>
+          // test case pos/i9833
+          val assumeInfo = new TreeAccumulator[AssumeInfoMap] {
+            def apply(assumeInfo: AssumeInfoMap, tree: Tree)(using Context) = tree match
+              case AssumeInfo(sym, info, body) => apply(assumeInfo.add(sym, info), body)
+              case _                           => assumeInfo
+          }.apply(ctx.assumeInfo, body)
+          inContext(ctx.withAssumeInfo(assumeInfo)) {
+            val pat1   = transform(pat)
+            val guard1 = transform(guard)
+            val body1  = transform(body)
+            cpy.CaseDef(cdef)(pat1, guard1, body1)
+          }
         case tree: Closure if !tree.tpt.isEmpty =>
           Checking.checkRealizable(tree.tpt.tpe, tree.srcPos, "SAM type")
           super.transform(tree)

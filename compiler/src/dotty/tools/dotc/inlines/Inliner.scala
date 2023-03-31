@@ -856,9 +856,10 @@ class Inliner(val call: tpd.Tree)(using Context):
           case Some((caseBindings, rhs0)) =>
             // drop type ascriptions/casts hiding pattern-bound types (which are now aliases after reducing the match)
             // note that any actually necessary casts will be reinserted by the typing pass below
-            val rhs1 = rhs0 match {
-              case Block(stats, t) if t.span.isSynthetic =>
-                t match {
+            def dropCasts(tree: Tree): Tree = tree match {
+              case tree @ AssumeInfo(_, _, body) => cpy.AssumeInfo(tree)(body = dropCasts(body))
+              case Block(stats, tree) if tree.span.isSynthetic =>
+                tree match {
                   case Typed(expr, _) =>
                     Block(stats, expr)
                   case TypeApply(sel@Select(expr, _), _) if sel.symbol.isTypeCast =>
@@ -866,8 +867,9 @@ class Inliner(val call: tpd.Tree)(using Context):
                   case _ =>
                     rhs0
                 }
-              case _ => rhs0
+              case _ => tree
             }
+            val rhs1 = dropCasts(rhs0)
             val (usedBindings, rhs2) = dropUnusedDefs(caseBindings, rhs1)
             val rhs = seq(usedBindings, rhs2)
             inlining.println(i"""--- reduce:
@@ -943,6 +945,11 @@ class Inliner(val call: tpd.Tree)(using Context):
           case ident: Ident if ident.isType && typeBindingsSet.contains(ident.symbol) =>
             val TypeAlias(r) = ident.symbol.info: @unchecked
             TypeTree(r).withSpan(ident.span)
+          case tree @ AssumeInfo(_, _, _) =>
+            def rec(tree: Tree): Tree = tree match
+              case AssumeInfo(sym, _, body) if typeBindingsSet.contains(sym) => rec(body)
+              case _                                                         => tree
+            rec(tree)
           case tree => tree
         }
       )

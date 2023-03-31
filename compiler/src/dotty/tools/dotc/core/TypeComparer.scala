@@ -44,7 +44,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     myContext = c
     state = c.typerState
     monitored = false
-    GADTused = false
     recCount = 0
     needsGc = false
     if Config.checkTypeComparerReset then checkReset()
@@ -56,9 +55,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var needsGc = false
 
   private var canCompareAtoms: Boolean = true // used for internal consistency checking
-
-  /** Indicates whether the subtype check used GADT bounds */
-  private var GADTused: Boolean = false
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -100,22 +96,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     assert(leftRoot == null)
     assert(frozenGadt == false)
 
-  /** Record that GADT bounds of `sym` were used in a subtype check.
-   *  But exclude constructor type parameters, as these are aliased
-   *  to the corresponding class parameters, which does not constitute
-   *  a true usage of a GADT symbol.
-   */
-  private def GADTusage(sym: Symbol): true = recordGadtUsageIf(!sym.owner.isConstructor)
-
-  private def recordGadtUsageIf(cond: Boolean): true = {
-    if cond then
-      GADTused = true
-    true
-  }
-
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
-  protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
+  protected def gadtBounds(sym: Symbol)(using Context): TypeBounds | Null =
+    val bounds = ctx.gadt.bounds(sym)
+    if bounds == null then
+      val info = ctx.assumeInfo.info(sym)
+      if info == null then null else info.bounds
+    else bounds
+
   protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadtState.addBound(sym, b, isUpper)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
@@ -138,12 +127,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     myNecessaryConstraintsOnly = true
     try topLevelSubType(tp1, tp2)
     finally myNecessaryConstraintsOnly = saved
-
-  def testSubType(tp1: Type, tp2: Type): CompareResult =
-    GADTused = false
-    if !topLevelSubType(tp1, tp2) then CompareResult.Fail
-    else if GADTused then CompareResult.OKwithGADTUsed
-    else CompareResult.OK
 
   /** The current approximation state. See `ApproxState`. */
   private var approx: ApproxState = ApproxState.Fresh
@@ -542,7 +525,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: MatchType =>
         val reduced = tp1.reduced
         if reduced.exists then
-          recur(reduced, tp2) && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
+          recur(reduced, tp2)
         else thirdTry
       case _: FlexType =>
         true
@@ -562,10 +545,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   // one of which is constrained to be a subtype of another.
                   // We do not need similar code in fourthTry, since we only need to care about
                   // comparing two constrained types, and that case will be handled here first.
-                  ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
+                  ctx.gadt.isLess(tp1.symbol, tp2.symbol)
                 case _ => false
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
-          && (isBottom(tp1) || GADTusage(tp2.symbol))
 
         isSubApproxHi(tp1, info2.lo.boxedIfTypeParam(tp2.symbol)) && (trustBounds || isSubApproxHi(tp1, info2.hi))
         || compareGADT
@@ -784,7 +766,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: MatchType =>
         val reduced = tp2.reduced
         if reduced.exists then
-          recur(tp1, reduced) && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp2) }
+          recur(tp1, reduced)
         else
           fourthTry
       case tp2: MethodType =>
@@ -871,7 +853,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         && (!caseLambda.exists || canWidenAbstract || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
         isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
-        && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
         || base.isInstanceOf[OrType] && fourthTry
           // if base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
@@ -887,7 +868,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               tp1.symbol.onGadtBounds(gbounds1 =>
                 isSubTypeWhenFrozen(gbounds1.hi, tp2)
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
-              && (tp2.isAny || GADTusage(tp1.symbol))
 
             (!caseLambda.exists || canWidenAbstract)
                 && isSubType(hi1.boxedIfTypeParam(tp1.symbol), tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
@@ -1152,6 +1132,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val tparams = tycon2.typeParams
       if (tparams.isEmpty) return false // can happen for ill-typed programs, e.g. neg/tcpoly_overloaded.scala
 
+      def compareParamRef2(param2: TypeParamRef): Boolean =
+        isMatchingApply(tp1)
+        || canConstrain(param2) && canInstantiate(param2)
+        || compareLower(bounds(param2), tyconIsTypeRef = false)
+
       /** True if `tp1` and `tp2` have compatible type constructors and their
        *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
        */
@@ -1227,7 +1212,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     && ctx.gadt.contains(tycon2sym)
                     && ctx.gadt.isLess(tycon1sym, tycon2sym)
 
-                  val res = (
+                  (
                     tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
                     || tycon1sym.byGadtBounds(b => isSubTypeWhenFrozen(b.hi, tycon2))
                     || tycon2sym.byGadtBounds(b => isSubTypeWhenFrozen(tycon1, b.lo))
@@ -1254,7 +1239,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                         isSubArgs(args1, args2, tp1, tparams)
                     }
                   }
-                  res && recordGadtUsageIf(touchedGADTs)
                 case _ =>
                   false
               }
@@ -1313,27 +1297,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        */
       def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
         if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isInstanceOf[MatchAlias])
-          if (tyconIsTypeRef) recur(tp1, tp2.superTypeNormalized) && recordGadtUsageIf(MatchType.thatReducesUsingGadt(tp2))
+          if (tyconIsTypeRef) recur(tp1, tp2.superTypeNormalized)
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
           fallback(tycon2bounds.lo)
 
       def byGadtBounds: Boolean =
-        {
-          tycon2 match
-            case tycon2: TypeRef =>
-              val tycon2sym = tycon2.symbol
-              tycon2sym.onGadtBounds { bounds2 =>
-                inFrozenGadt { compareLower(bounds2, tyconIsTypeRef = false) }
-              }
-            case _ => false
-        } && recordGadtUsageIf(true)
+        tycon2 match
+          case tycon2: TypeRef =>
+            val tycon2sym = tycon2.symbol
+            tycon2sym.onGadtBounds { bounds2 =>
+              inFrozenGadt { compareLower(bounds2, tyconIsTypeRef = false) }
+            }
+          case _ => false
 
       tycon2 match {
         case param2: TypeParamRef =>
-          isMatchingApply(tp1) ||
-          canConstrain(param2) && canInstantiate(param2) ||
-          compareLower(bounds(param2), tyconIsTypeRef = false)
+          compareParamRef2(param2)
         case tycon2: TypeRef =>
           isMatchingApply(tp1) ||
           byGadtBounds ||
@@ -1354,7 +1334,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if tv.isInstantiated then
             recur(tp1, tp2.superType)
           else
-            compareAppliedType2(tp2, tv.origin, args2)
+            compareParamRef2(tv.origin)
         case tycon2: AnnotatedType if !tycon2.isRefining =>
           recur(tp1, tp2.superType)
         case tycon2: AppliedType =>
@@ -1383,12 +1363,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           def byGadtBounds: Boolean =
             sym.onGadtBounds { bounds1 =>
               inFrozenGadt { isSubType(bounds1.hi.applyIfParameterized(args1), tp2, approx.addLow) }
-            } && recordGadtUsageIf(true)
-
+            }
 
           !sym.isClass && {
             defn.isCompiletimeAppliedType(sym) && compareCompiletimeAppliedType(tp1, tp2, fromBelow = false) ||
-            { recur(tp1.superTypeNormalized, tp2) && recordGadtUsageIf(MatchType.thatReducesUsingGadt(tp1)) } ||
+            recur(tp1.superTypeNormalized, tp2) ||
             tryLiftedToThis1
           } || byGadtBounds
         case tycon1: TypeProxy =>
@@ -2887,9 +2866,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
 object TypeComparer {
 
-  enum CompareResult:
-    case OK, Fail, OKwithGADTUsed
-
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
     var tpe: Type = NoType
@@ -2950,9 +2926,6 @@ object TypeComparer {
 
   def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.isSubTypeWhenFrozen(tp1, tp2))
-
-  def testSubType(tp1: Type, tp2: Type)(using Context): CompareResult =
-    comparing(_.testSubType(tp1, tp2))
 
   def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.isSameTypeWhenFrozen(tp1, tp2))

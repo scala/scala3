@@ -478,6 +478,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         changePrec(GlobalPrec) { toTextLocal(lhs) ~ " = " ~ toText(rhs) }
       case block: Block =>
         blockToText(block)
+      case AssumeInfo(sym, info, body) =>
+        (typeText(toText(sym.typeRef)) ~ toText(info)).close ~ " ~ " ~ toText(body)
       case If(cond, thenp, elsep) =>
         val isInline = tree.isInstanceOf[Trees.InlineIf[?]]
         changePrec(GlobalPrec) {

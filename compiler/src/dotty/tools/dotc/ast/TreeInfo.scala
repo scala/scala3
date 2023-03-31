@@ -330,6 +330,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case If(_, thenp, elsep) => forallResults(thenp, p) && forallResults(elsep, p)
     case Match(_, cases) => cases forall (c => forallResults(c.body, p))
     case Block(_, expr) => forallResults(expr, p)
+    case AssumeInfo(_, _, body) => forallResults(body, p)
     case _ => p(tree)
   }
 
@@ -1088,6 +1089,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         case Typed(expr, _) => unapply(expr)
         case Inlined(_, Nil, expr) => unapply(expr)
         case Block(Nil, expr) => unapply(expr)
+        case AssumeInfo(_, _, body) => unapply(body)
         case _ =>
           tree.tpe.widenTermRefExpr.dealias.normalized match
             case ConstantType(Constant(x)) => Some(x)

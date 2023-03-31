@@ -28,7 +28,6 @@ import Checking._
 import Inferencing._
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
-import TypeComparer.CompareResult
 import inlines.{Inlines, PrepareInlineable}
 import util.Spans._
 import util.common._
@@ -70,9 +69,6 @@ object Typer {
   def assertPositioned(tree: untpd.Tree)(using Context): Unit =
     if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
       assert(tree.span.exists, i"position not set for $tree # ${tree.uniqueId} of ${tree.getClass} in ${tree.source}")
-
-  /** An attachment for GADT constraints that were inferred for a pattern. */
-  val InferredGadtConstraints = new Property.StickyKey[core.GadtConstraint]
 
   /** An attachment on a Select node with an `apply` field indicating that the `apply`
    *  was inserted by the Typer.
@@ -1196,17 +1192,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case elsep: untpd.If => isIncomplete(elsep)
       case _ => false
 
-    // Insert a GADT cast if the type of the branch does not conform
-    //   to the type assigned to the whole if tree.
-    // This happens when the computation of the type of the if tree
-    //   uses GADT constraints. See #15646.
-    def gadtAdaptBranch(tree: Tree, branchPt: Type): Tree =
-      TypeComparer.testSubType(tree.tpe.widenExpr, branchPt) match {
-        case CompareResult.OKwithGADTUsed =>
-          insertGadtCast(tree, tree.tpe.widen, branchPt)
-        case _ => tree
-      }
-
     val branchPt = if isIncomplete(tree) then defn.UnitType else pt.dropIfProto
 
     val result =
@@ -1220,16 +1205,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
           thenp0 :: elsep0 :: Nil
         }: @unchecked
-
         val resType = thenp1.tpe | elsep1.tpe
-        val thenp2 :: elsep2 :: Nil =
-          (thenp1 :: elsep1 :: Nil) map { t =>
-            // Adapt each branch to ensure that their types conforms to the
-            //   type assigned to the if tree by inserting GADT casts.
-            gadtAdaptBranch(t, resType)
-          }: @unchecked
-
-        cpy.If(tree)(cond1, thenp2, elsep2).withType(resType)
+        cpy.If(tree)(cond1, thenp1, elsep1).withType(resType)
 
     def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
     def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
@@ -1823,15 +1800,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val pat1 = indexPattern(tree).transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
       var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
-      if ctx.gadt.isNarrowing then
-        // Store GADT constraint to later retrieve it (in PostTyper, for now).
-        // GADT constraints are necessary to correctly check bounds of type app,
-        // see tests/pos/i12226 and issue #12226. It might be possible that this
-        // will end up taking too much memory. If it does, we should just limit
-        // how much GADT constraints we infer - it's always sound to infer less.
-        pat1.putAttachment(InferredGadtConstraints, ctx.gadt)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
+      if !ctx.gadt.eql(originalCtx.gadt) then
+        for sym <- ctx.gadt.symbols.reverseIterator do
+          val bounds = ctx.gadt.fullBounds(sym).nn
+          if !bounds.lo.isExactlyNothing || !bounds.hi.isExactlyAny then
+            body1 = AssumeInfo(sym, bounds, body1)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
     }
 
@@ -1839,6 +1814,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(
         using gadtCtx))
+  }
+
+  def typedAssumeInfo(tree: untpd.AssumeInfo, pt: Type)(using Context): Tree = {
+    tree.fold(typed(_, pt)) { (assumeInfo, body) =>
+      assignType(cpy.AssumeInfo(assumeInfo)(body = body), body)
+    }
   }
 
   def typedLabeled(tree: untpd.Labeled)(using Context): Labeled = {
@@ -2404,14 +2385,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     // Register GADT constraint for class type parameters from outer to inner class definition. (Useful when nested classes exist.) But do not cross a function definition.
-    if sym.flags.is(Method) then
+    if !ctx.isAfterTyper && sym.flags.is(Method) then
       rhsCtx.setFreshGADTBounds
       ctx.outer.outersIterator.takeWhile(!_.owner.is(Method))
         .filter(ctx => ctx.owner.isClass && ctx.owner.typeParams.nonEmpty)
         .toList.reverse
         .foreach(ctx => rhsCtx.gadtState.addToConstraint(ctx.owner.typeParams))
 
-    if tparamss.nonEmpty then
+    if !ctx.isAfterTyper && tparamss.nonEmpty then
       rhsCtx.setFreshGADTBounds
       val tparamSyms = tparamss.flatten.map(_.symbol)
       if !sym.isConstructor then
@@ -3003,6 +2984,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.Import => typedImport(tree)
           case tree: untpd.Export => typedExport(tree)
           case tree: untpd.Match => typedMatch(tree, pt)
+          case tree: untpd.AssumeInfo => typedAssumeInfo(tree, pt)
           case tree: untpd.Return => typedReturn(tree)
           case tree: untpd.WhileDo => typedWhileDo(tree)
           case tree: untpd.Try => typedTry(tree, pt)
@@ -3068,9 +3050,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
          || tree.isDef                              // ... unless tree is a definition
       then
         interpolateTypeVars(tree, pt, locked)
-        val simplified = tree.tpe.simplified
-        if !MatchType.thatReducesUsingGadt(tree.tpe) then // needs a GADT cast. i15743
-          tree.overwriteType(simplified)
+        tree.overwriteType(tree.tpe.simplified(using ctx.withGadt(GadtConstraint.empty)))
     tree
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
@@ -3893,27 +3873,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               tree.srcPos.startPos)
             tree
           }
-        else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
-          case CompareResult.Fail =>
-            wtp match
-              case wtp: MethodType => missingArgs(wtp)
-              case _ =>
-                typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
-                //typr.println(TypeComparer.explained(tree.tpe <:< pt))
-                adaptToSubType(wtp)
-          case CompareResult.OKwithGADTUsed
-          if pt.isValueType
-             && !inContext(ctx.fresh.setGadtState(GadtState(GadtConstraint.empty))) {
-               val res = (tree.tpe.widenExpr frozen_<:< pt)
-               if res then
-                 // we overshot; a cast is not needed, after all.
-                 gadts.println(i"unnecessary GADTused for $tree: ${tree.tpe.widenExpr} vs $pt in ${ctx.source}")
-               res
-              } =>
-            insertGadtCast(tree, wtp, pt)
-          case _ =>
-            //typr.println(i"OK ${tree.tpe}\n${TypeComparer.explained(_.isSubType(tree.tpe, pt))}") // uncomment for unexpected successes
-            tree
+        else if !(tree.tpe.widenExpr <:< pt) then
+          wtp match
+            case wtp: MethodType => missingArgs(wtp)
+            case _ =>
+              typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
+              adaptToSubType(wtp)
+        else tree
     }
 
     // Follow proxies and approximate type paramrefs by their upper bound
@@ -4384,37 +4350,4 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           report.error(em"Invalid Scala 2 macro $call", call.srcPos)
           EmptyTree
     else typedExpr(call, defn.AnyType)
-
-  /** Insert GADT cast to target type `pt` on the `tree`
-    *   so that -Ycheck in later phases succeeds.
-    *  The check "safeToInstantiate" in `maximizeType` works to prevent unsound GADT casts.
-    */
-  private def insertGadtCast(tree: Tree, wtp: Type, pt: Type)(using Context): Tree =
-    val target =
-      if tree.tpe.isSingleton then
-        // In the target type, when the singleton type is intersected, we also intersect
-        //   the GADT-approximated type of the singleton to avoid the loss of
-        //   information. See #15646.
-        val gadtApprox = Inferencing.approximateGADT(wtp)
-        gadts.println(i"gadt approx $wtp ~~~ $gadtApprox")
-        val conj =
-          TypeComparer.testSubType(gadtApprox, pt) match {
-            case CompareResult.OK =>
-              // GADT approximation of the tree type is a subtype of expected type under empty GADT
-              //   constraints, so it is enough to only have the GADT approximation.
-              AndType(tree.tpe, gadtApprox)
-            case _ =>
-              // In other cases, we intersect both the approximated type and the expected type.
-              AndType(AndType(tree.tpe, gadtApprox), pt)
-          }
-        if tree.tpe.isStable && !conj.isStable then
-          // this is needed for -Ycheck. Without the annotation Ycheck will
-          // skolemize the result type which will lead to different types before
-          // and after checking. See i11955.scala.
-          AnnotatedType(conj, Annotation(defn.UncheckedStableAnnot, tree.symbol.span))
-        else conj
-      else pt
-    gadts.println(i"insert GADT cast from $tree to $target")
-    tree.cast(target)
-  end insertGadtCast
 }

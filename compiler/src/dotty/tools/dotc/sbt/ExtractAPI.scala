@@ -774,6 +774,11 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
             h = constantHash(c, h)
           case n: Name =>
             h = nameHash(n, h)
+          case sym: Symbol =>
+            h = MurmurHash3.mix(h, apiDefinition(sym, inlineOrigin).hashCode)
+          case tp: TypeBounds =>
+            h = MurmurHash3.mix(h, apiType(tp.lo).hashCode)
+            h = MurmurHash3.mix(h, apiType(tp.hi).hashCode)
           case elem =>
             cannotHash(what = i"`${elem.tryToShow}` of unknown class ${elem.getClass}", elem, tree)
       h

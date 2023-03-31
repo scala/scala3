@@ -135,6 +135,20 @@ class TreeTypeMap(
           cpy.LambdaTypeTree(tdef)(tparams1, tmap1.transform(body))
         case inlined: Inlined =>
           transformInlined(inlined)
+        case tree: AssumeInfo =>
+          def mapBody(body: Tree) = body match
+            case tree @ AssumeInfo(_, _, _) =>
+              val tree1 = treeMap(tree)
+              tree1.withType(mapType(tree1.tpe))
+            case _ => body
+          tree.fold(transform, mapBody) { case (assumeInfo @ AssumeInfo(sym, info, _), body) =>
+            mapType(sym.typeRef) match
+              case tp: TypeRef if tp eq sym.typeRef =>
+                val sym1 = sym.subst(substFrom, substTo)
+                val info1 = mapType(info)
+                cpy.AssumeInfo(assumeInfo)(sym = sym1, info = info1, body = body)
+              case _ => body // if the AssumeInfo symbol maps (as a type) to another type, we lose the associated info
+          }
         case cdef @ CaseDef(pat, guard, rhs) =>
           val tmap = withMappedSyms(patVars(pat))
           val pat1 = tmap.transform(pat)

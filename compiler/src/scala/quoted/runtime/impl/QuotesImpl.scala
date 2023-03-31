@@ -784,6 +784,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end BlockMethods
 
+    type AssumeInfo = tpd.AssumeInfo
+    object AssumeInfoTypeTest extends TypeTest[Tree, AssumeInfo]:
+      def unapply(x: Tree): Option[AssumeInfo & x.type] = x match
+        case x: (tpd.AssumeInfo & x.type) => Some(x)
+        case _ => None
+    object AssumeInfo extends AssumeInfoModule:
+      def copy(original: Tree)(sym: Symbol, info: TypeRepr, body: Term): AssumeInfo =
+        tpd.cpy.AssumeInfo(original)(sym, info, body)
+      def unapply(x: AssumeInfo): (Symbol, TypeRepr, Term) = (x.sym, x.info, x.body)
+
     type Closure = tpd.Closure
 
     object ClosureTypeTest extends TypeTest[Tree, Closure]:

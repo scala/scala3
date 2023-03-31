@@ -109,6 +109,7 @@ class TastyPrinter(bytes: Array[Byte]) {
         val length = treeStr("%5d".format(index(currentAddr) - index(startAddr)))
         sb.append(s"\n $length:" + " " * indent)
       }
+      def printInt() = sb.append(treeStr(" " + readInt()))
       def printNat() = sb.append(treeStr(" " + readNat()))
       def printName() = {
         val idx = readNat()
@@ -139,6 +140,8 @@ class TastyPrinter(bytes: Array[Byte]) {
               printTrees()
             case PARAMtype =>
               printNat(); printNat()
+            case ASSUMEINFO =>
+              until(end) { printNat(); printInt(); printTree(); printTree() }
             case _ =>
               printTrees()
           }

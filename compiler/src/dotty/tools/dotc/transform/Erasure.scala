@@ -1059,6 +1059,8 @@ object Erasure {
      */
     override def typedImport(tree: untpd.Import)(using Context) = EmptyTree
 
+    override def typedAssumeInfo(tree: untpd.AssumeInfo, pt: Type)(using Context): Tree = super.typed(tree.body, pt)
+
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
       trace(i"adapting ${tree.showSummary()}: ${tree.tpe} to $pt", show = true) {
         if ctx.phase != erasurePhase && ctx.phase != erasurePhase.next then

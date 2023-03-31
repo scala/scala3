@@ -297,11 +297,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def paramsText(lam: LambdaType): Text = {
     val erasedParams = lam.erasedParams
     def paramText(name: Name, tp: Type, erased: Boolean) =
-      keywordText("erased ").provided(erased) ~ toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
+      keywordText("erased ").provided(erased) ~ ParamRefNameString(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
     Text(lam.paramNames.lazyZip(lam.paramInfos).lazyZip(erasedParams).map(paramText), ", ")
   }
 
-  protected def ParamRefNameString(name: Name): String = nameString(name)
+  protected def ParamRefNameString(name: Name): String =
+    val name1 = name match
+      case name: TermName if homogenizedView && name.info.kind == NameKinds.DepParamName => name.underlying
+      case name => name
+    nameString(name1)
 
   protected def ParamRefNameString(param: ParamRef): String =
     ParamRefNameString(param.binder.paramNames(param.paramNum))
@@ -409,8 +413,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val names =
           if lam.isDeclaredVarianceLambda then
             lam.paramNames.lazyZip(lam.declaredVariances).map((name, v) =>
-              varianceSign(v) + name)
-          else lam.paramNames.map(_.toString)
+              varianceSign(v) ~ toText(name))
+          else lam.paramNames.map(toText)
         val infos = lam.paramInfos.map(toText)
         val tparams = names.zip(infos).map(_ ~ _)
         ("[" ~ Text(tparams, ",") ~ "]", lam.resType)
@@ -428,7 +432,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type, isParameter: Boolean = false): Text = controlled {
-    homogenize(tp) match {
+    homogenizeArg(tp) match {
       case tp: TypeBounds =>
         val (tparamStr, rhs) = decomposeLambdas(tp)
         val binder = rhs match
@@ -662,7 +666,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case _ => "{...}"
     s"import $exprStr.$selectorStr"
 
-  def toText(c: OrderingConstraint): Text =
+  def toText(c: Constraint): Text =
     val savedConstraint = ctx.typerState.constraint
     try
       // The current TyperState constraint determines how type variables are printed

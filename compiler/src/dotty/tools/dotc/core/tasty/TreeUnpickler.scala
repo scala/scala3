@@ -1303,6 +1303,12 @@ class TreeUnpickler(reader: TastyReader,
               skipTree()
               readStats(ctx.owner, end,
                 (stats, ctx) => Block(stats, exprReader.readTerm()(using ctx)))
+            case ASSUMEINFO =>
+              val sym = readSymRef()
+              val info = readType()
+              inContext(ctx.withAssumeInfo(ctx.assumeInfo.add(sym, info))) {
+                AssumeInfo(sym, info, readTerm())
+              }
             case INLINED =>
               val exprReader = fork
               skipTree()

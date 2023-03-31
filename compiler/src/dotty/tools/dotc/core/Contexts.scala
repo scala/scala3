@@ -143,6 +143,7 @@ object Contexts {
     def typerState: TyperState
     def gadt: GadtConstraint = gadtState.gadt
     def gadtState: GadtState
+    def assumeInfo: AssumeInfoMap
     def searchHistory: SearchHistory
     def source: SourceFile
 
@@ -470,6 +471,15 @@ object Contexts {
         case None => fresh.dropProperty(key)
       }
 
+    final def withGadt(gadt: GadtConstraint): Context =
+      if this.gadt eq gadt then this else fresh.setGadtState(GadtState(gadt))
+
+    final def withGadtState(gadt: GadtState): Context =
+      if this.gadtState eq gadt then this else fresh.setGadtState(gadt)
+
+    final def withAssumeInfo(assumeInfo: AssumeInfoMap): Context =
+      if this.assumeInfo eq assumeInfo then this else fresh.setAssumeInfo(assumeInfo)
+
     def typer: Typer = this.typeAssigner match {
       case typer: Typer => typer
       case _ => new Typer
@@ -545,6 +555,9 @@ object Contexts {
     private var _gadtState: GadtState = uninitialized
     final def gadtState: GadtState = _gadtState
 
+    private var _assumeInfo: AssumeInfoMap = uninitialized
+    final def assumeInfo: AssumeInfoMap = _assumeInfo
+
     private var _searchHistory: SearchHistory = uninitialized
     final def searchHistory: SearchHistory = _searchHistory
 
@@ -569,6 +582,7 @@ object Contexts {
       _tree = origin.tree
       _scope = origin.scope
       _gadtState = origin.gadtState
+      _assumeInfo = origin.assumeInfo
       _searchHistory = origin.searchHistory
       _source = origin.source
       _moreProperties = origin.moreProperties
@@ -631,6 +645,10 @@ object Contexts {
       this
     def setFreshGADTBounds: this.type =
       setGadtState(gadtState.fresh)
+
+    def setAssumeInfo(assumeInfo: AssumeInfoMap): this.type =
+      this._assumeInfo= assumeInfo
+      this
 
     def setSearchHistory(searchHistory: SearchHistory): this.type =
       util.Stats.record("Context.setSearchHistory")
@@ -723,6 +741,7 @@ object Contexts {
           .updated(compilationUnitLoc, NoCompilationUnit)
       c._searchHistory = new SearchRoot
       c._gadtState = GadtState(GadtConstraint.empty)
+      c._assumeInfo = AssumeInfoMap.empty
       c
   end FreshContext
 

@@ -1340,6 +1340,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end BlockMethods
 
+    type AssumeInfo <: Term
+    given AssumeInfoTypeTest: TypeTest[Tree, AssumeInfo]
+    val AssumeInfo: AssumeInfoModule
+    trait AssumeInfoModule:
+      this: AssumeInfo.type =>
+      def copy(original: Tree)(sym: Symbol, info: TypeRepr, body: Term): AssumeInfo
+      def unapply(x: AssumeInfo): (Symbol, TypeRepr, Term)
+
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Closure` */
     given ClosureTypeTest: TypeTest[Tree, Closure]
 
@@ -4745,6 +4753,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             foldTree(foldTree(x, lhs)(owner), rhs)(owner)
           case Block(stats, expr) =>
             foldTree(foldTrees(x, stats)(owner), expr)(owner)
+          case AssumeInfo(sym, info, body) =>
+            foldTree(x, body)(owner)
           case If(cond, thenp, elsep) =>
             foldTree(foldTree(foldTree(x, cond)(owner), thenp)(owner), elsep)(owner)
           case While(cond, body) =>
@@ -4948,6 +4958,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             Assign.copy(tree)(transformTerm(lhs)(owner), transformTerm(rhs)(owner))
           case Block(stats, expr) =>
             Block.copy(tree)(transformStats(stats)(owner), transformTerm(expr)(owner))
+          case AssumeInfo(sym, info, body) =>
+            AssumeInfo.copy(tree)(sym, info, transformTerm(body)(owner))
           case If(cond, thenp, elsep) =>
             If.copy(tree)(transformTerm(cond)(owner), transformTerm(thenp)(owner), transformTerm(elsep)(owner))
           case Closure(meth, tpt) =>

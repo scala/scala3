@@ -4,6 +4,7 @@ package core
 
 import Contexts.*, Decorators.*, Symbols.*, Types.*
 import NameKinds.UniqueName
+import ast.*, Trees.*
 import config.Printers.{gadts, gadtsConstr}
 import util.{SimpleIdentitySet, SimpleIdentityMap}
 import printing._
@@ -27,6 +28,7 @@ class GadtConstraint private (
   def symbols: List[Symbol]         = mapping.keys
   def withConstraint(c: Constraint) = copy(myConstraint = c)
   def withWasConstrained            = copy(wasConstrained = true)
+  def isEmpty: Boolean              = mapping.isEmpty
 
   def add(sym: Symbol, tv: TypeVar): GadtConstraint = copy(
     mapping        = mapping.updated(sym, tv),
@@ -136,6 +138,13 @@ class GadtConstraint private (
 
   override def toText(printer: Printer): Texts.Text = printer.toText(this)
 
+  def eql(that: GadtConstraint): Boolean = (this eq that) || {
+    myConstraint      == that.myConstraint
+    && mapping        == that.mapping
+    && reverseMapping == that.reverseMapping
+    && wasConstrained == that.wasConstrained
+  }
+
   /** Provides more information than toText, by showing the underlying Constraint details. */
   def debugBoundsDescription(using Context): String = i"$this\n$constraint"
 
@@ -201,7 +210,7 @@ sealed trait GadtState {
     )
 
     val tvars = params.lazyZip(poly1.paramRefs).map { (sym, paramRef) =>
-      val tv = TypeVar(paramRef, creatorState = null)
+      val tv = TypeVar(paramRef, creatorState = null, ctx.nestingLevel)
       gadt = gadt.add(sym, tv)
       tv
     }
@@ -276,6 +285,8 @@ sealed trait GadtState {
   override def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds = gadt.nonParamBounds(param)
   override def fullLowerBound(param: TypeParamRef)(using Context): Type = gadt.fullLowerBound(param)
   override def fullUpperBound(param: TypeParamRef)(using Context): Type = gadt.fullUpperBound(param)
+
+  def symbols: List[Symbol] = gadt.symbols
 
   // ---- Debug ------------------------------------------------------------
 

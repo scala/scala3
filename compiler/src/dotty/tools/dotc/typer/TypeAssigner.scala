@@ -389,6 +389,9 @@ trait TypeAssigner {
   def assignType(tree: untpd.Block, stats: List[Tree], expr: Tree)(using Context): Block =
     tree.withType(avoidingType(expr, stats))
 
+  def assignType(tree: untpd.AssumeInfo, body: Tree)(using Context): AssumeInfo =
+    tree.withType(body.tpe)
+
   def assignType(tree: untpd.Inlined, bindings: List[Tree], expansion: Tree)(using Context): Inlined =
     tree.withType(avoidingType(expansion, bindings))
 

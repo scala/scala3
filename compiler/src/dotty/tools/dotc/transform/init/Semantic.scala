@@ -1307,6 +1307,9 @@ object Semantic:
         eval(stats, thisV, klass)
         eval(expr, thisV, klass)
 
+      case AssumeInfo(_, _, body) =>
+        eval(body, thisV, klass)
+
       case If(cond, thenp, elsep) =>
         eval(cond :: thenp :: elsep :: Nil, thisV, klass).join
 

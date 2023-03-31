@@ -488,6 +488,13 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(BLOCK)
           stats.foreach(preRegister)
           withLength { pickleTree(expr); stats.foreach(pickleTree) }
+        case AssumeInfo(sym, info, body) =>
+          writeByte(ASSUMEINFO)
+          withLength {
+            pickleSymRef(sym)
+            pickleType(info)
+            pickleTree(body)
+          }
         case tree @ If(cond, thenp, elsep) =>
           writeByte(IF)
           withLength {

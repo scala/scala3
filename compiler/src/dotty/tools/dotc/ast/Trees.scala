@@ -567,6 +567,20 @@ object Trees {
     override def isTerm: Boolean = !isType // this will classify empty trees as terms, which is necessary
   }
 
+  case class AssumeInfo[+T <: Untyped] private[ast] (sym: Symbol, info: Type, body: Tree[T])(implicit @constructorOnly src: SourceFile)
+    extends ProxyTree[T] {
+    type ThisTree[+T <: Untyped] <: AssumeInfo[T]
+    def forwardTo: Tree[T] = body
+
+    def fold[U >: T <: Untyped, A](
+      start: Context ?=> Tree[U] => A, mapBody: Tree[U] => Tree[U] = (body: Tree[U]) => body,
+    )(combine: Context ?=> (AssumeInfo[U], A) => A)(using Context): A =
+      val body1 = mapBody(body)
+      inContext(ctx.withAssumeInfo(ctx.assumeInfo.add(sym, info))) {
+        combine(this, start(body1))
+      }
+    }
+
   /** if cond then thenp else elsep */
   case class If[+T <: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
@@ -1074,6 +1088,7 @@ object Trees {
     type NamedArg = Trees.NamedArg[T]
     type Assign = Trees.Assign[T]
     type Block = Trees.Block[T]
+    type AssumeInfo = Trees.AssumeInfo[T]
     type If = Trees.If[T]
     type InlineIf = Trees.InlineIf[T]
     type Closure = Trees.Closure[T]
@@ -1212,6 +1227,9 @@ object Trees {
         case tree: Block if (stats eq tree.stats) && (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Block(stats, expr)(sourceFile(tree)))
       }
+      def AssumeInfo(tree: Tree)(sym: Symbol, info: Type, body: Tree)(using Context): AssumeInfo = tree match
+        case tree: AssumeInfo if (sym eq tree.sym) && (info eq tree.info) && (body eq tree.body) => tree
+        case _ => finalize(tree, untpd.AssumeInfo(sym, info, body)(sourceFile(tree)))
       def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If = tree match {
         case tree: If if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
         case tree: InlineIf => finalize(tree, untpd.InlineIf(cond, thenp, elsep)(sourceFile(tree)))
@@ -1344,6 +1362,8 @@ object Trees {
 
       // Copier methods with default arguments; these demand that the original tree
       // is of the same class as the copy. We only include trees with more than 2 elements here.
+      def AssumeInfo(tree: AssumeInfo)(sym: Symbol = tree.sym, info: Type = tree.info, body: Tree = tree.body)(using Context): AssumeInfo =
+        AssumeInfo(tree: Tree)(sym, info, body)
       def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(using Context): If =
         If(tree: Tree)(cond, thenp, elsep)
       def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
@@ -1433,6 +1453,10 @@ object Trees {
               cpy.Closure(tree)(transform(env), transform(meth), transform(tpt))
             case Match(selector, cases) =>
               cpy.Match(tree)(transform(selector), transformSub(cases))
+            case tree @ AssumeInfo(sym, info, body) =>
+              tree.fold(transform) { (assumeInfo, body) =>
+                cpy.AssumeInfo(assumeInfo)(body = body)
+              }
             case CaseDef(pat, guard, body) =>
               cpy.CaseDef(tree)(transform(pat), transform(guard), transform(body))
             case Labeled(bind, expr) =>
@@ -1569,6 +1593,8 @@ object Trees {
               this(this(this(x, env), meth), tpt)
             case Match(selector, cases) =>
               this(this(x, selector), cases)
+            case tree @ AssumeInfo(sym, info, body) =>
+              tree.fold(this(x, _))((_, x) => x)
             case CaseDef(pat, guard, body) =>
               this(this(this(x, pat), guard), body)
             case Labeled(bind, expr) =>

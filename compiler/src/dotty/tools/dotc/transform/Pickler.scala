@@ -83,7 +83,8 @@ class Pickler extends Phase {
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
       tree <- sliceTopLevel(unit.tpdTree, cls)
     do
-      if ctx.settings.YtestPickler.value then beforePickling(cls) = tree.show
+      if ctx.settings.YtestPickler.value then
+        beforePickling(cls) = tree.show(using ctx.fresh.setSetting(ctx.settings.YnoDeepSubtypes, false))
 
       val pickler = new TastyPickler(cls)
       val treePkl = new TreePickler(pickler)

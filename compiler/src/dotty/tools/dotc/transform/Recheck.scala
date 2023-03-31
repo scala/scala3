@@ -338,6 +338,9 @@ abstract class Recheck extends Phase, SymTransformer:
       recheck(tree.guard, defn.BooleanType)
       recheck(tree.body, pt)
 
+    def recheckAssumeInfo(tree: AssumeInfo, pt: Type)(using Context): Type =
+      tree.fold(recheck(_, pt))((_, tp) => tp)
+
     def recheckReturn(tree: Return)(using Context): Type =
       // Avoid local pattern defined symbols in returns from matchResult blocks
       // that are inserted by the PatternMatcher transform.
@@ -454,6 +457,7 @@ abstract class Recheck extends Phase, SymTransformer:
         case tree: If => recheckIf(tree, pt)
         case tree: Closure => recheckClosure(tree, pt)
         case tree: Match => recheckMatch(tree, pt)
+        case tree: AssumeInfo => recheckAssumeInfo(tree, pt)
         case tree: Return => recheckReturn(tree)
         case tree: WhileDo => recheckWhileDo(tree)
         case tree: Try => recheckTry(tree, pt)
