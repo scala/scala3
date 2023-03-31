@@ -20,7 +20,7 @@ We also showcase TASTyViz, a visualiser for tasty, useful for debugging and chec
 
 TASTyViz is a tool to inspect TASTy files visually.
 At the time of writing, it is still in the early stages of developement, therefore you can expect missing functionality and less-than-ideal user experience, but it could still prove useful when debugging.
-You can check it out here: https://github.com/shardulc/tastyviz
+You can check it out [here](https://github.com/shardulc/tastyviz).
 
 ## `Inspector`
 
