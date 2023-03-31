@@ -28,7 +28,7 @@ class Checker extends Phase:
   override val runsAfter = Set(Pickler.name)
 
   override def isEnabled(using Context): Boolean =
-    super.isEnabled && ctx.settings.YcheckInit.value
+    super.isEnabled && (ctx.settings.YcheckInit.value || ctx.settings.YcheckInitGlobal.value)
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val checkCtx = ctx.fresh.setPhase(this.start)
@@ -36,7 +36,8 @@ class Checker extends Phase:
     units.foreach { unit => traverser.traverse(unit.tpdTree) }
     val classes = traverser.getClasses()
 
-    Semantic.checkClasses(classes)(using checkCtx)
+    if ctx.settings.YcheckInit.value then
+      Semantic.checkClasses(classes)(using checkCtx)
 
     if ctx.settings.YcheckInitGlobal.value then
       Objects.checkClasses(classes)(using checkCtx)
