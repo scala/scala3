@@ -1995,7 +1995,7 @@ object SymDenotations {
      *  @return The result may contain false positives, but never false negatives.
      */
     final def mayHaveCommonChild(that: ClassSymbol)(using Context): Boolean =
-      !this.is(Final) && !that.is(Final) && (this.is(Trait) || that.is(Trait)) ||
+      !this.isOneOf(FinalOrSealed) && !that.isOneOf(FinalOrSealed) && (this.is(Trait) || that.is(Trait)) ||
         this.derivesFrom(that) || that.derivesFrom(this.symbol)
 
     final override def typeParamCreationFlags: FlagSet = ClassTypeParamCreationFlags
