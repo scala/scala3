@@ -20,6 +20,10 @@ p {
 }
 
 ::-webkit-scrollbar {
-  width: 0;
+  width: 5;
   background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: black;
 }
