@@ -236,12 +236,18 @@ object MemberLookup extends MemberLookup {
       // Scaladoc overloading support allows terminal * (and they're meaningless)
       val cleanStr = str.stripSuffix("*")
 
-      if cleanStr endsWith "$" then
+      cleanStr match {
+      case s"$name$$" if name.charAt(0).isUpper =>
         Selector(cleanStr.init, SelectorKind.ForceTerm)
-      else if cleanStr endsWith "!" then
-        Selector(cleanStr.init, SelectorKind.ForceType)
-      else
+      case s"$name$$" =>
         Selector(cleanStr, SelectorKind.NoForce)
+      case s"$name!" if name.charAt(0).isUpper =>
+        Selector(cleanStr.init, SelectorKind.ForceType)
+      case s"$name!" =>
+        Selector(cleanStr, SelectorKind.NoForce)
+      case _ =>
+        Selector(cleanStr, SelectorKind.NoForce)
+      }
     }
   }
 }
