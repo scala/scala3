@@ -277,9 +277,12 @@ package foo.test.i16679b:
 package foo.test.i17156:
   package a:
     trait Foo[A]
+    object Foo:
+      inline def derived[T]: Foo[T] = new Foo{}
 
   package b:
-    type Xd = Foo
+    import a.Foo
+    type Xd[A] = Foo[A]
 
   package c:
     import b.Xd
