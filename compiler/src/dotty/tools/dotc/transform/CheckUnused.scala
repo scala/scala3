@@ -590,9 +590,12 @@ object CheckUnused:
       private def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name])(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
         val dealiasedSym = dealias(sym)
-        val qualHasSymbol = qual.tpe.member(sym.name).alternatives.map(_.symbol).map(dealias).contains(dealiasedSym)
+        val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
+        val termSelections = sels.flatMap(n => qual.tpe.member(n.name.toTermName).alternatives)
+        val allSelections = typeSelections ::: termSelections :::qual.tpe.member(sym.name).alternatives
+        val qualHasSymbol = allSelections.map(_.symbol).map(dealias).contains(dealiasedSym)
         def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
-        def dealiasedSelector = sels.flatMap(sel => qual.tpe.member(sym.name).alternatives.map(m => (sel, m.symbol))).collect {
+        def dealiasedSelector = sels.flatMap(sel => allSelections.map(m => (sel, m.symbol))).collect {
           case (sel, sym) if dealias(sym) == dealiasedSym => sel
         }.headOption
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))

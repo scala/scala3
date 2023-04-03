@@ -273,3 +273,14 @@ package foo.test.i16679b:
     import Foo.x
     case class CoolClass(i: Int)
     println(summon[myPackage.CaseClassName[CoolClass]])
+
+package foo.test.i17156:
+  package a:
+    trait Foo[A]
+
+  package b:
+    type Xd = Foo
+
+  package c:
+    import b.Xd
+    trait Z derives Xd
