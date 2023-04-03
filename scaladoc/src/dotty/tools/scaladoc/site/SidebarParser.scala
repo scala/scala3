@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.`type`.TypeReference;
 import scala.jdk.CollectionConverters._
 import java.util.Optional
 import scala.beans._
+import java.nio.file.{Files, Paths}
 
 enum Sidebar:
   case Category(
@@ -30,13 +31,26 @@ object Sidebar:
 
   private object RawInputTypeRef extends TypeReference[RawInput]
 
-  private def toSidebar(r: RawInput)(using CompilerContext): Sidebar = r match
+  private def toSidebar(r: RawInput, content: String | java.io.File)(using CompilerContext): Sidebar = r match
     case RawInput(title, page, index, subsection, dir, hidden) if page.nonEmpty && index.isEmpty && subsection.isEmpty() =>
+      val sidebarPath = content match
+        case s: String => Paths.get(s)
+        case f: java.io.File => f.toPath()
+      val basePath = sidebarPath.getParent().resolve("_docs")
+      val pagePath = basePath.resolve(page)
+      if !Files.exists(pagePath) then
+        report.error(s"Page $page does not exist.")
       Sidebar.Page(Option.when(title.nonEmpty)(title), page, hidden)
     case RawInput(title, page, index, subsection, dir, hidden) if page.isEmpty && (!subsection.isEmpty() || !index.isEmpty()) =>
-      Sidebar.Category(Option.when(title.nonEmpty)(title), Option.when(index.nonEmpty)(index), subsection.asScala.map(toSidebar).toList, Option.when(dir.nonEmpty)(dir))
+      Sidebar.Category(Option.when(title.nonEmpty)(title), Option.when(index.nonEmpty)(index), subsection.asScala.map(toSidebar(_, content)).toList, Option.when(dir.nonEmpty)(dir))
     case RawInput(title, page, index, subsection, dir, hidden) =>
-      report.error(s"Error parsing YAML configuration file.\n$schemaMessage")
+      val errors = (title.isEmpty(), page.isEmpty(), index.isEmpty(), subsection.isEmpty(), dir.isEmpty())
+      errors match
+        case (true, _, _, _, _) =>
+          report.error(s"Title is not provided.\n$schemaMessage")
+        case (false, true, true, _, _) =>
+          report.error(s"Index or page path to at least one page is missing.\n$schemaMessage")
+        case _ => report.error(s"Error parsing YAML configuration file.\n$schemaMessage")
       Sidebar.Page(None, page, hidden)
 
   private def schemaMessage: String =
@@ -75,7 +89,7 @@ object Sidebar:
         },
         identity
       )
-    toSidebar(root) match
+    toSidebar(root, content) match
       case c: Sidebar.Category => c
       case _ =>
         report.error(s"Root element is not a subsection.\n$schemaMessage")
