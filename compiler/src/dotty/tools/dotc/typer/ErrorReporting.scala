@@ -41,12 +41,24 @@ object ErrorReporting {
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
 
   def missingArgs(tree: Tree, mt: Type)(using Context): Unit =
+    def isCallableWithoutArgumentsLists(mt: Type): Boolean = mt match
+        case pt: PolyType => isCallableWithoutArgumentsLists(pt.resType)
+        case mt: MethodType if mt.isImplicitMethod => isCallableWithoutArgumentsLists(mt.resType)
+        case mt: MethodType => false
+        case _ => true
+    def isCallableWithSingleEmptyArgumentList(mt: Type): Boolean =
+      mt match
+        case mt: MethodType if mt.paramNames.isEmpty => isCallableWithoutArgumentsLists(mt.resType)
+        case mt: MethodType if mt.isImplicitMethod => isCallableWithSingleEmptyArgumentList(mt.resType)
+        case pt: PolyType => isCallableWithSingleEmptyArgumentList(pt.resType)
+        case _ => false
     val meth = err.exprStr(methPart(tree))
-    mt match
-      case mt: MethodType if mt.paramNames.isEmpty =>
-        report.error(MissingEmptyArgumentList(meth), tree.srcPos)
-      case _ =>
-        report.error(em"missing arguments for $meth", tree.srcPos)
+    val info = if tree.symbol.exists then tree.symbol.info else mt
+    if isCallableWithSingleEmptyArgumentList(info) then
+      report.error(MissingEmptyArgumentList(meth), tree.srcPos)
+    else
+      report.error(MissingArgumentList(meth, tree.symbol), tree.srcPos)
+
 
   def matchReductionAddendum(tps: Type*)(using Context): String =
     val collectMatchTrace = new TypeAccumulator[String]:

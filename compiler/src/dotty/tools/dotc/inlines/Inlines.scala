@@ -381,8 +381,7 @@ object Inlines:
 
     /** Expand call to scala.compiletime.codeOf */
     def codeOf(arg: Tree, pos: SrcPos)(using Context): Tree =
-      val ctx1 = ctx.fresh.setSetting(ctx.settings.color, "never")
-      Literal(Constant(arg.show(using ctx1))).withSpan(pos.span)
+      Literal(Constant(arg.show(using ctx.withoutColors))).withSpan(pos.span)
   end Intrinsics
 
   /** Produces an inlined version of `call` via its `inlined` method.

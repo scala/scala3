@@ -1501,6 +1501,16 @@ class MissingArgument(pname: Name, methString: String)(using Context)
     else s"missing argument for parameter $pname of $methString"
   def explain(using Context) = ""
 
+class MissingArgumentList(method: String, sym: Symbol)(using Context)
+  extends TypeMsg(MissingArgumentListID) {
+  def msg(using Context) =
+    val symDcl = if sym.exists then "\n\n  " + hl(sym.showDcl(using ctx.withoutColors)) else ""
+    i"missing argument list for $method$symDcl"
+  def explain(using Context) = {
+    i"""Unapplied methods are only converted to functions when a function type is expected."""
+  }
+}
+
 class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
   extends TypeMismatchMsg(
     if which == "lower" then bound else tpe,
