@@ -6,14 +6,14 @@ assignees: ''
 
 ---
 
-<!-- 
-  TODO first sign the CLA 
+<!--
+  TODO first sign the CLA
   https://www.lightbend.com/contribute/cla/scala
 -->
 
 ## Description
 
-<!-- TODO description of the change --> 
+<!-- TODO description of the change -->
 
 
 <!-- Ideally should have a single commit -->

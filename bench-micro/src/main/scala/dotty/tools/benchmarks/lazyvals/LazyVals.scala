@@ -21,7 +21,7 @@ object LazyVals {
             }
         }
     }
-    
+
     class LazyHolder {
 
         lazy val value: List[Int] = {

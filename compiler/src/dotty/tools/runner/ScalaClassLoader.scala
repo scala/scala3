@@ -67,7 +67,7 @@ object ScalaClassLoader {
   @sharable private[this] val bootClassLoader: ClassLoader =
     if scala.util.Properties.isJavaAtLeast("9") then
       try
-        ClassLoader.getSystemClassLoader.getParent 
+        ClassLoader.getSystemClassLoader.getParent
       catch case _: Throwable => null
     else null
 
