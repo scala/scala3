@@ -481,14 +481,15 @@ object Inlines:
       val stats1 = stats.map { stat =>
           val sym = stat.symbol
           stat match
-            case tree: ValDef if sym.is(ParamAccessor) =>
-              val vdef = cloneValDef(tree)
-              vdef.symbol.resetFlag(ParamAccessor)
-              cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
             case stat: ValDef =>
               val vdef = cloneValDef(stat)
-              if !sym.is(Private) then vdef.symbol.setFlag(Override)
-              vdef // TODO keep rhs? Can we do a single ValOrDefDef case using cloneStat?
+              if !sym.is(Private) then
+                vdef.symbol.setFlag(Override)
+              if sym.is(ParamAccessor) then
+                vdef.symbol.resetFlag(ParamAccessor)
+                cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
+              else
+                vdef // TODO keep rhs? Can we do a single ValOrDefDef case using cloneStat?
             case stat: DefDef =>
               val ddef = cloneDefDef(stat)
               if !sym.is(Private) then ddef.symbol.setFlag(Override)
