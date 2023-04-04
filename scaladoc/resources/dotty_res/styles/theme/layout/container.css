@@ -19,11 +19,18 @@ p {
   --header-height: calc(8 * var(--base-spacing));
 }
 
+/* Scrollbar */
+
 ::-webkit-scrollbar {
-  width: 5;
+  width: 0;
   background: transparent;
 }
 
-::-webkit-scrollbar-thumb {
-  background: black;
+#leftColumn ::-webkit-scrollbar{
+  width: 5px;
+}
+
+#leftColumn ::-webkit-scrollbar-thumb {
+  background: var(--code-syntax-highlighting-scrollbar);
+  border-radius: 2px;
 }
