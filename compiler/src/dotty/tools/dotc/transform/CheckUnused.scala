@@ -590,12 +590,13 @@ object CheckUnused:
       private def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name])(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
         val dealiasedSym = dealias(sym)
+        val simpleSelections = qual.tpe.member(sym.name).alternatives
         val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
         val termSelections = sels.flatMap(n => qual.tpe.member(n.name.toTermName).alternatives)
-        val allSelections = typeSelections ::: termSelections :::qual.tpe.member(sym.name).alternatives
-        val qualHasSymbol = allSelections.map(_.symbol).map(dealias).contains(dealiasedSym)
+        val selectionsToDealias = typeSelections ::: termSelections
+        val qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(dealias).contains(dealiasedSym)
         def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
-        def dealiasedSelector = sels.flatMap(sel => allSelections.map(m => (sel, m.symbol))).collect {
+        def dealiasedSelector = sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collect {
           case (sel, sym) if dealias(sym) == dealiasedSym => sel
         }.headOption
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
@@ -603,6 +604,7 @@ object CheckUnused:
           selector.orElse(dealiasedSelector).orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
+
 
       private def dealias(symbol: Symbol)(using Context): Symbol =
         if(symbol.isType && symbol.asType.denot.isAliasType) then
