@@ -492,6 +492,8 @@ object Inlines:
             case stat: DefDef =>
               val ddef = cloneDefDef(stat)
               if !sym.is(Private) then ddef.symbol.setFlag(Override)
+              if sym.is(Mutable) then
+                report.error("implementation restriction: inline traits cannot have mutable variables", stat.srcPos)
               ddef
             case stat @ TypeDef(_, impl: Template) =>
               cloneClass(stat, impl)
