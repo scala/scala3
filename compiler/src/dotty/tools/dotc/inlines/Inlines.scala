@@ -481,15 +481,20 @@ object Inlines:
       val stats1 = stats.map { stat =>
           val sym = stat.symbol
           stat match
+            case stat: ValDef if sym.isOneOf(Given | Implicit) =>
+              report.error("implementation restriction: inline traits cannot have implicit or given variables", stat.srcPos)
+              stat
             case stat: ValDef =>
               val vdef = cloneValDef(stat)
+              val vdef1 =
+                if sym.is(ParamAccessor) then
+                  vdef.symbol.resetFlag(ParamAccessor)
+                  cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
+                else
+                  vdef
               if !sym.is(Private) then
-                vdef.symbol.setFlag(Override)
-              if sym.is(ParamAccessor) then
-                vdef.symbol.resetFlag(ParamAccessor)
-                cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
-              else
-                vdef // TODO keep rhs? Can we do a single ValOrDefDef case using cloneStat?
+                vdef1.symbol.setFlag(Override)
+              vdef1 // TODO keep rhs? Can we do a single ValOrDefDef case using cloneStat?
             case stat: DefDef =>
               val ddef = cloneDefDef(stat)
               if !sym.is(Private) then ddef.symbol.setFlag(Override)
