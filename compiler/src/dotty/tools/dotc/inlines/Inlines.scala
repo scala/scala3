@@ -500,7 +500,7 @@ object Inlines:
               tdef.symbol.setFlag(Override)
               tdef
       }
-      stats1.map(stat => inlined(stat.withSpan(parent.span))._2)
+      stats1.map(stat => inlined(stat)._2)
 
     private def cloneClass(clDef: TypeDef, impl: Template)(using Context): TypeDef =
       val inlinedCls: ClassSymbol =
@@ -510,7 +510,7 @@ object Inlines:
       val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
         (cloneDefDef(impl.constr), impl.body.map(cloneStat))
       }
-      tpd.ClassDefWithParents(inlinedCls, constr, impl.parents, body) // TODO adapt parents
+      tpd.ClassDefWithParents(inlinedCls, constr, impl.parents, body).withSpan(clDef.span) // TODO adapt parents
 
     private def cloneStat(tree: Tree)(using Context): Tree = tree match
       case tree: DefDef => cloneDefDef(tree)
@@ -524,15 +524,15 @@ object Inlines:
         val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
         val newParamSyms = paramss.flatten.map(_.symbol)
         ddef.rhs.subst(oldParamSyms, newParamSyms) // TODO clone local classes?
-      tpd.DefDef(inlinedSym.asTerm, rhsFun)
+      tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(ddef.span)
 
     private def cloneValDef(vdef: ValDef)(using Context): ValDef =
       val inlinedSym = vdef.symbol.copy(owner = ctx.owner).entered
-      tpd.ValDef(inlinedSym.asTerm, vdef.rhs) // TODO clone local classes?
+      tpd.ValDef(inlinedSym.asTerm, vdef.rhs).withSpan(vdef.span) // TODO clone local classes?
 
     private def cloneTypeDef(tdef: TypeDef)(using Context): TypeDef =
       val inlinedSym = tdef.symbol.copy(owner = ctx.owner).entered
-      tpd.TypeDef(inlinedSym.asType)
+      tpd.TypeDef(inlinedSym.asType).withSpan(tdef.span)
 
   end InlineParentTrait
 end Inlines
