@@ -7,7 +7,7 @@ import Types._, Symbols._
 
 object denotTest extends DottyTest {
   println("Welcome to the Scala worksheet")       //> Welcome to the Scala worksheet
-  
+
   val str = defn.StringClass.typeRef              //> str  : dotty.tools.dotc.core.Types.TypeRef = TypeRef(ThisType(module class l
                                                   //| ang#57),String)
   val d= str.member("getBytes".toTermName)        //> d  : dotty.tools.dotc.core.Denotations.Denotation = val getBytes <and> val g
@@ -47,7 +47,7 @@ object denotTest extends DottyTest {
                                                   //| a#35),Array), scala$Array$$T, TypeAlias(TypeRef(ThisType(module class scala#
                                                   //| 35),Char))), TypeRef(ThisType(module class scala#35),Int), TypeRef(ThisType(
                                                   //| module class scala#35),Int)), TypeRef(ThisType(module class lang#57),String)
-                                                  //| ), JavaMethodType(List(x$0), List(RefinedType(TypeRef(ThisType(module class 
+                                                  //| ), JavaMethodType(List(x$0), List(RefinedType(TypeRef(ThisType(module class
                                                   //| scala#35),Array), scala$Array$$T, TypeAlias(TypeRef(ThisType(module class sc
                                                   //| ala#35),Char)))), TypeRef(ThisType(module class lang#57),String)), JavaMetho
                                                   //| dType(List(x$0), List(TypeRef(ThisType(module class scala#35),Any)), TypeRef

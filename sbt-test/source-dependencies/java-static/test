@@ -2,7 +2,7 @@
 #    the statics as an object without a file and so the Analyzer must know to look for the
 #    object's linked class.
 # This test verifies this happens.
-# The test compiles a Java class with a static field. 
+# The test compiles a Java class with a static field.
 # It then adds a Scala object that references the static field.  Because the object only depends on a
 #   static member and because the Java source is not included in the compilation (since it didn't change),
 #   this triggers the special case above.

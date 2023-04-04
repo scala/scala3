@@ -32,7 +32,7 @@ public final class JDK9Reflectors {
     }
 
     // Classes from java.lang.Runtime are not available in JDK 8 so using them explicitly would prevent this file from compiling with JDK 8
-    // but these methods are not called in runtime when using this version of JDK 
+    // but these methods are not called in runtime when using this version of JDK
 
     public static /*java.lang.Runtime.Version*/ Object runtimeVersionParse(String string) {
         try {

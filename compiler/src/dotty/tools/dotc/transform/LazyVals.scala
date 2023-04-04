@@ -283,7 +283,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
    *
    * ```
    * private @volatile var _x: AnyRef = null
-   * 
+   *
    * def x: A =
    *   val result = _x
    *   if result.isInstanceOf[A] then
@@ -292,7 +292,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
    *     null // possible unboxing applied here
    *   else
    *     x_compute() // possible unboxing applied here
-   * 
+   *
    * private def x_compute(): AnyRef =
    *   while <EmptyTree> do
    *     val current: AnyRef = _x
