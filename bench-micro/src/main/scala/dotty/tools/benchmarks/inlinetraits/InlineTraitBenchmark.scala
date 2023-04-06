@@ -4,8 +4,6 @@ import org.openjdk.jmh.annotations._
 import java.util.concurrent.TimeUnit.{SECONDS, MILLISECONDS}
 import scala.util.Random
 
-import standard.IntMatrixLib.{Matrix => StdIntMatrix}
-
 @BenchmarkMode(Array(Mode.AverageTime))
 @Fork(3)
 @Threads(3)
@@ -14,20 +12,25 @@ import standard.IntMatrixLib.{Matrix => StdIntMatrix}
 @OutputTimeUnit(MILLISECONDS)
 @State(Scope.Benchmark)
 class InlineTraitBenchmark {
-  val N = 200
-  def matrix(rows: Int, cols: Int): Vector[Vector[Int]] =
-    Vector.tabulate(rows, cols)((_, _) => Random.nextInt())
+  val n = 300
 
-  @Setup(Level.Iteration)
+  def intMatrixElems(): Seq[Seq[Int]] =
+    Seq.tabulate(n, n)((_, _) => Random.nextInt())
+
+  @Param(Array("standard"))
+  var matrixType: String = ""
+
+  var m1: Matrix[BenchmarkMatrix] = Matrix.empty
+  var m2: Matrix[BenchmarkMatrix] = Matrix.empty
+
+  @Setup(Level.Trial)
   def setup = {
-    Random.setSeed(N)
+    Random.setSeed(n)
+    val matrixFactory = Matrix.ofType(matrixType)
+    m1 = matrixFactory(intMatrixElems())
+    m2 = matrixFactory(intMatrixElems())
   }
 
   @Benchmark
-  def standardLib = {
-    val m1 = StdIntMatrix(matrix(N, N)*)
-    val m2 = StdIntMatrix(matrix(N, N)*)
-
-    (m1 + m2) * m1 // O(N^3) loops
-  }
+  def matrixBenchmark = (m1 + m2) * m1 // O(n^3) loops
 }
