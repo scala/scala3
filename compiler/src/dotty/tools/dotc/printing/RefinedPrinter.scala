@@ -725,12 +725,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case MacroTree(call) =>
         keywordStr("macro ") ~ toTextGlobal(call)
       case Hole(isTermHole, idx, targs, args, content, tpt) =>
-        val (prefix, postfix) = if isTermHole then ("{{{", "}}}") else ("[[[", "]]]")
+        val (prefix, postfix) = if isTermHole then ("${", "}") else ("$[", "]")
         val targsText = ("[" ~ toTextGlobal(targs, ", ") ~ "]").provided(targs.nonEmpty)
         val argsText =  ("(" ~ toTextGlobal(args, ", ") ~ ")").provided(args.nonEmpty)
         val tptText = toTextGlobal(tpt)
         val contentText = ("|" ~~ toTextGlobal(content)).provided(content ne EmptyTree)
-        prefix ~~ idx.toString ~ targsText ~ argsText ~ ":" ~~ tptText ~~ contentText ~~ postfix
+        prefix ~~ "`" ~ idx.toString ~ "`" ~ targsText ~ argsText ~ ":" ~~ tptText ~~ contentText ~~ postfix
       case CapturingTypeTree(refs, parent) =>
         parent match
           case ImpureByNameTypeTree(bntpt) =>
