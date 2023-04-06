@@ -108,3 +108,13 @@ class ImplicitMembers extends SignatureTest(
 )
 
 class NonScala3Parent extends SignatureTest("nonScala3Parent", SignatureTest.all)
+
+class SupertypeParamsSubstitution extends SignatureTest("supertypeParamsSubstitution", SignatureTest.all)
+
+class ThisType extends SignatureTest("thisType", SignatureTest.all)
+
+class PathDependentTypes extends SignatureTest("pathDependentTypes", SignatureTest.all)
+
+class MatchTypeTuple extends SignatureTest("matchTypeTuple", SignatureTest.all)
+
+class InfixTypes extends SignatureTest("infixTypes", SignatureTest.all)
