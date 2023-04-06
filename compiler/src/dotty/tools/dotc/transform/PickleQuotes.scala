@@ -28,43 +28,42 @@ import scala.annotation.constructorOnly
  *  Transforms top level quote
  *   ```
  *   '{ ...
- *      @TypeSplice type X0 = {{ 0 | .. | contentsTpe0 | .. }}
- *      @TypeSplice type X2 = {{ 1 | .. | contentsTpe1 | .. }}
+ *      @TypeSplice type X0 = $[ `0`: ... | contentsTpe0 ]
+ *      type X1
  *      val x1: U1 = ???
  *      val x2: U2 = ???
  *      ...
- *      {{{ 3 | x1 | contents0 | T0 }}} // hole
+ *      ${ `2`(x1): T0 | contents0 } // Hole
  *      ...
- *      {{{ 4 | x2 | contents1 | T1 }}} // hole
+ *      ${ `3`[X1](x2): T1 | contents1 } // Hole
  *      ...
- *      {{{ 5 | x1, x2 | contents2 | T2 }}} // hole
+ *      ${ `4`(x1, x2): T2 | contents2 } // Hole
  *      ...
  *    }
  *    ```
  *  to
  *    ```
  *     unpickleExprV2(
- *       pickled = [[ // PICKLED TASTY
- *       @TypeSplice type X0 // with bounds that do not contain captured types
- *       @TypeSplice type X1 // with bounds that do not contain captured types
+ *       pickled = tasty""" // PICKLED TASTY
+ *         @TypeSplice type X0 // with bounds that do not contain captured types
+ *         type X1
  *         val x1 = ???
  *         val x2 = ???
  *         ...
- *      {{{ 0 | x1 | | T0 }}} // hole
- *      ...
- *      {{{ 1 | x2 | | T1 }}} // hole
- *      ...
- *      {{{ 2 | x1, x2 | | T2 }}} // hole
+ *         ${ `0`(x1): T0 } // Hole
  *         ...
- *       ]],
+ *         ${ `1`[X1](x2): T1 } // Hole
+ *         ...
+ *         ${ `2`(x1, x2): T2 } // Hole
+ *         ...
+ *       """,
  *       typeHole = (idx: Int, args: List[Any]) => idx match {
  *         case 0 => contentsTpe0.apply(args(0).asInstanceOf[Type[?]]) // beta reduced
- *         case 1 => contentsTpe1.apply(args(0).asInstanceOf[Type[?]]) // beta reduced
  *       },
  *       termHole = (idx: Int, args: List[Any], quotes: Quotes) => idx match {
- *         case 3 => content0.apply(args(0).asInstanceOf[Expr[U1]]).apply(quotes) // beta reduced
- *         case 4 => content1.apply(args(0).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
- *         case 5 => content2.apply(args(0).asInstanceOf[Expr[U1]], args(1).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
+ *         case 0 => content0.apply(args(0).asInstanceOf[Expr[U1]]).apply(quotes) // beta reduced
+ *         case 1 => content1.apply(args(0).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
+ *         case 2 => content2.apply(args(0).asInstanceOf[Expr[U1]], args(1).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
  *       },
  *     )
  *    ```

@@ -38,18 +38,19 @@ object Splicing:
  *
  *  After this phase we have the invariant where all splices have the following shape
  *  ```
- *  {{{ <holeIdx> | <holeType> | <captures>* | (<capturedTerms>*) => <spliceContent> }}}
+ *  ${ `<holeIdx>`[<typeCaptures>*](<termCaptures>*): <holeType> | (<capturesTypes>*, <capturedTerms>*) => <spliceContent> }
  *  ```
- *  where `<spliceContent>` does not contain any free references to quoted definitions and `<captures>*`
+ *  where `<spliceContent>` does not contain any free references to quoted definitions and `<typeCaptures>*`/`<termCaptures>*`
  *  contains the quotes with references to all cross-quote references. There are some special rules
  *  for references in the LHS of assignments and cross-quote method references.
  *
- *  In the following code example `x1` and `x2` are cross-quote references.
+ *  In the following code example `x1`, `x2` and `U` are cross-quote references.
  *  ```
  *  '{ ...
  *    val x1: T1 = ???
- *    val x2: T2 = ???
- *    ${ (q: Quotes) ?=> f('{ g(x1, x2) }) }: T3
+ *    type U <: T2
+ *    val x2: U = ???
+ *    ${ (q: Quotes) ?=> f('{ g[U](x1, x2) }) }: T3
  *  }
  *  ```
  *
@@ -59,12 +60,12 @@ object Splicing:
  *  ```
  *  '{ ...
  *     val x1: T1 = ???
- *     val x2: T2 = ???
- *     {{{ 0 | T3 | x1, x2 |
- *       (x1$: Expr[T1], x2$: Expr[T2]) => // body of this lambda does not contain references to x1 or x2
- *         (q: Quotes) ?=> f('{ g(${x1$}, ${x2$}) })
- *
- *     }}}
+ *     type U <: T2
+ *     val x2: U = ???
+ *     ${ `0`[U](x1, x2): T3 |
+ *       (U$2: Type[U], x1$: Expr[T], x2$: Expr[U]) => // body of this lambda does not contain references to x1 or x2
+ *         (q: Quotes) ?=> f('{ @SplicedType type U$3 = $[ `0`: U | U$1 ]; g[U$3](${x1$}, ${x2$}) })
+ *     }
  *   }
  *   ```
  *
@@ -184,7 +185,7 @@ class Splicing extends MacroTransform:
    *  ```
    *  is transformed into
    * ```scala
-   *  {{{ <holeIdx++> | T2 | x, X | (x$1: Expr[T1], X$1: Type[X]) => (using Quotes) ?=> {... ${x$1} ...  X$1.Underlying ...}  }}}
+   *  ${ `<holeIdx++>`[X](x): T2 | (X$1: Type[X], x$1: Expr[T1]) => (using Quotes) ?=> {... ${x$1} ...  X$1.Underlying ...}  }
    *  ```
    */
   private class SpliceTransformer(spliceOwner: Symbol, isCaptured: Symbol => Boolean) extends Transformer:
