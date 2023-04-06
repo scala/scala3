@@ -18,7 +18,7 @@ import staging.StagingLevel
 
 import collection.mutable
 import reporting.{NotConstant, trace}
-import util.Spans.Span
+import util.Spans.{Span, spanCoord}
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -510,11 +510,14 @@ object Inlines:
       }
       stats1.map(stat => inlined(stat)._2)
 
+    private def inlinedRhs(rhs: Tree): Inlined =
+      Inlined(tpd.ref(parentSym), Nil, rhs).withSpan(parent.span)
+
     private def cloneClass(clDef: TypeDef, impl: Template)(using Context): TypeDef =
       val inlinedCls: ClassSymbol =
         val ClassInfo(prefix, cls, declaredParents, scope, selfInfo) = clDef.symbol.info: @unchecked
         val inlinedInfo = ClassInfo(prefix, cls, declaredParents, Scopes.newScope, selfInfo) // TODO adapt parents
-        clDef.symbol.copy(owner = ctx.owner, info = inlinedInfo).entered.asClass
+        clDef.symbol.copy(owner = ctx.owner, info = inlinedInfo, coord = spanCoord(parent.span)).entered.asClass
       val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
         (cloneDefDef(impl.constr), impl.body.map(cloneStat))
       }
@@ -527,20 +530,20 @@ object Inlines:
       // TODO case tree: TypeDef => cloneTypeDef(tree)
 
     private def cloneDefDef(ddef: DefDef)(using Context): DefDef =
-      val inlinedSym = ddef.symbol.copy(owner = ctx.owner).entered
+      val inlinedSym = ddef.symbol.copy(owner = ctx.owner, coord = spanCoord(parent.span)).entered
       def rhsFun(paramss: List[List[Tree]]): Tree =
         val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
         val newParamSyms = paramss.flatten.map(_.symbol)
-        ddef.rhs.subst(oldParamSyms, newParamSyms) // TODO clone local classes?
-      tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(ddef.span)
+        inlinedRhs(ddef.rhs.subst(oldParamSyms, newParamSyms)) // TODO clone local classes?
+      tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(parent.span)
 
     private def cloneValDef(vdef: ValDef)(using Context): ValDef =
-      val inlinedSym = vdef.symbol.copy(owner = ctx.owner).entered
-      tpd.ValDef(inlinedSym.asTerm, vdef.rhs).withSpan(vdef.span) // TODO clone local classes?
+      val inlinedSym = vdef.symbol.copy(owner = ctx.owner, coord = spanCoord(parent.span)).entered
+      tpd.ValDef(inlinedSym.asTerm, inlinedRhs(vdef.rhs)).withSpan(parent.span) // TODO clone local classes?
 
     private def cloneTypeDef(tdef: TypeDef)(using Context): TypeDef =
-      val inlinedSym = tdef.symbol.copy(owner = ctx.owner).entered
-      tpd.TypeDef(inlinedSym.asType).withSpan(tdef.span)
+      val inlinedSym = tdef.symbol.copy(owner = ctx.owner, coord = spanCoord(parent.span)).entered
+      tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
 
   end InlineParentTrait
 end Inlines
