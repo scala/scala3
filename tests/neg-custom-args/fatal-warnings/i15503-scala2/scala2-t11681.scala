@@ -9,7 +9,7 @@ trait InterFace {
 }
 
 trait BadAPI extends InterFace {
-  def f(a: Int,
+  private def f(a: Int,
         b: String,               // error
         c: Double): Int = {
     println(c)
