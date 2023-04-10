@@ -114,6 +114,10 @@ class CheckUnused extends MiniPhase:
 
   override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
     unusedDataApply{ ud =>
+      if !tree.rawMods.is(Private) then
+        tree.termParamss.flatten.foreach { p =>
+          ud.addIgnoredParam(p.symbol)
+        }
       import ud.registerTrivial
       tree.registerTrivial
       traverseAnnotations(tree.symbol)
@@ -331,6 +335,8 @@ object CheckUnused:
     /** Trivial definitions, avoid registering params */
     private val trivialDefs = MutSet[Symbol]()
 
+    private val paramsToSkip = MutSet[Symbol]()
+
     /**
      * Push a new Scope of the given type, executes the given Unit and
      * pop it back to the original type.
@@ -365,6 +371,10 @@ object CheckUnused:
     def removeIgnoredUsage(sym: Symbol)(using Context): Unit =
       doNotRegister --= sym.everySymbol
 
+    def addIgnoredParam(sym: Symbol)(using Context): Unit =
+      paramsToSkip += sym
+
+
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
@@ -380,7 +390,7 @@ object CheckUnused:
         if memDef.isValidParam then
           if memDef.symbol.isOneOf(GivenOrImplicit) then
             implicitParamInScope += memDef
-          else
+          else if !paramsToSkip.contains(memDef.symbol) then
             explicitParamInScope += memDef
         else if currScopeType.top == ScopeType.Local then
           localDefInScope += memDef
