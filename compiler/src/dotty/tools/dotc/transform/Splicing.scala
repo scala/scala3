@@ -39,7 +39,7 @@ object Splicing:
  *
  *  After this phase we have the invariant where all splices have the following shape
  *  ```
- *  {{{ <holeIdx> | <holeType> | <captures>* | (<capturedTerms>*) => <spliceContent> }}}
+ *  {{{ <holeIdx> | <holeType> | <captures>* | [<capturedTypes>*] => (<capturedTerms>*) => <spliceContent> }}}
  *  ```
  *  where `<spliceContent>` does not contain any free references to quoted definitions and `<captures>*`
  *  contains the quotes with references to all cross-quote references. There are some special rules
@@ -186,7 +186,7 @@ class Splicing extends MacroTransform:
    *  ```
    *  is transformed into
    * ```scala
-   *  {{{ <holeIdx++> | T2 | x, X | (x$1: Expr[T1], X$1: Type[X]) => (using Quotes) ?=> {... ${x$1} ...  X$1.Underlying ...}  }}}
+   *  {{{ <holeIdx++> | T2 | x, X | [X$2] => (x$1: Expr[T1], X$1: Type[X$2]) => (using Quotes) ?=> {... ${x$1} ...  X$1.Underlying ...}  }}}
    *  ```
    */
   private class SpliceTransformer(spliceOwner: Symbol, isCaptured: Symbol => Boolean) extends Transformer:
