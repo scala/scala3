@@ -207,11 +207,18 @@ class Inliner(val call: tpd.Tree)(using Context):
   private[inlines] def paramBindingDef(name: Name, formal: Type, arg0: Tree,
                               buf: DefBuffer)(using Context): ValOrDefDef = {
     val isByName = formal.dealias.isInstanceOf[ExprType]
-    val arg = arg0 match {
-      case Typed(arg1, tpt) if tpt.tpe.isRepeatedParam && arg1.tpe.derivesFrom(defn.ArrayClass) =>
-        wrapArray(arg1, arg0.tpe.elemType)
-      case _ => arg0
-    }
+    val arg =
+      def dropNameArg(arg: Tree): Tree = arg match
+        case NamedArg(_, arg1) => arg1
+        case SeqLiteral(elems, tpt) =>
+          cpy.SeqLiteral(arg)(elems.mapConserve(dropNameArg), tpt)
+        case _ => arg
+      arg0 match
+        case Typed(seq, tpt) if tpt.tpe.isRepeatedParam =>
+          if seq.tpe.derivesFrom(defn.ArrayClass) then wrapArray(dropNameArg(seq), arg0.tpe.elemType)
+          else cpy.Typed(arg0)(dropNameArg(seq), tpt)
+        case arg0 =>
+          dropNameArg(arg0)
     val argtpe = arg.tpe.dealiasKeepAnnots.translateFromRepeated(toArray = false)
     val argIsBottom = argtpe.isBottomTypeAfterErasure
     val bindingType =
