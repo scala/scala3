@@ -200,10 +200,10 @@ class Splicing extends MacroTransform:
       val newTree = transform(tree)
       val (refs, bindings) = refBindingMap.values.toList.unzip
       val bindingsTypes = bindings.map(_.termRef.widenTermRefExpr)
-      val types = bindingsTypes.collect {
+      val capturedTypes = bindingsTypes.collect {
         case AppliedType(tycon, List(arg: TypeRef)) if tycon.derivesFrom(defn.QuotedTypeClass) => arg
       }
-      val newTypeParams = types.map { tpe =>
+      val newTypeParams = capturedTypes.map { tpe =>
         newSymbol(
           spliceOwner,
           UniqueName.fresh(tpe.symbol.name.toTypeName),
@@ -212,12 +212,12 @@ class Splicing extends MacroTransform:
         )
       }
       val methType =
-        if types.nonEmpty then
-          PolyType(types.map(tp => UniqueName.fresh(tp.symbol.name.toTypeName)))(
-            pt => types.map(_ => TypeBounds.empty),
+        if capturedTypes.nonEmpty then
+          PolyType(capturedTypes.map(tp => UniqueName.fresh(tp.symbol.name.toTypeName)))(
+            pt => capturedTypes.map(_ => TypeBounds.empty),
             pt => {
                val tpParamMap = new TypeMap {
-                private val mapping = types.map(_.typeSymbol).zip(pt.paramRefs).toMap
+                private val mapping = capturedTypes.map(_.typeSymbol).zip(pt.paramRefs).toMap
                 def apply(tp: Type): Type = tp match
                   case tp: TypeRef => mapping.getOrElse(tp.typeSymbol, tp)
                   case tp => mapOver(tp)
@@ -229,8 +229,8 @@ class Splicing extends MacroTransform:
       val meth = newSymbol(spliceOwner, nme.ANON_FUN, Synthetic | Method, methType)
 
       def substituteTypes(tree: Tree): Tree =
-        if types.nonEmpty then
-          val typeIndex = types.zipWithIndex.toMap
+        if capturedTypes.nonEmpty then
+          val typeIndex = capturedTypes.zipWithIndex.toMap
           TreeTypeMap(
             typeMap = new TypeMap {
               def apply(tp: Type): Type = tp match
@@ -245,11 +245,11 @@ class Splicing extends MacroTransform:
           ).transform(tree)
         else tree
       val paramss =
-        if types.nonEmpty then List(newTypeParams, bindings)
+        if capturedTypes.nonEmpty then List(newTypeParams, bindings)
         else List(bindings)
       val ddef = substituteTypes(DefDef(meth, paramss, newTree.tpe, newTree.changeOwner(ctx.owner, meth)))
       val fnType =
-        if types.isEmpty then defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes :+ newTree.tpe)
+        if capturedTypes.isEmpty then defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes :+ newTree.tpe)
         else RefinedType(defn.PolyFunctionType, nme.apply, methType)
       val closure = Block(ddef :: Nil, Closure(Nil, ref(meth), TypeTree(fnType)))
       tpd.Hole(true, holeIdx, refs, closure, TypeTree(tpe))
