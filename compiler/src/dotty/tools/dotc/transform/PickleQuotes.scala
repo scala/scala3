@@ -331,16 +331,15 @@ object PickleQuotes {
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)
                   }
                   val Block(List(ddef: DefDef), _) = splice: @unchecked
-
-                  val typeArgs = ddef.symbol.info match
-                    case pt: PolyType => pt.paramInfos
-                    case _ => Nil
-
-                  val sel1 = splice.changeOwner(ddef.symbol.owner, ctx.owner).select(nme.apply)
-                  val appTpe = if typeParamCount == 0 then sel1 else sel1.appliedToTypes(List.fill(typeParamCount)(defn.AnyType))
-                  val app1 = appTpe.appliedToArgs(spliceArgs)
-                  val sel2 = app1.select(nme.apply)
-                  sel2.appliedTo(args(2).asInstance(quotesType))
+                  val quotes = args(2).asInstance(quotesType)
+                  val dummyTargs = List.fill(typeParamCount)(defn.AnyType)
+                  // Generate: <splice>.apply[<dummyTargs>*](<spliceArgs>*).apply(<quotes>)
+                  splice.changeOwner(ddef.symbol.owner, ctx.owner)
+                    .select(nme.apply)
+                    .appliedToTypes(dummyTargs)
+                    .appliedToArgs(spliceArgs)
+                    .select(nme.apply)
+                    .appliedTo(quotes)
                 }
                 CaseDef(Literal(Constant(idx)), EmptyTree, rhs)
               }
