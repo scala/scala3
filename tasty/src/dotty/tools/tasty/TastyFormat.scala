@@ -122,7 +122,10 @@ Standard-Section: "ASTs" TopLevelStat*
                   MATCHtpt       Length bound_Term? sel_Term CaseDef*              -- sel match { CaseDef } where `bound` is optional upper bound of all rhs
                   BYNAMEtpt             underlying_Term                            -- => underlying
                   SHAREDterm            term_ASTRef                                -- Link to previously serialized term
-                  HOLE           Length idx_Nat tpe_Type arg_Tree*                 -- Splice hole with index `idx`, the type of the hole `tpe`, type and term arguments of the hole `arg`s
+                  HOLE           Length idx_Nat tpe_Type HoleTypes? arg_Tree*      -- Splice hole with index `idx`, the type of the hole `tpe`, type arguments of the hole `targ`s and term arguments of the hole `arg`s
+                                                                                      -- Note: From 3.0 to 3.3 `args` could contain type arguments as well. This is no longer the case.
+  HoleTypes     = HOLETYPES      Length targ_Type*
+
 
 
   CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?              -- case pat if guard => rhs
@@ -586,6 +589,7 @@ object TastyFormat {
   final val MATCHtpt = 191
   final val MATCHCASEtype = 192
 
+  final val HOLETYPES = 254
   final val HOLE = 255
 
   final val firstNatTreeTag = SHAREDterm
@@ -600,6 +604,7 @@ object TastyFormat {
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
     firstLengthTreeTag <= tag && tag <= MATCHtpt ||
+    tag == HOLETYPES ||
     tag == HOLE
 
   def isParamTag(tag: Int): Boolean = tag == PARAM || tag == TYPEPARAM
@@ -804,6 +809,7 @@ object TastyFormat {
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
     case HOLE => "HOLE"
+    case HOLETYPES => "HOLETYPES"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.

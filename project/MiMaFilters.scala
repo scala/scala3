@@ -37,7 +37,8 @@ object MiMaFilters {
     ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyBuffer.reset"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.APPLYsigpoly"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyHash.pjwHash64"),
-    ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.util.Util.dble")
+    ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.util.Util.dble"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.HOLETYPES"),
   )
   val Interfaces: Seq[ProblemFilter] = Seq(
     ProblemFilters.exclude[ReversedMissingMethodProblem]("dotty.tools.dotc.interfaces.Diagnostic.diagnosticRelatedInformation"),
