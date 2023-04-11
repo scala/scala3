@@ -27,7 +27,7 @@
 
 #content > div:first-child {
   width: calc(100vw - 232px - 313px - 68px * 3);
-  max-width: 720px;
+  max-width: 70%;
 }
 
 
