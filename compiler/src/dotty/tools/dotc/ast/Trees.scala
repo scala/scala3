@@ -976,8 +976,11 @@ object Trees {
   def genericEmptyTree[T <: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
+   *
    *  It is only used when encoding pickled quotes. These will be encoded
-   *  as TastyQuoteHole when pickled.
+   *  as TastyQuoteHole when pickled. These holes will be inserted in the
+   *  Staging phase and pickled (without the content) as TASTy HOLE in the
+   *  PickleQuotes phase.
    *
    *  @param isTermHole If this hole is a term, otherwise it is a type hole.
    *  @param idx The index of the hole in it's enclosing level 0 quote.
@@ -993,7 +996,9 @@ object Trees {
   }
 
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
-   *  It is only used when picking quotes (will never be in a TASTy file).
+   *  It is only used when unpicking quotes TASTy HOLE. These holes will
+   *  only be present in pickled quotes. These are unpickled and replaced
+   *  with other trees in PickledQuotes.
    *
    *  Hole created by this compiler separate the targs from the args. Holes
    *  generated with 3.0-3.3 contain all type args and targs in any order in
