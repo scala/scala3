@@ -995,7 +995,7 @@ object Trees {
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
    *  It is only used when picking quotes (will never be in a TASTy file).
    *
-   *  Hole created by this compile separate the targs from the args. Holes
+   *  Hole created by this compiler separate the targs from the args. Holes
    *  generated with 3.0-3.3 contain all type args and targs in any order in
    *  a single list. For backwards compatibility we read holes from tasty as
    *  if they had no targs and have only args. Therefore the args may contain
