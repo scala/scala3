@@ -4,8 +4,7 @@ title: Lazy Vals Initialization
 nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/lazy-vals-init.html
 ---
 
-Scala 3 implements [Version 6](https://docs.scala-lang.org/sips/improved-lazy-val-initialization.html#version-6---no-synchronization-on-this-and-concurrent-initialization-of-fields)
-of the [SIP-20] improved lazy vals initialization proposal.
+Scala 3 implements Version 6 of the [SIP-20] improved lazy vals initialization proposal.
 
 ## Motivation
 
@@ -77,4 +76,4 @@ recursive lazy vals is undefined (initialization may result in a deadlock).
 
 * [SIP-20]
 
-[SIP-20]: https://docs.scala-lang.org/sips/improved-lazy-val-initialization.html
+[SIP-20]: https://github.com/scala/improvement-proposals/pull/19
