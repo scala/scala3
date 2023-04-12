@@ -603,7 +603,7 @@ object CheckUnused:
           case (sel, sym) if dealias(sym) == dealiasedSym => sel
         }.headOption else None
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
-        if qualHasSymbol && (!isAccessible || symName.exists(_ != sym.name)) && sym.exists then
+        if qualHasSymbol && (!isAccessible || (sym.name != nme.NO_NAME && symName.exists(_.toSimpleName != sym.name.toSimpleName))) && sym.exists then
           selector.orElse(dealiasedSelector).orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
