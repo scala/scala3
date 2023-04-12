@@ -603,13 +603,13 @@ object CheckUnused:
           case (sel, sym) if dealias(sym) == dealiasedSym => sel
         }.headOption else None
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
-        if qualHasSymbol && (!isAccessible || isRenamedSymbol(sym, symName)) && sym.exists then
+        if qualHasSymbol && (!isAccessible || sym.isRenamedSymbol(symName)) && sym.exists then
           selector.orElse(dealiasedSelector).orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
 
-      private def isRenamedSymbol(sym: Symbol, symNameInScope: Option[Name]) =
-        sym.name != nme.NO_NAME && symName.exists(_.toSimpleName != sym.name.toSimpleName)
+      private def isRenamedSymbol(symNameInScope: Option[Name])(using Context) =
+        sym.name != nme.NO_NAME && symNameInScope.exists(_.toSimpleName != sym.name.toSimpleName)
 
       private def dealias(symbol: Symbol)(using Context): Symbol =
         if(symbol.isType && symbol.asType.denot.isAliasType) then
