@@ -124,62 +124,61 @@ object QuoteMatcher {
 
   private def withEnv[T](env: Env)(body: Env ?=> T): T = body(using env)
 
-  /** Evaluate the the result of pattern matching against a quote pattern.
-   *  Implementation of the runtime of `QuoteMatching.{ExprMatch,TypeMatch}.unapply`.
+  /** Evaluate the result of pattern matching against a quote pattern.
+   *  Implementation of the runtime of `QuoteMatching.{ExprMatch, TypeMatch}.unapply`.
    */
   def treeMatch(scrutinee: Tree, pattern: Tree)(using Context): Option[Tuple] = {
-    def isTypeHoleDef(tree: Tree): Boolean =
-      tree match
-        case tree: TypeDef =>
-          tree.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot)
-        case _ => false
-
-    def extractTypeHoles(pat: Tree): (Tree, List[Symbol]) =
-      pat match
-        case tpd.Inlined(_, Nil, pat2) => extractTypeHoles(pat2)
-        case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
-          val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol)
-          val otherStats = stats.dropWhile(isTypeHoleDef)
-          (tpd.cpy.Block(pat)(otherStats, expr), holes)
-        case _ =>
-          (pat, Nil)
-
-    val (pat1, typeHoles) = extractTypeHoles(pattern)
-
-    val ctx1 =
-      if typeHoles.isEmpty then ctx
-      else
-        val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(GadtConstraintInference)
-        ctx1.gadtState.addToConstraint(typeHoles)
-        ctx1
-
-    // After matching and doing all subtype checks, we have to approximate all the type bindings
-    // that we have found, seal them in a quoted.Type and add them to the result
-    def typeHoleApproximation(sym: Symbol) =
-      val fromAboveAnnot = sym.hasAnnotation(defn.QuotedRuntimePatterns_fromAboveAnnot)
-      val fullBounds = ctx1.gadt.fullBounds(sym)
-      if fromAboveAnnot then fullBounds.nn.hi else fullBounds.nn.lo
-
-    optional {
-      given Context = ctx1
-      given Env = Map.empty
-      scrutinee =?= pat1
-    }.map { matchings =>
-      import QuoteMatcher.MatchResult.*
-      lazy val spliceScope = SpliceScope.getCurrent
-      val typeHoleApproximations = typeHoles.map(typeHoleApproximation)
-      val typeHoleMapping = Map(typeHoles.zip(typeHoleApproximations)*)
-      val typeHoleMap = new TypeMap {
-        def apply(tp: Type): Type = tp match
-          case TypeRef(NoPrefix, _) => typeHoleMapping.getOrElse(tp.typeSymbol, tp)
-          case _ => mapOver(tp)
+    val (pat1, typeHoles, ctx1) = instrumentTypeHoles(pattern)
+    inContext(ctx1) {
+      optional {
+        given Env = Map.empty
+        scrutinee =?= pat1
+      }.map { matchings =>
+        import QuoteMatcher.MatchResult.*
+        lazy val spliceScope = SpliceScope.getCurrent
+        // After matching and doing all subtype checks, we have to approximate all the type bindings
+        // that we have found, seal them in a quoted.Type and add them to the result
+        val typeHoleApproximations = typeHoles.map(typeHoleApproximation)
+        val matchedTypes = typeHoleApproximations.map(tpe => new TypeImpl(TypeTree(tpe), spliceScope))
+        val matchedExprs =
+          val typeHoleMap: Type => Type =
+            if typeHoles.isEmpty then identity
+            else new TypeMap {
+              private val typeHoleMapping = Map(typeHoles.zip(typeHoleApproximations)*)
+              def apply(tp: Type): Type = tp match
+                case TypeRef(NoPrefix, _) => typeHoleMapping.getOrElse(tp.typeSymbol, tp)
+                case _ => mapOver(tp)
+            }
+          if matchings.isEmpty then Nil
+          else matchings.map(_.toExpr(typeHoleMap, spliceScope))
+        val results = matchedTypes ++ matchedExprs
+        Tuple.fromIArray(IArray.unsafeFromArray(results.toArray))
       }
-      val matchedExprs = matchings.map(_.toExpr(typeHoleMap, spliceScope))
-      val matchedTypes = typeHoleApproximations.map(tpe => new TypeImpl(TypeTree(tpe), spliceScope))
-      val results = matchedTypes ++ matchedExprs
-      Tuple.fromIArray(IArray.unsafeFromArray(results.toArray))
     }
   }
+
+  def instrumentTypeHoles(pat: Tree)(using Context): (Tree, List[Symbol], Context) =
+    def isTypeHoleDef(tree: Tree): Boolean = tree match
+      case tree: TypeDef => tree.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot)
+      case _ => false
+    pat match
+      case tpd.Inlined(_, Nil, pat2) => instrumentTypeHoles(pat2)
+      case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
+        val (holeDefs, otherStats) = stats.span(isTypeHoleDef)
+        val holeSyms = holeDefs.map(_.symbol)
+        val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(GadtConstraintInference)
+        ctx1.gadtState.addToConstraint(holeSyms)
+        (tpd.cpy.Block(pat)(otherStats, expr), holeSyms, ctx1)
+      case _ =>
+        (pat, Nil, ctx)
+
+  /** Type approximation of a quote pattern type variable.
+   *  Should only be approximated after matching the tree.
+   */
+  def typeHoleApproximation(sym: Symbol)(using Context): Type =
+    val fromAboveAnnot = sym.hasAnnotation(defn.QuotedRuntimePatterns_fromAboveAnnot)
+    val fullBounds = ctx.gadt.fullBounds(sym)
+    if fromAboveAnnot then fullBounds.nn.hi else fullBounds.nn.lo
 
   /** Check that all trees match with `mtch` and concatenate the results with &&& */
   private def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => MatchingExprs): optional[MatchingExprs] = (l1, l2) match {
@@ -511,7 +510,7 @@ object QuoteMatcher {
      *
      *  This expression is assumed to be a valid expression in the given splice scope.
      */
-    def toExpr(mapTypeHoles: TypeMap, spliceScope: Scope)(using Context): Expr[Any] = this match
+    def toExpr(mapTypeHoles: Type => Type, spliceScope: Scope)(using Context): Expr[Any] = this match
       case MatchResult.ClosedTree(tree) =>
         new ExprImpl(tree, spliceScope)
       case MatchResult.OpenTree(tree, patternTpe, args, env) =>
