@@ -124,7 +124,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SHAREDterm            term_ASTRef                                -- Link to previously serialized term
                   HOLE           Length idx_Nat tpe_Type HoleTypes? arg_Tree*      -- Splice hole with index `idx`, the type of the hole `tpe`, type arguments of the hole `targ`s and term arguments of the hole `arg`s
                                                                                       -- Note: From 3.0 to 3.3 `args` could contain type arguments as well. This is no longer the case.
-  HoleTypes     = HOLETYPES      Length targ_Type*
+  HoleTypes     = HOLETYPES      Length targ_Tree*
 
 
 

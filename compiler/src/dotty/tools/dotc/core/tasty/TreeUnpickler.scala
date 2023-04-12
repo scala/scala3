@@ -1506,10 +1506,9 @@ class TreeUnpickler(reader: TastyReader,
       val targs =
         if nextByte == HOLETYPES then
           readByte()
-          val typesEnd = readEnd()
-          until(typesEnd)(readType()).map(TypeTree(_))
+          until(readEnd()) { readTpt() }
         else Nil
-      val args = until(end)(readTerm())
+      val args = until(end) { readTerm() }
       TastyQuoteHole(true, idx, targs ::: args, TypeTree(tpe)).withType(tpe)
 
     def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Trees.Lazy[T] =

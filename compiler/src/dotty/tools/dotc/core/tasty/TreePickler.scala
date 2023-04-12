@@ -672,9 +672,7 @@ class TreePickler(pickler: TastyPickler) {
             pickleType(tpt.tpe, richTypes = true)
             if targs.nonEmpty then
               writeByte(HOLETYPES)
-              withLength {
-                targs.foreach(targ => pickleType(targ.tpe))
-              }
+              withLength { targs.foreach(pickleTree) }
             args.foreach(pickleTree)
           }
       }
