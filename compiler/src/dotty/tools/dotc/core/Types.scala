@@ -3925,12 +3925,15 @@ object Types {
 
   abstract case class MethodType(paramNames: List[TermName])(
       paramInfosExp: MethodType => List[Type],
-      resultTypeExp: MethodType => Type)
+      resultTypeExp: MethodType => Type,
+      tempParamInfos: List[Type] | Null = null)
     extends MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
 
     type This = MethodType
 
-    val paramInfos: List[Type] = paramInfosExp(this: @unchecked)
+    val _paramInfos: List[Type] | Null = paramInfosExp(this: @unchecked)
+    def paramInfos = if _paramInfos != null then _paramInfos else tempParamInfos
+
     val resType: Type = resultTypeExp(this: @unchecked)
     assert(resType.exists)
 
@@ -3949,8 +3952,8 @@ object Types {
     protected def prefixString: String = companion.prefixString
   }
 
-  final class CachedMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type, val companion: MethodTypeCompanion)
-    extends MethodType(paramNames)(paramInfosExp, resultTypeExp)
+  final class CachedMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type, val companion: MethodTypeCompanion, tempParamInfos: List[Type] | Null = null)
+    extends MethodType(paramNames)(paramInfosExp, resultTypeExp, tempParamInfos)
 
   abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
     def syntheticParamName(n: Int): N
@@ -4038,11 +4041,15 @@ object Types {
 
       apply(params.map(_.name.asTermName))(
          tl => params.map(p => tl.integrate(params, paramInfo(p))),
-         tl => tl.integrate(params, resultType))
+         tl => tl.integrate(params, resultType),
+         params.map(paramInfo))
     end fromSymbols
 
     def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
-      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
+      apply(paramNames)(paramInfosExp, resultTypeExp, null)
+
+    def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type, tempParamInfos: List[Type] | Null = null)(using Context): MethodType =
+      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self, tempParamInfos)))
 
     def checkValid(mt: MethodType)(using Context): mt.type = {
       if (Config.checkMethodTypes)
