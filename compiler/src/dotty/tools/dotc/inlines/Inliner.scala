@@ -150,7 +150,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   protected val callTypeArgs = typeArgss(call).flatten
   protected val callValueArgss = termArgss(call)
   protected val inlinedMethod = methPart.symbol
-  private val inlineCallPrefix =
+  protected val inlineCallPrefix =
      qualifier(methPart).orElse(This(inlinedMethod.enclosingClass.asClass))
 
   // Make sure all type arguments to the call are fully determined,
@@ -158,7 +158,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   for arg <- callTypeArgs do
     isFullyDefined(arg.tpe, ForceDegree.flipBottom)
 
-  /** A map from parameter names of the inlineable method to references of the actual arguments.
+  /** A map from parameter names of the inlineable method or trait to references of the actual arguments.
    *  For a type argument this is the full argument type.
    *  For a value argument, it is a reference to either the argument value
    *  (if the argument is a pure expression of singleton type), or to `val` or `def` acting
@@ -169,7 +169,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** A map from parameter names of the inlineable method to spans of the actual arguments */
   private val paramSpan = new mutable.HashMap[Name, Span]
 
-  /** A map from references to (type and value) parameters of the inlineable method
+  /** A map from references to (type and value) parameters of the inlineable method or trait
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
   private[inlines] val paramProxy = new mutable.HashMap[Type, Type]
@@ -187,8 +187,8 @@ class Inliner(val call: tpd.Tree)(using Context):
    *
    *  These are different (wrt ==) types but represent logically the same key
    */
-  private val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
-  private val thisInlineTraitProxy = new mutable.HashMap[ClassSymbol, ThisType]
+  protected val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
+  protected val thisInlineTraitProxy = new mutable.HashMap[ClassSymbol, ThisType]
 
   /** A buffer for bindings that define proxies for actual arguments */
   private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
@@ -452,7 +452,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *      references of a method are (we only know the method's type, but that contains TypeParamRefs
    *      and MethodParams, not TypeRefs or TermRefs.
    */
-  private def registerType(tpe: Type): Unit = tpe match {
+  protected def registerType(tpe: Type): Unit = tpe match {
     case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
       val proxyType = inlineCallPrefix.tpe.dealias.tryNormalize match {
@@ -460,10 +460,6 @@ class Inliner(val call: tpd.Tree)(using Context):
         case _ => adaptToPrefix(tpe).widenIfUnstable
       }
       thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
-      for (param <- tpe.cls.typeParams)
-        paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
-    case tpe: ThisType if tpe.cls.isInlineTrait =>
-      thisInlineTraitProxy(tpe.cls) = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
       for (param <- tpe.cls.typeParams)
         paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
     case tpe: NamedType

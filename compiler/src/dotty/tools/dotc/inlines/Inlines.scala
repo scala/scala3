@@ -470,45 +470,100 @@ object Inlines:
     import Inlines.*
 
     def expandDefs(): List[Tree] =
-      val argsMap = parent match
-        case Apply(_, args) =>
-          val MethodType(paramNames) = parent.symbol.info: @unchecked
-          paramNames.zip(args).toMap
-        case _ => Map.empty
-
       val Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
+      val s = stats.map(expandStat)
+      s.map(inlined(_)._2)
+    end expandDefs
 
-      val stats1 = stats.map { stat =>
-          val sym = stat.symbol
-          stat match
-            case stat: ValDef if sym.isOneOf(Given | Implicit) =>
-              report.error("implementation restriction: inline traits cannot have implicit or given variables", stat.srcPos)
-              stat
-            case stat: ValDef =>
-              val vdef = cloneValDef(stat)
-              val vdef1 =
-                if sym.is(ParamAccessor) then
-                  vdef.symbol.resetFlag(ParamAccessor)
-                  cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
-                else
-                  vdef
-              if !sym.is(Private) then
-                vdef1.symbol.setFlag(Override)
-              vdef1 // TODO keep rhs? Can we do a single ValOrDefDef case using cloneStat?
-            case stat: DefDef =>
-              val ddef = cloneDefDef(stat)
-              if !sym.is(Private) then ddef.symbol.setFlag(Override)
-              if sym.is(Mutable) then
-                report.error("implementation restriction: inline traits cannot have mutable variables", stat.srcPos)
-              ddef
-            case stat @ TypeDef(_, impl: Template) =>
-              cloneClass(stat, impl)
-            case stat: TypeDef =>
-              val tdef = cloneTypeDef(stat)
-              tdef.symbol.setFlag(Override)
-              tdef
+    override protected def registerType(tpe: Type): Unit = tpe match {
+      case tpe: ThisType if tpe.cls.isInlineTrait =>
+        thisInlineTraitProxy(tpe.cls) = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
+        for (param <- tpe.cls.typeParams)
+          paramProxy(param.typeRef) = param.typeRef.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
+      case _ => super.registerType(tpe)
+    }
+
+    private val argsMap: Map[Names.Name, untpd.Tree] =
+      /*
+       * Consider the parent `new A[String](1)("A")` with signature `inline trait A[T](x: Int)(y: T)`.
+       * The `parent` tree is "right-to-left": Apply(Apply(TypeApply(..., String), 1), "A")
+       * The `info` tree is "left-to-right": PolyType(T, ..., MethodType(x, Int, MethodType(y, T, ...)))
+       * This recursive solution goes as deep as possible in the tree, then matches arguments with their
+       * names in a bottom-up fashion.
+       */
+      def rec(tree: Tree, info: Type, acc: Map[Names.Name, untpd.Tree]): (Option[Type], Map[Names.Name, untpd.Tree]) =
+        tree match {
+          case Apply(tree1, args) => rec(tree1, info, acc) match {
+            case (Some(info1), acc1) => info1 match {
+              case MethodTpe(paramNames, _, info2) if paramNames.length == args.length =>
+                (Some(info2), acc1 ++ paramNames.zip(args).toMap)
+              case _ =>
+                report.error(s"mismatch between Apply ${tree.show} and info ${info1}", parent.srcPos)
+                (None, acc1)
+            }
+            case res => res
+          }
+          case TypeApply(tree1, tpes) => rec(tree1, info, acc) match {
+            case (Some(info1), acc1) => info1 match {
+              case PolyType(lambdaParams, info2) if lambdaParams.length == tpes.length =>
+                (Some(info2), acc1)
+              case _ =>
+                report.error(s"mismatch between TypeApply ${tree.show} and info ${info1}", parent.srcPos)
+                (None, acc1)
+            }
+            case res => res
+          }
+          case _ => (Some(info), acc)
+        }
+
+      parent match {
+        case _: GenericApply =>
+          val (remainingInfo, map) = rec(parent, parent.symbol.info, Map.empty)
+          remainingInfo match {
+            case Some(MethodType(paramNames)) =>
+              report.error(s"could not match the following parameters with their values: ${paramNames.map(_.show).mkString(", ")}", parent.srcPos)
+            case _ =>
+          }
+          map
+        case _ => Map.empty
       }
-      stats1.map(stat => inlined(stat)._2)
+    end argsMap
+
+    private def expandStat(stat: untpd.Tree): untpd.Tree =
+      val sym = stat.symbol
+      stat match
+        case stat: ValDef if sym.isOneOf(Given | Implicit) =>
+          report.error("implementation restriction: inline traits cannot have implicit or given variables", stat.srcPos)
+          stat
+        case stat: ValDef =>
+          val vdef = cloneValDef(stat)
+          val vdef1 =
+            if sym.is(ParamAccessor) then
+              vdef.symbol.resetFlag(ParamAccessor)
+              cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
+            else
+              vdef
+          if !sym.is(Private) then
+            vdef1.symbol.setFlag(Override)
+          vdef1 // TODO keep rhs? Can we do a single ValOrDefDef case using cloneStat?
+        case stat: DefDef =>
+          val ddef = cloneDefDef(stat)
+          if !sym.is(Private) then
+            ddef.symbol.setFlag(Override)
+          if sym.is(Mutable) then
+            report.error("implementation restriction: inline traits cannot have mutable variables", stat.srcPos)
+          ddef
+        case stat @ TypeDef(_, impl: Template) =>
+          report.error("inline traits do not handle inner classes yet", stat.srcPos)
+          cloneClass(stat, impl)
+        case stat: TypeDef =>
+          val tdef = cloneTypeDef(stat)
+          tdef.symbol.setFlag(Override)
+          tdef
+        case _ =>
+          report.error(s"unknown body element of inline ${parentSym.show}: ${stat.show}", stat.srcPos)
+          stat
+    end expandStat
 
     private def inlinedRhs(rhs: Tree): Inlined =
       Inlined(tpd.ref(parentSym), Nil, rhs).withSpan(parent.span)
