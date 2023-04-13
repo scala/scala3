@@ -60,7 +60,7 @@ class CrossStageSafety extends TreeMapWithStages {
         val healedType = healType(tree.srcPos)(tp1)
         if healedType == tree.tpe then tree
         else TypeTree(healedType).withSpan(tree.span)
-      case _: RefTree if tree.isType =>
+      case _: RefTree | _: SingletonTypeTree if tree.isType =>
         val healedType = healType(tree.srcPos)(tree.tpe)
         if healedType == tree.tpe then tree
         else TypeTree(healedType).withSpan(tree.span)

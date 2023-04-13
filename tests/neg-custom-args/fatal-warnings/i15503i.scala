@@ -288,6 +288,7 @@ package foo.test.i17156:
     import b.Xd
     trait Z derives Xd
 
+
 package foo.test.i17175:
   val continue = true
   def foo =
@@ -297,3 +298,17 @@ package foo.test.i17175:
     } {
       println(i)
     }
+   
+package foo.test.i17117:
+  package example {
+    object test1 {
+      val test = "test"
+    }
+
+    object test2 {
+
+      import example.test1 as t1
+
+      val test = t1.test
+    }
+  }
