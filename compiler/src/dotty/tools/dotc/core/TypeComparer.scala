@@ -3151,7 +3151,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               case redux =>
                 MatchResult.Reduced(redux.simplified)
           case _ =>
-            MatchResult.Reduced(body)
+            MatchResult.Reduced(body.simplified)
 
       if caseLambda.exists && matches(canWidenAbstract = false) then
         redux(canApprox = true)
