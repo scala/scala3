@@ -64,7 +64,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   override def transformUnit(tree: tpd.Tree)(using Context): tpd.Tree =
     unusedDataApply { ud =>
-      finishAggregation(ud)
+      ud.finishAggregation()
       if(phaseMode == PhaseMode.Report) then
         ud.unusedAggregate.foreach(reportUnused)
     }
@@ -253,17 +253,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   private def traverseAnnotations(sym: Symbol)(using Context): Unit =
     sym.denot.annotations.foreach(annot => traverser.traverse(annot.tree))
 
-  private def finishAggregation(data: UnusedData)(using Context): Unit =
-    val unusedInThisStage = data.getUnused
-    data.unusedAggregate match {
-      case None =>
-        data.unusedAggregate = Some(unusedInThisStage)
-      case Some(prevUnused) =>
-        val intersection = unusedInThisStage.warnings.intersect(prevUnused.warnings)
-        data.unusedAggregate = Some(UnusedResult(intersection))
-    }
-
-
 
   /** Do the actual reporting given the result of the anaylsis */
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
@@ -370,6 +359,17 @@ object CheckUnused:
       pushScope(newScope)
       execInNewScope
       popScope()
+
+    def finishAggregation(using Context)(): Unit =
+      val unusedInThisStage = this.getUnused
+      this.unusedAggregate match {
+        case None =>
+          this.unusedAggregate = Some(unusedInThisStage)
+        case Some(prevUnused) =>
+          val intersection = unusedInThisStage.warnings.intersect(prevUnused.warnings)
+          this.unusedAggregate = Some(UnusedResult(intersection))
+      }
+
 
     /**
      * Register a found (used) symbol along with its name
@@ -534,7 +534,7 @@ object CheckUnused:
         val pos = s.pos.sourcePos
         (pos.line, pos.column)
       }
-      UnusedResult(warnings)
+      UnusedResult(warnings.toSet)
     end getUnused
     //============================ HELPERS ====================================
 
@@ -735,7 +735,7 @@ object CheckUnused:
       /** A container for the results of the used elements analysis */
       case class UnusedResult(warnings: Set[UnusedSymbol])
       object UnusedResult:
-        val Empty = UnusedResult(Nil)
+        val Empty = UnusedResult(Set.empty)
 
 end CheckUnused
 
