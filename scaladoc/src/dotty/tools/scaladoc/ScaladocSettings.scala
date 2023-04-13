@@ -43,7 +43,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
 
   val socialLinks: Setting[List[String]] =
     MultiStringSetting("-social-links", "social-links",
-      "Links to social sites. '[github|twitter|gitter|discord]::link' syntax is used.")
+      "Links to social sites. '[github|twitter|gitter|discord]::link' syntax is used." +
+        "'custom::link::white_icon_name::black_icon_name' is also allowed, in this case icons must be present in 'images/'' directory.")
 
   val deprecatedSkipPackages: Setting[List[String]] =
     MultiStringSetting("-skip-packages", "packages", "Deprecated, please use `-skip-by-id` or `-skip-by-regex`")
