@@ -25,7 +25,7 @@ import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.StdNames.nme
-
+import scala.math.Ordering
 
 /**
  * A compiler phase that checks for unused imports or definitions
@@ -64,7 +64,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   override def transformUnit(tree: tpd.Tree)(using Context): tpd.Tree =
     unusedDataApply { ud =>
-      aggregateUnused(ud, ud.getUnused)
+      finishAggregation(ud)
       if(phaseMode == PhaseMode.Report) then
         ud.unusedAggregate.foreach(reportUnused)
     }
@@ -253,12 +253,13 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   private def traverseAnnotations(sym: Symbol)(using Context): Unit =
     sym.denot.annotations.foreach(annot => traverser.traverse(annot.tree))
 
-  private def aggregateUnused(data: UnusedData, res: UnusedData.UnusedResult)(using Context): Unit =
+  private def finishAggregation(data: UnusedData)(using Context): Unit =
+    val unusedInThisStage = data.getUnused
     data.unusedAggregate match {
       case None =>
-        data.unusedAggregate = Some(res)
+        data.unusedAggregate = Some(unusedInThisStage)
       case Some(prevUnused) =>
-        val intersection = res.warnings.filter(sym => prevUnused.warnings.contains(sym))
+        val intersection = unusedInThisStage.warnings.intersect(prevUnused.warnings)
         data.unusedAggregate = Some(UnusedResult(intersection))
     }
 
@@ -266,7 +267,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   /** Do the actual reporting given the result of the anaylsis */
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
-    res.warnings.foreach { s =>
+    res.warnings.toList.sortBy(_.pos.line)(using Ordering[Int]).foreach { s =>
       s match
         case UnusedSymbol(t, _, WarnTypes.Imports) =>
           report.warning(s"unused import", t)
@@ -321,7 +322,7 @@ object CheckUnused:
     import UnusedData.*
 
     /** The current scope during the tree traversal */
-    var currScopeType: MutStack[ScopeType] = MutStack(ScopeType.Other)
+    val currScopeType: MutStack[ScopeType] = MutStack(ScopeType.Other)
 
     var unusedAggregate: Option[UnusedResult] = None
 
@@ -732,7 +733,7 @@ object CheckUnused:
 
       case class UnusedSymbol(pos: SrcPos, name: Name, warnType: WarnTypes)
       /** A container for the results of the used elements analysis */
-      case class UnusedResult(warnings: List[UnusedSymbol])
+      case class UnusedResult(warnings: Set[UnusedSymbol])
       object UnusedResult:
         val Empty = UnusedResult(Nil)
 
