@@ -52,7 +52,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   // ========== SETUP ============
 
   override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
-    println(this)
     val data = UnusedData()
     tree.getAttachment(_key).foreach(oldData =>
       data.unusedAggregate = oldData.unusedAggregate
