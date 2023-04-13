@@ -209,8 +209,7 @@ trait TypesSupport:
               plain("()").l ++ keyword(arrow).l ++ inner(rtpe)
             case Seq(arg, rtpe) =>
               val partOfSignature = arg match
-                case tpe @ (_: TermRef | _: TypeRef | _: ConstantType | _: ParamRef | _: AndType | _: OrType) => inner(arg)
-                case tpe: AppliedType if !tpe.isFunctionType && !tpe.isTupleN => inner(arg)
+                case _: TermRef | _: TypeRef | _: ConstantType | _: ParamRef => inner(arg)
                 case _ => inParens(inner(arg))
               partOfSignature ++ keyword(arrow).l ++ inner(rtpe)
             case args =>
@@ -346,38 +345,6 @@ trait TypesSupport:
   private def shouldWrapInParens(using Quotes)(inner: reflect.TypeRepr, outer: reflect.TypeRepr, isLeft: Boolean) =
     import reflect._
 
-    // Duplication of dotty.tools.dotc.parsing.precedence because we cannot construct Name here
-    def precedence(opName: String) =
-      import dotty.tools.dotc.util.Chars.{isScalaLetter, isOperatorPart}
-      val isOpAssignmentName = opName match
-        case "!=" | "<=" | ">=" | "" => false
-        case name =>
-          name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
-      opName.head match
-        case _ if isOpAssignmentName => 0
-        case c if isScalaLetter(c) => 1
-        case '|' => 2
-        case '^' => 3
-        case '&' => 4
-        case '=' | '!' => 5
-        case '<' | '>' => 6
-        case ':' => 7
-        case '+' | '-' => 8
-        case '*' | '/' | '%' => 9
-        case _ => 10
-
-    def shouldWrap(innerOp: String, outerOp: String) =
-      val innerPrec = precedence(innerOp)
-      val outerPrec = precedence(outerOp)
-      val innerLeftAssoc = !innerOp.endsWith(":")
-      val outerLeftAssoc = !outerOp.endsWith(":")
-
-      if innerLeftAssoc == outerLeftAssoc && outerLeftAssoc == isLeft
-      then innerPrec < outerPrec
-      else innerPrec <= outerPrec
-
-    def opName(at: AppliedType) = at.tycon.typeSymbol.name
-
     (inner, outer) match
       case (_: AndType, _: TypeRef) => true
       case (_: OrType,  _: TypeRef) => true
@@ -388,13 +355,11 @@ trait TypesSupport:
       case (_: OrType,  _: AndType) => true
       case (_: OrType,  _: OrType)  => false
 
-      case (at: AppliedType, _: AndType) => at.isFunctionType || isInfix(at) && shouldWrap(opName(at), "&")
-      case (at: AppliedType, _: OrType)  => at.isFunctionType || isInfix(at) && shouldWrap(opName(at), "|")
-      case (_: AndType, at: AppliedType) => isInfix(at) && shouldWrap("&", opName(at))
-      case (_: OrType, at: AppliedType)  => isInfix(at) && shouldWrap("|", opName(at))
-      case (at1: AppliedType, at2: AppliedType) => isInfix(at2) && (
-        at1.isFunctionType || isInfix(at1) && shouldWrap(opName(at1), opName(at2))
-      )
+      case (at: AppliedType, _: AndType) => at.isFunctionType || isInfix(at)
+      case (at: AppliedType, _: OrType)  => at.isFunctionType || isInfix(at)
+      case (_: AndType, at: AppliedType) => isInfix(at)
+      case (_: OrType, at: AppliedType)  => isInfix(at)
+      case (at1: AppliedType, at2: AppliedType) => isInfix(at2) && (at1.isFunctionType || isInfix(at1))
       case _ => false
 
   private def isInfix(using Quotes)(at: reflect.AppliedType) =
