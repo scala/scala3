@@ -1,7 +1,6 @@
 package dotty.tools.benchmarks.inlinetraits
 package standard
 
-import scala.annotation.tailrec
 import scala.reflect.ClassTag
 
 trait MatrixLib[T: ClassTag]:
@@ -16,7 +15,7 @@ trait MatrixLib[T: ClassTag]:
     def rows: Int = m.length
     def cols: Int = m(0).length
 
-object IntMatrixLib extends MatrixLib[Int] {
+object IntMatrixLib extends MatrixLib[Int]:
   extension (m: Matrix)
     def +(n: Matrix): Matrix =
       val sum =
@@ -37,4 +36,3 @@ object IntMatrixLib extends MatrixLib[Int] {
             mults.fold(0)(_ + _)
       Matrix(prod*)
     end *
-}
