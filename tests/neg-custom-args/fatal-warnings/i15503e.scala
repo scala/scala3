@@ -1,14 +1,16 @@
 // scalac: -Wunused:explicits
 
-/* This goes around the "trivial method" detection */
-val default_val = 1
+object Foo {
+  /* This goes around the "trivial method" detection */
+  val default_val = 1
 
-def f1(a: Int) = a // OK
-def f2(a: Int) = default_val // error
-def f3(a: Int)(using Int) = a // OK
-def f4(a: Int)(using Int) = default_val // error
-def f6(a: Int)(using Int) = summon[Int] // error
-def f7(a: Int)(using Int) = summon[Int] + a // OK
+  private def f1(a: Int) = a // OK
+  private def f2(a: Int) = default_val // error
+  private def f3(a: Int)(using Int) = a // OK
+  private def f4(a: Int)(using Int) = default_val // error
+  private def f6(a: Int)(using Int) = summon[Int] // error
+  private def f7(a: Int)(using Int) = summon[Int] + a // OK
+}
 
 package scala2main.unused.args:
   object happyBirthday {

@@ -17,10 +17,10 @@ class A {
   private def c2 = 2 // OK
   def c3 = c2
 
-  def d1(using x:Int): Int = default_int // error
+  def d1(using x:Int): Int = default_int // ok
   def d2(using x:Int): Int = x // OK
 
-  def e1(x: Int) = default_int // error
+  def e1(x: Int) = default_int // ok
   def e2(x: Int) = x // OK
   def f =
     val x = 1 // error
@@ -44,7 +44,11 @@ package foo.test.scala.annotation:
   val default_int = 12
 
   def a1(a: Int) = a // OK
-  def a2(a: Int) = default_int // error
+  def a2(a: Int) = default_int // ok
+
+  private def a2_p(a: Int) = default_int // error
+  def a2_p_used = a2_p(3)
+
   def a3(@unused a: Int) = default_int //OK
 
   def b1 =
