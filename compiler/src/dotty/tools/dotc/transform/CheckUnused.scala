@@ -52,6 +52,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   // ========== SETUP ============
 
   override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
+    println(this)
     val data = UnusedData()
     tree.getAttachment(_key).foreach(oldData =>
       data.unusedAggregate = oldData.unusedAggregate
@@ -306,8 +307,9 @@ object CheckUnused:
    */
   private val _key = Property.StickyKey[UnusedData]
 
-  val PostTyper =    new CheckUnused(PhaseMode.Aggregate, "PostTyper", _key)
-  val PostInlining = new CheckUnused(PhaseMode.Report, "PostInlining", _key)
+  class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper", _key)
+
+  class PostInlining extends CheckUnused(PhaseMode.Report, "PostInlining", _key)
 
   /**
    * A stateful class gathering the infos on :
