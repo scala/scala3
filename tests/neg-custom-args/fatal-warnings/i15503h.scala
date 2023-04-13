@@ -7,7 +7,7 @@ class A {
   val b = 2 // OK
 
   private def c = 2 // error
-  def d(using x:Int): Int = b // error
+  def d(using x:Int): Int = b // ok
   def e(x: Int) = 1 // OK
   def f =
     val x = 1 // error

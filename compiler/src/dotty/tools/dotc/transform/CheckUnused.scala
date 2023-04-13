@@ -405,8 +405,6 @@ object CheckUnused:
     def addIgnoredParam(sym: Symbol)(using Context): Unit =
       paramsToSkip += sym
 
-
-
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
       if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum && !isTransparentAndInline(imp) then
@@ -420,7 +418,8 @@ object CheckUnused:
       if memDef.isValidMemberDef then
         if memDef.isValidParam then
           if memDef.symbol.isOneOf(GivenOrImplicit) then
-            implicitParamInScope += memDef
+            if !paramsToSkip.contains(memDef.symbol) then
+              implicitParamInScope += memDef
           else if !paramsToSkip.contains(memDef.symbol) then
             explicitParamInScope += memDef
         else if currScopeType.top == ScopeType.Local then
