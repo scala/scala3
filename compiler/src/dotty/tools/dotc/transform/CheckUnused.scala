@@ -24,7 +24,7 @@ import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
 import dotty.tools.dotc.core.Symbols.Symbol
-
+import dotty.tools.dotc.core.StdNames.nme
 
 
 /**
@@ -109,6 +109,9 @@ class CheckUnused extends MiniPhase:
       traverseAnnotations(tree.symbol)
       if !tree.symbol.is(Module) then
         ud.registerDef(tree)
+      if tree.name.mangledString.startsWith(nme.derived.mangledString + "$")
+          && tree.typeOpt != NoType then
+        ud.registerUsed(tree.typeOpt.typeSymbol, None, true)
       ud.addIgnoredUsage(tree.symbol)
     }
 
@@ -308,7 +311,7 @@ object CheckUnused:
      *
      * See the `isAccessibleAsIdent` extension method below in the file
      */
-    private val usedInScope = MutStack(MutSet[(Symbol,Boolean, Option[Name])]())
+    private val usedInScope = MutStack(MutSet[(Symbol,Boolean, Option[Name], Boolean)]())
     private val usedInPosition = MutSet[(SrcPos, Name)]()
     /* unused import collected during traversal */
     private val unusedImport = MutSet[ImportSelector]()
@@ -353,15 +356,16 @@ object CheckUnused:
      * The optional name will be used to target the right import
      * as the same element can be imported with different renaming
      */
-    def registerUsed(sym: Symbol, name: Option[Name])(using Context): Unit =
+    def registerUsed(sym: Symbol, name: Option[Name], isDerived: Boolean = false)(using Context): Unit =
       if !isConstructorOfSynth(sym) && !doNotRegister(sym) then
         if sym.isConstructor && sym.exists then
           registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
         else
-          usedInScope.top += ((sym, sym.isAccessibleAsIdent, name))
-          usedInScope.top += ((sym.companionModule, sym.isAccessibleAsIdent, name))
-          usedInScope.top += ((sym.companionClass, sym.isAccessibleAsIdent, name))
-          name.map(n => usedInPosition += ((sym.sourcePos, n)))
+          usedInScope.top += ((sym, sym.isAccessibleAsIdent, name, isDerived))
+          usedInScope.top += ((sym.companionModule, sym.isAccessibleAsIdent, name, isDerived))
+          usedInScope.top += ((sym.companionClass, sym.isAccessibleAsIdent, name, isDerived))
+          if sym.sourcePos.exists then
+            name.map(n => usedInPosition += ((sym.sourcePos, n)))
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
@@ -417,15 +421,15 @@ object CheckUnused:
       // used symbol in this scope
       val used = usedInScope.pop().toSet
       // used imports in this scope
-      val imports = impInScope.pop().toSet
+      val imports = impInScope.pop()
       val kept = used.filterNot { t =>
-        val (sym, isAccessible, optName) = t
+        val (sym, isAccessible, optName, isDerived) = t
         // keep the symbol for outer scope, if it matches **no** import
         // This is the first matching wildcard selector
         var selWildCard: Option[ImportSelector] = None
 
         val exists = imports.exists { imp =>
-          sym.isInImport(imp, isAccessible, optName) match
+          sym.isInImport(imp, isAccessible, optName, isDerived) match
             case None => false
             case optSel@Some(sel) if sel.isWildcard =>
               if selWildCard.isEmpty then selWildCard = optSel
@@ -479,6 +483,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.explicits then
           explicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
             .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.ExplicitParams).toList
         else
@@ -596,16 +601,31 @@ object CheckUnused:
           }
 
       /** Given an import and accessibility, return an option of selector that match import<->symbol */
-      private def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name])(using Context): Option[ImportSelector] =
+      private def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name], isDerived: Boolean)(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
-        val qualHasSymbol = qual.tpe.member(sym.name).alternatives.map(_.symbol).contains(sym)
+        val dealiasedSym = dealias(sym)
+        val simpleSelections = qual.tpe.member(sym.name).alternatives
+        val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
+        val termSelections = sels.flatMap(n => qual.tpe.member(n.name.toTermName).alternatives)
+        val selectionsToDealias = typeSelections ::: termSelections
+        val qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(dealias).contains(dealiasedSym)
         def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
+        def dealiasedSelector = if(isDerived) sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collect {
+          case (sel, sym) if dealias(sym) == dealiasedSym => sel
+        }.headOption else None
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
-        if qualHasSymbol && !isAccessible && sym.exists then
-          selector.orElse(wildcard) // selector with name or wildcard (or given)
+        if qualHasSymbol && (!isAccessible || sym.isRenamedSymbol(symName)) && sym.exists then
+          selector.orElse(dealiasedSelector).orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
 
+      private def isRenamedSymbol(symNameInScope: Option[Name])(using Context) =
+        sym.name != nme.NO_NAME && symNameInScope.exists(_.toSimpleName != sym.name.toSimpleName)
+
+      private def dealias(symbol: Symbol)(using Context): Symbol =
+        if(symbol.isType && symbol.asType.denot.isAliasType) then
+          symbol.asType.typeRef.dealias.typeSymbol
+        else symbol
       /** Annotated with @unused */
       private def isUnusedAnnot(using Context): Boolean =
         sym.annotations.exists(a => a.symbol == ctx.definitions.UnusedAnnot)
@@ -660,7 +680,7 @@ object CheckUnused:
 
     extension (memDef: tpd.MemberDef)
       private def isValidMemberDef(using Context): Boolean =
-        !memDef.symbol.isUnusedAnnot && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags) && !memDef.name.isWildcard
+        !memDef.symbol.isUnusedAnnot && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags) && !memDef.name.isWildcard && !memDef.symbol.owner.is(Extension)
 
       private def isValidParam(using Context): Boolean =
         val sym = memDef.symbol

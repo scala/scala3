@@ -4,17 +4,33 @@ title: "TASTy Inspection"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/tasty-inspect.html
 ---
 
+TASTy files contain the full typed tree of a class including source positions
+and documentation. This is ideal for tools that analyze or extract semantic
+information from the code.
+
+To avoid the hassle of working directly with the TASTy
+file we provide the `Inspector` which loads the contents and exposes it
+through the TASTy reflect API.
+
+We also showcase TASTyViz, a visualiser for tasty, useful for debugging and checking your understanding of TASTy
+
+## TASTyViz
+
+<!-- Keep synced with https://github.com/scala/docs.scala-lang/blob/main/scala3/guides/tasty-overview.md -->
+
+TASTyViz is a tool to inspect TASTy files visually.
+At the time of writing, it is still in the early stages of developement, therefore you can expect missing functionality and less-than-ideal user experience, but it could still prove useful when debugging.
+You can check it out [here](https://github.com/shardulc/tastyviz).
+
+## `Inspector`
+
+`Inspector` is a tool which provides API access to TASTy.
+
+You can add the depency to your sbt build like so:
 ```scala
 libraryDependencies += "org.scala-lang" %% "scala3-tasty-inspector" % scalaVersion.value
 ```
 
-TASTy files contain the full typed tree of a class including source positions
-and documentation. This is ideal for tools that analyze or extract semantic
-information from the code. To avoid the hassle of working directly with the TASTy
-file we provide the `Inspector` which loads the contents and exposes it
-through the TASTy reflect API.
-
-## Inspecting TASTy files
 
 To inspect the trees of a TASTy file a consumer can be defined in the following way.
 

@@ -94,7 +94,7 @@ package foo.test.possibleclasses:
     k: Int, // OK
     private val y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int, // error /* But not these */
+    s: Int,
     val t: Int, // OK
     private val z: Int // error
   )
@@ -135,7 +135,7 @@ package foo.test.possibleclasses.withvar:
     k: Int, // OK
     private var y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int, // error /* But not these */
+    s: Int,
     var t: Int, // OK
     private var z: Int // error
   )
@@ -277,3 +277,42 @@ package foo.test.i16679b:
     import Foo.x
     case class CoolClass(i: Int)
     println(summon[myPackage.CaseClassName[CoolClass]])
+
+package foo.test.i17156:
+  package a:
+    trait Foo[A]
+    object Foo:
+      inline def derived[T]: Foo[T] = new Foo{}
+
+  package b:
+    import a.Foo
+    type Xd[A] = Foo[A]
+
+  package c:
+    import b.Xd
+    trait Z derives Xd
+
+
+package foo.test.i17175:
+  val continue = true
+  def foo =
+    for {
+      i <- 1.until(10) // OK
+      if continue
+    } {
+      println(i)
+    }
+   
+package foo.test.i17117:
+  package example {
+    object test1 {
+      val test = "test"
+    }
+
+    object test2 {
+
+      import example.test1 as t1
+
+      val test = t1.test
+    }
+  }

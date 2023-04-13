@@ -14,3 +14,10 @@ object Foo {
   private def g1(x: Int) = 1 // OK
   private def g2(x: Int) = ??? // OK
 }
+
+package foo.test.i17101:
+  type Test[A] = A
+  extension[A] (x: Test[A]) { // OK
+    def value: A = x
+    def causesIssue: Unit = println("oh no")
+  }
