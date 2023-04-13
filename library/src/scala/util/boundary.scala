@@ -50,6 +50,9 @@ object boundary:
   def break()(using label: Label[Unit]): Nothing =
     throw Break(label, ())
 
+  /** Operator syntax `⎉` for `break()`. */
+  def `⎉`(using label: Label[Unit]): Nothing = break()
+
   /** Run `body` with freshly generated label as implicit argument. Catch any
    *  breaks associated with that label and return their results instead of
    *  `body`'s result.
@@ -60,5 +63,9 @@ object boundary:
     catch case ex: Break[T] @unchecked =>
       if ex.label eq local then ex.value
       else throw ex
+
+  /** Operator syntax `value.⎉` for `break(value)`. */
+  extension [T](value: T)(using label: Label[T])
+    def `⎉`: Nothing = throw Break(label, value)
 
 end boundary

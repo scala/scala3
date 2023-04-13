@@ -1,4 +1,4 @@
-import scala.util.boundary, boundary.break
+import scala.util.boundary, boundary.*
 
 object breakOpt:
 
@@ -57,6 +57,16 @@ object breakOpt:
         if x == 0 then break()
     y
 
+  def test6b(x0: Int): Int =
+    var x = x0
+    var y = x
+    boundary:
+      while true do
+        y = y * x
+        x -= 1
+        if x == 0 then ⎉
+    y
+
   def test7(x0: Int): Option[Int] =
     val result =
       boundary:
@@ -93,6 +103,7 @@ object breakOpt:
   test4(-1)
   assert(test5(2) == 1)
   assert(test6(3) == 18)
+  assert(test6b(3) == 18)
   assert(test7(3) == Some(14))
   assert(test7(-3) == None)
   assert(test8(3) == Some(4))

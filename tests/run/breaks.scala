@@ -1,4 +1,4 @@
-import scala.util.boundary, boundary.break
+import scala.util.boundary, boundary.*
 import collection.mutable.ListBuffer
 
 object Test {
@@ -6,6 +6,12 @@ object Test {
     boundary:
       for x <- xs do
         if x == elem then break(true)
+      false
+
+  def haz(xs: List[Int], elem: Int) =
+    boundary:
+      for x <- xs do
+        if x == elem then true.⎉
       false
 
   def takeUntil(xs: List[Int], elem: Int) =
@@ -29,6 +35,7 @@ object Test {
     assert(has(1 :: 2 :: Nil, 1))
     assert(has(1 :: 2 :: Nil, 2))
     assert(!has(1 :: 2 :: Nil, 3))
+    assert(haz(1 :: 2 :: Nil, 1))
     assert(animal(1) == Cat)
     assert(animal(-1) == Dog)
 
