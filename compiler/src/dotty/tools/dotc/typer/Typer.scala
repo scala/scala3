@@ -2673,10 +2673,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1) ::: inlineTraitDefs
 
       if !ctx.isAfterTyper && cls.isInlineTrait then
-        def isConstructorType(t: Tree) =
-          t.isInstanceOf[TypeDef] && cls.typeParams.contains(t.symbol)
-        val inlineTraitMembers = Block(body1.filter(t => !isConstructorType(t)), unitLiteral)
-        PrepareInlineable.registerInlineInfo(cls, inlineTraitMembers)
+        def isConstructorType(t: Tree) = t.isInstanceOf[TypeDef] && cls.typeParams.contains(t.symbol)
+        val membersToInline = body1.filter { t =>
+          !isConstructorType(t)
+          && !t.symbol.is(Deferred)
+          && !t.symbol.isAllOf(Inline)
+        }
+        val wrappedMembersToInline = Block(membersToInline, unitLiteral).withSpan(cdef.span)
+        PrepareInlineable.registerInlineInfo(cls, wrappedMembersToInline)
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)

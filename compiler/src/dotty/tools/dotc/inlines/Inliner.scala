@@ -580,7 +580,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             case thistpe: ThisType =>
               val cls = thistpe.cls
               if cls.isInlineTrait then
-                integrate(This(ctx.owner.asClass), cls)
+                integrate(This(ctx.owner.asClass).withSpan(call.span), cls)
               else thisProxy.get(cls) match {
                 case Some(t) =>
                   val thisRef = ref(t).withSpan(call.span)

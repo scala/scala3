@@ -1050,10 +1050,27 @@ class TreeUnpickler(reader: TastyReader,
              .map(_.changeOwner(localDummy, constr.symbol)))
         else parents
 
+      val statsStart = currentAddr
       val lazyStats = readLater(end, rdr => {
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
+      if cls.isInlineTrait then
+        cls.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
+          val ctx1 = localContext(cls)(using ctx0).addMode(Mode.ReadPositions)
+          inContext(sourceChangeContext(Addr(0))(using ctx1)) {
+            // avoids space leaks by not capturing the current context
+
+            val fork = forkAt(statsStart)
+            val stats = fork.readIndexedStats(localDummy, end)
+            val inlinedMembers = (tparams ++ vparams ++ stats).filter { stat =>
+              !(stat.isInstanceOf[TypeDef] && cls.typeParams.contains(stat.symbol)) // !isConstructor
+              && !stat.symbol.is(Deferred)
+              && !stat.symbol.isAllOf(Inline)
+            }
+            Block(inlinedMembers, unitLiteral).withSpan(cls.span)
+          }
+        })
       defn.patchStdLibClass(cls)
       NamerOps.addConstructorProxies(cls)
       setSpan(start,

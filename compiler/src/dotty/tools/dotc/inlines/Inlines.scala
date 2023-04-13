@@ -3,7 +3,8 @@ package dotc
 package inlines
 
 import ast.*, core.*
-import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
+import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*, TypeOps.*
+import Names.Name
 import StdNames.{str, nme, tpnme}
 import transform.SymUtils._
 import typer.*
@@ -471,8 +472,7 @@ object Inlines:
 
     def expandDefs(): List[Tree] =
       val Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
-      val s = stats.map(expandStat)
-      s.map(inlined(_)._2)
+      stats.map(expandStat).map(inlined(_)._2)
     end expandDefs
 
     override protected def registerType(tpe: Type): Unit = tpe match {
@@ -483,51 +483,30 @@ object Inlines:
       case _ => super.registerType(tpe)
     }
 
-    private val argsMap: Map[Names.Name, untpd.Tree] =
-      /*
-       * Consider the parent `new A[String](1)("A")` with signature `inline trait A[T](x: Int)(y: T)`.
-       * The `parent` tree is "right-to-left": Apply(Apply(TypeApply(..., String), 1), "A")
-       * The `info` tree is "left-to-right": PolyType(T, ..., MethodType(x, Int, MethodType(y, T, ...)))
-       * This recursive solution goes as deep as possible in the tree, then matches arguments with their
-       * names in a bottom-up fashion.
-       */
-      def rec(tree: Tree, info: Type, acc: Map[Names.Name, untpd.Tree]): (Option[Type], Map[Names.Name, untpd.Tree]) =
-        tree match {
-          case Apply(tree1, args) => rec(tree1, info, acc) match {
-            case (Some(info1), acc1) => info1 match {
-              case MethodTpe(paramNames, _, info2) if paramNames.length == args.length =>
-                (Some(info2), acc1 ++ paramNames.zip(args).toMap)
-              case _ =>
-                report.error(s"mismatch between Apply ${tree.show} and info ${info1}", parent.srcPos)
-                (None, acc1)
-            }
-            case res => res
-          }
-          case TypeApply(tree1, tpes) => rec(tree1, info, acc) match {
-            case (Some(info1), acc1) => info1 match {
-              case PolyType(lambdaParams, info2) if lambdaParams.length == tpes.length =>
-                (Some(info2), acc1)
-              case _ =>
-                report.error(s"mismatch between TypeApply ${tree.show} and info ${info1}", parent.srcPos)
-                (None, acc1)
-            }
-            case res => res
-          }
-          case _ => (Some(info), acc)
-        }
+    private val argsMap: Map[Name, Tree] =
+      def allArgs(tree: Tree): List[List[Tree]] = tree match
+        case Apply(fun, args) => args :: allArgs(fun)
+        case TypeApply(fun, targs) => targs :: allArgs(fun)
+        case AppliedTypeTree(_, targs) => targs :: Nil
+        case _ => Nil
+      def allParams(info: Type): List[List[Name]] = info match
+        case mt: MethodType => mt.paramNames :: allParams(mt.resultType)
+        case pt: PolyType => pt.paramNames :: allParams(pt.resultType)
+        case _ => Nil
+      val info =
+        if parent.symbol.isClass then parent.symbol.primaryConstructor.info
+        else parent.symbol.info
+      allParams(info).flatten.zip(allArgs(parent).reverse.flatten).toMap
 
-      parent match {
-        case _: GenericApply =>
-          val (remainingInfo, map) = rec(parent, parent.symbol.info, Map.empty)
-          remainingInfo match {
-            case Some(MethodType(paramNames)) =>
-              report.error(s"could not match the following parameters with their values: ${paramNames.map(_.show).mkString(", ")}", parent.srcPos)
-            case _ =>
-          }
-          map
-        case _ => Map.empty
-      }
-    end argsMap
+    private val substituteTypeParams = new TypeMap {
+      override def apply(t: Type): Type = t match
+        case TypeRef(ths: ThisType, sym: Symbol) if ths.cls == parentSym =>
+          argsMap(sym.name).tpe
+        case t => mapOver(t)
+    }
+    private val substituteTypeParamsInTree = new TreeTypeMap(
+      typeMap = substituteTypeParams
+    )
 
     private def expandStat(stat: untpd.Tree): untpd.Tree =
       val sym = stat.symbol
@@ -537,22 +516,21 @@ object Inlines:
           stat
         case stat: ValDef =>
           val vdef = cloneValDef(stat)
+          vdef.symbol.info = substituteTypeParams(sym.info)
+          if !sym.is(Private) then
+            vdef.symbol.setFlag(Override)
           val vdef1 =
             if sym.is(ParamAccessor) then
               vdef.symbol.resetFlag(ParamAccessor)
               cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
             else
               vdef
-          if !sym.is(Private) then
-            vdef1.symbol.setFlag(Override)
-          vdef1 // TODO keep rhs? Can we do a single ValOrDefDef case using cloneStat?
+          substituteTypeParamsInTree(vdef1)
         case stat: DefDef =>
           val ddef = cloneDefDef(stat)
-          if !sym.is(Private) then
-            ddef.symbol.setFlag(Override)
-          if sym.is(Mutable) then
-            report.error("implementation restriction: inline traits cannot have mutable variables", stat.srcPos)
-          ddef
+          ddef.symbol.info = substituteTypeParams(sym.info)
+          if !sym.is(Private) then ddef.symbol.setFlag(Override)
+          substituteTypeParamsInTree(ddef)
         case stat @ TypeDef(_, impl: Template) =>
           report.error("inline traits do not handle inner classes yet", stat.srcPos)
           cloneClass(stat, impl)
@@ -574,7 +552,7 @@ object Inlines:
         val inlinedInfo = ClassInfo(prefix, cls, declaredParents, Scopes.newScope, selfInfo) // TODO adapt parents
         clDef.symbol.copy(owner = ctx.owner, info = inlinedInfo, coord = spanCoord(parent.span)).entered.asClass
       val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
-        (cloneDefDef(impl.constr), impl.body.map(cloneStat))
+        (clonePrimaryConstructorDefDef(impl.constr), impl.body.map(cloneStat))
       }
       tpd.ClassDefWithParents(inlinedCls, constr, impl.parents, body).withSpan(clDef.span) // TODO adapt parents
 
@@ -591,6 +569,10 @@ object Inlines:
         val newParamSyms = paramss.flatten.map(_.symbol)
         inlinedRhs(ddef.rhs.subst(oldParamSyms, newParamSyms)) // TODO clone local classes?
       tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(parent.span)
+
+    private def clonePrimaryConstructorDefDef(ddef: DefDef)(using Context): DefDef =
+      val constr = cloneDefDef(ddef)
+      cpy.DefDef(constr)(tpt = TypeTree(defn.UnitType), rhs = EmptyTree)
 
     private def cloneValDef(vdef: ValDef)(using Context): ValDef =
       val inlinedSym = vdef.symbol.copy(owner = ctx.owner, coord = spanCoord(parent.span)).entered

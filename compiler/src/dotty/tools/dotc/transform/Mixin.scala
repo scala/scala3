@@ -288,7 +288,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     def setters(mixin: ClassSymbol): List[Tree] =
       val mixinSetters = mixin.info.decls.filter { sym =>
-        sym.isSetter && (!wasOneOf(sym, Deferred) || sym.name.is(TraitSetterName))
+        sym.isSetter && (!wasOneOf(sym, Deferred) || sym.name.is(TraitSetterName)) && !sym.owner.isAllOf(InlineTrait)
       }
       for (setter <- mixinSetters)
       yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
