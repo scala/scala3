@@ -3932,7 +3932,7 @@ object Types {
     type This = MethodType
 
     val _paramInfos: List[Type] | Null = paramInfosExp(this: @unchecked)
-    def paramInfos = if _paramInfos != null then _paramInfos else tempParamInfos
+    override def paramInfos: List[Type] = if _paramInfos != null then _paramInfos else tempParamInfos.uncheckedNN
 
     val resType: Type = resultTypeExp(this: @unchecked)
     assert(resType.exists)
