@@ -60,7 +60,7 @@ class Revaluing(u: Int) { def f = u } // OK
 
 case class CaseyKasem(k: Int)        // OK
 
-case class CaseyAtTheBat(k: Int)(s: String)        // error
+case class CaseyAtTheBat(k: Int)(s: String)        // ok
 
 trait Ignorance {
   def f(readResolve: Int) = answer           // error
