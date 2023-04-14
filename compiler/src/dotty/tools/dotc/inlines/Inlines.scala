@@ -501,19 +501,23 @@ object Inlines:
     private val substituteTypeParams = new TypeMap {
       override def apply(t: Type): Type = t match
         case TypeRef(ths: ThisType, sym: Symbol) if ths.cls == parentSym =>
-          argsMap(sym.name).tpe
+          argsMap.get(sym.name).map(_.tpe).getOrElse(t)
         case t => mapOver(t)
     }
     private val substituteTypeParamsInTree = new TreeTypeMap(
       typeMap = substituteTypeParams
     )
 
+    private val specializedType = new DeepTypeMap {
+      def apply(t: Type) = t match {
+        case t: TypeRef => argsMap.get(t.name).map(_.tpe.stripTypeVar).getOrElse(t)
+        case t => mapOver(t)
+      }
+    }
+
     private def expandStat(stat: untpd.Tree): untpd.Tree =
       val sym = stat.symbol
       stat match
-        case stat: ValDef if sym.isOneOf(Given | Implicit) =>
-          report.error("implementation restriction: inline traits cannot have implicit or given variables", stat.srcPos)
-          stat
         case stat: ValDef =>
           val vdef = cloneValDef(stat)
           vdef.symbol.info = substituteTypeParams(sym.info)
@@ -530,9 +534,14 @@ object Inlines:
           val ddef = cloneDefDef(stat)
           ddef.symbol.info = substituteTypeParams(sym.info)
           if !sym.is(Private) then ddef.symbol.setFlag(Override)
-          substituteTypeParamsInTree(ddef)
+          val ddef1 =
+            if sym.is(ParamAccessor) then
+              ddef.symbol.resetFlag(ParamAccessor)
+              cpy.DefDef(ddef)(rhs = unitLiteral)
+            else
+              ddef
+          substituteTypeParamsInTree(ddef1)
         case stat @ TypeDef(_, impl: Template) =>
-          report.error("inline traits do not handle inner classes yet", stat.srcPos)
           cloneClass(stat, impl)
         case stat: TypeDef =>
           val tdef = cloneTypeDef(stat)
@@ -567,7 +576,7 @@ object Inlines:
       def rhsFun(paramss: List[List[Tree]]): Tree =
         val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
         val newParamSyms = paramss.flatten.map(_.symbol)
-        inlinedRhs(ddef.rhs.subst(oldParamSyms, newParamSyms)) // TODO clone local classes?
+        inlinedRhs(ddef.rhs.subst(oldParamSyms, newParamSyms).changeOwner(ddef.symbol, inlinedSym)) // TODO clone local classes?
       tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(parent.span)
 
     private def clonePrimaryConstructorDefDef(ddef: DefDef)(using Context): DefDef =
@@ -575,8 +584,8 @@ object Inlines:
       cpy.DefDef(constr)(tpt = TypeTree(defn.UnitType), rhs = EmptyTree)
 
     private def cloneValDef(vdef: ValDef)(using Context): ValDef =
-      val inlinedSym = vdef.symbol.copy(owner = ctx.owner, coord = spanCoord(parent.span)).entered
-      tpd.ValDef(inlinedSym.asTerm, inlinedRhs(vdef.rhs)).withSpan(parent.span) // TODO clone local classes?
+      val inlinedSym = vdef.symbol.copy(owner = ctx.owner, info = specializedType(vdef.symbol.info), coord = spanCoord(parent.span)).entered
+      tpd.ValDef(inlinedSym.asTerm, inlinedRhs(vdef.rhs.changeOwner(vdef.symbol, inlinedSym))).withSpan(parent.span) // TODO clone local classes?
 
     private def cloneTypeDef(tdef: TypeDef)(using Context): TypeDef =
       val inlinedSym = tdef.symbol.copy(owner = ctx.owner, coord = spanCoord(parent.span)).entered

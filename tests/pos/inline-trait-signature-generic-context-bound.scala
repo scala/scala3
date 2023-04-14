@@ -1,4 +1,4 @@
-inline trait A[T: List] // error
+inline trait A[T: List]
 
 given List[Int] = Nil
 class B extends A

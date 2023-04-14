@@ -3,4 +3,4 @@ inline trait A:
   def foo(implicit s: String): String = s + s
 
 class B extends A:
-  def f = foo()
+  def f = foo
