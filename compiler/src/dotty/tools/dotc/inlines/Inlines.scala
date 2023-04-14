@@ -473,7 +473,7 @@ object Inlines:
     def expandDefs(): List[Tree] =
       val tpd.Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
       val inlinedSymbols = stats.map(stat => inlinedMember(stat.symbol))
-      stats.zip(inlinedSymbols).map(expandStat).map(inlined(_)._2)
+      stats.zip(inlinedSymbols).map(expandStat)//.map(inlined(_)._2)
     end expandDefs
 
     private val argsMap: Map[Name, Tree] =
@@ -537,17 +537,19 @@ object Inlines:
         inlinedRhs(ddef.rhs.subst(oldParamSyms, newParamSyms).changeOwner(ddef.symbol, inlinedSym))
       tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(parent.span)
 
-    private def inlinedClassDef(clDef: TypeDef, impl: Template, inlinedCls: ClassSymbol)(using Context): TypeDef =
+    private def inlinedClassDef(clDef: TypeDef, impl: Template, inlinedCls: ClassSymbol)(using Context): Tree =
       val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
         (clonePrimaryConstructorDefDef(impl.constr), impl.body.map(cloneStat))
       }
-      tpd.ClassDefWithParents(inlinedCls, constr, impl.parents, body).withSpan(clDef.span) // TODO adapt parents
+      inlined(tpd.ClassDefWithParents(inlinedCls, constr, impl.parents, body))._2.withSpan(clDef.span) // TODO adapt parents
 
     private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
       tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
 
     private def inlinedRhs(rhs: Tree): Inlined =
-      Inlined(tpd.ref(parentSym), Nil, rhs).withSpan(parent.span)
+      val (bindings, inlinedRhs) = inlined(rhs)
+      // assert(bindings.isEmpty)
+      Inlined(tpd.ref(parentSym), Nil, inlinedRhs).withSpan(parent.span)
 
     private def cloneClass(clDef: untpd.TypeDef, impl: Template)(using Context): TypeDef =
       val inlinedCls: ClassSymbol =
