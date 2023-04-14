@@ -471,8 +471,9 @@ object Inlines:
     import Inlines.*
 
     def expandDefs(): List[Tree] =
-      val Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
-      stats.map(expandStat).map(inlined(_)._2)
+      val tpd.Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
+      val inlinedSymbols = stats.map(stat => inlinedMember(stat.symbol))
+      stats.zip(inlinedSymbols).map(expandStat).map(inlined(_)._2)
     end expandDefs
 
     private val argsMap: Map[Name, Tree] =
@@ -497,37 +498,53 @@ object Inlines:
         case t => mapOver(t)
     }
 
-    private def expandStat(stat: untpd.Tree): Tree =
-      val sym = stat.symbol
-      stat match
-        case stat: ValDef =>
-          val vdef = cloneValDef(stat)
-          if !sym.is(Private) then
-            vdef.symbol.setFlag(Override)
-          val vdef1 =
-            if sym.is(ParamAccessor) then
-              vdef.symbol.resetFlag(ParamAccessor)
-              cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
-            else
-              vdef
-          vdef1
-        case stat: DefDef =>
-          val ddef = cloneDefDef(stat)
-          if !sym.is(Private) then ddef.symbol.setFlag(Override)
-          val ddef1 =
-            if sym.is(ParamAccessor) then
-              ddef.symbol.resetFlag(ParamAccessor)
-              cpy.DefDef(ddef)(rhs = unitLiteral)
-            else
-              ddef
-          ddef1
-        case stat @ TypeDef(_, impl: Template) =>
-          cloneClass(stat, impl)
-        case stat: TypeDef =>
-          val tdef = cloneTypeDef(stat)
-          tdef.symbol.setFlag(Override)
-          tdef
-    end expandStat
+    private def expandStat(stat: tpd.Tree, inlinedSym: Symbol): tpd.Tree = stat match
+      case stat: ValDef if stat.symbol.is(ParamAccessor) =>
+        tpd.ValDef(inlinedSym.asTerm, argsMap(inlinedSym.name.asTermName)).withSpan(parent.span)
+      case stat: ValDef =>
+        inlinedValDef(stat, inlinedSym)
+      case stat: DefDef if stat.symbol.isSetter =>
+        tpd.DefDef(inlinedSym.asTerm, unitLiteral).withSpan(parent.span)
+      case stat: DefDef =>
+        inlinedDefDef(stat, inlinedSym)
+      case stat @ TypeDef(_, impl: Template) =>
+        inlinedClassDef(stat, impl, inlinedSym.asClass)
+      case stat: TypeDef =>
+        inlinedTypeDef(stat, inlinedSym)
+
+    private def inlinedMember(sym: Symbol)(using Context): Symbol =
+      if sym.isClass then
+        val ClassInfo(prefix, cls, declaredParents, scope, selfInfo) = sym.info: @unchecked
+        val inlinedInfo = ClassInfo(prefix, cls, declaredParents, Scopes.newScope, selfInfo) // TODO adapt parents
+        sym.copy(owner = ctx.owner, info = inlinedInfo, coord = spanCoord(parent.span)).entered.asClass
+      else
+        var flags = sym.flags
+        if sym.isType || !sym.is(Private) then flags |= Override
+        if !sym.isType && sym.is(ParamAccessor) then flags &~= ParamAccessor
+        sym.copy(
+          owner = ctx.owner,
+          flags = flags,
+          info = substituteTypeParams(sym.info),
+          coord = spanCoord(parent.span)).entered
+
+    private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
+      tpd.ValDef(inlinedSym.asTerm, inlinedRhs(vdef.rhs.changeOwner(vdef.symbol, inlinedSym))).withSpan(parent.span)
+
+    private def inlinedDefDef(ddef: DefDef, inlinedSym: Symbol)(using Context): DefDef =
+      def rhsFun(paramss: List[List[Tree]]): Tree =
+        val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
+        val newParamSyms = paramss.flatten.map(_.symbol)
+        inlinedRhs(ddef.rhs.subst(oldParamSyms, newParamSyms).changeOwner(ddef.symbol, inlinedSym))
+      tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(parent.span)
+
+    private def inlinedClassDef(clDef: TypeDef, impl: Template, inlinedCls: ClassSymbol)(using Context): TypeDef =
+      val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
+        (clonePrimaryConstructorDefDef(impl.constr), impl.body.map(cloneStat))
+      }
+      tpd.ClassDefWithParents(inlinedCls, constr, impl.parents, body).withSpan(clDef.span) // TODO adapt parents
+
+    private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
+      tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
 
     private def inlinedRhs(rhs: Tree): Inlined =
       Inlined(tpd.ref(parentSym), Nil, rhs).withSpan(parent.span)
