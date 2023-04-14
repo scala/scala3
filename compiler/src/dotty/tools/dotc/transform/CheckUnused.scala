@@ -118,7 +118,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
     unusedDataApply{ ud =>
-      if !tree.rawMods.is(Private) then
+      if !tree.symbol.is(Private) then
         tree.termParamss.flatten.foreach { p =>
           ud.addIgnoredParam(p.symbol)
         }
