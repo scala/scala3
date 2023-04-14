@@ -507,7 +507,7 @@ object Inlines:
       }
     }
 
-    private def expandStat(stat: untpd.Tree): untpd.Tree =
+    private def expandStat(stat: untpd.Tree): Tree =
       val sym = stat.symbol
       stat match
         case stat: ValDef =>
@@ -539,15 +539,12 @@ object Inlines:
           val tdef = cloneTypeDef(stat)
           tdef.symbol.setFlag(Override)
           tdef
-        case _ =>
-          report.error(s"unknown body element of inline ${parentSym.show}: ${stat.show}", stat.srcPos)
-          stat
     end expandStat
 
     private def inlinedRhs(rhs: Tree): Inlined =
       Inlined(tpd.ref(parentSym), Nil, rhs).withSpan(parent.span)
 
-    private def cloneClass(clDef: TypeDef, impl: Template)(using Context): TypeDef =
+    private def cloneClass(clDef: untpd.TypeDef, impl: Template)(using Context): TypeDef =
       val inlinedCls: ClassSymbol =
         val ClassInfo(prefix, cls, declaredParents, scope, selfInfo) = clDef.symbol.info: @unchecked
         val inlinedInfo = ClassInfo(prefix, cls, declaredParents, Scopes.newScope, selfInfo) // TODO adapt parents
