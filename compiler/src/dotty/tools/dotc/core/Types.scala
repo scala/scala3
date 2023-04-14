@@ -118,10 +118,9 @@ object Types {
         if t.mightBeProvisional then
           t.mightBeProvisional = t match
             case t: TypeRef =>
-              !t.currentSymbol.isStatic && {
+              t.currentSymbol.isProvisional || !t.currentSymbol.isStatic && {
                 (t: Type).mightBeProvisional = false // break cycles
-                t.symbol.isProvisional
-                || test(t.prefix, theAcc)
+                test(t.prefix, theAcc)
                 || t.denot.infoOrCompleter.match
                     case info: LazyType => true
                     case info: AliasingBounds => test(info.alias, theAcc)
