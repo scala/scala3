@@ -292,6 +292,17 @@ package foo.test.i17156:
     import b.Xd
     trait Z derives Xd
 
+
+package foo.test.i17175:
+  val continue = true
+  def foo =
+    for {
+      i <- 1.until(10) // OK
+      if continue
+    } {
+      println(i)
+    }
+   
 package foo.test.i17117:
   package example {
     object test1 {
