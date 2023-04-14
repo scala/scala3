@@ -496,23 +496,12 @@ object Inlines:
           argsMap.get(sym.name).map(_.tpe).getOrElse(t)
         case t => mapOver(t)
     }
-    private val substituteTypeParamsInTree = new TreeTypeMap(
-      typeMap = substituteTypeParams
-    )
-
-    private val specializedType = new DeepTypeMap {
-      def apply(t: Type) = t match {
-        case t: TypeRef => argsMap.get(t.name).map(_.tpe.stripTypeVar).getOrElse(t)
-        case t => mapOver(t)
-      }
-    }
 
     private def expandStat(stat: untpd.Tree): Tree =
       val sym = stat.symbol
       stat match
         case stat: ValDef =>
           val vdef = cloneValDef(stat)
-          vdef.symbol.info = substituteTypeParams(sym.info)
           if !sym.is(Private) then
             vdef.symbol.setFlag(Override)
           val vdef1 =
@@ -521,10 +510,9 @@ object Inlines:
               cpy.ValDef(vdef)(rhs = argsMap(sym.name.asTermName))
             else
               vdef
-          substituteTypeParamsInTree(vdef1)
+          vdef1
         case stat: DefDef =>
           val ddef = cloneDefDef(stat)
-          ddef.symbol.info = substituteTypeParams(sym.info)
           if !sym.is(Private) then ddef.symbol.setFlag(Override)
           val ddef1 =
             if sym.is(ParamAccessor) then
@@ -532,7 +520,7 @@ object Inlines:
               cpy.DefDef(ddef)(rhs = unitLiteral)
             else
               ddef
-          substituteTypeParamsInTree(ddef1)
+          ddef1
         case stat @ TypeDef(_, impl: Template) =>
           cloneClass(stat, impl)
         case stat: TypeDef =>
@@ -561,7 +549,7 @@ object Inlines:
       // TODO case tree: TypeDef => cloneTypeDef(tree)
 
     private def cloneDefDef(ddef: DefDef)(using Context): DefDef =
-      val inlinedSym = ddef.symbol.copy(owner = ctx.owner, coord = spanCoord(parent.span)).entered
+      val inlinedSym = ddef.symbol.copy(owner = ctx.owner, info = substituteTypeParams(ddef.symbol.info), coord = spanCoord(parent.span)).entered
       def rhsFun(paramss: List[List[Tree]]): Tree =
         val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
         val newParamSyms = paramss.flatten.map(_.symbol)
@@ -573,7 +561,7 @@ object Inlines:
       cpy.DefDef(constr)(tpt = TypeTree(defn.UnitType), rhs = EmptyTree)
 
     private def cloneValDef(vdef: ValDef)(using Context): ValDef =
-      val inlinedSym = vdef.symbol.copy(owner = ctx.owner, info = specializedType(vdef.symbol.info), coord = spanCoord(parent.span)).entered
+      val inlinedSym = vdef.symbol.copy(owner = ctx.owner, info = substituteTypeParams(vdef.symbol.info), coord = spanCoord(parent.span)).entered
       tpd.ValDef(inlinedSym.asTerm, inlinedRhs(vdef.rhs.changeOwner(vdef.symbol, inlinedSym))).withSpan(parent.span) // TODO clone local classes?
 
     private def cloneTypeDef(tdef: TypeDef)(using Context): TypeDef =
