@@ -8,7 +8,7 @@ object Foo {
   private def f2(a: Int) = default_int // error
   private def f3(a: Int)(using Int) = a // OK
   private def f4(a: Int)(using Int) = default_int // error
-  private def f6(a: Int)(using Int) = summon[Int] // ok
+  private def f6(a: Int)(using Int) = summon[Int] // error
   private def f7(a: Int)(using Int) = summon[Int] + a // OK
   /* --- Trivial method check --- */
   private def g1(x: Int) = 1 // OK

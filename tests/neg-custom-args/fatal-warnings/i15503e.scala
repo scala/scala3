@@ -8,7 +8,7 @@ object Foo {
   private def f2(a: Int) = default_val // error
   private def f3(a: Int)(using Int) = a // OK
   private def f4(a: Int)(using Int) = default_val // error
-  private def f6(a: Int)(using Int) = summon[Int] // ok
+  private def f6(a: Int)(using Int) = summon[Int] // error
   private def f7(a: Int)(using Int) = summon[Int] + a // OK
 }
 
@@ -49,7 +49,7 @@ package foo.test.trivial:
     private def f6(x: Int) = X // OK
     private def f7(x: Int) = Y // OK
     private def f8(x: Int): List[C] = Nil // OK
-    private def f9(x: Int): List[Int] = List(1,2,3,4) // ok
+    private def f9(x: Int): List[Int] = List(1,2,3,4) // error
     private def foo:Int = 32  // OK
     private def f77(x: Int) = foo // error
   }
