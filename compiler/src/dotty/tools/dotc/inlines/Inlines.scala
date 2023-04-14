@@ -475,14 +475,6 @@ object Inlines:
       stats.map(expandStat).map(inlined(_)._2)
     end expandDefs
 
-    override protected def registerType(tpe: Type): Unit = tpe match {
-      case tpe: ThisType if tpe.cls.isInlineTrait =>
-        thisInlineTraitProxy(tpe.cls) = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
-        for (param <- tpe.cls.typeParams)
-          paramProxy(param.typeRef) = param.typeRef.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
-      case _ => super.registerType(tpe)
-    }
-
     private val argsMap: Map[Name, Tree] =
       def allArgs(tree: Tree): List[List[Tree]] = tree match
         case Apply(fun, args) => args :: allArgs(fun)

@@ -150,7 +150,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   protected val callTypeArgs = typeArgss(call).flatten
   protected val callValueArgss = termArgss(call)
   protected val inlinedMethod = methPart.symbol
-  protected val inlineCallPrefix =
+  private val inlineCallPrefix =
      qualifier(methPart).orElse(This(inlinedMethod.enclosingClass.asClass))
 
   // Make sure all type arguments to the call are fully determined,
@@ -452,7 +452,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *      references of a method are (we only know the method's type, but that contains TypeParamRefs
    *      and MethodParams, not TypeRefs or TermRefs.
    */
-  protected def registerType(tpe: Type): Unit = tpe match {
+  private def registerType(tpe: Type): Unit = tpe match {
     case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
       val proxyType = inlineCallPrefix.tpe.dealias.tryNormalize match {
@@ -460,6 +460,10 @@ class Inliner(val call: tpd.Tree)(using Context):
         case _ => adaptToPrefix(tpe).widenIfUnstable
       }
       thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
+      for (param <- tpe.cls.typeParams)
+        paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
+    case tpe: ThisType if tpe.cls.isInlineTrait =>
+      thisInlineTraitProxy(tpe.cls) = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
       for (param <- tpe.cls.typeParams)
         paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
     case tpe: NamedType
