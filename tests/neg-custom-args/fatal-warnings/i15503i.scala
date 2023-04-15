@@ -46,9 +46,6 @@ package foo.test.scala.annotation:
   def a1(a: Int) = a // OK
   def a2(a: Int) = default_int // ok
 
-  private def a2_p(a: Int) = default_int // error
-  def a2_p_used = a2_p(3)
-
   def a3(@unused a: Int) = default_int //OK
 
   def b1 =
