@@ -90,7 +90,7 @@ package foo.test.possibleclasses:
     k: Int, // OK
     private val y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int, // error /* But not these */
+    s: Int,
     val t: Int, // OK
     private val z: Int // error
   )
@@ -131,7 +131,7 @@ package foo.test.possibleclasses.withvar:
     k: Int, // OK
     private var y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int, // error /* But not these */
+    s: Int,
     var t: Int, // OK
     private var z: Int // error
   )

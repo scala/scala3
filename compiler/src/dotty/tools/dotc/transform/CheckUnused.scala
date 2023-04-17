@@ -358,7 +358,8 @@ object CheckUnused:
           usedInScope.top += ((sym, sym.isAccessibleAsIdent, name, isDerived))
           usedInScope.top += ((sym.companionModule, sym.isAccessibleAsIdent, name, isDerived))
           usedInScope.top += ((sym.companionClass, sym.isAccessibleAsIdent, name, isDerived))
-          name.map(n => usedInPosition += ((sym.sourcePos, n)))
+          if sym.sourcePos.exists then
+            name.map(n => usedInPosition += ((sym.sourcePos, n)))
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
@@ -473,6 +474,7 @@ object CheckUnused:
         if ctx.settings.WunusedHas.explicits then
           explicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
+            .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
             .filterNot(d => containsSyntheticSuffix(d.symbol))
             .map(d => d.namePos -> WarnTypes.ExplicitParams).toList
         else
