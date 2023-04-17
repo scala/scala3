@@ -7,6 +7,7 @@ package derivation {
       ValueOf["a"], ValueOf["a"], ValueOf["a"], ValueOf["a"], ValueOf["a"],
       ValueOf["a"], ValueOf["a"], ValueOf["a"] //Commenting out the last one here fixes the compile error
     )]
+  val test2 = Helpers.summon23[ValueOf["a"]]
 }
 @main def Test =
   def assertions(list: List[ValueOf["a"]]): Unit =
@@ -19,3 +20,4 @@ package derivation {
       "a", "a", "a"
     ))
   assertions(derivation.test.toList)
+  assertions(derivation.test2.toList)
