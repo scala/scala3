@@ -25,7 +25,7 @@ import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.StdNames.nme
-
+import scala.math.Ordering
 
 /**
  * A compiler phase that checks for unused imports or definitions
@@ -33,22 +33,15 @@ import dotty.tools.dotc.core.StdNames.nme
  * Basically, it gathers definition/imports and their usage. If a
  * definition/imports does not have any usage, then it is reported.
  */
-class CheckUnused extends MiniPhase:
-  import CheckUnused.UnusedData
-
-  /**
-   * The key used to retrieve the "unused entity" analysis metadata,
-   * from the compilation `Context`
-   */
-  private val _key = Property.Key[UnusedData]
+class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _key: Property.Key[CheckUnused.UnusedData]) extends MiniPhase:
+  import CheckUnused.*
+  import UnusedData.*
 
   private def unusedDataApply[U](f: UnusedData => U)(using Context): Context =
     ctx.property(_key).foreach(f)
     ctx
-  private def getUnusedData(using Context): Option[UnusedData] =
-    ctx.property(_key)
 
-  override def phaseName: String = CheckUnused.phaseName
+  override def phaseName: String = CheckUnused.phaseNamePrefix + suffix
 
   override def description: String = CheckUnused.description
 
@@ -60,13 +53,21 @@ class CheckUnused extends MiniPhase:
 
   override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
     val data = UnusedData()
+    tree.getAttachment(_key).foreach(oldData =>
+      data.unusedAggregate = oldData.unusedAggregate
+    )
     val fresh = ctx.fresh.setProperty(_key, data)
+    tree.putAttachment(_key, data)
     fresh
 
   // ========== END + REPORTING ==========
 
   override def transformUnit(tree: tpd.Tree)(using Context): tpd.Tree =
-    unusedDataApply(ud => reportUnused(ud.getUnused))
+    unusedDataApply { ud =>
+      ud.finishAggregation()
+      if(phaseMode == PhaseMode.Report) then
+        ud.unusedAggregate.foreach(reportUnused)
+    }
     tree
 
   // ========== MiniPhase Prepare ==========
@@ -252,30 +253,34 @@ class CheckUnused extends MiniPhase:
   private def traverseAnnotations(sym: Symbol)(using Context): Unit =
     sym.denot.annotations.foreach(annot => traverser.traverse(annot.tree))
 
+
   /** Do the actual reporting given the result of the anaylsis */
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
-    import CheckUnused.WarnTypes
-    res.warnings.foreach { s =>
+    res.warnings.toList.sortBy(_.pos.line)(using Ordering[Int]).foreach { s =>
       s match
-        case (t, WarnTypes.Imports) =>
+        case UnusedSymbol(t, _, WarnTypes.Imports) =>
           report.warning(s"unused import", t)
-        case (t, WarnTypes.LocalDefs) =>
+        case UnusedSymbol(t, _, WarnTypes.LocalDefs) =>
           report.warning(s"unused local definition", t)
-        case (t, WarnTypes.ExplicitParams) =>
+        case UnusedSymbol(t, _, WarnTypes.ExplicitParams) =>
           report.warning(s"unused explicit parameter", t)
-        case (t, WarnTypes.ImplicitParams) =>
+        case UnusedSymbol(t, _, WarnTypes.ImplicitParams) =>
           report.warning(s"unused implicit parameter", t)
-        case (t, WarnTypes.PrivateMembers) =>
+        case UnusedSymbol(t, _, WarnTypes.PrivateMembers) =>
           report.warning(s"unused private member", t)
-        case (t, WarnTypes.PatVars) =>
+        case UnusedSymbol(t, _, WarnTypes.PatVars) =>
           report.warning(s"unused pattern variable", t)
     }
 
 end CheckUnused
 
 object CheckUnused:
-  val phaseName: String = "checkUnused"
+  val phaseNamePrefix: String = "checkUnused"
   val description: String = "check for unused elements"
+
+  enum PhaseMode:
+    case Aggregate
+    case Report
 
   private enum WarnTypes:
     case Imports
@@ -286,18 +291,29 @@ object CheckUnused:
     case PatVars
 
   /**
+   * The key used to retrieve the "unused entity" analysis metadata,
+   * from the compilation `Context`
+   */
+  private val _key = Property.StickyKey[UnusedData]
+
+  class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper", _key)
+
+  class PostInlining extends CheckUnused(PhaseMode.Report, "PostInlining", _key)
+
+  /**
    * A stateful class gathering the infos on :
    * - imports
    * - definitions
    * - usage
    */
   private class UnusedData:
-    import dotty.tools.dotc.transform.CheckUnused.UnusedData.UnusedResult
     import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack}
-    import UnusedData.ScopeType
+    import UnusedData.*
 
     /** The current scope during the tree traversal */
-    var currScopeType: MutStack[ScopeType] = MutStack(ScopeType.Other)
+    val currScopeType: MutStack[ScopeType] = MutStack(ScopeType.Other)
+
+    var unusedAggregate: Option[UnusedResult] = None
 
     /* IMPORTS */
     private val impInScope = MutStack(MutSet[tpd.Import]())
@@ -343,6 +359,17 @@ object CheckUnused:
       pushScope(newScope)
       execInNewScope
       popScope()
+
+    def finishAggregation(using Context)(): Unit =
+      val unusedInThisStage = this.getUnused
+      this.unusedAggregate match {
+        case None =>
+          this.unusedAggregate = Some(unusedInThisStage)
+        case Some(prevUnused) =>
+          val intersection = unusedInThisStage.warnings.intersect(prevUnused.warnings)
+          this.unusedAggregate = Some(UnusedResult(intersection))
+      }
+
 
     /**
      * Register a found (used) symbol along with its name
@@ -453,12 +480,13 @@ object CheckUnused:
      *
      * The given `List` is sorted by line and then column of the position
      */
+
     def getUnused(using Context): UnusedResult =
       popScope()
 
       val sortedImp =
         if ctx.settings.WunusedHas.imports || ctx.settings.WunusedHas.strictNoImplicitWarn then
-          unusedImport.map(d => d.srcPos -> WarnTypes.Imports).toList
+          unusedImport.map(d => UnusedSymbol(d.srcPos, d.name, WarnTypes.Imports)).toList
         else
           Nil
       val sortedLocalDefs =
@@ -467,7 +495,7 @@ object CheckUnused:
             .filterNot(d => d.symbol.usedDefContains)
             .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
             .filterNot(d => containsSyntheticSuffix(d.symbol))
-            .map(d => d.namePos -> WarnTypes.LocalDefs).toList
+            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.LocalDefs)).toList
         else
           Nil
       val sortedExplicitParams =
@@ -476,7 +504,7 @@ object CheckUnused:
             .filterNot(d => d.symbol.usedDefContains)
             .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
             .filterNot(d => containsSyntheticSuffix(d.symbol))
-            .map(d => d.namePos -> WarnTypes.ExplicitParams).toList
+            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.ExplicitParams)).toList
         else
           Nil
       val sortedImplicitParams =
@@ -484,7 +512,7 @@ object CheckUnused:
           implicitParamInScope
             .filterNot(d => d.symbol.usedDefContains)
             .filterNot(d => containsSyntheticSuffix(d.symbol))
-            .map(d => d.namePos -> WarnTypes.ImplicitParams).toList
+            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.ImplicitParams)).toList
         else
           Nil
       val sortedPrivateDefs =
@@ -492,7 +520,7 @@ object CheckUnused:
           privateDefInScope
             .filterNot(d => d.symbol.usedDefContains)
             .filterNot(d => containsSyntheticSuffix(d.symbol))
-            .map(d => d.namePos -> WarnTypes.PrivateMembers).toList
+            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PrivateMembers)).toList
         else
           Nil
       val sortedPatVars =
@@ -501,14 +529,14 @@ object CheckUnused:
             .filterNot(d => d.symbol.usedDefContains)
             .filterNot(d => containsSyntheticSuffix(d.symbol))
             .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
-            .map(d => d.namePos -> WarnTypes.PatVars).toList
+            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PatVars)).toList
         else
           Nil
       val warnings = List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams, sortedPrivateDefs, sortedPatVars).flatten.sortBy { s =>
-        val pos = s._1.sourcePos
+        val pos = s.pos.sourcePos
         (pos.line, pos.column)
       }
-      UnusedResult(warnings, Nil)
+      UnusedResult(warnings.toSet)
     end getUnused
     //============================ HELPERS ====================================
 
@@ -707,7 +735,11 @@ object CheckUnused:
           case _:tpd.Block => Local
           case _ => Other
 
+      case class UnusedSymbol(pos: SrcPos, name: Name, warnType: WarnTypes)
       /** A container for the results of the used elements analysis */
-      case class UnusedResult(warnings: List[(dotty.tools.dotc.util.SrcPos, WarnTypes)], usedImports: List[(tpd.Import, untpd.ImportSelector)])
+      case class UnusedResult(warnings: Set[UnusedSymbol])
+      object UnusedResult:
+        val Empty = UnusedResult(Set.empty)
+
 end CheckUnused
 
