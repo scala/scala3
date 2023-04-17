@@ -51,7 +51,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
         if level == 0 then tp else getQuoteTypeTags.getTagRef(prefix)
       case _: NamedType | _: ThisType | NoPrefix =>
         if levelInconsistentRootOfPath(tp).exists then
-          tryHeal(tp.symbol, tp, pos)
+          tryHeal(tp)
         else
           tp
       case _ =>
@@ -82,7 +82,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
    *  reference to a type alias containing the equivalent of `${summon[quoted.Type[T]]}`.
    *  Emits an error if `T` cannot be healed and returns `T`.
    */
-  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos): Type = {
+  protected def tryHeal(tp: TypeRef): Type = {
     val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
     val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
     tag.tpe match

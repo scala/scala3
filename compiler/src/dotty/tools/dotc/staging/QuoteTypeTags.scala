@@ -27,10 +27,10 @@ object QuoteTypeTags {
 class QuoteTypeTags(span: Span)(using Context) {
   import tpd.*
 
-  private val tags = collection.mutable.LinkedHashMap.empty[Symbol, TypeDef]
+  private val tags = collection.mutable.LinkedHashMap.empty[TermRef, TypeDef]
 
   def getTagRef(spliced: TermRef): TypeRef = {
-    val typeDef = tags.getOrElseUpdate(spliced.symbol, mkTagSymbolAndAssignType(spliced))
+    val typeDef = tags.getOrElseUpdate(spliced, mkTagSymbolAndAssignType(spliced))
     typeDef.symbol.typeRef
   }
 
@@ -42,7 +42,7 @@ class QuoteTypeTags(span: Span)(using Context) {
     val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs, EmptyTree)
     val local = newSymbol(
       owner = ctx.owner,
-      name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_").toTermName).toTypeName,
+      name = UniqueName.fresh(rhs.tpe.dealias.typeSymbol.name.toTypeName),
       flags = Synthetic,
       info = TypeAlias(splicedTree.tpe.select(tpnme.Underlying)),
       coord = span).asType

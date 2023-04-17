@@ -36,8 +36,9 @@ class Staging extends MacroTransform {
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
           val checker = new CrossStageSafety {
-            override protected def healType(pos: SrcPos)(using Context) = new HealType(pos) {
-              override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos): TypeRef = {
+            override protected def healType(pos: SrcPos)(tpe: Type)(using Context) = new HealType(pos) {
+              override protected def tryHeal(tp: TypeRef): TypeRef = {
+                val sym = tp.symbol
                 def symStr =
                   if (sym.is(ModuleClass)) sym.sourceModule.show
                   else i"${sym.name}.this"
@@ -51,7 +52,7 @@ class Staging extends MacroTransform {
 
                 tp
               }
-            }
+            }.apply(tpe)
           }
           checker.transform(tree)
         case _ =>
