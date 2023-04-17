@@ -52,3 +52,6 @@ package foo.test.trivial:
     def f77(x: Int) = foo // error
   }
   object Y
+
+package foo.test.i16955:
+  class S(var r: String) // OK

@@ -126,6 +126,49 @@ package foo.test.possibleclasses:
     def a = k + y + s + t + z
   }
 
+package foo.test.possibleclasses.withvar:
+  case class AllCaseClass(
+    k: Int, // OK
+    private var y: Int // OK /* Kept as it can be taken from pattern */
+  )(
+    s: Int, // error /* But not these */
+    var t: Int, // OK
+    private var z: Int // error
+  )
+
+  case class AllCaseUsed(
+    k: Int, // OK
+    private var y: Int // OK
+  )(
+    s: Int, // OK
+    var t: Int, // OK
+    private var z: Int // OK
+  ) {
+    def a = k + y + s + t + z
+  }
+
+  class AllClass(
+    k: Int, // error
+    private var y: Int // error
+  )(
+    s: Int, // error
+    var t: Int, // OK
+    private var z: Int // error
+  )
+
+  class AllUsed(
+    k: Int, // OK
+    private var y: Int // OK
+  )(
+    s: Int, // OK
+    var t: Int, // OK
+    private var z: Int // OK
+  ) {
+    def a = k + y + s + t + z
+  }
+
+
+
 package foo.test.from.i16675:
   case class PositiveNumber private (i: Int) // OK
   object PositiveNumber:
