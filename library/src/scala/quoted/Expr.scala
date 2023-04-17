@@ -218,14 +218,13 @@ object Expr {
     val tupleTpe = tupleTypeFromSeq(seq)
     tupleTpe.asType match
       case '[tpe] =>
-        '{ Tuple.fromIArray(IArray(${Varargs(seq)}: _*)).asInstanceOf[tpe & Tuple] }
+        '{ Tuple.fromIArray(IArray(${Varargs(seq)}*)).asInstanceOf[tpe & Tuple] }
 
   private def tupleTypeFromSeq(seq: Seq[Expr[Any]])(using Quotes): quotes.reflect.TypeRepr =
     import quotes.reflect.*
     val consRef = Symbol.classSymbol("scala.*:").typeRef
     seq.foldLeft(TypeRepr.of[EmptyTuple]) { (ts, expr) =>
-      expr match
-        case '{ $e: t } => AppliedType(consRef, TypeRepr.of[t] :: ts :: Nil)
+      AppliedType(consRef, expr.asTerm.tpe :: ts :: Nil)
     }
 
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
