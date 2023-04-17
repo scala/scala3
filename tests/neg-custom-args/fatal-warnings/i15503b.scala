@@ -75,7 +75,7 @@ package foo.scala2.tests:
 
   object Types {
     def l1() = {
-      object HiObject { def f = this } // error
+      object HiObject { def f = this } // OK
       class Hi { // error
         def f1: Hi = new Hi
         def f2(x: Hi) = x
