@@ -170,9 +170,9 @@ object Inlines:
     tree2
   end inlineCall
 
-  def inlineParentTrait(parent: tpd.Tree)(using Context): List[Tree] =
+  def inlineParentTrait(parent: tpd.Tree, childOverrideDecls: Set[Symbol])(using Context): List[Tree] =
     val traitSym = if parent.symbol.isConstructor then parent.symbol.owner else parent.symbol
-    if traitSym.isInlineTrait then InlineParentTrait(parent, traitSym).expandDefs()
+    if traitSym.isInlineTrait then InlineParentTrait(parent, traitSym, childOverrideDecls).expandDefs()
     else Nil
 
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
@@ -466,14 +466,15 @@ object Inlines:
     end expand
   end InlineCall
 
-  private class InlineParentTrait(parent: tpd.Tree, parentSym: Symbol)(using Context) extends Inliner(parent):
+  private class InlineParentTrait(parent: tpd.Tree, parentSym: Symbol, overriddenDecls: Set[Symbol])(using Context) extends Inliner(parent):
     import tpd._
     import Inlines.*
 
     def expandDefs(): List[Tree] =
       val tpd.Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
-      val inlinedSymbols = stats.map(stat => inlinedMember(stat.symbol))
-      stats.zip(inlinedSymbols).map(expandStat)//.map(inlined(_)._2)
+      val stats1 = stats.filterNot(isMemberOverridden)
+      val inlinedSymbols = stats1.map(stat => inlinedMember(stat.symbol))
+      stats1.zip(inlinedSymbols).map(expandStat)//.map(inlined(_)._2)
     end expandDefs
 
     private val argsMap: Map[Name, Tree] =
@@ -497,6 +498,9 @@ object Inlines:
           argsMap.get(sym.name).map(_.tpe).getOrElse(t)
         case t => mapOver(t)
     }
+
+    private def isMemberOverridden(stat: Tree): Boolean =
+      overriddenDecls.flatMap(_.allOverriddenSymbols).toSet.contains(stat.symbol)
 
     private def expandStat(stat: tpd.Tree, inlinedSym: Symbol): tpd.Tree = stat match
       case stat: ValDef if stat.symbol.is(ParamAccessor) =>

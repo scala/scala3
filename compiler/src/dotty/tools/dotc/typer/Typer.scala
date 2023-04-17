@@ -2668,12 +2668,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else {
       val dummy = localDummy(cls, impl)
       val inlineTraitDefs =
-        if ctx.isAfterTyper then Nil
-        else parents1.flatMap(Inlines.inlineParentTrait)
+        if ctx.isAfterTyper then
+          Nil
+        else
+          val clsDecls = cls.info.decls.toList.toSet
+          parents1.flatMap(parent => Inlines.inlineParentTrait(parent, clsDecls))
       val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1) ::: inlineTraitDefs
 
       if !ctx.isAfterTyper && cls.isInlineTrait then
         def isConstructorType(t: Tree) = t.isInstanceOf[TypeDef] && cls.typeParams.contains(t.symbol)
+        // If the following is changed, remember to adapt TreeUnpickler.scala as well
         val membersToInline = body1.filter { t =>
           !isConstructorType(t)
           && !t.symbol.is(Deferred)
