@@ -518,7 +518,7 @@ object Inlines:
         val inlinedInfo = ClassInfo(prefix, cls, declaredParents, Scopes.newScope, selfInfo) // TODO adapt parents
         sym.copy(owner = ctx.owner, info = inlinedInfo, coord = spanCoord(parent.span)).entered.asClass
       else
-        var flags = sym.flags
+        var flags = sym.flags | Synthetic
         if sym.isType || !sym.is(Private) then flags |= Override
         if !sym.isType && sym.is(ParamAccessor) then flags &~= ParamAccessor
         sym.copy(
