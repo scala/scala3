@@ -19,6 +19,11 @@ p {
   --header-height: calc(8 * var(--base-spacing));
 }
 
+.site-container img{
+  max-width: 100%;
+  height: auto;
+}
+
 /* Scrollbar */
 
 ::-webkit-scrollbar {
