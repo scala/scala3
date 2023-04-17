@@ -574,12 +574,14 @@ object CheckUnused:
       private def shouldNotReportParamOwner(using Context): Boolean =
         if sym.exists then
           val owner = sym.owner
-          trivialDefs(owner) ||
-          owner.is(Flags.Override) ||
+          trivialDefs(owner) || // is a trivial def
           owner.isPrimaryConstructor ||
-          owner.annotations.exists (
+          owner.annotations.exists ( // @depreacated
             _.symbol == ctx.definitions.DeprecatedAnnot
-          )
+          ) ||
+          owner.isAllOf(Synthetic | PrivateLocal) ||
+          owner.is(Accessor) ||
+          owner.isOverriden
         else
           false
 
@@ -588,6 +590,11 @@ object CheckUnused:
 
       private def everySymbol(using Context): List[Symbol] =
         List(sym, sym.companionClass, sym.companionModule, sym.moduleClass).filter(_.exists)
+
+      /** A function is overriden. Either has `override flags` or parent has a matching member (type and name) */
+      private def isOverriden(using Context): Boolean =
+        sym.is(Flags.Override) ||
+        (if sym.exists then sym.owner.thisType.parents.exists(p => sym.matchingMember(p).exists) else false)
 
     end extension
 
@@ -620,8 +627,8 @@ object CheckUnused:
         val sym = memDef.symbol
         (sym.is(Param) || sym.isAllOf(PrivateParamAccessor | Local, butNot = CaseAccessor)) &&
         !isSyntheticMainParam(sym) &&
-        !sym.shouldNotReportParamOwner &&
-        (!sym.exists || !(sym.owner.isAllOf(Synthetic | PrivateLocal) || sym.owner.is(Accessor)))
+        !sym.shouldNotReportParamOwner
+
 
       private def shouldReportPrivateDef(using Context): Boolean =
         currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
