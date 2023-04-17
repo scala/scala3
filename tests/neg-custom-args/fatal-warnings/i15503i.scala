@@ -194,3 +194,17 @@ package foo.test.i16877:
 
   @ExampleAnnotation(new HashMap()) // OK
   class Test //OK
+
+package foo.test.i16926:
+  def hello(): Unit =
+    for {
+      i <- (0 to 10).toList
+      (a, b) = "hello" -> "world" // OK
+    } yield println(s"$a $b")
+
+package foo.test.i16925:
+  def hello =
+    for {
+      i <- 1 to 2 if true
+      _ = println(i) // OK
+    } yield ()
