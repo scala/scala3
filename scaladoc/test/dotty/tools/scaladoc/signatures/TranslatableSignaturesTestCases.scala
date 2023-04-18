@@ -108,3 +108,5 @@ class ImplicitMembers extends SignatureTest(
 )
 
 class NonScala3Parent extends SignatureTest("nonScala3Parent", SignatureTest.all)
+
+class ExtendsCall extends SignatureTest("extendsCall", SignatureTest.all)
