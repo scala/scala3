@@ -18,9 +18,6 @@ class CrossVersionChecks extends MiniPhase:
 
   override def description: String = CrossVersionChecks.description
 
-  override def runsAfterGroupsOf: Set[String] = Set(FirstTransform.name)
-    // We assume all type trees except TypeTree have been eliminated
-
   // Note: if a symbol has both @deprecated and @migration annotations and both
   // warnings are enabled, only the first one checked here will be emitted.
   // I assume that's a consequence of some code trying to avoid noise by suppressing
@@ -69,18 +66,8 @@ class CrossVersionChecks extends MiniPhase:
         val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
         report.deprecationWarning(em"${sym.showLocated} is deprecated${since}${msg}", pos)
 
-  private def checkExperimentalSignature(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    class Checker extends TypeTraverser:
-      def traverse(tp: Type): Unit =
-        if tp.typeSymbol.isExperimental then
-          Feature.checkExperimentalDef(tp.typeSymbol, pos)
-        else
-          traverseChildren(tp)
-    if !sym.isInExperimentalScope then
-      new Checker().traverse(sym.info)
-
   private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
-    if !sym.isInExperimentalScope then
+    if sym.exists && !sym.isInExperimentalScope then
       for annot <- sym.annotations if annot.symbol.isExperimental do
         Feature.checkExperimentalDef(annot.symbol, annot.tree)
 
@@ -119,13 +106,16 @@ class CrossVersionChecks extends MiniPhase:
   override def transformValDef(tree: ValDef)(using Context): ValDef =
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
-    checkExperimentalSignature(tree.symbol, tree)
     tree
 
   override def transformDefDef(tree: DefDef)(using Context): DefDef =
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
-    checkExperimentalSignature(tree.symbol, tree)
+    tree
+
+  override def transformTypeDef(tree: TypeDef)(using Context): TypeDef =
+    // TODO do we need to check checkDeprecatedOvers(tree)?
+    checkExperimentalAnnots(tree.symbol)
     tree
 
   override def transformIdent(tree: Ident)(using Context): Ident = {
@@ -157,19 +147,14 @@ class CrossVersionChecks extends MiniPhase:
     tree
   }
 
-  override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
-    checkExperimentalAnnots(tree.symbol)
+  override def transformOther(tree: Tree)(using Context): Tree =
+    tree.foreachSubTree { // Find references in type trees and imports
+      case tree: Ident => transformIdent(tree)
+      case tree: Select => transformSelect(tree)
+      case tree: TypeTree => transformTypeTree(tree)
+      case _ =>
+    }
     tree
-  }
-
-  override def transformOther(tree: Tree)(using Context): Tree = tree match
-    case tree: Import =>
-      tree.foreachSubTree {
-        case t: RefTree => checkUndesiredProperties(t.symbol, t.srcPos)
-        case _ =>
-      }
-      tree
-    case _ => tree
 
 end CrossVersionChecks
 
