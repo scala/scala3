@@ -172,7 +172,7 @@ object Inlines:
 
   def inlineParentTrait(parent: tpd.Tree, childOverrideDecls: Set[Symbol])(using Context): List[Tree] =
     val traitSym = if parent.symbol.isConstructor then parent.symbol.owner else parent.symbol
-    if traitSym.isInlineTrait then InlineParentTrait(parent, traitSym, childOverrideDecls).expandDefs()
+    if traitSym.isInlineTrait then InlineParentTrait(parent, traitSym.asClass, childOverrideDecls).expandDefs()
     else Nil
 
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
@@ -466,9 +466,11 @@ object Inlines:
     end expand
   end InlineCall
 
-  private class InlineParentTrait(parent: tpd.Tree, parentSym: Symbol, overriddenDecls: Set[Symbol])(using Context) extends Inliner(parent):
+  private class InlineParentTrait(parent: tpd.Tree, parentSym: ClassSymbol, overriddenDecls: Set[Symbol])(using Context) extends Inliner(parent):
     import tpd._
     import Inlines.*
+
+    private val thisInlineTraitProxy = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
 
     def expandDefs(): List[Tree] =
       val tpd.Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
@@ -476,6 +478,15 @@ object Inlines:
       val inlinedSymbols = stats1.map(stat => inlinedMember(stat.symbol))
       stats1.zip(inlinedSymbols).map(expandStat)//.map(inlined(_)._2)
     end expandDefs
+
+    protected class InlineTraitTypeMap extends InlinerTypeMap {
+      override def apply(t: Type) = t match {
+        case t: ThisType if t.cls == parentSym => thisInlineTraitProxy
+        case t => super.apply(t)
+      }
+    }
+
+    override protected val inlinerTypeMap: InlinerTypeMap = InlineTraitTypeMap()
 
     private val argsMap: Map[Name, Tree] =
       def allArgs(tree: Tree): List[List[Tree]] = tree match
@@ -491,13 +502,6 @@ object Inlines:
         if parent.symbol.isClass then parent.symbol.primaryConstructor.info
         else parent.symbol.info
       allParams(info).flatten.zip(allArgs(parent).reverse.flatten).toMap
-
-    private val substituteTypeParams = new TypeMap {
-      override def apply(t: Type): Type = t match
-        case TypeRef(ths: ThisType, sym: Symbol) if ths.cls == parentSym =>
-          argsMap.get(sym.name).map(_.tpe).getOrElse(t)
-        case t => mapOver(t)
-    }
 
     private def isMemberOverridden(stat: Tree): Boolean =
       overriddenDecls.flatMap(_.allOverriddenSymbols).toSet.contains(stat.symbol)
@@ -528,7 +532,7 @@ object Inlines:
         sym.copy(
           owner = ctx.owner,
           flags = flags,
-          info = substituteTypeParams(sym.info),
+          info = inlinerTypeMap(sym.info),
           coord = spanCoord(parent.span)).entered
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
@@ -572,7 +576,7 @@ object Inlines:
       // TODO case tree: TypeDef => cloneTypeDef(tree)
 
     private def cloneDefDef(ddef: DefDef)(using Context): DefDef =
-      val inlinedSym = ddef.symbol.copy(owner = ctx.owner, info = substituteTypeParams(ddef.symbol.info), coord = spanCoord(parent.span)).entered
+      val inlinedSym = ddef.symbol.copy(owner = ctx.owner, info = inlinerTypeMap(ddef.symbol.info), coord = spanCoord(parent.span)).entered
       def rhsFun(paramss: List[List[Tree]]): Tree =
         val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
         val newParamSyms = paramss.flatten.map(_.symbol)
@@ -584,7 +588,7 @@ object Inlines:
       cpy.DefDef(constr)(tpt = TypeTree(defn.UnitType), rhs = EmptyTree)
 
     private def cloneValDef(vdef: ValDef)(using Context): ValDef =
-      val inlinedSym = vdef.symbol.copy(owner = ctx.owner, info = substituteTypeParams(vdef.symbol.info), coord = spanCoord(parent.span)).entered
+      val inlinedSym = vdef.symbol.copy(owner = ctx.owner, info = inlinerTypeMap(vdef.symbol.info), coord = spanCoord(parent.span)).entered
       tpd.ValDef(inlinedSym.asTerm, inlinedRhs(vdef.rhs.changeOwner(vdef.symbol, inlinedSym))).withSpan(parent.span) // TODO clone local classes?
 
     private def cloneTypeDef(tdef: TypeDef)(using Context): TypeDef =

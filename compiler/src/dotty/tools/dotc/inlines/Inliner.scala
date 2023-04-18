@@ -158,7 +158,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   for arg <- callTypeArgs do
     isFullyDefined(arg.tpe, ForceDegree.flipBottom)
 
-  /** A map from parameter names of the inlineable method or trait to references of the actual arguments.
+  /** A map from parameter names of the inlineable method to references of the actual arguments.
    *  For a type argument this is the full argument type.
    *  For a value argument, it is a reference to either the argument value
    *  (if the argument is a pure expression of singleton type), or to `val` or `def` acting
@@ -169,7 +169,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** A map from parameter names of the inlineable method to spans of the actual arguments */
   private val paramSpan = new mutable.HashMap[Name, Span]
 
-  /** A map from references to (type and value) parameters of the inlineable method or trait
+  /** A map from references to (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
   private[inlines] val paramProxy = new mutable.HashMap[Type, Type]
@@ -187,8 +187,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *
    *  These are different (wrt ==) types but represent logically the same key
    */
-  protected val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
-  protected val thisInlineTraitProxy = new mutable.HashMap[ClassSymbol, ThisType]
+  private val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
 
   /** A buffer for bindings that define proxies for actual arguments */
   private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
@@ -439,11 +438,10 @@ class Inliner(val call: tpd.Tree)(using Context):
 
   private def adaptToPrefix(tp: Type) = tp.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
 
-  /** Populate `thisProxy`, `thisInlineTraitProxy` and `paramProxy` as follows:
+  /** Populate `thisProxy` and `paramProxy` as follows:
    *
    *  1a. If given type refers to a static this, thisProxy binds it to corresponding global reference,
-   *  1b. If given type refers to an inline trait, thisInlineTraitProxy binds it to the corresponding thistype,
-   *  1c. If given type refers to an instance this to a class that is not contained in the
+   *  1b. If given type refers to an instance this to a class that is not contained in the
    *      inline method, create a proxy symbol and bind the thistype to refer to the proxy.
    *      The proxy is not yet entered in `bindingsBuf`; that will come later.
    *  2.  If given type refers to a parameter, make `paramProxy` refer to the entry stored
@@ -453,17 +451,13 @@ class Inliner(val call: tpd.Tree)(using Context):
    *      and MethodParams, not TypeRefs or TermRefs.
    */
   private def registerType(tpe: Type): Unit = tpe match {
-    case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
+    case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) && !tpe.cls.isInlineTrait =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
       val proxyType = inlineCallPrefix.tpe.dealias.tryNormalize match {
         case typeMatchResult if typeMatchResult.exists => typeMatchResult
         case _ => adaptToPrefix(tpe).widenIfUnstable
       }
       thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
-      for (param <- tpe.cls.typeParams)
-        paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
-    case tpe: ThisType if tpe.cls.isInlineTrait =>
-      thisInlineTraitProxy(tpe.cls) = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
       for (param <- tpe.cls.typeParams)
         paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
     case tpe: NamedType
@@ -511,9 +505,23 @@ class Inliner(val call: tpd.Tree)(using Context):
 
   val reducer = new InlineReducer(this)
 
+  protected class InlinerTypeMap extends DeepTypeMap {
+    override def stopAt =
+      if opaqueProxies.isEmpty then StopAt.Static else StopAt.Package
+    def apply(t: Type) = t match {
+      case t: ThisType => thisProxy.get(t.cls).getOrElse(t)
+      case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
+      case t: SingletonType =>
+        if t.termSymbol.isAllOf(InlineParam) then apply(t.widenTermRefExpr)
+        else paramProxy.getOrElse(t, mapOver(t))
+      case t => mapOver(t)
+    }
+  }
+
+  protected val inlinerTypeMap: InlinerTypeMap = InlinerTypeMap()
+
   /** The Inlined node representing the inlined call */
   def inlined(rhsToInline: tpd.Tree): (List[MemberDef], Tree) =
-
     inlining.println(i"-----------------------\nInlining $call\nWith RHS $rhsToInline")
 
     def paramTypess(call: Tree, acc: List[List[Type]]): List[List[Type]] = call match
@@ -565,19 +573,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
     val inliner = new InlinerMap(
-      typeMap =
-        new DeepTypeMap {
-          override def stopAt =
-            if opaqueProxies.isEmpty then StopAt.Static else StopAt.Package
-          def apply(t: Type) = t match {
-            case t: ThisType => thisProxy.get(t.cls).orElse(thisInlineTraitProxy.get(t.cls)).getOrElse(t)
-            case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
-            case t: SingletonType =>
-              if t.termSymbol.isAllOf(InlineParam) then apply(t.widenTermRefExpr)
-              else paramProxy.getOrElse(t, mapOver(t))
-            case t => mapOver(t)
-          }
-        },
+      typeMap = inlinerTypeMap,
       treeMap = {
         case tree: This =>
           tree.tpe match {
@@ -626,7 +622,6 @@ class Inliner(val call: tpd.Tree)(using Context):
     inlining.println(
       i"""inliner transform with
          |thisProxy = ${thisProxy.toList.map(_._1)}%, % --> ${thisProxy.toList.map(_._2)}%, %
-         |thisInlineTraitProxy = ${thisInlineTraitProxy.toList.map(_._1)}%, % --> ${thisInlineTraitProxy.toList.map(_._2)}%, %
          |paramProxy = ${paramProxy.toList.map(_._1.typeSymbol.showLocated)}%, % --> ${paramProxy.toList.map(_._2)}%, %""")
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
