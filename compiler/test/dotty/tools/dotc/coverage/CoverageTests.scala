@@ -23,7 +23,7 @@ class CoverageTests:
 
   private val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   private val rootSrc = Paths.get(userDir, "tests", "coverage")
-
+  
   @Test
   def checkCoverageStatements(): Unit =
     checkCoverageIn(rootSrc.resolve("pos"), false)
