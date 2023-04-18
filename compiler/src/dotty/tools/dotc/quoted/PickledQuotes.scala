@@ -275,9 +275,7 @@ object PickledQuotes {
           QuotesCache(pickled) = tree
 
           // Make sure trees and positions are fully loaded
-          new TreeTraverser {
-            def traverse(tree: Tree)(using Context): Unit = traverseChildren(tree)
-          }.traverse(tree)
+          tree.foreachSubTree(identity)
 
           quotePickling.println(i"**** unpickled quote\n$tree")
 
