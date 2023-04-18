@@ -855,9 +855,9 @@ object Trees {
   }
 
   /** extends parents { self => body }
-   *  @param parentsOrDerived   A list of parents followed by a list of derived classes,
-   *                            if this is of class untpd.DerivingTemplate.
-   *                            Typed templates only have parents.
+   *  @param preParentsOrDerived A list of parents followed by a list of derived classes,
+   *                             if this is of class untpd.DerivingTemplate.
+   *                             Typed templates only have parents.
    */
   case class Template[+T <: Untyped] private[ast] (constr: DefDef[T], private var preParentsOrDerived: LazyTreeList[T], self: ValDef[T], private var preBody: LazyTreeList[T])(implicit @constructorOnly src: SourceFile)
     extends DefTree[T] with WithLazyFields {

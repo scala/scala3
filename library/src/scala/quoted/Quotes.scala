@@ -1429,9 +1429,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  )
        *  ```
        *
-       *  @param owner: owner of the generated `meth` symbol
-       *  @param tpe: Type of the definition
-       *  @param rhsFn: Function that receives the `meth` symbol and the a list of references to the `params`
+       *  @param owner owner of the generated `meth` symbol
+       *  @param tpe Type of the definition
+       *  @param rhsFn Function that receives the `meth` symbol and the a list of references to the `params`
        */
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
     }
@@ -1764,7 +1764,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Returns a type tree reference to the symbol
        *
-       *  @param sym  The type symbol for which we are creating a type tree reference.
+       *  @param typeSymbol The type symbol for which we are creating a type tree reference.
        */
       def ref(typeSymbol: Symbol): TypeTree
     }
