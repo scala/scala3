@@ -66,7 +66,7 @@ trait ClassLikeSupport:
   ): Member =
     def unpackTreeToClassDef(tree: Tree): ClassDef =
       def unpackApply(a: Apply) =
-        a.symbol.owner.tree.symbol.tree match
+        a.symbol.owner.tree match
           case tree: ClassDef => tree
 
       tree match
