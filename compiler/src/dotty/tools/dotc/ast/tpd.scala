@@ -1548,7 +1548,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *
    *  @param trees  the elements the list represented by
    *                the resulting tree should contain.
-   *  @param tpe    the type of the elements of the resulting list.
+   *  @param tpt    the type of the elements of the resulting list.
    *
    */
   def mkList(trees: List[Tree], tpt: Tree)(using Context): Tree =

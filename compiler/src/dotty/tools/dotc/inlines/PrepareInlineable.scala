@@ -256,7 +256,7 @@ object PrepareInlineable {
 
   /** Register inline info for given inlineable method `sym`.
    *
-   *  @param sym         The symbol denotation of the inlineable method for which info is registered
+   *  @param inlined     The symbol denotation of the inlineable method for which info is registered
    *  @param treeExpr    A function that computes the tree to be inlined, given a context
    *                     This tree may still refer to non-public members.
    *  @param ctx         The context to use for evaluating `treeExpr`. It needs

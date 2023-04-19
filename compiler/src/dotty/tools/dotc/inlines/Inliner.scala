@@ -201,7 +201,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  to `buf`.
    *  @param name        the name of the parameter
    *  @param formal      the type of the parameter
-   *  @param arg         the argument corresponding to the parameter
+   *  @param arg0        the argument corresponding to the parameter
    *  @param buf         the buffer to which the definition should be appended
    */
   private[inlines] def paramBindingDef(name: Name, formal: Type, arg0: Tree,

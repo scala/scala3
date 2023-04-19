@@ -1591,7 +1591,6 @@ trait Implicits:
     * implicit search.
     *
     * @param cand The candidate implicit to be explored.
-    * @param pt   The target type for the above candidate.
     * @result     True if this candidate/pt are divergent, false otherwise.
     */
     def checkDivergence(cand: Candidate): Boolean =
