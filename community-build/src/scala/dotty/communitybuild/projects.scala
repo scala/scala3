@@ -766,6 +766,13 @@ object projects:
     dependencies = List(utest, scalacheck)
   )
 
+  lazy val spata = SbtCommunityProject(
+    project = "spata",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(cats, catsEffect3, fs2, scalatest)
+  )
+
 end projects
 
 def allProjects = List(
@@ -848,6 +855,7 @@ def allProjects = List(
   projects.spire,
   projects.http4s,
   projects.parboiled2,
+  projects.spata,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

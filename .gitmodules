@@ -222,3 +222,6 @@
 [submodule "community-build/community-projects/parboiled2"]
 	path = community-build/community-projects/parboiled2
 	url = https://github.com/dotty-staging/parboiled2.git
+[submodule "community-build/community-projects/spata"]
+	path = community-build/community-projects/spata
+	url = https://github.com/fingo/spata.git
