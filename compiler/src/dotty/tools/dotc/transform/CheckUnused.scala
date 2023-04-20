@@ -202,8 +202,11 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     override def traverse(tree: tpd.Tree)(using Context): Unit =
       val newCtx = if tree.symbol.exists then ctx.withOwner(tree.symbol) else ctx
       tree match
-        case imp:tpd.Import =>
+        case imp: tpd.Import =>
           unusedDataApply(_.registerImport(imp))
+          imp.selectors.filter(_.isGiven).map(_.bound).collect {
+            case untpd.TypedSplice(tree1) => tree1
+          }.foreach(traverse(_)(using newCtx))
           traverseChildren(tree)(using newCtx)
         case ident: Ident =>
           prepareForIdent(ident)
@@ -449,13 +452,12 @@ object CheckUnused:
       val used = usedInScope.pop().toSet
       // used imports in this scope
       val imports = impInScope.pop()
-      val kept = used.filterNot { t =>
-        val (sym, isAccessible, optName, isDerived) = t
+      val kept = used.filterNot { (sym, isAccessible, optName, isDerived) =>
         // keep the symbol for outer scope, if it matches **no** import
         // This is the first matching wildcard selector
         var selWildCard: Option[ImportSelector] = None
 
-        val exists = imports.exists { imp =>
+        val matchedExplicitImport = imports.exists { imp =>
           sym.isInImport(imp, isAccessible, optName, isDerived) match
             case None => false
             case optSel@Some(sel) if sel.isWildcard =>
@@ -466,11 +468,11 @@ object CheckUnused:
               unusedImport -= sel
               true
         }
-        if !exists && selWildCard.isDefined then
+        if !matchedExplicitImport && selWildCard.isDefined then
           unusedImport -= selWildCard.get
           true // a matching import exists so the symbol won't be kept for outer scope
         else
-          exists
+          matchedExplicitImport
       }
 
       // if there's an outer scope
@@ -610,12 +612,17 @@ object CheckUnused:
      * return true
      */
     private def shouldSelectorBeReported(imp: tpd.Import, sel: ImportSelector)(using Context): Boolean =
-      if ctx.settings.WunusedHas.strictNoImplicitWarn then
+      ctx.settings.WunusedHas.strictNoImplicitWarn && (
         sel.isWildcard ||
         imp.expr.tpe.member(sel.name.toTermName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit)) ||
         imp.expr.tpe.member(sel.name.toTypeName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit))
-      else
-        false
+      )
+
+    extension (tree: ImportSelector)
+      def boundTpe: Type = tree.bound match {
+        case untpd.TypedSplice(tree1) => tree1.tpe
+        case _ => NoType
+      }
 
     extension (sym: Symbol)
       /** is accessible without import in current context */
@@ -628,7 +635,7 @@ object CheckUnused:
                 && c.owner.thisType.member(sym.name).alternatives.contains(sym)
           }
 
-      /** Given an import and accessibility, return an option of selector that match import<->symbol */
+      /** Given an import and accessibility, return selector that matches import<->symbol */
       private def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name], isDerived: Boolean)(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
         val dealiasedSym = dealias(sym)
@@ -641,9 +648,12 @@ object CheckUnused:
         def dealiasedSelector = if(isDerived) sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collect {
           case (sel, sym) if dealias(sym) == dealiasedSym => sel
         }.headOption else None
-        def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven) || sym.is(Implicit)))
+        def givenSelector = if sym.is(Given) || sym.is(Implicit)
+          then sels.filter(sel => sel.isGiven && !sel.bound.isEmpty).find(sel => sel.boundTpe =:= sym.info)
+          else None
+        def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven && sel.bound.isEmpty) || sym.is(Implicit)))
         if qualHasSymbol && (!isAccessible || sym.isRenamedSymbol(symName)) && sym.exists then
-          selector.orElse(dealiasedSelector).orElse(wildcard) // selector with name or wildcard (or given)
+          selector.orElse(dealiasedSelector).orElse(givenSelector).orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
 
