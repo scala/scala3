@@ -2878,3 +2878,8 @@ class UnusedNonUnitValue(tp: Type)(using Context)
     def kind = MessageKind.PotentialIssue
     def msg(using Context) = i"unused value of type $tp"
     def explain(using Context) = ""
+
+class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
+  extends TypeMsg(MatchTypeScrutineeCannotBeHigherKindedID) :
+    def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
+    def explain(using Context) = ""
