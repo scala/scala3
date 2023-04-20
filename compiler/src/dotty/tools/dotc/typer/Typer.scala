@@ -2214,8 +2214,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if (tree.bound.isEmpty && isFullyDefined(pt, ForceDegree.none)) TypeTree(pt)
       else typed(tree.bound)
     val sel1 = typed(tree.selector)
+    val sel1Tpe = sel1.tpe
+    if sel1Tpe.isLambdaSub then
+      report.error(MatchTypeScrutineeCannotBeHigherKinded(sel1Tpe), sel1.srcPos)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
-    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt1))
+    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1Tpe, pt1))
     assignType(cpy.MatchTypeTree(tree)(bound1, sel1, cases1), bound1, sel1, cases1)
   }
 
