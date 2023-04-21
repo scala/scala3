@@ -817,7 +817,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       def cancelQuotes(tree: Tree): Tree =
         tree match
-          case Quoted(Spliced(inner)) => inner
+          case Quoted(SplicedExpr(inner)) => inner
           case _ => tree
       val locked = ctx.typerState.ownedVars
       val res = cancelQuotes(constToLiteral(BetaReduce(super.typedApply(tree, pt)))) match {
@@ -1071,7 +1071,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             level += 1
             try apply(syms, body)
             finally level -= 1
-          case Spliced(body) =>
+          case SplicedExpr(body) =>
             level -= 1
             try apply(syms, body)
             finally level += 1
