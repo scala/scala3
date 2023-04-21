@@ -44,7 +44,7 @@ object Splicer {
    *  See: `Staging`
    */
   def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
-    case QuotedExpr(quotedTree) => quotedTree
+    case QuotedExpr(quotedTree, _) => quotedTree
     case _ =>
       val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
@@ -136,7 +136,7 @@ object Splicer {
     *  See: `Staging`
     */
   def checkValidMacroBody(tree: Tree)(using Context): Unit = tree match {
-    case QuotedExpr(_) => // ok
+    case QuotedExpr(_, _) => // ok
     case _ =>
       type Env = Set[Symbol]
 
@@ -155,7 +155,7 @@ object Splicer {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
-        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
+        case Apply(Select(QuotedExpr(expr, tpt), nme.apply), _) =>
           val noSpliceChecker = new TreeTraverser {
             def traverse(tree: Tree)(using Context): Unit = tree match
               case SplicedExpr(_) =>
@@ -163,7 +163,7 @@ object Splicer {
               case _ =>
                 traverseChildren(tree)
           }
-          noSpliceChecker.traverse(quoted)
+          noSpliceChecker.traverse(expr)
 
         case Apply(TypeApply(fn, List(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
           // OK
@@ -203,7 +203,7 @@ object Splicer {
         case Typed(expr, _) =>
           checkIfValidStaticCall(expr)
 
-        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
+        case Apply(Select(QuotedExpr(quoted, tpt), nme.apply), _) =>
           // OK, canceled and warning emitted
 
         case Call(fn, args)
@@ -240,15 +240,15 @@ object Splicer {
 
     override protected  def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
       // Interpret level -1 quoted code `'{...}` (assumed without level 0 splices)
-      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
-        val quoted1 = quoted match {
-          case quoted: Ident if quoted.symbol.isAllOf(InlineByNameProxy) =>
+      case Apply(Select(QuotedExpr(expr, _), nme.apply), _) =>
+        val expr1 = expr match {
+          case expr: Ident if expr.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
-            quoted.symbol.defTree.asInstanceOf[DefDef].rhs
-          case Inlined(EmptyTree, _, quoted) => quoted
-          case _ => quoted
+            expr.symbol.defTree.asInstanceOf[DefDef].rhs
+          case Inlined(EmptyTree, _, expr1) => expr1
+          case _ => expr
         }
-        new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(quoted1, ctx.owner)).withSpan(quoted1.span), SpliceScope.getCurrent)
+        new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(expr1, ctx.owner)).withSpan(expr1.span), SpliceScope.getCurrent)
 
       // Interpret level -1 `Type.of[T]`
       case Apply(TypeApply(fn, quoted :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of =>

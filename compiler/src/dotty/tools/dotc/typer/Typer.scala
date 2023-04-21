@@ -2045,6 +2045,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         bindings1, expansion1)
   }
 
+  def typedQuotedExpr(tree: untpd.QuotedExpr, pt: Type)(using Context): Tree =
+    val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
+    val expr1 = typed(tree.expr, tpt1.tpe.widenSkolem)
+    assignType(cpy.QuotedExpr(tree)(expr1, tpt1), tpt1)
+      .withNotNullInfo(expr1.notNullInfo)
+
   def completeTypeTree(tree: untpd.TypeTree, pt: Type, original: untpd.Tree)(using Context): TypeTree =
     tree.withSpan(original.span).withAttachmentsFrom(original)
       .withType(
@@ -3076,6 +3082,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case tree: untpd.Quote => typedQuote(tree, pt)
+          case tree: untpd.QuotedExpr => typedQuotedExpr(tree, pt)
           case tree: untpd.Splice => typedSplice(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
           case tree: untpd.Hole => typedHole(tree, pt)

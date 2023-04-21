@@ -46,7 +46,9 @@ class Inlining extends MacroTransform {
         new TreeTraverser {
           def traverse(tree: Tree)(using Context): Unit =
             tree match
-              case _: GenericApply if tree.symbol.isQuote =>
+              case _: QuotedExpr =>
+                traverseChildren(tree)(using StagingLevel.quoteContext)
+              case _: GenericApply if tree.symbol == defn.QuotedTypeModule_of =>
                 traverseChildren(tree)(using StagingLevel.quoteContext)
               case _: GenericApply if tree.symbol.isExprSplice =>
                 traverseChildren(tree)(using StagingLevel.spliceContext)
@@ -98,7 +100,9 @@ class Inlining extends MacroTransform {
           val tree1 = super.transform(tree)
           if tree1.tpe.isError then tree1
           else Inlines.inlineCall(tree1)
-        case _: GenericApply if tree.symbol.isQuote =>
+        case _: QuotedExpr =>
+          super.transform(tree)(using StagingLevel.quoteContext)
+        case _: GenericApply if tree.symbol == defn.QuotedTypeModule_of =>
           super.transform(tree)(using StagingLevel.quoteContext)
         case _: GenericApply if tree.symbol.isExprSplice =>
           super.transform(tree)(using StagingLevel.spliceContext)

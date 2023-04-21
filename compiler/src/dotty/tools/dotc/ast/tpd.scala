@@ -170,6 +170,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
+  def QuotedExpr(expr: Tree, tpt: Tree)(using Context): QuotedExpr =
+    ta.assignType(untpd.QuotedExpr(expr, tpt), tpt)
+
   def TypeTree(tp: Type, inferred: Boolean = false)(using Context): TypeTree =
     (if inferred then untpd.InferredTypeTree() else untpd.TypeTree()).withType(tp)
 

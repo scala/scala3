@@ -1267,6 +1267,10 @@ class TreeUnpickler(reader: TastyReader,
                 res.withAttachment(SuppressedApplyToNone, ())
               else res
 
+      def quotedExpr(fn: Tree, args: List[Tree]): Tree =
+        val TypeApply(_, targs) = fn: @unchecked
+        QuotedExpr(args.head, targs.head)
+
       def simplifyLub(tree: Tree): Tree =
         tree.overwriteType(tree.tpe.simplified)
         tree
@@ -1283,6 +1287,7 @@ class TreeUnpickler(reader: TastyReader,
               val fn = readTree()
               val args = until(end)(readTree())
               if fn.symbol.isConstructor then constructorApply(fn, args)
+              else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args)
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTree(), until(end)(readTpt()))

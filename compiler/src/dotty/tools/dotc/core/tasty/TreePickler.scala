@@ -665,6 +665,14 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(hi)
               pickleTree(alias)
           }
+        case QuotedExpr(expr, tpt) =>
+          pickleTree(
+            // scala.quoted.runtime.Expr.quoted[<tpt>](<expr>)
+            ref(defn.QuotedRuntime_exprQuote)
+              .appliedToTypeTree(tpt)
+              .appliedTo(expr)
+              .withSpan(tree.span)
+          )
         case Hole(_, idx, args, _, tpt) =>
           writeByte(HOLE)
           withLength {

@@ -98,17 +98,14 @@ class CrossStageSafety extends TreeMapWithStages {
     }
 
   /** Transform quoted trees while maintaining level correctness */
-  override protected def transformQuotedExpr(body: Tree, quote: Apply)(using Context): Tree = {
+  override protected def transformQuotedExpr(body: Tree, quote: QuotedExpr)(using Context): Tree = {
     if (ctx.property(InAnnotation).isDefined)
       report.error("Cannot have a quote in an annotation", quote.srcPos)
-
+    val transformedBody = transformQuoteBody(body, quote.span)
     val stripAnnotsDeep: TypeMap = new TypeMap:
       def apply(tp: Type): Type = mapOver(tp.stripAnnots)
-    val transformedBody = transformQuoteBody(body, quote)
-    // `quoted.runtime.Expr.quote[T](<body>)`  --> `quoted.runtime.Expr.quote[T2](<body2>)`
-    val TypeApply(fun, targs) = quote.fun: @unchecked
-    val targs2 = targs.map(targ => TypeTree(healType(quote.fun.srcPos)(stripAnnotsDeep(targ.tpe))))
-    cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), transformedBody :: Nil)
+    val tpt1 = TypeTree(healType(quote.tpt.srcPos)(stripAnnotsDeep(quote.tpt.tpe)))
+    cpy.QuotedExpr(quote)(transformedBody, tpt1)
   }
 
   override protected def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree = {
@@ -119,7 +116,7 @@ class CrossStageSafety extends TreeMapWithStages {
         // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
         ref(termRef).withSpan(quote.span)
       case _ =>
-        transformQuoteBody(body, quote) match
+        transformQuoteBody(body, quote.span) match
           case DirectTypeOf.Healed(termRef) =>
             // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
             ref(termRef).withSpan(quote.span)
@@ -130,8 +127,8 @@ class CrossStageSafety extends TreeMapWithStages {
             cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, transformedBody :: Nil), quotes)
   }
 
-  private def transformQuoteBody(body: Tree, quote: Apply)(using Context): Tree = {
-    val taggedTypes = new QuoteTypeTags(quote.span)
+  private def transformQuoteBody(body: Tree, span: Span)(using Context): Tree = {
+    val taggedTypes = new QuoteTypeTags(span)
     val contextWithQuote =
       if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
       else quoteContext

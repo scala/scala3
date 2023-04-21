@@ -677,6 +677,11 @@ object Trees {
     override def isType = expansion.isType
   }
 
+  case class QuotedExpr[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
+    extends TermTree[T] {
+    type ThisTree[+T <: Untyped] = QuotedExpr[T]
+  }
+
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[+T <: Untyped]()(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] with TypTree[T] {
@@ -1087,6 +1092,7 @@ object Trees {
     type SeqLiteral = Trees.SeqLiteral[T]
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
     type Inlined = Trees.Inlined[T]
+    type QuotedExpr = Trees.QuotedExpr[T]
     type TypeTree = Trees.TypeTree[T]
     type InferredTypeTree = Trees.InferredTypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
@@ -1256,6 +1262,10 @@ object Trees {
       def Inlined(tree: Tree)(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined = tree match {
         case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion)(sourceFile(tree)))
+      }
+      def QuotedExpr(tree: Tree)(expr: Tree, tpt: Tree)(using Context): QuotedExpr = tree match {
+        case tree: QuotedExpr if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
+        case _ => finalize(tree, untpd.QuotedExpr(expr, tpt)(sourceFile(tree)))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree)(using Context): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
@@ -1494,6 +1504,8 @@ object Trees {
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
+            case tree @ QuotedExpr(expr, tpt) =>
+              cpy.QuotedExpr(tree)(transform(expr), transform(tpt))
             case tree @ Hole(_, _, args, content, tpt) =>
               cpy.Hole(tree)(args = transform(args), content = transform(content), tpt = transform(tpt))
             case _ =>
@@ -1635,6 +1647,8 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
+            case QuotedExpr(expr, tpt) =>
+              this(this(x, expr), tpt)
             case Hole(_, _, args, content, tpt) =>
               this(this(this(x, args), content), tpt)
             case _ =>

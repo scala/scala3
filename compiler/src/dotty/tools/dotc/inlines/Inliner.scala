@@ -817,7 +817,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       def cancelQuotes(tree: Tree): Tree =
         tree match
-          case QuotedExpr(SplicedExpr(inner)) => inner
+          case QuotedExpr(SplicedExpr(inner), _) => inner
           case _ => tree
       val locked = ctx.typerState.ownedVars
       val res = cancelQuotes(constToLiteral(BetaReduce(super.typedApply(tree, pt)))) match {
@@ -835,9 +835,13 @@ class Inliner(val call: tpd.Tree)(using Context):
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
       val locked = ctx.typerState.ownedVars
       val tree1 = inlineIfNeeded(constToLiteral(BetaReduce(super.typedTypeApply(tree, pt))), pt, locked)
-      if tree1.symbol.isQuote then
+      if tree1.symbol == defn.QuotedTypeModule_of then
         ctx.compilationUnit.needsStaging = true
       tree1
+
+    override def typedQuotedExpr(tree: untpd.QuotedExpr, pt: Type)(using Context): Tree =
+      ctx.compilationUnit.needsStaging = true
+      super.typedQuotedExpr(tree, pt)
 
     override def typedMatch(tree: untpd.Match, pt: Type)(using Context): Tree =
       val tree1 =
@@ -1067,7 +1071,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         else tree match {
           case tree: RefTree if tree.isTerm && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
-          case QuotedExpr(body) =>
+          case QuotedExpr(body, _) =>
             level += 1
             try apply(syms, body)
             finally level -= 1

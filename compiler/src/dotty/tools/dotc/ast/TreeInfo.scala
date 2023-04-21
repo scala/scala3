@@ -1026,19 +1026,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case t => assert(t.span.exists, i"$t")
     }
 
-  /** Extractors for quotes */
-  object QuotedExpr {
-    /** Extracts the content of a quoted tree.
-     *  The result can be the contents of a term or type quote, which
-     *  will return a term or type tree respectively.
-     */
-    def unapply(tree: tpd.Apply)(using Context): Option[tpd.Tree] =
-      if tree.symbol == defn.QuotedRuntime_exprQuote then
-        // quoted.runtime.Expr.quote[T](<body>)
-        Some(tree.args.head)
-      else None
-  }
-
   object QuotedTypeOf {
     /** Extracts the content of a quoted tree.
      *  The result can be the contents of a term or type quote, which

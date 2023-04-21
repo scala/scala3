@@ -432,8 +432,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
-        else if (!printDebug && fun.hasType && fun.symbol == defn.QuotedRuntime_exprQuote)
-          keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else if (!printDebug && fun.hasType && fun.symbol.isExprSplice)
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
@@ -724,6 +722,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case MacroTree(call) =>
         keywordStr("macro ") ~ toTextGlobal(call)
+      case QuotedExpr(expr, tpt) =>
+        val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(printDebug)
+        keywordStr("'") ~ tptText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
       case Hole(isTermHole, idx, args, content, tpt) =>
         val (prefix, postfix) = if isTermHole then ("{{{", "}}}") else ("[[[", "]]]")
         val argsText = toTextGlobal(args, ", ")
