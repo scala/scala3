@@ -565,9 +565,12 @@ object Inlines:
     private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
       tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
 
-    private def inlinedRhs(rhs: Tree): Inlined =
-      val inlinedRhs = inlined(rhs)._2
-      Inlined(tpd.ref(parentSym), Nil, inlinedRhs).withSpan(parent.span)
+    private def inlinedRhs(rhs: Tree): Tree =
+      if rhs.isEmpty then
+        rhs
+      else
+        val inlinedRhs = inlined(rhs)._2
+        Inlined(tpd.ref(parentSym), Nil, inlinedRhs).withSpan(parent.span)
 
   end InlineParentTrait
 end Inlines

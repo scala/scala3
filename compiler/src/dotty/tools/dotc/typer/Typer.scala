@@ -111,7 +111,6 @@ object Typer {
 
   def isInlineableFromInlineTrait(inlinedTraitSym: ClassSymbol, member: tpd.Tree)(using Context): Boolean =
     !(member.isInstanceOf[tpd.TypeDef] && inlinedTraitSym.typeParams.contains(member.symbol))
-    && !member.symbol.is(Deferred)
     && !member.symbol.isAllOf(Inline)
 }
 /** Typecheck trees, the main entry point is `typed`.
