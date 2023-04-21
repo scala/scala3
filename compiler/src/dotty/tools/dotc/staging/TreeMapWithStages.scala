@@ -49,15 +49,17 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
       }
 
       tree match {
-        case Apply(Select(Quoted(quotedTree), _), _) if quotedTree.isType =>
-          dropEmptyBlocks(quotedTree) match
-            case SplicedType(t) =>
-              // Optimization: `quoted.Type.of[x.Underlying]` --> `x`
-              transform(t)
-            case _ =>
-              super.transform(tree)
+        case Apply(Select(QuotedTypeOf(SplicedType(t)), _), _) =>
+          // Optimization: `quoted.Type.of[x.Underlying]` --> `x`
+          transform(t)
 
-        case tree @ Quoted(quotedTree) =>
+        case tree @ QuotedTypeOf(quotedTree) =>
+          val old = inQuoteOrSplice
+          inQuoteOrSplice = true
+          try transformQuotation(quotedTree, tree)
+          finally inQuoteOrSplice = old
+
+        case tree @ QuotedExpr(quotedTree) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(quotedTree) match {
@@ -73,7 +75,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(splicedTree) match {
-            case Quoted(t) =>
+            case QuotedExpr(t) =>
               // Optimization: `${ 'x }` --> `x`
               transform(t)
             case _ => transformSplice(splicedTree, tree)

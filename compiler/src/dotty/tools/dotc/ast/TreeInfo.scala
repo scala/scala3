@@ -1027,7 +1027,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
 
   /** Extractors for quotes */
-  object Quoted {
+  object QuotedExpr {
     /** Extracts the content of a quoted tree.
      *  The result can be the contents of a term or type quote, which
      *  will return a term or type tree respectively.
@@ -1036,7 +1036,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       if tree.symbol == defn.QuotedRuntime_exprQuote then
         // quoted.runtime.Expr.quote[T](<body>)
         Some(tree.args.head)
-      else if tree.symbol == defn.QuotedTypeModule_of then
+      else None
+  }
+
+  object QuotedTypeOf {
+    /** Extracts the content of a quoted tree.
+     *  The result can be the contents of a term or type quote, which
+     *  will return a term or type tree respectively.
+     */
+    def unapply(tree: tpd.Apply)(using Context): Option[tpd.Tree] =
+      if tree.symbol == defn.QuotedTypeModule_of then
         // quoted.Type.of[<body>](quotes)
         val TypeApply(_, body :: _) = tree.fun: @unchecked
         Some(body)

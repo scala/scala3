@@ -44,7 +44,7 @@ object Splicer {
    *  See: `Staging`
    */
   def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
-    case Quoted(quotedTree) => quotedTree
+    case QuotedExpr(quotedTree) => quotedTree
     case _ =>
       val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
@@ -136,7 +136,7 @@ object Splicer {
     *  See: `Staging`
     */
   def checkValidMacroBody(tree: Tree)(using Context): Unit = tree match {
-    case Quoted(_) => // ok
+    case QuotedExpr(_) => // ok
     case _ =>
       type Env = Set[Symbol]
 
