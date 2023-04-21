@@ -1,6 +1,6 @@
-inline trait A:
+inline trait A[T]:
   object Inner:
-    val x = 1
+    val x: T = ???
 
-class B extends A:
-  def f = Inner.x
+class B extends A[Int]:
+  def i: Int = Inner.x
