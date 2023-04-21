@@ -98,46 +98,47 @@ class CrossStageSafety extends TreeMapWithStages {
     }
 
   /** Transform quoted trees while maintaining level correctness */
-  override protected def transformQuotation(body: Tree, quote: Apply)(using Context): Tree = {
-    val taggedTypes = new QuoteTypeTags(quote.span)
-
+  override protected def transformQuotedExpr(body: Tree, quote: Apply)(using Context): Tree = {
     if (ctx.property(InAnnotation).isDefined)
       report.error("Cannot have a quote in an annotation", quote.srcPos)
 
     val stripAnnotsDeep: TypeMap = new TypeMap:
       def apply(tp: Type): Type = mapOver(tp.stripAnnots)
+    val transformedBody = transformQuoteBody(body, quote)
+    // `quoted.runtime.Expr.quote[T](<body>)`  --> `quoted.runtime.Expr.quote[T2](<body2>)`
+    val TypeApply(fun, targs) = quote.fun: @unchecked
+    val targs2 = targs.map(targ => TypeTree(healType(quote.fun.srcPos)(stripAnnotsDeep(targ.tpe))))
+    cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), transformedBody :: Nil)
+  }
 
-    def transformBody() =
-      val contextWithQuote =
-        if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
-        else quoteContext
-      val transformedBody = transform(body)(using contextWithQuote)
-      taggedTypes.getTypeTags match
-        case Nil  => transformedBody
-        case tags => tpd.Block(tags, transformedBody).withSpan(body.span)
+  override protected def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree = {
+    if (ctx.property(InAnnotation).isDefined)
+      report.error("Cannot have a quote in an annotation", quote.srcPos)
+    body.tpe match
+      case DirectTypeOf(termRef) =>
+        // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
+        ref(termRef).withSpan(quote.span)
+      case _ =>
+        transformQuoteBody(body, quote) match
+          case DirectTypeOf.Healed(termRef) =>
+            // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
+            ref(termRef).withSpan(quote.span)
+          case transformedBody =>
+            val quotes = quote.args.mapConserve(transform)
+            // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
+            val TypeApply(fun, _) = quote.fun: @unchecked
+            cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, transformedBody :: Nil), quotes)
+  }
 
-    if body.isTerm then
-      val transformedBody = transformBody()
-      // `quoted.runtime.Expr.quote[T](<body>)`  --> `quoted.runtime.Expr.quote[T2](<body2>)`
-      val TypeApply(fun, targs) = quote.fun: @unchecked
-      val targs2 = targs.map(targ => TypeTree(healType(quote.fun.srcPos)(stripAnnotsDeep(targ.tpe))))
-      cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), transformedBody :: Nil)
-    else
-      body.tpe match
-        case DirectTypeOf(termRef) =>
-          // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
-          ref(termRef).withSpan(quote.span)
-        case _ =>
-          transformBody() match
-            case DirectTypeOf.Healed(termRef) =>
-              // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
-              ref(termRef).withSpan(quote.span)
-            case transformedBody =>
-              val quotes = quote.args.mapConserve(transform)
-              // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
-              val TypeApply(fun, _) = quote.fun: @unchecked
-              cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, transformedBody :: Nil), quotes)
-
+  private def transformQuoteBody(body: Tree, quote: Apply)(using Context): Tree = {
+    val taggedTypes = new QuoteTypeTags(quote.span)
+    val contextWithQuote =
+      if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
+      else quoteContext
+    val transformedBody = transform(body)(using contextWithQuote)
+    taggedTypes.getTypeTags match
+      case Nil  => transformedBody
+      case tags => tpd.Block(tags, transformedBody).withSpan(body.span)
   }
 
   /** Transform splice

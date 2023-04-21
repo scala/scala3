@@ -24,14 +24,17 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
   /** Transform the quote `quote` which contains the quoted `body`.
    *
    *  - `quoted.runtime.Expr.quote[T](<body0>)`  --> `quoted.runtime.Expr.quote[T](<body>)`
+   */
+  protected def transformQuotedExpr(body: Tree, quote: Apply)(using Context): Tree =
+    cpy.Apply(quote)(quote.fun, body :: Nil)
+
+  /** Transform the quote `quote` which contains the quoted `body`.
+   *
    *  - `quoted.Type.of[<body0>](quotes)`  --> `quoted.Type.of[<body>](quotes)`
    */
-  protected def transformQuotation(body: Tree, quote: Apply)(using Context): Tree =
-    if body.isTerm then
-      cpy.Apply(quote)(quote.fun, body :: Nil)
-    else
-      val TypeApply(fun, _) = quote.fun: @unchecked
-      cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body :: Nil), quote.args)
+  protected def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree =
+    val TypeApply(fun, _) = quote.fun: @unchecked
+    cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body :: Nil), quote.args)
 
   /** Transform the expression splice `splice` which contains the spliced `body`. */
   protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree
@@ -56,7 +59,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
         case tree @ QuotedTypeOf(quotedTree) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
-          try transformQuotation(quotedTree, tree)
+          try transformQuotedType(quotedTree, tree)
           finally inQuoteOrSplice = old
 
         case tree @ QuotedExpr(quotedTree) =>
@@ -67,7 +70,8 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
               // Optimization: `'{ $x }` --> `x`
               // and adapt the refinement of `Quotes { type reflect: ... } ?=> Expr[T]`
               transform(t).asInstance(tree.tpe)
-            case _ => transformQuotation(quotedTree, tree)
+            case _ =>
+              transformQuotedExpr(quotedTree, tree)
           }
           finally inQuoteOrSplice = old
 
