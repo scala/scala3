@@ -88,7 +88,7 @@ trait QuotesAndSplices {
           using spliceContext.retractMode(Mode.QuotedPattern).addMode(Mode.Pattern).withOwner(spliceOwner(ctx)))
         val baseType = pat.tpe.baseType(defn.QuotedExprClass)
         val argType = if baseType != NoType then baseType.argTypesHi.head else defn.NothingType
-        ref(defn.QuotedRuntime_exprSplice).appliedToType(argType).appliedTo(pat)
+        SplicedExpr(pat, TypeTree(argType), EmptyTree).withSpan(tree.span)
       }
       else {
         report.error(em"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.srcPos)
@@ -108,11 +108,17 @@ trait QuotesAndSplices {
       val (outerQctx, ctx1) = popQuotes()
 
       val internalSplice =
+        untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
         outerQctx match
           case Some(qctxRef) => untpd.Apply(untpd.Apply(untpd.ref(defn.QuotedRuntime_exprNestedSplice.termRef), qctxRef), tree.expr)
           case _ => untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
 
-      typedApply(internalSplice, pt)(using ctx1).withSpan(tree.span)
+      typedApply(internalSplice, pt)(using ctx1).withSpan(tree.span) match
+        case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
+          cpy.SplicedExpr(tree)(spliced, tpt, EmptyTree)
+        case tree @ Apply(Apply(TypeApply(_, tpt :: Nil), quotes :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprNestedSplice =>
+          cpy.SplicedExpr(tree)(spliced, tpt, quotes)
+        case tree => tree
     }
   }
 
@@ -228,12 +234,12 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol.isExprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(SplicedExpr(pat, _, outerQuotes), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
-          val newSplice = ref(defn.QuotedRuntime_exprSplice).appliedToType(tpt1.tpe).appliedTo(Typed(pat, exprTpt))
+          val newSplice = cpy.SplicedExpr(tree)(pat, tpt1, outerQuotes)
           transform(newSplice)
-        case Apply(TypeApply(fn, targs), Apply(sp, pat :: Nil) :: args :: Nil) if fn.symbol == defn.QuotedRuntimePatterns_patternHigherOrderHole =>
+        case Apply(TypeApply(fn, targs), SplicedExpr(pat, _, _) :: args :: Nil) if fn.symbol == defn.QuotedRuntimePatterns_patternHigherOrderHole =>
           args match // TODO support these patterns. Possibly using scala.quoted.util.Var
             case SeqLiteral(args, _) =>
               for arg <- args; if arg.symbol.is(Mutable) do
@@ -245,7 +251,7 @@ trait QuotesAndSplices {
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
-        case Apply(fn, pat :: Nil) if fn.symbol.isExprSplice =>
+        case SplicedExpr(pat, _, _) =>
           try ref(defn.QuotedRuntimePatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen

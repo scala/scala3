@@ -398,6 +398,9 @@ trait TypeAssigner {
         .appliedTo(defn.QuotesClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpt.tpe))
     tree.withType(lambdaType)
 
+  def assignType(tree: untpd.SplicedExpr, tpt: Tree)(using Context): SplicedExpr =
+    tree.withType(tpt.tpe)
+
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(using Context): If =
     tree.withType(thenp.tpe | elsep.tpe)
 

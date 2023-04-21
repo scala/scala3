@@ -93,7 +93,7 @@ object PrepareInlineable {
       private def stagingContext(tree: Tree)(using Context): Context = tree match
         case tree: QuotedExpr => StagingLevel.quoteContext
         case tree: Apply if tree.symbol eq defn.QuotedTypeModule_of => StagingLevel.quoteContext
-        case tree: Apply if tree.symbol.isExprSplice => StagingLevel.spliceContext
+        case tree: SplicedExpr => StagingLevel.spliceContext
         case _ => ctx
     }
 
@@ -155,7 +155,7 @@ object PrepareInlineable {
           val qual = qualifier(refPart)
           inlining.println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, $argss%, %")
 
-          // Need to dealias in order to cagtch all possible references to abstracted over types in
+          // Need to dealias in order to catch all possible references to abstracted over types in
           // substitutions
           val dealiasMap = new TypeMap {
             def apply(t: Type) = mapOver(t.dealias)
@@ -291,7 +291,7 @@ object PrepareInlineable {
     if (inlined.is(Macro) && !ctx.isAfterTyper) {
 
       def checkMacro(tree: Tree): Unit = tree match {
-        case SplicedExpr(code) =>
+        case SplicedExpr(code, _, _) =>
           if (code.symbol.flags.is(Inline))
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)

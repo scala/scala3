@@ -112,15 +112,15 @@ class Splicing extends MacroTransform:
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
-        case Apply(fn, List(splicedCode)) if fn.symbol == defn.QuotedRuntime_exprNestedSplice =>
+        case tree: SplicedExpr =>
           if level > 1 then
-            val splicedCode1 = super.transform(splicedCode)(using spliceContext)
-            cpy.Apply(tree)(fn, List(splicedCode1))
+            val spliced1 = super.transform(tree.spliced)(using spliceContext)
+            cpy.SplicedExpr(tree)(spliced1, tree.tpt, tree.outerQuotes)
           else
             val holeIdx = numHoles
             numHoles += 1
             val splicer = SpliceTransformer(ctx.owner, quotedDefs.contains)
-            val newSplicedCode1 = splicer.transformSplice(splicedCode, tree.tpe, holeIdx)(using spliceContext)
+            val newSplicedCode1 = splicer.transformSplice(tree.spliced, tree.tpe, holeIdx)(using spliceContext)
             val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
             newSplicedCode2
         case tree: TypeDef if tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
@@ -235,9 +235,9 @@ class Splicing extends MacroTransform:
         case tree @ Assign(lhs: RefTree, rhs) =>
           if isCaptured(lhs.symbol) then transformSplicedAssign(tree)
           else super.transform(tree)
-        case Apply(fn, args) if fn.symbol == defn.QuotedRuntime_exprNestedSplice =>
-          val newArgs = args.mapConserve(arg => transform(arg)(using spliceContext))
-          cpy.Apply(tree)(fn, newArgs)
+        case SplicedExpr(spliced, tpt, outerQuotes) =>
+          val spliced1 = transform(spliced)(using spliceContext)
+          cpy.SplicedExpr(tree)(spliced1, tpt, outerQuotes)
         case Apply(sel @ Select(app @ QuotedExpr(expr, tpt), nme.apply), quotesArgs) =>
           expr match
             case expr: RefTree if isCaptured(expr.symbol) =>
@@ -410,10 +410,7 @@ class Splicing extends MacroTransform:
             body(using ctx.withOwner(meth)).changeOwner(ctx.owner, meth)
           }
         })
-      ref(defn.QuotedRuntime_exprNestedSplice)
-        .appliedToType(tpe)
-        .appliedTo(Literal(Constant(null))) // Dropped when creating the Hole that contains it
-        .appliedTo(closure)
+      SplicedExpr(closure, TypeTree(tpe), Literal(Constant(null)))
 
     private def quoted(expr: Tree)(using Context): Tree =
       QuotedExpr(expr, TypeTree(expr.tpe.widenTermRefExpr))

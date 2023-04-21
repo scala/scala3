@@ -85,9 +85,10 @@ class PickleQuotes extends MacroTransform {
     tree match
       case tree: QuotedExpr =>
         assert(Inlines.inInlineMethod)
+      case tree: SplicedExpr =>
+        assert(Inlines.inInlineMethod)
       case tree: RefTree if !Inlines.inInlineMethod =>
         assert(tree.symbol != defn.QuotedTypeModule_of)
-        assert(!tree.symbol.isExprSplice)
       case _ : TypeDef if !Inlines.inInlineMethod =>
         assert(!tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot),
           s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")

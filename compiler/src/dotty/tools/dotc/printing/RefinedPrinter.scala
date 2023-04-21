@@ -432,8 +432,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
-        else if (!printDebug && fun.hasType && fun.symbol.isExprSplice)
-          keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
           toTextLocal(fun)
           ~ "("
@@ -725,6 +723,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case QuotedExpr(expr, tpt) =>
         val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(printDebug)
         keywordStr("'") ~ tptText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
+      case SplicedExpr(spliced, tpt, quotes) =>
+        val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(printDebug)
+        val quotesText = (keywordStr("(using ") ~ toTextGlobal(quotes) ~ keywordStr(")")).provided(printDebug)
+        keywordStr("$") ~ tptText ~ keywordStr("{") ~ toTextGlobal(spliced) ~ keywordStr("}") ~ quotesText
       case Hole(isTermHole, idx, args, content, tpt) =>
         val (prefix, postfix) = if isTermHole then ("{{{", "}}}") else ("[[[", "]]]")
         val argsText = toTextGlobal(args, ", ")

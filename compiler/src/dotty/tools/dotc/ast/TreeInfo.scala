@@ -1039,16 +1039,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       else None
   }
 
-  /** Extractors for splices */
-  object SplicedExpr {
-    /** Extracts the content of a spliced expression tree.
-     *  The result can be the contents of a term splice, which
-     *  will return a term tree.
-     */
-    def unapply(tree: tpd.Apply)(using Context): Option[tpd.Tree] =
-      if tree.symbol.isExprSplice then Some(tree.args.head) else None
-  }
-
   /** Extractors for type splices */
   object SplicedType {
     /** Extracts the content of a spliced type tree.

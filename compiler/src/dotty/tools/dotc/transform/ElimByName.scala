@@ -159,6 +159,12 @@ class ElimByName extends MiniPhase, InfoTransformer:
       else tree
     }
 
+  override def transformOther(tree: Tree)(using Context): Tree = tree match
+    case tree @ SplicedExpr(spliced, tpt, outerQuotes) =>
+      assert(dotty.tools.dotc.inlines.Inlines.inInlineMethod)
+      cpy.SplicedExpr(tree)(transformAllDeep(spliced), tpt, outerQuotes)
+    case tree => tree
+
 object ElimByName:
   val name: String = "elimByName"
   val description: String = "map by-name parameters to functions"

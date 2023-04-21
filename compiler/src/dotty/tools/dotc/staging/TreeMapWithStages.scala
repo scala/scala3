@@ -37,7 +37,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
     cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body :: Nil), quote.args)
 
   /** Transform the expression splice `splice` which contains the spliced `body`. */
-  protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree
+  protected def transformSplice(body: Tree, splice: SplicedExpr)(using Context): Tree
 
   /** Transform the type splice `splice` which contains the spliced `body`. */
   protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree
@@ -66,7 +66,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(quotedTree) match {
-            case SplicedExpr(t) =>
+            case SplicedExpr(t, _, _) =>
               // Optimization: `'{ $x }` --> `x`
               // and adapt the refinement of `Quotes { type reflect: ... } ?=> Expr[T]`
               transform(t).asInstance(tree.tpe)
@@ -75,14 +75,15 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           }
           finally inQuoteOrSplice = old
 
-        case tree @ SplicedExpr(splicedTree) =>
+        case tree @ SplicedExpr(splicedTree, _, _) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(splicedTree) match {
             case QuotedExpr(t, _) =>
               // Optimization: `${ 'x }` --> `x`
               transform(t)
-            case _ => transformSplice(splicedTree, tree)
+            case _ =>
+              transformSplice(splicedTree, tree)
           }
           finally inQuoteOrSplice = old
 

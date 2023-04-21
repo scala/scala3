@@ -50,7 +50,7 @@ class Inlining extends MacroTransform {
                 traverseChildren(tree)(using StagingLevel.quoteContext)
               case _: GenericApply if tree.symbol == defn.QuotedTypeModule_of =>
                 traverseChildren(tree)(using StagingLevel.quoteContext)
-              case _: GenericApply if tree.symbol.isExprSplice =>
+              case _: SplicedExpr =>
                 traverseChildren(tree)(using StagingLevel.spliceContext)
               case tree: RefTree if !Inlines.inInlineMethod && StagingLevel.level == 0 =>
                 assert(!tree.symbol.isInlineMethod, tree.show)
@@ -104,7 +104,7 @@ class Inlining extends MacroTransform {
           super.transform(tree)(using StagingLevel.quoteContext)
         case _: GenericApply if tree.symbol == defn.QuotedTypeModule_of =>
           super.transform(tree)(using StagingLevel.quoteContext)
-        case _: GenericApply if tree.symbol.isExprSplice =>
+        case _: SplicedExpr =>
           super.transform(tree)(using StagingLevel.spliceContext)
         case _: PackageDef =>
           super.transform(tree) match

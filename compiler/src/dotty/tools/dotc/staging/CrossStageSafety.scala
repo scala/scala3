@@ -143,20 +143,16 @@ class CrossStageSafety extends TreeMapWithStages {
    *  - If inside inlined code, expand the macro code.
    *  - If inside of a macro definition, check the validity of the macro.
    */
-  protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree = {
+  protected def transformSplice(body: Tree, splice: SplicedExpr)(using Context): Tree = {
     val body1 = transform(body)(using spliceContext)
-    splice.fun match {
-      case fun @ TypeApply(_, _ :: Nil) =>
-        // Type of the splice itself must also be healed
-        // `quoted.runtime.Expr.quote[F[T]](... T ...)`  -->  `internal.Quoted.expr[F[$t]](... T ...)`
+    val tpt1 =
+      if level == 0 then
+        transform(splice.tpt)
+      else
         val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
-        cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
-      case f @ Apply(fun @ TypeApply(_, _), quotes :: Nil) =>
-        // Type of the splice itself must also be healed
-        // `quoted.runtime.Expr.quote[F[T]](... T ...)`  -->  `internal.Quoted.expr[F[$t]](... T ...)`
-        val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
-        cpy.Apply(splice)(cpy.Apply(f)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), quotes :: Nil), body1 :: Nil)
-    }
+        TypeTree(tp).withSpan(splice.tpt.span)
+    val outerQuotes1 = splice.outerQuotes
+    cpy.SplicedExpr(splice)(body1, tpt1, outerQuotes1)
   }
 
   protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree = {
