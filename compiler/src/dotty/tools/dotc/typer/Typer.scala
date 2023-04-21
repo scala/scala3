@@ -108,6 +108,11 @@ object Typer {
   def rememberSearchFailure(tree: tpd.Tree, fail: SearchFailure) =
     tree.putAttachment(HiddenSearchFailure,
       fail :: tree.attachmentOrElse(HiddenSearchFailure, Nil))
+
+  def isInlineableFromInlineTrait(inlinedTraitSym: ClassSymbol, member: tpd.Tree)(using Context): Boolean =
+    !(member.isInstanceOf[tpd.TypeDef] && inlinedTraitSym.typeParams.contains(member.symbol))
+    && !member.symbol.is(Deferred)
+    && !member.symbol.isAllOf(Inline)
 }
 /** Typecheck trees, the main entry point is `typed`.
  *
@@ -2676,13 +2681,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1) ::: inlineTraitDefs
 
       if !ctx.isAfterTyper && cls.isInlineTrait then
-        def isConstructorType(t: Tree) = t.isInstanceOf[TypeDef] && cls.typeParams.contains(t.symbol)
-        // If the following is changed, remember to adapt TreeUnpickler.scala as well
-        val membersToInline = body1.filter { t =>
-          !isConstructorType(t)
-          && !t.symbol.is(Deferred)
-          && !t.symbol.isAllOf(Inline)
-        }
+        val membersToInline = body1.filter(member => isInlineableFromInlineTrait(cls, member))
         val wrappedMembersToInline = Block(membersToInline, unitLiteral).withSpan(cdef.span)
         PrepareInlineable.registerInlineInfo(cls, wrappedMembersToInline)
 

@@ -23,6 +23,7 @@ import NamerOps._
 import ContextOps._
 import Variances.Invariant
 import TastyUnpickler.NameTable
+import typer.Typer
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import typer.Nullables._
@@ -1063,11 +1064,7 @@ class TreeUnpickler(reader: TastyReader,
 
             val fork = forkAt(statsStart)
             val stats = fork.readIndexedStats(localDummy, end)
-            val inlinedMembers = (tparams ++ vparams ++ stats).filter { stat =>
-              !(stat.isInstanceOf[TypeDef] && cls.typeParams.contains(stat.symbol)) // !isConstructor
-              && !stat.symbol.is(Deferred)
-              && !stat.symbol.isAllOf(Inline)
-            }
+            val inlinedMembers = (tparams ++ vparams ++ stats).filter(member => Typer.isInlineableFromInlineTrait(cls, member))
             Block(inlinedMembers, unitLiteral).withSpan(cls.span)
           }
         })
