@@ -13,6 +13,7 @@ import core.Decorators._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
+import core.NameKinds.SuperArgName
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
 
@@ -197,11 +198,17 @@ object ExplicitOuter {
   private def outerAccName(cls: ClassSymbol)(using Context): TermName =
     nme.OUTER.expandedName(cls)
 
+  private def outerOwner(sym: Symbol)(using Context): Symbol =
+    val owner = sym.effectiveOwner
+    if owner.name.is(SuperArgName) || owner.isLocalDummy
+    then owner.enclosingClass
+    else owner
+
   /** Class needs an outer pointer, provided there is a reference to an outer this in it. */
   def needsOuterIfReferenced(cls: ClassSymbol)(using Context): Boolean =
-    !(cls.isStatic ||
-      cls.owner.enclosingClass.isStaticOwner ||
-      cls.is(PureInterface)
+    !(cls.isStatic
+      || outerOwner(cls).isStaticOwner
+      || cls.is(PureInterface)
      )
 
   /** Class unconditionally needs an outer pointer. This is the case if
@@ -226,7 +233,9 @@ object ExplicitOuter {
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =
-    cls.info.decl(nme.OUTER).symbol.asTerm
+    val outer = cls.info.decl(nme.OUTER).symbol
+    assert(outer.isTerm, i"missing outer accessor in $cls")
+    outer.asTerm
 
   /** The outer accessor of class `cls`. To find it is a bit tricky. The
    *  class might have been moved with new owners between ExplicitOuter and Erasure,
