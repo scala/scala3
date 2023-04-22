@@ -1,0 +1,88 @@
+-- [E008] Not Found Error: tests/neg/i16920.scala:18:11 ----------------------------------------------------------------
+18 |    "five".wow // error
+   |    ^^^^^^^^^^
+   |    value wow is not a member of String.
+   |    An extension method was tried, but could not be fully constructed:
+   |
+   |        Two.wow("five")
+   |
+   |        failed with:
+   |
+   |            Found:    ("five" : String)
+   |            Required: Int
+-- [E008] Not Found Error: tests/neg/i16920.scala:26:6 -----------------------------------------------------------------
+26 |    5.wow // error
+   |    ^^^^^
+   |    value wow is not a member of Int.
+   |    An extension method was tried, but could not be fully constructed:
+   |
+   |        AlsoFails.wow(5)
+   |
+   |        failed with:
+   |
+   |            Found:    (5 : Int)
+   |            Required: Boolean
+-- [E008] Not Found Error: tests/neg/i16920.scala:27:11 ----------------------------------------------------------------
+27 |    "five".wow // error
+   |    ^^^^^^^^^^
+   |    value wow is not a member of String.
+   |    An extension method was tried, but could not be fully constructed:
+   |
+   |        AlsoFails.wow("five")
+   |
+   |        failed with:
+   |
+   |            Found:    ("five" : String)
+   |            Required: Boolean
+-- [E008] Not Found Error: tests/neg/i16920.scala:34:6 -----------------------------------------------------------------
+34 |    5.wow // error
+   |    ^^^^^
+   |    value wow is not a member of Int.
+   |    An extension method was tried, but could not be fully constructed:
+   |
+   |        Three.wow(5)
+   |
+   |        failed with:
+   |
+   |            Ambiguous extension methods:
+   |            both Three.wow(5)
+   |            and  Two.wow(5)
+   |            are possible expansions of 5.wow
+-- [E008] Not Found Error: tests/neg/i16920.scala:42:11 ----------------------------------------------------------------
+42 |    "five".wow // error
+   |    ^^^^^^^^^^
+   |    value wow is not a member of String.
+   |    An extension method was tried, but could not be fully constructed:
+   |
+   |        Two.wow("five")
+   |
+   |        failed with:
+   |
+   |            Found:    ("five" : String)
+   |            Required: Int
+-- [E008] Not Found Error: tests/neg/i16920.scala:49:11 ----------------------------------------------------------------
+49 |    "five".wow // error
+   |    ^^^^^^^^^^
+   |    value wow is not a member of String.
+   |    An extension method was tried, but could not be fully constructed:
+   |
+   |        Two.wow("five")
+   |
+   |        failed with:
+   |
+   |            Found:    ("five" : String)
+   |            Required: Int
+-- [E008] Not Found Error: tests/neg/i16920.scala:56:6 -----------------------------------------------------------------
+56 |    5.wow // error
+   |    ^^^^^
+   |    value wow is not a member of Int.
+   |    An extension method was tried, but could not be fully constructed:
+   |
+   |        Three.wow(5)
+   |
+   |        failed with:
+   |
+   |            Ambiguous extension methods:
+   |            both Three.wow(5)
+   |            and  Two.wow(5)
+   |            are possible expansions of 5.wow

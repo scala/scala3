@@ -20,12 +20,12 @@ object Main {
     import ExtensionB._
     import ExtensionA._
     val a = A()
-    println(a.id) // error
+    println(a.id) // now ok
   }
   def main2(args: Array[String]): Unit = {
     import ExtensionA._
     import ExtensionB._
     val a = A()
-    println(a.id) // error
+    println(a.id) // now ok
   }
 }
