@@ -1434,6 +1434,15 @@ extends ReferenceMsg(AmbiguousOverloadID), NoDisambiguation {
         |"""
 }
 
+class AmbiguousExtensionMethod(tree: untpd.Tree, expansion1: tpd.Tree, expansion2: tpd.Tree)(using Context)
+  extends ReferenceMsg(AmbiguousExtensionMethodID), NoDisambiguation:
+  def msg(using Context) =
+    i"""Ambiguous extension methods:
+       |both $expansion1
+       |and  $expansion2
+       |are possible expansions of $tree"""
+  def explain(using Context) = ""
+
 class ReassignmentToVal(name: Name)(using Context)
   extends TypeMsg(ReassignmentToValID) {
   def msg(using Context) = i"""Reassignment to val $name"""
