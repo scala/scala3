@@ -437,6 +437,15 @@ class ReplCompilerTests extends ReplTest:
     s2
   }
 
+  @Test def `i17333 print null result of toString`: Unit =
+    initially:
+      run("val tpolecat = new Object { override def toString(): String = null }")
+    .andThen:
+      assertEquals("val tpolecat: Object = null // non-null reference has null-valued toString", lines().head)
+
+end ReplCompilerTests
+
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");
