@@ -506,12 +506,8 @@ object Inlines:
       overriddenDecls.contains(stat.symbol)
 
     private def expandStat(stat: tpd.Tree, inlinedSym: Symbol): tpd.Tree = stat match
-      case stat: ValDef if stat.symbol.is(ParamAccessor) =>
-        tpd.ValDef(inlinedSym.asTerm, paramAccessorsValueOf(stat.symbol.name)).withSpan(parent.span)
       case stat: ValDef =>
         inlinedValDef(stat, inlinedSym)
-      case stat: DefDef if stat.symbol.isSetter =>
-        tpd.DefDef(inlinedSym.asTerm, unitLiteral).withSpan(parent.span)
       case stat: DefDef =>
         inlinedDefDef(stat, inlinedSym)
       case stat @ TypeDef(_, impl: Template) =>
@@ -542,13 +538,22 @@ object Inlines:
     }
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
-      tpd.ValDef(inlinedSym.asTerm, inlinedRhs(vdef.rhs.changeOwner(vdef.symbol, inlinedSym))).withSpan(parent.span)
+      val rhs =
+        if vdef.symbol.is(ParamAccessor) then
+          paramAccessorsValueOf(vdef.symbol.name)
+        else
+          inlinedRhs(vdef.rhs.changeOwner(vdef.symbol, inlinedSym))
+      tpd.ValDef(inlinedSym.asTerm, rhs).withSpan(parent.span)
 
     private def inlinedDefDef(ddef: DefDef, inlinedSym: Symbol)(using Context): DefDef =
-      def rhsFun(paramss: List[List[Tree]]): Tree =
-        val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
-        val newParamSyms = paramss.flatten.map(_.symbol)
-        inlinedRhs(ddef.rhs.subst(oldParamSyms, newParamSyms).changeOwner(ddef.symbol, inlinedSym))
+      val rhsFun: List[List[Tree]] => Tree =
+        if ddef.symbol.isSetter then
+          _ => unitLiteral
+        else
+          paramss =>
+            val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
+            val newParamSyms = paramss.flatten.map(_.symbol)
+            inlinedRhs(ddef.rhs.subst(oldParamSyms, newParamSyms).changeOwner(ddef.symbol, inlinedSym))
       tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(parent.span)
 
     private def inlinedPrimaryConstructorDefDef(ddef: DefDef)(using Context): DefDef =
