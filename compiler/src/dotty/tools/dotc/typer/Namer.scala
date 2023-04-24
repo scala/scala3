@@ -1851,7 +1851,11 @@ class Namer { typer: Typer =>
         }
         val defaultAlts = meth.altsWith(_.hasDefaultParams)
         if (defaultAlts.length == 1)
-          paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
+          meth.info match
+            case info: PolyType =>
+              paramProto(defaultAlts.head.info.widen.paramInfoss, idx).substParams(info, paramss.head.map(_.typeRef))
+            case _ =>
+              paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
         else
           NoType
       case _ =>
@@ -1878,6 +1882,8 @@ class Namer { typer: Typer =>
         if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
             || resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
           originalTp
+        case SAMType(_) if !defn.isFunctionType(approxTp)=>
+            originalTp
         case _ =>
           approxTp
 
