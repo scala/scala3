@@ -470,7 +470,7 @@ object Inlines:
     import tpd._
     import Inlines.*
 
-    private val thisInlineTraitProxy = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
+    private val thisInlineTrait = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
 
     def expandDefs(): List[Tree] =
       val tpd.Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
@@ -481,7 +481,7 @@ object Inlines:
 
     protected class InlineTraitTypeMap extends InlinerTypeMap {
       override def apply(t: Type) = t match {
-        case t: ThisType if t.cls == parentSym => thisInlineTraitProxy
+        case t: ThisType if t.cls == parentSym => thisInlineTrait
         case t => super.apply(t)
       }
     }
@@ -489,18 +489,18 @@ object Inlines:
     override protected val inlinerTypeMap: InlinerTypeMap = InlineTraitTypeMap()
 
     private val paramAccessorsValueOf: Map[Name, Tree] =
-      def allArgs(tree: Tree): List[List[Tree]] = tree match
-        case Apply(fun, args) => args :: allArgs(fun)
-        case TypeApply(fun, _) => allArgs(fun)
-        case _ => Nil
-      def allParams(info: Type): List[List[Name]] = info match
-        case mt: MethodType => mt.paramNames :: allParams(mt.resultType)
-        case pt: PolyType => allParams(pt.resultType)
-        case _ => Nil
+      def allArgs(tree: Tree, acc: Vector[List[Tree]]): List[List[Tree]] = tree match
+        case Apply(fun, args) => allArgs(fun, acc :+ args)
+        case TypeApply(fun, _) => allArgs(fun, acc)
+        case _ => acc.toList
+      def allParams(info: Type, acc: List[List[Name]]): List[List[Name]] = info match
+        case mt: MethodType => allParams(mt.resultType, mt.paramNames :: acc)
+        case pt: PolyType => allParams(pt.resultType, acc)
+        case _ => acc
       val info =
         if parent.symbol.isClass then parent.symbol.primaryConstructor.info
         else parent.symbol.info
-      allParams(info).flatten.zip(allArgs(parent).reverse.flatten).toMap
+      allParams(info, Nil).flatten.zip(allArgs(parent, Vector.empty).flatten).toMap
 
     private def isStatAlreadyOverridden(stat: Tree): Boolean =
       overriddenDecls.contains(stat.symbol)
