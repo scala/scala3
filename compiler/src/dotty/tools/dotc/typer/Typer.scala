@@ -2672,7 +2672,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else {
       val dummy = localDummy(cls, impl)
       val inlineTraitDefs =
-        if ctx.isAfterTyper then
+        if ctx.isAfterTyper || cls.isInlineTrait then
           Nil
         else
           val overriddenSyms = cls.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet

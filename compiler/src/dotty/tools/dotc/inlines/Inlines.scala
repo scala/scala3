@@ -20,6 +20,7 @@ import staging.StagingLevel
 import collection.mutable
 import reporting.{NotConstant, trace}
 import util.Spans.{Span, spanCoord}
+import NameOps.expandedName
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -486,7 +487,17 @@ object Inlines:
       }
     }
 
+    protected class InlineTraitTreeMap extends InlinerTreeMap {
+      override def apply(tree: Tree) = tree match {
+        case tree @ Select(This(ident), name) if ident.name == parentSym.name && localParamAccessorsNames.contains(name) =>
+          Select(This(ctx.owner.asClass), localParamAccessorsNames(name)).withSpan(parent.span)
+        case tree =>
+          super.apply(tree)
+      }
+    }
+
     override protected val inlinerTypeMap: InlinerTypeMap = InlineTraitTypeMap()
+    override protected val inlinerTreeMap: InlinerTreeMap = InlineTraitTreeMap()
 
     private val paramAccessorsValueOf: Map[Name, Tree] =
       def allArgs(tree: Tree, acc: Vector[List[Tree]]): List[List[Tree]] = tree match
@@ -501,6 +512,8 @@ object Inlines:
         if parent.symbol.isClass then parent.symbol.primaryConstructor.info
         else parent.symbol.info
       allParams(info, Nil).flatten.zip(allArgs(parent, Vector.empty).flatten).toMap
+
+    private val localParamAccessorsNames = new mutable.HashMap[Name, Name]
 
     private def isStatAlreadyOverridden(stat: Tree): Boolean =
       overriddenDecls.contains(stat.symbol)
@@ -524,11 +537,17 @@ object Inlines:
           val inlinedInfo = ClassInfo(prefix, cls, declaredParents, Scopes.newScope, selfInfo) // TODO adapt parents
           sym.copy(owner = ctx.owner, info = inlinedInfo, coord = spanCoord(parent.span)).entered.asClass
         case _ =>
+          var name = sym.name
           var flags = sym.flags | Synthetic
           if sym.isType || !sym.is(Private) then flags |= Override
-          if sym.isTermParamAccessor then flags &~= ParamAccessor
+          if sym.isTermParamAccessor then
+            flags &~= ParamAccessor
+            if sym.is(Local) then
+              name = name.expandedName(parentSym)
+              localParamAccessorsNames(sym.name) = name
           sym.copy(
             owner = ctx.owner,
+            name = name,
             flags = flags,
             info = inlinerTypeMap(sym.info),
             coord = spanCoord(parent.span)).entered
