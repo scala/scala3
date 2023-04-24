@@ -529,7 +529,7 @@ trait ClassLikeSupport:
     experimental: Option[Annotation] = None
   ) = Member(
     name = symbol.normalizedName,
-    fullName = symbol.fullName,
+    fullName = symbol.normalizedFullName,
     dri = symbol.dri,
     kind = kind,
     visibility = symbol.getVisibility(),
