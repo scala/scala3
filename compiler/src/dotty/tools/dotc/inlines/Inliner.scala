@@ -518,7 +518,53 @@ class Inliner(val call: tpd.Tree)(using Context):
     }
   }
 
+  protected class InlinerTreeMap extends (Tree => Tree) {
+    def apply(tree: Tree) = tree match {
+      case tree: This =>
+        tree.tpe match {
+          case thistpe: ThisType =>
+            val cls = thistpe.cls
+            if cls.isInlineTrait then
+              integrate(This(ctx.owner.asClass).withSpan(call.span), cls)
+            else thisProxy.get(cls) match {
+              case Some(t) =>
+                val thisRef = ref(t).withSpan(call.span)
+                inlinedFromOutside(thisRef)(tree.span)
+              case None => tree
+            }
+          case _ => tree
+        }
+      case tree: Ident =>
+        /* Span of the argument. Used when the argument is inlined directly without a binding */
+        def argSpan =
+          if (tree.name == nme.WILDCARD) tree.span // From type match
+          else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
+          else paramSpan(tree.name)
+        val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
+        paramProxy.get(tree.tpe) match {
+          case Some(t) if tree.isTerm && t.isSingleton =>
+            val inlinedSingleton = singleton(t).withSpan(argSpan)
+            inlinedFromOutside(inlinedSingleton)(tree.span)
+          case Some(t) if tree.isType =>
+            inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
+          case _ => tree
+        }
+      case tree @ Select(qual: This, name) if tree.symbol.is(Private) && tree.symbol.isInlineMethod =>
+        // This inline method refers to another (private) inline method (see tests/pos/i14042.scala).
+        // We insert upcast to access the private inline method once inlined. This makes the selection
+        // keep the symbol when re-typechecking in the InlineTyper. The method is inlined and hence no
+        // reference to a private method is kept at runtime.
+        cpy.Select(tree)(qual.asInstance(qual.tpe.widen), name)
+
+      case tree => tree
+    }
+
+    private def inlinedFromOutside(tree: Tree)(span: Span): Tree =
+      Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
+  }
+
   protected val inlinerTypeMap: InlinerTypeMap = InlinerTypeMap()
+  protected val inlinerTreeMap: InlinerTreeMap = InlinerTreeMap()
 
   /** The Inlined node representing the inlined call */
   def inlined(rhsToInline: tpd.Tree): (List[MemberDef], Tree) =
@@ -565,54 +611,13 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
-    def inlinedFromOutside(tree: Tree)(span: Span): Tree =
-      Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
-
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
     val inliner = new InlinerMap(
       typeMap = inlinerTypeMap,
-      treeMap = {
-        case tree: This =>
-          tree.tpe match {
-            case thistpe: ThisType =>
-              val cls = thistpe.cls
-              if cls.isInlineTrait then
-                integrate(This(ctx.owner.asClass).withSpan(call.span), cls)
-              else thisProxy.get(cls) match {
-                case Some(t) =>
-                  val thisRef = ref(t).withSpan(call.span)
-                  inlinedFromOutside(thisRef)(tree.span)
-                case None => tree
-              }
-            case _ => tree
-          }
-        case tree: Ident =>
-          /* Span of the argument. Used when the argument is inlined directly without a binding */
-          def argSpan =
-            if (tree.name == nme.WILDCARD) tree.span // From type match
-            else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
-            else paramSpan(tree.name)
-          val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
-          paramProxy.get(tree.tpe) match {
-            case Some(t) if tree.isTerm && t.isSingleton =>
-              val inlinedSingleton = singleton(t).withSpan(argSpan)
-              inlinedFromOutside(inlinedSingleton)(tree.span)
-            case Some(t) if tree.isType =>
-              inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
-            case _ => tree
-          }
-        case tree @ Select(qual: This, name) if tree.symbol.is(Private) && tree.symbol.isInlineMethod =>
-          // This inline method refers to another (private) inline method (see tests/pos/i14042.scala).
-          // We insert upcast to access the private inline method once inlined. This makes the selection
-          // keep the symbol when re-typechecking in the InlineTyper. The method is inlined and hence no
-          // reference to a private method is kept at runtime.
-          cpy.Select(tree)(qual.asInstance(qual.tpe.widen), name)
-
-        case tree => tree
-      },
+      treeMap = inlinerTreeMap,
       oldOwners = inlinedMethod :: Nil,
       newOwners = ctx.owner :: Nil,
       substFrom = Nil,

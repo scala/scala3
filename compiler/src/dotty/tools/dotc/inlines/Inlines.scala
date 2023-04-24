@@ -505,6 +505,9 @@ object Inlines:
     private def isStatAlreadyOverridden(stat: Tree): Boolean =
       overriddenDecls.contains(stat.symbol)
 
+    extension (sym: Symbol)
+      private def isTermParamAccessor: Boolean = !sym.isType && sym.is(ParamAccessor)
+
     private def expandStat(stat: tpd.Tree, inlinedSym: Symbol): tpd.Tree = stat match
       case stat: ValDef =>
         inlinedValDef(stat, inlinedSym)
@@ -523,7 +526,7 @@ object Inlines:
         case _ =>
           var flags = sym.flags | Synthetic
           if sym.isType || !sym.is(Private) then flags |= Override
-          if !sym.isType && sym.is(ParamAccessor) then flags &~= ParamAccessor
+          if sym.isTermParamAccessor then flags &~= ParamAccessor
           sym.copy(
             owner = ctx.owner,
             flags = flags,
@@ -539,7 +542,7 @@ object Inlines:
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
       val rhs =
-        if vdef.symbol.is(ParamAccessor) then
+        if vdef.symbol.isTermParamAccessor then
           paramAccessorsValueOf(vdef.symbol.name)
         else
           inlinedRhs(vdef.rhs.changeOwner(vdef.symbol, inlinedSym))
