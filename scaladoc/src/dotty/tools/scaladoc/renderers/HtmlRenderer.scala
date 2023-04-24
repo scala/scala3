@@ -166,13 +166,14 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     def icon(link: SocialLinks) = link.className
     args.socialLinks.map { link =>
       a(href := link.url) (
-        if icon(link) == "custom" then
-          Seq(
-            img(cls := s"icon-button ${icon(link)}", src := s"../../../../images/${link.whiteIcon}"),
-            img(cls := s"icon-button ${icon(link)}-dark", src := s"../../../../images/${link.darkIcon}")
-          )
-        else
-          button(cls := s"icon-button ${icon(link)}")
+        link match
+          case SocialLinks.Custom(_, lightIcon, darkIcon) => 
+            Seq(
+              img(cls := s"icon-button ${icon(link)}", src := s"../../../../images/$lightIcon"),
+              img(cls := s"icon-button ${icon(link)}-dark", src := s"../../../images/$darkIcon")
+            )
+          case _ =>
+            button(cls := s"icon-button ${icon(link)}")
       )
     }
 

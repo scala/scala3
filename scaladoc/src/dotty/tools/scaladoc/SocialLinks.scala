@@ -4,12 +4,12 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import dotty.tools.dotc.core.Contexts.Context
 
-enum SocialLinks(val url: String, val whiteIcon: String, val darkIcon: String, val className: String):
-  case Github(ghUrl: String) extends SocialLinks(ghUrl, "", "", "gh")
-  case Twitter(tUrl: String) extends SocialLinks(tUrl, "", "", "twitter")
-  case Gitter(gUrl: String) extends SocialLinks(gUrl, "", "", "gitter")
-  case Discord(dUrl: String) extends SocialLinks(dUrl, "", "", "discord")
-  case Custom(cUrl: String, firstIcon: String, secondIcon: String) extends SocialLinks(cUrl, firstIcon, secondIcon, "custom")
+enum SocialLinks(val url: String, val className: String):
+  case Github(ghUrl: String) extends SocialLinks(ghUrl, "gh")
+  case Twitter(tUrl: String) extends SocialLinks(tUrl, "twitter")
+  case Gitter(gUrl: String) extends SocialLinks(gUrl, "gitter")
+  case Discord(dUrl: String) extends SocialLinks(dUrl, "discord")
+  case Custom(cUrl: String, lightIcon: String, darkIcon: String) extends SocialLinks(cUrl, "custom")
 
 object SocialLinks:
   def parse(s: String): Either[String, SocialLinks] =
