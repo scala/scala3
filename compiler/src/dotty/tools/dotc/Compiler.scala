@@ -59,7 +59,8 @@ class Compiler {
   /** Phases dealing with the transformation from pickled trees to backend trees */
   protected def transformPhases: List[List[Phase]] =
     List(new InstrumentCoverage) ::  // Perform instrumentation for code coverage (if -coverage-out is set)
-    List(new FirstTransform,         // Some transformations to put trees into a canonical form
+    List(new CrossVersionChecks,     // Check issues related to deprecated and experimental
+         new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
@@ -71,8 +72,7 @@ class Compiler {
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new init.Checker) ::        // Check initialization of objects
-    List(new CrossVersionChecks,     // Check issues related to deprecated and experimental
-         new ProtectedAccessors,     // Add accessors for protected members
+    List(new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
          new ElimByName,             // Map by-name parameters to functions
