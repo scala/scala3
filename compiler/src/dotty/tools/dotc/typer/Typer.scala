@@ -2045,25 +2045,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         bindings1, expansion1)
   }
 
-  def typedQuotedExpr(tree: untpd.QuotedExpr, pt: Type)(using Context): Tree =
-    if tree.tpt.isEmpty then
-      typedQuote(tree, pt)
-    else
-      val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
-      val expr1 = typed(tree.expr, tpt1.tpe.widenSkolem)(using StagingLevel.quoteContext)
-      assignType(cpy.QuotedExpr(tree)(expr1, tpt1), tpt1)
-
-  def typedSplicedExpr(tree: untpd.SplicedExpr, pt: Type)(using Context): Tree =
-    if tree.tpt.isEmpty then
-      typedSplice(tree, pt)
-    else
-      val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
-      val splicedType = // Quotes ?=> Expr[T]
-        defn.FunctionType(1, isContextual = true)
-          .appliedTo(defn.QuotesClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpt1.tpe.widenSkolem))
-      val expr1 = typed(tree.expr, splicedType)(using StagingLevel.spliceContext)
-      assignType(cpy.SplicedExpr(tree)(expr1, tpt1), tpt1)
-
   def completeTypeTree(tree: untpd.TypeTree, pt: Type, original: untpd.Tree)(using Context): TypeTree =
     tree.withSpan(original.span).withAttachmentsFrom(original)
       .withType(
