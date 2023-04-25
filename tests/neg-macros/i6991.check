@@ -1,0 +1,10 @@
+-- [E050] Type Error: tests/neg-macros/i6991.scala:11:14 ---------------------------------------------------------------
+11 |      case '{($x: Foo)($bar: String)} => '{"Hello World"} // error
+   |              ^^^^^^^
+   |              expression does not take parameters
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg-macros/i6991.scala:12:23 ----------------------------------------------------------
+12 |      case '{($x: Foo).apply($bar: String)} => '{"Hello World"} // error
+   |             ^^^^^^^^^^^^^^^
+   |             value apply is not a member of macros.Foo
