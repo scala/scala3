@@ -42,7 +42,6 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
         case 3 => "h400"
         case 4 => "h300"
         case _ => "h50"
-      //val a: Attribute = AttributeImpl.of("class", headerClass)
       val attributes = MutableAttributes()
       attributes.addValue("class", headerClass)
       val embeddedAttributes = EmbeddedAttributeProvider.EmbeddedNodeAttributes(header, attributes)
