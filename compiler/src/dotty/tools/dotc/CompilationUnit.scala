@@ -157,7 +157,7 @@ object CompilationUnit {
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
       tree match
-        case tpd.QuotedExpr(_, _) =>
+        case tpd.Quote(_, _) =>
           containsQuote = true
         case tree: tpd.Apply if tree.symbol == defn.QuotedTypeModule_of =>
           containsQuote = true

@@ -83,9 +83,9 @@ class PickleQuotes extends MacroTransform {
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match
-      case tree: QuotedExpr =>
+      case tree: Quote =>
         assert(Inlines.inInlineMethod)
-      case tree: SplicedExpr =>
+      case tree: Splice =>
         assert(Inlines.inInlineMethod)
       case tree: RefTree if !Inlines.inInlineMethod =>
         assert(tree.symbol != defn.QuotedTypeModule_of)
@@ -100,7 +100,7 @@ class PickleQuotes extends MacroTransform {
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
-        case Apply(Select(QuotedExpr(expr, tpt), nme.apply), List(quotes)) =>
+        case Apply(Select(Quote(expr, tpt), nme.apply), List(quotes)) =>
           val (contents, codeWithHoles) = makeHoles(expr)
           val sourceRef = Inlines.inlineCallTrace(ctx.owner, tree.sourcePos)
           val codeWithHoles2 = Inlined(sourceRef, Nil, codeWithHoles)

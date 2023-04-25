@@ -677,14 +677,14 @@ object Trees {
     override def isType = expansion.isType
   }
 
-  case class QuotedExpr[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Quote[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
-    type ThisTree[+T <: Untyped] = QuotedExpr[T]
+    type ThisTree[+T <: Untyped] = Quote[T]
   }
 
-  case class SplicedExpr[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Splice[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
-    type ThisTree[+T <: Untyped] = SplicedExpr[T]
+    type ThisTree[+T <: Untyped] = Splice[T]
     def isInBraces: Boolean = span.end != expr.span.end
   }
 
@@ -1098,8 +1098,8 @@ object Trees {
     type SeqLiteral = Trees.SeqLiteral[T]
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
     type Inlined = Trees.Inlined[T]
-    type QuotedExpr = Trees.QuotedExpr[T]
-    type SplicedExpr = Trees.SplicedExpr[T]
+    type Quote = Trees.Quote[T]
+    type Splice = Trees.Splice[T]
     type TypeTree = Trees.TypeTree[T]
     type InferredTypeTree = Trees.InferredTypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
@@ -1270,13 +1270,13 @@ object Trees {
         case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion)(sourceFile(tree)))
       }
-      def QuotedExpr(tree: Tree)(expr: Tree, tpt: Tree)(using Context): QuotedExpr = tree match {
-        case tree: QuotedExpr if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
-        case _ => finalize(tree, untpd.QuotedExpr(expr, tpt)(sourceFile(tree)))
+      def Quote(tree: Tree)(expr: Tree, tpt: Tree)(using Context): Quote = tree match {
+        case tree: Quote if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
+        case _ => finalize(tree, untpd.Quote(expr, tpt)(sourceFile(tree)))
       }
-      def SplicedExpr(tree: Tree)(expr: Tree, tpt: Tree)(using Context): SplicedExpr = tree match {
-        case tree: SplicedExpr if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
-        case _ => finalize(tree, untpd.SplicedExpr(expr, tpt)(sourceFile(tree)))
+      def Splice(tree: Tree)(expr: Tree, tpt: Tree)(using Context): Splice = tree match {
+        case tree: Splice if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
+        case _ => finalize(tree, untpd.Splice(expr, tpt)(sourceFile(tree)))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree)(using Context): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
@@ -1383,8 +1383,8 @@ object Trees {
         TypeDef(tree: Tree)(name, rhs)
       def Template(tree: Template)(using Context)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody): Template =
         Template(tree: Tree)(constr, parents, derived, self, body)
-      def SplicedExpr(tree: SplicedExpr)(expr: Tree = tree.expr, tpt: Tree = tree.tpt)(using Context): SplicedExpr =
-        SplicedExpr(tree: Tree)(expr, tpt)
+      def Splice(tree: Splice)(expr: Tree = tree.expr, tpt: Tree = tree.tpt)(using Context): Splice =
+        Splice(tree: Tree)(expr, tpt)
       def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
         Hole(tree: Tree)(isTerm, idx, args, content, tpt)
 
@@ -1517,10 +1517,10 @@ object Trees {
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
-            case tree @ QuotedExpr(expr, tpt) =>
-              cpy.QuotedExpr(tree)(transform(expr), transform(tpt))
-            case tree @ SplicedExpr(expr, tpt) =>
-              cpy.SplicedExpr(tree)(transform(expr), transform(tpt))
+            case tree @ Quote(expr, tpt) =>
+              cpy.Quote(tree)(transform(expr), transform(tpt))
+            case tree @ Splice(expr, tpt) =>
+              cpy.Splice(tree)(transform(expr), transform(tpt))
             case tree @ Hole(_, _, args, content, tpt) =>
               cpy.Hole(tree)(args = transform(args), content = transform(content), tpt = transform(tpt))
             case _ =>
@@ -1662,9 +1662,9 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
-            case QuotedExpr(expr, tpt) =>
+            case Quote(expr, tpt) =>
               this(this(x, expr), tpt)
-            case SplicedExpr(expr, tpt) =>
+            case Splice(expr, tpt) =>
               this(this(x, expr), tpt)
             case Hole(_, _, args, content, tpt) =>
               this(this(this(x, args), content), tpt)

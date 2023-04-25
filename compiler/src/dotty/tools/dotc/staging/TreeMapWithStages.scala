@@ -25,8 +25,8 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
    *
    *  - `quoted.runtime.Expr.quote[T](<body0>)`  --> `quoted.runtime.Expr.quote[T](<body>)`
    */
-  protected def transformQuotedExpr(body: Tree, quote: QuotedExpr)(using Context): Tree =
-    cpy.QuotedExpr(quote)(body, quote.tpt)
+  protected def transformQuote(body: Tree, quote: Quote)(using Context): Tree =
+    cpy.Quote(quote)(body, quote.tpt)
 
   /** Transform the quote `quote` which contains the quoted `body`.
    *
@@ -37,7 +37,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
     cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body :: Nil), quote.args)
 
   /** Transform the expression splice `splice` which contains the spliced `body`. */
-  protected def transformSplice(body: Tree, splice: SplicedExpr)(using Context): Tree
+  protected def transformSplice(body: Tree, splice: Splice)(using Context): Tree
 
   /** Transform the type splice `splice` which contains the spliced `body`. */
   protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree
@@ -62,24 +62,24 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           try transformQuotedType(quotedTree, tree)
           finally inQuoteOrSplice = old
 
-        case tree @ QuotedExpr(quotedTree, _) =>
+        case tree @ Quote(quotedTree, _) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(quotedTree) match {
-            case SplicedExpr(t, _) =>
+            case Splice(t, _) =>
               // Optimization: `'{ $x }` --> `x`
               // and adapt the refinement of `Quotes { type reflect: ... } ?=> Expr[T]`
               transform(t).asInstance(tree.tpe)
             case _ =>
-              transformQuotedExpr(quotedTree, tree)
+              transformQuote(quotedTree, tree)
           }
           finally inQuoteOrSplice = old
 
-        case tree @ SplicedExpr(splicedTree, _) =>
+        case tree @ Splice(splicedTree, _) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(splicedTree) match {
-            case QuotedExpr(t, _) =>
+            case Quote(t, _) =>
               // Optimization: `${ 'x }` --> `x`
               transform(t)
             case _ =>

@@ -91,9 +91,9 @@ object PrepareInlineable {
         }
 
       private def stagingContext(tree: Tree)(using Context): Context = tree match
-        case tree: QuotedExpr => StagingLevel.quoteContext
+        case tree: Quote => StagingLevel.quoteContext
         case tree: Apply if tree.symbol eq defn.QuotedTypeModule_of => StagingLevel.quoteContext
-        case tree: SplicedExpr => StagingLevel.spliceContext
+        case tree: Splice => StagingLevel.spliceContext
         case _ => ctx
     }
 
@@ -291,7 +291,7 @@ object PrepareInlineable {
     if (inlined.is(Macro) && !ctx.isAfterTyper) {
 
       def checkMacro(tree: Tree): Unit = tree match {
-        case SplicedExpr(code, _) =>
+        case Splice(code, _) =>
           if (code.symbol.flags.is(Inline))
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)

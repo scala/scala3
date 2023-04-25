@@ -1262,7 +1262,7 @@ object Parsers {
               }
             }
             in.nextToken()
-            QuotedExpr(t, EmptyTree)
+            Quote(t, EmptyTree)
           }
           else
             if !in.featureEnabled(Feature.symbolLiterals) then
@@ -1764,7 +1764,7 @@ object Parsers {
           syntaxError(em"$msg\n\nHint: $hint", Span(start, in.lastOffset))
           Ident(nme.ERROR.toTypeName)
         else
-          SplicedExpr(expr, EmptyTree)
+          Splice(expr, EmptyTree)
       }
 
     /**  SimpleType      ::=  SimpleLiteral
@@ -2497,7 +2497,7 @@ object Parsers {
               val expr =
                 if (in.token == LBRACKET) inBrackets(typ())
                 else stagedBlock()
-              QuotedExpr(expr, EmptyTree)
+              Quote(expr, EmptyTree)
             }
           }
         case NEW =>

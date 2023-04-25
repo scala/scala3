@@ -716,10 +716,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case MacroTree(call) =>
         keywordStr("macro ") ~ toTextGlobal(call)
-      case QuotedExpr(expr, tpt) =>
+      case Quote(expr, tpt) =>
         val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(!tpt.isEmpty && printDebug)
         keywordStr("'") ~ tptText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
-      case SplicedExpr(expr, tpt) =>
+      case Splice(expr, tpt) =>
         val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(!tpt.isEmpty && printDebug)
         keywordStr("$") ~ tptText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
       case Hole(isTermHole, idx, args, content, tpt) =>

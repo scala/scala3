@@ -97,14 +97,14 @@ class CrossStageSafety extends TreeMapWithStages {
     }
 
   /** Transform quoted trees while maintaining level correctness */
-  override protected def transformQuotedExpr(body: Tree, quote: QuotedExpr)(using Context): Tree = {
+  override protected def transformQuote(body: Tree, quote: Quote)(using Context): Tree = {
     if (ctx.property(InAnnotation).isDefined)
       report.error("Cannot have a quote in an annotation", quote.srcPos)
     val transformedBody = transformQuoteBody(body, quote.span)
     val stripAnnotsDeep: TypeMap = new TypeMap:
       def apply(tp: Type): Type = mapOver(tp.stripAnnots)
     val tpt1 = TypeTree(healType(quote.tpt.srcPos)(stripAnnotsDeep(quote.tpt.tpe)))
-    cpy.QuotedExpr(quote)(transformedBody, tpt1)
+    cpy.Quote(quote)(transformedBody, tpt1)
   }
 
   override protected def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree = {
@@ -142,7 +142,7 @@ class CrossStageSafety extends TreeMapWithStages {
    *  - If inside inlined code, expand the macro code.
    *  - If inside of a macro definition, check the validity of the macro.
    */
-  protected def transformSplice(body: Tree, splice: SplicedExpr)(using Context): Tree = {
+  protected def transformSplice(body: Tree, splice: Splice)(using Context): Tree = {
     val body1 = transform(body)(using spliceContext)
     val tpt1 =
       if level == 0 then
@@ -150,7 +150,7 @@ class CrossStageSafety extends TreeMapWithStages {
       else
         val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
         TypeTree(tp).withSpan(splice.tpt.span)
-    cpy.SplicedExpr(splice)(body1, tpt1)
+    cpy.Splice(splice)(body1, tpt1)
   }
 
   protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree = {
