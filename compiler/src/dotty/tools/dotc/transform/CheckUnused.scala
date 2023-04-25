@@ -682,7 +682,7 @@ object CheckUnused:
       /** A function is overriden. Either has `override flags` or parent has a matching member (type and name) */
       private def isOverriden(using Context): Boolean =
         sym.is(Flags.Override) ||
-        (if sym.exists then sym.owner.thisType.parents.exists(p => sym.matchingMember(p).exists) else false)
+          (sym.exists && sym.owner.thisType.parents.exists(p => sym.matchingMember(p).exists))
 
     end extension
 
@@ -709,7 +709,11 @@ object CheckUnused:
 
     extension (memDef: tpd.MemberDef)
       private def isValidMemberDef(using Context): Boolean =
-        !memDef.symbol.isUnusedAnnot && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags) && !memDef.name.isWildcard && !memDef.symbol.owner.is(Extension)
+        memDef.symbol.exists
+          && !memDef.symbol.isUnusedAnnot
+          && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags)
+          && !memDef.name.isWildcard
+          && !memDef.symbol.owner.is(ExtensionMethod)
 
       private def isValidParam(using Context): Boolean =
         val sym = memDef.symbol
