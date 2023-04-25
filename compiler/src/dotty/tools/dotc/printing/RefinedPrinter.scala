@@ -723,9 +723,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case QuotedExpr(expr, tpt) =>
         val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(printDebug)
         keywordStr("'") ~ tptText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
-      case SplicedExpr(spliced, tpt) =>
+      case SplicedExpr(expr, tpt) =>
         val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(printDebug)
-        keywordStr("$") ~ tptText ~ keywordStr("{") ~ toTextGlobal(spliced) ~ keywordStr("}")
+        keywordStr("$") ~ tptText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
       case Hole(isTermHole, idx, args, content, tpt) =>
         val (prefix, postfix) = if isTermHole then ("{{{", "}}}") else ("[[[", "]]]")
         val argsText = toTextGlobal(args, ", ")

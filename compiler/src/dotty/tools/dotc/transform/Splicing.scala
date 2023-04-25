@@ -113,13 +113,13 @@ class Splicing extends MacroTransform:
       tree match
         case tree: SplicedExpr =>
           if level > 1 then
-            val spliced1 = super.transform(tree.spliced)(using spliceContext)
-            cpy.SplicedExpr(tree)(spliced1, tree.tpt)
+            val expr1 = super.transform(tree.expr)(using spliceContext)
+            cpy.SplicedExpr(tree)(expr1, tree.tpt)
           else
             val holeIdx = numHoles
             numHoles += 1
             val splicer = SpliceTransformer(ctx.owner, quotedDefs.contains)
-            val newSplicedCode1 = splicer.transformSplice(tree.spliced, tree.tpe, holeIdx)(using spliceContext)
+            val newSplicedCode1 = splicer.transformSplice(tree.expr, tree.tpe, holeIdx)(using spliceContext)
             val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
             newSplicedCode2
         case tree: TypeDef if tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
@@ -234,9 +234,9 @@ class Splicing extends MacroTransform:
         case tree @ Assign(lhs: RefTree, rhs) =>
           if isCaptured(lhs.symbol) then transformSplicedAssign(tree)
           else super.transform(tree)
-        case SplicedExpr(spliced, tpt) =>
-          val spliced1 = transform(spliced)(using spliceContext)
-          cpy.SplicedExpr(tree)(spliced1, tpt)
+        case SplicedExpr(expr, tpt) =>
+          val expr1 = transform(expr)(using spliceContext)
+          cpy.SplicedExpr(tree)(expr1, tpt)
         case Apply(sel @ Select(app @ QuotedExpr(expr, tpt), nme.apply), quotesArgs) =>
           expr match
             case expr: RefTree if isCaptured(expr.symbol) =>

@@ -2055,8 +2055,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val splicedType = // Quotes ?=> Expr[T]
       defn.FunctionType(1, isContextual = true)
         .appliedTo(defn.QuotesClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpt1.tpe.widenSkolem))
-    val spliced1 = typed(tree.spliced, splicedType)(using StagingLevel.spliceContext)
-    assignType(cpy.SplicedExpr(tree)(spliced1, tpt1), tpt1)
+    val expr1 = typed(tree.expr, splicedType)(using StagingLevel.spliceContext)
+    assignType(cpy.SplicedExpr(tree)(expr1, tpt1), tpt1)
 
   def completeTypeTree(tree: untpd.TypeTree, pt: Type, original: untpd.Tree)(using Context): TypeTree =
     tree.withSpan(original.span).withAttachmentsFrom(original)
