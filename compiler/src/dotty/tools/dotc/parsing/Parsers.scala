@@ -1764,7 +1764,7 @@ object Parsers {
           syntaxError(em"$msg\n\nHint: $hint", Span(start, in.lastOffset))
           Ident(nme.ERROR.toTypeName)
         else
-          Splice(expr)
+          SplicedExpr(expr, EmptyTree)
       }
 
     /**  SimpleType      ::=  SimpleLiteral

@@ -2054,12 +2054,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       assignType(cpy.QuotedExpr(tree)(expr1, tpt1), tpt1)
 
   def typedSplicedExpr(tree: untpd.SplicedExpr, pt: Type)(using Context): Tree =
-    val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
-    val splicedType = // Quotes ?=> Expr[T]
-      defn.FunctionType(1, isContextual = true)
-        .appliedTo(defn.QuotesClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpt1.tpe.widenSkolem))
-    val expr1 = typed(tree.expr, splicedType)(using StagingLevel.spliceContext)
-    assignType(cpy.SplicedExpr(tree)(expr1, tpt1), tpt1)
+    if tree.tpt.isEmpty then
+      typedSplice(tree, pt)
+    else
+      val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
+      val splicedType = // Quotes ?=> Expr[T]
+        defn.FunctionType(1, isContextual = true)
+          .appliedTo(defn.QuotesClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpt1.tpe.widenSkolem))
+      val expr1 = typed(tree.expr, splicedType)(using StagingLevel.spliceContext)
+      assignType(cpy.SplicedExpr(tree)(expr1, tpt1), tpt1)
 
   def completeTypeTree(tree: untpd.TypeTree, pt: Type, original: untpd.Tree)(using Context): TypeTree =
     tree.withSpan(original.span).withAttachmentsFrom(original)
@@ -3092,7 +3095,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case tree: untpd.QuotedExpr => typedQuotedExpr(tree, pt)
-          case tree: untpd.Splice => typedSplice(tree, pt)
           case tree: untpd.SplicedExpr => typedSplicedExpr(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
           case tree: untpd.Hole => typedHole(tree, pt)

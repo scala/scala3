@@ -338,9 +338,9 @@ object desugar {
   def quotedPattern(tree: untpd.Tree, expectedTpt: untpd.Tree)(using Context): untpd.Tree = {
     def adaptToExpectedTpt(tree: untpd.Tree): untpd.Tree = tree match {
       // Add the expected type as an ascription
-      case _: untpd.Splice =>
+      case _: untpd.SplicedExpr =>
         untpd.Typed(tree, expectedTpt).withSpan(tree.span)
-      case Typed(expr: untpd.Splice, tpt) =>
+      case Typed(expr: untpd.SplicedExpr, tpt) =>
         cpy.Typed(tree)(expr, untpd.makeAndType(tpt, expectedTpt).withSpan(tpt.span))
 
       // Propagate down the expected type to the leafs of the expression
@@ -1989,7 +1989,7 @@ object desugar {
       case QuotedExpr(expr, _) =>
         new UntypedTreeTraverser {
           def traverse(tree: untpd.Tree)(using Context): Unit = tree match {
-            case Splice(expr) => collect(expr)
+            case SplicedExpr(expr, _) => collect(expr)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)

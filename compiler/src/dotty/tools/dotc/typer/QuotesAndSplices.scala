@@ -37,7 +37,7 @@ trait QuotesAndSplices {
   def typedQuote(tree: untpd.QuotedExpr, pt: Type)(using Context): Tree = {
     record("typedQuote")
     tree.expr match {
-      case untpd.Splice(innerExpr) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
+      case untpd.SplicedExpr(innerExpr, _) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
       case _ =>
     }
@@ -70,7 +70,7 @@ trait QuotesAndSplices {
     }
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
-  def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
+  def typedSplice(tree: untpd.SplicedExpr, pt: Type)(using Context): Tree = {
     record("typedSplice")
     checkSpliceOutsideQuote(tree)
     tree.expr match {
@@ -123,7 +123,7 @@ trait QuotesAndSplices {
    */
   def typedAppliedSplice(tree: untpd.Apply, pt: Type)(using Context): Tree = {
     assert(ctx.mode.is(Mode.QuotedPattern))
-    val untpd.Apply(splice: untpd.Splice, args) = tree: @unchecked
+    val untpd.Apply(splice: untpd.SplicedExpr, args) = tree: @unchecked
     if !isFullyDefined(pt, ForceDegree.flipBottom) then
       report.error(em"Type must be fully defined.", splice.srcPos)
       tree.withType(UnspecifiedErrorType)

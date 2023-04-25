@@ -712,8 +712,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case Number(digits, kind) =>
         digits
-      case Splice(tree) =>
-        keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case MacroTree(call) =>
@@ -722,7 +720,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(!tpt.isEmpty && printDebug)
         keywordStr("'") ~ tptText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
       case SplicedExpr(expr, tpt) =>
-        val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(printDebug)
+        val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(!tpt.isEmpty && printDebug)
         keywordStr("$") ~ tptText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
       case Hole(isTermHole, idx, args, content, tpt) =>
         val (prefix, postfix) = if isTermHole then ("{{{", "}}}") else ("[[[", "]]]")
