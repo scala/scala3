@@ -677,11 +677,23 @@ object Trees {
     override def isType = expansion.isType
   }
 
+  /** A tree representing a quote `'{ expr }
+   *
+   *  @param  expr  The tree that was quoted
+   *  @param  tpt   The type of the tree that was quoted,
+   *                EmptyTree if this tree comes from the parser.
+   */
   case class Quote[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Quote[T]
   }
 
+  /** A tree representing a splice `${ expr }`
+    *
+    * @param expr The tree that was spliced
+    * @param tpt  The type of the tree that was spliced,
+    *             EmptyTree if this tree comes from the parser.
+    */
   case class Splice[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Splice[T]
