@@ -477,6 +477,59 @@ Occurrences:
 [4:4..4:7): bar <- angiven/AnonymousGiven$package.bar().
 [4:14..4:17): Foo -> angiven/Foo#
 
+expect/CaseClass.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => CaseClass.scala
+Text => empty
+Language => Scala
+Symbols => 22 entries
+Occurrences => 16 entries
+
+Symbols:
+caseclass/CaseClass# => case class CaseClass extends Object with Product with Serializable { self: CaseClass => +8 decls }
+caseclass/CaseClass#_1(). => method _1 => Int
+caseclass/CaseClass#_2(). => method _2 => Int
+caseclass/CaseClass#`<init>`(). => primary ctor <init> (val param int1: Int, val param int2: Int): CaseClass
+caseclass/CaseClass#`<init>`().(int1) => val param int1: Int
+caseclass/CaseClass#`<init>`().(int2) => val param int2: Int
+caseclass/CaseClass#copy$default$1(). => method copy$default$1 => Int @uncheckedVariance
+caseclass/CaseClass#copy$default$2(). => method copy$default$2 => Int @uncheckedVariance
+caseclass/CaseClass#copy(). => method copy (param int1: Int, param int2: Int): CaseClass
+caseclass/CaseClass#copy().(int1) => param int1: Int
+caseclass/CaseClass#copy().(int2) => param int2: Int
+caseclass/CaseClass#int1. => val method int1 Int
+caseclass/CaseClass#int2. => val method int2 Int
+caseclass/CaseClass. => final object CaseClass extends Object { self: CaseClass.type => +5 decls }
+caseclass/CaseClass.apply(). => method apply (param int: Int): CaseClass
+caseclass/CaseClass.apply().(int) => param int: Int
+caseclass/CaseClass.apply(+1). => method apply (): CaseClass
+caseclass/CaseClass.apply(+2). => method apply (param int1: Int, param int2: Int): CaseClass
+caseclass/CaseClass.apply(+2).(int1) => param int1: Int
+caseclass/CaseClass.apply(+2).(int2) => param int2: Int
+caseclass/CaseClass.unapply(). => method unapply (param x$1: CaseClass): CaseClass
+caseclass/CaseClass.unapply().(x$1) => param x$1: CaseClass
+
+Occurrences:
+[0:8..0:17): caseclass <- caseclass/
+[2:11..2:20): CaseClass <- caseclass/CaseClass#
+[2:21..2:25): int1 <- caseclass/CaseClass#int1.
+[2:27..2:30): Int -> scala/Int#
+[2:32..2:36): int2 <- caseclass/CaseClass#int2.
+[2:38..2:41): Int -> scala/Int#
+[4:7..4:16): CaseClass <- caseclass/CaseClass.
+[5:6..5:11): apply <- caseclass/CaseClass.apply().
+[5:12..5:15): int <- caseclass/CaseClass.apply().(int)
+[5:17..5:20): Int -> scala/Int#
+[5:23..5:32): CaseClass -> caseclass/CaseClass#
+[5:35..5:44): CaseClass -> caseclass/CaseClass.
+[5:45..5:48): int -> caseclass/CaseClass.apply().(int)
+[6:6..6:11): apply <- caseclass/CaseClass.apply(+1).
+[6:15..6:24): CaseClass -> caseclass/CaseClass#
+[6:27..6:36): CaseClass -> caseclass/CaseClass.
+
 expect/Classes.scala
 --------------------
 
