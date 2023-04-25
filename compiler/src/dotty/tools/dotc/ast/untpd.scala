@@ -402,7 +402,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit src: SourceFile): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
   def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit src: SourceFile): Inlined = new Inlined(call, bindings, expansion)
   def QuotedExpr(expr: Tree, tpt: Tree)(implicit src: SourceFile): QuotedExpr = new QuotedExpr(expr, tpt)
-  def SplicedExpr(spliced: Tree, tpt: Tree, outerQuotes: Tree)(implicit src: SourceFile): SplicedExpr = new SplicedExpr(spliced, tpt, outerQuotes)
+  def SplicedExpr(spliced: Tree, tpt: Tree)(implicit src: SourceFile): SplicedExpr = new SplicedExpr(spliced, tpt)
   def TypeTree()(implicit src: SourceFile): TypeTree = new TypeTree()
   def InferredTypeTree()(implicit src: SourceFile): TypeTree = new InferredTypeTree()
   def SingletonTypeTree(ref: Tree)(implicit src: SourceFile): SingletonTypeTree = new SingletonTypeTree(ref)

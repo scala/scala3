@@ -153,9 +153,9 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   override def transformOther(tree: Tree)(using Context): Tree = tree match {
     case tree: Export => EmptyTree
     case tree: NamedArg => transformAllDeep(tree.arg)
-    case tree @ SplicedExpr(spliced, tpt, outerQuotes) =>
+    case tree @ SplicedExpr(spliced, tpt) =>
       assert(dotty.tools.dotc.inlines.Inlines.inInlineMethod)
-      cpy.SplicedExpr(tree)(transformAllDeep(spliced), transformAllDeep(tpt), outerQuotes)
+      cpy.SplicedExpr(tree)(transformAllDeep(spliced), transformAllDeep(tpt))
     case tree => if (tree.isType) toTypeTree(tree) else tree
   }
 

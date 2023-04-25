@@ -673,20 +673,11 @@ class TreePickler(pickler: TastyPickler) {
               .appliedTo(expr)
               .withSpan(tree.span)
           )
-        case SplicedExpr(spliced, tpt, EmptyTree) =>
+        case SplicedExpr(spliced, tpt) =>
           pickleTree(
             // scala.quoted.runtime.Expr.splice[<tpt>](<spliced>)
             ref(defn.QuotedRuntime_exprSplice)
               .appliedToTypeTree(tpt)
-              .appliedTo(spliced)
-              .withSpan(tree.span)
-          )
-        case SplicedExpr(spliced, tpt, quotes) =>
-          pickleTree(
-            // scala.quoted.runtime.Expr.nestedSplice[<tpt>](<quotes>)(<spliced>)
-            ref(defn.QuotedRuntime_exprNestedSplice)
-              .appliedToTypeTree(tpt)
-              .appliedTo(quotes)
               .appliedTo(spliced)
               .withSpan(tree.span)
           )

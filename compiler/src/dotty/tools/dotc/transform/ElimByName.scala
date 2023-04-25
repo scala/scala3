@@ -160,9 +160,9 @@ class ElimByName extends MiniPhase, InfoTransformer:
     }
 
   override def transformOther(tree: Tree)(using Context): Tree = tree match
-    case tree @ SplicedExpr(spliced, tpt, outerQuotes) =>
+    case tree @ SplicedExpr(spliced, tpt) =>
       assert(dotty.tools.dotc.inlines.Inlines.inInlineMethod)
-      cpy.SplicedExpr(tree)(transformAllDeep(spliced), tpt, outerQuotes)
+      cpy.SplicedExpr(tree)(transformAllDeep(spliced), tpt)
     case tree => tree
 
 object ElimByName:

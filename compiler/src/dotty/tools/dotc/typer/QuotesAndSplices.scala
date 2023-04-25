@@ -15,7 +15,6 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.inlines.PrepareInlineable
-import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.Implicits._
@@ -42,15 +41,15 @@ trait QuotesAndSplices {
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
       case _ =>
     }
-    val qctx = inferImplicitArg(defn.QuotesClass.typeRef, tree.span)
+    val quotes = inferImplicitArg(defn.QuotesClass.typeRef, tree.span)
 
-    if qctx.tpe.isInstanceOf[SearchFailureType] then
-      report.error(missingArgMsg(qctx, defn.QuotesClass.typeRef, ""), ctx.source.atSpan(tree.span))
-    else if !qctx.tpe.isStable then
-      report.error(em"Quotes require stable Quotes, but found non stable $qctx", qctx.srcPos)
+    if quotes.tpe.isInstanceOf[SearchFailureType] then
+      report.error(missingArgMsg(quotes, defn.QuotesClass.typeRef, ""), ctx.source.atSpan(tree.span))
+    else if !quotes.tpe.isStable then
+      report.error(em"Quotes require stable Quotes, but found non stable $quotes", quotes.srcPos)
 
     if ctx.mode.is(Mode.Pattern) then
-      typedQuotePattern(tree, pt, qctx).withSpan(tree.span)
+      typedQuotePattern(tree, pt, quotes).withSpan(tree.span)
     else if tree.quoted.isType then
       val msg = em"""Quoted types `'[..]` can only be used in patterns.
                     |
@@ -60,9 +59,9 @@ trait QuotesAndSplices {
       EmptyTree
     else
       val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.quoted)
-      val quotedExpr = typedApply(exprQuoteTree, pt)(using pushQuotes(qctx)) match
+      val quotedExpr = typedApply(exprQuoteTree, pt)(using quoteContext) match
         case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => QuotedExpr(quotedExpr, tpt)
-      makeInlineable(quotedExpr.select(nme.apply).appliedTo(qctx).withSpan(tree.span))
+      makeInlineable(quotedExpr.select(nme.apply).appliedTo(quotes).withSpan(tree.span))
   }
 
   private def makeInlineable(tree: Tree)(using Context): Tree =
@@ -88,7 +87,7 @@ trait QuotesAndSplices {
           using spliceContext.retractMode(Mode.QuotedPattern).addMode(Mode.Pattern).withOwner(spliceOwner(ctx)))
         val baseType = pat.tpe.baseType(defn.QuotedExprClass)
         val argType = if baseType != NoType then baseType.argTypesHi.head else defn.NothingType
-        SplicedExpr(pat, TypeTree(argType), EmptyTree).withSpan(tree.span)
+        SplicedExpr(pat, TypeTree(argType)).withSpan(tree.span)
       }
       else {
         report.error(em"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.srcPos)
@@ -105,19 +104,12 @@ trait QuotesAndSplices {
         markAsMacro(ctx)
       }
 
-      val (outerQctx, ctx1) = popQuotes()
-
       val internalSplice =
         untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
-        outerQctx match
-          case Some(qctxRef) => untpd.Apply(untpd.Apply(untpd.ref(defn.QuotedRuntime_exprNestedSplice.termRef), qctxRef), tree.expr)
-          case _ => untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
 
-      typedApply(internalSplice, pt)(using ctx1).withSpan(tree.span) match
+      typedApply(internalSplice, pt)(using spliceContext).withSpan(tree.span) match
         case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
-          cpy.SplicedExpr(tree)(spliced, tpt, EmptyTree)
-        case tree @ Apply(Apply(TypeApply(_, tpt :: Nil), quotes :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprNestedSplice =>
-          cpy.SplicedExpr(tree)(spliced, tpt, quotes)
+          cpy.SplicedExpr(tree)(spliced, tpt)
         case tree => tree
     }
   }
@@ -234,12 +226,12 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(SplicedExpr(pat, _, outerQuotes), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(SplicedExpr(pat, _), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
-          val newSplice = cpy.SplicedExpr(tree)(pat, tpt1, outerQuotes)
+          val newSplice = cpy.SplicedExpr(tree)(pat, tpt1)
           transform(newSplice)
-        case Apply(TypeApply(fn, targs), SplicedExpr(pat, _, _) :: args :: Nil) if fn.symbol == defn.QuotedRuntimePatterns_patternHigherOrderHole =>
+        case Apply(TypeApply(fn, targs), SplicedExpr(pat, _) :: args :: Nil) if fn.symbol == defn.QuotedRuntimePatterns_patternHigherOrderHole =>
           args match // TODO support these patterns. Possibly using scala.quoted.util.Var
             case SeqLiteral(args, _) =>
               for arg <- args; if arg.symbol.is(Mutable) do
@@ -251,7 +243,7 @@ trait QuotesAndSplices {
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
-        case SplicedExpr(pat, _, _) =>
+        case SplicedExpr(pat, _) =>
           try ref(defn.QuotedRuntimePatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen

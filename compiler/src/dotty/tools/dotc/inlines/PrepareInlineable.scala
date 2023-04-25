@@ -291,7 +291,7 @@ object PrepareInlineable {
     if (inlined.is(Macro) && !ctx.isAfterTyper) {
 
       def checkMacro(tree: Tree): Unit = tree match {
-        case SplicedExpr(code, _, _) =>
+        case SplicedExpr(code, _) =>
           if (code.symbol.flags.is(Inline))
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)

@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags.*
 import dotty.tools.dotc.util.Property
@@ -151,8 +150,7 @@ class CrossStageSafety extends TreeMapWithStages {
       else
         val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
         TypeTree(tp).withSpan(splice.tpt.span)
-    val outerQuotes1 = splice.outerQuotes
-    cpy.SplicedExpr(splice)(body1, tpt1, outerQuotes1)
+    cpy.SplicedExpr(splice)(body1, tpt1)
   }
 
   protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree = {

@@ -827,14 +827,14 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     override def typedQuotedExpr(tree: untpd.QuotedExpr, pt: Type)(using Context): Tree =
       super.typedQuotedExpr(tree, pt) match
-        case QuotedExpr(SplicedExpr(inner, _, _), _) => inner
+        case QuotedExpr(SplicedExpr(inner, _), _) => inner
         case tree1 =>
           ctx.compilationUnit.needsStaging = true
           tree1
 
     override def typedSplicedExpr(tree: untpd.SplicedExpr, pt: Type)(using Context): Tree =
       super.typedSplicedExpr(tree, pt) match
-        case tree1 @ SplicedExpr(spliced, tpt, EmptyTree)
+        case tree1 @ SplicedExpr(spliced, tpt)
             if StagingLevel.level == 0
             && !hasInliningErrors =>
           val expanded = expandMacro(spliced, tree1.srcPos)
@@ -1078,7 +1078,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             level += 1
             try apply(syms, body)
             finally level -= 1
-          case SplicedExpr(body, _, _) =>
+          case SplicedExpr(body, _) =>
             level -= 1
             try apply(syms, body)
             finally level += 1

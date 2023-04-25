@@ -66,7 +66,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(quotedTree) match {
-            case SplicedExpr(t, _, _) =>
+            case SplicedExpr(t, _) =>
               // Optimization: `'{ $x }` --> `x`
               // and adapt the refinement of `Quotes { type reflect: ... } ?=> Expr[T]`
               transform(t).asInstance(tree.tpe)
@@ -75,7 +75,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           }
           finally inQuoteOrSplice = old
 
-        case tree @ SplicedExpr(splicedTree, _, _) =>
+        case tree @ SplicedExpr(splicedTree, _) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(splicedTree) match {

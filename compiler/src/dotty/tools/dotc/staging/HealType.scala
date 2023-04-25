@@ -7,7 +7,6 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags.*
 import dotty.tools.dotc.transform.SymUtils._

@@ -21,7 +21,6 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.config.ScalaRelease.*
-import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags
 
@@ -115,7 +114,7 @@ class Splicing extends MacroTransform:
         case tree: SplicedExpr =>
           if level > 1 then
             val spliced1 = super.transform(tree.spliced)(using spliceContext)
-            cpy.SplicedExpr(tree)(spliced1, tree.tpt, tree.outerQuotes)
+            cpy.SplicedExpr(tree)(spliced1, tree.tpt)
           else
             val holeIdx = numHoles
             numHoles += 1
@@ -235,9 +234,9 @@ class Splicing extends MacroTransform:
         case tree @ Assign(lhs: RefTree, rhs) =>
           if isCaptured(lhs.symbol) then transformSplicedAssign(tree)
           else super.transform(tree)
-        case SplicedExpr(spliced, tpt, outerQuotes) =>
+        case SplicedExpr(spliced, tpt) =>
           val spliced1 = transform(spliced)(using spliceContext)
-          cpy.SplicedExpr(tree)(spliced1, tpt, outerQuotes)
+          cpy.SplicedExpr(tree)(spliced1, tpt)
         case Apply(sel @ Select(app @ QuotedExpr(expr, tpt), nme.apply), quotesArgs) =>
           expr match
             case expr: RefTree if isCaptured(expr.symbol) =>
@@ -410,7 +409,7 @@ class Splicing extends MacroTransform:
             body(using ctx.withOwner(meth)).changeOwner(ctx.owner, meth)
           }
         })
-      SplicedExpr(closure, TypeTree(tpe), Literal(Constant(null)))
+      SplicedExpr(closure, TypeTree(tpe))
 
     private def quoted(expr: Tree)(using Context): Tree =
       QuotedExpr(expr, TypeTree(expr.tpe.widenTermRefExpr))
