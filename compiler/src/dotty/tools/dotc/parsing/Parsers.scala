@@ -1262,7 +1262,7 @@ object Parsers {
               }
             }
             in.nextToken()
-            Quote(t)
+            QuotedExpr(t, EmptyTree)
           }
           else
             if !in.featureEnabled(Feature.symbolLiterals) then
@@ -2494,10 +2494,10 @@ object Parsers {
         case QUOTE =>
           atSpan(in.skipToken()) {
             withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.QuotedPattern else 0)) {
-              Quote {
+              val expr =
                 if (in.token == LBRACKET) inBrackets(typ())
                 else stagedBlock()
-              }
+              QuotedExpr(expr, EmptyTree)
             }
           }
         case NEW =>

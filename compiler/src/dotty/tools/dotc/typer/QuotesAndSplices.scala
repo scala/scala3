@@ -34,9 +34,9 @@ trait QuotesAndSplices {
   /** Translate `'{ e }` into `scala.quoted.Expr.apply(e)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
    */
-  def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
+  def typedQuote(tree: untpd.QuotedExpr, pt: Type)(using Context): Tree = {
     record("typedQuote")
-    tree.quoted match {
+    tree.expr match {
       case untpd.Splice(innerExpr) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
       case _ =>
@@ -50,7 +50,7 @@ trait QuotesAndSplices {
 
     if ctx.mode.is(Mode.Pattern) then
       typedQuotePattern(tree, pt, quotes).withSpan(tree.span)
-    else if tree.quoted.isType then
+    else if tree.expr.isType then
       val msg = em"""Quoted types `'[..]` can only be used in patterns.
                     |
                     |Hint: To get a scala.quoted.Type[T] use scala.quoted.Type.of[T] instead.
@@ -58,7 +58,7 @@ trait QuotesAndSplices {
       report.error(msg, tree.srcPos)
       EmptyTree
     else
-      val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.quoted)
+      val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.expr)
       val quotedExpr = typedApply(exprQuoteTree, pt)(using quoteContext) match
         case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => QuotedExpr(quotedExpr, tpt)
       makeInlineable(quotedExpr.select(nme.apply).appliedTo(quotes).withSpan(tree.span))
@@ -74,7 +74,7 @@ trait QuotesAndSplices {
     record("typedSplice")
     checkSpliceOutsideQuote(tree)
     tree.expr match {
-      case untpd.Quote(innerExpr) if innerExpr.isTerm =>
+      case untpd.QuotedExpr(innerExpr, _) if innerExpr.isTerm =>
         report.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.srcPos)
         return typed(innerExpr, pt)
       case _ =>
@@ -382,13 +382,13 @@ trait QuotesAndSplices {
    *        ) => ...
    *  ```
    */
-  private def typedQuotePattern(tree: untpd.Quote, pt: Type, qctx: Tree)(using Context): Tree = {
-    if tree.quoted.isTerm && !pt.derivesFrom(defn.QuotedExprClass) then
+  private def typedQuotePattern(tree: untpd.QuotedExpr, pt: Type, qctx: Tree)(using Context): Tree = {
+    val quoted = tree.expr
+    if quoted.isTerm && !pt.derivesFrom(defn.QuotedExprClass) then
       report.error("Quote pattern can only match scrutinees of type scala.quoted.Expr", tree.srcPos)
-    else if tree.quoted.isType && !pt.derivesFrom(defn.QuotedTypeClass) then
+    else if quoted.isType && !pt.derivesFrom(defn.QuotedTypeClass) then
       report.error("Quote pattern can only match scrutinees of type scala.quoted.Type", tree.srcPos)
 
-    val quoted = tree.quoted
     val exprPt = pt.baseType(if quoted.isType then defn.QuotedTypeClass else defn.QuotedExprClass)
     val quotedPt = exprPt.argInfos.headOption match {
       case Some(argPt: ValueType) => argPt // excludes TypeBounds
@@ -440,12 +440,12 @@ trait QuotesAndSplices {
       if splices.isEmpty then ref(defn.EmptyTupleModule.termRef)
       else typed(untpd.Tuple(splices.map(x => untpd.TypedSplice(replaceBindingsInTree.transform(x)))).withSpan(quoted.span), patType)
 
-    val quoteClass = if (tree.quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
+    val quoteClass = if (quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
     val quotedPattern =
-      if (tree.quoted.isTerm) tpd.QuotedExpr(shape, TypeTree(defn.AnyType)).select(nme.apply).appliedTo(qctx)
+      if (quoted.isTerm) tpd.QuotedExpr(shape, TypeTree(defn.AnyType)).select(nme.apply).appliedTo(qctx)
       else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).appliedTo(qctx)
 
-    val matchModule = if tree.quoted.isTerm then defn.QuoteMatching_ExprMatch else defn.QuoteMatching_TypeMatch
+    val matchModule = if quoted.isTerm then defn.QuoteMatching_ExprMatch else defn.QuoteMatching_TypeMatch
     val unapplyFun = qctx.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(nme.unapply)
 
     UnApply(

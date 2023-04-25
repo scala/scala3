@@ -2046,9 +2046,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedQuotedExpr(tree: untpd.QuotedExpr, pt: Type)(using Context): Tree =
-    val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
-    val expr1 = typed(tree.expr, tpt1.tpe.widenSkolem)(using StagingLevel.quoteContext)
-    assignType(cpy.QuotedExpr(tree)(expr1, tpt1), tpt1)
+    if tree.tpt.isEmpty then
+      typedQuote(tree, pt)
+    else
+      val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
+      val expr1 = typed(tree.expr, tpt1.tpe.widenSkolem)(using StagingLevel.quoteContext)
+      assignType(cpy.QuotedExpr(tree)(expr1, tpt1), tpt1)
 
   def typedSplicedExpr(tree: untpd.SplicedExpr, pt: Type)(using Context): Tree =
     val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
@@ -3088,7 +3091,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.ParsedTry => typedTry(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
-          case tree: untpd.Quote => typedQuote(tree, pt)
           case tree: untpd.QuotedExpr => typedQuotedExpr(tree, pt)
           case tree: untpd.Splice => typedSplice(tree, pt)
           case tree: untpd.SplicedExpr => typedSplicedExpr(tree, pt)

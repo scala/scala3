@@ -712,8 +712,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case Number(digits, kind) =>
         digits
-      case Quote(tree) if tree.isTerm =>
-        keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Splice(tree) =>
         keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Thicket(trees) =>
@@ -721,7 +719,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case MacroTree(call) =>
         keywordStr("macro ") ~ toTextGlobal(call)
       case QuotedExpr(expr, tpt) =>
-        val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(printDebug)
+        val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(!tpt.isEmpty && printDebug)
         keywordStr("'") ~ tptText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
       case SplicedExpr(expr, tpt) =>
         val tptText = (keywordStr("[") ~ toTextGlobal(tpt) ~ keywordStr("]")).provided(printDebug)
