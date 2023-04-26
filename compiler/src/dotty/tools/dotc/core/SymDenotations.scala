@@ -2243,6 +2243,9 @@ object SymDenotations {
           case CapturingType(parent, refs) =>
             tp.derivedCapturingType(recur(parent), refs)
 
+          case tp: FlexibleType =>
+            recur(tp.underlying)
+
           case tp: TypeProxy =>
             def computeTypeProxy = {
               val superTp = tp.superType

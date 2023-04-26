@@ -4102,6 +4102,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
+            case FlexibleType(tp) => tp match {
+              // recurse once inside
+              case SAMType(sam)
+              if wtp <:< sam.toFunctionType(isJava = pt.classSymbol.is(JavaDefined)) =>
+                // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
+                // but this prevents case blocks from implementing polymorphic partial functions,
+                // since we do not know the result parameter a priori. Have to wait until the
+                  // body is typechecked.
+              return toSAM(tree)
+              case _ =>
+            }
             case SAMType(sam)
             if wtp <:< sam.toFunctionType(isJava = pt.classSymbol.is(JavaDefined)) =>
               // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
