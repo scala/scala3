@@ -29,7 +29,7 @@ import Inferencing._
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
-import inlines.{Inliner, Inlines, PrepareInlineable}
+import inlines.{Inlines, PrepareInlineable}
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
@@ -108,10 +108,6 @@ object Typer {
   def rememberSearchFailure(tree: tpd.Tree, fail: SearchFailure) =
     tree.putAttachment(HiddenSearchFailure,
       fail :: tree.attachmentOrElse(HiddenSearchFailure, Nil))
-
-  def isInlineableFromInlineTrait(inlinedTraitSym: ClassSymbol, member: tpd.Tree)(using Context): Boolean =
-    !(member.isInstanceOf[tpd.TypeDef] && inlinedTraitSym.typeParams.contains(member.symbol))
-    && !member.symbol.isAllOf(Inline)
 }
 /** Typecheck trees, the main entry point is `typed`.
  *
@@ -2680,7 +2676,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1) ::: inlineTraitDefs
 
       if !ctx.isAfterTyper && cls.isInlineTrait then
-        val membersToInline = body1.filter(member => isInlineableFromInlineTrait(cls, member))
+        val membersToInline = body1.filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
         val wrappedMembersToInline = Block(membersToInline, unitLiteral).withSpan(cdef.span)
         PrepareInlineable.registerInlineInfo(cls, wrappedMembersToInline)
 

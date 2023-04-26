@@ -58,20 +58,28 @@ object Inlines:
   def isInlineable(meth: Symbol)(using Context): Boolean =
     meth.is(Inline) && meth.hasAnnotation(defn.BodyAnnot) && !inInlineMethod
 
+  def isInlineableFromInlineTrait(inlinedTraitSym: ClassSymbol, member: tpd.Tree)(using Context): Boolean =
+    !(member.isInstanceOf[tpd.TypeDef] && inlinedTraitSym.typeParams.contains(member.symbol))
+    && !member.symbol.isAllOf(Inline)
+
   /** Should call be inlined in this context? */
-  def needsInlining(tree: Tree)(using Context): Boolean = tree match {
-    case Block(_, expr) => needsInlining(expr)
-    case _ =>
-      isInlineable(tree.symbol)
-      && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly]
-      && StagingLevel.level == 0
+  def needsInlining(tree: Tree)(using Context): Boolean =
+    val isInlineableInCtx =
+      StagingLevel.level == 0
       && (
         ctx.phase == Phases.inliningPhase
         || (ctx.phase == Phases.typerPhase && needsTransparentInlining(tree))
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
-  }
+
+    tree match
+      case Block(_, expr) =>
+        needsInlining(expr)
+      case tdef @ TypeDef(_, impl: Template) =>
+        !tdef.symbol.isInlineTrait && impl.parents.exists(_.symbol.isInlineTrait) && isInlineableInCtx
+      case _ =>
+        isInlineable(tree.symbol) && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly] && isInlineableInCtx
 
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
     tree.symbol.is(Transparent)

@@ -23,7 +23,6 @@ import NamerOps._
 import ContextOps._
 import Variances.Invariant
 import TastyUnpickler.NameTable
-import typer.Typer
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import typer.Nullables._
@@ -34,6 +33,7 @@ import Trees._
 import Decorators._
 import transform.SymUtils._
 import cc.{adaptFunctionTypeUnderPureFuns, adaptByNameArgUnderPureFuns}
+import inlines.Inlines
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
@@ -1051,12 +1051,12 @@ class TreeUnpickler(reader: TastyReader,
              .map(_.changeOwner(localDummy, constr.symbol)))
         else parents
 
-      val statsStart = currentAddr
       val lazyStats = readLater(end, rdr => {
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
       if cls.isInlineTrait then
+        val statsStart = currentAddr
         cls.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
           val ctx1 = localContext(cls)(using ctx0).addMode(Mode.ReadPositions)
           inContext(sourceChangeContext(Addr(0))(using ctx1)) {
@@ -1064,7 +1064,7 @@ class TreeUnpickler(reader: TastyReader,
 
             val fork = forkAt(statsStart)
             val stats = fork.readIndexedStats(localDummy, end)
-            val inlinedMembers = (tparams ++ vparams ++ stats).filter(member => Typer.isInlineableFromInlineTrait(cls, member))
+            val inlinedMembers = (tparams ++ vparams ++ stats).filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
             Block(inlinedMembers, unitLiteral).withSpan(cls.span)
           }
         })
