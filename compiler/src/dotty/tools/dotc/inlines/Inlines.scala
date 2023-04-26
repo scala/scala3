@@ -502,7 +502,7 @@ object Inlines:
     protected class InlineTraitTreeMap extends InlinerTreeMap {
       override def apply(tree: Tree) = tree match {
         case tree @ Select(This(ident), name) if ident.name == parentSym.name && localParamAccessorsNames.contains(name) =>
-          Select(This(ctx.owner.asClass), localParamAccessorsNames(name)).withSpan(parent.span)
+          Inlined(EmptyTree, Nil, Select(This(ctx.owner.asClass), localParamAccessorsNames(name)).withSpan(parent.span)).withSpan(tree.span)
         case tree =>
           super.apply(tree)
       }
