@@ -186,7 +186,7 @@ object Inlines:
 
   def inlineParentTrait(parent: tpd.Tree, overriddenDecls: Set[Symbol])(using Context): List[Tree] =
     val traitSym = if parent.symbol.isConstructor then parent.symbol.owner else parent.symbol
-    if traitSym.isInlineTrait then InlineParentTrait(parent, traitSym.asClass, overriddenDecls).expandDefs()
+    if traitSym.isInlineTrait then InlineParentTrait(parent, traitSym.asClass).expandDefs(overriddenDecls)
     else Nil
 
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
@@ -480,14 +480,14 @@ object Inlines:
     end expand
   end InlineCall
 
-  private class InlineParentTrait(parent: tpd.Tree, parentSym: ClassSymbol, overriddenDecls: Set[Symbol])(using Context) extends Inliner(parent):
+  private class InlineParentTrait(parent: tpd.Tree, parentSym: ClassSymbol)(using Context) extends Inliner(parent):
     import tpd._
     import Inlines.*
 
     private val thisInlineTrait = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
 
-    def expandDefs(): List[Tree] =
-      val stats = Inlines.defsToInline(parentSym).filterNot(isStatAlreadyOverridden)
+    def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
+      val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
       val inlinedSymbols = stats.map(stat => inlinedMember(stat.symbol))
       stats.zip(inlinedSymbols).map(expandStat)
     end expandDefs
@@ -526,9 +526,6 @@ object Inlines:
       allParams(info, Nil).flatten.zip(allArgs(parent, Vector.empty).flatten).toMap
 
     private val localParamAccessorsNames = new mutable.HashMap[Name, Name]
-
-    private def isStatAlreadyOverridden(stat: Tree): Boolean =
-      overriddenDecls.contains(stat.symbol)
 
     extension (sym: Symbol)
       private def isTermParamAccessor: Boolean = !sym.isType && sym.is(ParamAccessor)
