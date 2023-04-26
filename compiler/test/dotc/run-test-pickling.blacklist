@@ -44,8 +44,3 @@ t6138
 t6138-2
 i12656.scala
 trait-static-forwarder
-
-# FIXME re-enable pickling once inline traits are stable
-inline-trait-signature-parameters-val-block.scala
-inline-trait-signature-parameters-by-name-exception.scala
-inline-trait-body-lazy-val.scala
