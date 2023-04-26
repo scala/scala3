@@ -12,12 +12,24 @@ class A:
     private[this] val f = e // OK
     private val g = f // OK
 
+    private[A] var h = 1 // OK
+    private[this] var i = h // error not set
+    private var j = i // error not set
+
+    private[this] var k = 1 // OK
+    private var l = 2 // OK
+    private val m = // error
+      k = l
+      l = k
+      l
+
     private def fac(x: Int): Int = // error
       if x == 0 then 1 else x * fac(x - 1)
 
     val x = 1 // OK
     def y = 2 // OK
     def z = g // OK
+    var w = 2 // OK
 
 package foo.test.contructors:
   case class A private (x:Int) // OK
@@ -25,7 +37,12 @@ package foo.test.contructors:
   class C private (private val x: Int) // error
   class D private (private val x: Int): // OK
     def y = x
-
+  class E private (private var x: Int): // error not set
+    def y = x
+  class F private (private var x: Int): // OK
+    def y =
+      x = 3
+      x
 
 package test.foo.i16682:
   object myPackage:

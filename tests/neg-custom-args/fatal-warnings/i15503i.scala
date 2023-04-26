@@ -142,8 +142,8 @@ package foo.test.possibleclasses.withvar:
     private var y: Int // OK
   )(
     s: Int, // OK
-    var t: Int, // OK
-    private var z: Int // OK
+    var t: Int, // OK global scope can be set somewhere else
+    private var z: Int // error not set
   ) {
     def a = k + y + s + t + z
   }
@@ -159,11 +159,11 @@ package foo.test.possibleclasses.withvar:
 
   class AllUsed(
     k: Int, // OK
-    private var y: Int // OK
+    private var y: Int // error not set
   )(
     s: Int, // OK
-    var t: Int, // OK
-    private var z: Int // OK
+    var t: Int, // OK global scope can be set somewhere else
+    private var z: Int // error not set
   ) {
     def a = k + y + s + t + z
   }
