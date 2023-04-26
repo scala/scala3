@@ -67,6 +67,10 @@ class Inlining extends MacroTransform {
 
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
+        case tree: TypeDef if Inlines.needsInlining(tree) =>
+          val tree1 = super.transform(tree)
+          if tree1.tpe.isError then tree1
+          else Inlines.inlineParentInlineTraits(tree1)
         case tree: MemberDef =>
           if tree.symbol.is(Inline) then tree
           else if tree.symbol.is(Param) then super.transform(tree)

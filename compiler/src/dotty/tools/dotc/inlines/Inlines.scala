@@ -56,7 +56,7 @@ object Inlines:
 
   /** Can a call to method `meth` be inlined? */
   def isInlineable(meth: Symbol)(using Context): Boolean =
-    meth.is(Inline) && meth.hasAnnotation(defn.BodyAnnot) && !inInlineMethod
+    meth.isInlineMethod && meth.hasAnnotation(defn.BodyAnnot) && !inInlineMethod
 
   def isInlineableFromInlineTrait(inlinedTraitSym: ClassSymbol, member: tpd.Tree)(using Context): Boolean =
     !(member.isInstanceOf[tpd.TypeDef] && inlinedTraitSym.typeParams.contains(member.symbol))
@@ -72,14 +72,18 @@ object Inlines:
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
+      && !ctx.owner.isInlineTrait
 
     tree match
       case Block(_, expr) =>
         needsInlining(expr)
       case tdef @ TypeDef(_, impl: Template) =>
-        !tdef.symbol.isInlineTrait && impl.parents.exists(_.symbol.isInlineTrait) && isInlineableInCtx
+        !tdef.symbol.isInlineTrait && impl.parents.map(symbolFromParent).exists(_.isInlineTrait) && isInlineableInCtx
       case _ =>
         isInlineable(tree.symbol) && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly] && isInlineableInCtx
+
+  private def symbolFromParent(parent: Tree)(using Context): Symbol =
+    if parent.symbol.isConstructor then parent.symbol.owner else parent.symbol
 
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
     tree.symbol.is(Transparent)
@@ -184,10 +188,22 @@ object Inlines:
     tree2
   end inlineCall
 
-  def inlineParentTrait(parent: tpd.Tree, overriddenDecls: Set[Symbol])(using Context): List[Tree] =
-    val traitSym = if parent.symbol.isConstructor then parent.symbol.owner else parent.symbol
-    if traitSym.isInlineTrait then InlineParentTrait(parent, traitSym.asClass).expandDefs(overriddenDecls)
-    else Nil
+  def inlineParentInlineTraits(cls: Tree)(using Context): Tree =
+    cls match {
+      case cls @ TypeDef(_, impl: Template) =>
+        val overriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
+        val inlineDefs = impl.parents.flatMap(
+          parent =>
+            if symbolFromParent(parent).isInlineTrait then
+              InlineParentTrait(parent)(using ctx.withOwner(cls.symbol)).expandDefs(overriddenSyms)
+            else
+              Nil
+        )
+        val impl1 = cpy.Template(impl)(body = inlineDefs ::: impl.body)
+        cpy.TypeDef(cls)(rhs = impl1)
+      case _ =>
+        cls
+    }
 
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
    *  inline depth is exceeded.
@@ -480,9 +496,11 @@ object Inlines:
     end expand
   end InlineCall
 
-  private class InlineParentTrait(parent: tpd.Tree, parentSym: ClassSymbol)(using Context) extends Inliner(parent):
+  private class InlineParentTrait(parent: tpd.Tree)(using Context) extends Inliner(parent):
     import tpd._
     import Inlines.*
+
+    private val parentSym = symbolFromParent(parent)
 
     private val thisInlineTrait = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
 

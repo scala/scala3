@@ -2667,13 +2667,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       cdef.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
-      val inlineTraitDefs =
-        if ctx.isAfterTyper || cls.isInlineTrait then
-          Nil
-        else
-          val overriddenSyms = cls.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
-          parents1.flatMap(parent => Inlines.inlineParentTrait(parent, overriddenSyms))
-      val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1) ::: inlineTraitDefs
+      val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
 
       if !ctx.isAfterTyper && cls.isInlineTrait then
         val membersToInline = body1.filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
