@@ -45,6 +45,11 @@ object Inlines:
     else
       EmptyTree
 
+  def defsToInline(traitSym: SymDenotation)(using Context): List[Tree] =
+    bodyToInline(traitSym) match
+      case Block(defs, _) if traitSym.isInlineTrait => defs
+      case _ => Nil
+
   /** Are we in an inline method body? */
   def inInlineMethod(using Context): Boolean =
     ctx.owner.ownersIterator.exists(_.isInlineMethod)
@@ -474,10 +479,9 @@ object Inlines:
     private val thisInlineTrait = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
 
     def expandDefs(): List[Tree] =
-      val tpd.Block(stats, _) = Inlines.bodyToInline(parentSym): @unchecked
-      val stats1 = stats.filterNot(isStatAlreadyOverridden)
-      val inlinedSymbols = stats1.map(stat => inlinedMember(stat.symbol))
-      stats1.zip(inlinedSymbols).map(expandStat)
+      val stats = Inlines.defsToInline(parentSym).filterNot(isStatAlreadyOverridden)
+      val inlinedSymbols = stats.map(stat => inlinedMember(stat.symbol))
+      stats.zip(inlinedSymbols).map(expandStat)
     end expandDefs
 
     protected class InlineTraitTypeMap extends InlinerTypeMap {
