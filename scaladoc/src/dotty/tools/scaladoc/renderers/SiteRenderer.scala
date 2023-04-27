@@ -40,7 +40,7 @@ trait SiteRenderer(using DocContext) extends Locations:
 
     def processLocalLink(str: String): String =
       val staticSiteRootPath = content.ctx.root.toPath.toAbsolutePath
-      def asValidURL: Option[String] = Try(URL(str)).toOption.map(_ => str)
+      def asValidURL: Option[String] = Try(URI(str).toURL).toOption.map(_ => str)
       def asAsset: Option[String] = Option.when(
         Files.exists(staticSiteRootPath.resolve("_assets").resolve(str.stripPrefix("/")))
       )(

@@ -17,7 +17,7 @@ import scala.language.unsafeNulls
 
 import io.AbstractFile
 
-import java.net.{URL, URLConnection, URLStreamHandler}
+import java.net.{URI, URL, URLConnection, URLStreamHandler}
 import java.util.Collections
 
 class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) extends ClassLoader(parent):
@@ -26,7 +26,7 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) exten
   override protected def findResource(name: String) =
     findAbstractFile(name) match
       case null => null
-      case file => new URL(null, s"memory:${file.path}", new URLStreamHandler {
+      case file => URL.of(new URI(s"memory:${file.path}"), new URLStreamHandler {
         override def openConnection(url: URL): URLConnection = new URLConnection(url) {
           override def connect() = ()
           override def getInputStream = file.input

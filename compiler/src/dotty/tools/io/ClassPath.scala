@@ -10,7 +10,7 @@ package io
 import scala.language.unsafeNulls
 
 import java.net.MalformedURLException
-import java.net.URL
+import java.net.{ URI, URL }
 import java.util.regex.PatternSyntaxException
 
 import File.pathSeparator
@@ -182,7 +182,7 @@ object ClassPath {
   }
 
   def specToURL(spec: String): Option[URL] =
-    try Some(new URL(spec))
+    try Some(new URI(spec).toURL)
     catch { case _: MalformedURLException => None }
 
   def manifests: List[java.net.URL] = {

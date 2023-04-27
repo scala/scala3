@@ -572,4 +572,4 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case Resource.URL(url) =>
           Nil
         case Resource.URLToCopy(url, dest) =>
-          Seq(copy(new URL(url).openStream(), dest))
+          Seq(copy(new URI(url).toURL.openStream(), dest))
