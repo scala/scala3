@@ -50,39 +50,40 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         // We need to use the ScalaRunTime class coming from the scala-library
         // on the user classpath, and not the one available in the current
         // classloader, so we use reflection instead of simply calling
-        // `ScalaRunTime.replStringOf`. Probe for new API without extraneous newlines.
-        // For old API, try to clean up extraneous newlines by stripping suffix and maybe prefix newline.
+        // `ScalaRunTime.stringOf`. Also probe for new stringOf that does string quoting, etc.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
         val renderer = "stringOf"
-        def stringOfMaybeTruncated(value: Object, maxElements: Int): String = {
-          try {
-            val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
-            val truly = java.lang.Boolean.TRUE
-            meth.invoke(null, value, maxElements, truly).asInstanceOf[String]
-          } catch {
-            case _: NoSuchMethodException =>
-              val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
-              meth.invoke(null, value, maxElements).asInstanceOf[String]
-          }
-        }
+        val stringOfInvoker: (Object, Int) => String =
+          def richStringOf: (Object, Int) => String =
+            val method = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
+            val richly = java.lang.Boolean.TRUE // add a repl option for enriched output
+            (value, maxElements) => method.invoke(null, value, maxElements, richly).asInstanceOf[String]
+          def poorStringOf: (Object, Int) => String =
+            try
+              val method = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
+              (value, maxElements) => method.invoke(null, value, maxElements).asInstanceOf[String]
+            catch case _: NoSuchMethodException => (value, maxElements) => String.valueOf(value).take(maxElements)
+          try richStringOf
+          catch case _: NoSuchMethodException => poorStringOf
+        def stringOfMaybeTruncated(value: Object, maxElements: Int): String = stringOfInvoker(value, maxElements)
 
-        (value: Object, maxElements: Int, maxCharacters: Int) => {
-          // `ScalaRuntime.stringOf` may truncate the output, in which case we want to indicate that fact to the user
-          // In order to figure out if it did get truncated, we invoke it twice - once with the `maxElements` that we
-          // want to print, and once without a limit. If the first is shorter, truncation did occur.
-          val notTruncated = stringOfMaybeTruncated(value, Int.MaxValue)
-          if notTruncated == null then null else
-            val maybeTruncated =
-              val maybeTruncatedByElementCount = stringOfMaybeTruncated(value, maxElements)
-              truncate(maybeTruncatedByElementCount, maxCharacters)
-
-            // our string representation may have been truncated by element and/or character count
-            // if so, append an info string - but only once
-            if notTruncated.length == maybeTruncated.length then maybeTruncated
-            else s"$maybeTruncated ... large output truncated, print value to show all"
-          end if
-        }
-
+        // require value != null
+        // `ScalaRuntime.stringOf` returns null iff value.toString == null, let caller handle that.
+        // `ScalaRuntime.stringOf` may truncate the output, in which case we want to indicate that fact to the user
+        // In order to figure out if it did get truncated, we invoke it twice - once with the `maxElements` that we
+        // want to print, and once without a limit. If the first is shorter, truncation did occur.
+        // Note that `stringOf` has new API in flight to handle truncation, see stringOfMaybeTruncated.
+        (value: Object, maxElements: Int, maxCharacters: Int) =>
+          stringOfMaybeTruncated(value, Int.MaxValue) match
+            case null => null
+            case notTruncated =>
+              val maybeTruncated =
+                val maybeTruncatedByElementCount = stringOfMaybeTruncated(value, maxElements)
+                truncate(maybeTruncatedByElementCount, maxCharacters)
+              // our string representation may have been truncated by element and/or character count
+              // if so, append an info string - but only once
+              if notTruncated.length == maybeTruncated.length then maybeTruncated
+              else s"$maybeTruncated ... large output truncated, print value to show all"
       }
       myClassLoader
     }
@@ -93,14 +94,20 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     else str.substring(0, str.offsetByCodePoints(0, maxPrintCharacters - 1))
 
   /** Return a String representation of a value we got from `classLoader()`. */
-  private[repl] def replStringOf(value: Object)(using Context): String =
+  private[repl] def replStringOf(sym: Symbol, value: Object)(using Context): String =
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
     val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
     val maxPrintCharacters = ctx.settings.VreplMaxPrintCharacters.valueIn(ctx.settingsState)
-    Option(value)
-      .flatMap(v => Option(myReplStringOf(v, maxPrintElements, maxPrintCharacters)))
-      .getOrElse("null // non-null reference has null-valued toString")
+    // stringOf returns null if value.toString returns null. Show some text as a fallback.
+    def toIdentityString(value: Object): String =
+      s"${value.getClass.getName}@${System.identityHashCode(value).toHexString}"
+    def fallback = s"""${toIdentityString(value)} // return value of "${sym.name}.toString" is null"""
+    if value == null then "null" else
+      myReplStringOf(value, maxPrintElements, maxPrintCharacters) match
+        case null => fallback
+        case res  => res
+    end if
 
   /** Load the value of the symbol using reflection.
    *
@@ -112,17 +119,15 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     val symValue = resObj
       .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
       .flatMap(result => rewrapValueClass(sym.info.classSymbol, result.invoke(null)))
-    val valueString = symValue.map(replStringOf)
+    symValue
+      .filter(_ => sym.is(Flags.Method) || sym.info != defn.UnitType)
+      .map(value => stripReplPrefix(replStringOf(sym, value)))
 
-    if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
-      None
+  private def stripReplPrefix(s: String): String =
+    if (s.startsWith(REPL_WRAPPER_NAME_PREFIX))
+      s.drop(REPL_WRAPPER_NAME_PREFIX.length).dropWhile(c => c.isDigit || c == '$')
     else
-      valueString.map { s =>
-        if (s.startsWith(REPL_WRAPPER_NAME_PREFIX))
-          s.drop(REPL_WRAPPER_NAME_PREFIX.length).dropWhile(c => c.isDigit || c == '$')
-        else
-          s
-      }
+      s
 
   /** Rewrap value class to their Wrapper class
    *
