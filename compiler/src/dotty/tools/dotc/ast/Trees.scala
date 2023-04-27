@@ -677,11 +677,20 @@ object Trees {
     override def isType = expansion.isType
   }
 
-  /** A tree representing a quote `'{ expr }
+  /** A tree representing a quote `'{ expr }`
+   *  `Quote`s are created by the `Parser` with an empty `tpt`. In typer
+   *  they can be typed as a `Quote` with a known `tpt` or desugared and
+   *  typed as a quote pattern.
+   *
+   *  `Quotes` are checked transformed in the `staging`, `splicing` and `pickleQuotes`
+   *  phases. After `pickleQuotes` phase, the only quotes that exist are in `inline`
+   *  methods. These are dropped when we remove the inline method implementations.
+   *
+   *  The `tpt` will be transformed in `staging` and used in `pickleQuotes` to create the
+   *  pickled representation of the quote.
    *
    *  @param  expr  The tree that was quoted
-   *  @param  tpt   The type of the tree that was quoted,
-   *                EmptyTree if this tree comes from the parser.
+   *  @param  tpt   The type of the tree that was quoted
    */
   case class Quote[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
@@ -689,11 +698,20 @@ object Trees {
   }
 
   /** A tree representing a splice `${ expr }`
-    *
-    * @param expr The tree that was spliced
-    * @param tpt  The type of the tree that was spliced,
-    *             EmptyTree if this tree comes from the parser.
-    */
+   *
+   *  `Splice`s are created by the `Parser` with an empty `tpt`. In typer
+   *  they can be typed as a `Splice` with a known `tpt` or desugared and
+   *  typed as a quote pattern holes.
+   *
+   *  `Splice` are checked transformed in the `staging` and `splicing` phases.
+   *  After `splicing` phase, the only quotes that exist are in `inline`
+   *  methods. These are dropped when we remove the inline method implementations.
+   *
+   *  The `tpt` will be transformed in `staging` and used in `splicing` to create `Hole`s.
+   *
+   *  @param expr The tree that was spliced
+   *  @param tpt  The type of the spliced tree
+   */
   case class Splice[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Splice[T]
