@@ -147,10 +147,11 @@ trait QuotesAndSplices {
   def typedAppliedSplice(tree: untpd.Apply, pt: Type)(using Context): Tree = {
     assert(ctx.mode.is(Mode.QuotedPattern))
     val untpd.Apply(splice: untpd.Splice, args) = tree: @unchecked
+    def isInBraces: Boolean = splice.span.end != splice.expr.span.end
     if !isFullyDefined(pt, ForceDegree.flipBottom) then
       report.error(em"Type must be fully defined.", splice.srcPos)
       tree.withType(UnspecifiedErrorType)
-    else if splice.isInBraces then // ${x}(...) match an application
+    else if isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
       val splice1 = typedSpliceSyntactic(splice, defn.FunctionOf(argTypes, pt))

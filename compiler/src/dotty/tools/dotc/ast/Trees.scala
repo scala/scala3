@@ -697,7 +697,6 @@ object Trees {
   case class Splice[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Splice[T]
-    def isInBraces: Boolean = span.end != expr.span.end
   }
 
   /** A type tree that represents an existing or inferred type */
