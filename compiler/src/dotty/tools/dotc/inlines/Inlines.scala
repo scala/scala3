@@ -85,6 +85,26 @@ object Inlines:
   private def symbolFromParent(parent: Tree)(using Context): Symbol =
     if parent.symbol.isConstructor then parent.symbol.owner else parent.symbol
 
+  private def inlineTraitAncestors(cls: TypeDef)(using Context): List[Tree] = cls match {
+    case tpd.TypeDef(_, tmpl: Template) =>
+      val parentTrees: Map[Symbol, Tree] = tmpl.parents.map(par => symbolFromParent(par) -> par).toMap.filter(_._1.isInlineTrait)
+      val ancestors: List[ClassSymbol] = cls.tpe.baseClasses.filter(sym => sym.isInlineTrait && sym != cls.symbol)
+      ancestors.flatMap(ancestor =>
+        def baseTree =
+          cls.tpe.baseType(ancestor) match
+            case AppliedType(tycon, targs) =>
+              Some(AppliedTypeTree(TypeTree(tycon), targs.map(TypeTree(_))))
+            case tref: TypeRef =>
+              Some(Ident(tref))
+            case baseTpe =>
+              report.error(s"unknown base type ${baseTpe.show} for ancestor ${ancestor.show} of ${cls.symbol.show}")
+              None
+        parentTrees.get(ancestor).orElse(baseTree.map(_.withSpan(cls.span)))
+      )
+    case _ =>
+      Nil
+  }
+
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
     tree.symbol.is(Transparent)
     || ctx.mode.is(Mode.ForceInline)
@@ -190,16 +210,14 @@ object Inlines:
 
   def inlineParentInlineTraits(cls: Tree)(using Context): Tree =
     cls match {
-      case cls @ TypeDef(_, impl: Template) =>
-        val overriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
-        val inlineDefs = impl.parents.flatMap(
-          parent =>
-            if symbolFromParent(parent).isInlineTrait then
-              InlineParentTrait(parent)(using ctx.withOwner(cls.symbol)).expandDefs(overriddenSyms)
-            else
-              Nil
+      case cls @ tpd.TypeDef(_, impl: Template) =>
+        val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
+        val inlineDefs = inlineTraitAncestors(cls).foldLeft(List.empty[Tree])(
+          (defs, parent) =>
+            val overriddenSymbols = clsOverriddenSyms ++ defs.flatMap(_.symbol.allOverriddenSymbols)
+            defs ::: InlineParentTrait(parent)(using ctx.withOwner(cls.symbol)).expandDefs(overriddenSymbols)
         )
-        val impl1 = cpy.Template(impl)(body = inlineDefs ::: impl.body)
+        val impl1 = cpy.Template(impl)(body = impl.body ::: inlineDefs)
         cpy.TypeDef(cls)(rhs = impl1)
       case _ =>
         cls
