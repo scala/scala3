@@ -31,34 +31,12 @@ trait QuotesAndSplices {
 
   import tpd._
 
-  def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
-    if tree.tpt.isEmpty then
-      typedQuoteSyntactic(tree, pt)
-    else
-      val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
-      val expr1 = typed(tree.expr, tpt1.tpe.widenSkolem)(using quoteContext)
-      assignType(untpd.cpy.Quote(tree)(expr1, tpt1), tpt1)
-
-  def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree =
-    if tree.tpt.isEmpty then
-      typedSpliceSyntactic(tree, pt)
-    else
-      val tpt1 = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
-      val splicedType = // Quotes ?=> Expr[T]
-        defn.FunctionType(1, isContextual = true)
-          .appliedTo(defn.QuotesClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpt1.tpe.widenSkolem))
-      val expr1 = typed(tree.expr, splicedType)(using spliceContext)
-      assignType(untpd.cpy.Splice(tree)(expr1, tpt1), tpt1)
-
-  def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
-    val tpt = typedType(tree.tpt)
-    assignType(tree, tpt)
-
   /** Translate `'{ e }` into `scala.quoted.Expr.apply(e)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
    */
-  private def typedQuoteSyntactic(tree: untpd.Quote, pt: Type)(using Context): Tree = {
+  def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
     record("typedQuote")
+    assert(tree.tpt.isEmpty)
     tree.expr match {
       case untpd.Splice(innerExpr, _) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
@@ -93,8 +71,9 @@ trait QuotesAndSplices {
     }
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
-  private def typedSpliceSyntactic(tree: untpd.Splice, pt: Type)(using Context): Tree = {
+  def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
     record("typedSplice")
+    assert(tree.tpt.isEmpty)
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerExpr, _) if innerExpr.isTerm =>
@@ -137,6 +116,10 @@ trait QuotesAndSplices {
     }
   }
 
+  def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
+    val tpt = typedType(tree.tpt)
+    assignType(tree, tpt)
+
   /** Types a splice applied to some arguments `$f(arg1, ..., argn)` in a quote pattern.
    *
    *  The tree is desugared into `$f.apply(arg1, ..., argn)` where the expression `$f`
@@ -154,7 +137,7 @@ trait QuotesAndSplices {
     else if isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val splice1 = typedSpliceSyntactic(splice, defn.FunctionOf(argTypes, pt))
+      val splice1 = typedSplice(splice, defn.FunctionOf(argTypes, pt))
       Apply(splice1.select(nme.apply), typedArgs).withType(pt).withSpan(tree.span)
     else // $x(...) higher-order quasipattern
       val typedArgs = args.map {
@@ -167,7 +150,7 @@ trait QuotesAndSplices {
       if args.isEmpty then
         report.error("Missing arguments for open pattern", tree.srcPos)
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val typedPat = typedSpliceSyntactic(splice, defn.FunctionOf(argTypes, pt))
+      val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
       ref(defn.QuotedRuntimePatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
   }
 
