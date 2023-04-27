@@ -1219,6 +1219,18 @@ object Build {
         org.scalajs.jsenv.Input.Script(f) +: (Test / jsEnvInput).value
       },
 
+      Test / unmanagedSourceDirectories ++= {
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (Test / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
+        }
+
+        if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler)
+          Seq(baseDirectory.value / "test-require-multi-modules")
+        else
+          Nil
+      },
+
       (Compile / managedSources) ++= {
         val dir = fetchScalaJSSource.value
         (
