@@ -17,6 +17,7 @@ import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
 import compiletime.uninitialized
 import Decorators._
+import staging.StagingLevel.*
 
 object Trees {
 
@@ -1551,9 +1552,9 @@ object Trees {
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
             case tree @ Quote(body) =>
-              cpy.Quote(tree)(transform(body))
+              cpy.Quote(tree)(transform(body)(using quoteContext))
             case tree @ Splice(expr) =>
-              cpy.Splice(tree)(transform(expr))
+              cpy.Splice(tree)(transform(expr)(using spliceContext))
             case tree @ Hole(_, _, args, content, tpt) =>
               cpy.Hole(tree)(args = transform(args), content = transform(content), tpt = transform(tpt))
             case _ =>

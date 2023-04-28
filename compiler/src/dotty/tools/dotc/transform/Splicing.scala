@@ -111,17 +111,13 @@ class Splicing extends MacroTransform:
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
-        case tree: Splice =>
-          if level > 1 then
-            val expr1 = super.transform(tree.expr)(using spliceContext)
-            cpy.Splice(tree)(expr1)
-          else
-            val holeIdx = numHoles
-            numHoles += 1
-            val splicer = SpliceTransformer(ctx.owner, quotedDefs.contains)
-            val newSplicedCode1 = splicer.transformSplice(tree.expr, tree.tpe, holeIdx)(using spliceContext)
-            val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
-            newSplicedCode2
+        case tree: Splice if level == 1 =>
+          val holeIdx = numHoles
+          numHoles += 1
+          val splicer = SpliceTransformer(ctx.owner, quotedDefs.contains)
+          val newSplicedCode1 = splicer.transformSplice(tree.expr, tree.tpe, holeIdx)(using spliceContext)
+          val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
+          newSplicedCode2
         case tree: TypeDef if tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
           val tp @ TypeRef(qual: TermRef, _) = tree.rhs.tpe.hiBound: @unchecked
           quotedDefs += tree.symbol
@@ -134,8 +130,6 @@ class Splicing extends MacroTransform:
               typeHoles.put(qual, hole)
               hole
           cpy.TypeDef(tree)(rhs = hole)
-        case Apply(Select(_: Quote, nme.apply),List(quotes)) =>
-          super.transform(tree)(using quoteContext)
         case _: Template =>
           for sym <- tree.symbol.owner.info.decls do
             quotedDefs += sym
