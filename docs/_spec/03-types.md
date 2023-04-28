@@ -219,9 +219,9 @@ SimpleType    ::=   ‘(’ Types ‘)’
 
 A _tuple type_ ´(T_1, ..., T_n)´ where ´n \geq 2´ is an alias for the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`.
 
-Note:
-`(´T´)` is just the type ´T´, and not `´T´ *: scala.EmptyTuple`.
-`()` is not a valid type, and not `scala.EmptyTuple`.
+Notes:
+- `(´T´)` is just the type ´T´, and not `´T´ *: scala.EmptyTuple`.
+- `()` is not a valid type, and not `scala.EmptyTuple`.
 
 If ´n \leq 22´, the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple` is both a subtype and a supertype of tuple class `scala.Tuple´_n´[´T_1´, ..., ´T_n´]`.
 

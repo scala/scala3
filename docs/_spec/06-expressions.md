@@ -217,9 +217,9 @@ Once the types ´S_i´ have been determined, the method ´f´ of the above metho
 If ´f´ is instead of some value type, the application is taken to be equivalent to `´f´.apply(´e_1, ..., e_m´)`, i.e. the application of an `apply` method defined by ´f´.
 Value `´f´` is applicable to the given arguments if `´f´.apply` is applicable.
 
-Note:
-In the case where ´f´ or `´f´.apply` is a polymorphic method, this is taken as an [ommitted type application](#type-applications).
-`´f´` is applicable to the given arguments if the result of this type application is applicable.
+Notes:
+- In the case where ´f´ or `´f´.apply` is a polymorphic method, this is taken as an [ommitted type application](#type-applications).
+- `´f´` is applicable to the given arguments if the result of this type application is applicable.
 
 The application `´f´(´e_1, ..., e_n´)` evaluates ´f´ and then each argument ´e_1, ..., e_n´ from left to right, except for arguments that correspond to a by-name parameter (see below).
 Each argument expression is converted to the type of its corresponding formal parameter.
@@ -383,13 +383,11 @@ SimpleExpr   ::=  ‘(’ [Exprs] ‘)’
 ```
 A _tuple expression_ `(´e_1´, ..., ´e_n´)` where ´n \geq 2´ is equivalent to the expression `´e_1´ *: ... *: ´e_n´ *: scala.EmptyTuple`.
 
-Note:
-As calls to `*:` are slow, a more efficient translation is free to be implemented.
-For example, `(´e_1´, ´e_2´)` could be translated to `scala.Tuple2(´e_1´, ´e_2´)`, which is indeed equivalent to `´e_1´ *: ´e_2´ *: scala.EmptyTuple`.
+Note: as calls to `*:` are slow, a more efficient translation is free to be implemented. For example, `(´e_1´, ´e_2´)` could be translated to `scala.Tuple2(´e_1´, ´e_2´)`, which is indeed equivalent to `´e_1´ *: ´e_2´ *: scala.EmptyTuple`.
 
-Note:
-The expression `(´e_1´)` is not equivalent to `´e_1´ *: scala.EmptyTuple`, but instead a regular parenthesized expression.
-The expression `()` is not an alias for `scala.EmptyTuple`, but instead the unique value of type `scala.Unit`.
+Notes:
+- The expression `(´e_1´)` is not equivalent to `´e_1´ *: scala.EmptyTuple`, but instead a regular parenthesized expression.
+- The expression `()` is not an alias for `scala.EmptyTuple`, but instead the unique value of type `scala.Unit`.
 
 ## Instance Creation Expressions
 
