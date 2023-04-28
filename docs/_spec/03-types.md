@@ -8,13 +8,9 @@ chapter: 3
 
 ```ebnf
   Type              ::=  FunctionArgTypes ‘=>’ Type
-                      |  InfixType [ExistentialClause]
+                      |  InfixType
   FunctionArgTypes  ::=  InfixType
                       |  ‘(’ [ ParamType {‘,’ ParamType } ] ‘)’
-  ExistentialClause ::=  ‘forSome’ ‘{’ ExistentialDcl
-                             {semi ExistentialDcl} ‘}’
-  ExistentialDcl    ::=  ‘type’ TypeDcl
-                      |  ‘val’ ValDcl
   InfixType         ::=  CompoundType {id [nl] CompoundType}
   CompoundType      ::=  AnnotType {‘with’ AnnotType} [Refinement]
                       |  Refinement
@@ -163,13 +159,14 @@ SimpleType      ::=  SimpleType TypeArgs
 TypeArgs        ::=  ‘[’ Types ‘]’
 ```
 
-A _parameterized type_ ´T[ T_1, ..., T_n ]´ consists of a type designator ´T´ and type parameters ´T_1, ..., T_n´ where ´n \geq 1´.
+A _parameterized type_ ´T[ T_1, ..., T_n ]´ consists of a type designator ´T´ and type arguments ´T_1, ..., T_n´ where ´n \geq 1´.
 ´T´ must refer to a type constructor which takes ´n´ type parameters ´a_1, ..., a_n´.
 
+<!-- TODO Mention well-kinded conformance when we introduce kind-polymorphism -->
 Say the type parameters have lower bounds ´L_1, ..., L_n´ and upper bounds ´U_1, ..., U_n´.
-The parameterized type is well-formed if each actual type parameter _conforms to its bounds_, i.e. ´\sigma L_i <: T_i <: \sigma U_i´ where ´\sigma´ is the substitution ´[ a_1 := T_1, ..., a_n := T_n ]´.
+The parameterized type is well-formed if each type argument _conforms to its bounds_, i.e. ´\sigma L_i <: T_i <: \sigma U_i´ where ´\sigma´ is the substitution ´[ a_1 := T_1, ..., a_n := T_n ]´.
 
-###### Example Parameterized Types
+#### Example Parameterized Types
 
 Given the partial type definitions:
 
@@ -178,9 +175,9 @@ class TreeMap[A <: Comparable[A], B] { ... }
 class List[A] { ... }
 class I extends Comparable[I] { ... }
 
-class F[M[_], X] { ... }
+class F[M[A], X] { ... }
 class S[K <: String] { ... }
-class G[M[ Z <: I ], I] { ... }
+class G[M[Z <: I], I] { ... }
 ```
 
 the following parameterized types are well-formed:
@@ -194,9 +191,7 @@ F[List, Int]
 G[S, String]
 ```
 
-###### Example
-
-Given the [above type definitions](#example-parameterized-types), the following types are ill-formed:
+and the following types are ill-formed:
 
 ```scala
 TreeMap[I]            // illegal: wrong number of parameters
@@ -210,6 +205,50 @@ G[S, Int]             // illegal: S constrains its parameter to
                       // G expects type constructor with a parameter
                       //   that conforms to Int
 ```
+
+#### Wildcard Type Argument
+
+<!-- TODO Update the syntax to use '?' -->
+```ebnf
+WildcardType   ::=  ‘_’ TypeBounds
+```
+
+A _wildcard type argument_ is of the form `_´\;´>:´\,L\,´<:´\,U´`.
+A wildcard type must appear as a type argument of a parameterized type.
+The parameterized type to which the wildcard type is applied cannot be an abstract type constructor.
+
+Both bound clauses may be omitted.
+If both bounds are omitted, the real bounds are inferred from the bounds of the corresponding type parameter in the target type constructor.
+Otherwise, if a lower bound clause `>:´\,L´` is missing, `>:´\,´scala.Nothing` is assumed.
+Otherwise, if an upper bound clause `<:´\,U´` is missing, `<:´\,´scala.Any` is assumed.
+
+Given the [above type definitions](#example-parameterized-types), the following types are well-formed:
+
+```scala
+List[_] // inferred as List[_ >: Nothing <: Any]
+List[_ <: java.lang.Number]
+S[_ <: String]
+F[_, Boolean]
+```
+
+and the following code contains an ill-formed type:
+
+```scala
+trait H[F[A]]:
+  def f: F[_] // illegal : an abstract type constructor
+              // cannot be applied to wildcard arguments.
+```
+
+Wildcard types may also appear as parts of [infix types](#infix-types), [function types](#function-types), or [tuple types](#tuple-types).
+Their expansion is then the expansion in the equivalent parameterized type.
+
+##### Simplification Rules
+
+Let ´T[T_1, ..., T_n]´ be a parameterized type.
+Then, applying a wildcard type argument ´t´ of the form ´\\_ >: L <: U´ at the ´i´'th position obeys the following equivalences:
+
+- If the type parameter ´T_i´ is declared covariant, then ´t \equiv U´
+- If the type parameter ´T_i´ is declared contravariant, then ´t \equiv L´
 
 ### Tuple Types
 
@@ -354,30 +393,6 @@ trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
 ```
 
 Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.md#the-function-classes) of the standard library page in this document.
-
-#### Wildcard Types
-
-```ebnf
-WildcardType   ::=  ‘_’ TypeBounds
-```
-<!-- TODO: Update this to use new mechanism -->
-A _wildcard type_ is of the form `_´\;´>:´\,L\,´<:´\,U´`.
-Both bound clauses may be omitted.
-If a lower bound clause `>:´\,L´` is missing, `>:´\,´scala.Nothing` is assumed.
-If an upper bound clause `<:´\,U´` is missing, `<:´\,´scala.Any` is assumed.
-A wildcard type is a shorthand for an existentially quantified type variable, where the existential quantification is implicit.
-
-A wildcard type must appear as a type argument of a parameterized type.
-Let ´T = p.c[\mathit{targs},T,\mathit{targs}']´ be a parameterized type where ´\mathit{targs}, \mathit{targs}'´ may be empty and ´T´ is a wildcard type `_´\ ´>:´\,L\,´<:´\,U´`.
-Then ´T´ is equivalent to the existential type
-
-```scala
-´p.c[\mathit{targs},t,\mathit{targs}']´ forSome { type ´t´ >: ´L´ <: ´U´ }
-```
-
-where ´t´ is some fresh type variable.
-Wildcard types may also appear as parts of [infix types](#infix-types), [function types](#function-types), or [tuple types](#tuple-types).
-Their expansion is then the expansion in the equivalent parameterized type.
 
 ## Non-Value Types
 
@@ -563,7 +578,6 @@ Equivalence ´(\equiv)´ between types is the smallest congruence [^congruence] 
   - corresponding parameters have equivalent types.
     Note that the names of parameters do not matter for method type equivalence.
 - Two [polymorphic method types](#polymorphic-method-types) are equivalent if they have the same number of type parameters, and, after renaming one set of type parameters by another, the result types as well as lower and upper bounds of corresponding type parameters are equivalent.
-- Two [existential types](#existential-types) are equivalent if they have the same number of quantifiers, and, after renaming one list of type quantifiers by another, the quantified types as well as lower and upper bounds of corresponding quantifiers are equivalent.
 - Two [type constructors](#type-constructors) are equivalent if they have the same number of type parameters, and, after renaming one list of type parameters by another, the result types as well as variances, lower and upper bounds of corresponding type parameters are equivalent.
 
 [^congruence]: A congruence is an equivalence relation which is closed under formation of contexts.
@@ -573,7 +587,7 @@ Equivalence ´(\equiv)´ between types is the smallest congruence [^congruence] 
 
 The conformance relation ´(<:)´ is the smallest transitive relation that satisfies the following conditions.
 
-- Conformance includes equivalence. If `T \equiv U` then `T <: U`.
+- Conformance includes equivalence. If ´T \equiv U´ then ´T <: U´.
 - For every value type `T`, `scala.Nothing <: ´T´ <: scala.Any`.
 - For every type constructor ´T´ (with any number of type parameters), `scala.Nothing <: ´T´ <: scala.Any`.
 - For every value type ´T´, `scala.Null <: ´T´` unless `´T´ <: scala.AnyVal`.
@@ -582,10 +596,13 @@ The conformance relation ´(<:)´ is the smallest transitive relation that satis
 - A singleton type `´p´.type` conforms to the type of the path ´p´.
 - A singleton type `´p´.type` conforms to the type `scala.Singleton`.
 - A type projection `´T´#´t´` conforms to `´U´#´t´` if ´T´ conforms to ´U´.
-- A parameterized type `´T´[´T_1´, ..., ´T_n´]` conforms to `´T´[´U_1´, ..., ´U_n´]` if the following three conditions hold for ´i \in \{ 1, ..., n \}´:
-  1. If the ´i´'th type parameter of ´T´ is declared covariant, then ´T_i <: U_i´.
-  1. If the ´i´'th type parameter of ´T´ is declared contravariant, then ´U_i <: T_i´.
-  1. If the ´i´'th type parameter of ´T´ is declared neither covariant nor contravariant, then ´U_i \equiv T_i´.
+- A parameterized type `´T´[´T_1´, ..., ´T_n´]` conforms to `´T´[´U_1´, ..., ´U_n´]` if the following conditions hold for ´i \in \{ 1, ..., n \}´:
+  1. If the ´i´'th type parameter of ´T´ is declared covariant, then ´T_i <: U_i´. [^argisnotwildcard]
+  1. If the ´i´'th type parameter of ´T´ is declared contravariant, then ´U_i <: T_i´. [^argisnotwildcard]
+  1. If the ´i´'th type parameter of ´T´ is declared neither covariant nor contravariant:
+     1. If neither ´T_i´ nor ´U_i´ are wildcard type arguments, then ´U_i \equiv T_i´.
+     1. If ´T_i´ is a wildcard type argument of the form ´\\_ >: L_1 <: U_1´ and ´U_i´ is a wildcard argument of the form ´\\_ >: L_2 <: U_2´, then ´L_2 <: L_1´ and ´H_1 <: H_2´ (i.e., the ´T_i´ "interval" is contained in the ´U_i´ "interval").
+     1. If ´U_i´ is a wildcard type argument of the form ´\\_ >: L_2 <: U_2´, then ´L_2 <: T_i´ and ´T_i <: U_2´.
 - A compound type `´T_1´ with ... with ´T_n´ {´R\,´}` conforms to each of its component types ´T_i´.
 - If ´T <: U_i´ for ´i \in \{ 1, ..., n \}´ and for every binding ´d´ of a type or value ´x´ in ´R´ there exists a member binding of ´x´ in ´T´ which subsumes ´d´, then ´T´ conforms to the compound type `´U_1´ with ... with ´U_n´ {´R\,´}`.
 - If ´T_i \equiv T_i'´ for ´i \in \{ 1, ..., n\}´ and ´U´ conforms to ´U'´ then the method type ´(p_1:T_1, ..., p_n:T_n) U´ conforms to ´(p_1':T_1', ..., p_n':T_n') U'´.
@@ -597,6 +614,8 @@ Note that this entails that:
   - The bounds on ´a_i´ must be weaker than the corresponding bounds declared for ´a'_i´.
   - The variance of ´a_i´ must match the variance of ´a'_i´, where covariance matches covariance, contravariance matches contravariance and any variance matches invariance.
   - Recursively, these restrictions apply to the corresponding higher-order type parameter clauses of ´a_i´ and ´a'_i´.
+
+ [^argisnotwildcard]: In these cases, if `T_i` and/or `U_i` are wildcard type arguments, the [simplification rules](#simplification-rules) for parameterized types allow to reduce them to real types.
 
 A declaration or definition in some compound type of class type ´C´ _subsumes_ another declaration of the same name in some compound type or class type ´C'´, if one of the following holds.
 

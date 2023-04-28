@@ -460,16 +460,13 @@ The expected type of the final expression ´e´ is the expected type of the bloc
 The expected type of all preceding statements is undefined.
 
 <!-- TODO: Rewrite when type avoidance section is done -->
-The type of a block `´s_1´; ...; ´s_n´; ´e´` is `´T´ forSome {´\,Q\,´}`, where ´T´ is the type of ´e´ and ´Q´ contains [existential clauses](03-types.html#existential-types) for every value or type name which is free in ´T´ and which is defined locally in one of the statements ´s_1, ..., s_n´.
-We say the existential clause _binds_ the occurrence of the value or type name.
-Specifically,
+The type of a block `´s_1´; ...; ´s_n´; ´e´` is some type ´T´ such that:
 
-- A locally defined type definition  `type´\;t = T´` is bound by the existential clause `type´\;t >: T <: T´`.
-It is an error if ´t´ carries type parameters.
-- A locally defined value definition `val´\;x: T = e´` is bound by the existential clause `val´\;x: T´`.
-- A locally defined class definition `class´\;c´ extends´\;t´` is bound by the existential clause `type´\;c <: T´` where ´T´ is the least class type or refinement type which is a proper supertype of the type ´c´.
-It is an error if ´c´ carries type parameters.
-- A locally defined object definition `object´\;x\;´extends´\;t´` is bound by the existential clause `val´\;x: T´` where ´T´ is the least class type or refinement type which is a proper supertype of the type `´x´.type`.
+- ´U <: T´ where ´U´ is the type of ´e´.
+- No value or type name is free in ´T´, i.e., ´T´ does not refer to any value or type locally defined in one of the statements ´s_1, ..., s_n´.
+- ´T´ is "as small as possible" (this is a soft requirement).
+
+The precise way in which we compute ´T´, called _type avoidance_, is currently not defined in this specification.
 
 Evaluation of the block entails evaluation of its statement sequence, followed by an evaluation of the final expression ´e´, which defines the result of the block.
 
@@ -1181,12 +1178,11 @@ question: given
 -->
 
 - A parameterized method ´m´ of type `(´p_1:T_1, ..., p_n:T_n´)´U´` is _as specific as_ some other member ´m'´ of type ´S´ if ´m'´ is [applicable](#method-applications) to arguments `(´p_1, ..., p_n´)` of types ´T_1, ..., T_n´.
-- A polymorphic method of type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is as specific as some other member of type ´S´ if ´T´ is as specific as ´S´ under the assumption that for ´i = 1, ..., n´ each ´a_i´ is an abstract type name bounded from below by ´L_i´ and from above by ´U_i´.
-- A member of any other type is always as specific as a parameterized method or a polymorphic method.
-<!-- TODO: check the following, as it reduces to "the member of type ´T´ is as specific as the member of type ´U´ if the ´T´ conforms to ´U´." -->
-- Given two members of types ´T´ and ´U´ which are neither parameterized nor polymorphic method types, the member of type ´T´ is as specific as the member of type ´U´ if the existential dual of ´T´ conforms to the existential dual of ´U´.
-Here, the existential dual of a polymorphic type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is `´T´ forSome { type ´a_1´ >: ´L_1´ <: ´U_1´, ..., type ´a_n´ >: ´L_n´ <: ´U_n´}`.
-The existential dual of every other type is the type itself.
+  If the last parameter `´p_n´` has a vararg type `´T*´`, then `m` must be applicable to arbitrary numbers of `´T´` parameters (which implies that it must be a varargs method as well).
+- A polymorphic method of type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is as specific as some other member ´m'´ of type ´S´ if ´T´ is as specific as ´S´ under the assumption that for ´i = 1, ..., n´ each ´a_i´ is an abstract type name bounded from below by ´L_i´ and from above by ´U_i´.
+- A member of any other type ´T´ is:
+  - always as specific as a parameterized method or a polymorphic method.
+  - as specific as a member ´m'´ of any other type ´S´ if ´T´ is [compatible](03-types.html#compatibility) with ´S´.
 
 The _relative weight_ of an alternative ´A´ over an alternative ´B´ is a
 number from 0 to 2, defined as the sum of
