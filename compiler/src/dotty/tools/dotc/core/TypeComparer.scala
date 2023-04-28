@@ -3136,6 +3136,14 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
     def instantiateParams(insts: Array[Type]) = new ApproximatingTypeMap {
       variance = 0
+
+      override def range(lo: Type, hi: Type): Type =
+        if variance == 0 && (lo eq hi) then
+          // override the default `lo eq hi` test, which removes the Range
+          // which leads to a Reduced result, instead of NoInstance
+          Range(lower(lo), upper(hi))
+        else super.range(lo, hi)
+
       def apply(t: Type) = t match {
         case t @ TypeParamRef(b, n) if b `eq` caseLambda => insts(n)
         case t: LazyRef => apply(t.ref)
