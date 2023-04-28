@@ -59,6 +59,7 @@ trait QuotesAndSplices {
       report.error(msg, tree.srcPos)
       EmptyTree
     else
+      // TODO typecheck directly (without `exprQuote`)
       val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.expr)
       val quotedExpr = typedApply(exprQuoteTree, pt)(using quoteContext) match
         case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => Quote(quotedExpr, tpt)
@@ -106,9 +107,9 @@ trait QuotesAndSplices {
         markAsMacro(ctx)
       }
 
+      // TODO typecheck directly (without `exprSplice`)
       val internalSplice =
         untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
-
       typedApply(internalSplice, pt)(using spliceContext).withSpan(tree.span) match
         case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
           cpy.Splice(tree)(spliced, tpt)

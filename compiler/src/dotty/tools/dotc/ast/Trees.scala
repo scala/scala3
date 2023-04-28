@@ -682,7 +682,7 @@ object Trees {
    *  they can be typed as a `Quote` with a known `tpt` or desugared and
    *  typed as a quote pattern.
    *
-   *  `Quotes` are checked transformed in the `staging`, `splicing` and `pickleQuotes`
+   *  `Quotes` are checked and transformed in the `staging`, `splicing` and `pickleQuotes`
    *  phases. After `pickleQuotes` phase, the only quotes that exist are in `inline`
    *  methods. These are dropped when we remove the inline method implementations.
    *
@@ -703,8 +703,8 @@ object Trees {
    *  they can be typed as a `Splice` with a known `tpt` or desugared and
    *  typed as a quote pattern holes.
    *
-   *  `Splice` are checked transformed in the `staging` and `splicing` phases.
-   *  After `splicing` phase, the only quotes that exist are in `inline`
+   *  `Splice` are checked and transformed in the `staging` and `splicing` phases.
+   *  After `splicing` phase, the only splices that exist are in `inline`
    *  methods. These are dropped when we remove the inline method implementations.
    *
    *  The `tpt` will be transformed in `staging` and used in `splicing` to create `Hole`s.
