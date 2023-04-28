@@ -392,12 +392,6 @@ trait TypeAssigner {
   def assignType(tree: untpd.Inlined, bindings: List[Tree], expansion: Tree)(using Context): Inlined =
     tree.withType(avoidingType(expansion, bindings))
 
-  def assignType(tree: untpd.Quote, tpt: Tree)(using Context): Quote =
-    val lambdaType = // Quotes ?=> Expr[T]
-      defn.FunctionType(1, isContextual = true)
-        .appliedTo(defn.QuotesClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpt.tpe))
-    tree.withType(lambdaType)
-
   def assignType(tree: untpd.Splice, tpt: Tree)(using Context): Splice =
     tree.withType(tpt.tpe)
 

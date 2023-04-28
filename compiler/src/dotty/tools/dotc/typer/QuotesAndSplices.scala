@@ -36,7 +36,6 @@ trait QuotesAndSplices {
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
     record("typedQuote")
-    assert(tree.tpt.isEmpty)
     tree.expr match {
       case untpd.Splice(innerExpr, _) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
@@ -62,7 +61,7 @@ trait QuotesAndSplices {
       // TODO typecheck directly (without `exprQuote`)
       val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.expr)
       val quotedExpr = typedApply(exprQuoteTree, pt)(using quoteContext) match
-        case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => Quote(quotedExpr, tpt)
+        case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => Quote(quotedExpr, tpt.tpe)
       makeInlineable(quotedExpr.select(nme.apply).appliedTo(quotes).withSpan(tree.span))
   }
 
@@ -77,7 +76,7 @@ trait QuotesAndSplices {
     assert(tree.tpt.isEmpty)
     checkSpliceOutsideQuote(tree)
     tree.expr match {
-      case untpd.Quote(innerExpr, _) if innerExpr.isTerm =>
+      case untpd.Quote(innerExpr) if innerExpr.isTerm =>
         report.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.srcPos)
         return typed(innerExpr, pt)
       case _ =>
@@ -446,7 +445,7 @@ trait QuotesAndSplices {
 
     val quoteClass = if (quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
     val quotedPattern =
-      if (quoted.isTerm) tpd.Quote(shape, TypeTree(defn.AnyType)).select(nme.apply).appliedTo(qctx)
+      if (quoted.isTerm) tpd.Quote(shape, defn.AnyType).select(nme.apply).appliedTo(qctx)
       else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).appliedTo(qctx)
 
     val matchModule = if quoted.isTerm then defn.QuoteMatching_ExprMatch else defn.QuoteMatching_TypeMatch

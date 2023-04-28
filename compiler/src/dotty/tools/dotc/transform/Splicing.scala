@@ -86,7 +86,7 @@ class Splicing extends MacroTransform:
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       assert(level == 0)
       tree match
-        case Apply(Select(Quote(expr, _), nme.apply),List(quotes)) =>
+        case Apply(Select(Quote(expr), nme.apply),List(quotes)) =>
           QuoteTransformer().transform(tree)
         case TypeApply(_, _) if tree.symbol == defn.QuotedTypeModule_of =>
           QuoteTransformer().transform(tree)
@@ -134,7 +134,7 @@ class Splicing extends MacroTransform:
               typeHoles.put(qual, hole)
               hole
           cpy.TypeDef(tree)(rhs = hole)
-        case Apply(Select(Quote(expr, tpt), nme.apply),List(quotes)) =>
+        case Apply(Select(Quote(expr), nme.apply),List(quotes)) =>
           super.transform(tree)(using quoteContext)
         case _: Template =>
           for sym <- tree.symbol.owner.info.decls do
@@ -237,7 +237,7 @@ class Splicing extends MacroTransform:
         case Splice(expr, tpt) =>
           val expr1 = transform(expr)(using spliceContext)
           cpy.Splice(tree)(expr1, tpt)
-        case Apply(sel @ Select(app @ Quote(expr, tpt), nme.apply), quotesArgs) =>
+        case Apply(sel @ Select(app @ Quote(expr), nme.apply), quotesArgs) =>
           expr match
             case expr: RefTree if isCaptured(expr.symbol) =>
               capturedTerm(expr)
@@ -246,7 +246,7 @@ class Splicing extends MacroTransform:
                 if level > 1 then transform(expr)(using quoteContext)
                 else transformLevel0QuoteContent(expr)(using quoteContext)
               }
-              cpy.Apply(tree)(cpy.Select(sel)(cpy.Quote(app)(newExpr, tpt), nme.apply), quotesArgs)
+              cpy.Apply(tree)(cpy.Select(sel)(cpy.Quote(app)(newExpr), nme.apply), quotesArgs)
         case Apply(TypeApply(typeof, List(tpt)), List(quotes))
         if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
           val newContent = capturedPartTypes(tpt)
@@ -412,7 +412,7 @@ class Splicing extends MacroTransform:
       Splice(closure, TypeTree(tpe))
 
     private def quoted(expr: Tree)(using Context): Tree =
-      Quote(expr, TypeTree(expr.tpe.widenTermRefExpr))
+      Quote(expr, expr.tpe.widenTermRefExpr)
         .select(nme.apply)
         .appliedTo(quotes.nn)
 

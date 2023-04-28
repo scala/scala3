@@ -637,7 +637,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           case self: tpd.Quote => // TODO expose Quote AST in Quotes
             import dotty.tools.dotc.ast.tpd.TreeOps
             tpd.ref(dotc.core.Symbols.defn.QuotedRuntime_exprQuote)
-              .appliedToTypeTree(self.tpt)
+              .appliedToType(self.exprType)
               .withSpan(self.span)
           case self: tpd.Splice => // TODO expose Splice AST in Quotes
             import dotty.tools.dotc.ast.tpd.TreeOps

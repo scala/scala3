@@ -827,7 +827,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
       super.typedQuote(tree, pt) match
-        case Quote(Splice(inner, _), _) => inner
+        case Quote(Splice(inner, _)) => inner
         case tree1 =>
           ctx.compilationUnit.needsStaging = true
           tree1
@@ -1070,7 +1070,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         else tree match {
           case tree: RefTree if tree.isTerm && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
-          case Quote(body, _) =>
+          case Quote(body) =>
             level += 1
             try apply(syms, body)
             finally level -= 1

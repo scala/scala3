@@ -397,7 +397,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def SeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit src: SourceFile): SeqLiteral = new SeqLiteral(elems, elemtpt)
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit src: SourceFile): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
   def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit src: SourceFile): Inlined = new Inlined(call, bindings, expansion)
-  def Quote(expr: Tree, tpt: Tree)(implicit src: SourceFile): Quote = new Quote(expr, tpt)
+  def Quote(expr: Tree)(implicit src: SourceFile): Quote = new Quote(expr)
   def Splice(expr: Tree, tpt: Tree)(implicit src: SourceFile): Splice = new Splice(expr, tpt)
   def TypeTree()(implicit src: SourceFile): TypeTree = new TypeTree()
   def InferredTypeTree()(implicit src: SourceFile): TypeTree = new InferredTypeTree()

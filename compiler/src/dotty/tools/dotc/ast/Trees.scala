@@ -678,23 +678,33 @@ object Trees {
   }
 
   /** A tree representing a quote `'{ expr }`
-   *  `Quote`s are created by the `Parser` with an empty `tpt`. In typer
-   *  they can be typed as a `Quote` with a known `tpt` or desugared and
-   *  typed as a quote pattern.
+   *  `Quote`s are created by the `Parser`. In typer they can be typed as a
+   *  `Quote` with a known `tpt` or desugared and typed as a quote pattern.
    *
    *  `Quotes` are checked and transformed in the `staging`, `splicing` and `pickleQuotes`
    *  phases. After `pickleQuotes` phase, the only quotes that exist are in `inline`
    *  methods. These are dropped when we remove the inline method implementations.
    *
-   *  The `tpt` will be transformed in `staging` and used in `pickleQuotes` to create the
-   *  pickled representation of the quote.
-   *
    *  @param  expr  The tree that was quoted
-   *  @param  tpt   The type of the tree that was quoted
    */
-  case class Quote[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Quote[+T <: Untyped] private[ast] (expr: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Quote[T]
+
+    /** Type of the quoted expression as seen from outside the quote */
+    def exprType(using Context): Type =
+      val quoteType = typeOpt // Quotes ?=> Expr[T]
+      val exprType = quoteType.argInfos.last // Expr[T]
+      exprType.argInfos.head // T
+
+    /** Set the type of the quoted expression as seen from outside the quote */
+    def withExprType(tpe: Type)(using Context): Quote[Type] =
+      val exprType = // Expr[T]
+        defn.QuotedExprClass.typeRef.appliedTo(tpe)
+      val quoteType = // Quotes ?=> Expr[T]
+        defn.FunctionType(1, isContextual = true)
+          .appliedTo(defn.QuotesClass.typeRef, exprType)
+      withType(quoteType)
   }
 
   /** A tree representing a splice `${ expr }`
@@ -1299,9 +1309,9 @@ object Trees {
         case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion)(sourceFile(tree)))
       }
-      def Quote(tree: Tree)(expr: Tree, tpt: Tree)(using Context): Quote = tree match {
-        case tree: Quote if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
-        case _ => finalize(tree, untpd.Quote(expr, tpt)(sourceFile(tree)))
+      def Quote(tree: Tree)(expr: Tree)(using Context): Quote = tree match {
+        case tree: Quote if (expr eq tree.expr) => tree
+        case _ => finalize(tree, untpd.Quote(expr)(sourceFile(tree)))
       }
       def Splice(tree: Tree)(expr: Tree, tpt: Tree)(using Context): Splice = tree match {
         case tree: Splice if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
@@ -1546,8 +1556,8 @@ object Trees {
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
-            case tree @ Quote(expr, tpt) =>
-              cpy.Quote(tree)(transform(expr), transform(tpt))
+            case tree @ Quote(expr) =>
+              cpy.Quote(tree)(transform(expr))
             case tree @ Splice(expr, tpt) =>
               cpy.Splice(tree)(transform(expr), transform(tpt))
             case tree @ Hole(_, _, args, content, tpt) =>
@@ -1691,8 +1701,8 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
-            case Quote(expr, tpt) =>
-              this(this(x, expr), tpt)
+            case Quote(expr) =>
+              this(x, expr)
             case Splice(expr, tpt) =>
               this(this(x, expr), tpt)
             case Hole(_, _, args, content, tpt) =>

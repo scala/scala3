@@ -26,7 +26,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
    *  - `quoted.runtime.Expr.quote[T](<body0>)`  --> `quoted.runtime.Expr.quote[T](<body>)`
    */
   protected def transformQuote(body: Tree, quote: Quote)(using Context): Tree =
-    cpy.Quote(quote)(body, quote.tpt)
+    cpy.Quote(quote)(body)
 
   /** Transform the quote `quote` which contains the quoted `body`.
    *
@@ -62,7 +62,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           try transformQuotedType(quotedTree, tree)
           finally inQuoteOrSplice = old
 
-        case tree @ Quote(quotedTree, _) =>
+        case tree @ Quote(quotedTree) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(quotedTree) match {
@@ -79,7 +79,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(splicedTree) match {
-            case Quote(t, _) =>
+            case Quote(t) =>
               // Optimization: `${ 'x }` --> `x`
               transform(t)
             case _ =>

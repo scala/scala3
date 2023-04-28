@@ -1262,7 +1262,7 @@ object Parsers {
               }
             }
             in.nextToken()
-            Quote(t, EmptyTree)
+            Quote(t)
           }
           else
             if !in.featureEnabled(Feature.symbolLiterals) then
@@ -2497,7 +2497,7 @@ object Parsers {
               val expr =
                 if (in.token == LBRACKET) inBrackets(typ())
                 else stagedBlock()
-              Quote(expr, EmptyTree)
+              Quote(expr)
             }
           }
         case NEW =>

@@ -103,8 +103,8 @@ class CrossStageSafety extends TreeMapWithStages {
     val transformedBody = transformQuoteBody(body, quote.span)
     val stripAnnotsDeep: TypeMap = new TypeMap:
       def apply(tp: Type): Type = mapOver(tp.stripAnnots)
-    val tpt1 = TypeTree(healType(quote.tpt.srcPos)(stripAnnotsDeep(quote.tpt.tpe)))
-    cpy.Quote(quote)(transformedBody, tpt1)
+    val exprType1 = healType(quote.srcPos)(stripAnnotsDeep(quote.exprType))
+    cpy.Quote(quote)(transformedBody).withExprType(exprType1)
   }
 
   override protected def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree = {
