@@ -91,9 +91,7 @@ object PrepareInlineable {
         }
 
       private def stagingContext(tree: Tree)(using Context): Context = tree match
-        case tree: Quote => StagingLevel.quoteContext
         case tree: Apply if tree.symbol eq defn.QuotedTypeModule_of => StagingLevel.quoteContext
-        case tree: Splice => StagingLevel.spliceContext
         case _ => ctx
     }
 

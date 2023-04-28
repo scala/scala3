@@ -228,19 +228,10 @@ class Splicing extends MacroTransform:
         case tree @ Assign(lhs: RefTree, rhs) =>
           if isCaptured(lhs.symbol) then transformSplicedAssign(tree)
           else super.transform(tree)
-        case Splice(expr) =>
-          val expr1 = transform(expr)(using spliceContext)
-          cpy.Splice(tree)(expr1)
-        case Apply(sel @ Select(app @ Quote(expr), nme.apply), quotesArgs) =>
-          expr match
-            case expr: RefTree if isCaptured(expr.symbol) =>
-              capturedTerm(expr)
-            case _ =>
-              val newExpr = withCurrentQuote(quotesArgs.head) {
-                if level > 1 then transform(expr)(using quoteContext)
-                else transformLevel0QuoteContent(expr)(using quoteContext)
-              }
-              cpy.Apply(tree)(cpy.Select(sel)(cpy.Quote(app)(newExpr), nme.apply), quotesArgs)
+        case Apply(sel @ Select(app @ Quote(body), nme.apply), quotesArgs) =>
+          body match
+            case body: RefTree if isCaptured(body.symbol) => capturedTerm(body)
+            case _ => withCurrentQuote(quotesArgs.head) { super.transform(tree) }
         case Apply(TypeApply(typeof, List(tpt)), List(quotes))
         if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
           val newContent = capturedPartTypes(tpt)
@@ -253,6 +244,9 @@ class Splicing extends MacroTransform:
               ref(capturedType(newContent))(using ctx.withSource(tree.source)).withSpan(tree.span)
         case CapturedApplication(fn, argss) =>
           transformCapturedApplication(tree, fn, argss)
+        case Quote(expr) if level == 0 =>
+          val newExpr = transformLevel0QuoteContent(expr)(using quoteContext)
+          cpy.Quote(tree)(newExpr)
         case _ =>
           super.transform(tree)
 
