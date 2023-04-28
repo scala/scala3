@@ -27,8 +27,9 @@ op       ::=  opchar {opchar}
 varid    ::=  lower idrest
 boundvarid ::=  varid
              | ‘`’ varid ‘`’
-plainid  ::=  upper idrest
-           |  varid
+alphaid    ::=  upper idrest
+             |  varid
+plainid  ::=  alphaid
            |  op
 id       ::=  plainid
            |  ‘`’ { charNoBackQuoteOrNewline | escapeSeq } ‘`’
@@ -282,8 +283,8 @@ Literal  ::=  [‘-’] integerLiteral
 ```ebnf
 integerLiteral  ::=  (decimalNumeral | hexNumeral)
                        [‘L’ | ‘l’]
-decimalNumeral  ::=  digit {digit}
-hexNumeral      ::=  ‘0’ (‘x’ | ‘X’) hexDigit {hexDigit}
+decimalNumeral   ::=  ‘0’ | digit [{digit | ‘_’} digit]
+hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit [{hexDigit | ‘_’} hexDigit]
 ```
 
 Values of type `Int` are all integer numbers between $-2\^{31}$ and $2\^{31}-1$, inclusive.
@@ -312,12 +313,11 @@ The digits of a numeric literal may be separated by arbitrarily many underscores
 ### Floating Point Literals
 
 ```ebnf
-floatingPointLiteral  ::=  digit {digit} ‘.’ digit {digit} [exponentPart] [floatType]
-                        |  ‘.’ digit {digit} [exponentPart] [floatType]
-                        |  digit {digit} exponentPart [floatType]
-                        |  digit {digit} [exponentPart] floatType
-exponentPart          ::=  (‘E’ | ‘e’) [‘+’ | ‘-’] digit {digit}
-floatType             ::=  ‘F’ | ‘f’ | ‘D’ | ‘d’
+floatingPointLiteral
+                 ::=  [decimalNumeral] ‘.’ digit [{digit | ‘_’} digit] [exponentPart] [floatType]
+                   |  decimalNumeral exponentPart [floatType]
+                   |  decimalNumeral floatType
+exponentPart     ::=  (‘E’ | ‘e’) [‘+’ | ‘-’] digit [{digit | ‘_’} digit]
 ```
 
 Floating point literals are of type `Float` when followed by a floating point type suffix `F` or `f`, and are of type `Double` otherwise.

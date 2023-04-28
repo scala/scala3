@@ -8,6 +8,8 @@ chapter: 13
 
 The following descriptions of Scala tokens uses literal characters `‘c’` when referring to the ASCII fragment `\u0000` – `\u007F`.
 
+Informal descriptions are typeset as `“some comment”`.
+
 ## Lexical Syntax
 
 The lexical syntax of Scala is given by the following grammar in EBNF form:
@@ -32,27 +34,30 @@ UnicodeEscape    ::=  ‘\’ ‘u’ {‘u’} hexDigit hexDigit hexDigit hexDi
 hexDigit         ::=  ‘0’ | ... | ‘9’ | ‘A’ | ... | ‘F’ | ‘a’ | ... | ‘f’
 charEscapeSeq    ::=  ‘\’ (‘b’ | ‘t’ | ‘n’ | ‘f’ | ‘r’ | ‘"’ | ‘'’ | ‘\’)
 escapeSeq        ::=  UnicodeEscape | charEscapeSeq
+
 op               ::=  opchar {opchar}
 varid            ::=  lower idrest
 boundvarid       ::=  varid
                    |  ‘`’ varid ‘`’
-plainid          ::=  upper idrest
+alphaid          ::=  upper idrest
                    |  varid
+plainid          ::=  alphaid
                    |  op
 id               ::=  plainid
                    |  ‘`’ { charNoBackQuoteOrNewline | escapeSeq } ‘`’
 idrest           ::=  {letter | digit} [‘_’ op]
+quoteId          ::=  ‘'’ alphaid
+spliceId         ::=  ‘$’ alphaid ;
 
 integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
-decimalNumeral   ::=  digit {digit}
-hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit {hexDigit}
+decimalNumeral   ::=  ‘0’ | digit [{digit | ‘_’} digit]
+hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit [{hexDigit | ‘_’} hexDigit]
 
 floatingPointLiteral
-                 ::=  digit {digit} ‘.’ digit {digit} [exponentPart] [floatType]
-                   |  ‘.’ digit {digit} [exponentPart] [floatType]
-                   |  digit {digit} exponentPart [floatType]
-                   |  digit {digit} [exponentPart] floatType
-exponentPart     ::=  (‘E’ | ‘e’) [‘+’ | ‘-’] digit {digit}
+                 ::=  [decimalNumeral] ‘.’ digit [{digit | ‘_’} digit] [exponentPart] [floatType]
+                   |  decimalNumeral exponentPart [floatType]
+                   |  decimalNumeral floatType
+exponentPart     ::=  (‘E’ | ‘e’) [‘+’ | ‘-’] digit [{digit | ‘_’} digit]
 floatType        ::=  ‘F’ | ‘f’ | ‘D’ | ‘d’
 
 booleanLiteral   ::=  ‘true’ | ‘false’
@@ -74,10 +79,6 @@ escape           ::=  ‘\$\$’
                    |  ‘\$"’
                    |  ‘\$’ alphaid
                    |  ‘\$’ BlockExpr
-alphaid          ::=  upper idrest
-                   |  varid
-
-symbolLiteral    ::=  ‘'’ plainid
 
 comment          ::=  ‘/*’ “any sequence of characters; nested comments are allowed” ‘*/’
                    |  ‘//’ “any sequence of characters up to end of line”

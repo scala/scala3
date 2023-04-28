@@ -18,6 +18,8 @@ productions map to AST nodes.
 
 -->
 
+<!-- Lexical syntax already merged into _spec. -->
+<!--
 The following description of Scala tokens uses literal characters `‘c’` when
 referring to the ASCII fragment `\u0000` – `\u007F`.
 
@@ -84,10 +86,10 @@ stringElement    ::=  printableChar \ (‘"’ | ‘\’)
                    |  UnicodeEscape
                    |  charEscapeSeq
 multiLineChars   ::=  {[‘"’] [‘"’] char \ ‘"’} {‘"’}
-processedStringLiteral
-                 ::=  alphaid ‘"’ {[‘\’] processedStringPart | ‘\\’ | ‘\"’} ‘"’
+interpolatedStringLiteral
+                 ::=  alphaid ‘"’ {[‘\’] interpolatedStringPart | ‘\\’ | ‘\"’} ‘"’
                    |  alphaid ‘"""’ {[‘"’] [‘"’] char \ (‘"’ | ‘$’) | escape} {‘"’} ‘"""’
-processedStringPart
+interpolatedStringPart
                  ::= printableChar \ (‘"’ | ‘$’ | ‘\’) | escape
 escape           ::=  ‘$$’
                    |  ‘$’ letter { letter | digit }
@@ -102,6 +104,7 @@ comment          ::=  ‘/*’ “any sequence of characters; nested comments ar
 nl               ::=  “new line character”
 semi             ::=  ‘;’ |  nl {nl}
 ```
+-->
 
 ## Optional Braces
 
@@ -163,7 +166,7 @@ SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  characterLiteral
                     |  stringLiteral
 Literal           ::=  SimpleLiteral
-                    |  processedStringLiteral
+                    |  interpolatedStringLiteral
                     |  symbolLiteral
                     |  ‘null’
 
