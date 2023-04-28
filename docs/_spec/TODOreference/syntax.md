@@ -105,7 +105,10 @@ semi             ::=  ‘;’ |  nl {nl}
 
 ## Optional Braces
 
-The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](./other-new-features/indentation.md).
+The principle of optional braces is that any keyword that can be followed by `{` can also be followed by an indented block, without needing an intervening `:`.
+(Allowing an optional `:` would be counterproductive since it would introduce several ways to do the same thing.)
+
+The lexical analyzer inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](./other-new-features/indentation.md).
 
 In the context-free productions below we use the notation `<<< ts >>>`
 to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
@@ -249,6 +252,7 @@ Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
 PostfixExpr       ::=  InfixExpr [id]                                          -- only if language.postfixOperators is enabled
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr
+                    |  InfixExpr id ColonArgument
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ <<< CaseClauses >>>
 PrefixExpr        ::=  [PrefixOperator] SimpleExpr
@@ -267,6 +271,11 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs
                     |  SimpleExpr ArgumentExprs
+                    |  SimpleExpr ColonArgument
+ColonArgument     ::=  colon [LambdaStart]
+                       indent (CaseClauses | Block) outdent
+LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
+                    |  HkTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
 ExprSplice        ::= spliceId                                                  -- if inside quoted block
@@ -306,7 +315,10 @@ TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
 TypeCaseClause    ::=  ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }
-Pattern1          ::=  Pattern2 [‘:’ RefinedType]
+Pattern1          ::=  PatVar ‘:’ RefinedType
+                    | [‘-’] integerLiteral ‘:’ RefinedType
+                    | [‘-’] floatingPointLiteral ‘:’ RefinedType
+                    |  Pattern2
 Pattern2          ::=  [id ‘@’] InfixPattern [‘*’]
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }
 SimplePattern     ::=  PatVar
@@ -329,9 +341,6 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
 ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’] id [HkTypeParamClause] TypeParamBounds
 
-DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
-
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
 TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
 
@@ -343,13 +352,20 @@ ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
                     |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
-Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
-DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
-DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’ | UsingParamClause
-UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefParams | FunArgTypes) ‘)’
-DefParams         ::=  DefParam {‘,’ DefParam}
-DefParam          ::=  {Annotation} [‘inline’] Param
+TypelessClauses   ::=  TypelessClause {TypelessClause}
+TypelessClause    ::=  DefTermParamClause
+                    |  UsingParamClause
+
+DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
+DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
+DefTermParamClause::=  [nl] ‘(’ [DefTermParams] ‘)’
+UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) ‘)’
+DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
+
+DefTermParams     ::= DefTermParam {‘,’ DefTermParam}
+DefTermParam      ::= {Annotation} [‘inline’] Param
+Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 ```
 
 ### Bindings and Imports
@@ -400,8 +416,8 @@ Dcl               ::=  RefineDcl
 ValDcl            ::=  ids ‘:’ Type
 VarDcl            ::=  ids ‘:’ Type
 DefDcl            ::=  DefSig ‘:’ Type
-DefSig            ::=  id [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
+DefSig            ::=  id [DefTypeParamClause] [TypelessClauses] [DefImplicitClause]
+TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ PatDef
@@ -411,7 +427,7 @@ Def               ::=  ‘val’ PatDef
 PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
                     |  Pattern2 [‘:’ Type] ‘=’ Expr
 DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr
-                    |  ‘this’ DefParamClause DefParamClauses ‘=’ ConstrExpr
+                    |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
@@ -423,10 +439,10 @@ ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
-GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefParamClause`, `UsingParamClause` must be present
+GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
 StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
-                       ‘(’ DefParam ‘)’ {UsingParamClause} ExtMethods
+                       ‘(’ DefTermParam ‘)’ {UsingParamClause} ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
                     |  Export
