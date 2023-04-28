@@ -186,7 +186,7 @@ A member definition ´M´ _matches_ a member definition ´M'´, if ´M´ and ´M
 
 1. Neither ´M´ nor ´M'´ is a method definition.
 2. ´M´ and ´M'´ define both monomorphic methods with equivalent argument types.
-3. ´M´ defines a parameterless method and ´M'´ defines a method with an empty parameter list `()` or _vice versa_.
+3. ´M´ is defined in Java and defines a method with an empty parameter list `()` and ´M'´ defines a parameterless method.
 4. ´M´ and ´M'´ define both polymorphic methods with equal number of argument types ´\overline T´, ´\overline T'´ and equal numbers of type parameters ´\overline t´, ´\overline t'´, say, and  ´\overline T' = [\overline t'/\overline t]\overline T´.
 
 <!--
@@ -257,7 +257,7 @@ Another restriction applies to abstract type members:
 An abstract type member with a [volatile type](03-types.html#volatile-types) as its upper bound may not override an abstract type member which does not have a volatile upper bound.
 
 A special rule concerns parameterless methods.
-If a parameterless method defined as `def ´f´: ´T´ = ...` or `def ´f´ = ...` overrides a method of type ´()T'´ which has an empty parameter list, then ´f´ is also assumed to have an empty parameter list.
+If a parameterless method defined as `def ´f´: ´T´ = ...` or `def ´f´ = ...` overrides a method defined in Java of type ´()T'´ which has an empty parameter list, then ´f´ is also assumed to have an empty parameter list.
 
 An overriding method inherits all default arguments from the definition in the superclass.
 By specifying default arguments in the overriding method it is possible to add new defaults (if the corresponding parameter in the superclass does not have a default) or to override the defaults of the superclass (otherwise).
