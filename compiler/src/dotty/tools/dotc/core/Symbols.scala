@@ -170,7 +170,7 @@ object Symbols {
       asInstanceOf[TermSymbol]
     }
     final def asType(using Context): TypeSymbol = {
-      assert(isType, s"isType called on not-a-Type $this");
+      assert(isType, s"asType called on not-a-Type $this");
       asInstanceOf[TypeSymbol]
     }
 
