@@ -340,6 +340,8 @@ object RefChecks {
      * of class `clazz` are met.
      */
     def checkOverride(checkSubType: (Type, Type) => Context ?=> Boolean, member: Symbol, other: Symbol): Unit =
+      def overridesInlineTraitMember = other.owner.ownersIterator.exists(_.isInlineTrait) && member.is(Synthetic)
+
       def memberTp(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
         else self.memberInfo(member)
@@ -415,12 +417,13 @@ object RefChecks {
 
       def overrideTargetNameError() =
         val otherTargetName = i"@targetName(${other.targetName})"
-        if member.hasTargetName(member.name) then
-          overrideError(i"misses a target name annotation $otherTargetName")
-        else if other.hasTargetName(other.name) then
-          overrideError(i"should not have a @targetName annotation since the overridden member hasn't one either")
-        else
-          overrideError(i"has a different target name annotation; it should be $otherTargetName")
+        if !overridesInlineTraitMember then
+          if member.hasTargetName(member.name) then
+            overrideError(i"misses a target name annotation $otherTargetName")
+          else if other.hasTargetName(other.name) then
+            overrideError(i"should not have a @targetName annotation since the overridden member hasn't one either")
+          else
+            overrideError(i"has a different target name annotation; it should be $otherTargetName")
 
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
 
@@ -465,7 +468,7 @@ object RefChecks {
         overrideError("cannot be used here - opaque type aliases cannot be overridden")
       else if (!other.is(Deferred) && member.isClass)
         overrideError("cannot be used here - classes can only override abstract types")
-      else if other.isEffectivelyFinal && !(other.owner.isInlineTrait && member.is(Synthetic)) then // (1.2)
+      else if (other.isEffectivelyFinal && !overridesInlineTraitMember) then // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
       else if (member.is(ExtensionMethod) && !other.is(ExtensionMethod)) // (1.3)
         overrideError("is an extension method, cannot override a normal method")

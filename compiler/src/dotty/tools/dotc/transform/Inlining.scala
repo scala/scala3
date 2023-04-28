@@ -11,13 +11,15 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
-import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
+import dotty.tools.dotc.core.DenotTransformers.SymTransformer
 import dotty.tools.dotc.staging.StagingLevel
+import dotty.tools.dotc.core.SymDenotations.SymDenotation
+import dotty.tools.dotc.core.StdNames.str
 
 import scala.collection.mutable.ListBuffer
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
-class Inlining extends MacroTransform {
+class Inlining extends MacroTransform, SymTransformer {
 
   import tpd._
 
@@ -58,6 +60,33 @@ class Inlining extends MacroTransform {
       new InliningTreeMap().transform(tree)
   }
 
+  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
+    if sym.isClass && sym.owner.isInlineTrait && !sym.is(Module) then
+      sym.copySymDenotation(name = sym.name ++ str.INLINE_TRAIT_INNER_CLASS_SUFFIX, initFlags = (sym.flags &~ Final) | Trait)
+    else
+      sym
+
+  def transformInlineClasses(tree: Tree)(using Context): Tree =
+    val tpd.TypeDef(name, tmpl: Template) = tree: @unchecked
+    val body1 = tmpl.body.flatMap {
+      case tdef @ tpd.TypeDef(name, tmpl1: Template) =>
+        val newTrait = cpy.TypeDef(tdef)(name = name ++ str.INLINE_TRAIT_INNER_CLASS_SUFFIX)
+        val newTypeSym = newSymbol(
+          owner = tree.symbol,
+          name = name.asTypeName,
+          flags = tdef.symbol.flags & (Private | Protected),
+          info = Types.TypeBounds.upper(newTrait.symbol.typeRef),
+          privateWithin = tdef.symbol.privateWithin,
+          coord = tdef.symbol.coord,
+          nestingLevel = tdef.symbol.nestingLevel,
+        ).asType
+        List(newTrait, TypeDef(newTypeSym))
+      case member =>
+        List(member)
+    }
+    val tmpl1 = cpy.Template(tmpl)(body = body1)
+    cpy.TypeDef(tree)(name, tmpl1)
+
   private class InliningTreeMap extends TreeMapWithImplicits {
 
     /** List of top level classes added by macro annotation in a package object.
@@ -67,9 +96,12 @@ class Inlining extends MacroTransform {
 
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
+        case tree: TypeDef if tree.symbol.isInlineTrait =>
+          transformInlineClasses(tree)
         case tree: TypeDef if Inlines.needsInlining(tree) =>
           val tree1 = super.transform(tree)
           if tree1.tpe.isError then tree1
+          else if tree1.symbol.isInlineTrait then transformInlineClasses(tree1)
           else Inlines.inlineParentInlineTraits(tree1)
         case tree: MemberDef =>
           if tree.symbol.is(Inline) then tree
