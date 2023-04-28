@@ -821,6 +821,58 @@ EnumCase  ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps] | ids)
 
 <!-- TODO: an enum case is defined in terms of other scala constructs... -->
 
+### Lowering of Enum Definitions
+
+Enums are represented as `sealed` classes that extend the `scala.reflect.Enum` trait.
+This trait defines a single public method, `ordinal`:
+
+```scala
+package scala.reflect
+
+transparent trait Enum extends Any, Product, Serializable:
+
+  def ordinal: Int
+```
+
+Simple enum cases all share a single implementation class.
+
+Value enum cases will each be implemented by a unique class.
+
+###### Example
+Consider the enumeration `RGB`, consisting of simple enum cases:
+```scala
+enum RGB:
+  case Red, Green, Blue
+```
+
+Each simple case `Red`, `Green`, and `Blue` will be instantiated using a private method that takes a tag and a name as arguments.
+
+For instance, the first definition of value `Color.Red` above would expand to:
+
+```scala
+val Red: Color = $new(0, "Red")
+```
+
+
+###### Example
+
+Consider the more complex enumeration `Color`, consisting of value enum cases:
+```scala
+enum Color(val rgb: Int):
+  case Red   extends Color(0xFF0000)
+  case Green extends Color(0x00FF00)
+  case Blue  extends Color(0x0000FF)
+```
+
+Each value case will expand as follows, for instance `Green` expands to
+
+```scala
+val Green: Color = new Color(0x00FF00):
+  def ordinal: Int = 1
+  override def productPrefix: String = "Green"
+  override def toString: String = "Green"
+```
+
 ### Variance for Type Parameters
 
 A parameterized enum case ´C´  of enum ´E´ with _inferred_ type parameters will copy variance annotations.
