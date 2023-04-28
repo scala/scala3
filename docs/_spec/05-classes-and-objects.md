@@ -92,8 +92,10 @@ If this is not a template of a trait, then its _evaluation_ consists of the foll
 
 - First, the superclass constructor ´sc´ is
   [evaluated](#constructor-invocations).
-- Then, all base classes in the template's [linearization](#class-linearization) up to the template's superclass denoted by ´sc´ are mixin-evaluated.
-Mixin-evaluation happens in reverse order of occurrence in the linearization.
+- Then, all base classes in the template's [linearization](#class-linearization) up to the template's superclass denoted by ´sc´ are evaluated.
+evaluation happens in reverse order of occurrence in the linearization. Each evaluation occurs as follows:
+  - First, arguments to ´mt_i´ are evaluated from left to right, and set as parameters of ´mt_i´.
+  - ´mt_i´ is then mixin-evaluated.
 - Finally, the statement sequence ´\mathit{stats}\,´ is evaluated.
 
 ### Constructor Invocations
@@ -662,13 +664,10 @@ This form of extensibility can be excluded by declaring the base class `Expr` `s
 ## Traits
 
 ```ebnf
-TmplDef          ::=  ‘trait’ TraitDef
-TraitDef         ::=  id [TypeParamClause] TraitTemplateOpt
-TraitTemplateOpt ::=  ‘extends’ TraitTemplate | [[‘extends’] TemplateBody]
+TmplDef          ::=  ‘trait’ ClassDef
 ```
 
 A _trait_ is a class that is meant to be added to some other class as a mixin.
-Unlike normal classes, traits cannot have constructor parameters.
 Furthermore, no constructor arguments are passed to the superclass of the trait.
 This is not necessary as traits are initialized after the superclass is initialized.
 
@@ -743,9 +742,80 @@ object MyTable extends ListTable[String, Int](0) with SynchronizedTable[String, 
 The object `MyTable` inherits its `get` and `set` method from `SynchronizedTable`.
 The `super` calls in these methods are re-bound to refer to the corresponding implementations in `ListTable`, which is the actual supertype of `SynchronizedTable` in `MyTable`.
 
+### Extending parameterized traits
+
+Extra rules apply for extending a trait with parameters:
+
+1. If a class `´C´` extends a parameterized trait `´T´`, and its superclass does not, `´C´` _must_ pass arguments to `´T´`.
+
+2. If a class `´C´` extends a parameterized trait `´T´`, and its superclass does as well, `´C´` _must not_  pass arguments to `´T´`.
+
+3. Traits must never pass arguments to parent traits.
+
+4. If a class `´C´` extends an unparameterized trait `´T_i´` and the base types of `´T_i´` include parameterized trait `´T_j´`, and the superclass of `´C´` does not extend `´T_j´`, then `´C´` _must_ also explicitly extend `´T_j´` and pass arguments.
+This rule is relaxed if the missing trait contains only context parameters. In that case the trait reference is implicitly inserted as an additional parent with inferred arguments.
+
+###### Example - Preventing ambiguities
+
+The following listing tries to extend `Greeting` twice, with different parameters.
+
+```scala
+trait Greeting(val name: String):
+  def msg = s"How are you, $name"
+
+class C extends Greeting("Bob")
+
+class D extends C, Greeting("Bill") // error
+
+@main def greet = println(D().msg)
+```
+
+Should this program print "Bob" or "Bill"? In fact this program is illegal, because it violates rule 2 above.
+Instead, `D` can extend `Greeting` without passing arguments.
+
+###### Example - Overriding
+
+Here's a variant of `Greeting` that overrides `msg`:
+```scala
+trait FormalGreeting extends Greeting:
+  override def msg = s"How do you do, $name"
+```
+
+Due to rule 4, the following class extending `FormalGreeting` is required to also extend `Greeting` with arguments:
+```scala
+class GreetBobFormally extends FormalGreeting, Greeting("Bob")
+```
+
+###### Example - Inferred context parameters
+
+Here's a variant of `Greeting` where the addressee is a context parameter of type `ImpliedName`:
+
+```scala
+trait ImpliedGreeting(using val iname: ImpliedName):
+  def msg = s"How are you, $iname"
+
+case class ImpliedName(name: String):
+  override def toString = name
+
+trait ImpliedFormalGreeting extends ImpliedGreeting:
+  override def msg = s"How do you do, $iname"
+
+class F(using iname: ImpliedName) extends ImpliedFormalGreeting
+```
+
+The definition of `F` in the last line is implicitly expanded to
+```scala
+class F(using iname: ImpliedName) extends
+  Object, // implicitly inserted
+  ImpliedGreeting(using iname), // implicitly inserted
+  ImpliedFormalGreeting
+```
+Due to rule 4, `F` is required to also extend `ImpliedGreeting` and pass arguments to it, however note that because `ImpliedGreeting` has only context parameters the extension was added implicitly.
+
 ## Object Definitions
 
 ```ebnf
+TmplDef         ::=  ‘object’ ObjectDef
 ObjectDef       ::=  id ClassTemplate
 ```
 
