@@ -18,8 +18,6 @@ productions map to AST nodes.
 
 -->
 
-<!-- Everything but "Context-free Syntax" already merged into _spec. -->
-<!--
 The following description of Scala tokens uses literal characters `‘c’` when
 referring to the ASCII fragment `\u0000` – `\u007F`.
 
@@ -151,8 +149,6 @@ as  derives  end  extension  infix  inline  opaque  open  transparent  using  | 
 
 See the [separate section on soft keywords](./soft-modifier.md) for additional
 details on where a soft keyword is recognized.
-
--->
 
 ## Context-free Syntax
 

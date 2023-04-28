@@ -89,242 +89,87 @@ semi             ::=  ‘;’ |  nl {nl}
 
 ## Context-free Syntax
 
+´\color{red}{\text{TODO SCALA3: Once we're done porting the spec, make sure that
+the references to grammar productions in the rest of the spec match this.}}´
+
 The context-free syntax of Scala is given by the following EBNF grammar:
 
 ```ebnf
-  Literal           ::=  [‘-’] integerLiteral
-                      |  [‘-’] floatingPointLiteral
-                      |  booleanLiteral
-                      |  characterLiteral
-                      |  stringLiteral
-                      |  interpolatedString
-                      |  symbolLiteral
-                      |  ‘null’
+RefineDcl         ::=  ‘val’ ValDcl
+                    |  ‘def’ DefDcl
+                    |  ‘type’ {nl} TypeDcl
+Dcl               ::=  RefineDcl
+                    |  ‘var’ VarDcl
+ValDcl            ::=  ids ‘:’ Type
+VarDcl            ::=  ids ‘:’ Type
+DefDcl            ::=  DefSig ‘:’ Type
+DefSig            ::=  id [DefTypeParamClause] [TypelessClauses] [DefImplicitClause]
+TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds
 
-  QualId            ::=  id {‘.’ id}
-  ids               ::=  id {‘,’ id}
+Def               ::=  ‘val’ PatDef
+                    |  ‘var’ PatDef
+                    |  ‘def’ DefDef
+                    |  ‘type’ {nl} TypeDcl
+                    |  TmplDef
+PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
+                    |  Pattern2 [‘:’ Type] ‘=’ Expr
+DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr
+                    |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr
 
-  Path              ::=  StableId
-                      |  [id ‘.’] ‘this’
-  StableId          ::=  id
-                      |  Path ‘.’ id
-                      |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
-  ClassQualifier    ::=  ‘[’ id ‘]’
+TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
+                    |  [‘case’] ‘object’ ObjectDef
+                    |  ‘enum’ EnumDef
+                    |  ‘given’ GivenDef
+ClassDef          ::=  id ClassConstr [Template]
+ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses
+ConstrMods        ::=  {Annotation} [AccessModifier]
+ObjectDef         ::=  id [Template]
+EnumDef           ::=  id ClassConstr InheritClauses EnumBody
+GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
+GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
+StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
+Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
+                       ‘(’ DefTermParam ‘)’ {UsingParamClause} ExtMethods
+ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
+ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
+                    |  Export
+Template          ::=  InheritClauses [TemplateBody]
+InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
+ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
+ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}
+ConstrExpr        ::=  SelfInvocation
+                    |  <<< SelfInvocation {semi BlockStat} >>>
+SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
 
-  Type              ::=  FunctionArgTypes ‘=>’ Type
-                      |  InfixType [ExistentialClause]
-  FunctionArgTypes  ::= InfixType
-                      | ‘(’ [ ParamType {‘,’ ParamType } ] ‘)’
-  ExistentialClause ::=  ‘forSome’ ‘{’ ExistentialDcl {semi ExistentialDcl} ‘}’
-  ExistentialDcl    ::=  ‘type’ TypeDcl
-                      |  ‘val’ ValDcl
-  InfixType         ::=  CompoundType {id [nl] CompoundType}
-  CompoundType      ::=  AnnotType {‘with’ AnnotType} [Refinement]
-                      |  Refinement
-  AnnotType         ::=  SimpleType {Annotation}
-  SimpleType        ::=  SimpleType TypeArgs
-                      |  SimpleType ‘#’ id
-                      |  StableId
-                      |  Path ‘.’ ‘type’
-                      |  ‘(’ Types ‘)’
-  TypeArgs          ::=  ‘[’ Types ‘]’
-  Types             ::=  Type {‘,’ Type}
-  Refinement        ::=  [nl] ‘{’ RefineStat {semi RefineStat} ‘}’
-  RefineStat        ::=  Dcl
-                      |  ‘type’ TypeDef
-                      |
-  TypePat           ::=  Type
+WithTemplateBody  ::=  <<< [SelfType] TemplateStat {semi TemplateStat} >>>
+TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>
+TemplateStat      ::=  Import
+                    |  Export
+                    |  {Annotation [nl]} {Modifier} Def
+                    |  {Annotation [nl]} {Modifier} Dcl
+                    |  Extension
+                    |  Expr1
+                    |  EndMarker
+                    |
+SelfType          ::=  id [‘:’ InfixType] ‘=>’
+                    |  ‘this’ ‘:’ InfixType ‘=>’
 
-  Ascription        ::=  ‘:’ InfixType
-                      |  ‘:’ Annotation {Annotation}
-                      |  ‘:’ ‘_’ ‘*’
+EnumBody          ::=  :<<< [SelfType] EnumStat {semi EnumStat} >>>
+EnumStat          ::=  TemplateStat
+                    |  {Annotation [nl]} {Modifier} EnumCase
+EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
 
-  Expr              ::=  (Bindings | [‘implicit’] id | ‘_’) ‘=>’ Expr
-                      |  Expr1
-  Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]
-                      |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr
-                      |  ‘try’ Expr [‘catch’ Expr] [‘finally’ Expr]
-                      |  ‘do’ Expr [semi] ‘while’ ‘(’ Expr ‘)’
-                      |  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘yield’] Expr
-                      |  ‘throw’ Expr
-                      |  ‘return’ [Expr]
-                      |  [SimpleExpr ‘.’] id ‘=’ Expr
-                      |  PrefixOperator SimpleExpr ‘=’ Expr
-                      |  SimpleExpr1 ArgumentExprs ‘=’ Expr
-                      |  PostfixExpr
-                      |  PostfixExpr Ascription
-                      |  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’
-  PostfixExpr       ::=  InfixExpr [id [nl]]
-  InfixExpr         ::=  PrefixExpr
-                      |  InfixExpr id [nl] InfixExpr
-  PrefixExpr        ::=  [PrefixOperator] SimpleExpr
-  PrefixOperator    ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
-  SimpleExpr        ::=  ‘new’ (ClassTemplate | TemplateBody)
-                      |  BlockExpr
-                      |  SimpleExpr1 [‘_’]
-  SimpleExpr1       ::=  Literal
-                      |  Path
-                      |  ‘_’
-                      |  ‘(’ [Exprs] ‘)’
-                      |  SimpleExpr ‘.’ id
-                      |  SimpleExpr TypeArgs
-                      |  SimpleExpr1 ArgumentExprs
-                      |  XmlExpr
-  Exprs             ::=  Expr {‘,’ Expr}
-  ArgumentExprs     ::=  ‘(’ [Exprs] ‘)’
-                      |  ‘(’ [Exprs ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’
-                      |  [nl] BlockExpr
-  BlockExpr         ::=  ‘{’ CaseClauses ‘}’
-                      |  ‘{’ Block ‘}’
-  Block             ::=  BlockStat {semi BlockStat} [ResultExpr]
-  BlockStat         ::=  Import
-                      |  {Annotation} [‘implicit’] [‘lazy’] Def
-                      |  {Annotation} {LocalModifier} TmplDef
-                      |  Expr1
-                      |
-  ResultExpr        ::=  Expr1
-                      |  (Bindings | ([‘implicit’] id | ‘_’) ‘:’ CompoundType) ‘=>’ Block
+TopStats          ::=  TopStat {semi TopStat}
+TopStat           ::=  Import
+                    |  Export
+                    |  {Annotation [nl]} {Modifier} Def
+                    |  Extension
+                    |  Packaging
+                    |  PackageObject
+                    |  EndMarker
+                    |
+Packaging         ::=  ‘package’ QualId :<<< TopStats >>>
+PackageObject     ::=  ‘package’ ‘object’ ObjectDef
 
-  Enumerators       ::=  Generator {semi Generator}
-  Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr {[semi] Guard | semi Pattern1 ‘=’ Expr}
-
-  CaseClauses       ::=  CaseClause { CaseClause }
-  CaseClause        ::=  ‘case’ Pattern [Guard] ‘=>’ Block
-  Guard             ::=  ‘if’ PostfixExpr
-
-  Pattern           ::=  Pattern1 { ‘|’ Pattern1 }
-  Pattern1          ::=  boundvarid ‘:’ TypePat
-                      |  ‘_’ ‘:’ TypePat
-                      |  Pattern2
-  Pattern2          ::=  id [‘@’ Pattern3]
-                      |  Pattern3
-  Pattern3          ::=  SimplePattern
-                      |  SimplePattern { id [nl] SimplePattern }
-  SimplePattern     ::=  ‘_’
-                      |  varid
-                      |  Literal
-                      |  StableId
-                      |  StableId ‘(’ [Patterns] ‘)’
-                      |  StableId ‘(’ [Patterns ‘,’] [id ‘@’] ‘_’ ‘*’ ‘)’
-                      |  ‘(’ [Patterns] ‘)’
-                      |  XmlPattern
-  Patterns          ::=  Pattern [‘,’ Patterns]
-                      |  ‘_’ ‘*’
-
-  TypeParamClause   ::=  ‘[’ VariantTypeParam {‘,’ VariantTypeParam} ‘]’
-  FunTypeParamClause::=  ‘[’ TypeParam {‘,’ TypeParam} ‘]’
-  VariantTypeParam  ::=  {Annotation} [‘+’ | ‘-’] TypeParam
-  TypeParam         ::=  (id | ‘_’) [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
-                         {‘<%’ Type} {‘:’ Type}
-  ParamClauses      ::=  {ParamClause} [[nl] ‘(’ ‘implicit’ Params ‘)’]
-  ParamClause       ::=  [nl] ‘(’ [Params] ‘)’
-  Params            ::=  Param {‘,’ Param}
-  Param             ::=  {Annotation} id [‘:’ ParamType] [‘=’ Expr]
-  ParamType         ::=  Type
-                      |  ‘=>’ Type
-                      |  Type ‘*’
-  ClassParamClauses ::=  {ClassParamClause}
-                         [[nl] ‘(’ ‘implicit’ ClassParams ‘)’]
-  ClassParamClause  ::=  [nl] ‘(’ [ClassParams] ‘)’
-  ClassParams       ::=  ClassParam {‘,’ ClassParam}
-  ClassParam        ::=  {Annotation} {Modifier} [(‘val’ | ‘var’)]
-                         id ‘:’ ParamType [‘=’ Expr]
-  Bindings          ::=  ‘(’ Binding {‘,’ Binding} ‘)’
-  Binding           ::=  (id | ‘_’) [‘:’ Type]
-
-  Modifier          ::=  LocalModifier
-                      |  AccessModifier
-                      |  ‘override’
-  LocalModifier     ::=  ‘abstract’
-                      |  ‘final’
-                      |  ‘sealed’
-                      |  ‘implicit’
-                      |  ‘lazy’
-  AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
-  AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
-
-  Annotation        ::=  ‘@’ SimpleType {ArgumentExprs}
-  ConstrAnnotation  ::=  ‘@’ SimpleType ArgumentExprs
-
-  TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
-  TemplateStat      ::=  Import
-                      |  {Annotation [nl]} {Modifier} Def
-                      |  {Annotation [nl]} {Modifier} Dcl
-                      |  Expr
-                      |
-  SelfType          ::=  id [‘:’ Type] ‘=>’
-                      |  ‘this’ ‘:’ Type ‘=>’
-
-  Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-  ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)
-  ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} (ImportSelector | ‘_’) ‘}’
-  ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]
-
-  Dcl               ::=  ‘val’ ValDcl
-                      |  ‘var’ VarDcl
-                      |  ‘def’ FunDcl
-                      |  ‘type’ {nl} TypeDcl
-
-  ValDcl            ::=  ids ‘:’ Type
-  VarDcl            ::=  ids ‘:’ Type
-  FunDcl            ::=  FunSig [‘:’ Type]
-  FunSig            ::=  id [FunTypeParamClause] ParamClauses
-  TypeDcl           ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
-
-  PatVarDef         ::=  ‘val’ PatDef
-                      |  ‘var’ VarDef
-  Def               ::=  PatVarDef
-                      |  ‘def’ FunDef
-                      |  ‘type’ {nl} TypeDef
-                      |  TmplDef
-  PatDef            ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr
-  VarDef            ::=  PatDef
-                      |  ids ‘:’ Type ‘=’ ‘_’
-  FunDef            ::=  FunSig [‘:’ Type] ‘=’ Expr
-                      |  FunSig [nl] ‘{’ Block ‘}’
-                      |  ‘this’ ParamClause ParamClauses
-                         (‘=’ ConstrExpr | [nl] ConstrBlock)
-  TypeDef           ::=  id [TypeParamClause] ‘=’ Type
-
-  TmplDef           ::=  [‘case’] ‘class’ ClassDef
-                      |  [‘case’] ‘object’ ObjectDef
-                      |  ‘trait’ TraitDef
-  ClassDef          ::=  id [TypeParamClause] {ConstrAnnotation} [AccessModifier]
-                         ClassParamClauses ClassTemplateOpt
-  TraitDef          ::=  id [TypeParamClause] TraitTemplateOpt
-  ObjectDef         ::=  id ClassTemplateOpt
-  ClassTemplateOpt  ::=  ‘extends’ ClassTemplate | [[‘extends’] TemplateBody]
-  TraitTemplateOpt  ::=  ‘extends’ TraitTemplate | [[‘extends’] TemplateBody]
-  ClassTemplate     ::=  [EarlyDefs] ClassParents [TemplateBody]
-  TraitTemplate     ::=  [EarlyDefs] TraitParents [TemplateBody]
-  ClassParents      ::=  Constr {‘with’ AnnotType}
-  TraitParents      ::=  AnnotType {‘with’ AnnotType}
-  Constr            ::=  AnnotType {ArgumentExprs}
-  EarlyDefs         ::=  ‘{’ [EarlyDef {semi EarlyDef}] ‘}’ ‘with’
-  EarlyDef          ::=  {Annotation [nl]} {Modifier} PatVarDef
-
-  ConstrExpr        ::=  SelfInvocation
-                      |  ConstrBlock
-  ConstrBlock       ::=  ‘{’ SelfInvocation {semi BlockStat} ‘}’
-  SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
-
-  TopStatSeq        ::=  TopStat {semi TopStat}
-  TopStat           ::=  {Annotation [nl]} {Modifier} TmplDef
-                      |  Import
-                      |  Packaging
-                      |  PackageObject
-                      |
-  Packaging         ::=  ‘package’ QualId [nl] ‘{’ TopStatSeq ‘}’
-  PackageObject     ::=  ‘package’ ‘object’ ObjectDef
-
-  CompilationUnit   ::=  {‘package’ QualId semi} TopStatSeq
+CompilationUnit   ::=  {‘package’ QualId semi} TopStats
 ```
-
-<!-- TODO add:
-SeqPattern ::= ...
-
-SimplePattern    ::= StableId  [TypePatArgs] [‘(’ [SeqPatterns] ‘)’]
-TypePatArgs ::= ‘[’ TypePatArg {‘,’ TypePatArg} ‘]’
-TypePatArg    ::=  ‘_’ |   varid}
-
--->
