@@ -801,3 +801,52 @@ Generally, a _companion module_ of a class is an object which has the same name 
 Conversely, the class is called the _companion class_ of the module.
 
 Very much like a concrete class definition, an object definition may still contain declarations of abstract type members, but not of abstract term members.
+
+## Enum Definitions
+
+<!-- TODO: Agree with NTs of rest of spec -->
+```ebnf
+TmplDef   ::=  ‘enum’ EnumDef
+EnumDef   ::=  id ClassConstr [‘extends’ [ConstrApps]] EnumBody
+EnumBody  ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumStat  ::=  TemplateStat
+            |  {Annotation [nl]} {Modifier} EnumCase
+```
+
+### Enum Cases
+<!-- TODO: Agree with NTs of rest of spec -->
+```ebnf
+EnumCase  ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps] | ids)
+```
+
+<!-- TODO: an enum case is defined in terms of other scala constructs... -->
+
+### Variance for Type Parameters
+
+A parameterized enum case ´C´  of enum ´E´ with _inferred_ type parameters will copy variance annotations.
+e.g. type parameter ´T_{i}´ from ´E´ will have the same variance as type parameter `´T'_{i}´` in ´C´.
+
+###### Example
+
+The following enum `View` has a contravariant type parameter ´T´ and a single case `Refl`, representing a function mapping a type `T` to itself:
+
+```scala
+enum View[-´T´]:
+  case Refl(f: ´T´ => ´T´)
+```
+
+`Refl` expands to the following enum:
+
+```scala
+enum View[-´T´]:
+  case Refl[-´T'´](f: ´T'´ => ´T'´) extends View[´T'´]
+```
+
+The definition of `Refl` is incorrectly typed, as it uses contravariant type `´T'´` in the covariant result position of a function type.
+
+A correctly typed version would use an _explicit_, _invariant_ type parameter `´R´` on case `Refl`:
+
+```scala
+enum View[-´T´]:
+  case Refl[´R´](f: ´R´ => ´R´) extends View[´R´]
+```
