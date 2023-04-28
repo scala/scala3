@@ -647,7 +647,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def args: List[Term] = self match
           case self: tpd.Apply => self.args
-          case self: tpd.Quote => List(self.expr) // TODO expose Quote AST in Quotes
+          case self: tpd.Quote => List(self.body) // TODO expose Quote AST in Quotes
           case self: tpd.Splice => List(self.expr) // TODO expose Splice AST in Quotes
       end extension
     end ApplyMethods

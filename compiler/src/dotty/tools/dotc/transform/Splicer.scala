@@ -155,7 +155,7 @@ object Splicer {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
-        case Apply(Select(Quote(expr), nme.apply), _) =>
+        case Apply(Select(Quote(body), nme.apply), _) =>
           val noSpliceChecker = new TreeTraverser {
             def traverse(tree: Tree)(using Context): Unit = tree match
               case Splice(_) =>
@@ -163,7 +163,7 @@ object Splicer {
               case _ =>
                 traverseChildren(tree)
           }
-          noSpliceChecker.traverse(expr)
+          noSpliceChecker.traverse(body)
 
         case Apply(TypeApply(fn, List(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
           // OK
@@ -240,15 +240,15 @@ object Splicer {
 
     override protected  def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
       // Interpret level -1 quoted code `'{...}` (assumed without level 0 splices)
-      case Apply(Select(Quote(expr), nme.apply), _) =>
-        val expr1 = expr match {
+      case Apply(Select(Quote(body), nme.apply), _) =>
+        val body1 = body match {
           case expr: Ident if expr.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
             expr.symbol.defTree.asInstanceOf[DefDef].rhs
-          case Inlined(EmptyTree, _, expr1) => expr1
-          case _ => expr
+          case Inlined(EmptyTree, _, body1) => body1
+          case _ => body
         }
-        new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(expr1, ctx.owner)).withSpan(expr1.span), SpliceScope.getCurrent)
+        new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)
 
       // Interpret level -1 `Type.of[T]`
       case Apply(TypeApply(fn, quoted :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of =>

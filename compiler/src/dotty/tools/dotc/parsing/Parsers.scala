@@ -2494,10 +2494,10 @@ object Parsers {
         case QUOTE =>
           atSpan(in.skipToken()) {
             withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.QuotedPattern else 0)) {
-              val expr =
+              val body =
                 if (in.token == LBRACKET) inBrackets(typ())
                 else stagedBlock()
-              Quote(expr)
+              Quote(body)
             }
           }
         case NEW =>

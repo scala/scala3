@@ -101,7 +101,7 @@ class PickleQuotes extends MacroTransform {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
         case Apply(Select(quote: Quote, nme.apply), List(quotes)) =>
-          val (contents, codeWithHoles) = makeHoles(quote.expr)
+          val (contents, codeWithHoles) = makeHoles(quote.body)
           val sourceRef = Inlines.inlineCallTrace(ctx.owner, tree.sourcePos)
           val codeWithHoles2 = Inlined(sourceRef, Nil, codeWithHoles)
           val pickled = PickleQuotes(quotes, codeWithHoles2, contents, quote.exprType, false)

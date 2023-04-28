@@ -687,7 +687,7 @@ object Trees {
    *
    *  @param  expr  The tree that was quoted
    */
-  case class Quote[+T <: Untyped] private[ast] (expr: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Quote[+T <: Untyped] private[ast] (body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Quote[T]
 
@@ -1305,9 +1305,9 @@ object Trees {
         case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion)(sourceFile(tree)))
       }
-      def Quote(tree: Tree)(expr: Tree)(using Context): Quote = tree match {
-        case tree: Quote if (expr eq tree.expr) => tree
-        case _ => finalize(tree, untpd.Quote(expr)(sourceFile(tree)))
+      def Quote(tree: Tree)(body: Tree)(using Context): Quote = tree match {
+        case tree: Quote if (body eq tree.body) => tree
+        case _ => finalize(tree, untpd.Quote(body)(sourceFile(tree)))
       }
       def Splice(tree: Tree)(expr: Tree)(using Context): Splice = tree match {
         case tree: Splice if (expr eq tree.expr) => tree
@@ -1550,8 +1550,8 @@ object Trees {
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
-            case tree @ Quote(expr) =>
-              cpy.Quote(tree)(transform(expr))
+            case tree @ Quote(body) =>
+              cpy.Quote(tree)(transform(body))
             case tree @ Splice(expr) =>
               cpy.Splice(tree)(transform(expr))
             case tree @ Hole(_, _, args, content, tpt) =>
@@ -1695,8 +1695,8 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
-            case Quote(expr) =>
-              this(x, expr)
+            case Quote(body) =>
+              this(x, body)
             case Splice(expr) =>
               this(x, expr)
             case Hole(_, _, args, content, tpt) =>

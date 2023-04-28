@@ -665,12 +665,12 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(hi)
               pickleTree(alias)
           }
-        case tree @ Quote(expr) =>
+        case tree @ Quote(body) =>
           pickleTree(
-            // scala.quoted.runtime.Expr.quoted[<tree.exprType>](<expr>)
+            // scala.quoted.runtime.Expr.quoted[<tree.exprType>](<body>)
             ref(defn.QuotedRuntime_exprQuote)
               .appliedToType(tree.exprType)
-              .appliedTo(expr)
+              .appliedTo(body)
               .withSpan(tree.span)
           )
         case Splice(expr) =>

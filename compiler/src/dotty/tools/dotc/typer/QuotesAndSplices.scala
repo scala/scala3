@@ -36,8 +36,8 @@ trait QuotesAndSplices {
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
     record("typedQuote")
-    tree.expr match {
-      case untpd.Splice(innerExpr) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
+    tree.body match {
+      case _: untpd.Splice if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
       case _ =>
     }
@@ -50,7 +50,7 @@ trait QuotesAndSplices {
 
     if ctx.mode.is(Mode.Pattern) then
       typedQuotePattern(tree, pt, quotes).withSpan(tree.span)
-    else if tree.expr.isType then
+    else if tree.body.isType then
       val msg = em"""Quoted types `'[..]` can only be used in patterns.
                     |
                     |Hint: To get a scala.quoted.Type[T] use scala.quoted.Type.of[T] instead.
@@ -59,7 +59,7 @@ trait QuotesAndSplices {
       EmptyTree
     else
       // TODO typecheck directly (without `exprQuote`)
-      val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.expr)
+      val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.body)
       val quotedExpr = typedApply(exprQuoteTree, pt)(using quoteContext) match
         case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => Quote(quotedExpr, tpt.tpe)
       makeInlineable(quotedExpr.select(nme.apply).appliedTo(quotes).withSpan(tree.span))
@@ -383,7 +383,7 @@ trait QuotesAndSplices {
    *  ```
    */
   private def typedQuotePattern(tree: untpd.Quote, pt: Type, qctx: Tree)(using Context): Tree = {
-    val quoted = tree.expr
+    val quoted = tree.body
     if quoted.isTerm && !pt.derivesFrom(defn.QuotedExprClass) then
       report.error("Quote pattern can only match scrutinees of type scala.quoted.Expr", tree.srcPos)
     else if quoted.isType && !pt.derivesFrom(defn.QuotedTypeClass) then

@@ -97,8 +97,8 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
     assertTyped(tree)
-    val expr1 = typed(tree.expr, tree.exprType)(using quoteContext)
-    untpd.cpy.Quote(tree)(expr1).withType(tree.typeOpt)
+    val body1 = typed(tree.body, tree.exprType)(using quoteContext)
+    untpd.cpy.Quote(tree)(body1).withType(tree.typeOpt)
 
   override def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree =
     assertTyped(tree)

@@ -86,7 +86,7 @@ class Splicing extends MacroTransform:
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       assert(level == 0)
       tree match
-        case Apply(Select(Quote(expr), nme.apply),List(quotes)) =>
+        case Apply(Select(_: Quote, nme.apply), _) =>
           QuoteTransformer().transform(tree)
         case TypeApply(_, _) if tree.symbol == defn.QuotedTypeModule_of =>
           QuoteTransformer().transform(tree)
@@ -134,7 +134,7 @@ class Splicing extends MacroTransform:
               typeHoles.put(qual, hole)
               hole
           cpy.TypeDef(tree)(rhs = hole)
-        case Apply(Select(Quote(expr), nme.apply),List(quotes)) =>
+        case Apply(Select(_: Quote, nme.apply),List(quotes)) =>
           super.transform(tree)(using quoteContext)
         case _: Template =>
           for sym <- tree.symbol.owner.info.decls do

@@ -170,8 +170,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
-  def Quote(expr: Tree, tpe: Type)(using Context): Quote =
-    untpd.Quote(expr).withExprType(tpe)
+  def Quote(body: Tree, tpe: Type)(using Context): Quote =
+    untpd.Quote(body).withExprType(tpe)
 
   def Splice(expr: Tree, tpe: Type)(using Context): Splice =
     untpd.Splice(expr).withType(tpe)
