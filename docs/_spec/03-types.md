@@ -26,15 +26,16 @@ chapter: 3
 ```
 
 We distinguish between proper types and type constructors, which take type parameters and yield types.
+All types have a _kind_, either the kind of proper types or a _higher kind_.
 A subset of proper types called _value types_ represents sets of (first-class) values.
-Value types are either _concrete_ or _abstract_.
+Types are either _concrete_ or _abstract_.
 
 Every concrete value type can be represented as a _class type_, i.e. a [type designator](#type-designators) that refers to a [class or a trait](05-classes-and-objects.html#class-definitions) [^1], or as a [compound type](#compound-types) representing an intersection of types, possibly with a [refinement](#compound-types) that further constrains the types of its members.
 
 <!--
 A shorthand exists for denoting [function types](#function-types)
 -->
-Abstract value types are introduced by [type parameters](04-basic-declarations-and-definitions.html#type-parameters) and [abstract type bindings](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases).
+Abstract types are introduced by [type parameters](04-basic-declarations-and-definitions.html#type-parameters) and [abstract type bindings](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases).
 Parentheses in types can be used for grouping.
 
 [^1]: We assume that objects and packages also implicitly
@@ -48,6 +49,10 @@ However, when a type constructor is applied to the correct type arguments, it yi
 Non-value types are expressed indirectly in Scala.
 E.g., a method type is described by writing down a method signature, which in itself is not a real type, although it  gives rise to a corresponding [method type](#method-types).
 Type constructors are another example, as one can write `type Swap[m[_, _], a,b] = m[b, a]`, but there is no syntax to write the corresponding anonymous type function directly.
+
+`AnyKind` is the super type of all types in the Scala type system.
+It has all possible kinds to encode [kind polymorphism](#kind-polymorphism).
+As such, it is neither a value type nor a type constructor.
 
 ## Paths
 
@@ -502,6 +507,42 @@ val f = 0
 define a function `f} which has type `(x: T)T ´\overload´ Int`.
 -->
 
+## Kind Polymorphism
+
+Type parameters are normally partitioned into _kinds_, indicated by the top type of which it is a subtype.
+Proper types are the types of values and are subtypes of `Any`.
+Higher-kinded types are type constructors such as `List` or `Map`.
+Covariant single argument type constructors such as `List` are subtypes of `[+X] =>> Any`.
+The `Map` type constructor is a subtype of `[X, +Y] =>> Any`.
+
+A type can be used only as prescribed by its kind.
+Subtypes of `Any` cannot be applied to type arguments whereas subtypes of `[X] =>> Any` _must_ be applied to a type argument, unless they are passed to type parameters of the same kind.
+
+A type parameter whose upper bound is [`scala.AnyKind`](https://scala-lang.org/api/3.x/scala/AnyKind.html) can have any kind and is called an _any-kinded type_.
+
+```scala
+def f[T <: AnyKind] = ...
+```
+
+The actual type arguments of `f` can then be types of arbitrary kinds.
+So the following are all legal:
+
+```scala
+f[Int]
+f[List]
+f[Map]
+f[[X] =>> String]
+```
+
+Since the actual kind of an any-kinded type is unknown, its usage is heavily restricted.
+An any-kinded type can neither be the type of a value, nor be instantiated with type parameters.
+The only thing one can do with an any-kinded type is to pass it to another any-kinded type argument.
+
+`AnyKind` plays a special role in Scala's subtype system.
+It is a supertype of all other types, no matter what their kind is.
+It is also assumed to be kind-compatible with all other types.
+Furthermore, `AnyKind` is itself an any-kinded type, so it cannot be the type of values and it cannot be instantiated.
+
 ## Base Types and Member Definitions
 
 Types of class members depend on the way the members are referenced.
@@ -588,8 +629,9 @@ Equivalence ´(\equiv)´ between types is the smallest congruence [^congruence] 
 The conformance relation ´(<:)´ is the smallest transitive relation that satisfies the following conditions.
 
 - Conformance includes equivalence. If ´T \equiv U´ then ´T <: U´.
-- For every value type `T`, `scala.Nothing <: ´T´ <: scala.Any`.
-- For every type constructor ´T´ (with any number of type parameters), `scala.Nothing <: ´T´ <: scala.Any`.
+- For every type `´T´` (of any kind), `scala.Nothing <: ´T´ <: scala.AnyKind`.
+- For every value type `´T´`, `´T´ <: scala.Any`.
+- For every type constructor `´T´` with type parameters `[´U_1´, ..., ´U_n´]`, `[´U_1´, ..., ´U_n´] =>> scala.Nothing <: ´T´ <: [´U_1´, ..., ´U_n´] =>> scala.Any`.
 - For every value type ´T´, `scala.Null <: ´T´` unless `´T´ <: scala.AnyVal`.
 - A type variable or abstract type ´t´ conforms to its upper bound and its lower bound conforms to ´t´.
 - A class type or parameterized type conforms to any of its base-types.
@@ -716,6 +758,7 @@ _Type erasure_ is a mapping from (possibly generic) types to non-generic types.
 We write ´|T|´ for the erasure of type ´T´.
 The erasure mapping is defined as follows.
 
+- The erasure of `scala.AnyKind` is `Object`.
 - The erasure of an alias type is the erasure of its right-hand side.
 - The erasure of an abstract type is the erasure of its upper bound.
 - The erasure of the parameterized type `scala.Array´[T_1]´` is `scala.Array´[|T_1|]´`.
