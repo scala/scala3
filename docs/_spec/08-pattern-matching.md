@@ -534,7 +534,7 @@ In the interest of efficiency the evaluation of a pattern matching expression ma
 This might affect evaluation through side effects in guards.
 However, it is guaranteed that a guard expression is evaluated only if the pattern it guards matches.
 
-If the selector of a pattern match is an instance of a [`sealed` class](05-classes-and-objects.html#modifiers), the compilation of pattern matching can emit warnings which diagnose that a given set of patterns is not exhaustive, i.e. that there is a possibility of a `MatchError` being raised at run-time.
+If the selector of a pattern match is an instance of a [`sealed` class](05-classes-and-objects.html#modifiers), a [union type](03-types#union-and-intersection-types), or a combination thereof, the compilation of pattern matching can emit warnings which diagnose that a given set of patterns is not exhaustive, i.e. that there is a possibility of a `MatchError` being raised at run-time.
 
 ###### Example
 

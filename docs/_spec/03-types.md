@@ -364,11 +364,63 @@ An _infix type_ ´T_1´ `op` ´T_2´ consists of an infix operator `op` which ge
 The type is equivalent to the type application `op`´[T_1, T_2]´.
 The infix operator `op` may be an arbitrary identifier.
 
-All type infix operators have the same precedence; parentheses have to be used for grouping.
-The [associativity](06-expressions.html#prefix,-infix,-and-postfix-operations) of a type operator is determined as for term operators: type operators ending in a colon ‘:’ are right-associative; all other operators are left-associative.
+Type operators follow the same [precedence and associativity as term operators](06-expressions.html#prefix-infix-and-postfix-operations).
+For example, `A + B * C` parses as `A + (B * C)` and `A | B & C` parses as `A | (B & C)`.
+Type operators ending in a colon ‘:’ are right-associative; all other operators are left-associative.
 
 In a sequence of consecutive type infix operations ´t_0 \, \mathit{op} \, t_1 \, \mathit{op_2} \, ... \, \mathit{op_n} \, t_n´, all operators ´\mathit{op}\_1, ..., \mathit{op}\_n´ must have the same associativity.
 If they are all left-associative, the sequence is interpreted as ´(... (t_0 \mathit{op_1} t_1) \mathit{op_2} ...) \mathit{op_n} t_n´, otherwise it is interpreted as ´t_0 \mathit{op_1} (t_1 \mathit{op_2} ( ... \mathit{op_n} t_n) ...)´.
+
+The type operators `|` and `&` are not really special.
+Nevertheless, unless shadowed, they resolve to `scala.|` and `scala.&`, which represent [union and intersection types](#union-and-intersection-types), respectively.
+
+### Union and Intersection Types
+
+Syntactically, the types `S | T` and `S & T` are infix types, where the infix operators are `|` and `&`, respectively (see above).
+
+However, in this specification, ´S ｜ T´ and ´S ＆ T´ refer to the underlying core concepts of *union and intersection types*, respectively.
+
+- The type ´S ｜ T´ represents the set of values that are represented by *either* ´S´ or ´T´.
+- The type ´S ＆ T´ represents the set of values that are represented by *both* ´S´ and ´T´.
+
+From the [conformance rules](#conformance) rules on union and intersection types, we can show that ´＆´ and ´｜´ are *commutative* and *associative*.
+Moreover, `＆` is distributive over `｜`.
+For any type ´A´, ´B´ and ´C´, all of the following relationships hold:
+
+- ´A ＆ B \equiv B ＆ A´,
+- ´A ｜ B \equiv B ｜ A´,
+- ´(A ＆ B) ＆ C \equiv A ＆ (B ＆ C)´,
+- ´(A ｜ B) ｜ C \equiv A ｜ (B ｜ C)´, and
+- ´A ＆ (B ｜ C) \equiv (A ＆ B) ｜ (A ＆ C)´.
+
+If ´C´ is a type constructor, then ´C[A] ＆ C[B]´ can be simplified using the following three rules:
+
+- If ´C´ is covariant, ´C[A] ＆ C[B] \equiv C[A ＆ B]´
+- If ´C´ is contravariant, ´C[A] ＆ C[B] \equiv C[A | B]´
+- If ´C´ is invariant, emit a compile error
+
+From the above rules, we can derive the following conformance relationships:
+
+- When ´C´ is covariant, ´C[A ＆ B] <: C[A] ＆ C[B]´.
+- When ´C´ is contravariant, ´C[A ｜ B] <: C[A] ＆ C[B]´.
+
+#### Join of a union type
+
+In some situations, a union type might need to be widened to a non-union type.
+For this purpose, we define the _join_ of a union type ´T_1 ｜ ... ｜ T_n´ as the smallest intersection type of base class instances of ´T_1, ..., T_n´.
+Note that union types might still appear as type arguments in the resulting type, this guarantees that the join is always finite.
+
+For example, given
+
+```scala
+trait C[+T]
+trait D
+trait E
+class A extends C[A] with D
+class B extends C[B] with D with E
+```
+
+The join of ´A ｜ B´ is ´C[A ｜ B] ＆ D´
 
 ### Function Types
 
@@ -589,6 +641,8 @@ If ´T´ is a possibly parameterized class type, where ´T´'s class is defined 
 1. The _member bindings_ of a type ´T´ are
   1. all bindings ´d´ such that there exists a type instance of some class ´C´ among the base types of ´T´ and there exists a definition or declaration ´d'´ in ´C´ such that ´d´ results from ´d'´ by replacing every type ´T'´ in ´d'´ by ´T'´ in ´C´ seen from ´T´, and
   2. all bindings of the type's [refinement](#compound-types), if it has one.
+2. The member bindinds of ´S ＆ T´ are all the binds of ´S´ *and* all the bindins of ´T´.
+3. The member bindings of ´S ｜ T´ are the member bindings of its [join](#join-of-a-union-type).
 
 The _definition_ of a type projection `S#T` is the member binding ´d_T´ of the type `T` in `S`.
 In that case, we also say that `S#T` _is defined by_ ´d_T´.
@@ -647,6 +701,10 @@ The conformance relation ´(<:)´ is the smallest transitive relation that satis
      1. If ´U_i´ is a wildcard type argument of the form ´\\_ >: L_2 <: U_2´, then ´L_2 <: T_i´ and ´T_i <: U_2´.
 - A compound type `´T_1´ with ... with ´T_n´ {´R\,´}` conforms to each of its component types ´T_i´.
 - If ´T <: U_i´ for ´i \in \{ 1, ..., n \}´ and for every binding ´d´ of a type or value ´x´ in ´R´ there exists a member binding of ´x´ in ´T´ which subsumes ´d´, then ´T´ conforms to the compound type `´U_1´ with ... with ´U_n´ {´R\,´}`.
+- If ´T <: U´, then ´T <: U ｜ W´ and ´T <: W ｜ U´.
+- If ´T <: W´ and ´U <: W´, then ´T ｜ U <: W´.
+- If ´T <: U´ and ´T <: W´, then ´T <: U ＆ W´.
+- If ´T <: W´, then ´T ＆ U <: W´ and ´U ＆ T <: W´.
 - If ´T_i \equiv T_i'´ for ´i \in \{ 1, ..., n\}´ and ´U´ conforms to ´U'´ then the method type ´(p_1:T_1, ..., p_n:T_n) U´ conforms to ´(p_1':T_1', ..., p_n':T_n') U'´.
 - The polymorphic type ´[a_1 >: L_1 <: U_1, ..., a_n >: L_n <: U_n] T´ conforms to the polymorphic type ´[a_1 >: L_1' <: U_1', ..., a_n >: L_n' <: U_n'] T'´ if, assuming ´L_1' <: a_1 <: U_1', ..., L_n' <: a_n <: U_n'´ one has ´T <: T'´ and ´L_i <: L_i'´ and ´U_i' <: U_i´ for ´i \in \{ 1, ..., n \}´.
 - Type constructors ´T´ and ´T'´ follow a similar discipline.
@@ -667,28 +725,15 @@ A declaration or definition in some compound type of class type ´C´ _subsumes_
 - A type declaration `type ´t´[´T_1´, ..., ´T_n´] >: ´L´ <: ´U´` subsumes a type declaration `type ´t´[´T_1´, ..., ´T_n´] >: ´L'´ <: ´U'´` if ´L' <: L´ and ´U <: U'´.
 - A type or class definition that binds a type name ´t´ subsumes an abstract type declaration `type t[´T_1´, ..., ´T_n´] >: L <: U` if ´L <: t <: U´.
 
-
 #### Least upper bounds and greatest lower bounds
+
 The ´(<:)´ relation forms pre-order between types, i.e. it is transitive and reflexive.
 This allows us to define _least upper bounds_ and _greatest lower bounds_ of a set of types in terms of that order.
-The least upper bound or greatest lower bound of a set of types does not always exist.
-For instance, consider the class definitions:
 
-```scala
-class A[+T] {}
-class B extends A[B]
-class C extends A[C]
-```
+- the _least upper bound_ of `A` and `B` is the smallest type `L` such that `A` <: `L` and `B` <: `L`.
+- the _greatest lower bound_ of `A` and `B` is the largest type `G` such that `G` <: `A` and `G` <: `B`.
 
-Then the types `A[Any], A[A[Any]], A[A[A[Any]]], ...` form a descending sequence of upper bounds for `B` and `C`.
-The least upper bound would be the infinite limit of that sequence, which does not exist as a Scala type.
-Since cases like this are in general impossible to detect, a Scala compiler is free to reject a term which has a type specified as a least upper or greatest lower bound, and that bound would be more complex than some compiler-set limit [^4].
-
-The least upper bound or greatest lower bound might also not be unique.
-For instance `A with B` and `B with A` are both greatest lower bounds of `A` and `B`.
-If there are several least upper bounds or greatest lower bounds, the Scala compiler is free to pick any one of them.
-
-[^4]: The current Scala compiler limits the nesting level of parameterization in such bounds to be at most two deeper than the maximum nesting level of the operand types
+By construction, for all types `A` and `B`, the least upper bound of `A` and `B` is `A ｜ B`, and their greatest lower bound is `A ＆ B`.
 
 ### Weak Conformance
 
@@ -766,7 +811,29 @@ The erasure mapping is defined as follows.
 - The erasure of a singleton type `´p´.type` is the erasure of the type of ´p´.
 - The erasure of a type projection `´T´#´x´` is `|´T´|#´x´`.
 - The erasure of a compound type `´T_1´ with ... with ´T_n´ {´R\,´}` is the erasure of the intersection dominator of ´T_1, ..., T_n´.
+- The erasure of a union type ´S ｜ T´ is the _erased least upper bound_ (_elub_) of the erasures of ´S´ and ´T´.
+- The erasure of an intersection type ´S ＆ T´ is the _eglb_ (erased greatest lower bound) of the erasures of ´S´ and ´T´.
 
-The _intersection dominator_ of a list of types ´T_1, ..., T_n´ is computed as follows.
-Let ´T_{i_1}, ..., T_{i_m}´ be the subsequence of types ´T_i´ which are not supertypes of some other type ´T_j´.
-If this subsequence contains a type designator ´T_c´ that refers to a class which is not a trait, the intersection dominator is ´T_c´. Otherwise, the intersection dominator is the first element of the subsequence, ´T_{i_1}´.
+The erased LUB is computed as follows:
+
+- if both argument are arrays of objects, an array of the erased LUB of the element types
+- if both arguments are arrays of same primitives, an array of this primitive
+- if one argument is array of primitives and the other is array of objects, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
+- if one argument is an array, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
+- otherwise a common superclass or trait S of the argument classes, with the following two properties:
+  - S is minimal: no other common superclass or trait derives from S, and
+  - S is last: in the linearization of the first argument type ´|A|´ there are no minimal common superclasses or traits that come after S.
+  The reason to pick last is that we prefer classes over traits that way, which leads to more predictable bytecode and (?) faster dynamic dispatch.
+
+The rules for ´eglb(A, B)´ are given below in pseudocode:
+
+```
+eglb(scala.Array[A], JArray[B]) = scala.Array[eglb(A, B)]
+eglb(scala.Array[T], _)         = scala.Array[T]
+eglb(_, scala.Array[T])         = scala.Array[T]
+eglb(A, B)                      = A                     if A extends B
+eglb(A, B)                      = B                     if B extends A
+eglb(A, _)                      = A                     if A is not a trait
+eglb(_, B)                      = B                     if B is not a trait
+eglb(A, _)                      = A                     // use first
+```

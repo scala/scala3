@@ -33,3 +33,8 @@ Scala 3 accepts the old syntax under the `-source:3.0-migration` option.
 If the `-migration` option is set, it can even rewrite old syntax to new.
 The [Scalafix](https://scalacenter.github.io/scalafix/) tool also
 can rewrite procedure syntax to make it Scala 3 compatible.
+
+## Compound Types (`with`)
+
+Intersection types `A & B` replace compound types `A with B` in Scala 2.
+For the moment, the syntax `A with B` is still allowed and interpreted as `A & B`, but its usage as a type (as opposed to in a `new` or `extends` clause) will be deprecated and removed in the future.
