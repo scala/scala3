@@ -520,7 +520,7 @@ object Inlines:
 
     private val parentSym = symbolFromParent(parent)
 
-    private val thisInlineTrait = ThisType.raw(TypeRef(ctx.owner.prefix, ctx.owner))
+    private val thisInlineTrait = ThisType.raw(ctx.owner.typeRef)
 
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
       val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
@@ -579,11 +579,12 @@ object Inlines:
     private def inlinedMember(sym: Symbol)(using Context): Symbol =
       sym.info match {
         case ClassInfo(prefix, cls, declaredParents, scope, selfInfo) =>
+          val baseThisCls = ThisType.raw(ctx.owner.typeRef).select(sym)
           val inlinedSym = newClassSymbol(
             ctx.owner,
             sym.asType.name,
             sym.flags | Synthetic,
-            clsSym => ClassInfo(inlinerTypeMap(prefix), clsSym, declaredParents :+ ThisType.raw(ctx.owner.typeRef).select(sym), Scopes.newScope, selfInfo)
+            clsSym => ClassInfo(inlinerTypeMap(prefix), clsSym, declaredParents :+ baseThisCls, Scopes.newScope, selfInfo)
           )
           inlinedSym.setTargetName(sym.name ++ str.NAME_JOIN ++ ctx.owner.name)
           inlinedSym
