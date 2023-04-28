@@ -18,7 +18,7 @@ productions map to AST nodes.
 
 -->
 
-<!-- Lexical syntax already merged into _spec. -->
+<!-- Everything but "Context-free Syntax" already merged into _spec. -->
 <!--
 The following description of Scala tokens uses literal characters `‘c’` when
 referring to the ASCII fragment `\u0000` – `\u007F`.
@@ -104,7 +104,6 @@ comment          ::=  ‘/*’ “any sequence of characters; nested comments ar
 nl               ::=  “new line character”
 semi             ::=  ‘;’ |  nl {nl}
 ```
--->
 
 ## Optional Braces
 
@@ -152,6 +151,8 @@ as  derives  end  extension  infix  inline  opaque  open  transparent  using  | 
 
 See the [separate section on soft keywords](./soft-modifier.md) for additional
 details on where a soft keyword is recognized.
+
+-->
 
 ## Context-free Syntax
 
