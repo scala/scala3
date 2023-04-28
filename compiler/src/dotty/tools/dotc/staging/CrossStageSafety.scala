@@ -144,13 +144,10 @@ class CrossStageSafety extends TreeMapWithStages {
    */
   protected def transformSplice(body: Tree, splice: Splice)(using Context): Tree = {
     val body1 = transform(body)(using spliceContext)
-    val tpt1 =
-      if level == 0 then
-        transform(splice.tpt)
-      else
-        val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
-        TypeTree(tp).withSpan(splice.tpt.span)
-    cpy.Splice(splice)(body1, tpt1)
+    val tpe1 =
+      if level == 0 then splice.tpe
+      else healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
+    untpd.cpy.Splice(splice)(body1).withType(tpe1)
   }
 
   protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree = {

@@ -173,8 +173,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Quote(expr: Tree, tpe: Type)(using Context): Quote =
     untpd.Quote(expr).withExprType(tpe)
 
-  def Splice(expr: Tree, tpt: Tree)(using Context): Splice =
-    ta.assignType(untpd.Splice(expr, tpt), tpt)
+  def Splice(expr: Tree, tpe: Type)(using Context): Splice =
+    untpd.Splice(expr).withType(tpe)
 
   def TypeTree(tp: Type, inferred: Boolean = false)(using Context): TypeTree =
     (if inferred then untpd.InferredTypeTree() else untpd.TypeTree()).withType(tp)

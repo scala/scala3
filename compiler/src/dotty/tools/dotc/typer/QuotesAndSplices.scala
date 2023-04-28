@@ -37,7 +37,7 @@ trait QuotesAndSplices {
   def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
     record("typedQuote")
     tree.expr match {
-      case untpd.Splice(innerExpr, _) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
+      case untpd.Splice(innerExpr) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
       case _ =>
     }
@@ -73,7 +73,6 @@ trait QuotesAndSplices {
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
     record("typedSplice")
-    assert(tree.tpt.isEmpty)
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerExpr) if innerExpr.isTerm =>
@@ -89,7 +88,7 @@ trait QuotesAndSplices {
           using spliceContext.retractMode(Mode.QuotedPattern).addMode(Mode.Pattern).withOwner(spliceOwner(ctx)))
         val baseType = pat.tpe.baseType(defn.QuotedExprClass)
         val argType = if baseType != NoType then baseType.argTypesHi.head else defn.NothingType
-        Splice(pat, TypeTree(argType)).withSpan(tree.span)
+        Splice(pat, argType).withSpan(tree.span)
       }
       else {
         report.error(em"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.srcPos)
@@ -111,7 +110,7 @@ trait QuotesAndSplices {
         untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
       typedApply(internalSplice, pt)(using spliceContext).withSpan(tree.span) match
         case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
-          cpy.Splice(tree)(spliced, tpt)
+          cpy.Splice(tree)(spliced)
         case tree => tree
     }
   }
@@ -229,12 +228,10 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(Splice(pat, _), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
-          val tpt1 = transform(tpt) // Transform type bindings
-          val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
-          val newSplice = cpy.Splice(tree)(pat, tpt1)
-          transform(newSplice)
-        case Apply(TypeApply(fn, targs), Splice(pat, _) :: args :: Nil) if fn.symbol == defn.QuotedRuntimePatterns_patternHigherOrderHole =>
+        case Typed(splice: Splice, tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+          transform(tpt) // Collect type bindings
+          transform(splice)
+        case Apply(TypeApply(fn, targs), Splice(pat) :: args :: Nil) if fn.symbol == defn.QuotedRuntimePatterns_patternHigherOrderHole =>
           args match // TODO support these patterns. Possibly using scala.quoted.util.Var
             case SeqLiteral(args, _) =>
               for arg <- args; if arg.symbol.is(Mutable) do
@@ -246,7 +243,7 @@ trait QuotesAndSplices {
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
-        case Splice(pat, _) =>
+        case Splice(pat) =>
           try ref(defn.QuotedRuntimePatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen

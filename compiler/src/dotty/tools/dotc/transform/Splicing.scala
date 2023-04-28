@@ -114,7 +114,7 @@ class Splicing extends MacroTransform:
         case tree: Splice =>
           if level > 1 then
             val expr1 = super.transform(tree.expr)(using spliceContext)
-            cpy.Splice(tree)(expr1, tree.tpt)
+            cpy.Splice(tree)(expr1)
           else
             val holeIdx = numHoles
             numHoles += 1
@@ -234,9 +234,9 @@ class Splicing extends MacroTransform:
         case tree @ Assign(lhs: RefTree, rhs) =>
           if isCaptured(lhs.symbol) then transformSplicedAssign(tree)
           else super.transform(tree)
-        case Splice(expr, tpt) =>
+        case Splice(expr) =>
           val expr1 = transform(expr)(using spliceContext)
-          cpy.Splice(tree)(expr1, tpt)
+          cpy.Splice(tree)(expr1)
         case Apply(sel @ Select(app @ Quote(expr), nme.apply), quotesArgs) =>
           expr match
             case expr: RefTree if isCaptured(expr.symbol) =>
@@ -409,7 +409,7 @@ class Splicing extends MacroTransform:
             body(using ctx.withOwner(meth)).changeOwner(ctx.owner, meth)
           }
         })
-      Splice(closure, TypeTree(tpe))
+      Splice(closure, tpe)
 
     private def quoted(expr: Tree)(using Context): Tree =
       Quote(expr, expr.tpe.widenTermRefExpr)

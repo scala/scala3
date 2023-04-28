@@ -1273,12 +1273,12 @@ class TreeUnpickler(reader: TastyReader,
 
       def splicedExpr(fn: Tree, args: List[Tree]): Tree =
         val TypeApply(_, targs) = fn: @unchecked
-        Splice(args.head, targs.head)
+        Splice(args.head, targs.head.tpe)
 
       def nestedSpliceExpr(fn: Tree, args: List[Tree]): Tree =
         fn match
           case Apply(TypeApply(_, targs), _ :: Nil) => // nestedSplice[T](quotes)(expr)
-            Splice(args.head, targs.head)
+            Splice(args.head, targs.head.tpe)
           case _ => // nestedSplice[T](quotes)
             tpd.Apply(fn, args)
 

@@ -407,8 +407,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case tree: Splice =>
         inContext(prepSplice(tree, start)(using outerCtx)) {
           val expr = transformTree(tree.expr, start)(using spliceContext)
-          val tpt = transformTree(tree.tpt, start)
-          goSplice(cpy.Splice(tree)(expr, tpt), start)
+          goSplice(cpy.Splice(tree)(expr), start)
         }
       case tree: Return =>
         inContext(prepReturn(tree, start)(using outerCtx)) {

@@ -642,7 +642,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           case self: tpd.Splice => // TODO expose Splice AST in Quotes
             import dotty.tools.dotc.ast.tpd.TreeOps
             tpd.ref(dotc.core.Symbols.defn.QuotedRuntime_exprSplice)
-              .appliedToTypeTree(self.tpt)
+              .appliedToType(self.tpe)
               .withSpan(self.span)
 
         def args: List[Term] = self match

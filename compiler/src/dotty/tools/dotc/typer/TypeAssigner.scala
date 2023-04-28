@@ -392,9 +392,6 @@ trait TypeAssigner {
   def assignType(tree: untpd.Inlined, bindings: List[Tree], expansion: Tree)(using Context): Inlined =
     tree.withType(avoidingType(expansion, bindings))
 
-  def assignType(tree: untpd.Splice, tpt: Tree)(using Context): Splice =
-    tree.withType(tpt.tpe)
-
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(using Context): If =
     tree.withType(thenp.tpe | elsep.tpe)
 

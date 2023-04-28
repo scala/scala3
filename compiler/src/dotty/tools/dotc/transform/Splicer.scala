@@ -158,7 +158,7 @@ object Splicer {
         case Apply(Select(Quote(expr), nme.apply), _) =>
           val noSpliceChecker = new TreeTraverser {
             def traverse(tree: Tree)(using Context): Unit = tree match
-              case Splice(_, _) =>
+              case Splice(_) =>
                 report.error("Quoted argument of macros may not have splices", tree.srcPos)
               case _ =>
                 traverseChildren(tree)

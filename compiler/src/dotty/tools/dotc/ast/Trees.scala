@@ -709,20 +709,16 @@ object Trees {
 
   /** A tree representing a splice `${ expr }`
    *
-   *  `Splice`s are created by the `Parser` with an empty `tpt`. In typer
-   *  they can be typed as a `Splice` with a known `tpt` or desugared and
-   *  typed as a quote pattern holes.
+   *  `Splice`s are created by the `Parser`. In typer they can be typed as a
+   *  `Splice` with a known `tpt` or desugared and typed as a quote pattern holes.
    *
    *  `Splice` are checked and transformed in the `staging` and `splicing` phases.
    *  After `splicing` phase, the only splices that exist are in `inline`
    *  methods. These are dropped when we remove the inline method implementations.
    *
-   *  The `tpt` will be transformed in `staging` and used in `splicing` to create `Hole`s.
-   *
    *  @param expr The tree that was spliced
-   *  @param tpt  The type of the spliced tree
    */
-  case class Splice[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Splice[+T <: Untyped] private[ast] (expr: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Splice[T]
   }
@@ -1313,9 +1309,9 @@ object Trees {
         case tree: Quote if (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Quote(expr)(sourceFile(tree)))
       }
-      def Splice(tree: Tree)(expr: Tree, tpt: Tree)(using Context): Splice = tree match {
-        case tree: Splice if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
-        case _ => finalize(tree, untpd.Splice(expr, tpt)(sourceFile(tree)))
+      def Splice(tree: Tree)(expr: Tree)(using Context): Splice = tree match {
+        case tree: Splice if (expr eq tree.expr) => tree
+        case _ => finalize(tree, untpd.Splice(expr)(sourceFile(tree)))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree)(using Context): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
@@ -1422,8 +1418,6 @@ object Trees {
         TypeDef(tree: Tree)(name, rhs)
       def Template(tree: Template)(using Context)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody): Template =
         Template(tree: Tree)(constr, parents, derived, self, body)
-      def Splice(tree: Splice)(expr: Tree = tree.expr, tpt: Tree = tree.tpt)(using Context): Splice =
-        Splice(tree: Tree)(expr, tpt)
       def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
         Hole(tree: Tree)(isTerm, idx, args, content, tpt)
 
@@ -1558,8 +1552,8 @@ object Trees {
               if (trees1 eq trees) tree else Thicket(trees1)
             case tree @ Quote(expr) =>
               cpy.Quote(tree)(transform(expr))
-            case tree @ Splice(expr, tpt) =>
-              cpy.Splice(tree)(transform(expr), transform(tpt))
+            case tree @ Splice(expr) =>
+              cpy.Splice(tree)(transform(expr))
             case tree @ Hole(_, _, args, content, tpt) =>
               cpy.Hole(tree)(args = transform(args), content = transform(content), tpt = transform(tpt))
             case _ =>
@@ -1703,8 +1697,8 @@ object Trees {
               this(x, ts)
             case Quote(expr) =>
               this(x, expr)
-            case Splice(expr, tpt) =>
-              this(this(x, expr), tpt)
+            case Splice(expr) =>
+              this(x, expr)
             case Hole(_, _, args, content, tpt) =>
               this(this(this(x, args), content), tpt)
             case _ =>

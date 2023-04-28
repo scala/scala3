@@ -1989,7 +1989,7 @@ object desugar {
       case Quote(expr) =>
         new UntypedTreeTraverser {
           def traverse(tree: untpd.Tree)(using Context): Unit = tree match {
-            case Splice(expr, _) => collect(expr)
+            case Splice(expr) => collect(expr)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)
