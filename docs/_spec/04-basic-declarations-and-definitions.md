@@ -226,6 +226,54 @@ Def        ::=  ‘type’ {nl} TypeDef
 TypeDef    ::=  id [TypeParamClause] ‘=’ Type
 ```
 
+### Desugaring of parameterized type declarations
+A parameterized type declaration is desugared into an unparameterized type declaration
+whose bounds are type lambdas with explicit variance annotations.
+
+#### Abstract Type
+An abstract type
+```scala
+type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´U´
+```
+is desugared into an unparameterized abstract type as follow:
+- If `L` conforms to `Nothing`, then,
+
+  ```scala
+type ´t´ >: Nothing
+       <: [´\mathit{tps'}\,´] =>> ´U´
+  ```
+- otherwise,
+
+  ```scala
+type ´t´ >: [´\mathit{tps'}\,´] =>> ´L´
+       <: [´\mathit{tps'}\,´] =>> ´U´
+  ```
+  
+If at least one of the ´\mathit{tps}´ contains an explicit variance annotation, then ´\mathit{tps'} = \mathit{tps}´, otherwise we infer the variance of each type parameter as with the user-written type lambda `[´\mathit{tps}\,´] =>> ´U´`.
+
+The same desugaring applies to type parameters. For instance,
+```scala
+[F[X] <: Coll[X]]
+```
+is treated as a shorthand for
+```scala
+[F >: Nothing <: [X] =>> Coll[X]]
+```
+
+#### Type Alias
+A parameterized type alias
+```scala
+type ´t´[´\mathit{tps}\,´] = ´T´
+```
+is desugared into an unparameterized type alias
+```scala
+type ´t´ = [´\mathit{tps'}\,´] =>> ´T´
+```
+where ´\mathit{tps'}´ is computed as in the previous case.
+
+´\color{red}{\text{TODO SCALA3: Everything else in this section (and the next one
+on type parameters) needs to be rewritten to take into account the desugaring described above.}}´
+
 A _type declaration_ `type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´U´` declares ´t´ to be an abstract type with lower bound type ´L´ and upper bound type ´U´.
 If the type parameter clause `[´\mathit{tps}\,´]` is omitted, ´t´ abstracts over a proper type, otherwise ´t´ stands for a type constructor that accepts type arguments as described by the type parameter clause.
 
