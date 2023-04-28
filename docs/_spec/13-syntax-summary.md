@@ -87,6 +87,16 @@ nl               ::=  ´\mathit{“new line character”}´
 semi             ::=  ‘;’ |  nl {nl}
 ```
 
+## Optional Braces
+
+```
+colon         ::=  ':'    -- with side conditions explained in 01-literal-syntax.md
+ <<< ts >>>   ::=  ‘{’ ts ‘}’
+                |  indent ts outdent
+:<<< ts >>>   ::=  [nl] ‘{’ ts ‘}’
+                |  colon indent ts outdent
+```
+
 ## Context-free Syntax
 
 ´\color{red}{\text{TODO SCALA3: Once we're done porting the spec, make sure that
