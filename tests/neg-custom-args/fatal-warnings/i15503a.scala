@@ -63,12 +63,12 @@ object FooTypeName:
 
 object InlineChecks:
   object InlineFoo:
-    import collection.mutable.Set // OK
+    import collection.mutable.Set // ok
     import collection.mutable.Map // error
     inline def getSet = Set(1)
 
   object InlinedBar:
-    import collection.mutable.Set // error
+    import collection.mutable.Set // ok
     import collection.mutable.Map // error
     val a = InlineFoo.getSet
 

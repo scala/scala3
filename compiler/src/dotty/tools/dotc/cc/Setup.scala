@@ -262,7 +262,7 @@ extends tpd.TreeTraverser:
       // hard-coded expansion since $throws aliases in stdlib are defined with `?=>` rather than `?->`
       defn.FunctionOf(
         AnnotatedType(
-          defn.CanThrowClass.typeRef.appliedTo(exc), 
+          defn.CanThrowClass.typeRef.appliedTo(exc),
           Annotation(defn.ErasedParamAnnot, defn.CanThrowClass.span)) :: Nil,
         res,
         isContextual = true

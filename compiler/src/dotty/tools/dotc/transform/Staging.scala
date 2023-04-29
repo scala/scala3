@@ -12,12 +12,12 @@ import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
-import dotty.tools.dotc.staging.PCPCheckAndHeal
+import dotty.tools.dotc.staging.CrossStageSafety
 import dotty.tools.dotc.staging.HealType
 
-/** Checks that the Phase Consistency Principle (PCP) holds and heals types.
+/** Checks that staging level consistency holds and heals types used in higher levels.
  *
- *  Type healing consists in transforming a phase inconsistent type `T` into `${ implicitly[Type[T]] }`.
+ *  See `CrossStageSafety`
  */
 class Staging extends MacroTransform {
   import tpd._
@@ -32,12 +32,13 @@ class Staging extends MacroTransform {
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     if (ctx.phase <= splicingPhase) {
-      // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
+      // Recheck that staging level consistency holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
-          val checker = new PCPCheckAndHeal {
-            override protected def healType(pos: SrcPos)(using Context) = new HealType(pos) {
-              override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos): TypeRef = {
+          val checker = new CrossStageSafety {
+            override protected def healType(pos: SrcPos)(tpe: Type)(using Context) = new HealType(pos) {
+              override protected def tryHeal(tp: TypeRef): TypeRef = {
+                val sym = tp.symbol
                 def symStr =
                   if (sym.is(ModuleClass)) sym.sourceModule.show
                   else i"${sym.name}.this"
@@ -51,7 +52,7 @@ class Staging extends MacroTransform {
 
                 tp
               }
-            }
+            }.apply(tpe)
           }
           checker.transform(tree)
         case _ =>
@@ -72,7 +73,7 @@ class Staging extends MacroTransform {
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
-      (new PCPCheckAndHeal).transform(tree)
+      (new CrossStageSafety).transform(tree)
   }
 }
 

@@ -17,10 +17,10 @@ class A {
   private def c2 = 2 // OK
   def c3 = c2
 
-  def d1(using x:Int): Int = default_int // error
+  def d1(using x:Int): Int = default_int // ok
   def d2(using x:Int): Int = x // OK
 
-  def e1(x: Int) = default_int // error
+  def e1(x: Int) = default_int // ok
   def e2(x: Int) = x // OK
   def f =
     val x = 1 // error
@@ -44,7 +44,8 @@ package foo.test.scala.annotation:
   val default_int = 12
 
   def a1(a: Int) = a // OK
-  def a2(a: Int) = default_int // error
+  def a2(a: Int) = default_int // ok
+
   def a3(@unused a: Int) = default_int //OK
 
   def b1 =
@@ -90,7 +91,7 @@ package foo.test.possibleclasses:
     k: Int, // OK
     private val y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int, // error /* But not these */
+    s: Int,
     val t: Int, // OK
     private val z: Int // error
   )
@@ -131,7 +132,7 @@ package foo.test.possibleclasses.withvar:
     k: Int, // OK
     private var y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int, // error /* But not these */
+    s: Int,
     var t: Int, // OK
     private var z: Int // error
   )
@@ -209,6 +210,34 @@ package foo.test.i16925:
       _ = println(i) // OK
     } yield ()
 
+package foo.test.i16863a:
+  import scala.quoted.*
+  def fn(using Quotes) =
+    val x = Expr(1)
+    '{ $x + 2 } // OK
+
+package foo.test.i16863b:
+  import scala.quoted.*
+  def fn[A](using Quotes, Type[A]) = // OK
+    val numeric = Expr.summon[Numeric[A]].getOrElse(???)
+    '{ $numeric.fromInt(3) } // OK
+
+package foo.test.i16863c:
+  import scala.quoted.*
+  def fn[A](expr: Expr[Any])(using Quotes) =
+    val imp = expr match
+      case '{ ${ _ }: a } => Expr.summon[Numeric[a]] // OK
+    println(imp)
+
+package foo.test.i16863d:
+  import scala.quoted.*
+  import scala.compiletime.asMatchable // OK
+  def fn[A](using Quotes, Type[A]) =
+    import quotes.reflect.*
+    val imp = TypeRepr.of[A].widen.asMatchable match
+      case Refinement(_,_,_) => ()
+    println(imp)
+
 package foo.test.i16679a:
   object myPackage:
     trait CaseClassName[A]:
@@ -245,3 +274,42 @@ package foo.test.i16679b:
     import Foo.x
     case class CoolClass(i: Int)
     println(summon[myPackage.CaseClassName[CoolClass]])
+
+package foo.test.i17156:
+  package a:
+    trait Foo[A]
+    object Foo:
+      inline def derived[T]: Foo[T] = new Foo{}
+
+  package b:
+    import a.Foo
+    type Xd[A] = Foo[A]
+
+  package c:
+    import b.Xd
+    trait Z derives Xd
+
+
+package foo.test.i17175:
+  val continue = true
+  def foo =
+    for {
+      i <- 1.until(10) // OK
+      if continue
+    } {
+      println(i)
+    }
+   
+package foo.test.i17117:
+  package example {
+    object test1 {
+      val test = "test"
+    }
+
+    object test2 {
+
+      import example.test1 as t1
+
+      val test = t1.test
+    }
+  }

@@ -21,7 +21,6 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.config.ScalaRelease.*
-import dotty.tools.dotc.staging.PCPCheckAndHeal
 import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags
@@ -109,8 +108,8 @@ class Splicing extends MacroTransform:
     /** Number of holes created in this quote. Used for indexing holes. */
     private var numHoles = 0
 
-    /** Mapping from the term symbol of a `Type[T]` to it's hole. Used to deduplicate type holes. */
-    private val typeHoles = mutable.Map.empty[Symbol, Hole]
+    /** Mapping from the term of a `Type[T]` to it's hole. Used to deduplicate type holes. */
+    private val typeHoles = mutable.Map.empty[TermRef, Hole]
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
@@ -128,13 +127,13 @@ class Splicing extends MacroTransform:
         case tree: TypeDef if tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
           val tp @ TypeRef(qual: TermRef, _) = tree.rhs.tpe.hiBound: @unchecked
           quotedDefs += tree.symbol
-          val hole = typeHoles.get(qual.symbol) match
+          val hole = typeHoles.get(qual) match
             case Some (hole) => cpy.Hole(hole)(content = EmptyTree)
             case None =>
               val holeIdx = numHoles
               numHoles += 1
               val hole = tpd.Hole(false, holeIdx, Nil, ref(qual), TypeTree(tp))
-              typeHoles.put(qual.symbol, hole)
+              typeHoles.put(qual, hole)
               hole
           cpy.TypeDef(tree)(rhs = hole)
         case Apply(Select(Apply(TypeApply(fn,_), List(code)),nme.apply),List(quotes))
@@ -208,6 +207,14 @@ class Splicing extends MacroTransform:
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
+        case tree: Select if tree.isTerm && isCaptured(tree.symbol) =>
+          tree.symbol.allOverriddenSymbols.find(sym => !isCaptured(sym.owner)) match
+            case Some(sym) =>
+              // virtualize call on overridden symbol that is not defined in a non static class
+              transform(tree.qualifier.select(sym))
+            case _ =>
+              report.error(em"Can not use reference to staged local ${tree.symbol} defined in an outer quote.\n\nThis can work if ${tree.symbol.owner} would extend a top level interface that defines ${tree.symbol}.", tree)
+              tree
         case tree: RefTree =>
           if tree.isTerm then
             if isCaptured(tree.symbol) then

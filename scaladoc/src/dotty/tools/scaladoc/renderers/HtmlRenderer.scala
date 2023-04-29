@@ -41,13 +41,17 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       case _ => Nil)
       :+ (Attr("data-pathToRoot") := pathToRoot(page.link.dri))
 
-    html(attrs: _*)(
+    val htmlTag = html(attrs: _*)(
       head((mkHead(page) :+ docHead):_*),
       body(
         if !page.hasFrame then docBody
         else mkFrame(page.link, parents, docBody, toc)
       )
     )
+
+    val doctypeTag = s"<!DOCTYPE html>"
+    val finalTag = raw(doctypeTag + htmlTag.toString)
+    finalTag
 
   override def render(): Unit =
     val renderedResources = renderResources()
@@ -203,11 +207,11 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       }
 
     val darkProjectLogoElem =
-      darkProjectLogo.flatMap {
+      darkProjectLogo.orElse(projectLogo).flatMap {
         case Resource.File(path, _) =>
           Some(span(id := "dark-project-logo", cls := "project-logo")(img(src := resolveRoot(link.dri, path))))
         case _ => None
-      }.orElse(projectLogoElem)
+      }
 
     val parentsHtml =
       val innerTags = parents.flatMap[TagArg](b => Seq(

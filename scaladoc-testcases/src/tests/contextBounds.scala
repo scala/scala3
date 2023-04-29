@@ -25,15 +25,15 @@ class A:
   def a[T <: String | Int : ([T] =>> T match { case String => A case Int => B })](t: T): T
     = t
 
-  def falsePositive[T](evidence$1: ClassTag[T]): Int 
+  def falsePositive[T](evidence$1: ClassTag[T]): Int
     = 1
 
   // Scala spec stats that behaviour of names with `$` is undefined.
   // Scaladoc documents definition below as `def falsePositive2[T: ClassTag]: Int`
   // that is equivalent of methods below
-  // def falsePositive2[T](implicit evidence$3: ClassTag[T]): Int 
+  // def falsePositive2[T](implicit evidence$3: ClassTag[T]): Int
   //   = 1
 
   class Outer[A]:
-    def falsePositiveInner[T](implicit evidence$3: ClassTag[A]): Int 
+    def falsePositiveInner[T](implicit evidence$3: ClassTag[A]): Int
       = 1

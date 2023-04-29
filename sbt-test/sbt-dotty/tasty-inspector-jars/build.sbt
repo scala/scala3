@@ -15,7 +15,7 @@ lazy val inspector = project
   .settings(
     scalaVersion := dottyVersion,
     libraryDependencies += "org.scala-lang" %% "scala3-tasty-inspector" % scalaVersion.value,
-    runTest := 
+    runTest :=
       Def.sequential(
         Def.task(IO.copyFile((lib/Compile/packageBin).value, jarDest)),
         (Compile/run).toTask(" " + jarDest.getAbsolutePath)

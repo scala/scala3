@@ -1313,6 +1313,37 @@ extends SyntaxMsg(VarArgsParamMustComeLastID) {
 
 import typer.Typer.BindingPrec
 
+class ConstrProxyShadows(proxy: TermRef, shadowed: Type, shadowedIsApply: Boolean)(using Context)
+  extends ReferenceMsg(ConstrProxyShadowsID), NoDisambiguation:
+
+  def clsString(using Context) = proxy.symbol.companionClass.showLocated
+  def shadowedString(using Context) = shadowed.termSymbol.showLocated
+  def appClause = if shadowedIsApply then " the apply method of" else ""
+  def appSuffix = if shadowedIsApply then ".apply" else ""
+
+  def msg(using Context) =
+    i"""Reference to constructor proxy for $clsString
+       |shadows outer reference to $shadowedString
+       |
+       |The instance needs to be created with an explicit `new`."""
+
+  def explain(using Context) =
+    i"""There is an ambiguity in the meaning of the call
+       |
+       |   ${proxy.symbol.name}(...)
+       |
+       |It could mean creating an instance of $clsString with
+       |
+       |   new ${proxy.symbol.companionClass.name}(...)
+       |
+       |Or it could mean calling$appClause $shadowedString as in
+       |
+       |   ${shadowed.termSymbol.name}$appSuffix(...)
+       |
+       |To disambiguate, use an explicit `new` if you mean the former,
+       |or use a full prefix for ${shadowed.termSymbol.name} if you mean the latter."""
+end ConstrProxyShadows
+
 class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(using Context)
   extends ReferenceMsg(AmbiguousReferenceID), NoDisambiguation {
 
@@ -1411,6 +1442,15 @@ extends ReferenceMsg(AmbiguousOverloadID), NoDisambiguation {
         |"""
 }
 
+class AmbiguousExtensionMethod(tree: untpd.Tree, expansion1: tpd.Tree, expansion2: tpd.Tree)(using Context)
+  extends ReferenceMsg(AmbiguousExtensionMethodID), NoDisambiguation:
+  def msg(using Context) =
+    i"""Ambiguous extension methods:
+       |both $expansion1
+       |and  $expansion2
+       |are possible expansions of $tree"""
+  def explain(using Context) = ""
+
 class ReassignmentToVal(name: Name)(using Context)
   extends TypeMsg(ReassignmentToValID) {
   def msg(using Context) = i"""Reassignment to val $name"""
@@ -1477,6 +1517,16 @@ class MissingArgument(pname: Name, methString: String)(using Context)
     if pname.firstPart contains '$' then s"not enough arguments for $methString"
     else s"missing argument for parameter $pname of $methString"
   def explain(using Context) = ""
+
+class MissingArgumentList(method: String, sym: Symbol)(using Context)
+  extends TypeMsg(MissingArgumentListID) {
+  def msg(using Context) =
+    val symDcl = if sym.exists then "\n\n  " + hl(sym.showDcl(using ctx.withoutColors)) else ""
+    i"missing argument list for $method$symDcl"
+  def explain(using Context) = {
+    i"""Unapplied methods are only converted to functions when a function type is expected."""
+  }
+}
 
 class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
   extends TypeMismatchMsg(
@@ -2844,4 +2894,9 @@ class UnusedNonUnitValue(tp: Type)(using Context)
   extends Message(UnusedNonUnitValueID):
     def kind = MessageKind.PotentialIssue
     def msg(using Context) = i"unused value of type $tp"
+    def explain(using Context) = ""
+
+class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
+  extends TypeMsg(MatchTypeScrutineeCannotBeHigherKindedID) :
+    def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
     def explain(using Context) = ""

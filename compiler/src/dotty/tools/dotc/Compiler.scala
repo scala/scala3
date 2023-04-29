@@ -35,7 +35,7 @@ class Compiler {
   protected def frontendPhases: List[List[Phase]] =
     List(new Parser) ::             // Compiler frontend: scanner, parser
     List(new TyperPhase) ::         // Compiler frontend: namer, typer
-    List(new CheckUnused) ::        // Check for unused elements
+    List(new CheckUnused.PostTyper) ::  // Check for unused elements
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
@@ -50,6 +50,7 @@ class Compiler {
     List(new Pickler) ::            // Generate TASTY info
     List(new Inlining) ::           // Inline and execute macros
     List(new PostInlining) ::       // Add mirror support for inlined code
+    List(new CheckUnused.PostInlining) ::  // Check for unused elements
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new Splicing) ::           // Replace level 1 splices with holes
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
@@ -58,7 +59,8 @@ class Compiler {
   /** Phases dealing with the transformation from pickled trees to backend trees */
   protected def transformPhases: List[List[Phase]] =
     List(new InstrumentCoverage) ::  // Perform instrumentation for code coverage (if -coverage-out is set)
-    List(new FirstTransform,         // Some transformations to put trees into a canonical form
+    List(new CrossVersionChecks,     // Check issues related to deprecated and experimental
+         new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
@@ -70,8 +72,7 @@ class Compiler {
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new init.Checker) ::        // Check initialization of objects
-    List(new CrossVersionChecks,     // Check issues related to deprecated and experimental
-         new ProtectedAccessors,     // Add accessors for protected members
+    List(new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
          new ElimByName,             // Map by-name parameters to functions
@@ -89,7 +90,7 @@ class Compiler {
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new StringInterpolatorOpt,  // Optimizes raw and s and f string interpolators by rewriting them to string concatenations or formats
-         new DropBreaks) ::          // Optimize local Break throws by rewriting them 
+         new DropBreaks) ::          // Optimize local Break throws by rewriting them
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new UninitializedDefs,      // Replaces `compiletime.uninitialized` by `_`
          new InlinePatterns,         // Remove placeholders of inlined patterns

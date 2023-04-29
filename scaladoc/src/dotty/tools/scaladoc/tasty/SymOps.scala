@@ -235,7 +235,7 @@ class SymOpsWithLinkCache:
       def constructPathForScaladoc2: String =
         val l = escapeUrl(location.mkString("/"))
         val scaladoc2Anchor = if anchor.isDefined then {
-          "#" + getScaladoc2Type(sym.tree)
+          "#" + getScaladoc2Type(sym)
         } else ""
         docURL + l + extension + scaladoc2Anchor
 

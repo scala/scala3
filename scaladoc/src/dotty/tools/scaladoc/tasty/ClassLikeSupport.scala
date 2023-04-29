@@ -64,14 +64,18 @@ trait ClassLikeSupport:
     signatureOnly: Boolean = false,
     modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
   ): Member =
-    def unpackTreeToClassDef(tree: Tree): ClassDef = tree match
-      case tree: ClassDef => tree
-      case TypeDef(_, tbt: TypeBoundsTree) => unpackTreeToClassDef(tbt.tpe.typeSymbol.tree)
-      case TypeDef(_, tt: TypeTree) => unpackTreeToClassDef(tt.tpe.typeSymbol.tree)
-      case c: Apply =>
-        c.symbol.owner.tree.symbol.tree match
+    def unpackTreeToClassDef(tree: Tree): ClassDef =
+      def unpackApply(a: Apply) =
+        a.symbol.owner.tree match
           case tree: ClassDef => tree
-      case tt: TypeTree => unpackTreeToClassDef(tt.tpe.typeSymbol.tree)
+
+      tree match
+        case tree: ClassDef => tree
+        case TypeDef(_, tbt: TypeBoundsTree) => unpackTreeToClassDef(tbt.tpe.typeSymbol.tree)
+        case TypeDef(_, tt: TypeTree) => unpackTreeToClassDef(tt.tpe.typeSymbol.tree)
+        case c: Apply => unpackApply(c)
+        case Block(_, c: Apply) => unpackApply(c)
+        case tt: TypeTree => unpackTreeToClassDef(tt.tpe.typeSymbol.tree)
 
     def signatureWithName(s: dotty.tools.scaladoc.Signature): dotty.tools.scaladoc.Signature =
       s match
@@ -525,7 +529,7 @@ trait ClassLikeSupport:
     experimental: Option[Annotation] = None
   ) = Member(
     name = symbol.normalizedName,
-    fullName = symbol.fullName,
+    fullName = symbol.normalizedFullName,
     dri = symbol.dri,
     kind = kind,
     visibility = symbol.getVisibility(),

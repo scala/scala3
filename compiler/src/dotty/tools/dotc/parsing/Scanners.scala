@@ -523,7 +523,8 @@ object Scanners {
      *
      *      The following tokens can start an indentation region:
      *
-     *         :  =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
+     *         :  =  =>  <-  if  then  else  while  do  try  catch  
+     *         finally  for  yield  match  throw  return  with
      *
      *      Inserting an INDENT starts a new indentation region with the indentation of the current
      *      token as indentation width.

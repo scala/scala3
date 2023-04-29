@@ -299,7 +299,7 @@ object SymDenotations {
     }
 
     /** Add all given annotations to this symbol */
-    final def addAnnotations(annots: TraversableOnce[Annotation])(using Context): Unit =
+    final def addAnnotations(annots: IterableOnce[Annotation])(using Context): Unit =
       annots.iterator.foreach(addAnnotation)
 
     @tailrec
@@ -1407,9 +1407,9 @@ object SymDenotations {
         case Nil => Iterator.empty
       }
 
-    /** The symbol overriding this symbol in given subclass `ofclazz`.
+    /** The symbol overriding this symbol in given subclass `inClass`.
      *
-     *  @param ofclazz is a subclass of this symbol's owner
+     *  @pre `inClass` is a subclass of this symbol's owner
      */
     final def overridingSymbol(inClass: ClassSymbol)(using Context): Symbol =
       if (canMatchInheritedSymbols) matchingDecl(inClass, inClass.thisType)

@@ -30,16 +30,10 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
 
   private def patternScopeCtx(pattern: Tree)(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
-    new TreeTraverser {
-      def traverse(tree: Tree)(using Context): Unit = {
-        tree match {
-          case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) =>
-            nestedCtx.enter(d.symbol)
-          case _ =>
-        }
-        traverseChildren(tree)
-      }
-    }.traverse(pattern)
+    pattern.foreachSubTree {
+      case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) => nestedCtx.enter(d.symbol)
+      case _ =>
+    }
     nestedCtx
   }
 

@@ -47,8 +47,12 @@ be selected with `apply` (or be applied to arguments, in which case the `apply` 
 inserted).
 
 Constructor proxies are also not allowed to shadow normal definitions. That is,
-if an identifier resolves to a constructor proxy, and the same identifier is also
-defined or imported in some other scope, an ambiguity is reported.
+an ambiguity is reported, if
+
+ - an identifier resolves to a constructor proxy,
+ - the same identifier is also defined or imported in some other scope,
+ - the other reference can be applied to a (possibly empty) parameter list. That
+   is, it refers either to a method or to a value containing an apply method as member.
 
 ## Motivation
 

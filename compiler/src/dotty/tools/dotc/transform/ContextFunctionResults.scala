@@ -20,7 +20,7 @@ object ContextFunctionResults:
    */
   def annotateContextResults(mdef: DefDef)(using Context): Unit =
     def contextResultCount(rhs: Tree, tp: Type): Int = tp match
-      case defn.ContextFunctionType(_, resTpe, erasedParams) if !erasedParams.contains(true) /* Only enable for non-erased functions */ =>
+      case defn.ContextFunctionType(_, resTpe, _) =>
         rhs match
           case closureDef(meth) => 1 + contextResultCount(meth.rhs, resTpe)
           case _ => 0
@@ -116,8 +116,14 @@ object ContextFunctionResults:
       atPhase(erasurePhase)(integrateSelect(tree, n))
     else tree match
       case Select(qual, name) =>
-        if name == nme.apply && defn.isContextFunctionClass(tree.symbol.maybeOwner) then
-          integrateSelect(qual, n + 1)
+        if name == nme.apply then
+          qual.tpe match
+            case defn.ContextFunctionType(_, _, _) =>
+              integrateSelect(qual, n + 1)
+            case _ if defn.isContextFunctionClass(tree.symbol.maybeOwner) => // for TermRefs
+              integrateSelect(qual, n + 1)
+            case _ =>
+              n > 0 && contextResultCount(tree.symbol) >= n
         else
           n > 0 && contextResultCount(tree.symbol) >= n
       case Ident(name) =>

@@ -25,7 +25,7 @@ import StdNames.nme
 import NameKinds.{LazyBitMapName, LazyLocalName}
 import Names.Name
 
-class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
+class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 

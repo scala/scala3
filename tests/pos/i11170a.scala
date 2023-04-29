@@ -23,6 +23,6 @@ package cpackage {
   import apackage._
   import bpackage._
 
-  case class C(override protected val x: Int) extends A with B  // error
+  case class C(override protected val x: Int) extends A with B
   case class C2(override val x: Int) extends A2 with B2
 }

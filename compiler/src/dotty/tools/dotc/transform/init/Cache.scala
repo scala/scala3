@@ -50,8 +50,8 @@ import tpd.Tree
  *  need to be decided by the specific analysis and justified by reasoning about
  *  soundness.
  *
- *  @param Config The analysis state that matters for evaluating an expression.
- *  @param Res The result from the evaluation the given expression.
+ *  @tparam Config The analysis state that matters for evaluating an expression.
+ *  @tparam Res The result from the evaluation the given expression.
  */
 class Cache[Config, Res]:
   import Cache.*

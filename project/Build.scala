@@ -80,7 +80,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.3.0-RC3"
+  val referenceVersion = "3.3.0-RC5"
 
   val baseVersion = "3.3.1-RC1"
 
@@ -547,7 +547,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.4.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.5.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
@@ -1217,6 +1217,18 @@ object Build {
         val resourceDir = fetchScalaJSSource.value / "test-suite/js/src/test/resources"
         val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
         org.scalajs.jsenv.Input.Script(f) +: (Test / jsEnvInput).value
+      },
+
+      Test / unmanagedSourceDirectories ++= {
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (Test / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
+        }
+
+        if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler)
+          Seq(baseDirectory.value / "test-require-multi-modules")
+        else
+          Nil
       },
 
       (Compile / managedSources) ++= {

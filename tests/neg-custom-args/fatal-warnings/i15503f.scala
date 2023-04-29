@@ -3,10 +3,12 @@
 /* This goes around the "trivial method" detection */
 val default_int = 1
 
-def f1(a: Int) = a // OK
-def f2(a: Int) = 1 // OK
-def f3(a: Int)(using Int) = a // error
-def f4(a: Int)(using Int) = default_int // error
-def f6(a: Int)(using Int) = summon[Int] // OK
-def f7(a: Int)(using Int) = summon[Int] + a // OK
-
+object Xd {
+  private def f1(a: Int) = a // OK
+  private def f2(a: Int) = 1 // OK
+  private def f3(a: Int)(using Int) = a // OK
+  private def f4(a: Int)(using Int) = default_int // OK
+  private def f6(a: Int)(using Int) = summon[Int] // OK
+  private def f7(a: Int)(using Int) = summon[Int] + a // OK
+  private def f8(a: Int)(using foo: Int) = a // error
+}

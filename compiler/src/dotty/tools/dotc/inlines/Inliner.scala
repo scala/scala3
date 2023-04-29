@@ -201,17 +201,24 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  to `buf`.
    *  @param name        the name of the parameter
    *  @param formal      the type of the parameter
-   *  @param arg         the argument corresponding to the parameter
+   *  @param arg0        the argument corresponding to the parameter
    *  @param buf         the buffer to which the definition should be appended
    */
   private[inlines] def paramBindingDef(name: Name, formal: Type, arg0: Tree,
                               buf: DefBuffer)(using Context): ValOrDefDef = {
     val isByName = formal.dealias.isInstanceOf[ExprType]
-    val arg = arg0 match {
-      case Typed(arg1, tpt) if tpt.tpe.isRepeatedParam && arg1.tpe.derivesFrom(defn.ArrayClass) =>
-        wrapArray(arg1, arg0.tpe.elemType)
-      case _ => arg0
-    }
+    val arg =
+      def dropNameArg(arg: Tree): Tree = arg match
+        case NamedArg(_, arg1) => arg1
+        case SeqLiteral(elems, tpt) =>
+          cpy.SeqLiteral(arg)(elems.mapConserve(dropNameArg), tpt)
+        case _ => arg
+      arg0 match
+        case Typed(seq, tpt) if tpt.tpe.isRepeatedParam =>
+          if seq.tpe.derivesFrom(defn.ArrayClass) then wrapArray(dropNameArg(seq), arg0.tpe.elemType)
+          else cpy.Typed(arg0)(dropNameArg(seq), tpt)
+        case arg0 =>
+          dropNameArg(arg0)
     val argtpe = arg.tpe.dealiasKeepAnnots.translateFromRepeated(toArray = false)
     val argIsBottom = argtpe.isBottomTypeAfterErasure
     val bindingType =
@@ -963,29 +970,24 @@ class Inliner(val call: tpd.Tree)(using Context):
         bindingOfSym(binding.symbol) = binding
       }
 
-      val countRefs = new TreeTraverser {
-        override def traverse(t: Tree)(using Context) = {
-          def updateRefCount(sym: Symbol, inc: Int) =
-            for (x <- refCount.get(sym)) refCount(sym) = x + inc
-          def updateTermRefCounts(t: Tree) =
-            t.typeOpt.foreachPart {
-              case ref: TermRef => updateRefCount(ref.symbol, 2) // can't be inlined, so make sure refCount is at least 2
-              case _ =>
-            }
-
-          t match {
-            case t: RefTree =>
-              updateRefCount(t.symbol, 1)
-              updateTermRefCounts(t)
-            case _: New | _: TypeTree =>
-              updateTermRefCounts(t)
-            case _ =>
-          }
-          traverseChildren(t)
+      def updateRefCount(sym: Symbol, inc: Int) =
+        for (x <- refCount.get(sym)) refCount(sym) = x + inc
+      def updateTermRefCounts(tree: Tree) =
+        tree.typeOpt.foreachPart {
+          case ref: TermRef => updateRefCount(ref.symbol, 2) // can't be inlined, so make sure refCount is at least 2
+          case _ =>
         }
-      }
-      countRefs.traverse(tree)
-      for (binding <- bindings) countRefs.traverse(binding)
+      def countRefs(tree: Tree) =
+        tree.foreachSubTree {
+          case t: RefTree =>
+            updateRefCount(t.symbol, 1)
+            updateTermRefCounts(t)
+          case t @ (_: New | _: TypeTree) =>
+            updateTermRefCounts(t)
+          case _ =>
+        }
+      countRefs(tree)
+      for (binding <- bindings) countRefs(binding)
 
       def retain(boundSym: Symbol) = {
         refCount.get(boundSym) match {

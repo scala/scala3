@@ -1193,15 +1193,11 @@ trait Checking {
    */
   def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = vparams match {
     case vparam :: vparams1 =>
-      val check = new TreeTraverser {
-        def traverse(tree: Tree)(using Context) = tree match {
-          case id: Ident if vparams.exists(_.symbol == id.symbol) =>
-            report.error(em"illegal forward reference to method parameter", id.srcPos)
-          case _ =>
-            traverseChildren(tree)
-        }
+      vparam.tpt.foreachSubTree {
+        case id: Ident if vparams.exists(_.symbol == id.symbol) =>
+          report.error(em"illegal forward reference to method parameter", id.srcPos)
+        case _ =>
       }
-      check.traverse(vparam.tpt)
       checkNoForwardDependencies(vparams1)
     case Nil =>
   }

@@ -174,27 +174,30 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val sel @ Select(qual, name) = tree: @unchecked
     val sym = sel.symbol
 
-    /** If an accesses to protected member of a class comes from a trait,
-      *  or would need a protected accessor placed in a trait, we cannot
-      *  perform the access to the protected member directly since jvm access
-      *  restrictions require the call site to be in an actual subclass and
-      *  traits don't count as subclasses in this respect. In this case
-      *  we generate a super accessor instead. See SI-2296.
-      */
     def needsSuperAccessor =
       ProtectedAccessors.needsAccessorIfNotInSubclass(sym) &&
       AccessProxies.hostForAccessorOf(sym).is(Trait)
     qual match {
       case _: This if needsSuperAccessor =>
-        /*
-          * A trait which extends a class and accesses a protected member
-          *  of that class cannot implement the necessary accessor method
-          *  because jvm access restrictions require the call site to be in
-          *  an actual subclass and traits don't count as subclasses in this
-          *  respect. We generate a super accessor itself, which will be fixed
-          *  by the implementing class.  See SI-2296.
-          */
-        superAccessorCall(sel)
+        /* Given a protected member m defined in class C,
+         * and a trait T that calls m.
+         *
+         * If T extends C, then we can access it by casting
+         * the qualifier of the select to C.
+         *
+         * That's because the protected method is actually public,
+         * so we can call it.  For truly protected methods, like from
+         * Java, we error instead of emitting the wrong code (i17021.ext-java).
+         *
+         * Otherwise, we need to go through an accessor,
+         * which the implementing class will provide an implementation for.
+         */
+        if ctx.owner.enclosingClass.derivesFrom(sym.owner) then
+          if sym.is(JavaDefined) then
+            report.error(em"${ctx.owner} accesses protected $sym inside a concrete trait method: use super.${sel.name} instead", sel.srcPos)
+          sel
+        else
+          superAccessorCall(sel)
       case Super(_, mix) =>
         transformSuperSelect(sel)
       case _ =>

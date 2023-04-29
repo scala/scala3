@@ -513,7 +513,7 @@ object TreeChecker {
             val inliningPhase = ctx.base.inliningPhase
             inliningPhase.exists && ctx.phase.id > inliningPhase.id
           if isAfterInlining then
-            // The staging phase destroys in PCPCheckAndHeal the property that
+            // The staging phase destroys in CrossStageSafety the property that
             // tree.expr.tpe <:< pt1. A test case where this arises is run-macros/enum-nat-macro.
             // We should follow up why this happens. If the problem is fixed, we can
             // drop the isAfterInlining special case. To reproduce the problem, just
@@ -531,6 +531,11 @@ object TreeChecker {
       assert(ownerMatches(tree.symbol.owner, ctx.owner),
         i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
         i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
+    }
+
+    override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
+      assert(sym.info.isInstanceOf[ClassInfo | TypeBounds], i"wrong type, expect a template or type bounds for ${sym.fullName}, but found: ${sym.info}")
+      super.typedTypeDef(tdef, sym)
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
@@ -674,7 +679,7 @@ object TreeChecker {
               defn.AnyType
             case tpe => tpe
           defn.QuotedExprClass.typeRef.appliedTo(tpe)
-        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt)
+        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
       }
       val expectedResultType =
         if isTermHole then defn.QuotedExprClass.typeRef.appliedTo(tpt.typeOpt)
@@ -683,7 +688,7 @@ object TreeChecker {
         defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =
         defn.FunctionOf(argQuotedTypes, contextualResult)
-      assert(content.typeOpt =:= expectedContentType, i"expected content of the hole to be ${expectedContentType} but got ${content.typeOpt}")
+      assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")
 
       tree1
     }

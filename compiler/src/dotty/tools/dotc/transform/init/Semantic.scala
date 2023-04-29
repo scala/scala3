@@ -64,16 +64,18 @@ object Semantic:
   sealed abstract class Value:
     def show(using Context): String = this match
       case ThisRef(klass) =>
-        "ThisRef[" + klass.show + "]"
+        "the original object of type (" + klass.show + ") where initialization checking started"
       case Warm(klass, outer, ctor, args) =>
         val argsText = if args.nonEmpty then ", args = " + args.map(_.show).mkString("(", ", ", ")") else ""
-        "Warm[" + klass.show + "] { outer = " + outer.show + argsText + " }"
+        "a non-transitively initialized (Warm) object of type (" + klass.show + ") { outer = " + outer.show + argsText + " }"
       case Fun(expr, thisV, klass) =>
-        "Fun { this = " + thisV.show + ", owner = " + klass.show + " }"
+        "a function where \"this\" is (" + thisV.show + ")"
       case RefSet(values) =>
         values.map(_.show).mkString("Set { ", ", ", " }")
-      case _ =>
-        this.toString()
+      case Hot =>
+        "a transitively initialized (Hot) object"
+      case Cold =>
+        "an uninitialized (Cold) object"
 
     def isHot = this == Hot
     def isCold = this == Cold
@@ -470,7 +472,7 @@ object Semantic:
     def widenArg: Contextual[Value] =
       a match
       case _: Ref | _: Fun =>
-        val hasError = Reporter.hasErrors { a.promote("Argument cannot be promoted to hot") }
+        val hasError = Reporter.hasErrors { a.promote("Argument is not provably transitively initialized (Hot)") }
         if hasError then Cold else Hot
 
       case RefSet(refs) =>
@@ -707,7 +709,9 @@ object Semantic:
               // no source code available
               promoteArgs()
               // try promoting the receiver as last resort
-              val hasErrors = Reporter.hasErrors { ref.promote("try promote value to hot") }
+              val hasErrors = Reporter.hasErrors {
+                ref.promote(ref.show + " has no source code and is not provably transitively initialized (Hot).")
+              }
               if hasErrors then
                 val error = CallUnknown(target)(trace)
                 reporter.report(error)
@@ -992,7 +996,7 @@ object Semantic:
                 eval(body, thisV, klass, cacheResult = true)
               }
               given Trace = Trace.empty.add(body)
-              res.promote("The function return value is not hot. Found = " + res.show + ".")
+              res.promote("Only transitively initialized (Hot) values can be returned by functions. The function " + fun.show + " returns " + res.show + ".")
             }
             if errors.nonEmpty then
               reporter.report(UnsafePromotion(msg, errors.head)(trace))
@@ -1036,7 +1040,7 @@ object Semantic:
         //
         // This invariant holds because of the Scala/Java/JVM restriction that we cannot use `this` in super constructor calls.
         if subClassSegmentHot && !isHotSegment then
-          report.error("[Internal error] Expect current segment to hot in promotion, current klass = " + klass.show +
+          report.error("[Internal error] Expect current segment to be transitively initialized (Hot) in promotion, current klass = " + klass.show +
               ", subclass = " + subClass.show + Trace.show, Trace.position)
 
         // If the outer and parameters of a class are all hot, then accessing fields and methods of the current
@@ -1053,12 +1057,12 @@ object Semantic:
                 val args = member.info.paramInfoss.flatten.map(_ => new ArgInfo(Hot: Value, Trace.empty))
                 val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
                 withTrace(trace.add(member.defTree)) {
-                  res.promote("Cannot prove that the return value of " + member.show + " is hot. Found = " + res.show + ".")
+                  res.promote("Could not verify that the return value of " + member.show + " is transitively initialized (Hot). It was found to be " + res.show + ".")
                 }
               else
                 val res = warm.select(member, receiver = warm.klass.typeRef)
                 withTrace(trace.add(member.defTree)) {
-                  res.promote("Cannot prove that the field " + member.show + " is hot. Found = " + res.show + ".")
+                  res.promote("Could not verify that the field " + member.show + " is transitively initialized (Hot). It was found to be " + res.show + ".")
                 }
           end for
 
@@ -1144,7 +1148,7 @@ object Semantic:
 
   extension (arg: ArgInfo)
     def promote: Contextual[Unit] = withTrace(arg.trace) {
-      arg.value.promote("Cannot prove the method argument is hot. Only hot values are safe to leak.\nFound = " + arg.value.show + ".")
+      arg.value.promote("Could not verify that the method argument is transitively initialized (Hot). It was found to be " + arg.value.show + ". Only transitively initialized arguments may be passed to methods (except constructors).")
     }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
@@ -1285,12 +1289,12 @@ object Semantic:
           eval(qual, thisV, klass)
           val res = eval(rhs, thisV, klass)
           extendTrace(expr) {
-            res.ensureHot("The RHS of reassignment must be hot. Found = " + res.show + ". ")
+            res.ensureHot("The RHS of reassignment must be transitively initialized (Hot). It was found to be " + res.show + ". ")
           }
         case id: Ident =>
           val res = eval(rhs, thisV, klass)
           extendTrace(expr) {
-            res.ensureHot("The RHS of reassignment must be hot. Found = " + res.show + ". ")
+            res.ensureHot("The RHS of reassignment must be transitively initialized (Hot). It was found to be " + res.show + ". ")
           }
 
       case closureDef(ddef) =>
@@ -1313,14 +1317,14 @@ object Semantic:
       case Match(selector, cases) =>
         val res = eval(selector, thisV, klass)
         extendTrace(selector) {
-          res.ensureHot("The value to be matched needs to be hot. Found = " + res.show + ". ")
+          res.ensureHot("The value to be matched needs to be transitively initialized (Hot). It was found to be " + res.show + ". ")
         }
         eval(cases.map(_.body), thisV, klass).join
 
       case Return(expr, from) =>
         val res = eval(expr, thisV, klass)
         extendTrace(expr) {
-          res.ensureHot("return expression must be hot. Found = " + res.show + ". ")
+          res.ensureHot("return expression must be transitively initialized (Hot). It was found to be " + res.show + ". ")
         }
 
       case WhileDo(cond, body) =>

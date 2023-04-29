@@ -9,7 +9,7 @@ trait InterFace {
 }
 
 trait BadAPI extends InterFace {
-  def f(a: Int,
+  private def f(a: Int,
         b: String,               // error
         c: Double): Int = {
     println(c)
@@ -33,7 +33,7 @@ trait BadAPI extends InterFace {
 
   override def equals(other: Any): Boolean = true  // OK
 
-  def i(implicit s: String) = answer           // error
+  def i(implicit s: String) = answer           // ok
 
   /*
   def future(x: Int): Int = {
@@ -60,10 +60,10 @@ class Revaluing(u: Int) { def f = u } // OK
 
 case class CaseyKasem(k: Int)        // OK
 
-case class CaseyAtTheBat(k: Int)(s: String)        // error
+case class CaseyAtTheBat(k: Int)(s: String)        // ok
 
 trait Ignorance {
-  def f(readResolve: Int) = answer           // error
+  def f(readResolve: Int) = answer           // ok
 }
 
 class Reusing(u: Int) extends Unusing(u)   // OK
@@ -78,31 +78,31 @@ trait Unimplementation {
 }
 
 trait DumbStuff {
-  def f(implicit dummy: DummyImplicit) = answer // todo // error
-  def g(dummy: DummyImplicit) = answer // error
+  def f(implicit dummy: DummyImplicit) = answer // ok
+  def g(dummy: DummyImplicit) = answer // ok
 }
 trait Proofs {
-  def f[A, B](implicit ev: A =:= B) = answer // todo // error
-  def g[A, B](implicit ev: A <:< B) = answer // todo // error
-  def f2[A, B](ev: A =:= B) = answer // error
-  def g2[A, B](ev: A <:< B) = answer // error
+  def f[A, B](implicit ev: A =:= B) = answer // ok
+  def g[A, B](implicit ev: A <:< B) = answer // ok
+  def f2[A, B](ev: A =:= B) = answer // ok
+  def g2[A, B](ev: A <:< B) = answer // ok
 }
 
 trait Anonymous {
-  def f = (i: Int) => answer      // error
+  def f = (i: Int) => answer      // ok
 
   def f1 = (_: Int) => answer     // OK
 
   def f2: Int => Int = _ + 1  // OK
 
-  def g = for (i <- List(1)) yield answer    // error
+  def g = for (i <- List(1)) yield answer    // ok
 }
 trait Context[A]
 trait Implicits {
-  def f[A](implicit ctx: Context[A]) = answer // error
-  def g[A: Context] = answer // error
+  def f[A](implicit ctx: Context[A]) = answer // ok
+  def g[A: Context] = answer // OK
 }
-class Bound[A: Context] // error
+class Bound[A: Context] // OK
 object Answers {
   def answer: Int = 42
 }

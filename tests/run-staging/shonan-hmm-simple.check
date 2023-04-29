@@ -6,7 +6,7 @@ Complex(4,3)
 10
 
 ((arr1: scala.Array[scala.Int], arr2: scala.Array[scala.Int]) => {
-  if (arr1.length.!=(arr2.length)) throw new scala.Exception("...") else ()
+  if (arr1.length.!=(arr2.length)) throw new java.lang.Exception("...") else ()
   var sum: scala.Int = 0
   var i: scala.Int = 0
   while (i.<(scala.Predef.intArrayOps(arr1).size)) {
@@ -22,13 +22,13 @@ Complex(4,3)
 10
 
 ((arr: scala.Array[scala.Int]) => {
-  if (arr.length.!=(5)) throw new scala.Exception("...") else ()
+  if (arr.length.!=(5)) throw new java.lang.Exception("...") else ()
   arr.apply(0).+(arr.apply(2)).+(arr.apply(4))
 })
 10
 
 ((arr: scala.Array[Complex[scala.Int]]) => {
-  if (arr.length.!=(4)) throw new scala.Exception("...") else ()
+  if (arr.length.!=(4)) throw new java.lang.Exception("...") else ()
   Complex.apply[scala.Int](0.-(arr.apply(0).im).+(0.-(arr.apply(2).im)).+(arr.apply(3).re.*(2)), arr.apply(0).re.+(arr.apply(2).re).+(arr.apply(3).im.*(2)))
 })
 Complex(4,3)

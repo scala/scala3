@@ -18,7 +18,7 @@ import inlines.Inlines
 import NameOps._
 import Annotations._
 import transform.{AccessProxies, Splicer}
-import staging.PCPCheckAndHeal
+import staging.CrossStageSafety
 import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
@@ -256,7 +256,7 @@ object PrepareInlineable {
 
   /** Register inline info for given inlineable method `sym`.
    *
-   *  @param sym         The symbol denotation of the inlineable method for which info is registered
+   *  @param inlined     The symbol denotation of the inlineable method for which info is registered
    *  @param treeExpr    A function that computes the tree to be inlined, given a context
    *                     This tree may still refer to non-public members.
    *  @param ctx         The context to use for evaluating `treeExpr`. It needs
@@ -294,7 +294,7 @@ object PrepareInlineable {
           if (code.symbol.flags.is(Inline))
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)
-          (new PCPCheckAndHeal).transform(body) // Ignore output, only check PCP
+          (new CrossStageSafety).transform(body) // Ignore output, only check cross-stage safety
         case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
         case Block(Nil, expr) => checkMacro(expr)
         case Typed(expr, _) => checkMacro(expr)

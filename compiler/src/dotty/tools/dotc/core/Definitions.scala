@@ -1509,7 +1509,6 @@ class Definitions {
 
   /** Is an context function class.
    *   - ContextFunctionN for N >= 0
-   *   - ErasedContextFunctionN for N > 0
    */
   def isContextFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isContextFunction
 

@@ -159,8 +159,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *   @param required   flags the result's symbol must have
    *   @param excluded   flags the result's symbol must not have
    *   @param pos        indicates position to use for error reporting
+   *   @param altImports a ListBuffer in which alternative imported references are
+   *                     collected in case `findRef` is called from an expansion of
+   *                     an extension method, i.e. when `e.m` is expanded to `m(e)` and
+   *                     a reference for `m` is searched. `null` in all other situations.
    */
-  def findRef(name: Name, pt: Type, required: FlagSet, excluded: FlagSet, pos: SrcPos)(using Context): Type = {
+  def findRef(name: Name, pt: Type, required: FlagSet, excluded: FlagSet, pos: SrcPos,
+      altImports: mutable.ListBuffer[TermRef] | Null = null)(using Context): Type = {
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
     def suppressErrors = excluded.is(ConstructorProxy)
@@ -231,15 +236,52 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             fail(AmbiguousReference(name, newPrec, prevPrec, prevCtx))
           previous
 
-      /** Recurse in outer context. If final result is same as `previous`, check that it
-       *  is new or shadowed. This order of checking is necessary since an
-       *  outer package-level definition might trump two conflicting inner
-       *  imports, so no error should be issued in that case. See i7876.scala.
+      /** Assemble and check alternatives to an imported reference. This implies:
+       *   - If we expand an extension method (i.e. altImports != null),
+       *     search imports on the same level for other possible resolutions of `name`.
+       *     The result and altImports together then contain all possible imported
+       *     references of the highest possible precedence, where `NamedImport` beats
+       *     `WildImport`.
+       *   - Find a posssibly shadowing reference in an outer context.
+       *     If the result is the same as `previous`, check that it is new or
+       *     shadowed. This order of checking is necessary since an outer package-level
+       *     definition might trump two conflicting inner imports, so no error should be
+       *     issued in that case. See i7876.scala.
+       *  @param previous   the previously found reference (which is an import)
+       *  @param prevPrec   the precedence of the reference (either NamedImport or WildImport)
+       *  @param prevCtx    the context in which the reference was found
+       *  @param using_Context the outer context of `precCtx`
        */
-      def recurAndCheckNewOrShadowed(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
-        val found = findRefRecur(previous, prevPrec, prevCtx)
-        if found eq previous then checkNewOrShadowed(found, prevPrec)(using prevCtx)
-        else found
+      def checkImportAlternatives(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
+
+        def addAltImport(altImp: TermRef) =
+          if !TypeComparer.isSameRef(previous, altImp)
+              && !altImports.uncheckedNN.exists(TypeComparer.isSameRef(_, altImp))
+          then
+            altImports.uncheckedNN += altImp
+
+        if Feature.enabled(Feature.relaxedExtensionImports) && altImports != null && ctx.isImportContext then
+          val curImport = ctx.importInfo.uncheckedNN
+          namedImportRef(curImport) match
+            case altImp: TermRef =>
+              if prevPrec == WildImport then
+                // Discard all previously found references and continue with `altImp`
+                altImports.clear()
+                checkImportAlternatives(altImp, NamedImport, ctx)(using ctx.outer)
+              else
+                addAltImport(altImp)
+                checkImportAlternatives(previous, prevPrec, prevCtx)(using ctx.outer)
+            case _ =>
+              if prevPrec == WildImport then
+                wildImportRef(curImport) match
+                  case altImp: TermRef => addAltImport(altImp)
+                  case _ =>
+              checkImportAlternatives(previous, prevPrec, prevCtx)(using ctx.outer)
+        else
+          val found = findRefRecur(previous, prevPrec, prevCtx)
+          if found eq previous then checkNewOrShadowed(found, prevPrec)(using prevCtx)
+          else found
+      end checkImportAlternatives
 
       def selection(imp: ImportInfo, name: Name, checkBounds: Boolean): Type =
         imp.importSym.info match
@@ -329,7 +371,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if (ctx.scope eq EmptyScope) previous
         else {
           var result: Type = NoType
-
           val curOwner = ctx.owner
 
           /** Is curOwner a package object that should be skipped?
@@ -450,11 +491,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             else if (isPossibleImport(NamedImport) && (curImport nen outer.importInfo)) {
               val namedImp = namedImportRef(curImport.uncheckedNN)
               if (namedImp.exists)
-                recurAndCheckNewOrShadowed(namedImp, NamedImport, ctx)(using outer)
+                checkImportAlternatives(namedImp, NamedImport, ctx)(using outer)
               else if (isPossibleImport(WildImport) && !curImport.nn.importSym.isCompleting) {
                 val wildImp = wildImportRef(curImport.uncheckedNN)
                 if (wildImp.exists)
-                  recurAndCheckNewOrShadowed(wildImp, WildImport, ctx)(using outer)
+                  checkImportAlternatives(wildImp, WildImport, ctx)(using outer)
                 else {
                   updateUnimported()
                   loop(ctx)(using outer)
@@ -544,22 +585,40 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       	unimported = saved1
       	foundUnderScala2 = saved2
 
-    def checkNotShadowed(ownType: Type) = ownType match
-      case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
-        val shadowed = findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos)
-        if shadowed.exists then
-          report.error(
-            em"""Reference to constructor proxy for ${ownType.symbol.companionClass.showLocated}
-                |shadows outer reference to ${shadowed.termSymbol.showLocated}""", tree.srcPos)
-      case _ =>
+    /** Normally, returns `ownType` except if `ownType` is a constructor proxy,
+     *  and there is another shadowed type accessible with the same name that is not:
+     *    - if the prototype is an application:
+     *      - if the shadowed type has a method alternative or an apply method,
+     *        issue an ambiguity error
+     *      - otherwise again return `ownType`
+     *    - if the prototype is not an application, return the shadowed type
+     */
+    def checkNotShadowed(ownType: Type): Type =
+      ownType match
+        case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
+          findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos) match
+            case shadowed: TermRef =>
+              pt match
+                case pt: FunOrPolyProto =>
+                  def err(shadowedIsApply: Boolean) =
+                    report.error(ConstrProxyShadows(ownType, shadowed, shadowedIsApply), tree.srcPos)
+                  if shadowed.denot.hasAltWith(sd => sd.symbol.is(Method, butNot = Accessor)) then
+                    err(shadowedIsApply = false)
+                  else if shadowed.member(nme.apply).hasAltWith(_.symbol.is(Method, butNot = Accessor)) then
+                    err(shadowedIsApply = true)
+                case _ =>
+                  return shadowed
+            case shadowed =>
+        case _ =>
+      ownType
 
     def setType(ownType: Type): Tree =
-      checkNotShadowed(ownType)
-      val tree1 = ownType match
-        case ownType: NamedType if !prefixIsElidable(ownType) =>
-          ref(ownType).withSpan(tree.span)
+      val checkedType = checkNotShadowed(ownType)
+      val tree1 = checkedType match
+        case checkedType: NamedType if !prefixIsElidable(checkedType) =>
+          ref(checkedType).withSpan(tree.span)
         case _ =>
-          tree.withType(ownType)
+          tree.withType(checkedType)
       val tree2 = toNotNullTermRef(tree1, pt)
       checkLegalValue(tree2, pt)
       tree2
@@ -2196,8 +2255,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if (tree.bound.isEmpty && isFullyDefined(pt, ForceDegree.none)) TypeTree(pt)
       else typed(tree.bound)
     val sel1 = typed(tree.selector)
+    val sel1Tpe = sel1.tpe
+    if sel1Tpe.isLambdaSub then
+      report.error(MatchTypeScrutineeCannotBeHigherKinded(sel1Tpe), sel1.srcPos)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
-    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt1))
+    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1Tpe, pt1))
     assignType(cpy.MatchTypeTree(tree)(bound1, sel1, cases1), bound1, sel1, cases1)
   }
 
@@ -2512,6 +2574,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           checkSimpleKinded(parent)
             // allow missing type parameters if there are implicit arguments to pass
             // since we can infer type arguments from them
+        val constr = psym.primaryConstructor
+        if psym.is(Trait) && constr.exists && !cls.isRefinementClass then
+          ensureAccessible(constr.termRef, superAccess = true, tree.srcPos)
       else
         checkParentCall(result, cls)
       if cls is Case then
@@ -3388,11 +3453,37 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK = inSelect)
 
     def tryExtension(using Context): Tree =
-      findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos) match
+      val altImports = new mutable.ListBuffer[TermRef]()
+      findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos, altImports) match
         case ref: TermRef =>
-          extMethodApply(untpd.TypedSplice(tpd.ref(ref).withSpan(tree.nameSpan)), qual, pt)
+          def tryExtMethod(ref: TermRef)(using Context) =
+            extMethodApply(untpd.TypedSplice(tpd.ref(ref).withSpan(tree.nameSpan)), qual, pt)
+          if altImports.isEmpty then
+            tryExtMethod(ref)
+          else
+            // Try all possible imports and collect successes and failures
+            val successes, failures = new mutable.ListBuffer[(Tree, TyperState)]
+            for alt <- ref :: altImports.toList do
+              val nestedCtx = ctx.fresh.setNewTyperState()
+              val app = tryExtMethod(alt)(using nestedCtx)
+              (if nestedCtx.reporter.hasErrors then failures else successes)
+                += ((app, nestedCtx.typerState))
+            typr.println(i"multiple extensioin methods, success: ${successes.toList}, failure: ${failures.toList}")
+
+            def pick(alt: (Tree, TyperState)): Tree =
+              val (app, ts) = alt
+              ts.commit()
+              app
+
+            successes.toList match
+              case Nil => pick(failures.head)
+              case success :: Nil => pick(success)
+              case (expansion1, _) :: (expansion2, _) :: _ =>
+                report.error(AmbiguousExtensionMethod(tree, expansion1, expansion2), tree.srcPos)
+                expansion1
         case _ =>
           EmptyTree
+    end tryExtension
 
     def nestedFailure(ex: TypeError) =
       rememberSearchFailure(qual,
