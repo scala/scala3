@@ -520,7 +520,7 @@ object CheckUnused:
           .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
           .filterNot(d => containsSyntheticSuffix(d.symbol))
           .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.LocalDefs)).toList
-      val unsetLocalDefs = unsetVarsFromUsedSym(usedLocalDefs).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.UnsetLocals)).toList
+      val unsetLocalDefs = usedLocalDefs.filter(isUnsetVarDef).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.UnsetLocals)).toList
 
       val sortedExplicitParams =
         if ctx.settings.WunusedHas.explicits then
@@ -546,7 +546,7 @@ object CheckUnused:
         else
           (Nil, Nil)
       val sortedPrivateDefs = unusedPrivates.filterNot(d => containsSyntheticSuffix(d.symbol)).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PrivateMembers)).toList
-      val unsetPrivateDefs = unsetVarsFromUsedSym(usedPrivates).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.UnsetPrivates)).toList
+      val unsetPrivateDefs = usedPrivates.filter(isUnsetVarDef).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.UnsetPrivates)).toList
       val sortedPatVars =
         if ctx.settings.WunusedHas.patvars then
           patVarsInScope
@@ -745,9 +745,12 @@ object CheckUnused:
         !isSyntheticMainParam(sym) &&
         !sym.shouldNotReportParamOwner
 
-
       private def shouldReportPrivateDef(using Context): Boolean =
         currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
+
+      private def isUnsetVarDef(using Context): Boolean =
+        val sym = memDef.symbol
+        sym.is(Mutable) && !setVars(sym)
 
     extension (imp: tpd.Import)
       /** Enum generate an import for its cases (but outside them), which should be ignored */
@@ -757,9 +760,6 @@ object CheckUnused:
     extension (thisName: Name)
       private def isWildcard: Boolean =
         thisName == StdNames.nme.WILDCARD || thisName.is(WildcardParamName)
-
-    def unsetVarsFromUsedSym(usedDefs: Iterable[tpd.MemberDef])(using Context): Iterable[tpd.MemberDef] =
-      usedDefs.filter(d => d.symbol.is(Mutable) && !setVars(d.symbol))
 
   end UnusedData
 
