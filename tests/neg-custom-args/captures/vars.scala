@@ -1,12 +1,12 @@
 class CC
-type Cap = {*} CC
+type Cap = CC^
 
 def test(cap1: Cap, cap2: Cap) =
   def f(x: String): String = if cap1 == cap1 then "" else "a"
   var x = f
   val y = x
   val z = () => if x("") == "" then "a" else "b"
-  val zc: {cap1} () -> String = z
+  val zc: () ->{cap1} String = z
   val z2 = () => { x = identity }
   val z2c: () -> Unit = z2  // error
 
@@ -35,7 +35,7 @@ def test(cap1: Cap, cap2: Cap) =
   }
 
   class Ref:
-    var elem: {cap1} String -> String = null
+    var elem: String ->{cap1} String = null
 
   val r = Ref()
   r.elem = f

@@ -2,5 +2,5 @@
 1 |open class C: // error
   |           ^
   |           class C needs an explicitly declared self type since its
-  |           inferred self type {} C
+  |           inferred self type C^{}
   |           is not visible in other compilation units that define subclasses.

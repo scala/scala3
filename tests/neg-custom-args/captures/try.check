@@ -1,8 +1,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:23:49 ------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error
    |                                                 ^
-   |                                                 Found:    ? ({*} CT[Exception]) -> CanThrow[Exception]
-   |                                                 Required: {*} CanThrow[Exception] -> box {*} CT[Exception]
+   |                                                 Found:    CT[Exception]^{*} ->? CanThrow[Exception]
+   |                                                 Required: CanThrow[Exception] ->{*} box CT[Exception]^{*}
 24 |    (x: CanThrow[Exception]) => x
 25 |  }{
    |
@@ -10,8 +10,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:43 ------------------------------------------
 29 |  val b = handle[Exception, () -> Nothing] {  // error
    |                                           ^
-   |                                           Found:    ? (x: {*} CT[Exception]) -> {x} () -> Nothing
-   |                                           Required: {*} (x$0: CanThrow[Exception]) -> () -> Nothing
+   |                                           Found:    (x: CT[Exception]^{*}) ->? () ->{x} Nothing
+   |                                           Required: (x$0: CanThrow[Exception]) ->{*} () -> Nothing
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 31 |  } {
    |
@@ -24,7 +24,7 @@
 51 |      22
 52 |} {  // error
    |                        ^
-   |                        Found:    {x$0} () -> Int
+   |                        Found:    () ->{x$0} Int
    |                        Required: () -> Int
 53 |  (ex: Exception) => () => 22
 54 |}
@@ -38,7 +38,7 @@
 39 |        22
 40 |  } {  // error
    |           ^
-   |           The expression's type box {x$0, *} () -> Int is not allowed to capture the root capability `*`.
+   |           The expression's type box () ->{x$0, *} Int is not allowed to capture the root capability `*`.
    |           This usually means that a capability persists longer than its allowed lifetime.
 41 |    (ex: Exception) => () => 22
 42 |  }
