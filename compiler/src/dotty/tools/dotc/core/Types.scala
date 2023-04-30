@@ -4999,9 +4999,9 @@ object Types {
           if (!givenSelf.isValueType) appliedRef
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
-          else givenSelf match
-            case givenSelf @ EventuallyCapturingType(tp, _) =>
-              givenSelf.derivedAnnotatedType(tp & appliedRef, givenSelf.annot)
+          else givenSelf.dealiasKeepAnnots match
+            case givenSelf1 @ EventuallyCapturingType(tp, _) =>
+              givenSelf1.derivedAnnotatedType(tp & appliedRef, givenSelf1.annot)
             case _ =>
               AndType(givenSelf, appliedRef)
         }
