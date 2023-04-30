@@ -1689,6 +1689,7 @@ object Parsers {
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
+     *             |  RefinedType `^`
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
@@ -1708,7 +1709,13 @@ object Parsers {
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
-      else if in.isIdent(nme.UPARROW) then
+      else if in.isIdent(nme.UPARROW)
+          && (in.lookahead.token == LBRACE
+              || !canStartInfixTypeTokens.contains(in.lookahead.token))
+        // Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
+        // if followed by `{` or newline, or any other token that cannot start
+        // an infix type. Otherwise it is treated as an infix operator.
+      then
         val upArrowStart = in.offset
         in.nextToken()
         def cs =
