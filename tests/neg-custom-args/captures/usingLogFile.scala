@@ -14,7 +14,7 @@ object Test1:
 
 object Test2:
 
-  def usingLogFile[T](op: FileOutputStream^{*} => T): T =
+  def usingLogFile[T](op: FileOutputStream^ => T): T =
     val logFile = FileOutputStream("log")
     val result = op(logFile)
     logFile.close()
@@ -38,7 +38,7 @@ object Test2:
 
 object Test3:
 
-  def usingLogFile[T](op: FileOutputStream^{*} => T) =
+  def usingLogFile[T](op: FileOutputStream^ => T) =
     val logFile = FileOutputStream("log")
     val result = op(logFile)
     logFile.close()
@@ -47,10 +47,10 @@ object Test3:
   val later = usingLogFile { f => () => f.write(0) } // error
 
 object Test4:
-  class Logger(f: OutputStream^{*}):
+  class Logger(f: OutputStream^):
     def log(msg: String): Unit = ???
 
-  def usingFile[T](name: String, op: OutputStream^{*} => T): T =
+  def usingFile[T](name: String, op: OutputStream^ => T): T =
     val f = new FileOutputStream(name)
     val result = op(f)
     f.close()
@@ -63,7 +63,7 @@ object Test4:
     later(1)
 
 
-  def usingLogger[T](f: OutputStream^{*}, op: Logger^{f} => T): T =
+  def usingLogger[T](f: OutputStream^, op: Logger^{f} => T): T =
     val logger = Logger(f)
     op(logger)
 

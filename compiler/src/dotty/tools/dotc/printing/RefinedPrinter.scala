@@ -148,7 +148,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val AppliedType(tycon, args) = (tp: @unchecked)
     val tsym = tycon.typeSymbol
     val isGiven = tsym.name.isContextFunction
-    val isPure = Feature.pureFunsEnabled && !tsym.name.isImpureFunction
+    val capturesRoot = refs == rootSetText
+    val isPure =
+      Feature.pureFunsEnabled && !tsym.name.isImpureFunction && !capturesRoot
     changePrec(GlobalPrec) {
       val argStr: Text =
         if args.length == 2
@@ -160,17 +162,21 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           "("
           ~ argsText(args.init)
           ~ ")"
-      argStr ~ " " ~ arrow(isGiven, isPure) ~ refs  ~ " " ~ argText(args.last)
+      argStr
+      ~ " " ~ arrow(isGiven, isPure)
+      ~ (refs provided !capturesRoot)
+      ~ " " ~ argText(args.last)
     }
 
   private def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text = info match
     case info: MethodType =>
+      val capturesRoot = refs == rootSetText
       changePrec(GlobalPrec) {
         "("
         ~ paramsText(info)
         ~ ") "
-        ~ arrow(info.isImplicitMethod, isPure)
-        ~ refs
+        ~ arrow(info.isImplicitMethod, isPure && !capturesRoot)
+        ~ (refs provided !capturesRoot)
         ~ " "
         ~ toTextMethodAsFunction(info.resultType, isPure)
       }

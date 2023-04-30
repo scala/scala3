@@ -155,8 +155,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if !cs.isConst && cs.elems.isEmpty then "?"
     else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
 
+  /** Print capturing type, overridden in RefinedPrinter to account for
+   *  capturing function types.
+   */
   protected def toTextCapturing(parent: Type, refsText: Text, boxText: Text): Text =
-    changePrec(InfixPrec)(boxText ~ toTextLocal(parent) ~ "^" ~ refsText)
+    changePrec(InfixPrec):
+      boxText ~ toTextLocal(parent) ~ "^"
+      ~ (refsText provided refsText != rootSetText)
+
+  final protected def rootSetText = Str("{*}")
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -214,7 +221,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ EventuallyCapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        toTextCapturing(parent, toTextCaptureSet(refs), boxText)
+        val refsText = if refs.isUniversal then rootSetText else toTextCaptureSet(refs)
+        toTextCapturing(parent, refsText, boxText)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>

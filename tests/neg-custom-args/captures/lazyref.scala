@@ -6,10 +6,10 @@ class LazyRef[T](val elem: () => T):
   def map[U](f: T => U): LazyRef[U]^{f, this} =
     new LazyRef(() => f(elem()))
 
-def map[A, B](ref: LazyRef[A]^{*}, f: A => B): LazyRef[B]^{f, ref} =
+def map[A, B](ref: LazyRef[A]^, f: A => B): LazyRef[B]^{f, ref} =
   new LazyRef(() => f(ref.elem()))
 
-def mapc[A, B]: (ref: LazyRef[A]^{*}, f: A => B) -> LazyRef[B]^{f, ref} =
+def mapc[A, B]: (ref: LazyRef[A]^, f: A => B) -> LazyRef[B]^{f, ref} =
   (ref1, f1) => map[A, B](ref1, f1)
 
 def test(cap1: Cap, cap2: Cap) =

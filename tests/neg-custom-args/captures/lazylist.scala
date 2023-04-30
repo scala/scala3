@@ -1,7 +1,7 @@
 package lazylists
 
 abstract class LazyList[+T]:
-  this: LazyList[T]^{*} =>
+  this: LazyList[T]^ =>
 
   def isEmpty: Boolean
   def head: T
@@ -11,7 +11,7 @@ abstract class LazyList[+T]:
     if isEmpty then LazyNil
     else LazyCons(f(head), () => tail.map(f))
 
-class LazyCons[+T](val x: T, val xs: () => LazyList[T]^{*}) extends LazyList[T]:
+class LazyCons[+T](val x: T, val xs: () => LazyList[T]^) extends LazyList[T]:
   def isEmpty = false
   def head = x
   def tail = xs() // error
@@ -19,13 +19,13 @@ class LazyCons[+T](val x: T, val xs: () => LazyList[T]^{*}) extends LazyList[T]:
 object LazyNil extends LazyList[Nothing]:
   def isEmpty = true
   def head = ???
-  def tail: LazyList[Nothing]^{*} = ???  // error overriding
+  def tail: LazyList[Nothing]^ = ???  // error overriding
 
-def map[A, B](xs: LazyList[A]^{*}, f: A => B): LazyList[B]^{f, xs} =
+def map[A, B](xs: LazyList[A]^, f: A => B): LazyList[B]^{f, xs} =
   xs.map(f)
 
 class CC
-type Cap = CC^{*}
+type Cap = CC^
 
 def test(cap1: Cap, cap2: Cap, cap3: Cap) =
   def f[T](x: LazyList[T]): LazyList[T] = if cap1 == cap1 then x else LazyNil

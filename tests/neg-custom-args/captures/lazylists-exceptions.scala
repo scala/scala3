@@ -12,8 +12,8 @@ object LazyNil extends LazyList[Nothing]:
   def head = ???
   def tail = ???
 
-final class LazyCons[+T](val x: T, val xs: () => LazyList[T]^{*}) extends LazyList[T]:
-  this: LazyList[T]^{*} =>
+final class LazyCons[+T](val x: T, val xs: () => LazyList[T]^) extends LazyList[T]:
+  this: LazyList[T]^ =>
 
   def isEmpty = false
   def head = x
@@ -21,7 +21,7 @@ final class LazyCons[+T](val x: T, val xs: () => LazyList[T]^{*}) extends LazyLi
 end LazyCons
 
 extension [A](x: A)
-  def #:(xs1: => LazyList[A]^{*}): LazyList[A]^{xs1} =
+  def #:(xs1: => LazyList[A]^): LazyList[A]^{xs1} =
     LazyCons(x, () => xs1)
 
 def tabulate[A](n: Int)(gen: Int => A): LazyList[A]^{gen} =
