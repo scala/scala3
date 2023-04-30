@@ -1711,10 +1711,11 @@ object Parsers {
         })
       else if in.isIdent(nme.UPARROW)
           && (in.lookahead.token == LBRACE
-              || !canStartInfixTypeTokens.contains(in.lookahead.token))
+              || !canStartInfixTypeTokens.contains(in.lookahead.token)
+              || in.lookahead.lineOffset > 0)
         // Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
-        // if followed by `{` or newline, or any other token that cannot start
-        // an infix type. Otherwise it is treated as an infix operator.
+        // if followed by `{` or a new line (significant or not), or a token that
+        // cannot start an infix type. Otherwise it is treated as an infix operator.
       then
         val upArrowStart = in.offset
         in.nextToken()
