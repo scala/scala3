@@ -16,6 +16,6 @@ def f(y: Cap, z: Cap): String @retains(caps.*) =
   val d = a(g())
 
   val ac: ((x: Cap) -> ID[String @retains(x) -> String @retains(x)]) = ???
-  val bc: (({y} String) -> {y} String) = ac(y)
-  val dc: (String -> {y, z} String) = ac(g())
+  val bc: String^{y} -> String^{y} = ac(y)
+  val dc: String -> String^{y, z} = ac(g())
   c

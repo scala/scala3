@@ -6,10 +6,10 @@ object test1:
   class File:
     def write(x: String): Unit = ???
 
-  class Service(f: {*} File):
+  class Service(f: File^):
     def log = f.write("log")
 
-  def withFile[T](op: (f: {*} File) => T): T =
+  def withFile[T](op: (f: File^) => T): T =
     op(new File)
 
   def test =
@@ -24,10 +24,10 @@ object test2:
     def write(x: String): Unit = ???
 
   class Service(io: IO):
-    var file: {io} File = uninitialized
+    var file: File^{io} = uninitialized
     def log = file.write("log")
 
-  def withFile[T](io: IO)(op: (f: {io} File) => T): T =
+  def withFile[T](io: IO)(op: (f: File^{io}) => T): T =
     op(new File)
 
   def test(io: IO) =
