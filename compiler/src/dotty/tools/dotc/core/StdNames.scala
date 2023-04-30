@@ -287,6 +287,7 @@ object StdNames {
 
     // Compiler-internal
     val CAPTURE_ROOT: N             = "*"
+    val CAPTURE_ROOT_ALT: N         = "any"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val EVT2U: N                    = "evt2u$"
@@ -301,6 +302,7 @@ object StdNames {
     val THROWS: N                   = "$throws"
     val U2EVT: N                    = "u2evt$"
     val ALLARGS: N                  = "$allArgs"
+    val UPARROW: N                  = "^"
 
     final val Nil: N                = "Nil"
     final val Predef: N             = "Predef"

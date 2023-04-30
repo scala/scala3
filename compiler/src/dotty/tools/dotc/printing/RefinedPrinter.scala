@@ -730,6 +730,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val contentText = toTextGlobal(content)
         val tptText = toTextGlobal(tpt)
         prefix ~~ idx.toString ~~ "|" ~~ tptText ~~ "|" ~~ argsText ~~ "|" ~~ contentText ~~ postfix
+      case CapturesAndResult(refs, parent) =>
+        changePrec(GlobalPrec)("^{" ~ Text(refs.map(toText), ", ") ~ "} " ~ toText(parent))
       case CapturingTypeTree(refs, parent) =>
         parent match
           case ImpureByNameTypeTree(bntpt) =>

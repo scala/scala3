@@ -1827,13 +1827,11 @@ object desugar {
       case CapturingTypeTree(refs, parent) =>
         // convert   `{refs} T`   to `T @retains refs`
         //           `{refs}-> T` to `-> (T @retainsByName refs)`
-        def annotate(annotName: TypeName, tp: Tree) =
-          Annotated(tp, New(scalaAnnotationDot(annotName), List(refs)))
         parent match
           case ByNameTypeTree(restpt) =>
-            cpy.ByNameTypeTree(parent)(annotate(tpnme.retainsByName, restpt))
+            cpy.ByNameTypeTree(parent)(makeRetaining(restpt, refs, tpnme.retainsByName))
           case _ =>
-            annotate(tpnme.retains, parent)
+            makeRetaining(parent, refs, tpnme.retains)
       case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
     }
     desugared.withSpan(tree.span)
@@ -1927,7 +1925,7 @@ object desugar {
         }
         tree match
           case tree: FunctionWithMods =>
-            untpd.FunctionWithMods(applyVParams, tree.body, tree.mods, tree.erasedParams)
+            untpd.FunctionWithMods(applyVParams, result, tree.mods, tree.erasedParams)
           case _ => untpd.Function(applyVParams, result)
     }
   }

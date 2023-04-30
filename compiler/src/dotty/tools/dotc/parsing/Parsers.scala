@@ -1467,6 +1467,7 @@ object Parsers {
       if in.token == THIS then simpleRef()
       else termIdent() match
         case Ident(nme.CAPTURE_ROOT) => captureRoot
+        case Ident(nme.CAPTURE_ROOT_ALT) => captureRoot
         case id => id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
@@ -1474,6 +1475,11 @@ object Parsers {
     def captureSet(): List[Tree] = inBraces {
       if in.token == RBRACE then Nil else commaSeparated(captureRef)
     }
+
+    def capturesAndResult(core: () => Tree): Tree =
+      if in.token == LBRACE && in.offset == in.lastOffset
+      then CapturesAndResult(captureSet(), core())
+      else core()
 
     /** Type           ::=  FunType
      *                   |  HkTypeParamClause ‘=>>’ Type
@@ -1519,7 +1525,7 @@ object Parsers {
           else
             accept(ARROW)
 
-          val resultType = typ()
+          val resultType = capturesAndResult(typ)
           if token == TLARROW then
             for case ValDef(_, tpt, _) <- params do
               if isByNameType(tpt) then
@@ -1690,7 +1696,7 @@ object Parsers {
       infixOps(t, canStartInfixTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg() && !isPureArrow)
 
-    /** RefinedType   ::=  WithType {[nl] Refinement}
+    /** RefinedType   ::=  WithType {[nl] (Refinement} [`^` CaptureSet]
      */
     val refinedTypeFn: Location => Tree = _ => refinedType()
 
@@ -1698,11 +1704,19 @@ object Parsers {
 
     def refinedTypeRest(t: Tree): Tree = {
       argumentStart()
-      if (in.isNestedStart)
+      if in.isNestedStart then
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
-      else t
+      else if in.isIdent(nme.UPARROW) then
+        val upArrowStart = in.offset
+        in.nextToken()
+        def cs =
+          if in.token == LBRACE then captureSet()
+          else atSpan(upArrowStart)(captureRoot) :: Nil
+        makeRetaining(t, cs, tpnme.retains)
+      else
+        t
     }
 
     /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
@@ -1929,7 +1943,7 @@ object Parsers {
     def paramTypeOf(core: () => Tree): Tree =
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
-        val tp = atSpan(in.skipToken()) { ByNameTypeTree(core()) }
+        val tp = atSpan(in.skipToken()) { ByNameTypeTree(capturesAndResult(core)) }
         if isImpure && Feature.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
       else if in.token == LBRACE && followingIsCaptureSet() then
         val start = in.offset

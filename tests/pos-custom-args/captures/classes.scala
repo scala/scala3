@@ -1,22 +1,22 @@
 import annotation.retains
 class B
-type Cap = {*} B
+type Cap = B{ref any}
 class C(val n: Cap):
-  this: {n} C =>
-  def foo(): {n} B = n
+  this: C{ref n} =>
+  def foo(): B{ref n} = n
 
 
 def test(x: Cap, y: Cap, z: Cap) =
   val c0 = C(x)
-  val c1: {x} C {val n: {x} B} = c0
+  val c1: C{ref x}{val n: B{ref x}} = c0
   val d = c1.foo()
-  d: {x} B
+  d: B{ref x}
 
   val c2 = if ??? then C(x) else C(y)
   val c2a = identity(c2)
-  val c3: {x, y} C { val n: {x, y} B } = c2
+  val c3: C{ref x, y}{ val n: B{ref x, y} } = c2
   val d1 = c3.foo()
-  d1: B @retains(x, y)
+  d1: B{ref x, y}
 
   class Local:
 
@@ -29,7 +29,7 @@ def test(x: Cap, y: Cap, z: Cap) =
   end Local
 
   val l = Local()
-  val l1: {x, y} Local = l
+  val l1: Local{ref x, y} = l
   val l2 = Local(x)
-  val l3: {x, y, z} Local = l2
+  val l3: Local{ref x, y, z} = l2
 
