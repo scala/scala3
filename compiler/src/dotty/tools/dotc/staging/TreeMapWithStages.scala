@@ -15,12 +15,6 @@ import scala.collection.mutable
 abstract class TreeMapWithStages extends TreeMapWithImplicits {
   import tpd._
 
-  /** If we are inside a quote or a splice */
-  private[this] var inQuoteOrSplice = false
-
-  /** If we are inside a quote or a splice */
-  protected def isInQuoteOrSplice: Boolean = inQuoteOrSplice
-
   /** Transform the quote `quote` which contains the quoted `body`.
    *
    *  - `quoted.runtime.Expr.quote[T](<body0>)`  --> `quoted.runtime.Expr.quote[T](<body>)`
@@ -53,15 +47,9 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
 
       tree match {
         case tree @ QuotedTypeOf(quotedTree) =>
-          val old = inQuoteOrSplice
-          inQuoteOrSplice = true
-          try transformQuotedType(quotedTree, tree)
-          finally inQuoteOrSplice = old
-
+          transformQuotedType(quotedTree, tree)
         case tree @ Quote(quotedTree) =>
-          val old = inQuoteOrSplice
-          inQuoteOrSplice = true
-          try dropEmptyBlocks(quotedTree) match {
+          dropEmptyBlocks(quotedTree) match {
             case Splice(t) =>
               // Optimization: `'{ $x }` --> `x`
               // and adapt the refinement of `Quotes { type reflect: ... } ?=> Expr[T]`
@@ -69,25 +57,18 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
             case _ =>
               transformQuote(quotedTree, tree)
           }
-          finally inQuoteOrSplice = old
 
         case tree @ Splice(splicedTree) =>
-          val old = inQuoteOrSplice
-          inQuoteOrSplice = true
-          try dropEmptyBlocks(splicedTree) match {
+          dropEmptyBlocks(splicedTree) match {
             case Quote(t) =>
               // Optimization: `${ 'x }` --> `x`
               transform(t)
             case _ =>
               transformSplice(splicedTree, tree)
           }
-          finally inQuoteOrSplice = old
 
         case tree @ SplicedType(splicedTree) =>
-          val old = inQuoteOrSplice
-          inQuoteOrSplice = true
-          try transformSpliceType(splicedTree, tree)
-          finally inQuoteOrSplice = old
+          transformSpliceType(splicedTree, tree)
 
         case Block(stats, _) =>
           val defSyms = stats.collect { case defTree: DefTree => defTree.symbol }

@@ -50,7 +50,7 @@ class CrossStageSafety extends TreeMapWithStages {
   override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
-    else if !isInQuoteOrSplice then
+    else if !inQuoteOrSpliceScope then
       checkAnnotations(tree)
       super.transform(tree)
     else tree match {
