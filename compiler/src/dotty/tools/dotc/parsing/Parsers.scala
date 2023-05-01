@@ -715,7 +715,11 @@ object Parsers {
       val t = enclosed(INDENT, body)
       if needsBraces(t) then
         patch(source, Span(startOpening, endOpening), " {")
-        patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix ++ "}\n")
+        val next = in.next
+        def closedByEndMarker =
+          next.token == END && (next.offset - next.lineOffset) == indentWidth.toPrefix.size
+        if closedByEndMarker then patch(source, Span(next.offset), "} // ")
+        else patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix ++ "}\n")
       t
     end indentedToBraces
 
@@ -1422,9 +1426,6 @@ object Parsers {
         val start = in.skipToken()
         if stats.isEmpty || !matchesAndSetEnd(stats.last) then
           syntaxError(em"misaligned end marker", Span(start, in.lastCharOffset))
-        else if overlapsPatch(source, Span(start, start)) then
-          patch(source, Span(start, start), "")
-          patch(source, Span(start, in.lastCharOffset), s"} // end $endName")
         in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
         in.nextToken()
     end checkEndMarker

@@ -81,6 +81,7 @@ class CompilationTests {
       compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i12340.scala", unindentOptions.and("-rewrite")),
+      compileFile("tests/rewrites/i17187.scala", unindentOptions.and("-rewrite")),
     ).checkRewrites()
   }
 

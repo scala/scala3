@@ -86,7 +86,6 @@ object Spans {
       || containsInner(this, that.end)
       || containsInner(that, this.start)
       || containsInner(that, this.end)
-      || this.start == that.start && this.end == that.end   // exact match in one point
       )
     }
 
