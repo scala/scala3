@@ -666,7 +666,7 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(alias)
           }
         case tree @ Quote(body) =>
-          // Add QUOTE tag to TASTy
+          // TODO: Add QUOTE tag to TASTy
           assert(body.isTerm,
             """Quote with type should not be pickled.
               |Quote with type should only exists after staging phase at staging level 0.""".stripMargin)
@@ -678,7 +678,7 @@ class TreePickler(pickler: TastyPickler) {
               .withSpan(tree.span)
           )
         case Splice(expr) =>
-          pickleTree( // Add SPLICE tag to TASTy
+          pickleTree( // TODO: Add SPLICE tag to TASTy
             // scala.quoted.runtime.Expr.splice[<tree.tpe>](<expr>)
             ref(defn.QuotedRuntime_exprSplice)
               .appliedToType(tree.tpe)
