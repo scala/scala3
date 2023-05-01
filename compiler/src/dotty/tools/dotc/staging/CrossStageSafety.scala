@@ -53,6 +53,14 @@ class CrossStageSafety extends TreeMapWithStages {
     else if !inQuoteOrSpliceScope then
       checkAnnotations(tree)
       tree match
+        case tree @ Quote(quotedTree) =>
+          tree.cancelled match
+            case Some(tree1) => transform(tree1.asInstance(tree.tpe)) // TODO is this asInstance still needed?
+            case None => transformQuote(quotedTree, tree)
+        case tree @ Splice(splicedTree) =>
+          tree.cancelled match
+            case Some(tree1) => transform(tree1)
+            case None => transformSplice(splicedTree, tree)
         case tree @ QuotedTypeOf(quotedTree) =>
           transformQuotedType(quotedTree, tree)
         case _ => super.transform(tree)
@@ -95,6 +103,14 @@ class CrossStageSafety extends TreeMapWithStages {
       case tree: TypeDef if tree.symbol.is(Case) && level > 0 =>
         report.error(reporting.CaseClassInInlinedCode(tree), tree)
         super.transform(tree)
+      case tree @ Quote(quotedTree) =>
+        tree.cancelled match
+          case Some(tree1) => transform(tree1.asInstance(tree.tpe)) // TODO is this asInstance still needed?
+          case None => transformQuote(quotedTree, tree)
+      case tree @ Splice(splicedTree) =>
+        tree.cancelled match
+          case Some(tree1) => transform(tree1)
+          case None => transformSplice(splicedTree, tree)
       case tree @ QuotedTypeOf(quotedTree) =>
         transformQuotedType(quotedTree, tree)
       case tree @ SplicedType(splicedTree) =>
@@ -104,7 +120,7 @@ class CrossStageSafety extends TreeMapWithStages {
     }
 
   /** Transform quoted trees while maintaining level correctness */
-  override protected def transformQuote(body: Tree, quote: Quote)(using Context): Tree = {
+  private def transformQuote(body: Tree, quote: Quote)(using Context): Tree = {
     if (ctx.property(InAnnotation).isDefined)
       report.error("Cannot have a quote in an annotation", quote.srcPos)
     val transformedBody = transformQuoteBody(body, quote.span)
@@ -150,7 +166,7 @@ class CrossStageSafety extends TreeMapWithStages {
    *  - If inside inlined code, expand the macro code.
    *  - If inside of a macro definition, check the validity of the macro.
    */
-  protected def transformSplice(body: Tree, splice: Splice)(using Context): Tree = {
+  private def transformSplice(body: Tree, splice: Splice)(using Context): Tree = {
     val body1 = transform(body)(using spliceContext)
     val tpe1 =
       if level == 0 then splice.tpe

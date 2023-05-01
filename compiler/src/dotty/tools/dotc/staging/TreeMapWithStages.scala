@@ -6,7 +6,6 @@ import dotty.tools.dotc.config.Printers.staging
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.staging.StagingLevel.*
 
 import scala.collection.mutable
@@ -15,45 +14,11 @@ import scala.collection.mutable
 abstract class TreeMapWithStages extends TreeMapWithImplicits {
   import tpd._
 
-  /** Transform the quote `quote` which contains the quoted `body`.
-   *
-   *  - `quoted.runtime.Expr.quote[T](<body0>)`  --> `quoted.runtime.Expr.quote[T](<body>)`
-   */
-  protected def transformQuote(body: Tree, quote: Quote)(using Context): Tree =
-    cpy.Quote(quote)(body)
-
-  /** Transform the expression splice `splice` which contains the spliced `body`. */
-  protected def transformSplice(body: Tree, splice: Splice)(using Context): Tree
-
   override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
-    else reporting.trace(i"StagingTransformer.transform $tree at $level", staging, show = true) {
-      def dropEmptyBlocks(tree: Tree): Tree = tree match {
-        case Block(Nil, expr) => dropEmptyBlocks(expr)
-        case _ => tree
-      }
-
+    else reporting.trace(i"TreeMapWithStages.transform $tree at $level", staging, show = true) {
       tree match {
-        case tree @ Quote(quotedTree) =>
-          dropEmptyBlocks(quotedTree) match {
-            case Splice(t) =>
-              // Optimization: `'{ $x }` --> `x`
-              // and adapt the refinement of `Quotes { type reflect: ... } ?=> Expr[T]`
-              transform(t).asInstance(tree.tpe)
-            case _ =>
-              transformQuote(quotedTree, tree)
-          }
-
-        case tree @ Splice(splicedTree) =>
-          dropEmptyBlocks(splicedTree) match {
-            case Quote(t) =>
-              // Optimization: `${ 'x }` --> `x`
-              transform(t)
-            case _ =>
-              transformSplice(splicedTree, tree)
-          }
-
         case Block(stats, _) =>
           val defSyms = stats.collect { case defTree: DefTree => defTree.symbol }
           super.transform(tree)(using symbolsInCurrentLevel(defSyms))
