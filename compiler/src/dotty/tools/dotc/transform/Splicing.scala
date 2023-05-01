@@ -228,7 +228,7 @@ class Splicing extends MacroTransform:
           else super.transform(tree)
         case CapturedApplication(fn, argss) =>
           transformCapturedApplication(tree, fn, argss)
-        case Apply(sel @ Select(app @ Quote(body), nme.apply), quotes :: Nil) if level == 0 && body.isTerm =>
+        case Apply(Select(Quote(body), nme.apply), quotes :: Nil) if level == 0 && body.isTerm =>
           body match
             case _: RefTree if isCaptured(body.symbol) => capturedTerm(body)
             case _ => withCurrentQuote(quotes) { super.transform(tree) }
