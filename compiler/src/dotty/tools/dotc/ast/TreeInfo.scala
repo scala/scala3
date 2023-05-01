@@ -223,9 +223,6 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   /** Strip `=> T` to `T` and (under pureFunctions) `{refs}-> T` to `T` */
   def stripByNameType(tree: Tree)(using Context): Tree = unsplice(tree) match
     case ByNameTypeTree(t1) => t1
-    case untpd.CapturingTypeTree(_, parent) =>
-      val parent1 = stripByNameType(parent)
-      if parent1 eq parent then tree else parent1
     case _ => tree
 
   /** All type and value parameter symbols of this DefDef */

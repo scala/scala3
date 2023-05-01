@@ -1824,14 +1824,6 @@ object desugar {
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
       case ext: ExtMethods =>
         Block(List(ext), Literal(Constant(())).withSpan(ext.span))
-      case CapturingTypeTree(refs, parent) =>
-        // convert   `{refs} T`   to `T @retains refs`
-        //           `{refs}-> T` to `-> (T @retainsByName refs)`
-        parent match
-          case ByNameTypeTree(restpt) =>
-            cpy.ByNameTypeTree(parent)(makeRetaining(restpt, refs, tpnme.retainsByName))
-          case _ =>
-            makeRetaining(parent, refs, tpnme.retains)
       case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
     }
     desugared.withSpan(tree.span)
@@ -1991,8 +1983,6 @@ object desugar {
             case _ => traverseChildren(tree)
           }
         }.traverse(body)
-      case CapturingTypeTree(refs, parent) =>
-        collect(parent)
       case _ =>
     }
     collect(tree)

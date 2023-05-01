@@ -742,9 +742,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         prefix ~~ idx.toString ~~ "|" ~~ tptText ~~ "|" ~~ argsText ~~ "|" ~~ contentText ~~ postfix
       case CapturesAndResult(refs, parent) =>
         changePrec(GlobalPrec)("^{" ~ Text(refs.map(toText), ", ") ~ "} " ~ toText(parent))
-      case CapturingTypeTree(refs, parent) =>
-        toText(parent) ~ "^"
-        ~ changePrec(GlobalPrec)("{" ~ Text(refs.map(toText), ", ") ~ "}")
       case _ =>
         tree.fallbackToText(this)
     }
