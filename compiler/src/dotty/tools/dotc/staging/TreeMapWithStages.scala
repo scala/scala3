@@ -33,9 +33,6 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
   /** Transform the expression splice `splice` which contains the spliced `body`. */
   protected def transformSplice(body: Tree, splice: Splice)(using Context): Tree
 
-  /** Transform the type splice `splice` which contains the spliced `body`. */
-  protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree
-
   override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
@@ -66,9 +63,6 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
             case _ =>
               transformSplice(splicedTree, tree)
           }
-
-        case tree @ SplicedType(splicedTree) =>
-          transformSpliceType(splicedTree, tree)
 
         case Block(stats, _) =>
           val defSyms = stats.collect { case defTree: DefTree => defTree.symbol }
