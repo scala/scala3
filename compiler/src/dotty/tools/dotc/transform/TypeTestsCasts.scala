@@ -153,11 +153,14 @@ object TypeTestsCasts {
             val xs = xSpace.decompose.map(_.tp)
             xs.forall(x => isCheckDefinitelyFalse(x, p))
           else
-            val xClass = effectiveClass(x.widen)
-            val pClass = effectiveClass(p.widen)
+            if x.typeSymbol.isClass && p.typeSymbol.isClass then
+              val xClass = effectiveClass(x.widen)
+              val pClass = effectiveClass(p.widen)
 
-            !xClass.derivesFrom(pClass)
-            && (xClass.is(Final) || pClass.is(Final) || !xClass.is(Trait) && !pClass.is(Trait))
+              !xClass.derivesFrom(pClass)
+              && (xClass.is(Final) || pClass.is(Final) || !xClass.is(Trait) && !pClass.is(Trait))
+            else
+              false
     }
 
     def recur(X: Type, P: Type): String = (X <:< P) ||| (P.dealias match {
