@@ -102,8 +102,6 @@ class CrossStageSafety extends TreeMapWithStages {
       case tree: TypeDef if tree.symbol.is(Case) && level > 0 =>
         report.error(reporting.CaseClassInInlinedCode(tree), tree)
         super.transform(tree)
-      case tree @ SplicedType(splicedTree) =>
-        transformSpliceType(splicedTree, tree)
       case _ =>
         super.transform(tree)
   end transform
@@ -161,15 +159,6 @@ class CrossStageSafety extends TreeMapWithStages {
       if level == 0 then splice.tpe
       else healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
     untpd.cpy.Splice(splice)(body1).withType(tpe1)
-  }
-
-  private def transformSpliceType(body: Tree, splice: Select)(using Context): Tree = {
-    val body1 = transform(body)(using spliceContext)
-    if ctx.reporter.hasErrors then
-      splice
-    else
-      val tagRef = getQuoteTypeTags.getTagRef(splice.qualifier.tpe.asInstanceOf[TermRef])
-      ref(tagRef).withSpan(splice.span)
   }
 
   def transformTypeAnnotationSplices(tp: Type)(using Context) = new TypeMap {

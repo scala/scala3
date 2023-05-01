@@ -63,7 +63,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
 
   private def checkNotWildcardSplice(splice: TypeRef): Unit =
     splice.prefix.termSymbol.info.argInfos match
-      case (tb: TypeBounds) :: _ => report.error(em"Cannot splice $splice because it is a wildcard type", pos)
+      case (tb: TypeBounds) :: _ => report.error(em"Cannot stage $splice because it is an alias to a wildcard type", pos)
       case _ =>
 
   /** Return the root of this path if it is a variable defined in a previous level.
