@@ -88,8 +88,6 @@ class Splicing extends MacroTransform:
       tree match
         case Apply(Select(_: Quote, nme.apply), _) =>
           QuoteTransformer().transform(tree)
-        case TypeApply(_, _) if tree.symbol == defn.QuotedTypeModule_of =>
-          QuoteTransformer().transform(tree)
         case tree: DefDef if tree.symbol.is(Inline) =>
           // Quotes in inlined methods are only pickled after they are inlined.
           tree
@@ -228,25 +226,18 @@ class Splicing extends MacroTransform:
         case tree @ Assign(lhs: RefTree, rhs) =>
           if isCaptured(lhs.symbol) then transformSplicedAssign(tree)
           else super.transform(tree)
-        case Apply(sel @ Select(app @ Quote(body), nme.apply), quotesArgs) =>
-          body match
-            case body: RefTree if isCaptured(body.symbol) => capturedTerm(body)
-            case _ => withCurrentQuote(quotesArgs.head) { super.transform(tree) }
-        case Apply(TypeApply(typeof, List(tpt)), List(quotes))
-        if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
-          val newContent = capturedPartTypes(tpt)
-          newContent match
-            case block: Block =>
-              inContext(ctx.withSource(tree.source)) {
-                Apply(TypeApply(typeof, List(newContent)), List(quotes)).withSpan(tree.span)
-              }
-            case _ =>
-              ref(capturedType(newContent))(using ctx.withSource(tree.source)).withSpan(tree.span)
         case CapturedApplication(fn, argss) =>
           transformCapturedApplication(tree, fn, argss)
-        case Quote(expr) if level == 0 =>
-          val newExpr = transformLevel0QuoteContent(expr)(using quoteContext)
-          cpy.Quote(tree)(newExpr)
+        case Apply(sel @ Select(app @ Quote(body), nme.apply), quotes :: Nil) if level == 0 && body.isTerm =>
+          body match
+            case _: RefTree if isCaptured(body.symbol) => capturedTerm(body)
+            case _ => withCurrentQuote(quotes) { super.transform(tree) }
+        case Quote(body) if level == 0 =>
+          val newBody =
+            if body.isTerm then transformLevel0QuoteContent(body)(using quoteContext)
+            else if containsCapturedType(body.tpe) then capturedPartTypes(body)
+            else body
+          cpy.Quote(tree)(newBody)
         case _ =>
           super.transform(tree)
 
@@ -400,7 +391,7 @@ class Splicing extends MacroTransform:
       Splice(closure, tpe)
 
     private def quoted(expr: Tree)(using Context): Tree =
-      Quote(expr, expr.tpe.widenTermRefExpr)
+      untpd.Quote(expr).withBodyType(expr.tpe.widenTermRefExpr) // TODO do we need widenTermRefExpr?
         .select(nme.apply)
         .appliedTo(quotes.nn)
 

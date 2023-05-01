@@ -61,7 +61,7 @@ trait QuotesAndSplices {
       // TODO typecheck directly (without `exprQuote`)
       val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.body)
       val quotedExpr = typedApply(exprQuoteTree, pt)(using quoteContext) match
-        case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => Quote(quotedExpr, tpt.tpe)
+        case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => untpd.Quote(quotedExpr).withBodyType(tpt.tpe)
       makeInlineable(quotedExpr.select(nme.apply).appliedTo(quotes).withSpan(tree.span))
   }
 
@@ -382,7 +382,7 @@ trait QuotesAndSplices {
    *        ) => ...
    *  ```
    */
-  private def typedQuotePattern(tree: untpd.Quote, pt: Type, qctx: Tree)(using Context): Tree = {
+  private def typedQuotePattern(tree: untpd.Quote, pt: Type, quotes: Tree)(using Context): Tree = {
     val quoted = tree.body
     if quoted.isTerm && !pt.derivesFrom(defn.QuotedExprClass) then
       report.error("Quote pattern can only match scrutinees of type scala.quoted.Expr", tree.srcPos)
@@ -442,11 +442,11 @@ trait QuotesAndSplices {
 
     val quoteClass = if (quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
     val quotedPattern =
-      if (quoted.isTerm) tpd.Quote(shape, defn.AnyType).select(nme.apply).appliedTo(qctx)
-      else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).appliedTo(qctx)
+      if (quoted.isTerm) tpd.Quote(shape).select(nme.apply).appliedTo(quotes)
+      else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).appliedTo(quotes)
 
     val matchModule = if quoted.isTerm then defn.QuoteMatching_ExprMatch else defn.QuoteMatching_TypeMatch
-    val unapplyFun = qctx.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(nme.unapply)
+    val unapplyFun = quotes.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(nme.unapply)
 
     UnApply(
       fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),

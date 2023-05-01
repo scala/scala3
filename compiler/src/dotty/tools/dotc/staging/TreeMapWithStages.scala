@@ -52,10 +52,6 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
       }
 
       tree match {
-        case Apply(Select(QuotedTypeOf(SplicedType(t)), _), _) =>
-          // Optimization: `quoted.Type.of[x.Underlying]` --> `x`
-          transform(t)
-
         case tree @ QuotedTypeOf(quotedTree) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true

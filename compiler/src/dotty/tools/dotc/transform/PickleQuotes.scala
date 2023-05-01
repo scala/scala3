@@ -103,17 +103,11 @@ class PickleQuotes extends MacroTransform {
         case Apply(Select(quote: Quote, nme.apply), List(quotes)) =>
           val (contents, codeWithHoles) = makeHoles(quote.body)
           val sourceRef = Inlines.inlineCallTrace(ctx.owner, tree.sourcePos)
-          val codeWithHoles2 = Inlined(sourceRef, Nil, codeWithHoles)
-          val pickled = PickleQuotes(quotes, codeWithHoles2, contents, quote.exprType, false)
+          val bodyWithHoles2 =
+            if quote.body.isType then codeWithHoles
+            else Inlined(sourceRef, Nil, codeWithHoles)
+          val pickled = PickleQuotes.pickle(quotes, bodyWithHoles2, contents, quote.bodyType)
           transform(pickled) // pickle quotes that are in the contents
-        case Apply(TypeApply(_, List(tpt)), List(quotes)) if tree.symbol == defn.QuotedTypeModule_of =>
-          tpt match
-            case Select(t, _) if tpt.symbol == defn.QuotedType_splice =>
-              // `Type.of[t.Underlying](quotes)`  --> `t`
-              ref(t.symbol)(using ctx.withSource(tpt.source)).withSpan(tpt.span)
-            case _ =>
-              val (contents, tptWithHoles) = makeHoles(tpt)
-              PickleQuotes(quotes, tptWithHoles, contents, tpt.tpe, true)
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           // Shrink size of the tree. The methods have already been inlined.
           // TODO move to FirstTransform to trigger even without quotes
@@ -208,7 +202,7 @@ object PickleQuotes {
   val name: String = "pickleQuotes"
   val description: String = "turn quoted trees into explicit run-time data structures"
 
-  def apply(quotes: Tree, body: Tree, contents: List[Tree], originalTp: Type, isType: Boolean)(using Context) = {
+  def pickle(quotes: Tree, body: Tree, contents: List[Tree], originalTp: Type)(using Context) = {
     /** Helper methods to construct trees calling methods in `Quotes.reflect` based on the current `quotes` tree */
     object reflect extends ReifiedReflect {
       val quotesTree = quotes
@@ -340,14 +334,14 @@ object PickleQuotes {
                 case _ => Match(args(0).annotated(New(ref(defn.UncheckedAnnot.typeRef))), cases)
           )
 
-      val quoteClass = if isType then defn.QuotedTypeClass else defn.QuotedExprClass
+      val quoteClass = if body.isType then defn.QuotedTypeClass else defn.QuotedExprClass
       val quotedType = quoteClass.typeRef.appliedTo(originalTp)
       val lambdaTpe = MethodType(defn.QuotesClass.typeRef :: Nil, quotedType)
       val unpickleMeth =
-        if isType then defn.QuoteUnpickler_unpickleTypeV2
+        if body.isType then defn.QuoteUnpickler_unpickleTypeV2
         else defn.QuoteUnpickler_unpickleExprV2
       val unpickleArgs =
-        if isType then List(pickledQuoteStrings, types)
+        if body.isType then List(pickledQuoteStrings, types)
         else List(pickledQuoteStrings, types, termHoles)
       quotes
         .asInstance(defn.QuoteUnpicklerClass.typeRef)
@@ -378,7 +372,7 @@ object PickleQuotes {
       case Inlined(_, Nil, e) => getLiteral(e)
       case _ => None
 
-    if (isType) then
+    if body.isType then
       if contents.isEmpty && body.symbol.isPrimitiveValueClass then taggedType()
       else pickleAsTasty()
     else

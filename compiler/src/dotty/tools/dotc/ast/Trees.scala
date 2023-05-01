@@ -678,7 +678,7 @@ object Trees {
     override def isType = expansion.isType
   }
 
-  /** A tree representing a quote `'{ expr }`
+  /** A tree representing a quote `'{ body }` or `'[ body ]`.
    *  `Quote`s are created by the `Parser`. In typer they can be typed as a
    *  `Quote` with a known `tpt` or desugared and typed as a quote pattern.
    *
@@ -686,23 +686,31 @@ object Trees {
    *  phases. After `pickleQuotes` phase, the only quotes that exist are in `inline`
    *  methods. These are dropped when we remove the inline method implementations.
    *
-   *  @param  expr  The tree that was quoted
+   *  Type quotes `'[body]` from the parser are desugared into quote patterns (using a `Type.of[T]]`)
+   *  when type checking. TASTy files will not contain type quotes. Type quotes are used again
+   *  in the `staging` phase to represent the reification of `Type.of[T]]`.
+   *
+   *  @param  body  The tree that was quoted
    */
   case class Quote[+T <: Untyped] private[ast] (body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Quote[T]
 
+    /** Is this a type quote `'[tpe]' */
+    def isTypeQuote = body.isType
+
     /** Type of the quoted expression as seen from outside the quote */
-    def exprType(using Context): Type =
-      val quoteType = typeOpt // Quotes ?=> Expr[T]
-      val exprType = quoteType.argInfos.last // Expr[T]
+    def bodyType(using Context): Type =
+      val quoteType = typeOpt // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
+      val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
       exprType.argInfos.head // T
 
-    /** Set the type of the quoted expression as seen from outside the quote */
-    def withExprType(tpe: Type)(using Context): Quote[Type] =
-      val exprType = // Expr[T]
-        defn.QuotedExprClass.typeRef.appliedTo(tpe)
-      val quoteType = // Quotes ?=> Expr[T]
+    /** Set the type of the body of the quote */
+    def withBodyType(tpe: Type)(using Context): Quote[Type] =
+      val exprType = // `Expr[T]` or `Type[T]`
+        if body.isTerm then defn.QuotedExprClass.typeRef.appliedTo(tpe)
+        else defn.QuotedTypeClass.typeRef.appliedTo(tpe)
+      val quoteType = // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
         defn.FunctionType(1, isContextual = true)
           .appliedTo(defn.QuotesClass.typeRef, exprType)
       withType(quoteType)

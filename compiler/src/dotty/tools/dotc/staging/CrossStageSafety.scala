@@ -101,10 +101,10 @@ class CrossStageSafety extends TreeMapWithStages {
     if (ctx.property(InAnnotation).isDefined)
       report.error("Cannot have a quote in an annotation", quote.srcPos)
     val transformedBody = transformQuoteBody(body, quote.span)
-    val stripAnnotsDeep: TypeMap = new TypeMap:
+    val stripAnnotationsDeep: TypeMap = new TypeMap:
       def apply(tp: Type): Type = mapOver(tp.stripAnnots)
-    val exprType1 = healType(quote.srcPos)(stripAnnotsDeep(quote.exprType))
-    cpy.Quote(quote)(transformedBody).withExprType(exprType1)
+    val bodyType1 = healType(quote.srcPos)(stripAnnotationsDeep(quote.bodyType))
+    cpy.Quote(quote)(transformedBody).withBodyType(bodyType1)
   }
 
   override protected def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree = {
@@ -120,10 +120,11 @@ class CrossStageSafety extends TreeMapWithStages {
             // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
             ref(termRef).withSpan(quote.span)
           case transformedBody =>
-            val quotes = quote.args.mapConserve(transform)
+            val quotes = transform(quote.args.head)
             // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
             val TypeApply(fun, _) = quote.fun: @unchecked
-            cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, transformedBody :: Nil), quotes)
+            if level != 0 then cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, transformedBody :: Nil), quotes :: Nil)
+            else tpd.Quote(transformedBody).select(nme.apply).appliedTo(quotes).withSpan(quote.span)
   }
 
   private def transformQuoteBody(body: Tree, span: Span)(using Context): Tree = {

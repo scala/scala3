@@ -717,8 +717,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case MacroTree(call) =>
         keywordStr("macro ") ~ toTextGlobal(call)
       case tree @ Quote(body) =>
-        val exprTypeText = (keywordStr("[") ~ toTextGlobal(tree.exprType) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
-        keywordStr("'") ~ exprTypeText ~ keywordStr("{") ~ toTextGlobal(body) ~ keywordStr("}")
+        val exprTypeText = (keywordStr("[") ~ toTextGlobal(tree.bodyType) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
+        val open = if (body.isTerm) keywordStr("{") else keywordStr("[")
+        val close = if (body.isTerm) keywordStr("}") else keywordStr("]")
+        keywordStr("'") ~ exprTypeText ~ open ~ toTextGlobal(body) ~ close
       case Splice(expr) =>
         val spliceTypeText = (keywordStr("[") ~ toTextGlobal(tree.typeOpt) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
         keywordStr("$") ~ spliceTypeText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")

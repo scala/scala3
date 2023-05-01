@@ -57,6 +57,13 @@ class Staging extends MacroTransform {
         case _ =>
       }
 
+      tree match {
+        case tree: RefTree =>
+          assert(level != 0 || tree.symbol != defn.QuotedTypeModule_of,
+            "scala.quoted.Type.of at level 0 should have been replaced with Quote AST in staging phase")
+        case _ =>
+      }
+
       tree.tpe match {
         case tpe @ TypeRef(prefix, _) if tpe.typeSymbol.isTypeSplice =>
           // Type splices must have a know term ref, usually to an implicit argument
