@@ -99,12 +99,7 @@ class PickleQuotes extends MacroTransform {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
         case Apply(Select(quote: Quote, nme.apply), List(quotes)) =>
-          val (contents, codeWithHoles) = makeHoles(quote.body)
-          val sourceRef = Inlines.inlineCallTrace(ctx.owner, tree.sourcePos)
-          val bodyWithHoles2 =
-            if quote.isTypeQuote then codeWithHoles
-            else Inlined(sourceRef, Nil, codeWithHoles)
-          val quote1 = cpy.Quote(quote)(body = bodyWithHoles2)
+          val (contents, quote1) = makeHoles(quote)
           val pickled = PickleQuotes.pickle(quote1, quotes, contents)
           transform(pickled) // pickle quotes that are in the contents
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
@@ -115,8 +110,7 @@ class PickleQuotes extends MacroTransform {
           super.transform(tree)
   }
 
-  private def makeHoles(tree: tpd.Tree)(using Context): (List[Tree], tpd.Tree) =
-
+  private def makeHoles(quote: tpd.Quote)(using Context): (List[Tree], tpd.Quote) =
     class HoleContentExtractor extends Transformer:
       private val contents = List.newBuilder[Tree]
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
@@ -187,10 +181,13 @@ class PickleQuotes extends MacroTransform {
     end HoleContentExtractor
 
     val holeMaker = new HoleContentExtractor
-    val newTree = holeMaker.transform(tree)
-    (holeMaker.getContents(), newTree)
+    val body1 = holeMaker.transform(quote.body)
+    val body2 =
+      if quote.isTypeQuote then body1
+      else Inlined(Inlines.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
+    val quote1 = cpy.Quote(quote)(body2)
 
-
+    (holeMaker.getContents(), quote1)
   end makeHoles
 
 }
