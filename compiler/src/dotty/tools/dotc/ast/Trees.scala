@@ -714,17 +714,6 @@ object Trees {
         defn.FunctionType(1, isContextual = true)
           .appliedTo(defn.QuotesClass.typeRef, exprType)
       withType(quoteType)
-
-    /** Cancel this Quote if it contains a Splice */
-    def cancelled(using Context): Option[Tree[T]] =
-      def rec(tree: Tree[T]): Option[Tree[T]] = tree match
-        case Block(Nil, expr) => rec(expr)
-        case Splice(inner) =>
-          // Optimization: `'{ $x }` --> `x`
-          // and adapt the refinement of `Quotes { type reflect: ... } ?=> Expr[T]`
-          Some(inner)
-        case _ => None
-      rec(body)
   }
 
   /** A tree representing a splice `${ expr }`
@@ -741,16 +730,6 @@ object Trees {
   case class Splice[+T <: Untyped] private[ast] (expr: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Splice[T]
-
-    /** Cancel this Splice if it contains a Quote */
-    def cancelled(using Context): Option[Tree[T]] =
-      def rec(tree: Tree[T]): Option[Tree[T]] = tree match
-        case Block(Nil, expr1) => rec(expr1)
-        case Quote(body) =>
-          // Optimization: `${ 'x }` --> `x`
-          Some(body)
-        case _ => None
-      rec(expr)
   }
 
   /** A type tree that represents an existing or inferred type */

@@ -51,29 +51,25 @@ class CrossStageSafety extends TreeMapWithStages {
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
     else tree match
+      case CancelledQuote(tree) =>
+        transform(tree) // Optimization: `'{ $x }` --> `x`
       case tree: Quote =>
-        tree.cancelled match
-          case Some(tree1) =>
-            transform(tree1)
-          case None =>
-            if (ctx.property(InAnnotation).isDefined)
-              report.error("Cannot have a quote in an annotation", tree.srcPos)
-            val body1 = transformQuoteBody(tree.body, tree.span)
-            val stripAnnotationsDeep: TypeMap = new TypeMap:
-              def apply(tp: Type): Type = mapOver(tp.stripAnnots)
-            val bodyType1 = healType(tree.srcPos)(stripAnnotationsDeep(tree.bodyType))
-            cpy.Quote(tree)(body1).withBodyType(bodyType1)
+        if (ctx.property(InAnnotation).isDefined)
+          report.error("Cannot have a quote in an annotation", tree.srcPos)
+        val body1 = transformQuoteBody(tree.body, tree.span)
+        val stripAnnotationsDeep: TypeMap = new TypeMap:
+          def apply(tp: Type): Type = mapOver(tp.stripAnnots)
+        val bodyType1 = healType(tree.srcPos)(stripAnnotationsDeep(tree.bodyType))
+        cpy.Quote(tree)(body1).withBodyType(bodyType1)
 
+      case CancelledSplice(tree) =>
+        transform(tree) // Optimization: `${ 'x }` --> `x`
       case tree: Splice =>
-        tree.cancelled match
-          case Some(tree1) =>
-            transform(tree1)
-          case None =>
-            val body1 = transform(tree.expr)(using spliceContext)
-            val tpe1 =
-              if level == 0 then tree.tpe
-              else healType(tree.srcPos)(tree.tpe.widenTermRefExpr)
-            untpd.cpy.Splice(tree)(body1).withType(tpe1)
+        val body1 = transform(tree.expr)(using spliceContext)
+        val tpe1 =
+          if level == 0 then tree.tpe
+          else healType(tree.srcPos)(tree.tpe.widenTermRefExpr)
+        untpd.cpy.Splice(tree)(body1).withType(tpe1)
 
       case tree @ QuotedTypeOf(body) =>
         if (ctx.property(InAnnotation).isDefined)
@@ -224,4 +220,20 @@ class CrossStageSafety extends TreeMapWithStages {
           | - but the access is at level $level.$hint""", pos)
     tp
   }
+
+  private object CancelledQuote:
+    def unapply(tree: Quote): Option[Tree] =
+      def rec(tree: Tree): Option[Tree] = tree match
+        case Block(Nil, expr) => rec(expr)
+        case Splice(inner) => Some(inner)
+        case _ => None
+      rec(tree.body)
+
+  private object CancelledSplice:
+    def unapply(tree: Splice): Option[Tree] =
+      def rec(tree: Tree): Option[Tree] = tree match
+        case Block(Nil, expr) => rec(expr)
+        case Quote(inner) => Some(inner)
+        case _ => None
+      rec(tree.expr)
 }
