@@ -1,5 +1,5 @@
 class CC
-type Cap = {*} CC
+type Cap = CC^
 
 class LazyRef[T](val elem: () => T):
   val get: () => T = elem

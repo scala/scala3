@@ -970,29 +970,6 @@ object Parsers {
         isArrowIndent()
       else false
 
-    /** Under captureChecking language import: is the following token sequence a
-     *  capture set `{ref1, ..., refN}` followed by a token that can start a type?
-     */
-    def followingIsCaptureSet(): Boolean =
-      Feature.ccEnabled && {
-        val lookahead = in.LookaheadScanner()
-        def followingIsTypeStart() =
-          lookahead.nextToken()
-          canStartInfixTypeTokens.contains(lookahead.token)
-          || lookahead.token == LBRACKET
-        def recur(): Boolean =
-          (lookahead.isIdent || lookahead.token == THIS) && {
-            lookahead.nextToken()
-            if lookahead.token == COMMA then
-              lookahead.nextToken()
-              recur()
-            else
-              lookahead.token == RBRACE && followingIsTypeStart()
-          }
-        lookahead.nextToken()
-        if lookahead.token == RBRACE then followingIsTypeStart() else recur()
-      }
-
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
@@ -1504,9 +1481,12 @@ object Parsers {
         val paramSpan = Span(start, in.lastOffset)
         atSpan(start, in.offset) {
           var token = in.token
+          var isPure = false
           if isPureArrow(nme.PUREARROW) then
+            isPure = true
             token = ARROW
           else if isPureArrow(nme.PURECTXARROW) then
+            isPure = true
             token = CTXARROW
           else if token == TLARROW then
             if !imods.flags.isEmpty || params.isEmpty then
@@ -1525,7 +1505,7 @@ object Parsers {
           else
             accept(ARROW)
 
-          val resultType = capturesAndResult(typ)
+          val resultType = if isPure then capturesAndResult(typ) else typ()
           if token == TLARROW then
             for case ValDef(_, tpt, _) <- params do
               if isByNameType(tpt) then
@@ -1618,8 +1598,6 @@ object Parsers {
           }
           else { accept(TLARROW); typ() }
         }
-        else if in.token == LBRACE && followingIsCaptureSet() then
-          CapturingTypeTree(captureSet(), typ())
         else if (in.token == INDENT) enclosed(INDENT, typ())
         else infixType()
 
@@ -1958,31 +1936,9 @@ object Parsers {
     def paramTypeOf(core: () => Tree): Tree =
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
-        val tp = atSpan(in.skipToken()) { ByNameTypeTree(capturesAndResult(core)) }
+        val tp = atSpan(in.skipToken()):
+          ByNameTypeTree(if isImpure then core() else capturesAndResult(core))
         if isImpure && Feature.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
-      else if in.token == LBRACE && followingIsCaptureSet() then
-        val start = in.offset
-        val cs = captureSet()
-        val endCsOffset = in.lastOffset
-        val startTpOffset = in.offset
-        val tp = paramTypeOf(core)
-        val tp1 = tp match
-          case ImpureByNameTypeTree(tp1) =>
-            syntaxError(em"explicit captureSet is superfluous for impure call-by-name type", start)
-            tp1
-          case CapturingTypeTree(_, tp1: ByNameTypeTree) =>
-            syntaxError(em"only one captureSet is allowed here", start)
-            tp1
-          case _: ByNameTypeTree if startTpOffset > endCsOffset =>
-            report.warning(
-              i"""Style: by-name `->` should immediately follow closing `}` of capture set
-                 |to avoid confusion with function type.
-                 |That is, `{c}-> T` instead of `{c} -> T`.""",
-              source.atSpan(Span(startTpOffset, startTpOffset)))
-            tp
-          case _ =>
-            tp
-        CapturingTypeTree(cs, tp1)
       else
         core()
 
@@ -2069,8 +2025,6 @@ object Parsers {
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
       else if location.inPattern then rejectWildcardType(refinedType())
-      else if in.token == LBRACE && followingIsCaptureSet() then
-        CapturingTypeTree(captureSet(), infixType())
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -4218,10 +4172,7 @@ object Parsers {
           val selfTpt =
             if in.isColon then
               in.nextToken()
-              if in.token == LBRACE && followingIsCaptureSet() then
-                CapturingTypeTree(captureSet(), infixType())
-              else
-                infixType()
+              infixType()
             else
               if selfName == nme.WILDCARD then accept(COLONfollow)
               TypeTree()

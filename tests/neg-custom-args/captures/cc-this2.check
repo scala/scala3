@@ -3,4 +3,4 @@
 2 |class D extends C: // error
   |^
   |reference (scala.caps.* : Any) is not included in allowed capture set {} of pure base class class C
-3 |  this: {*} D =>
+3 |  this: D^ =>

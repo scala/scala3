@@ -73,18 +73,18 @@ def test(c: Cap, d: Cap, e: Cap) =
   val b3 = zs.map(eff[Cap ->{d, y} Unit])
   val b3c: LIST[Cap ->{d, y} Unit]^{e} = b3
   val b4 = zs.map(eff)
-  val b4c: LIST[{d, c} Cap -> Unit]^{e} = b4
-  val b5 = map[{d, y} Cap -> Unit, {d, y} Cap -> Unit](eff)(zs)
-  val b5c: LIST[{d, c} Cap -> Unit]^{e} = b5
-  val b6 = m1[{d, y} Cap -> Unit, {d, y} Cap -> Unit](eff)(zs)
-  val b6c: LIST[{d, c} Cap -> Unit]^{e} = b6
+  val b4c: LIST[Cap ->{d, c} Unit]^{e} = b4
+  val b5 = map[Cap ->{d, y} Unit, Cap ->{d, y} Unit](eff)(zs)
+  val b5c: LIST[Cap ->{d, c} Unit]^{e} = b5
+  val b6 = m1[Cap ->{d, y} Unit, Cap ->{d, y} Unit](eff)(zs)
+  val b6c: LIST[Cap ->{d, c} Unit]^{e} = b6
 
-  val c0 = eff2[{d, y} Cap -> Unit]
-  val c0c: ({d, y} Cap -> Unit) ->{e, d, y}  Cap ->{d, y} Unit = c0
+  val c0 = eff2[Cap ->{d, y} Unit]
+  val c0c: (Cap ->{d, y} Unit) ->{e, d, y}  Cap ->{d, y} Unit = c0
   val c1 = zs.map[Cap ->{d, y} Unit](a0)
-  val c1c: LIST[{d, y} Cap -> Unit]^{e} = c1
+  val c1c: LIST[Cap ->{d, y} Unit]^{e} = c1
   val c2 = zs.map[Cap ->{d, y} Unit](eff2[Cap ->{d, y} Unit])
-  val c2c: LIST[{d, y} Cap -> Unit]^{e} = c2
+  val c2c: LIST[Cap ->{d, y} Unit]^{e} = c2
   val c3 = zs.map(eff2[Cap ->{d, y} Unit])
   val c3c: LIST[Cap ->{d, y} Unit]^{e} = c3
 

@@ -6,4 +6,4 @@ class Str
 def f(y: Cap, z: Cap) =
   def g(): C @retains(y, z) = ???
   val ac: ((x: Cap) => Str @retains(x) => Str @retains(x)) = ???
-  val dc: (({y, z} Str) => {y, z} Str) = ac(g()) // error
+  val dc: ((Str^{y, z}) => Str^{y, z}) = ac(g()) // error

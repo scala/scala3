@@ -1,8 +1,8 @@
 import java.io.IOException
 
 class CT[E]
-type CanThrow[E] = {*} CT[E]
-type Top  = {*} Any
+type CanThrow[E] = CT[E]^
+type Top  = Any^
 
 def handle[E <: Exception, T <: Top](op: CanThrow[E] ?=> T)(handler: E => T): T =
   val x: CanThrow[E] = ???
