@@ -186,12 +186,12 @@ object TypeTestsCasts {
             if res1.isEmpty && res2.isEmpty then res1
             else if res2.isEmpty then
               if isCheckDefinitelyFalse(tp1, P) then res2
-              else i"it cannot be checked against the type $tp1"
+              else res1
             else if res1.isEmpty then
               if isCheckDefinitelyFalse(tp2, P) then res1
-              else i"it cannot be checked against the type $tp2"
+              else res2
             else
-              i"it cannot be checked against the type $tp2"
+              res1
 
           case _ =>
             // always false test warnings are emitted elsewhere
