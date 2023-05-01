@@ -51,19 +51,53 @@ class CrossStageSafety extends TreeMapWithStages {
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
     else tree match
-      case tree @ Quote(quotedTree) =>
+      case tree: Quote =>
         tree.cancelled match
-          case Some(tree1) => transform(tree1)
-          case None => transformQuote(quotedTree, tree)
-      case tree @ Splice(splicedTree) =>
+          case Some(tree1) =>
+            transform(tree1)
+          case None =>
+            if (ctx.property(InAnnotation).isDefined)
+              report.error("Cannot have a quote in an annotation", tree.srcPos)
+            val body1 = transformQuoteBody(tree.body, tree.span)
+            val stripAnnotationsDeep: TypeMap = new TypeMap:
+              def apply(tp: Type): Type = mapOver(tp.stripAnnots)
+            val bodyType1 = healType(tree.srcPos)(stripAnnotationsDeep(tree.bodyType))
+            cpy.Quote(tree)(body1).withBodyType(bodyType1)
+
+      case tree: Splice =>
         tree.cancelled match
-          case Some(tree1) => transform(tree1)
-          case None => transformSplice(splicedTree, tree)
-      case tree @ QuotedTypeOf(quotedTree) =>
-        transformQuotedType(quotedTree, tree)
+          case Some(tree1) =>
+            transform(tree1)
+          case None =>
+            val body1 = transform(tree.expr)(using spliceContext)
+            val tpe1 =
+              if level == 0 then tree.tpe
+              else healType(tree.srcPos)(tree.tpe.widenTermRefExpr)
+            untpd.cpy.Splice(tree)(body1).withType(tpe1)
+
+      case tree @ QuotedTypeOf(body) =>
+        if (ctx.property(InAnnotation).isDefined)
+          report.error("Cannot have a quote in an annotation", tree.srcPos)
+        body.tpe match
+          case DirectTypeOf(termRef) =>
+            // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
+            ref(termRef).withSpan(tree.span)
+          case _ =>
+            transformQuoteBody(body, tree.span) match
+              case DirectTypeOf.Healed(termRef) =>
+                // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
+                ref(termRef).withSpan(tree.span)
+              case transformedBody =>
+                val quotes = transform(tree.args.head)
+                // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
+                val TypeApply(fun, _) = tree.fun: @unchecked
+                if level != 0 then cpy.Apply(tree)(cpy.TypeApply(tree.fun)(fun, transformedBody :: Nil), quotes :: Nil)
+                else tpd.Quote(transformedBody).select(nme.apply).appliedTo(quotes).withSpan(tree.span)
+
       case _ if !inQuoteOrSpliceScope =>
-        checkAnnotations(tree)
+        checkAnnotations(tree) // Check quotes in annotations
         super.transform(tree)
+
       case _: TypeTree =>
         val tp1 = transformTypeAnnotationSplices(tree.tpe)
         val healedType = healType(tree.srcPos)(tp1)
@@ -106,37 +140,6 @@ class CrossStageSafety extends TreeMapWithStages {
         super.transform(tree)
   end transform
 
-  /** Transform quoted trees while maintaining level correctness */
-  private def transformQuote(body: Tree, quote: Quote)(using Context): Tree = {
-    if (ctx.property(InAnnotation).isDefined)
-      report.error("Cannot have a quote in an annotation", quote.srcPos)
-    val transformedBody = transformQuoteBody(body, quote.span)
-    val stripAnnotationsDeep: TypeMap = new TypeMap:
-      def apply(tp: Type): Type = mapOver(tp.stripAnnots)
-    val bodyType1 = healType(quote.srcPos)(stripAnnotationsDeep(quote.bodyType))
-    cpy.Quote(quote)(transformedBody).withBodyType(bodyType1)
-  }
-
-  private def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree = {
-    if (ctx.property(InAnnotation).isDefined)
-      report.error("Cannot have a quote in an annotation", quote.srcPos)
-    body.tpe match
-      case DirectTypeOf(termRef) =>
-        // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
-        ref(termRef).withSpan(quote.span)
-      case _ =>
-        transformQuoteBody(body, quote.span) match
-          case DirectTypeOf.Healed(termRef) =>
-            // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
-            ref(termRef).withSpan(quote.span)
-          case transformedBody =>
-            val quotes = transform(quote.args.head)
-            // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
-            val TypeApply(fun, _) = quote.fun: @unchecked
-            if level != 0 then cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, transformedBody :: Nil), quotes :: Nil)
-            else tpd.Quote(transformedBody).select(nme.apply).appliedTo(quotes).withSpan(quote.span)
-  }
-
   private def transformQuoteBody(body: Tree, span: Span)(using Context): Tree = {
     val taggedTypes = new QuoteTypeTags(span)
     val contextWithQuote =
@@ -146,19 +149,6 @@ class CrossStageSafety extends TreeMapWithStages {
     taggedTypes.getTypeTags match
       case Nil  => transformedBody
       case tags => tpd.Block(tags, transformedBody).withSpan(body.span)
-  }
-
-  /** Transform splice
-   *  - If inside a quote, transform the contents of the splice.
-   *  - If inside inlined code, expand the macro code.
-   *  - If inside of a macro definition, check the validity of the macro.
-   */
-  private def transformSplice(body: Tree, splice: Splice)(using Context): Tree = {
-    val body1 = transform(body)(using spliceContext)
-    val tpe1 =
-      if level == 0 then splice.tpe
-      else healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
-    untpd.cpy.Splice(splice)(body1).withType(tpe1)
   }
 
   def transformTypeAnnotationSplices(tp: Type)(using Context) = new TypeMap {
