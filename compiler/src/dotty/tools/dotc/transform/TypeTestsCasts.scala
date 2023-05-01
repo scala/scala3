@@ -151,7 +151,7 @@ object TypeTestsCasts {
             ps.forall(p => isCheckDefinitelyFalse(x, p))
           else if xSpace.canDecompose then
             val xs = xSpace.decompose.map(_.tp)
-            xs.exists(x => isCheckDefinitelyFalse(x, p))
+            xs.forall(x => isCheckDefinitelyFalse(x, p))
           else
             val xClass = effectiveClass(x.widen)
             val pClass = effectiveClass(p.widen)
@@ -181,9 +181,14 @@ object TypeTestsCasts {
             val res2 = recur(tp2, P)
 
             if res1.isEmpty && res2.isEmpty then res1
-            else if isCheckDefinitelyFalse(tp1, P) && res2.isEmpty then res2
-            else if res1.isEmpty && isCheckDefinitelyFalse(tp2, P) then res1
-            else res1
+            else if res2.isEmpty then
+              if isCheckDefinitelyFalse(tp1, P) then res2
+              else i"it cannot be checked against the type $tp1"
+            else if res1.isEmpty then
+              if isCheckDefinitelyFalse(tp2, P) then res1
+              else i"it cannot be checked against the type $tp2"
+            else
+              i"it cannot be checked against the type $tp2"
 
           case _ =>
             // always false test warnings are emitted elsewhere

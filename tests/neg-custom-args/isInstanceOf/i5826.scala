@@ -1,6 +1,6 @@
 class Foo {
   def test[A]: List[Int] | A => Int = {
-    case ls: List[Int] => ls.head       // error
+    case ls: List[Int] => ls.head       // ok, List decomposes to Some and None
     case _ => 0
   }
 
