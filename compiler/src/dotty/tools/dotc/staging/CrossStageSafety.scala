@@ -50,21 +50,20 @@ class CrossStageSafety extends TreeMapWithStages {
   override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
-    else if !inQuoteOrSpliceScope then
-      checkAnnotations(tree)
-      tree match
-        case tree @ Quote(quotedTree) =>
-          tree.cancelled match
-            case Some(tree1) => transform(tree1.asInstance(tree.tpe)) // TODO is this asInstance still needed?
-            case None => transformQuote(quotedTree, tree)
-        case tree @ Splice(splicedTree) =>
-          tree.cancelled match
-            case Some(tree1) => transform(tree1)
-            case None => transformSplice(splicedTree, tree)
-        case tree @ QuotedTypeOf(quotedTree) =>
-          transformQuotedType(quotedTree, tree)
-        case _ => super.transform(tree)
-    else tree match {
+    else tree match
+      case tree @ Quote(quotedTree) =>
+        tree.cancelled match
+          case Some(tree1) => transform(tree1.asInstance(tree.tpe)) // TODO is this asInstance still needed?
+          case None => transformQuote(quotedTree, tree)
+      case tree @ Splice(splicedTree) =>
+        tree.cancelled match
+          case Some(tree1) => transform(tree1)
+          case None => transformSplice(splicedTree, tree)
+      case tree @ QuotedTypeOf(quotedTree) =>
+        transformQuotedType(quotedTree, tree)
+      case _ if !inQuoteOrSpliceScope =>
+        checkAnnotations(tree)
+        super.transform(tree)
       case _: TypeTree =>
         val tp1 = transformTypeAnnotationSplices(tree.tpe)
         val healedType = healType(tree.srcPos)(tp1)
@@ -103,21 +102,11 @@ class CrossStageSafety extends TreeMapWithStages {
       case tree: TypeDef if tree.symbol.is(Case) && level > 0 =>
         report.error(reporting.CaseClassInInlinedCode(tree), tree)
         super.transform(tree)
-      case tree @ Quote(quotedTree) =>
-        tree.cancelled match
-          case Some(tree1) => transform(tree1.asInstance(tree.tpe)) // TODO is this asInstance still needed?
-          case None => transformQuote(quotedTree, tree)
-      case tree @ Splice(splicedTree) =>
-        tree.cancelled match
-          case Some(tree1) => transform(tree1)
-          case None => transformSplice(splicedTree, tree)
-      case tree @ QuotedTypeOf(quotedTree) =>
-        transformQuotedType(quotedTree, tree)
       case tree @ SplicedType(splicedTree) =>
         transformSpliceType(splicedTree, tree)
       case _ =>
         super.transform(tree)
-    }
+  end transform
 
   /** Transform quoted trees while maintaining level correctness */
   private def transformQuote(body: Tree, quote: Quote)(using Context): Tree = {
