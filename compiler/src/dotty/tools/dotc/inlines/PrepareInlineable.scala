@@ -86,13 +86,7 @@ object PrepareInlineable {
       }
 
       override def transform(tree: Tree)(using Context): Tree =
-        inContext(stagingContext(tree)) {
-          postTransform(super.transform(preTransform(tree)))
-        }
-
-      private def stagingContext(tree: Tree)(using Context): Context = tree match
-        case tree: Apply if tree.symbol eq defn.QuotedTypeModule_of => StagingLevel.quoteContext
-        case _ => ctx
+        postTransform(super.transform(preTransform(tree)))
     }
 
     /** Direct approach: place the accessor with the accessed symbol. This has the
