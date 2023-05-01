@@ -1705,9 +1705,9 @@ object Trees {
             case Thicket(ts) =>
               this(x, ts)
             case Quote(body) =>
-              this(x, body)
+              this(x, body)(using quoteContext)
             case Splice(expr) =>
-              this(x, expr)
+              this(x, expr)(using spliceContext)
             case Hole(_, _, args, content, tpt) =>
               this(this(this(x, args), content), tpt)
             case _ =>
