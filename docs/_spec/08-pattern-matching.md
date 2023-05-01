@@ -113,10 +113,10 @@ Taking XML as an example
 implicit class XMLinterpolation(s: StringContext) = {
     object xml {
         def apply(exprs: Any*) =
-            // parse ‘s’ and build an XML tree with ‘exprs’ 
+            // parse ‘s’ and build an XML tree with ‘exprs’
             //in the holes
         def unapplySeq(xml: Node): Option[Seq[Node]] =
-          // match `s’ against `xml’ tree and produce 
+          // match `s’ against `xml’ tree and produce
           //subtrees in holes
     }
 }
@@ -500,7 +500,7 @@ Each case consists of a (possibly guarded) pattern ´p_i´ and a block ´b_i´.
 Each ´p_i´ might be complemented by a guard `if ´e´` where ´e´ is a boolean expression.
 The scope of the pattern variables in ´p_i´ comprises the pattern's guard and the corresponding block ´b_i´.
 
-Let ´T´ be the type of the selector expression ´e´ and let ´a_1, ..., a_m´ be the type parameters of all methods enclosing the pattern matching expression.  
+Let ´T´ be the type of the selector expression ´e´ and let ´a_1, ..., a_m´ be the type parameters of all methods enclosing the pattern matching expression.
 For every ´a_i´, let ´L_i´ be its lower bound and ´U_i´ be its higher bound.
 Every pattern ´p \in \{p_1,, ..., p_n\}´ can be typed in two ways.
 First, it is attempted to type ´p´ with ´T´ as its expected type.
@@ -566,7 +566,7 @@ def eval[T](t: Term[T]): T = t match {
 
 Note that the evaluator makes crucial use of the fact that type parameters of enclosing methods can acquire new bounds through pattern matching.
 
-For instance, the type of the pattern in the second case, `Succ(u)`, is `Int`. 
+For instance, the type of the pattern in the second case, `Succ(u)`, is `Int`.
 It conforms to the selector type `T` only if we assume an upper and lower bound of `Int` for `T`.
 Under the assumption `Int <: T <: Int` we can also verify that the type right hand side of the second case, `Int` conforms to its expected type, `T`.
 

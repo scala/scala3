@@ -109,7 +109,7 @@ trait Function0[@specialized(Unit, Int, Double) T] {
 ```
 Whenever the static type of an expression matches a specialized variant of a definition, the compiler will instead use the specialized version.
 See the [specialization sid](https://docs.scala-lang.org/sips/scala-specialization.html) for more details of the implementation.
-    
+
 
 ## User-defined Annotations
 

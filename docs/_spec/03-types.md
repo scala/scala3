@@ -45,7 +45,7 @@ Non-value types capture properties of identifiers that [are not values](#non-val
 For example, a [type constructor](#type-constructors) does not directly specify a type of values.
 However, when a type constructor is applied to the correct type arguments, it yields a proper type, which may be a value type.
 
-Non-value types are expressed indirectly in Scala. 
+Non-value types are expressed indirectly in Scala.
 E.g., a method type is described by writing down a method signature, which in itself is not a real type, although it  gives rise to a corresponding [method type](#method-types).
 Type constructors are another example, as one can write `type Swap[m[_, _], a,b] = m[b, a]`, but there is no syntax to write the corresponding anonymous type function directly.
 
@@ -130,7 +130,7 @@ SimpleType  ::=  StableId
 ```
 
 A _type designator_ refers to a named value type.
-It can be simple or qualified. 
+It can be simple or qualified.
 All such type designators are shorthands for type projections.
 
 Specifically, the unqualified type name ´t´ where ´t´ is bound in some class, object, or package ´C´ is taken as a shorthand for
@@ -306,14 +306,14 @@ RefineStat      ::=  Dcl
                   |
 ```
 
-A _compound type_ ´T_1´ `with` ... `with` ´T_n \\{ R \\}´ represents objects with members as given in the component types ´T_1, ..., T_n´ and the refinement ´\\{ R \\}´. 
+A _compound type_ ´T_1´ `with` ... `with` ´T_n \\{ R \\}´ represents objects with members as given in the component types ´T_1, ..., T_n´ and the refinement ´\\{ R \\}´.
 A refinement ´\\{ R \\}´ contains declarations and type definitions.
 If a declaration or definition overrides a declaration or definition in one of the component types ´T_1, ..., T_n´, the usual rules for [overriding](05-classes-and-objects.html#overriding) apply; otherwise the declaration or definition is said to be “structural” [^2].
 
 [^2]: A reference to a structurally defined member (method call or access to a value or variable) may generate binary code that is significantly slower than an equivalent code to a non-structural member.
 
-Within a method declaration in a structural refinement, the type of any value parameter may only refer to type parameters or abstract types that are contained inside the refinement. 
-That is, it must refer either to a type parameter of the method itself, or to a type definition within the refinement. 
+Within a method declaration in a structural refinement, the type of any value parameter may only refer to type parameters or abstract types that are contained inside the refinement.
+That is, it must refer either to a type parameter of the method itself, or to a type definition within the refinement.
 This restriction does not apply to the method's result type.
 
 If no refinement is given, the empty refinement is implicitly added, i.e. ´T_1´ `with` ... `with` ´T_n´ is a shorthand for ´T_1´ `with` ... `with` ´T_n \\{\\}´.
@@ -382,7 +382,7 @@ Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is
 Function types are [covariant](04-basic-declarations-and-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-declarations-and-definitions.md#variance-annotations) in their argument types.
 
 Function types are shorthands for class types that define an `apply` method.
-Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ is a shorthand for the class type `Function´_n´[´T_1´, ..., ´T_n´, ´R´]`. 
+Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ is a shorthand for the class type `Function´_n´[´T_1´, ..., ´T_n´, ´R´]`.
 In particular ´() \Rightarrow R´ is a shorthand for class type `Function´_0´[´R´]`.
 
 Such class types behave as if they were instances of the following trait:
@@ -396,7 +396,7 @@ Their exact supertype and implementation can be consulted in the [function class
 
 ## Non-Value Types
 
-The types explained in the following do not denote sets of values, nor do they appear explicitly in programs. 
+The types explained in the following do not denote sets of values, nor do they appear explicitly in programs.
 They are introduced in this report as the internal types of defined identifiers.
 
 ### Method Types

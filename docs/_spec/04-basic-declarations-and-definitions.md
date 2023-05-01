@@ -79,7 +79,7 @@ final val x = e
 ```
 
 where `e` is a [constant expression](06-expressions.html#constant-expressions).
-The `final` modifier must be present and no type annotation may be given. 
+The `final` modifier must be present and no type annotation may be given.
 References to the constant value `x` are themselves treated as constant expressions; in the generated code they are replaced by the definition's right-hand side `e`.
 
 Value definitions can alternatively have a [pattern](08-pattern-matching.html#patterns) as left-hand side.
@@ -311,7 +311,7 @@ TypeParam        ::= (id | ‘_’) [TypeParamClause] [‘>:’ Type] [‘<:’ 
 Type parameters appear in type definitions, class definitions, and method definitions.
 In this section we consider only type parameter definitions with lower bounds `>: ´L´` and upper bounds `<: ´U´` whereas a discussion of context bounds `: ´U´` and view bounds `<% ´U´` is deferred to [here](07-implicits.html#context-bounds-and-view-bounds).
 
-The most general form of a proper type parameter is 
+The most general form of a proper type parameter is
 `´@a_1 ... @a_n´ ´\pm´ ´t´ >: ´L´ <: ´U´`.
 Here, ´L´, and ´U´ are lower and upper bounds that constrain possible type arguments for the parameter.
 It is a compile-time error if ´L´ does not conform to ´U´.

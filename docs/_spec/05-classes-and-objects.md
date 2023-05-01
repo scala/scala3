@@ -538,7 +538,7 @@ These are defined by constructor definitions of the form `def this(´\mathit{ps}
 Such a definition introduces an additional constructor for the enclosing class, with parameters as given in the formal parameter lists ´\mathit{ps}_1 , ..., \mathit{ps}_n´, and whose evaluation is defined by the constructor expression ´e´.
 The scope of each formal parameter is the subsequent parameter sections and the constructor expression ´e´.
 A constructor expression is either a self constructor invocation `this(´\mathit{args}_1´)...(´\mathit{args}_n´)` or a block which begins with a self constructor invocation.
-The self constructor invocation must construct a generic instance of the class. 
+The self constructor invocation must construct a generic instance of the class.
 I.e. if the class in question has name ´C´ and type parameters `[´\mathit{tps}\,´]`, then a self constructor invocation must generate an instance of `´C´[´\mathit{tps}\,´]`; it is not permitted to instantiate formal type parameters.
 
 The signature and the self constructor invocation of a constructor definition are type-checked and evaluated in the scope which is in effect at the point of the enclosing class definition, augmented by any type parameters of the enclosing class.

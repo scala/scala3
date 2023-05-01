@@ -448,7 +448,7 @@ Inside an interpolated string none of the usual escape characters are interprete
 Note that the sequence `\"` does not close a normal string literal (enclosed in single quotes).
 
 There are three forms of dollar sign escape.
-The most general form encloses an expression in `${` and `}`, i.e. `${expr}`. 
+The most general form encloses an expression in `${` and `}`, i.e. `${expr}`.
 The expression enclosed in the braces that follow the leading `$` character is of syntactical category BlockExpr.
 Hence, it can contain multiple statements, and newlines are significant.
 Single ‘$’-signs are not permitted in isolation in an interpolated string.
