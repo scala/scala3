@@ -391,9 +391,7 @@ class Splicing extends MacroTransform:
       Splice(closure, tpe)
 
     private def quoted(expr: Tree)(using Context): Tree =
-      untpd.Quote(expr).withBodyType(expr.tpe.widenTermRefExpr) // TODO do we need widenTermRefExpr?
-        .select(nme.apply)
-        .appliedTo(quotes.nn)
+      tpd.Quote(expr).select(nme.apply).appliedTo(quotes.nn)
 
     /** Helper methods to construct trees calling methods in `Quotes.reflect` based on the current `quotes` tree */
     private object reflect extends ReifiedReflect {
