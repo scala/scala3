@@ -54,7 +54,7 @@ If there are no eligible identifiers under this rule, then, second, eligible are
 
 The _implicit scope_ of a type ´T´ consists of all [companion modules](05-classes-and-objects.html#object-definitions) of classes that are associated with the implicit parameter's type.
 Here, we say a class ´C´ is _associated_ with a type ´T´ if it is a [base class](05-classes-and-objects.html#class-linearization) of some part of ´T´.
-
+<!-- TODO: Check if this is still accurate -->
 The _parts_ of a type ´T´ are:
 
 - if ´T´ is a compound type `´T_1´ with ... with ´T_n´`, the union of the parts of ´T_1, ..., T_n´, as well as ´T´ itself;
@@ -64,7 +64,6 @@ The _parts_ of a type ´T´ are:
 - if ´T´ is a type alias, the parts of its expansion;
 - if ´T´ is an abstract type, the parts of its upper bound;
 - if ´T´ denotes an implicit conversion to a type with a method with argument types ´T_1, ..., T_n´ and result type ´U´, the union of the parts of ´T_1, ..., T_n´ and ´U´;
-- the parts of quantified (existential or universal) and annotated types are defined as the parts of the underlying types (e.g., the parts of `T forSome { ... }` are the parts of `T`);
 - in all other cases, just ´T´ itself.
 
 Note that packages are internally represented as classes with companion modules to hold the package members.
@@ -271,6 +270,7 @@ Throwable => Ordered[Throwable],
 
 Since the second type in the sequence is equal to the first, the compiler will issue an error signalling a divergent implicit expansion.
 
+<!-- TODO: Update as Implicit Conversion -->
 ## Views
 
 Implicit parameters and methods can also define implicit conversions called views.

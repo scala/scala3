@@ -40,53 +40,15 @@ by commas. These are expanded according to the following scheme:
 \VAL;x, y: T = e && \VAL; x: T = e \\
                  && \VAL; y: T = x \\[0.5em]
 
-\LET;x, y: T = e && \LET; x: T = e \\
-                 && \VAL; y: T = x \\[0.5em]
-
-\DEF;x, y (ps): T = e &\tab\mbox{expands to}\tab& \DEF; x(ps): T = e \\
-                      && \DEF; y(ps): T = x(ps)\\[0.5em]
-
 \VAR;x, y: T := e && \VAR;x: T := e\\
                   && \VAR;y: T := x\\[0.5em]
-
-\TYPE;t,u = T && \TYPE; t = T\\
-              && \TYPE; u = t\\[0.5em]
 \eda
 
-All definitions have a ``repeated form`` where the initial
-definition keyword is followed by several constituent definitions
-which are separated by commas.  A repeated definition is
-always interpreted as a sequence formed from the
-constituent definitions. E.g. the function definition
-`def f(x) = x, g(y) = y` expands to
-`def f(x) = x; def g(y) = y` and
-the type definition
-`type T, U <: B` expands to
-`type T; type U <: B`.
-}
-\comment{
-If an element in such a sequence introduces only the defined name,
-possibly with some type or value parameters, but leaves out any
-additional parts in the definition, then those parts are implicitly
-copied from the next subsequent sequence element which consists of
-more than just a defined name and parameters. Examples:
-
-- []
 The variable declaration `var x, y: Int`
 expands to `var x: Int; var y: Int`.
-- []
+
 The value definition `val x, y: Int = 1`
 expands to `val x: Int = 1; val y: Int = 1`.
-- []
-The class definition `case class X(), Y(n: Int) extends Z` expands to
-`case class X extends Z; case class Y(n: Int) extends Z`.
-- The object definition `case object Red, Green, Blue extends Color`~
-expands to
-```scala
-case object Red extends Color
-case object Green extends Color
-case object Blue extends Color
-```
 -->
 
 ## Value Declarations and Definitions
@@ -647,49 +609,10 @@ By contrast, the following application is well formed and yields again the resul
 sum(xs: _*)
 ```
 
-### Procedures
-
-```ebnf
-FunDcl   ::=  FunSig
-FunDef   ::=  FunSig [nl] ‘{’ Block ‘}’
-```
-
-Special syntax exists for procedures, i.e. methods that return the `Unit` value `()`.
-A _procedure declaration_ is a method declaration where the result type is omitted.
-The result type is then implicitly completed to the `Unit` type. E.g., `def ´f´(´\mathit{ps}´)` is equivalent to `def ´f´(´\mathit{ps}´): Unit`.
-
-A _procedure definition_ is a method definition where the result type and the equals sign are omitted; its defining expression must be a block.
-E.g., `def ´f´(´\mathit{ps}´) {´\mathit{stats}´}` is equivalent to `def ´f´(´\mathit{ps}´): Unit = {´\mathit{stats}´}`.
-
-###### Example
-Here is a declaration and a definition of a procedure named `write`:
-
-```scala
-trait Writer {
-  def write(str: String)
-}
-object Terminal extends Writer {
-  def write(str: String) { System.out.println(str) }
-}
-```
-
-The code above is implicitly completed to the following code:
-
-```scala
-trait Writer {
-  def write(str: String): Unit
-}
-object Terminal extends Writer {
-  def write(str: String): Unit = { System.out.println(str) }
-}
-```
-
 ### Method Return Type Inference
 
 A class member definition ´m´ that overrides some other method ´m'´ in a base class of ´C´ may leave out the return type, even if it is recursive.
-In this case, the return type ´R'´ of the overridden method ´m'´, seen as a member of ´C´, is taken as the return type of ´m´ for each recursive invocation of ´m´.
-That way, a type ´R´ for the right-hand side of ´m´ can be determined, which is then taken as the return type of ´m´.
-Note that ´R´ may be different from ´R'´, as long as ´R´ conforms to ´R'´.
+In this case, whether or not `m` is recursive, its return type will be the return type of ´m'´.
 
 ###### Example
 Assume the following definitions:

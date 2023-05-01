@@ -11,6 +11,7 @@ Some of these classes are described in the following.
 
 ![Class hierarchy of Scala](public/images/classhierarchy.png)
 
+<!-- TODO: Briefly mention scala.deprecated somewhere, and link to [deprecated page](./A%3F-deprecated.md) -->
 ## Root Classes
 
 The root of this hierarchy is formed by class `Any`.
@@ -288,6 +289,7 @@ def + (that: Any): String
 
 which concatenates its left operand with the textual representation of its right operand.
 
+<!-- TODO: re-add ? with explanations of: EmptyTuple, *:, NonEmptyTuple, TupleXXL
 ### The `Tuple` classes
 
 Scala defines tuple classes `Tuple´n´` for ´n = 2, ..., 22´.
@@ -299,20 +301,36 @@ case class Tuple´n´[+T_1, ..., +T_n](_1: T_1, ..., _´n´: T_´n´) {
   def toString = "(" ++ _1 ++ "," ++ ... ++ "," ++ _´n´ ++ ")"
 }
 ```
-
+-->
 ### The `Function` Classes
 
-Scala defines function classes `Function´n´` for ´n = 1 , \ldots , 22´.
-These are defined as follows.
+For each class type `Function´n´` where ´n = 0, ..., 22´, Scala defines the following function class:
 
 ```scala
 package scala
-trait Function´n´[-T_1, ..., -T_´n´, +R] {
-  def apply(x_1: T_1, ..., x_´n´: T_´n´): R
-  def toString = "<function>"
-}
+trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
+  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
+  override def toString = "<function´_n´>"
+  def curried: ´T_1´ => ... => ´T_n´ => R = ...
+  def tupled: ((´T_1´, ..., ´T_n´)) => R = ...
 ```
 
+For function types `Function´n´` where ´n > 22´, Scala defines a unique function class:
+
+```scala
+package scala
+trait FunctionXXL:
+  def apply(xs: IArray[Object]): Object
+  override def toString = "<functionXXL>"
+```
+
+There is no loss of type safety, as the internal representation is still `Function´n´` for all ´n´.
+However this means methods `curried` and `tupled` are not available on functions with more than 22 parameters.
+
+The implicitly imported [`Predef`](#the-predef-object) object defines the name
+`Function` as an alias of `Function1`.
+
+<!-- TODO: Remove below ? -->
 The `PartialFunction` subclass of `Function1` represents functions that (indirectly) specify their domain.
 Use the `isDefined` method to query whether the partial function is defined for a given input (i.e., whether the input is part of the function's domain).
 
@@ -322,7 +340,10 @@ class PartialFunction[-A, +B] extends Function1[A, B] {
 }
 ```
 
-The implicitly imported [`Predef`](#the-predef-object) object defines the name `Function` as an alias of `Function1`.
+### Trait `Product`
+<!-- TODO: Move somewhere else ? -->
+<!-- TODO: Could not find more info on which non-Product methods case class automatically define  -->
+All case classes automatically extend the `Product` trait (and generate synthetic methods to conform to it) (but not `Product´n´`), and define a `_´n´` method for each of their arguments.
 
 ### Class `Array`
 
@@ -601,7 +622,7 @@ object Predef {
 
   def assume(assumption: Boolean, message: => Any) {
     if (!assumption)
-      throw new IllegalArgumentException(message.toString)
+      throw new IllegalArgumentException("assumption failed: " + message.toString)
   }
 
   def require(requirement: Boolean) {
