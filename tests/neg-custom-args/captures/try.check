@@ -38,7 +38,7 @@
 39 |        22
 40 |  } {  // error
    |           ^
-   |           The expression's type box () => Int is not allowed to capture the root capability `*`.
+   |           The expression's type box () => Int is not allowed to capture the root capability `cap`.
    |           This usually means that a capability persists longer than its allowed lifetime.
 41 |    (ex: Exception) => () => 22
 42 |  }

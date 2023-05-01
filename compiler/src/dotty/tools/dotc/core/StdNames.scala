@@ -286,8 +286,7 @@ object StdNames {
 // ----- Term names -----------------------------------------
 
     // Compiler-internal
-    val CAPTURE_ROOT: N             = "*"
-    val CAPTURE_ROOT_ALT: N         = "any"
+    val CAPTURE_ROOT: N             = "cap"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val EVT2U: N                    = "evt2u$"

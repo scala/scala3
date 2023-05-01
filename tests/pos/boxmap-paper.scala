@@ -19,7 +19,7 @@ def lazyMap[A, B](c: Cell[A])(f: A => B): () ->{f} Cell[B]
 trait IO:
   def print(s: String): Unit
 
-def test(io: IO^{*}) =
+def test(io: IO^{cap}) =
 
   val loggedOne: () ->{io} Int = () => { io.print("1"); 1 }
 

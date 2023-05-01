@@ -1444,7 +1444,6 @@ object Parsers {
       if in.token == THIS then simpleRef()
       else termIdent() match
         case Ident(nme.CAPTURE_ROOT) => captureRoot
-        case Ident(nme.CAPTURE_ROOT_ALT) => captureRoot
         case id => id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
@@ -1681,7 +1680,7 @@ object Parsers {
 
     def refinedType() = refinedTypeRest(withType())
 
-    /** Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
+    /** Disambiguation: a `^` is treated as a postfix operator meaning `^{cap}`
      *  if followed by `{`, `->`, or `?->`,
      *  or followed by a new line (significant or not),
      *  or followed by a token that cannot start an infix type.

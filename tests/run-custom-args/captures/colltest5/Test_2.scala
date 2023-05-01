@@ -5,7 +5,7 @@ object Test {
   import colltest5.strawman.collections.*
   import CollectionStrawMan5.*
 
-  def seqOps(xs: Seq[Int]) = { // try with Seq[Int]^{any}
+  def seqOps(xs: Seq[Int]) = { // try with Seq[Int]^{cap}
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
     val isEven: Int => Boolean = _ % 2 == 0
@@ -61,7 +61,7 @@ object Test {
     println(xs16)
   }
 
-  def viewOps(xs: View[Int]^{any}) = {
+  def viewOps(xs: View[Int]^{cap}) = {
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
     val isEven: Int => Boolean = _ % 2 == 0

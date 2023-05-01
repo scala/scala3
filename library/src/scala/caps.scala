@@ -5,7 +5,8 @@ import annotation.experimental
 @experimental object caps:
 
   /** The universal capture reference */
-  val `*`: Any = ()
+  val `*`: Any = () // OLD
+  val cap: Any = () // NEW
 
   object unsafe:
 

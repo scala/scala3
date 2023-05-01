@@ -128,7 +128,7 @@ object TypeOps:
     pre.isStable || !ctx.phase.isTyper
 
   /** Implementation of Types#simplified */
-  def simplify(tp: Type, theMap: SimplifyMap @retains(caps.*) | Null)(using Context): Type = {
+  def simplify(tp: Type, theMap: SimplifyMap @retains(caps.cap) | Null)(using Context): Type = {
     def mapOver = (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
     tp match {
       case tp: NamedType =>

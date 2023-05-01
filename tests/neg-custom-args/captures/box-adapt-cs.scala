@@ -1,14 +1,14 @@
 trait Cap { def use(): Int }
 
-def test1(io: Cap^{*}): Unit = {
+def test1(io: Cap^{cap}): Unit = {
   type Id[X] = [T] -> (op: X ->{io} T) -> T
 
   val x: Id[Cap^{io}] = ???
-  val f: (Cap^{*}) -> Unit = ???
+  val f: (Cap^{cap}) -> Unit = ???
   x(f)  // ok
 }
 
-def test2(io: Cap^{*}): Unit = {
+def test2(io: Cap^{cap}): Unit = {
   type Id[X] = [T] -> (op: X => T) -> T
 
   val x: Id[Cap^] = ???

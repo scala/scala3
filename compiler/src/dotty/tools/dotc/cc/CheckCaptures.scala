@@ -433,7 +433,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case defn.FunctionOf(ptformals, _, _)
             if ptformals.nonEmpty && ptformals.forall(_.captureSet.isAlwaysEmpty) =>
               // Redo setup of the anonymous function so that formal parameters don't
-              // get capture sets. This is important to avoid false widenings to `*`
+              // get capture sets. This is important to avoid false widenings to `cap`
               // when taking the base type of the actual closures's dependent function
               // type so that it conforms to the expected non-dependent function type.
               // See withLogFile.scala for a test case.
@@ -582,7 +582,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           refs.disallowRootCapability { () =>
             val kind = if tree.isInstanceOf[ValDef] then "mutable variable" else "expression"
             report.error(
-              em"""The $kind's type $wtp is not allowed to capture the root capability `*`.
+              em"""The $kind's type $wtp is not allowed to capture the root capability `cap`.
                   |This usually means that a capability persists longer than its allowed lifetime.""",
               tree.srcPos)
           }
@@ -768,9 +768,9 @@ class CheckCaptures extends Recheck, SymTransformer:
             styp1.capturing(if alwaysConst then CaptureSet(cs1.elems) else cs1).forceBoxStatus(resultBoxed)
 
           if needsAdaptation then
-            val criticalSet =          // the set which is not allowed to have `*`
-              if covariant then cs1    // can't box with `*`
-              else expected.captureSet // can't unbox with `*`
+            val criticalSet =          // the set which is not allowed to have `cap`
+              if covariant then cs1    // can't box with `cap`
+              else expected.captureSet // can't unbox with `cap`
             if criticalSet.isUniversal && expected.isValueType then
               // We can't box/unbox the universal capability. Leave `actual` as it is
               // so we get an error in checkConforms. This tends to give better error
@@ -779,11 +779,11 @@ class CheckCaptures extends Recheck, SymTransformer:
                 println(i"cannot box/unbox $actual vs $expected")
               actual
             else
-              // Disallow future addition of `*` to `criticalSet`.
+              // Disallow future addition of `cap` to `criticalSet`.
               criticalSet.disallowRootCapability { () =>
                 report.error(
                   em"""$actual cannot be box-converted to $expected
-                      |since one of their capture sets contains the root capability `*`""",
+                      |since one of their capture sets contains the root capability `cap`""",
                 pos)
               }
               if !insertBox then  // unboxing
@@ -922,8 +922,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *    usingLogFile[box ?1 () -> Unit] { (f: {*} File) => () => { f.write(0) } }
      *
      *  We may propagate `f` into ?1, making ?1 ill-formed.
-     *  This also causes soundness issues, since `f` in ?1 should be widened to `*`,
-     *  giving rise to an error that `*` cannot be included in a boxed capture set.
+     *  This also causes soundness issues, since `f` in ?1 should be widened to `cap`,
+     *  giving rise to an error that `cap` cannot be included in a boxed capture set.
      *
      *  To solve this, we still allow ?1 to capture parameter refs like `f`, but
      *  compensate this by pushing the widened capture set of `f` into ?1.

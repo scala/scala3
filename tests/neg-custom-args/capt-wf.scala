@@ -14,9 +14,9 @@ def test(c: Cap, other: String): Unit =
   val x5: C^{c, c} = ??? // error: redundant
   // val x6: C^{c}^{c} = ??? // would be syntax error
   val x7: Cap^{c} = ??? // error: redundant
-  // val x8: C^{c}^{*} = ??? // would be syntax error
-  val x9: C^{c, *}  = ??? // error: redundant
-  val x10: C^{*, c} = ??? // error: redundant
+  // val x8: C^{c}^{cap} = ??? // would be syntax error
+  val x9: C^{c, cap}  = ??? // error: redundant
+  val x10: C^{cap, c} = ??? // error: redundant
 
   def even(n: Int): Boolean = if n == 0 then true else odd(n - 1)
   def odd(n: Int): Boolean = if n == 1 then true else even(n - 1)

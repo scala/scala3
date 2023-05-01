@@ -2102,7 +2102,7 @@ object Types {
      */
     final def isTracked(using Context): Boolean = canBeTracked && !captureSetOfInfo.isAlwaysEmpty
 
-    /** Is this reference the root capability `*` ? */
+    /** Is this reference the root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
 
     /** Normalize reference so that it can be compared with `eq` for equality */

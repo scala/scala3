@@ -2,16 +2,16 @@ import language.experimental.captureChecking
 
 trait Cap { def use(): Unit }
 
-def localCap[T](op: (cap: Cap^{*}) => T): T = ???
+def localCap[T](op: (cap: Cap^{cap}) => T): T = ???
 
-def main(io: Cap^{*}, net: Cap^{*}): Unit = {
+def main(io: Cap^{cap}, net: Cap^{cap}): Unit = {
   val test1 = localCap { cap => // error
     () => { cap.use() }
   }
 
-  val test2: (cap: Cap^{*}) -> () ->{cap} Unit =
+  val test2: (cap: Cap^{cap}) -> () ->{cap} Unit =
     localCap { cap =>  // should work
-      (cap1: Cap^{*}) => () => { cap1.use() }
+      (cap1: Cap^{cap}) => () => { cap1.use() }
     }
 
   val test3: (cap: Cap^{io}) -> () ->{io} Unit =

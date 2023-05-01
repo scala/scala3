@@ -1,9 +1,9 @@
 class Unit
 object unit extends Unit
 
-type Top = Any^{*}
+type Top = Any^{cap}
 
-type LazyVal[T] = Unit ->{*} T
+type LazyVal[T] = Unit ->{cap} T
 
 class Foo[T](val x: T)
 
@@ -11,5 +11,5 @@ class Foo[T](val x: T)
 type BoxedLazyVal[T] = Foo[LazyVal[T]]
 
 def force[A](v: BoxedLazyVal[A]): A =
-  // Γ ⊢ v.x : □ {*} Unit -> A
+  // Γ ⊢ v.x : □ {cap} Unit -> A
   v.x(unit)  // error: (unbox v.x)(unit), where (unbox v.x) should be untypable
