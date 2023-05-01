@@ -49,7 +49,8 @@ class CrossVersionChecks extends MiniPhase:
       owner.isDeprecated
       || isEnumOwner(owner)
 
-    /**Scan the chain of outer declaring scopes from the current context
+    /**Skip warnings for synthetic members of case classes during declaration and
+     * scan the chain of outer declaring scopes from the current context
      * a deprecation warning will be skipped if one the following holds
      * for a given declaring scope:
      * - the symbol associated with the scope is also deprecated.
@@ -57,10 +58,13 @@ class CrossVersionChecks extends MiniPhase:
      *   a module that declares `sym`, or the companion class of the
      *   module that declares `sym`.
      */
-    def skipWarning(using Context) =
-      ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
+    def skipWarning(using Context): Boolean =
+      (ctx.owner.is(Synthetic) && sym.is(CaseClass))
+        || ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
 
-    for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
+    // Also check for deprecation of the companion class for synthetic methods
+    val toCheck = sym :: (if sym.isAllOf(SyntheticMethod) then sym.owner.companionClass :: Nil else Nil)
+    for sym <- toCheck; annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
       if !skipWarning then
         val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
         val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
