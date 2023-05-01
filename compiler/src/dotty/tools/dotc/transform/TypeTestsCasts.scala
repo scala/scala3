@@ -53,7 +53,7 @@ object TypeTestsCasts {
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, "it's a refinement type"
    *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, "it's a local class"
-   *  9. if `X` is `T1 | T2`, (isCheckDefinitelyFalse(T1, P) && checkable(T2, P)) or (checkable(T1, P) && isCheckDefinitelyFalse(T2, P)).
+   *  9. if `X` is `T1 | T2`, checkable(T1, P) && checkable(T2, P) or (isCheckDefinitelyFalse(T1, P) && checkable(T2, P)) or (checkable(T1, P) && isCheckDefinitelyFalse(T2, P)).
    *  10. otherwise, ""
    */
   def whyUncheckable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
