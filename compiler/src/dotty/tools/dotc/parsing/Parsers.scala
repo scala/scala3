@@ -1703,20 +1703,27 @@ object Parsers {
 
     def refinedType() = refinedTypeRest(withType())
 
+    /** Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
+     *  if followed by `{`, `->`, or `?->`,
+     *  or followed by a new line (significant or not),
+     *  or followed by a token that cannot start an infix type.
+     *  Otherwise it is treated as an infix operator.
+     */
+    private def isTrailingUpArrow =
+      val ahead = in.lookahead
+      ahead.token == LBRACE
+      || ahead.isIdent(nme.PUREARROW)
+      || ahead.isIdent(nme.PURECTXARROW)
+      || !canStartInfixTypeTokens.contains(ahead.token)
+      || ahead.lineOffset > 0
+
     def refinedTypeRest(t: Tree): Tree = {
       argumentStart()
       if in.isNestedStart then
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
-      else if in.isIdent(nme.UPARROW)
-          && (in.lookahead.token == LBRACE
-              || !canStartInfixTypeTokens.contains(in.lookahead.token)
-              || in.lookahead.lineOffset > 0)
-        // Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
-        // if followed by `{` or a new line (significant or not), or a token that
-        // cannot start an infix type. Otherwise it is treated as an infix operator.
-      then
+      else if in.isIdent(nme.UPARROW) && isTrailingUpArrow then
         val upArrowStart = in.offset
         in.nextToken()
         def cs =
