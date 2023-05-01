@@ -1936,9 +1936,10 @@ object Parsers {
     def paramTypeOf(core: () => Tree): Tree =
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
-        val tp = atSpan(in.skipToken()):
-          ByNameTypeTree(if isImpure then core() else capturesAndResult(core))
-        if isImpure && Feature.pureFunsEnabled then ImpureByNameTypeTree(tp) else tp
+        atSpan(in.skipToken()):
+          val tp = if isImpure then core() else capturesAndResult(core)
+          if isImpure && Feature.pureFunsEnabled then ImpureByNameTypeTree(tp)
+          else ByNameTypeTree(tp)
       else
         core()
 

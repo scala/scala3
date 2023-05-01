@@ -566,9 +566,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           toText(sel) ~ keywordStr(" match ") ~ blockText(cases) ~
           (" <: " ~ toText(bound) provided !bound.isEmpty)
         }
+      case ImpureByNameTypeTree(tpt) =>
+        "=> " ~ toTextLocal(tpt)
       case ByNameTypeTree(tpt) =>
-        (if Feature.pureFunsEnabled then "-> " else "=> ")
-        ~ toTextLocal(tpt)
+        (if Feature.pureFunsEnabled then "-> " else "=> ") ~ toTextLocal(tpt)
       case TypeBoundsTree(lo, hi, alias) =>
         if (lo eq hi) && alias.isEmpty then optText(lo)(" = " ~ _)
         else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _) ~ optText(alias)(" = " ~ _)
@@ -742,12 +743,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case CapturesAndResult(refs, parent) =>
         changePrec(GlobalPrec)("^{" ~ Text(refs.map(toText), ", ") ~ "} " ~ toText(parent))
       case CapturingTypeTree(refs, parent) =>
-        parent match
-          case ImpureByNameTypeTree(bntpt) =>
-            "=> " ~ toTextLocal(bntpt)
-          case _ =>
-            toText(parent) ~ "^"
-            ~ changePrec(GlobalPrec)("{" ~ Text(refs.map(toText), ", ") ~ "}")
+        toText(parent) ~ "^"
+        ~ changePrec(GlobalPrec)("{" ~ Text(refs.map(toText), ", ") ~ "}")
       case _ =>
         tree.fallbackToText(this)
     }
