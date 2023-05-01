@@ -7,7 +7,7 @@ object A {
 }
 
 object B {
-  val b: Int = A.a.foo()
+  val b: Int = A.a.foo()  // error
 }
 
 class Y extends X {
@@ -19,5 +19,5 @@ object C {
 }
 
 def main = {
-  A.a = new Y(); C // error
+  A.a = new Y(); C
 }

@@ -1,5 +1,3 @@
-import scala.annotation.init
-
 class Box(x: Int):
   def foo(): Int = 100
 

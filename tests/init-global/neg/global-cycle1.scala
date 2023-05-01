@@ -3,7 +3,7 @@ object A {             // error
 }
 
 object B {
-  val b: Int = A.a
+  val b: Int = A.a     // error
 }
 
 @main

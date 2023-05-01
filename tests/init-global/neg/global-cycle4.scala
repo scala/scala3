@@ -7,13 +7,13 @@ class B extends A {
 }
 
 class C extends A {
-  def foo(): Int = O.a + 10
+  def foo(): Int = O.a + 10       // error
 }
 
 class D(x: Int) {
   def bar(): A = if x > 0 then new B else new C
 }
 
-object O {                       // error
+object O {
   val a: Int = D(5).bar().foo()
 }

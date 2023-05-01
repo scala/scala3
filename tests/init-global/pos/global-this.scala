@@ -3,7 +3,6 @@ object NameKinds:
     class Info
   class QualifiedNameKind(tag: Int, val separator: String) extends NameKind(tag):
     qualifiedNameKinds(tag) = this // error
-  
 
   val MAX_TAG = 8
   val qualifiedNameKinds = new Array[QualifiedNameKind](MAX_TAG)

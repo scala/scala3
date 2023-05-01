@@ -12,7 +12,7 @@ object O {           // error
 }
 
 object P {
-  val m = Q.bar(new B: @annotation.init.expose)
+  val m = Q.bar(new B)
 }
 
 object Q {

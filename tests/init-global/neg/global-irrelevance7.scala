@@ -1,11 +1,9 @@
-import scala.annotation.init
-
 class Box(x: Int):
   def foo(): Int = 100
 
 object A:
   val array: Array[Box] = new Array(1)
-  array(0) = new Box(10): @init.expose
+  array(0) = new Box(10)
   val n = array(0).foo()  // ok
 
 object B:

@@ -1,5 +1,3 @@
-import scala.annotation.init
-
 object A:
   class Pair(val f: Int => Unit, val g: () => Int)
   val p: Pair = foo()
@@ -7,7 +5,7 @@ object A:
   def foo(): Pair =
     var x = 6
     new Pair(
-      (y => x = y): @init.expose,   // error
+      (y => x = y),   // error
       () => x
     )
 

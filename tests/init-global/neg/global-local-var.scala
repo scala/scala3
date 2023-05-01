@@ -7,7 +7,7 @@ class A(x: Int) {
       sum += i
       i += 1
 
-    B.a + 10 + sum
+    B.a + 10 + sum    // error
   }
 }
 
