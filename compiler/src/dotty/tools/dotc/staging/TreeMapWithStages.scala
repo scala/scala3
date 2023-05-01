@@ -22,14 +22,6 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
   protected def transformQuote(body: Tree, quote: Quote)(using Context): Tree =
     cpy.Quote(quote)(body)
 
-  /** Transform the quote `quote` which contains the quoted `body`.
-   *
-   *  - `quoted.Type.of[<body0>](quotes)`  --> `quoted.Type.of[<body>](quotes)`
-   */
-  protected def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree =
-    val TypeApply(fun, _) = quote.fun: @unchecked
-    cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body :: Nil), quote.args)
-
   /** Transform the expression splice `splice` which contains the spliced `body`. */
   protected def transformSplice(body: Tree, splice: Splice)(using Context): Tree
 
@@ -43,8 +35,6 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
       }
 
       tree match {
-        case tree @ QuotedTypeOf(quotedTree) =>
-          transformQuotedType(quotedTree, tree)
         case tree @ Quote(quotedTree) =>
           dropEmptyBlocks(quotedTree) match {
             case Splice(t) =>

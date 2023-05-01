@@ -52,7 +52,10 @@ class CrossStageSafety extends TreeMapWithStages {
       transform(tree)(using ctx.withSource(tree.source))
     else if !inQuoteOrSpliceScope then
       checkAnnotations(tree)
-      super.transform(tree)
+      tree match
+        case tree @ QuotedTypeOf(quotedTree) =>
+          transformQuotedType(quotedTree, tree)
+        case _ => super.transform(tree)
     else tree match {
       case _: TypeTree =>
         val tp1 = transformTypeAnnotationSplices(tree.tpe)
@@ -92,6 +95,8 @@ class CrossStageSafety extends TreeMapWithStages {
       case tree: TypeDef if tree.symbol.is(Case) && level > 0 =>
         report.error(reporting.CaseClassInInlinedCode(tree), tree)
         super.transform(tree)
+      case tree @ QuotedTypeOf(quotedTree) =>
+        transformQuotedType(quotedTree, tree)
       case tree @ SplicedType(splicedTree) =>
         transformSpliceType(splicedTree, tree)
       case _ =>
@@ -109,7 +114,7 @@ class CrossStageSafety extends TreeMapWithStages {
     cpy.Quote(quote)(transformedBody).withBodyType(bodyType1)
   }
 
-  override protected def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree = {
+  private def transformQuotedType(body: Tree, quote: Apply)(using Context): Tree = {
     if (ctx.property(InAnnotation).isDefined)
       report.error("Cannot have a quote in an annotation", quote.srcPos)
     body.tpe match
