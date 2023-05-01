@@ -376,6 +376,15 @@ object Types {
       case _ => false
     }
 
+    /** Returns the annoation that is an instance of `cls` carried by the type. */
+    @tailrec final def getAnnotation(cls: ClassSymbol)(using Context): Option[Annotation] = stripTypeVar match {
+      case AnnotatedType(tp, annot) =>
+        if annot.matches(cls) then Some(annot)
+        else tp.getAnnotation(cls)
+      case _ =>
+        None
+    }
+
     /** Does this type have a supertype with an annotation satisfying given predicate `p`? */
     def derivesAnnotWith(p: Annotation => Boolean)(using Context): Boolean = this match {
       case tp: AnnotatedType => p(tp.annot) || tp.parent.derivesAnnotWith(p)

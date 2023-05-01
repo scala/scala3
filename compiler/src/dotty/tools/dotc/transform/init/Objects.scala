@@ -911,6 +911,15 @@ object Objects:
           instantiate(outer, cls, ctor, args)
         }
 
+      case Apply(ref, arg :: Nil) if ref.symbol == defn.InitRegionMethod =>
+        val regions2 = Regions.extend(expr.sourcePos)
+        if Regions.exists(expr.sourcePos) then
+          report.warning("Cyclic region detected. Trace: " + Trace.show, expr)
+          Bottom
+        else
+          given Regions.Data = regions2
+          eval(arg, thisV, klass)
+
       case Call(ref, argss) =>
         // check args
         val args = evalArgs(argss.flatten, thisV, klass)
@@ -963,14 +972,6 @@ object Objects:
       case Typed(expr, tpt) =>
         if tpt.tpe.hasAnnotation(defn.UncheckedAnnot) then
           Bottom
-        else if tpt.tpe.hasAnnotation(defn.InitRegionAnnot) then
-          val regions2 = Regions.extend(tpt.sourcePos)
-          if Regions.exists(tpt.sourcePos) then
-            report.warning("Cyclic region detected. Trace: " + Trace.show, tpt.sourcePos)
-            Bottom
-          else
-            given Regions.Data = regions2
-            eval(expr, thisV, klass)
         else
           eval(expr, thisV, klass)
 
@@ -1144,11 +1145,21 @@ object Objects:
         else
           eval(arg.tree, thisV, klass)
 
-      // TODO: handle @widen(n)
       val widened =
-        if arg.tree.tpe.hasAnnotation(defn.InitExposeAnnot) then
-          res.widen(1)
-        else
+        arg.tree.tpe.getAnnotation(defn.InitWidenAnnot) match
+        case Some(annot) =>
+          annot.argument(0).get match
+          case arg @ Literal(c: Constants.Constant) =>
+            val height = c.intValue
+            if height < 0 then
+              report.error("The argument should be positive", arg)
+              res.widen(1)
+            else
+              res.widen(c.intValue)
+          case arg =>
+            report.error("The argument should be a constant integer value", arg)
+            res.widen(1)
+        case _ =>
           res.widen(1)
 
       argInfos += TraceValue(widened, trace.add(arg.tree))
