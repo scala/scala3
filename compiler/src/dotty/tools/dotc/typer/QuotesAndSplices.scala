@@ -50,7 +50,7 @@ trait QuotesAndSplices {
 
     if ctx.mode.is(Mode.Pattern) then
       typedQuotePattern(tree, pt, quotes).withSpan(tree.span)
-    else if tree.body.isType then
+    else if tree.isTypeQuote then
       val msg = em"""Quoted types `'[..]` can only be used in patterns.
                     |
                     |Hint: To get a scala.quoted.Type[T] use scala.quoted.Type.of[T] instead.

@@ -104,9 +104,10 @@ class PickleQuotes extends MacroTransform {
           val (contents, codeWithHoles) = makeHoles(quote.body)
           val sourceRef = Inlines.inlineCallTrace(ctx.owner, tree.sourcePos)
           val bodyWithHoles2 =
-            if quote.body.isType then codeWithHoles
+            if quote.isTypeQuote then codeWithHoles
             else Inlined(sourceRef, Nil, codeWithHoles)
-          val pickled = PickleQuotes.pickle(quotes, bodyWithHoles2, contents, quote.bodyType)
+          val quote1 = cpy.Quote(quote)(body = bodyWithHoles2)
+          val pickled = PickleQuotes.pickle(quote1, quotes, contents)
           transform(pickled) // pickle quotes that are in the contents
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           // Shrink size of the tree. The methods have already been inlined.
@@ -202,7 +203,10 @@ object PickleQuotes {
   val name: String = "pickleQuotes"
   val description: String = "turn quoted trees into explicit run-time data structures"
 
-  def pickle(quotes: Tree, body: Tree, contents: List[Tree], originalTp: Type)(using Context) = {
+  def pickle(quote: Quote, quotes: Tree, contents: List[Tree])(using Context) = {
+    val body = quote.body
+    val bodyType = quote.bodyType
+
     /** Helper methods to construct trees calling methods in `Quotes.reflect` based on the current `quotes` tree */
     object reflect extends ReifiedReflect {
       val quotesTree = quotes
@@ -256,7 +260,7 @@ object PickleQuotes {
       */
     def liftedValue(lit: Literal, lifter: Symbol) =
       val exprType = defn.QuotedExprClass.typeRef.appliedTo(body.tpe)
-      ref(lifter).appliedToType(originalTp).select(nme.apply).appliedTo(lit).appliedTo(quotes)
+      ref(lifter).appliedToType(bodyType).select(nme.apply).appliedTo(lit).appliedTo(quotes)
 
     def pickleAsValue(lit: Literal) = {
       // TODO should all constants be pickled as Literals?
@@ -334,18 +338,18 @@ object PickleQuotes {
                 case _ => Match(args(0).annotated(New(ref(defn.UncheckedAnnot.typeRef))), cases)
           )
 
-      val quoteClass = if body.isType then defn.QuotedTypeClass else defn.QuotedExprClass
-      val quotedType = quoteClass.typeRef.appliedTo(originalTp)
+      val quoteClass = if quote.isTypeQuote then defn.QuotedTypeClass else defn.QuotedExprClass
+      val quotedType = quoteClass.typeRef.appliedTo(bodyType)
       val lambdaTpe = MethodType(defn.QuotesClass.typeRef :: Nil, quotedType)
       val unpickleMeth =
-        if body.isType then defn.QuoteUnpickler_unpickleTypeV2
+        if quote.isTypeQuote then defn.QuoteUnpickler_unpickleTypeV2
         else defn.QuoteUnpickler_unpickleExprV2
       val unpickleArgs =
-        if body.isType then List(pickledQuoteStrings, types)
+        if quote.isTypeQuote then List(pickledQuoteStrings, types)
         else List(pickledQuoteStrings, types, termHoles)
       quotes
         .asInstance(defn.QuoteUnpicklerClass.typeRef)
-        .select(unpickleMeth).appliedToType(originalTp)
+        .select(unpickleMeth).appliedToType(bodyType)
         .appliedToArgs(unpickleArgs).withSpan(body.span)
     }
 
