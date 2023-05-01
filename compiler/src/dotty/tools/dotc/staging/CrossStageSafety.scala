@@ -53,7 +53,7 @@ class CrossStageSafety extends TreeMapWithStages {
     else tree match
       case tree @ Quote(quotedTree) =>
         tree.cancelled match
-          case Some(tree1) => transform(tree1.asInstance(tree.tpe)) // TODO is this asInstance still needed?
+          case Some(tree1) => transform(tree1)
           case None => transformQuote(quotedTree, tree)
       case tree @ Splice(splicedTree) =>
         tree.cancelled match
