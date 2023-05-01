@@ -669,7 +669,7 @@ class TreePickler(pickler: TastyPickler) {
           // Add QUOTE tag to TASTy
           assert(body.isTerm,
             """Quote with type should not be pickled.
-              |Quote with type should only exists after staging phase at level staging level 0.""".stripMargin)
+              |Quote with type should only exists after staging phase at staging level 0.""".stripMargin)
           pickleTree(
             // scala.quoted.runtime.Expr.quoted[<tree.bodyType>](<body>)
             ref(defn.QuotedRuntime_exprQuote)
