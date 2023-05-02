@@ -41,6 +41,8 @@ The list of parents of a template must be well-formed.
 This means that the class denoted by the superclass constructor ´sc´ must be a subclass of the superclasses of all the traits ´mt_1, ..., mt_n´.
 In other words, the non-trait classes inherited by a template form a chain in the inheritance hierarchy which starts with the template's superclass.
 
+It is forbidden for a template's superclass constructor ´sc´ to be an [enum class](#enum-definitions), unless the template is the implementation of an [enum case](#enum-definitions) of ´sc´.
+
 The _least proper supertype_ of a template is the class type or [compound type](03-types.html#compound-types) consisting of all its parent class types.
 
 The statement sequence ´\mathit{stats}´ contains member definitions that define new members or overwrite members in the parent classes.
@@ -801,3 +803,342 @@ Generally, a _companion module_ of a class is an object which has the same name 
 Conversely, the class is called the _companion class_ of the module.
 
 Very much like a concrete class definition, an object definition may still contain declarations of abstract type members, but not of abstract term members.
+
+## Enum Definitions
+
+<!-- TODO: Agree with NTs of rest of spec -->
+```ebnf
+TmplDef   ::=  ‘enum’ EnumDef
+EnumDef   ::=  id ClassConstr [‘extends’ [ConstrApps]] EnumBody
+EnumBody  ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumStat  ::=  TemplateStat
+            |  {Annotation [nl]} {Modifier} EnumCase
+EnumCase  ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps] | ids)
+```
+
+An _enum definition_ implies the definition of an _enum class_, a companion object, and one or more _enum cases_.
+
+Enum definitions are useful to encode both Generalised Algebraic Data Types and Enumerated Types.
+
+The compiler expands enum definitions to code that only uses Scala's other language features.
+As such, enum definitions in Scala are convenient _syntactic sugar_, but they are not essential to understand Scala's core.
+
+We now explain the expansion of enum definitions in detail.
+First, some terminology and notational conventions:
+
+- We use ´E´ as a name of an enum definition, and ´C´ as a name of an enum case that appears in ´E´.
+- We use `<...>` for syntactic constructs that in some circumstances might be empty.
+For instance, `<value-params>` represents one or more parameter lists `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)` or nothing at all.
+- Enum classes fall into two categories:
+  - _parameterized_ enum classes have at least one of the following:
+     - a type parameter section, denoted as `[´\mathit{tps}\,´]`;
+     - one or more (possibly empty) parameter sections, denoted as `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)`.
+  - _unparameterized_ enum classes have no type parameter sections and no parameter sections.
+- Enum cases fall into three categories:
+
+  - _Class cases_ are those cases that are parameterized, either with a type parameter section `[´\mathit{tps}\,´]` or with one or more (possibly empty) parameter sections `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)`.
+  - _Simple cases_ are cases of an unparameterized enum that have neither parameters nor an extends clause or body.
+  That is, they consist of a name only.
+  - _Value cases_ are all cases that do not have a parameter section but that do have a (possibly generated) `extends` clause and/or a body.
+
+- Simple cases and value cases are collectively called _singleton cases_.
+
+###### Example
+
+An example enum for a `Planet` enumeration can be given as
+```scala
+enum Planet(mass: Double, radius: Double):
+  case Mercury extends Planet(3.303e+23, 2.4397e6)
+  case Venus   extends Planet(4.869e+24, 6.0518e6)
+  case Earth   extends Planet(5.976e+24, 6.37814e6)
+  case Mars    extends Planet(6.421e+23, 3.3972e6)
+  case Jupiter extends Planet(1.9e+27,   7.1492e7)
+  case Saturn  extends Planet(5.688e+26, 6.0268e7)
+  case Uranus  extends Planet(8.686e+25, 2.5559e7)
+  case Neptune extends Planet(1.024e+26, 2.4746e7)
+
+  private inline val G = 6.67300E-11
+  def surfaceGravity = G * mass / (radius * radius)
+  def surfaceWeight(otherMass: Double) = otherMass * surfaceGravity
+end Planet
+```
+
+###### Example
+
+An example enum for the Option ADT can be given as
+```scala
+enum Option[+T]:
+  case Some(x: T)
+  case None
+```
+
+### Lowering of Enum Definitions
+
+###### Summary
+An enum class is represented as a `sealed` class that extends the `scala.reflect.Enum` trait.
+
+Enum cases are represented as follows:
+- a class case is mapped to a `case class`,
+- a singleton case is mapped to a `val` definition, where
+  - Simple cases all share a single implementation class.
+  - Value cases will each be implemented by a unique class.
+
+###### Precise rules
+The `scala.reflect.Enum` trait defines a single public method, `ordinal`:
+```scala
+package scala.reflect
+
+transparent trait Enum extends Any, Product, Serializable:
+
+  def ordinal: Int
+```
+There are nine desugaring rules.
+Rule (1) desugars enum definitions.
+Rules (2) and (3) desugar simple cases.
+Rules (4) to (6) define `extends` clauses for cases that are missing them.
+Rules (7) to (9) define how such cases with `extends` clauses map into `case class`es or `val`s.
+
+1.  An `enum` definition
+    ```scala
+    enum ´E´ ... { <defs> <cases> }
+    ```
+    expands to a `sealed abstract` class that extends the `scala.reflect.Enum` trait and an associated companion object that contains the defined cases, expanded according to rules (2 - 8).
+    The enum class starts with a compiler-generated import that imports the names `<caseIds>` of all cases so that they can be used without prefix in the class.
+    ```scala
+    sealed abstract class ´E´ ... extends <parents> with scala.reflect.Enum {
+        import ´E´.{ <caseIds> }
+        <defs>
+    }
+    object ´E´ { <cases> }
+    ```
+
+2. A singleton case consisting of a comma-separated list of enum names
+   ```scala
+   case ´C_1´, ..., ´C_n´
+   ```
+   expands to
+   ```scala
+   case ´C_1´; ...; case ´C_n´
+   ```
+   Any modifiers or annotations on the original case extend to all expanded cases.
+   This result is then further rewritten by either (3 or 4).
+
+3. A singleton case without an extends clause
+   ```scala
+   case ´C´
+   ```
+   of an unparameterized enum `´E´` expands to the following simple enum case in `´E´`'s companion object:
+   ```scala
+   val ´C´ = $new(n, "C")
+   ```
+   Here, `$new` is a private method that creates an instance of ´E´ (see below).
+
+4. A singleton case without an extends clause
+   ```scala
+   case ´C´
+   ```
+   of an enum `´E´` with type parameters
+   ```scala
+   ´\mathit{v}_1´ ´T_1´ >: ´L_1´ <: ´U_1´ ,   ... ,   ´\mathit{v}_n´ ´T_n´ >: ´L_n´ <: ´U_n´      (n > 0)
+   ```
+   where each of the variances `´\mathit{v}_i´` is either `'+'` or `'-'`, expands to the following value enum case:
+   ```scala
+   case ´C´ extends ´E´[´B_1´, ..., ´B_n´]
+   ```
+   where `´B_i´` is `´L_i´` if `´\mathit{v}_i´ = '+'` and `´U_i´` if `´\mathit{v}_i´ = '-'`.
+   This result is then further rewritten with rule (8).
+   **NOTE:** It is not permitted for enums with non-variant type parameters to have singleton cases without an extends clause.
+
+5. A class case without an extends clause
+   ```scala
+   case ´C´ <type-params> <value-params>
+   ```
+   of an enum `´E´` that does not take type parameters expands to
+   ```scala
+   case ´C´ <type-params> <value-params> extends ´E´
+   ```
+   This result is then further rewritten with rule (9).
+
+6. If `´E´` is an enum with type parameters `´\mathit{tps}´`, a class case with neither type parameters nor an extends clause
+   ```scala
+   case ´C´ <value-params>
+   ```
+   expands to
+   ```scala
+   case ´C´[´\mathit{tps}´] <value-params> extends ´E´[´\mathit{tps}´]
+   ```
+   This result is then further rewritten with rule (9).
+   For class cases that have type parameters themselves, an extends clause needs to be given explicitly.
+
+
+7. If `´E´` is an enum with type parameters `´\mathit{tps}´`, a class case without type parameters but with an extends clause
+   ```scala
+   case ´C´ <value-params> extends <parents>
+   ```
+   expands to
+   ```scala
+   case ´C´[´\mathit{tps}´] <value-params> extends <parents>
+   ```
+   provided at least one of the parameters `´\mathit{tps}´` is mentioned in a parameter type in `<value-params>` or in a type argument in `<parents>`.
+
+8. A value case
+   ```scala
+   case ´C´ extends <parents>
+   ```
+   expands to the following `val` definition in `´E´`'s companion object:
+   ```scala
+   val ´C´ = new <parents> { <body>; def ordinal = ´\mathit{n}´ }
+   ```
+   where `´\mathit{n}´` is the ordinal number of the case in the companion object, starting from 0.
+   The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.
+   **NOTE:** It is an error if a value case refers to a type parameter of `´E´` in a type argument within `<parents>`.
+
+9. A class case
+   ```scala
+   case ´C´ <type-params> <value-params> extends <parents>
+   ```
+   expands analogous to a final case class in `´E´`'s companion object:
+   ```scala
+   final case class ´C´ <type-params> <value-params> extends <parents> {
+      def ordinal = ´\mathit{n}´
+   }
+   ```
+   where `´\mathit{n}´` is the ordinal number of the case in the companion object, starting from 0.
+   **NOTE:** It is an error if a class case refers to a type parameter of `´E´` in a parameter type in `<type-params>` or `<value-params>` or in a type argument of `<parents>`, unless that parameter is already a type parameter of the case, i.e. the parameter name is defined in `<type-params>`.
+
+###### Superclass of an enum case
+
+an enum case (singleton or class) with explicit extends clause
+```scala
+case ´C´ <type-params> <value-params> extends <parents>
+```
+
+must extend the parent enum `´E´` as the first parent of `<parents>`.
+
+###### Example
+Consider the enumeration `RGB`, consisting of simple enum cases:
+```scala
+enum RGB:
+  case Red, Green, Blue
+```
+
+The three simple cases will expand as follows in the companion of `RGB`:
+
+```scala
+val Red = $new(0, "Red")
+val Green = $new(1, "Green")
+val Blue = $new(2, "Blue")
+
+private def $new(_$ordinal: Int, $name: String) =
+  new RGB with scala.runtime.EnumValue:
+    def ordinal = _$ordinal
+    override def productPrefix = $name
+    override def toString = $name
+```
+
+
+###### Example
+
+Consider the more complex enumeration `Color`, consisting of value enum cases:
+```scala
+enum Color(val rgb: Int):
+  case Red   extends Color(0xFF0000)
+  case Green extends Color(0x00FF00)
+  case Blue  extends Color(0x0000FF)
+```
+
+The three value cases will expand as follows in the companion of `Color`:
+
+```scala
+val Red = new Color(0xFF0000):
+  def ordinal: Int = 0
+  override def productPrefix: String = "Red"
+  override def toString: String = "Red"
+val Green = new Color(0x00FF00):
+  def ordinal: Int = 1
+  override def productPrefix: String = "Green"
+  override def toString: String = "Green"
+val Blue = new Color(0x0000FF):
+  def ordinal: Int = 2
+  override def productPrefix: String = "Blue"
+  override def toString: String = "Blue"
+```
+
+### Widening of enum cases post-construction
+The compiler-generated `apply` and `copy` methods of an class enum case
+```scala
+case ´C´[´\mathit{tps}\,´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´) extends ´P_1´, ..., ´P_n´
+```
+are treated specially.
+A call `´C´[´\mathit{tps}\,´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)` of the `apply` method is ascribed the underlying type `´P_1´ & ... & ´P_n´` (dropping any [transparent traits](../other-new-features/transparent-traits.md)) as long as that type is still compatible with the expected type at the point of application.
+A call `t.copy[´\mathit{tps}\,´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)` of `´C´`'s `copy` method is treated in the same way.
+
+### Translation of enums with only singleton cases
+
+An enum `´E´` (possibly generic) that defines one or more singleton cases, and no class cases will define the following additional synthetic members in its companion object (where `´E'´` denotes `´E´` with any type parameters replaced by wildcards):
+
+   - A method `valueOf(name: String): ´E'´`.
+   It returns the singleton case value whose identifier is `name`.
+   - A method `values` which returns an `Array[´E'´]` of all singleton case values defined by `E`, in the order of their definitions.
+
+### Factory method for simple enum cases
+
+If an enum `´E´` contains at least one simple case, its companion object will define in addition:
+
+  - A private method `$new` which defines a new simple case value with given ordinal number and name.
+  This method can be thought as being defined as follows.
+
+  ```scala
+  private def $new(_$ordinal: Int, $name: String): ´E´ with runtime.EnumValue
+  ```
+  - `$new` returns a new instance of an anonymous class which implements the abstract `Product` methods that it inherits from `Enum`.
+  - if `´E´` inherits from `java.lang.Enum` the anonymous class does not override the `ordinal` or `toString` methods, as these are final in `java.lang.Enum`.
+  Additionally `productPrefix` will delegate to `this.name`.
+
+### Translation of Java-compatible enums
+
+A Java-compatible enum is an enum that extends `java.lang.Enum`.
+The translation rules are the same as above, with the reservations defined in this section.
+
+- It is a compile-time error for a Java-compatible enum to have class cases.
+
+- Cases such as `case C` expand to a `@static val` as opposed to a `val`.
+This allows them to be generated as static fields of the enum type, thus ensuring they are represented the same way as Java enums.
+
+### Scopes for Enum Cases
+
+A case in an `enum` is treated similarly to a secondary constructor.
+It can access neither the enclosing `enum` using `this`, nor its value parameters or instance members using simple identifiers.
+
+Even though translated enum cases are located in the enum's companion object, referencing this object or its members via `this` or a simple identifier is also illegal.
+The compiler typechecks enum cases in the scope of the enclosing companion object but flags any such illegal accesses as errors.
+
+### Variance for Type Parameters
+
+A parameterized enum case ´C´  of enum ´E´ with _inferred_ type parameters will copy variance annotations.
+e.g. type parameter ´T_{i}´ from ´E´ will have the same variance as type parameter `´T'_{i}´` in ´C´.
+
+###### Example
+
+The following enum `View` has a contravariant type parameter ´T´ and a single case `Refl`, representing a function mapping a type `T` to itself:
+
+```scala
+enum View[-´T´]:
+  case Refl(f: ´T´ => ´T´)
+```
+
+`Refl` expands to the following enum:
+
+```scala
+enum View[-´T´]:
+  case Refl[-´T'´](f: ´T'´ => ´T'´) extends View[´T'´]
+```
+
+The definition of `Refl` is incorrectly typed, as it uses contravariant type `´T'´` in the covariant result position of a function type.
+
+A correctly typed version would use an _explicit_, _invariant_ type parameter `´R´` on case `Refl`:
+
+```scala
+enum View[-´T´]:
+  case Refl[´R´](f: ´R´ => ´R´) extends View[´R´]
+```

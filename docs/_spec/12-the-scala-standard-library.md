@@ -345,6 +345,10 @@ class PartialFunction[-A, +B] extends Function1[A, B] {
 <!-- TODO: Could not find more info on which non-Product methods case class automatically define  -->
 All case classes automatically extend the `Product` trait (and generate synthetic methods to conform to it) (but not `Product´n´`), and define a `_´n´` method for each of their arguments.
 
+### Trait `Enum`
+<!-- TODO: Move somewhere else ? -->
+All enum definitions automatically extend the `reflect.Enum` trait (and generate synthetic methods to conform to it).
+
 ### Class `Array`
 
 All operations on arrays desugar to the corresponding operations of the underlying platform.
