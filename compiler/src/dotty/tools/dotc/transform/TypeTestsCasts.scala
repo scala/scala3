@@ -134,12 +134,12 @@ object TypeTestsCasts {
 
     /** Whether the check X.isInstanceOf[P] is definitely false? */
     def isCheckDefinitelyFalse(X: Type, P: Type)(using Context): Boolean = trace(s"isCheckDefinitelyFalse(${X.show}, ${P.show})") {
-      X.dealias match
+      X.widenDealias match
       case AndType(x1, x2) =>
         isCheckDefinitelyFalse(x1, P) || isCheckDefinitelyFalse(x2, P)
 
       case x =>
-        P.dealias match
+        P.widenDealias match
         case AndType(p1, p2) =>
           isCheckDefinitelyFalse(x, p1) || isCheckDefinitelyFalse(x, p2)
 
@@ -154,8 +154,8 @@ object TypeTestsCasts {
             xs.forall(x => isCheckDefinitelyFalse(x, p))
           else
             if x.typeSymbol.isClass && p.typeSymbol.isClass then
-              val xClass = effectiveClass(x.widen)
-              val pClass = effectiveClass(p.widen)
+              val xClass = effectiveClass(x)
+              val pClass = effectiveClass(p)
 
               !xClass.derivesFrom(pClass)
               && (xClass.is(Final) || pClass.is(Final) || !xClass.is(Trait) && !pClass.is(Trait))
