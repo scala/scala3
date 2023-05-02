@@ -5,6 +5,7 @@ object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.unsafeBox"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.unsafeUnbox"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.cap"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.CanEqual.canEqualMap"),
     ProblemFilters.exclude[MissingClassProblem]("scala.caps$Pure"),
     ProblemFilters.exclude[MissingClassProblem]("scala.caps$unsafe$"),
