@@ -315,14 +315,6 @@ object SymUtils:
     def reachableRawTypeRef(using Context) =
       self.reachableTypeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
 
-    /** Is symbol a quote operation? */
-    def isQuote(using Context): Boolean =
-      self == defn.QuotedRuntime_exprQuote || self == defn.QuotedTypeModule_of
-
-    /** Is symbol a term splice operation? */
-    def isExprSplice(using Context): Boolean =
-      self == defn.QuotedRuntime_exprSplice || self == defn.QuotedRuntime_exprNestedSplice
-
     /** Is symbol a type splice operation? */
     def isTypeSplice(using Context): Boolean =
       self == defn.QuotedType_splice

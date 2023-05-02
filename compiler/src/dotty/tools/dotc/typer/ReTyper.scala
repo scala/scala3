@@ -12,6 +12,7 @@ import ast.{tpd, untpd}
 import scala.util.control.NonFatal
 import util.Spans.Span
 import Nullables._
+import staging.StagingLevel.*
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.
@@ -93,6 +94,21 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def typedUnApply(tree: untpd.Apply, selType: Type)(using Context): Tree =
     typedApply(tree, selType)
+
+  override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
+    assertTyped(tree)
+    val body1 = typed(tree.body, tree.bodyType)(using quoteContext)
+    untpd.cpy.Quote(tree)(body1).withType(tree.typeOpt)
+
+  override def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree =
+    assertTyped(tree)
+    val exprType = // Expr[T]
+        defn.QuotedExprClass.typeRef.appliedTo(tree.typeOpt)
+    val quoteType = // Quotes ?=> Expr[T]
+      defn.FunctionType(1, isContextual = true)
+        .appliedTo(defn.QuotesClass.typeRef, exprType)
+    val expr1 = typed(tree.expr, quoteType)(using spliceContext)
+    untpd.cpy.Splice(tree)(expr1).withType(tree.typeOpt)
 
   override def localDummy(cls: ClassSymbol, impl: untpd.Template)(using Context): Symbol = impl.symbol
 

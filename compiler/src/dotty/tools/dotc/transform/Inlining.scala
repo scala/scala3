@@ -12,7 +12,6 @@ import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
-import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel
 
 import scala.collection.mutable.ListBuffer
@@ -46,10 +45,6 @@ class Inlining extends MacroTransform {
         new TreeTraverser {
           def traverse(tree: Tree)(using Context): Unit =
             tree match
-              case _: GenericApply if tree.symbol.isQuote =>
-                traverseChildren(tree)(using StagingLevel.quoteContext)
-              case _: GenericApply if tree.symbol.isExprSplice =>
-                traverseChildren(tree)(using StagingLevel.spliceContext)
               case tree: RefTree if !Inlines.inInlineMethod && StagingLevel.level == 0 =>
                 assert(!tree.symbol.isInlineMethod, tree.show)
               case _ =>
@@ -98,10 +93,6 @@ class Inlining extends MacroTransform {
           val tree1 = super.transform(tree)
           if tree1.tpe.isError then tree1
           else Inlines.inlineCall(tree1)
-        case _: GenericApply if tree.symbol.isQuote =>
-          super.transform(tree)(using StagingLevel.quoteContext)
-        case _: GenericApply if tree.symbol.isExprSplice =>
-          super.transform(tree)(using StagingLevel.spliceContext)
         case _: PackageDef =>
           super.transform(tree) match
             case tree1: PackageDef  =>
@@ -113,7 +104,8 @@ class Inlining extends MacroTransform {
                 case _ => tree1
             case tree1 => tree1
         case _ =>
-          super.transform(tree)
+          if tree.isType then tree
+          else super.transform(tree)
     }
   }
 }

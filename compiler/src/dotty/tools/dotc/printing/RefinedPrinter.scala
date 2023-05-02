@@ -432,10 +432,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
-        else if (!printDebug && fun.hasType && fun.symbol == defn.QuotedRuntime_exprQuote)
-          keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
-        else if (!printDebug && fun.hasType && fun.symbol.isExprSplice)
-          keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
           toTextLocal(fun)
           ~ "("
@@ -716,14 +712,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case Number(digits, kind) =>
         digits
-      case Quote(tree) if tree.isTerm =>
-        keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
-      case Splice(tree) =>
-        keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case MacroTree(call) =>
         keywordStr("macro ") ~ toTextGlobal(call)
+      case tree @ Quote(body) =>
+        val exprTypeText = (keywordStr("[") ~ toTextGlobal(tree.bodyType) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
+        val open = if (body.isTerm) keywordStr("{") else keywordStr("[")
+        val close = if (body.isTerm) keywordStr("}") else keywordStr("]")
+        keywordStr("'") ~ exprTypeText ~ open ~ toTextGlobal(body) ~ close
+      case Splice(expr) =>
+        val spliceTypeText = (keywordStr("[") ~ toTextGlobal(tree.typeOpt) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
+        keywordStr("$") ~ spliceTypeText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
       case Hole(isTermHole, idx, args, content, tpt) =>
         val (prefix, postfix) = if isTermHole then ("{{{", "}}}") else ("[[[", "]]]")
         val argsText = toTextGlobal(args, ", ")

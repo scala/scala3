@@ -1026,31 +1026,17 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case t => assert(t.span.exists, i"$t")
     }
 
-  /** Extractors for quotes */
-  object Quoted {
+  object QuotedTypeOf {
     /** Extracts the content of a quoted tree.
      *  The result can be the contents of a term or type quote, which
      *  will return a term or type tree respectively.
      */
     def unapply(tree: tpd.Apply)(using Context): Option[tpd.Tree] =
-      if tree.symbol == defn.QuotedRuntime_exprQuote then
-        // quoted.runtime.Expr.quote[T](<body>)
-        Some(tree.args.head)
-      else if tree.symbol == defn.QuotedTypeModule_of then
+      if tree.symbol == defn.QuotedTypeModule_of then
         // quoted.Type.of[<body>](quotes)
         val TypeApply(_, body :: _) = tree.fun: @unchecked
         Some(body)
       else None
-  }
-
-  /** Extractors for splices */
-  object Spliced {
-    /** Extracts the content of a spliced expression tree.
-     *  The result can be the contents of a term splice, which
-     *  will return a term tree.
-     */
-    def unapply(tree: tpd.Apply)(using Context): Option[tpd.Tree] =
-      if tree.symbol.isExprSplice then Some(tree.args.head) else None
   }
 
   /** Extractors for type splices */

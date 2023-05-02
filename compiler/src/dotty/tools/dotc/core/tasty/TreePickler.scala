@@ -665,6 +665,26 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(hi)
               pickleTree(alias)
           }
+        case tree @ Quote(body) =>
+          // TODO: Add QUOTE tag to TASTy
+          assert(body.isTerm,
+            """Quote with type should not be pickled.
+              |Quote with type should only exists after staging phase at staging level 0.""".stripMargin)
+          pickleTree(
+            // scala.quoted.runtime.Expr.quoted[<tree.bodyType>](<body>)
+            ref(defn.QuotedRuntime_exprQuote)
+              .appliedToType(tree.bodyType)
+              .appliedTo(body)
+              .withSpan(tree.span)
+          )
+        case Splice(expr) =>
+          pickleTree( // TODO: Add SPLICE tag to TASTy
+            // scala.quoted.runtime.Expr.splice[<tree.tpe>](<expr>)
+            ref(defn.QuotedRuntime_exprSplice)
+              .appliedToType(tree.tpe)
+              .appliedTo(expr)
+              .withSpan(tree.span)
+          )
         case Hole(_, idx, args, _, tpt) =>
           writeByte(HOLE)
           withLength {

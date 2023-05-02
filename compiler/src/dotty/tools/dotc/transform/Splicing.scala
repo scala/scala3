@@ -21,7 +21,6 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.config.ScalaRelease.*
-import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags
 
@@ -87,10 +86,7 @@ class Splicing extends MacroTransform:
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       assert(level == 0)
       tree match
-        case Apply(Select(Apply(TypeApply(fn,_), List(code)),nme.apply),List(quotes))
-        if fn.symbol == defn.QuotedRuntime_exprQuote =>
-          QuoteTransformer().transform(tree)
-        case TypeApply(_, _) if tree.symbol == defn.QuotedTypeModule_of =>
+        case Apply(Select(_: Quote, nme.apply), _) =>
           QuoteTransformer().transform(tree)
         case tree: DefDef if tree.symbol.is(Inline) =>
           // Quotes in inlined methods are only pickled after they are inlined.
@@ -113,17 +109,13 @@ class Splicing extends MacroTransform:
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
-        case Apply(fn, List(splicedCode)) if fn.symbol == defn.QuotedRuntime_exprNestedSplice =>
-          if level > 1 then
-            val splicedCode1 = super.transform(splicedCode)(using spliceContext)
-            cpy.Apply(tree)(fn, List(splicedCode1))
-          else
-            val holeIdx = numHoles
-            numHoles += 1
-            val splicer = SpliceTransformer(ctx.owner, quotedDefs.contains)
-            val newSplicedCode1 = splicer.transformSplice(splicedCode, tree.tpe, holeIdx)(using spliceContext)
-            val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
-            newSplicedCode2
+        case tree: Splice if level == 1 =>
+          val holeIdx = numHoles
+          numHoles += 1
+          val splicer = SpliceTransformer(ctx.owner, quotedDefs.contains)
+          val newSplicedCode1 = splicer.transformSplice(tree.expr, tree.tpe, holeIdx)(using spliceContext)
+          val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
+          newSplicedCode2
         case tree: TypeDef if tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
           val tp @ TypeRef(qual: TermRef, _) = tree.rhs.tpe.hiBound: @unchecked
           quotedDefs += tree.symbol
@@ -136,9 +128,6 @@ class Splicing extends MacroTransform:
               typeHoles.put(qual, hole)
               hole
           cpy.TypeDef(tree)(rhs = hole)
-        case Apply(Select(Apply(TypeApply(fn,_), List(code)),nme.apply),List(quotes))
-        if fn.symbol == defn.QuotedRuntime_exprQuote =>
-          super.transform(tree)(using quoteContext)
         case _: Template =>
           for sym <- tree.symbol.owner.info.decls do
             quotedDefs += sym
@@ -237,32 +226,18 @@ class Splicing extends MacroTransform:
         case tree @ Assign(lhs: RefTree, rhs) =>
           if isCaptured(lhs.symbol) then transformSplicedAssign(tree)
           else super.transform(tree)
-        case Apply(fn, args) if fn.symbol == defn.QuotedRuntime_exprNestedSplice =>
-          val newArgs = args.mapConserve(arg => transform(arg)(using spliceContext))
-          cpy.Apply(tree)(fn, newArgs)
-        case Apply(sel @ Select(app @ Apply(fn, args),nme.apply), quotesArgs)
-        if fn.symbol == defn.QuotedRuntime_exprQuote =>
-          args match
-            case List(tree: RefTree) if isCaptured(tree.symbol) =>
-              capturedTerm(tree)
-            case _ =>
-              val newArgs = withCurrentQuote(quotesArgs.head) {
-                if level > 1 then args.mapConserve(arg => transform(arg)(using quoteContext))
-                else args.mapConserve(arg => transformLevel0QuoteContent(arg)(using quoteContext))
-              }
-              cpy.Apply(tree)(cpy.Select(sel)(cpy.Apply(app)(fn, newArgs), nme.apply), quotesArgs)
-        case Apply(TypeApply(typeof, List(tpt)), List(quotes))
-        if tree.symbol == defn.QuotedTypeModule_of && containsCapturedType(tpt.tpe) =>
-          val newContent = capturedPartTypes(tpt)
-          newContent match
-            case block: Block =>
-              inContext(ctx.withSource(tree.source)) {
-                Apply(TypeApply(typeof, List(newContent)), List(quotes)).withSpan(tree.span)
-              }
-            case _ =>
-              ref(capturedType(newContent))(using ctx.withSource(tree.source)).withSpan(tree.span)
         case CapturedApplication(fn, argss) =>
           transformCapturedApplication(tree, fn, argss)
+        case Apply(Select(Quote(body), nme.apply), quotes :: Nil) if level == 0 && body.isTerm =>
+          body match
+            case _: RefTree if isCaptured(body.symbol) => capturedTerm(body)
+            case _ => withCurrentQuote(quotes) { super.transform(tree) }
+        case Quote(body) if level == 0 =>
+          val newBody =
+            if body.isTerm then transformLevel0QuoteContent(body)(using quoteContext)
+            else if containsCapturedType(body.tpe) then capturedPartTypes(body)
+            else body
+          cpy.Quote(tree)(newBody)
         case _ =>
           super.transform(tree)
 
@@ -413,18 +388,10 @@ class Splicing extends MacroTransform:
             body(using ctx.withOwner(meth)).changeOwner(ctx.owner, meth)
           }
         })
-      ref(defn.QuotedRuntime_exprNestedSplice)
-        .appliedToType(tpe)
-        .appliedTo(Literal(Constant(null))) // Dropped when creating the Hole that contains it
-        .appliedTo(closure)
+      Splice(closure, tpe)
 
     private def quoted(expr: Tree)(using Context): Tree =
-      val tpe = expr.tpe.widenTermRefExpr
-      ref(defn.QuotedRuntime_exprQuote)
-        .appliedToType(tpe)
-        .appliedTo(expr)
-        .select(nme.apply)
-        .appliedTo(quotes.nn)
+      tpd.Quote(expr).select(nme.apply).appliedTo(quotes.nn)
 
     /** Helper methods to construct trees calling methods in `Quotes.reflect` based on the current `quotes` tree */
     private object reflect extends ReifiedReflect {

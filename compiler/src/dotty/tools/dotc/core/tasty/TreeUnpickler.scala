@@ -1267,6 +1267,21 @@ class TreeUnpickler(reader: TastyReader,
                 res.withAttachment(SuppressedApplyToNone, ())
               else res
 
+      def quotedExpr(fn: Tree, args: List[Tree]): Tree =
+        val TypeApply(_, targs) = fn: @unchecked
+        untpd.Quote(args.head).withBodyType(targs.head.tpe)
+
+      def splicedExpr(fn: Tree, args: List[Tree]): Tree =
+        val TypeApply(_, targs) = fn: @unchecked
+        Splice(args.head, targs.head.tpe)
+
+      def nestedSpliceExpr(fn: Tree, args: List[Tree]): Tree =
+        fn match
+          case Apply(TypeApply(_, targs), _ :: Nil) => // nestedSplice[T](quotes)(expr)
+            Splice(args.head, targs.head.tpe)
+          case _ => // nestedSplice[T](quotes)
+            tpd.Apply(fn, args)
+
       def simplifyLub(tree: Tree): Tree =
         tree.overwriteType(tree.tpe.simplified)
         tree
@@ -1283,6 +1298,9 @@ class TreeUnpickler(reader: TastyReader,
               val fn = readTree()
               val args = until(end)(readTree())
               if fn.symbol.isConstructor then constructorApply(fn, args)
+              else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args)
+              else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args)
+              else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args)
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTree(), until(end)(readTpt()))

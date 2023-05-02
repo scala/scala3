@@ -342,7 +342,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val patterns1 = transform(patterns)
           cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
         case tree: TypeApply =>
-          if tree.symbol.isQuote then
+          if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
@@ -485,6 +485,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
+        case _: Quote =>
+          ctx.compilationUnit.needsStaging = true
+          super.transform(tree)
         case tree =>
           super.transform(tree)
       }

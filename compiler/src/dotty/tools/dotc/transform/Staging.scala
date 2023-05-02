@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.CrossStageSafety
 import dotty.tools.dotc.staging.HealType
@@ -55,6 +54,13 @@ class Staging extends MacroTransform {
             }.apply(tpe)
           }
           checker.transform(tree)
+        case _ =>
+      }
+
+      tree match {
+        case tree: RefTree =>
+          assert(level != 0 || tree.symbol != defn.QuotedTypeModule_of,
+            "scala.quoted.Type.of at level 0 should have been replaced with Quote AST in staging phase")
         case _ =>
       }
 

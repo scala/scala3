@@ -17,6 +17,7 @@ import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
 import compiletime.uninitialized
 import Decorators._
+import staging.StagingLevel.*
 
 object Trees {
 
@@ -677,6 +678,60 @@ object Trees {
     override def isType = expansion.isType
   }
 
+  /** A tree representing a quote `'{ body }` or `'[ body ]`.
+   *  `Quote`s are created by the `Parser`. In typer they can be typed as a
+   *  `Quote` with a known `tpt` or desugared and typed as a quote pattern.
+   *
+   *  `Quotes` are checked and transformed in the `staging`, `splicing` and `pickleQuotes`
+   *  phases. After `pickleQuotes` phase, the only quotes that exist are in `inline`
+   *  methods. These are dropped when we remove the inline method implementations.
+   *
+   *  Type quotes `'[body]` from the parser are desugared into quote patterns (using a `Type.of[T]]`)
+   *  when type checking. TASTy files will not contain type quotes. Type quotes are used again
+   *  in the `staging` phase to represent the reification of `Type.of[T]]`.
+   *
+   *  @param  body  The tree that was quoted
+   */
+  case class Quote[+T <: Untyped] private[ast] (body: Tree[T])(implicit @constructorOnly src: SourceFile)
+    extends TermTree[T] {
+    type ThisTree[+T <: Untyped] = Quote[T]
+
+    /** Is this a type quote `'[tpe]' */
+    def isTypeQuote = body.isType
+
+    /** Type of the quoted expression as seen from outside the quote */
+    def bodyType(using Context): Type =
+      val quoteType = typeOpt // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
+      val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
+      exprType.argInfos.head // T
+
+    /** Set the type of the body of the quote */
+    def withBodyType(tpe: Type)(using Context): Quote[Type] =
+      val exprType = // `Expr[T]` or `Type[T]`
+        if body.isTerm then defn.QuotedExprClass.typeRef.appliedTo(tpe)
+        else defn.QuotedTypeClass.typeRef.appliedTo(tpe)
+      val quoteType = // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
+        defn.FunctionType(1, isContextual = true)
+          .appliedTo(defn.QuotesClass.typeRef, exprType)
+      withType(quoteType)
+  }
+
+  /** A tree representing a splice `${ expr }`
+   *
+   *  `Splice`s are created by the `Parser`. In typer they can be typed as a
+   *  `Splice` with a known `tpt` or desugared and typed as a quote pattern holes.
+   *
+   *  `Splice` are checked and transformed in the `staging` and `splicing` phases.
+   *  After `splicing` phase, the only splices that exist are in `inline`
+   *  methods. These are dropped when we remove the inline method implementations.
+   *
+   *  @param expr The tree that was spliced
+   */
+  case class Splice[+T <: Untyped] private[ast] (expr: Tree[T])(implicit @constructorOnly src: SourceFile)
+    extends TermTree[T] {
+    type ThisTree[+T <: Untyped] = Splice[T]
+  }
+
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[+T <: Untyped]()(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] with TypTree[T] {
@@ -1087,6 +1142,8 @@ object Trees {
     type SeqLiteral = Trees.SeqLiteral[T]
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
     type Inlined = Trees.Inlined[T]
+    type Quote = Trees.Quote[T]
+    type Splice = Trees.Splice[T]
     type TypeTree = Trees.TypeTree[T]
     type InferredTypeTree = Trees.InferredTypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
@@ -1256,6 +1313,14 @@ object Trees {
       def Inlined(tree: Tree)(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined = tree match {
         case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion)(sourceFile(tree)))
+      }
+      def Quote(tree: Tree)(body: Tree)(using Context): Quote = tree match {
+        case tree: Quote if (body eq tree.body) => tree
+        case _ => finalize(tree, untpd.Quote(body)(sourceFile(tree)))
+      }
+      def Splice(tree: Tree)(expr: Tree)(using Context): Splice = tree match {
+        case tree: Splice if (expr eq tree.expr) => tree
+        case _ => finalize(tree, untpd.Splice(expr)(sourceFile(tree)))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree)(using Context): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
@@ -1494,6 +1559,10 @@ object Trees {
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
+            case tree @ Quote(body) =>
+              cpy.Quote(tree)(transform(body)(using quoteContext))
+            case tree @ Splice(expr) =>
+              cpy.Splice(tree)(transform(expr)(using spliceContext))
             case tree @ Hole(_, _, args, content, tpt) =>
               cpy.Hole(tree)(args = transform(args), content = transform(content), tpt = transform(tpt))
             case _ =>
@@ -1635,6 +1704,10 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
+            case Quote(body) =>
+              this(x, body)(using quoteContext)
+            case Splice(expr) =>
+              this(x, expr)(using spliceContext)
             case Hole(_, _, args, content, tpt) =>
               this(this(this(x, args), content), tpt)
             case _ =>

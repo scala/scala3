@@ -609,11 +609,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end NamedArgMethods
 
-    type Apply = tpd.Apply
+    type Apply = tpd.Apply | tpd.Quote | tpd.Splice
 
     object ApplyTypeTest extends TypeTest[Tree, Apply]:
       def unapply(x: Tree): Option[Apply & x.type] = x match
         case x: (tpd.Apply & x.type) => Some(x)
+        case x: (tpd.Quote & x.type) => Some(x) // TODO expose Quote AST in Quotes
+        case x: (tpd.Splice & x.type) => Some(x) // TODO expose Splice AST in Quotes
         case _ => None
     end ApplyTypeTest
 
@@ -630,8 +632,23 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given ApplyMethods: ApplyMethods with
       extension (self: Apply)
-        def fun: Term = self.fun
-        def args: List[Term] = self.args
+        def fun: Term = self match
+          case self: tpd.Apply => self.fun
+          case self: tpd.Quote => // TODO expose Quote AST in Quotes
+            import dotty.tools.dotc.ast.tpd.TreeOps
+            tpd.ref(dotc.core.Symbols.defn.QuotedRuntime_exprQuote)
+              .appliedToType(self.bodyType)
+              .withSpan(self.span)
+          case self: tpd.Splice => // TODO expose Splice AST in Quotes
+            import dotty.tools.dotc.ast.tpd.TreeOps
+            tpd.ref(dotc.core.Symbols.defn.QuotedRuntime_exprSplice)
+              .appliedToType(self.tpe)
+              .withSpan(self.span)
+
+        def args: List[Term] = self match
+          case self: tpd.Apply => self.args
+          case self: tpd.Quote => List(self.body) // TODO expose Quote AST in Quotes
+          case self: tpd.Splice => List(self.expr) // TODO expose Splice AST in Quotes
       end extension
     end ApplyMethods
 

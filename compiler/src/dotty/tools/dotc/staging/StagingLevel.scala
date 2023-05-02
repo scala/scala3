@@ -31,6 +31,10 @@ object StagingLevel {
   def spliceContext(using Context): FreshContext =
     ctx.fresh.setProperty(LevelKey, level - 1)
 
+  /** If we are inside a quote or a splice */
+  def inQuoteOrSpliceScope(using Context): Boolean =
+    ctx.property(LevelKey).isDefined
+
   /** The quotation level of the definition of the locally defined symbol */
   def levelOf(sym: Symbol)(using Context): Int =
     ctx.property(LevelOfKey) match
