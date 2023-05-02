@@ -157,8 +157,12 @@ object TypeTestsCasts {
               val xClass = effectiveClass(x)
               val pClass = effectiveClass(p)
 
-              !xClass.derivesFrom(pClass)
-              && (xClass.is(Final) || pClass.is(Final) || !xClass.is(Trait) && !pClass.is(Trait))
+              val bothAreClasses = !xClass.is(Trait) && !pClass.is(Trait)
+              val notXsubP = !xClass.derivesFrom(pClass)
+              val notPsubX = !pClass.derivesFrom(xClass)
+              bothAreClasses && notXsubP && notPsubX
+              || xClass.is(Final) && notXsubP
+              || pClass.is(Final) && notPsubX
             else
               false
     }
@@ -183,7 +187,8 @@ object TypeTestsCasts {
             val res1 = recur(tp1, P)
             val res2 = recur(tp2, P)
 
-            if res1.isEmpty && res2.isEmpty then res1
+            if res1.isEmpty && res2.isEmpty then
+              res1
             else if res2.isEmpty then
               if isCheckDefinitelyFalse(tp1, P) then res2
               else res1
