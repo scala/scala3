@@ -79,7 +79,7 @@ final val x = e
 ```
 
 where `e` is a [constant expression](06-expressions.html#constant-expressions).
-The `final` modifier must be present and no type annotation may be given. 
+The `final` modifier must be present and no type annotation may be given.
 References to the constant value `x` are themselves treated as constant expressions; in the generated code they are replaced by the definition's right-hand side `e`.
 
 Value definitions can alternatively have a [pattern](08-pattern-matching.html#patterns) as left-hand side.
@@ -226,6 +226,54 @@ Def        ::=  ‘type’ {nl} TypeDef
 TypeDef    ::=  id [TypeParamClause] ‘=’ Type
 ```
 
+### Desugaring of parameterized type declarations
+A parameterized type declaration is desugared into an unparameterized type declaration
+whose bounds are type lambdas with explicit variance annotations.
+
+#### Abstract Type
+An abstract type
+```scala
+type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´U´
+```
+is desugared into an unparameterized abstract type as follow:
+- If `L` conforms to `Nothing`, then,
+
+  ```scala
+type ´t´ >: Nothing
+       <: [´\mathit{tps'}\,´] =>> ´U´
+  ```
+- otherwise,
+
+  ```scala
+type ´t´ >: [´\mathit{tps'}\,´] =>> ´L´
+       <: [´\mathit{tps'}\,´] =>> ´U´
+  ```
+  
+If at least one of the ´\mathit{tps}´ contains an explicit variance annotation, then ´\mathit{tps'} = \mathit{tps}´, otherwise we infer the variance of each type parameter as with the user-written type lambda `[´\mathit{tps}\,´] =>> ´U´`.
+
+The same desugaring applies to type parameters. For instance,
+```scala
+[F[X] <: Coll[X]]
+```
+is treated as a shorthand for
+```scala
+[F >: Nothing <: [X] =>> Coll[X]]
+```
+
+#### Type Alias
+A parameterized type alias
+```scala
+type ´t´[´\mathit{tps}\,´] = ´T´
+```
+is desugared into an unparameterized type alias
+```scala
+type ´t´ = [´\mathit{tps'}\,´] =>> ´T´
+```
+where ´\mathit{tps'}´ is computed as in the previous case.
+
+´\color{red}{\text{TODO SCALA3: Everything else in this section (and the next one
+on type parameters) needs to be rewritten to take into account the desugaring described above.}}´
+
 A _type declaration_ `type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´U´` declares ´t´ to be an abstract type with lower bound type ´L´ and upper bound type ´U´.
 If the type parameter clause `[´\mathit{tps}\,´]` is omitted, ´t´ abstracts over a proper type, otherwise ´t´ stands for a type constructor that accepts type arguments as described by the type parameter clause.
 
@@ -311,7 +359,7 @@ TypeParam        ::= (id | ‘_’) [TypeParamClause] [‘>:’ Type] [‘<:’ 
 Type parameters appear in type definitions, class definitions, and method definitions.
 In this section we consider only type parameter definitions with lower bounds `>: ´L´` and upper bounds `<: ´U´` whereas a discussion of context bounds `: ´U´` and view bounds `<% ´U´` is deferred to [here](07-implicits.html#context-bounds-and-view-bounds).
 
-The most general form of a proper type parameter is 
+The most general form of a proper type parameter is
 `´@a_1 ... @a_n´ ´\pm´ ´t´ >: ´L´ <: ´U´`.
 Here, ´L´, and ´U´ are lower and upper bounds that constrain possible type arguments for the parameter.
 It is a compile-time error if ´L´ does not conform to ´U´.

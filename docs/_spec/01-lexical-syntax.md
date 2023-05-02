@@ -20,6 +20,28 @@ To construct tokens, characters are distinguished according to the following cla
 1. Delimiter characters ``‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’ ``.
 1. Operator characters. These consist of all printable ASCII characters (`\u0020` - `\u007E`) that are in none of the sets above, mathematical symbols (`Sm`) and other symbols (`So`).
 
+## Optional Braces
+
+The principle of optional braces is that any keyword that can be followed by `{` can also be followed by an indented block, without needing an intervening `:`.
+(Allowing an optional `:` would be counterproductive since it would introduce several ways to do the same thing.)
+
+The lexical analyzer inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](./other-new-features/indentation.md).
+
+´\color{red}{\text{TODO SCALA3: Port soft-modifier.md and link it here.}}´
+
+In the context-free productions below we use the notation `<<< ts >>>` to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`.
+Analogously, the notation `:<<< ts >>>` indicates a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent` that follows a `colon` token.
+
+A `colon` token reads as the standard colon "`:`" but is generated instead of it where `colon` is legal according to the context free syntax, but only if the previous token is an alphanumeric identifier, a backticked identifier, or one of the tokens `this`, `super`, `new`, "`)`", and "`]`".
+
+```
+colon         ::=  ':'    -- with side conditions explained above
+ <<< ts >>>   ::=  ‘{’ ts ‘}’
+                |  indent ts outdent
+:<<< ts >>>   ::=  [nl] ‘{’ ts ‘}’
+                |  colon indent ts outdent
+```
+
 ## Identifiers
 
 ```ebnf
@@ -27,8 +49,9 @@ op       ::=  opchar {opchar}
 varid    ::=  lower idrest
 boundvarid ::=  varid
              | ‘`’ varid ‘`’
-plainid  ::=  upper idrest
-           |  varid
+alphaid    ::=  upper idrest
+             |  varid
+plainid  ::=  alphaid
            |  op
 id       ::=  plainid
            |  ‘`’ { charNoBackQuoteOrNewline | escapeSeq } ‘`’
@@ -79,28 +102,30 @@ Some examples of constant identifiers are
 The ‘$’ character is reserved for compiler-synthesized identifiers.
 User programs should not define identifiers that contain ‘$’ characters.
 
+### Regular keywords
+
 The following names are reserved words instead of being members of the syntactic class `id` of lexical identifiers.
 
 ```scala
-abstract    case        catch       class       def
-do          else        extends     false       final
-finally     for         forSome     if          implicit
-import      lazy        macro       match       new
-null        object      override    package     private
-protected   return      sealed      super       this
-throw       trait       try         true        type
-val         var         while       with        yield
-_    :    =    =>    <-    <:    <%     >:    #    @
+abstract  case      catch     class     def       do        else
+enum      export    extends   false     final     finally   for
+given     if        implicit  import    lazy      match     new
+null      object    override  package   private   protected return
+sealed    super     then      throw     trait     true      try
+type      val       var       while     with      yield
+:         =         <-        =>        <:        >:        #
+@         =>>       ?=>
 ```
 
-The Unicode operators `\u21D2` ‘´\Rightarrow´’ and `\u2190` ‘´\leftarrow´’, which have the ASCII equivalents `=>` and `<-`, are also reserved.
+### Soft keywords
 
-> Here are examples of identifiers:
-> ```scala
->     x         Object        maxIndex   p2p      empty_?
->     +         `yield`       αρετη     _y       dot_product_*
->     __system  _MAX_LEN_
-> ```
+Additionally, the following soft keywords are reserved only in some situations.
+
+´\color{red}{\text{TODO SCALA3: Port soft-modifier.md and link it here.}}´
+
+```
+as  derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
+```
 
 <!-- -->
 
@@ -282,8 +307,8 @@ Literal  ::=  [‘-’] integerLiteral
 ```ebnf
 integerLiteral  ::=  (decimalNumeral | hexNumeral)
                        [‘L’ | ‘l’]
-decimalNumeral  ::=  digit {digit}
-hexNumeral      ::=  ‘0’ (‘x’ | ‘X’) hexDigit {hexDigit}
+decimalNumeral   ::=  ‘0’ | digit [{digit | ‘_’} digit]
+hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit [{hexDigit | ‘_’} hexDigit]
 ```
 
 Values of type `Int` are all integer numbers between $-2\^{31}$ and $2\^{31}-1$, inclusive.
@@ -312,12 +337,11 @@ The digits of a numeric literal may be separated by arbitrarily many underscores
 ### Floating Point Literals
 
 ```ebnf
-floatingPointLiteral  ::=  digit {digit} ‘.’ digit {digit} [exponentPart] [floatType]
-                        |  ‘.’ digit {digit} [exponentPart] [floatType]
-                        |  digit {digit} exponentPart [floatType]
-                        |  digit {digit} [exponentPart] floatType
-exponentPart          ::=  (‘E’ | ‘e’) [‘+’ | ‘-’] digit {digit}
-floatType             ::=  ‘F’ | ‘f’ | ‘D’ | ‘d’
+floatingPointLiteral
+                 ::=  [decimalNumeral] ‘.’ digit [{digit | ‘_’} digit] [exponentPart] [floatType]
+                   |  decimalNumeral exponentPart [floatType]
+                   |  decimalNumeral floatType
+exponentPart     ::=  (‘E’ | ‘e’) [‘+’ | ‘-’] digit [{digit | ‘_’} digit]
 ```
 
 Floating point literals are of type `Float` when followed by a floating point type suffix `F` or `f`, and are of type `Double` otherwise.
@@ -448,7 +472,7 @@ Inside an interpolated string none of the usual escape characters are interprete
 Note that the sequence `\"` does not close a normal string literal (enclosed in single quotes).
 
 There are three forms of dollar sign escape.
-The most general form encloses an expression in `${` and `}`, i.e. `${expr}`. 
+The most general form encloses an expression in `${` and `}`, i.e. `${expr}`.
 The expression enclosed in the braces that follow the leading `$` character is of syntactical category BlockExpr.
 Hence, it can contain multiple statements, and newlines are significant.
 Single ‘$’-signs are not permitted in isolation in an interpolated string.

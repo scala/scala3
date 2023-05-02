@@ -63,6 +63,3 @@ to give at that point a definition of a `children` method with the required type
 class C extends A, B:
   def children: List[A & B] = ???
 ```
-
-
-[More details](./intersection-types-spec.md)

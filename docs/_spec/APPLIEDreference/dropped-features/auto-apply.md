@@ -16,8 +16,8 @@ In Scala 3, this idiom is an error.
 
 ```scala
 next
-^
-missing arguments for method next
+^^^^
+method next must be called with () argument
 ```
 
 In Scala 3, the application syntax has to follow exactly the parameter
