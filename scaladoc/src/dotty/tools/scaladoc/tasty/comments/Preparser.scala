@@ -134,32 +134,26 @@ object Preparser {
 
         def processLink: Unit =
           if (!summon[DocContext].args.noLinkWarnings) then tags.get(SimpleTagKey("see")).get.foreach(link => {
-            val newLink: String = link.replaceAll("\\[\\[|\\]\\]", "")
-            val isValid = Try(new URL(newLink)).isSuccess
-            isValid match {
-              case true =>
-                val url = new URL(newLink)
-                url match {
-                  // We check if it's an internal link
-                  case s if s.getPath.contains("/docs/") =>
-                    if (newLink.contains("oracle")) then // exclude links containing "oracle"
-                    None
-                    else
-                      // We check if the internal link to the static documentation is valid
-                      val docPath = url.getPath.substring(url.getPath.indexOf("/docs/")).replaceFirst("/docs/", "docs/_docs/").replace(".html", ".md")
-                      println(docPath)
-                      val fileExists = Files.exists(Paths.get(docPath))
-                      if !fileExists then
-                        //Si le fichier n'existe pas, on vérifie si le fichier existe avec l'extension .md
-                        val newDocPath = docPath + ".md"
-                        if !Files.exists(Paths.get(newDocPath)) then
-                          report.warning(s"Link to $newLink will return a 404 not found")
-                  case _ => None
-                }
-              case false =>
-                None
+            val newLink = link.replaceAll("\\[\\[|\\]\\]", "")
+            val newUrl = new URL(newLink)
+            if(Try(newUrl).isSuccess) {
+              if(newUrl.getPath.contains("/docs/")) {
+                if (newLink.contains("oracle") || newLink.contains("excludeValidation")) then None
+                else
+                  // We check if the internal link to the static documentation is valid
+                  val docPath = newUrl.getPath.substring(newUrl.getPath.indexOf("/docs/"))
+                  .replaceFirst("/docs/(docs/)?", "docs/_docs/")
+                  .replace(".html", ".md")
+                  println(docPath)
+                  val fileExists = Files.exists(Paths.get(docPath))
+                  if !fileExists then
+                    val newDocPath = docPath + ".md"
+                    if !Files.exists(Paths.get(newDocPath)) then report.warning(s"Link to $newLink will return a 404 not found")
               }
-            })
+              else None
+            }
+            else None
+          })
 
         val bodyTags: mutable.Map[TagKey, List[String]] =
           if tags.get(SimpleTagKey("see")).isDefined then
