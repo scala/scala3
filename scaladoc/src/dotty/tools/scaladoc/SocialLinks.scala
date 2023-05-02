@@ -1,9 +1,5 @@
 package dotty.tools.scaladoc
 
-import java.nio.file.Path
-import java.nio.file.Paths
-import dotty.tools.dotc.core.Contexts.Context
-
 enum SocialLinks(val url: String, val className: String):
   case Github(ghUrl: String) extends SocialLinks(ghUrl, "gh")
   case Twitter(tUrl: String) extends SocialLinks(tUrl, "twitter")

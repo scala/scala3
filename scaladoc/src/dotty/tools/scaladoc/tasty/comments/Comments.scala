@@ -7,7 +7,6 @@ import scala.util.Try
 import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
 import com.vladsch.flexmark.formatter.Formatter
-import com.vladsch.flexmark.util.options.MutableDataSet
 import com.vladsch.flexmark.util.sequence.BasedSequence
 
 import scala.quoted._

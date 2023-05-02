@@ -6,13 +6,14 @@ import com.vladsch.flexmark.parser.core._
 import com.vladsch.flexmark.parser.block._
 import com.vladsch.flexmark.util.ast.Block
 import com.vladsch.flexmark.util.ast.BlockContent
-import com.vladsch.flexmark.util.options.DataHolder
+import com.vladsch.flexmark.util.data.DataHolder
 import com.vladsch.flexmark.util.sequence.BasedSequence
 import com.vladsch.flexmark.util.sequence.SegmentedSequence
 
 import java.{util => ju}
 import ju.regex.Matcher
 import ju.regex.Pattern
+import scala.jdk.CollectionConverters._
 
 
 /** Copied from FencedCodeBlockParser. */
@@ -21,8 +22,11 @@ object WikiCodeBlockParser {
   private val CLOSING_FENCE = Pattern.compile("^(\\}{3})(?=[ \t]*$)$")
 
   class Factory extends CustomBlockParserFactory {
+    override def apply(options: DataHolder): BlockParserFactory =
+      new WikiCodeBlockParser.BlockFactory(options)
+
     override def getAfterDependents =
-      new ju.HashSet[Class[_ <: CustomBlockParserFactory]](ju.Arrays.asList(
+      new ju.HashSet[Class[?]](ju.Arrays.asList(
         classOf[BlockQuoteParser.Factory],
         classOf[HeadingParser.Factory],
         //FencedCodeBlockParser.Factory.class,
@@ -33,7 +37,7 @@ object WikiCodeBlockParser {
       ))
 
     override def getBeforeDependents =
-      new ju.HashSet[Class[_ <: CustomBlockParserFactory]](ju.Arrays.asList(
+      new ju.HashSet[Class[?]](ju.Arrays.asList(
         //BlockQuoteParser.Factory.class,
         //HeadingParser.Factory.class,
         //FencedCodeBlockParser.Factory.class,
@@ -44,9 +48,6 @@ object WikiCodeBlockParser {
       ))
 
     override def affectsGlobalScope = false
-
-    override def create(options: DataHolder) =
-      new WikiCodeBlockParser.BlockFactory(options)
   }
 
   private[WikiCodeBlockParser] class BlockFactory (val options: DataHolder)
@@ -83,7 +84,7 @@ class WikiCodeBlockParser(
 
   final private val block = new FencedCodeBlock()
   private var content = new BlockContent
-  private val codeContentBlock = options.get(Parser.FENCED_CODE_CONTENT_BLOCK)
+  private val codeContentBlock = Parser.FENCED_CODE_CONTENT_BLOCK.get(options)
 
   def getBlock: Block = block
   def getFenceIndent: Int = fenceIndent
@@ -141,7 +142,7 @@ class WikiCodeBlockParser(
           codeBlock.setCharsFromContent
           block.appendChild(codeBlock)
         } else {
-          val codeBlock = new Text(SegmentedSequence.of(segments))
+          val codeBlock = new Text(SegmentedSequence.create(segments.asScala.toSeq:_*))
           block.appendChild(codeBlock)
         }
       }
