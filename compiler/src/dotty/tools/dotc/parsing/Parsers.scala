@@ -1453,7 +1453,7 @@ object Parsers {
     }
 
     def capturesAndResult(core: () => Tree): Tree =
-      if in.token == LBRACE && in.offset == in.lastOffset
+      if Feature.ccEnabled && in.token == LBRACE && in.offset == in.lastOffset
       then CapturesAndResult(captureSet(), core())
       else core()
 
@@ -1685,7 +1685,7 @@ object Parsers {
      *  or followed by a token that cannot start an infix type.
      *  Otherwise it is treated as an infix operator.
      */
-    private def isTrailingUpArrow =
+    private def isCaptureUpArrow =
       val ahead = in.lookahead
       ahead.token == LBRACE
       || ahead.isIdent(nme.PUREARROW)
@@ -1699,7 +1699,7 @@ object Parsers {
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
-      else if in.isIdent(nme.UPARROW) && isTrailingUpArrow then
+      else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then
         val upArrowStart = in.offset
         in.nextToken()
         def cs =
