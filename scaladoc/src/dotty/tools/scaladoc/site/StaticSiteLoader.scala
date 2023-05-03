@@ -5,6 +5,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.{ Paths, Path }
 import scala.io._
+import dotty.tools.scaladoc.site.BlogParser
 
 class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSiteContext, CompilerContext):
   val ctx: StaticSiteContext = summon[StaticSiteContext]
@@ -113,37 +114,13 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
     StaticSiteRoot(withBlog, mappings)
   }
 
-  var hiddenBlog = false
-
-  def readYml: (Option[Boolean], Option[Boolean], Option[Boolean], String) =
-    val ymlPath = root.toPath.resolve("blog.yml")
-    if (Files.exists(ymlPath)) then
-      val yamlContent = Source.fromFile(ymlPath.toString).getLines().mkString("\n")
-      val hidden = if (yamlContent.contains("hidden: true")) Some(true) else None
-      val input = if (yamlContent.contains("input:")) Some(true) else None
-      val output = if (yamlContent.contains("output:")) Some(true) else None
-      (hidden, input, output, yamlContent)
-    else
-      (None, None, None, "")
-
   def loadBlog(): Option[LoadedTemplate] = {
-    val (hidden, input, output, yamlContent) = readYml
-    val lines = yamlContent.split("\n")
-    val rootPath = input.collect {
-      case true =>
-        lines.collectFirst { case line if line.contains("input:") => line.replaceFirst("input:", "").trim }
-          .map(ctx.resolveNewBlogPath)
-          .getOrElse(ctx.blogPath)
-    }.getOrElse(ctx.blogPath)
-    val defaultDirectory = output.collect {
-    case true =>
-      lines
-        .collectFirst { case line if line.contains("output:") => line.replaceFirst("output:", "").trim }
-        .getOrElse("blog")
-    }.getOrElse("blog")
-    hidden.collect { case true => hiddenBlog = true }
+    val blogConfig = BlogParser.readYml(root)
+    val rootPath = Option(blogConfig.input).map(input => ctx.resolveNewBlogPath(input)).getOrElse(ctx.blogPath)
+    val defaultDirectory = Option(blogConfig.output).getOrElse("blog")
+
     type Date = (String, String, String)
-    if (!Files.exists(rootPath) || hiddenBlog) None
+    if (!Files.exists(rootPath) || blogConfig.hidden) None
     else {
       val indexPageOpt = Seq(
           rootPath.resolve("index.md"),
