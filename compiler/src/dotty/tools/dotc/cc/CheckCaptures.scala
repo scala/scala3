@@ -52,12 +52,12 @@ object CheckCaptures:
    *  @param outer0        the next enclosing environment
    */
   case class Env(
-    owner: Symbol,
-    nestedInOwner: Boolean,
-    captured: CaptureSet,
-    isBoxed: Boolean,
-    outer0: Env | Null
-  ):
+      owner: Symbol,
+      nestedInOwner: Boolean,
+      captured: CaptureSet,
+      isBoxed: Boolean,
+      outer0: Env | Null):
+
     def outer = outer0.nn
 
     def isOutermost = outer0 == null

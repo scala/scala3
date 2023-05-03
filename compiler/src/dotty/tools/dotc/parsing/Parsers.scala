@@ -1462,12 +1462,11 @@ object Parsers {
      *                   |  FunParamClause ‘=>>’ Type
      *                   |  MatchType
      *                   |  InfixType
-     *                   |  CaptureSet Type                            -- under captureChecking
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
-     *                   |  (‘->’ | ‘?->’ ) Type                       -- under pureFunctions
+     *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type          -- under pureFunctions
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
-     *                   |  HKTypeParamClause ‘->’ Type                -- under pureFunctions
+     *                   |  HKTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
@@ -1951,13 +1950,13 @@ object Parsers {
 
     /** FunArgType ::=  Type
      *               |  `=>' Type
-     *               |  [CaptureSet] `->' Type
+     *               |  `->' [CaptureSet] Type
      */
     val funArgType: () => Tree = () => paramTypeOf(typ)
 
     /** ParamType  ::=  ParamValueType
      *               |  `=>' ParamValueType
-     *               |  [CaptureSet] `->' ParamValueType
+     *               |  `->' [CaptureSet] ParamValueType
      */
     def paramType(): Tree = paramTypeOf(paramValueType)
 
@@ -2096,7 +2095,7 @@ object Parsers {
      *                      |  ‘inline’ InfixExpr MatchClause
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      *  Binding           ::=  (id | `_') [`:' Type]
-     *  Ascription        ::=  `:' [CaptureSet] InfixType
+     *  Ascription        ::=  `:' InfixType
      *                      |  `:' Annotation {Annotation}
      *                      |  `:' `_' `*'
      *  Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
@@ -4155,8 +4154,8 @@ object Parsers {
       stats.toList
     }
 
-    /** SelfType ::=  id [‘:’ [CaptureSet] InfixType] ‘=>’
-     *            |  ‘this’ ‘:’ [CaptureSet] InfixType ‘=>’
+    /** SelfType ::=  id [‘:’ InfixType] ‘=>’
+     *            |  ‘this’ ‘:’ InfixType ‘=>’
      */
     def selfType(): ValDef =
       if (in.isIdent || in.token == THIS)
