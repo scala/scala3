@@ -107,11 +107,20 @@ object TastyHeaderUnpickler {
     }
     val minorVersion = showMinorVersion(MinorVersion, ExperimentalVersion)
     val fileMinorVersion = showMinorVersion(fileMinor, fileExperimental)
-    s"""TASTy signature has wrong version.
-      | expected: {majorVersion: $MajorVersion, minorVersion: $minorVersion}
-      | found   : {majorVersion: $fileMajor, minorVersion: $fileMinorVersion}
-      |
-      |""".stripMargin
+
+    if (MajorVersion == 28 && fileMajor == 28)
+      s"""Found a file on classpath, that was compiled with a newer Scala version than the one currently used.
+         |  Found: 3.$fileMinorVersion
+         |  Supported: 3.$minorVersion or older
+         |
+         | Try updating your Scala version to 3.$fileMinorVersion or change the classpath.""".stripMargin
+    else
+        // This should not happen in practice but better safe than sorry
+        s"""TASTy signature has wrong version that cannot be expressed as Scala version.
+           | expected: {majorVersion: $MajorVersion, minorVersion: $minorVersion}
+           | found   : {majorVersion: $fileMajor, minorVersion: $fileMinorVersion}
+           |""".stripMargin
+
   }
 
   private def unstableAddendum =
