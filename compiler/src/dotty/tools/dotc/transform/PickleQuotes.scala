@@ -95,9 +95,8 @@ class PickleQuotes extends MacroTransform {
         case Apply(Select(quote: Quote, nme.apply), List(quotes)) =>
           val (contents, quote1) = makeHoles(quote)
           val quote2 = encodeTypeArgs(quote1)
-          val contents1 = contents ::: quote.tags
-          val pickled = PickleQuotes.pickle(quote2, quotes, contents1)
-          transform(pickled) // pickle quotes that are in the contents
+          val contents1 = contents.map(transform(_)) ::: quote.tags
+          PickleQuotes.pickle(quote2, quotes, contents1)
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           tree
         case _ =>
