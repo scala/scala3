@@ -1,29 +1,26 @@
-package dotty.tools.scaladoc
-package site
+package dotty.tools.scaladoc.site
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.databind.DeserializationFeature
 import java.io.File
-import scala.beans._
+import scala.beans.{BooleanBeanProperty, BeanProperty}
+import scala.util.Try
 
 case class BlogConfig(
-  @BeanProperty var input: String,
-  @BeanProperty var output: String,
-  @BooleanBeanProperty var hidden: Boolean
+  @BeanProperty input: String,
+  @BeanProperty output: String,
+  @BooleanBeanProperty hidden: Boolean
 ):
-    def this() = this(null, null, false)
+  def this() = this(null, null, false)
 
 object BlogParser:
-  def readYml(root: File): BlogConfig =
-    val ymlFile = root.toPath
-    .resolve("blog.yml")
-    .toFile
+  def readYml(content: File | String): BlogConfig =
+    val mapper = ObjectMapper(YAMLFactory())
+      .findAndRegisterModules()
 
-    if ymlFile.exists then
-      val mapper = new ObjectMapper(new YAMLFactory())
-      mapper.findAndRegisterModules();
-
-      val blogConfig: BlogConfig = mapper.readValue(ymlFile, classOf[BlogConfig])
-      blogConfig
-    else new BlogConfig
+    content match
+      case f: File =>
+        val ymlFile = f.toPath.resolve("blog.yml").toFile
+        if ymlFile.exists then mapper.readValue(ymlFile, classOf[BlogConfig]) else new BlogConfig
+      case s: String => Try(mapper.readValue(s, classOf[BlogConfig])).getOrElse(new BlogConfig)
