@@ -177,7 +177,7 @@ class Splicing extends MacroTransform:
    *  ```
    */
   private class SpliceTransformer(spliceOwner: Symbol, isCaptured: Symbol => Boolean) extends Transformer:
-    private var refBindingMap = mutable.Map.empty[Symbol, (Tree, Symbol)]
+    private var refBindingMap = mutable.LinkedHashMap.empty[Symbol, (Tree, Symbol)]
     /** Reference to the `Quotes` instance of the current level 1 splice */
     private var quotes: Tree | Null = null // TODO: add to the context
     private var healedTypes: QuoteTypeTags | Null = null // TODO: add to the context
