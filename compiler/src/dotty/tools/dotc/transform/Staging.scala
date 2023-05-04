@@ -8,6 +8,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.staging.StagingLevel.*
@@ -56,7 +57,8 @@ class Staging extends MacroTransform {
           checker.transform(tree)
         case _ =>
       }
-
+    }
+    if !Inlines.inInlineMethod then
       tree match {
         case tree: RefTree =>
           assert(level != 0 || tree.symbol != defn.QuotedTypeModule_of,
@@ -72,7 +74,7 @@ class Staging extends MacroTransform {
         case _ =>
           // OK
       }
-    }
+  end checkPostCondition
 
   override def run(using Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run
