@@ -986,61 +986,67 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Heal ill-formed capture sets of type parameters. See `healTypeParam`.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
-      unit.foreachSubTree {
-        case _: InferredTypeTree =>
-        case tree: TypeTree if !tree.span.isZeroExtent =>
-          tree.knownType.foreachPart { tp =>
-            checkWellformedPost(tp, tree.srcPos)
-            tp match
-              case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
-                warnIfRedundantCaptureSet(annot.tree)
+      val checker = new TreeTraverser:
+        def traverse(tree: Tree)(using Context): Unit =
+          traverseChildren(tree)
+          check(tree)
+        def check(tree: Tree) = tree match
+          case _: InferredTypeTree =>
+          case tree: TypeTree if !tree.span.isZeroExtent =>
+            tree.knownType.foreachPart { tp =>
+              checkWellformedPost(tp, tree.srcPos)
+              tp match
+                case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
+                  warnIfRedundantCaptureSet(annot.tree)
+                case _ =>
+            }
+          case t: ValOrDefDef
+          if t.tpt.isInstanceOf[InferredTypeTree] && !Synthetics.isExcluded(t.symbol) =>
+            val sym = t.symbol
+            val isLocal =
+              sym.owner.ownersIterator.exists(_.isTerm)
+              || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
+            def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
+              sym.is(Private)                   // private symbols can always have inferred types
+              || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
+                                                // too annoying. This is a hole since a defualt getter's result type
+                                                // might leak into a type variable.
+              ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
+                isLocal                         // local symbols still need explicit types if
+                && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
+            def isNotPureThis(ref: CaptureRef) = ref match {
+              case ref: ThisType => !ref.cls.isPureClass
+              case _ => true
+            }
+            if !canUseInferred then
+              val inferred = t.tpt.knownType
+              def checkPure(tp: Type) = tp match
+                case CapturingType(_, refs)
+                if !refs.elems.filter(isNotPureThis).isEmpty =>
+                  val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
+                  report.error(
+                    em"""Non-local $sym cannot have an inferred$resultStr type
+                        |$inferred
+                        |with non-empty capture set $refs.
+                        |The type needs to be declared explicitly.""".withoutDisambiguation(),
+                    t.srcPos)
+                case _ =>
+              inferred.foreachPart(checkPure, StopAt.Static)
+          case t @ TypeApply(fun, args) =>
+            fun.knownType.widen match
+              case tl: PolyType =>
+                val normArgs = args.lazyZip(tl.paramInfos).map { (arg, bounds) =>
+                  arg.withType(arg.knownType.forceBoxStatus(
+                    bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
+                }
+                checkBounds(normArgs, tl)
               case _ =>
-          }
-        case t: ValOrDefDef
-        if t.tpt.isInstanceOf[InferredTypeTree] && !Synthetics.isExcluded(t.symbol) =>
-          val sym = t.symbol
-          val isLocal =
-            sym.owner.ownersIterator.exists(_.isTerm)
-            || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
-          def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
-            sym.is(Private)                   // private symbols can always have inferred types
-            || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
-                                              // too annoying. This is a hole since a defualt getter's result type
-                                              // might leak into a type variable.
-            ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
-              isLocal                         // local symbols still need explicit types if
-              && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
-          def isNotPureThis(ref: CaptureRef) = ref match {
-            case ref: ThisType => !ref.cls.isPureClass
-            case _ => true
-          }
-          if !canUseInferred then
-            val inferred = t.tpt.knownType
-            def checkPure(tp: Type) = tp match
-              case CapturingType(_, refs)
-              if !refs.elems.filter(isNotPureThis).isEmpty =>
-                val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
-                report.error(
-                  em"""Non-local $sym cannot have an inferred$resultStr type
-                      |$inferred
-                      |with non-empty capture set $refs.
-                      |The type needs to be declared explicitly.""".withoutDisambiguation(),
-                  t.srcPos)
-              case _ =>
-            inferred.foreachPart(checkPure, StopAt.Static)
-        case t @ TypeApply(fun, args) =>
-          fun.knownType.widen match
-            case tl: PolyType =>
-              val normArgs = args.lazyZip(tl.paramInfos).map { (arg, bounds) =>
-                arg.withType(arg.knownType.forceBoxStatus(
-                  bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
-              }
-              checkBounds(normArgs, tl)
-            case _ =>
 
-          args.foreach(healTypeParam(_))
-        case _ =>
-      }
+            args.foreach(healTypeParam(_))
+          case _ =>
+        end check
+      end checker
+      checker.traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives
