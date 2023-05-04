@@ -90,6 +90,9 @@ class CrossStageSafety extends TreeMapWithStages {
                 if level != 0 then cpy.Apply(tree)(cpy.TypeApply(tree.fun)(fun, transformedBody :: Nil), quotes :: Nil)
                 else tpd.Quote(transformedBody).select(nme.apply).appliedTo(quotes).withSpan(tree.span)
 
+      case _: DefDef if tree.symbol.isInlineMethod =>
+        tree
+
       case _ if !inQuoteOrSpliceScope =>
         checkAnnotations(tree) // Check quotes in annotations
         super.transform(tree)
@@ -117,8 +120,6 @@ class CrossStageSafety extends TreeMapWithStages {
             // propagate healed types
             tree1.withType(tree1.tpt.tpe.appliedTo(tree1.args.map(_.tpe)))
           case tree1 => tree1
-      case tree: DefDef if tree.symbol.is(Inline) && level > 0 =>
-        EmptyTree // Remove inline defs in quoted code. Already fully inlined.
       case tree: ValOrDefDef =>
         checkAnnotations(tree)
         healInfo(tree, tree.tpt.srcPos)
