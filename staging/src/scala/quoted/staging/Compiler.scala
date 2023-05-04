@@ -13,7 +13,7 @@ object Compiler:
 
   /** Create a new instance of the compiler using the the classloader of the application.
    *
-   * Usuage:
+   * Usage:
    * ```
    * import scala.quoted.staging._
    * given Compiler = Compiler.make(getClass.getClassLoader)
