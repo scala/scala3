@@ -602,8 +602,13 @@ object SpaceEngine {
 
   /** Whether the extractor covers the given type */
   def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): Boolean =
-    SpaceEngine.isIrrefutable(unapp, argLen) || unapp.symbol == defn.TypeTest_unapply && {
+    SpaceEngine.isIrrefutable(unapp, argLen)
+    || unapp.symbol == defn.TypeTest_unapply && {
       val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
+      scrutineeTp <:< tp
+    }
+    || unapp.symbol == defn.ClassTagClass_unapply && {
+      val AppliedType(_, tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
 
