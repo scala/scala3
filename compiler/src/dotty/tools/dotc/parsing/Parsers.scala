@@ -1737,9 +1737,6 @@ object Parsers {
         })
       else t
 
-    /** The block in a quote or splice */
-    def stagedBlock() = inBraces(block(simplify = true))
-
     /** TypeBlock ::= {TypeBlockStat semi} Type
      */
     def typeBlock(): Tree =
@@ -1752,7 +1749,7 @@ object Parsers {
       while in.token == TYPE do tdefs += typeBlockStat()
       tdefs.toList
 
-    /**  TypeBlockStat     ::=  ‘type’ {nl} TypeDcl
+    /**  TypeBlockStat ::= ‘type’ {nl} TypeDcl
      */
     def typeBlockStat(): Tree =
       val mods = defAnnotsMods(BitSet())
@@ -1760,6 +1757,19 @@ object Parsers {
       if in.token == SEMI then in.nextToken()
       if in.isNewLine then in.nextToken()
       tdef
+
+    /** Quoted ::=  ‘'’ ‘{’ Block ‘}’
+     *           |  ‘'’ ‘[’ TypeBlock ‘]’
+     */
+    def quote(inPattern: Boolean): Tree =
+      atSpan(in.skipToken()) {
+        withinStaged(StageKind.Quoted | (if (inPattern) StageKind.QuotedPattern else 0)) {
+          val body =
+            if (in.token == LBRACKET) inBrackets(typeBlock())
+            else inBraces(block(simplify = true))
+          Quote(body, Nil)
+        }
+      }
 
     /** ExprSplice  ::=  ‘$’ spliceId          --     if inside quoted block
      *                |  ‘$’ ‘{’ Block ‘}’     -- unless inside quoted pattern
@@ -1775,7 +1785,8 @@ object Parsers {
         val expr =
           if (in.name.length == 1) {
             in.nextToken()
-            withinStaged(StageKind.Spliced)(if (inPattern) inBraces(pattern()) else stagedBlock())
+            val inPattern = (staged & StageKind.QuotedPattern) != 0
+            withinStaged(StageKind.Spliced)(inBraces(if inPattern then pattern() else block(simplify = true)))
           }
           else atSpan(in.offset + 1) {
             val id = Ident(in.name.drop(1))
@@ -2498,14 +2509,7 @@ object Parsers {
           canApply = false
           blockExpr()
         case QUOTE =>
-          atSpan(in.skipToken()) {
-            withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.QuotedPattern else 0)) {
-              val body =
-                if (in.token == LBRACKET) inBrackets(typeBlock())
-                else stagedBlock()
-              Quote(body, Nil)
-            }
-          }
+          quote(location.inPattern)
         case NEW =>
           canApply = false
           newExpr()
