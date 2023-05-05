@@ -690,9 +690,14 @@ object Trees {
    *  when type checking. TASTy files will not contain type quotes. Type quotes are used again
    *  in the `staging` phase to represent the reification of `Type.of[T]]`.
    *
+   *  Type tags `tags` are always empty before the `staging` phase. Tags for stage inconsistent
+   *  types are added in the `staging` phase to level 0 quotes. Tags for types that refer to
+   *  definitions in an outer quote are added in the `splicing` phase
+   *
    *  @param  body  The tree that was quoted
+   *  @param  tags  Term references to instances of `Type[T]` for `T`s that are used in the quote
    */
-  case class Quote[+T <: Untyped] private[ast] (body: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Quote[+T <: Untyped] private[ast] (body: Tree[T], tags: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Quote[T]
 
@@ -1313,9 +1318,9 @@ object Trees {
         case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion)(sourceFile(tree)))
       }
-      def Quote(tree: Tree)(body: Tree)(using Context): Quote = tree match {
-        case tree: Quote if (body eq tree.body) => tree
-        case _ => finalize(tree, untpd.Quote(body)(sourceFile(tree)))
+      def Quote(tree: Tree)(body: Tree, tags: List[Tree])(using Context): Quote = tree match {
+        case tree: Quote if (body eq tree.body) && (tags eq tree.tags) => tree
+        case _ => finalize(tree, untpd.Quote(body, tags)(sourceFile(tree)))
       }
       def Splice(tree: Tree)(expr: Tree)(using Context): Splice = tree match {
         case tree: Splice if (expr eq tree.expr) => tree
@@ -1558,8 +1563,8 @@ object Trees {
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
-            case tree @ Quote(body) =>
-              cpy.Quote(tree)(transform(body)(using quoteContext))
+            case Quote(body, tags) =>
+              cpy.Quote(tree)(transform(body)(using quoteContext), transform(tags))
             case tree @ Splice(expr) =>
               cpy.Splice(tree)(transform(expr)(using spliceContext))
             case tree @ Hole(isTerm, idx, args, content, tpt) =>
@@ -1703,8 +1708,8 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
-            case Quote(body) =>
-              this(x, body)(using quoteContext)
+            case Quote(body, tags) =>
+              this(this(x, body)(using quoteContext), tags)
             case Splice(expr) =>
               this(x, expr)(using spliceContext)
             case Hole(_, _, args, content, tpt) =>

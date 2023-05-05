@@ -827,7 +827,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
       super.typedQuote(tree, pt) match
-        case Quote(Splice(inner)) => inner
+        case Quote(Splice(inner), _) => inner
         case tree1 =>
           ctx.compilationUnit.needsStaging = true
           tree1

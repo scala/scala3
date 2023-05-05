@@ -9,6 +9,7 @@ import Contexts._
 import Symbols._
 import Constants._
 import ast.Trees._
+import ast.untpd
 import ast.TreeTypeMap
 import SymUtils._
 import NameKinds._
@@ -27,9 +28,7 @@ import scala.annotation.constructorOnly
  *
  *  Transforms top level quote
  *   ```
- *   '{ ...
- *      @TypeSplice type X0 = {{ 0 | .. | contentsTpe0 | .. }}
- *      @TypeSplice type X2 = {{ 1 | .. | contentsTpe1 | .. }}
+ *   '<a,b>{ ...
  *      val x1: U1 = ???
  *      val x2: U2 = ???
  *      ...
@@ -45,22 +44,19 @@ import scala.annotation.constructorOnly
  *    ```
  *     unpickleExprV2(
  *       pickled = [[ // PICKLED TASTY
- *       @TypeSplice type X0 // with bounds that do not contain captured types
- *       @TypeSplice type X1 // with bounds that do not contain captured types
+ *         @TypeSplice type A // with bounds that do not contain captured types
+ *         @TypeSplice type B // with bounds that do not contain captured types
  *         val x1 = ???
  *         val x2 = ???
  *         ...
- *      {{{ 0 | x1 | | T0 }}} // hole
- *      ...
- *      {{{ 1 | x2 | | T1 }}} // hole
- *      ...
- *      {{{ 2 | x1, x2 | | T2 }}} // hole
+ *         {{{ 0 | x1 | | T0 }}} // hole
+ *         ...
+ *         {{{ 1 | x2 | | T1 }}} // hole
+ *         ...
+ *         {{{ 2 | x1, x2 | | T2 }}} // hole
  *         ...
  *       ]],
- *       typeHole = (idx: Int, args: List[Any]) => idx match {
- *         case 0 => contentsTpe0.apply(args(0).asInstanceOf[Type[?]]) // beta reduced
- *         case 1 => contentsTpe1.apply(args(0).asInstanceOf[Type[?]]) // beta reduced
- *       },
+ *       typeHole = Seq(a, b),
  *       termHole = (idx: Int, args: List[Any], quotes: Quotes) => idx match {
  *         case 3 => content0.apply(args(0).asInstanceOf[Expr[U1]]).apply(quotes) // beta reduced
  *         case 4 => content1.apply(args(0).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
@@ -87,9 +83,6 @@ class PickleQuotes extends MacroTransform {
         assert(Inlines.inInlineMethod)
       case tree: Splice =>
         assert(Inlines.inInlineMethod)
-      case _ : TypeDef if !Inlines.inInlineMethod =>
-        assert(!tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot),
-          s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")
       case _ =>
 
   override def run(using Context): Unit =
@@ -100,7 +93,9 @@ class PickleQuotes extends MacroTransform {
       tree match
         case Apply(Select(quote: Quote, nme.apply), List(quotes)) =>
           val (contents, quote1) = makeHoles(quote)
-          val pickled = PickleQuotes.pickle(quote1, quotes, contents)
+          val quote2 = encodeTypeArgs(quote1)
+          val contents1 = contents ::: quote.tags
+          val pickled = PickleQuotes.pickle(quote2, quotes, contents1)
           transform(pickled) // pickle quotes that are in the contents
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           tree
@@ -114,12 +109,12 @@ class PickleQuotes extends MacroTransform {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
           case tree @ Hole(isTerm, _, _, content, _) =>
-            if !content.isEmpty then
-              contents += content
-            val holeType =
-              if isTerm then getTermHoleType(tree.tpe) else getTypeHoleType(tree.tpe)
+            assert(isTerm)
+            assert(!content.isEmpty)
+            contents += content
+            val holeType = getTermHoleType(tree.tpe)
             val hole = cpy.Hole(tree)(content = EmptyTree, TypeTree(holeType))
-            if isTerm then Inlined(EmptyTree, Nil, hole).withSpan(tree.span) else hole
+            cpy.Inlined(tree)(EmptyTree, Nil, hole)
           case tree: DefTree =>
             val newAnnotations = tree.symbol.annotations.mapconserve { annot =>
               annot.derivedAnnotation(transform(annot.tree)(using ctx.withOwner(tree.symbol)))
@@ -137,25 +132,6 @@ class PickleQuotes extends MacroTransform {
                 derivedAnnotatedType(tp, underlying1, annot.derivedAnnotation(transform(annot.tree)))
               case _ => mapOver(tp)
         }
-      }
-
-      /** Remove references to local types that will not be defined in this quote */
-      private def getTypeHoleType(using Context) = new TypeMap() {
-        override def apply(tp: Type): Type = tp match
-          case tp: TypeRef if tp.typeSymbol.isTypeSplice =>
-            apply(tp.dealias)
-          case tp @ TypeRef(pre, _) if isLocalPath(pre) =>
-            val hiBound = tp.typeSymbol.info match
-              case info: ClassInfo => info.parents.reduce(_ & _)
-              case info => info.hiBound
-            apply(hiBound)
-          case tp =>
-            mapOver(tp)
-
-        private def isLocalPath(tp: Type): Boolean = tp match
-          case NoPrefix => true
-          case tp: TermRef if !tp.symbol.is(Package) => isLocalPath(tp.prefix)
-          case tp => false
       }
 
       /** Remove references to local types that will not be defined in this quote */
@@ -180,13 +156,77 @@ class PickleQuotes extends MacroTransform {
 
     val holeMaker = new HoleContentExtractor
     val body1 = holeMaker.transform(quote.body)
-    val body2 =
-      if quote.isTypeQuote then body1
-      else Inlined(Inlines.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
-    val quote1 = cpy.Quote(quote)(body2)
+    val quote1 = cpy.Quote(quote)(body1, quote.tags)
 
     (holeMaker.getContents(), quote1)
   end makeHoles
+
+  /** Encode quote tags as holes in the quote body.
+   *
+   *  ```scala
+   *    '<t, u>{ ... t.Underlying ... u.Underlying ... }
+   *  ```
+   *  becomes
+   * ```scala
+   *  '<t, u>{
+   *    type T = {{ 0 | .. | .. | .. }}
+   *    type U = {{ 1 | .. | .. | .. }}
+   *    ... T ... U ...
+   *  }
+   * ```
+   */
+  private def encodeTypeArgs(quote: tpd.Quote)(using Context): tpd.Quote =
+    if quote.tags.isEmpty then quote
+    else
+      val tdefs = quote.tags.zipWithIndex.map(mkTagSymbolAndAssignType)
+      val typeMapping = quote.tags.map(_.tpe).zip(tdefs.map(_.symbol.typeRef)).toMap
+      val typeMap = new TypeMap {
+        override def apply(tp: Type): Type = tp match
+          case TypeRef(tag: TermRef, _) if tp.typeSymbol == defn.QuotedType_splice =>
+            typeMapping.getOrElse(tag, tp)
+          case _ => mapOver(tp)
+      }
+      def treeMap(tree: Tree): Tree = tree match
+          case Select(qual, _) if tree.symbol == defn.QuotedType_splice =>
+            typeMapping.get(qual.tpe) match
+              case Some(tag) => TypeTree(tag).withSpan(tree.span)
+              case None => tree
+          case _ => tree
+      val body1 = new TreeTypeMap(typeMap, treeMap).transform(quote.body)
+      cpy.Quote(quote)(Block(tdefs, body1), quote.tags)
+
+  private def mkTagSymbolAndAssignType(typeArg: Tree, idx: Int)(using Context): TypeDef = {
+    val holeType = getTypeHoleType(typeArg.tpe.select(tpnme.Underlying))
+    val hole = cpy.Hole(typeArg)(isTerm = false, idx, Nil, EmptyTree, TypeTree(holeType))
+    val local = newSymbol(
+      owner = ctx.owner,
+      name = UniqueName.fresh(hole.tpe.dealias.typeSymbol.name.toTypeName),
+      flags = Synthetic,
+      info = TypeAlias(typeArg.tpe.select(tpnme.Underlying)),
+      coord = typeArg.span
+    ).asType
+    local.addAnnotation(Annotation(defn.QuotedRuntime_SplicedTypeAnnot, typeArg.span))
+    ctx.typeAssigner.assignType(untpd.TypeDef(local.name, hole), local).withSpan(typeArg.span)
+  }
+
+  /** Remove references to local types that will not be defined in this quote */
+  private def getTypeHoleType(using Context) = new TypeMap() {
+    override def apply(tp: Type): Type = tp match
+      case tp: TypeRef if tp.typeSymbol.isTypeSplice =>
+        apply(tp.dealias)
+      case tp @ TypeRef(pre, _) if isLocalPath(pre) =>
+        val hiBound = tp.typeSymbol.info match
+          case info: ClassInfo => info.parents.reduce(_ & _)
+          case info => info.hiBound
+        apply(hiBound)
+      case tp =>
+        mapOver(tp)
+
+    private def isLocalPath(tp: Type): Boolean = tp match
+      case NoPrefix => true
+      case tp: TermRef if !tp.symbol.is(Package) => isLocalPath(tp.prefix)
+      case tp => false
+  }
 
 }
 
@@ -286,7 +326,10 @@ object PickleQuotes {
       *  this closure is always applied directly to the actual context and the BetaReduce phase removes it.
       */
     def pickleAsTasty() = {
-      val pickleQuote = PickledQuotes.pickleQuote(body)
+      val body1 =
+        if body.isType then body
+        else Inlined(Inlines.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body)
+      val pickleQuote = PickledQuotes.pickleQuote(body1)
       val pickledQuoteStrings = pickleQuote match
         case x :: Nil => Literal(Constant(x))
         case xs => tpd.mkList(xs.map(x => Literal(Constant(x))), TypeTree(defn.StringType))

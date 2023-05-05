@@ -665,7 +665,7 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(hi)
               pickleTree(alias)
           }
-        case tree @ Quote(body) =>
+        case tree @ Quote(body, Nil) =>
           // TODO: Add QUOTE tag to TASTy
           assert(body.isTerm,
             """Quote with type should not be pickled.
