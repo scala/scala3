@@ -5,8 +5,8 @@ class File:
   def write(x: String): Unit = ???
 
 class Service:
-  var file: File^ = uninitialized
-  def log = file.write("log")  // error
+  var file: File^ = uninitialized  // error
+  def log = file.write("log")
 
 def withFile[T](op: (f: File^) => T): T =
   op(new File)

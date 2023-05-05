@@ -4,7 +4,7 @@ package transform
 
 import core.*
 import Symbols.*, Contexts.*, Types.*, ContextOps.*, Decorators.*, SymDenotations.*
-import Flags.*, SymUtils.*, NameKinds.*, Denotations.Denotation
+import Flags.*, SymUtils.*, NameKinds.*, Denotations.{Denotation, SingleDenotation}
 import ast.*
 import Names.Name
 import Phases.Phase
@@ -22,7 +22,7 @@ import StdNames.nme
 import reporting.trace
 import annotation.constructorOnly
 import cc.CaptureSet.IdempotentCaptRefMap
-import dotty.tools.dotc.core.Denotations.SingleDenotation
+import annotation.tailrec
 
 object Recheck:
   import tpd.*
@@ -406,7 +406,14 @@ abstract class Recheck extends Phase, SymTransformer:
       NoType
 
     def recheckStats(stats: List[Tree])(using Context): Unit =
-      stats.foreach(recheck(_))
+      @tailrec def traverse(stats: List[Tree])(using Context): Unit = stats match
+        case (imp: Import) :: rest =>
+          traverse(rest)(using ctx.importContext(imp, imp.symbol))
+        case stat :: rest =>
+          recheck(stat)
+          traverse(rest)
+        case _ =>
+      traverse(stats)
 
     def recheckDef(tree: ValOrDefDef, sym: Symbol)(using Context): Unit =
       inContext(ctx.localContext(tree, sym)) {

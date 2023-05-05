@@ -25,7 +25,7 @@ import reporting.trace
 import annotation.constructorOnly
 import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
 import language.experimental.pureFunctions
-import caps.unsafe.*
+import annotation.unchecked.uncheckedCaptures
 
 /** Provides methods to compare types.
  */
@@ -33,17 +33,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   import TypeComparer._
   Stats.record("TypeComparer")
 
-  private var myContext: Context = initctx.unsafeBox
-  def comparerContext: Context = myContext.unsafeUnbox
+  @uncheckedCaptures
+  private var myContext: Context = initctx
+  def comparerContext: Context = myContext
 
-  protected given [DummySoItsADef]: Context = myContext.unsafeUnbox
+  protected given [DummySoItsADef]: Context = myContext
 
   protected var state: TyperState = compiletime.uninitialized
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
 
   def init(c: Context): Unit =
-    myContext = c.unsafeBox
+    myContext = c
     state = c.typerState
     monitored = false
     GADTused = false

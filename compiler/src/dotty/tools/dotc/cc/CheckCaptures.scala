@@ -128,6 +128,20 @@ object CheckCaptures:
       if remaining.accountsFor(firstRef) then
         report.warning(em"redundant capture: $remaining already accounts for $firstRef", ann.srcPos)
 
+  def disallowRootCapabilitiesIn(tp: Type, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
+    val check = new TypeTraverser:
+      def traverse(t: Type) =
+        if variance >= 0 then
+        t.captureSet.disallowRootCapability: () =>
+          def part = if t eq tp then "" else i"the part $t of "
+          report.error(
+            em"""$what cannot $have $tp since
+                |${part}that type captures the root capability `cap`.
+                |$addendum""",
+            pos)
+        traverseChildren(t)
+    check.traverse(tp)
+
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
 
@@ -525,6 +539,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       super.recheckTyped(tree)
 
+    override def recheckTry(tree: Try, pt: Type)(using Context): Type =
+      val tp = super.recheckTry(tree, pt)
+      if allowUniversalInBoxed && Feature.enabled(Feature.saferExceptions) then
+        disallowRootCapabilitiesIn(tp,
+          "Result of `try`", "have type",
+          "This is often caused by a locally generated exception capability leaking as part of its result.",
+          tree.srcPos)
+      tp
+
     /* Currently not needed, since capture checking takes place after ElimByName.
      * Keep around in case we need to get back to it
     def recheckByNameArg(tree: Tree, pt: Type)(using Context): Type =
@@ -588,7 +611,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
           checkNotUniversal(parent)
         case _ =>
-      checkNotUniversal(typeToCheck)
+      if !allowUniversalInBoxed then checkNotUniversal(typeToCheck)
       super.recheckFinish(tpe, tree, pt)
 
     /** Massage `actual` and `expected` types using the methods below before checking conformance */
@@ -771,7 +794,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val criticalSet =          // the set which is not allowed to have `cap`
               if covariant then cs1    // can't box with `cap`
               else expected.captureSet // can't unbox with `cap`
-            if criticalSet.isUniversal && expected.isValueType then
+            if criticalSet.isUniversal && expected.isValueType && !allowUniversalInBoxed then
               // We can't box/unbox the universal capability. Leave `actual` as it is
               // so we get an error in checkConforms. This tends to give better error
               // messages than disallowing the root capability in `criticalSet`.
@@ -779,13 +802,14 @@ class CheckCaptures extends Recheck, SymTransformer:
                 println(i"cannot box/unbox $actual vs $expected")
               actual
             else
-              // Disallow future addition of `cap` to `criticalSet`.
-              criticalSet.disallowRootCapability { () =>
-                report.error(
-                  em"""$actual cannot be box-converted to $expected
-                      |since one of their capture sets contains the root capability `cap`""",
-                pos)
-              }
+              if !allowUniversalInBoxed then
+                // Disallow future addition of `cap` to `criticalSet`.
+                criticalSet.disallowRootCapability { () =>
+                  report.error(
+                    em"""$actual cannot be box-converted to $expected
+                        |since one of their capture sets contains the root capability `cap`""",
+                  pos)
+                }
               if !insertBox then  // unboxing
                 markFree(criticalSet, pos)
               adaptedType(!boxed)

@@ -27,7 +27,14 @@ import annotation.experimental
      *  avoids the error that would be raised when unboxing `*`.
      */
     extension [T, U](f: T => U) def unsafeBoxFunArg: T => U = f
+
   end unsafe
+
+  /** An annotation that expresses the sealed modifier on a type parameter
+   *  Should not be directly referred to in source
+   */
+  @deprecated("The Sealed annotation should not be directly used in source code.\nUse the `sealed` modifier on type parameters instead.")
+  class Sealed extends annotation.Annotation
 
   /** Mixing in this trait forces a trait or class to be pure, i.e.
    *  have no capabilities retained in its self type.

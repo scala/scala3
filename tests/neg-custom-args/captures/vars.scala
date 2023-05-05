@@ -10,11 +10,11 @@ def test(cap1: Cap, cap2: Cap) =
   val z2 = () => { x = identity }
   val z2c: () -> Unit = z2  // error
 
-  var a: String => String = f // was error, now OK
-  var b: List[String => String] = Nil // was error, now OK
-  val u = a  // error
-  a("")  // error
-  b.head // error
+  var a: String => String = f // error
+  var b: List[String => String] = Nil // error
+  val u = a  // was error, now ok
+  a("")  // was error, now ok
+  b.head // was error, now ok
 
   def scope =
     val cap3: Cap = CC()
@@ -27,7 +27,7 @@ def test(cap1: Cap, cap2: Cap) =
   val s = scope
   val sc: String => String = scope
 
-  def local[T](op: Cap -> T): T = op(CC())
+  def local[sealed T](op: Cap -> T): T = op(CC())
 
   local { cap3 => // error
     def g(x: String): String = if cap3 == cap3 then "" else "a"

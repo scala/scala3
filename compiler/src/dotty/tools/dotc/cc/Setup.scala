@@ -411,11 +411,28 @@ extends tpd.TreeTraverser:
           boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
           exact = tree.symbol.allOverriddenSymbols.hasNext // types of symbols that override a parent don't get a capture set
         )
+        if allowUniversalInBoxed && tree.symbol.is(Mutable)
+            && !tree.symbol.hasAnnotation(defn.UncheckedCapturesAnnot)
+        then
+          CheckCaptures.disallowRootCapabilitiesIn(tpt.knownType,
+            i"Mutable variable ${tree.symbol.name}", "have type",
+            "This restriction serves to prevent local capabilities from escaping the scope where they are defined.",
+            tree.srcPos)
         traverse(tree.rhs)
       case tree @ TypeApply(fn, args) =>
         traverse(fn)
         for case arg: TypeTree <- args do
           transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
+
+        if allowUniversalInBoxed then
+          val polyType = fn.tpe.widen.asInstanceOf[TypeLambda]
+          for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
+            if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
+              def where = if fn.symbol.exists then i" in the body of ${fn.symbol}" else ""
+              CheckCaptures.disallowRootCapabilitiesIn(arg.knownType,
+                i"Sealed type variable $pname", " be instantiated to",
+                i"This is often caused by a local capability$where\nleaking as part of its result.",
+                tree.srcPos)
       case _ =>
         traverseChildren(tree)
     tree match
@@ -494,11 +511,10 @@ extends tpd.TreeTraverser:
 
   def apply(tree: Tree)(using Context): Unit =
     traverse(tree)(using ctx.withProperty(Setup.IsDuringSetupKey, Some(())))
-end Setup
 
 object Setup:
   val IsDuringSetupKey = new Property.Key[Unit]
 
   def isDuringSetup(using Context): Boolean =
     ctx.property(IsDuringSetupKey).isDefined
-
+end Setup
