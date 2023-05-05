@@ -160,9 +160,8 @@ object Eq:
       case _    => '{ summonInline[Eq[Elem]] }
 
   def deriveRec[T: Type, Elem: Type](using Quotes): Expr[Eq[Elem]] =
-    import quotes.reflect.*
     Type.of[T] match
-      case '[Elem] => report.errorAndAbort("infinite recursive derivation")
+      case '[Elem] => '{ error("infinite recursive derivation") }
       case _       => derivedMacro[Elem] // recursive derivation
 
   inline def derived[T]: Eq[T] = ${ derivedMacro[T] }
