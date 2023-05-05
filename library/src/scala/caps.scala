@@ -13,20 +13,25 @@ import annotation.experimental
 
   object unsafe:
 
-    /** If argument is of type `cs T`, converts to type `box cs T`. This
-     *  avoids the error that would be raised when boxing `*`.
-     */
-    extension [T](x: T) def unsafeBox: T = x
+    extension [T](x: T)
+      /** If argument is of type `cs T`, converts to type `box cs T`. This
+      *  avoids the error that would be raised when boxing `*`.
+      */
+      @deprecated(since = "3.3")
+      def unsafeBox: T = x
 
-    /** If argument is of type `box cs T`, converts to type `cs T`. This
-     *  avoids the error that would be raised when unboxing `*`.
-     */
-    extension [T](x: T) def unsafeUnbox: T = x
+      /** If argument is of type `box cs T`, converts to type `cs T`. This
+       *  avoids the error that would be raised when unboxing `*`.
+       */
+      @deprecated(since = "3.3")
+      def unsafeUnbox: T = x
 
-    /** If argument is of type `box cs T`, converts to type `cs T`. This
-     *  avoids the error that would be raised when unboxing `*`.
-     */
-    extension [T, U](f: T => U) def unsafeBoxFunArg: T => U = f
+    extension [T, U](f: T => U)
+      /** If argument is of type `box cs T`, converts to type `cs T`. This
+       *  avoids the error that would be raised when unboxing `*`.
+       */
+      @deprecated(since = "3.3")
+      def unsafeBoxFunArg: T => U = f
 
   end unsafe
 
