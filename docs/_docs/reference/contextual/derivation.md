@@ -332,9 +332,9 @@ inline def derived[T](using m: Mirror.Of[T]): Eq[T] =
 ```
 
 Note that `derived` is defined as an `inline def`.
-This means that the method will be expanded at all call sites (for instance the compiler generated instance definitions in the companion objects of ADTs which have a `deriving Eq` clause).
+This means that the method will be inlined at all call sites (for instance the compiler generated instance definitions in the companion objects of ADTs which have a `deriving Eq` clause).
 
-> Expansion is potentially expensive if overused (meaning slower compile times) so we should be careful to limit how many times `derived` is called for the same type.
+> Inlining of complex code is potentially expensive if overused (meaning slower compile times) so we should be careful to limit how many times `derived` is called for the same type.
 > For example, when computing an instance for a sum type, it may be necessary to call `derived` recursively to compute an instance for a one of its child cases.
 > That child case may in turn be a product type, that declares a field referring back to the parent sum type.
 > To compute the instance for this field, we should not call `derived` recursively, but instead summon from the context.
@@ -387,6 +387,8 @@ def eqProduct[T](p: Mirror.ProductOf[T], elems: => List[Eq[?]]): Eq[T] =
     def eqv(x: T, y: T): Boolean =
       iterable(x).lazyZip(iterable(y)).lazyZip(elems).forall(check)
 ```
+
+Both `eqSum` and `eqProduct` have a by-name parameter `elems`, because the argument passed is the reference to the lazy `elemInstances` value.
 
 Pulling this all together we have the following complete implementation,
 
