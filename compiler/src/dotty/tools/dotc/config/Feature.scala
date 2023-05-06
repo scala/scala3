@@ -136,8 +136,11 @@ object Feature:
     if !isExperimentalEnabled then
       report.error(em"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
 
+  private def ccException(sym: Symbol)(using Context): Boolean =
+    ccEnabled && defn.ccExperimental.contains(sym) 
+
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
-    if !isExperimentalEnabled then
+    if !isExperimentalEnabled && !ccException(sym) then
       val symMsg =
         if sym.hasAnnotation(defn.ExperimentalAnnot) then
           i"$sym is marked @experimental"

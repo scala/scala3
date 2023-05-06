@@ -1946,6 +1946,14 @@ class Definitions {
       case Some(pkgs) => pkgs.contains(sym.owner)
       case none => false
 
+  /** Experimental definitions that can nevertheless be accessed from a stable
+   *  compiler if capture checking is enabled.
+   */
+  @tu lazy val ccExperimental: Set[Symbol] = Set(
+    CapsModule, CapsModule.moduleClass, PureClass,
+    CapabilityAnnot, RequiresCapabilityAnnot,
+    RetainsAnnot, RetainsByNameAnnot, WithPureFunsAnnot)
+
   // ----- primitive value class machinery ------------------------------------------
 
   class PerRun[T](generate: Context ?=> T) {
