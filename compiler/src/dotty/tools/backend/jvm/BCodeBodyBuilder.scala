@@ -866,6 +866,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
                   defn.ObjectClass
                 } else qualSym
               }
+              lineNumber(app)
               generatedType = genCallMethod(sym, invokeStyle, app.span, receiverClass)
             }
           }
