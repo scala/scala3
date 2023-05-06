@@ -123,7 +123,7 @@ object ProtoTypes {
   }
 
   /** A trait for prototypes that match all types */
-  trait MatchAlways extends ProtoType, caps.Pure {
+  trait MatchAlways extends ProtoType, Pure {
     def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean = true
     def map(tm: TypeMap @retains(caps.cap))(using Context): ProtoType = this
     def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.cap))(using Context): T = x
@@ -131,7 +131,7 @@ object ProtoTypes {
   }
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
-  abstract case class IgnoredProto(ignored: Type) extends CachedGroundType, MatchAlways, caps.Pure:
+  abstract case class IgnoredProto(ignored: Type) extends CachedGroundType, MatchAlways, Pure:
     private var myWasDeepened = false
     override def revealIgnored = ignored
     override def deepenProto(using Context): Type =
@@ -165,7 +165,7 @@ object ProtoTypes {
    *       [ ].name: proto
    */
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
-  extends CachedProxyType, ProtoType, ValueTypeOrProto, caps.Pure {
+  extends CachedProxyType, ProtoType, ValueTypeOrProto, Pure {
 
     /** Is the set of members of this type unknown, in the sense that we
      *  cannot compute a non-trivial upper approximation? This is the case if:
@@ -575,7 +575,7 @@ object ProtoTypes {
    *    []: argType => resultType
    */
   abstract case class ViewProto(argType: Type, resType: Type)
-  extends CachedGroundType, ApplyingProto, caps.Pure {
+  extends CachedGroundType, ApplyingProto, Pure {
 
     override def resultType(using Context): Type = resType
 

@@ -22,7 +22,7 @@ object OverridingPairs:
   /** The cursor class
    *  @param base   the base class that contains the overriding pairs
    */
-  class Cursor(base: Symbol)(using DetachedContext) extends caps.Pure:
+  class Cursor(base: Symbol)(using DetachedContext) extends Pure:
 
     private val self = base.thisType
 

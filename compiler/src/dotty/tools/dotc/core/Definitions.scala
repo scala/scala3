@@ -976,6 +976,8 @@ class Definitions {
     @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
     @tu lazy val Caps_SealedAnnot: ClassSymbol = requiredClass("scala.caps.Sealed")
 
+  @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
+
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
   @tu lazy val StaticAnnotationClass: ClassSymbol = requiredClass("scala.annotation.StaticAnnotation")
@@ -2041,15 +2043,17 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol): Boolean =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
-  @tu lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
-    SimpleIdentityMap.empty[Symbol]
-      .updated(AnyClass, ObjectClass)
-      .updated(MatchableClass, ObjectClass)
-      .updated(AnyValClass, ObjectClass)
-      .updated(SingletonClass, ObjectClass)
-      .updated(TupleClass, ProductClass)
-      .updated(NonEmptyTupleClass, ProductClass)
-      .updated(PairClass, ObjectClass)
+  @tu lazy val specialErasure: collection.Map[Symbol, ClassSymbol] =
+    val m = mutable.Map[Symbol, ClassSymbol]()
+    m(AnyClass) = ObjectClass
+    m(MatchableClass) = ObjectClass
+    m(PureClass) = ObjectClass
+    m(AnyValClass) = ObjectClass
+    m(SingletonClass) = ObjectClass
+    m(TupleClass) = ProductClass
+    m(NonEmptyTupleClass) = ProductClass
+    m(PairClass) = ObjectClass
+    m
 
   // ----- Initialization ---------------------------------------------------
 

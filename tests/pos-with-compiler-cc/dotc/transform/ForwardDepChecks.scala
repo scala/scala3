@@ -26,7 +26,7 @@ object ForwardDepChecks:
 
   /** A class to help in forward reference checking */
   class LevelInfo(val outer: OptLevelInfo, val owner: Symbol, stats: List[Tree])(using DetachedContext)
-  extends OptLevelInfo, caps.Pure {
+  extends OptLevelInfo, Pure {
     override val levelAndIndex: LevelAndIndex =
       stats.foldLeft(outer.levelAndIndex, 0) {(mi, stat) =>
         val (m, idx) = mi
