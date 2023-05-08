@@ -9,6 +9,7 @@ import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
+import Setting.ChoiceWithHelp
 
 import scala.util.chaining._
 
@@ -156,7 +157,6 @@ private sealed trait VerboseSettings:
  */
 private sealed trait WarningSettings:
   self: SettingGroup =>
-  import Setting.ChoiceWithHelp
 
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
@@ -307,6 +307,30 @@ private sealed trait XSettings:
   }
 
   val XmacroSettings: Setting[List[String]] = MultiStringSetting("-Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
+
+  val Xlint: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+    name = "-Xlint",
+    helpArg = "advanced warning",
+    descr = "Enable or disable specific `lint` warnings",
+    choices = List(
+      ChoiceWithHelp("nowarn", ""),
+      ChoiceWithHelp("all", ""),
+      ChoiceWithHelp("private-shadow", "Warn if a private field or class parameter shadows a superclass field"),
+      ChoiceWithHelp("type-parameter-shadow", "Warn when a type parameter shadows a type already in the scope"),
+    ),
+    default = Nil
+  )
+
+  object XlintHas:
+    def isChoiceSet(s: String)(using Context) = Xlint.value.pipe(us => us.contains(s))
+    def allOr(s: String)(using Context) = Xlint.value.pipe(us => us.contains("all") || us.contains(s))
+    def nowarn(using Context) = allOr("nowarn")
+
+    def privateShadow(using Context) =
+      allOr("private-shadow")
+    def typeParameterShadow(using Context) =
+      allOr("type-parameter-shadow")
+
 end XSettings
 
 /** -Y "Forking" as in forked tongue or "Private" settings */
