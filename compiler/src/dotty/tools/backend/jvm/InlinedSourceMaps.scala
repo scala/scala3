@@ -81,43 +81,53 @@ object InlinedSourceMaps:
         b ++= "*E\n"
   end Stratum
 
+  //targetPos is the position of the inlined call    inlined(5)
+  //origPos is the position of the inlined code      inline def inlined(arg) { ... }
   def sourceMapFor(cunit: CompilationUnit)(internalNameProvider: Symbol => String)(using Context): InlinedSourceMap =
     val requests = mutable.ListBuffer.empty[(SourcePosition, SourcePosition)]
     var internalNames = Map.empty[SourceFile, String]
 
     class RequestCollector(enclosingFile: SourceFile) extends TreeTraverser:
       override def traverse(tree: Tree)(using Context): Unit =
-        if tree.source != enclosingFile && tree.source != cunit.source then
+        if tree.hasAttachment(InliningPosition) then
           tree.getAttachment(InliningPosition) match
-            case Some(InliningPosition(targetPos, cls)) =>
-              requests += (targetPos -> tree.sourcePos)
+            case Some(InliningPosition(l)) =>
+              l.foreach {              
+                (targetPos, cls) =>
+                  if tree.source != enclosingFile && tree.source != cunit.source then
+                    requests += (targetPos -> tree.sourcePos)
 
-              cls match
-                case Some(symbol) if !internalNames.isDefinedAt(tree.source) =>
-                  internalNames += (tree.source -> internalNameProvider(symbol))
-                  // We are skipping any internal name info if we already have one stored in our map
-                  // because a debugger will use internal name only to localize matching source.
-                  // Both old and new internal names are associated with the same source file
-                  // so it doesn't matter if internal name is not matching used symbol.
-                case _ => ()
-              RequestCollector(tree.source).traverseChildren(tree)
+                    cls match
+                      case Some(symbol) if !internalNames.isDefinedAt(tree.source) =>
+                        internalNames += (tree.source -> internalNameProvider(symbol))
+                        // We are skipping any internal name info if we already have one stored in our map
+                        // because a debugger will use internal name only to localize matching source.
+                        // Both old and new internal names are associated with the same source file
+                        // so it doesn't matter if internal name is not matching used symbol.
+                      case _ => ()
+              }
+              traverseChildren(tree)
             case None =>
               // Not exactly sure in which cases it is happening. Should we report warning?
-              RequestCollector(tree.source).traverseChildren(tree)
-        else traverseChildren(tree)
+              traverseChildren(tree)
+        else 
+          traverseChildren(tree)    
     end RequestCollector
 
     // Don't generate mappings for the quotes compiled at runtime by the staging compiler
     if cunit.source.file.isVirtual then InlinedSourceMap(cunit, Nil, Map.empty[SourceFile, String])
     else
       var lastLine = cunit.tpdTree.sourcePos.endLine
+      // returns the first fake line (starting from 0) 
       def allocate(origPos: SourcePosition): Int =
         val line = lastLine + 1
         lastLine += origPos.lines.length
         line
 
       RequestCollector(cunit.source).traverse(cunit.tpdTree)
-      val allocated = requests.sortBy(_._1.start).map(r => Request(r._1, r._2, allocate(r._2)))
+
+      val allocated = requests.map(r => Request(r._1, r._2, allocate(r._2)))
+
       InlinedSourceMap(cunit, allocated.toList, internalNames)
   end sourceMapFor
 
@@ -153,13 +163,26 @@ object InlinedSourceMaps:
       b.toString
     }
 
-    def lineFor(sourcePos: SourcePosition, lastRealNr: Int): Option[Int] =
-      requests.find(r => r.origPos.contains(sourcePos) && r.targetPos.endLine + 1 >= lastRealNr) match
+    var lastNestedInlineLine = -1
+
+    def lineFor(sourcePos: SourcePosition, lastRealNr: Int, attachement: Option[InliningPosition]): Option[Int] =
+
+      if attachement.isDefined then 
+        attachement.get.targetPos.find(p => p._1.source == sourcePos.source) match
+          case Some((pos, _)) =>
+            lastNestedInlineLine = pos.startLine
+          case None => ()
+
+      requests.find(r => 
+        r.origPos.contains(sourcePos) && 
+        (if r.targetPos.source == cunit.source then r.targetPos.endLine + 1 >= lastRealNr
+         else r.targetPos.startLine >= lastNestedInlineLine        
+        )
+      ) match
         case Some(request) =>
           val offset = sourcePos.startLine - request.origPos.startLine
-          Some(request.firstFakeLine + offset + 1)
+          val virtualLine = request.firstFakeLine + offset
+          Some(virtualLine + 1) // + 1 because the first line is 1 in the LineNumberTable
         case None =>
           // report.warning(s"${sourcePos.show} was inlined in ${cunit.source} but its inlining position was not recorded.")
           None
-
-

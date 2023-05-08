@@ -3,7 +3,6 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-
 import scala.annotation.tailrec
 
 import scala.collection.{ mutable, immutable }
@@ -25,6 +24,7 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.SymUtils._
 
 import InlinedSourceMaps._
+import dotty.tools.dotc.inlines.Inlines.InliningPosition
 
 /*
  *
@@ -585,8 +585,16 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       if (!emitLines || !tree.span.exists) return;
       if tree.source != cunit.source then
-        sourceMap.lineFor(tree.sourcePos, lastRealLineNr) match
-          case Some(nr) => emitNr(nr)
+        tree.getAttachment(InliningPosition) match
+          case Some(pos) => 
+            val sourcePosition = pos.targetPos.find(p => p._1.source == cunit.source) 
+            if sourcePosition.nonEmpty then 
+              val offset = sourcePosition.get._1.span.point
+              lastRealLineNr = ctx.source.offsetToLine(offset) + 1
+          case None => ()
+        sourceMap.lineFor(tree.sourcePos, lastRealLineNr, tree.getAttachment(InliningPosition)) match
+          case Some(nr) => 
+            emitNr(nr)
           case None => ()
       else
         val nr = ctx.source.offsetToLine(tree.span.point) + 1
