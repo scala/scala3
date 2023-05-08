@@ -2,16 +2,23 @@ package dotty.tools
 package dotc
 package inlines
 
-import ast.*, core.*
-import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
+import ast.{tpd, *}
+import core.*
+import Flags.*
+import Symbols.*
+import Types.*
+import Decorators.*
+import Constants.*
+import Contexts.*
 import StdNames.tpnme
-import transform.SymUtils._
+import transform.SymUtils.*
 import typer.*
 import NameKinds.BodyRetainerName
 import SymDenotations.SymDenotation
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import dotty.tools.dotc.util.{SourceFile, SourcePosition, SrcPos, Property}
+import dotty.tools.dotc.ast.tpd.{cpy, inlineContext}
+import dotty.tools.dotc.util.{Property, SourceFile, SourcePosition, SrcPos}
 import parsing.Parsers.Parser
 import transform.{PostTyper, Inlining, CrossVersionChecks}
 import staging.StagingLevel
@@ -30,7 +37,7 @@ object Inlines:
   private[dotc] class MissingInlineInfo extends Exception
 
   object InliningPosition extends Property.StickyKey[InliningPosition]
-  case class InliningPosition(sourcePos: SourcePosition, topLevelSymbol: Option[Symbol])
+  case class InliningPosition(targetPos: List[(SourcePosition, Option[Symbol])])
 
   /** `sym` is an inline method with a known body to inline.
    */
@@ -245,9 +252,20 @@ object Inlines:
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(using Context): Tree =
     val topLevelClass = Option.when(!inlined.call.isEmpty)(inlined.call.symbol.topLevelClass)
-    val inliningPosition = InliningPosition(inlined.sourcePos, topLevelClass)
-    val withPos = inlined.expansion.withAttachment(InliningPosition, inliningPosition)
-    if inlined.bindings.isEmpty then withPos else cpy.Block(inlined)(inlined.bindings, withPos)
+    val position = (inlined.sourcePos, topLevelClass)
+    val withPos =
+      if inlined.expansion.hasAttachment(InliningPosition) then
+        val att = InliningPosition(position :: inlined.expansion.getAttachment(InliningPosition).get.targetPos)
+        inlined.expansion.withAttachment(InliningPosition, att)
+      else
+        inlined.expansion.withAttachment(InliningPosition, InliningPosition(List(position)))
+
+    if inlined.bindings.isEmpty then
+      withPos
+    else
+      cpy.Block(inlined)(inlined.bindings, withPos)
+
+
 
   /** Leave only a call trace consisting of
    *  - a reference to the top-level class from which the call was inlined,
