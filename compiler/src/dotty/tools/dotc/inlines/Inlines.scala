@@ -524,7 +524,7 @@ object Inlines:
 
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
       val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
-      val inlinedSymbols = stats.map(stat => inlinedMember(stat.symbol))
+      val inlinedSymbols = stats.map(stat => inlinedSym(stat.symbol))
       stats.zip(inlinedSymbols).map(expandStat)
     end expandDefs
 
@@ -576,42 +576,41 @@ object Inlines:
       case stat: TypeDef =>
         inlinedTypeDef(stat, inlinedSym)
 
-    private def inlinedMember(sym: Symbol)(using Context): Symbol =
+    private def inlinedSym(sym: Symbol, withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
+       if sym.isClass then inlinedClassSym(sym.asClass, withoutFlags) else inlinedMemberSym(sym, withoutFlags)
+
+    private def inlinedClassSym(sym: ClassSymbol, withoutFlags: FlagSet = EmptyFlags)(using Context): ClassSymbol =
       sym.info match {
         case ClassInfo(prefix, cls, declaredParents, scope, selfInfo) =>
           val baseThisCls = ThisType.raw(ctx.owner.typeRef).select(sym)
           val inlinedSym = newClassSymbol(
             ctx.owner,
             sym.asType.name,
-            sym.flags | Synthetic,
+            (sym.flags | Synthetic) &~ withoutFlags,
             clsSym => ClassInfo(inlinerTypeMap(prefix), clsSym, declaredParents :+ baseThisCls, Scopes.newScope, selfInfo)
           )
           inlinedSym.setTargetName(sym.name ++ str.NAME_JOIN ++ ctx.owner.name)
           inlinedSym
         case _ =>
-          var name = sym.name
-          var flags = sym.flags | Synthetic
-          if sym.isType || !sym.is(Private) then flags |= Override
-          if sym.isTermParamAccessor then
-            flags &~= ParamAccessor
-            if sym.is(Local) then
-              name = name.expandedName(parentSym)
-              localParamAccessorsNames(sym.name) = name
-          sym.copy(
-            owner = ctx.owner,
-            name = name,
-            flags = flags,
-            info = inlinerTypeMap(sym.info),
-            coord = spanCoord(parent.span)).entered
+          report.error(s"Class symbol ${sym.show} does not have class info")
+          sym
       }
 
-    private def inlinedStat(stat: Tree)(using Context): Tree =
-      val inlinedSym = inlinedMember(stat.symbol)
-      stat match {
-        // TODO check if symbols must be copied
-        case tree: DefDef => inlinedDefDef(tree, inlinedSym)
-        case tree: ValDef => inlinedValDef(tree, inlinedSym)
-      }
+    private def inlinedMemberSym(sym: Symbol, withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
+      var name = sym.name
+      var flags = sym.flags | Synthetic
+      if sym.isType || !sym.is(Private) then flags |= Override
+      if sym.isTermParamAccessor then
+        flags &~= ParamAccessor
+        if sym.is(Local) then
+          name = name.expandedName(parentSym)
+          localParamAccessorsNames(sym.name) = name
+      sym.copy(
+        owner = ctx.owner,
+        name = name,
+        flags = flags &~ withoutFlags,
+        info = inlinerTypeMap(sym.info),
+        coord = spanCoord(parent.span)).entered
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
       val rhs =
@@ -634,17 +633,17 @@ object Inlines:
 
     private def inlinedPrimaryConstructorDefDef(ddef: DefDef)(using Context): DefDef =
       // TODO check if symbol must be copied
-      val inlinedSym = inlinedMember(ddef.symbol)
-      inlinedSym.resetFlag(Override)
+      val inlinedSym = inlinedMemberSym(ddef.symbol, withoutFlags = Override)
       val constr = inlinedDefDef(ddef, inlinedSym)
       cpy.DefDef(constr)(tpt = TypeTree(defn.UnitType), rhs = EmptyTree)
 
-    private def inlinedClassDef(clsDef: TypeDef, inlinedSym: ClassSymbol)(using Context): Tree =
+    private def inlinedClassDef(clsDef: TypeDef, inlinedCls: ClassSymbol)(using Context): Tree =
       val TypeDef(_, tmpl: Template) = clsDef: @unchecked
-      val (constr, body) = inContext(ctx.withOwner(inlinedSym)) {
-        (inlinedPrimaryConstructorDefDef(tmpl.constr), tmpl.body.map(inlinedStat))
+      val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
+        val inlinedTmpl = tmpl.body.map(stat => expandStat(stat, inlinedSym(stat.symbol)))
+        (inlinedPrimaryConstructorDefDef(tmpl.constr), inlinedTmpl)
       }
-      val clsDef1 = tpd.ClassDefWithParents(inlinedSym, constr, tmpl.parents :+ This(ctx.owner.asClass).select(clsDef.symbol), body)
+      val clsDef1 = tpd.ClassDefWithParents(inlinedCls, constr, tmpl.parents :+ This(ctx.owner.asClass).select(clsDef.symbol), body)
       inlined(clsDef1)._2.withSpan(clsDef.span) // TODO adapt parents
 
     private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
